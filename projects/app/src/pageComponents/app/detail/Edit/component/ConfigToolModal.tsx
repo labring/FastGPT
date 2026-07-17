@@ -161,6 +161,27 @@ const shouldRenderConfigInput = (input: FlowNodeTemplateType['inputs'][number]) 
 const getSecretInput = (tool: FlowNodeTemplateType) =>
   tool.inputs.find((input) => input.key === NodeInputKeyEnum.systemInputConfig && input.inputList);
 
+const getSecretInputFormValue = ({
+  value,
+  hasSystemSecret
+}: {
+  value?: ToolParamsFormType;
+  hasSystemSecret: boolean;
+}) => {
+  const type =
+    value?.type === SystemToolSecretInputTypeEnum.system && !hasSystemSecret
+      ? SystemToolSecretInputTypeEnum.manual
+      : (value?.type ??
+        (hasSystemSecret
+          ? SystemToolSecretInputTypeEnum.system
+          : SystemToolSecretInputTypeEnum.manual));
+
+  return {
+    ...(value ?? {}),
+    type
+  } satisfies ToolParamsFormType;
+};
+
 const getConfigFormValues = (tool: FlowNodeTemplateType) =>
   tool.inputs.reduce(
     (acc, input) => {
@@ -169,7 +190,14 @@ const getConfigFormValues = (tool: FlowNodeTemplateType) =>
       const developerInputType = canManuallyConfigure
         ? getToolInputManualRenderType(normalizedInput)
         : undefined;
-      acc[input.key] = input.value ?? input.defaultValue;
+      const inputValue = input.value ?? input.defaultValue;
+      acc[input.key] =
+        input.key === NodeInputKeyEnum.systemInputConfig
+          ? getSecretInputFormValue({
+              value: inputValue as ToolParamsFormType | undefined,
+              hasSystemSecret: tool.hasSystemSecret === true
+            })
+          : inputValue;
       acc[inputTypeFormKey(input.key)] = isAgentGeneratedToolInput(normalizedInput)
         ? FlowNodeInputTypeEnum.agentGenerated
         : (developerInputType ?? getSelectedInputRenderType(normalizedInput));
@@ -240,33 +268,21 @@ const hasToolSetConfig = (tool: FlowNodeTemplateType) =>
   !!tool.toolConfig?.httpToolSet ||
   !!tool.toolConfig?.systemToolSet;
 
-const getSecretConfigDisplay = ({
+const isManualSecretConfigured = (value?: ToolParamsFormType) =>
+  value?.type === SystemToolSecretInputTypeEnum.manual &&
+  Object.values(value.value ?? {}).some(
+    (item) =>
+      !!item?.secret ||
+      (item?.value !== undefined && item.value !== null && item.value !== '')
+  );
+
+const getSecretInputInitialExpanded = ({
   value,
-  hasSystemSecret,
-  t
+  hasSystemSecret
 }: {
   value?: ToolParamsFormType;
-  hasSystemSecret?: boolean;
-  t: ReturnType<typeof useSafeTranslation>['t'];
-}) => {
-  const type =
-    value?.type ??
-    (hasSystemSecret ? SystemToolSecretInputTypeEnum.system : SystemToolSecretInputTypeEnum.manual);
-
-  if (type === SystemToolSecretInputTypeEnum.system) {
-    return {
-      type,
-      title: t('app:system_secret'),
-      desc: t('app:tool_active_system_config_desc')
-    };
-  }
-
-  return {
-    type,
-    title: t('app:manual_secret'),
-    desc: t('app:tool_active_manual_config_desc')
-  };
-};
+  hasSystemSecret: boolean;
+}) => !hasSystemSecret && !isManualSecretConfigured(value);
 
 const isSecretInputConfigValid = ({
   input,
@@ -306,32 +322,6 @@ const SmallSectionLabel = ({ children }: { children: React.ReactNode }) => (
   >
     {children}
   </Box>
-);
-
-const ActiveRadioIcon = () => (
-  <Flex
-    w={'18px'}
-    h={'18px'}
-    border={'2px solid'}
-    borderColor={'rgba(51,112,255,0.15)'}
-    borderRadius={'full'}
-    alignItems={'center'}
-    justifyContent={'center'}
-    flexShrink={0}
-  >
-    <Flex
-      w={'14px'}
-      h={'14px'}
-      border={'1px solid'}
-      borderColor={'primary.600'}
-      borderRadius={'full'}
-      bg={'rgba(51,112,255,0.1)'}
-      alignItems={'center'}
-      justifyContent={'center'}
-    >
-      <Box w={'5px'} h={'5px'} bg={'primary.600'} borderRadius={'full'} />
-    </Flex>
-  </Flex>
 );
 
 const ToolHeaderCard = ({
@@ -479,12 +469,11 @@ const SecretInputControl = ({
   control: Control<Record<string, any>>;
   configTool: FlowNodeTemplateType;
 }) => {
-  const { t } = useSafeTranslation();
   const hasSystemSecret = configTool.hasSystemSecret === true;
-  const [isExpanded, setIsExpanded] = useState(() => {
-    const initialValue = input.value as ToolParamsFormType | undefined;
-    return !hasSystemSecret || initialValue?.type === SystemToolSecretInputTypeEnum.manual;
-  });
+  const initialValue = input.value as ToolParamsFormType | undefined;
+  const [isExpanded, setIsExpanded] = useState(() =>
+    getSecretInputInitialExpanded({ value: initialValue, hasSystemSecret })
+  );
 
   return (
     <Controller
@@ -497,15 +486,10 @@ const SecretInputControl = ({
             value: value as ToolParamsFormType | undefined
           })
       }}
-      render={({ field: { onChange, value }, fieldState: { error } }) => {
+      render={({ field: { onChange, value } }) => {
         const val = value as ToolParamsFormType | undefined;
-        const display = getSecretConfigDisplay({
-          value: val,
-          hasSystemSecret,
-          t
-        });
 
-        const secretInputForm = (
+        return (
           <SecretInputForm
             isFolder={configTool?.isFolder}
             inputConfig={{
@@ -519,74 +503,14 @@ const SecretInputControl = ({
             parentId={configTool?.pluginId}
             source={configTool?.source}
             showTitle={false}
+            showExpandControl
+            isExpanded={isExpanded}
             onChange={onChange}
+            onToggleExpand={setIsExpanded}
+            onTypeChange={(type) => {
+              setIsExpanded(type === SystemToolSecretInputTypeEnum.manual);
+            }}
           />
-        );
-
-        if (!hasSystemSecret) {
-          return secretInputForm;
-        }
-
-        if (isExpanded) {
-          return (
-            <>
-              {secretInputForm}
-              <Button
-                mt={2}
-                size={'xs'}
-                h={'24px'}
-                variant={'transparentBase'}
-                color={'myGray.600'}
-                leftIcon={<MyIcon name={'core/chat/chevronUp'} w={'12px'} color={'myGray.600'} />}
-                px={2}
-                onClick={() => setIsExpanded(false)}
-              >
-                {t('workflow:Fold')}
-              </Button>
-            </>
-          );
-        }
-
-        return (
-          <>
-            <Flex
-              border={'1px solid'}
-              borderColor={error ? 'red.500' : '#DFE2EA'}
-              borderRadius={'8px'}
-              p={'17px'}
-              gap={2}
-              cursor={'pointer'}
-              onClick={() => setIsExpanded(true)}
-            >
-              <ActiveRadioIcon />
-              <Box minW={0} flex={1}>
-                <Box
-                  color={'#24282C'}
-                  fontSize={'14px'}
-                  lineHeight={'20px'}
-                  fontWeight={'500'}
-                  letterSpacing={'0.1px'}
-                >
-                  {display.title}
-                </Box>
-                <Box mt={2} color={'myGray.500'} fontSize={'12px'} lineHeight={'16px'}>
-                  {display.desc}
-                </Box>
-              </Box>
-            </Flex>
-            <Button
-              mt={2}
-              size={'xs'}
-              h={'24px'}
-              variant={'transparentBase'}
-              color={'myGray.600'}
-              leftIcon={<MyIcon name={'core/chat/chevronDown'} w={'12px'} color={'myGray.600'} />}
-              px={2}
-              onClick={() => setIsExpanded(true)}
-            >
-              {t('workflow:Unfold')}
-            </Button>
-          </>
         );
       }}
     />

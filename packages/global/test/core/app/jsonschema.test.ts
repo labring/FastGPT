@@ -379,6 +379,56 @@ describe('jsonSchema2NodeInput', () => {
     ]);
   });
 
+  it('should normalize open scalar unions to the shared value type and keep enum candidates', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          source: {
+            anyOf: [{ type: 'string' }, { type: 'string', enum: ['a', 'b'] }]
+          }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: ['input', 'select', 'reference'],
+      list: [
+        { label: 'a', value: 'a' },
+        { label: 'b', value: 'b' }
+      ]
+    });
+    expect(result[0]).not.toHaveProperty('value');
+  });
+
+  it('should normalize open array item unions to arrayString without strict multi-select', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          sources: {
+            type: 'array',
+            items: {
+              anyOf: [{ type: 'string' }, { type: 'string', enum: ['a', 'b'] }]
+            }
+          }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      renderTypeList: ['JSONEditor', 'multipleSelect', 'reference'],
+      list: [
+        { label: 'a', value: 'a' },
+        { label: 'b', value: 'b' }
+      ]
+    });
+  });
+
   it('should stringify enum options to match node input schema', () => {
     const jsonSchema: JSONSchemaInputType = {
       type: 'object',
@@ -689,6 +739,24 @@ describe('jsonSchema2NodeOutput', () => {
 
     expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
   });
+
+  it('should normalize open array item unions to arrayString', () => {
+    const result = jsonSchema2NodeOutput({
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          sources: {
+            type: 'array',
+            items: {
+              anyOf: [{ type: 'string' }, { type: 'string', enum: ['a', 'b'] }]
+            }
+          }
+        }
+      }
+    });
+
+    expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
+  });
 });
 
 describe('nodeInputs2JsonSchema', () => {
@@ -837,6 +905,26 @@ describe('nodeInputs2JsonSchema', () => {
         enum: ['C', 'D']
       }
     });
+  });
+
+  it('should not narrow open input candidates to a strict enum schema', () => {
+    const result = nodeInputs2JsonSchema({
+      inputs: [
+        {
+          key: 'source',
+          label: 'Source',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: ['input', 'select', 'reference'],
+          list: [
+            { label: 'Option A', value: 'a' },
+            { label: 'Option B', value: 'b' }
+          ]
+        }
+      ]
+    });
+
+    expect(result.properties?.source).toMatchObject({ type: 'string' });
+    expect(result.properties?.source).not.toHaveProperty('enum');
   });
 
   it('should keep non-string workflow value types from falling back to string schema', () => {
