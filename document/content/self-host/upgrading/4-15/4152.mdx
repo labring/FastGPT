@@ -26,7 +26,25 @@ V4.15.2 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修
 
 旧值不再兼容。继续使用 `default` 或 `pi` 会导致环境变量校验失败，FastGPT 无法启动。未配置 `AGENT_ENGINE` 时，可正常启动，系统默认使用 `fastAgent`。
 
-### 3. 修改文件下载模式变量
+### MongoDB 索引同步环境变量调整
+
+V4.15.2 起，原 `SYNC_INDEX` 环境变量已移除，统一改用 `MONGO_INDEX_SYNC_MODE`。旧变量将不再生效，升级前请按下表调整：
+
+| 原配置             | 新配置                         |
+| ------------------ | ------------------------------ |
+| `SYNC_INDEX=true`  | `MONGO_INDEX_SYNC_MODE=create` |
+| `SYNC_INDEX=false` | `MONGO_INDEX_SYNC_MODE=off`    |
+
+`MONGO_INDEX_SYNC_MODE` 支持以下模式：
+
+- `create`：默认值，只创建 FastGPT Schema 中缺失的索引，不删除其他索引。
+- `off`：不自动处理 MongoDB 索引。
+- `dryRun`：只检查并记录索引差异，不创建或删除索引。
+- `sync`：创建缺失索引，并清理 FastGPT 明确登记且定义完全匹配的历史废弃索引；不会删除自建索引或其他未知索引。
+
+版本升级时，如需自动清理 FastGPT 的历史废弃索引，可临时配置 `MONGO_INDEX_SYNC_MODE=sync` 并重启服务。确认清理完成后，建议改回默认的 `create` 模式。
+
+### 修改文件下载模式变量
 
 V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-proxy`。
 

@@ -26,6 +26,24 @@ Starting with V4.15.2, `AGENT_ENGINE` uses new enum values. Update the environme
 
 The previous values are no longer supported. Using `default` or `pi` will fail environment variable validation and prevent FastGPT from starting. If `AGENT_ENGINE` is not set, FastGPT uses `fastAgent` by default.
 
+### Update the MongoDB Index Sync Environment Variable
+
+Starting with V4.15.2, the `SYNC_INDEX` environment variable has been removed and replaced by `MONGO_INDEX_SYNC_MODE`. The old variable is no longer used. Update your deployment configuration before upgrading:
+
+| Previous configuration | New configuration              |
+| ---------------------- | ------------------------------ |
+| `SYNC_INDEX=true`      | `MONGO_INDEX_SYNC_MODE=create` |
+| `SYNC_INDEX=false`     | `MONGO_INDEX_SYNC_MODE=off`    |
+
+`MONGO_INDEX_SYNC_MODE` supports the following modes:
+
+- `create`: The default. Creates indexes missing from the FastGPT schema without deleting other indexes.
+- `off`: Disables automatic MongoDB index management.
+- `dryRun`: Inspects and logs index differences without creating or deleting indexes.
+- `sync`: Creates missing indexes and removes only historical FastGPT indexes that are explicitly registered and whose definitions match exactly. It does not remove custom created or other unknown indexes.
+
+To automatically remove deprecated FastGPT indexes during an upgrade, temporarily set `MONGO_INDEX_SYNC_MODE=sync` and restart the service. After confirming that cleanup has completed, switch back to the default `create` mode.
+
 ### Configure the File Download URL Mode
 
 V4.15.2 introduces the `STORAGE_DOWNLOAD_URL_MODE` environment variable, which defaults to `short-proxy`.
