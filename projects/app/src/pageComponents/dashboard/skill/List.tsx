@@ -294,6 +294,9 @@ const List = ({
     []
   );
 
+  // guard 可选：未传入时视为放行；传入时由其内部决定是否弹提示，并返回是否允许操作。
+  const passesSandboxGuard = () => !guardSkillSandboxOperation || guardSkillSandboxOperation();
+
   const renderSkillCard = (skill: (typeof skills)[number]) => {
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
@@ -313,7 +316,7 @@ const List = ({
                   type: 'grayBg' as const,
                   label: t('common:dataset.Edit Info'),
                   onClick: () => {
-                    if (!isFolder && guardSkillSandboxOperation && !guardSkillSandboxOperation()) {
+                    if (!isFolder && !passesSandboxGuard()) {
                       return;
                     }
                     setEditedSkill({
@@ -414,8 +417,8 @@ const List = ({
           if (isFolder) {
             router.push({ query: { ...router.query, parentId: skill._id } });
           } else {
-            if (isSkillReady && guardSkillSandboxOperation && !guardSkillSandboxOperation()) return;
-            router.push(`/dashboard/skill/detail?skillId=${skill._id}`);
+            if (isSkillReady && !passesSandboxGuard()) return;
+            router.push(`/skill/detail?skillId=${skill._id}`);
           }
         }}
       >

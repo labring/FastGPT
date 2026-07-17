@@ -12,71 +12,34 @@ const CARD_VIEW_BOX = '0 0 540.5 208';
 type CardVariant = 'import' | 'create';
 type CardVisualState = 'default' | 'hover';
 
-type EllipseConfig = {
-  cx: number;
-  cy: number;
-  rx: number;
-  ry: number;
-  rotate: number;
-};
+type EllipseGeometry = { cx: number; cy: number; rx: number; ry: number; rotate: number };
+type FilterBox = { x: number; y: number; width: number; height: number };
 
-type GlowVariantConfig = {
-  fill: string;
-  fillOpacity: number;
-  default: EllipseConfig;
-  hover: EllipseConfig;
-  filter: {
-    default: { x: number; y: number; width: number; height: number };
-    hover: { x: number; y: number; width: number; height: number };
-  };
+/**
+ * 与 Figma 导出一致：椭圆 + feGaussianBlur。
+ * 两个 variant 共享同一组几何（仅光晕颜色不同），故抽出为模块常量。
+ */
+const ELLIPSE_DEFAULT: EllipseGeometry = {
+  cx: 404.464,
+  cy: 225.211,
+  rx: 86.5957,
+  ry: 163.128,
+  rotate: -75.6974
 };
+const ELLIPSE_HOVER: EllipseGeometry = {
+  cx: 377.858,
+  cy: 197.664,
+  rx: 93.7504,
+  ry: 176.606,
+  rotate: -85
+};
+const FILTER_DEFAULT: FilterBox = { x: 187.203, y: 74.372, width: 434.524, height: 301.678 };
+const FILTER_HOVER: FilterBox = { x: 144.001, y: 45.265, width: 467.714, height: 304.797 };
 
-/** 与 Figma 导出一致：椭圆 + feGaussianBlur，仅颜色/坐标因卡片而异 */
-const GLOW_VARIANT_CONFIG: Record<CardVariant, GlowVariantConfig> = {
-  import: {
-    fill: '#AAE2F8',
-    fillOpacity: 0.3,
-    default: {
-      cx: 404.464,
-      cy: 225.211,
-      rx: 86.5957,
-      ry: 163.128,
-      rotate: -75.6974
-    },
-    hover: {
-      cx: 377.858,
-      cy: 197.664,
-      rx: 93.7504,
-      ry: 176.606,
-      rotate: -85
-    },
-    filter: {
-      default: { x: 187.203, y: 74.372, width: 434.524, height: 301.678 },
-      hover: { x: 144.001, y: 45.265, width: 467.714, height: 304.797 }
-    }
-  },
-  create: {
-    fill: '#C8FDE9',
-    fillOpacity: 0.45,
-    default: {
-      cx: 404.464,
-      cy: 225.211,
-      rx: 86.5957,
-      ry: 163.128,
-      rotate: -75.6974
-    },
-    hover: {
-      cx: 377.858,
-      cy: 197.664,
-      rx: 93.7504,
-      ry: 176.606,
-      rotate: -85
-    },
-    filter: {
-      default: { x: 187.203, y: 74.372, width: 434.524, height: 301.678 },
-      hover: { x: 144.001, y: 45.265, width: 467.714, height: 304.797 }
-    }
-  }
+/** 仅颜色因卡片而异 */
+const GLOW_VARIANT_CONFIG: Record<CardVariant, { fill: string; fillOpacity: number }> = {
+  import: { fill: '#AAE2F8', fillOpacity: 0.3 },
+  create: { fill: '#C8FDE9', fillOpacity: 0.45 }
 };
 
 type Props = {
@@ -97,9 +60,9 @@ const GlowEllipseDecoration = ({
   uid: string;
 }) => {
   const isHover = state === 'hover';
-  const config = GLOW_VARIANT_CONFIG[variant];
-  const ellipse = isHover ? config.hover : config.default;
-  const filterBox = isHover ? config.filter.hover : config.filter.default;
+  const color = GLOW_VARIANT_CONFIG[variant];
+  const ellipse = isHover ? ELLIPSE_HOVER : ELLIPSE_DEFAULT;
+  const filterBox = isHover ? FILTER_HOVER : FILTER_DEFAULT;
   const blurId = `${uid}-${variant}-blur`;
 
   return (
@@ -111,8 +74,8 @@ const GlowEllipseDecoration = ({
           rx={ellipse.rx}
           ry={ellipse.ry}
           transform={`rotate(${ellipse.rotate} ${ellipse.cx} ${ellipse.cy})`}
-          fill={config.fill}
-          fillOpacity={config.fillOpacity}
+          fill={color.fill}
+          fillOpacity={color.fillOpacity}
         />
       </g>
       <defs>
@@ -188,17 +151,21 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
 
   return (
     <Flex
-      role={'group'}
+      as={'button'}
+      type={'button'}
+      aria-label={title}
+      className="group"
+      textAlign={'left'}
       position={'relative'}
       cursor={'pointer'}
       onClick={onClick}
       direction={'column'}
       alignItems={'flex-start'}
-      h={'208px'}
+      minH={'208px'}
       w={'full'}
       maxW={['full', '540px']}
       minW={0}
-      p={'32px'}
+      p={['20px', '32px']}
       borderRadius={'12px'}
       overflow={'hidden'}
       bg={
@@ -208,6 +175,17 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
       transition={'box-shadow 0.3s ease-out'}
       _hover={{
         boxShadow: CARD_BOX_SHADOW.hover
+      }}
+      _focusVisible={{
+        outline: '2px solid',
+        outlineColor: 'primary.500',
+        outlineOffset: '2px'
+      }}
+      sx={{
+        WebkitAppearance: 'none',
+        appearance: 'none',
+        border: 0,
+        font: 'inherit'
       }}
     >
       <SkillCardDecoration variant={variant} state={'default'} uid={uid} />
@@ -240,7 +218,7 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
         zIndex={1}
         mt={'16px'}
         py={'16px'}
-        px={'120px'}
+        px={['32px', '120px']}
         justifyContent={'center'}
         alignItems={'center'}
         gap={'10px'}

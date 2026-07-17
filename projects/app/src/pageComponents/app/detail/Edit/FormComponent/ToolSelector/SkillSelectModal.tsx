@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/router';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, IconButton } from '@chakra-ui/react';
@@ -18,43 +17,22 @@ import { useSkillSandboxOperationGuard } from '@/components/core/skill/useSkillS
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getSkillDetail } from '@/web/core/skill/api';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { setAgentSkillCreateContext } from '@/web/core/skill/agentSkillCreateAssociate';
 
 const ImportSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/ImportSkillModal'));
+const CreateSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/CreateSkillModal'));
 
 const MAX_SKILL_COUNT = 100;
 
-const SkillSelectCreateButton = ({
+const SkillSelectActionButton = ({
+  icon,
   onClick,
   children
 }: {
+  icon: React.ReactElement;
   onClick: () => void;
   children: React.ReactNode;
 }) => (
-  <Button
-    variant={'grayBase'}
-    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-    onClick={onClick}
-    px={5}
-  >
-    {children}
-  </Button>
-);
-
-const SkillSelectImportButton = ({
-  onClick,
-  children
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-}) => (
-  <Button
-    variant={'grayBase'}
-    leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-    onClick={onClick}
-    px={5}
-  >
+  <Button variant={'grayBase'} leftIcon={icon} onClick={onClick} px={5}>
     {children}
   </Button>
 );
@@ -82,10 +60,18 @@ const SkillSelectEmptyState = ({
     >
       <EmptyTip text={t('skill:no_skills')} iconSize={'80px'} textGap={'25px'} mt={0} py={0} />
       <Flex gap={'12px'} flexWrap={'wrap'} justifyContent={'center'}>
-        <SkillSelectCreateButton onClick={onCreate}>
+        <SkillSelectActionButton
+          icon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+          onClick={onCreate}
+        >
           {t('common:new_create')}
-        </SkillSelectCreateButton>
-        <SkillSelectImportButton onClick={onImport}>{t('common:Import')}</SkillSelectImportButton>
+        </SkillSelectActionButton>
+        <SkillSelectActionButton
+          icon={<MyIcon name={'common/importLight'} w={'14px'} />}
+          onClick={onImport}
+        >
+          {t('common:Import')}
+        </SkillSelectActionButton>
       </Flex>
     </Flex>
   );
@@ -95,24 +81,21 @@ const SkillSelectModal = ({
   selectedSkills,
   onAddSkill,
   onRemoveSkill,
-  onClose,
-  associateAppId
+  onClose
 }: {
   selectedSkills: SelectedAgentSkillItemType[];
   onAddSkill: (skill: SelectedAgentSkillItemType) => void;
   onRemoveSkill: (skillId: string) => void;
   onClose: () => void;
-  /** ChatAgent 空态跳转 Dashboard 创建时，用于创建完成后关联回当前 App */
-  associateAppId?: string;
 }) => {
   const { t } = useTranslation();
-  const router = useRouter();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
   const hasSkillCreatePer = !!userInfo?.team.permission.hasSkillCreatePer;
   const { guardSkillSandboxOperation, SkillSandboxOperationGuardModal } =
     useSkillSandboxOperationGuard();
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const {
     skillList,
@@ -127,7 +110,11 @@ const SkillSelectModal = ({
   } = useSkillSelectData();
   const isAtLimit = selectedSkills.length >= MAX_SKILL_COUNT;
   const showEmptyActions =
-    !isLoadingSkillList && skillList.length === 0 && !searchKey && hasSkillCreatePer;
+    !isLoadingSkillList &&
+    skillList.length === 0 &&
+    !searchKey &&
+    paths.length === 0 &&
+    hasSkillCreatePer;
   const showHeaderCreateImportActions = hasSkillCreatePer && !searchKey && !showEmptyActions;
   const modalHeight = showEmptyActions
     ? ['min(560px, calc(100vh - 128px))', '560px']
@@ -140,54 +127,28 @@ const SkillSelectModal = ({
     }
   }, [guardSkillSandboxOperation]);
 
-  /** 新标签页打开 Skill Dashboard 并自动弹出创建弹窗（设计稿图 2） */
-  const handleOpenDashboardCreate = useCallback(() => {
-    if (!guardSkillSandboxOperation()) {
-      return;
+  const handleOpenCreate = useCallback(() => {
+    if (guardSkillSandboxOperation()) {
+      setShowCreateModal(true);
     }
+  }, [guardSkillSandboxOperation]);
 
-    if (associateAppId) {
-      setAgentSkillCreateContext({
-        appId: associateAppId,
-        selectedSkillIds: selectedSkills.map((skill) => skill.skillId)
-      });
-    }
-
-    const localePrefix =
-      router.locale && router.defaultLocale && router.locale !== router.defaultLocale
-        ? `/${router.locale}`
-        : '';
-    const query = new URLSearchParams({ openCreateSkill: '1' });
-    if (associateAppId) {
-      query.set('associateAppId', associateAppId);
-      if (selectedSkills.length > 0) {
-        query.set('excludeSkillIds', selectedSkills.map((skill) => skill.skillId).join(','));
-      }
-    }
-    const dashboardCreateUrl = getWebReqUrl(`${localePrefix}/dashboard/skill?${query.toString()}`);
-
-    window.open(dashboardCreateUrl, '_blank');
-    onClose();
-  }, [associateAppId, guardSkillSandboxOperation, onClose, router, selectedSkills]);
-
-  /** 导入成功后回到选择弹窗，并自动勾选本次导入的 Skill */
-  const handleImportSuccess = useCallback(
+  /** 创建/导入成功后回到选择弹窗，并自动勾选本次新增的 Skill */
+  const handleAddCreatedOrImportedSkill = useCallback(
     async (skillId: string) => {
-      await refreshSkillList();
+      // 关联与列表刷新解耦：刷新仅 best-effort，不作为关联的前置条件，
+      // 刷新失败也不会阻断 getSkillDetail + onAddSkill。
+      const associateSkill = async () => {
+        if (selectedSkills.some((skill) => skill.skillId === skillId)) return;
 
-      if (selectedSkills.some((skill) => skill.skillId === skillId)) {
-        return;
-      }
+        if (isAtLimit) {
+          toast({
+            status: 'warning',
+            title: t('skill:skill_select_limit_tip')
+          });
+          return;
+        }
 
-      if (isAtLimit) {
-        toast({
-          status: 'warning',
-          title: t('skill:skill_select_limit_tip')
-        });
-        return;
-      }
-
-      try {
         const detail = await getSkillDetail({ skillId });
         onAddSkill({
           skillId: detail._id,
@@ -196,11 +157,17 @@ const SkillSelectModal = ({
           avatar: detail.avatar,
           isDeleted: false
         });
+      };
+
+      try {
+        await associateSkill();
       } catch {
         toast({
           status: 'error',
           title: t('common:load_failed')
         });
+      } finally {
+        refreshSkillList().catch(() => {});
       }
     },
     [isAtLimit, onAddSkill, refreshSkillList, selectedSkills, t, toast]
@@ -233,10 +200,7 @@ const SkillSelectModal = ({
             w={'full'}
             minH={0}
           >
-            <SkillSelectEmptyState
-              onCreate={handleOpenDashboardCreate}
-              onImport={handleOpenImport}
-            />
+            <SkillSelectEmptyState onCreate={handleOpenCreate} onImport={handleOpenImport} />
           </MyBox>
         ) : (
           <>
@@ -256,12 +220,18 @@ const SkillSelectModal = ({
               </Box>
               {showHeaderCreateImportActions && (
                 <Flex gap={'12px'} flexShrink={0}>
-                  <SkillSelectCreateButton onClick={handleOpenDashboardCreate}>
+                  <SkillSelectActionButton
+                    icon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                    onClick={handleOpenCreate}
+                  >
                     {t('common:new_create')}
-                  </SkillSelectCreateButton>
-                  <SkillSelectImportButton onClick={handleOpenImport}>
+                  </SkillSelectActionButton>
+                  <SkillSelectActionButton
+                    icon={<MyIcon name={'common/importLight'} w={'14px'} />}
+                    onClick={handleOpenImport}
+                  >
                     {t('common:Import')}
-                  </SkillSelectImportButton>
+                  </SkillSelectActionButton>
                 </Flex>
               )}
             </Flex>
@@ -314,7 +284,16 @@ const SkillSelectModal = ({
         <ImportSkillModal
           parentId={parentId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={handleImportSuccess}
+          onSuccess={handleAddCreatedOrImportedSkill}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateSkillModal
+          parentId={parentId}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleAddCreatedOrImportedSkill}
+          openDetailInNewTab
         />
       )}
 

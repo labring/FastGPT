@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
@@ -20,14 +20,7 @@ import {
   DEFAULT_MAX_FOLDER_DEPTH
 } from '@fastgpt/global/common/parentFolder/depth';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSkillDetail, postCreateSkillFolder } from '@/web/core/skill/api';
-import {
-  clearAgentSkillCreateContext,
-  getAgentSkillCreateContext,
-  parseAgentSkillCreateContextFromQuery,
-  type AgentSkillCreateContext
-} from '@/web/core/skill/agentSkillCreateAssociate';
-import { notifyAgentSkillCreated } from '@/web/core/skill/agentSkillAssociateBridge';
+import { postCreateSkillFolder } from '@/web/core/skill/api';
 import dynamic from 'next/dynamic';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import FolderPath from '@/components/common/folder/Path';
@@ -42,20 +35,6 @@ const EditFolderModal = dynamic(
 const CreateSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/CreateSkillModal'));
 const ImportSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/ImportSkillModal'));
 
-/** 创建后详情接口可能短暂不可用，重试避免 pending 关联丢失名称等信息 */
-const fetchSkillDetailWithRetry = async (skillId: string, retries = 3) => {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      return await getSkillDetail({ skillId });
-    } catch {
-      if (attempt < retries - 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 400));
-      }
-    }
-  }
-  return null;
-};
-
 const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -65,8 +44,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  /** 从 Agent 选择弹窗带入的关联上下文，优先 URL 参数，避免 localStorage 跨标签页丢失 */
-  const associateContextRef = useRef<AgentSkillCreateContext | null>(null);
   const { guardSkillSandboxOperation, SkillSandboxOperationGuardModal } =
     useSkillSandboxOperationGuard();
 
@@ -104,54 +81,10 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     ? folderDetail.permission.hasWritePer
     : userInfo?.team.permission.hasSkillCreatePer;
 
-  const handleCreateSuccess = async (skillId: string) => {
-    const createContext = associateContextRef.current ?? getAgentSkillCreateContext();
-    const shouldAssociate = !!createContext && !createContext.selectedSkillIds.includes(skillId);
-
-    if (shouldAssociate) {
-      const detail = await fetchSkillDetailWithRetry(skillId);
-      notifyAgentSkillCreated({
-        appId: createContext.appId,
-        skill: {
-          skillId: detail?._id ?? skillId,
-          name: detail?.name ?? '',
-          description: detail?.description ?? '',
-          avatar: detail?.avatar,
-          isDeleted: false
-        }
-      });
-    }
-
-    associateContextRef.current = null;
-    clearAgentSkillCreateContext();
-    await loadSkills();
+  // 创建成功后刷新列表 best-effort：失败不阻断（详情页已在新标签页打开）。
+  const handleCreateSuccess = () => {
+    loadSkills().catch(() => {});
   };
-
-  useEffect(() => {
-    if (router.query.openCreateSkill !== '1') return;
-    if (hasCreatePer === undefined) return;
-    if (parentId && !folderDetail) return;
-
-    associateContextRef.current =
-      parseAgentSkillCreateContextFromQuery(router.query) ?? getAgentSkillCreateContext();
-
-    if (hasCreatePer && guardSkillSandboxOperation()) {
-      window.setTimeout(() => setShowCreateModal(true), 0);
-    }
-
-    const restQuery = { ...router.query };
-    delete restQuery.openCreateSkill;
-    delete restQuery.associateAppId;
-    delete restQuery.excludeSkillIds;
-    router.replace(
-      {
-        pathname: router.pathname,
-        query: restQuery
-      },
-      undefined,
-      { shallow: true }
-    );
-  }, [folderDetail, guardSkillSandboxOperation, hasCreatePer, parentId, router]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -278,7 +211,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           parentId={parentId}
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleCreateSuccess}
-          redirectToDetail
           openDetailInNewTab
         />
       )}
@@ -287,7 +219,9 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <ImportSkillModal
           parentId={parentId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={() => loadSkills()}
+          onSuccess={() => {
+            loadSkills().catch(() => {});
+          }}
         />
       )}
 

@@ -57,7 +57,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     loading: isFetchingSkills
   } = useRequest(
     () =>
-      getSkillList({ source: 'mine', searchKey: searchKey, parentId: parentId ?? '' }).then((res) =>
+      getSkillList({ source: 'mine', searchKey: searchKey, parentId }).then((res) =>
         res.list.map((item) => ({
           ...item,
           createTime: new Date(item.createTime),
