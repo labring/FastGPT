@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Flex, Image } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { DEFAULT_LOGO_BANNER_URL } from '@/pageComponents/chat/constants';
@@ -37,21 +38,24 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
 
   const isHomePane = pane === ChatSidebarPaneEnum.HOME && activeAppId === homeAppId;
   const isAllAppsPane = pane === ChatSidebarPaneEnum.ALL_APPS;
+  const headerTitle = title || (isCurrentAppReady ? appName : '');
 
   return isPc ? (
     <Flex py={4} px={[2, 2]} gap={2} alignItems={'center'} fontSize={'sm'}>
       {!title && <Avatar src={isCurrentAppReady ? appAvatar : undefined} borderRadius={'md'} />}
 
-      <Box
-        flex={'1 0 0'}
-        w={0}
-        fontWeight={'bold'}
-        fontSize={title ? '16px' : 'inherit'}
-        color={title ? 'myGray.900' : 'inherit'}
-        className={'textEllipsis'}
-      >
-        {title || (isCurrentAppReady ? appName : '')}
-      </Box>
+      <MyTooltip label={headerTitle} showOnlyWhenOverflow>
+        <Box
+          flex={'1 0 0'}
+          w={0}
+          fontWeight={'bold'}
+          fontSize={title ? '16px' : 'inherit'}
+          color={title ? 'myGray.900' : 'inherit'}
+          className={'textEllipsis'}
+        >
+          {headerTitle}
+        </Box>
+      </MyTooltip>
     </Flex>
   ) : (
     <>

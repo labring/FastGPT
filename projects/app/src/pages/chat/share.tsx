@@ -51,6 +51,7 @@ import { useAppChatGenerateStatusSync } from '@/pageComponents/chat/ChatWindow/u
 import { postMarkChatRead } from '@/web/core/chat/history/api';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import type { GetHistoriesBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -384,17 +385,19 @@ const OutLink = (props: Props) => {
                             flexShrink={0}
                           />
                         )}
-                        <Box
-                          minW={0}
-                          fontSize="16px"
-                          fontWeight={500}
-                          color="myGray.900"
-                          overflow="hidden"
-                          whiteSpace="nowrap"
-                          textOverflow="clip"
-                        >
-                          {mobileHeaderAppName}
-                        </Box>
+                        <MyTooltip label={mobileHeaderAppName} showOnlyWhenOverflow>
+                          <Box
+                            minW={0}
+                            fontSize="16px"
+                            fontWeight={500}
+                            color="myGray.900"
+                            overflow="hidden"
+                            whiteSpace="nowrap"
+                            textOverflow="clip"
+                          >
+                            {mobileHeaderAppName}
+                          </Box>
+                        </MyTooltip>
                       </Flex>
 
                       {hideMenu === '1' ? (
