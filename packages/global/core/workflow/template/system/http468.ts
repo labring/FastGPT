@@ -66,7 +66,7 @@ export const HttpNode468: FlowNodeTemplateType = {
       label: '',
       description: i18nT('common:core.module.input.description.Http Request Url'),
       placeholder: 'https://api.ai.com/getInventory',
-      required: false
+      required: true
     },
     {
       key: NodeInputKeyEnum.headerSecret,

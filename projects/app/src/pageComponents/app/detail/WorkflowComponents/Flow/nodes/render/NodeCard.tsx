@@ -26,6 +26,7 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -63,6 +64,7 @@ import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -121,6 +123,7 @@ const NodeCard = (props: Props) => {
     menuForbid,
     isTool = false,
     isError = false,
+    workflowCheckIssues,
     debugResult,
     isFolded,
     customStyle,
@@ -214,6 +217,11 @@ const NodeCard = (props: Props) => {
       </Flex>
     );
   }, [isFolded, avatar, avatarLinear, name, handleDoubleClick]);
+
+  const errorIssues = useMemo(
+    () => workflowCheckIssues?.filter((issue) => issue.level === 'error') ?? [],
+    [workflowCheckIssues]
+  );
 
   const { outlineColor, outlineWidth } = useMemo(() => {
     // error mode
@@ -352,6 +360,7 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
+      position={'relative'}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
       borderRadius={isFolded ? 26 : 'lg'}
@@ -497,11 +506,95 @@ const NodeCard = (props: Props) => {
           />
         )}
       </Flex>
+      {!isFolded && errorIssues.length > 0 && (
+        <Box position={'absolute'} top={'100%'} left={0} w={'100%'}>
+          <NodeWorkflowCheckIssues issues={errorIssues} />
+        </Box>
+      )}
     </Flex>
   );
 };
 
 export default React.memo(NodeCard);
+
+/** 待处理/待完善状态图标：待完善用设计稿虚线圆环，待处理用圆形 info。 */
+const WorkflowCheckIssueStatusIcon = React.memo(function WorkflowCheckIssueStatusIcon({
+  status
+}: {
+  status: ReturnType<typeof getWorkflowCheckIssueUIStatus>;
+}) {
+  return (
+    <MyIcon
+      name={status === 'pending_handle' ? 'infoRounded' : 'core/app/workflow/checkPendingImprove'}
+      w={'24px'}
+      h={'24px'}
+      flexShrink={0}
+      color={'#485264'}
+    />
+  );
+});
+
+const workflowCheckIssueTextStyle = {
+  color: 'myGray.600',
+  fontFamily: 'PingFang SC, PingFang, sans-serif',
+  fontSize: '16px',
+  fontStyle: 'normal',
+  fontWeight: 500,
+  lineHeight: '24px',
+  letterSpacing: '0.15px'
+} as const;
+
+/** 节点下方校验问题提示条，使用灰色轻量样式而非红色错误条。 */
+const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
+  issues
+}: {
+  issues: WorkflowCheckIssue[];
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Flex flexDirection={'column'} alignItems={'flex-start'} gap={'8px'} mt={2}>
+      {issues.map((issue, index) => {
+        const status = getWorkflowCheckIssueUIStatus(issue.code);
+        // 显式保留静态 key，避免 i18n 清理脚本误删状态前缀文案。
+        const statusPrefixText =
+          status === 'pending_handle'
+            ? t('common:core.workflow.check.status.pending_handle')
+            : t('common:core.workflow.check.status.pending_improve');
+
+        return (
+          <Flex
+            key={`${issue.code}-${issue.inputKey ?? ''}-${index}`}
+            display={'inline-flex'}
+            alignItems={'center'}
+            gap={'8px'}
+            px={'16px'}
+            py={'8px'}
+            w={'fit-content'}
+            maxW={'min(720px, 100%)'}
+            bg={'#E8EBF0'}
+            opacity={0.8}
+            borderRadius={'8px'}
+          >
+            <WorkflowCheckIssueStatusIcon status={status} />
+            <Box as={'span'} flexShrink={0} {...workflowCheckIssueTextStyle}>
+              {statusPrefixText}:
+            </Box>
+            <Box
+              as={'span'}
+              minW={0}
+              whiteSpace={'normal'}
+              wordBreak={'break-word'}
+              {...workflowCheckIssueTextStyle}
+            >
+              {issue.message.trim()}
+            </Box>
+          </Flex>
+        );
+      })}
+    </Flex>
+  );
+});
 
 // 节点标题区域组件
 const NodeTitleSection = React.memo<{

@@ -42,8 +42,9 @@ import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/workflowStartAutoFill';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -235,7 +236,7 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const { getIntersectingNodes } = useReactFlow();
 
@@ -288,28 +289,6 @@ const NodeTemplateList = ({
           }
         })();
 
-        const defaultValueMap: Record<string, any> = {
-          [NodeInputKeyEnum.userChatInput]: undefined,
-          [NodeInputKeyEnum.datasetSearchInput]: undefined,
-          [NodeInputKeyEnum.fileUrlList]: undefined
-        };
-
-        getNodeList().forEach((node) => {
-          if (node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
-            defaultValueMap[NodeInputKeyEnum.userChatInput] = [
-              node.nodeId,
-              NodeOutputKeyEnum.userChatInput
-            ];
-            defaultValueMap[NodeInputKeyEnum.fileUrlList] = [
-              [node.nodeId, NodeOutputKeyEnum.userFiles]
-            ];
-            defaultValueMap[NodeInputKeyEnum.datasetSearchInput] = [
-              [node.nodeId, NodeOutputKeyEnum.userChatInput],
-              [node.nodeId, NodeOutputKeyEnum.userFiles]
-            ];
-          }
-        });
-
         const currentNode = getNodeById(handleParams?.nodeId);
 
         // Popover insertion inherits the source node's parent; a dragged
@@ -359,29 +338,43 @@ const NodeTemplateList = ({
           }
         }
 
+        const preparedInputs = templateNode.inputs
+          .filter((input) => input.deprecated !== true)
+          .map((input) => ({
+            ...input,
+            value: input.value ?? input.defaultValue,
+            valueDesc: input.valueDesc ? t(input.valueDesc as any) : undefined,
+            label: t(input.label as any),
+            description: input.description ? t(input.description as any) : undefined,
+            placeholder: input.placeholder ? t(input.placeholder as any) : undefined,
+            debugLabel: input.debugLabel ? t(input.debugLabel as any) : undefined,
+            toolDescription: input.toolDescription ? t(input.toolDescription as any) : undefined,
+            list: Array.isArray(input.list)
+              ? input.list.map((opt: any) => ({
+                  ...opt,
+                  label: opt?.label ? t(opt.label as any) : opt?.label
+                }))
+              : input.list
+          }));
+        const inputsWithAutoFill =
+          currentNode?.flowNodeType === FlowNodeTypeEnum.workflowStart
+            ? applyWorkflowStartInputAutoFill({
+                inputs: preparedInputs,
+                workflowStartNodeId: currentNode.nodeId,
+                workflowStartOutputs: currentNode.outputs
+              })
+            : preparedInputs;
+
         const newNode = nodeTemplate2FlowNode({
           template: {
             ...templateNode,
-            inputs: templateNode.inputs
-              .filter((input) => input.deprecated !== true)
-              .map((input) => ({
-                ...input,
-                value: defaultValueMap[input.key] ?? input.value ?? input.defaultValue,
-                valueDesc: input.valueDesc ? t(input.valueDesc as any) : undefined,
-                label: t(input.label as any),
-                description: input.description ? t(input.description as any) : undefined,
-                placeholder: input.placeholder ? t(input.placeholder as any) : undefined,
-                debugLabel: input.debugLabel ? t(input.debugLabel as any) : undefined,
-                toolDescription: input.toolDescription
-                  ? t(input.toolDescription as any)
-                  : undefined,
-                list: Array.isArray(input.list)
-                  ? input.list.map((opt: any) => ({
-                      ...opt,
-                      label: opt?.label ? t(opt.label as any) : opt?.label
-                    }))
-                  : input.list
-              })),
+            name: computedNewNodeName({
+              templateName: t(templateNode.name as any),
+              flowNodeType: templateNode.flowNodeType,
+              pluginId: templateNode.pluginId
+            }),
+            intro: t(templateNode.intro as any),
+            inputs: inputsWithAutoFill,
             outputs: templateNode.outputs
               .filter((output) => output.deprecated !== true)
               .map((output) => ({
@@ -441,16 +434,7 @@ const NodeTemplateList = ({
         console.error('Failed to create node template:', error);
       }
     },
-    [
-      computedNewNodeName,
-      getNodeById,
-      handleParams,
-      getNodeList,
-      getIntersectingNodes,
-      onAddNode,
-      t,
-      toast
-    ]
+    [computedNewNodeName, getNodeById, handleParams, getIntersectingNodes, onAddNode, t, toast]
   );
 
   const formatTemplatesArrayData = useMemo(() => {

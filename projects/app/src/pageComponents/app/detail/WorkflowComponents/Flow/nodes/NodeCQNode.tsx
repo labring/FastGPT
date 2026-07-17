@@ -21,6 +21,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
 
   const CustomComponent = useMemo(
     () => ({
@@ -45,23 +46,20 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       color={'myGray.600'}
                       _hover={{ color: 'red.600' }}
                       onClick={() => {
-                        onChangeNode([
-                          {
-                            nodeId,
-                            type: 'updateInput',
+                        onChangeNode({
+                          nodeId,
+                          type: 'updateInput',
+                          key: agentKey,
+                          value: {
+                            ...props,
                             key: agentKey,
-                            value: {
-                              ...props,
-                              key: agentKey,
-                              value: agents.filter((input) => input.key !== item.key)
-                            }
-                          },
-                          {
-                            nodeId,
-                            type: 'delOutput',
-                            key: item.key
+                            value: agents.filter((input) => input.key !== item.key)
                           }
-                        ]);
+                        });
+                        onDelEdge({
+                          nodeId,
+                          sourceHandle: getHandleId(nodeId, 'source', item.key)
+                        });
                       }}
                     />
                   </MyTooltip>
@@ -129,7 +127,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     }),
-    [nodeId, onChangeNode, t]
+    [nodeId, onChangeNode, onDelEdge, t]
   );
 
   const Render = useMemo(() => {
