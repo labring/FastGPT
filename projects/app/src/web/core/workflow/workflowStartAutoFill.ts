@@ -9,7 +9,7 @@ import type {
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 /** 引用输入是否尚未选择（空占位 / 未选变量），区别于曾经选中但已失效的引用。 */
 const isUnsetReferenceValue = (value: unknown) => {
