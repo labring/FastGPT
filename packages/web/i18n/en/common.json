@@ -794,6 +794,7 @@
   "error.missingParams": "Insufficient parameters",
   "error.s3_upload_invalid_file_type": "Unsupported file content or file extension does not match",
   "error.send_auth_code_too_frequently": "Please do not obtain verification code frequently",
+  "error.verify_code_too_frequently": "Too many verification attempts. Please try again later.",
   "error.too_many_request": "Too many request",
   "error.tool_not_exist": "Tool deleted",
   "error.unAuthFile": "Unauthorized to read this file",

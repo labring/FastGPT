@@ -794,6 +794,7 @@
   "error.missingParams": "参数缺失",
   "error.s3_upload_invalid_file_type": "文件内容不受支持，或文件后缀与内容不匹配",
   "error.send_auth_code_too_frequently": "请勿频繁获取验证码",
+  "error.verify_code_too_frequently": "验证过于频繁，请稍后再试",
   "error.too_many_request": "请求太频繁了，请稍后重试",
   "error.tool_not_exist": "工具已删除",
   "error.unAuthFile": "无权读取该文件",
