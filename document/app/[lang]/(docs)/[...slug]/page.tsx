@@ -37,7 +37,7 @@ export default async function Page({
   // @ts-ignore
   const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
 
-  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
+  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io/?utm_source=docs&utm_medium=referral&utm_campaign=docs_home';
   const domain = homeDomain.replace('https://', 'https://doc.');
   const url = `${domain}${page.url}`;
 
@@ -115,7 +115,7 @@ export async function generateMetadata(props: {
   const page = source.getPage(slug, lang);
   if (!page || !page.data) notFound();
 
-  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
+  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io/?utm_source=docs&utm_medium=referral&utm_campaign=docs_home';
   const domain = homeDomain.replace('https://', 'https://doc.');
   const url = `${domain}${page.url}`;
 

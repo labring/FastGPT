@@ -22,7 +22,7 @@ const hoverStyles: React.CSSProperties = {
 
 const FastGPTLink = ({ children, className, style, onClick, ...props }: FastGPTLinkProps) => {
   const href = useMemo(() => {
-    return process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
+    return process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io/?utm_source=docs&utm_medium=referral&utm_campaign=docs_home';
   }, []);
 
   const [isHovered, setIsHovered] = React.useState(false);

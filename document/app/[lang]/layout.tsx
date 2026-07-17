@@ -46,7 +46,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
-  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
+  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io/?utm_source=docs&utm_medium=referral&utm_campaign=docs_home';
   const domain = homeDomain.replace('https://', 'https://doc.');
 
   const title = lang === 'zh-CN' ? 'FastGPT 文档 - 快速开始' : 'FastGPT Documentation - Getting Started';
