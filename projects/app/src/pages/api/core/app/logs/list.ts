@@ -55,6 +55,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
   await authApp({
     req,
     authToken: true,
+    authApiKey: true,
     appId,
     per: AppReadChatLogPerVal
   });
