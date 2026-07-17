@@ -167,8 +167,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   // 将 UI 流程数据转换为存储格式
   const flowData2StoreData = useCallback(() => {
     const nodes = getNodes();
-    return uiWorkflow2StoreWorkflow({ nodes, edges });
-  }, [getNodes, edges]);
+    return uiWorkflow2StoreWorkflow({ nodes, edges, chatConfig: appDetail.chatConfig });
+  }, [getNodes, edges, appDetail.chatConfig]);
 
   // 转换并验证工作流数据
   const flowData2StoreDataAndCheck = useCallback(
@@ -214,7 +214,11 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
       if (!hasError) {
         onRemoveError();
-        const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+        const storeWorkflow = uiWorkflow2StoreWorkflow({
+          nodes,
+          edges,
+          chatConfig: appDetail.chatConfig
+        });
 
         return storeWorkflow;
       }
@@ -249,6 +253,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       onUpdateNodeError,
       showSandbox,
       enableSandbox,
+      appDetail.chatConfig,
       toast
     ]
   );
