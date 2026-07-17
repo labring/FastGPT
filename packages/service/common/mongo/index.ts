@@ -9,7 +9,7 @@ import type {
 } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
 import { serviceEnv } from '../../env';
-import { runMongoIndexSyncForModel } from './indexManager';
+import { MongoIndexManager } from './indexManager';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
@@ -162,7 +162,7 @@ const syncMongoIndex = (model: Model<any>) => {
     return;
   }
 
-  void runMongoIndexSyncForModel({
+  void MongoIndexManager.runModelIndexMode({
     model,
     mode: serviceEnv.MONGO_INDEX_SYNC_MODE,
     logger
@@ -177,3 +177,12 @@ const syncMongoIndex = (model: Model<any>) => {
 };
 
 export const ReadPreference = connectionMongo.mongo.ReadPreference;
+
+export { MongoIndexManager } from './indexManager';
+export type {
+  MongoIndexCleanupAction,
+  MongoIndexCleanupReport,
+  MongoIndexCleanupReportItem,
+  MongoIndexCleanupSummary,
+  MongoIndexSyncResult
+} from './indexManager';

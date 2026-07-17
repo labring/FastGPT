@@ -46,7 +46,7 @@ Mongoose `syncIndexes()` 的语义是：
 
 能保留客户索引，但无法发现和治理 FastGPT 历史旧索引。比如唯一索引或 TTL 索引的 options 发生变化时，旧索引可能继续影响业务。
 
-当前最终方案仍以 `createIndexes()` 作为安全创建动作，但通过统一的 index manager 包装差异检查、日志和启动入口，历史旧索引清理不放在服务启动路径中。
+当前最终方案仍以 `createIndexes()` 作为安全创建动作，但通过统一的 index manager 包装差异检查、日志和启动入口。默认 `create` 不做任何删除；显式 `sync` 只清理 registry 中登记且精确匹配的 FastGPT 废弃索引。
 
 ### 推荐：引入索引同步模式
 
@@ -55,6 +55,8 @@ Mongoose `syncIndexes()` 的语义是：
 - `off`：完全跳过。
 - `create`：只创建缺失索引，不删除未知索引。
 - `dryRun`：只检查差异。
+- `sync`：创建缺失索引，并删除 `deprecatedIndexes` registry 中登记且精确匹配的 FastGPT 废弃索引。
+
 常规启动不再暴露旧 `syncIndexes()` 全量同步行为，避免重新引入删除客户索引的风险。
 
 私有化默认推荐 `create`。
@@ -63,7 +65,7 @@ Mongoose `syncIndexes()` 的语义是：
 
 1. 默认行为从破坏性全量同步改为 safe create。
 2. 直接移除 `SYNC_INDEX`，不做长期兼容映射。
-3. 启动索引处理不提供删除索引能力，旧索引清理后续通过独立迁移脚本或 Root 管理工具处理。
+3. 启动索引处理不提供按 schema 外索引批量删除的能力；显式 `sync` 只允许删除 registry 中登记且精确匹配的 FastGPT 废弃索引。
 4. `llm_request_records.requestId_1` 已确认不再需要，但不在本次启动索引同步中清理。
 
 ## 已知旧索引样例
@@ -80,4 +82,4 @@ Mongoose `syncIndexes()` 的语义是：
 1. 常规启动默认只执行 `create`，不会删除未知索引。
 2. `dryRun` 只检查差异，不创建、不删除。
 3. 不保留旧式全量同步入口；Root 管理员 inspect/apply API 或等价脚本作为后续增强，不阻塞本次修复。
-4. 历史旧索引清理不进入启动路径，后续如需要再做独立迁移工具。
+4. 历史旧索引清理必须走 `deprecatedIndexes` registry；客户自建或未知索引不会被 `sync` 删除。

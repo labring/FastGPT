@@ -38,6 +38,14 @@ describe('marketplace env', () => {
     expect(marketplaceEnv.MONGO_INDEX_SYNC_MODE).toBe('off');
   });
 
+  it('parses destructive MongoDB index sync mode', async () => {
+    vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'sync');
+
+    const { marketplaceEnv } = await importEnv();
+
+    expect(marketplaceEnv.MONGO_INDEX_SYNC_MODE).toBe('sync');
+  });
+
   it('rejects invalid MONGO_INDEX_SYNC_MODE values', async () => {
     vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'full');
 

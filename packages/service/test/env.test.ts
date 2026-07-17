@@ -103,6 +103,13 @@ describe('serviceEnv', () => {
       }
     });
 
+    vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'sync');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        MONGO_INDEX_SYNC_MODE: 'sync'
+      }
+    });
+
     vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'dryRun');
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: {
