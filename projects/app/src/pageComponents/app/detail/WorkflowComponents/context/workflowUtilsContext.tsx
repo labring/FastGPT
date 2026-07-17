@@ -32,6 +32,7 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '../../context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
+import { normalizeWorkflowStartAutoFillReferencesOnLoad } from '@/web/core/workflow/workflowStartAutoFill';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -282,8 +283,15 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     ) => {
       adaptCatchError(e.nodes, e.edges);
 
-      const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
+      const storeNodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
+      const nodes = normalizeWorkflowStartAutoFillReferencesOnLoad({
+        nodes: storeNodes,
+        edges,
+        workflowStartNode: storeNodes.find(
+          (node) => node.data.flowNodeType === FlowNodeTypeEnum.workflowStart
+        )?.data
+      });
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {

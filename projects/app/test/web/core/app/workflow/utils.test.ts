@@ -33,7 +33,8 @@ import {
   applyWorkflowStartInputAutoFill,
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartAutoFillRevertPatches,
-  collectWorkflowStartOutputAutoFillRevertPatches
+  collectWorkflowStartOutputAutoFillRevertPatches,
+  normalizeWorkflowStartAutoFillReferencesOnLoad
 } from '@/web/core/workflow/workflowStartAutoFill';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
@@ -1232,6 +1233,223 @@ describe('checkWorkflowNodeIssues', () => {
           (issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput
         ) ?? [];
       expect(searchContentIssues).toEqual([]);
+    });
+  });
+
+  describe('imported workflow stale auto-filled references', () => {
+    const makeImportedConnectedNode = ({
+      nodeId,
+      template,
+      overrides
+    }: {
+      nodeId: string;
+      template: FlowNodeTemplateType;
+      overrides: Partial<Record<NodeInputKeyEnum, unknown>>;
+    }): Node<FlowNodeItemType> =>
+      makeNode(nodeId, template.flowNodeType, {
+        inputs: template.inputs.map((input) => ({
+          ...input,
+          value: overrides[input.key as NodeInputKeyEnum] ?? input.value ?? input.defaultValue
+        })),
+        outputs: template.outputs
+      });
+
+    const getInput = (node: Node<FlowNodeItemType>, inputKey: NodeInputKeyEnum) => {
+      const input = node.data.inputs.find((item) => item.key === inputKey);
+      expect(input).toBeDefined();
+      return input!;
+    };
+
+    const getIssueCodes =
+      (nodeId: string, inputKey: NodeInputKeyEnum) =>
+      (result: ReturnType<typeof checkWorkflowNodeIssues>) =>
+        result[nodeId]?.filter((issue) => issue.inputKey === inputKey).map((issue) => issue.code) ??
+        [];
+
+    const normalizeImportedNodes = (nodes: Node<FlowNodeItemType>[]) =>
+      normalizeWorkflowStartAutoFillReferencesOnLoad({
+        nodes,
+        edges: nodes
+          .filter((node) => node.data.nodeId !== startNode.data.nodeId)
+          .map((node) => ({
+            source: startNode.data.nodeId,
+            target: node.data.nodeId
+          })),
+        workflowStartNode: startNode.data
+      });
+
+    it('does not report imported tool call file link auto-fill when current workflow start has no userFiles output', () => {
+      const importedToolCall = makeImportedConnectedNode({
+        nodeId: 'tool-call',
+        template: ToolCallNode,
+        overrides: {
+          [NodeInputKeyEnum.userChatInput]: ['start', NodeOutputKeyEnum.userChatInput],
+          [NodeInputKeyEnum.fileUrlList]: [['start', NodeOutputKeyEnum.userFiles]]
+        }
+      });
+
+      const fileLinkInput = getInput(importedToolCall, NodeInputKeyEnum.fileUrlList);
+      expect(fileLinkInput).toMatchObject({
+        key: NodeInputKeyEnum.fileUrlList,
+        label: 'app:workflow.user_file_input',
+        valueType: WorkflowIOValueTypeEnum.arrayString,
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+        value: [['start', NodeOutputKeyEnum.userFiles]]
+      });
+      expect(fileLinkInput.required).toBeUndefined();
+      expect(fileLinkInput.selectedTypeIndex).toBeUndefined();
+
+      const normalizedNodes = normalizeImportedNodes([startNode, importedToolCall]);
+      const normalizedToolCall = normalizedNodes.find(
+        (node) => node.data.nodeId === importedToolCall.data.nodeId
+      )!;
+      expect(getInput(normalizedToolCall, NodeInputKeyEnum.fileUrlList).value).toBeUndefined();
+
+      const result = checkWorkflowNodeIssues({
+        nodes: normalizedNodes,
+        edges: [{ id: 'e-start-tool', source: 'start', target: 'tool-call', type: EDGE_TYPE }]
+      });
+
+      expect(getIssueCodes('tool-call', NodeInputKeyEnum.fileUrlList)(result)).not.toContain(
+        'invalid_reference'
+      );
+    });
+
+    it.each([
+      ['AI 对话', AiChatModule, 'ai-chat', NodeInputKeyEnum.fileUrlList],
+      ['知识库搜索', DatasetSearchModule, 'dataset-search', NodeInputKeyEnum.datasetSearchInput]
+    ] as const)(
+      'does not report imported %s stale file auto-fill as invalid reference',
+      (_nodeName, template, nodeId, inputKey) => {
+        const importedNode = makeImportedConnectedNode({
+          nodeId,
+          template,
+          overrides: {
+            [NodeInputKeyEnum.userChatInput]: ['start', NodeOutputKeyEnum.userChatInput],
+            [NodeInputKeyEnum.datasetSearchInput]: [
+              ['start', NodeOutputKeyEnum.userChatInput],
+              ['start', NodeOutputKeyEnum.userFiles]
+            ],
+            [NodeInputKeyEnum.fileUrlList]: [['start', NodeOutputKeyEnum.userFiles]]
+          }
+        });
+
+        const normalizedNodes = normalizeImportedNodes([startNode, importedNode]);
+        const normalizedNode = normalizedNodes.find((node) => node.data.nodeId === nodeId)!;
+
+        if (inputKey === NodeInputKeyEnum.fileUrlList) {
+          expect(getInput(normalizedNode, inputKey).value).toBeUndefined();
+        } else {
+          expect(getInput(normalizedNode, inputKey).value).toEqual([
+            ['start', NodeOutputKeyEnum.userChatInput]
+          ]);
+        }
+
+        const result = checkWorkflowNodeIssues({
+          nodes: normalizedNodes,
+          edges: [{ id: `e-start-${nodeId}`, source: 'start', target: nodeId, type: EDGE_TYPE }]
+        });
+
+        expect(getIssueCodes(nodeId, inputKey)(result)).not.toContain('invalid_reference');
+      }
+    );
+
+    it('manual add and manual re-select do not report the imported file link false positive', () => {
+      const manualToolCall = makeImportedConnectedNode({
+        nodeId: 'manual-tool-call',
+        template: ToolCallNode,
+        overrides: {
+          [NodeInputKeyEnum.userChatInput]: ['start', NodeOutputKeyEnum.userChatInput]
+        }
+      });
+      manualToolCall.data.inputs = applyWorkflowStartInputAutoFill({
+        inputs: manualToolCall.data.inputs,
+        workflowStartNodeId: startNode.data.nodeId,
+        workflowStartOutputs: startNode.data.outputs
+      });
+
+      const reselectedToolCall = makeImportedConnectedNode({
+        nodeId: 'reselected-tool-call',
+        template: ToolCallNode,
+        overrides: {
+          [NodeInputKeyEnum.userChatInput]: ['start', NodeOutputKeyEnum.userChatInput],
+          [NodeInputKeyEnum.fileUrlList]: undefined
+        }
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, manualToolCall, reselectedToolCall],
+        edges: [
+          {
+            id: 'e-start-manual',
+            source: 'start',
+            target: 'manual-tool-call',
+            type: EDGE_TYPE
+          },
+          {
+            id: 'e-start-reselected',
+            source: 'start',
+            target: 'reselected-tool-call',
+            type: EDGE_TYPE
+          }
+        ]
+      });
+
+      expect(getIssueCodes('manual-tool-call', NodeInputKeyEnum.fileUrlList)(result)).not.toContain(
+        'invalid_reference'
+      );
+      expect(
+        getIssueCodes('reselected-tool-call', NodeInputKeyEnum.fileUrlList)(result)
+      ).not.toContain('invalid_reference');
+    });
+
+    it('question classify imported user question keeps valid workflow start reference', () => {
+      const importedClassify = makeImportedConnectedNode({
+        nodeId: 'classify',
+        template: ClassifyQuestionModule,
+        overrides: {
+          [NodeInputKeyEnum.userChatInput]: ['start', NodeOutputKeyEnum.userChatInput]
+        }
+      });
+
+      const userQuestionInput = getInput(importedClassify, NodeInputKeyEnum.userChatInput);
+      expect(userQuestionInput).toMatchObject({
+        key: NodeInputKeyEnum.userChatInput,
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+        required: true,
+        value: ['start', NodeOutputKeyEnum.userChatInput]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, importedClassify],
+        edges: [{ id: 'e-start-classify', source: 'start', target: 'classify', type: EDGE_TYPE }]
+      });
+
+      expect(getIssueCodes('classify', NodeInputKeyEnum.userChatInput)(result)).not.toContain(
+        'invalid_reference'
+      );
+    });
+
+    it('still reports truly invalid manual references', () => {
+      const invalidToolCall = makeImportedConnectedNode({
+        nodeId: 'invalid-tool-call',
+        template: ToolCallNode,
+        overrides: {
+          [NodeInputKeyEnum.userChatInput]: ['deleted-node', NodeOutputKeyEnum.userChatInput]
+        }
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, invalidToolCall],
+        edges: [
+          { id: 'e-start-invalid', source: 'start', target: 'invalid-tool-call', type: EDGE_TYPE }
+        ]
+      });
+
+      expect(getIssueCodes('invalid-tool-call', NodeInputKeyEnum.userChatInput)(result)).toContain(
+        'invalid_reference'
+      );
     });
   });
 
