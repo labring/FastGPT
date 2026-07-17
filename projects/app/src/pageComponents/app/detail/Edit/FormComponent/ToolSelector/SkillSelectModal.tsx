@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/router';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, Grid, IconButton } from '@chakra-ui/react';
@@ -18,10 +17,9 @@ import { useSkillSandboxOperationGuard } from '@/components/core/skill/useSkillS
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getSkillDetail } from '@/web/core/skill/api';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { setAgentSkillCreateContext } from '@/web/core/skill/agentSkillCreateAssociate';
 
 const ImportSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/ImportSkillModal'));
+const CreateSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/CreateSkillModal'));
 
 const MAX_SKILL_COUNT = 100;
 
@@ -95,24 +93,21 @@ const SkillSelectModal = ({
   selectedSkills,
   onAddSkill,
   onRemoveSkill,
-  onClose,
-  associateAppId
+  onClose
 }: {
   selectedSkills: SelectedAgentSkillItemType[];
   onAddSkill: (skill: SelectedAgentSkillItemType) => void;
   onRemoveSkill: (skillId: string) => void;
   onClose: () => void;
-  /** ChatAgent 空态跳转 Dashboard 创建时，用于创建完成后关联回当前 App */
-  associateAppId?: string;
 }) => {
   const { t } = useTranslation();
-  const router = useRouter();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
   const hasSkillCreatePer = !!userInfo?.team.permission.hasSkillCreatePer;
   const { guardSkillSandboxOperation, SkillSandboxOperationGuardModal } =
     useSkillSandboxOperationGuard();
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const {
     skillList,
@@ -140,38 +135,14 @@ const SkillSelectModal = ({
     }
   }, [guardSkillSandboxOperation]);
 
-  /** 新标签页打开 Skill Dashboard 并自动弹出创建弹窗（设计稿图 2） */
-  const handleOpenDashboardCreate = useCallback(() => {
-    if (!guardSkillSandboxOperation()) {
-      return;
+  const handleOpenCreate = useCallback(() => {
+    if (guardSkillSandboxOperation()) {
+      setShowCreateModal(true);
     }
+  }, [guardSkillSandboxOperation]);
 
-    if (associateAppId) {
-      setAgentSkillCreateContext({
-        appId: associateAppId,
-        selectedSkillIds: selectedSkills.map((skill) => skill.skillId)
-      });
-    }
-
-    const localePrefix =
-      router.locale && router.defaultLocale && router.locale !== router.defaultLocale
-        ? `/${router.locale}`
-        : '';
-    const query = new URLSearchParams({ openCreateSkill: '1' });
-    if (associateAppId) {
-      query.set('associateAppId', associateAppId);
-      if (selectedSkills.length > 0) {
-        query.set('excludeSkillIds', selectedSkills.map((skill) => skill.skillId).join(','));
-      }
-    }
-    const dashboardCreateUrl = getWebReqUrl(`${localePrefix}/dashboard/skill?${query.toString()}`);
-
-    window.open(dashboardCreateUrl, '_blank');
-    onClose();
-  }, [associateAppId, guardSkillSandboxOperation, onClose, router, selectedSkills]);
-
-  /** 导入成功后回到选择弹窗，并自动勾选本次导入的 Skill */
-  const handleImportSuccess = useCallback(
+  /** 创建/导入成功后回到选择弹窗，并自动勾选本次新增的 Skill */
+  const handleAddCreatedOrImportedSkill = useCallback(
     async (skillId: string) => {
       await refreshSkillList();
 
@@ -233,10 +204,7 @@ const SkillSelectModal = ({
             w={'full'}
             minH={0}
           >
-            <SkillSelectEmptyState
-              onCreate={handleOpenDashboardCreate}
-              onImport={handleOpenImport}
-            />
+            <SkillSelectEmptyState onCreate={handleOpenCreate} onImport={handleOpenImport} />
           </MyBox>
         ) : (
           <>
@@ -256,7 +224,7 @@ const SkillSelectModal = ({
               </Box>
               {showHeaderCreateImportActions && (
                 <Flex gap={'12px'} flexShrink={0}>
-                  <SkillSelectCreateButton onClick={handleOpenDashboardCreate}>
+                  <SkillSelectCreateButton onClick={handleOpenCreate}>
                     {t('common:new_create')}
                   </SkillSelectCreateButton>
                   <SkillSelectImportButton onClick={handleOpenImport}>
@@ -314,7 +282,16 @@ const SkillSelectModal = ({
         <ImportSkillModal
           parentId={parentId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={handleImportSuccess}
+          onSuccess={handleAddCreatedOrImportedSkill}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateSkillModal
+          parentId={parentId}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleAddCreatedOrImportedSkill}
+          openDetailInNewTab
         />
       )}
 

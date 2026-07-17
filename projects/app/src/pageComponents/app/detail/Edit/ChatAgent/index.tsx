@@ -1,8 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import type {
-  AppFormEditFormType,
-  SelectedAgentSkillItemType
-} from '@fastgpt/global/core/app/formEdit/type';
+import React, { useState } from 'react';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { agentForm2AppWorkflow, appWorkflow2AgentForm } from './utils';
 
 import Header from '../FormComponent/Header';
@@ -14,7 +11,6 @@ import { useTranslation } from 'next-i18next';
 import { useSimpleAppSnapshots } from '../FormComponent/useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
-import { useAgentSkillPendingAssociate } from '@/web/core/skill/useAgentSkillPendingAssociate';
 
 const Edit = dynamic(() => import('./Edit'));
 const Logs = dynamic(() => import('../../Logs/index'));
@@ -23,8 +19,7 @@ const PublishChannel = dynamic(() => import('../../Publish'));
 const AgentEdit = () => {
   const { t } = useTranslation();
 
-  const { currentTab, appDetail, appId: contextAppId } = useContextSelector(AppContext, (v) => v);
-  const associateAppId = contextAppId || appDetail._id;
+  const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
   const { forbiddenSaveSnapshot, past, setPast, saveSnapshot } = useSimpleAppSnapshots(
     appDetail._id
   );
@@ -67,30 +62,6 @@ const AgentEdit = () => {
     [appForm],
     { wait: 500 }
   );
-
-  /** Dashboard 新标签页创建 skill 后，自动写回 Agent 关联技能 */
-  const applyPendingAgentSkill = useCallback(
-    (skill: SelectedAgentSkillItemType) => {
-      setAppForm((state) => ({
-        ...state,
-        selectedAgentSkills: [
-          skill,
-          ...(state.selectedAgentSkills || []).filter((item) => item.skillId !== skill.skillId)
-        ],
-        aiSettings: {
-          ...state.aiSettings,
-          useAgentSandbox: true
-        }
-      }));
-      return true;
-    },
-    [setAppForm]
-  );
-
-  useAgentSkillPendingAssociate({
-    appId: associateAppId,
-    onAddSkill: applyPendingAgentSkill
-  });
 
   return (
     <Flex h={'100%'} minH={0} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
