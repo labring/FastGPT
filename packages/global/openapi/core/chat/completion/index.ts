@@ -502,13 +502,15 @@ ${interactiveStreamExample}
 - \`fastAnswer\`：指定回复返回给客户端的文本（最终会算作回答）。
 - \`toolCall\` / \`toolParams\` / \`toolResponse\`：工具相关。
 - \`flowNodeStatus\`：运行到的节点状态。
-- \`flowNodeResponse\`：v2 节点响应详情。与 v1 的 \`flowResponses\` 不同，v2 会按节点逐条推送，而不是最后一次性返回数组。
+- \`flowNodeResponse\`：v2 节点响应详情。与 v1 的 \`flowResponses\` 不同，v2 会按节点逐条推送（包括 Agent、工具、Loop、Parallel 等内部节点），客户端应按 \`id + parentId\` 追加或合并，而不是等待最后一次性数组。
 - \`workflowDuration\`：工作流本轮运行耗时，payload 为 \`{"durationSeconds": number}\`。
 - \`updateVariables\`：更新变量。
 - \`interactive\`：交互节点配置。
 - \`plan\` / \`planStatus\`：Agent 计划和计划状态（仅相关 Agent 节点可能返回）。
 - \`skillCall\` / \`sandboxStatus\`：技能调用和沙盒状态（仅相关能力启用时可能返回）。
 - \`error\`：报错。
+
+Share 调用沿用相同的逐条事件协议，但会先按分享配置过滤公共字段；引用、运行状态和技能引用分别受 \`showCite\`、\`showRunningStatus\`、\`showSkillReferences\` 控制，知识库源文件下载仍受分享下载权限控制。
 
 **交互节点**
 

@@ -59,6 +59,7 @@ When using `short-redirect`, you must configure `STORAGE_EXTERNAL_ENDPOINT`.
 7. Improved the performance of the fade-in effect for streaming output in chat dialogs.
 8. Upgraded `LiteParse` to fix PDF parsing errors under concurrent workloads. The default file parsing worker count is now 5 instead of 10 and remains configurable through `PARSE_FILE_WORKERS`.
 9. Added in-flight request deduplication for the model list and sandbox package endpoints. Identical concurrent requests now share the same result, reducing duplicate requests triggered by workflow nodes and selectors.
+10. Workflow node responses are now included in SSE streams.
 
 ### Streaming Markdown Rendering Improvements
 

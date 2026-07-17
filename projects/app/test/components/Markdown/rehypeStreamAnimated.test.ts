@@ -7,6 +7,7 @@ import {
   rehypeStreamAnimated,
   type StreamAnimatedRuntime
 } from '@/components/Markdown/rehypeStreamAnimated';
+import { prepareStreamingMarkdown } from '@/components/Markdown/utils';
 
 type TestNode =
   | {
@@ -55,7 +56,16 @@ const getText = (node: TestNode): string => {
   return node.children.map(getText).join('');
 };
 
-const createRuntime = (births: number[]): StreamAnimatedRuntime => ({ births, styles: [] });
+const createRuntime = (births: number[] = []): StreamAnimatedRuntime => ({
+  births,
+  ...(births.length === 0
+    ? {
+        revealClock: { lastTime: 0 },
+        visibleText: ''
+      }
+    : {}),
+  styles: []
+});
 
 describe('rehypeStreamAnimated', () => {
   it('should render stable character spans through markdown', () => {
@@ -162,6 +172,64 @@ describe('rehypeStreamAnimated', () => {
       'animation-delay:20ms',
       'animation-delay:30ms'
     ]);
+  });
+
+  it('should allocate the timeline from visible list text instead of repaired markdown syntax', () => {
+    const runtime = createRuntime();
+    const render = (source: string, nowMs: number) =>
+      renderToStaticMarkup(
+        React.createElement(
+          ReactMarkdown,
+          {
+            rehypePlugins: [[rehypeStreamAnimated, { fadeDuration: 180, nowMs, runtime }]]
+          },
+          prepareStreamingMarkdown(source)
+        )
+      );
+
+    render('- **粗', 100);
+    expect(runtime.visibleText).toBe('粗');
+    expect(runtime.births).toHaveLength(1);
+
+    const firstBirth = runtime.births[0];
+    render('- **粗体', 150);
+    expect(runtime.visibleText).toBe('粗体');
+    expect(runtime.births).toHaveLength(2);
+    expect(runtime.births[0]).toBe(firstBirth);
+    expect(runtime.births[1]).toBeGreaterThanOrEqual(150);
+
+    render('- **粗体**', 200);
+    expect(runtime.visibleText).toBe('粗体');
+    expect(runtime.births).toHaveLength(2);
+  });
+
+  it('should count visible Unicode code points instead of UTF-16 units', () => {
+    const runtime = createRuntime();
+    const tree = root([element('p', [text('a😀b')])]);
+
+    rehypeStreamAnimated({ fadeDuration: 180, nowMs: 100, runtime })(tree as any);
+
+    expect(runtime.visibleText).toBe('a😀b');
+    expect(runtime.births).toHaveLength(3);
+  });
+
+  it('should preserve only the visible common prefix after a tail correction', () => {
+    const runtime = createRuntime();
+    rehypeStreamAnimated({ fadeDuration: 180, nowMs: 100, runtime })(
+      root([element('p', [text('abc')])]) as any
+    );
+    const firstBirth = runtime.births[0];
+    runtime.styles[0] = 'animation-delay:-10ms';
+
+    rehypeStreamAnimated({ fadeDuration: 180, nowMs: 150, runtime })(
+      root([element('p', [text('ax')])]) as any
+    );
+
+    expect(runtime.visibleText).toBe('ax');
+    expect(runtime.births).toHaveLength(2);
+    expect(runtime.births[0]).toBe(firstBirth);
+    expect(runtime.births[1]).toBeGreaterThanOrEqual(150);
+    expect(runtime.styles).toEqual(['animation-delay:-10ms', 'animation-delay:0ms']);
   });
 
   it.each([

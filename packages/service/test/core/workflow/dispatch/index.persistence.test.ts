@@ -27,6 +27,24 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { WorkflowNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/nodeResponseSink';
+
+const createTestNodeResponseSink = ({
+  writer,
+  apiVersion = 'v2',
+  workflowStreamResponse
+}: {
+  writer: Awaited<ReturnType<typeof createWorkflowNodeResponseWriter>>;
+  apiVersion?: 'v1' | 'v2';
+  workflowStreamResponse?: WorkflowResponseType;
+}) =>
+  new WorkflowNodeResponseSink({
+    writer,
+    apiVersion,
+    responseAllData: true,
+    responseDetail: true,
+    workflowStreamResponse
+  });
 
 const makeInput = ({
   key,
@@ -303,7 +321,11 @@ describe('runWorkflow node response persistence', () => {
       stream: false,
       responseAllData: true,
       responseDetail: true,
-      nodeResponseWriter,
+      nodeResponseSink: createTestNodeResponseSink({
+        writer: nodeResponseWriter,
+        apiVersion,
+        workflowStreamResponse
+      }),
       workflowStreamResponse,
       checkIsStopping: () => false
     } as any);
@@ -525,7 +547,7 @@ describe('runWorkflow node response persistence', () => {
         stream: false,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseWriter,
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
         checkIsStopping: () => false
       } as any);
       await nodeResponseWriter.close();
@@ -650,7 +672,7 @@ describe('runWorkflow node response persistence', () => {
         stream: false,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseWriter,
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
         checkIsStopping: () => false
       } as any);
       await nodeResponseWriter.close();
@@ -759,7 +781,7 @@ describe('runWorkflow node response persistence', () => {
       stream: false,
       responseAllData: true,
       responseDetail: true,
-      nodeResponseWriter,
+      nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
       checkIsStopping: () => false
     } as any);
     await nodeResponseWriter.close();
@@ -871,7 +893,7 @@ describe('runWorkflow node response persistence', () => {
         stream: false,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseWriter,
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
         checkIsStopping: () => false
       } as any);
       await nodeResponseWriter.close();
@@ -895,6 +917,92 @@ describe('runWorkflow node response persistence', () => {
     }
   });
 
+  it('persists Share citation metadata before filtering it from SSE', async () => {
+    const appId = '67e0d5535c02d1d5cdede726';
+    const chatId = 'workflow-share-private-cite-chat';
+    const responseChatItemId = 'workflow-share-private-cite-ai-item';
+    const nodeResponseWriter = await createWorkflowNodeResponseWriter({
+      teamId: '654a4107c32f3bf5f998452f',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      chatId,
+      chatItemDataId: responseChatItemId
+    });
+    const responseEvents: ChatHistoryItemResType[] = [];
+    const nodeResponseSink = new WorkflowNodeResponseSink({
+      writer: nodeResponseWriter,
+      apiVersion: 'v2',
+      responseAllData: false,
+      responseDetail: false,
+      workflowStreamResponse: (event) => {
+        if (
+          event.event === SseResponseEventEnum.flowNodeResponse &&
+          typeof event.data !== 'string'
+        ) {
+          responseEvents.push(event.data);
+        }
+      }
+    });
+
+    await nodeResponseSink.publish([
+      {
+        response: {
+          id: 'share-dataset-response',
+          parentId: 'share-agent-response',
+          nodeId: 'share-dataset-node',
+          moduleName: 'Dataset Search',
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          runningTime: 1,
+          quoteList: [
+            {
+              id: 'share-quote',
+              datasetId: 'share-dataset',
+              collectionId: 'share-collection',
+              sourceId: 'share-source',
+              sourceName: 'private-source-name',
+              q: 'private question',
+              a: 'private answer'
+            }
+          ],
+          toolInput: { secret: true }
+        } as ChatHistoryItemResType
+      }
+    ]);
+    await nodeResponseSink.close();
+
+    const row = await MongoChatItemResponse.findOne({
+      appId,
+      chatId,
+      chatItemDataId: responseChatItemId
+    }).lean();
+    expect(row?.data).toMatchObject({
+      id: 'share-dataset-response',
+      parentId: 'share-agent-response',
+      quoteList: [
+        {
+          id: 'share-quote',
+          datasetId: 'share-dataset',
+          collectionId: 'share-collection',
+          sourceId: 'share-source',
+          sourceName: 'private-source-name'
+        }
+      ],
+      toolInput: { secret: true }
+    });
+    expect(row?.data.quoteList?.[0]).not.toHaveProperty('q');
+    expect(row?.data.quoteList?.[0]).not.toHaveProperty('a');
+    expect(responseEvents).toEqual([
+      {
+        id: 'share-dataset-response',
+        parentId: 'share-agent-response',
+        nodeId: 'share-dataset-node',
+        moduleName: 'Dataset Search',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        runningTime: 1
+      }
+    ]);
+  });
+
   it('streams batched node responses into v2 flat rows and composes childrenResponses on detail read', async () => {
     const loopItems = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'];
     const { runtimeNodes, runtimeEdges } = createLoopRunWorkflow(loopItems);
@@ -906,6 +1014,11 @@ describe('runWorkflow node response persistence', () => {
       chatId: 'workflow-persistence-chat',
       chatItemDataId: 'workflow-persistence-ai-item'
     });
+    const workflowStreamResponse: WorkflowResponseType = (event) => {
+      if (event.data && event.event) {
+        responseEvents.push(event.data);
+      }
+    };
 
     const result = await runWorkflow({
       apiVersion: 'v2',
@@ -956,13 +1069,12 @@ describe('runWorkflow node response persistence', () => {
       stream: true,
       responseAllData: true,
       responseDetail: true,
-      nodeResponseWriter,
+      nodeResponseSink: createTestNodeResponseSink({
+        writer: nodeResponseWriter,
+        workflowStreamResponse
+      }),
       checkIsStopping: () => false,
-      workflowStreamResponse: (event) => {
-        if (event.data && event.event) {
-          responseEvents.push(event.data);
-        }
-      }
+      workflowStreamResponse
     } as any);
     await nodeResponseWriter.close();
 
@@ -1050,6 +1162,15 @@ describe('runWorkflow node response persistence', () => {
     expect(streamedIterationWrappers.map((item) => item.parentId)).toEqual(
       Array(loopItems.length).fill(rootRow.data.id)
     );
+    expect(
+      streamedNodeResponses.filter((item) => item.moduleType === FlowNodeTypeEnum.loopRunStart)
+    ).toHaveLength(loopItems.length);
+    expect(
+      streamedNodeResponses.filter((item) => item.moduleType === FlowNodeTypeEnum.textEditor)
+    ).toHaveLength(loopItems.length);
+    expect(
+      streamedNodeResponses.filter((item) => item.moduleType === FlowNodeTypeEnum.nestedEnd)
+    ).toHaveLength(loopItems.length);
     expect(streamedNodeResponses.every((item) => item.id)).toBe(true);
   });
 });

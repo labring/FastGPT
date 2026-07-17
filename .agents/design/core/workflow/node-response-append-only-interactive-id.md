@@ -92,6 +92,54 @@ ChatItemSchema.index({ appId: 1, chatId: 1, obj: 1, _id: -1 });
 7. 普通写入失败重试 3 次；仍失败则写 slim rows；slim 仍失败时丢弃本批详情 rows 并记录日志，不阻断主 workflow。
 8. `saveChat` 需要的引用、错误数和根节点积分由 writer 在运行期维护 summary；详情 rows 写库失败不影响这些摘要。
 
+## 实时发布路径
+
+NodeResponse 的持久化和实时发布统一由请求级 `WorkflowNodeResponseSink` 协调：
+
+1. 一个 workflow 请求只创建一个 sink，内部复用同一个 `WorkflowNodeResponseWriter`。
+2. root workflow、child workflow、Agent、ToolCall、LoopRun、ParallelRun 共享该 sink。
+3. 节点和 Agent adapter 只上交标准 nodeResponse，不直接操作 writer，也不直接发送
+   `flowNodeResponse` SSE。
+4. sink 为缺少 parentId 的响应补调用方显式传入的 parentId，调用 writer 规范化并写入，
+   再按请求可见性配置发布本次响应。
+5. writer 仍按 `batchSize` 批量物理写 Mongo；“接收一个、返回一个”指每个逻辑
+   nodeResponse 都产生独立 SSE 事件，不要求每条 response 单独执行 Mongo create。
+6. sink 不负责 `RuntimeNodeResponseSummary`、usage、计费、child count 或控制流判断；这些仍由
+   当前 WorkflowQueue/Agent collector 在各自运行作用域内计算，避免跨作用域重复累计。
+7. 同 `(id, parentId)` 的多条响应仍是 append-only 增量，sink 不去重、不覆盖、不改变数值字段
+   的增量语义。
+
+输出协议：
+
+- V2 `stream=true, detail=true`：可见 nodeResponse 逐条发送 `flowNodeResponse`，客户端按
+  `(id, parentId)` 拼树；结束时不再发送完整 nodeResponse 数组。
+- V1 `stream=true, detail=true`：运行期不发送单个 nodeResponse，结束时一次性发送
+  `flowResponses`。
+- V1/V2 `stream=false, detail=true`：结束时在 JSON `responseData` 中一次性返回。
+- V2 Share 流式：完整 nodeResponse 逐条写库，对外先按 public node/field 规则过滤，再逐条
+  发送；为保持 `pushResult2Remote` 原有回调契约，运行期间仍保留最终详情数组。
+
+Share 可见性必须分层处理，不能只依赖一个字段过滤函数：
+
+- `responseAllData=false`：sink 只发布 public node 类型和字段，并保留客户端拼树需要的
+  `id/parentId`。
+- Share workflow 内部始终保留回答中的引用 ID，writer 始终接收完整 nodeResponse；普通 API
+  保持 `retainDatasetCite` 的原有语义。dataset `quoteList` 入库时继续移除 q/a，只保留引用关联、
+  来源和分数等元信息。
+- `showCite`：控制公开 nodeResponse 是否包含 `quoteList`；关闭时 SSE 与非流式 JSON 都不返回
+  `quoteList`，但不改写 SSE 回答文本，也不能改变上述持久化数据。客户端没有 quoteList 时不展示
+  引用；之后重新开启配置并刷新 Share，可以根据已保存的引用 ID 和 quote 元信息恢复展示。
+- `showRunningStatus`：控制 `flowNodeStatus/toolCall/toolParams/toolResponse` 等过程事件，不直接
+  禁止引用展示依赖的 public `flowNodeResponse`。
+- `showSkillReferences`：继续由 Agent 输出链路控制，并受 `showRunningStatus` 约束。
+- `showWholeResponse/showFullText/canDownloadSource`：继续由前端能力和详情/引用/文件接口鉴权，
+  sink 不替代这些权限检查。
+- 明确隐藏内部 workflow 的系统插件继续既不写入 child rows，也不发布 child 事件，只保留外层
+  工具节点响应。
+
+`pushResult2Remote` 不属于本次 SSE 改造范围，继续使用运行期 `finalResponseData` 调用
+`/shareAuth/finish`，不增加延迟读库或回调协议变化。
+
 运行期明确删除的行为：
 
 - 不按 `data.id` delete 旧 rows。
@@ -318,4 +366,17 @@ nodeResponse append-only：
 - append-only 会增加 rows 数量，需要依赖对话删除、应用删除和过期清理控制表规模。
 - 历史 `mergeSignId` 数据不迁移，异常展示风险已接受。
 - 如果线上 AI dataId 冲突检查成为热点，再评估普通索引 `{ appId, chatId, dataId, obj }`。
+
+## 本次实施 TODO
+
+- [x] 新增请求级 `WorkflowNodeResponseSink`，统一 writer 和 V2 SSE 发布。
+- [x] WorkflowQueue 的 root/child runtime 都通过 sink 逐条发布 nodeResponse。
+- [x] Agent collector 移除 writer 依赖，改为上交 sink，同时保留局部 runtime summary。
+- [x] LoopRun/ParallelRun 虚拟任务节点移除直接 writer/SSE 调用，改走 sink。
+- [x] 系统插件内部 workflow 使用禁用 sink 的作用域，保持隐藏语义。
+- [x] 保持 `pushResult2Remote` 和 Share 完成回调原有行为，只改造 SSE 发布路径。
+- [x] V1、非流式 JSON、Share public 过滤和引用/文件权限保持兼容。
+- [x] Share 引用的内部持久化与 SSE/JSON 公开过滤解耦，quote q/a 继续只在入库边界裁剪。
+- [x] 补充 sink、Agent child、Loop/Parallel child、Share public 过滤和返回策略测试。
+- [x] 运行最终全量测试；全仓并发出现 4 个 20 秒超时，相关文件单独复跑全部通过。
 - LoopRun、ToolCall 等恢复场景必须持续保证写入的是本次运行片段增量，而不是累计值。

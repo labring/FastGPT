@@ -24,7 +24,6 @@ import {
   streamAgentSandboxInitStatus,
   type AgentSandboxPrepareAction
 } from './sub/sandbox';
-import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
@@ -78,7 +77,6 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
   [NodeInputKeyEnum.sandboxEntrypoint]?: string;
 }> & {
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
   agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
 };
 
@@ -98,8 +96,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const assistantResponses: AIChatItemValueItemType[] = [];
   const childNodeResponses: ChatHistoryItemResType[] = [];
   const nodeResponseCollector = createAgentNodeResponseCollector({
-    nodeResponseWriter: props.nodeResponseWriter,
-    nodeResponseParentId: undefined,
+    nodeResponseSink: props.nodeResponseSink,
     nodeResponses: childNodeResponses
   });
 

@@ -16,7 +16,7 @@ const createState = () => ({
 });
 
 describe('updateStreamBlockAnimations', () => {
-  it('should append births without changing existing character timing', () => {
+  it('should defer character timeline allocation until the rendered text is known', () => {
     const state = createState();
     updateStreamBlockAnimations({
       blocks: [block('ab')],
@@ -24,88 +24,17 @@ describe('updateStreamBlockAnimations', () => {
       ...state
     });
     const runtime = state.runtimes.get(0)!;
-    const firstBirths = [...runtime.births];
-
-    updateStreamBlockAnimations({
-      blocks: [block('abcd')],
-      renderNow: 150,
-      ...state
-    });
-
-    expect(runtime.births.slice(0, 2)).toEqual(firstBirths);
-    expect(runtime.births).toHaveLength(4);
-    expect(runtime.births[2]).toBeGreaterThanOrEqual(150);
-    expect(state.revealClock.lastTime).toBe(150);
-  });
-
-  it('should count Unicode code points instead of UTF-16 units', () => {
-    const state = createState();
-
-    updateStreamBlockAnimations({
-      blocks: [block('a😀b')],
-      renderNow: 100,
-      ...state
-    });
-
-    expect(state.runtimes.get(0)?.births).toHaveLength(3);
-  });
-
-  it('should truncate only the removed tail when a processed block shrinks', () => {
-    const state = createState();
-    updateStreamBlockAnimations({
-      blocks: [block('hello')],
-      renderNow: 100,
-      ...state
-    });
-    const runtime = state.runtimes.get(0)!;
-    const firstBirths = [...runtime.births];
-    runtime.styles[0] = 'animation-delay:-10ms';
-
-    updateStreamBlockAnimations({
-      blocks: [block('hi')],
-      renderNow: 200,
-      ...state
-    });
-
-    expect(runtime.rawSource).toBe('hi');
-    expect(runtime.styles).toEqual(['animation-delay:-10ms', undefined]);
-    expect(runtime.births).toEqual(firstBirths.slice(0, 2));
-  });
-
-  it.each([
-    ['- **a**', '- **ab**'],
-    ['- ***a***', '- ***ab**'],
-    ['- ___a___', '- ___ab__'],
-    ['- ~~a~~', '- ~~ab~'],
-    ['- `a`', '- `ab`'],
-    ['- $$a$$', '- $$ab$']
-  ])('should preserve the timeline when a repaired suffix moves: %s -> %s', (first, second) => {
-    const state = createState();
-    updateStreamBlockAnimations({
-      blocks: [block(first)],
-      renderNow: 100,
-      ...state
-    });
-    const runtime = state.runtimes.get(0)!;
-    const firstBirths = [...runtime.births];
-    runtime.styles[0] = 'animation-delay:-10ms';
-
-    updateStreamBlockAnimations({
-      blocks: [block(second)],
-      renderNow: 150,
-      ...state
-    });
-
-    const preservedCount = Math.min(firstBirths.length, [...second].length);
-    expect(runtime.births.slice(0, preservedCount)).toEqual(firstBirths.slice(0, preservedCount));
-    expect(runtime.styles[0]).toBe('animation-delay:-10ms');
-    expect(runtime.rawSource).toBe(second);
+    expect(runtime.rawSource).toBe('ab');
+    expect(runtime.births).toEqual([]);
+    expect(runtime.styles).toEqual([]);
+    expect(state.revealClock.lastTime).toBe(0);
   });
 
   it('should settle completed blocks and keep the active tail animated', () => {
     const state = createState();
     const blocks = [block('first', 0), block('second', 7)];
     updateStreamBlockAnimations({ blocks, renderNow: 100, ...state });
+    state.runtimes.get(0)!.births = [100];
 
     const meta = updateStreamBlockAnimations({ blocks, renderNow: 500, ...state });
 

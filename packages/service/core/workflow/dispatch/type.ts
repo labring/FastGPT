@@ -22,8 +22,8 @@ export type { WorkflowResponseItemType, WorkflowResponseType };
 /**
  * workflow 内部运行期使用的 nodeResponse 摘要。
  *
- * 启用 `WorkflowNodeResponseWriter` 后，完整 nodeResponse 会在节点完成时立即写入
- * `chat_item_responses`，并且不再通过 `runWorkflow` 返回。父 workflow 仍需要少量
+ * 启用请求级 `WorkflowNodeResponseSink` 后，完整 nodeResponse 会在节点完成时立即发布并
+ * 写入 `chat_item_responses`，且不再通过 `runWorkflow` 返回。父 workflow 仍需要少量
  * child 节点信号来继续调度、聚合虚拟节点和处理重试，因此这些字段会在每次节点写库后
  * 由 `summarizeRuntimeNodeResponses` 从本批 nodeResponse 中提取，并在 `WorkflowQueue`
  * 上持续合并。

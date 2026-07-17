@@ -57,6 +57,7 @@ V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-pr
 7. 对话框流输出，淡入效果性能优化。
 8. 升级 `LiteParse` 版本，解决并发解析 PDF 报错问题；文件解析 worker 默认数量由 10 调整为 5，仍可通过 `PARSE_FILE_WORKERS` 配置。
 9. 前端请求增加并发去重能力，模型列表和沙盒依赖接口的相同请求会复用进行中的结果，减少工作流节点和选择器重复触发的请求。
+10. 工作流 SSE 返回 nodeResponse。
 
 ## 🐛 修复
 
