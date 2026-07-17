@@ -44,6 +44,11 @@ export const deleteTeamAllDatasets = async (teamId: string) => {
     datasetIds: datasets.map((d) => d._id)
   });
 
+  const datasetIdSet = new Set(datasets.map((dataset) => String(dataset._id)));
+  const deleteRootDatasets = datasets.filter(
+    (dataset) => !dataset.parentId || !datasetIdSet.has(String(dataset.parentId))
+  );
+
   await mongoSessionRun(async (session) => {
     await MongoDataset.updateMany(
       {
@@ -59,9 +64,7 @@ export const deleteTeamAllDatasets = async (teamId: string) => {
       }
     );
     await Promise.all(
-      datasets.map((dataset) => {
-        // 有 parentId 的忽略，只需要删 root 下的即可。
-        if (dataset.parentId) return;
+      deleteRootDatasets.map((dataset) => {
         return addDatasetDeleteJob({
           teamId,
           datasetId: dataset._id

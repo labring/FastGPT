@@ -48,6 +48,8 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
+import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
+import { AccountCancellationConfirmModal } from '@/pageComponents/account/cancel/AccountCancellationConfirmModal';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -89,9 +91,9 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
+      <Box w={'100%'} py={[3, '28px']} px={[5, 10]}>
         {isPc ? (
-          <Flex justifyContent={'center'} maxW={'1080px'}>
+          <Flex w={'100%'} alignItems={'flex-start'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
               <Box mt={6}>
@@ -99,7 +101,7 @@ const Info = () => {
               </Box>
             </Box>
             {!!standardPlan && (
-              <Box ml={'45px'} flex={'1'} maxW={'600px'}>
+              <Box ml={'45px'} minW={0} flex={'1 0 0'}>
                 <PlanUsage />
               </Box>
             )}
@@ -783,22 +785,33 @@ const PlanUsage = () => {
 
 const ButtonStyles = {
   bg: 'white',
-  py: 3,
   px: 6,
-  border: 'sm',
+  h: '40px',
   borderWidth: '1.5px',
+  borderColor: 'borderColor.low',
   borderRadius: 'md',
   display: 'flex',
   alignItems: 'center',
+  gap: 2,
   cursor: 'pointer',
   userSelect: 'none' as any,
   fontSize: 'sm'
 };
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, userInfo } = useUserStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const router = useRouter();
+  const {
+    isOpen: isCancellationConfirmOpen,
+    onOpen: onOpenCancellationConfirm,
+    onClose: onCloseCancellationConfirm
+  } = useDisclosure();
+  const { data: accountCancellationStatus } = useRequest(getAccountCancellationStatus, {
+    manual: false,
+    refreshDeps: [userInfo?._id]
+  });
 
   const { runAsync: onFeedback } = useRequest(
     async () => {
@@ -826,7 +839,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
   return (
     <Box>
-      <Grid gridGap={4}>
+      <Grid rowGap="8px" columnGap={4}>
         {feConfigs?.docUrl && (
           <Link
             href={getDocPath('/guide/getting-started')}
@@ -834,10 +847,14 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             textDecoration={'none !important'}
             {...ButtonStyles}
           >
-            <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {t('account_info:help_document')}
-            </Box>
+            <MyIcon
+              name={'common/quickActionBook'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('account_info:help_document')}</Box>
           </Link>
         )}
 
@@ -846,29 +863,71 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             ?.filter((item) => item.isActive)
             .map((item) => (
               <Flex key={item.id} {...ButtonStyles} onClick={() => window.open(item.url, '_blank')}>
-                <Avatar src={item.avatar} w={'18px'} />
-                <Box ml={2} flex={1}>
-                  {item.name}
-                </Box>
+                <Avatar src={item.avatar} w={'18px'} h={'18px'} flexShrink={0} />
+                <Box flex={1}>{item.name}</Box>
               </Flex>
             ))}
         {feConfigs?.concatMd && (
           <Flex onClick={onOpenContact} {...ButtonStyles}>
-            <MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {t('account_info:contact_us')}
-            </Box>
+            <MyIcon
+              name={'common/quickActionPhone'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              fill={'none'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('account_info:contact_us')}</Box>
           </Flex>
         )}
         {feConfigs?.show_workorder && (
           <Flex onClick={onFeedback} {...ButtonStyles}>
-            <MyIcon name={'feedback'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {t('common:question_feedback')}
-            </Box>
+            <MyIcon
+              name={'common/quickActionFeedback'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('common:question_feedback')}</Box>
+          </Flex>
+        )}
+        {(accountCancellationStatus?.status === 'pending' ||
+          (accountCancellationStatus?.status === 'none' &&
+            accountCancellationStatus.canRequestCancellation)) && (
+          <Flex
+            {...ButtonStyles}
+            onClick={() => {
+              if (accountCancellationStatus.status === 'pending') {
+                void router.push('/account/cancel');
+                return;
+              }
+              onOpenCancellationConfirm();
+            }}
+          >
+            <MyIcon
+              name={'common/quickActionUserX'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              fill={'none'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('account_info:account_cancellation', '账号注销')}</Box>
           </Flex>
         )}
       </Grid>
+      {accountCancellationStatus?.status === 'none' &&
+        accountCancellationStatus.canRequestCancellation && (
+          <AccountCancellationConfirmModal
+            isOpen={isCancellationConfirmOpen}
+            onClose={onCloseCancellationConfirm}
+            onConfirm={() => {
+              onCloseCancellationConfirm();
+              void router.push('/account/cancel?confirmed=1');
+            }}
+          />
+        )}
     </Box>
   );
 };

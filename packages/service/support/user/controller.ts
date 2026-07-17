@@ -1,8 +1,9 @@
 import { type UserType } from '@fastgpt/global/support/user/type';
 import { MongoUser } from './schema';
-import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
+import { getTmbInfoByTmbId } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { getUserFallbackTeam } from './team/fallback';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -31,7 +32,8 @@ export async function getUserDetail({
       } catch (error) {}
     }
     if (userId) {
-      return getUserDefaultTeam({ userId });
+      const fallback = await getUserFallbackTeam({ userId });
+      if (fallback) return getTmbInfoByTmbId({ tmbId: fallback.tmbId });
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();

@@ -42,6 +42,22 @@ import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { assertAccountUsable } from '@fastgpt/service/support/user/account/cancellation/guard';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+
+const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
+  if (!mcp.teamId || !mcp.tmbId) return;
+  const member = await MongoTeamMember.findOne(
+    { _id: mcp.tmbId, teamId: mcp.teamId, status: 'active' },
+    { userId: 1 }
+  ).lean();
+  if (!member) throw new Error('MCP team member is no longer active');
+  await assertAccountUsable({
+    userId: String(member.userId),
+    teamId: String(mcp.teamId),
+    tmbId: String(mcp.tmbId)
+  });
+};
 
 const stringifyMcpPluginOutput = (pluginOutput: unknown) => {
   if (pluginOutput === undefined || pluginOutput === null) {
@@ -133,10 +149,11 @@ export const workflow2InputSchema = (chatConfig?: {
  * 不再因为创建人的应用权限后续变化而隐藏工具，避免已发布集成被普通权限调整意外中断。
  */
 export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1 }).lean();
+  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean();
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
+  await assertMcpTeamUsable(mcp);
 
   // Get app list
   const appList = await MongoApp.find(
@@ -350,11 +367,12 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     }
   };
 
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1 }).lean();
+  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean();
 
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
+  await assertMcpTeamUsable(mcp);
 
   // Get app list
   const appList = await MongoApp.find({

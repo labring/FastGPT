@@ -4,6 +4,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
+import { submitAccountCancellation } from '@/web/support/user/account/cancellation/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -47,7 +48,12 @@ const provider = () => {
     ? validateRedirectUrl(loginStore.lastRoute)
     : '/dashboard/agent';
   const lastTmbId = loginStore?.lastTmbId || '';
-  const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
+  const errorRedirectPage =
+    loginStore?.flow === 'accountCancellation'
+      ? '/account/cancel?confirmed=1'
+      : lastRoute.startsWith('/chat')
+        ? lastRoute
+        : '/login';
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -97,6 +103,22 @@ const provider = () => {
     }) => {
       if (!loginStore) return;
       try {
+        if (loginStore.flow === 'accountCancellation') {
+          await submitAccountCancellation({
+            method: `oauth/${callback.provider}` as any,
+            payload: {
+              callbackUrl: loginStore.callbackUrl,
+              code: callback.code,
+              ...(callback.state !== undefined ? { state: callback.state } : {}),
+              props
+            }
+          });
+          setUserInfo(null);
+          setLoginStore(undefined);
+          router.replace('/login?lastRoute=/account/cancel');
+          return;
+        }
+
         const res = await oauthLogin({
           ...callback,
           props,
@@ -132,7 +154,17 @@ const provider = () => {
         setLoginStore(undefined);
       }
     },
-    [errorRedirectPage, i18n.language, loginStore, loginSuccess, router, setLoginStore, t, toast]
+    [
+      errorRedirectPage,
+      i18n.language,
+      loginStore,
+      loginSuccess,
+      router,
+      setLoginStore,
+      setUserInfo,
+      t,
+      toast
+    ]
   );
 
   useEffect(() => {
@@ -171,7 +203,9 @@ const provider = () => {
         return;
       }
 
-      await retryFn(async () => clearToken());
+      if (loginStore?.flow !== 'accountCancellation') {
+        await retryFn(async () => clearToken());
+      }
       router.prefetch('/dashboard/agent');
       await completeOauthLogin({ callback, props: callbackProps });
     })();
