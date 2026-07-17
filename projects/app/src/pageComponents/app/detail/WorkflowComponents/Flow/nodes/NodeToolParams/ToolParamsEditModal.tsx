@@ -1,17 +1,8 @@
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
-import {
-  Box,
-  Button,
-  Flex,
-  Input,
-  ModalBody,
-  ModalFooter,
-  Switch,
-  Textarea
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Input, Switch, Textarea } from '@chakra-ui/react';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { parseToolParamJsonSchema } from '@fastgpt/global/core/app/jsonschema';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -199,8 +190,28 @@ const ToolParamsEditModal = ({
   }, [isCustomSchema, valueType]);
 
   return (
-    <MyModal isOpen iconSrc="modal/edit" title={t('workflow:tool_field')} onClose={onClose}>
-      <ModalBody>
+    <MyModal
+      isOpen
+      title={t('workflow:tool_field')}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button
+            onClick={
+              isCustomSchema
+                ? onClickCustomSubmit
+                : handleSubmit((data) => onClickSubmit(data), onClickSubmitError)
+            }
+          >
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
+    >
+      <Box>
         <Flex alignItems={'center'} mb={5}>
           <FormLabel flex={'0 0 80px'}>{t('workflow:field_required')}</FormLabel>
           <Switch {...register('required')} />
@@ -256,7 +267,7 @@ const ToolParamsEditModal = ({
                 setIsCustomSchemaInvalid(false);
               }}
               placeholder={t('workflow:tool_params.custom_schema_placeholder')}
-              defaultHeight={220}
+              defaultHeight={160}
               bg={'white'}
               isInvalid={isCustomSchemaInvalid}
               resize
@@ -291,21 +302,7 @@ const ToolParamsEditModal = ({
             />
           </Box>
         )}
-      </ModalBody>
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-        <Button
-          onClick={
-            isCustomSchema
-              ? onClickCustomSubmit
-              : handleSubmit((data) => onClickSubmit(data), onClickSubmitError)
-          }
-        >
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
+      </Box>
     </MyModal>
   );
 };

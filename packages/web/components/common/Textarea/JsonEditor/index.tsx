@@ -325,6 +325,7 @@ const JSONEditor = ({
         fontSize={'xs'}
         color={'myGray.500'}
         display={placeholderDisplay}
+        whiteSpace={'pre-wrap'}
         pointerEvents={'none'}
         userSelect={'none'}
       >
