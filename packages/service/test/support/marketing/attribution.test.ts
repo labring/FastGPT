@@ -68,15 +68,32 @@ describe('reportCRMVisitorIdentity', () => {
       'https://crm.example.com/api/v1/contacts/visitor/visitor%2F1/identity',
       {
         cloud_user_id: 'user-1',
-        cloud_username: '13800138000',
-        cloud_user_email: 'user@example.com',
-        name: '13800138000',
-        email: 'user@example.com'
+        contact: 'user@example.com'
       },
       {
         headers: { 'X-API-Key': 'crm-key' },
         timeout: 5000
       }
+    );
+  });
+
+  it('reports a phone number when no email is available', async () => {
+    mocks.serviceEnv.CRM_API_URL = 'https://crm.example.com/api/v1';
+    mocks.serviceEnv.CRM_API_KEY = 'crm-key';
+
+    await reportCRMVisitorIdentity({
+      visitorId: 'visitor-1',
+      userId: 'user-1',
+      username: '13800138000'
+    });
+
+    expect(mocks.patch).toHaveBeenCalledWith(
+      'https://crm.example.com/api/v1/contacts/visitor/visitor-1/identity',
+      {
+        cloud_user_id: 'user-1',
+        contact: '13800138000'
+      },
+      expect.any(Object)
     );
   });
 

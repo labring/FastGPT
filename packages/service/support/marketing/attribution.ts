@@ -11,10 +11,11 @@ type ReportCRMVisitorIdentityProps = {
   contact?: string;
 };
 
-const getEmail = (username: string, contact?: string) => {
-  if (contact?.includes('@')) return contact;
-  if (username.includes('@')) return username;
-  return undefined;
+const getContact = (username: string, contact?: string) => {
+  const candidates = [contact, username].map((value) => value?.trim()).filter(Boolean) as string[];
+  const email = candidates.find((value) => value.includes('@'));
+  if (email) return email;
+  return candidates.find((value) => /^\+?[\d\s()-]{6,20}$/.test(value));
 };
 
 /**
@@ -36,17 +37,14 @@ export const reportCRMVisitorIdentity = async ({
     return;
   }
 
-  const email = getEmail(username, contact);
+  const normalizedContact = getContact(username, contact);
 
   try {
     await axios.patch(
       `${crmApiUrl}/contacts/visitor/${encodeURIComponent(visitorId)}/identity`,
       {
         cloud_user_id: userId,
-        cloud_username: username,
-        cloud_user_email: email,
-        name: username,
-        email
+        ...(normalizedContact && { contact: normalizedContact })
       },
       {
         headers: {
