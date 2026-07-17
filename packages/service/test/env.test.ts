@@ -7,6 +7,7 @@ const originalEnv = {
   AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
+  STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   PRO_URL: process.env.PRO_URL,
@@ -34,6 +35,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
@@ -130,6 +132,15 @@ describe('serviceEnv', () => {
         FILE_DOWNLOAD_PUBLIC_URL_PREFIX: 'https://files.example.com/f'
       }
     });
+  });
+
+  it('rejects the removed presigned download mode during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'presigned');
+
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
   it('uses PRO_TOKEN only when configured or running tests', async () => {

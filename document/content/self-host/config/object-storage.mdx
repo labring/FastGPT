@@ -25,18 +25,19 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 ### 传输模式说明
 
 - 上传固定走 FastGPT 后端代理。
-- 下载支持 `proxy` 和 `presigned` 两种模式。
-- 默认下载模式会根据 `STORAGE_EXTERNAL_ENDPOINT` 自动判断：
-  - 未配置：默认 `proxy`
-  - 已配置：默认 `presigned`
+- 对外下载地址固定为 FastGPT 短链，不再直接返回对象存储预签名长链接。
+- `STORAGE_DOWNLOAD_URL_MODE` 支持两种模式，默认值为 `short-proxy`：
+  - `short-proxy`：FastGPT 校验短链并代理文件流，无需配置公网对象存储地址。
+  - `short-redirect`：FastGPT 校验短链后 302 到短时效对象存储/CDN 地址，文件流量不经过 FastGPT。
+- 自部署 MinIO 使用 `short-redirect` 时必须配置 `STORAGE_EXTERNAL_ENDPOINT`。
 
 ### 自部署的 MinIO 和 AWS S3
 
 > MinIO 这类产品对 AWS S3 协议支持比较完整，因此使用 Minio 和 AWS S3 配置几乎可以是相同的，只是因为服务商提供和自部署的区别，会有额外的配置。> 因此理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务都可以使用，比如 SeaweedFS、RustFS 等。
 
 - `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 ID 连接，比如 `http://fastgpt-minio:9000`
-- `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。配置后，默认下载模式会自动切换为 `presigned`。
-- `STORAGE_S3_CDN_ENDPOINT`【可选】S3/MinIO 预签名下载与预览访问的 CDN 地址。仅在当前下载走 `presigned` 模式时，FastGPT 会在生成文件访问 URL 后把地址替换成该 CDN 地址；该变量不会改变默认下载模式。上传仍走 FastGPT 后端代理，不会使用 CDN。
+- `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。该变量不会自动改变下载模式。
+- `STORAGE_S3_CDN_ENDPOINT`【可选】`short-redirect` 临时下载地址使用的 CDN 地址。该变量不会改变默认下载模式，且配置时必须同时配置 `STORAGE_EXTERNAL_ENDPOINT`。上传仍走 FastGPT 后端代理，不会使用 CDN。
 - `STORAGE_S3_FORCE_PATH_STYLE`【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
 - `STORAGE_S3_MAX_RETRIES`【可选】请求最大尝试次数，默认为 3 次
 
@@ -51,7 +52,9 @@ STORAGE_ACCESS_KEY_ID=your_access_key
 STORAGE_SECRET_ACCESS_KEY=your_secret_key
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
-STORAGE_EXTERNAL_ENDPOINT=http://127.0.0.1:9000
+STORAGE_DOWNLOAD_URL_MODE=short-redirect
+STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS=300
+STORAGE_EXTERNAL_ENDPOINT=https://s3.example.com
 STORAGE_S3_CDN_ENDPOINT=https://cdn.example.com
 STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
 STORAGE_S3_FORCE_PATH_STYLE=true

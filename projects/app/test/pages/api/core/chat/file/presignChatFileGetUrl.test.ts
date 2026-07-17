@@ -69,8 +69,7 @@ describe('presignChatFileGetUrl', () => {
     );
     expect(mocks.createGetChatFileURL).toHaveBeenCalledWith({
       key: `chat/${appId}/${uid}/${chatId}/demo.pdf`,
-      external: true,
-      mode: undefined
+      external: true
     });
   });
 
@@ -102,8 +101,7 @@ describe('presignChatFileGetUrl', () => {
     );
     expect(mocks.createGetChatFileURL).toHaveBeenCalledWith({
       key: `chat/${ChatSourceTypeEnum.skillEdit}/${skillId}/${uid}/${chatId}/demo.pdf`,
-      external: true,
-      mode: undefined
+      external: true
     });
   });
 
@@ -142,8 +140,7 @@ describe('presignChatFileGetUrl', () => {
     );
     expect(mocks.createGetChatFileURL).toHaveBeenCalledWith({
       key: `chat/${resolvedAppId}/${uid}/${chatId}/demo.pdf`,
-      external: true,
-      mode: undefined
+      external: true
     });
   });
 

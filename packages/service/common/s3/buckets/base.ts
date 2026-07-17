@@ -8,11 +8,7 @@ import {
   CreatePostPresignedUrlParamsSchema,
   type CreatePostPresignedUrlResult
 } from '../contracts/type';
-import {
-  storageDownloadUrlMode,
-  getSystemMaxFileSize,
-  replaceS3UrlWithCdnEndpoint
-} from '../config/constants';
+import { getSystemMaxFileSize } from '../config/constants';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { createUploadConstraints } from '../utils/uploadConstraints';
 import path from 'node:path';
@@ -278,32 +274,19 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours, mode, responseContentType } = parsed;
+    const { key, expiredHours, responseContentType } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    if ((mode ?? storageDownloadUrlMode) !== 'presigned') {
-      return {
-        bucket: this.bucketName,
-        key,
-        url: await createS3DownloadAccessUrl({
-          objectKey: key,
-          bucketName: this.bucketName,
-          expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
-          filename: path.basename(key),
-          responseContentType
-        })
-      };
-    }
-
-    const result = await this.externalClient.generatePresignedGetUrl({
-      key,
-      expiredSeconds: expires,
-      ...(responseContentType ? { responseContentType } : {})
-    });
-
     return {
-      ...result,
-      url: replaceS3UrlWithCdnEndpoint(result.url)
+      bucket: this.bucketName,
+      key,
+      url: await createS3DownloadAccessUrl({
+        objectKey: key,
+        bucketName: this.bucketName,
+        expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
+        filename: path.basename(key),
+        responseContentType
+      })
     };
   }
 
