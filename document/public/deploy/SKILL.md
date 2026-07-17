@@ -15,7 +15,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
 - 默认使用脚本非交互模式：国内镜像源、自动随机密钥、检测到的第一个主 IP、`PostgreSQL + pgvector` 向量库。
 - 不要覆盖用户已有的 `docker-compose.yml` 或数据卷，除非用户明确同意。
 - 不要在公开输出里泄露除 `root` 初始登录密码外的服务 Token、数据库密码或应用密钥。
-- 如果宿主机已有反向代理、域名或云厂商防火墙，先完成本机部署验证，再提醒用户开放或映射 `3000`、`9000`、`3003`。
+- 如果宿主机已有反向代理、域名或云厂商防火墙，先完成本机部署验证，再提醒用户开放或映射 `3000`、`3003`。仅旧版外部 S3 下载链路还需要开放 `9000`。
 
 ## 部署流程
 
@@ -49,16 +49,17 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
    FASTGPT_NON_INTERACTIVE=true bash install.sh
    ```
 
-   非交互模式会默认选择最新稳定版本、国内镜像源、`PostgreSQL + pgvector`、自动随机密钥，并把 S3/MCP 地址设置为检测到的第一个主 IP。
+   非交互模式会默认选择最新稳定版本、国内镜像源、`PostgreSQL + pgvector`、自动随机密钥，并把 MCP 地址设置为检测到的第一个主 IP。当前版本的默认 `short-proxy` 下载模式不需要配置外部 S3 地址。
 
-   如果用户明确给了公网域名或固定 IP，用环境变量覆盖 endpoint：
+   如果用户明确给了 MCP 公网域名或固定 IP，用环境变量覆盖 endpoint：
 
    ```bash
    FASTGPT_NON_INTERACTIVE=true \
-   FASTGPT_S3_ENDPOINT=https://s3.example.com:9000 \
    FASTGPT_MCP_ENDPOINT=https://mcp.example.com:3003 \
    bash install.sh
    ```
+
+   `FASTGPT_S3_ENDPOINT` 仅用于仍包含 `STORAGE_EXTERNAL_ENDPOINT` 的 v4.14 或本地旧版 Compose。
 
    可选覆盖项：
    - `FASTGPT_DEPLOY_VERSION`：部署版本，例如 `v4.15` 或 `main`。
@@ -104,7 +105,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
 ## 常见问题处理
 
 - 端口冲突：用 `docker compose ps` 和 `docker compose logs` 确认冲突端口，修改 `docker-compose.yml` 左侧宿主机端口，例如 `3001:3000`，再运行 `docker compose up -d`。
-- S3 地址错误：检查 `STORAGE_EXTERNAL_ENDPOINT`，必须是客户端和 FastGPT 容器都能访问的地址，不能是 `127.0.0.1` 或 `localhost`。
+- 旧版 S3 地址错误：仅 v4.14 或自定义旧版 Compose 需要检查 `STORAGE_EXTERNAL_ENDPOINT`；该地址必须同时可被客户端和 FastGPT 容器访问，不能是 `127.0.0.1` 或 `localhost`。
 - Mongo 启动失败且日志出现 `Illegal instruction`：CPU 可能不支持 AVX，把 Mongo 镜像切换为 4.x 版本后重建相关容器。
 - 数据库或向量库未就绪：先看对应容器日志，不要删除数据卷；只有确认是首次失败且没有有效数据时，才建议用户清理数据卷重试。
 - 配置文件改动后：运行 `docker compose up -d` 让 Compose 应用变更；必要时只重启相关服务。
@@ -118,7 +119,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
 - FastGPT 访问地址，例如 `http://<服务器地址>:3000`。
 - 登录账号：`root`。
 - 登录密码：脚本输出的随机密码，或 `docker-compose.yml` 中的 `DEFAULT_ROOT_PSW`。
-- 已开放或需要开放的端口：`3000`、`9000`、`3003`。
+- 已开放或需要开放的端口：`3000`、`3003`；仅旧版外部 S3 下载链路还需要 `9000`。
 - 下一步动作：登录后到 `账号-模型提供商` 配置语言模型和索引模型；如需使用系统插件，到插件市场安装；如需公网 HTTPS，配置域名和反向代理。
 
 如果未完全成功，返回当前卡住的容器、关键日志、已尝试的修复动作和下一步需要用户确认的事项。
