@@ -1,5 +1,6 @@
 import type { ClientSession, FilterQuery } from 'mongoose';
 import { AccountVerificationMaterialTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
+import type { CodeAccountVerificationScene } from '@fastgpt/global/support/user/account/verification/type';
 import {
   MongoAccountVerificationMaterial,
   type AccountVerificationMaterialSchemaType
@@ -9,11 +10,17 @@ import { buildVerificationCodeFilter } from './utils';
 type MaterialIdentity = {
   key: string;
   type: `${AccountVerificationMaterialTypeEnum}`;
+  scene?: CodeAccountVerificationScene;
+  userIdHash?: string;
+  purpose?: 'login' | 'accountCancellation';
+  provider?: string;
+  callbackHash?: string;
 };
 
 type CreateVerificationMaterialData = MaterialIdentity & {
   code?: string;
   openid?: string;
+  scene?: string;
   expiredTime: Date;
   createTime?: Date;
 };
@@ -49,7 +56,19 @@ export const upsertVerificationMaterial = (
   data: CreateVerificationMaterialData,
   session?: ClientSession
 ) => {
-  const { key, type, code, openid, expiredTime, createTime = new Date() } = data;
+  const {
+    key,
+    type,
+    code,
+    openid,
+    scene,
+    expiredTime,
+    createTime = new Date(),
+    userIdHash,
+    purpose,
+    provider,
+    callbackHash
+  } = data;
 
   return MongoAccountVerificationMaterial.updateOne(
     { key, type },
@@ -57,6 +76,11 @@ export const upsertVerificationMaterial = (
       $set: {
         code,
         openid,
+        scene,
+        userIdHash,
+        purpose,
+        provider,
+        callbackHash,
         createTime,
         expiredTime
       }
@@ -71,6 +95,11 @@ const buildValidMaterialFilter = ({
   code,
   caseInsensitiveCode,
   requireOpenid,
+  scene,
+  userIdHash,
+  purpose,
+  provider,
+  callbackHash,
   now = new Date()
 }: QueryValidVerificationMaterialData): FilterQuery<AccountVerificationMaterialSchemaType> => ({
   key,
@@ -79,7 +108,12 @@ const buildValidMaterialFilter = ({
   ...(code !== undefined && {
     code: buildVerificationCodeFilter({ code, caseInsensitive: caseInsensitiveCode })
   }),
-  ...(requireOpenid && { openid: { $exists: true, $ne: '' } })
+  ...(requireOpenid && { openid: { $exists: true, $ne: '' } }),
+  ...(scene !== undefined && { scene }),
+  ...(userIdHash !== undefined && { userIdHash }),
+  ...(purpose !== undefined && { purpose }),
+  ...(provider !== undefined && { provider }),
+  ...(callbackHash !== undefined && { callbackHash })
 });
 
 /** 查询仍在业务有效期内的材料，不依赖 TTL 清理时机。 */
@@ -105,10 +139,16 @@ export const updateWechatMaterialIdentity = (
   {
     key,
     openid,
+    materialType = AccountVerificationMaterialTypeEnum.wxLogin,
+    userIdHash,
+    purpose,
     now = new Date()
   }: {
     key: string;
     openid: string;
+    materialType?: `${AccountVerificationMaterialTypeEnum}`;
+    userIdHash?: string;
+    purpose?: 'login' | 'accountCancellation';
     now?: Date;
   },
   session?: ClientSession
@@ -116,9 +156,11 @@ export const updateWechatMaterialIdentity = (
   MongoAccountVerificationMaterial.findOneAndUpdate(
     {
       key,
-      type: AccountVerificationMaterialTypeEnum.wxLogin,
+      type: materialType,
       expiredTime: { $gt: now },
-      openid: { $exists: false }
+      openid: { $exists: false },
+      ...(userIdHash !== undefined && { userIdHash }),
+      ...(purpose !== undefined && { purpose })
     },
     { $set: { openid } },
     { new: true, session }
@@ -129,8 +171,13 @@ export const deleteVerificationMaterialIfMatch = (
   {
     key,
     type,
+    scene,
     code,
-    openid
+    openid,
+    userIdHash,
+    purpose,
+    provider,
+    callbackHash
   }: MaterialIdentity & {
     code?: string;
     openid?: string;
@@ -141,8 +188,13 @@ export const deleteVerificationMaterialIfMatch = (
     {
       key,
       type,
+      ...(scene !== undefined && { scene }),
       ...(code !== undefined && { code }),
-      ...(openid !== undefined && { openid })
+      ...(openid !== undefined && { openid }),
+      ...(userIdHash !== undefined && { userIdHash }),
+      ...(purpose !== undefined && { purpose }),
+      ...(provider !== undefined && { provider }),
+      ...(callbackHash !== undefined && { callbackHash })
     },
     { session }
   );

@@ -1,4 +1,5 @@
 import { AccountVerificationMaterialTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
+import type { CodeAccountVerificationScene } from '@fastgpt/global/support/user/account/verification/type';
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 
 const { Schema } = connectionMongo;
@@ -8,6 +9,11 @@ export type AccountVerificationMaterialSchemaType = {
   type: `${AccountVerificationMaterialTypeEnum}`;
   code?: string;
   openid?: string;
+  userIdHash?: string;
+  purpose?: 'login' | 'accountCancellation';
+  scene?: CodeAccountVerificationScene;
+  provider?: string;
+  callbackHash?: string;
   createTime: Date;
   expiredTime: Date;
 };
@@ -23,6 +29,11 @@ const AccountVerificationMaterialSchema = new Schema<AccountVerificationMaterial
     maxLength: 6
   },
   openid: String,
+  userIdHash: String,
+  purpose: String,
+  scene: String,
+  provider: String,
+  callbackHash: String,
   type: {
     type: String,
     enum: Object.values(AccountVerificationMaterialTypeEnum),

@@ -5,7 +5,19 @@ export enum AccountVerificationMaterialTypeEnum {
   bindNotification = 'bindNotification',
   captcha = 'captcha',
   login = 'login',
-  oauthLogin = 'oauthLogin'
+  oauthLogin = 'oauthLogin',
+  accountCancellation = 'accountCancellation'
+}
+
+export enum AccountVerificationMethodEnum {
+  code = 'code',
+  oldPassword = 'oldPassword',
+  wechat = 'wechat',
+  oauthGithub = 'oauth/github',
+  oauthGoogle = 'oauth/google',
+  oauthMicrosoft = 'oauth/microsoft',
+  oauthWecom = 'oauth/wecom',
+  oauthSso = 'oauth/sso'
 }
 
 export const accountVerificationMethods = [

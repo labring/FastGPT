@@ -4,10 +4,12 @@ import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { authUserSession } from '../../../support/user/session';
+import { authUserSession, resolveUserSessionTeam } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
+import { resolveAccountCancellationAccess } from '../../user/account/cancellation/access';
+import { assertAccountUsable } from '../../user/account/cancellation/guard';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
@@ -30,7 +32,8 @@ export async function parseHeaderCert({
   req,
   authToken = false,
   authRoot = false,
-  authApiKey = false
+  authApiKey = false,
+  accountCancellationAccess = 'normal'
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
@@ -152,14 +155,38 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
 
-  if (!authRoot && (!teamId || !tmbId)) {
+  let resolvedTeamId = teamId;
+  let resolvedTmbId = tmbId;
+  if (uid && sessionId && teamId && tmbId) {
+    const sessionTeam = await resolveUserSessionTeam({
+      userId: String(uid),
+      teamId: String(teamId),
+      tmbId: String(tmbId),
+      sessionId
+    });
+    resolvedTeamId = sessionTeam.teamId;
+    resolvedTmbId = sessionTeam.tmbId;
+  }
+
+  if (!authRoot && (!resolvedTeamId || !resolvedTmbId)) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
+  const accountCancellationGuard = resolveAccountCancellationAccess({
+    req,
+    accountCancellationAccess
+  });
+  await assertAccountUsable({
+    userId: uid ? String(uid) : undefined,
+    teamId: resolvedTeamId ? String(resolvedTeamId) : undefined,
+    tmbId: resolvedTmbId ? String(resolvedTmbId) : undefined,
+    ...accountCancellationGuard
+  });
+
   return {
     userId: String(uid),
-    teamId: String(teamId),
-    tmbId: String(tmbId),
+    teamId: String(resolvedTeamId),
+    tmbId: String(resolvedTmbId),
     appId,
     authType,
     sourceName,

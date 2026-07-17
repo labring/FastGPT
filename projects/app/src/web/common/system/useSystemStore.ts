@@ -28,6 +28,7 @@ type LoginStoreType = {
   state: string;
   callbackUrl: string;
   lastTmbId?: string;
+  flow?: 'login' | 'accountCancellation';
 };
 
 export type NotSufficientModalType =

@@ -18,6 +18,7 @@ export const AccountContactUsernameSchema = z.union([
 export const AccountVerificationCapabilitiesSchema = z.object({
   emailCode: z.boolean(),
   phoneCode: z.boolean(),
+  accountCancellation: z.boolean().optional(),
   wechat: z.boolean(),
   oauth: z.object({
     github: z.boolean(),
@@ -56,7 +57,8 @@ export type AccountVerificationResolution = z.infer<typeof AccountVerificationRe
 export const CodeAccountVerificationSceneSchema = z.enum([
   'register',
   'findPassword',
-  'bindNotification'
+  'bindNotification',
+  'accountCancellation'
 ]);
 export type CodeAccountVerificationScene = z.infer<typeof CodeAccountVerificationSceneSchema>;
 
