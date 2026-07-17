@@ -4,6 +4,7 @@ import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type
 import {
   canInputBeAgentGenerated,
   getToolConfigStatus,
+  getSavedToolInputSelectedType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -12,13 +13,44 @@ import type { DispatchToolModuleProps, ToolNodeItemType } from '../type';
 
 type RuntimeNode = DispatchToolModuleProps['runtimeNodes'][number];
 
+/**
+ * 归一化 ToolCall 下游工具的输入选择。
+ * 旧配置只保存 selectedTypeIndex，索引 0 可能只是旧版默认手动输入；需要结合当前工具
+ * 定义的 isToolParam 决定是否迁移为 Agent 生成，同时保留用户已经明确保存的选择。
+ */
+const normalizeToolInput = (input: FlowNodeInputItemType) => {
+  const selectedType = getSavedToolInputSelectedType({
+    savedInput: input,
+    defaultInput: input
+  });
+  const hasSavedSelection =
+    input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
+  const renderTypeList =
+    selectedType && !input.renderTypeList.includes(selectedType)
+      ? [selectedType, ...input.renderTypeList]
+      : input.renderTypeList;
+
+  return initToolInputTypeByDefaultMode({
+    ...input,
+    renderTypeList,
+    ...(selectedType
+      ? {
+          selectedType,
+          selectedTypeIndex: renderTypeList.findIndex((type) => type === selectedType)
+        }
+      : hasSavedSelection
+        ? { selectedType: undefined, selectedTypeIndex: undefined }
+        : {})
+  });
+};
+
 const isRunnableToolNode = (tool?: RuntimeNode): tool is RuntimeNode => {
   if (!tool) return false;
 
   const configStatus = getToolConfigStatus({
     tool: {
       ...tool,
-      inputs: tool.inputs.map((input) => initToolInputTypeByDefaultMode(input))
+      inputs: tool.inputs.map(normalizeToolInput)
     }
   });
   return configStatus.status !== 'invalid' && configStatus.status !== 'waitingForConfig';
@@ -43,7 +75,7 @@ export const useToolNodeList = ({
     .map((nodeId) => runtimeNodes.find((item) => item.nodeId === nodeId))
     .filter(isRunnableToolNode)
     .map<ToolNodeItemType>((tool) => {
-      const inputs = tool.inputs.map((input) => initToolInputTypeByDefaultMode(input));
+      const inputs = tool.inputs.map(normalizeToolInput);
       const toolParams: FlowNodeInputItemType[] = [];
       let jsonSchema = tool.jsonSchema;
 

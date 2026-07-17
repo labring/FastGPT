@@ -1106,14 +1106,23 @@ describe('rewriteRuntimeWorkFlow', () => {
     const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
       toolConfig: {
         mcpTool: { toolId: 'mcp-toolset-1/toolA' }
-      }
+      },
+      inputs: [
+        {
+          key: 'x',
+          valueType: 'string',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0
+        }
+      ]
     } as any);
     const nodes = [mcpToolNode];
     const edges: RuntimeEdgeItemType[] = [];
 
     const toolAInputSchema = {
       type: 'object',
-      properties: { x: { type: 'string' } }
+      properties: { x: { type: 'string', isToolParam: true } }
     };
     setupFindByIdMap({
       'toolset-1': {
@@ -1140,20 +1149,42 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     expect(mcpToolNode.jsonSchema).toEqual(toolAInputSchema);
     expect(mcpToolNode.intro).toBe('tool A description');
+    expect(mcpToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
   });
 
   it('should inject jsonSchema and intro for standalone HTTP tool nodes', async () => {
     const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
       toolConfig: {
         httpTool: { toolId: 'http-toolset-1/toolB' }
-      }
+      },
+      inputs: [
+        {
+          key: 'y',
+          valueType: 'number',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0
+        }
+      ]
     } as any);
     const nodes = [httpToolNode];
     const edges: RuntimeEdgeItemType[] = [];
 
+    const toolBInputSchema = {
+      type: 'object',
+      properties: { y: { type: 'number', isToolParam: true } }
+    };
     const toolBRequestSchema = {
       type: 'object',
-      properties: { y: { type: 'number' } }
+      properties: { y: { type: 'number', isToolParam: true } }
     };
     setupFindByIdMap({
       'toolset-1': {
@@ -1166,6 +1197,7 @@ describe('rewriteRuntimeWorkFlow', () => {
                   {
                     name: 'toolB',
                     description: 'tool B description',
+                    inputSchema: toolBInputSchema,
                     requestSchema: toolBRequestSchema
                   }
                 ]
@@ -1180,6 +1212,53 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     expect(httpToolNode.jsonSchema).toEqual(toolBRequestSchema);
     expect(httpToolNode.intro).toBe('tool B description');
+    expect(httpToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+  });
+
+  it('should fall back to inputSchema for legacy scalar HTTP request schemas', async () => {
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      toolConfig: {
+        httpTool: { toolId: 'http-toolset-1/toolLegacy' }
+      }
+    } as any);
+    const inputSchema = {
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query']
+    };
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolLegacy',
+                    description: 'legacy HTTP tool',
+                    inputSchema,
+                    requestSchema: { type: 'string' }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes: [httpToolNode], edges: [] });
+
+    expect(httpToolNode.jsonSchema).toEqual(inputSchema);
   });
 
   it('should preserve tool names containing slashes when injecting schema', async () => {

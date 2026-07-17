@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   createToolSchema,
   useToolCatalog
@@ -209,6 +212,70 @@ describe('useToolCatalog', () => {
         city: { type: 'string' }
       },
       required: ['city']
+    });
+  });
+
+  it('falls back to agent-generated inputs when the raw schema has no properties', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: { type: 'object' },
+        inputs: [
+          {
+            key: 'count',
+            valueType: WorkflowIOValueTypeEnum.number,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ],
+        toolParams: [
+          {
+            key: 'count',
+            valueType: WorkflowIOValueTypeEnum.number,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        count: {
+          type: 'number'
+        }
+      },
+      required: ['count']
+    });
+  });
+
+  it('normalizes scalar raw schemas before merging agent-generated inputs', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: { type: 'string' },
+        inputs: [
+          {
+            key: 'query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ],
+        toolParams: [
+          {
+            key: 'query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query']
     });
   });
 

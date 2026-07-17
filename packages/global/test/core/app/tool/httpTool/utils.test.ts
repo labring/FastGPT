@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   getHTTPToolSetRuntimeNode,
   getHTTPToolRuntimeNode,
@@ -158,6 +158,68 @@ describe('httpTool utils', () => {
       expect(rawResponseOutput?.type).toBe(FlowNodeOutputTypeEnum.static);
       expect(rawResponseOutput?.required).toBe(true);
     });
+
+    it('should preserve legacy manual HTTP params and fall back from empty request schemas', () => {
+      const result = getHTTPToolRuntimeNode({
+        tool: {
+          name: 'legacyTool',
+          description: 'Legacy tool',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', 'x-tool-description': '' }
+            },
+            required: ['query']
+          },
+          requestSchema: { type: 'object' },
+          outputSchema: { type: 'object', properties: {} }
+        },
+        nodeId: 'node-legacy',
+        toolSetId: 'toolset-legacy',
+        toolsetName: 'toolsetName'
+      });
+
+      expect(result.inputs[0]).toMatchObject({
+        key: 'query',
+        isToolParam: false
+      });
+      expect(result.jsonSchema).toEqual({
+        type: 'object',
+        properties: {
+          query: { type: 'string', 'x-tool-description': '' }
+        },
+        required: ['query']
+      });
+    });
+
+    it('should use request schema properties when the input schema is empty', () => {
+      const result = getHTTPToolRuntimeNode({
+        tool: {
+          name: 'legacyTool',
+          description: 'Legacy tool',
+          inputSchema: { type: 'object' },
+          requestSchema: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', description: 'Query', isToolParam: true }
+            },
+            required: ['query']
+          },
+          outputSchema: { type: 'object', properties: {} }
+        },
+        nodeId: 'node-legacy-request',
+        toolSetId: 'toolset-legacy',
+        toolsetName: 'toolsetName'
+      });
+
+      expect(result.inputs).toEqual([
+        expect.objectContaining({
+          key: 'query',
+          isToolParam: true,
+          required: true
+        })
+      ]);
+    });
   });
 
   describe('parseHttpToolConfig', () => {
@@ -297,6 +359,14 @@ describe('httpTool utils', () => {
       );
       expect(result[0].inputSchema.required).toContain('id');
       expect(result[0].inputSchema.required).not.toContain('fields');
+      expect(result[0].requestSchema).toEqual({
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'User ID', isToolParam: true },
+          fields: { type: 'string', description: 'Fields to return', isToolParam: true }
+        },
+        required: ['id']
+      });
     });
 
     it('should fallback x-tool-description to param name when description missing', async () => {

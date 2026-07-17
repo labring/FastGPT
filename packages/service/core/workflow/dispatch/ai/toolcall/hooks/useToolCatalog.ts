@@ -32,7 +32,10 @@ const buildModelVisibleJsonSchema = ({
   const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
 
   if (jsonSchema) {
-    const properties = jsonSchema.properties || {};
+    const inputSchema = nodeInputs2JsonSchema({ inputs: toolParams });
+    const hasSchemaProperties =
+      !!jsonSchema.properties && Object.keys(jsonSchema.properties).length > 0;
+    const properties = hasSchemaProperties ? jsonSchema.properties : inputSchema.properties;
     const isModelVisibleKey = (key: string) => {
       if (modelVisibleKeys.has(key)) return true;
       if (inputKeys.has(key)) return false;
@@ -40,14 +43,19 @@ const buildModelVisibleJsonSchema = ({
     };
     const nextSchema: Record<string, any> = {
       ...jsonSchema,
+      type: 'object',
       properties: Object.fromEntries(
         Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
       )
     };
 
-    if (Array.isArray(jsonSchema.required)) {
-      nextSchema.required = jsonSchema.required.filter((key: string) => isModelVisibleKey(key));
-    } else if ('required' in jsonSchema) {
+    const required = (hasSchemaProperties ? jsonSchema.required : inputSchema.required)?.filter(
+      isModelVisibleKey
+    );
+
+    if (required) {
+      nextSchema.required = required;
+    } else if (hasSchemaProperties && 'required' in jsonSchema) {
       nextSchema.required = jsonSchema.required;
     }
 

@@ -119,7 +119,7 @@ export const getPluginInputTypeRawList = (options?: {
     ...(showAgentGenerated
       ? [
           {
-            icon: 'core/app/toolCall',
+            icon: 'core/workflow/inputType/agentGenerated',
             label: i18nT('common:core.workflow.inputType.agentGenerated'),
             value: [FlowNodeInputTypeEnum.agentGenerated],
             defaultValueType: WorkflowIOValueTypeEnum.string,

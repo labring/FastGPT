@@ -125,6 +125,21 @@ const mcpToolWithLeadingSlash = {
   name: '/test'
 };
 
+const legacyMcpTool = {
+  name: 'legacySearch',
+  description: 'Legacy search',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      keyword: {
+        type: 'string',
+        description: 'Keyword'
+      }
+    },
+    required: ['keyword']
+  }
+};
+
 const httpTool = {
   name: 'create',
   description: 'Create record',
@@ -141,6 +156,31 @@ const httpTool = {
 const httpToolWithLeadingSlash = {
   ...httpTool,
   name: '/test'
+};
+
+const legacyHttpTool = {
+  ...httpTool,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      keyword: {
+        type: 'string',
+        description: 'Keyword',
+        'x-tool-description': 'Keyword'
+      }
+    },
+    required: ['keyword']
+  },
+  requestSchema: {
+    type: 'object',
+    properties: {
+      keyword: {
+        type: 'string',
+        description: 'Keyword'
+      }
+    },
+    required: ['keyword']
+  }
 };
 
 const createToolsetApp = ({
@@ -255,6 +295,17 @@ describe('getAgentRuntimeTools schema loading', () => {
       id: 'legacy_mcp_app',
       type: AppTypeEnum.mcpToolSet
     }),
+    legacy_mcp_schema_app: createToolsetApp({
+      id: 'legacy_mcp_schema_app',
+      type: AppTypeEnum.mcpToolSet,
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: {},
+          toolList: [legacyMcpTool]
+        }
+      }
+    }),
     stripped_mcp_app: createToolsetApp({
       id: 'stripped_mcp_app',
       type: AppTypeEnum.mcpToolSet,
@@ -293,12 +344,45 @@ describe('getAgentRuntimeTools schema loading', () => {
         }
       }
     }),
+    legacy_http_app: createToolsetApp({
+      id: 'legacy_http_app',
+      type: AppTypeEnum.httpToolSet,
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: {},
+          toolList: [legacyHttpTool]
+        }
+      }
+    }),
     simple_app: createPersonalApp({ id: 'simple_app', type: AppTypeEnum.simple }),
     chat_agent_app: createPersonalApp({
       id: 'chat_agent_app',
       type: AppTypeEnum.chatAgent
     }),
     workflow_app: createPersonalApp({ id: 'workflow_app', type: AppTypeEnum.workflow })
+  };
+
+  appMap.empty_schema_tool_app = {
+    ...createPersonalApp({ id: 'empty_schema_tool_app', type: AppTypeEnum.workflow }),
+    modules: [
+      {
+        nodeId: 'empty-schema-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        name: 'Empty schema tool',
+        inputs: [
+          {
+            key: 'query',
+            valueType: 'string',
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ],
+        outputs: [],
+        jsonSchema: { type: 'object' },
+        toolConfig: {}
+      }
+    ]
   };
 
   it.each(['simple_app', 'chat_agent_app', 'workflow_app'] as const)(
@@ -319,6 +403,22 @@ describe('getAgentRuntimeTools schema loading', () => {
       expect(tools[0].agentGeneratedInputKeys).toContain(NodeInputKeyEnum.userChatInput);
     }
   );
+
+  it('falls back to saved agent-generated inputs when the runtime schema has no properties', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'empty_schema_tool_app', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        query: expect.any(Object)
+      },
+      required: ['query']
+    });
+  });
 
   it('loads MCP toolset children with their input schema', async () => {
     const tools = await getAgentRuntimeTools({
@@ -505,6 +605,21 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
   });
 
+  it('loads an MCP tool without isToolParam as an agent tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-legacy_mcp_schema_app/legacySearch', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        keyword: expect.any(Object)
+      }
+    });
+  });
+
   it('loads HTTP toolset children with their request schema', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
@@ -537,6 +652,21 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it('loads a legacy HTTP tool without isToolParam as an agent tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http-legacy_http_app/create', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        keyword: expect.any(Object)
+      }
+    });
   });
 
   it('loads a selected HTTP tool whose name starts with slash', async () => {
