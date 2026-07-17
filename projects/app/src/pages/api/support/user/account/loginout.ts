@@ -7,8 +7,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const { userId } = await authCert({ req, authToken: true });
     await delUserAllSession(userId);
+    clearCookie(res);
   } catch (error) {}
-  clearCookie(res);
 }
 
 export default NextAPI(handler);

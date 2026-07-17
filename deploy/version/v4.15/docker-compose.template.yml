@@ -123,6 +123,7 @@ x-service-env-config: &x-service-env-config
   MULTIPLE_DATA_TO_BASE64: true
   USE_IP_LIMIT: false
   CHECK_INTERNAL_IP: false
+  AUTH_COOKIE_SECURE: false
   TRUSTED_PROXY_ENABLE: false
   TRUSTED_PROXY_IPS:
   PASSWORD_LOGIN_LOCK_SECONDS:

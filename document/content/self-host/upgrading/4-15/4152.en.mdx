@@ -97,6 +97,7 @@ When using `short-redirect`, you must configure `STORAGE_EXTERNAL_ENDPOINT`.
 1. Refactored Agent V2 assisted generation / ChatAgentHelper to reuse the dialog.
 2. AI request records that contain very long base64/data URLs are truncated before saving to prevent possible stack overflows.
 3. Unified SSE event wrapping for stronger type hints.
+4. Added the `AUTH_COOKIE_SECURE` environment variable. When enabled, login cookies use the `Secure` attribute and are sent only over HTTPS.
 
 ### Agent Loop Refactor
 

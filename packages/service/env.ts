@@ -235,6 +235,9 @@ export const serviceEnv = createEnv({
     //==================== 安全配置 ====================
     USE_IP_LIMIT: BoolSchema.default(false).meta({ description: '是否启用 IP 限流' }),
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
+    AUTH_COOKIE_SECURE: BoolSchema.default(false).meta({
+      description: '是否强制为登录 Cookie 添加 Secure 属性，仅允许通过 HTTPS 传输'
+    }),
     TRUSTED_PROXY_ENABLE: BoolSchema.default(false).meta({
       description:
         '是否启用可信反向代理客户端 IP 校验；关闭时兼容旧逻辑，直接信任 X-Forwarded-For/X-Real-IP'
