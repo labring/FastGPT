@@ -136,6 +136,7 @@ export const useDebug = () => {
     });
     return Promise.reject();
   }, [
+    appDetail.chatConfig,
     edges,
     fitView,
     getNodes,

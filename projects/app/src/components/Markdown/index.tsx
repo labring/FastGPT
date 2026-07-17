@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/refs -- 流式字符时间线必须在 render 中幂等扩展，rehype 才能同步读取本次 commit。 */
+/* eslint-disable react-hooks/refs -- 流式分段时间线必须在 render 中幂等扩展，rehype 才能同步读取本次 commit。 */
 import React, { useContext, useEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { PluggableList } from 'unified';
@@ -17,15 +17,14 @@ import { CodeClassNameEnum, mdTextFormat, prepareStreamingMarkdown } from './uti
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
-import { splitMarkdownBlocks } from './streamMarkdownBlocks';
+import { mapMarkdownBlockSources, splitMarkdownBlocks } from './streamMarkdownBlocks';
 import { CachedMarkdown } from './CachedMarkdown';
 import {
   getStreamAnimationNow,
   resolveStreamRenderMode,
   resolveStreamBlockPlugins,
   updateStreamBlockAnimations,
-  type StreamBlockRuntime,
-  type StreamPluginsCacheEntry
+  type StreamBlockRuntime
 } from './streamAnimationRuntime';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
@@ -115,6 +114,7 @@ const markdownComponents = {
 
 type MarkdownStreamBlockProps = {
   animated: boolean;
+  blockId: string;
   blockOffset: number;
   rehypePlugins: PluggableList;
   source: string;
@@ -124,10 +124,10 @@ type MarkdownStreamBlockProps = {
  * 缓存已完成 Markdown block 的 React 子树。
  *
  * source 和 rehypePlugins 都保持不变时，父级流式内容更新不会重新解析该 block。
- * 活动 block 复用同一个 processor 和字符动画 runtime，已完成 block 则回到普通 DOM。
+ * blockId 在一次追加流中按顺序保持稳定，格式化导致源码 offset 改变时不会重新挂载。
  */
 const MarkdownStreamBlock = React.memo(
-  ({ animated, blockOffset, source, rehypePlugins }: MarkdownStreamBlockProps) => {
+  ({ animated, blockId, blockOffset, source, rehypePlugins }: MarkdownStreamBlockProps) => {
     const instanceIdRef = useRef<number>();
     if (instanceIdRef.current === undefined) {
       instanceIdRef.current = getMarkdownDebugInstanceId();
@@ -138,6 +138,7 @@ const MarkdownStreamBlock = React.memo(
       logMarkdownStreamDebug('block-mount', {
         at: Date.now(),
         animated,
+        blockId,
         blockOffset,
         instanceId,
         ...getSourceDebugInfo(source)
@@ -146,6 +147,7 @@ const MarkdownStreamBlock = React.memo(
       return () => {
         logMarkdownStreamDebug('block-unmount', {
           at: Date.now(),
+          blockId,
           blockOffset,
           instanceId
         });
@@ -158,11 +160,12 @@ const MarkdownStreamBlock = React.memo(
       logMarkdownStreamDebug('block-commit', {
         at: Date.now(),
         animated,
+        blockId,
         blockOffset,
         instanceId: instanceIdRef.current,
         ...getSourceDebugInfo(source)
       });
-    }, [animated, blockOffset, source]);
+    }, [animated, blockId, blockOffset, source]);
 
     return (
       <CachedMarkdown
@@ -230,44 +233,50 @@ const MarkdownRender = ({
     ]
   );
 
-  const formatSource = useMemo(() => {
-    if (showAnimation) return prepareStreamingMarkdown(source);
-    if (forbidZhFormat) return source;
-    return mdTextFormat(source);
-  }, [forbidZhFormat, showAnimation, source]);
-
   const hasStreamedRef = useRef(false);
   const renderStreamBlocks = resolveStreamRenderMode({
     hasStreamed: hasStreamedRef.current,
     showAnimation
   });
   hasStreamedRef.current = renderStreamBlocks;
-  const markdownBlocks = useMemo(
-    () => (renderStreamBlocks ? splitMarkdownBlocks(formatSource) : []),
-    [formatSource, renderStreamBlocks]
+
+  const sourceForBlocks = useMemo(
+    () => (showAnimation ? prepareStreamingMarkdown(source) : source),
+    [showAnimation, source]
   );
+  const markdownBlocks = useMemo(() => {
+    if (!renderStreamBlocks) return [];
+
+    const blocks = splitMarkdownBlocks(sourceForBlocks);
+    if (showAnimation || forbidZhFormat) return blocks;
+
+    // 完成态在分块后格式化，避免前面插入字符导致后续 block key 整体偏移。
+    return mapMarkdownBlockSources(blocks, mdTextFormat);
+  }, [forbidZhFormat, renderStreamBlocks, showAnimation, sourceForBlocks]);
   const streamRuntimesRef = useRef<Map<number, StreamBlockRuntime>>(new Map());
-  const streamPluginsCacheRef = useRef<Map<number, StreamPluginsCacheEntry>>(new Map());
-  const revealClockRef = useRef({ lastTime: 0 });
+  const streamVersionRef = useRef(0);
   const previousStreamingSourceRef = useRef('');
-  if (showAnimation && !source.startsWith(previousStreamingSourceRef.current)) {
-    streamRuntimesRef.current.clear();
-    streamPluginsCacheRef.current.clear();
-    revealClockRef.current.lastTime = 0;
+  if (showAnimation) {
+    if (!source.startsWith(previousStreamingSourceRef.current)) {
+      streamVersionRef.current += 1;
+      streamRuntimesRef.current.clear();
+    }
+    previousStreamingSourceRef.current = source;
   }
-  previousStreamingSourceRef.current = source;
   const streamAnimationMeta = showAnimation
     ? updateStreamBlockAnimations({
         blocks: markdownBlocks,
-        pluginsCache: streamPluginsCacheRef.current,
         renderNow: getStreamAnimationNow(),
-        revealClock: revealClockRef.current,
         runtimes: streamRuntimesRef.current
       })
     : new Map();
+  const formatSource = useMemo(
+    () => (forbidZhFormat ? source : mdTextFormat(source)),
+    [forbidZhFormat, source]
+  );
   const markdownClassName = `markdown ${styles.markdown}
       ${className || ''}
-      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+      ${showAnimation ? `${sourceForBlocks ? styles.waitingAnimation : styles.animation}` : ''}
     `;
 
   useEffect(() => {
@@ -290,6 +299,7 @@ const MarkdownRender = ({
       instanceId: instanceIdRef.current,
       renderStreamBlocks,
       showAnimation: !!showAnimation,
+      streamVersion: streamVersionRef.current,
       ...getSourceDebugInfo(source)
     });
   }, [markdownBlocks, renderStreamBlocks, showAnimation, source]);
@@ -298,24 +308,24 @@ const MarkdownRender = ({
     <MarkdownRendererRuntimeContext.Provider value={renderContextValue}>
       <Box position={'relative'} className={renderStreamBlocks ? markdownClassName : undefined}>
         {renderStreamBlocks ? (
-          markdownBlocks.map((block) => {
-            const meta = streamAnimationMeta.get(block.startOffset);
-            const runtime = meta?.runtime ?? streamRuntimesRef.current.get(block.startOffset);
+          markdownBlocks.map((block, blockIndex) => {
+            const blockId = `${streamVersionRef.current}:${blockIndex}`;
+            const meta = streamAnimationMeta.get(blockIndex);
+            const animated = !!showAnimation && !!meta?.shouldAnimate;
             const rehypePlugins =
-              !runtime || runtime.settled
-                ? markdownBaseRehypePlugins
-                : resolveStreamBlockPlugins({
+              animated && meta
+                ? resolveStreamBlockPlugins({
                     basePlugins: markdownBaseRehypePlugins,
-                    pluginsCache: streamPluginsCacheRef.current,
-                    runtime,
-                    startOffset: block.startOffset
-                  });
+                    runtime: meta.runtime
+                  })
+                : markdownBaseRehypePlugins;
 
             return (
               <MarkdownStreamBlock
-                animated={!!runtime && !runtime.settled}
+                animated={animated}
+                blockId={blockId}
                 blockOffset={block.startOffset}
-                key={block.startOffset}
+                key={blockId}
                 source={block.source}
                 rehypePlugins={rehypePlugins}
               />

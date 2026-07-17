@@ -5,6 +5,12 @@ export type MarkdownBlock = {
   startOffset: number;
 };
 
+/** 转换每个 block 的渲染源码，同时保留基于原文计算的稳定 offset。 */
+export const mapMarkdownBlockSources = (
+  blocks: MarkdownBlock[],
+  transformSource: (source: string) => string
+) => blocks.map((block) => ({ ...block, source: transformSource(block.source) }));
+
 const markdownReferenceDefinitionPattern = /^\s{0,3}(?:\[[^\]]+\]:|\[\^[^\]]+\]:)/m;
 
 const hasDocumentWideDefinitions = (source: string, tokens: Token[]) =>

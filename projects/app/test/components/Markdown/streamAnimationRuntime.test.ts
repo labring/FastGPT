@@ -4,62 +4,64 @@ import {
   resolveStreamRenderMode,
   resolveStreamBlockPlugins,
   updateStreamBlockAnimations,
-  type StreamBlockRuntime,
-  type StreamPluginsCacheEntry
+  type StreamBlockRuntime
 } from '@/components/Markdown/streamAnimationRuntime';
 
 const block = (source: string, startOffset = 0) => ({ source, startOffset });
-
-const createState = () => ({
-  pluginsCache: new Map<number, StreamPluginsCacheEntry>(),
-  revealClock: { lastTime: 0 },
-  runtimes: new Map<number, StreamBlockRuntime>()
-});
+const createState = () => ({ runtimes: new Map<number, StreamBlockRuntime>() });
 
 describe('updateStreamBlockAnimations', () => {
-  it('should defer character timeline allocation until the rendered text is known', () => {
+  it('should create one compact runtime for each block index', () => {
     const state = createState();
-    updateStreamBlockAnimations({
-      blocks: [block('ab')],
-      renderNow: 100,
-      ...state
-    });
-    const runtime = state.runtimes.get(0)!;
-    expect(runtime.rawSource).toBe('ab');
-    expect(runtime.births).toEqual([]);
-    expect(runtime.styles).toEqual([]);
-    expect(state.revealClock.lastTime).toBe(0);
-  });
-
-  it('should settle completed blocks and keep the active tail animated', () => {
-    const state = createState();
-    const blocks = [block('first', 0), block('second', 7)];
-    updateStreamBlockAnimations({ blocks, renderNow: 100, ...state });
-    state.runtimes.get(0)!.births = [100];
-
-    const meta = updateStreamBlockAnimations({ blocks, renderNow: 500, ...state });
-
-    expect(meta.get(0)?.settled).toBe(true);
-    expect(meta.get(7)?.settled).toBe(false);
-  });
-
-  it('should prune runtimes and plugin caches for removed blocks', () => {
-    const state = createState();
-    updateStreamBlockAnimations({
+    const meta = updateStreamBlockAnimations({
       blocks: [block('first', 0), block('second', 7)],
       renderNow: 100,
       ...state
     });
-    state.pluginsCache.set(7, {} as StreamPluginsCacheEntry);
+
+    expect(meta.get(0)?.runtime).toMatchObject({
+      rawSource: 'first',
+      segments: [],
+      visibleText: ''
+    });
+    expect(meta.get(1)?.runtime.rawSource).toBe('second');
+  });
+
+  it('should preserve block runtimes when formatting shifts source offsets', () => {
+    const state = createState();
+    updateStreamBlockAnimations({
+      blocks: [block('first', 0), block('second', 10)],
+      renderNow: 100,
+      ...state
+    });
+    const secondRuntime = state.runtimes.get(1);
 
     updateStreamBlockAnimations({
-      blocks: [block('first', 0)],
-      renderNow: 200,
+      blocks: [block('first ', 0), block('second', 11)],
+      renderNow: 120,
       ...state
     });
 
-    expect(state.runtimes.has(7)).toBe(false);
-    expect(state.pluginsCache.has(7)).toBe(false);
+    expect(state.runtimes.get(1)).toBe(secondRuntime);
+  });
+
+  it('should prune expired segments and removed block runtimes', () => {
+    const state = createState();
+    updateStreamBlockAnimations({
+      blocks: [block('first'), block('second', 7)],
+      renderNow: 100,
+      ...state
+    });
+    state.runtimes.get(0)!.segments = [{ bornAt: 100, end: 5, start: 0 }];
+
+    updateStreamBlockAnimations({
+      blocks: [block('first')],
+      renderNow: 800,
+      ...state
+    });
+
+    expect(state.runtimes.get(0)?.segments).toEqual([]);
+    expect(state.runtimes.has(1)).toBe(false);
   });
 });
 
@@ -72,28 +74,14 @@ describe('resolveStreamRenderMode', () => {
 });
 
 describe('resolveStreamBlockPlugins', () => {
-  it('should reuse plugins while the runtime and base plugins stay stable', () => {
+  it('should reuse one plugin list stored on the block runtime', () => {
     const state = createState();
-    updateStreamBlockAnimations({
-      blocks: [block('hello')],
-      renderNow: 100,
-      ...state
-    });
+    updateStreamBlockAnimations({ blocks: [block('hello')], renderNow: 100, ...state });
     const runtime = state.runtimes.get(0)!;
     const basePlugins = [];
 
-    const first = resolveStreamBlockPlugins({
-      basePlugins,
-      pluginsCache: state.pluginsCache,
-      runtime,
-      startOffset: 0
-    });
-    const second = resolveStreamBlockPlugins({
-      basePlugins,
-      pluginsCache: state.pluginsCache,
-      runtime,
-      startOffset: 0
-    });
+    const first = resolveStreamBlockPlugins({ basePlugins, runtime });
+    const second = resolveStreamBlockPlugins({ basePlugins, runtime });
 
     expect(second).toBe(first);
   });

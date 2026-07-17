@@ -33,6 +33,13 @@ export const uiWorkflow2StoreWorkflow = ({
   const systemConfigNode = nodes.find(
     (node) => node.data.flowNodeType === FlowNodeTypeEnum.systemConfig
   )?.data;
+  const childrenNodeIdListMap = nodes.reduce<Record<string, string[]>>((map, node) => {
+    const parentNodeId = node.data.parentNodeId;
+    if (!parentNodeId) return map;
+
+    map[parentNodeId] = [...(map[parentNodeId] ?? []), node.data.nodeId];
+    return map;
+  }, {});
 
   const formatNodes: StoreNodeItemType[] = nodes.map((item) => ({
     nodeId: item.data.nodeId,
@@ -51,7 +58,8 @@ export const uiWorkflow2StoreWorkflow = ({
       edges,
       chatConfig,
       systemConfigNode,
-      getNodeById
+      getNodeById,
+      childrenNodeIdListMap
     }),
     outputs: item.data.outputs,
     isFolded: item.data.isFolded,
@@ -95,7 +103,8 @@ const filterUnselectableReferenceInputs = ({
   edges,
   chatConfig,
   systemConfigNode,
-  getNodeById
+  getNodeById,
+  childrenNodeIdListMap
 }: {
   node: FlowNodeItemType;
   inputs: FlowNodeInputItemType[];
@@ -103,6 +112,7 @@ const filterUnselectableReferenceInputs = ({
   chatConfig?: AppChatConfigType;
   systemConfigNode?: FlowNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
+  childrenNodeIdListMap: Record<string, string[]>;
 }) => {
   return inputs.map((input) => {
     if (!nodeInputIsReference(input)) return input;
@@ -113,7 +123,9 @@ const filterUnselectableReferenceInputs = ({
       getNodeById,
       edges,
       chatConfig: chatConfig ?? ({} as AppChatConfigType),
-      t: emptyT
+      t: emptyT,
+      includeChildren: input.canEdit === true,
+      childrenNodeIdListMap
     });
 
     const value = input.value as ReferenceValueType | undefined;

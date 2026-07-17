@@ -39,7 +39,7 @@ describe('CachedMarkdown', () => {
     expect(normalizeHtml(actual)).toBe(normalizeHtml(expected));
   });
 
-  it('should render stable stream characters with a cached processor', () => {
+  it('should render one stable stream segment with a cached processor', () => {
     const html = renderToStaticMarkup(
       React.createElement(CachedMarkdown, {
         source: 'hello',
@@ -51,16 +51,16 @@ describe('CachedMarkdown', () => {
             {
               fadeDuration: 180,
               nowMs: 100,
-              runtime: { births: [100, 102, 104, 106, 108], styles: [] }
+              runtime: { segments: [], visibleText: '' }
             }
           ]
         ]
       })
     );
 
-    expect(html).toContain('class="stream-char"');
-    expect(html).toContain('animation-delay:8ms');
-    expect(html).not.toContain('stream-tail');
+    expect(html).toContain('class="stream-tail"');
+    expect(html).toContain('animation-delay:0ms');
+    expect(html.match(/class="stream-tail"/g)).toHaveLength(1);
   });
 
   it.each([

@@ -8,8 +8,11 @@ import RemarkGfm from 'remark-gfm';
 import RehypeExternalLinks from 'rehype-external-links';
 import RehypeKatex from 'rehype-katex';
 
-import { splitMarkdownBlocks } from '@/components/Markdown/streamMarkdownBlocks';
-import { prepareStreamingMarkdown } from '@/components/Markdown/utils';
+import {
+  mapMarkdownBlockSources,
+  splitMarkdownBlocks
+} from '@/components/Markdown/streamMarkdownBlocks';
+import { mdTextFormat, prepareStreamingMarkdown } from '@/components/Markdown/utils';
 
 describe('splitMarkdownBlocks', () => {
   it('should return no blocks for empty source', () => {
@@ -110,6 +113,21 @@ describe('splitMarkdownBlocks', () => {
       expect(splitMarkdownBlocks(source)).toEqual([{ source, startOffset: 0 }]);
     }
   );
+
+  it('should keep later block offsets stable when completion formatting grows an earlier block', () => {
+    const source = [
+      '[form](https://fastgpt.cn/form)[6a3a5576d8bf2d6b2f290c26](CITE)。',
+      '### 获取支持',
+      '后续内容'
+    ].join('\n\n');
+    const blocks = splitMarkdownBlocks(source);
+    const formattedBlocks = mapMarkdownBlockSources(blocks, mdTextFormat);
+
+    expect(formattedBlocks[0].source).toContain(') [6a3a5576d8bf2d6b2f290c26](CITE)');
+    expect(formattedBlocks.map((block) => block.startOffset)).toEqual(
+      blocks.map((block) => block.startOffset)
+    );
+  });
 
   it('should preserve rendered HTML when stable blocks are rendered independently', () => {
     const source =

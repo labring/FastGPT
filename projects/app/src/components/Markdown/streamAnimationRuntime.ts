@@ -4,23 +4,20 @@ import type { StreamAnimatedRuntime } from './rehypeStreamAnimated';
 import { getStreamAnimationNow, rehypeStreamAnimated } from './rehypeStreamAnimated';
 import type { MarkdownBlock } from './streamMarkdownBlocks';
 
-export const STREAM_FADE_DURATION_MS = 180;
+export const STREAM_FADE_DURATION_MS = 500;
 export { getStreamAnimationNow };
 
 export type StreamBlockRuntime = StreamAnimatedRuntime & {
   rawSource: string;
-  settled: boolean;
+  pluginCache?: {
+    basePlugins: PluggableList;
+    value: PluggableList;
+  };
 };
 
 export type StreamBlockAnimationMeta = {
   runtime: StreamBlockRuntime;
-  settled: boolean;
-};
-
-export type StreamPluginsCacheEntry = {
-  basePlugins: PluggableList;
-  runtime: StreamBlockRuntime;
-  value: PluggableList;
+  shouldAnimate: boolean;
 };
 
 /** 流式实例结束后继续使用 block 渲染，避免完成态切换渲染器导致整棵 DOM 重建。 */
@@ -32,94 +29,68 @@ export const resolveStreamRenderMode = ({
   showAnimation?: boolean;
 }) => hasStreamed || !!showAnimation;
 
-type UpdateStreamBlockAnimationsParams = {
-  blocks: MarkdownBlock[];
-  renderNow: number;
-  revealClock: { lastTime: number };
-  runtimes: Map<number, StreamBlockRuntime>;
-  pluginsCache: Map<number, StreamPluginsCacheEntry>;
-};
-
 /**
- * 维护各 Markdown block 的 runtime，并清理已经离开当前文档的缓存。
+ * 按 block 顺序维护动画 runtime。
  *
- * 字符时间线由 rehype 在获得最终可见文本后更新；这里仅跟踪源码、block 生命周期和
- * settled 状态，避免 Markdown 控制符及虚拟闭合符占用可见字符下标。
+ * 字符 offset 只用于源码切片，不作为生命周期身份；完成态格式化导致 offset 改变时，
+ * 同一顺序的 block 仍复用原 runtime。过期 segment 和已经离开文档的 runtime 会及时清理。
  */
 export const updateStreamBlockAnimations = ({
   blocks,
   renderNow,
-  revealClock,
-  runtimes,
-  pluginsCache
-}: UpdateStreamBlockAnimationsParams) => {
+  runtimes
+}: {
+  blocks: MarkdownBlock[];
+  renderNow: number;
+  runtimes: Map<number, StreamBlockRuntime>;
+}) => {
   const animationMeta = new Map<number, StreamBlockAnimationMeta>();
-  const aliveOffsets = new Set<number>();
 
-  blocks.forEach((block, index) => {
-    aliveOffsets.add(block.startOffset);
-
-    let runtime = runtimes.get(block.startOffset);
+  blocks.forEach((block, blockIndex) => {
+    let runtime = runtimes.get(blockIndex);
     if (!runtime) {
       runtime = {
-        births: [],
         rawSource: '',
-        revealClock,
-        settled: false,
-        styles: [],
+        segments: [],
         visibleText: ''
       };
-      runtimes.set(block.startOffset, runtime);
+      runtimes.set(blockIndex, runtime);
     }
 
-    if (runtime.rawSource !== block.source) {
-      runtime.rawSource = block.source;
-      runtime.settled = false;
-    }
+    runtime.segments = runtime.segments.filter(
+      (segment) => renderNow - segment.bornAt < STREAM_FADE_DURATION_MS
+    );
+    const sourceChanged = runtime.rawSource !== block.source;
+    runtime.rawSource = block.source;
 
-    const lastBirthTime = runtime.births.at(-1) ?? renderNow;
-    const isStreamingBlock = index === blocks.length - 1;
-    if (!isStreamingBlock && renderNow - lastBirthTime >= STREAM_FADE_DURATION_MS) {
-      runtime.settled = true;
-    }
-
-    animationMeta.set(block.startOffset, {
+    animationMeta.set(blockIndex, {
       runtime,
-      settled: runtime.settled
+      shouldAnimate:
+        sourceChanged || runtime.segments.length > 0 || blockIndex === blocks.length - 1
     });
   });
 
-  for (const offset of runtimes.keys()) {
-    if (!aliveOffsets.has(offset)) {
-      runtimes.delete(offset);
-      pluginsCache.delete(offset);
-    }
+  for (const blockIndex of runtimes.keys()) {
+    if (blockIndex >= blocks.length) runtimes.delete(blockIndex);
   }
 
   return animationMeta;
 };
 
-/** 为活动 block 复用同一组 rehype 插件，避免每次流式 commit 重建 unified processor。 */
+/** 为同一个 block runtime 复用插件数组，保证已完成 block 可以命中 React.memo。 */
 export const resolveStreamBlockPlugins = ({
   basePlugins,
-  pluginsCache,
-  runtime,
-  startOffset
+  runtime
 }: {
   basePlugins: PluggableList;
-  pluginsCache: Map<number, StreamPluginsCacheEntry>;
   runtime: StreamBlockRuntime;
-  startOffset: number;
 }) => {
-  const cached = pluginsCache.get(startOffset);
-  if (cached?.basePlugins === basePlugins && cached.runtime === runtime) {
-    return cached.value;
-  }
+  if (runtime.pluginCache?.basePlugins === basePlugins) return runtime.pluginCache.value;
 
   const value: PluggableList = [
     ...basePlugins,
     [rehypeStreamAnimated, { fadeDuration: STREAM_FADE_DURATION_MS, runtime }]
   ];
-  pluginsCache.set(startOffset, { basePlugins, runtime, value });
+  runtime.pluginCache = { basePlugins, value };
   return value;
 };
