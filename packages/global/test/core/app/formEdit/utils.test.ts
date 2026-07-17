@@ -113,36 +113,20 @@ describe('validateToolConfiguration', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false for selectDataset input type', () => {
+    it.each([
+      FlowNodeInputTypeEnum.selectDataset,
+      FlowNodeInputTypeEnum.selectDatasetParamsModal,
+      FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
+      FlowNodeInputTypeEnum.addInputParam,
+      FlowNodeInputTypeEnum.selectLLMModel,
+      FlowNodeInputTypeEnum.settingLLMModel,
+      FlowNodeInputTypeEnum.customVariable
+    ])('should return false for unsupported input type %s', (renderType) => {
       const toolTemplate = createMockToolTemplate([
-        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.selectDataset] })
+        createMockInput({ renderTypeList: [renderType] })
       ]);
-      const result = validateToolConfiguration({ toolTemplate });
-      expect(result).toBe(false);
-    });
 
-    it('should return false for addInputParam input type', () => {
-      const toolTemplate = createMockToolTemplate([
-        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.addInputParam] })
-      ]);
-      const result = validateToolConfiguration({ toolTemplate });
-      expect(result).toBe(false);
-    });
-
-    it('should return false for selectLLMModel input type', () => {
-      const toolTemplate = createMockToolTemplate([
-        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel] })
-      ]);
-      const result = validateToolConfiguration({ toolTemplate });
-      expect(result).toBe(false);
-    });
-
-    it('should return false for settingLLMModel input type', () => {
-      const toolTemplate = createMockToolTemplate([
-        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel] })
-      ]);
-      const result = validateToolConfiguration({ toolTemplate });
-      expect(result).toBe(false);
+      expect(validateToolConfiguration({ toolTemplate })).toBe(false);
     });
 
     it('should return false for fileSelect input type (always invalid as special type)', () => {
@@ -152,6 +136,19 @@ describe('validateToolConfiguration', () => {
       // fileSelect is in the special input types list, so it's always invalid
       const result = validateToolConfiguration({ toolTemplate, canUploadFile: true });
       expect(result).toBe(false);
+    });
+
+    it('should return false when an agent-generated input uses a special render type', () => {
+      const toolTemplate = createMockToolTemplate([
+        createMockInput({
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.selectDatasetParamsModal
+          ]
+        })
+      ]);
+
+      expect(validateToolConfiguration({ toolTemplate })).toBe(false);
     });
   });
 

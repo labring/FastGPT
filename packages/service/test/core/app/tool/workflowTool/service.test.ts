@@ -57,9 +57,18 @@ describe('validateSystemToolWorkflowAssociation', () => {
     await expect(validateSystemToolWorkflowAssociation('app-id')).resolves.toBeUndefined();
   });
 
-  it('rejects unsupported inputs', async () => {
+  it.each([
+    FlowNodeInputTypeEnum.fileSelect,
+    FlowNodeInputTypeEnum.selectDataset,
+    FlowNodeInputTypeEnum.selectDatasetParamsModal,
+    FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
+    FlowNodeInputTypeEnum.selectLLMModel,
+    FlowNodeInputTypeEnum.settingLLMModel,
+    FlowNodeInputTypeEnum.customVariable,
+    FlowNodeInputTypeEnum.addInputParam
+  ])('rejects unsupported input type %s', async (renderType) => {
     mocks.getAppLatestVersion.mockResolvedValueOnce({
-      nodes: createNodes([FlowNodeInputTypeEnum.selectDataset])
+      nodes: createNodes([renderType])
     });
 
     await expect(validateSystemToolWorkflowAssociation('app-id')).rejects.toThrow(

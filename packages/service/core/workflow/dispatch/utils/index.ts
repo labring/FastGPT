@@ -18,6 +18,8 @@ import {
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
+  getHTTPToolInputSchema,
+  getHTTPToolRequestSchema,
   getHTTPToolRuntimeNode,
   parseHttpToolConfig
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
@@ -34,7 +36,11 @@ import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../../app/http';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
-import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  getSavedToolInputSelectedType,
+  initToolInputsTypeByDefaultMode
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -505,6 +511,58 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
+  const mergeToolNodeInputs = ({
+    node,
+    jsonSchema,
+    schemaType
+  }: {
+    node: RuntimeNodeItemType;
+    jsonSchema?: Parameters<typeof jsonSchema2NodeInput>[0]['jsonSchema'];
+    schemaType: 'mcp' | 'http';
+  }) => {
+    const schemaInputs = jsonSchema2NodeInput({ jsonSchema, schemaType });
+    if (!schemaInputs.length) return;
+
+    const savedInputMap = new Map(node.inputs.map((input) => [input.key, input]));
+    node.inputs = initToolInputsTypeByDefaultMode(
+      schemaInputs.map((input) => {
+        const savedInput = savedInputMap.get(input.key);
+        if (!savedInput) return input;
+
+        const selectedType = getSavedToolInputSelectedType({
+          savedInput,
+          defaultInput: input
+        });
+        const renderTypeList = selectedType
+          ? Array.from(
+              new Set([selectedType, ...savedInput.renderTypeList, ...input.renderTypeList])
+            )
+          : (savedInput.renderTypeList ?? input.renderTypeList);
+        const selectedTypeIndex = selectedType
+          ? renderTypeList.findIndex((type) => type === selectedType)
+          : undefined;
+
+        return {
+          ...input,
+          ...(Object.prototype.hasOwnProperty.call(savedInput, 'value')
+            ? { value: savedInput.value }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(savedInput, 'valueDesc')
+            ? { valueDesc: savedInput.valueDesc }
+            : {}),
+          renderTypeList,
+          selectedType,
+          selectedTypeIndex:
+            selectedTypeIndex !== undefined && selectedTypeIndex >= 0
+              ? selectedTypeIndex
+              : undefined,
+          isToolParam: input.isToolParam ?? savedInput.isToolParam,
+          toolDescription: savedInput.toolDescription ?? input.toolDescription
+        };
+      })
+    );
+  };
+
   /**
    * ToolSet 展开后的子工具统一由 Agent 生成参数。这里仅修改 runtime 临时节点，
    * 不回写工作流配置，避免把 isToolParam 变成用户配置字段。
@@ -652,6 +710,7 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolRaw) return;
       node.jsonSchema = toolRaw.inputSchema;
       node.intro = toolRaw.description;
+      mergeToolNodeInputs({ node, jsonSchema: toolRaw.inputSchema, schemaType: 'mcp' });
     });
   };
 
@@ -689,8 +748,13 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolList) return;
       const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;
-      node.jsonSchema = toolRaw.requestSchema;
+      node.jsonSchema = getHTTPToolRequestSchema(toolRaw);
       node.intro = toolRaw.description;
+      mergeToolNodeInputs({
+        node,
+        jsonSchema: getHTTPToolInputSchema(toolRaw),
+        schemaType: 'http'
+      });
     });
   };
 

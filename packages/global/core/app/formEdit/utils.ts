@@ -34,6 +34,18 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.settingDatasetQuotePrompt
 ]);
 
+// 工具配置不能处理依赖文件、知识库、模型或外部动态上下文的输入。
+const unsupportedToolInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
+  FlowNodeInputTypeEnum.fileSelect,
+  FlowNodeInputTypeEnum.selectDataset,
+  FlowNodeInputTypeEnum.selectDatasetParamsModal,
+  FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
+  FlowNodeInputTypeEnum.selectLLMModel,
+  FlowNodeInputTypeEnum.settingLLMModel,
+  FlowNodeInputTypeEnum.customVariable,
+  FlowNodeInputTypeEnum.addInputParam
+]);
+
 type InputRenderTypeState = {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
@@ -355,7 +367,9 @@ export const validateToolConfiguration = ({
 
   // 检查是否有无效的输入配置
   const hasInvalidInput = toolTemplate.inputs.some((input) => {
-    if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) return false;
+    if (isAgentGeneratedToolInput(input)) {
+      return !canInputBeAgentGenerated(input);
+    }
 
     // 引用类型但没有工具描述
     if (
@@ -372,15 +386,7 @@ export const validateToolConfiguration = ({
     }
 
     // 包含特殊输入类型
-    const list = [
-      FlowNodeInputTypeEnum.selectDataset,
-      FlowNodeInputTypeEnum.addInputParam,
-      FlowNodeInputTypeEnum.selectLLMModel,
-      FlowNodeInputTypeEnum.settingLLMModel,
-      FlowNodeInputTypeEnum.fileSelect
-    ];
-
-    if (list.some((type) => input.renderTypeList.includes(type))) {
+    if (input.renderTypeList.some((type) => unsupportedToolInputRenderTypes.has(type))) {
       return true;
     }
     return false;

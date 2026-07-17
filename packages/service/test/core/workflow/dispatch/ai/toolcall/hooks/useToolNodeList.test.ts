@@ -149,6 +149,46 @@ describe('useToolNodeList', () => {
     ]);
   });
 
+  it('migrates legacy selectedTypeIndex 0 to the schema default', () => {
+    const result = useToolNodeList({
+      nodeId: 'toolcall',
+      runtimeEdges: [
+        {
+          source: 'toolcall',
+          target: 'tool_1',
+          targetHandle: NodeOutputKeyEnum.selectedTools
+        }
+      ] as any,
+      runtimeNodes: [
+        createToolNode({
+          inputs: [
+            {
+              key: 'query',
+              valueType: 'string',
+              required: true,
+              isToolParam: true,
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+              selectedTypeIndex: 0
+            }
+          ]
+        })
+      ]
+    });
+
+    expect(result[0].toolParams).toEqual([
+      expect.objectContaining({
+        key: 'query',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.reference
+        ]
+      })
+    ]);
+  });
+
   it('keeps existing jsonSchema when no toolData schema is provided', () => {
     const jsonSchema = {
       type: 'object',
