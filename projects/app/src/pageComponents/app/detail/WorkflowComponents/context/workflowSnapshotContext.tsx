@@ -9,14 +9,12 @@ import {
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
-import { normalizeWorkflowStartAutoFillReferencesOnLoad } from '@/web/core/workflow/workflowStartAutoFill';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
   title: string;
@@ -112,7 +110,9 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
   const [past, setPast] = useState<WorkflowSnapshotsType[]>([]);
   const [future, setFuture] = useState<WorkflowSnapshotsType[]>([]);
 
-  const pushPastSnapshotRef = useRef<WorkflowSnapshotContextValue['pushPastSnapshot']>(undefined);
+  const pushPastSnapshotRef = useRef<WorkflowSnapshotContextValue['pushPastSnapshot'] | undefined>(
+    undefined
+  );
 
   // 待保存快照队列机制 - 解决竞态条件，确保数据不丢失
   const pendingSnapshotRef = useRef<{
@@ -296,14 +296,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
       const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
-      const storeNodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
-      const nodes = normalizeWorkflowStartAutoFillReferencesOnLoad({
-        nodes: storeNodes,
-        edges,
-        workflowStartNode: storeNodes.find(
-          (node) => node.data.flowNodeType === FlowNodeTypeEnum.workflowStart
-        )?.data
-      });
+      const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
       const chatConfig = appVersion.chatConfig;
 
       resetSnapshot({

@@ -409,14 +409,6 @@ const isUnsetReferenceValue = (value: unknown) => {
   return false;
 };
 
-/** 引用曾经有效配置过，但目标节点或输出已不存在（如上游节点被删除）。 */
-const isStaleReferenceValue = (value: unknown, context: WorkflowCheckContext) => {
-  if (!isValidReferenceValueFormat(value)) return false;
-  const [refNodeId, refOutputId] = value;
-  if (!refNodeId || !refOutputId) return false;
-  return !referenceValueIsLive(value as ReferenceItemValueType, context);
-};
-
 const isEmptyReferenceInputValue = (value: unknown, isArrayType: boolean) => {
   if (isArrayType) {
     return !Array.isArray(value) || value.length === 0;
@@ -793,33 +785,6 @@ export const checkWorkflowNodeIssues = ({
             }),
             inputKey: input.key
           });
-        }
-
-        if (isReferenceInput) {
-          if (isArrayReference) {
-            const value = Array.isArray(input.value) ? input.value : [];
-            const hasStaleReference = value.some((item) => isStaleReferenceValue(item, context));
-
-            if (hasStaleReference) {
-              addIssue({
-                node,
-                code: 'invalid_reference',
-                message: getWorkflowCheckIssueMessage('invalid_reference', t, {
-                  inputName: getInputLabel(input, t)
-                }),
-                inputKey: input.key
-              });
-            }
-          } else if (isStaleReferenceValue(input.value, context)) {
-            addIssue({
-              node,
-              code: 'invalid_reference',
-              message: getWorkflowCheckIssueMessage('invalid_reference', t, {
-                inputName: getInputLabel(input, t)
-              }),
-              inputKey: input.key
-            });
-          }
         }
       });
     }

@@ -32,7 +32,6 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '../../context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
-import { normalizeWorkflowStartAutoFillReferencesOnLoad } from '@/web/core/workflow/workflowStartAutoFill';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -168,8 +167,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   // 将 UI 流程数据转换为存储格式
   const flowData2StoreData = useCallback(() => {
     const nodes = getNodes();
-    return uiWorkflow2StoreWorkflow({ nodes, edges });
-  }, [getNodes, edges]);
+    return uiWorkflow2StoreWorkflow({ nodes, edges, chatConfig: appDetail.chatConfig });
+  }, [getNodes, edges, appDetail.chatConfig]);
 
   // 转换并验证工作流数据
   const flowData2StoreDataAndCheck = useCallback(
@@ -215,7 +214,11 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
       if (!hasError) {
         onRemoveError();
-        const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+        const storeWorkflow = uiWorkflow2StoreWorkflow({
+          nodes,
+          edges,
+          chatConfig: appDetail.chatConfig
+        });
 
         return storeWorkflow;
       }
@@ -250,6 +253,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       onUpdateNodeError,
       showSandbox,
       enableSandbox,
+      appDetail.chatConfig,
       toast
     ]
   );
@@ -283,15 +287,8 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     ) => {
       adaptCatchError(e.nodes, e.edges);
 
-      const storeNodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
+      const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
-      const nodes = normalizeWorkflowStartAutoFillReferencesOnLoad({
-        nodes: storeNodes,
-        edges,
-        workflowStartNode: storeNodes.find(
-          (node) => node.data.flowNodeType === FlowNodeTypeEnum.workflowStart
-        )?.data
-      });
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
