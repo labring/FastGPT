@@ -23,7 +23,7 @@
 - `{ key, type }` 唯一索引上线和生产数据清理；
 - `pro/sso` 协议、进程级回调缓存、多实例行为和 PKCE 等专项安全升级。
 
-未纳入范围的旧调用方继续使用旧入口。只有全部旧调用方迁移完成后，后续需求才能删除旧 `support/user/auth` 路径。
+未纳入范围的旧调用方继续使用旧入口。只有全部旧调用方迁移完成后，后续需求才能删除旧 `support/user/auth` 路径；迁移期间旧验证码消费入口仍必须复用统一的 Redis 提交频控，不能保留无限尝试路径。
 
 ## 3. 兼容约束
 
@@ -38,6 +38,7 @@
 9. 微信 callback token 沿用既有源码常量 `WX_AUTH_TOKEN`，后台只配置 AppID 和 AppSecret，不新增 token 配置入口。
 10. Pro 始终向 SSO 传 state；SSO 回调带 state 时完整校验，完全无 state 时按旧协议 code-only；非 SSO Provider 缺 state 时拒绝。
 11. 不增加 OAuth/SSO 版本 capability 或其它兼容开关，不要求 SSO 响应声明能力，也不修改 `pro/sso`。
+12. 短信/邮件验证码提交在读取材料前按 Redis `account + scene` 累加 60 秒固定窗口计数；前 10 次允许，第 11 次起返回“验证过于频繁，请稍后再试”。统一 `CodeAccountVerification.consume` 与迁移期旧 `authCode` 使用同一策略。
 
 ## 4. 目标调用关系
 
@@ -71,6 +72,7 @@ API
 - [x] 实现 loginExternalAccount，迁移微信/OAuth 登录 API。
 - [x] 前端 OAuth 改为服务端 create state；直连 Provider callback 必填 state，旧 SSO callback 可完全省略 state。
 - [x] 补 resolver、材料、密码、验证码、Provider 和 API 定向测试。
+- [x] 为统一验证码 consume 和旧 `authCode` 增加 Redis `account + scene` 提交频控，覆盖 1 分钟 10 次边界与场景隔离。
 - [x] 运行 Global/Service/App/Admin 定向测试与 App/Admin typecheck。
 - [x] 最终运行 lint、仓库全量测试和 `git diff --check`。
 
@@ -79,6 +81,7 @@ API
 - 验证材料过期后即使 TTL 尚未清理也不能消费；并发消费最多一个成功。
 - 密码错误和用户不存在保持统一错误；Wecom 仍不能通过密码登录创建 Session。
 - 注册与找回密码验证码 scene 不可串用，重发后旧码失效。
+- 验证码提交按账号与 scene 独立计数，前 10 次进入校验，第 11 次起返回频控错误；旧绑定入口不能绕过该限制。
 - 微信同一 scene 最多创建一个登录 Session。
 - OAuth state 短期、一次性，并绑定 Provider 与 callback；第三方 token/secret 不进入日志或响应。
 - 外部登录拒绝 forbidden 用户，同时保持既有用户创建、团队和联系方式行为。
