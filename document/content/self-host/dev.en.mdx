@@ -6,18 +6,18 @@ description: Develop and debug FastGPT locally
 import { Alert } from '@/components/docs/Alert';
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-This guide covers how to set up your development environment to build and test <FastGPTLink>FastGPT</FastGPTLink>.
+This guide covers how to set up your development environment to build and test <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">FastGPT</FastGPTLink>.
 
 ## Prerequisites
 
-Install and configure these dependencies on your machine to build <FastGPTLink>FastGPT</FastGPTLink>:
+Install and configure these dependencies on your machine to build <FastGPTLink campaign="docs_self_host_dev" content="prerequisites_product_link">FastGPT</FastGPTLink>:
 
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/)
 - [Node.js v20.14.0](https://nodejs.org) (match this version closely; use [nvm](https://github.com/nvm-sh/nvm) to manage Node versions)
 - [pnpm](https://pnpm.io/) recommended version 9.4.0 (current official dev environment)
 
-We recommend developing on *nix environments (Linux, macOS, Windows WSL).
+We recommend developing on \*nix environments (Linux, macOS, Windows WSL).
 
 ## Local Development
 
@@ -33,7 +33,6 @@ Clone your forked repository from GitHub:
 git clone git@github.com:<your_github_username>/FastGPT.git
 ```
 
-
 ### 3. Start the Development Environment with Docker
 
 If you're already running FastGPT locally via Docker, stop it first to avoid port conflicts.
@@ -46,8 +45,9 @@ docker compose up -d
 ```
 
 <Alert context="warning">
-    1. If you can't pull images, use the China mirror version: `docker compose -f docker-compose.cn.yml up -d`
-    2. For MongoDB, add the `directConnection=true` parameter to your connection string to connect to the replica set.
+  1. If you can't pull images, use the China mirror version: `docker compose -f
+  docker-compose.cn.yml up -d` 2. For MongoDB, add the `directConnection=true` parameter to your
+  connection string to connect to the replica set.
 </Alert>
 
 ### 4. Initial Configuration
@@ -103,6 +103,7 @@ Next.js runs on port 3000 by default. Visit http://localhost:3000
 ### 6. Build
 
 We recommend using Docker for builds.
+
 ```bash
 # Without proxy
 docker build -f ./projects/app/Dockerfile -t fastgpt . --build-arg name=app

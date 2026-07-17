@@ -43,7 +43,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=FastGPT Docs Preview
           build-args: |
-            FASTGPT_HOME_DOMAIN=https://fastgpt.io?utm_source=docs&utm_medium=referral&utm_campaign=docs_home
+            FASTGPT_HOME_DOMAIN=https://fastgpt.io
           outputs: type=docker,dest=/tmp/docs-image.tar
           cache-from: type=gha,scope=docs
           cache-to: type=gha,mode=max,scope=docs

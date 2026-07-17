@@ -12,6 +12,7 @@ import {
   getSchemaValueType,
   nodeInputs2JsonSchema,
   nodeOutputs2JsonSchema,
+  parseToolParamJsonSchema,
   str2OpenApiSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
@@ -20,6 +21,68 @@ import {
   FlowNodeInputItemTypeSchema,
   InputConfigInputTypeEnum
 } from '@fastgpt/global/core/workflow/type/io';
+
+describe('parseToolParamJsonSchema', () => {
+  it('should parse a recursively valid property schema', () => {
+    const result = parseToolParamJsonSchema(
+      JSON.stringify({
+        type: 'object',
+        description: ' User information ',
+        properties: {
+          name: { type: 'string' },
+          tags: { type: 'array', items: { type: 'string' } }
+        },
+        required: ['name']
+      })
+    );
+
+    expect(result.description).toBe('User information');
+    expect(result.valueType).toBe(WorkflowIOValueTypeEnum.object);
+    expect(result.schema.properties?.tags).toEqual({
+      type: 'array',
+      items: { type: 'string' }
+    });
+  });
+
+  it.each([
+    ['invalid JSON', '{'],
+    ['missing root type', JSON.stringify({ description: 'Missing type' })],
+    ['invalid root type', JSON.stringify({ type: 'invalid', description: 'Invalid type' })],
+    [
+      'missing nested type',
+      JSON.stringify({
+        type: 'object',
+        description: 'Object',
+        properties: { name: {} }
+      })
+    ],
+    [
+      'invalid nested type',
+      JSON.stringify({
+        type: 'object',
+        description: 'Object',
+        properties: { name: { type: 'invalid' } }
+      })
+    ],
+    [
+      'properties on a non-object',
+      JSON.stringify({ type: 'string', description: 'String', properties: {} })
+    ],
+    ['array without items', JSON.stringify({ type: 'array', description: 'Array' })],
+    [
+      'undefined required field',
+      JSON.stringify({
+        type: 'object',
+        description: 'Object',
+        properties: { name: { type: 'string' } },
+        required: ['missing']
+      })
+    ],
+    ['missing description', JSON.stringify({ type: 'string' })]
+  ])('should reject %s', (_case, schema) => {
+    expect(() => parseToolParamJsonSchema(schema)).toThrow();
+  });
+});
 
 describe('jsonSchema2NodeInput', () => {
   it('should return correct node input for http schema', () => {
@@ -574,6 +637,43 @@ describe('jsonSchema2NodeOutput', () => {
 });
 
 describe('nodeInputs2JsonSchema', () => {
+  it('should preserve a custom property schema and use the input required switch', () => {
+    const result = nodeInputs2JsonSchema({
+      inputs: [
+        {
+          key: 'userInfo',
+          label: 'userInfo',
+          valueType: WorkflowIOValueTypeEnum.object,
+          toolDescription: 'User information',
+          required: false,
+          renderTypeList: ['reference'],
+          customJsonSchema: {
+            type: 'object',
+            description: 'User information',
+            properties: {
+              name: { type: 'string' }
+            },
+            additionalProperties: false
+          }
+        }
+      ]
+    });
+
+    expect(result).toEqual({
+      type: 'object',
+      properties: {
+        userInfo: {
+          type: 'object',
+          description: 'User information',
+          properties: {
+            name: { type: 'string' }
+          },
+          additionalProperties: false
+        }
+      }
+    });
+  });
+
   it('should convert node inputs to json schema properties', () => {
     const result = nodeInputs2JsonSchema({
       inputs: [

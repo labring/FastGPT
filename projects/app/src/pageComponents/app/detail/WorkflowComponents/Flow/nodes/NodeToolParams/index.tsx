@@ -4,7 +4,6 @@ import NodeCard from '../render/NodeCard';
 import React, { useMemo, useState } from 'react';
 import Container from '../../components/Container';
 import {
-  Box,
   Button,
   Flex,
   FormLabel,
@@ -69,6 +68,9 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   <Th p={0} px={4} bg={'myGray.50'}>
                     {t('workflow:tool_params.params_description')}
                   </Th>
+                  <Th p={0} px={4} bg={'myGray.50'}>
+                    {t('workflow:field_required')}
+                  </Th>
                   <Th p={0} px={4} bg={'myGray.50'} borderBottomRightRadius={'none !important'}>
                     {t('common:Operation')}
                   </Th>
@@ -100,6 +102,14 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       fontSize={'xs'}
                     >
                       {item.toolDescription}
+                    </Td>
+                    <Td
+                      p={0}
+                      px={4}
+                      borderBottom={index === inputs.length - 1 ? 'none' : undefined}
+                      fontSize={'xs'}
+                    >
+                      {item.required ? '✔' : ''}
                     </Td>
                     <Td
                       p={0}

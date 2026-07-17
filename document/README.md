@@ -6,7 +6,7 @@
 要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
 
 ```bash
-FASTGPT_HOME_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
+FASTGPT_HOME_DOMAIN=https://fastgpt.io # 只填写 origin，不携带路径或查询参数
 ```
 
 你可以在FastGPT项目根目录下执行以下命令来运行文档。
@@ -29,11 +29,12 @@ icon: menu #icon采用`lucide-react`第三方库。
 ---
 
 import { Alert } from '@/components/docs/Alert'; #高亮块组件
+import FastGPTLink from '@/components/docs/linkFastGPT';
 
 <Alert icon="🤖" context="success">
 快速开始体验
-- 海外版：[https://fastgpt.io/?utm_source=docs&utm_medium=referral&utm_campaign=docs_home](https://fastgpt.io/?utm_source=docs&utm_medium=referral&utm_campaign=docs_home)
-- 中国大陆：[https://fastgpt.cn/?utm_source=github&utm_medium=referral&utm_campaign=github_home](https://fastgpt.cn/?utm_source=github&utm_medium=referral&utm_campaign=github_home)
+- 海外版：<FastGPTLink campaign="docs_getting_started" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink>
+- 中国大陆：<FastGPTLink campaign="docs_getting_started" content="cloud_entry_cn" site="cn">{'https://fastgpt.cn'}</FastGPTLink>
 </Alert>
 
 import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你希望用户点击这个文件跳转到别的文件的话，详情参考 `FAQ`的`Docker 部署问题`文档。
@@ -45,12 +46,14 @@ import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你
   <Tab value="Rust">Rust is fast</Tab>
 
 
-import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组件，通过接收一个域名环境变量，来实现跳转到海外或者国内
+import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组件，根据域名环境变量和传入的归因参数生成链接
 
-本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink>FastGPT</FastGPTLink>。
+本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">FastGPT</FastGPTLink>。
 </Tabs>
 
 ```
+
+新增跳转 FastGPT 官网的链接时，请同步登记并复用 [UTM 归因规范](./UTM_ATTRIBUTION.md) 中的 `utm_campaign` 和 `utm_content`。
 
 在书写完文档后，需要在对应的目录下的`meta.json`文件的`pages`字段合适位置添加自己的文件名。例如在`content/docs`(默认这是所有文档的根目录)的`introduction`目录下书写了一个`hello.mdx`文件。则需要去`introduction`目录下的`meta.json`添加以下内容:
 

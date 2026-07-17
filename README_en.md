@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://fastgpt.io?utm_source=github&utm_medium=referral&utm_campaign=github_home/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.io/?utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=logo"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -18,7 +18,7 @@ FastGPT is an AI Agent building platform that provides out-of-the-box capabiliti
 </div>
 
 <p align="center">
-  <a href="https://fastgpt.io?utm_source=github&utm_medium=referral&utm_campaign=github_home/">
+  <a href="https://fastgpt.io/?utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_badge">
     <img height="21" src="https://img.shields.io/badge/Online_Usage-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/guide/getting-started">
@@ -52,7 +52,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 ## 🛸 Usage
 
 - **Cloud Version**  
-  If you don't need private deployment, you can directly use our cloud service at: [fastgpt.io](https://fastgpt.io?utm_source=github&utm_medium=referral&utm_campaign=github_home/)
+  If you don't need private deployment, you can directly use our cloud service at: [fastgpt.io](https://fastgpt.io/?utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_service_link)
 
 - **Community Self-Hosted Version**  
   You can quickly deploy using [Docker](https://doc.fastgpt.io/self-host/deploy/docker) or use [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) to deploy FastGPT with one click.

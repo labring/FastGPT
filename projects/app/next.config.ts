@@ -30,7 +30,6 @@ const securityHeaders = [
 const optimizedPackageImports = [
   '@chakra-ui/react',
   '@chakra-ui/icons',
-  'lodash',
   'framer-motion',
   '@emotion/react',
   '@emotion/styled'

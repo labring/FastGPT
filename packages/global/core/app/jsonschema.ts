@@ -70,6 +70,65 @@ export const JsonSchemaPropertiesItemSchema = z
   .catchall(z.any());
 export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
 
+const ToolParamJsonSchemaTypeSchema = z.enum([
+  'string',
+  'number',
+  'integer',
+  'boolean',
+  'object',
+  'array',
+  'null'
+]);
+
+/** 手工工具参数使用的严格 JSON Schema，递归校验每一层的 type 和结构关系。 */
+export const ToolParamJsonSchemaSchema: z.ZodType<JsonSchemaPropertiesItemType> = z.lazy(() =>
+  JsonSchemaPropertiesItemSchema.extend({
+    type: ToolParamJsonSchemaTypeSchema,
+    properties: z.record(z.string(), ToolParamJsonSchemaSchema).optional(),
+    items: ToolParamJsonSchemaSchema.optional()
+  }).superRefine((schema, ctx) => {
+    if (schema.properties && schema.type !== 'object') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['properties'],
+        message: 'properties is only allowed when type is object'
+      });
+    }
+    if (schema.required && schema.type !== 'object') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['required'],
+        message: 'required is only allowed when type is object'
+      });
+    }
+    if (schema.items && schema.type !== 'array') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['items'],
+        message: 'items is only allowed when type is array'
+      });
+    }
+    if (schema.type === 'array' && !schema.items) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['items'],
+        message: 'items is required when type is array'
+      });
+    }
+
+    const propertyKeys = new Set(Object.keys(schema.properties ?? {}));
+    schema.required?.forEach((key, index) => {
+      if (!propertyKeys.has(key)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['required', index],
+          message: `required field ${key} is not defined in properties`
+        });
+      }
+    });
+  })
+);
+
 export const JSONSchemaInputTypeSchema = z
   .object({
     type: z.any().optional(),
@@ -115,6 +174,25 @@ export const getNodeInputTypeFromSchemaInputType = ({
 
   return WorkflowIOValueTypeEnum.arrayAny;
 };
+
+/** 解析并严格校验手工工具参数 Schema，同时提取参数描述和工作流值类型。 */
+export const parseToolParamJsonSchema = (schemaString: string) => {
+  const schema = ToolParamJsonSchemaSchema.parse(JSON.parse(schemaString));
+  const description = schema.description?.trim();
+  if (!description) {
+    throw new Error('JSON Schema property description is required');
+  }
+
+  return {
+    description,
+    schema,
+    valueType: getNodeInputTypeFromSchemaInputType({
+      type: schema.type,
+      arrayItems: schema.items
+    })
+  };
+};
+
 const getNodeInputRenderTypeFromSchemaInputType = ({
   type,
   items,
@@ -436,6 +514,10 @@ const setEnumValuesToJsonSchemaProperty = ({
 export const nodeInput2JsonSchemaProperty = (
   input: FlowNodeInputItemType
 ): JsonSchemaPropertiesItemType => {
+  if (input.customJsonSchema) {
+    return cloneJsonSchemaProperty(input.customJsonSchema);
+  }
+
   const schema = setEnumValuesToJsonSchemaProperty({
     schema: getJsonSchemaPropertyFromValueType(input.valueType),
     enumValues: getEnumValuesFromNodeInput(input)

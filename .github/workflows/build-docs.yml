@@ -69,9 +69,9 @@ jobs:
     strategy:
       matrix:
         domain_config:
-          - domain: 'https://fastgpt.io?utm_source=docs&utm_medium=referral&utm_campaign=docs_home'
+          - domain: 'https://fastgpt.io'
             suffix: 'io'
-          - domain: 'https://fastgpt.cn?utm_source=docs&utm_medium=referral&utm_campaign=docs_home'
+          - domain: 'https://fastgpt.cn'
             suffix: 'cn'
 
     steps:
@@ -148,11 +148,11 @@ jobs:
     strategy:
       matrix:
         domain_config:
-          - domain: 'https://fastgpt.io?utm_source=docs&utm_medium=referral&utm_campaign=docs_home'
+          - domain: 'https://fastgpt.io'
             suffix: 'io'
             deployment: 'fastgpt-docs'
             kube_config: 'KUBE_CONFIG_IO'
-          - domain: 'https://fastgpt.cn?utm_source=docs&utm_medium=referral&utm_campaign=docs_home'
+          - domain: 'https://fastgpt.cn'
             suffix: 'cn'
             deployment: 'fastgpt-docs'
             kube_config: 'KUBE_CONFIG_CN'

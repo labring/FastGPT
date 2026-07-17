@@ -281,6 +281,9 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
   toolDescription: z.string().optional().meta({
     description: '作为工具调用参数时的语义说明'
   }), // If this field is not empty, it is entered as a tool
+  customJsonSchema: z.record(z.string(), z.any()).optional().meta({
+    description: '工具参数自定义 JSON Schema 的 property 定义'
+  }),
 
   enum: z.string().optional().meta({
     description: '已废弃：旧版枚举配置'
