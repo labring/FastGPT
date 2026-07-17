@@ -1,5 +1,5 @@
 import { S3PrivateBucket } from '../../buckets/private';
-import { type DownloadMode, S3Sources } from '../../contracts/type';
+import { S3Sources } from '../../contracts/type';
 import {
   type CheckChatFileKeys,
   type DelChatFileByPrefixParams,
@@ -72,16 +72,11 @@ export class S3ChatSource extends S3PrivateBucket {
     }
   }
 
-  async createGetChatFileURL(params: {
-    key: string;
-    expiredHours?: number;
-    external: boolean;
-    mode?: DownloadMode;
-  }) {
-    const { key, expiredHours = 1, external = false, mode } = params; // 默认一个小时
+  async createGetChatFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
+    const { key, expiredHours = 1, external = false } = params; // 默认一个小时
 
     if (external) {
-      return await this.createExternalUrl({ key, expiredHours, mode });
+      return await this.createExternalUrl({ key, expiredHours });
     }
     return await this.createPreviewUrl({ key, expiredHours });
   }
@@ -185,10 +180,7 @@ export function getS3ChatSource() {
   return global.chatBucket;
 }
 
-export const createChatFilePreviewUrlGetter = (options?: {
-  expiredHours?: number;
-  mode?: DownloadMode;
-}) => {
+export const createChatFilePreviewUrlGetter = (options?: { expiredHours?: number }) => {
   const s3ChatSource = getS3ChatSource();
 
   return async (key: string) => {

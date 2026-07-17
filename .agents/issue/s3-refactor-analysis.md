@@ -173,6 +173,6 @@ if (allowedExtensions.length > 0 && (!extension || !allowedExtensions.includes(e
 
 ## 8. 待用户确认的问题
 
-1. 短链是否只用于 `storageDownloadMode=proxy` 的代理链接，还是所有模型可见的文件预览链接都强制走短代理，即使环境配置了外部 S3 presigned URL？
+1. 已决策：所有模型可见的文件预览链接都使用短链；无外部 S3 地址时走 `short-proxy`，配置外部地址后可显式切换为 `short-redirect`。
 2. 无后缀纯文本文件在 allowedExtensions 包含多个文本类型时，是否允许按 `text/plain` 接受，还是必须要求前端提供可信 `contentType` hint？
 3. ChatBox 用户取消上传后，如果 S3 实际已经完成写入，是否需要立即投递 S3 删除任务，还是只保证不会进入本轮 chat 文件列表并依赖 TTL 清理？

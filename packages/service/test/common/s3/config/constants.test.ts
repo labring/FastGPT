@@ -103,9 +103,9 @@ describe('s3 storage constants', () => {
     expect(canUseStorageDownloadRedirect).toBe(true);
   });
 
-  it('rewrites external presigned URLs from S3BaseBucket', async () => {
+  it('returns a short link in short redirect mode', async () => {
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
-    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com');
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
 
     const { S3BaseBucket } = await vi.importActual<
       typeof import('@fastgpt/service/common/s3/buckets/base')
@@ -118,16 +118,16 @@ describe('s3 storage constants', () => {
     const bucket = new S3BaseBucket(storage, undefined);
 
     const result = await bucket.createExternalUrl({
-      key: 'chat/app/user/chat/file.png',
-      mode: 'presigned'
+      key: 'chat/app/user/chat/file.png'
     });
 
-    expect(storage.generatePresignedGetUrl).toHaveBeenCalledWith({
-      key: 'chat/app/user/chat/file.png',
-      expiredSeconds: 1800
+    expect(storage.generatePresignedGetUrl).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      bucket: 'fastgpt-private',
+      key: 'chat/app/user/chat/file.png'
     });
-    expect(result.url).toBe(
-      'https://cdn.example.com/get/fastgpt-private/chat%2Fapp%2Fuser%2Fchat%2Ffile.png'
+    expect(result.url).toMatch(
+      /\/api\/system\/file\/d\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
     );
   });
 
@@ -158,7 +158,7 @@ describe('s3 storage constants', () => {
     );
   });
 
-  it('passes response content type overrides into external presigned URLs', async () => {
+  it('keeps internal presigned previews for server-side storage access', async () => {
     const { S3BaseBucket } = await vi.importActual<
       typeof import('@fastgpt/service/common/s3/buckets/base')
     >('@fastgpt/service/common/s3/buckets/base');
@@ -169,9 +169,8 @@ describe('s3 storage constants', () => {
     });
     const bucket = new S3BaseBucket(storage, undefined);
 
-    const result = await bucket.createExternalUrl({
+    const result = await bucket.createPreviewUrl({
       key: 'dataset/team/aaa.md',
-      mode: 'presigned',
       responseContentType: 'text/markdown; charset=utf-8'
     });
 

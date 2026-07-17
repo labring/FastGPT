@@ -16,7 +16,6 @@ const { mockCreateGetChatFileURL } = vi.hoisted(() => ({
 
 type MockCreatePreviewOptions = {
   expiredHours?: number;
-  mode?: 'short-proxy' | 'short-redirect' | 'presigned';
 };
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({

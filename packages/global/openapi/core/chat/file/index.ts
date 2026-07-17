@@ -71,7 +71,7 @@ export const ChatFilePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功获取对话文件预签名 URL',
+          description: '成功获取对话文件短链接',
           content: {
             'application/json': {
               schema: z.string()

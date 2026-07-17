@@ -921,9 +921,6 @@ importers:
       '@larksuiteoapi/node-sdk':
         specifier: ^1.59.0
         version: 1.67.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-      '@llamaindex/liteparse-wasm':
-        specifier: 'catalog:'
-        version: 2.0.8
       '@node-rs/jieba':
         specifier: 'catalog:'
         version: 2.0.1

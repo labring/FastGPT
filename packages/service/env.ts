@@ -174,11 +174,11 @@ export const serviceEnv = createEnv({
     STORAGE_EXTERNAL_ENDPOINT: UrlSchema.optional(),
     STORAGE_S3_CDN_ENDPOINT: UrlSchema.optional(),
     STORAGE_DOWNLOAD_URL_MODE: z
-      .enum(['short-proxy', 'short-redirect', 'presigned'])
+      .enum(['short-proxy', 'short-redirect'])
       .default('short-proxy')
       .meta({
         description:
-          '下载链接模式：short-proxy 返回 FastGPT 短链并由 app 代理；short-redirect 返回 FastGPT 短链并 302 到短 TTL S3 链接；presigned 直接返回 S3 预签名长链'
+          '下载链接模式：short-proxy 返回 FastGPT 短链并由 app 代理；short-redirect 返回 FastGPT 短链并 302 到短 TTL S3 链接'
       }),
     STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
       description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'

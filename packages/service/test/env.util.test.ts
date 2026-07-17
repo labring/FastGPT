@@ -21,26 +21,23 @@ describe('validateS3Env', () => {
     ).toThrow('STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_S3_CDN_ENDPOINT is configured');
   });
 
-  it.each(['short-redirect', 'presigned'] as const)(
-    'requires an external endpoint for MinIO %s mode',
-    (mode) => {
-      expect(() =>
-        validateS3Env({
-          ...baseEnv,
-          STORAGE_DOWNLOAD_URL_MODE: mode
-        })
-      ).toThrow(
-        `STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_VENDOR is minio and STORAGE_DOWNLOAD_URL_MODE is ${mode}`
-      );
-    }
-  );
+  it('requires an external endpoint for MinIO short redirect mode', () => {
+    expect(() =>
+      validateS3Env({
+        ...baseEnv,
+        STORAGE_DOWNLOAD_URL_MODE: 'short-redirect'
+      })
+    ).toThrow(
+      'STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_VENDOR is minio and STORAGE_DOWNLOAD_URL_MODE is short-redirect'
+    );
+  });
 
   it('allows AWS S3 to use its vendor-managed public endpoint', () => {
     expect(() =>
       validateS3Env({
         ...baseEnv,
         STORAGE_VENDOR: 'aws-s3',
-        STORAGE_DOWNLOAD_URL_MODE: 'presigned'
+        STORAGE_DOWNLOAD_URL_MODE: 'short-redirect'
       })
     ).not.toThrow();
   });
@@ -69,7 +66,7 @@ describe('validateS3Env', () => {
     expect(() =>
       validateS3Env({
         ...baseEnv,
-        STORAGE_DOWNLOAD_URL_MODE: 'presigned',
+        STORAGE_DOWNLOAD_URL_MODE: 'short-redirect',
         STORAGE_EXTERNAL_ENDPOINT: 'https://s3.example.com',
         STORAGE_S3_CDN_ENDPOINT: 'https://cdn.example.com'
       })
@@ -83,7 +80,7 @@ describe('validateS3Env', () => {
         validateS3Env({
           ...baseEnv,
           STORAGE_VENDOR: vendor,
-          STORAGE_DOWNLOAD_URL_MODE: 'presigned'
+          STORAGE_DOWNLOAD_URL_MODE: 'short-redirect'
         })
       ).not.toThrow();
     }
