@@ -52,6 +52,7 @@
   "home.chat_app": "首页聊天",
   "home.select_tools": "选择工具",
   "home.tools": "工具：{{num}}",
+  "image_parse": "图片解析",
   "in_progress": "进行中",
   "input_guide": "输入引导",
   "input_placeholder_phone": "发消息给FastGPT",

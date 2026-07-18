@@ -81,7 +81,7 @@ export const createImageCaptionChildNodeResponse = ({
     requestIds,
     usage,
     seconds,
-    moduleName: i18nT('account_usage:image_parse'),
+    moduleName: i18nT('chat:image_parse'),
     textOutput: queries.join('\n')
   });
 
