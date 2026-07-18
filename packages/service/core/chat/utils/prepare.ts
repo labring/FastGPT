@@ -1,10 +1,6 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -132,12 +128,22 @@ export const prepareChatRound = async (
     };
   }
 
-  stripUserContentFileUrls(params.userContent);
   params.userContent.dataId = responseChatItemId;
   const now = new Date();
 
   const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
     ...params.userContent,
+    value: params.userContent.value.map((item) =>
+      item.file?.key
+        ? {
+            ...item,
+            file: {
+              ...item.file,
+              url: ''
+            }
+          }
+        : item
+    ),
     dataId: responseChatItemId,
     obj: ChatRoleEnum.Human
   };

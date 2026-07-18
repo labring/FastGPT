@@ -16,7 +16,7 @@ import {
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
@@ -77,6 +77,10 @@ import {
   type WorkflowStreamResponseContext
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
+import {
+  getCompletionStartHookText,
+  normalizeCompletionMessages
+} from '@fastgpt/service/core/chat/completionMessage';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -88,15 +92,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     customUid,
     outLinkAuthData,
 
-    stream = false,
+    stream,
     showSkillReferences,
     messages = [],
     responseChatItemId = getNanoid(),
     metadata,
     authProxy
   } = completionProps;
-  const { retainDatasetCite = false } = completionProps;
-  let { detail = false, variables = {} } = completionProps;
+  const { retainDatasetCite } = completionProps;
+  let { detail, variables = {} } = completionProps;
   const shareId = outLinkAuthData?.shareId;
   const outLinkUid = outLinkAuthData?.outLinkUid;
 
@@ -115,23 +119,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!Array.isArray(messages)) {
       throw new Error('messages is not array');
     }
-
-    /*
-      Web params: chatId + [Human]
-      API params: chatId + [Human]
-      API params: [histories, Human]
-    */
-    const chatMessages = GPTMessages2Chats({ messages });
-
-    // Computed start hook params
-    const startHookText = (() => {
-      // Chat
-      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType;
-      if (userQuestion) return chatValue2RuntimePrompt(userQuestion.value).text;
-
-      // plugin
-      return JSON.stringify(variables);
-    })();
 
     /*
       1. auth app permission
@@ -157,6 +144,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         if (authProxy) {
           return Promise.reject(ChatErrEnum.unAuthChat);
         }
+
+        const startHookText = getCompletionStartHookText({
+          messages,
+          fallback: JSON.stringify(variables)
+        });
 
         return authShareChat({
           shareId,
@@ -186,6 +178,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     ) {
       return;
     }
+
+    const chatMessages = GPTMessages2Chats({
+      messages: await normalizeCompletionMessages({
+        messages,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(app._id),
+        chatId,
+        uid: String(outLinkUserId || tmbId)
+      })
+    });
 
     pushTrack.teamChatQPM({ teamId });
 
@@ -617,8 +619,8 @@ const authShareChat = async ({
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '20mb'
+      sizeLimit: '10mb'
     },
-    responseLimit: '20mb'
+    responseLimit: '10mb'
   }
 };

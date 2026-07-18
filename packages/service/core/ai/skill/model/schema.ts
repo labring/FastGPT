@@ -120,18 +120,14 @@ const AgentSkillsSchema = new Schema({
   }
 });
 
-try {
-  // 名称和描述用于列表页搜索。
-  AgentSkillsSchema.index({ teamId: 1, name: 'text', description: 'text' });
-  // 列表页按来源、团队、删除状态和创建时间过滤排序。
-  AgentSkillsSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
-  // 分类筛选。
-  AgentSkillsSchema.index({ category: 1 });
-  // 文件夹树查询。
-  AgentSkillsSchema.index({ teamId: 1, parentId: 1, deleteTime: 1 });
-} catch (error) {
-  console.log('AgentSkill index error:', error);
-}
+// 名称和描述用于列表页搜索。
+AgentSkillsSchema.index({ teamId: 1, name: 'text', description: 'text' });
+// 列表页按来源、团队、删除状态和创建时间过滤排序。
+AgentSkillsSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
+// 分类筛选。
+AgentSkillsSchema.index({ category: 1 });
+// 文件夹树查询。
+AgentSkillsSchema.index({ teamId: 1, parentId: 1, deleteTime: 1 });
 
 export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,

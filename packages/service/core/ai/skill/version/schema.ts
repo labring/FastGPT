@@ -51,12 +51,8 @@ const AgentSkillsVersionSchema = new Schema({
   }
 });
 
-try {
-  // 版本列表按 skillId 查询并按创建时间倒序展示。
-  AgentSkillsVersionSchema.index({ skillId: 1, createdAt: -1, _id: -1 });
-} catch (error) {
-  console.log('SkillVersion index error:', error);
-}
+// 版本列表按 skillId 查询并按创建时间倒序展示。
+AgentSkillsVersionSchema.index({ skillId: 1, createdAt: -1, _id: -1 });
 
 export const MongoAgentSkillsVersion = getMongoModel<AgentSkillsVersionSchemaType>(
   agentSkillsVersionCollectionName,

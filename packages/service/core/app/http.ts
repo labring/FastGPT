@@ -10,6 +10,9 @@ import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { replaceEditorVariable } from '../workflow/dispatch/utils/replaceEditorVariable';
 import FormData from 'form-data';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.APP.HTTP_TOOLS);
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -179,7 +182,7 @@ export const runHTTPTool = async ({
 
     return { data };
   } catch (error) {
-    console.log(error);
+    logger.warn('HTTP tool request failed', { error });
     return { errorMsg: getErrText(error) };
   }
 };

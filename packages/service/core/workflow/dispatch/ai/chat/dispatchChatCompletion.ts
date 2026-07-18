@@ -72,7 +72,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   }
 
   try {
-    console.dir(modelConstantsData, { depth: null });
     aiChatVision = modelConstantsData.vision && aiChatVision;
     aiChatAudio = modelConstantsData.audio && aiChatAudio;
     aiChatVideo = modelConstantsData.video && aiChatVideo;

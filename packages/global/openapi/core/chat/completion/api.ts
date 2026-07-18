@@ -13,9 +13,20 @@ const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
 
 const WebCompletionsSchema = z.object({
-  chatId: nullishToUndefined(z.string().max(1024).optional()).meta({
-    description: '会话 ID，传入的话会自动获取会话中的对话，不传入则认为是新会话'
-  }),
+  chatId: z
+    .preprocess(
+      (value) =>
+        value === null || value === undefined || (typeof value === 'string' && !value.trim())
+          ? undefined
+          : value,
+      z
+        .string()
+        .max(1024)
+        .default(() => getNanoid(24))
+    )
+    .meta({
+      description: '会话 ID；未传入或传入空字符串时自动生成新会话 ID'
+    }),
   appId: nullishToUndefined(ObjectIdSchema.optional()).meta({
     description:
       '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
