@@ -6,6 +6,7 @@ export type PublicCompletionInteractive = Pick<WorkflowInteractiveResponseType, 
 
 export type CompletionDetailValueItem = Omit<AIChatItemValueItemType, 'interactive'> & {
   interactive?: PublicCompletionInteractive;
+  type?: 'text' | 'file' | 'tool' | 'interactive' | 'reasoning';
 };
 
 export type CompletionResponseContent =
@@ -23,10 +24,12 @@ export type CompletionResponseContent =
  */
 export const formatCompletionResponseContent = ({
   responseContent,
-  detail
+  detail,
+  includeLegacyType = false
 }: {
   responseContent: AIChatItemValueItemType[];
   detail: boolean;
+  includeLegacyType?: boolean;
 }): CompletionResponseContent => {
   const MAX_COMPLETION_INTERACTIVE_EXTRACT_DEPTH = 20;
 
@@ -79,13 +82,24 @@ export const formatCompletionResponseContent = ({
     };
   };
 
-  const formatDetailValueList = (responseContent: AIChatItemValueItemType[]) =>
-    responseContent.map((item) => ({
+  const formatDetailValueList = (responseContent: AIChatItemValueItemType[]) => {
+    const getLegacyValueType = (item: AIChatItemValueItemType) => {
+      if (item.text) return 'text' as const;
+      if ('file' in item) return 'file' as const;
+      if ('tool' in item || 'tools' in item) return 'tool' as const;
+      if (item.interactive) return 'interactive' as const;
+      if (item.reasoning) return 'reasoning' as const;
+      return 'text' as const;
+    };
+
+    return responseContent.map((item) => ({
       ...item,
+      ...(includeLegacyType && { type: getLegacyValueType(item) }),
       ...(item.interactive && {
         interactive: formatPublicCompletionInteractive(item.interactive)
       })
     }));
+  };
 
   const shouldReturnDetailValueList = ({
     responseContent,
