@@ -493,7 +493,7 @@ describe('prepare chat round', () => {
       obj: ChatRoleEnum.Human
     });
     expect(humanItem?.value[0].file?.url).toBe('');
-    expect(params.userContent.value[0].file?.url).toBe('');
+    expect(params.userContent.value[0].file?.url).toBe('https://signed-url.example/report.pdf');
   });
 
   it('should only strip file URL when file key exists', () => {

@@ -2,9 +2,41 @@ import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
+/* ===== 兼容性代码 ===== */
+export enum ChatItemValueTypeEnum {
+  text = 'text',
+  file = 'file',
+  tool = 'tool',
+  interactive = 'interactive',
+  reasoning = 'reasoning'
+}
+type ChatItemValueTypeInput = {
+  text?: unknown;
+  file?: unknown;
+  tool?: unknown;
+  tools?: unknown;
+  interactive?: unknown;
+  reasoning?: unknown;
+};
+/**
+ * 根据聊天 value 的实际内容推断旧版兼容 type。
+ *
+ * text 优先级最高，以兼容同时包含 reasoning 和 text 的 AI 回复；未知或空对象回退为 text。
+ */
+export const getChatItemValueType = (item: ChatItemValueTypeInput): ChatItemValueTypeEnum => {
+  if (item.text) return ChatItemValueTypeEnum.text;
+  if ('file' in item) return ChatItemValueTypeEnum.file;
+  if (item.tool || item.tools) return ChatItemValueTypeEnum.tool;
+  if (item.interactive) return ChatItemValueTypeEnum.interactive;
+  if (item.reasoning) return ChatItemValueTypeEnum.reasoning;
+  return ChatItemValueTypeEnum.text;
+};
+/* ===== 兼容性代码 ===== */
+
 export type PublicCompletionInteractive = Pick<WorkflowInteractiveResponseType, 'type' | 'params'>;
 
 export type CompletionDetailValueItem = Omit<AIChatItemValueItemType, 'interactive'> & {
+  type?: ChatItemValueTypeEnum;
   interactive?: PublicCompletionInteractive;
 };
 
@@ -19,14 +51,17 @@ export type CompletionResponseContent =
  * 格式化 completions 非流式响应的 choices[].message.content。
  *
  * 普通单条文本保持 OpenAI 兼容字符串；detail=true 且包含交互、工具、文件或多段 value 时，
- * 返回按字段名区分的 value 数组，确保交互节点可从 choices 中被客户端识别。
+ * 返回按字段名区分的 value 数组。v1 可通过 includeLegacyType 补充 type，兼容既有客户端；
+ * v2 保持不带 type 的新结构。
  */
 export const formatCompletionResponseContent = ({
   responseContent,
-  detail
+  detail,
+  includeLegacyType
 }: {
   responseContent: AIChatItemValueItemType[];
   detail: boolean;
+  includeLegacyType: boolean;
 }): CompletionResponseContent => {
   const MAX_COMPLETION_INTERACTIVE_EXTRACT_DEPTH = 20;
 
@@ -84,7 +119,8 @@ export const formatCompletionResponseContent = ({
       ...item,
       ...(item.interactive && {
         interactive: formatPublicCompletionInteractive(item.interactive)
-      })
+      }),
+      ...(includeLegacyType && { type: getChatItemValueType(item) })
     }));
 
   const shouldReturnDetailValueList = ({

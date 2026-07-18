@@ -5,23 +5,23 @@
 # - 建议修改账密后再运行
 
 # root 默认密码（重启后会强制重置该密码成环境变量值）
-x-default-root-psw: &x-default-root-psw "1234"
+x-default-root-psw: &x-default-root-psw '1234'
 # 系统最高密钥凭证
-x-system-key: &x-system-key "fastgpt-xxx"
+x-system-key: &x-system-key 'fastgpt-xxx'
 # 文件阅读 token 密钥
-x-file-token-key: &x-file-token-key "filetokenkey"
+x-file-token-key: &x-file-token-key 'filetokenkey'
 # 密钥加密 key
-x-aes256-secret-key: &x-aes256-secret-key "fastgptsecret"
+x-aes256-secret-key: &x-aes256-secret-key 'fastgptsecret'
 # Invoke 反向调用 JWT 密钥，至少 32 位
-x-invoke-token-secret: &x-invoke-token-secret "fastgpt_invoke_token_secret_32_chars_min"
+x-invoke-token-secret: &x-invoke-token-secret 'fastgpt_invoke_token_secret_32_chars_min'
 # plugin auth token，v4.15 plugin 服务要求至少 32 位
-x-plugin-auth-token: &x-plugin-auth-token "fastgpt-plugin-token-please-change"
+x-plugin-auth-token: &x-plugin-auth-token 'fastgpt-plugin-token-please-change'
 # code sandbox token
-x-code-sandbox-token: &x-code-sandbox-token "codesandbox"
+x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'
 # agent sandbox proxy secret，必须与 FastGPT 主站环境变量保持一致，且至少 32 位
-x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"
+x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'
 # aiproxy token
-x-aiproxy-token: &x-aiproxy-token "token"
+x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin
@@ -120,7 +120,7 @@ x-service-env-config: &x-service-env-config
   FILE_TOKEN_KEY: *x-file-token-key
   AES256_SECRET_KEY: *x-aes256-secret-key
   INVOKE_TOKEN_SECRET: *x-invoke-token-secret
-  MULTIPLE_DATA_TO_BASE64: true
+  MULTIPLE_DATA_TO_BASE64: false
   USE_IP_LIMIT: false
   CHECK_INTERNAL_IP: false
   AUTH_COOKIE_SECURE: false
@@ -165,8 +165,8 @@ x-service-env-config: &x-service-env-config
   WORKFLOW_HTTP_IGNORE_HTTPS_CERT: false
 
 # 向量库相关配置
-x-vec-config: &x-vec-config
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql
+x-vec-config: &x-vec-config #   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql
+
 
 services:
   fastgpt-vector:
@@ -220,16 +220,16 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "mongo",
-          "-u",
-          "myusername",
-          "-p",
-          "mypassword",
-          "--authenticationDatabase",
-          "admin",
-          "--eval",
-          "db.adminCommand('ping')",
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
         ]
       interval: 10s
       timeout: 5s
@@ -274,7 +274,7 @@ services:
     command: |
       redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "mypassword", "ping"]
+      test: ['CMD', 'redis-cli', '-a', 'mypassword', 'ping']
       interval: 10s
       timeout: 3s
       retries: 3
@@ -297,7 +297,7 @@ services:
       - fastgpt-minio:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
       timeout: 20s
       retries: 3
@@ -337,7 +337,7 @@ services:
           *x-fastgpt-service-config,
           *x-agent-sandbox-config,
           *x-service-env-config,
-          *x-app-env-config,
+          *x-app-env-config
         ]
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
       FE_DOMAIN:
@@ -392,10 +392,10 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })",
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
         ]
       interval: 30s
       timeout: 20s
@@ -437,7 +437,7 @@ services:
       fastgpt-minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 20s
       retries: 3
@@ -466,7 +466,7 @@ services:
       # 不需要严格检测模型
       DISABLE_MODEL_CONFIG: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -484,7 +484,7 @@ services:
       POSTGRES_DB: aiproxy
       POSTGRES_PASSWORD: aiproxy
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "aiproxy"]
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'aiproxy']
       interval: 5s
       timeout: 5s
       retries: 10

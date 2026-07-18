@@ -1,0 +1,16 @@
+---
+title: 'V4.15.3'
+description: 'FastGPT V4.15.3 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### Image Updates
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.3.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.3.
+
+## 🐛 Fixes
+
+1. Fixed rapid polling in the WeChat publishing channel when the WeChat API returns certain errors.
+2. Restored the legacy `type` field for `/v1/chat/completions` responses when `stream=false` and `detail=true`.

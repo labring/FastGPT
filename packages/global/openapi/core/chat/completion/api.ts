@@ -13,9 +13,20 @@ const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
 
 const WebCompletionsSchema = z.object({
-  chatId: nullishToUndefined(z.string().max(1024).optional()).meta({
-    description: '会话 ID，传入的话会自动获取会话中的对话，不传入则认为是新会话'
-  }),
+  chatId: z
+    .preprocess(
+      (value) =>
+        value === null || value === undefined || (typeof value === 'string' && !value.trim())
+          ? undefined
+          : value,
+      z
+        .string()
+        .max(1024)
+        .default(() => getNanoid(24))
+    )
+    .meta({
+      description: '会话 ID；未传入或传入空字符串时自动生成新会话 ID'
+    }),
   appId: nullishToUndefined(ObjectIdSchema.optional()).meta({
     description:
       '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
@@ -105,7 +116,7 @@ const ChatCompletionResponseMessageSchema = z.object({
   role: z.literal('assistant').meta({ description: '消息角色' }),
   content: z.any().meta({
     description:
-      '消息内容。普通对话为字符串；detail=true 或工作流命中交互节点时，可能为按字段名区分的对象数组（如 text / interactive / tool / file / reasoning）。当元素包含 interactive 字段时，形如 { interactive: { type, params } }，只返回交互展示配置，不返回 entryNodeIds / memoryEdges / nodeOutputs 等内部运行态字段'
+      '消息内容。普通对话为字符串；detail=true 或工作流命中交互节点时，可能为按字段名区分的对象数组（如 text / interactive / tool / file / reasoning）。v1 会额外补充 type 字段，取值为 text / interactive / tool / file / reasoning；v2 不补充 type。当元素包含 interactive 字段时，只返回交互展示配置，不返回 entryNodeIds / memoryEdges / nodeOutputs 等内部运行态字段'
   }),
   reasoning_content: z.string().optional().meta({ description: '思考过程内容（仅推理模型有）' })
 });
