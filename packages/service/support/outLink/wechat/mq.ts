@@ -17,6 +17,7 @@ const REPLY_JOB_NAME = 'wechatPublishReply';
 
 const MAX_CONSECUTIVE_FAILURES = 5;
 const FAILURE_BACKOFF_MS = 10_000;
+const EMPTY_POLL_DELAY_MS = 10_000;
 const POLL_LOCK_MS = 120_000;
 const REPLY_LOCK_MS = 30 * 60_000;
 // Poll processor 硬超时：防止 worker 活着但 processor hang 导致确定 jobId 永远阻塞
@@ -37,7 +38,7 @@ const failKey = (shareId: string) => `wechat:publish:failures:${shareId}`;
 //  - 任何异常/停止条件 → throw → 'failed' 事件 → shouldContinuePolling 决定是否续链
 //  - 外层 Promise.race 兜底：processor 最多 POLL_HARD_TIMEOUT_MS 就必须终止，
 //    防止 worker 活着但 processor hang 导致确定 jobId 永远阻塞
-async function processWechatPollJob(job: Job<WechatPollJobData>): Promise<void> {
+async function processWechatPollJob(job: Job<WechatPollJobData>): Promise<number | undefined> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(
@@ -46,13 +47,13 @@ async function processWechatPollJob(job: Job<WechatPollJobData>): Promise<void> 
     );
   });
   try {
-    await Promise.race([pollImpl(job), timeout]);
+    return await Promise.race([pollImpl(job), timeout]);
   } finally {
     if (timer) clearTimeout(timer);
   }
 }
 
-async function pollImpl(job: Job<WechatPollJobData>): Promise<void> {
+async function pollImpl(job: Job<WechatPollJobData>): Promise<number | undefined> {
   const { shareId } = job.data;
   logger.debug('Wechat poll job started', { shareId, jobId: job.id });
 
@@ -157,6 +158,9 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<void> {
     await MongoOutLink.updateOne({ shareId }, { $set: { 'app.syncBuf': resp.get_updates_buf } });
   }
 
+  // 空消息延迟续链，避免微信接口异常快速返回时形成高频轮询。
+  if (!resp.msgs?.length) return EMPTY_POLL_DELAY_MS;
+
   // 3) 不在这里续链，交给 worker 'completed' 事件处理器
 }
 
@@ -250,21 +254,25 @@ async function shouldContinuePolling(shareId: string): Promise<boolean> {
  * 初始化微信轮询 / 回复 Worker
  */
 export const initWechatPollWorker = async () => {
-  const pollWorker = getWorker<WechatPollJobData>(QueueNames.wechatPoll, processWechatPollJob, {
-    // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
-    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
-    lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
-    stalledInterval: 30_000, // 30s 检查下是否活跃
-    removeOnComplete: { count: 0 },
-    removeOnFail: { count: 0 }
-  });
+  const pollWorker = getWorker<WechatPollJobData, number | undefined>(
+    QueueNames.wechatPoll,
+    processWechatPollJob,
+    {
+      // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
+      concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
+      lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
+      stalledInterval: 30_000, // 30s 检查下是否活跃
+      removeOnComplete: { count: 0 },
+      removeOnFail: { count: 0 }
+    }
+  );
 
-  // 成功完成：续链（立即）。事件内 add 因 job 已被移除，不会冲突
-  pollWorker.on('completed', async (job) => {
+  // 成功完成：按处理结果续链。事件内 add 因 job 已被移除，不会冲突
+  pollWorker.on('completed', async (job, nextPollDelayMs) => {
     if (job.name !== POLL_JOB_NAME) return;
     const { shareId } = job.data as WechatPollJobData;
     try {
-      await scheduleNextPoll(shareId);
+      await scheduleNextPoll(shareId, nextPollDelayMs);
     } catch (error) {
       logger.error('Schedule next poll (completed) failed', { shareId, error: String(error) });
     }
