@@ -153,8 +153,8 @@ const detailTrueStreamFalseExample = {
   ]
 };
 
-// 交互节点-用户选择 (非流式响应,从 choices 中获取 interactive 字段)
-const interactiveUserSelectResponseExample = {
+/** 构造交互节点用户选择的非流式响应示例，v1 额外包含兼容 type 字段。 */
+const createInteractiveUserSelectResponseExample = (includeLegacyType: boolean) => ({
   id: 'chatId',
   model: '',
   usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -164,6 +164,7 @@ const interactiveUserSelectResponseExample = {
         role: 'assistant',
         content: [
           {
+            ...(includeLegacyType && { type: 'interactive' }),
             interactive: {
               type: 'userSelect',
               params: {
@@ -181,10 +182,10 @@ const interactiveUserSelectResponseExample = {
       index: 0
     }
   ]
-};
+});
 
-// 交互节点-表单输入 (非流式响应)
-const interactiveUserInputResponseExample = {
+/** 构造交互节点表单输入的非流式响应示例，v1 额外包含兼容 type 字段。 */
+const createInteractiveUserInputResponseExample = (includeLegacyType: boolean) => ({
   id: 'chatId',
   model: '',
   usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
@@ -194,6 +195,7 @@ const interactiveUserInputResponseExample = {
         role: 'assistant',
         content: [
           {
+            ...(includeLegacyType && { type: 'interactive' }),
             interactive: {
               type: 'userInput',
               params: {
@@ -231,7 +233,12 @@ const interactiveUserInputResponseExample = {
       index: 0
     }
   ]
-};
+});
+
+const v1InteractiveUserSelectResponseExample = createInteractiveUserSelectResponseExample(true);
+const v1InteractiveUserInputResponseExample = createInteractiveUserInputResponseExample(true);
+const v2InteractiveUserSelectResponseExample = createInteractiveUserSelectResponseExample(false);
+const v2InteractiveUserInputResponseExample = createInteractiveUserInputResponseExample(false);
 
 // detail=false, stream=true
 // 注：示例为简化版，省略了 object/created 等占位字段；真实响应每行还会带这些字段
@@ -446,13 +453,13 @@ ${interactiveStreamExample}
                   summary: '交互节点-用户选择 响应',
                   description:
                     '工作流命中用户选择交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserSelectResponseExample
+                  value: v1InteractiveUserSelectResponseExample
                 },
                 interactiveUserInput: {
                   summary: '交互节点-表单输入 响应',
                   description:
                     '工作流命中表单输入交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserInputResponseExample
+                  value: v1InteractiveUserInputResponseExample
                 }
               }
             },
@@ -609,13 +616,13 @@ ${interactiveStreamExample}
                   summary: '交互节点-用户选择 响应',
                   description:
                     '工作流命中用户选择交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserSelectResponseExample
+                  value: v2InteractiveUserSelectResponseExample
                 },
                 interactiveUserInput: {
                   summary: '交互节点-表单输入 响应',
                   description:
                     '工作流命中表单输入交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
-                  value: interactiveUserInputResponseExample
+                  value: v2InteractiveUserInputResponseExample
                 }
               }
             },

@@ -23,6 +23,7 @@ import {
   GetPaginationRecordsResponseSchema,
   type GetPaginationRecordsResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
+import { getChatItemValueType } from '@/service/core/chat/utils';
 
 export async function handler(req: ApiRequestProps): Promise<GetPaginationRecordsResponseType> {
   const {
@@ -112,27 +113,10 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
     }
 
     // Add value type(适配旧版)
-    item.value = item.value.map((v) => {
-      enum ChatItemValueTypeEnum {
-        text = 'text',
-        file = 'file',
-        tool = 'tool',
-        interactive = 'interactive',
-        reasoning = 'reasoning'
-      }
-      const type = (() => {
-        if (v.text) return ChatItemValueTypeEnum.text;
-        if ('file' in v) return ChatItemValueTypeEnum.file;
-        if ('tool' in v || 'tools' in v) return ChatItemValueTypeEnum.tool;
-        if ('interactive' in v) return ChatItemValueTypeEnum.interactive;
-        if ('reasoning' in v) return ChatItemValueTypeEnum.reasoning;
-        return ChatItemValueTypeEnum.text;
-      })();
-      return {
-        ...v,
-        type
-      };
-    });
+    item.value = item.value.map((value) => ({
+      ...value,
+      type: getChatItemValueType(value)
+    }));
   });
 
   return GetPaginationRecordsResponseSchema.parse({

@@ -473,7 +473,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
       const formattdResponse = formatCompletionResponseContent({
         responseContent: formatResponseContent,
-        detail
+        detail,
+        includeLegacyType: false
       });
 
       res.json({
