@@ -145,4 +145,50 @@ describe('formatCompletionResponseContent', () => {
       content: 'hello\nworld'
     });
   });
+
+  it('adds legacy value types only when explicitly enabled', () => {
+    const responseContent: AIChatItemValueItemType[] = [
+      {
+        reasoning: { content: 'thinking' },
+        text: { content: 'hello' }
+      },
+      {
+        tools: [
+          {
+            id: 'call-1',
+            toolName: 'Search',
+            toolAvatar: '',
+            functionName: 'search',
+            params: '{}',
+            response: 'result'
+          }
+        ]
+      }
+    ];
+
+    expect(
+      formatCompletionResponseContent({
+        detail: true,
+        responseContent,
+        includeLegacyType: true
+      })
+    ).toEqual([
+      {
+        reasoning: { content: 'thinking' },
+        text: { content: 'hello' },
+        type: 'text'
+      },
+      {
+        tools: responseContent[1].tools,
+        type: 'tool'
+      }
+    ]);
+
+    expect(
+      formatCompletionResponseContent({
+        detail: true,
+        responseContent
+      })
+    ).toEqual(responseContent);
+  });
 });
