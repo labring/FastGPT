@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axios: { patch: mocks.patch }
+  axiosWithoutSSRF: { patch: mocks.patch }
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({

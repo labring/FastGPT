@@ -1,4 +1,4 @@
-import { axios } from '../../common/api/axios';
+import { axiosWithoutSSRF } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
 import { FastGPT_SEM_Schema } from '@fastgpt/global/support/marketing/type';
@@ -63,7 +63,7 @@ export const reportCRMVisitorIdentity = async ({
   const normalizedContact = getContact(username, contact);
 
   try {
-    await axios.patch(
+    await axiosWithoutSSRF.patch(
       `${crmApiUrl}/contacts/visitor/${encodeURIComponent(visitorId)}/identity`,
       {
         cloud_user_id: userId,
