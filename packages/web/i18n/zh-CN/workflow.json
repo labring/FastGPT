@@ -30,6 +30,11 @@
   "classification_result": "分类结果",
   "click_to_change_reference": "点击切换输入模式",
   "click_to_change_value": "点击切换变量引用模式",
+  "cli.input.ai_model": "该 AI 节点使用的模型",
+  "cli.input.answer": "固定回答文本或上游输出引用",
+  "cli.input.system_prompt": "定义助手角色和回答规则的指令",
+  "cli.input.text_editor": "静态文本或由上游变量拼接的文本",
+  "cli.input.user_question": "由工作流开始节点提供的用户问题",
   "code.Reset template": "还原模板",
   "code.Reset template confirm": "确认还原代码模板？将会重置所有输入和输出至模板值，请注意保存当前代码。",
   "code.Switch language confirm": "切换语言将重置代码，是否继续？",
@@ -273,5 +278,6 @@
   "workflow_local_draft_auth_expired_notice": "登录已过期，当前编辑内容已自动保存至本地。请不要关闭页面，在此标签页重新登录后，即可恢复编排内容。",
   "workflow_local_draft_auth_expired_title": "已自动保存",
   "workflow_local_draft_relogin": "重新登录",
-  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
+  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
+  "connection_invalid": "该连接不符合工作流规则"
 }

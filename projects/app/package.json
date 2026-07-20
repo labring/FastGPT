@@ -47,6 +47,7 @@
     "@fastgpt/next": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
+    "@fastgpt/workflow-core": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
     "@llamaindex/liteparse-wasm": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",

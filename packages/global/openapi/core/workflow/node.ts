@@ -1,7 +1,7 @@
 import z from 'zod';
 import {
   FlowNodeInputItemTypeSchema,
-  FlowNodeOutputItemTypeSchema
+  StoreNodeOutputItemTypeSchema
 } from '../../../core/workflow/type/io';
 import {
   NodeToolConfigTypeSchema,
@@ -58,12 +58,7 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
     description: '工作流节点输入配置'
   });
 
-// `invalidCondition` in FlowNodeOutputItemTypeSchema is a Zod function schema used only
-// by the editor to validate outputs; function schemas cannot be represented in JSON
-// Schema, so we strip it before exposing via OpenAPI.
-export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
-  invalidCondition: true
-}).meta({
+export const OpenAPIFlowNodeOutputItemTypeSchema = StoreNodeOutputItemTypeSchema.meta({
   description: '工作流节点输出配置'
 });
 
