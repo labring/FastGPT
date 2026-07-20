@@ -59,6 +59,11 @@ export const validateS3Env = (env: S3Env): void => {
 export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
   message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
 });
+export const AgentSandboxPreviewProxyUrlSchema = z
+  .string()
+  .refine((url) => /^https?:\/\//.test(url), {
+    message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
+  });
 const agentSandboxProviderRequiredEnvKeys = {
   sealosdevbox: [
     'AGENT_SANDBOX_SEALOS_BASEURL',
@@ -94,7 +99,8 @@ export const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): s
 /* ===== Sandbox proxy ===== */
 const agentSandboxProxyRequiredEnvKeys = [
   'AGENT_SANDBOX_PROXY_SECRET',
-  'AGENT_SANDBOX_PROXY_URL'
+  'AGENT_SANDBOX_PROXY_URL',
+  'AGENT_SANDBOX_PREVIEW_PROXY_URL'
 ] as const;
 /**
  * 校验 FastGPT app 浏览器直连 agent-sandbox-proxy 所需环境变量。

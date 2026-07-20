@@ -65,6 +65,7 @@ hours to preserve the existing `sandbox_get_file_url` contract.
 GET|HEAD /preview/{token}/{*path}
 ```
 
+- Preview may use an independent `PREVIEW_PORT`; when omitted it shares `PORT` with WebSocket routes.
 - `token` is one base64url JWT path segment.
 - `path` is workspace-relative.
 - Other methods return `405`.
@@ -77,7 +78,7 @@ GET|HEAD /preview/{*path}
 X-FastGPT-Agent-Token: {agentPassword}
 ```
 
-- Binds to `IDE_AGENT_PREVIEW_BIND_ADDR`, default `0.0.0.0:1319`.
+- Binds to the fixed internal address `0.0.0.0:1319`.
 - Uses `FASTGPT_WORKDIR` as the root.
 - Does not expose directory listings.
 - Rejects absolute paths, traversal, invalid encodings, and symlinks escaping the workspace.
@@ -85,7 +86,8 @@ X-FastGPT-Agent-Token: {agentPassword}
 ## 6. FastGPT Changes
 
 - Add reusable preview token signing and URL construction in the sandbox application layer.
-- Derive the public HTTP proxy URL from `AGENT_SANDBOX_PROXY_URL` (`ws -> http`, `wss -> https`).
+- Require `AGENT_SANDBOX_PREVIEW_PROXY_URL` as the public HTTP preview origin. It remains separate
+  from the required WebSocket `AGENT_SANDBOX_PROXY_URL` even when both URLs use the same port.
 - Change `getHtmlPreviewLink` to validate the session and return a preview URL without reading/uploading
   the HTML file.
 - Change `sandbox_get_file_url` to return preview URLs without reading/uploading the files.
@@ -121,6 +123,7 @@ The sandbox system prompt must require relative asset paths for generated previe
 ## 9. Compatibility And Rollout
 
 - Sandbox runtime images must include the preview listener before FastGPT starts issuing preview URLs.
+- Default deployments expose one proxy port; split WebSocket and Preview ports only when explicitly configured.
 - Old sandboxes without port 1319 return a clear proxy error; local integration uses a freshly built image.
 - Upgrade FastGPT before agent-sandbox-proxy: the app accepts both old query tickets and new header tickets,
   while the new proxy only uses the non-logging header transport.

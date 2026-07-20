@@ -90,17 +90,12 @@ export function resolveSandboxPreviewPath(filePath: string): {
 }
 
 const getSandboxPreviewProxyBaseUrl = () => {
-  const rawUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
+  const rawUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
   if (!rawUrl) {
-    throw new Error('AGENT_SANDBOX_PROXY_URL environment variable is missing');
+    throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
   }
 
   const url = new URL(rawUrl);
-  url.protocol = (() => {
-    if (url.protocol === 'ws:') return 'http:';
-    if (url.protocol === 'wss:') return 'https:';
-    throw new Error('AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://');
-  })();
   url.search = '';
   url.hash = '';
   return url.toString().replace(/\/+$/, '');

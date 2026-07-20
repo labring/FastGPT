@@ -20,6 +20,8 @@ use auth::{
 use preview::{bad_gateway_response, preview_error_response, proxy_preview_file};
 use relay::handle_relay;
 
+const DEFAULT_PORT: u16 = 1006;
+
 #[derive(Deserialize)]
 struct WsQuery {
     ticket: Option<String>,
@@ -43,36 +45,64 @@ async fn main() {
         )
         .init();
 
-    let app = Router::new()
+    let port = get_listener_port("PORT", DEFAULT_PORT);
+    let preview_port = get_listener_port("PREVIEW_PORT", port);
+
+    if port == preview_port {
+        info!("FastGPT Agent Sandbox Proxy listening on port {}", port);
+        serve_on_port(port, combined_router())
+            .await
+            .expect("Server encountered a fatal error");
+        return;
+    }
+
+    info!(
+        "FastGPT Agent Sandbox Proxy listening on WebSocket port {} and preview port {}",
+        port, preview_port
+    );
+    tokio::try_join!(
+        serve_on_port(port, websocket_router()),
+        serve_on_port(preview_port, preview_router())
+    )
+    .expect("Server encountered a fatal error");
+}
+
+fn websocket_router() -> Router {
+    Router::new()
         .route("/health", get(health_check))
         .route("/fs", get(fs_handler))
         .route("/terminal", get(terminal_handler))
-        .route(
-            "/preview/{ticket}/{*path}",
-            get(preview_handler).head(preview_handler),
-        );
+}
 
-    let port: u16 = std::env::var("PORT")
+fn preview_router() -> Router {
+    Router::new().route("/health", get(health_check)).route(
+        "/preview/{ticket}/{*path}",
+        get(preview_handler).head(preview_handler),
+    )
+}
+
+fn combined_router() -> Router {
+    websocket_router().route(
+        "/preview/{ticket}/{*path}",
+        get(preview_handler).head(preview_handler),
+    )
+}
+
+fn get_listener_port(name: &str, default_port: u16) -> u16 {
+    std::env::var(name)
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(1006);
+        .unwrap_or(default_port)
+}
+
+/** 在指定端口运行一个独立 Router；不同协议端口由 main 并发托管。 */
+async fn serve_on_port(port: u16, app: Router) -> std::io::Result<()> {
     let addr = SocketAddr::new(
         std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
         port,
     );
-
-    info!(
-        "FastGPT Rust Agent Sandbox Proxy starting up on port {}",
-        port
-    );
-
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("Failed to bind to server address");
-
-    axum::serve(listener, app)
-        .await
-        .expect("Server encountered a fatal error during execution");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await
 }
 
 async fn health_check() -> &'static str {

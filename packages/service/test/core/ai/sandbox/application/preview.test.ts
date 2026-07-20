@@ -11,18 +11,21 @@ import {
 
 const originalProxySecret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
 const originalProxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
+const originalPreviewProxyUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
 const originalProvider = serviceEnv.AGENT_SANDBOX_PROVIDER;
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
     serviceEnv.AGENT_SANDBOX_PROXY_SECRET = 'preview-secret-1234567890-1234567890';
     serviceEnv.AGENT_SANDBOX_PROXY_URL = 'wss://agent-proxy.example.com/base/';
+    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://agent-preview.example.com:3007/base/';
     serviceEnv.AGENT_SANDBOX_PROVIDER = 'opensandbox';
   });
 
   afterEach(() => {
     serviceEnv.AGENT_SANDBOX_PROXY_SECRET = originalProxySecret;
     serviceEnv.AGENT_SANDBOX_PROXY_URL = originalProxyUrl;
+    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = originalPreviewProxyUrl;
     serviceEnv.AGENT_SANDBOX_PROVIDER = originalProvider;
   });
 
@@ -44,15 +47,26 @@ describe('sandbox preview application', () => {
     });
   });
 
-  it('builds an HTTPS proxy URL and encodes each workspace path segment', () => {
+  it('builds a URL from the dedicated preview proxy and encodes each path segment', () => {
     expect(
       buildSandboxPreviewFileUrl({
         ticket: 'header.payload.signature',
         filePath: '/workspace/test dir/预览.html'
       })
     ).toBe(
-      'https://agent-proxy.example.com/base/preview/header.payload.signature/test%20dir/%E9%A2%84%E8%A7%88.html'
+      'https://agent-preview.example.com:3007/base/preview/header.payload.signature/test%20dir/%E9%A2%84%E8%A7%88.html'
     );
+  });
+
+  it('requires a dedicated HTTP preview proxy URL', () => {
+    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = undefined;
+
+    expect(() =>
+      buildSandboxPreviewFileUrl({
+        ticket: 'header.payload.signature',
+        filePath: '/workspace/index.html'
+      })
+    ).toThrow('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
   });
 
   it('normalizes relative and workspace absolute paths', () => {
