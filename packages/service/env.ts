@@ -72,8 +72,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional(),
-    IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
-    IDE_AGENT_PREVIEW_BIND_ADDR: z.string().default('0.0.0.0:1319'),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),

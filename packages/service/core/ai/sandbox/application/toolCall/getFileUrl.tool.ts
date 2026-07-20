@@ -18,7 +18,7 @@ const SandboxGetFileUrlToolSchema = z.object({
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
-  execute: async ({ teamId, sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params }) => {
     const { sourceType, sourceId, userId, chatId } = sandboxInstance.getContext();
 
     if (!sourceId || userId === undefined || !chatId) {
@@ -48,8 +48,7 @@ export const sandboxGetFileUrlTool = defineTool({
       sourceType,
       sourceId,
       userId,
-      chatId,
-      teamId
+      chatId
     });
     const result = files.map(({ filePath, relativePath }) => ({
       fileUrl: buildSandboxPreviewFileUrl({ ticket, filePath }),

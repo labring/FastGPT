@@ -1,4 +1,5 @@
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -39,6 +40,18 @@ pub struct Claims {
     pub user_id: String,
     pub chat_id: String,
     pub team_id: String,
+    pub channel: String,
+    pub permission: String,
+    pub exp: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewClaims {
+    pub source_type: String,
+    pub source_id: String,
+    pub user_id: String,
+    pub chat_id: String,
     pub channel: String,
     pub permission: String,
     pub exp: u64,
@@ -110,8 +123,7 @@ pub fn init_test_proxy_secret() {
     let _ = PROXY_SECRET.set("test-secret-key-1234567890-very-long-32".to_string());
 }
 
-/// 在代理层边缘进行本地 JWT 验签防刷，直接在第一道闸口过滤非法请求
-pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
+fn decode_jwt_ticket<T: DeserializeOwned>(ticket: &str) -> Result<T, String> {
     let secret = get_proxy_secret();
     let decoding_key = DecodingKey::from_secret(secret.as_bytes());
 
@@ -119,10 +131,20 @@ pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
     let mut validation = Validation::new(Algorithm::HS256);
     validation.leeway = 5;
 
-    let token_data = decode::<Claims>(ticket, &decoding_key, &validation)
+    let token_data = decode::<T>(ticket, &decoding_key, &validation)
         .map_err(|err| format!("JWT signature validation failed: {}", err))?;
 
     Ok(token_data.claims)
+}
+
+/// 在代理层边缘校验既有 WebSocket ticket，保留上游 teamId claims 契约。
+pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
+    decode_jwt_ticket(ticket)
+}
+
+/// 校验只读 Preview ticket；该新通道不引入 WebSocket keepalive 所需的 teamId。
+pub fn verify_preview_jwt_ticket(ticket: &str) -> Result<PreviewClaims, String> {
+    decode_jwt_ticket(ticket)
 }
 
 /// 反向请求 NextJS 主站进行 Ticket 验证，并置换出真实的沙盒物理端点寻址信息 (高安全有状态地址置换方案)

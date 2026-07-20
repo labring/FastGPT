@@ -54,7 +54,6 @@ describe('sandboxGetFileUrlTool', () => {
     );
 
     const result = await sandboxGetFileUrlTool.execute({
-      teamId: 'team',
       sandboxInstance: createSandboxInstance(),
       params: { paths: ['/workspace/file.txt', 'report/data.csv'] }
     });
@@ -80,8 +79,7 @@ describe('sandboxGetFileUrlTool', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
       userId: 'user',
-      chatId: 'chat',
-      teamId: 'team'
+      chatId: 'chat'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenCalledTimes(2);
   });
@@ -91,7 +89,6 @@ describe('sandboxGetFileUrlTool', () => {
 
     await expect(
       sandboxGetFileUrlTool.execute({
-        teamId: 'team',
         sandboxInstance: createSandboxInstance(),
         params: { paths: ['missing.txt'] }
       })

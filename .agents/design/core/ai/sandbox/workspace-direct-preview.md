@@ -48,7 +48,6 @@ Preview tokens reuse `AGENT_SANDBOX_PROXY_SECRET` and the existing business iden
   sourceId,
   userId,
   chatId,
-  teamId,
   channel: 'preview',
   permission: 'read',
   exp
@@ -91,7 +90,6 @@ X-FastGPT-Agent-Token: {agentPassword}
   the HTML file.
 - Change `sandbox_get_file_url` to return preview URLs without reading/uploading the files.
 - Extend internal ticket verification with `channel=preview` and endpoint port `1319`.
-- Thread `teamId` through sandbox tool execution so preview claims retain the real tenant identity.
 - Update OpenAPI descriptions and tool descriptions to remove S3 semantics.
 
 ## 7. Resource Reference Behavior
@@ -136,7 +134,6 @@ The sandbox system prompt must require relative asset paths for generated previe
 - [x] Add preview token signing, ticket verification, and URL helpers.
 - [x] Replace HTML preview S3 upload.
 - [x] Replace `sandbox_get_file_url` S3 upload.
-- [x] Thread `teamId` through sandbox tool calls.
 - [x] Update OpenAPI, environment/runtime contracts, prompt, and rollout notes.
 - [x] Build local sandbox and proxy images.
 - [x] Run TypeScript and Rust unit tests.

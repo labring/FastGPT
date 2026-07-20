@@ -119,7 +119,15 @@ fn verify_ticket_for_channel(
     if expected_channel == "terminal" && claims.permission != "write" {
         return Err("terminal ticket requires write permission".to_string());
     }
-    if expected_channel == "preview" && claims.permission != "read" {
+    Ok(claims)
+}
+
+fn verify_preview_ticket(ticket: &str) -> Result<auth::PreviewClaims, String> {
+    let claims = auth::verify_preview_jwt_ticket(ticket)?;
+    if claims.channel != "preview" {
+        return Err("ticket channel mismatch".to_string());
+    }
+    if claims.permission != "read" {
         return Err("preview ticket requires read permission".to_string());
     }
     Ok(claims)
@@ -162,7 +170,7 @@ async fn preview_handler(
     method: Method,
     headers: HeaderMap,
 ) -> Response<Body> {
-    if let Err(error) = verify_ticket_for_channel(&params.ticket, "preview") {
+    if let Err(error) = verify_preview_ticket(&params.ticket) {
         error!("[Preview] Ticket verification failed: {}", error);
         return preview_error_response(StatusCode::UNAUTHORIZED, "Unauthorized preview ticket");
     }
@@ -216,12 +224,11 @@ mod tests {
             + 60;
         encode(
             &Header::default(),
-            &auth::Claims {
+            &auth::PreviewClaims {
                 source_type: "app".to_string(),
                 source_id: "app-id".to_string(),
                 user_id: "user-id".to_string(),
                 chat_id: "chat-id".to_string(),
-                team_id: "team-id".to_string(),
                 channel: "preview".to_string(),
                 permission: permission.to_string(),
                 exp,
@@ -234,7 +241,7 @@ mod tests {
     #[test]
     fn accepts_read_only_preview_tickets() {
         let ticket = preview_ticket("read");
-        let claims = verify_ticket_for_channel(&ticket, "preview").unwrap();
+        let claims = verify_preview_ticket(&ticket).unwrap();
         assert_eq!(claims.channel, "preview");
         assert_eq!(claims.permission, "read");
     }
@@ -242,7 +249,7 @@ mod tests {
     #[test]
     fn rejects_preview_write_permission_and_channel_mismatch() {
         let ticket = preview_ticket("write");
-        assert!(verify_ticket_for_channel(&ticket, "preview").is_err());
+        assert!(verify_preview_ticket(&ticket).is_err());
         assert!(verify_ticket_for_channel(&ticket, "fs").is_err());
     }
 }

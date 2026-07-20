@@ -55,7 +55,6 @@ describe('sandbox getHtmlPreviewLink API', () => {
     vi.clearAllMocks();
     mocks.authSandboxSession.mockResolvedValue({
       uid: 'user-1',
-      teamId: 'team-1',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011'
     });
@@ -107,8 +106,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
         sourceType: ChatSourceTypeEnum.app,
         sourceId: '507f1f77bcf86cd799439011',
         userId: 'user-1',
-        chatId: 'chat-1',
-        teamId: 'team-1'
+        chatId: 'chat-1'
       },
       filePath: '/workspace/sessions/chat-1/dist/index.html'
     });

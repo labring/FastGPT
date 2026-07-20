@@ -20,8 +20,7 @@ export const SandboxPreviewTicketContextSchema = z.object({
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string().min(1),
   userId: z.string(),
-  chatId: z.string().min(1),
-  teamId: z.string().min(1)
+  chatId: z.string().min(1)
 });
 export type SandboxPreviewTicketContext = z.infer<typeof SandboxPreviewTicketContextSchema>;
 

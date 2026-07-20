@@ -288,7 +288,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
                 return { response, assistantMessages: [], usages: [], errorMessage: response };
               }
               const sandboxResult = await runSandboxTools({
-                teamId: runtime.teamId,
                 toolName: sandboxToolName,
                 args: call.function.arguments ?? '',
                 sandboxClient

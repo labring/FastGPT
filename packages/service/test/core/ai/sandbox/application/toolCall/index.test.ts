@@ -73,7 +73,6 @@ describe('sandbox toolCall index', () => {
     const sandboxClient = createSandboxInstance();
     await expect(
       runSandboxTools({
-        teamId: 'team',
         toolName: SANDBOX_SHELL_TOOL_NAME,
         args: JSON.stringify({ command: 'pwd' }),
         sandboxClient
@@ -91,7 +90,6 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        teamId: 'team',
         ...appSource,
         userId: 'user',
         chatId: 'chat',
@@ -106,7 +104,6 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        teamId: 'team',
         ...appSource,
         userId: 'user',
         chatId: 'chat',
@@ -124,7 +121,6 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        teamId: 'team',
         ...appSource,
         userId: 'user',
         chatId: 'chat',

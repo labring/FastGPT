@@ -31,8 +31,7 @@ describe('sandbox preview application', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app-1',
       userId: 'user-1',
-      chatId: 'chat-1',
-      teamId: 'team-1'
+      chatId: 'chat-1'
     });
 
     expect(verifySandboxPreviewTicket(ticket)).toMatchObject({
@@ -40,7 +39,6 @@ describe('sandbox preview application', () => {
       sourceId: 'app-1',
       userId: 'user-1',
       chatId: 'chat-1',
-      teamId: 'team-1',
       channel: 'preview',
       permission: 'read'
     });

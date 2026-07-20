@@ -28,7 +28,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   // 1. 鉴权
   const {
     uid,
-    teamId,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authSandboxSession({
@@ -67,8 +66,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
         sourceType: resolvedSourceType,
         sourceId: resolvedSourceId,
         userId: uid,
-        chatId,
-        teamId
+        chatId
       },
       filePath: providerPath
     })

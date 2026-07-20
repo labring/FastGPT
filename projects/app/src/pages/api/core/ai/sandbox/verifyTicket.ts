@@ -21,8 +21,8 @@ import {
   SandboxPreviewTicketClaimsSchema
 } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
-const DEFAULT_IDE_AGENT_PORT = 1318;
-const DEFAULT_IDE_AGENT_PREVIEW_PORT = 1319;
+const IDE_AGENT_PORT = 1318;
+const IDE_AGENT_PREVIEW_PORT = 1319;
 const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-password"';
 
 const VerifyTicketQuerySchema = z.object({
@@ -58,15 +58,7 @@ const SandboxProxyTicketClaimsSchema = z.union([
 
 /** 根据 ticket 通道选择 IDE Agent 的内部监听端口。 */
 const getIdeAgentPort = (channel: z.infer<typeof SandboxProxyTicketClaimsSchema>['channel']) => {
-  const isPreview = channel === SANDBOX_PREVIEW_CHANNEL;
-  const bindAddr = isPreview
-    ? serviceEnv.IDE_AGENT_PREVIEW_BIND_ADDR
-    : serviceEnv.IDE_AGENT_BIND_ADDR;
-  const defaultPort = isPreview ? DEFAULT_IDE_AGENT_PREVIEW_PORT : DEFAULT_IDE_AGENT_PORT;
-  if (!bindAddr) return defaultPort;
-
-  const port = parseInt(bindAddr.split(':').pop() || '', 10);
-  return Number.isFinite(port) ? port : defaultPort;
+  return channel === SANDBOX_PREVIEW_CHANNEL ? IDE_AGENT_PREVIEW_PORT : IDE_AGENT_PORT;
 };
 
 async function readIdeAgentPassword(sandbox: SandboxClient) {

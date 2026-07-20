@@ -14,6 +14,9 @@ use connection::handle_connection;
 use password::load_or_create_ide_agent_password;
 use workspace::get_workspace_root;
 
+const WS_BIND_ADDR: &str = "0.0.0.0:1318";
+const PREVIEW_BIND_ADDR: &str = "0.0.0.0:1319";
+
 #[tokio::main]
 async fn main() {
     let workspace = get_workspace_root();
@@ -34,21 +37,17 @@ async fn main() {
         load_or_create_ide_agent_password().expect("Failed to initialize IDE Agent password"),
     );
 
-    let bind_addr =
-        std::env::var("IDE_AGENT_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:1318".to_string());
-    let ws_listener = TcpListener::bind(&bind_addr)
+    let ws_listener = TcpListener::bind(WS_BIND_ADDR)
         .await
-        .unwrap_or_else(|_| panic!("Failed to bind to {}", bind_addr));
-    println!("FastGPT IDE Agent listening on {}", bind_addr);
+        .unwrap_or_else(|_| panic!("Failed to bind to {}", WS_BIND_ADDR));
+    println!("FastGPT IDE Agent listening on {}", WS_BIND_ADDR);
 
-    let preview_bind_addr =
-        std::env::var("IDE_AGENT_PREVIEW_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:1319".to_string());
-    let preview_listener = TcpListener::bind(&preview_bind_addr)
+    let preview_listener = TcpListener::bind(PREVIEW_BIND_ADDR)
         .await
-        .unwrap_or_else(|_| panic!("Failed to bind to {}", preview_bind_addr));
+        .unwrap_or_else(|_| panic!("Failed to bind to {}", PREVIEW_BIND_ADDR));
     println!(
         "FastGPT IDE Agent preview server listening on {}",
-        preview_bind_addr
+        PREVIEW_BIND_ADDR
     );
 
     let serve_ws = async {
