@@ -12,6 +12,7 @@ const InitUserSandboxBodySchema = z.object({
 
 const InitUserSandboxResponseSchema = z.object({
   dryRun: z.boolean(),
+  completedLegacyCount: z.number().int().nonnegative(),
   legacySkillCount: z.number().int().nonnegative(),
   migratedSkillCount: z.number().int().nonnegative(),
   legacyAppCount: z.number().int().nonnegative(),

@@ -280,8 +280,8 @@ export async function getSandboxWorkspaceArchiveForMigration(resource: SandboxPh
   const archiveState = getLegacyArchiveState(resource);
   // restoring 已经以 S3 归档为恢复源；migration 应复用该归档，不能再打包半恢复的 Workspace。
   if (archiveState === 'archived' || archiveState === 'deleting' || archiveState === 'restoring') {
-    if (await archiveSource.isWorkspaceArchiveExists({ sandboxId: resource.sandboxId })) {
-      return archiveSource.downloadWorkspaceArchive({
+    if (await archiveSource.isLegacyWorkspaceArchiveExists({ sandboxId: resource.sandboxId })) {
+      return archiveSource.downloadLegacyWorkspaceArchive({
         sandboxId: resource.sandboxId,
         maxBytes: getAgentSandboxArchiveMaxBytes()
       });
@@ -299,7 +299,7 @@ export async function getSandboxWorkspaceArchiveForMigration(resource: SandboxPh
       workDirectory: connected.profile.workDirectory,
       sandboxId: resource.sandboxId
     });
-    await archiveSource.uploadWorkspaceArchive({ sandboxId: resource.sandboxId, body });
+    await archiveSource.uploadLegacyWorkspaceArchive({ sandboxId: resource.sandboxId, body });
     return body;
   } finally {
     if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);

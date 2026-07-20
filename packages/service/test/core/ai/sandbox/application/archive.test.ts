@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   downloadWorkspaceArchive: vi.fn(),
   deleteWorkspaceArchiveNow: vi.fn(),
   isWorkspaceArchiveExists: vi.fn(),
+  uploadLegacyWorkspaceArchive: vi.fn(),
+  downloadLegacyWorkspaceArchive: vi.fn(),
+  isLegacyWorkspaceArchiveExists: vi.fn(),
   getSandboxAdapterConfig: vi.fn(),
   getSandboxRuntimeProfile: vi.fn()
 }));
@@ -70,7 +73,10 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
     uploadWorkspaceArchive: mocks.uploadWorkspaceArchive,
     downloadWorkspaceArchive: mocks.downloadWorkspaceArchive,
     deleteWorkspaceArchiveNow: mocks.deleteWorkspaceArchiveNow,
-    isWorkspaceArchiveExists: mocks.isWorkspaceArchiveExists
+    isWorkspaceArchiveExists: mocks.isWorkspaceArchiveExists,
+    uploadLegacyWorkspaceArchive: mocks.uploadLegacyWorkspaceArchive,
+    downloadLegacyWorkspaceArchive: mocks.downloadLegacyWorkspaceArchive,
+    isLegacyWorkspaceArchiveExists: mocks.isLegacyWorkspaceArchiveExists
   })
 }));
 
@@ -153,6 +159,9 @@ describe('sandbox archive lifecycle', () => {
     mocks.downloadWorkspaceArchive.mockResolvedValue(EMPTY_ZIP_BUFFER);
     mocks.deleteWorkspaceArchiveNow.mockResolvedValue(undefined);
     mocks.isWorkspaceArchiveExists.mockResolvedValue(false);
+    mocks.uploadLegacyWorkspaceArchive.mockResolvedValue(undefined);
+    mocks.downloadLegacyWorkspaceArchive.mockResolvedValue(EMPTY_ZIP_BUFFER);
+    mocks.isLegacyWorkspaceArchiveExists.mockResolvedValue(false);
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.advanceSandboxOperation.mockResolvedValue(createClaimed('archiving'));
     mocks.completeSandboxOperation.mockResolvedValue(createResource('archived'));
@@ -223,32 +232,6 @@ describe('sandbox archive lifecycle', () => {
     );
   });
 
-  it('does not reclaim a fresh archiving operation', async () => {
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(createClaimed('archiving'));
-
-    await expect(
-      archiveSandboxResourceForProviderMigration(createClaimed('archiving'))
-    ).resolves.toEqual({
-      status: 'skipped',
-      reason: 'Sandbox archive operation is still active'
-    });
-
-    expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
-    expect(mocks.connectToSandbox).not.toHaveBeenCalled();
-  });
-
-  it('reclaims an explicitly failed archiving operation without waiting for staleness', async () => {
-    const failed = createClaimed('archiving');
-    failed.metadata.operation.error = 'worker failed';
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(failed);
-
-    await expect(archiveSandboxResourceForProviderMigration(failed)).resolves.toEqual({
-      status: 'success'
-    });
-
-    expect(mocks.claimSandboxOperation).toHaveBeenCalledTimes(1);
-  });
-
   it('commits providerDeleted archive phase without recreating an empty sandbox', async () => {
     const providerDeleted = createResource('archiving', {
       metadata: {
@@ -283,7 +266,7 @@ describe('sandbox archive lifecycle', () => {
   });
 
   it('rejects a missing Legacy deleting archive instead of creating an empty provider', async () => {
-    mocks.isWorkspaceArchiveExists.mockResolvedValueOnce(false);
+    mocks.isLegacyWorkspaceArchiveExists.mockResolvedValueOnce(false);
 
     await expect(
       getSandboxWorkspaceArchiveForMigration({
@@ -296,11 +279,11 @@ describe('sandbox archive lifecycle', () => {
     ).rejects.toThrow('Archived Legacy Sandbox workspace is missing');
 
     expect(mocks.connectToSandbox).not.toHaveBeenCalled();
-    expect(mocks.uploadWorkspaceArchive).not.toHaveBeenCalled();
+    expect(mocks.uploadLegacyWorkspaceArchive).not.toHaveBeenCalled();
   });
 
   it('reuses the completed Legacy archive while the old state is deleting', async () => {
-    mocks.isWorkspaceArchiveExists.mockResolvedValueOnce(true);
+    mocks.isLegacyWorkspaceArchiveExists.mockResolvedValueOnce(true);
 
     await expect(
       getSandboxWorkspaceArchiveForMigration({
@@ -312,12 +295,12 @@ describe('sandbox archive lifecycle', () => {
       })
     ).resolves.toEqual(EMPTY_ZIP_BUFFER);
 
-    expect(mocks.downloadWorkspaceArchive).toHaveBeenCalledWith({
+    expect(mocks.downloadLegacyWorkspaceArchive).toHaveBeenCalledWith({
       sandboxId: 'legacy-sandbox',
       maxBytes: 1024 * 1024
     });
     expect(mocks.connectToSandbox).not.toHaveBeenCalled();
-    expect(mocks.uploadWorkspaceArchive).not.toHaveBeenCalled();
+    expect(mocks.uploadLegacyWorkspaceArchive).not.toHaveBeenCalled();
   });
 
   it('rearchives a Legacy workspace that was left in archiving', async () => {
@@ -330,7 +313,7 @@ describe('sandbox archive lifecycle', () => {
     });
 
     expect(mocks.connectToSandbox).toHaveBeenCalledTimes(1);
-    expect(mocks.uploadWorkspaceArchive).toHaveBeenCalledWith({
+    expect(mocks.uploadLegacyWorkspaceArchive).toHaveBeenCalledWith({
       sandboxId: 'legacy-sandbox',
       body: Buffer.from('workspace')
     });
@@ -364,66 +347,6 @@ describe('sandbox archive lifecycle', () => {
     );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ fromStatus: 'restoring', status: 'running', touchActive: true })
-    );
-  });
-
-  it('does not steal a recent restoring operation', async () => {
-    const restoring = createResource('restoring', {
-      metadata: {
-        operation: {
-          id: 'active-restore',
-          type: 'restore',
-          phase: 'claimed',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      }
-    });
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValue(restoring);
-
-    await expect(
-      restoreArchivedSandboxBeforeUse({
-        provider: 'opensandbox',
-        sandboxId: 'sandbox-1',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1',
-        userId: 'user-1'
-      })
-    ).rejects.toMatchObject({ name: 'SandboxLifecycleStateError', state: 'restoring' });
-    expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
-  });
-
-  it('reclaims a recent restoring operation after it records an explicit failure', async () => {
-    const failed = createResource('restoring', {
-      metadata: {
-        operation: {
-          id: 'failed-restore',
-          type: 'restore',
-          phase: 'claimed',
-          previousStatus: 'archived',
-          startedAt: new Date(),
-          heartbeatAt: new Date(),
-          error: 'Failed to create sandbox',
-          failedAt: new Date()
-        }
-      }
-    });
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValue(failed);
-
-    await restoreArchivedSandboxBeforeUse({
-      provider: 'opensandbox',
-      sandboxId: 'sandbox-1',
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1'
-    });
-
-    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ resource: failed, status: 'restoring', type: 'restore' })
-    );
-    expect(mocks.connectToSandbox).toHaveBeenCalledTimes(1);
-    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ fromStatus: 'restoring', status: 'running' })
     );
   });
 

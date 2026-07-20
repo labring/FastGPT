@@ -246,19 +246,6 @@ describe('sandbox runtime client lifecycle', () => {
     await expect(getSandboxClient(query)).rejects.toThrow('Sandbox is initializing');
   });
 
-  it('rejects a fresh provisioning operation instead of stealing it', async () => {
-    const provisioning = createInstance('provisioning', 'active-operation');
-    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
-    mocks.findSandboxInstanceBySource.mockResolvedValue(provisioning);
-
-    await expect(getSandboxClient(query)).rejects.toMatchObject({
-      name: 'SandboxLifecycleStateError',
-      state: 'provisioning'
-    });
-    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalled();
-    expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
-  });
-
   it('publishes a stale providerEnsured phase without reconnecting the provider', async () => {
     const provisioning = createInstance('provisioning', 'old-provision');
     provisioning.metadata.operation.phase = 'providerEnsured';

@@ -25,6 +25,7 @@ describe('initUserSandbox API', () => {
     mocks.authCert.mockResolvedValue(undefined);
     mocks.migrateLegacySandboxesToUserLevel.mockResolvedValue({
       dryRun: true,
+      completedLegacyCount: 0,
       legacySkillCount: 1,
       migratedSkillCount: 0,
       legacyAppCount: 2,

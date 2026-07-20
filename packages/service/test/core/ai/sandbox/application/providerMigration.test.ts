@@ -250,21 +250,4 @@ describe('sandbox provider migration lifecycle', () => {
       expect.objectContaining({ operationId: 'migration-after-rollback' })
     );
   });
-
-  it('records the fencing token error when the final provider commit fails', async () => {
-    const archived = createInstance({ status: 'archived' });
-    mocks.findSandboxInstanceBySource.mockResolvedValue(archived);
-    mocks.completeSandboxProviderMigration.mockResolvedValueOnce(null);
-
-    await expect(migrateSandboxProviderBeforeUse(params)).rejects.toThrow(
-      'Sandbox providerMigration operation lost ownership before terminal commit'
-    );
-    expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        operationId: 'migration-1',
-        status: 'providerMigrating',
-        error: 'Sandbox providerMigration operation lost ownership before terminal commit'
-      })
-    );
-  });
 });

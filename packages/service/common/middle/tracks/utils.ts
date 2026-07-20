@@ -269,6 +269,8 @@ export const pushTrack = {
             | 'migrate_app'
             | 'delete_sandbox'
             | 'delete_volume'
+            | 'verify_archive'
+            | 'complete_legacy_record'
             | 'delete_archive'
             | 'delete_legacy_record'
             | 'stop_failed_legacy';

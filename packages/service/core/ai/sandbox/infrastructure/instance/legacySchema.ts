@@ -38,7 +38,7 @@ const LegacySandboxMetadataSchema = z
       .optional(),
     userLevelMigration: z
       .object({
-        phase: z.enum(['pending', 'archiveReady', 'installed', 'cleanupPending']),
+        phase: z.enum(['pending', 'archiveReady', 'installed', 'cleanupPending', 'completed']),
         targetSandboxId: z.string(),
         updatedAt: z.coerce.date()
       })
@@ -72,18 +72,37 @@ const LegacySandboxCommonSchema = z
   .passthrough();
 
 /** beta6 归一化完成后，用户级 Sandbox 迁移允许读取的 Legacy 记录结构。 */
-export const LegacySandboxInstanceZodSchema = z.discriminatedUnion('sourceType', [
-  LegacySandboxCommonSchema.extend({
-    sourceType: z.literal(ChatSourceTypeEnum.app),
-    userId: z.string().min(1),
-    chatId: z.string().min(1)
-  }),
-  LegacySandboxCommonSchema.extend({
-    sourceType: z.literal(ChatSourceTypeEnum.skillEdit),
-    userId: z.string().nullish(),
-    chatId: z.string().nullish()
-  })
-]);
+export const LegacySandboxInstanceZodSchema = z
+  .discriminatedUnion('sourceType', [
+    LegacySandboxCommonSchema.extend({
+      sourceType: z.literal(ChatSourceTypeEnum.app),
+      userId: z.string().min(1),
+      chatId: z.string().min(1)
+    }),
+    LegacySandboxCommonSchema.extend({
+      sourceType: z.literal(ChatSourceTypeEnum.skillEdit),
+      userId: z.string().nullish(),
+      chatId: z.string().nullish()
+    })
+  ])
+  .superRefine((instance, ctx) => {
+    if (instance.metadata?.userLevelMigration?.phase !== 'completed') return;
+
+    if (instance.status !== SandboxStatusEnum.stopped) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['status'],
+        message: 'Completed Legacy migration requires stopped status'
+      });
+    }
+    if (instance.metadata.archive?.state !== 'archived') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['metadata', 'archive', 'state'],
+        message: 'Completed Legacy migration requires archived state'
+      });
+    }
+  });
 export type LegacySandboxInstanceSchemaType = z.infer<typeof LegacySandboxInstanceZodSchema>;
 
 const LegacySandboxInstanceSchema = new Schema(

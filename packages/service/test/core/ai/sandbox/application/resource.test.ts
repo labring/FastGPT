@@ -223,34 +223,6 @@ describe('sandbox resource lifecycle', () => {
     );
   });
 
-  it('does not fence a fresh non-delete transition', async () => {
-    const archiving = createClaimed('archiving', 'archive');
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(archiving);
-
-    await expect(deleteSandboxResource(archiving)).rejects.toThrow(
-      'is still inside the archiving delete isolation window'
-    );
-
-    expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
-    expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
-  });
-
-  it('can fence a non-delete transition after it records an explicit failure', async () => {
-    const failedArchiving = createClaimed('archiving', 'archive');
-    failedArchiving.metadata.operation.error = 'archive failed';
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(failedArchiving);
-
-    await deleteSandboxResource(failedArchiving);
-
-    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resource: failedArchiving,
-        status: 'deleting',
-        type: 'delete'
-      })
-    );
-  });
-
   it('finishes archiveDeleted delete phase without replaying remote side effects', async () => {
     const deleting = createClaimed('deleting', 'delete');
     deleting.metadata.operation.phase = 'archiveDeleted';

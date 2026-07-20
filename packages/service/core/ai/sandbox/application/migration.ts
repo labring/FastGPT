@@ -61,10 +61,17 @@ const APP_SANDBOX_MIGRATION_CONCURRENCY = 5;
 const SKILL_SANDBOX_MIGRATION_CONCURRENCY = 20;
 
 type UserSandboxMigrationParams = { dryRun?: boolean };
-type LegacyMigrationPhase = 'pending' | 'archiveReady' | 'installed' | 'cleanupPending';
+type LegacyMigrationPhase =
+  | 'pending'
+  | 'archiveReady'
+  | 'installed'
+  | 'cleanupPending'
+  | 'completed';
 type LegacySandboxCleanupStep =
   | 'delete_sandbox'
   | 'delete_volume'
+  | 'verify_archive'
+  | 'complete_legacy_record'
   | 'delete_archive'
   | 'delete_legacy_record';
 type UserSandboxMigrationTrackData = Parameters<typeof pushTrack.userSandboxMigration>[0];
@@ -96,6 +103,7 @@ class LegacySandboxCleanupError extends Error {
 export type UserSandboxMigrationFailure = { sandboxId: string; error: string };
 export type UserSandboxMigrationResult = {
   dryRun: boolean;
+  completedLegacyCount: number;
   legacySkillCount: number;
   migratedSkillCount: number;
   legacyAppCount: number;
@@ -329,34 +337,108 @@ const installLegacySkillWorkspaceArchive = (params: {
     removeAppRuntimeSkillCaches: false
   });
 
-/** 按步骤清理一条 Legacy 资源；所有关键失败都向上抛出。 */
-async function cleanupLegacyInstance(
+const runLegacyCleanupStep = async (params: {
+  step: LegacySandboxCleanupStep;
+  assertLeaseValid: () => void;
+  fn: () => Promise<unknown>;
+}) => {
+  try {
+    params.assertLeaseValid();
+    await params.fn();
+    params.assertLeaseValid();
+  } catch (error) {
+    throw new LegacySandboxCleanupError(params.step, error);
+  }
+};
+
+/** 删除旧物理 Sandbox 和 volume，但保留迁移备份与 Legacy 记录。 */
+async function deleteLegacyPhysicalResources(
   doc: LegacySandboxInstanceSchemaType,
   assertLeaseValid: () => void
 ) {
-  const runStep = async (step: LegacySandboxCleanupStep, fn: () => Promise<unknown>) => {
-    try {
-      assertLeaseValid();
-      await fn();
-      assertLeaseValid();
-    } catch (error) {
-      throw new LegacySandboxCleanupError(step, error);
-    }
-  };
   const resource = toLegacyResource(doc);
-  await runStep('delete_sandbox', async () => {
-    if (doc.metadata?.archive?.state === 'archived') return;
-    await buildSandboxResourceAdapter(resource).delete();
+  await runLegacyCleanupStep({
+    step: 'delete_sandbox',
+    assertLeaseValid,
+    fn: async () => {
+      if (doc.metadata?.archive?.state === 'archived') return;
+      await buildSandboxResourceAdapter(resource).delete();
+    }
   });
   if (resource.provider === 'opensandbox') {
-    await runStep('delete_volume', () => deleteSessionVolume(resource.sandboxId));
+    await runLegacyCleanupStep({
+      step: 'delete_volume',
+      assertLeaseValid,
+      fn: () => deleteSessionVolume(resource.sandboxId)
+    });
   }
-  await runStep('delete_archive', () =>
-    getS3SandboxSource().deleteWorkspaceArchiveNow({ sandboxId: resource.sandboxId })
-  );
-  await runStep('delete_legacy_record', () =>
-    MongoLegacySandboxInstance.deleteOne({ _id: doc._id })
-  );
+}
+
+/** 完成迁移后的旧资源退休，保留可追溯的 Mongo 记录和 Legacy S3 归档。 */
+async function retainLegacyInstanceAfterMigration(params: {
+  doc: LegacySandboxInstanceSchemaType;
+  targetSandboxId: string;
+  assertLeaseValid: () => void;
+}) {
+  const { doc, targetSandboxId, assertLeaseValid } = params;
+  await deleteLegacyPhysicalResources(doc, assertLeaseValid);
+  await runLegacyCleanupStep({
+    step: 'verify_archive',
+    assertLeaseValid,
+    fn: async () => {
+      const exists = await getS3SandboxSource().isLegacyWorkspaceArchiveExists({
+        sandboxId: doc.sandboxId
+      });
+      if (!exists) throw new Error(`Legacy Sandbox workspace archive is missing: ${doc.sandboxId}`);
+    }
+  });
+  await runLegacyCleanupStep({
+    step: 'complete_legacy_record',
+    assertLeaseValid,
+    fn: async () => {
+      const now = new Date();
+      const archive = {
+        state: 'archived' as const,
+        ...(doc.metadata?.archive?.startedAt ? { startedAt: doc.metadata.archive.startedAt } : {}),
+        archivedAt: doc.metadata?.archive?.archivedAt ?? now
+      };
+      const userLevelMigration = {
+        phase: 'completed' as const,
+        targetSandboxId,
+        updatedAt: now
+      };
+      await MongoLegacySandboxInstance.updateOne(
+        { _id: doc._id },
+        {
+          $set: {
+            status: SandboxStatusEnum.stopped,
+            'metadata.archive': archive,
+            'metadata.userLevelMigration': userLevelMigration
+          }
+        }
+      );
+      doc.status = SandboxStatusEnum.stopped;
+      doc.metadata = { ...(doc.metadata ?? {}), archive, userLevelMigration };
+    }
+  });
+}
+
+/** Source 删除时最终清理保留的 Legacy 归档和 Mongo 记录。 */
+async function cleanupLegacyInstanceForSourceDeletion(
+  doc: LegacySandboxInstanceSchemaType,
+  assertLeaseValid: () => void
+) {
+  await deleteLegacyPhysicalResources(doc, assertLeaseValid);
+  await runLegacyCleanupStep({
+    step: 'delete_archive',
+    assertLeaseValid,
+    fn: () => getS3SandboxSource().deleteLegacyWorkspaceArchiveNow({ sandboxId: doc.sandboxId })
+  });
+  await runLegacyCleanupStep({
+    step: 'delete_legacy_record',
+    assertLeaseValid,
+    fn: () => MongoLegacySandboxInstance.deleteOne({ _id: doc._id })
+  });
 }
 
 /** App 删除在 Source Lease 内同时清理 v2 和 Legacy 资源。 */
@@ -378,7 +460,7 @@ export async function deleteAppSandboxesForAppDeletion(appId: string): Promise<v
       }).lean<LegacySandboxInstanceSchemaType[]>();
       await batchRun(
         legacy,
-        (doc) => cleanupLegacyInstance(doc, assertValid),
+        (doc) => cleanupLegacyInstanceForSourceDeletion(doc, assertValid),
         APP_SANDBOX_MIGRATION_CONCURRENCY,
         {
           waitForAll: true
@@ -408,9 +490,14 @@ export async function deleteSkillEditSandboxesForSkillDeletion(skillIds: string[
             sourceType: ChatSourceTypeEnum.skillEdit,
             sourceId: skillId
           }).lean<LegacySandboxInstanceSchemaType[]>();
-          await batchRun(legacy, (doc) => cleanupLegacyInstance(doc, assertValid), 10, {
-            waitForAll: true
-          });
+          await batchRun(
+            legacy,
+            (doc) => cleanupLegacyInstanceForSourceDeletion(doc, assertValid),
+            10,
+            {
+              waitForAll: true
+            }
+          );
         }
       });
     },
@@ -550,7 +637,7 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
               }
               if (phase === 'archiveReady') {
                 assertLeasesValid();
-                body ??= await getS3SandboxSource().downloadWorkspaceArchive({
+                body ??= await getS3SandboxSource().downloadLegacyWorkspaceArchive({
                   sandboxId: item.doc.sandboxId,
                   maxBytes: getAgentSandboxArchiveMaxBytes()
                 });
@@ -614,7 +701,11 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
           targetSandboxId
         });
       }
-      await cleanupLegacyInstance(item.doc, sourceLease.assertValid);
+      await retainLegacyInstanceAfterMigration({
+        doc: item.doc,
+        targetSandboxId,
+        assertLeaseValid: sourceLease.assertValid
+      });
     }
   });
 };
@@ -758,7 +849,7 @@ const migrateAppGroup = async (params: {
                 }
                 if (phase === 'archiveReady') {
                   assertLeasesValid();
-                  body ??= await getS3SandboxSource().downloadWorkspaceArchive({
+                  body ??= await getS3SandboxSource().downloadLegacyWorkspaceArchive({
                     sandboxId: item.doc.sandboxId,
                     maxBytes: getAgentSandboxArchiveMaxBytes()
                   });
@@ -831,7 +922,11 @@ const migrateAppGroup = async (params: {
             targetSandboxId
           });
         }
-        await cleanupLegacyInstance(item.doc, sourceLease.assertValid);
+        await retainLegacyInstanceAfterMigration({
+          doc: item.doc,
+          targetSandboxId,
+          assertLeaseValid: sourceLease.assertValid
+        });
         result.migratedAppCount += 1;
       }
     }
@@ -903,9 +998,13 @@ const runLegacySandboxMigration = async (
     .sort({ lastActiveAt: -1, _id: 1 })
     .toArray();
   const docs = parseLegacySandboxInstances(raw);
+  const completedLegacyCount = docs.filter(
+    (doc) => getLegacyMigrationPhase(doc) === 'completed'
+  ).length;
   const skillItems: ResolvedLegacySkill[] = [];
   const appGroups = new Map<string, ResolvedLegacyApp[]>();
   for (const doc of docs) {
+    if (getLegacyMigrationPhase(doc) === 'completed') continue;
     if (doc.sourceType === ChatSourceTypeEnum.skillEdit) {
       skillItems.push({ doc, sourceId: doc.sourceId });
     } else {
@@ -916,6 +1015,7 @@ const runLegacySandboxMigration = async (
   }
   const result: UserSandboxMigrationResult = {
     dryRun,
+    completedLegacyCount,
     legacySkillCount: skillItems.length,
     migratedSkillCount: 0,
     legacyAppCount: Array.from(appGroups.values()).reduce((sum, group) => sum + group.length, 0),
