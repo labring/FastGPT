@@ -1,9 +1,9 @@
-import { LLMModelItemSchema } from '../../ai/model.schema';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
 import z from 'zod';
 import { BoolSchema, IntSchema, NumSchema } from '../../../common/zod';
+import { EmbeddingModelItemSchema } from '../../ai/model/type';
 
 /* Dataset node */
 export const SelectedDatasetSchema = z.object({
@@ -16,10 +16,8 @@ export const SelectedDatasetSchema = z.object({
   name: z.string().meta({
     description: '可选知识库名称'
   }),
-  vectorModel: z.object({
-    model: z.string().meta({
-      description: '知识库使用的向量模型'
-    })
+  vectorModel: EmbeddingModelItemSchema.optional().meta({
+    description: '向量模型 (resolved)；原模型已删除或无法解析时缺省'
   }),
   isDeleted: BoolSchema.optional()
 });
@@ -361,7 +359,9 @@ export const FlowNodeOutputItemTypeSchema = z.object({
       input: z.tuple([
         z.object({
           inputs: z.custom<FlowNodeInputItemType[]>(),
-          llmModelMap: z.record(z.string(), LLMModelItemSchema)
+          // Loosened to the minimal capability shape: callers build the map from the
+          // lazily fetched model list (list API items) instead of the full schema.
+          llmModelMap: z.record(z.string(), z.custom<{ reasoning?: boolean }>())
         })
       ]),
       output: BoolSchema

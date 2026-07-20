@@ -10,8 +10,9 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
 import {
   QuestionGuideFooterPrompt,
@@ -77,11 +78,12 @@ const QGConfigModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
+  // Lazy llm list (design §1); first active llm as fallback default (§3.2)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   const customPrompt = value.customPrompt;
   const isOpenQG = value.open;
-  const model = value?.model || llmModelList?.[0]?.model;
+  const model = value?.modelId || llmModelList?.[0]?.id;
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -100,40 +102,38 @@ const QGConfigModal = ({
         footer={<Button onClick={onClose}>{t('common:Confirm')}</Button>}
       >
         <Flex justifyContent={'space-between'} alignItems={'center'}>
-          <FormLabel flex={'0 0 100px'}>{t('app:core.app.QG.Switch')}</FormLabel>
-          <Switch
-            isChecked={isOpenQG}
-            onChange={(e) => {
-              onChange({
-                ...value,
-                open: e.target.checked
-              });
-            }}
-          />
-        </Flex>
-        {isOpenQG && (
-          <>
-            <Flex alignItems={'center'} mt={4}>
-              <Box {...LabelStyles} mr={2}>
-                {t('common:core.ai.Model')}
-              </Box>
-              <Box flex={'1 0 0'}>
-                <AIModelSelector
-                  width={'100%'}
-                  value={model}
-                  list={llmModelList.map((item) => ({
-                    value: item.model,
-                    label: item.name
-                  }))}
-                  onChange={(e) => {
-                    onChange({
-                      ...value,
-                      model: e
-                    });
-                  }}
-                />
-              </Box>
-            </Flex>
+            <FormLabel flex={'0 0 100px'}>{t('app:core.app.QG.Switch')}</FormLabel>
+            <Switch
+              isChecked={isOpenQG}
+              onChange={(e) => {
+                onChange({
+                  ...value,
+                  open: e.target.checked
+                });
+              }}
+            />
+          </Flex>
+          {isOpenQG && (
+            <>
+              <Flex alignItems={'center'} mt={4}>
+                <Box {...LabelStyles} mr={2}>
+                  {t('common:core.ai.Model')}
+                </Box>
+                <Box flex={'1 0 0'}>
+                  <AIModelSelector
+                    type={'llm'}
+                    width={'100%'}
+                    value={model}
+                    autoSelectDefault
+                    onChange={(e) => {
+                      onChange({
+                        ...value,
+                        modelId: e
+                      });
+                    }}
+                  />
+                </Box>
+              </Flex>
 
             <Box mt={4}>
               <Flex alignItems={'center'} mb={1}>

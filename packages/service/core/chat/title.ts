@@ -110,11 +110,11 @@ Return only the title.`;
   try {
     const response = await createLLMResponse({
       teamId,
+      modelData: titleModel,
       throwError: false,
       saveLLMResponseRecord: false,
       timeout: CHAT_TITLE_GENERATION_TIMEOUT_MS,
       body: {
-        model: titleModel.model,
         stream: false,
         messages: [
           {

@@ -1,12 +1,7 @@
-import {
-  type EmbeddingModelItemType,
-  type LLMModelItemType
-} from '@fastgpt/global/core/ai/model.schema';
 import type {
   FastGPTFeConfigsType,
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
-import { useSystemStore } from './useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 /**
@@ -79,27 +74,17 @@ export const downloadFetch = async ({
   }
 };
 
-export const getWebLLMModel = (model?: string) => {
-  const list = useSystemStore.getState().llmModelList;
-  const defaultModels = useSystemStore.getState().defaultModels;
-
-  return list.find((item) => item.model === model || item.name === model) ?? defaultModels.llm!;
-};
-export const getWebDefaultLLMModel = (llmList: LLMModelItemType[] = []) => {
-  const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;
-  const defaultModels = useSystemStore.getState().defaultModels;
-
-  return defaultModels.llm && list.find((item) => item.model === defaultModels.llm?.model)
-    ? defaultModels.llm
-    : list[0];
-};
-export const getWebDefaultEmbeddingModel = (embeddingList: EmbeddingModelItemType[] = []) => {
-  const list =
-    embeddingList.length > 0 ? embeddingList : useSystemStore.getState().embeddingModelList;
-  const defaultModels = useSystemStore.getState().defaultModels;
-
-  return defaultModels.embedding &&
-    list.find((item) => item.model === defaultModels.embedding?.model)
-    ? defaultModels.embedding
-    : list[0];
-};
+/**
+ * Look up an llm model by id (or legacy model name) in the given list.
+ * Pure helper: the caller owns the list (fetched lazily via useActiveSystemModelList
+ * or getModelList). Returns undefined when the model is not in the list.
+ */
+export const getWebLLMModel = <T extends { id: string; model: string }>(
+  modelId?: string,
+  llmList: T[] = []
+): T | undefined => llmList.find((item) => item.id === modelId || item.model === modelId);
+/** First llm of the list as the fallback default (design §3.2 fallback). */
+export const getWebDefaultLLMModel = (llmList: { id: string }[] = []) => llmList[0];
+/** First embedding model of the list as the fallback default. */
+export const getWebDefaultEmbeddingModel = (embeddingList: { id: string }[] = []) =>
+  embeddingList[0];

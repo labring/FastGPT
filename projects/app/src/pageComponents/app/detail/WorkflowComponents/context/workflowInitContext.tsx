@@ -26,6 +26,8 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -128,6 +130,8 @@ const WorkflowInitContextProvider = ({
 }) => {
   // Nodes
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
+  // Lazy llm list for quote context computation (design §1)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
   const getNodes = useMemoizedFn(() => nodes);
 
   const nodeFormat = useMemo(() => {
@@ -207,8 +211,8 @@ const WorkflowInitContextProvider = ({
       };
       if (map[flowNodeType]) {
         const model =
-          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 0;
+          node.data.inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value || '';
+        const quoteMaxToken = getWebLLMModel(model, llmModelList)?.quoteMaxToken || 0;
         llmMaxQuoteContext = Math.max(llmMaxQuoteContext, quoteMaxToken);
       }
 
@@ -239,7 +243,7 @@ const WorkflowInitContextProvider = ({
       foldedNodesMap,
       compareNodeList
     };
-  }, [nodes]);
+  }, [nodes, llmModelList]);
 
   // 拆解出常用的数据，避免重复计算
   const nodeIds = useMemoEnhance(() => nodeFormat.nodeIds, [nodeFormat.nodeIds]);

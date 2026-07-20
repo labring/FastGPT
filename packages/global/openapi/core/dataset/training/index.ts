@@ -8,10 +8,36 @@ import {
   GetTrainingErrorBodySchema,
   GetDatasetTrainingErrorBodySchema,
   HasDatasetTrainingErrorQuerySchema,
-  GetDatasetTrainingQueueQuerySchema
+  GetDatasetTrainingQueueQuerySchema,
+  LlmParagraphBodySchema,
+  LlmParagraphResponseSchema
 } from './api';
 
 export const DatasetTrainingPath: OpenAPIPath = {
+  '/core/dataset/training/llmPargraph': {
+    post: {
+      summary: 'Generate dataset paragraph text',
+      description: 'Uses an accessible LLM to generate paragraph text for dataset training',
+      tags: [DevApiTagsMap.datasetTraining],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: LlmParagraphBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'Generated paragraph text and token usage',
+          content: {
+            'application/json': {
+              schema: LlmParagraphResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/dataset/training/updateTrainingData': {
     put: {
       summary: '更新训练数据或重试训练异常',

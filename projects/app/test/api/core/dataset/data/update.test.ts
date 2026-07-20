@@ -60,8 +60,8 @@ const buildAuthResult = () => ({
     dataset: {
       name: 'Dataset',
       type: 'dataset',
-      vectorModel: 'vision-embedding',
-      vlmModel: 'vlm-model'
+      vectorModelId: 'vision-embedding',
+      vlmModelId: 'vlm-model'
     }
   },
   datasetData: {
@@ -123,7 +123,7 @@ describe('PUT /api/core/dataset/data/update', () => {
           text: 'new custom'
         }
       ],
-      model: 'vision-embedding',
+      vectorModelId: 'vision-embedding',
       indexSize: 256,
       indexPrefix: '# Collection'
     });
@@ -132,7 +132,7 @@ describe('PUT /api/core/dataset/data/update', () => {
       teamId: 'team-id',
       tmbId: 'tmb-id',
       inputTokens: 12,
-      model: 'vision-embedding'
+      modelId: 'vision-embedding'
     });
     expect(result).toEqual({
       q: 'new question',
@@ -176,7 +176,7 @@ describe('PUT /api/core/dataset/data/update', () => {
       a: 'old answer',
       imageId: 'dataset/team/main.png',
       imageIndex: true,
-      model: 'vision-embedding',
+      vectorModelId: 'vision-embedding',
       indexSize: 256,
       indexPrefix: '# Collection'
     });

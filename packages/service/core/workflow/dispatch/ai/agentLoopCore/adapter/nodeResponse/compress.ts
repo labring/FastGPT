@@ -41,6 +41,7 @@ export const createAgentLoopCoreCompressNodeResponse = ({
     moduleType,
     moduleLogo,
     runningTime: seconds,
+    modelId: usage?.modelId,
     model: usage?.model,
     llmRequestIds: validRequestIds.length ? validRequestIds : undefined,
     inputTokens: usage?.inputTokens,

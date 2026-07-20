@@ -6,7 +6,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -66,23 +66,27 @@ import {
 import { extractExactAnchors } from '@fastgpt/service/core/ai/llm/compress/prompt';
 
 const testTeamId = 'team_1';
-const compressLargeContent: typeof rawCompressLargeContent = ((args: any) =>
+type CompressLargeContentArgs = Omit<Parameters<typeof rawCompressLargeContent>[0], 'teamId'>;
+type CompressRequestMessagesArgs = Omit<Parameters<typeof rawCompressRequestMessages>[0], 'teamId'>;
+type CompressToolResponseArgs = Omit<Parameters<typeof rawCompressToolResponse>[0], 'teamId'>;
+const compressLargeContent = ((args: any) =>
   rawCompressLargeContent({
     teamId: testTeamId,
     ...args
-  })) as typeof rawCompressLargeContent;
-const compressRequestMessages: typeof rawCompressRequestMessages = ((args: any) =>
+  })) as (args: CompressLargeContentArgs) => ReturnType<typeof rawCompressLargeContent>;
+const compressRequestMessages = ((args: any) =>
   rawCompressRequestMessages({
     teamId: testTeamId,
     ...args
-  })) as typeof rawCompressRequestMessages;
-const compressToolResponse: typeof rawCompressToolResponse = ((args: any) =>
+  })) as (args: CompressRequestMessagesArgs) => ReturnType<typeof rawCompressRequestMessages>;
+const compressToolResponse = ((args: any) =>
   rawCompressToolResponse({
     teamId: testTeamId,
     ...args
-  })) as typeof rawCompressToolResponse;
+  })) as (args: CompressToolResponseArgs) => ReturnType<typeof rawCompressToolResponse>;
 
 const model: LLMModelItemType = {
+  id: 'gpt-4',
   type: ModelTypeEnum.llm,
   provider: 'openai',
   model: 'gpt-4',
@@ -201,7 +205,7 @@ describe('compressRequestMessages', () => {
     const messages = createMessages();
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
@@ -222,6 +226,7 @@ describe('compressRequestMessages', () => {
     );
     expect(result.usage).toEqual({
       moduleName: 'account_usage:compress_llm_messages',
+      modelId: 'gpt-4',
       model: 'GPT-4',
       totalPoints: 3,
       inputTokens: 120,
@@ -277,7 +282,7 @@ describe('compressRequestMessages', () => {
     const result = await compressRequestMessages({
       activePlan,
       messages: createMessages(),
-      model
+      modelData: model
     });
     const expectedContent = `<active_plan>\n${JSON.stringify(activePlan, null, 2)}\n</active_plan>\n<context_checkpoint>compressed history</context_checkpoint>`;
 
@@ -339,7 +344,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(result.contextCheckpoint).toBe(
@@ -377,7 +382,7 @@ describe('compressRequestMessages', () => {
     const result = await compressRequestMessages({
       activePlan,
       messages: createMessages(),
-      model
+      modelData: model
     });
 
     expect(result.contextCheckpoint).toContain('Plan with <\\/active_plan> text');
@@ -398,7 +403,7 @@ describe('compressRequestMessages', () => {
 
     await compressRequestMessages({
       messages: createMessages(),
-      model,
+      modelData: model,
       reasoningEffort: 'none'
     });
 
@@ -424,7 +429,7 @@ describe('compressRequestMessages', () => {
     const messages = [baseMessages[0], developerMessage, ...baseMessages.slice(1)];
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(result.messages.slice(0, 2)).toEqual([baseMessages[0], developerMessage]);
@@ -444,7 +449,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages: createMessages(),
-      model
+      modelData: model
     });
 
     expect(result.contextCheckpoint).toBe(
@@ -467,7 +472,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages: createMessages(),
-      model
+      modelData: model
     });
 
     expect(result.contextCheckpoint).toContain('保留完整语义摘要');
@@ -490,7 +495,7 @@ describe('compressRequestMessages', () => {
     const messages = createMessages();
     const result = await compressRequestMessages({
       messages,
-      model: largeContextModel
+      modelData: largeContextModel
     });
 
     expect(createLLMResponseMock).toHaveBeenCalled();
@@ -519,7 +524,7 @@ describe('compressRequestMessages', () => {
     const messages = createMessages();
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(result).toEqual({ messages, messageTokens: 100 });
@@ -537,7 +542,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages,
-      model,
+      modelData: model,
       tools: [searchTool]
     });
 
@@ -554,7 +559,7 @@ describe('compressRequestMessages', () => {
     const result = await compressRequestMessages({
       messageTokens: 100,
       messages,
-      model
+      modelData: model
     });
 
     expect(result).toEqual({ messages, messageTokens: 100 });
@@ -610,7 +615,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
@@ -677,7 +682,7 @@ describe('compressRequestMessages', () => {
 
     await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
@@ -748,7 +753,7 @@ describe('compressRequestMessages', () => {
 
     await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
@@ -831,7 +836,7 @@ describe('compressRequestMessages', () => {
 
     await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
@@ -888,7 +893,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages,
-      model,
+      modelData: model,
       tools: [searchTool]
     });
 
@@ -948,7 +953,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
@@ -1001,7 +1006,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
@@ -1037,7 +1042,7 @@ describe('compressRequestMessages', () => {
     const messages = createMessages();
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(result.messages).toBe(messages);
@@ -1065,7 +1070,7 @@ describe('compressRequestMessages', () => {
     const messages = createMessages();
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(result.messages).toBe(messages);
@@ -1092,7 +1097,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages: createMessages(),
-      model,
+      modelData: model,
       userKey: {
         key: 'user-key',
         baseUrl: 'https://user.example.com/v1'
@@ -1116,7 +1121,7 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages: createMessages(),
-      model,
+      modelData: model,
       userKey: {
         baseUrl: 'https://user.example.com/v1'
       } as any
@@ -1132,7 +1137,7 @@ describe('compressRequestMessages', () => {
     const messages = createMessages();
     const result = await compressRequestMessages({
       messages,
-      model
+      modelData: model
     });
 
     expect(result).toEqual({ messages, messageTokens: 6000 });
@@ -1151,7 +1156,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: 'short content',
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1164,7 +1169,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: `visit https://example.com/a/b and payload ${'a'.repeat(120)} done`,
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1181,7 +1186,7 @@ describe('compressLargeContent', () => {
     const result = await compressLargeContent({
       content:
         '![diagram](/tmp/image.png)\n\n\nfile /tmp/project/report.txt id 550e8400-e29b-41d4-a716-446655440000 at 2024-01-01T12:30:00Z',
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1204,7 +1209,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: 'large content that requires LLM compression',
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1256,7 +1261,7 @@ describe('compressLargeContent', () => {
 
     await compressLargeContent({
       content: 'large content',
-      model,
+      modelData: model,
       compressedTokenLimit: 100,
       reasoningEffort: 'low'
     });
@@ -1279,7 +1284,7 @@ describe('compressLargeContent', () => {
     const content = 'large content that cannot be summarized';
     const result = await compressLargeContent({
       content,
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1308,7 +1313,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: 'large content',
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1346,7 +1351,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: 'large content',
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1375,7 +1380,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: ['开头字段：关键背景', '正文内容。'.repeat(400), '尾部字段：最终结论'].join('\n'),
-      model,
+      modelData: model,
       compressedTokenLimit: 1000
     });
 
@@ -1406,7 +1411,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: ['问题标题：关键问题', '字段名称：重要字段', '正文内容。'.repeat(400)].join('\n'),
-      model,
+      modelData: model,
       compressedTokenLimit: 1000
     });
 
@@ -1436,7 +1441,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: ['问题标题：关键问题', '字段名称：重要字段', '正文内容。'.repeat(400)].join('\n'),
-      model,
+      modelData: model,
       compressedTokenLimit: 1000
     });
 
@@ -1467,7 +1472,7 @@ describe('compressLargeContent', () => {
         ...Array.from({ length: 20 }, (_, index) => `字段${index + 1}：值${index + 1}`),
         '正文内容。'.repeat(400)
       ].join('\n'),
-      model,
+      modelData: model,
       compressedTokenLimit: 1000
     });
 
@@ -1486,7 +1491,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: 'large   content\n\n\nwith spaces',
-      model,
+      modelData: model,
       compressedTokenLimit: 100
     });
 
@@ -1510,7 +1515,7 @@ describe('compressLargeContent', () => {
 
     const result = await compressLargeContent({
       content: 'large content',
-      model,
+      modelData: model,
       compressedTokenLimit: 100,
       userKey: {
         key: 'user-key',
@@ -1567,7 +1572,7 @@ describe('compressToolResponse', () => {
   it('should return empty response directly', async () => {
     const result = await compressToolResponse({
       response: '',
-      model
+      modelData: model
     });
 
     expect(result).toEqual({ compressed: '' });
@@ -1592,7 +1597,7 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response,
-      model
+      modelData: model
     });
 
     expect(result).toEqual({ compressed: response });
@@ -1666,7 +1671,7 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response,
-      model: toolCompressionModel
+      modelData: toolCompressionModel
     });
 
     expect(createLLMResponseMock).not.toHaveBeenCalled();
@@ -1721,7 +1726,7 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response,
-      model: toolCompressionModel
+      modelData: toolCompressionModel
     });
 
     expect(createLLMResponseMock).not.toHaveBeenCalled();
@@ -1744,7 +1749,7 @@ describe('compressToolResponse', () => {
     const result = await compressToolResponse({
       response:
         'tool response https://example.com/a/b/c with image ![chart](https://example.com/chart.png)\n\n\nend',
-      model: toolCompressionModel,
+      modelData: toolCompressionModel,
       reasoningEffort: 'high'
     });
 
@@ -1774,7 +1779,7 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response: 'tool response',
-      model: toolCompressionModel,
+      modelData: toolCompressionModel,
       reasoningEffort: 'high'
     });
 

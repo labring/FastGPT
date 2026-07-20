@@ -66,6 +66,9 @@ import {
   type WorkflowNodeResponseWriteConfig
 } from './utils/entry';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authModelsByTmbId } from '../../../support/permission/model/auth';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
 import {
   addWorkflowStepEvent,
@@ -273,6 +276,27 @@ export async function dispatchWorkFlow({
 
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
+
+  // Runtime model permission check (design §5.1, wired 2026-08): the running app
+  // is the resourceContext — models already referenced by an app the user can read
+  // pass through (3.3.6), any injected modelId is rejected (unAuthModel). Debug
+  // already authed its models at the endpoint entry, so it is skipped here.
+  if (runningAppInfo.sourceType === ChatSourceTypeEnum.app && data.mode !== 'debug') {
+    const modelIds = extractWorkflowModelIds({
+      modules: data.runtimeNodes,
+      chatConfig: data.chatConfig
+    });
+    if (modelIds.length > 0) {
+      await authModelsByTmbId({
+        tmbId: runningUserInfo.tmbId,
+        teamId: runningUserInfo.teamId,
+        isRoot: runningUserInfo.isRoot,
+        modelIds,
+        per: ReadPermissionVal,
+        resourceContext: { appId: runningAppInfo.sourceId }
+      });
+    }
+  }
 
   const variableState = await WorkflowVariableState.create({
     timezone,

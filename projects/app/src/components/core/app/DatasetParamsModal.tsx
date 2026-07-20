@@ -16,7 +16,8 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList, useSystemDefaultModel } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -43,10 +44,10 @@ const DatasetParamsModal = ({
   similarity,
   embeddingWeight,
   usingReRank,
-  rerankModel,
+  rerankModelId,
   rerankWeight,
   datasetSearchUsingExtensionQuery,
-  datasetSearchExtensionModel,
+  datasetSearchExtensionModelId,
   datasetSearchExtensionBg,
   maxTokens,
   onClose,
@@ -57,14 +58,17 @@ const DatasetParamsModal = ({
   onSuccess: (e: AppDatasetSearchParamsType) => void;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
+  // Lazy model lists + system defaults (design §1, §3.2)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const { list: reRankModelList } = useActiveSystemModelList(ModelTypeEnum.rerank);
+  const { data: systemDefault } = useSystemDefaultModel();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
   const queryExtensionModelList = useMemo(
     () =>
       llmModelList.map((item) => ({
-        value: item.model,
+        value: item.id,
         label: item.name
       })),
     [llmModelList]
@@ -72,7 +76,7 @@ const DatasetParamsModal = ({
   const reRankModelSelectList = useMemo(
     () =>
       reRankModelList.map((item) => ({
-        value: item.model,
+        value: item.id,
         label: item.name
       })),
     [reRankModelList]
@@ -84,12 +88,12 @@ const DatasetParamsModal = ({
         searchMode,
         embeddingWeight: embeddingWeight || 0.5,
         usingReRank: !!usingReRank,
-        rerankModel: rerankModel || defaultModels?.rerank?.model,
+        rerankModelId: rerankModelId || '',
         rerankWeight: rerankWeight || 0.5,
         limit,
         similarity,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
+        datasetSearchExtensionModelId: datasetSearchExtensionModelId || '',
         datasetSearchExtensionBg
       }
     });
@@ -102,10 +106,10 @@ const DatasetParamsModal = ({
   }, [embeddingWeightWatch]);
 
   const datasetSearchUsingCfrForm = watch('datasetSearchUsingExtensionQuery');
-  const queryExtensionModel = watch('datasetSearchExtensionModel');
+  const queryExtensionModel = watch('datasetSearchExtensionModelId');
 
   const usingReRankWatch = watch('usingReRank');
-  const reRankModelWatch = watch('rerankModel');
+  const reRankModelWatch = watch('rerankModelId');
   const rerankWeightWatch = watch('rerankWeight');
 
   const showSimilarity = useMemo(() => {
@@ -121,17 +125,25 @@ const DatasetParamsModal = ({
 
   useEffect(() => {
     if (datasetSearchUsingCfrForm) {
-      !queryExtensionModel && setValue('datasetSearchExtensionModel', defaultModels.llm?.model);
+      !queryExtensionModel &&
+        setValue('datasetSearchExtensionModelId', systemDefault?.llm?.id ?? '');
     } else {
-      setValue('datasetSearchExtensionModel', '');
+      setValue('datasetSearchExtensionModelId', '');
     }
   }, [
     queryExtensionModelList,
     datasetSearchUsingCfrForm,
-    defaultModels.llm?.model,
+    systemDefault?.llm?.id,
     queryExtensionModel,
     setValue
   ]);
+
+  // Fill the default rerank model once loaded (§3.2)
+  useEffect(() => {
+    if (usingReRankWatch && !reRankModelWatch && systemDefault?.rerank?.id) {
+      setValue('rerankModelId', systemDefault.rerank.id);
+    }
+  }, [usingReRankWatch, reRankModelWatch, systemDefault?.rerank?.id, setValue]);
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
@@ -282,12 +294,13 @@ const DatasetParamsModal = ({
                     </Box>
                     <Box flex={'1 0 0'}>
                       <SelectAiModel
+                        type={'rerank'}
                         bg={'myGray.50'}
                         h={'36px'}
                         value={reRankModelWatch}
                         list={reRankModelSelectList}
                         onChange={(val) => {
-                          setValue(NodeInputKeyEnum.datasetSearchRerankModel, val);
+                          setValue('rerankModelId', val);
                         }}
                       />
                     </Box>
@@ -373,11 +386,12 @@ const DatasetParamsModal = ({
                   <FormLabel flex={['0 0 80px', '1 0 0']}>{t('common:core.ai.Model')}</FormLabel>
                   <Box flex={['1 0 0', '0 0 300px']}>
                     <SelectAiModel
+                      type={'llm'}
                       width={'100%'}
                       value={queryExtensionModel}
                       list={queryExtensionModelList}
                       onChange={(val: any) => {
-                        setValue('datasetSearchExtensionModel', val);
+                        setValue('datasetSearchExtensionModelId', val);
                       }}
                     />
                   </Box>

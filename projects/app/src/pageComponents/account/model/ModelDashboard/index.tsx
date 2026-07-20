@@ -1,43 +1,26 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import type { BoxProps } from '@chakra-ui/react';
-import { Box, Grid, HStack, useTheme } from '@chakra-ui/react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Flex, Grid, HStack, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { addHours } from 'date-fns';
-import dayjs from 'dayjs';
+import { useTranslation } from 'next-i18next';
+import { addDays } from 'date-fns';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
-import { getSystemModelList } from '@/web/core/ai/config';
+import { getUsageStats, getModelListPage } from '@/web/core/ai/config';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
-import DataTableComponent from './DataTableComponent';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { modelTypeList } from '@fastgpt/global/core/ai/constants';
+import { useDebounceFn } from 'ahooks';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import type { UsageStatsResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 
-export type ModelDashboardData = {
-  x: string;
-  xLabel?: string;
-  totalCalls: number;
-  errorCalls: number;
-  errorRate: number;
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  totalCost: number;
-  avgResponseTime: number;
-  avgTtfb: number;
-  maxRpm: number;
-  maxTpm: number;
-};
-
-const ChartsBoxStyles: BoxProps = {
+const ChartsBoxStyles = {
   px: 5,
   pt: 4,
   pb: 8,
@@ -45,706 +28,357 @@ const ChartsBoxStyles: BoxProps = {
   border: 'base',
   borderRadius: 'md',
   overflow: 'hidden'
-};
+} as const;
 
-// Default date range: Past 7 days
+// Fixed categorical order for the model distribution pie (validated against the
+// adjacent-pair floors; the legend list beside it is the table view).
+const PIE_COLORS = ['#3370ff', '#f98e1a', '#00c98d', '#8774ee', '#ff8b00', '#e84738'];
+const OTHER_COLOR = '#CBD5E1';
+const MAX_PIE_SLICES = 6;
+
+type TrendType = 'calls' | 'tokens' | 'points';
+
 const getDefaultDateRange = (): DateRangeType => {
-  const from = addHours(new Date(), -24);
-  from.setMinutes(0, 0, 0); // Set minutes to 0
-
-  const to = addHours(new Date(), 1);
-  to.setMinutes(0, 0, 0); // Set minutes to 0
-
+  const from = addDays(new Date(), -7);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date();
+  to.setHours(23, 59, 59, 999);
   return { from, to };
 };
 
-const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useClientTranslation('account_model');
+/**
+ * Model monitor (design §14.2). Aggregates the usage_items of the models the
+ * current user can access (AUTH-TC08) into metric cards, a call trend and a
+ * per-model distribution. usage_items carry no latency/error fields, so the
+ * monitor reports calls/tokens/points only.
+ */
+const ModelMonitor = ({ Tab }: { Tab: React.ReactNode }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
-  const { feConfigs, getModelProvider } = useSystemStore();
-
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
-
-  // view detail handler
-  const handleViewDetail = (model: string) => {
-    setFilterProps({
-      ...filterProps,
-      model
-    });
-    setViewMode('chart');
-  };
 
   const [filterProps, setFilterProps] = useState<{
-    channelId?: string;
-    model?: string;
+    modelId?: string;
+    type?: ModelTypeEnum;
     dateRange: DateRangeType;
-    timespan: 'minute' | 'hour' | 'day';
   }>({
-    channelId: undefined,
-    model: undefined,
-    timespan: 'hour',
+    modelId: undefined,
+    type: undefined,
     dateRange: getDefaultDateRange()
   });
 
-  // Fetch channel list with "All" option
-  const { data: channelList = [] } = useRequest(
-    async () => {
-      const res = await getChannelList().then((res) =>
-        res.map((item) => ({
-          label: item.name,
-          value: `${item.id}`
-        }))
-      );
-      return [
-        {
-          label: t('common:All'),
-          value: ''
-        },
-        ...res
-      ];
-    },
-    {
-      manual: false
-    }
-  );
+  const [trendType, setTrendType] = useState<TrendType>('calls');
 
-  // Get model list filtered by selected channel
-  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
-    manual: false
-  });
-  const llmModelSet = useMemo(
-    () =>
-      new Set(
-        systemModelList.filter((item) => item.type === ModelTypeEnum.llm).map((item) => item.model)
-      ),
-    [systemModelList]
-  );
-  const isLLMModel = useCallback(
-    (model: string) => {
-      return llmModelSet.has(model);
-    },
-    [llmModelSet]
-  );
-
-  const modelList = useMemo(() => {
-    const res = systemModelList
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
-        return {
-          order: provider.order,
-          icon: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
-    return [
-      {
-        label: t('common:All'),
-        value: ''
-      },
-      ...res
-    ];
-  }, [getModelProvider, i18n.language, systemModelList, t]);
-  // Model price map
-  const modelPriceMap = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        inputPrice?: number;
-        outputPrice?: number;
-        charsPointsPrice?: number;
-        priceTiers?: ModelPriceTierType[];
-      }
-    >();
-    systemModelList.forEach((model) => {
-      map.set(model.model, {
-        inputPrice: model.inputPrice,
-        outputPrice: model.outputPrice,
-        charsPointsPrice: model.charsPointsPrice,
-        priceTiers: model.priceTiers
-      });
-    });
-    return map;
-  }, [systemModelList]);
-
-  const computeTimespan = (hoursDiff: number) => {
-    const options: { label: string; value: 'minute' | 'hour' | 'day' }[] = [];
-    if (hoursDiff <= 1 * 24) {
-      options.push({ label: t('account_model:timespan_minute'), value: 'minute' });
-    }
-    if (hoursDiff < 7 * 24) {
-      options.push({ label: t('account_model:timespan_hour'), value: 'hour' });
-    }
-    if (hoursDiff >= 1 * 24) {
-      options.push({ label: t('account_model:timespan_day'), value: 'day' });
-    }
-
-    const defaultTimespan: 'minute' | 'hour' | 'day' = (() => {
-      if (hoursDiff < 1) {
-        return 'minute';
-      } else if (hoursDiff < 2 * 24) {
-        return 'hour';
-      } else {
-        return 'day';
-      }
-    })();
-
-    return { options, defaultTimespan };
-  };
-  const [timespanOptions, setTimespanOptions] = useState(computeTimespan(48).options);
-
-  // Handle date range change with automatic timespan adjustment
-  const handleDateRangeChange = (dateRange: DateRangeType) => {
-    const newFilterProps = { ...filterProps, dateRange };
-
-    // Computed timespan
-    if (dateRange.from && dateRange.to) {
-      const hoursDiff = dayjs(dateRange.to).diff(dayjs(dateRange.from), 'hour');
-      const { options: newTimespanOptions, defaultTimespan: newDefaultTimespan } =
-        computeTimespan(hoursDiff);
-
-      setTimespanOptions(newTimespanOptions);
-      newFilterProps.timespan = newDefaultTimespan;
-    }
-
-    setFilterProps(newFilterProps);
-  };
-
-  // Fetch dashboard data with date range and channel filters
-  const { data: dashboardData = [], loading: isLoading } = useRequest(
-    async () => {
-      const params = {
-        channel: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
-        model: filterProps.model,
-        start_timestamp: filterProps.dateRange.from
-          ? Math.floor(filterProps.dateRange.from.getTime())
-          : undefined,
-        end_timestamp: filterProps.dateRange.to
-          ? Math.floor(filterProps.dateRange.to.getTime())
-          : undefined,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        timespan: filterProps.timespan
-      };
-
-      const data = await getDashboardV2(params);
-
-      // Auto-fill missing periods based on timespan
-      const startDate = dayjs(filterProps.dateRange.from);
-      const currentTime = dayjs();
-      const endDate = dayjs(filterProps.dateRange.to).isBefore(currentTime)
-        ? dayjs(filterProps.dateRange.to)
-        : currentTime;
-      const timespan = filterProps.timespan;
-
-      const { periodCount } = (() => {
-        if (timespan === 'minute') {
-          return {
-            periodCount: endDate.diff(startDate, 'minute') + 1
-          };
-        } else if (timespan === 'hour') {
-          return {
-            periodCount: endDate.diff(startDate, 'hour') + 1
-          };
-        } else {
-          return {
-            periodCount: endDate.diff(startDate, 'day') + 1
-          };
-        }
-      })();
-
-      // Create complete period list
-      const completePeriodList = Array.from({ length: periodCount }, (_, i) =>
-        startDate.add(i, timespan)
-      );
-
-      // Create a map of existing data by timestamp
-      const existingDataMap = new Map(
-        data.map((item) => [dayjs(item.timestamp * 1000).format('YYYY-MM-DD HH:mm'), item])
-      );
-
-      // Fill missing periods with empty data
-      return completePeriodList.map((period) => {
-        const periodKey = period.format('YYYY-MM-DD HH:mm');
-        const existingItem = existingDataMap.get(periodKey);
-
-        if (existingItem) {
-          return existingItem;
-        } else {
-          // Create empty data structure for missing periods
-          return {
-            timestamp: Math.floor(period.valueOf() / 1000),
-            summary: []
-          };
-        }
-      });
-    },
+  const { data: stats, loading: isLoading } = useRequest(
+    (): Promise<UsageStatsResponse> =>
+      getUsageStats({
+        modelId: filterProps.modelId,
+        type: filterProps.type || undefined,
+        dateStart: filterProps.dateRange.from?.toISOString(),
+        dateEnd: filterProps.dateRange.to?.toISOString(),
+        unit: 'day',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }),
     {
       manual: false,
-      refreshDeps: [
-        filterProps.channelId,
-        filterProps.dateRange,
-        filterProps.model,
-        filterProps.timespan
-      ]
+      refreshDeps: [filterProps]
     }
   );
 
-  // Process chart data - aggregate model calls, token usage and cost data based on timespan
-  const chartData: ModelDashboardData[] = useMemo(() => {
-    if (dashboardData.length === 0) {
-      return [];
+  // ── Model dropdown: lazy load with pagination + remote search (design §5.1) ──
+  const [modelSearch, setModelSearch] = useState('');
+  const {
+    ScrollData: ModelScrollData,
+    data: loadedModels,
+    isLoading: isLoadingModels,
+    fetchData: fetchModelList
+  } = useScrollPagination(
+    (params: { pageNum?: number; pageSize?: number }) =>
+      getModelListPage({
+        ...params,
+        type: filterProps.type || undefined,
+        search: modelSearch,
+        isActive: 'active'
+      }),
+    {
+      pageSize: 20,
+      refreshDeps: [filterProps.type, modelSearch]
     }
+  );
 
-    return dashboardData.map((item) => {
-      // Format date based on timespan
-      const dateFormat = (() => {
-        if (filterProps.timespan === 'minute') {
-          return 'HH:mm';
-        } else if (filterProps.timespan === 'hour') {
-          return 'HH:00';
-        } else {
-          return 'MM-DD';
-        }
-      })();
+  // Type change resets the selected model (options are type-filtered)
+  const prevTypeRef = useRef(filterProps.type);
+  useEffect(() => {
+    if (prevTypeRef.current === filterProps.type) return;
+    prevTypeRef.current = filterProps.type;
+    setFilterProps((prev) => ({ ...prev, modelId: undefined }));
+    fetchModelList({ init: true, silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterProps.type]);
 
-      const date = dayjs(item.timestamp * 1000).format(dateFormat);
-      const xLabel = dayjs(item.timestamp * 1000).format('YYYY-MM-DD HH:mm');
-      const summary = item.summary || [];
-      const totalCalls = summary.reduce((acc, model) => acc + (model.request_count || 0), 0);
-      const errorCalls = summary.reduce((acc, model) => acc + (model.exception_count || 0), 0);
-      const errorRate = totalCalls === 0 ? 0 : Number((errorCalls / totalCalls).toFixed(2));
+  const { run: onDebouncedModelSearch } = useDebounceFn(
+    () => {
+      fetchModelList({ init: true, silent: true });
+    },
+    { wait: 300 }
+  );
 
-      const inputTokens = summary.reduce((acc, model) => acc + (model.input_tokens || 0), 0);
-      const outputTokens = summary.reduce((acc, model) => acc + (model?.output_tokens || 0), 0);
-      const totalTokens = summary.reduce((acc, model) => acc + (model.total_tokens || 0), 0);
+  const modelOptions = useMemo(() => {
+    const models = loadedModels.map((item) => ({
+      label: item.name || item.model,
+      value: item.id
+    }));
+    return [{ label: t('common:All'), value: '' }, ...models];
+  }, [loadedModels, t]);
 
-      const successCalls = totalCalls - errorCalls;
-      const avgResponseTime = successCalls
-        ? summary.reduce((acc, model) => acc + (model.total_time_milliseconds || 0), 0) /
-          successCalls /
-          1000
-        : 0;
-      const avgTtfb = successCalls
-        ? summary.reduce((acc, model) => acc + (model.total_ttfb_milliseconds || 0), 0) /
-          successCalls /
-          1000
-        : 0;
+  const typeOptions = useMemo(
+    () => [
+      { label: t('common:All'), value: '' },
+      ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
+    ],
+    [t]
+  );
 
-      const maxRpm = filterProps.model
-        ? summary.reduce((acc, model) => Math.max(acc, model.max_rpm || 0), 0)
-        : 0;
-      const maxTpm = filterProps.model
-        ? summary.reduce((acc, model) => Math.max(acc, model.max_tpm || 0), 0)
-        : 0;
+  // ── Trend chart data: single selected metric per chart (one axis) ──
+  const trendData = useMemo(
+    () =>
+      (stats?.trend ?? []).map((item) => ({
+        x: item.date,
+        xLabel: item.date,
+        value: item[trendType]
+      })),
+    [stats, trendType]
+  );
 
-      const totalCost = summary.reduce((acc, model) => {
-        const modelPricing = modelPriceMap.get(model.model);
+  const trendTitleMap: Record<TrendType, string> = {
+    calls: t('account_model:total_call_volume'),
+    tokens: t('account_model:dashboard_token_usage'),
+    points: t('account_model:aipoint_usage')
+  };
+  const trendColorMap: Record<TrendType, string> = {
+    calls: theme.colors.primary['600'],
+    tokens: '#8774EE',
+    points: '#36B37E'
+  };
 
-        if (modelPricing) {
-          const inputTokens = model.input_tokens || 0;
-          const outputTokens = model.output_tokens || 0;
-          const { totalPoints } = calculateModelPrice({
-            config: modelPricing,
-            inputTokens,
-            outputTokens
-          });
+  // ── Model distribution: top slices by points, the rest folded into Other ──
+  const pieData = useMemo(() => {
+    const dist = stats?.modelDistribution ?? [];
+    const top = dist.slice(0, MAX_PIE_SLICES);
+    const rest = dist.slice(MAX_PIE_SLICES);
+    const restPoints = rest.reduce((acc, item) => acc + (item.points || 0), 0);
 
-          return acc + totalPoints;
-        }
+    const data = top.map((item, index) => ({
+      ...item,
+      color: PIE_COLORS[index % PIE_COLORS.length]
+    }));
+    if (restPoints > 0) {
+      data.push({
+        modelId: 'other',
+        name: t('account_model:other'),
+        calls: 0,
+        points: restPoints,
+        color: OTHER_COLOR
+      });
+    }
+    return data;
+  }, [stats, t]);
 
-        return acc;
-      }, 0);
+  const totalPoints = useMemo(
+    () => pieData.reduce((acc, item) => acc + (item.points || 0), 0),
+    [pieData]
+  );
 
-      // Cache hit
-      const llmRequestCount = summary.reduce((acc, item) => {
-        // Check is llm
-        if (isLLMModel(item.model)) {
-          return acc + (item.request_count || 0);
-        }
-        return acc;
-      }, 0);
-
-      const cacheHitCount = summary.reduce((acc, item) => acc + (item.cache_hit_count || 0), 0);
-
-      return {
-        x: date,
-        xLabel: xLabel,
-        totalCalls,
-        errorCalls,
-        errorRate,
-        inputTokens,
-        outputTokens,
-        totalTokens,
-        totalCost: Math.floor(totalCost),
-        avgResponseTime: Math.round(avgResponseTime * 100) / 100,
-        avgTtfb: Math.round(avgTtfb * 100) / 100,
-        maxRpm,
-        maxTpm,
-        cacheHitCount,
-        cacheHitRate: llmRequestCount === 0 ? 0 : +`${(cacheHitCount / llmRequestCount).toFixed(4)}`
-      };
-    });
-  }, [dashboardData, filterProps.model, filterProps.timespan, isLLMModel, modelPriceMap]);
-
-  const [tokensUsageType, setTokensUsageType] = useState<
-    'inputTokens' | 'outputTokens' | 'totalTokens'
-  >('totalTokens');
+  const metricCards = [
+    {
+      label: t('account_model:total_call_volume'),
+      value: stats?.totalCalls ?? 0,
+      color: theme.colors.primary['600']
+    },
+    {
+      label: t('account_model:dashboard_token_usage'),
+      value: stats?.totalTokens ?? 0,
+      color: '#8774EE'
+    },
+    {
+      label: t('account_model:aipoint_usage'),
+      value: stats?.totalPoints ?? 0,
+      color: '#36B37E'
+    }
+  ];
 
   return (
     <>
       <Box>{Tab}</Box>
 
-      <HStack spacing={4} justifyContent="space-between">
-        <HStack spacing={4}>
-          <HStack>
-            <FormLabel>{t('common:user.Time')}</FormLabel>
-            <Box>
-              <DateRangePicker
-                defaultDate={filterProps.dateRange}
-                dateRange={filterProps.dateRange}
-                onSuccess={handleDateRangeChange}
-              />
-            </Box>
-          </HStack>
-          <HStack>
-            <FormLabel>{t('account_model:channel_name')}</FormLabel>
-            <Box flex={'1 0 0'}>
-              <MySelect<string>
-                bg={'myGray.50'}
-                isSearch
-                list={channelList}
-                placeholder={t('account_model:select_channel')}
-                value={filterProps.channelId}
-                onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-              />
-            </Box>
-          </HStack>
-          <HStack>
-            <FormLabel>{t('account_model:model_name')}</FormLabel>
-            <Box flex={'1 0 0'}>
-              <MySelect<string>
-                bg={'myGray.50'}
-                isSearch
-                list={modelList}
-                placeholder={t('account_model:select_model')}
-                value={filterProps.model}
-                onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-              />
-            </Box>
-          </HStack>
-          {viewMode === 'chart' && (
-            <HStack>
-              <FormLabel>{t('account_model:timespan_label')}</FormLabel>
-              <Box flex={'1 0 0'}>
-                <MySelect<'minute' | 'hour' | 'day'>
-                  bg={'myGray.50'}
-                  list={timespanOptions}
-                  value={filterProps.timespan}
-                  onChange={(val) => {
-                    setFilterProps({ ...filterProps, timespan: val });
-                  }}
-                />
-              </Box>
-            </HStack>
-          )}
+      <HStack spacing={4} flexWrap={'wrap'}>
+        <HStack>
+          <FormLabel>{t('account_model:model_name')}</FormLabel>
+          <Box flex={'1 0 0'} minW={'180px'}>
+            <MySelect<string>
+              bg={'myGray.50'}
+              isSearch
+              list={modelOptions}
+              ScrollData={ModelScrollData}
+              isLoading={isLoadingModels}
+              placeholder={t('account_model:select_model')}
+              value={filterProps.modelId ?? ''}
+              onSearchChange={(val) => {
+                setModelSearch(val);
+                onDebouncedModelSearch();
+              }}
+              customOnClose={() => {
+                if (modelSearch) {
+                  setModelSearch('');
+                  fetchModelList({ init: true, silent: true });
+                }
+              }}
+              onChange={(val) => setFilterProps({ ...filterProps, modelId: val })}
+            />
+          </Box>
         </HStack>
-
-        <FillRowTabs<'chart' | 'table'>
-          list={[
-            {
-              label: t('account_model:view_chart'),
-              value: 'chart'
-            },
-            {
-              label: t('account_model:view_table'),
-              value: 'table'
-            }
-          ]}
-          py={1.5}
-          px={4}
-          value={viewMode}
-          onChange={(val) => setViewMode(val)}
-        />
+        <HStack>
+          <FormLabel>{t('account_model:model_type')}</FormLabel>
+          <Box flex={'1 0 0'}>
+            <MySelect<string>
+              bg={'myGray.50'}
+              list={typeOptions}
+              placeholder={t('account_model:select_model_type')}
+              value={filterProps.type ?? ''}
+              onChange={(val) => setFilterProps({ ...filterProps, type: val as ModelTypeEnum })}
+            />
+          </Box>
+        </HStack>
+        <HStack>
+          <FormLabel>{t('common:user.Time')}</FormLabel>
+          <Box>
+            <DateRangePicker
+              defaultDate={filterProps.dateRange}
+              dateRange={filterProps.dateRange}
+              onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
+            />
+          </Box>
+        </HStack>
       </HStack>
 
       <MyBox flex={'1 0 0'} h={0} overflowY={'auto'} isLoading={isLoading}>
-        {viewMode === 'chart' ? (
-          dashboardData.length > 0 && (
-            <>
-              <Box {...ChartsBoxStyles}>
-                <AreaChartComponent
-                  data={chartData}
-                  title={t('account_model:model_request_times')}
-                  enableCumulative={true}
-                  lines={[
-                    {
-                      dataKey: 'totalCalls',
-                      name: t('account_model:model_request_times'),
-                      color: theme.colors.primary['600']
-                    }
-                  ]}
-                  tooltipItems={[
-                    {
-                      label: t('account_model:model_request_times'),
-                      dataKey: 'totalCalls',
-                      color: theme.colors.primary['600']
-                    }
-                  ]}
-                />
+        {/* Metric cards */}
+        <Grid gridTemplateColumns={['1fr', 'repeat(3, 1fr)']} gap={4}>
+          {metricCards.map((card) => (
+            <Flex
+              key={card.label}
+              border={'base'}
+              borderRadius={'md'}
+              p={4}
+              bg={'white'}
+              flexDirection={'column'}
+              gap={2}
+            >
+              <Box fontSize={'sm'} color={'myGray.600'}>
+                {card.label}
               </Box>
-
-              <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
-                <Box {...ChartsBoxStyles}>
-                  <AreaChartComponent
-                    data={chartData}
-                    title={t('account_model:model_error_request_times')}
-                    enableCumulative={false}
-                    lines={[
-                      {
-                        dataKey: 'errorCalls',
-                        name: t('account_model:model_error_request_times'),
-                        color: '#f98e1a'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:model_error_request_times'),
-                        dataKey: 'errorCalls',
-                        color: '#f98e1a'
-                      }
-                    ]}
-                  />
-                </Box>
-                <Box {...ChartsBoxStyles}>
-                  <AreaChartComponent
-                    data={chartData}
-                    title={t('account_model:model_error_rate')}
-                    enableCumulative={false}
-                    lines={[
-                      {
-                        dataKey: 'errorRate',
-                        name: t('account_model:model_error_rate'),
-                        color: '#e84738'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:model_error_rate'),
-                        dataKey: 'errorRate',
-                        color: '#e84738'
-                      }
-                    ]}
-                  />
-                </Box>
-              </Grid>
-
-              <Box mt={5} {...ChartsBoxStyles}>
-                <AreaChartComponent
-                  data={chartData}
-                  title={t('account_model:dashboard_token_usage')}
-                  enableCumulative={true}
-                  lines={[
-                    {
-                      dataKey: tokensUsageType,
-                      name: t('account_model:dashboard_token_usage'),
-                      color: theme.colors.primary['600']
-                    }
-                  ]}
-                  tooltipItems={[
-                    {
-                      label: t('account_model:dashboard_token_usage'),
-                      dataKey: tokensUsageType,
-                      color: theme.colors.primary['600']
-                    }
-                  ]}
-                  HeaderLeftChildren={
-                    <FillRowTabs<'inputTokens' | 'outputTokens' | 'totalTokens'>
-                      list={[
-                        {
-                          label: t('account_model:all'),
-                          value: 'totalTokens'
-                        },
-                        {
-                          label: t('account_model:input'),
-                          value: 'inputTokens'
-                        },
-                        {
-                          label: t('account_model:output'),
-                          value: 'outputTokens'
-                        }
-                      ]}
-                      py={0.5}
-                      px={2}
-                      value={tokensUsageType}
-                      onChange={(val) => setTokensUsageType(val)}
-                    />
-                  }
-                />
+              <Box fontSize={'2xl'} fontWeight={'bold'} color={card.color}>
+                {formatNumber(card.value)}
               </Box>
+            </Flex>
+          ))}
+        </Grid>
 
-              {feConfigs?.isPlus && (
-                <Box mt={5} {...ChartsBoxStyles}>
-                  <AreaChartComponent
-                    data={chartData}
-                    title={t('account_model:aipoint_usage')}
-                    enableCumulative={true}
-                    lines={[
-                      {
-                        dataKey: 'totalCost',
-                        name: t('account_model:aipoint_usage'),
-                        color: '#8774EE'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:aipoint_usage'),
-                        dataKey: 'totalCost',
-                        color: '#8774EE'
-                      }
-                    ]}
-                  />
-                </Box>
-              )}
-
-              <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
-                <Box {...ChartsBoxStyles}>
-                  <AreaChartComponent
-                    data={chartData}
-                    title={t('account_model:avg_response_time')}
-                    enableCumulative={false}
-                    lines={[
-                      {
-                        dataKey: 'avgResponseTime',
-                        name: t('account_model:avg_response_time'),
-                        color: '#36B37E'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:avg_response_time'),
-                        dataKey: 'avgResponseTime',
-                        color: '#36B37E',
-                        formatter: (value: number) => `${value.toFixed(2)}s`
-                      }
-                    ]}
-                  />
-                </Box>
-                <Box {...ChartsBoxStyles}>
-                  <AreaChartComponent
-                    data={chartData}
-                    title={t('account_model:avg_ttfb')}
-                    enableCumulative={false}
-                    lines={[
-                      {
-                        dataKey: 'avgTtfb',
-                        name: t('account_model:avg_ttfb'),
-                        color: '#FF5630'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:avg_ttfb'),
-                        dataKey: 'avgTtfb',
-                        color: '#FF5630',
-                        formatter: (value: number) => `${value.toFixed(2)}s`
-                      }
-                    ]}
-                  />
-                </Box>
-              </Grid>
-
-              {filterProps?.model && (
-                <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
-                  <Box {...ChartsBoxStyles}>
-                    <AreaChartComponent
-                      data={chartData}
-                      title={t('account_model:max_rpm')}
-                      enableCumulative={false}
-                      lines={[
-                        {
-                          dataKey: 'maxRpm',
-                          name: t('account_model:max_rpm'),
-                          color: '#6554C0'
-                        }
-                      ]}
-                      tooltipItems={[
-                        {
-                          label: t('account_model:max_rpm'),
-                          dataKey: 'maxRpm',
-                          color: '#6554C0'
-                        }
-                      ]}
-                    />
-                  </Box>
-                  <Box {...ChartsBoxStyles}>
-                    <AreaChartComponent
-                      data={chartData}
-                      title={t('account_model:max_tpm')}
-                      enableCumulative={false}
-                      lines={[
-                        {
-                          dataKey: 'maxTpm',
-                          name: t('account_model:max_tpm'),
-                          color: '#FF8B00'
-                        }
-                      ]}
-                      tooltipItems={[
-                        {
-                          label: t('account_model:max_tpm'),
-                          dataKey: 'maxTpm',
-                          color: '#FF8B00'
-                        }
-                      ]}
-                    />
-                  </Box>
-                </Grid>
-              )}
-
-              {/* Cache hit */}
-              {(!filterProps?.model || isLLMModel(filterProps.model)) && (
-                <Box mt={5} {...ChartsBoxStyles}>
-                  <AreaChartComponent
-                    data={chartData}
-                    title={t('account_model:cache_hit_analysis')}
-                    enableCumulative={true}
-                    lines={[
-                      {
-                        dataKey: 'cacheHitRate',
-                        name: t('account_model:cache_hit_rate'),
-                        color: '#8774EE'
-                      }
-                    ]}
-                    tooltipItems={[
-                      {
-                        label: t('account_model:cache_hit_rate'),
-                        dataKey: 'cacheHitRate',
-                        color: '#8774EE'
-                      },
-                      {
-                        label: t('account_model:cache_hit_count'),
-                        dataKey: 'cacheHitCount',
-                        color: theme.colors.green['600']
-                      }
-                    ]}
-                  />
-                </Box>
-              )}
-            </>
-          )
-        ) : (
-          <DataTableComponent
-            data={dashboardData}
-            filterProps={filterProps}
-            channelList={channelList}
-            modelPriceMap={modelPriceMap}
-            onViewDetail={handleViewDetail}
-            isLLMModel={isLLMModel}
+        {/* Call trend */}
+        <Box mt={4} {...ChartsBoxStyles}>
+          <AreaChartComponent
+            data={trendData}
+            title={trendTitleMap[trendType]}
+            enableIncremental={false}
+            enableCumulative={false}
+            lines={[
+              { dataKey: 'value', name: trendTitleMap[trendType], color: trendColorMap[trendType] }
+            ]}
+            tooltipItems={[
+              { label: trendTitleMap[trendType], dataKey: 'value', color: trendColorMap[trendType] }
+            ]}
+            HeaderLeftChildren={
+              <FillRowTabs<TrendType>
+                list={[
+                  { label: t('account_model:total_call_volume'), value: 'calls' },
+                  { label: t('account_model:dashboard_token_usage'), value: 'tokens' },
+                  { label: t('account_model:aipoint_usage'), value: 'points' }
+                ]}
+                py={0.5}
+                px={2}
+                value={trendType}
+                onChange={setTrendType}
+              />
+            }
           />
-        )}
+        </Box>
+
+        {/* Model distribution: pie + legend list (table view) */}
+        <Box mt={4} {...ChartsBoxStyles} h={'auto'}>
+          <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'} mb={4}>
+            {t('account_model:model_distribution')}
+          </Box>
+          <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={4}>
+            <Box h={'240px'}>
+              {pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip
+                      formatter={(value: any) => formatNumber(Number(value)).toLocaleString()}
+                    />
+                    <Pie
+                      data={pieData}
+                      dataKey="points"
+                      nameKey="name"
+                      innerRadius={40}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      strokeWidth={2}
+                    >
+                      {pieData.map((item) => (
+                        <Cell key={item.modelId} fill={item.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <Flex
+                  h={'100%'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  color={'myGray.500'}
+                >
+                  {t('account_model:dashboard_no_data')}
+                </Flex>
+              )}
+            </Box>
+            <Box overflowY={'auto'} maxH={'240px'}>
+              {pieData.map((item) => {
+                const percent =
+                  totalPoints > 0 ? `${((item.points / totalPoints) * 100).toFixed(1)}%` : '0%';
+                return (
+                  <HStack key={item.modelId} spacing={3} py={1.5} fontSize={'sm'}>
+                    <Box w={3} h={3} borderRadius={'full'} bg={item.color} flexShrink={0} />
+                    <Box flex={'1 1 0'} noOfLines={1} minW={0}>
+                      {item.name}
+                    </Box>
+                    <Box color={'myGray.500'}>{formatNumber(item.points)}</Box>
+                    <Box color={'myGray.500'} w={'52px'} textAlign={'right'}>
+                      {percent}
+                    </Box>
+                  </HStack>
+                );
+              })}
+              {pieData.length === 0 && (
+                <Box color={'myGray.500'} fontSize={'sm'}>
+                  {t('account_model:dashboard_no_data')}
+                </Box>
+              )}
+            </Box>
+          </Grid>
+        </Box>
       </MyBox>
     </>
   );
 };
 
-export default React.memo(ModelDashboard);
+export default React.memo(ModelMonitor);

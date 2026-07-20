@@ -16,14 +16,24 @@ import {
   GridItem
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import {
+  createSystemModel,
+  getModelTemplates,
+  putSystemModel,
+  type ModelTemplateType
+} from '@/web/core/ai/config';
+import { getChannelList, getModelChannels } from '@/web/core/ai/channel';
+import type { SystemModelItemType } from '@fastgpt/global/core/ai/model/type';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import {
   useFieldArray,
   useForm,
@@ -41,12 +51,36 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { sanitizeModelPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { defaultChannel, ChannelStatusEnum, ChannelStautsMap } from '@/global/aiproxy/constants';
+import { normalizeModelFormData } from './utils';
+
+// Lazy: EditChannelModal itself dynamically imports ModelEditModal (this file),
+// so both sides load on demand and there is no module-load cycle.
+const EditChannelModal = dynamic(() => import('./Channel/EditChannelModal'), { ssr: false });
 
 export const AddModelButton = ({
   onCreate,
+  disabled,
   ...props
 }: { onCreate: (type: ModelTypeEnum) => void } & ButtonProps) => {
   const { t } = useClientTranslation('account_model');
+
+  // F1: no model create permission - show a disabled button with tip instead of the type menu
+  if (disabled) {
+    return (
+      <MyTooltip label={t('account_model:channel_no_permission_tip')}>
+        <Button {...props} isDisabled>
+          {t('account_model:create_model')}
+        </Button>
+      </MyTooltip>
+    );
+  }
 
   return (
     <MyMenu
@@ -217,16 +251,23 @@ const Field = ({
   label,
   tip,
   children,
+  required,
   colSpan = 1
 }: {
   label: string;
   tip?: string;
+  required?: boolean;
   children: React.ReactNode;
   colSpan?: number | number[];
 }) => (
   <GridItem colSpan={colSpan}>
     <Flex alignItems={'center'} gap={1} mb={2}>
-      <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
+      <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'} position={'relative'}>
+        {required && (
+          <Box color={'red.600'} position={'absolute'} top={'-4px'} left={'-6px'}>
+            *
+          </Box>
+        )}
         {label}
       </Box>
       {tip && <QuestionTip label={tip} />}
@@ -259,11 +300,13 @@ const SwitchField = ({
 
 const ProviderField = React.memo(function ProviderField({
   control,
+  register,
   setValue,
   providerList,
   t
 }: {
   control: Control<SystemModelItemType>;
+  register: UseFormRegister<SystemModelItemType>;
   setValue: UseFormSetValue<SystemModelItemType>;
   providerList: React.MutableRefObject<{ label: React.ReactNode; value: string }[]>;
   t: any;
@@ -272,9 +315,12 @@ const ProviderField = React.memo(function ProviderField({
     control,
     name: 'provider'
   });
+  // Register the controlled select with RHF so submit validates it like the
+  // sibling model/name required fields (create without a provider is invalid).
+  register('provider', { required: true });
 
   return (
-    <Field label={t('common:model.provider')}>
+    <Field label={t('common:model.provider')} required>
       <MySelect
         value={provider}
         onChange={(value) => setValue('provider', value)}
@@ -719,6 +765,7 @@ const VoicesField = React.memo(function VoicesField({
     <Field
       label={t('account_model:model.voices')}
       tip={t('account_model:model.voices_tip')}
+      required
       colSpan={[1, 2]}
     >
       <JsonEditor
@@ -736,6 +783,297 @@ const VoicesField = React.memo(function VoicesField({
   );
 });
 
+/** aiproxy channel status → { label, colorSchema }; unknown statuses fall back to gray */
+const getChannelStatusMap = (status: number) => {
+  const key = Object.values(ChannelStatusEnum).includes(status as ChannelStatusEnum)
+    ? (status as ChannelStatusEnum)
+    : ChannelStatusEnum.ChannelStatusUnknown;
+  return ChannelStautsMap[key];
+};
+
+/**
+ * Shows channels bound to the upstream model name and provides a prefilled quick-create action.
+ * Existing models query the server by ID; unsaved models filter the current channel bucket by name.
+ * Channel ownership follows model ownership so both resources remain in the same routing bucket.
+ */
+const ChannelAssociateSection = ({
+  control,
+  modelId,
+  isRoot,
+  hasModelCreatePer
+}: {
+  control: Control<SystemModelItemType>;
+  modelId?: string;
+  isRoot: boolean;
+  hasModelCreatePer: boolean;
+}) => {
+  const { t } = useTranslation();
+  const modelName = useWatch({ control, name: 'model' });
+  const modelAlias = useWatch({ control, name: 'name' });
+  // Existing models keep their ownership; new models follow the root-only system toggle.
+  const isSystemModel = useWatch({ control, name: 'isSystem' });
+
+  const isEditState = !!modelId;
+  const groupType: 'system' | 'team' = isRoot && isSystemModel ? 'system' : 'team';
+
+  const {
+    data: boundChannels = [],
+    loading: loadingBoundChannels,
+    runAsync: refreshBoundChannels
+  } = useRequest(() => getModelChannels(modelId as string).then((res) => res.channels), {
+    manual: !isEditState,
+    refreshDeps: [modelId]
+  });
+  const {
+    data: channelList = [],
+    loading: loadingChannelList,
+    runAsync: refreshChannelList
+  } = useRequest(() => getChannelList(groupType === 'system' ? { groupType: 'system' } : {}), {
+    manual: isEditState,
+    refreshDeps: [groupType]
+  });
+
+  const matchedChannels = useMemo(() => {
+    if (isEditState) return boundChannels;
+    if (!modelName) return [];
+    return channelList.filter((ch) => (ch.models || []).includes(modelName));
+  }, [boundChannels, channelList, isEditState, modelName]);
+
+  const refreshChannels = useCallback(() => {
+    if (isEditState) return refreshBoundChannels();
+    return refreshChannelList();
+  }, [isEditState, refreshBoundChannels, refreshChannelList]);
+
+  const [quickCreating, setQuickCreating] = useState(false);
+  const loading = isEditState ? loadingBoundChannels : loadingChannelList;
+
+  return (
+    <Section title={t('account_model:model.channel_associate_section')}>
+      <Box>
+        {!isEditState && (
+          <Box fontSize={'xs'} color={'myGray.500'} mb={2}>
+            {t('account_model:model.channel_associate_tip')}
+          </Box>
+        )}
+        <Flex alignItems={'center'} justifyContent={'space-between'} mb={2}>
+          <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
+            {t('account_model:model.channel_count')}({matchedChannels.length})
+          </Box>
+          <Button
+            size={'sm'}
+            variant={'outline'}
+            isDisabled={!hasModelCreatePer || !modelName}
+            onClick={() => setQuickCreating(true)}
+          >
+            {t('account_model:model.quick_create_channel')}
+          </Button>
+        </Flex>
+        {loading ? (
+          <Box color={'myGray.500'} fontSize={'sm'}>
+            ...
+          </Box>
+        ) : matchedChannels.length > 0 ? (
+          matchedChannels.map((ch) => (
+            <Flex key={ch.id} alignItems={'center'} justifyContent={'space-between'} py={0.5}>
+              <Box
+                color={'myGray.600'}
+                fontSize={'sm'}
+                minW={0}
+                noOfLines={1}
+                wordBreak={'break-all'}
+              >
+                {ch.name}
+              </Box>
+              <MyTag colorSchema={getChannelStatusMap(ch.status).colorSchema as any} showDot>
+                {getChannelStatusMap(ch.status).label}
+              </MyTag>
+            </Flex>
+          ))
+        ) : (
+          <Box color={'myGray.500'} fontSize={'sm'}>
+            {t('account_model:model.no_related_channel')}
+          </Box>
+        )}
+        {quickCreating && (
+          <EditChannelModal
+            defaultConfig={{
+              ...defaultChannel,
+              name: modelAlias || modelName,
+              models: modelName ? [modelName] : [],
+              base_url: ''
+            }}
+            groupType={groupType}
+            onClose={() => setQuickCreating(false)}
+            onSuccess={refreshChannels}
+          />
+        )}
+      </Box>
+    </Section>
+  );
+};
+
+type ModelEditFormType = SystemModelItemType;
+
+/**
+ * Optional creation template that pre-fills provider defaults while keeping fields editable.
+ */
+const TemplateSelector = React.memo(function TemplateSelector({
+  type,
+  selectedKey,
+  onSelect
+}: {
+  type: ModelTypeEnum;
+  selectedKey?: string;
+  onSelect: (tpl?: ModelTemplateType) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const { getModelProviders } = useSystemStore();
+  const [keyword, setKeyword] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  // manual: false — the project useRequest defaults to manual (no auto-run), so
+  // without it the template list never loads and search finds nothing.
+  const { data: templatesRes, loading } = useRequest(() => getModelTemplates({ type }), {
+    manual: false,
+    refreshDeps: [type]
+  });
+
+  const providerNameMap = useMemo(
+    () =>
+      new Map(
+        getModelProviders(i18n.language).map((provider) => [provider.id, t(provider.name as any)])
+      ),
+    [getModelProviders, i18n.language, t]
+  );
+
+  const filteredTemplates = useMemo(() => {
+    const templates = templatesRes?.templates ?? [];
+    const s = keyword.toLowerCase();
+    return templates.filter(
+      (tpl) =>
+        !s || tpl.model.toLowerCase().includes(s) || (tpl.name || '').toLowerCase().includes(s)
+    );
+  }, [templatesRes, keyword]);
+
+  return (
+    <Grid
+      templateColumns={['1fr', '160px minmax(0, 1fr)']}
+      rowGap={[3, 4]}
+      columnGap={'32px'}
+      py={6}
+      borderBottom={'1px solid'}
+      borderColor={'myGray.200'}
+    >
+      <Flex
+        as={'button'}
+        type={'button'}
+        alignItems={'center'}
+        gap={2}
+        w={['100%', '160px']}
+        h={'fit-content'}
+        textAlign={'left'}
+        onClick={() => setIsExpanded((value) => !value)}
+      >
+        <Box fontSize={'14px'} fontWeight={'600'} color={'myGray.900'} lineHeight={1.2}>
+          {t('account_model:model.template_section')}
+        </Box>
+        <MyIcon
+          name={isExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+          w={4}
+          color={'myGray.500'}
+          flexShrink={0}
+        />
+      </Flex>
+      {isExpanded && (
+        <Box>
+          <Flex
+            alignItems={'center'}
+            justifyContent={'space-between'}
+            mb={2}
+            flexWrap={'wrap'}
+            gap={2}
+          >
+            <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
+              {t('account_model:model.template_fill_tip')}
+            </Box>
+            <Box w={['100%', '220px']}>
+              <SearchInput
+                bg={'myGray.50'}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder={t('account_model:model.template_search_placeholder')}
+              />
+            </Box>
+          </Flex>
+          <MyBox isLoading={loading} minH={'120px'}>
+            {filteredTemplates.length === 0 && !loading ? (
+              <EmptyTip py={6} mt={0} text={t('account_model:model.template_empty')} />
+            ) : (
+              <Box maxH={'420px'} overflowY={'auto'} pr={1}>
+                <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={2}>
+                  {filteredTemplates.map((tpl) => {
+                    const key = `${tpl.provider}:${tpl.model}`;
+                    const isSelected = selectedKey === key;
+                    return (
+                      <Box
+                        key={key}
+                        cursor={'pointer'}
+                        onClick={() => onSelect(isSelected ? undefined : tpl)}
+                        border={'1px solid'}
+                        borderColor={isSelected ? 'primary.300' : 'myGray.200'}
+                        bg={isSelected ? 'primary.50' : 'white'}
+                        borderRadius={'md'}
+                        p={3}
+                        minH={'88px'}
+                        h={'100%'}
+                        userSelect={'none'}
+                        transition={'border-color 0.2s, background-color 0.2s'}
+                        _hover={{ borderColor: 'primary.300' }}
+                      >
+                        <Flex alignItems={'center'} gap={2} minW={0}>
+                          <Avatar
+                            src={tpl.avatar}
+                            w={'1.5rem'}
+                            borderRadius={'sm'}
+                            flexShrink={0}
+                          />
+                          <Box
+                            flex={1}
+                            minW={0}
+                            fontSize={'sm'}
+                            fontWeight={'500'}
+                            color={'myGray.900'}
+                            className="textEllipsis"
+                          >
+                            {tpl.name || tpl.model}
+                          </Box>
+                          {isSelected && (
+                            <MyIcon
+                              name={'common/check'}
+                              w={'14px'}
+                              color={'primary.600'}
+                              flexShrink={0}
+                            />
+                          )}
+                        </Flex>
+                        <Box mt={2} fontSize={'xs'} color={'myGray.600'} className="textEllipsis">
+                          {tpl.model}
+                        </Box>
+                        <Box mt={1} fontSize={'xs'} color={'myGray.500'} className="textEllipsis">
+                          {providerNameMap.get(tpl.provider) || tpl.provider}
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Grid>
+              </Box>
+            )}
+          </MyBox>
+        </Box>
+      )}
+    </Grid>
+  );
+});
+
 export const ModelEditModal = ({
   modelData,
   onSuccess,
@@ -747,11 +1085,32 @@ export const ModelEditModal = ({
 }) => {
   const { t, i18n } = useClientTranslation('account_model');
   const { feConfigs, getModelProviders } = useSystemStore();
+  const { userInfo } = useUserStore();
+  const { toast } = useToast();
+
+  const isRoot = userInfo?.username === 'root';
+  const hasModelCreatePer = !!(
+    isRoot ||
+    userInfo?.permission?.hasModelCreatePer ||
+    userInfo?.permission?.isOwner
+  );
+  // An ID selects update mode; its absence selects create mode.
+  const isEdit = !!modelData.id;
 
   const { control, register, getValues, setValue, handleSubmit, reset } =
-    useForm<SystemModelItemType>({
+    useForm<ModelEditFormType>({
       defaultValues: {
         ...modelData,
+        // Backend schemas require these fields (z.boolean()/z.array() non-optional)
+        // and the create-state skeleton omits them — default them so create does
+        // not submit undefined and fail zod validation.
+        ...(modelData.type === ModelTypeEnum.llm
+          ? {
+              functionCall: modelData.functionCall ?? false,
+              toolChoice: modelData.toolChoice ?? false
+            }
+          : {}),
+        ...(modelData.type === ModelTypeEnum.tts ? { voices: modelData.voices ?? [] } : {}),
         priceTiers: (() => {
           if (modelData.type !== ModelTypeEnum.llm) return undefined;
           const tiers = modelData.priceTiers || [];
@@ -773,13 +1132,46 @@ export const ModelEditModal = ({
 
   const reasoningEnabled = useWatch({ control, name: 'reasoning' });
   useEffect(() => {
-    // 仅在 reasoning 关闭且 reasoningEffort 实际为 true 时才清，避免挂载即把表单标 dirty
+    // Clear reasoning effort only when necessary to avoid dirtying the form on mount.
     if (!reasoningEnabled && getValues('reasoningEffort')) {
       setValue('reasoningEffort', false, { shouldDirty: false });
     }
   }, [reasoningEnabled, getValues, setValue]);
 
-  const isCustom = !!modelData.isCustom;
+  // Templates pre-fill provider defaults without preventing manual edits.
+  const [selectedTemplate, setSelectedTemplate] = useState<ModelTemplateType | null>(null);
+  const applyTemplate = useCallback(
+    (tpl?: ModelTemplateType) => {
+      setSelectedTemplate(tpl ?? null);
+      if (!tpl) return;
+
+      const tplData = tpl as unknown as Record<string, any>;
+      const fillFields = [
+        'provider',
+        'model',
+        'name',
+        'avatar',
+        'maxContext',
+        'maxResponse',
+        'functionCall',
+        'vision',
+        'reasoning',
+        'toolChoice',
+        'defaultConfig',
+        'fieldMap',
+        'voices'
+      ];
+      for (const key of fillFields) {
+        if (tplData[key] !== undefined) {
+          setValue(key as any, tplData[key]);
+        }
+      }
+    },
+    [setValue]
+  );
+
+  // Team model (isSystem=false): the upstream model name is editable; system models are read-only
+  const isTeamModel = !modelData.isSystem;
   const isLLMModel = modelData?.type === ModelTypeEnum.llm;
   const isEmbeddingModel = modelData?.type === ModelTypeEnum.embedding;
   const isTTSModel = modelData?.type === ModelTypeEnum.tts;
@@ -810,48 +1202,77 @@ export const ModelEditModal = ({
       if (data.type === ModelTypeEnum.llm) {
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 
-        let currentLowerExclusiveBound = 0;
+        // Free / unconfigured models: when no tier carries a price, skip the
+        // price validation and submit an empty list (the hidden price UI of
+        // non-plus users must not block LLM creation).
+        const hasAnyPrice = priceTiers.some(
+          (tier) => typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number'
+        );
+        if (!hasAnyPrice) {
+          data.priceTiers = [];
+        } else {
+          data.priceTiers = priceTiers as any;
 
-        for (let index = 0; index < priceTiers.length; index++) {
-          const tier = priceTiers[index];
-          const hasPrice =
-            typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number';
+          let currentLowerExclusiveBound = 0;
 
-          if (!hasPrice) {
-            return Promise.reject(t('account_model:model.price_tier_price_required'));
-          }
+          for (let index = 0; index < priceTiers.length; index++) {
+            const tier = priceTiers[index];
+            const hasPrice =
+              typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number';
 
-          if (index < priceTiers.length - 1 && typeof tier.maxInputTokens !== 'number') {
-            return Promise.reject(t('account_model:model.price_tier_max_required'));
-          }
+            if (!hasPrice) {
+              return Promise.reject(t('account_model:model.price_tier_price_required'));
+            }
 
-          if (
-            typeof tier.maxInputTokens === 'number' &&
-            tier.maxInputTokens <= currentLowerExclusiveBound
-          ) {
-            return Promise.reject(t('account_model:model.price_tier_range_invalid'));
-          }
+            if (index < priceTiers.length - 1 && typeof tier.maxInputTokens !== 'number') {
+              return Promise.reject(t('account_model:model.price_tier_max_required'));
+            }
 
-          if (typeof tier.maxInputTokens === 'number') {
-            currentLowerExclusiveBound = tier.maxInputTokens;
+            if (
+              typeof tier.maxInputTokens === 'number' &&
+              tier.maxInputTokens <= currentLowerExclusiveBound
+            ) {
+              return Promise.reject(t('account_model:model.price_tier_range_invalid'));
+            }
+
+            if (typeof tier.maxInputTokens === 'number') {
+              currentLowerExclusiveBound = tier.maxInputTokens;
+            }
           }
         }
-
-        data.priceTiers = priceTiers as any;
       }
 
-      const modelData = data as Record<string, unknown>;
-      for (const key of Object.keys(modelData)) {
-        const val = modelData[key];
-        if (val === null || val === undefined || Number.isNaN(val)) {
-          delete modelData[key];
+      normalizeModelFormData(data as unknown as Record<string, unknown>);
+
+      // Embedding models require a training weight (schema: weight: z.number());
+      // default to 0.001 when the create form left it untouched.
+      if (data.type === ModelTypeEnum.embedding && typeof data.weight !== 'number') {
+        (data as { weight?: number }).weight = 0.001;
+      }
+
+      // Create → POST create; edit → PUT update. The create endpoint derives
+      // ownership server-side and never accepts channel bindings (design §8.1).
+      if (isEdit) {
+        await putSystemModel({ ...data });
+      } else {
+        const { id, _id, createdAt, updatedAt, __v, tmbId, teamId, ...createBody } = data as any;
+        await createSystemModel(createBody);
+      }
+
+      // Non-blocking hint: no channel binds this upstream model name yet —
+      // suggest creating one (design §8.1). Best-effort, never blocks the save.
+      try {
+        const channelCount = isEdit
+          ? (await getModelChannels(data.id)).channels.length
+          : (await getChannelList(isRoot ? { groupType: 'system' } : {})).filter((ch) =>
+              (ch.models || []).includes(data.model)
+            ).length;
+        if (channelCount === 0) {
+          toast({ status: 'info', title: t('account_model:model.no_channel_hint') });
         }
-      }
+      } catch {}
 
-      return putSystemModel({
-        model: data.model,
-        metadata: data
-      }).then(onSuccess);
+      return onSuccess();
     },
     {
       onSuccess: () => {
@@ -863,7 +1284,12 @@ export const ModelEditModal = ({
 
   const [key, setKey] = useState(0);
   const { runAsync: loadDefaultConfig, loading: loadingDefaultConfig } = useRequest(
-    getSystemModelDefaultConfig,
+    async (provider: string, model: string) => {
+      // Match the template for the exact model, not the provider's first one
+      // (a provider can ship dozens of templates, e.g. openai).
+      const { templates } = await getModelTemplates({ provider, search: model });
+      return templates.find((t) => t.model === model)?.defaultConfig || {};
+    },
     {
       onSuccess(res) {
         reset({
@@ -877,32 +1303,6 @@ export const ModelEditModal = ({
     }
   );
 
-  const CustomApi = useMemo(
-    () => (
-      <>
-        <GridItem colSpan={[1, 2]}>
-          <Flex alignItems={'center'} gap={1} mb={3}>
-            <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'}>
-              {t('account_model:model.request_url')}
-            </Box>
-            <QuestionTip label={t('account_model:model.request_url_tip')} />
-          </Flex>
-          <Input {...register('requestUrl')} {...InputStyles} />
-        </GridItem>
-        <GridItem colSpan={[1, 2]}>
-          <Flex alignItems={'center'} gap={1} mb={3}>
-            <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'}>
-              {t('account_model:model.request_auth')}
-            </Box>
-            <QuestionTip label={t('account_model:model.request_auth_tip')} />
-          </Flex>
-          <Input {...register('requestAuth')} {...InputStyles} />
-        </GridItem>
-      </>
-    ),
-    [register, t]
-  );
-
   return (
     <MyModal
       title={t('account_model:model.edit_model')}
@@ -914,12 +1314,12 @@ export const ModelEditModal = ({
       footerStyles={{ display: 'flex', w: 'full' }}
       footer={
         <>
-          {!modelData.isCustom && (
+          {modelData.isSystem && (
             <Button
               isLoading={loadingDefaultConfig}
               variant={'whiteBase'}
               size={'md'}
-              onClick={() => loadDefaultConfig(modelData.model)}
+              onClick={() => loadDefaultConfig(modelData.provider, modelData.model)}
               mr={'auto'}
             >
               {t('account_model:reset_default')}
@@ -934,36 +1334,68 @@ export const ModelEditModal = ({
         </>
       }
     >
+      {!isEdit && (
+        <TemplateSelector
+          type={modelData.type}
+          selectedKey={
+            selectedTemplate ? `${selectedTemplate.provider}:${selectedTemplate.model}` : undefined
+          }
+          onSelect={applyTemplate}
+        />
+      )}
+
       <Section key={key} title={t('account_model:model.basic_config_section')}>
         <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
           <Grid flex={'1 0 0'} templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
             <Field
               label={t('account_model:model.model_id')}
               tip={t('account_model:model.model_id_tip')}
+              required
             >
               <Input
                 {...register('model', { required: true })}
                 {...InputStyles}
-                isReadOnly={!isCustom}
+                isReadOnly={!isTeamModel}
               />
             </Field>
-            <Field label={t('account_model:model.alias')} tip={t('account_model:model.alias_tip')}>
+            <Field
+              label={t('account_model:model.alias')}
+              tip={t('account_model:model.alias_tip')}
+              required
+            >
               <Input {...register('name', { required: true })} {...InputStyles} />
             </Field>
             <ProviderField
               control={control}
+              register={register}
               setValue={setValue}
               providerList={providerList}
               t={t}
             />
+            {/* Only root can choose system ownership while creating a model. */}
+            {isRoot && !isEdit && (
+              <SwitchField
+                label={t('account_model:model.set_system_model')}
+                tip={t('account_model:model.set_system_model_tip')}
+                field={'isSystem'}
+                register={register}
+              />
+            )}
           </Grid>
         </Flex>
       </Section>
 
+      <ChannelAssociateSection
+        control={control}
+        modelId={isEdit ? modelData.id : undefined}
+        isRoot={isRoot}
+        hasModelCreatePer={hasModelCreatePer}
+      />
+
       {isLLMModel && (
         <Section title={t('account_model:model.params_config_section')}>
           <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
-            <Field label={t('common:core.ai.Max context')}>
+            <Field label={t('common:core.ai.Max context')} required>
               <MyNumberInput
                 register={register}
                 isRequired
@@ -975,16 +1407,18 @@ export const ModelEditModal = ({
             <Field
               label={t('common:core.chat.response.module maxToken')}
               tip={t('account_model:maxToken_tip')}
+              required
             >
               <MyNumberInput
                 register={register}
+                isRequired
                 name="maxResponse"
                 min={2000}
                 {...NumberInputStyles}
               />
             </Field>
 
-            <Field label={t('account_model:model.max_quote')}>
+            <Field label={t('account_model:model.max_quote')} required>
               <MyNumberInput
                 register={register}
                 isRequired
@@ -1032,6 +1466,19 @@ export const ModelEditModal = ({
               field={'normalization'}
               register={register}
             />
+            <Field
+              label={t('account_model:model.weight')}
+              tip={t('account_model:model.weight_tip')}
+              required
+            >
+              <MyNumberInput
+                register={register}
+                isRequired
+                name="weight"
+                step={0.001}
+                {...NumberInputStyles}
+              />
+            </Field>
             <Field label={t('account_model:batch_size')}>
               <MyNumberInput
                 register={register}
@@ -1045,6 +1492,7 @@ export const ModelEditModal = ({
             <Field
               label={t('account_model:model.default_token')}
               tip={t('account_model:model.default_token_tip')}
+              required
             >
               <MyNumberInput
                 register={register}
@@ -1053,7 +1501,7 @@ export const ModelEditModal = ({
                 {...NumberInputStyles}
               />
             </Field>
-            <Field label={t('common:core.ai.Max context')}>
+            <Field label={t('common:core.ai.Max context')} required>
               <MyNumberInput
                 register={register}
                 isRequired
@@ -1090,6 +1538,12 @@ export const ModelEditModal = ({
               label={t('account_model:model.tool_choice')}
               tip={t('account_model:model.tool_choice_tip')}
               field={'toolChoice'}
+              register={register}
+            />
+            <SwitchField
+              label={t('account_model:model.function_call')}
+              tip={t('account_model:model.function_call_tip')}
+              field={'functionCall'}
               register={register}
             />
             <SwitchField
@@ -1215,7 +1669,6 @@ export const ModelEditModal = ({
             />
           )}
           {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
-          {CustomApi}
           <SwitchField
             label={t('account_model:model.test_mode')}
             tip={t('account_model:model.test_mode_tip')}

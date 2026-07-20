@@ -6,10 +6,10 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model/cache';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
@@ -18,6 +18,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { normalizeDatasetModelIds } from '@fastgpt/service/core/dataset/utils';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
@@ -30,7 +31,15 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: { vectorModel: string; agentModel: string; vlmModel: string };
+  dataset: {
+    vectorModelId: string;
+    agentModelId: string;
+    vlmModelId: string;
+    // ⚠️ 热升级兼容：legacy-only 数据集只有 provider 模型名，getter 按名解析
+    vectorModel?: string;
+    agentModel?: string;
+    vlmModel?: string;
+  };
   collection: { qaPrompt?: string };
 };
 
@@ -66,7 +75,7 @@ export async function generateQA(): Promise<any> {
             .populate<PopulateType>([
               {
                 path: 'dataset',
-                select: 'agentModel vectorModel vlmModel'
+                select: 'agentModelId agentModel vectorModelId vectorModel vlmModelId vlmModel'
               },
               {
                 path: 'collection',
@@ -111,6 +120,8 @@ export async function generateQA(): Promise<any> {
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
+      // ⚠️ 热升级兼容：legacy-only dataset 回填 canonical 字段（getter 按名解析）
+      data.dataset = normalizeDatasetModelIds(data.dataset);
       // auth balance
       if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
         continue;
@@ -125,7 +136,14 @@ export async function generateQA(): Promise<any> {
       });
 
       try {
-        const modelData = getLLMModel(data.dataset.agentModel);
+        const modelData = getLLMModel(data.dataset.agentModelId);
+        // Missing or disabled model (F2-S3-TC06) both skip this task gracefully.
+        if (!modelData || modelData.isActive === false) {
+          logger.error('QA generation skipped: agent model missing or disabled', {
+            agentModelId: data.dataset.agentModelId
+          });
+          continue;
+        }
         const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
   ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
@@ -142,9 +160,9 @@ export async function generateQA(): Promise<any> {
           usage: { inputTokens, outputTokens }
         } = await createLLMResponse({
           teamId: data.teamId,
+          modelData: modelData,
           saveLLMResponseRecord: false,
           body: {
-            model: modelData.model,
             messages,
             stream: true
           }
@@ -164,9 +182,9 @@ export async function generateQA(): Promise<any> {
             chunkIndex: data.chunkIndex
           })),
           billId: data.billId,
-          vectorModel: data.dataset.vectorModel,
-          agentModel: data.dataset.agentModel,
-          vlmModel: data.dataset.vlmModel
+          vectorModelId: data.dataset.vectorModelId,
+          agentModelId: data.dataset.agentModelId,
+          vlmModelId: data.dataset.vlmModelId
         });
 
         // delete data from training
@@ -178,7 +196,7 @@ export async function generateQA(): Promise<any> {
           inputTokens,
           outputTokens,
           usageId: data.billId,
-          model: modelData.model,
+          modelId: modelData.id,
           type: UsageItemTypeEnum.training_qa
         });
 

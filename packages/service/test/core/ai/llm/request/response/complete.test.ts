@@ -1,17 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { parsePromptToolCall } from '@fastgpt/service/core/ai/llm/promptCall';
 import { parseReasoningContent } from '@fastgpt/service/core/ai/utils';
 import { createCompleteResponse } from '@fastgpt/service/core/ai/llm/request/response/complete';
 
 vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
   removeDatasetCiteText: vi.fn((text: string) => text)
-}));
-
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/promptCall', () => ({
@@ -23,7 +18,6 @@ vi.mock('@fastgpt/service/core/ai/utils', () => ({
 }));
 
 const mockRemoveDatasetCiteText = vi.mocked(removeDatasetCiteText);
-const mockGetLLMModel = vi.mocked(getLLMModel);
 const mockParsePromptToolCall = vi.mocked(parsePromptToolCall);
 const mockParseReasoningContent = vi.mocked(parseReasoningContent);
 
@@ -53,17 +47,16 @@ describe('createCompleteResponse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRemoveDatasetCiteText.mockImplementation((text: string) => text);
-    mockGetLLMModel.mockReturnValue(createModel());
   });
 
   it('should parse non-stream text response and emit streaming callback', async () => {
     let streamedText = '';
     const result = await createCompleteResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: false
       },
+      modelData: createModel(),
       response: {
         choices: [
           {
@@ -91,16 +84,14 @@ describe('createCompleteResponse', () => {
   });
 
   it('should emit explicit reasoning_content before answer text', async () => {
-    mockGetLLMModel.mockReturnValue(createModel({ reasoning: true }));
-
     let reasoningText = '';
     let answerText = '';
     const result = await createCompleteResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: false
       },
+      modelData: createModel({ reasoning: true }),
       response: {
         choices: [
           {
@@ -129,15 +120,14 @@ describe('createCompleteResponse', () => {
   });
 
   it('should split think tag content when model supports reasoning but response has no reasoning_content', async () => {
-    mockGetLLMModel.mockReturnValue(createModel({ reasoning: true }));
     mockParseReasoningContent.mockReturnValue(['hidden reasoning', 'visible answer']);
 
     const result = await createCompleteResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: false
       },
+      modelData: createModel({ reasoning: true }),
       response: {
         choices: [
           {
@@ -162,11 +152,11 @@ describe('createCompleteResponse', () => {
     const toolCalls: any[] = [];
     const result = await createCompleteResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         tools: [createTool()],
         stream: false
       },
+      modelData: createModel(),
       response: {
         choices: [
           {
@@ -222,12 +212,12 @@ describe('createCompleteResponse', () => {
     const onToolCall = vi.fn();
     const result = await createCompleteResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         tools: [createTool('search')],
         toolCallMode: 'prompt',
         stream: false
       },
+      modelData: createModel(),
       response: {
         choices: [
           {

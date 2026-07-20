@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { Types } from '@fastgpt/service/common/mongo';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import {
@@ -17,6 +17,8 @@ import type {
 } from '@fastgpt/global/core/app/formEdit/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model/type';
 
 const { getClientToolPreviewNodeMock, authAppByTmbIdMock } = vi.hoisted(() => ({
   getClientToolPreviewNodeMock: vi.fn(),
@@ -526,9 +528,64 @@ describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
 });
 
 describe('rewriteAppWorkflowToDetail - agent skills', () => {
+  const originalEmbeddingModelIdMap = global.embeddingModelIdMap;
+  const originalEmbeddingModelNameMap = global.embeddingModelNameMap;
+
+  const createEmbeddingModel = ({
+    id,
+    model,
+    isSystem
+  }: {
+    id: string;
+    model: string;
+    isSystem: boolean;
+  }): EmbeddingModelItemType => ({
+    id,
+    model,
+    name: model,
+    provider: 'OpenAI',
+    type: ModelTypeEnum.embedding,
+    isActive: true,
+    isSystem,
+    defaultToken: 512,
+    maxToken: 8192,
+    weight: 1
+  });
+
   beforeEach(() => {
     getClientToolPreviewNodeMock.mockReset();
     authAppByTmbIdMock.mockReset();
+
+    const canonicalModel = createEmbeddingModel({
+      id: 'text-embedding-3-small',
+      model: 'text-embedding-3-small',
+      isSystem: true
+    });
+    const legacySystemModel = createEmbeddingModel({
+      id: 'legacy-system-model-id',
+      model: 'text-embedding-legacy',
+      isSystem: true
+    });
+    const legacyPrivateModel = createEmbeddingModel({
+      id: 'legacy-private-model-id',
+      model: 'text-embedding-private',
+      isSystem: false
+    });
+
+    global.embeddingModelIdMap = new Map([
+      ...(originalEmbeddingModelIdMap ?? new Map()),
+      [canonicalModel.id, canonicalModel]
+    ]);
+    global.embeddingModelNameMap = new Map([
+      ...(originalEmbeddingModelNameMap ?? new Map()),
+      [legacySystemModel.model, legacySystemModel],
+      [legacyPrivateModel.model, legacyPrivateModel]
+    ]);
+  });
+
+  afterEach(() => {
+    global.embeddingModelIdMap = originalEmbeddingModelIdMap;
+    global.embeddingModelNameMap = originalEmbeddingModelNameMap;
   });
 
   it('在 app detail 改写阶段标记已删除 Skill，并刷新可用 Skill 的快照信息', async () => {
@@ -1168,8 +1225,11 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     const user = await getUser(`agent-dataset-reference-${getNanoid(6)}`);
     const dataset = await MongoDataset.create({
       name: 'Reference Trigger Dataset',
-      teamId: user.teamId,
-      tmbId: user.tmbId
+      vectorModelId: 'text-embedding-3-small',
+      agentModelId: 'gpt-4o-mini',
+      teamId: new Types.ObjectId(user.teamId),
+      tmbId: new Types.ObjectId(user.tmbId),
+      type: DatasetTypeEnum.dataset
     });
     const referenceValue = ['source-node', 'datasets'];
     const datasetSelectInput = {
@@ -1223,9 +1283,11 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     const dataset = await MongoDataset.create({
       name: 'Current Dataset Name',
       avatar: '/icon/current-dataset.svg',
-      vectorModel: 'text-embedding-3-small',
-      teamId: user.teamId,
-      tmbId: user.tmbId
+      vectorModelId: 'text-embedding-3-small',
+      agentModelId: 'gpt-4o-mini',
+      teamId: new Types.ObjectId(user.teamId),
+      tmbId: new Types.ObjectId(user.tmbId),
+      type: DatasetTypeEnum.dataset
     });
     const datasetParamsInput = {
       key: NodeInputKeyEnum.datasetParams,
@@ -1269,13 +1331,13 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     )?.value as AppFormEditFormType['dataset'];
 
     expect(rewrittenDatasetParams.datasets).toEqual([
-      {
+      expect.objectContaining({
         datasetId: String(dataset._id),
         name: 'Current Dataset Name',
         avatar: '/icon/current-dataset.svg',
-        vectorModel: getEmbeddingModel('text-embedding-3-small'),
+        vectorModel: expect.objectContaining({ model: 'text-embedding-3-small' }),
         isDeleted: false
-      }
+      })
     ]);
   });
 
@@ -1284,7 +1346,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     const dataset = await MongoDataset.create({
       name: 'Legacy Dataset Name',
       avatar: '/icon/legacy-dataset.svg',
-      vectorModel: 'text-embedding-3-small',
+      vectorModelId: 'text-embedding-3-small',
+      agentModelId: 'gpt-4o-mini',
       teamId: user.teamId,
       tmbId: user.tmbId
     });
@@ -1313,11 +1376,113 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(
       nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
     ).toEqual([
-      {
+      expect.objectContaining({
         datasetId: String(dataset._id),
         name: 'Legacy Dataset Name',
         avatar: '/icon/legacy-dataset.svg',
-        vectorModel: getEmbeddingModel('text-embedding-3-small'),
+        vectorModel: expect.objectContaining({ model: 'text-embedding-3-small' }),
+        isDeleted: false
+      })
+    ]);
+  });
+
+  it('兼容仅包含 legacy vectorModel 的未迁移知识库', async () => {
+    const user = await getUser(`legacy-dataset-model-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      name: 'Legacy Model Dataset',
+      avatar: '/icon/legacy-model-dataset.svg',
+      vectorModelId: 'legacy-system-model-id',
+      agentModelId: 'gpt-legacy-id',
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+    await MongoDataset.collection.updateOne(
+      { _id: dataset._id },
+      {
+        $unset: { vectorModelId: '', agentModelId: '' },
+        $set: { vectorModel: 'text-embedding-legacy', agentModel: 'gpt-legacy' }
+      }
+    );
+    const insertedId = dataset._id;
+    const datasetSelectInput = {
+      key: NodeInputKeyEnum.datasetSelectList,
+      value: [{ datasetId: String(insertedId) }]
+    };
+    const nodes = [
+      {
+        nodeId: 'dataset-search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [datasetSelectInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: user.teamId,
+      ownerTmbId: user.tmbId,
+      isRoot: false
+    });
+
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
+    ).toEqual([
+      expect.objectContaining({
+        datasetId: String(insertedId),
+        name: 'Legacy Model Dataset',
+        avatar: '/icon/legacy-model-dataset.svg',
+        vectorModel: expect.objectContaining({ model: 'text-embedding-legacy' }),
+        isDeleted: false
+      })
+    ]);
+  });
+
+  it('不通过 legacy 名称回填私有模型', async () => {
+    const user = await getUser(`private-legacy-dataset-model-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      name: 'Private Legacy Model Dataset',
+      avatar: '/icon/private-legacy-model-dataset.svg',
+      vectorModelId: 'legacy-private-model-id',
+      agentModelId: 'gpt-legacy-id',
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+    await MongoDataset.collection.updateOne(
+      { _id: dataset._id },
+      {
+        $unset: { vectorModelId: '', agentModelId: '' },
+        $set: { vectorModel: 'text-embedding-private', agentModel: 'gpt-legacy' }
+      }
+    );
+    const insertedId = dataset._id;
+    const datasetSelectInput = {
+      key: NodeInputKeyEnum.datasetSelectList,
+      value: [{ datasetId: String(insertedId) }]
+    };
+    const nodes = [
+      {
+        nodeId: 'dataset-search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [datasetSelectInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: user.teamId,
+      ownerTmbId: user.tmbId,
+      isRoot: false
+    });
+
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
+    ).toEqual([
+      {
+        datasetId: String(insertedId),
+        name: 'Private Legacy Model Dataset',
+        avatar: '/icon/private-legacy-model-dataset.svg',
+        vectorModel: undefined,
         isDeleted: false
       }
     ]);
@@ -1331,8 +1496,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       type: DatasetTypeEnum.dataset,
       name: 'Deleted Dataset',
       avatar: '/icon/logo.svg',
-      vectorModel: 'text-embedding-3-small',
-      agentModel: 'gpt-4o-mini',
+      vectorModelId: 'text-embedding-3-small',
+      agentModelId: 'gpt-4o-mini',
       deleteTime: new Date()
     });
     const deletedDatasetId = String(deletedDataset._id);
@@ -1390,6 +1555,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     const user = await getUser(`missing-dataset-detail-${getNanoid(6)}`);
     const missingDataset = await MongoDataset.create({
       name: 'Missing Dataset',
+      vectorModelId: 'text-embedding-3-small',
+      agentModelId: 'gpt-4o-mini',
       teamId: user.teamId,
       tmbId: user.tmbId
     });

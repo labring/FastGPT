@@ -41,17 +41,33 @@ export const CreateDatasetBodySchema = z.object({
     example: '/imgs/dataset/avatar.png',
     description: '知识库头像'
   }),
+  vectorModelId: z.string().optional().meta({
+    example: '80ad85a7463006c963799a05',
+    description: '向量模型 ID,不传则使用默认向量模型'
+  }),
+  agentModelId: z.string().optional().meta({
+    example: '90ad85a7463006c963799a05',
+    description: '知识库 Agent 模型 ID,不传则使用默认模型'
+  }),
+  vlmModelId: z.string().optional().meta({
+    example: '70ad85a7463006c963799a05',
+    description: '视觉语言模型 ID'
+  }),
+  // ⚠️ 热升级兼容（contract release 移除）：legacy provider 模型名，handler 读取 `*ModelId ?? legacy`，name 交给 getter 按名解析
   vectorModel: z.string().optional().meta({
     example: 'text-embedding-3-small',
-    description: '向量模型名称,不传则使用默认向量模型'
+    description: '向量模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+    deprecated: true
   }),
   agentModel: z.string().optional().meta({
     example: 'gpt-4o-mini',
-    description: '知识库 Agent 模型名称,不传则使用默认模型'
+    description: '知识库 Agent 模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+    deprecated: true
   }),
   vlmModel: z.string().optional().meta({
     example: 'gpt-4o',
-    description: '视觉语言模型名称'
+    description: '视觉语言模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+    deprecated: true
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
@@ -89,17 +105,33 @@ export const CreateDatasetWithFilesBodySchema = z.object({
         example: '68ad85a7463006c963799a05',
         description: '父级文件夹 ID'
       }),
+      vectorModelId: z.string().optional().meta({
+        example: '70ad85a7463006c963799a05',
+        description: '向量模型 ID,不传则使用默认向量模型'
+      }),
+      agentModelId: z.string().optional().meta({
+        example: '71ad85a7463006c963799a05',
+        description: 'Agent 模型 ID,不传则使用默认模型'
+      }),
+      vlmModelId: z.string().optional().meta({
+        example: '72ad85a7463006c963799a05',
+        description: '视觉语言模型 ID'
+      }),
+      // ⚠️ 热升级兼容（contract release 移除）：legacy provider 模型名，handler 读取 `*ModelId ?? legacy`，name 交给 getter 按名解析
       vectorModel: z.string().optional().meta({
         example: 'text-embedding-3-small',
-        description: '向量模型名称,不传则使用默认向量模型'
+        description: '向量模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+        deprecated: true
       }),
       agentModel: z.string().optional().meta({
         example: 'gpt-4o-mini',
-        description: 'Agent 模型名称,不传则使用默认模型'
+        description: 'Agent 模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+        deprecated: true
       }),
       vlmModel: z.string().optional().meta({
         example: 'gpt-4o',
-        description: '视觉语言模型名称'
+        description: '视觉语言模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+        deprecated: true
       })
     })
     .meta({ description: '知识库参数' }),
@@ -137,6 +169,10 @@ export const CreateDatasetWithFilesResponseSchema = z.object({
   }),
   vectorModel: z
     .object({
+      id: z.string().meta({
+        example: '68ad85a7463006c963799a05',
+        description: '向量模型 ID'
+      }),
       model: z.string().meta({
         example: 'text-embedding-3-small',
         description: '向量模型名称'
@@ -345,13 +381,33 @@ export const UpdateDatasetBodySchema = z.object({
     example: '这是一个用于存储产品文档的知识库',
     description: '知识库简介'
   }),
+  vectorModelId: z.string().optional().meta({
+    example: '72ad85a7463006c963799a05',
+    description: '向量模型 ID'
+  }),
+  agentModelId: z.string().optional().meta({
+    example: '70ad85a7463006c963799a05',
+    description: '知识库 Agent 模型ID'
+  }),
+  vlmModelId: z.string().optional().meta({
+    example: '71ad85a7463006c963799a05',
+    description: '视觉语言模型 ID'
+  }),
+  // ⚠️ 热升级兼容（contract release 移除）：legacy provider 模型名，handler 读取 `*ModelId ?? legacy`，name 交给 getter 按名解析
+  vectorModel: z.string().optional().meta({
+    example: 'text-embedding-3-small',
+    description: '向量模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+    deprecated: true
+  }),
   agentModel: z.string().optional().meta({
     example: 'gpt-4o-mini',
-    description: '知识库 Agent 模型名称'
+    description: '知识库 Agent 模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+    deprecated: true
   }),
   vlmModel: z.string().optional().meta({
     example: 'gpt-4o',
-    description: '视觉语言模型名称'
+    description: '视觉语言模型名称（已废弃，兼容旧调用方，读取时按名解析）',
+    deprecated: true
   }),
   websiteConfig: z
     .object({
@@ -454,8 +510,8 @@ export const SearchDatasetTestBodySchema = z
     usingReRank: z.boolean().optional().meta({
       description: '是否使用重排序'
     }),
-    rerankModel: z.string().optional().meta({
-      description: '重排序模型名称'
+    rerankModelId: z.string().optional().meta({
+      description: '重排序模型 ID'
     }),
     rerankWeight: z.number().optional().meta({
       description: '重排序权重'
@@ -463,8 +519,8 @@ export const SearchDatasetTestBodySchema = z
     datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
       description: '是否使用问题扩展'
     }),
-    datasetSearchExtensionModel: z.string().optional().meta({
-      description: '问题扩展模型'
+    datasetSearchExtensionModelId: z.string().optional().meta({
+      description: '问题扩展模型 ID'
     }),
     datasetSearchExtensionBg: z.string().optional().meta({
       description: '问题扩展背景描述'
@@ -472,8 +528,8 @@ export const SearchDatasetTestBodySchema = z
     datasetDeepSearch: z.boolean().optional().meta({
       description: '是否启用深度搜索'
     }),
-    datasetDeepSearchModel: z.string().optional().meta({
-      description: '深度搜索模型'
+    datasetDeepSearchModelId: z.string().optional().meta({
+      description: '深度搜索模型 ID'
     }),
     datasetDeepSearchMaxTimes: z.number().optional().meta({
       description: '深度搜索最大轮次'

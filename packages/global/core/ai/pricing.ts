@@ -1,4 +1,4 @@
-import type { ModelPriceTierType, PriceType } from './model.schema';
+import type { ModelPriceTierType, PriceType } from './model/type';
 
 const isValidNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);

@@ -1,9 +1,5 @@
 import type { PaginationProps } from '../../../openapi/api';
 
-export type listEvaluationsBody = PaginationProps<{
-  searchKey?: string;
-}>;
-
 export type listEvalItemsBody = PaginationProps<{
   evalId: string;
 }>;

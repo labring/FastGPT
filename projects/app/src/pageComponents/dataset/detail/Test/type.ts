@@ -7,13 +7,13 @@ export type SearchTestFormType = {
     embeddingWeight?: number;
 
     usingReRank?: boolean;
-    rerankModel?: string;
+    rerankModelId?: string;
     rerankWeight?: number;
 
     similarity?: number;
     limit?: number;
     datasetSearchUsingExtensionQuery?: boolean;
-    datasetSearchExtensionModel?: string;
+    datasetSearchExtensionModelId?: string;
     datasetSearchExtensionBg?: string;
   };
 };

@@ -30,13 +30,29 @@ vi.mock('@fastgpt/service/core/dataset/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
-  filterDatasetsByTmbId: vi.fn()
+  filterDatasetsByTmbId: vi.fn(),
+  getDatasetModelIds: (dataset: { vectorModelId?: string; vlmModelId?: string }) => dataset
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getEmbeddingModel: vi.fn(() => ({
+    id: 'embedding-model',
     model: 'embedding-model',
     name: 'Embedding Model'
+  })),
+  getLLMModel: vi.fn((modelId: string) => ({
+    id: modelId,
+    model: modelId,
+    name: `${modelId} name`,
+    maxContext: 1000
+  })),
+  getVlmModel: vi.fn((modelId: string) => ({
+    id: modelId,
+    model: modelId,
+    name: `${modelId} name`
   })),
   getRerankModel: vi.fn(() => undefined)
 }));
@@ -52,20 +68,21 @@ describe('dispatchDatasetSearch', () => {
     vi.clearAllMocks();
     findDatasetByIdMock.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model'
+        vectorModelId: 'embedding-model',
+        vlmModelId: 'vlm-model'
       })
     });
     formatModelChars2PointsMock.mockImplementation(
       ({
-        model,
+        modelData,
         inputTokens = 0,
         outputTokens = 0
       }: {
-        model?: string;
+        modelData?: { name?: string };
         inputTokens?: number;
         outputTokens?: number;
       }) => ({
-        modelName: `${model || 'unknown'} name`,
+        modelName: modelData?.name ?? `${modelData || 'unknown'} name`,
         totalPoints: (inputTokens + outputTokens) / 100
       })
     );
@@ -87,12 +104,14 @@ describe('dispatchDatasetSearch', () => {
       usingReRank: false,
       queryExtensionResult: {
         llmModel: 'gpt-query',
+        llmModelId: 'gpt-query',
         requestId: 'req_query_extension',
         seconds: 1.2,
         inputTokens: 10,
         outputTokens: 5,
         usedUserOpenAIKey: false,
         embeddingModel: 'embedding-query',
+        embeddingModelId: 'embedding-query',
         embeddingTokens: 6,
         query: 'origin\nexpanded'
       }
@@ -120,7 +139,10 @@ describe('dispatchDatasetSearch', () => {
     } as any);
 
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
-    expect(nodeResponse).not.toHaveProperty('queryExtensionResult');
+    expect(nodeResponse?.queryExtensionResult).toMatchObject({
+      llmModelId: 'gpt-query',
+      embeddingModelId: 'embedding-query'
+    });
     expect(nodeResponse?.childrenResponses).toEqual([
       expect.objectContaining({
         id: 'req_query_extension',
@@ -157,12 +179,14 @@ describe('dispatchDatasetSearch', () => {
       usingReRank: false,
       queryExtensionResult: {
         llmModel: 'gpt-query',
+        llmModelId: 'gpt-query',
         requestId: 'req_query_extension',
         seconds: 1.2,
         inputTokens: 10,
         outputTokens: 5,
         usedUserOpenAIKey: true,
         embeddingModel: 'embedding-query',
+        embeddingModelId: 'embedding-query',
         embeddingTokens: 6,
         query: 'origin\nexpanded'
       }
@@ -221,7 +245,8 @@ describe('dispatchDatasetSearch', () => {
       usingSimilarityFilter: true,
       usingReRank: false,
       imageCaptionResult: {
-        model: 'gpt-vision',
+        vlmModelName: 'gpt-vision',
+        vlmModelId: 'gpt-vision',
         inputTokens: 4,
         outputTokens: 3,
         requestIds: ['req_image_caption_1', 'req_image_caption_2'],

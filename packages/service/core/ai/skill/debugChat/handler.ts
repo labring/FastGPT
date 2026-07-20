@@ -8,7 +8,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatGenerateStatusEnum,
@@ -22,13 +22,14 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { sseErrRes } from '../../../../common/response';
 import { parseApiInput } from '../../../../common/zod/requestParseError';
 import { authSkill } from '../../../../support/permission/skill/auth';
+import { authModels } from '../../../../support/permission/model/auth';
 import { teamFrequencyLimit, LimitTypeEnum } from '../../../../common/api/frequencyLimit';
 import { getIpFromRequest } from '../../../../common/geo';
 import { getLocale } from '../../../../common/middle/i18n';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { getDefaultLLMModel } from '../../model';
+import { getDefaultLLMModel, getModelById } from '../../model';
 import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
@@ -92,7 +93,9 @@ export async function handleSkillDebugChat(
       chatId,
       responseChatItemId: responseChatItemIdFromBody = getNanoid(),
       messages = [],
-      model,
+      modelId,
+      // ⚠️ 热升级兼容：legacy provider 模型名，`modelId ?? model`（getter 按名解析）
+      model: legacyModel,
       systemPrompt = ''
     } = parseApiInput({
       req,
@@ -108,7 +111,7 @@ export async function handleSkillDebugChat(
       throw new UserError('messages is required');
     }
 
-    const resolvedModel = model || getDefaultLLMModel().model;
+    const resolvedModelId = modelId || legacyModel || getDefaultLLMModel()?.id || '';
     const originIp = getIpFromRequest(req);
 
     const { teamId, tmbId, skill } = await authSkill({
@@ -118,6 +121,17 @@ export async function handleSkillDebugChat(
       skillId,
       per: WritePermissionVal
     });
+
+    // Model permission: reject unauthorized modelId in skill debug chat (design AUTH-TC05)
+    if (resolvedModelId) {
+      await authModels({
+        req,
+        authToken: true,
+        authApiKey: true,
+        modelIds: [resolvedModelId],
+        per: ReadPermissionVal
+      });
+    }
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return;
@@ -183,7 +197,7 @@ export async function handleSkillDebugChat(
 
     const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
       skillId,
-      resolvedModel,
+      resolvedModelId,
       systemPrompt
     );
 
@@ -200,7 +214,7 @@ export async function handleSkillDebugChat(
       showNodeStatus: true
     });
 
-    logger.debug('Dispatching skill debug workflow', { skillId, chatId, model });
+    logger.debug('Dispatching skill debug workflow', { skillId, chatId, resolvedModelId });
 
     const {
       flatNodeResponses,
@@ -250,10 +264,11 @@ export async function handleSkillDebugChat(
     const computedFlowResponses = (flatNodeResponses || []).map((item) => {
       if (item.totalPoints && item.totalPoints > 0) return item;
 
-      if (item.model && (item.inputTokens !== undefined || item.outputTokens !== undefined)) {
+      if (item.modelId && (item.inputTokens !== undefined || item.outputTokens !== undefined)) {
         try {
+          const modelData = getModelById(item.modelId);
           const { totalPoints } = formatModelChars2Points({
-            model: item.model,
+            modelData,
             inputTokens: item.inputTokens ?? 0,
             outputTokens: item.outputTokens ?? 0
           });

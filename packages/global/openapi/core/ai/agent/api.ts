@@ -54,7 +54,7 @@ export const CreateQuestionGuideV2BodyRawSchema = createOutLinkChatTargetInputSc
     chatId: 'chat-1',
     questionGuide: {
       open: true,
-      model: 'gpt-4o-mini'
+      modelId: '80ad85a7463006c963799a05'
     },
     outLinkAuthData: {
       shareId: 'share-1',

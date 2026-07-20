@@ -661,7 +661,7 @@ export async function streamResumeFetch(params: StreamResumeFetchParams) {
 
 export const onOptimizePrompt = async ({
   originalPrompt,
-  model,
+  modelId,
   input,
   onResult,
   abortController
@@ -672,7 +672,7 @@ export const onOptimizePrompt = async ({
     data: {
       originalPrompt,
       optimizerInput: input,
-      model
+      modelId
     },
     onMessage: ({ event, text }) => {
       if (event === SseResponseEventEnum.answer && text) {
@@ -685,7 +685,7 @@ export const onOptimizePrompt = async ({
 
 export const onOptimizeCode = async ({
   optimizerInput,
-  model,
+  modelId,
   conversationHistory = [],
   onResult,
   abortController
@@ -695,7 +695,7 @@ export const onOptimizeCode = async ({
     url: '/api/core/workflow/optimizeCode',
     data: {
       optimizerInput,
-      model,
+      modelId,
       conversationHistory
     },
     onMessage: ({ event, text }) => {

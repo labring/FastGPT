@@ -1,19 +1,17 @@
-import { findAIModel } from '../../../core/ai/model';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
-import type { SystemModelItemType } from '../../../core/ai/type';
+import type { SystemModelItemType } from '../../../core/ai/model/type';
 
 export const formatModelChars2Points = ({
-  model,
+  modelData,
   inputTokens = 0,
   outputTokens = 0,
   multiple = 1000
 }: {
-  model: string | SystemModelItemType;
+  modelData?: SystemModelItemType;
   inputTokens?: number;
   outputTokens?: number;
   multiple?: number;
 }) => {
-  const modelData = findAIModel(model);
   if (!modelData) {
     return {
       totalPoints: 0,

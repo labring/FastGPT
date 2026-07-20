@@ -30,6 +30,7 @@ const createDatasetSearchChildNodeResponse = ({
     moduleName,
     moduleLogo: datasetSearchModuleLogo,
     runningTime: seconds,
+    modelId: usage.modelId,
     model: usage.model,
     llmRequestIds: requestIds,
     inputTokens: usage.inputTokens,

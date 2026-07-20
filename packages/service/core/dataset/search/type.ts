@@ -1,4 +1,3 @@
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -10,8 +9,8 @@ export type SearchDatasetDataProps = {
   teamId: string;
   uid?: string;
   tmbId?: string;
-  model: string;
-  vlmModel?: string;
+  vectorModelId: string;
+  vlmModelId?: string;
   datasetIds: string[];
   reRankQuery: string;
   // 工作流入口归一化后的文本 query。
@@ -27,7 +26,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
+  [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   /*
@@ -57,7 +56,9 @@ export type SearchDatasetDataResponse = {
 
   queryExtensionResult?: {
     llmModel: string;
+    llmModelId: string;
     embeddingModel: string;
+    embeddingModelId: string;
     requestId: string;
     seconds: number;
     inputTokens: number;
@@ -66,9 +67,15 @@ export type SearchDatasetDataResponse = {
     embeddingTokens: number;
     query: string;
   };
-  deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
+  deepSearchResult?: {
+    llmModelName: string;
+    llmModelId: string;
+    inputTokens: number;
+    outputTokens: number;
+  };
   imageCaptionResult?: {
-    model: string;
+    vlmModelName: string;
+    vlmModelId: string;
     inputTokens: number;
     outputTokens: number;
     requestIds: string[];
@@ -80,13 +87,13 @@ export type SearchDatasetDataResponse = {
 
 export type DefaultSearchDatasetDataProps = Omit<SearchDatasetDataProps, 'reRankQuery'> & {
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
-  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   userKey?: OpenaiAccountType;
 };
 
 export type DeepRagSearchProps = Omit<SearchDatasetDataProps, 'reRankQuery'> & {
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchModelId]?: string;
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };

@@ -199,12 +199,16 @@ const mergeNodeResponse = (
     };
   }
 
-  const deepSearchModel = incoming.deepSearchResult?.model || current.deepSearchResult?.model;
+  const deepSearchModel =
+    incoming.deepSearchResult?.llmModelName || current.deepSearchResult?.llmModelName;
+  const deepSearchModelId =
+    incoming.deepSearchResult?.llmModelId || current.deepSearchResult?.llmModelId;
   if (deepSearchModel) {
     merged.deepSearchResult = {
       ...(current.deepSearchResult || {}),
       ...(incoming.deepSearchResult || {}),
-      model: deepSearchModel,
+      llmModelId: deepSearchModelId ?? '',
+      llmModelName: deepSearchModel,
       inputTokens:
         (current.deepSearchResult?.inputTokens || 0) +
         (incoming.deepSearchResult?.inputTokens || 0),
@@ -212,6 +216,24 @@ const mergeNodeResponse = (
         (current.deepSearchResult?.outputTokens || 0) +
         (incoming.deepSearchResult?.outputTokens || 0)
     };
+  }
+
+  const extensionLlmModel =
+    incoming.queryExtensionResult?.llmModel || current.queryExtensionResult?.llmModel;
+  if (extensionLlmModel) {
+    const pick = (
+      cur?: typeof current.queryExtensionResult,
+      inc?: typeof incoming.queryExtensionResult
+    ) => ({
+      llmModelId: inc?.llmModelId || cur?.llmModelId || '',
+      llmModel: inc?.llmModel || cur?.llmModel || '',
+      embeddingModelId: inc?.embeddingModelId || cur?.embeddingModelId || '',
+      embeddingModel: inc?.embeddingModel || cur?.embeddingModel || '',
+      inputTokens: (cur?.inputTokens || 0) + (inc?.inputTokens || 0),
+      outputTokens: (cur?.outputTokens || 0) + (inc?.outputTokens || 0),
+      embeddingTokens: (cur?.embeddingTokens || 0) + (inc?.embeddingTokens || 0)
+    });
+    merged.queryExtensionResult = pick(current.queryExtensionResult, incoming.queryExtensionResult);
   }
 
   return merged;

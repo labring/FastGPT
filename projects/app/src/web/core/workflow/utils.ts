@@ -22,6 +22,8 @@ import {
   getHandleId,
   getSelectedInputRenderType,
   isValidReferenceValueFormat,
+  LEGACY_DATASET_PARAMS_MODEL_KEY_MAP,
+  LEGACY_MODEL_INPUT_KEY_MAP,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
@@ -40,8 +42,6 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
@@ -49,13 +49,55 @@ import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app
 /**
  * 适配从数据库读取出的节点输入。
  * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
+ *
+ * ⚠️ 热升级兼容（画布展示，contract release 移除，不做运行可靠性保障）：
+ * - legacy `model` key 映射到当前模板的 canonical key（`modelId` 等）；
+ * - dual 数据（迁移后同节点同时存在 legacy 与 canonical input）只保留 canonical input 进入画布，
+ *   避免重复 deprecated 输入显示（热升级技术分析 §6.4 item 5 / §6.7）。
  */
 export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
+  const canonicalizedInputs = storeNode.inputs
+    .filter((input) => {
+      // dual 数据只保留 canonical input 进入画布
+      const canonicalKey = LEGACY_MODEL_INPUT_KEY_MAP[input.key];
+      return !canonicalKey || !storeNode.inputs.some((item) => item.key === canonicalKey);
+    })
+    .map((input) => {
+      const canonicalKey = LEGACY_MODEL_INPUT_KEY_MAP[input.key];
+      if (canonicalKey && !storeNode.inputs.some((item) => item.key === canonicalKey)) {
+        // legacy-only 存量数据：key 映射到当前模板 key（value 保持原值，可见模型命中时由选择器回显）
+        return { ...input, key: canonicalKey };
+      }
+      // datasetParams 内嵌模型字段双 key 同样只保留 canonical
+      if (
+        input.key === NodeInputKeyEnum.datasetParams &&
+        input.value &&
+        typeof input.value === 'object'
+      ) {
+        const datasetParams = { ...(input.value as Record<string, unknown>) };
+        for (const [legacyKey, canonicalKey] of Object.entries(
+          LEGACY_DATASET_PARAMS_MODEL_KEY_MAP
+        )) {
+          const canonicalValue = datasetParams[canonicalKey];
+          if (
+            (canonicalValue === undefined || canonicalValue === '') &&
+            datasetParams[legacyKey] !== undefined
+          ) {
+            datasetParams[canonicalKey] = datasetParams[legacyKey];
+          }
+          delete datasetParams[legacyKey];
+        }
+        return { ...input, value: datasetParams };
+      }
+      return input;
+    });
+
+  // chatNode/toolCall：文件链接实际值为字符串数组，旧版本的手动 input 类型需要迁移为 JSONEditor。
   if (
     storeNode.flowNodeType === FlowNodeTypeEnum.chatNode ||
     storeNode.flowNodeType === FlowNodeTypeEnum.toolCall
   ) {
-    return storeNode.inputs.map((input) => {
+    return canonicalizedInputs.map((input) => {
       if (
         input.key !== NodeInputKeyEnum.fileUrlList ||
         !input.renderTypeList.includes(FlowNodeInputTypeEnum.input)
@@ -63,7 +105,6 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
         return input;
       }
 
-      // 文件链接实际值为字符串数组，旧版本的手动 input 类型需要迁移为 JSONEditor。
       return {
         ...input,
         renderTypeList: input.renderTypeList.map((type) =>
@@ -78,7 +119,7 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
   }
 
   if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-    return storeNode.inputs.map((input) => {
+    return canonicalizedInputs.map((input) => {
       if (input.key !== NodeInputKeyEnum.ifElseList) return input;
 
       return {
@@ -89,7 +130,7 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
   }
 
   if (storeNode.flowNodeType === FlowNodeTypeEnum.agent) {
-    return storeNode.inputs.map((input) => {
+    return canonicalizedInputs.map((input) => {
       const isManualSelectionInput = [
         NodeInputKeyEnum.skills,
         NodeInputKeyEnum.selectedTools,
@@ -107,10 +148,10 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
   }
 
   if (storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
-    return storeNode.inputs;
+    return canonicalizedInputs;
   }
 
-  return storeNode.inputs.map((input) => {
+  return canonicalizedInputs.map((input) => {
     if (input.key !== NodeInputKeyEnum.userChatInput) return input;
 
     const isReferenceValue = isValidReferenceValueFormat(input.value);
@@ -182,6 +223,19 @@ export const nodeTemplate2FlowNode = ({
 };
 
 /**
+ * Build an id -> reasoning-capability map from a lazily fetched llm list,
+ * used to evaluate output invalid conditions (design §1; no store cache).
+ */
+export const buildLlmModelMap = (llmList: { id: string; reasoning?: boolean }[]) =>
+  llmList.reduce(
+    (acc, model) => {
+      acc[model.id] = model;
+      return acc;
+    },
+    {} as Record<string, { reasoning?: boolean }>
+  );
+
+/**
  * 将持久化节点恢复为画布节点，并在加载时实体化历史 i18n 文本。
  * 名称或描述命中翻译 key 时使用当前语言文本，后续保存会写回实体文本。
  */
@@ -191,7 +245,8 @@ export const storeNode2FlowNode = ({
   zIndex,
   parentNodeId,
   isTool = false,
-  t
+  t,
+  llmModelMap
 }: {
   item: StoreNodeItemType;
   selected?: boolean;
@@ -199,6 +254,8 @@ export const storeNode2FlowNode = ({
   parentNodeId?: string;
   isTool?: boolean;
   t: TFunction;
+  /** Lazy-fetched llm map for evaluating output invalid conditions */
+  llmModelMap?: Record<string, { reasoning?: boolean }>;
 }): Node<FlowNodeItemType> => {
   // init some static data
   const template =
@@ -320,16 +377,8 @@ export const storeNode2FlowNode = ({
         );
 
   // Format output invalid
-  const llmList = useSystemStore.getState().llmModelList;
-  const llmModelMap = llmList.reduce(
-    (acc, model) => {
-      acc[model.model] = model;
-      return acc;
-    },
-    {} as Record<string, LLMModelItemType>
-  );
   nodeItem.outputs.forEach((output) => {
-    if (output.invalidCondition) {
+    if (output.invalidCondition && llmModelMap) {
       output.invalid = output.invalidCondition({ inputs: nodeItem.inputs, llmModelMap });
     }
   });

@@ -58,6 +58,9 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
 
   isInvalid?: boolean;
   isDisabled?: boolean;
+
+  /** Callback when the search input changes (for remote/server-side search) */
+  onSearchChange?: (search: string) => void;
 };
 
 export const menuItemStyles: MenuItemProps = {
@@ -90,6 +93,7 @@ const MySelect = <T = any,>(
     menuPlacement,
     isInvalid,
     isDisabled,
+    onSearchChange,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -307,7 +311,10 @@ const MySelect = <T = any,>(
                       autoFocus
                       variant={'unstyled'}
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        onSearchChange?.(e.target.value);
+                      }}
                       placeholder={
                         (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
                         (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
@@ -383,7 +390,13 @@ const MySelect = <T = any,>(
             e.stopPropagation();
           }}
         >
-          {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
+          {ScrollData ? (
+            <ScrollData h={'40vh'} maxH={'45vh'}>
+              {ListRender}
+            </ScrollData>
+          ) : (
+            ListRender
+          )}
         </MenuList>
       </Menu>
     </Box>

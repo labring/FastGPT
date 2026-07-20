@@ -4,7 +4,11 @@ import {
   GetAppCollaboratorListQuerySchema,
   GetAppCollaboratorListResponseSchema,
   UpdateAppCollaboratorBodySchema,
-  UpdateAppCollaboratorResponseSchema
+  UpdateAppCollaboratorResponseSchema,
+  GetModelCollaboratorListQuerySchema,
+  GetModelCollaboratorListResponseSchema,
+  UpdateModelCollaboratorBodySchema,
+  UpdateModelCollaboratorResponseSchema
 } from './api';
 
 export const PermissionPath: OpenAPIPath = {
@@ -46,6 +50,50 @@ export const PermissionPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: UpdateAppCollaboratorResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/system/model/collaborator/list': {
+    get: {
+      summary: '获取模型协作者列表',
+      description: '获取当前用户可读模型的协作者列表',
+      tags: [DevApiTagsMap.permissionCollaborator],
+      requestParams: {
+        query: GetModelCollaboratorListQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功获取模型协作者列表',
+          content: {
+            'application/json': {
+              schema: GetModelCollaboratorListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/system/model/collaborator/update': {
+    post: {
+      summary: '更新模型协作者',
+      description: '覆盖更新一个或多个模型的只读协作者',
+      tags: [DevApiTagsMap.permissionCollaborator],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateModelCollaboratorBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新模型协作者',
+          content: {
+            'application/json': {
+              schema: UpdateModelCollaboratorResponseSchema
             }
           }
         }

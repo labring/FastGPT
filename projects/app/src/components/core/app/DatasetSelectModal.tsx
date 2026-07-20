@@ -31,6 +31,14 @@ import QuickCreateDatasetModal from '@/pageComponents/app/detail/components/Quic
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
+type DatasetWithVectorModel = DatasetListItemType & {
+  vectorModel: NonNullable<DatasetListItemType['vectorModel']>;
+};
+
+/** 缺失向量模型的知识库保持可见，但不允许加入应用工作流。 */
+const hasVectorModel = (dataset: DatasetListItemType): dataset is DatasetWithVectorModel =>
+  !!dataset.vectorModel;
+
 // Dataset selection modal component
 export const DatasetSelectModal = ({
   defaultSelectedDatasets = [],
@@ -80,13 +88,15 @@ export const DatasetSelectModal = ({
 
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
+    if (!item.vectorModel) return true;
     return !!activeVectorModel && activeVectorModel !== item.vectorModel.model;
   };
 
   // Cache compatible datasets by vector model to avoid repeated filtering
   const compatibleDatasetsByModel = useMemo(() => {
     const visibleDatasets = datasets.filter(
-      (item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder
+      (item: DatasetListItemType): item is DatasetWithVectorModel =>
+        item.type !== DatasetTypeEnum.folder && hasVectorModel(item)
     );
 
     const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
@@ -94,9 +104,7 @@ export const DatasetSelectModal = ({
       return [];
     }
 
-    return visibleDatasets.filter(
-      (item: DatasetListItemType) => item.vectorModel.model === targetModel
-    );
+    return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
   }, [datasets, activeVectorModel]);
 
   // Check if all compatible datasets are selected
@@ -115,7 +123,7 @@ export const DatasetSelectModal = ({
 
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
     if (checked) {
-      if (isDatasetDisabled(item)) {
+      if (!hasVectorModel(item) || isDatasetDisabled(item)) {
         return toast({
           status: 'warning',
           title: t('app:dataset.Select_dataset_model_tip')
@@ -341,7 +349,7 @@ export const DatasetSelectModal = ({
                                 <>{t('common:Folder')}</>
                               ) : (
                                 <>
-                                  {t('app:Index')}: {item.vectorModel.name}
+                                  {t('app:Index')}: {item.vectorModel?.name ?? '-'}
                                 </>
                               )}
                             </Box>
@@ -370,19 +378,17 @@ export const DatasetSelectModal = ({
                                 return !isDatasetSelected(dataset._id);
                               }
                             );
-                            const newSelections = compatibleDatasets.map(
-                              (item: DatasetListItemType) => ({
-                                datasetId: item._id,
-                                avatar: item.avatar,
-                                name: item.name,
-                                vectorModel: item.vectorModel,
-                                isDeleted: false
-                              })
-                            );
+                            const newSelections = compatibleDatasets.map((item) => ({
+                              datasetId: item._id,
+                              avatar: item.avatar,
+                              name: item.name,
+                              vectorModel: item.vectorModel,
+                              isDeleted: false
+                            }));
                             setSelectedDatasets((prev) => [...prev, ...newSelections]);
                           } else {
                             const datasetIdsToRemove = compatibleDatasetsByModel.map(
-                              (item: DatasetListItemType) => item._id
+                              (item) => item._id
                             );
                             setSelectedDatasets((prev) =>
                               prev.filter(

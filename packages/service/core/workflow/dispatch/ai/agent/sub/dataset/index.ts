@@ -1,7 +1,15 @@
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getEmbeddingModel, getLLMModel, getRerankModel } from '../../../../../../ai/model';
+import {
+  getEmbeddingModel,
+  getLLMModel,
+  getRerankModel,
+  getVlmModel,
+  assertModelUsable,
+  assertModelActive
+} from '../../../../../../ai/model/cache';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
@@ -26,7 +34,7 @@ import {
   createChunkSelectionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
-import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
+import { filterDatasetsByTmbId, getDatasetModelIds } from '../../../../../../dataset/utils';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -34,7 +42,7 @@ type DatasetSearchParams = {
   teamId: string;
   tmbId: string;
   args: string;
-  llmModel: string;
+  llmModelId: string;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
 };
@@ -66,13 +74,13 @@ const formatDatasetSearchResponse = (searchResults: SearchDataResponseItemType[]
 const selectRelevantChunksByLLM = async ({
   query,
   chunks,
-  model,
+  modelId,
   userKey,
   teamId
 }: {
   query: string;
   chunks: SearchDataResponseItemType[];
-  model: string;
+  modelId: string;
   userKey?: OpenaiAccountType;
   teamId: string;
 }): Promise<
@@ -84,7 +92,9 @@ const selectRelevantChunksByLLM = async ({
     }
   | undefined
 > => {
-  const modelData = getLLMModel(model);
+  const modelData = getLLMModel(modelId);
+  // Bail out if model missing or disabled (F2-S3-TC06); caller keeps raw results.
+  if (!modelData || modelData.isActive === false) return;
   const threshold = calculateCompressionThresholds(modelData.maxContext).datasetSearchSelection;
   const searchResponseText = chunks.map((item) => `${item.q}\n${item.a || ''}`).join('\n');
   const estimatedTokens = await countPromptTokens(searchResponseText);
@@ -125,8 +135,8 @@ ${chunkSummaries}
     const response = await createLLMResponse({
       userKey,
       teamId,
+      modelData: modelData,
       body: {
-        model,
         messages: [{ role: 'user', content: prompt }],
         stream: false
       }
@@ -141,7 +151,7 @@ ${chunkSummaries}
 
     // 计算 usage
     const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+      modelData,
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens
     });
@@ -149,6 +159,7 @@ ${chunkSummaries}
     const usage: ChatNodeUsageType = {
       totalPoints: response.usage.usedUserOpenAIKey ? 0 : totalPoints,
       moduleName: i18nT('account_usage:dataset_chunk_selection'),
+      modelId: modelData.id,
       model: modelName,
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens
@@ -169,7 +180,7 @@ export const dispatchAgentDatasetSearch = async ({
   datasetParams,
   teamId,
   tmbId,
-  llmModel,
+  llmModelId,
   userKey
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
@@ -214,28 +225,39 @@ export const dispatchAgentDatasetSearch = async ({
     }
 
     // Get vector model
-    const dataset = await MongoDataset.findById(datasetIds[0], 'vectorModel vlmModel').lean();
-    const vectorModel = getEmbeddingModel(dataset?.vectorModel);
-    // Get Rerank Model
-    const rerankModelData = getRerankModel(datasetParams.rerankModel);
+    const dataset = await MongoDataset.findById(
+      datasetIds[0],
+      'vectorModelId vectorModel vlmModelId vlmModel'
+    ).lean();
+    // ⚠️ 热升级兼容：legacy-only dataset 回填 canonical 字段（getter 按名解析）
+    const datasetModelIds = getDatasetModelIds(dataset ?? {});
+    // Existence + active in one guard (F2-S3-TC06).
+    const vectorModel = assertModelUsable(
+      datasetModelIds.vectorModelId ? getEmbeddingModel(datasetModelIds.vectorModelId) : undefined
+    );
+    // Get Rerank Model (optional — undefined means no rerank step)
+    const rerankModelData = datasetParams.rerankModelId
+      ? getRerankModel(datasetParams.rerankModelId)
+      : undefined;
+    assertModelActive(rerankModelData);
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],
       teamId,
       textQueries,
       imageQueries,
-      model: vectorModel.model,
-      vlmModel: dataset?.vlmModel,
+      vectorModelId: vectorModel.id,
+      vlmModelId: datasetModelIds.vlmModelId,
       similarity: datasetParams.similarity ?? 0.4,
       limit: datasetParams.limit || 5000,
       datasetIds,
       searchMode: datasetParams.searchMode,
       embeddingWeight: datasetParams.embeddingWeight,
       usingReRank: datasetParams.usingReRank,
-      rerankModel: rerankModelData,
+      [NodeInputKeyEnum.datasetSearchRerankModelId]: rerankModelData?.id,
       rerankWeight: datasetParams.rerankWeight ?? 0.5,
       datasetSearchUsingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
-      datasetSearchExtensionModel: datasetParams.datasetSearchExtensionModel,
+      datasetSearchExtensionModelId: datasetParams.datasetSearchExtensionModelId,
       datasetSearchExtensionBg: datasetParams.datasetSearchExtensionBg,
       userKey
     };
@@ -259,13 +281,14 @@ export const dispatchAgentDatasetSearch = async ({
       // 1. Query extension
       if (queryExtensionResult) {
         const { totalPoints, modelName: llmModelName } = formatModelChars2Points({
-          model: queryExtensionResult.llmModel,
+          modelData: getLLMModel(queryExtensionResult.llmModelId),
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens
         });
         const queryExtensionUsage: ChatNodeUsageType = {
           totalPoints: queryExtensionResult.usedUserOpenAIKey ? 0 : totalPoints,
           moduleName: i18nT('common:core.module.template.Query extension'),
+          modelId: queryExtensionResult.llmModelId,
           model: llmModelName,
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens
@@ -282,12 +305,13 @@ export const dispatchAgentDatasetSearch = async ({
 
         const { totalPoints: embeddingPoints, modelName: embeddingModelName } =
           formatModelChars2Points({
-            model: queryExtensionResult.embeddingModel,
+            modelData: getEmbeddingModel(queryExtensionResult.embeddingModelId),
             inputTokens: queryExtensionResult.embeddingTokens
           });
         usages.push({
           totalPoints: embeddingPoints,
           moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
+          modelId: queryExtensionResult.embeddingModelId,
           model: embeddingModelName,
           inputTokens: queryExtensionResult.embeddingTokens,
           outputTokens: 0
@@ -296,13 +320,14 @@ export const dispatchAgentDatasetSearch = async ({
 
       if (imageCaptionResult) {
         const { totalPoints, modelName } = formatModelChars2Points({
-          model: imageCaptionResult.model,
+          modelData: getVlmModel(imageCaptionResult.vlmModelId),
           inputTokens: imageCaptionResult.inputTokens,
           outputTokens: imageCaptionResult.outputTokens
         });
         const imageCaptionUsage: ChatNodeUsageType = {
           totalPoints: imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints,
           moduleName: i18nT('account_usage:image_parse'),
+          modelId: imageCaptionResult.vlmModelId,
           model: modelName,
           inputTokens: imageCaptionResult.inputTokens,
           outputTokens: imageCaptionResult.outputTokens
@@ -323,25 +348,27 @@ export const dispatchAgentDatasetSearch = async ({
       // 2. Search vector
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
-          model: vectorModel.model,
+          modelData: vectorModel,
           inputTokens: embeddingTokens
         });
       usages.push({
         totalPoints: embeddingTotalPoints,
         moduleName: i18nT('account_usage:dataset_search'),
+        modelId: vectorModel.id,
         model: embeddingModelName,
         inputTokens: embeddingTokens
       });
       // 3. Rerank
-      if (searchUsingReRank) {
+      if (searchUsingReRank && rerankModelData) {
         const { totalPoints: reRankTotalPoints, modelName: reRankModelName } =
           formatModelChars2Points({
-            model: rerankModelData?.model,
+            modelData: rerankModelData,
             inputTokens: reRankInputTokens
           });
         usages.push({
           totalPoints: reRankTotalPoints,
           moduleName: i18nT('account_usage:rerank'),
+          modelId: rerankModelData.id,
           model: reRankModelName,
           inputTokens: reRankInputTokens
         });
@@ -355,7 +382,7 @@ export const dispatchAgentDatasetSearch = async ({
     const pickResults = await selectRelevantChunksByLLM({
       query: selectionQuery,
       chunks: searchRes,
-      model: llmModel,
+      modelId: llmModelId,
       userKey,
       teamId
     });
@@ -382,7 +409,7 @@ export const dispatchAgentDatasetSearch = async ({
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
       datasetQueries: [...textQueries, ...imageQueries],
-      embeddingModel: vectorModel.name,
+      embeddingModelId: vectorModel.id,
       embeddingTokens,
       similarity: usingSimilarityFilter ? searchData.similarity : undefined,
       limit: searchData.limit,
@@ -393,7 +420,7 @@ export const dispatchAgentDatasetSearch = async ({
           : undefined,
       // Rerank
       ...(searchUsingReRank && {
-        rerankModel: rerankModelData?.name,
+        rerankModelId: rerankModelData?.id,
         rerankWeight: searchData.rerankWeight,
         reRankInputTokens
       }),

@@ -23,8 +23,8 @@ describe('update training data test', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',
@@ -73,8 +73,8 @@ describe('update training data test', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',
@@ -119,8 +119,8 @@ describe('update training data test', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',
@@ -178,15 +178,15 @@ describe('update training data test', () => {
         name: 'test',
         teamId: root.teamId,
         tmbId: root.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       },
       {
         name: 'foreign',
         teamId: root.teamId,
         tmbId: root.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       }
     ]);
     const [collection, anotherCollection, foreignCollection] = await MongoDatasetCollection.create([
@@ -295,15 +295,15 @@ describe('update training data test', () => {
         name: 'test',
         teamId: user.teamId,
         tmbId: user.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       },
       {
         name: 'foreign',
         teamId: foreignUser.teamId,
         tmbId: foreignUser.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       }
     ]);
     const foreignCollection = await MongoDatasetCollection.create({

@@ -23,10 +23,11 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { getModelDetail } from '@/web/core/ai/config';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { PriceLine } from '../PriceTiersLabel';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
@@ -100,25 +101,25 @@ export type AIChatSettingsModalProps = {
   showResponseFormat?: boolean;
   showReasoning?: boolean;
   showMultimodalConfig?: boolean;
+  resourceContext?: { appId?: string; datasetId?: string };
 };
 
 const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  llmModels = [],
   showMaxToken = true,
   showTemperature = true,
   showTopP = true,
   showStopSign = true,
   showResponseFormat = true,
   showReasoning = true,
-  showMultimodalConfig = true
+  showMultimodalConfig = true,
+  resourceContext
 }: AIChatSettingsModalProps & {
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
   defaultData: SettingAIDataType;
-  llmModels: LLMModelItemType[];
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
@@ -127,7 +128,7 @@ const AIChatSettingsModal = ({
   const { handleSubmit, getValues, setValue, watch, register } = useForm<SettingAIDataType>({
     defaultValues: defaultData
   });
-  const model = watch('model');
+  const model = watch('modelId');
   const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
   const reasoningEffort = watch(NodeInputKeyEnum.aiChatReasoningEffort);
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
@@ -142,17 +143,20 @@ const AIChatSettingsModal = ({
   const useVideo = watch(NodeInputKeyEnum.aiChatVideo);
   const extractFiles = watch(NodeInputKeyEnum.aiChatExtractFiles);
 
-  const data = useMemo(() => {
-    const modelData = getWebLLMModel(model);
-    const support = getLLMSupportParams(modelData);
+  // Full model data is fetched on demand by id (design §1); supports capability
+  // gating (multimodal, reasoning, prices, response formats) without a global cache.
+  // The selector is llm-only, so the detail result is narrowed to the llm variant.
+  const { data: selectedModel } = useRequest(
+    () => getModelDetail({ id: model, ...resourceContext }) as Promise<LLMModelItemType>,
+    {
+      manual: false,
+      ready: !!model,
+      refreshDeps: [model, resourceContext?.appId, resourceContext?.datasetId],
+      errorToast: ''
+    }
+  );
 
-    return {
-      selectedModel: modelData,
-      supportParams: support
-    };
-  }, [model]);
-  const selectedModel = data.selectedModel;
-  const supportParams = data.supportParams;
+  const supportParams = useMemo(() => getLLMSupportParams(selectedModel), [selectedModel]);
   const multimodalOptions = useMemo(
     () =>
       [
@@ -208,28 +212,32 @@ const AIChatSettingsModal = ({
   }, [selectedModel?.maxResponse]);
 
   const onChangeModel = (e: string) => {
-    setValue('model', e);
+    setValue('modelId', e);
 
-    const modelData = getWebLLMModel(e);
-    if (modelData) {
-      setValue('maxToken', modelData.maxResponse / 2);
-      if (showMultimodalSetting) {
-        const support = getLLMSupportParams(modelData);
-        onChangeMultimodalValues(
-          [
-            !!getValues(NodeInputKeyEnum.aiChatVision) &&
-              support.vision &&
-              NodeInputKeyEnum.aiChatVision,
-            !!getValues(NodeInputKeyEnum.aiChatAudio) &&
-              support.audio &&
-              NodeInputKeyEnum.aiChatAudio,
-            !!getValues(NodeInputKeyEnum.aiChatVideo) &&
-              support.video &&
-              NodeInputKeyEnum.aiChatVideo
-          ].filter(Boolean) as MultimodalValue[]
-        );
-      }
-    }
+    // Fetch the new model's capabilities on demand to reset dependent settings
+    (getModelDetail({ id: e, ...resourceContext }) as Promise<LLMModelItemType>)
+      .then((modelData) => {
+        if (modelData) {
+          setValue('maxToken', modelData.maxResponse / 2);
+          if (showMultimodalSetting) {
+            const support = getLLMSupportParams(modelData);
+            onChangeMultimodalValues(
+              [
+                !!getValues(NodeInputKeyEnum.aiChatVision) &&
+                  support.vision &&
+                  NodeInputKeyEnum.aiChatVision,
+                !!getValues(NodeInputKeyEnum.aiChatAudio) &&
+                  support.audio &&
+                  NodeInputKeyEnum.aiChatAudio,
+                !!getValues(NodeInputKeyEnum.aiChatVideo) &&
+                  support.video &&
+                  NodeInputKeyEnum.aiChatVideo
+              ].filter(Boolean) as MultimodalValue[]
+            );
+          }
+        }
+      })
+      .catch(() => {});
 
     setRefresh(!refresh);
   };
@@ -272,13 +280,11 @@ const AIChatSettingsModal = ({
         <SectionCard title={t('app:ai_setting_basic_config')}>
           <SettingRow label={t('common:core.ai.Model')}>
             <AIModelSelector
+              type={'llm'}
               width={'100%'}
               h={'36px'}
               value={model}
-              list={llmModels.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
+              resourceContext={resourceContext}
               onChange={onChangeModel}
             />
           </SettingRow>
@@ -586,7 +592,7 @@ const AIChatSettingsModal = ({
                   isDisabled={responseFormat === undefined}
                   placeholder={t('app:response_format_placeholder')}
                   h={'36px'}
-                  list={selectedModel.responseFormatList!.map((item) => ({
+                  list={(selectedModel?.responseFormatList ?? []).map((item) => ({
                     value: item,
                     label: item
                   }))}

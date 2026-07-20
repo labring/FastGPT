@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 0);

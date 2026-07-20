@@ -12,7 +12,13 @@ import { formatModelChars2Points } from './utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoUsageItem } from './usageItemSchema';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getDefaultSTTModel } from '../../../core/ai/model';
+import {
+  getDefaultSTTModel,
+  getModelById,
+  getEmbeddingModel,
+  getLLMModel,
+  getVlmModel
+} from '../../../core/ai/model/cache';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.USAGE);
 
@@ -77,25 +83,28 @@ export const createPdfParseUsage = async ({
 };
 export const pushLLMTrainingUsage = async ({
   teamId,
-  model,
+  modelId,
   inputTokens,
   outputTokens,
   usageId,
   type
 }: {
   teamId: string;
-  model: string;
+  modelId: string;
   inputTokens: number;
   outputTokens: number;
   usageId: string;
   type: UsageItemTypeEnum;
 }) => {
   // Compute points
-  const { totalPoints } = formatModelChars2Points({
-    model,
-    inputTokens,
-    outputTokens
-  });
+  const modelData = getModelById(modelId);
+  const { totalPoints } = modelData
+    ? formatModelChars2Points({
+        modelData,
+        inputTokens,
+        outputTokens
+      })
+    : { totalPoints: 0 };
 
   concatUsage({
     usageId,
@@ -161,6 +170,7 @@ export const pushChatItemUsage = ({
       moduleName: item.moduleName,
       amount: item.totalPoints,
       model: item.model,
+      modelId: item.modelId,
       inputTokens: item.inputTokens,
       outputTokens: item.outputTokens
     }))
@@ -184,7 +194,7 @@ export const pushWhisperUsage = ({
   if (!whisperModel) return;
 
   const { totalPoints, modelName } = formatModelChars2Points({
-    model: whisperModel.model,
+    modelData: whisperModel,
     inputTokens: duration,
     multiple: 60
   });
@@ -201,6 +211,7 @@ export const pushWhisperUsage = ({
       {
         moduleName: name,
         amount: totalPoints,
+        modelId: whisperModel.id,
         model: modelName,
         duration
       }
@@ -214,9 +225,9 @@ export const createTrainingUsage = async ({
   tmbId,
   appName,
   billSource,
-  vectorModel,
-  agentModel,
-  vllmModel,
+  vectorModelId,
+  agentModelId,
+  vlmModelId,
   session
 }: {
   teamId: string;
@@ -224,11 +235,15 @@ export const createTrainingUsage = async ({
   appName: string;
   billSource: UsageSourceEnum;
 
-  vectorModel: string;
-  agentModel?: string;
-  vllmModel?: string;
+  vectorModelId: string;
+  agentModelId?: string;
+  vlmModelId?: string;
   session?: ClientSession;
 }) => {
+  const vectorModelName = getEmbeddingModel(vectorModelId)?.name;
+  const agentModelName = agentModelId ? getLLMModel(agentModelId)?.name : undefined;
+  const vlmModelName = vlmModelId ? getVlmModel(vlmModelId)?.name : undefined;
+
   const create = async (session: ClientSession) => {
     const [result] = await MongoUsage.create(
       [
@@ -249,18 +264,20 @@ export const createTrainingUsage = async ({
           usageId: result._id,
           itemType: UsageItemTypeEnum.training_vector,
           name: i18nT('account_usage:embedding_index'),
-          model: vectorModel,
+          modelId: vectorModelId,
+          model: vectorModelName,
           amount: 0,
           inputTokens: 0
         },
-        ...(agentModel
+        ...(agentModelId && agentModelName
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_paragraph,
                 name: i18nT('account_usage:llm_paragraph'),
-                model: agentModel,
+                modelId: agentModelId,
+                model: agentModelName,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -270,7 +287,8 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_qa,
                 name: i18nT('account_usage:qa'),
-                model: agentModel,
+                modelId: agentModelId,
+                model: agentModelName,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -280,21 +298,23 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_autoIndex,
                 name: i18nT('account_usage:auto_index'),
-                model: agentModel,
+                modelId: agentModelId,
+                model: agentModelName,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
               }
             ]
           : []),
-        ...(vllmModel
+        ...(vlmModelId && vlmModelName
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageIndex,
                 name: i18nT('account_usage:image_index'),
-                model: vllmModel,
+                modelId: vlmModelId,
+                model: vlmModelName,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -304,7 +324,8 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageParse,
                 name: i18nT('account_usage:image_parse'),
-                model: vllmModel,
+                modelId: vlmModelId,
+                model: vlmModelName,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -329,13 +350,14 @@ export const createEvaluationUsage = async ({
   teamId,
   tmbId,
   appName,
-  model
+  modelId
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
-  model: string;
+  modelId: string;
 }) => {
+  const modelName = getModelById(modelId)?.name;
   const { usageId } = await mongoSessionRun(async (session) => {
     const [{ _id: usageId }] = await MongoUsage.create(
       [
@@ -367,7 +389,8 @@ export const createEvaluationUsage = async ({
           amount: 0,
           inputTokens: 0,
           outputTokens: 0,
-          model
+          model: modelName,
+          modelId
         }
       ],
       {

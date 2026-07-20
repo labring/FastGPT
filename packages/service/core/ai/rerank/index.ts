@@ -1,7 +1,8 @@
 import { axiosWithoutSSRF } from '../../../common/api/axios';
-import { getDefaultRerankModel } from '../model';
-import { getAxiosConfig } from '../config';
-import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { getAxiosConfig, getAiproxyScopeHeaders } from '../config';
+import { normalizeRelayNoChannelError } from '../channel';
+import { assertModelActive } from '../model/cache';
+import { type RerankModelItemType } from '@fastgpt/global/core/ai/model/type';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { text2Chunks } from '../../../worker/function';
@@ -27,19 +28,18 @@ type ReRankCallResult = {
 };
 
 export async function reRankRecall({
-  model = getDefaultRerankModel(),
+  modelData,
   query,
   documents,
   headers
 }: {
-  model?: RerankModelItemType;
+  modelData: RerankModelItemType;
   query: string;
   documents: { id: string; text: string }[];
   headers?: Record<string, string>;
 }): Promise<ReRankCallResult> {
-  if (!model) {
-    return Promise.reject(new Error('No rerank model'));
-  }
+  // Disabled models must never be callable at runtime (F2-S3-TC06).
+  assertModelActive(modelData);
   if (documents.length === 0) {
     return Promise.resolve({
       results: [],
@@ -50,7 +50,7 @@ export async function reRankRecall({
   // Token budget: calculate how many tokens each document can use
   // Document max token = ModelMaxToken - QueryTokens
   const queryTokens = await countPromptTokens(query);
-  const rerankMaxToken = model.maxToken || 8000;
+  const rerankMaxToken = modelData.maxToken || 8000;
   const docBudget = rerankMaxToken - queryTokens;
   if (docBudget <= 500) {
     return Promise.reject(new Error('Rerank query too long'));
@@ -93,20 +93,24 @@ export async function reRankRecall({
   const { baseUrl, authorization } = getAxiosConfig();
   const start = Date.now();
 
-  // 模型的请求 url，允许是内网
-  const requestUrl = model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`;
+  const requestUrl = `${baseUrl}/rerank`;
   const requestBody = {
-    model: model.model,
+    // modelId is a platform-internal identifier — never send it upstream
+    // (strict providers reject unknown top-level fields).
+    model: modelData.model,
     query,
     documents: documentsTextArray,
-    ...model.defaultConfig
+    ...modelData.defaultConfig
   };
 
   const apiResult = await axiosWithoutSSRF
     .post<PostReRankResponse>(requestUrl, requestBody, {
       headers: {
-        Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization,
-        ...headers
+        Authorization: authorization,
+        ...headers,
+        // Relay scope is a security attribute (design §2.9) — it must win over any
+        // caller-provided header (e.g. Aiproxy-Channel channel lock).
+        ...getAiproxyScopeHeaders(modelData, baseUrl)
       },
       timeout: 30000
     })
@@ -154,7 +158,9 @@ export async function reRankRecall({
     })
     .catch((err) => {
       logger.error('Rerank request failed', { error: err });
-      return Promise.reject(err);
+      // Relay "no available channel" (F2-S4-TC04) → ModelErrEnum.noAvailableChannel;
+      // other errors pass through unchanged.
+      return Promise.reject(normalizeRelayNoChannelError(err));
     });
 
   return {

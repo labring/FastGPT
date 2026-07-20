@@ -1,15 +1,15 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
+import { authModel } from '@fastgpt/service/support/permission/model/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   type EmbeddingModelItemType,
   type LLMModelItemType,
   type RerankModelItemType,
   type STTModelType,
   type TTSModelType
-} from '@fastgpt/global/core/ai/model.schema';
-import { getAIApi } from '@fastgpt/service/core/ai/config';
+} from '@fastgpt/global/core/ai/model/type';
+import { getAIApi, getAiproxyScopeHeaders } from '@fastgpt/service/core/ai/config';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getVectors } from '@fastgpt/service/core/ai/embedding';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
@@ -17,27 +17,47 @@ import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions'
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  TestModelQuerySchema,
+  TestModelResponseSchema,
+  type TestModelQuery,
+  type TestModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
-export type testQuery = { model: string; channelId?: number };
+async function handler(
+  req: ApiRequestProps<Record<string, never>, TestModelQuery>
+): Promise<TestModelResponse> {
+  const { id: modelId, channelId } = parseApiInput({
+    req,
+    querySchema: TestModelQuerySchema
+  }).query;
 
-export type testBody = Record<string, never>;
-
-export type testResponse = any;
-
-async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testResponse> {
-  const { teamId } = await authSystemAdmin({ req });
-
-  const { model, channelId } = req.query;
-  const modelData = findModelFromAlldata(model);
+  const { modelData, teamId, tmbId } = await authModel({
+    modelId,
+    per: ReadPermissionVal,
+    req,
+    authToken: true
+  });
 
   if (!modelData) return Promise.reject('Model not found');
 
-  if (channelId) {
-    delete modelData.requestUrl;
-    delete modelData.requestAuth;
-  }
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.TEST_MODEL,
+      params: {
+        modelName: modelData.name || modelData.model,
+        modelType: getI18nModelType(modelData.type)
+      }
+    });
+  })();
 
+  // Build channel header if channelId is provided; the proxy/router uses this header for routing.
   const headers: Record<string, string> = channelId
     ? {
         'Aiproxy-Channel': String(channelId)
@@ -46,19 +66,19 @@ async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testR
   logger.debug(`Test model`, modelData);
 
   if (modelData.type === 'llm') {
-    return testLLMModel(modelData, headers, teamId);
+    return TestModelResponseSchema.parse(await testLLMModel(modelData, headers, teamId));
   }
   if (modelData.type === 'embedding') {
-    return testEmbeddingModel(modelData, headers);
+    return TestModelResponseSchema.parse(await testEmbeddingModel(modelData, headers));
   }
   if (modelData.type === 'tts') {
-    return testTTSModel(modelData, headers);
+    return TestModelResponseSchema.parse(await testTTSModel(modelData, headers));
   }
   if (modelData.type === 'stt') {
-    return testSTTModel(modelData, headers);
+    return TestModelResponseSchema.parse(await testSTTModel(modelData, headers));
   }
   if (modelData.type === 'rerank') {
-    return testReRankModel(modelData, headers);
+    return TestModelResponseSchema.parse(await testReRankModel(modelData, headers));
   }
 
   return Promise.reject('Model type not supported');
@@ -67,15 +87,15 @@ async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testR
 export default NextAPI(handler);
 
 const testLLMModel = async (
-  model: LLMModelItemType,
+  modelData: LLMModelItemType,
   headers: Record<string, string>,
   teamId: string
 ) => {
   const { answerText } = await createLLMResponse({
     teamId,
+    modelData,
     saveLLMResponseRecord: false,
     body: {
-      model, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },
@@ -90,11 +110,11 @@ const testLLMModel = async (
 };
 
 const testEmbeddingModel = async (
-  model: EmbeddingModelItemType,
+  modelData: EmbeddingModelItemType,
   headers: Record<string, string>
 ) => {
   return getVectors({
-    model,
+    modelData,
     inputs: [
       {
         type: 'text',
@@ -105,34 +125,33 @@ const testEmbeddingModel = async (
   });
 };
 
-const testTTSModel = async (model: TTSModelType, headers: Record<string, string>) => {
-  const { ai } = getAIApi({
+const testTTSModel = async (modelData: TTSModelType, headers: Record<string, string>) => {
+  const { ai, requestMeta } = getAIApi({
     timeout: 10000
   });
   await ai.audio.speech.create(
     {
-      model: model.model,
-      voice: model.voices[0]?.value as any,
+      model: modelData.model,
+      voice: modelData.voices[0]?.value as any,
       input: 'Hi',
       response_format: 'mp3',
       speed: 1
     },
-    model.requestUrl
-      ? {
-          path: model.requestUrl,
-          headers: {
-            ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
-            ...headers
-          }
-        }
-      : { headers }
+    {
+      headers: {
+        ...headers,
+        // Relay scope is a security attribute (design §2.9) — it must win over any
+        // caller-provided header (e.g. Aiproxy-Channel channel lock).
+        ...getAiproxyScopeHeaders(modelData, requestMeta.baseUrl)
+      }
+    }
   );
 };
 
-const testSTTModel = async (model: STTModelType, headers: Record<string, string>) => {
+const testSTTModel = async (modelData: STTModelType, headers: Record<string, string>) => {
   const path = isProduction ? '/app/data/test.mp3' : 'data/test.mp3';
   const { text } = await aiTranscriptions({
-    model,
+    modelData,
     fileStream: fs.createReadStream(path),
     filename: 'test.mp3',
     headers
@@ -140,9 +159,9 @@ const testSTTModel = async (model: STTModelType, headers: Record<string, string>
   logger.info(`STT result: ${text}`);
 };
 
-const testReRankModel = async (model: RerankModelItemType, headers: Record<string, string>) => {
+const testReRankModel = async (modelData: RerankModelItemType, headers: Record<string, string>) => {
   await reRankRecall({
-    model,
+    modelData,
     query: 'Hi',
     documents: [{ id: '1', text: 'Hi' }],
     headers

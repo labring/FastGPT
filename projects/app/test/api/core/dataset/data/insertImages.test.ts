@@ -82,7 +82,7 @@ vi.mock('@fastgpt/service/core/dataset/training/controller', () => ({
   pushDataListToTrainingQueue: mockPushDataListToTrainingQueue
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/model/cache', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
@@ -126,8 +126,8 @@ describe('POST /api/core/dataset/data/insertImages', () => {
         datasetId,
         dataset: {
           _id: datasetId,
-          vectorModel: 'vision-embedding',
-          agentModel: 'gpt-5'
+          vectorModelId: 'vision-embedding',
+          agentModelId: 'gpt-5'
         }
       }
     });
@@ -152,9 +152,9 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     expect(result).toBeUndefined();
     expect(mockCreateTrainingUsage).toHaveBeenCalledWith(
       expect.objectContaining({
-        vectorModel: 'vision-embedding',
-        agentModel: 'gpt-5',
-        vllmModel: undefined,
+        vectorModelId: 'vision-embedding',
+        agentModelId: 'gpt-5',
+        vlmModelId: undefined,
         session: 'session'
       })
     );
@@ -163,9 +163,9 @@ describe('POST /api/core/dataset/data/insertImages', () => {
       tmbId: 'tmb-id',
       datasetId,
       collectionId,
-      agentModel: 'gpt-5',
-      vectorModel: 'vision-embedding',
-      vlmModel: undefined,
+      agentModelId: 'gpt-5',
+      vectorModelId: 'vision-embedding',
+      vlmModelId: undefined,
       mode: TrainingModeEnum.chunk,
       billId: 'usage-id',
       data: [{ imageId: 'dataset/team/cat.png' }],

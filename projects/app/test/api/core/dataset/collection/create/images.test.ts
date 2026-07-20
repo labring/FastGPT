@@ -114,8 +114,8 @@ describe('POST /api/core/dataset/collection/create/images', () => {
       tmbId: 'tmb-id',
       dataset: {
         _id: datasetId,
-        vectorModel: 'vision-embedding',
-        agentModel: 'gpt-5'
+        vectorModelId: 'vision-embedding',
+        agentModelId: 'gpt-5'
       }
     });
     mockGetDatasetImageIndexCapability.mockReturnValue({
@@ -148,8 +148,8 @@ describe('POST /api/core/dataset/collection/create/images', () => {
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith({
       dataset: {
         _id: datasetId,
-        vectorModel: 'vision-embedding',
-        agentModel: 'gpt-5'
+        vectorModelId: 'vision-embedding',
+        agentModelId: 'gpt-5'
       },
       imageIds: ['dataset/team/cat.png'],
       createCollectionParams: {

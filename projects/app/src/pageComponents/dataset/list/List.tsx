@@ -150,7 +150,9 @@ function List() {
   });
 
   const renderDatasetCard = (dataset: (typeof formatDatasets)[number]) => {
-    const vectorModelAvatar = getModelProvider(dataset.vectorModel.provider)?.avatar;
+    const vectorModelAvatar = dataset.vectorModel
+      ? getModelProvider(dataset.vectorModel.provider)?.avatar
+      : undefined;
 
     return (
       <MyBox
@@ -266,7 +268,7 @@ function List() {
           </HStack>
 
           <HStack>
-            {isPc && dataset.type !== DatasetTypeEnum.folder && (
+            {isPc && dataset.type !== DatasetTypeEnum.folder && dataset.vectorModel && (
               <HStack spacing={1} className="time">
                 <Avatar src={vectorModelAvatar} w={'0.85rem'} />
                 <Box color={'myGray.500'} fontSize={'mini'}>

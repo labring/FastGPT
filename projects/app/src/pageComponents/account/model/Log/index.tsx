@@ -1,6 +1,4 @@
-import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
-import { getSystemModelList } from '@/web/core/ai/config';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { getUsageLogs, getModelListPage } from '@/web/core/ai/config';
 import {
   Table,
   Thead,
@@ -11,12 +9,7 @@ import {
   TableContainer,
   Box,
   Flex,
-  Button,
-  HStack,
-  ModalBody,
-  Grid,
-  GridItem,
-  type BoxProps
+  HStack
 } from '@chakra-ui/react';
 import DateRangePicker, {
   type DateRangeType
@@ -24,48 +17,38 @@ import DateRangePicker, {
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { addDays } from 'date-fns';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useCallback, useMemo, useState } from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useTranslation } from 'next-i18next';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import type { ChannelLogListItemType } from '@/global/aiproxy/type';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { useDebounceFn } from 'ahooks';
 
-type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
-  channelName: string | number;
-  model: React.JSX.Element;
-  duration: number;
-  request_at: string;
+const DEFAULT_PAGE_SIZE = 20;
 
-  retry_times?: number;
-  content?: string;
-  request_body?: string;
-  response_body?: string;
-};
-const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useClientTranslation('account_model');
-  const { userInfo } = useUserStore();
-  const { getModelProvider } = useSystemStore();
+/**
+ * Model-dimension call log (design §14.1). Lists usage_items of the models the
+ * current user can access; filters by model (lazy loaded), model type, creator
+ * username and date range. Displays time, model, type, usage, and creator.
+ */
+const ModelLogPage = ({ Tab }: { Tab: React.ReactNode }) => {
+  const { t } = useTranslation();
 
-  const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
-    request_id?: string;
-    channelId?: string;
-    model?: string;
-    code_type: 'all' | 'success' | 'error';
+    modelId?: string;
+    type?: ModelTypeEnum;
+    search?: string;
     dateRange: DateRangeType;
   }>({
-    request_id: '',
-    code_type: 'all',
+    modelId: undefined,
+    type: undefined,
+    search: undefined,
     dateRange: {
       from: (() => {
-        const today = addDays(new Date(), -1);
+        const today = addDays(new Date(), -7);
         today.setHours(0, 0, 0, 0);
         return today;
       })(),
@@ -77,109 +60,135 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   });
 
-  const { data: channelList = [] } = useRequest(
-    async () => {
-      const res = await getChannelList().then((res) =>
-        res.map((item) => ({
-          label: item.name,
-          value: `${item.id}`
-        }))
-      );
-      return [
-        {
-          label: t('common:All'),
-          value: ''
-        },
-        ...res
-      ];
-    },
+  const { data, isLoading, ScrollData } = useScrollPagination(getUsageLogs, {
+    pageSize: DEFAULT_PAGE_SIZE,
+    refreshDeps: [filterProps],
+    params: {
+      modelId: filterProps.modelId,
+      type: filterProps.type || undefined,
+      search: filterProps.search,
+      dateStart: filterProps.dateRange.from?.toISOString(),
+      dateEnd: filterProps.dateRange.to?.toISOString()
+    }
+  });
+
+  // ── Model dropdown: lazy load with pagination + remote search (design §5.1) ──
+  const [modelSearch, setModelSearch] = useState('');
+  const {
+    ScrollData: ModelScrollData,
+    data: loadedModels,
+    isLoading: isLoadingModels,
+    fetchData: fetchModelList
+  } = useScrollPagination(
+    (params: { pageNum?: number; pageSize?: number }) =>
+      getModelListPage({
+        ...params,
+        type: filterProps.type,
+        search: modelSearch,
+        isActive: 'active'
+      }),
     {
-      manual: false
+      pageSize: 20,
+      refreshDeps: [filterProps.type, modelSearch]
     }
   );
 
-  const { data: systemModelList = [] } = useRequest(getSystemModelList, {
-    manual: false
-  });
-  const modelList = useMemo(() => {
-    const res = systemModelList
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
+  // Type change resets the selected model (options are type-filtered)
+  const prevTypeRef = useRef(filterProps.type);
+  useEffect(() => {
+    if (prevTypeRef.current === filterProps.type) return;
+    prevTypeRef.current = filterProps.type;
+    setFilterProps((prev) => ({ ...prev, modelId: undefined }));
+    fetchModelList({ init: true, silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterProps.type]);
 
-        return {
-          order: provider.order,
-          icon: provider.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => a.order - b.order);
-    return [
-      {
-        label: t('common:All'),
-        value: ''
-      },
-      ...res
-    ];
-  }, [getModelProvider, i18n.language, systemModelList, t]);
+  // Remote search: debounce then refresh the first page silently
+  const { run: onDebouncedModelSearch } = useDebounceFn(
+    () => {
+      fetchModelList({ init: true, silent: true });
+    },
+    { wait: 300 }
+  );
 
-  const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
-    pageSize: 20,
-    refreshDeps: [filterProps],
-    params: {
-      request_id: filterProps.request_id,
-      channel: filterProps.channelId,
-      model_name: filterProps.model,
-      code_type: filterProps.code_type,
-      start_timestamp: filterProps.dateRange.from?.getTime() || 0,
-      end_timestamp: filterProps.dateRange.to?.getTime() || 0
-    }
-  });
+  const modelOptions = useMemo(() => {
+    const models = loadedModels.map((item) => ({
+      label: item.name || item.model,
+      value: item.id
+    }));
+    return [{ label: t('common:All'), value: '' }, ...models];
+  }, [loadedModels, t]);
 
-  const formatData = useMemo<LogDetailType[]>(() => {
-    return data.map((item) => {
-      const duration = item.created_at - item.request_at;
-      const durationSecond = duration / 1000;
+  const typeOptions = useMemo(
+    () => [
+      { label: t('common:All'), value: '' },
+      ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
+    ],
+    [t]
+  );
 
-      const channelName = channelList.find((channel) => channel.value === `${item.channel}`)?.label;
-
-      const model = systemModelList.find((model) => model.model === item.model);
-      const provider = getModelProvider(model?.provider, i18n.language);
-
-      return {
-        ...item,
-        channelName: channelName || item.channel,
-        model: (
-          <HStack>
-            <MyIcon name={provider?.avatar as any} w={'1rem'} />
-            <Box>{model?.model}</Box>
-          </HStack>
-        ),
-        duration: durationSecond,
-        request_at: formatTime2YMDHMS(item.request_at),
-        ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
-      };
-    });
-  }, [channelList, data, getModelProvider, i18n.language, systemModelList]);
-
-  const [logDetail, setLogDetail] = useState<LogDetailType>();
+  const modelTypeLabelMap: Record<string, string> = {
+    [ModelTypeEnum.llm]: t('common:model.type.chat'),
+    [ModelTypeEnum.embedding]: t('common:model.type.embedding'),
+    [ModelTypeEnum.tts]: t('common:model.type.tts'),
+    [ModelTypeEnum.stt]: t('common:model.type.stt'),
+    [ModelTypeEnum.rerank]: t('common:model.type.reRank')
+  };
 
   return (
     <>
-      {isRoot && (
-        <Flex alignItems={'center'}>
-          {Tab}
-          <Box flex={1} />
-          <Box flex={'0 0 200px'}>
-            <SearchInput
-              placeholder={t('account_model:log_request_id_search')}
-              defaultValue={filterProps.request_id}
-              onBlur={(e) => setFilterProps({ ...filterProps, request_id: e.target.value })}
+      <Flex alignItems={'center'}>
+        <Box>{Tab}</Box>
+        <Box flex={1} />
+      </Flex>
+      <HStack spacing={4} flexWrap={'wrap'}>
+        <HStack>
+          <FormLabel>{t('account_model:model_name')}</FormLabel>
+          <Box flex={'1 0 0'} minW={'180px'}>
+            <MySelect<string>
+              bg={'myGray.50'}
+              isSearch
+              list={modelOptions}
+              ScrollData={ModelScrollData}
+              isLoading={isLoadingModels}
+              placeholder={t('account_model:select_model')}
+              value={filterProps.modelId ?? ''}
+              onSearchChange={(val) => {
+                setModelSearch(val);
+                onDebouncedModelSearch();
+              }}
+              customOnClose={() => {
+                if (modelSearch) {
+                  setModelSearch('');
+                  fetchModelList({ init: true, silent: true });
+                }
+              }}
+              onChange={(val) => setFilterProps({ ...filterProps, modelId: val })}
             />
           </Box>
-        </Flex>
-      )}
-      <HStack spacing={4}>
+        </HStack>
+        <HStack>
+          <FormLabel>{t('account_model:model_type')}</FormLabel>
+          <Box flex={'1 0 0'}>
+            <MySelect<string>
+              bg={'myGray.50'}
+              list={typeOptions}
+              placeholder={t('account_model:select_model_type')}
+              value={filterProps.type ?? ''}
+              onChange={(val) => setFilterProps({ ...filterProps, type: val as ModelTypeEnum })}
+            />
+          </Box>
+        </HStack>
+        <HStack>
+          <FormLabel>{t('account_model:creator')}</FormLabel>
+          <Box flex={'1 0 0'} w={'160px'}>
+            <SearchInput
+              placeholder={t('account_model:creator_search')}
+              defaultValue={filterProps.search}
+              onBlur={(e) => setFilterProps({ ...filterProps, search: e.target.value })}
+            />
+          </Box>
+        </HStack>
         <HStack>
           <FormLabel>{t('common:user.Time')}</FormLabel>
           <Box>
@@ -190,87 +199,40 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack>
-          <FormLabel>{t('account_model:channel_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              bg={'myGray.50'}
-              isSearch
-              list={channelList}
-              placeholder={t('account_model:select_channel')}
-              value={filterProps.channelId}
-              onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-            />
-          </Box>
-        </HStack>
-        <HStack>
-          <FormLabel>{t('account_model:model_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              bg={'myGray.50'}
-              isSearch
-              list={modelList}
-              placeholder={t('account_model:select_model')}
-              value={filterProps.model}
-              onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-            />
-          </Box>
-        </HStack>
-        <HStack flex={'0 0 200px'}>
-          <FormLabel>{t('account_model:log_status')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<'all' | 'success' | 'error'>
-              bg={'myGray.50'}
-              list={[
-                { label: t('common:All'), value: 'all' },
-                { label: t('common:Success'), value: 'success' },
-                { label: t('common:failed'), value: 'error' }
-              ]}
-              value={filterProps.code_type}
-              onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
-            />
-          </Box>
-        </HStack>
       </HStack>
+
       <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
         <ScrollData h={'100%'}>
           <TableContainer fontSize={'sm'}>
             <Table>
               <Thead>
                 <Tr>
-                  <Th>{t('account_model:channel_name')}</Th>
-                  <Th>{t('account_model:model')}</Th>
-                  <Th>{t('account_model:model_tokens')}</Th>
-                  <Th>{t('account_model:duration')}</Th>
-                  <Th>{t('account_model:channel_status')}</Th>
                   <Th>{t('account_model:request_at')}</Th>
-                  <Th></Th>
+                  <Th>{t('account_model:model')}</Th>
+                  <Th>{t('account_model:model_type')}</Th>
+                  <Th>{t('account_model:model_usage_points')}</Th>
+                  <Th>{t('account_model:creator')}</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {formatData.map((item, index) => (
-                  <Tr key={index}>
-                    <Td>{item.channelName}</Td>
-                    <Td>{item.model}</Td>
+                {data.map((item) => (
+                  <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
+                    <Td>{formatTime2YMDHMS(new Date(item.time))}</Td>
+                    {/* Prefer the display name and fall back to the upstream model name. */}
+                    <Td color={'myGray.900'} fontWeight={'medium'}>
+                      {item.name || item.model || '-'}
+                    </Td>
+                    <Td>{item.type ? modelTypeLabelMap[item.type] || '-' : '-'}</Td>
                     <Td>
-                      {item.usage?.input_tokens} / {item.usage?.output_tokens}
+                      {formatNumber(item.totalPoints)}
+                      {item.inputTokens !== undefined && item.outputTokens !== undefined && (
+                        <Box as={'span'} color={'myGray.500'}>
+                          {' '}
+                          ({item.inputTokens}/{item.outputTokens})
+                        </Box>
+                      )}
                     </Td>
-                    <Td color={item.duration > 10 ? 'red.600' : ''}>{item.duration.toFixed(2)}s</Td>
-                    <Td color={item.code === 200 ? 'green.600' : 'red.600'}>
-                      {item.code}
-                      {item.content && <QuestionTip label={item.content} />}
-                    </Td>
-                    <Td>{item.request_at}</Td>
-                    <Td>
-                      <Button
-                        leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
-                        size={'sm'}
-                        variant={'outline'}
-                        onClick={() => setLogDetail(item)}
-                      >
-                        {t('account_model:detail')}
-                      </Button>
-                    </Td>
+                    <Td>{item.sourceMember?.name || '-'}</Td>
                   </Tr>
                 ))}
               </Tbody>
@@ -278,153 +240,8 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           </TableContainer>
         </ScrollData>
       </MyBox>
-
-      {!!logDetail && <LogDetail data={logDetail} onClose={() => setLogDetail(undefined)} />}
     </>
   );
 };
 
-export default ChannelLog;
-
-const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
-  const { t } = useClientTranslation('account_model');
-  const { data: detailData } = useRequest(
-    async () => {
-      if (data.code === 200) return data;
-      try {
-        const res = await getLogDetail(data.id);
-        return {
-          ...res,
-          ...data
-        };
-      } catch (error) {
-        return data;
-      }
-    },
-    {
-      manual: false
-    }
-  );
-
-  const Title = useCallback(({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
-    return (
-      <Box
-        bg={'myGray.50'}
-        color="myGray.900 "
-        borderRight={'base'}
-        p={3}
-        flex={'0 0 100px'}
-        {...props}
-      >
-        {children}
-      </Box>
-    );
-  }, []);
-  const Container = useCallback(
-    ({ children, ...props }: { children: React.ReactNode } & BoxProps) => {
-      return (
-        <Box p={3} flex={1} {...props}>
-          {children}
-        </Box>
-      );
-    },
-    []
-  );
-
-  return (
-    <MyModal
-      isOpen
-      iconSrc="support/bill/payRecordLight"
-      title={t('account_model:log_detail')}
-      onClose={onClose}
-      maxW={['90vw', '800px']}
-      w={'100%'}
-    >
-      {detailData && (
-        <ModalBody>
-          {/* 基本信息表格 */}
-          <Grid
-            templateColumns="repeat(2, 1fr)"
-            gap={0}
-            borderWidth="1px"
-            borderRadius="md"
-            fontSize={'sm'}
-            overflow={'hidden'}
-          >
-            {/* 第一行 */}
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>RequestID</Title>
-              <Container>{detailData?.request_id}</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>Request IP</Title>
-              <Container>{detailData?.ip}</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:channel_status')}</Title>
-              <Container color={detailData.code === 200 ? 'green.600' : 'red.600'}>
-                {detailData?.code}
-              </Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>Endpoint</Title>
-              <Container>{detailData?.endpoint}</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:channel_name')}</Title>
-              <Container>{detailData?.channelName}</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>{t('account_model:model')}</Title>
-              <Container>{detailData?.model}</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title>{t('account_model:request_at')}</Title>
-              <Container>{detailData?.request_at}</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title>{t('account_model:duration')}</Title>
-              <Container>{detailData?.duration.toFixed(2)}s</Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
-              <Title flex={'0 0 150px'}>{t('account_model:model_ttfb_time')}</Title>
-              <Container>
-                {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
-              </Container>
-            </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px">
-              <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>
-              <Container>
-                {detailData?.usage?.input_tokens} / {detailData?.usage?.output_tokens}
-              </Container>
-            </GridItem>
-            {detailData?.retry_times !== undefined && (
-              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <Title>{t('account_model:retry_times')}</Title>
-                <Container>{detailData?.retry_times}</Container>
-              </GridItem>
-            )}
-            {detailData?.content && (
-              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <Title>Content</Title>
-                <Container>{detailData?.content}</Container>
-              </GridItem>
-            )}
-            {detailData?.request_body && (
-              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
-                <Title>Request Body</Title>
-                <Container userSelect={'all'}>{detailData?.request_body}</Container>
-              </GridItem>
-            )}
-            {detailData?.response_body && (
-              <GridItem display={'flex'} colSpan={2}>
-                <Title>Response Body</Title>
-                <Container>{detailData?.response_body}</Container>
-              </GridItem>
-            )}
-          </Grid>
-        </ModalBody>
-      )}
-    </MyModal>
-  );
-};
+export default React.memo(ModelLogPage);
