@@ -157,3 +157,174 @@ export const createVectorDBTestSuite = (vectorCtrl: VectorControllerType) => {
     });
   });
 };
+
+// ==================== Full-Text Search Test Suite ====================
+
+const FULLTEXT_TEXTS = [
+  'The quick brown fox jumps over the lazy dog',
+  'Machine learning is transforming artificial intelligence applications',
+  'FastGPT is an open source knowledge base question answering system'
+];
+
+const insertTextVectors = async (
+  vectorCtrl: VectorControllerType,
+  teamId: string,
+  datasetId: string,
+  collectionIds: string[] = [TEST_COLLECTION_IDS[0]]
+) => {
+  // Group vectors by collectionId, assigning texts accordingly
+  const insertIds: string[] = [];
+  await Promise.all(
+    FULLTEXT_TEXTS.map(async (text, index) => {
+      const collectionId = collectionIds[index] ?? collectionIds[0];
+      const { insertIds: ids } = await vectorCtrl.insert({
+        teamId,
+        datasetId,
+        collectionId,
+        vectors: [TEST_VECTORS[index]],
+        textContents: [text]
+      });
+      insertIds.push(ids[0]);
+    })
+  );
+
+  // Wait for BM25 function to compute sparse vectors
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  return insertIds;
+};
+
+const cleanupTextVectors = async (
+  vectorCtrl: VectorControllerType,
+  teamId: string,
+  datasetId: string
+) => {
+  try {
+    await vectorCtrl.delete({ teamId, datasetIds: [datasetId] });
+  } catch {
+    // ignore cleanup errors
+  }
+};
+
+export const createFullTextSearchTestSuite = (vectorCtrl: VectorControllerType) => {
+  describe.sequential('fullTextSearch integration', () => {
+    beforeAll(async () => {
+      await vectorCtrl.init();
+    });
+
+    test('returns results for matching query', async () => {
+      const { teamId, datasetId } = createTestIds();
+      const insertIds = await insertTextVectors(vectorCtrl, teamId, datasetId);
+      expect(insertIds).toHaveLength(FULLTEXT_TEXTS.length);
+
+      const { results } = await vectorCtrl.fullTextSearch!({
+        teamId,
+        datasetIds: [datasetId],
+        query: 'fox',
+        limit: 5,
+        forbidCollectionIdList: []
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((item) => !!item.id && !!item.collectionId)).toBe(true);
+      // Results should have scores
+      expect(results.every((item) => typeof item.score === 'number')).toBe(true);
+
+      await cleanupTextVectors(vectorCtrl, teamId, datasetId);
+    });
+
+    test('returns empty for non-matching query', async () => {
+      const { teamId, datasetId } = createTestIds();
+      await insertTextVectors(vectorCtrl, teamId, datasetId);
+
+      const { results } = await vectorCtrl.fullTextSearch!({
+        teamId,
+        datasetIds: [datasetId],
+        query: 'zzzxyznonexistent987654321',
+        limit: 5,
+        forbidCollectionIdList: []
+      });
+
+      expect(results).toHaveLength(0);
+
+      await cleanupTextVectors(vectorCtrl, teamId, datasetId);
+    });
+
+    test('respects forbidCollectionIdList', async () => {
+      const { teamId, datasetId } = createTestIds();
+      // All vectors in col_0
+      await insertTextVectors(vectorCtrl, teamId, datasetId, [TEST_COLLECTION_IDS[0]]);
+
+      const { results } = await vectorCtrl.fullTextSearch!({
+        teamId,
+        datasetIds: [datasetId],
+        query: 'fox',
+        limit: 5,
+        forbidCollectionIdList: [TEST_COLLECTION_IDS[0]]
+      });
+
+      // All vectors are in col_0 — forbidding it should yield empty
+      expect(results.every((item) => item.collectionId !== TEST_COLLECTION_IDS[0])).toBe(true);
+
+      await cleanupTextVectors(vectorCtrl, teamId, datasetId);
+    });
+
+    test('respects filterCollectionIdList', async () => {
+      const { teamId, datasetId } = createTestIds();
+      // Spread vectors across col_0 and col_1
+      // fox→col_0 (searched term), ml→col_1, knowledge→col_2
+      const collIds = [TEST_COLLECTION_IDS[0], TEST_COLLECTION_IDS[1], TEST_COLLECTION_IDS[2]];
+      await insertTextVectors(vectorCtrl, teamId, datasetId, collIds);
+
+      const { results } = await vectorCtrl.fullTextSearch!({
+        teamId,
+        datasetIds: [datasetId],
+        query: 'fox',
+        limit: 5,
+        forbidCollectionIdList: [],
+        filterCollectionIdList: [TEST_COLLECTION_IDS[0]]
+      });
+
+      // Only col_0 returned
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.every((item) => item.collectionId === TEST_COLLECTION_IDS[0])).toBe(true);
+
+      await cleanupTextVectors(vectorCtrl, teamId, datasetId);
+    });
+
+    test('empty query returns empty', async () => {
+      const { results } = await vectorCtrl.fullTextSearch!({
+        teamId: 'test_team',
+        datasetIds: ['test_dataset'],
+        query: '',
+        limit: 5,
+        forbidCollectionIdList: []
+      });
+
+      expect(results).toHaveLength(0);
+    });
+
+    test('empty datasetIds returns empty', async () => {
+      const { results } = await vectorCtrl.fullTextSearch!({
+        teamId: 'test_team',
+        datasetIds: [],
+        query: 'search term',
+        limit: 5,
+        forbidCollectionIdList: []
+      });
+
+      expect(results).toHaveLength(0);
+    });
+
+    test('limit=0 returns empty', async () => {
+      const { results } = await vectorCtrl.fullTextSearch!({
+        teamId: 'test_team',
+        datasetIds: ['test_dataset'],
+        query: 'search term',
+        limit: 0,
+        forbidCollectionIdList: []
+      });
+
+      expect(results).toHaveLength(0);
+    });
+  });
+};
