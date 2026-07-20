@@ -10,10 +10,11 @@ vi.mock('@fastgpt/service/common/redis/lock', async (importOriginal) => {
 
 import {
   withLegacySandboxMigrationJobLease,
+  withSandboxLifecycleLease,
   withSandboxSourceMutationLease
 } from '@fastgpt/service/core/ai/sandbox/application/lease';
 
-describe('sandbox coordination leases', () => {
+describe('sandbox lifecycle leases', () => {
   beforeEach(() => {
     mocks.withRedisLease.mockReset();
     mocks.withRedisLease.mockImplementation(async ({ fn }) =>
@@ -36,8 +37,7 @@ describe('sandbox coordination leases', () => {
     expect(mocks.withRedisLease).toHaveBeenCalledWith(
       expect.objectContaining({
         key: 'agent-sandbox:source:app:app-1',
-        label: 'create-app-sandbox',
-        ttlMs: 11 * 60 * 1000
+        label: 'create-app-sandbox'
       })
     );
     expect(fn).toHaveBeenCalledWith(
@@ -48,7 +48,22 @@ describe('sandbox coordination leases', () => {
     );
   });
 
-  it('keeps the migration job lock separate from source correctness locks', async () => {
+  it('uses a provider-independent lifecycle key', async () => {
+    await withSandboxLifecycleLease({
+      sandboxId: 'stable-id',
+      label: 'archive-sandbox',
+      fn: vi.fn().mockResolvedValue(undefined)
+    });
+
+    expect(mocks.withRedisLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'agent-sandbox:lifecycle:stable-id',
+        label: 'archive-sandbox'
+      })
+    );
+  });
+
+  it('keeps the migration job lock separate from resource correctness locks', async () => {
     await withLegacySandboxMigrationJobLease({
       label: 'migrate-user-sandboxes',
       fn: vi.fn().mockResolvedValue(undefined)
@@ -57,8 +72,7 @@ describe('sandbox coordination leases', () => {
     expect(mocks.withRedisLease).toHaveBeenCalledWith(
       expect.objectContaining({
         key: 'agent-sandbox:legacy-migration-job',
-        label: 'migrate-user-sandboxes',
-        ttlMs: 3 * 60 * 1000
+        label: 'migrate-user-sandboxes'
       })
     );
   });

@@ -49,7 +49,7 @@ type InitSandboxArchiveV2Response = z.infer<typeof InitSandboxArchiveV2ResponseS
 /**
  * 归档 v2 集合中长期不活跃的 Sandbox。
  *
- * 候选统计和正式执行都只使用顶层 status 与 activeSaga 占用契约，并复用标准 archive Saga。
+ * 候选统计和正式执行都只使用 v2 顶层 status 与 operation 契约，并复用标准 archive 状态机。
  */
 async function handler(req: ApiRequestProps): Promise<InitSandboxArchiveV2Response> {
   await authCert({ req, authRoot: true });
@@ -65,7 +65,7 @@ async function handler(req: ApiRequestProps): Promise<InitSandboxArchiveV2Respon
     provider: activeProvider,
     status: 'stopped',
     lastActiveAt: { $lt: archiveBefore },
-    'metadata.activeSaga': { $exists: false }
+    'metadata.operation': { $exists: false }
   });
 
   const archiveResult = runArchive

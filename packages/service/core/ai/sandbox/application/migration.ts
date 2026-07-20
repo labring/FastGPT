@@ -1,7 +1,7 @@
 /**
  * Chat 级 Legacy Sandbox 到用户级 v2 Sandbox 的核心 migration。
  *
- * 旧表阶段是单条记录进度事实；目标 aggregate 的占用和发布由 Durable Saga 负责。
+ * 旧表阶段是迁移进度事实；v2 目标通过 legacyMigrating operation 建立发布屏障。
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -11,6 +11,7 @@ import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import pLimit from 'p-limit';
+import { subMinutes } from 'date-fns';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import {
@@ -18,36 +19,39 @@ import {
   MongoLegacySandboxInstance,
   type LegacySandboxInstanceSchemaType
 } from '../infrastructure/instance/legacySchema';
-import { findSandboxInstanceBySource } from '../infrastructure/instance/repository';
 import {
-  SandboxInstanceStatusEnum,
-  SandboxMetadataSchema,
-  SandboxProviderSchema,
-  type SandboxMetadataType,
-  type SandboxProviderType
-} from '../type';
+  advanceSandboxOperation,
+  claimAppSandboxMigrationTarget,
+  claimSkillSandboxMigrationTarget,
+  completeSandboxOperation,
+  findSandboxInstanceBySource,
+  markSandboxOperationFailed,
+  type SandboxResourceRef
+} from '../infrastructure/instance/repository';
+import { SandboxInstanceStatusEnum, SandboxMetadataSchema, SandboxProviderSchema } from '../type';
 import { getConfiguredSandboxProvider } from '../infrastructure/provider/config';
 import {
   buildRuntimeSandboxAdapter,
   buildSandboxResourceAdapter
 } from '../infrastructure/provider/adapter';
-import {
-  disconnectSandbox,
-  ensureConnectedSandboxRunning
-} from '../infrastructure/provider/lifecycle';
+import { ensureConnectedSandboxRunning } from '../infrastructure/provider/lifecycle';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { deleteSessionVolume, getSessionVolumeConfig } from '../infrastructure/volume/service';
 import { getSandboxRuntimePaths, getSandboxSessionPathSegment, joinSandboxPath } from '../utils';
 import {
+  SANDBOX_STALE_ARCHIVING_MINUTES,
   getSandboxWorkspaceArchiveForMigration,
   restoreSandboxWorkspaceArchiveForMigration
 } from './archive';
 import {
   deleteAppSandboxes as deleteCurrentAppSandboxes,
-  deleteSkillEditSandboxes as deleteCurrentSkillSandboxes,
-  settleActiveSandboxSagasBySource
+  deleteSkillEditSandboxes as deleteCurrentSkillSandboxes
 } from './resource';
-import { withLegacySandboxMigrationJobLease, withSandboxSourceMutationLease } from './lease';
+import {
+  withLegacySandboxMigrationJobLease,
+  withSandboxLifecycleLease,
+  withSandboxSourceMutationLease
+} from './lease';
 import { assertSandboxSourceActive, assertSandboxSourceDeleted } from './sourceGuard';
 import { getAgentSandboxArchiveMaxBytes } from '../interface/config';
 
@@ -71,25 +75,6 @@ type ResolvedLegacyApp = {
   sourceId: string;
   userId: string;
   chatId: string;
-};
-
-export type FrozenLegacyMigrationRecord = {
-  recordId: string;
-  sandboxId: string;
-  chatId?: string;
-};
-
-export type FrozenLegacyMigrationGroup = {
-  kind: 'app' | 'skill';
-  sourceId: string;
-  userId?: string;
-  targetSandboxId: string;
-  targetSagaId: string;
-  manifestHash: string;
-  provider: SandboxProviderType;
-  targetMetadata: SandboxMetadataType;
-  limit?: LegacySandboxInstanceSchemaType['limit'];
-  records: FrozenLegacyMigrationRecord[];
 };
 
 type MigrationTarget = {
@@ -162,47 +147,22 @@ const setLegacyMigrationPhase = async (params: {
   phase: LegacyMigrationPhase;
   targetSandboxId: string;
 }) => {
-  const previousPhase = getLegacyMigrationPhase(params.doc);
-  const previousState = params.doc.metadata?.userLevelMigration;
   const state = {
     phase: params.phase,
     targetSandboxId: params.targetSandboxId,
-    ...(previousState?.targetSagaId ? { targetSagaId: previousState.targetSagaId } : {}),
-    ...(previousState?.manifestHash ? { manifestHash: previousState.manifestHash } : {}),
-    ...(previousState?.recordIndex !== undefined ? { recordIndex: previousState.recordIndex } : {}),
     updatedAt: new Date()
   };
-  const updated = await MongoLegacySandboxInstance.updateOne(
-    {
-      _id: params.doc._id,
-      ...(previousPhase === 'pending'
-        ? {
-            $or: [
-              { 'metadata.userLevelMigration': { $exists: false } },
-              { 'metadata.userLevelMigration.phase': 'pending' }
-            ]
-          }
-        : { 'metadata.userLevelMigration.phase': previousPhase }),
-      ...(!previousState?.targetSandboxId
-        ? {}
-        : { 'metadata.userLevelMigration.targetSandboxId': previousState.targetSandboxId }),
-      ...(!previousState?.targetSagaId
-        ? {}
-        : { 'metadata.userLevelMigration.targetSagaId': previousState.targetSagaId })
-    },
+  await MongoLegacySandboxInstance.updateOne(
+    { _id: params.doc._id },
     { $set: { 'metadata.userLevelMigration': state } }
   );
-  if (updated.matchedCount !== 1) {
-    throw new Error(
-      `Legacy migration phase CAS failed for ${params.doc.sandboxId}: expected ${previousPhase}`
-    );
-  }
   params.doc.metadata = { ...(params.doc.metadata ?? {}), userLevelMigration: state };
 };
 
 const toV2Metadata = (metadata?: LegacySandboxInstanceSchemaType['metadata']) => {
   const {
     archive: _archive,
+    migration: _migration,
     provider: _provider,
     skillId: _skillId,
     userLevelMigration: _userLevelMigration,
@@ -231,6 +191,11 @@ const toLegacyResource = (doc: LegacySandboxInstanceSchemaType) => ({
   lastActiveAt: doc.lastActiveAt ?? new Date(0),
   metadata: doc.metadata
 });
+
+const isStableSandboxStatus = (status?: string) =>
+  status === SandboxInstanceStatusEnum.running ||
+  status === SandboxInstanceStatusEnum.stopped ||
+  status === SandboxInstanceStatusEnum.archived;
 
 /** 创建 migration 专用 target，不经过普通 runtime client。 */
 const createMigrationTarget = async (params: {
@@ -329,13 +294,13 @@ export async function installLegacyWorkspaceArchive(params: {
 /** 按步骤清理一条 Legacy 资源；所有关键失败都向上抛出。 */
 async function cleanupLegacyInstance(
   doc: LegacySandboxInstanceSchemaType,
-  assertActive: () => Promise<void>
+  assertLeaseValid: () => void
 ) {
   const runStep = async (step: LegacySandboxCleanupStep, fn: () => Promise<unknown>) => {
     try {
-      await assertActive();
+      assertLeaseValid();
       await fn();
-      await assertActive();
+      assertLeaseValid();
     } catch (error) {
       throw new LegacySandboxCleanupError(step, error);
     }
@@ -358,10 +323,6 @@ async function cleanupLegacyInstance(
 
 /** App 删除在 Source Lease 内同时清理 v2 和 Legacy 资源。 */
 export async function deleteAppSandboxesForAppDeletion(appId: string): Promise<void> {
-  await settleActiveSandboxSagasBySource({
-    sourceType: ChatSourceTypeEnum.app,
-    sourceId: appId
-  });
   await withSandboxSourceMutationLease({
     sourceType: ChatSourceTypeEnum.app,
     sourceId: appId,
@@ -379,7 +340,7 @@ export async function deleteAppSandboxesForAppDeletion(appId: string): Promise<v
       }).lean<LegacySandboxInstanceSchemaType[]>();
       await batchRun(
         legacy,
-        (doc) => cleanupLegacyInstance(doc, async () => assertValid()),
+        (doc) => cleanupLegacyInstance(doc, assertValid),
         APP_SANDBOX_MIGRATION_CONCURRENCY,
         {
           waitForAll: true
@@ -394,10 +355,6 @@ export async function deleteSkillEditSandboxesForSkillDeletion(skillIds: string[
   await batchRun(
     skillIds,
     async (skillId) => {
-      await settleActiveSandboxSagasBySource({
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: skillId
-      });
       await withSandboxSourceMutationLease({
         sourceType: ChatSourceTypeEnum.skillEdit,
         sourceId: skillId,
@@ -413,14 +370,9 @@ export async function deleteSkillEditSandboxesForSkillDeletion(skillIds: string[
             sourceType: ChatSourceTypeEnum.skillEdit,
             sourceId: skillId
           }).lean<LegacySandboxInstanceSchemaType[]>();
-          await batchRun(
-            legacy,
-            (doc) => cleanupLegacyInstance(doc, async () => assertValid()),
-            10,
-            {
-              waitForAll: true
-            }
-          );
+          await batchRun(legacy, (doc) => cleanupLegacyInstance(doc, assertValid), 10, {
+            waitForAll: true
+          });
         }
       });
     },
@@ -429,191 +381,406 @@ export async function deleteSkillEditSandboxesForSkillDeletion(skillIds: string[
   );
 }
 
-/**
- * Executes one frozen Legacy group under an outer durable Saga. Dynamic record progress remains in
- * the Legacy documents, but every transition is fenced by targetSagaId, manifest and expected phase.
- */
-export const runFrozenLegacyMigrationGroup = async (
-  input: FrozenLegacyMigrationGroup,
-  assertExecutionActive: () => Promise<void>
-): Promise<{
-  migratedCount: number;
-  storage?: MigrationTarget['storage'];
-  upstreamId: string;
-}> => {
-  if (new Set(input.records.map((record) => record.recordId)).size !== input.records.length) {
-    throw new Error('Frozen Legacy migration manifest contains duplicate record IDs');
-  }
-
-  const rawDocs = await MongoLegacySandboxInstance.find({
-    _id: { $in: input.records.map((record) => record.recordId) }
-  }).lean();
-  const parsedDocs = rawDocs.map((doc) => LegacySandboxInstanceZodSchema.parse(doc));
-  const docsById = new Map(parsedDocs.map((doc) => [String(doc._id), doc]));
-  const targetDoc = await findSandboxInstanceBySource({
-    sourceType: input.kind === 'app' ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit,
-    sourceId: input.sourceId,
-    userId: input.kind === 'app' ? (input.userId ?? '') : ChatSourceTypeEnum.skillEdit
+/** 把 Legacy Skill Workspace 搬到使用新确定性 ID 的物理 Sandbox。 */
+const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
+  const targetSandboxId = generateSandboxId({
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: item.sourceId,
+    userId: ChatSourceTypeEnum.skillEdit
   });
-  if (
-    !targetDoc ||
-    targetDoc.sandboxId !== input.targetSandboxId ||
-    targetDoc.status !== SandboxInstanceStatusEnum.legacyMigrating ||
-    targetDoc.metadata?.activeSaga?.sagaId !== input.targetSagaId
-  ) {
-    throw new Error('Frozen Legacy migration target is not owned by the active Saga');
-  }
 
-  const frozenDocs: LegacySandboxInstanceSchemaType[] = [];
-  for (const [recordIndex, record] of input.records.entries()) {
-    const doc = docsById.get(record.recordId);
-    // Missing records were already removed by an earlier successful cleanup attempt.
-    if (!doc) continue;
-    if (doc.sandboxId !== record.sandboxId || doc.sourceId !== input.sourceId) {
-      throw new Error(`Frozen Legacy record identity changed: ${record.recordId}`);
-    }
-    if (input.kind === 'app') {
-      if (
-        doc.sourceType !== ChatSourceTypeEnum.app ||
-        doc.userId !== input.userId ||
-        doc.chatId !== record.chatId
-      ) {
-        throw new Error(`Frozen Legacy App record changed grouping: ${record.recordId}`);
+  await withSandboxSourceMutationLease({
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: item.sourceId,
+    label: `migrate-skill-sandbox:${item.sourceId}`,
+    fn: async (sourceLease) => {
+      await assertSandboxSourceActive({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: item.sourceId
+      });
+      sourceLease.assertValid();
+
+      const archiveState = item.doc.metadata?.archive?.state;
+      if (archiveState === 'failed') {
+        throw new Error(`Legacy Skill sandbox ${item.doc.sandboxId} archive is failed`);
       }
-    } else if (doc.sourceType !== ChatSourceTypeEnum.skillEdit) {
-      throw new Error(`Frozen Legacy Skill record changed grouping: ${record.recordId}`);
-    }
-    if (doc.metadata?.archive?.state === 'failed') {
-      throw new Error(`Legacy sandbox ${doc.sandboxId} archive is failed`);
-    }
+      const migrationState = item.doc.metadata?.userLevelMigration;
+      if (migrationState && migrationState.targetSandboxId !== targetSandboxId) {
+        throw new Error(
+          `Legacy migration target mismatch for ${item.doc.sandboxId}: expected ${targetSandboxId}, received ${migrationState.targetSandboxId}`
+        );
+      }
 
-    const previous = doc.metadata?.userLevelMigration;
-    if (previous?.targetSandboxId && previous.targetSandboxId !== input.targetSandboxId) {
-      throw new Error(`Legacy record ${record.recordId} points to another target`);
-    }
-    if (previous?.targetSagaId && previous.targetSagaId !== input.targetSagaId) {
-      throw new Error(`Legacy record ${record.recordId} is fenced by another Saga`);
-    }
-    if (previous?.manifestHash && previous.manifestHash !== input.manifestHash) {
-      throw new Error(`Legacy record ${record.recordId} belongs to another frozen manifest`);
-    }
-    const state = {
-      phase: previous?.phase ?? ('pending' as const),
-      targetSandboxId: input.targetSandboxId,
-      targetSagaId: input.targetSagaId,
-      manifestHash: input.manifestHash,
-      recordIndex,
-      updatedAt: new Date()
-    };
-    const tagged = await MongoLegacySandboxInstance.updateOne(
-      {
-        _id: doc._id,
-        $and: [
-          {
-            $or: [
-              { 'metadata.userLevelMigration.targetSagaId': { $exists: false } },
-              { 'metadata.userLevelMigration.targetSagaId': input.targetSagaId }
-            ]
-          },
-          {
-            $or: [
-              { 'metadata.userLevelMigration.manifestHash': { $exists: false } },
-              { 'metadata.userLevelMigration.manifestHash': input.manifestHash }
-            ]
+      const existing = await findSandboxInstanceBySource({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: item.sourceId,
+        userId: ChatSourceTypeEnum.skillEdit
+      });
+      if (existing && existing.sandboxId !== targetSandboxId) {
+        throw new Error('Skill sandbox migration target conflicts with another sandbox');
+      }
+
+      let phase = getLegacyMigrationPhase(item.doc);
+      const targetIsStable = isStableSandboxStatus(existing?.status);
+      const cleanupOnly = targetIsStable && (phase === 'installed' || phase === 'cleanupPending');
+
+      if ((phase === 'installed' || phase === 'cleanupPending') && !existing) {
+        throw new Error('Published Skill migration target is missing before Legacy cleanup');
+      }
+      if (phase === 'cleanupPending' && !targetIsStable) {
+        throw new Error(`Published Skill migration target is still ${existing?.status}`);
+      }
+      if (targetIsStable && (phase === 'pending' || phase === 'archiveReady')) {
+        throw new Error('Published Skill migration target still has an uninstalled Legacy record');
+      }
+
+      if (!cleanupOnly) {
+        await withSandboxLifecycleLease({
+          sandboxId: targetSandboxId,
+          label: `migrate-skill-sandbox-lifecycle:${targetSandboxId}`,
+          fn: async (lifecycleLease) => {
+            const assertLeasesValid = () => {
+              sourceLease.assertValid();
+              lifecycleLease.assertValid();
+            };
+            const provider = getConfiguredSandboxProvider();
+            const targetDoc = await claimSkillSandboxMigrationTarget({
+              provider,
+              sandboxId: targetSandboxId,
+              sourceId: item.sourceId,
+              metadata: getMigrationTargetMetadata(item.doc.metadata, provider),
+              reclaimHeartbeatBefore: subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
+            });
+            if (!targetDoc?.metadata?.operation?.id) {
+              throw new Error('Skill sandbox migration target is unavailable or busy');
+            }
+
+            const operationId = targetDoc.metadata.operation.id;
+            let operationPhase = targetDoc.metadata.operation.phase;
+            try {
+              assertLeasesValid();
+              const target = await createMigrationTarget({
+                provider: targetDoc.provider,
+                sandboxId: targetDoc.sandboxId,
+                sourceType: ChatSourceTypeEnum.skillEdit,
+                limit: item.doc.limit
+              });
+              assertLeasesValid();
+
+              if (operationPhase === 'claimed') {
+                const ensured = await advanceSandboxOperation({
+                  resource: targetDoc,
+                  operationId,
+                  status: SandboxInstanceStatusEnum.legacyMigrating,
+                  phase: 'targetEnsured'
+                });
+                if (!ensured) {
+                  throw new Error('Skill sandbox migration lost ownership after target ensure');
+                }
+                operationPhase = 'targetEnsured';
+              }
+              if (operationPhase !== 'targetEnsured') {
+                throw new Error(`Unsupported Skill sandbox migration phase: ${operationPhase}`);
+              }
+
+              let body: Buffer | undefined;
+              if (phase === 'pending') {
+                assertLeasesValid();
+                body = await getSandboxWorkspaceArchiveForMigration(toLegacyResource(item.doc));
+                assertLeasesValid();
+                await setLegacyMigrationPhase({
+                  doc: item.doc,
+                  phase: 'archiveReady',
+                  targetSandboxId
+                });
+                phase = 'archiveReady';
+              }
+              if (phase === 'archiveReady') {
+                assertLeasesValid();
+                body ??= await getS3SandboxSource().downloadWorkspaceArchive({
+                  sandboxId: item.doc.sandboxId,
+                  maxBytes: getAgentSandboxArchiveMaxBytes()
+                });
+                assertLeasesValid();
+                await restoreSandboxWorkspaceArchiveForMigration({
+                  sandbox: target.provider,
+                  workDirectory: target.getRuntimePaths().workspaceRoot,
+                  sandboxId: item.doc.sandboxId,
+                  archiveBody: body
+                });
+                assertLeasesValid();
+                await setLegacyMigrationPhase({
+                  doc: item.doc,
+                  phase: 'installed',
+                  targetSandboxId
+                });
+                phase = 'installed';
+              }
+              if (phase !== 'installed') {
+                throw new Error(`Legacy Skill record cannot be published from phase ${phase}`);
+              }
+
+              const heartbeat = await advanceSandboxOperation({
+                resource: targetDoc,
+                operationId,
+                status: SandboxInstanceStatusEnum.legacyMigrating,
+                phase: 'targetEnsured'
+              });
+              if (!heartbeat) {
+                throw new Error('Skill sandbox migration lost ownership after workspace install');
+              }
+              const published = await completeSandboxOperation({
+                resource: targetDoc,
+                operationId,
+                fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
+                status: SandboxInstanceStatusEnum.running,
+                touchActive: true,
+                set: {
+                  ...(target.storage !== undefined ? { storage: target.storage } : {}),
+                  ...(item.doc.limit ? { limit: item.doc.limit } : {})
+                }
+              });
+              if (!published)
+                throw new Error('Skill migration target lost ownership before publish');
+            } catch (error) {
+              await markSandboxOperationFailed({
+                resource: targetDoc,
+                operationId,
+                status: SandboxInstanceStatusEnum.legacyMigrating,
+                error: getErrText(error)
+              }).catch(() => undefined);
+              throw error;
+            }
           }
-        ]
-      },
-      { $set: { 'metadata.userLevelMigration': state } }
-    );
-    if (tagged.matchedCount !== 1) {
-      throw new Error(`Failed to fence Legacy record ${record.recordId}`);
-    }
-    doc.metadata = { ...(doc.metadata ?? {}), userLevelMigration: state };
-    frozenDocs.push(doc);
-  }
+        });
+      }
 
-  await assertExecutionActive();
-  const target = await createMigrationTarget({
-    provider: input.provider,
-    sandboxId: input.targetSandboxId,
-    sourceType: input.kind === 'app' ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit,
-    chatId: input.records[0]?.chatId,
-    limit: input.limit
-  });
-  try {
-    for (const doc of frozenDocs) {
-      let phase = getLegacyMigrationPhase(doc);
-      let body: Buffer | undefined;
-      if (phase === 'pending') {
-        await assertExecutionActive();
-        body = await getSandboxWorkspaceArchiveForMigration(toLegacyResource(doc));
-        await assertExecutionActive();
+      if (phase === 'installed') {
         await setLegacyMigrationPhase({
-          doc,
-          phase: 'archiveReady',
-          targetSandboxId: input.targetSandboxId
+          doc: item.doc,
+          phase: 'cleanupPending',
+          targetSandboxId
         });
-        phase = 'archiveReady';
       }
-      if (phase === 'archiveReady') {
-        body ??= await getS3SandboxSource().downloadWorkspaceArchive({
-          sandboxId: doc.sandboxId,
-          maxBytes: getAgentSandboxArchiveMaxBytes()
-        });
-        await assertExecutionActive();
-        if (input.kind === 'app') {
-          if (doc.sourceType !== ChatSourceTypeEnum.app) {
-            throw new Error('Frozen Legacy App manifest contains a Skill record');
+      await cleanupLegacyInstance(item.doc, sourceLease.assertValid);
+    }
+  });
+};
+
+const migrateAppGroup = async (params: {
+  group: ResolvedLegacyApp[];
+  result: UserSandboxMigrationResult;
+  runId: string;
+  failedLegacyApps: Map<string, LegacySandboxInstanceSchemaType>;
+}) => {
+  const { group, result, runId, failedLegacyApps } = params;
+  const first = group[0];
+  const targetSandboxId = generateSandboxId({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: first.sourceId,
+    userId: first.userId
+  });
+
+  await withSandboxSourceMutationLease({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: first.sourceId,
+    label: `migrate-app-sandbox:${first.sourceId}:${first.userId}`,
+    fn: async (sourceLease) => {
+      await assertSandboxSourceActive({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: first.sourceId
+      });
+      sourceLease.assertValid();
+
+      for (const item of group) {
+        const migrationState = item.doc.metadata?.userLevelMigration;
+        if (migrationState && migrationState.targetSandboxId !== targetSandboxId) {
+          throw new Error(
+            `Legacy migration target mismatch for ${item.doc.sandboxId}: expected ${targetSandboxId}, received ${migrationState.targetSandboxId}`
+          );
+        }
+      }
+
+      const existing = await findSandboxInstanceBySource({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: first.sourceId,
+        userId: first.userId
+      });
+      if (existing && existing.sandboxId !== targetSandboxId) {
+        throw new Error('App sandbox migration target conflicts with another sandbox');
+      }
+      const phases = group.map((item) => getLegacyMigrationPhase(item.doc));
+      const cleanupOnly = phases.every(
+        (phase) => phase === 'installed' || phase === 'cleanupPending'
+      );
+      const targetIsStable = isStableSandboxStatus(existing?.status);
+      if (cleanupOnly && !existing) {
+        throw new Error('Published migration target is missing before Legacy cleanup');
+      }
+      if (cleanupOnly && existing && !targetIsStable) {
+        throw new Error(`Published migration target is still ${existing.status}`);
+      }
+      if (!cleanupOnly && targetIsStable) {
+        throw new Error('Published migration target still has uninstalled Legacy records');
+      }
+      if (!cleanupOnly) {
+        await withSandboxLifecycleLease({
+          sandboxId: targetSandboxId,
+          label: `migrate-app-sandbox-lifecycle:${targetSandboxId}`,
+          fn: async (lifecycleLease) => {
+            const assertLeasesValid = () => {
+              sourceLease.assertValid();
+              lifecycleLease.assertValid();
+            };
+            const provider = getConfiguredSandboxProvider();
+            const targetDoc = await claimAppSandboxMigrationTarget({
+              provider,
+              sandboxId: targetSandboxId,
+              sourceId: first.sourceId,
+              userId: first.userId,
+              metadata: getMigrationTargetMetadata(first.doc.metadata, provider),
+              reclaimHeartbeatBefore: subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
+            });
+            if (!targetDoc?.metadata?.operation?.id) {
+              throw new Error('App sandbox migration target is unavailable or busy');
+            }
+            const operationId = targetDoc.metadata.operation.id;
+            let operationPhase = targetDoc.metadata.operation.phase;
+
+            try {
+              assertLeasesValid();
+              const target = await createMigrationTarget({
+                provider: targetDoc.provider,
+                sandboxId: targetDoc.sandboxId,
+                sourceType: ChatSourceTypeEnum.app,
+                chatId: first.chatId,
+                limit: first.doc.limit
+              });
+              assertLeasesValid();
+              if (operationPhase === 'claimed') {
+                const ensured = await advanceSandboxOperation({
+                  resource: targetDoc,
+                  operationId,
+                  status: SandboxInstanceStatusEnum.legacyMigrating,
+                  phase: 'targetEnsured'
+                });
+                if (!ensured) {
+                  throw new Error('App sandbox migration lost ownership after target ensure');
+                }
+                operationPhase = 'targetEnsured';
+              }
+              if (operationPhase !== 'targetEnsured') {
+                throw new Error(`Unsupported App sandbox migration phase: ${operationPhase}`);
+              }
+
+              for (const item of group) {
+                let phase = getLegacyMigrationPhase(item.doc);
+                let body: Buffer | undefined;
+                if (phase === 'pending') {
+                  assertLeasesValid();
+                  body = await getSandboxWorkspaceArchiveForMigration(toLegacyResource(item.doc));
+                  assertLeasesValid();
+                  await setLegacyMigrationPhase({
+                    doc: item.doc,
+                    phase: 'archiveReady',
+                    targetSandboxId
+                  });
+                  phase = 'archiveReady';
+                }
+                if (phase === 'archiveReady') {
+                  assertLeasesValid();
+                  body ??= await getS3SandboxSource().downloadWorkspaceArchive({
+                    sandboxId: item.doc.sandboxId,
+                    maxBytes: getAgentSandboxArchiveMaxBytes()
+                  });
+                  assertLeasesValid();
+                  await installLegacyWorkspaceArchive({
+                    target,
+                    legacySandboxId: item.doc.sandboxId,
+                    chatId: item.chatId,
+                    archiveBody: body
+                  });
+                  assertLeasesValid();
+                  await setLegacyMigrationPhase({
+                    doc: item.doc,
+                    phase: 'installed',
+                    targetSandboxId
+                  });
+                }
+
+                assertLeasesValid();
+                const heartbeat = await advanceSandboxOperation({
+                  resource: targetDoc,
+                  operationId,
+                  status: SandboxInstanceStatusEnum.legacyMigrating,
+                  phase: 'targetEnsured'
+                });
+                if (!heartbeat) {
+                  throw new Error(
+                    `App sandbox migration lost ownership after installing ${item.doc.sandboxId}`
+                  );
+                }
+              }
+
+              const allInstalled = group.every((item) =>
+                ['installed', 'cleanupPending'].includes(getLegacyMigrationPhase(item.doc))
+              );
+              if (!allInstalled) throw new Error('Not all Legacy workspaces were installed');
+              lifecycleLease.assertValid();
+              const published = await completeSandboxOperation({
+                resource: targetDoc,
+                operationId,
+                fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
+                status: SandboxInstanceStatusEnum.running,
+                touchActive: true
+              });
+              if (!published) throw new Error('Migration target lost ownership before publish');
+              result.completedAppGroupCount += 1;
+            } catch (error) {
+              await markSandboxOperationFailed({
+                resource: targetDoc,
+                operationId,
+                status: SandboxInstanceStatusEnum.legacyMigrating,
+                error: getErrText(error)
+              }).catch(() => undefined);
+              throw error;
+            }
           }
-          await installLegacyWorkspaceArchive({
-            target,
-            legacySandboxId: doc.sandboxId,
-            chatId: doc.chatId,
-            archiveBody: body
-          });
-        } else {
-          await restoreSandboxWorkspaceArchiveForMigration({
-            sandbox: target.provider,
-            workDirectory: target.getRuntimePaths().workspaceRoot,
-            sandboxId: doc.sandboxId,
-            archiveBody: body
+        });
+      }
+
+      for (const item of group) {
+        const phase = getLegacyMigrationPhase(item.doc);
+        if (phase !== 'installed' && phase !== 'cleanupPending') {
+          throw new Error(`Legacy record cannot be cleaned from phase ${phase}`);
+        }
+        if (phase === 'installed') {
+          sourceLease.assertValid();
+          await setLegacyMigrationPhase({
+            doc: item.doc,
+            phase: 'cleanupPending',
+            targetSandboxId
           });
         }
-        await assertExecutionActive();
-        await setLegacyMigrationPhase({
-          doc,
-          phase: 'installed',
-          targetSandboxId: input.targetSandboxId
-        });
-        phase = 'installed';
-      }
-      if (phase !== 'installed' && phase !== 'cleanupPending') {
-        throw new Error(`Legacy record cannot be cleaned from phase ${phase}`);
+        await cleanupLegacyInstance(item.doc, sourceLease.assertValid);
+        result.migratedAppCount += 1;
       }
     }
-
-    for (const doc of frozenDocs) {
-      if (getLegacyMigrationPhase(doc) === 'installed') {
-        await setLegacyMigrationPhase({
-          doc,
-          phase: 'cleanupPending',
-          targetSandboxId: input.targetSandboxId
-        });
-      }
-      await cleanupLegacyInstance(doc, assertExecutionActive);
+  }).catch(async (error) => {
+    const errorText = getErrText(error);
+    for (const item of group) {
+      failedLegacyApps.set(String(item.doc._id), item.doc);
     }
-    const upstreamId = target.provider.id;
-    if (!upstreamId) {
-      throw new Error('Legacy migration Provider did not return an upstream ID');
-    }
-    return {
-      migratedCount: input.records.length,
-      storage: target.storage,
-      upstreamId
-    };
-  } finally {
-    await disconnectSandbox(target.provider).catch(() => undefined);
-  }
+    result.failures.push({ sandboxId: first.doc.sandboxId, error: errorText });
+    await recordMigrationTrack({
+      runId,
+      phase: 'failure',
+      dryRun: false,
+      sandboxId: first.doc.sandboxId,
+      step: error instanceof LegacySandboxCleanupError ? error.step : 'migrate_app',
+      error: errorText
+    });
+  });
 };
 
 /** 真实迁移结束后暂停失败且仍存在的 Legacy App Sandbox，避免继续产生资源成本。 */
@@ -692,96 +859,34 @@ const runLegacySandboxMigration = async (
   await recordMigrationTrack({ runId, phase: 'started', dryRun });
   if (!dryRun) {
     const failedLegacyApps = new Map<string, LegacySandboxInstanceSchemaType>();
-    const provider = getConfiguredSandboxProvider();
-    const createFrozenInput = (params: {
-      kind: 'app' | 'skill';
-      sourceId: string;
-      userId?: string;
-      targetSandboxId: string;
-      legacyMetadata: LegacySandboxInstanceSchemaType['metadata'];
-      limit?: LegacySandboxInstanceSchemaType['limit'];
-      records: FrozenLegacyMigrationRecord[];
-    }): FrozenLegacyMigrationGroup => {
-      const targetMetadata = getMigrationTargetMetadata(params.legacyMetadata, provider);
-      const manifestHash = createHash('sha256')
-        .update(
-          JSON.stringify({
-            kind: params.kind,
-            sourceId: params.sourceId,
-            userId: params.userId,
-            targetSandboxId: params.targetSandboxId,
-            provider,
-            targetMetadata,
-            limit: params.limit,
-            records: params.records
-          })
-        )
-        .digest('hex');
-      return {
-        kind: params.kind,
-        sourceId: params.sourceId,
-        userId: params.userId,
-        targetSandboxId: params.targetSandboxId,
-        records: params.records,
-        provider,
-        targetMetadata,
-        limit: params.limit,
-        manifestHash,
-        targetSagaId: `sandbox-legacy-migration-${manifestHash}`
-      };
-    };
-
-    const dispatch = async (input: FrozenLegacyMigrationGroup) => {
-      const { migrateFrozenLegacyGroupWithSaga } = await import('./lifecycle/service');
-      return migrateFrozenLegacyGroupWithSaga(input);
-    };
-
+    const skillLimit = pLimit(SKILL_SANDBOX_MIGRATION_CONCURRENCY);
     const skillGroups = new Map<string, ResolvedLegacySkill[]>();
     for (const item of skillItems) {
       skillGroups.set(item.sourceId, [...(skillGroups.get(item.sourceId) ?? []), item]);
     }
-    const skillLimit = pLimit(SKILL_SANDBOX_MIGRATION_CONCURRENCY);
     await Promise.all(
       Array.from(skillGroups.values(), (items) =>
         skillLimit(async () => {
-          const first = items[0];
-          const targetSandboxId = generateSandboxId({
-            sourceType: ChatSourceTypeEnum.skillEdit,
-            sourceId: first.sourceId,
-            userId: ChatSourceTypeEnum.skillEdit
-          });
-          const input = createFrozenInput({
-            kind: 'skill',
-            sourceId: first.sourceId,
-            targetSandboxId,
-            legacyMetadata: first.doc.metadata,
-            limit: first.doc.limit,
-            records: items.map((item) => ({
-              recordId: String(item.doc._id),
-              sandboxId: item.doc.sandboxId
-            }))
-          });
-          try {
-            const migrated = await dispatch(input);
-            if (migrated.completed) result.migratedSkillCount += migrated.migratedCount;
-            else {
-              result.failures.push({
-                sandboxId: first.doc.sandboxId,
-                error: 'Durable Legacy Skill migration is pending retry'
-              });
-            }
-          } catch (error) {
-            for (const item of items) {
-              result.failures.push({
+          for (const item of items) {
+            try {
+              await migrateLegacySkill(item);
+              result.migratedSkillCount += 1;
+            } catch (error) {
+              const errorText = getErrText(error);
+              result.failures.push({ sandboxId: item.doc.sandboxId, error: errorText });
+              await recordMigrationTrack({
+                runId,
+                phase: 'failure',
+                dryRun,
                 sandboxId: item.doc.sandboxId,
-                error: getErrText(error)
+                step: 'migrate_skill',
+                error: errorText
               });
             }
           }
         })
       )
     );
-
     const appSourceGroups = new Map<string, ResolvedLegacyApp[][]>();
     for (const group of appGroups.values()) {
       const sourceId = group[0]?.sourceId;
@@ -793,48 +898,7 @@ const runLegacySandboxMigration = async (
       Array.from(appSourceGroups.values(), (groups) =>
         appLimit(async () => {
           for (const group of groups) {
-            const first = group[0];
-            const targetSandboxId = generateSandboxId({
-              sourceType: ChatSourceTypeEnum.app,
-              sourceId: first.sourceId,
-              userId: first.userId
-            });
-            const input = createFrozenInput({
-              kind: 'app',
-              sourceId: first.sourceId,
-              userId: first.userId,
-              targetSandboxId,
-              legacyMetadata: first.doc.metadata,
-              limit: first.doc.limit,
-              records: group.map((item) => ({
-                recordId: String(item.doc._id),
-                sandboxId: item.doc.sandboxId,
-                chatId: item.chatId
-              }))
-            });
-            try {
-              const migrated = await dispatch(input);
-              if (migrated.completed) {
-                result.migratedAppCount += migrated.migratedCount;
-                result.completedAppGroupCount += 1;
-              } else {
-                for (const item of group) {
-                  failedLegacyApps.set(String(item.doc._id), item.doc);
-                }
-                result.failures.push({
-                  sandboxId: first.doc.sandboxId,
-                  error: 'Durable Legacy App migration is pending retry'
-                });
-              }
-            } catch (error) {
-              for (const item of group) {
-                failedLegacyApps.set(String(item.doc._id), item.doc);
-              }
-              result.failures.push({
-                sandboxId: first.doc.sandboxId,
-                error: getErrText(error)
-              });
-            }
+            await migrateAppGroup({ group, result, runId, failedLegacyApps });
           }
         })
       )

@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
   disconnectSandbox: vi.fn(),
   getReadySandboxInfo: vi.fn(),
   getSandboxClient: vi.fn(),
-  getSandboxDurableSaga: vi.fn(),
   startSandboxRuntimeUpgradeArchive: vi.fn(),
   countRunningSandboxInstancesBySourceType: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
@@ -74,10 +73,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/lifecycle', ()
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: mocks.getSandboxClient
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/application/lifecycle/service', () => ({
-  getSandboxDurableSaga: mocks.getSandboxDurableSaga
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
@@ -262,7 +257,6 @@ describe('packageSkillInSandbox', () => {
 describe('skill edit runtime status', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getSandboxDurableSaga.mockResolvedValue({ status: 'waiting' });
   });
 
   it('reports ready for a matching stable runtime and upgradeRequired for an outdated image', async () => {
@@ -281,10 +275,16 @@ describe('skill edit runtime status', () => {
     ).resolves.toMatchObject({ status: 'upgradeRequired', canUpgrade: true });
   });
 
-  it('reads archiving failures from the active Saga snapshot', async () => {
+  it('reads archiving and failure only from top-level status and operation', async () => {
     const archiving = createResource('archiving', {
       metadata: {
-        activeSaga: { sagaId: 'archive-1', type: 'archive' }
+        operation: {
+          id: 'archive-1',
+          type: 'archive',
+          phase: 'claimed',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
+        }
       }
     });
     await expect(
@@ -292,12 +292,8 @@ describe('skill edit runtime status', () => {
         context: createContext({ statusInstance: archiving })
       })
     ).resolves.toMatchObject({ status: 'upgrading', archiveState: 'archiving' });
-    expect(mocks.getSandboxDurableSaga).toHaveBeenCalledWith('archive-1');
 
-    mocks.getSandboxDurableSaga.mockResolvedValueOnce({
-      status: 'blocked',
-      lastError: { message: 'upload failed' }
-    });
+    archiving.metadata.operation.error = 'upload failed';
     await expect(
       getSkillEditRuntimeStatus({
         context: createContext({ statusInstance: archiving })
@@ -309,7 +305,7 @@ describe('skill edit runtime status', () => {
     });
   });
 
-  it('reports archived as ready and blocked restore from the Saga snapshot', async () => {
+  it('lets archived and stale failed restoring records enter init', async () => {
     await expect(
       getSkillEditRuntimeStatus({
         context: createContext({ statusInstance: createResource('archived') })
@@ -318,30 +314,37 @@ describe('skill edit runtime status', () => {
 
     const restoring = createResource('restoring', {
       metadata: {
-        activeSaga: { sagaId: 'restore-1', type: 'restore' }
+        operation: {
+          id: 'restore-1',
+          type: 'restore',
+          phase: 'claimed',
+          startedAt: new Date(0),
+          heartbeatAt: new Date(0),
+          error: 'worker stopped'
+        }
       }
-    });
-    mocks.getSandboxDurableSaga.mockResolvedValueOnce({
-      status: 'blocked',
-      lastError: { message: 'worker stopped' }
     });
     await expect(
       getSkillEditRuntimeStatus({
         context: createContext({ statusInstance: restoring })
       })
     ).resolves.toMatchObject({
-      status: 'upgradeRequired',
+      status: 'readyToInit',
       archiveState: 'restoring',
-      lastError: 'worker stopped',
-      shouldPoll: false,
-      canUpgrade: false
+      shouldPoll: false
     });
   });
 
-  it('keeps a non-terminal restore Saga in polling state', async () => {
+  it('keeps a fresh restoring operation in polling state', async () => {
     const restoring = createResource('restoring', {
       metadata: {
-        activeSaga: { sagaId: 'restore-1', type: 'restore' }
+        operation: {
+          id: 'restore-1',
+          type: 'restore',
+          phase: 'claimed',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
+        }
       }
     });
 

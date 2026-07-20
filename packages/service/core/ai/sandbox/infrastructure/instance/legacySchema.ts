@@ -25,6 +25,7 @@ const LegacySandboxMetadataSchema = z
     tmbId: z.string().optional(),
     volumeEnabled: z.boolean().optional(),
     provider: SandboxProviderSchema.optional(),
+    migration: z.enum(['migrating', 'failed']).optional(),
     archive: z
       .object({
         state: z.enum(['archiving', 'deleting', 'archived', 'restoring', 'failed']),
@@ -39,13 +40,10 @@ const LegacySandboxMetadataSchema = z
       .object({
         phase: z.enum(['pending', 'archiveReady', 'installed', 'cleanupPending']),
         targetSandboxId: z.string(),
-        targetSagaId: z.string().optional(),
-        manifestHash: z.string().optional(),
-        recordIndex: z.number().int().nonnegative().optional(),
         updatedAt: z.coerce.date()
       })
       .optional(),
-    skillId: z.string().optional(),
+    skillId: z.never().optional(),
     sessionId: z.string().optional(),
     skillIds: z.array(z.string()).optional(),
     image: SandboxImageSchema.optional(),
@@ -68,8 +66,8 @@ const LegacySandboxCommonSchema = z
     limit: SandboxLimitSchema.optional(),
     storage: SandboxStorageSchema.nullish(),
     metadata: LegacySandboxMetadataSchema.optional(),
-    appId: z.string().optional(),
-    type: z.enum(SandboxTypeEnum).optional()
+    appId: z.never().optional(),
+    type: z.never().optional()
   })
   .passthrough();
 

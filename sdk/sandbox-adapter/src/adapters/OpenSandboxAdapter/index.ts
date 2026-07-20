@@ -53,9 +53,6 @@ export type SandboxRuntimeType = 'docker' | 'kubernetes';
 export interface OpenSandboxConnectionConfig {
   sessionId: string;
 
-  /** Opaque upstream handle persisted by a durable lifecycle owner for exact rebinding. */
-  upstreamId?: string;
-
   /** Base URL for the OpenSandbox API */
   baseUrl: string;
   /** API key for authentication */
@@ -266,49 +263,10 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   > {
     const manager = SandboxManager.create({ connectionConfig: this._connection });
     try {
-      const durableIdempotencyKey = this.createConfig?.metadata?.durableSagaIdempotencyKey;
-      if (this.connectionConfig.upstreamId) {
-        try {
-          const info = await manager.getSandboxInfo(this.connectionConfig.upstreamId);
-          return { id: info.id, status: this.mapStatus(info.status) };
-        } catch (error) {
-          if (!this.isNotFoundError(error)) throw error;
-          // Saga reconcile must discover a replacement created after the persisted handle vanished.
-          if (!durableIdempotencyKey) return undefined;
-        }
-      }
       const result = await manager.listSandboxInfos({
         metadata: { sessionId: this.connectionConfig.sessionId }
       });
-      let candidates = durableIdempotencyKey
-        ? result.items.filter(
-            (item) => item.metadata?.durableSagaIdempotencyKey === durableIdempotencyKey
-          )
-        : result.items;
-      if (durableIdempotencyKey && candidates.length > 1) {
-        candidates = [...candidates].sort(
-          (left, right) =>
-            left.createdAt.getTime() - right.createdAt.getTime() || left.id.localeCompare(right.id)
-        );
-        const [, ...duplicates] = candidates;
-        await Promise.all(duplicates.map((item) => manager.killSandbox(item.id)));
-        candidates = candidates.slice(0, 1);
-      }
-      if (candidates.length > 1) {
-        throw new SandboxStateError(
-          `Multiple sandboxes found for session ${this.connectionConfig.sessionId}`,
-          'Duplicated',
-          'UnExist'
-        );
-      }
-      if (candidates.length === 0 && result.items.length > 0) {
-        throw new SandboxStateError(
-          `No sandbox for session ${this.connectionConfig.sessionId} matches the durable idempotency key`,
-          'Duplicated',
-          'UnExist'
-        );
-      }
-      const val = candidates[0];
+      const val = result.items[0];
 
       if (val) {
         const status = this.mapStatus(val.status);
@@ -363,12 +321,14 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         cause?: unknown;
       };
       const code = String(value.code ?? value.error?.code ?? '').toLowerCase();
+      const message = String(value.message ?? value.error?.message ?? '').toLowerCase();
       const status = Number(value.status ?? value.statusCode);
       if (
         status === 404 ||
-        code === 'not_found' ||
-        code === 'sandbox_not_found' ||
-        code === '404'
+        code.includes('not_found') ||
+        code.includes('notfound') ||
+        code === '404' ||
+        message.includes('not found')
       ) {
         return true;
       }
@@ -406,16 +366,6 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           throw new ConnectionError(`Sandbox state ${sandbox.status.state} not supported`);
       }
     } else {
-      if (
-        this.connectionConfig.upstreamId &&
-        !this.createConfig?.metadata?.durableSagaIdempotencyKey
-      ) {
-        throw new SandboxStateError(
-          `Persisted upstream sandbox ${this.connectionConfig.upstreamId} no longer exists`,
-          'UnExist',
-          'Running'
-        );
-      }
       await this.create();
     }
   }
@@ -682,7 +632,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
       if (!existing) {
         return null;
       }
-      await this.connect(existing.id);
+      try {
+        await this.connect(existing.id);
+      } catch (error) {
+        return null;
+      }
     }
     try {
       const info = await this.sandbox.getInfo();

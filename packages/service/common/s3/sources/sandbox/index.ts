@@ -12,19 +12,14 @@ export class S3SandboxSource extends S3PrivateBucket {
     super();
   }
 
-  async uploadWorkspaceArchive(params: {
-    sandboxId: string;
-    body: Buffer | string | Readable;
-    idempotencyKey?: string;
-  }) {
+  async uploadWorkspaceArchive(params: { sandboxId: string; body: Buffer | string | Readable }) {
     await this.client.uploadObject({
       key: getWorkspaceArchiveKey(params.sandboxId),
       body: params.body,
       contentType: 'application/zip',
       metadata: {
         uploadTime: new Date().toISOString(),
-        originFilename: encodeURIComponent(SANDBOX_WORKSPACE_ARCHIVE_FILENAME),
-        ...(params.idempotencyKey ? { durableSagaIdempotencyKey: params.idempotencyKey } : {})
+        originFilename: encodeURIComponent(SANDBOX_WORKSPACE_ARCHIVE_FILENAME)
       }
     });
   }
@@ -67,14 +62,6 @@ export class S3SandboxSource extends S3PrivateBucket {
   /** 检查指定 Sandbox 的 Workspace 归档是否存在。 */
   isWorkspaceArchiveExists(params: { sandboxId: string }) {
     return this.isObjectExists(getWorkspaceArchiveKey(params.sandboxId));
-  }
-
-  /** Returns the durable step key that produced the current archive object, if it has one. */
-  async getWorkspaceArchiveIdempotencyKey(params: { sandboxId: string }) {
-    const key = getWorkspaceArchiveKey(params.sandboxId);
-    if (!(await this.isObjectExists(key))) return undefined;
-    const metadata = await this.client.getObjectMetadata({ key });
-    return metadata.metadata.durableSagaIdempotencyKey;
   }
 }
 

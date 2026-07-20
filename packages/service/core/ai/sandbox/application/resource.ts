@@ -1,25 +1,54 @@
 /**
  * Sandbox 资源生命周期编排。
  *
- * 所有远端 stop/delete 都由 Durable Saga 抢占 Mongo aggregate 并持久化 checkpoint。
+ * 所有远端 stop/delete 都在 provider 无关的 Lifecycle Lease 内先抢占 Mongo operation。
  */
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { subMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import {
+  advanceSandboxOperation,
+  claimSandboxOperation,
+  completeSandboxOperation,
+  deleteClaimedSandboxRecord,
   findInactiveRunningSandboxResources,
   findSandboxInstanceBySandboxId,
   findSandboxInstanceBySandboxIdAndTeam,
   findSandboxResourceBySandboxIdAndTeam,
   findSandboxResourcesBySource,
+  findStaleSandboxOperations,
   findSkillRelatedSandboxResources,
+  markSandboxOperationFailed,
   type SandboxResourceDoc,
   type SandboxResourceRef
 } from '../infrastructure/instance/repository';
 import { getSandboxProviderConfig } from '../infrastructure/provider/config';
-import { SandboxInstanceStatusEnum, type SandboxInstanceSchemaType } from '../type';
+import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
+import { deleteSessionVolume } from '../infrastructure/volume/service';
+import {
+  SandboxInstanceStatusEnum,
+  SandboxOperationTypeEnum,
+  type SandboxInstanceStatusType,
+  type SandboxInstanceSchemaType
+} from '../type';
+import { withSandboxLifecycleLease } from './lease';
+import { SANDBOX_STALE_ARCHIVING_MINUTES, SandboxLifecycleStateError } from './archive';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
+export const SANDBOX_STALE_STOPPING_MINUTES = 15;
+
+const deleteIsolationMinutesByStatus: Partial<Record<SandboxInstanceStatusType, number>> = {
+  provisioning: SANDBOX_STALE_STOPPING_MINUTES,
+  legacyMigrating: SANDBOX_STALE_ARCHIVING_MINUTES,
+  stopping: SANDBOX_STALE_STOPPING_MINUTES,
+  archiving: SANDBOX_STALE_ARCHIVING_MINUTES,
+  restoring: SANDBOX_STALE_ARCHIVING_MINUTES,
+  providerMigrating: SANDBOX_STALE_ARCHIVING_MINUTES
+};
+
 export type GetSandboxInfoParams = {
   sandboxId: string;
   teamId: string;
@@ -30,35 +59,191 @@ export type DeleteSandboxParams = {
   teamId: string;
 };
 
-/** 停止一条已发布的 running 资源；过渡态只恢复已绑定的 Saga。 */
+const requireOperationId = (resource: SandboxResourceDoc) => {
+  const operationId = resource.metadata?.operation?.id;
+  if (!operationId) throw new Error(`Sandbox ${resource.sandboxId} has no lifecycle operation`);
+  return operationId;
+};
+
+/**
+ * 删除接管旧过渡态前等待不可取消 Provider 请求的保守隔离窗口。
+ * 明确失败的 operation 已确认调用结束，可以立即由删除流程 fencing。
+ */
+const assertDeleteCanFenceCurrentOperation = (resource: SandboxResourceDoc) => {
+  if (resource.status === SandboxInstanceStatusEnum.deleting) return;
+  const isolationMinutes = deleteIsolationMinutesByStatus[resource.status];
+  if (!isolationMinutes) return;
+
+  const operation = resource.metadata?.operation;
+  if (operation?.error) return;
+  const staleBefore = subMinutes(new Date(), isolationMinutes);
+  if (!operation?.heartbeatAt || operation.heartbeatAt >= staleBefore) {
+    throw new SandboxLifecycleStateError(
+      resource.status,
+      `Sandbox ${resource.sandboxId} is still inside the ${resource.status} delete isolation window`
+    );
+  }
+};
+
+/** 停止一条已发布的 running 资源；状态抢占失败时不会触发远端 stop。 */
 export async function stopSandboxResource(resource: SandboxResourceRef): Promise<void> {
-  const route =
-    resource.metadata === undefined
-      ? await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId })
-      : (resource as SandboxResourceDoc);
-  if (!route) return;
-  if (
-    route.status !== SandboxInstanceStatusEnum.running &&
-    route.status !== SandboxInstanceStatusEnum.stopping
-  )
-    return;
-  const { stopSandboxResourceWithSaga } = await import('./lifecycle/service');
-  await stopSandboxResourceWithSaga(route);
+  await withSandboxLifecycleLease({
+    sandboxId: resource.sandboxId,
+    label: `stop-sandbox:${resource.sandboxId}`,
+    fn: async ({ assertValid }) => {
+      const current = await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId });
+      if (
+        !current ||
+        (current.status !== SandboxInstanceStatusEnum.running &&
+          current.status !== SandboxInstanceStatusEnum.stopping)
+      ) {
+        return;
+      }
+
+      const claimed = await claimSandboxOperation({
+        resource: {
+          ...current,
+          ...(resource.lastActiveAt ? { lastActiveAt: resource.lastActiveAt } : {})
+        },
+        status: SandboxInstanceStatusEnum.stopping,
+        type: SandboxOperationTypeEnum.stop,
+        matchLastActiveAt:
+          current.status === SandboxInstanceStatusEnum.running && Boolean(resource.lastActiveAt)
+      });
+      if (!claimed) return;
+      const operationId = requireOperationId(claimed);
+      let phase = claimed.metadata?.operation?.phase ?? 'claimed';
+
+      try {
+        if (phase === 'claimed') {
+          assertValid();
+          await buildSandboxResourceAdapter(claimed).stop();
+          assertValid();
+          const stopped = await advanceSandboxOperation({
+            resource: claimed,
+            operationId,
+            status: SandboxInstanceStatusEnum.stopping,
+            phase: 'providerStopped'
+          });
+          if (!stopped)
+            throw new Error('Sandbox stop operation lost ownership after provider stop');
+          phase = 'providerStopped';
+        }
+        if (phase !== 'providerStopped') {
+          throw new Error(`Unsupported sandbox stop phase: ${phase}`);
+        }
+        const completed = await completeSandboxOperation({
+          resource: claimed,
+          operationId,
+          fromStatus: SandboxInstanceStatusEnum.stopping,
+          status: SandboxInstanceStatusEnum.stopped
+        });
+        if (!completed) throw new Error('Sandbox stop operation lost ownership before commit');
+      } catch (error) {
+        await markSandboxOperationFailed({
+          resource: claimed,
+          operationId,
+          status: SandboxInstanceStatusEnum.stopping,
+          error: getErrText(error)
+        }).catch(() => undefined);
+        throw error;
+      }
+    }
+  });
 }
 
 /**
  * 删除一条 v2 资源。
  *
- * 已有过渡态会先恢复其 active Saga，然后由 delete Saga 幂等清理所有远端资源。
+ * 重试会重新 fencing 旧 deleting operation，并幂等重放各远端删除步骤。
  */
 export async function deleteSandboxResource(resource: SandboxResourceRef): Promise<void> {
-  const routed =
-    resource.metadata === undefined
-      ? await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId })
-      : (resource as SandboxResourceDoc);
-  if (!routed) return;
-  const { deleteSandboxResourceWithSaga } = await import('./lifecycle/service');
-  await deleteSandboxResourceWithSaga(routed);
+  await withSandboxLifecycleLease({
+    sandboxId: resource.sandboxId,
+    label: `delete-sandbox:${resource.sandboxId}`,
+    fn: async ({ assertValid }) => {
+      const current = await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId });
+      if (!current) return;
+      assertDeleteCanFenceCurrentOperation(current);
+
+      const claimed = await claimSandboxOperation({
+        resource: current,
+        status: SandboxInstanceStatusEnum.deleting,
+        type: SandboxOperationTypeEnum.delete
+      });
+      if (!claimed) throw new Error('Sandbox delete operation failed to claim current record');
+      const operationId = requireOperationId(claimed);
+      let phase = claimed.metadata?.operation?.phase ?? 'claimed';
+
+      try {
+        if (phase === 'claimed') {
+          assertValid();
+          await buildSandboxResourceAdapter(claimed).delete();
+          assertValid();
+          const providerDeleted = await advanceSandboxOperation({
+            resource: claimed,
+            operationId,
+            status: SandboxInstanceStatusEnum.deleting,
+            phase: 'providerDeleted'
+          });
+          if (!providerDeleted) {
+            throw new Error('Sandbox delete operation lost ownership after provider delete');
+          }
+          phase = 'providerDeleted';
+        }
+
+        if (phase === 'providerDeleted') {
+          if (claimed.provider === 'opensandbox') {
+            assertValid();
+            await deleteSessionVolume(claimed.sandboxId);
+          }
+          assertValid();
+          const volumeDeleted = await advanceSandboxOperation({
+            resource: claimed,
+            operationId,
+            status: SandboxInstanceStatusEnum.deleting,
+            phase: 'volumeDeleted'
+          });
+          if (!volumeDeleted) {
+            throw new Error('Sandbox delete operation lost ownership after volume delete');
+          }
+          phase = 'volumeDeleted';
+        }
+
+        if (phase === 'volumeDeleted') {
+          assertValid();
+          await getS3SandboxSource().deleteWorkspaceArchive({ sandboxId: claimed.sandboxId });
+          assertValid();
+          const archiveDeleted = await advanceSandboxOperation({
+            resource: claimed,
+            operationId,
+            status: SandboxInstanceStatusEnum.deleting,
+            phase: 'archiveDeleted'
+          });
+          if (!archiveDeleted) {
+            throw new Error('Sandbox delete operation lost ownership after archive delete');
+          }
+          phase = 'archiveDeleted';
+        }
+        if (phase !== 'archiveDeleted') {
+          throw new Error(`Unsupported sandbox delete phase: ${phase}`);
+        }
+
+        const result = await deleteClaimedSandboxRecord({ resource: claimed, operationId });
+        if (result.deletedCount !== 1) {
+          throw new Error('Sandbox delete operation lost ownership before record cleanup');
+        }
+      } catch (error) {
+        await markSandboxOperationFailed({
+          resource: claimed,
+          operationId,
+          status: SandboxInstanceStatusEnum.deleting,
+          error: getErrText(error)
+        }).catch(() => undefined);
+        throw error;
+      }
+    }
+  });
 }
 
 /** 查询当前 provider 下指定团队可访问的 sandbox 信息。 */
@@ -107,20 +292,6 @@ export const deleteSkillEditSandboxes = async (skillIds: string[]) => {
   });
 };
 
-/**
- * Source 删除获取独占 Source Lease 前先收敛已有 Saga，避免在持锁后递归获取 Legacy Saga 的 source lease。
- */
-export const settleActiveSandboxSagasBySource = async (params: {
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-}) => {
-  const instances = await findSandboxResourcesBySource(params);
-  const active = instances.filter((instance) => Boolean(instance.metadata?.activeSaga));
-  await batchRun(active, (instance) => deleteSandboxResource(instance), 10, {
-    waitForAll: true
-  });
-};
-
 /** cron 批量 stop；单条失败会记录并允许同批其他资源继续。 */
 export async function stopSandboxResources(resources: SandboxResourceRef[]): Promise<void> {
   await batchRun(resources, async (resource) => {
@@ -131,6 +302,15 @@ export async function stopSandboxResources(resources: SandboxResourceRef[]): Pro
       });
     });
   });
+}
+
+/** 重新 fencing 超过隔离窗口的 stopping operation，并幂等重放 provider stop。 */
+export async function retryStaleStoppingSandboxes(now = new Date()): Promise<void> {
+  const stale = await findStaleSandboxOperations({
+    statuses: [SandboxInstanceStatusEnum.stopping],
+    heartbeatBefore: subMinutes(now, SANDBOX_STALE_STOPPING_MINUTES)
+  });
+  await stopSandboxResources(stale);
 }
 
 export { findInactiveRunningSandboxResources };

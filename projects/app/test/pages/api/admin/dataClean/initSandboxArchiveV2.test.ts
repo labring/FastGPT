@@ -65,7 +65,7 @@ describe('initSandboxArchiveV2 API', () => {
     vi.useRealTimers();
   });
 
-  it('authenticates Root and only counts stable Saga candidates by default', async () => {
+  it('authenticates Root and only counts v2 candidates by default', async () => {
     const req = { body: {} } as any;
 
     await expect(handler(req)).resolves.toMatchObject({
@@ -80,12 +80,12 @@ describe('initSandboxArchiveV2 API', () => {
       provider: 'opensandbox',
       status: 'stopped',
       lastActiveAt: { $lt: new Date('2026-07-09T08:00:00.000Z') },
-      'metadata.activeSaga': { $exists: false }
+      'metadata.operation': { $exists: false }
     });
     expect(mocks.archiveSandboxResources).not.toHaveBeenCalled();
   });
 
-  it('runs the archive Saga and keeps the sandboxArchive Track event', async () => {
+  it('runs the existing archive state machine and keeps the sandboxArchive Track event', async () => {
     await expect(
       handler({ body: { runArchive: true, inactiveDays: 2 } } as any)
     ).resolves.toMatchObject({

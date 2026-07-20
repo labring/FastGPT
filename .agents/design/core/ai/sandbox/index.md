@@ -2,7 +2,7 @@
 
 状态：当前实现
 
-最后核对：2026-07-20
+最后核对：2026-07-16
 
 ## 目标与边界
 
@@ -43,8 +43,7 @@ provider: opensandbox | sealosdevbox
 - `userId`：实例逻辑身份的一部分。App 使用有效用户 ID；Skill Edit 固定使用
   `ChatSourceTypeEnum.skillEdit`。
 - `chatId`：只用于 App Sandbox 内的 session 目录，不参与实例或 Provider 资源 ID。
-- `sandboxId`：FastGPT 逻辑资源 ID，由业务归属确定性生成。
-- `upstreamId`：Adapter 返回并用于稳定重绑定上游资源的 opaque handle。
+- `sandboxId`：Provider 侧的物理资源标识，不替代业务归属。
 
 当前寻址规则：
 
@@ -159,21 +158,14 @@ Skill Edit 复用编辑器 Sandbox 中的当前工作区，不把编辑中的内
 
 内置 Skill 同步到 Sandbox HOME 下的 `.fastgpt/skills/<name>`，不进入用户 workspace、编辑器树、导出包或发布包。同步状态按文件内容 etag 记录，内容未变化时跳过覆盖。
 
-## Durable 生命周期
+## 资源停止、删除与归档
 
-- provision、stop、archive、restore、provider migration、delete 和 Legacy migration 只走 Durable
-  Saga，不存在 feature flag 分流。
-- Mongo snapshot、checkpoint、execution fencing 和 reservation 是执行权威；Sandbox status 是业务投影。
-- BullMQ 负责即时和延迟唤醒，Mongo polling 负责权威补漏。
-- 不活跃的 running 实例由 cron 发起 stop Saga。
-- delete Saga 清理 Provider、可选 volume 和 S3 归档后删除 Mongo aggregate。
-- 单个 App chat 删除不删除用户级共享 Sandbox；App 删除清理该 source 下全部 Sandbox。
+- 不活跃的 running 实例由 cron 停止并标记为 stopped。
+- 删除资源时同步清理 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
+- App chat 删除只清理对应会话 Sandbox；App 删除清理该 source 下所有 Sandbox。
 - Skill 删除清理 Skill Edit 相关 Sandbox；普通编辑聊天删除不直接删除共享 edit-debug Sandbox。
-- stopped 实例可进入冷归档；恢复、Provider 切换和删除由持久 reservation 防止并发。
+- stopped 实例可进入冷归档；恢复时通过 archive 状态机避免与归档、删除并发。
 - 保活和只读存在性检查不能意外拉起 archived Sandbox。
-
-完整协议见 [Mongo + Redis Durable Saga](./durable-saga.md)；用户级聚合与迁移见
-[用户级 Sandbox](./user-level-sandbox.md)。
 
 ## API 与权限
 
@@ -197,8 +189,6 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 | Skill runtime | `packages/service/core/ai/sandbox/application/runtime/skill` |
 | 资源服务 | `packages/service/core/ai/sandbox/application/resource.ts` |
 | 归档服务 | `packages/service/core/ai/sandbox/application/archive.ts` |
-| Lifecycle Saga | `packages/service/core/ai/sandbox/application/lifecycle` |
-| Durable Saga SDK | `sdk/durable-saga` |
 | 实例仓储 | `packages/service/core/ai/sandbox/infrastructure/instance` |
 | Provider profile | `packages/service/core/ai/sandbox/infrastructure/provider/runtimeProfile` |
 
