@@ -441,7 +441,7 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(result.nodeResponse?.childrenResponses).toEqual([
       expect.objectContaining({
         id: 'req_image_caption',
-        moduleName: 'account_usage:image_parse',
+        moduleName: 'chat:image_parse',
         llmRequestIds: ['req_image_caption'],
         totalPoints: 0.12,
         textOutput: 'image caption'

@@ -52,6 +52,7 @@
   "home.chat_app": "HomeChat-{{name}}",
   "home.select_tools": "Select Tool",
   "home.tools": "Tool: {{num}}",
+  "image_parse": "Image parsing",
   "in_progress": "In Progress",
   "input_guide": "Input Guide",
   "input_placeholder_phone": "Please enter your question",

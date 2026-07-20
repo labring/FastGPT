@@ -267,7 +267,7 @@ describe('dispatchDatasetSearch', () => {
       id: 'req_image_caption_1',
       nodeId: 'req_image_caption_1',
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
-      moduleName: 'account_usage:image_parse',
+      moduleName: 'chat:image_parse',
       moduleLogo: 'core/workflow/template/datasetSearch',
       runningTime: 1.5,
       model: 'gpt-vision name',
