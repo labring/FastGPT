@@ -51,6 +51,7 @@ const AccountVerificationMaterialSchema = new Schema<AccountVerificationMaterial
 
 // 唯一索引需在生产重复数据清理后单独上线，本轮先保持兼容索引。
 AccountVerificationMaterialSchema.index({ key: 1, type: 1 });
+AccountVerificationMaterialSchema.index({ userIdHash: 1 }, { sparse: true });
 AccountVerificationMaterialSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
 
 export const MongoAccountVerificationMaterial =

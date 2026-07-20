@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
@@ -46,6 +47,22 @@ export const AccountVerificationPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SendAccountVerificationCodeResponseSchema
+            }
+          }
+        },
+        400: {
+          description: '请求参数或图片验证码错误',
+          content: {
+            'application/json': {
+              schema: z.null()
+            }
+          }
+        },
+        429: {
+          description: '验证码发送过于频繁',
+          content: {
+            'application/json': {
+              schema: z.null()
             }
           }
         }

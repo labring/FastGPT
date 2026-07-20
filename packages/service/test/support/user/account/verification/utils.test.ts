@@ -4,8 +4,8 @@ import {
   buildVerificationCodeFilter,
   escapeVerificationCodeForRegExp
 } from '@fastgpt/service/support/user/account/verification/utils';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 describe('escapeVerificationCodeForRegExp', () => {
   it('escapes every regular expression metacharacter', () => {
@@ -46,7 +46,7 @@ describe('assertCodeVerificationConsumeFrequency', () => {
     }
 
     await expect(assertCodeVerificationConsumeFrequency(params)).rejects.toThrow(
-      i18nT('common:error.verify_code_too_frequently')
+      UserErrEnum.verifyCodeTooFrequently
     );
   });
 

@@ -4,14 +4,17 @@ import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 
 /**
- * 找到用户可继续使用的团队。已删除团队、无效成员关系和注销中的 owner 团队都不能作为 fallback。
+ * 找到用户可继续使用的团队。默认排除已删除团队、无效成员关系和注销中的 owner 团队；
+ * 登录恢复场景可显式允许注销中的团队作为受限 Session 上下文，后续访问仍由注销 guard 控制。
  */
 export const getUserFallbackTeam = async ({
   userId,
-  excludedTeamId
+  excludedTeamId,
+  allowAccountCancellationTeam = false
 }: {
   userId: string;
   excludedTeamId?: string;
+  allowAccountCancellationTeam?: boolean;
 }) => {
   const members = await MongoTeamMember.find(
     {
@@ -40,15 +43,14 @@ export const getUserFallbackTeam = async ({
   );
   const blockedTeamIds = new Set(cancellationTeams.map(({ teamId }) => teamId));
   const validTeams = new Map(teams.map((team) => [String(team._id), team]));
+  const candidates = members.flatMap((member) => {
+    const teamId = String(member.teamId);
+    return validTeams.has(teamId) ? [{ teamId, tmbId: String(member._id) }] : [];
+  });
 
   return (
-    members
-      .map((member) => {
-        const teamId = String(member.teamId);
-        return blockedTeamIds.has(teamId) || !validTeams.has(teamId)
-          ? null
-          : { teamId, tmbId: String(member._id) };
-      })
-      .find(Boolean) ?? null
+    candidates.find(({ teamId }) => !blockedTeamIds.has(teamId)) ??
+    (allowAccountCancellationTeam ? candidates[0] : undefined) ??
+    null
   );
 };

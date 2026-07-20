@@ -10,6 +10,8 @@ import {
   upsertVerificationMaterial
 } from '@fastgpt/service/support/user/account/verification/entity';
 import { MongoAccountVerificationMaterial } from '@fastgpt/service/support/user/account/verification/schema';
+import { addAuthCode } from '@fastgpt/service/support/user/auth/controller';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 
 describe('verification material entity', () => {
   beforeEach(async () => {
@@ -40,6 +42,37 @@ describe('verification material entity', () => {
     expect(records[0]).toMatchObject({ code: '222222' });
     expect(records[0].createTime).toEqual(secondCreatedAt);
     expect(records[0].expiredTime).toEqual(addMinutes(secondCreatedAt, 5));
+  });
+
+  it('shares one model with the legacy auth controller without dropping binding fields', async () => {
+    await addAuthCode({
+      key: 'legacy-account',
+      type: UserAuthTypeEnum.login,
+      code: '123456'
+    });
+
+    await createVerificationMaterial({
+      key: 'accountCancellation:user-hash',
+      type: AccountVerificationMaterialTypeEnum.accountCancellation,
+      code: '654321',
+      userIdHash: 'user-hash',
+      purpose: 'accountCancellation',
+      provider: 'github',
+      callbackHash: 'callback-hash',
+      expiredTime: addMinutes(new Date(), 5)
+    });
+
+    await expect(
+      MongoAccountVerificationMaterial.findOne({
+        key: 'accountCancellation:user-hash',
+        type: AccountVerificationMaterialTypeEnum.accountCancellation
+      }).lean()
+    ).resolves.toMatchObject({
+      userIdHash: 'user-hash',
+      purpose: 'accountCancellation',
+      provider: 'github',
+      callbackHash: 'callback-hash'
+    });
   });
 
   it('rejects material at and after the expiration boundary', async () => {

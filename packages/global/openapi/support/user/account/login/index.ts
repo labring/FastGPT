@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
@@ -70,6 +71,14 @@ export const LoginPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: LoginSuccessResponseSchema
+            }
+          }
+        },
+        400: {
+          description: '请求参数或预登录验证码错误',
+          content: {
+            'application/json': {
+              schema: z.null()
             }
           }
         }

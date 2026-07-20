@@ -1,10 +1,11 @@
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { MongoUserAuth } from './schema';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { MongoAccountVerificationMaterial } from '../account/verification/schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { z } from 'zod';
 import { assertCodeVerificationConsumeFrequency } from '../account/verification/utils';
+import { addMinutes } from 'date-fns';
 
 export const addAuthCode = async ({
   key,
@@ -19,15 +20,19 @@ export const addAuthCode = async ({
   type: `${UserAuthTypeEnum}`;
   expiredTime?: Date;
 }) => {
-  return MongoUserAuth.updateOne(
+  const createTime = new Date();
+  return MongoAccountVerificationMaterial.updateOne(
     {
       key,
       type
     },
     {
-      code,
-      openid,
-      expiredTime
+      $set: {
+        code,
+        openid,
+        createTime,
+        expiredTime: expiredTime ?? addMinutes(createTime, 5)
+      }
     },
     {
       upsert: true
@@ -45,7 +50,7 @@ export const authCode = async (props: z.infer<typeof authCodeSchema>) => {
   await assertCodeVerificationConsumeFrequency({ account: key, scene: type });
 
   return mongoSessionRun(async (session) => {
-    const result = await MongoUserAuth.findOne(
+    const result = await MongoAccountVerificationMaterial.findOne(
       {
         key,
         type,
@@ -56,7 +61,7 @@ export const authCode = async (props: z.infer<typeof authCodeSchema>) => {
     );
 
     if (!result) {
-      return Promise.reject(new UserError(i18nT('common:error.code_error')));
+      return Promise.reject(new UserError(UserErrEnum.invalidVerificationCode));
     }
 
     await result.deleteOne();

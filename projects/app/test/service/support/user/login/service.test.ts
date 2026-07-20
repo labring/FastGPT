@@ -4,6 +4,8 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
+import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/cancellation/schema';
+import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { loginLocalAccount } from '@/service/support/user/login/service';
 
 describe('loginLocalAccount', () => {
@@ -47,6 +49,49 @@ describe('loginLocalAccount', () => {
       language: 'en',
       lastLoginTmbId: identity.lastLoginTmbId
     });
+  });
+
+  it('creates a recovery session for a cancelling account without a last login team', async () => {
+    await MongoAccountCancellation.create({
+      userId: identity.userId,
+      status: AccountCancellationStatusEnum.pending,
+      requestedAt: new Date()
+    });
+
+    const result = await loginLocalAccount({
+      identity: { ...identity, lastLoginTmbId: undefined }
+    });
+
+    expect(result.user.team.tmbId).toBe(identity.lastLoginTmbId);
+    expect(result.user.team.accountCancellation).toBeDefined();
+    expect(result.token).toEqual(expect.any(String));
+  });
+
+  it('prefers an active team before using a cancelling team as login fallback', async () => {
+    const otherOwner = await MongoUser.create({
+      username: 'other-owner',
+      password: 'password',
+      status: UserStatusEnum.active
+    });
+    const activeTeam = await MongoTeam.create({ name: 'Active Team', ownerId: otherOwner._id });
+    const activeTmb = await MongoTeamMember.create({
+      teamId: activeTeam._id,
+      userId: identity.userId,
+      status: 'active',
+      role: 'member',
+      createTime: new Date(Date.now() + 1000)
+    });
+    await MongoAccountCancellation.create({
+      userId: identity.userId,
+      status: AccountCancellationStatusEnum.pending,
+      requestedAt: new Date()
+    });
+
+    const result = await loginLocalAccount({
+      identity: { ...identity, lastLoginTmbId: undefined }
+    });
+
+    expect(result.user.team.tmbId).toBe(String(activeTmb._id));
   });
 
   it('keeps the Wecom password-login restriction in the application layer', async () => {

@@ -41,6 +41,7 @@
   "account_cancellation_requested_at": "申请时间：{{time}}",
   "account_cancellation_scheduled_at": "预计注销时间：{{time}}",
   "account_cancellation_send_code": "获取验证码",
+  "account_cancellation_submit_success": "注销提交成功",
   "account_cancellation_switch_team": "切换团队",
   "account_cancellation_team_finalizing_desc": "团队已进入注销清理阶段。您可联系团队所有者了解处理进度。",
   "account_cancellation_team_pending_desc": "团队已由团队所有者提交注销申请，目前处于 15 天注销等待期。您可联系团队所有者取消注销。",

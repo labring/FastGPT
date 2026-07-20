@@ -32,7 +32,8 @@ export const loginLocalAccount = async ({
   const user = await getUserDetail({
     tmbId: identity.lastLoginTmbId,
     userId: identity.userId,
-    isRoot: identity.isRoot
+    isRoot: identity.isRoot,
+    allowAccountCancellationTeamFallback: true
   });
 
   const account = await MongoUser.findById(identity.userId, 'fastgpt_sem').lean();

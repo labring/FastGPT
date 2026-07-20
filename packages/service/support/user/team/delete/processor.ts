@@ -19,8 +19,7 @@ import { MongoDiscountCoupon } from '../../../wallet/discountCoupon/schema';
 import { MongoTeamAudit } from '../../audit/schema';
 import { deleteTeamAllDatasets } from '../../../../core/dataset/delete/processor';
 import { onDelAllApp } from './utils';
-import { MongoEvaluation } from '../../../../core/app/evaluation/evalSchema';
-import { MongoEvalItem } from '../../../../core/app/evaluation/evalItemSchema';
+import { deleteEvaluationsByTeamId } from '../../../../core/app/evaluation/delete';
 import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getUserFallbackTeam } from '../fallback';
@@ -35,6 +34,9 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
     const { teamId } = job.data;
     const startTime = Date.now();
 
+    // App/Dataset 使用独立队列删除，这类残留在 team-delete 重试耗尽前不应升级为 ERR。
+    class TeamResourcesStillDeletingError extends Error {}
+
     logger.info('Team delete started', { teamId });
 
     try {
@@ -48,14 +50,7 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
       // 2. 先删除知识库和应用（它们内部有自己的队列）
       await deleteTeamAllDatasets(teamId);
       await onDelAllApp(teamId);
-      // 删除评估
-      await MongoEvaluation.deleteMany({
-        teamId
-      });
-      // 删除评估项
-      await MongoEvalItem.deleteMany({
-        teamId
-      });
+      await deleteEvaluationsByTeamId(teamId);
 
       // 删除图片(旧的了)
       await MongoImage.deleteMany({
@@ -106,7 +101,7 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
       ]);
       if (remainingApps > 0 || remainingDatasets > 0) {
         // App/Dataset worker 必须先完成，否则删除团队后 finalizer 无法再按 teamId 观察残留。
-        throw new Error(
+        throw new TeamResourcesStillDeletingError(
           `Team resources are still being deleted: apps=${remainingApps}, datasets=${remainingDatasets}`
         );
       }
@@ -186,8 +181,19 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
         teamId,
         durationMs: Date.now() - startTime
       });
-    } catch (error: any) {
-      logger.error('Team delete failed', { teamId, error });
+    } catch (error) {
+      const maxAttempts = job.opts.attempts ?? 1;
+      const isFinalAttempt = job.attemptsMade + 1 >= maxAttempts;
+      if (error instanceof TeamResourcesStillDeletingError && !isFinalAttempt) {
+        logger.warn('Team delete waiting for resource deletion', {
+          teamId,
+          attempt: job.attemptsMade + 1,
+          maxAttempts,
+          error
+        });
+      } else {
+        logger.error('Team delete failed', { teamId, error });
+      }
       throw error;
     }
   });

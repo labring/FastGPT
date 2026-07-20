@@ -5,6 +5,8 @@ import {
   Center,
   Image,
   Input,
+  InputGroup,
+  InputRightElement,
   Spinner,
   Text,
   VStack,
@@ -31,6 +33,7 @@ import {
 } from '@/web/support/user/account/cancellation/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { isAccountCancellationCodeError, isAccountCancellationRateLimitError } from './utils';
 
 const getCapabilities = (feConfigs: FastGPTFeConfigsType) => ({
   ...(feConfigs.accountVerification?.accountCancellation ?? {
@@ -103,12 +106,19 @@ export const VerificationPanel = ({
     return () => window.clearInterval(timer);
   }, [wechatQR?.expiredAt]);
 
-  const showVerificationFailure = useCallback(() => {
-    toast({
-      status: 'error',
-      title: t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
-    });
-  }, [t, toast]);
+  const showVerificationFailure = useCallback(
+    (error?: unknown) => {
+      toast({
+        status: 'error',
+        title: isAccountCancellationCodeError(error)
+          ? t('common:error.code_error')
+          : isAccountCancellationRateLimitError(error)
+            ? t('common:error.operation_too_frequently')
+            : t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+      });
+    },
+    [t, toast]
+  );
 
   const createWechatVerification = useCallback(async () => {
     if (method !== 'wechat') return;
@@ -119,9 +129,9 @@ export const VerificationPanel = ({
       if (result.method !== 'wechat') return;
       setWechatQR(result);
       setWechatNow(Date.now());
-    } catch {
+    } catch (error) {
       setWechatLoadFailed(true);
-      showVerificationFailure();
+      showVerificationFailure(error);
     } finally {
       setWechatCreating(false);
     }
@@ -146,10 +156,6 @@ export const VerificationPanel = ({
           payload: { code: wechatQR.code }
         });
         if (!disposed && result.status === 'pending') {
-          toast({
-            status: 'success',
-            title: t('account_info:account_cancellation_verification_success', '身份验证成功')
-          });
           onSubmitted(result);
         }
       } catch {
@@ -165,7 +171,7 @@ export const VerificationPanel = ({
       disposed = true;
       window.clearInterval(timer);
     };
-  }, [onSubmitted, t, toast, wechatExpired, wechatQR]);
+  }, [onSubmitted, wechatExpired, wechatQR]);
 
   const sendCode = async ({ captcha }: { username: string; captcha: string }) => {
     if (method !== 'code') return;
@@ -183,10 +189,14 @@ export const VerificationPanel = ({
         status: 'success',
         title: t('account_info:account_cancellation_code_sent', '验证码已发送')
       });
-    } catch {
+    } catch (error) {
       toast({
         status: 'error',
-        title: t('account_info:account_cancellation_code_send_failed', '验证码发送失败，请重试')
+        title: isAccountCancellationCodeError(error)
+          ? t('common:error.code_error')
+          : isAccountCancellationRateLimitError(error)
+            ? t('common:error.operation_too_frequently')
+            : t('account_info:account_cancellation_code_send_failed', '验证码发送失败，请重试')
       });
     } finally {
       setCodeSending(false);
@@ -199,13 +209,9 @@ export const VerificationPanel = ({
     try {
       const result = await submitAccountCancellation({ method, payload: { code: code.trim() } });
       if (result.status !== 'pending') return;
-      toast({
-        status: 'success',
-        title: t('account_info:account_cancellation_verification_success', '身份验证成功')
-      });
       onSubmitted(result);
-    } catch {
-      showVerificationFailure();
+    } catch (error) {
+      showVerificationFailure(error);
     } finally {
       setCodeSubmitting(false);
     }
@@ -281,7 +287,7 @@ export const VerificationPanel = ({
             _disabled={{ opacity: 1, color: 'myGray.400', cursor: 'default' }}
             aria-label={t('account_info:account_cancellation_account', '注销账号')}
           />
-          <Box position="relative" mt={6}>
+          <InputGroup mt={6}>
             <Input
               h="40px"
               pr="120px"
@@ -294,36 +300,33 @@ export const VerificationPanel = ({
                 if (event.key === 'Enter') void submitCode();
               }}
             />
-            <Button
-              position="absolute"
-              top="50%"
-              right={3}
-              transform="translateY(-50%)"
-              zIndex={1}
-              h="18px"
-              minW={0}
-              p={0}
-              variant="unstyled"
-              color={codeCountDown > 0 ? 'myGray.400' : 'primary.700'}
-              fontSize="12px"
-              fontWeight="500"
-              lineHeight="18px"
-              isDisabled={codeSending || codeSubmitting || codeCountDown > 0}
-              onClick={onOpenCaptcha}
-            >
-              {codeSending
-                ? t('account_info:account_cancellation_code_sending', '发送中')
-                : codeCountDown > 0
-                  ? t(
-                      'account_info:account_cancellation_code_countdown',
-                      '重新获取（{{seconds}}）',
-                      { seconds: codeCountDown }
-                    )
-                  : hasSentCode
-                    ? t('account_info:account_cancellation_code_resend', '重新获取')
-                    : t('account_info:account_cancellation_send_code', '获取验证码')}
-            </Button>
-          </Box>
+            <InputRightElement h="40px" w="120px" justifyContent="flex-end" pr={3}>
+              <Button
+                h="18px"
+                minW={0}
+                p={0}
+                variant="unstyled"
+                color={codeCountDown > 0 ? 'myGray.400' : 'primary.700'}
+                fontSize="12px"
+                fontWeight="500"
+                lineHeight="18px"
+                isDisabled={codeSending || codeSubmitting || codeCountDown > 0}
+                onClick={onOpenCaptcha}
+              >
+                {codeSending
+                  ? t('account_info:account_cancellation_code_sending', '发送中')
+                  : codeCountDown > 0
+                    ? t(
+                        'account_info:account_cancellation_code_countdown',
+                        '重新获取（{{seconds}}）',
+                        { seconds: codeCountDown }
+                      )
+                    : hasSentCode
+                      ? t('account_info:account_cancellation_code_resend', '重新获取')
+                      : t('account_info:account_cancellation_send_code', '获取验证码')}
+              </Button>
+            </InputRightElement>
+          </InputGroup>
           <Button
             mt={12}
             w="100%"

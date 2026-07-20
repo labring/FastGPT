@@ -1625,3 +1625,73 @@ flowchart TD
 | D-05 | 定向测试、各 workspace 测试、App/Admin typecheck、lint、`pnpm test` 和 `git diff --check` 全部通过 | CI/本地命令输出 |
 | D-06 | 全部 Mermaid 图由 8.8.3 解析通过，OpenAPI 和运维说明与最终实现一致 | Mermaid 校验输出、文档 diff |
 | D-07 | 灰度指标无异常，应用回滚演练成功，未产生不可恢复的短期材料或 Session 行为 | 监控截图、演练记录 |
+
+## 14. 账号注销审查问题修复
+
+状态：已确认实施范围<br>
+日期：2026-07-20
+
+### 14.1 问题与约束
+
+本轮只修复账号验证与注销实现中的审查问题，不改变注销等待期、提醒窗口、验证方式和对外 API：
+
+1. 团队审计与管理员审计继续共用 `operationLogs` 集合，但前端/API 列表类型和请求校验必须按事件域拆分；团队接口只能接收、查询 `AuditEventEnum`，管理员接口只能接收、查询 `AdminAuditEventEnum`。两个列表接口都必须完整支持公共分页 schema 声明的 pageNum/offset 语义。
+2. `auth_codes` 只能由 `account/verification/schema.ts` 注册一次。旧 `auth/controller` 继续作为兼容业务入口，但必须使用统一 model，不能保留第二份 schema。
+3. API Key 鉴权没有 Session `uid` 时，注销 guard 必须通过 `tmbId` 解析真实用户，不能把团队 owner 当成当前用户。最终注销还必须删除该用户全部成员身份创建的 API Key，并把残留 API Key 纳入完成条件。
+4. BullMQ 稳定 `jobId` 的幂等语义只覆盖未结束任务。发现同 ID 的 `failed` job 时，生产者必须在按 queue/jobId 隔离的 Redis 租约内刷新数据并重试；等待、延迟或执行中的 job 仍直接复用。
+5. `createPendingAccountCancellation`、`claimAccountCancellationForFinalizing`、`getActiveAccountCancellationStatuses` 及 Pro 中两个无引用 alias 没有明确调用方，直接移除，缩小导出面。
+6. 提醒消息已有 `sendInform2OneUser` 的 24 小时投递锁，本轮不增加逐用户状态。只为提醒扫描和最终清理扫描分别增加 Cron 任务级锁，且不得复用套餐提醒的 `TimerIdEnum.notification`。
+7. 注销记录与团队审计日志使用不同 MongoClient。主库状态提交后，日志库故障不能反向改变 submit、cancel 或 finalize 的业务结果；三类成功审计均按 best-effort 记录 warning，submit 的后续通知和 Session 清理继续执行。
+
+### 14.2 开发设计
+
+#### 审计类型
+
+共享类型提供 `TeamAuditEvent`、`AdminAuditEvent`、通用 `AuditSchemaType`，以及分别收窄事件域的 `TeamAuditListItemType`、`AdminAuditListItemType`。Mongo model 使用通用联合事件类型；团队和管理员 API 分别使用 OpenAPI Zod schema 与 `parseApiInput` 拒绝异域事件，并始终通过本域枚举 `$in` 白名单查询，再映射为对应列表类型。两个处理器都通过 `parsePaginationRequest` 消费已校验 body，避免 schema 接受 offset 后仍按第一页查询。
+
+#### `auth_codes` 单一 model
+
+删除旧 `support/user/auth/schema.ts`，把兼容 controller 和测试改为导入 `MongoAccountVerificationMaterial`。兼容写入口显式刷新 `createTime` 和 `expiredTime`，避免依赖旧 schema 默认值。统一 schema 的 type enum 覆盖全部旧值和 `accountCancellation`，并保留 `purpose`、`userIdHash`、`provider` 等绑定字段。
+
+#### API Key 注销边界
+
+`assertAccountUsable` 在缺少 `userId` 或 `teamId` 任一信息时按 `tmbId` 读取成员记录，从而在 API Key 路径用真实成员 `userId` 查询注销状态。最终清理先收集用户全部成员 ID 并删除对应 `MongoOpenApi` 记录，再清理活跃非 owner 关系；残留检查按用户仍存在的成员 ID 统计 API Key，非零时不得把注销标记为 completed。
+
+#### BullMQ 重投
+
+共享 BullMQ 模块增加一个小型 helper：
+
+- 不存在同 ID job：正常 `queue.add`。
+- 同 ID job 为 `failed`：取得按 queue/jobId 隔离的 Redis 租约，重新确认状态后执行 `updateData` 与 `retry`。
+- 其它状态：返回现有 job，不制造并发重复任务。
+
+账号 finalizer 和 team-delete 两个生产者统一调用该 helper，并保持现有 attempts/backoff/retention 配置。原 failed job 在刷新和重试期间始终保留，进程中断或 Redis 错误不会形成 remove/add 丢任务窗口。租约竞争显式向调用方报错并由现有重试/下一轮扫描补偿，不能让后来的生产者覆盖已经进入 waiting/active 的任务数据，也不能把仍为 failed 的任务误报为已入队。由于 `getJob` 与 `getState` 不是同一 Redis 操作，`unknown` 状态必须重新读取：确认 retention cleanup 已删除 job 后才重新 `add`；若 job 仍存在但状态无法确认则向上报错，不能返回失效 Job 假装已入队。
+
+#### 注销生命周期审计
+
+注销生命周期记录先在主库提交，随后向独立日志库写团队审计。submit 审计失败时记录不含验证材料的 warning，并继续团队通知与 Session 清理；cancel 已删除 pending、finalize 已标记 completed 后，审计失败也只记录 warning。三条路径都不能把已经持久化的成功状态伪装成整体失败，也不依赖客户端或队列重试补偿无法再生成的审计。
+
+#### Cron 锁
+
+增加 `TimerIdEnum.accountCancellationReminder` 和 `TimerIdEnum.accountCancellationFinalize`。Pro Cron 在调用业务扫描前分别申请锁；未取得锁时静默跳过，业务异常继续使用现有结构化错误日志。锁时长覆盖单次日任务执行窗口，但不跨越下一次计划执行。最终清理扫描保持串行投递，但每条记录单独捕获 enqueue 错误并继续后续记录，避免单个 Redis/租约错误把无关账号统一延迟到下一轮 Cron。
+
+### 14.3 回归用例
+
+1. App typecheck 能证明团队审计事件可安全索引 `auditLogMap`；Admin typecheck 能证明管理员列表使用独立类型；请求 schema 负例证明 Team/Admin 事件不能跨域传入，Admin API 的 offset 用例证明公共分页合约被实际执行。
+2. 先加载兼容 auth controller 后，统一 model 仍能保存和读取注销材料的扩展字段，且 `accountCancellation` 不触发 enum 错误。
+3. API Key 同时提供 `teamId/tmbId` 且 `uid` 为空时，guard 使用成员 `userId` 并阻断 pending/finalizing 用户。
+4. 普通成员最终注销会删除其所有 `tmbId` 对应 API Key；仍有 API Key 时 residual check 返回未完成。
+5. finalizer 和 team-delete 遇到 failed job 会在同一 queue/jobId 的租约内调用 `updateData` 与 `retry`；并发生产者不能覆盖已恢复任务的数据，等待/执行中的同 ID job 不重投；`getState` 返回 unknown 且复查已删除时会重建任务，仍无法确认时不会误报成功。
+6. 两个注销 Cron 分别使用独立 timer ID，未取得锁时不扫描；套餐通知锁不受影响；最终清理首条投递失败时后续到期记录仍继续入队。
+7. 主库已提交后日志库写入失败，submit 仍继续发送团队通知、清理 Session 并返回 pending；cancel 返回成功，finalize 返回 completed 且队列任务不失败。
+
+### 14.4 TODO
+
+- [x] 拆分 Team/Admin 审计事件和列表类型，更新 App/Admin 调用方。
+- [x] 删除重复 `auth_codes` schema，让兼容 controller 使用统一 model 并补回归测试。
+- [x] 修复 API Key 用户解析，清理普通成员 API Key，并扩展 residual check。
+- [x] 增加 BullMQ failed stable-job 重投 helper，接入 finalizer 与 team-delete 并补测试。
+- [x] 增加两个独立 `TimerIdEnum`，为提醒和最终清理 Cron 加任务锁。
+- [x] 删除五个无引用函数/alias，扫描确认没有调用方。
+- [x] 运行定向测试、App/Admin typecheck、全量测试和 `git diff --check`。
+- [x] 使用干净上下文 subagent 执行 `local-pr-review`，忽略微信扫码地址问题并处理其余有效发现。

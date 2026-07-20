@@ -45,7 +45,7 @@ describe('PasswordAccountVerification', () => {
     });
     await expect(
       verification.consume({ username: 'git-user', password: 'password', code: 'ABC123' })
-    ).rejects.toThrow();
+    ).rejects.toThrow(UserErrEnum.invalidVerificationCode);
   });
 
   it('uses one account error for an unknown user or wrong password', async () => {

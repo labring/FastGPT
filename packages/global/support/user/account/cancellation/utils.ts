@@ -6,6 +6,8 @@ import {
 import type { AccountCancellationSchedule } from './type';
 
 const dayInMilliseconds = 24 * 60 * 60 * 1000;
+const accountCancellationAnonymizedUsernameReg = /-[a-z][a-zA-Z0-9]{7}-delete$/;
+const legacyAccountCancellationUsernameRegs = [/-deleted$/, /^deleted-[a-f0-9]{32}$/];
 
 type LocalDateParts = {
   year: number;
@@ -94,7 +96,10 @@ const localDateTimeToUtc = (
   return new Date(candidate);
 };
 
-const addLocalDays = ({ year, month, day }: LocalDateParts, days: number) => {
+const addLocalDays = (
+  { year, month, day }: Pick<LocalDateParts, 'year' | 'month' | 'day'>,
+  days: number
+) => {
   const date = new Date(Date.UTC(year, month - 1, day + days));
   return {
     year: date.getUTCFullYear(),
@@ -108,6 +113,28 @@ const formatLocalDate = ({ year, month, day }: LocalDateParts) =>
 
 const atLocalTime = (date: ReturnType<typeof addLocalDays>, hour: number, timeZone: string) =>
   localDateTimeToUtc({ ...date, hour, minute: 0, second: 0 }, timeZone);
+
+/** 返回目标时区指定相对日期的 UTC 半开区间。 */
+const getLocalDayWindow = ({
+  now,
+  daysFromToday,
+  timeZone
+}: {
+  now: Date;
+  daysFromToday: number;
+  timeZone: string;
+}) => {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
+    throw new Error('Invalid account cancellation current time');
+  }
+  assertValidTimeZone(timeZone);
+
+  const targetDate = addLocalDays(parseDateParts(now, timeZone), daysFromToday);
+  return {
+    start: atLocalTime(targetDate, 0, timeZone),
+    end: atLocalTime(addLocalDays(targetDate, 1), 0, timeZone)
+  };
+};
 
 /**
  * 从唯一持久化时间推导注销等待期的全部时间点。
@@ -161,8 +188,66 @@ export const getAccountCancellationReminderAt = ({
   return schedule.finalNoticeAt;
 };
 
+/**
+ * 反推出指定自然日应发送某类提醒的 requestedAt 半开区间，供数据库范围查询使用。
+ * 区间按配置时区的自然日计算，避免受服务进程时区影响。
+ */
+export const getAccountCancellationReminderRequestedAtWindow = ({
+  now,
+  reminder,
+  timeZone = accountCancellationTimezone
+}: {
+  now: Date;
+  reminder: AccountCancellationReminderEnum;
+  timeZone?: string;
+}) => {
+  const reminderDaysBeforeCleanup = (() => {
+    if (reminder === AccountCancellationReminderEnum.sevenDays) return 7;
+    if (reminder === AccountCancellationReminderEnum.oneDay) return 1;
+    return 0;
+  })();
+  const cleanupDayWindow = getLocalDayWindow({
+    now,
+    daysFromToday: reminderDaysBeforeCleanup,
+    timeZone
+  });
+  const waitPeriodMs = accountCancellationWaitDays * dayInMilliseconds;
+
+  return {
+    start: new Date(cleanupDayWindow.start.getTime() - waitPeriodMs),
+    end: new Date(cleanupDayWindow.end.getTime() - waitPeriodMs)
+  };
+};
+
+/**
+ * 返回到期 pending 的 requestedAt 排他上界。
+ * 当前自然日开始前已进入计划清理时间的记录满足 requestedAt < cutoff。
+ */
+export const getAccountCancellationPendingDueCutoff = ({
+  now,
+  timeZone = accountCancellationTimezone
+}: {
+  now: Date;
+  timeZone?: string;
+}) => {
+  const todayStart = getLocalDayWindow({
+    now,
+    daysFromToday: 0,
+    timeZone
+  }).start;
+
+  return new Date(todayStart.getTime() - accountCancellationWaitDays * dayInMilliseconds);
+};
+
 export const isAccountCancellationCancelable = (requestedAt: Date, now = new Date()) =>
   now.getTime() < deriveAccountCancellationSchedule(requestedAt).scheduledCancelAt.getTime();
 
 export const isAccountCancellationMethod = (method: string) =>
   method === 'code' || method === 'wechat' || method.startsWith('oauth/');
+
+/**
+ * 判断用户名是否由账号注销流程生成，同时兼容已落库的历史匿名用户名格式。
+ */
+export const isAccountCancellationAnonymizedUsername = (username: string) =>
+  accountCancellationAnonymizedUsernameReg.test(username) ||
+  legacyAccountCancellationUsernameRegs.some((reg) => reg.test(username));
