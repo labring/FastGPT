@@ -26,6 +26,7 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   model: string;
   indexSize?: number;
   imageIndex?: boolean;
+  forceRebuild?: boolean;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
@@ -218,7 +219,8 @@ export class DatasetDataOperation {
     model,
     indexSize = 512,
     indexPrefix,
-    imageIndex
+    imageIndex,
+    forceRebuild
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = getEmbeddingModel(model);
 
@@ -247,16 +249,21 @@ export class DatasetDataOperation {
       indexPrefix
     });
 
-    // 把旧的 dataId 加到新的索引里
-    const indexesWithExistingSystemIds = this.indexOperation.mergeExistingSystemIndexIds({
-      currentIndexes: mongoData.indexes,
-      nextSystemIndexes: formatIndexesResult
-    });
+    // 把旧的 dataId 加到新的索引里（模型切换等全量重建场景跳过，避免复用旧向量）。
+    const indexesWithExistingSystemIds = forceRebuild
+      ? formatIndexesResult
+      : this.indexOperation.mergeExistingSystemIndexIds({
+          currentIndexes: mongoData.indexes,
+          nextSystemIndexes: formatIndexesResult
+        });
 
     // patchResult 先保留旧 dataId；insertVectorForPatch 会为 create/update 项写入新向量并回填新 dataId。
+    // forceRebuild 时 isSameIndex 永远返回 false，使所有匹配项变为 update（而非 unChange），
+    // 确保旧向量被正确清理、新向量用新模型重新生成。
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
-      nextIndexes: indexesWithExistingSystemIds
+      nextIndexes: indexesWithExistingSystemIds,
+      ...(forceRebuild && { isSameIndex: () => false })
     });
 
     // 提前刷新 updateTime，方便 job 扫到该 data 进行处理。

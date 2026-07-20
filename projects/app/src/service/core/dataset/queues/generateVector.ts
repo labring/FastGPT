@@ -325,7 +325,8 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
     indexPrefix: trainingData.collection.indexPrefixTitle
       ? `# ${trainingData.collection.name}`
-      : undefined
+      : undefined,
+    forceRebuild: true
   });
 
   await mongoSessionRun(async (session) => {

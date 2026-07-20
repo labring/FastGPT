@@ -141,10 +141,16 @@ export const insertDatasetDataVector = async ({
     inputs: embeddingInputs,
     type: 'db'
   });
+
+  const textContents = embeddingInputs.map((input) =>
+    input.type === 'text' ? String(input.input) : ''
+  );
+
   const { insertIds } = await retryFn(() =>
     Vector.insert({
       ...props,
-      vectors
+      vectors,
+      textContents
     })
   );
 
