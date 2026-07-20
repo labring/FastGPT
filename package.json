@@ -40,9 +40,9 @@
     "next-i18next": "catalog:",
     "prettier": "catalog:lint",
     "react-i18next": "catalog:",
-    "turbo": "2.9.9",
-    "typescript-eslint": "catalog:lint",
+    "turbo": "catalog:",
     "typescript": "catalog:",
+    "typescript-eslint": "catalog:lint",
     "vitest": "catalog:"
   },
   "engines": {
