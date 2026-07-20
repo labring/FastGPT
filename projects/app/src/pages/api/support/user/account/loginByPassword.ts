@@ -21,12 +21,16 @@ import {
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  reportCRMVisitorIdentity,
+  resolveCRMVisitorId
+} from '@fastgpt/service/support/marketing/attribution';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
 ): Promise<LoginSuccessResponseType> {
-  const { username, password, code, language } = parseApiInput({
+  const { username, password, code, language, fastgpt_sem } = parseApiInput({
     req,
     bodySchema: LoginByPasswordBodySchema
   }).body;
@@ -64,6 +68,13 @@ async function handler(
 
   user.lastLoginTmbId = userDetail.team.tmbId;
   user.language = language;
+  const visitorIdentity = resolveCRMVisitorId({
+    storedFastgptSem: user.fastgpt_sem,
+    incomingVisitorId: fastgpt_sem?.visitor_id
+  });
+  if (visitorIdentity.shouldPersist) {
+    user.fastgpt_sem = visitorIdentity.fastgptSem;
+  }
   await user.save();
 
   const token = await createUserSession({
@@ -75,6 +86,13 @@ async function handler(
   });
 
   setCookie(res, token);
+
+  void reportCRMVisitorIdentity({
+    visitorId: visitorIdentity.visitorId,
+    userId: String(user._id),
+    username: user.username,
+    contact: user.contact
+  });
 
   pushTrack.login({
     type: 'password',

@@ -26,7 +26,7 @@ type MarketingQueryParams = {
   msclkid?: string;
   k?: string;
   search?: string;
-  fastgpt_source?: string;
+  visitor_id?: string;
   sourceDomain?: string;
   utm_source?: string;
   utm_medium?: string;
@@ -40,7 +40,7 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'bd_vid',
   'msclkid',
   'k',
-  'fastgpt_source',
+  'visitor_id',
   'sourceDomain',
   'utm_source',
   'utm_medium',
@@ -57,7 +57,7 @@ export const useInitApp = () => {
     msclkid,
     k,
     search,
-    fastgpt_source,
+    visitor_id,
     sourceDomain,
     utm_source,
     utm_medium,
@@ -165,10 +165,11 @@ export const useInitApp = () => {
     if (utm_workflow) {
       setUtmParams(utmParams);
     }
+
     setFastGPTSem({
       keyword: k,
       search,
-      source: fastgpt_source,
+      visitor_id,
       ...utmParams
     });
 

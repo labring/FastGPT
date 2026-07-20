@@ -49,7 +49,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should login successfully with valid credentials', async () => {
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
         password: 'testpassword',
@@ -84,7 +84,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should reject login when username is empty', async () => {
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: '',
         password: 'testpassword',
@@ -97,7 +97,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should reject login when password is empty', async () => {
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
         password: '',
@@ -114,7 +114,7 @@ describe('loginByPassword API', () => {
   it('should reject login when auth code verification fails', async () => {
     vi.mocked(authCode).mockRejectedValueOnce(new Error('Invalid code'));
 
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
         password: 'testpassword',
@@ -128,7 +128,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should reject login when user does not exist', async () => {
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'nonexistentuser',
         password: 'testpassword',
@@ -146,7 +146,7 @@ describe('loginByPassword API', () => {
       status: UserStatusEnum.forbidden
     });
 
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
         password: 'testpassword',
@@ -160,7 +160,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should reject login when password is incorrect', async () => {
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
         password: 'wrongpassword',
@@ -174,7 +174,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should update language on successful login', async () => {
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
         password: 'testpassword',
@@ -188,6 +188,48 @@ describe('loginByPassword API', () => {
     const updatedUser = await MongoUser.findById(testUser._id);
     expect(updatedUser?.language).toBe('en');
     expect(updatedUser?.lastLoginTmbId).toEqual(testTmb._id);
+  });
+
+  it('should persist visitor_id on successful login', async () => {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456',
+        fastgpt_sem: {
+          visitor_id: 'visitor-1'
+        },
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(200);
+
+    const updatedUser = await MongoUser.findById(testUser._id).lean();
+    expect(updatedUser?.fastgpt_sem).toMatchObject({ visitor_id: 'visitor-1' });
+  });
+
+  it('should keep the stored visitor_id when login carries a different one', async () => {
+    await MongoUser.findByIdAndUpdate(testUser._id, {
+      fastgpt_sem: { visitor_id: 'stored-visitor' }
+    });
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456',
+        fastgpt_sem: {
+          visitor_id: 'incoming-visitor'
+        },
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(200);
+
+    const updatedUser = await MongoUser.findById(testUser._id).lean();
+    expect(updatedUser?.fastgpt_sem).toMatchObject({ visitor_id: 'stored-visitor' });
   });
 
   it('should handle root user login correctly', async () => {
@@ -217,7 +259,7 @@ describe('loginByPassword API', () => {
       lastLoginTmbId: rootTmb._id
     });
 
-    const res = await Call<LoginByPasswordBodyType, {}, any>(loginApi.default, {
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'root',
         password: 'rootpassword',
@@ -236,7 +278,7 @@ describe('loginByPassword API', () => {
   describe('NoSQL injection prevention', () => {
     it('should reject password as object with MongoDB operator ($ne)', async () => {
       // GHSA-jxvr-h2vx-p73r Step 2: password: {"$ne": ""} bypasses password check
-      const res = await Call<any, {}, any>(loginApi.default, {
+      const res = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: 'testuser',
           password: { $ne: '' },
@@ -252,7 +294,7 @@ describe('loginByPassword API', () => {
     });
 
     it('should reject password with $regex operator', async () => {
-      const res = await Call<any, {}, any>(loginApi.default, {
+      const res = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: 'testuser',
           password: { $regex: '.*' },
@@ -265,7 +307,7 @@ describe('loginByPassword API', () => {
     });
 
     it('should reject password with $where injection', async () => {
-      const res = await Call<any, {}, any>(loginApi.default, {
+      const res = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: 'testuser',
           password: { $where: 'return true' },
@@ -278,7 +320,7 @@ describe('loginByPassword API', () => {
     });
 
     it('should reject username as object with MongoDB operator', async () => {
-      const res = await Call<any, {}, any>(loginApi.default, {
+      const res = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: { $ne: '' },
           password: 'testpassword',
@@ -291,7 +333,7 @@ describe('loginByPassword API', () => {
     });
 
     it('should reject code as object with MongoDB operator', async () => {
-      const res = await Call<any, {}, any>(loginApi.default, {
+      const res = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: 'testuser',
           password: 'testpassword',
@@ -304,7 +346,7 @@ describe('loginByPassword API', () => {
     });
 
     it('should reject all fields as injection objects simultaneously', async () => {
-      const res = await Call<any, {}, any>(loginApi.default, {
+      const res = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: { $ne: '' },
           password: { $ne: '' },
@@ -317,7 +359,7 @@ describe('loginByPassword API', () => {
     });
 
     it('should reject password as non-string types (array, number)', async () => {
-      const arrayRes = await Call<any, {}, any>(loginApi.default, {
+      const arrayRes = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: 'testuser',
           password: ['testpassword'],
@@ -327,7 +369,7 @@ describe('loginByPassword API', () => {
       });
       expect(arrayRes.code).toBe(500);
 
-      const numberRes = await Call<any, {}, any>(loginApi.default, {
+      const numberRes = await Call<any, Record<string, never>, any>(loginApi.default, {
         body: {
           username: 'testuser',
           password: 12345,

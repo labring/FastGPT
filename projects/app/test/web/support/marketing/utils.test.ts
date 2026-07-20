@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getFastGPTSem,
   initFastGPTSemSourceDomain,
-  removeFastGPTSem
+  onFastGPTLoginSuccess,
+  removeFastGPTSem,
+  setFastGPTSem
 } from '@/web/support/marketing/utils';
 
 const storageMock = () => {
@@ -37,5 +39,50 @@ describe('marketing utils', () => {
     initFastGPTSemSourceDomain('https://example.com');
 
     expect(getFastGPTSem()?.sourceDomain).toBe('https://example.com');
+  });
+
+  it('should persist visitor_id without source attribution fields', () => {
+    setFastGPTSem({
+      visitor_id: ' visitor-1 '
+    });
+
+    expect(getFastGPTSem()).toEqual({
+      visitor_id: 'visitor-1'
+    });
+  });
+
+  it('should not persist an oversized visitor_id', () => {
+    setFastGPTSem({
+      visitor_id: 'a'.repeat(65)
+    });
+
+    expect(localStorage.getItem('fastgpt_sem')).toBeNull();
+    expect(getFastGPTSem()).toBeUndefined();
+  });
+
+  it('should discard unknown marketing fields', () => {
+    localStorage.setItem(
+      'fastgpt_sem',
+      JSON.stringify({
+        visitor_id: 'visitor-current',
+        unknown_field: 'discarded'
+      })
+    );
+
+    expect(getFastGPTSem()).toEqual({
+      visitor_id: 'visitor-current'
+    });
+  });
+
+  it('should clear pending marketing data after login succeeds', async () => {
+    setFastGPTSem({
+      visitor_id: 'visitor-1'
+    });
+    const loginSuccess = vi.fn();
+
+    await onFastGPTLoginSuccess(loginSuccess, { ok: true });
+
+    expect(loginSuccess).toHaveBeenCalledWith({ ok: true });
+    expect(getFastGPTSem()).toBeUndefined();
   });
 });

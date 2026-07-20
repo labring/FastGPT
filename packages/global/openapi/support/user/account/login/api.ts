@@ -58,33 +58,31 @@ export const PreLoginResponseSchema = z
 export type PreLoginResponseType = z.infer<typeof PreLoginResponseSchema>;
 
 // ===== Login by password =====
-export const LoginByPasswordBodySchema = z
-  .object({
-    username: z.string().meta({
-      example: 'admin',
-      description: '用户名'
-    }),
-    password: z.string().meta({
-      example: 'hashed_password',
-      description: '密码'
-    }),
-    code: z.string().meta({
-      example: '123456',
-      description: '预登录验证码'
-    }),
-    language: LanguageSchema.optional().default('zh-CN').meta({
-      example: 'zh-CN',
-      description: '用户语言偏好'
-    })
+export const LoginByPasswordBodySchema = TrackRegisterParamsSchema.extend({
+  username: z.string().meta({
+    example: 'admin',
+    description: '用户名'
+  }),
+  password: z.string().meta({
+    example: 'hashed_password',
+    description: '密码'
+  }),
+  code: z.string().meta({
+    example: '123456',
+    description: '预登录验证码'
+  }),
+  language: LanguageSchema.optional().default('zh-CN').meta({
+    example: 'zh-CN',
+    description: '用户语言偏好'
   })
-  .meta({
-    example: {
-      username: 'admin',
-      password: 'hashed_password',
-      code: '123456',
-      language: 'zh-CN'
-    }
-  });
+}).meta({
+  example: {
+    username: 'admin',
+    password: 'hashed_password',
+    code: '123456',
+    language: 'zh-CN'
+  }
+});
 export type LoginByPasswordBodyType = z.infer<typeof LoginByPasswordBodySchema>;
 
 /* ===== Wecom Login ===== */
@@ -107,7 +105,7 @@ export const OauthLoginBodySchema = TrackRegisterParamsSchema.extend({
 export type OauthLoginBodyType = z.infer<typeof OauthLoginBodySchema>;
 
 // ===== Fast Login =====
-export const FastLoginBodySchema = z.object({
+export const FastLoginBodySchema = TrackRegisterParamsSchema.extend({
   token: z.string().meta({ description: 'Token' }),
   code: z.string().meta({ description: 'Code' }),
   language: LanguageSchema.optional().meta({ description: '语言' })

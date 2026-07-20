@@ -13,8 +13,8 @@ import {
   getBdVId,
   getFastGPTSem,
   getMsclkid,
-  removeFastGPTSem,
-  getInviterId
+  getInviterId,
+  onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
 import PolicyTip from './PolicyTip';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -56,8 +56,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
       enabled: !!wechatInfo?.code,
       async onSuccess(data: LoginSuccessResponseType | undefined) {
         if (data) {
-          removeFastGPTSem();
-          await loginSuccess(data);
+          await onFastGPTLoginSuccess(loginSuccess, data);
         }
       }
     }
