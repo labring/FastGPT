@@ -37,16 +37,14 @@ const syncMongoIndex = async (model: Model<any>) => {
   }
 
   try {
-    await MongoIndexManager.runModelIndexMode({
+    await MongoIndexManager.syncModelIndexes({
       model,
-      mode: marketplaceEnv.MONGO_INDEX_SYNC_MODE,
       logger
     });
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Failed to ensure MongoDB indexes', {
       modelName: model.modelName,
       collectionName: model.collection.collectionName,
-      mode: marketplaceEnv.MONGO_INDEX_SYNC_MODE,
       error
     });
   }
@@ -92,21 +90,6 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
       serverSelectionTimeoutMS: 10000, // 服务器选择超时: 10秒,防止副本集故障时长时间阻塞
       heartbeatFrequencyMS: 5000 // 5s 进行一次健康检查
     });
-
-    if (marketplaceEnv.MONGO_INDEX_SYNC_MODE === 'sync') {
-      const mongoDb = db.connection.db;
-      if (!mongoDb) {
-        throw new Error('MongoDB connection has no database instance after connecting');
-      }
-
-      await MongoIndexManager.waitForModelIndexTasks(db.connection);
-      await MongoIndexManager.runDeprecatedIndexCleanupOnce({
-        db: mongoDb,
-        cleanupKey: MongoIndexManager.getConnectionCleanupKey(db.connection),
-        apply: true,
-        logger
-      });
-    }
 
     return db;
   } catch (error) {

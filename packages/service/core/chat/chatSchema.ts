@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { connectionMongo, getMongoModel, defineDeprecatedIndexes } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import {
@@ -248,5 +248,13 @@ ChatSchema.index(
     }
   }
 );
+
+defineDeprecatedIndexes(ChatSchema, [
+  {
+    indexName: 'appId_1_chatId_1',
+    key: { appId: 1, chatId: 1 },
+    options: { unique: true }
+  }
+]);
 
 export const MongoChat = getMongoModel<ChatSchemaType>(chatCollectionName, ChatSchema);

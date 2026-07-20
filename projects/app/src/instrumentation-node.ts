@@ -99,7 +99,6 @@ export async function registerNodeInstrumentation() {
           connectMongo({
             db: connectionMongo,
             url: MONGO_URL,
-            cleanupDeprecatedIndexes: true,
             connectedCb: () => startMongoWatch()
           }),
         logger,

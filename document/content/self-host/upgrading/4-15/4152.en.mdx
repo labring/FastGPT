@@ -26,23 +26,17 @@ Starting with V4.15.2, `AGENT_ENGINE` uses new enum values. Update the environme
 
 The previous values are no longer supported. Using `default` or `pi` will fail environment variable validation and prevent FastGPT from starting. If `AGENT_ENGINE` is not set, FastGPT uses `fastAgent` by default.
 
-### Update the MongoDB Index Sync Environment Variable
+### MongoDB Index Synchronization Changes
 
-Starting with V4.15.2, the `SYNC_INDEX` environment variable has been removed and replaced by `MONGO_INDEX_SYNC_MODE`. The old variable is no longer used. Update your deployment configuration before upgrading:
+Starting with V4.15.2, FastGPT no longer uses the `SYNC_INDEX` or `MONGO_INDEX_SYNC_MODE` environment variables. You can remove both variables before upgrading; no MongoDB index synchronization mode needs to be configured.
 
-| Previous configuration | New configuration              |
-| ---------------------- | ------------------------------ |
-| `SYNC_INDEX=true`      | `MONGO_INDEX_SYNC_MODE=create` |
-| `SYNC_INDEX=false`     | `MONGO_INDEX_SYNC_MODE=off`    |
+FastGPT now performs a safe synchronization automatically at startup:
 
-`MONGO_INDEX_SYNC_MODE` supports the following modes:
+- Creates indexes that are missing from the current FastGPT schemas.
+- Removes only historical FastGPT indexes explicitly declared by the corresponding schema and whose name, key, and relevant options match exactly.
+- Preserves custom indexes and any other indexes that are not explicitly declared as deprecated.
 
-- `create`: The default. Creates indexes missing from the FastGPT schema without deleting other indexes.
-- `off`: Disables automatic MongoDB index management.
-- `dryRun`: Inspects and logs index differences without creating or deleting indexes.
-- `sync`: Creates missing indexes and removes only historical FastGPT indexes that are explicitly registered and whose definitions match exactly. It does not remove custom created or other unknown indexes.
-
-To automatically remove deprecated FastGPT indexes during an upgrade, temporarily set `MONGO_INDEX_SYNC_MODE=sync` and restart the service. After confirming that cleanup has completed, switch back to the default `create` mode.
+This process does not call Mongoose's full `syncIndexes()` operation, so indexes are never removed simply because they are absent from a FastGPT schema.
 
 ### Configure the File Download URL Mode
 

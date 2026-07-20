@@ -29,7 +29,6 @@ export const serviceEnv = createEnv({
   server: {
     // ==================== 基础配置 ====================
     DB_MAX_LINK: IntSchema.min(1).default(5),
-    MONGO_INDEX_SYNC_MODE: z.enum(['off', 'sync', 'create', 'dryRun']).default('create'),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z

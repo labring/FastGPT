@@ -15,7 +15,6 @@ const originalEnv = {
   PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
   NODE_ENV: process.env.NODE_ENV,
-  MONGO_INDEX_SYNC_MODE: process.env.MONGO_INDEX_SYNC_MODE,
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
   AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
@@ -45,7 +44,6 @@ describe('serviceEnv', () => {
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
     vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
-    vi.stubEnv('MONGO_INDEX_SYNC_MODE', originalEnv.MONGO_INDEX_SYNC_MODE);
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
@@ -75,56 +73,6 @@ describe('serviceEnv', () => {
         SYSTEM_MAX_STRING_LENGTH_M: 2
       }
     });
-  });
-
-  it('parses MongoDB index sync mode during service env init', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-
-    vi.stubEnv('MONGO_INDEX_SYNC_MODE', undefined);
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        MONGO_INDEX_SYNC_MODE: 'create'
-      }
-    });
-
-    vi.stubEnv('MONGO_INDEX_SYNC_MODE', '');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        MONGO_INDEX_SYNC_MODE: 'create'
-      }
-    });
-
-    vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'off');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        MONGO_INDEX_SYNC_MODE: 'off'
-      }
-    });
-
-    vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'sync');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        MONGO_INDEX_SYNC_MODE: 'sync'
-      }
-    });
-
-    vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'dryRun');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        MONGO_INDEX_SYNC_MODE: 'dryRun'
-      }
-    });
-  });
-
-  it('rejects invalid MongoDB index sync mode during service env init', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-    vi.stubEnv('MONGO_INDEX_SYNC_MODE', 'migrate');
-
-    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
   it('rejects invalid SYSTEM_MAX_STRING_LENGTH_M during service env init', async () => {

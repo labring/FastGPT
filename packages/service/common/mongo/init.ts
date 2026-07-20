@@ -2,7 +2,6 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import type { Mongoose } from 'mongoose';
 import { serviceEnv } from '../../env';
-import { MongoIndexManager } from './indexManager';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
@@ -15,9 +14,8 @@ export async function connectMongo(props: {
   db: Mongoose;
   url: string;
   connectedCb?: () => void;
-  cleanupDeprecatedIndexes?: boolean;
 }): Promise<Mongoose> {
-  const { db, url, connectedCb, cleanupDeprecatedIndexes = false } = props;
+  const { db, url, connectedCb } = props;
 
   /* Connecting, connected will return */
   if (db.connection.readyState !== 0) {
@@ -64,21 +62,6 @@ export async function connectMongo(props: {
     });
 
     connectedCb?.();
-
-    if (cleanupDeprecatedIndexes && serviceEnv.MONGO_INDEX_SYNC_MODE === 'sync') {
-      const mongoDb = db.connection.db;
-      if (!mongoDb) {
-        throw new Error('MongoDB connection has no database instance after connecting');
-      }
-
-      await MongoIndexManager.waitForModelIndexTasks(db.connection);
-      await MongoIndexManager.runDeprecatedIndexCleanupOnce({
-        db: mongoDb,
-        cleanupKey: MongoIndexManager.getConnectionCleanupKey(db.connection),
-        apply: true,
-        logger
-      });
-    }
 
     return db;
   } catch (error) {

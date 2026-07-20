@@ -3,7 +3,11 @@
  *
  * 只描述本地实例记录结构，不编排 provider、归档或运行态流程。
  */
-import { connectionMongo, getMongoModel } from '../../../../../common/mongo';
+import {
+  connectionMongo,
+  getMongoModel,
+  defineDeprecatedIndexes
+} from '../../../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from '../../type';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -81,6 +85,41 @@ SandboxInstanceSchema.index({ sourceType: 1, status: 1, provider: 1, 'metadata.a
 SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 });
 SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.startedAt': 1 });
 SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.deleteStartedAt': 1 });
+
+defineDeprecatedIndexes(SandboxInstanceSchema, [
+  {
+    indexName: 'provider_1_appId_1_userId_1_chatId_1',
+    key: { provider: 1, appId: 1, userId: 1, chatId: 1 },
+    options: {
+      unique: true,
+      partialFilterExpression: {
+        appId: { $exists: true },
+        userId: { $exists: true },
+        chatId: { $exists: true }
+      }
+    }
+  },
+  {
+    indexName: 'appId_1_chatId_1',
+    key: { appId: 1, chatId: 1 },
+    options: {
+      unique: true,
+      partialFilterExpression: {
+        appId: { $exists: true },
+        chatId: { $exists: true },
+        type: { $exists: true }
+      }
+    }
+  },
+  {
+    indexName: 'metadata.skillId_1',
+    key: { 'metadata.skillId': 1 }
+  },
+  {
+    indexName: 'type_1_chatId_1',
+    key: { type: 1, chatId: 1 }
+  }
+]);
 
 /**
  * sandbox 实例 Mongo model。

@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectionMongo, Schema } from '@fastgpt/service/common/mongo';
+import { connectionMongo, defineDeprecatedIndexes, Schema } from '@fastgpt/service/common/mongo';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
-import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/deprecatedIndexes';
 
 const logger = {
   debug: vi.fn(),
@@ -11,482 +10,198 @@ const logger = {
   error: vi.fn()
 };
 
-const getIndexNames = async (collectionName: string) => {
-  const indexes = await connectionMongo.connection.db?.collection(collectionName).indexes();
-  return new Set(indexes?.map((index: { name?: string }) => index.name));
+const createModel = ({
+  schema,
+  prefix = 'MongoIndexManager'
+}: {
+  schema: InstanceType<typeof Schema>;
+  prefix?: string;
+}) => {
+  const suffix = randomUUID().replaceAll('-', '');
+  return connectionMongo.model(`${prefix}${suffix}`, schema, `${prefix.toLowerCase()}_${suffix}`);
 };
 
-const getCleanupCollectionName = () => `mongo_index_cleanup_${randomUUID().replace(/-/g, '')}`;
+const getIndexNames = async (model: ReturnType<typeof createModel>) =>
+  new Set((await model.collection.indexes()).map((index) => index.name));
 
-const dropCollection = async (collectionName: string) => {
-  try {
-    await connectionMongo.connection.db?.collection(collectionName).drop();
-  } catch (error: any) {
-    if (error?.codeName !== 'NamespaceNotFound') {
-      throw error;
-    }
-  }
-};
+const legacyDefinition = {
+  indexName: 'legacy_field_1',
+  key: { legacyField: 1 }
+} as const;
 
-const getDb = () => {
-  const db = connectionMongo.connection.db;
-  if (!db) {
-    throw new Error('Mongo test db is not connected');
-  }
-  return db;
-};
-
-describe('MongoIndexManager.runModelIndexMode', () => {
+describe('MongoIndexManager.syncModelIndexes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('creates missing schema indexes without deleting customer indexes in create mode', async () => {
-    const collectionName = `mongo_index_create_${Date.now()}`;
-    await dropCollection(collectionName);
-
+  it('creates current indexes, removes declared legacy indexes, and preserves customer indexes', async () => {
     const schema = new Schema(
       {
-        name: String,
+        currentField: String,
+        legacyField: String,
         customerField: String
       },
       { autoIndex: false }
     );
-    schema.index({ name: 1 }, { name: 'schema_name_1' });
-
-    const model = connectionMongo.model(`MongoIndexCreate${Date.now()}`, schema, collectionName);
-    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
-
-    await MongoIndexManager.runModelIndexMode({
-      model,
-      mode: 'create',
-      logger
-    });
-
-    const indexNames = await getIndexNames(collectionName);
-    expect(indexNames.has('schema_name_1')).toBe(true);
-    expect(indexNames.has('customer_custom_1')).toBe(true);
-    expect(logger.info).toHaveBeenCalledWith(
-      'MongoDB schema indexes ensured',
-      expect.objectContaining({
-        mode: 'create',
-        collectionName,
-        toCreateCount: expect.any(Number),
-        schemaExternalIndexCount: expect.any(Number)
-      })
-    );
-    expect(logger.debug).toHaveBeenCalledWith(
-      'MongoDB schema index ensure detail',
-      expect.objectContaining({
-        mode: 'create',
-        collectionName,
-        schemaExternalIndexNames: expect.arrayContaining(['customer_custom_1']),
-        toCreate: expect.any(Array)
-      })
-    );
-  });
-
-  it('does not create or delete indexes in dryRun mode', async () => {
-    const collectionName = `mongo_index_dry_run_${Date.now()}`;
-    await dropCollection(collectionName);
-
-    const schema = new Schema(
-      {
-        name: String,
-        customerField: String
-      },
-      { autoIndex: false }
-    );
-    schema.index({ name: 1 }, { name: 'schema_name_1' });
-
-    const model = connectionMongo.model(`MongoIndexDryRun${Date.now()}`, schema, collectionName);
-    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
-
-    const result = await MongoIndexManager.runModelIndexMode({
-      model,
-      mode: 'dryRun',
-      logger
-    });
-
-    const indexNames = await getIndexNames(collectionName);
-    expect(result.toCreate.length).toBeGreaterThan(0);
-    expect(indexNames.has('schema_name_1')).toBe(false);
-    expect(indexNames.has('customer_custom_1')).toBe(true);
-    expect(logger.info).toHaveBeenCalledWith(
-      'MongoDB index dry-run completed',
-      expect.objectContaining({
-        mode: 'dryRun',
-        collectionName,
-        toCreateCount: result.toCreate.length,
-        schemaExternalIndexCount: expect.any(Number)
-      })
-    );
-    expect(logger.debug).toHaveBeenCalledWith(
-      'MongoDB index diff inspected',
-      expect.objectContaining({
-        mode: 'dryRun',
-        collectionName,
-        schemaExternalIndexNames: expect.arrayContaining(['customer_custom_1']),
-        toCreate: result.toCreate
-      })
-    );
-  });
-
-  it('creates schema indexes without deleting indexes in per-model sync mode', async () => {
-    const collectionName = `mongo_index_sync_${Date.now()}`;
-    await dropCollection(collectionName);
-
-    const schema = new Schema(
-      {
-        name: String,
-        customerField: String,
-        legacyField: String
-      },
-      { autoIndex: false }
-    );
-    schema.index({ name: 1 }, { name: 'schema_name_1' });
-
-    const model = connectionMongo.model(`MongoIndexSync${Date.now()}`, schema, collectionName);
-    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
+    schema.index({ currentField: 1 }, { name: 'current_field_1' });
+    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema });
     await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
 
-    const result = await MongoIndexManager.runModelIndexMode({
-      model,
-      mode: 'sync',
-      logger
-    });
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
 
-    const indexNames = await getIndexNames(collectionName);
-    expect(result.toDrop).toContain('customer_custom_1');
-    expect(result.toDrop).toContain('legacy_field_1');
-    expect(indexNames.has('schema_name_1')).toBe(true);
-    expect(indexNames.has('customer_custom_1')).toBe(true);
-    expect(indexNames.has('legacy_field_1')).toBe(true);
-    expect(logger.info).toHaveBeenCalledWith(
-      'MongoDB managed index sync started',
-      expect.objectContaining({
-        mode: 'sync',
-        collectionName,
-        cleanupPolicy: 'deprecated_indexes_are_cleaned_once_per_connection'
-      })
-    );
-    expect(logger.info).toHaveBeenCalledWith(
-      'MongoDB managed index sync completed',
-      expect.objectContaining({
-        mode: 'sync',
-        collectionName,
-        cleanupPolicy: 'deprecated_indexes_are_cleaned_once_per_connection'
-      })
-    );
-    expect(logger.debug).toHaveBeenCalledWith(
-      'MongoDB managed index sync detail',
-      expect.objectContaining({
-        mode: 'sync',
-        collectionName,
-        schemaExternalIndexNames: expect.arrayContaining(['customer_custom_1', 'legacy_field_1']),
-        toCreate: expect.any(Array),
-        cleanupPolicy: 'deprecated_indexes_are_cleaned_once_per_connection'
-      })
-    );
-    expect(logger.warn).toHaveBeenCalledWith(
-      'Detected MongoDB indexes not declared by FastGPT schema',
-      expect.objectContaining({
-        mode: 'sync',
-        collectionName,
-        schemaExternalIndexNames: expect.arrayContaining(['customer_custom_1', 'legacy_field_1']),
-        cleanupPolicy: 'only_registered_deprecated_indexes_can_be_dropped'
-      })
-    );
-  });
-});
-
-describe('MongoIndexManager.cleanupDeprecatedIndexes', () => {
-  it('runs deprecated index cleanup only once for the same connection key', async () => {
-    vi.clearAllMocks();
-    const collectionName = getCleanupCollectionName();
-    const cleanupKey = `test:${randomUUID()}`;
-    await dropCollection(collectionName);
-    const collection = getDb().collection(collectionName);
-    await collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
-
-    const indexes: DeprecatedMongoIndexDefinition[] = [
-      {
-        collectionName,
-        indexName: 'legacy_field_1',
-        key: { legacyField: 1 },
-        deprecatedVersion: '4.15.0',
-        reason: 'test legacy index'
-      }
-    ];
-
-    const firstReport = await MongoIndexManager.runDeprecatedIndexCleanupOnce({
-      db: getDb(),
-      cleanupKey,
-      apply: true,
-      indexes,
-      logger
-    });
-    await collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
-    const secondReport = await MongoIndexManager.runDeprecatedIndexCleanupOnce({
-      db: getDb(),
-      cleanupKey,
-      apply: true,
-      indexes,
-      logger
-    });
-
-    const indexNames = await getIndexNames(collectionName);
-    expect(firstReport).toBe(secondReport);
-    expect(indexNames.has('legacy_field_1')).toBe(true);
-    expect(logger.info).toHaveBeenCalledTimes(2);
-    expect(logger.debug).toHaveBeenCalledWith(
-      'MongoDB deprecated index cleanup skipped',
-      expect.objectContaining({
-        cleanupKey,
-        reason: 'already_started_or_completed'
-      })
-    );
-  });
-
-  it('dry-runs matched deprecated indexes without deleting them', async () => {
-    const collectionName = getCleanupCollectionName();
-    await dropCollection(collectionName);
-    const collection = getDb().collection(collectionName);
-    await collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
-
-    const indexes: DeprecatedMongoIndexDefinition[] = [
-      {
-        collectionName,
-        indexName: 'legacy_field_1',
-        key: { legacyField: 1 },
-        deprecatedVersion: '4.15.0',
-        reason: 'test legacy index'
-      }
-    ];
-
-    const report = await MongoIndexManager.cleanupDeprecatedIndexes({
-      db: getDb(),
-      apply: false,
-      indexes
-    });
-
-    const indexNames = await getIndexNames(collectionName);
-    expect(report.items).toEqual([
-      expect.objectContaining({
-        action: 'drop',
-        applied: false,
-        collectionName,
-        indexName: 'legacy_field_1'
-      })
-    ]);
-    expect(indexNames.has('legacy_field_1')).toBe(true);
-  });
-
-  it('drops only matched deprecated indexes when apply is enabled', async () => {
-    const collectionName = getCleanupCollectionName();
-    await dropCollection(collectionName);
-    const collection = getDb().collection(collectionName);
-    await collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
-    await collection.createIndex({ currentField: 1 }, { name: 'current_field_1' });
-
-    const indexes: DeprecatedMongoIndexDefinition[] = [
-      {
-        collectionName,
-        indexName: 'legacy_field_1',
-        key: { legacyField: 1 },
-        deprecatedVersion: '4.15.0',
-        replacementIndexNames: ['current_field_1'],
-        reason: 'test legacy index'
-      }
-    ];
-
-    const report = await MongoIndexManager.cleanupDeprecatedIndexes({
-      db: getDb(),
-      apply: true,
-      indexes
-    });
-
-    const indexNames = await getIndexNames(collectionName);
-    expect(report.items).toEqual([
+    const indexNames = await getIndexNames(model);
+    expect(indexNames).toContain('current_field_1');
+    expect(indexNames).toContain('customer_custom_1');
+    expect(indexNames).not.toContain('legacy_field_1');
+    expect(result.cleanupReport.items).toEqual([
       expect.objectContaining({
         action: 'drop',
         applied: true,
-        collectionName,
+        collectionName: model.collection.collectionName,
         indexName: 'legacy_field_1'
       })
     ]);
-    expect(indexNames.has('legacy_field_1')).toBe(false);
-    expect(indexNames.has('current_field_1')).toBe(true);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Detected MongoDB indexes not declared by FastGPT schema',
+      expect.objectContaining({
+        schemaExternalIndexNames: expect.arrayContaining(['legacy_field_1', 'customer_custom_1'])
+      })
+    );
   });
 
-  it('skips same-name indexes when key or options do not match registry', async () => {
-    const collectionName = getCleanupCollectionName();
-    await dropCollection(collectionName);
-    const collection = getDb().collection(collectionName);
-    await collection.createIndex({ customerField: 1 }, { name: 'legacy_field_1' });
+  it('does not delete schema-external indexes when the Schema has no deprecated declarations', async () => {
+    const schema = new Schema(
+      { currentField: String, customerField: String },
+      { autoIndex: false }
+    );
+    schema.index({ currentField: 1 }, { name: 'current_field_1' });
+    const model = createModel({ schema });
+    await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
 
-    const indexes: DeprecatedMongoIndexDefinition[] = [
+    const result = await MongoIndexManager.syncModelIndexes({ model });
+
+    expect(await getIndexNames(model)).toContain('customer_custom_1');
+    expect(result.cleanupReport.items).toEqual([]);
+  });
+
+  it('reuses an in-flight task for concurrent calls on the same Model', async () => {
+    const schema = new Schema({ currentField: String }, { autoIndex: false });
+    schema.index({ currentField: 1 }, { name: 'current_field_1' });
+    const model = createModel({ schema });
+    const createIndexes = vi.spyOn(model, 'createIndexes');
+
+    const [firstResult, secondResult] = await Promise.all([
+      MongoIndexManager.syncModelIndexes({ model }),
+      MongoIndexManager.syncModelIndexes({ model })
+    ]);
+
+    expect(firstResult).toBe(secondResult);
+    expect(createIndexes).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not clean deprecated indexes when creating current indexes fails', async () => {
+    const schema = new Schema(
+      { currentField: String, conflictingField: String, legacyField: String },
+      { autoIndex: false }
+    );
+    schema.index({ currentField: 1 }, { name: 'current_field_1' });
+    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema });
+    await model.collection.createIndex({ conflictingField: 1 }, { name: 'current_field_1' });
+    await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+
+    await expect(MongoIndexManager.syncModelIndexes({ model })).rejects.toThrow();
+
+    expect(await getIndexNames(model)).toContain('legacy_field_1');
+  });
+});
+
+describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('supports dry-run without deleting a matched index', async () => {
+    const schema = new Schema({ legacyField: String }, { autoIndex: false });
+    defineDeprecatedIndexes(schema, [
       {
-        collectionName,
-        indexName: 'legacy_field_1',
-        key: { legacyField: 1 },
-        options: { unique: true },
-        deprecatedVersion: '4.15.0',
-        reason: 'test legacy index'
+        ...legacyDefinition,
+        options: { unique: true }
       }
-    ];
+    ]);
+    const model = createModel({ schema });
+    await model.collection.createIndex(
+      { legacyField: 1 },
+      { name: 'legacy_field_1', unique: true }
+    );
 
-    const report = await MongoIndexManager.cleanupDeprecatedIndexes({
-      db: getDb(),
-      apply: true,
-      indexes
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: false,
+      logger
     });
 
-    const indexNames = await getIndexNames(collectionName);
     expect(report.items).toEqual([
-      expect.objectContaining({
-        action: 'skip_mismatch',
-        applied: false,
-        collectionName,
-        indexName: 'legacy_field_1'
-      })
+      expect.objectContaining({ action: 'drop', applied: false, indexName: 'legacy_field_1' })
     ]);
-    expect(indexNames.has('legacy_field_1')).toBe(true);
+    expect(await getIndexNames(model)).toContain('legacy_field_1');
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Deprecated MongoDB index can be dropped',
+      expect.objectContaining({ indexName: 'legacy_field_1' })
+    );
   });
 
-  it('skips same-name compound indexes when key order does not match registry', async () => {
-    const collectionName = getCleanupCollectionName();
-    await dropCollection(collectionName);
-    const collection = getDb().collection(collectionName);
-    await collection.createIndex(
-      { customerField: 1, legacyField: 1 },
+  it('preserves same-name indexes when key, key order, or options do not match', async () => {
+    const schema = new Schema(
+      { customerField: String, legacyField: String, otherField: String },
+      { autoIndex: false }
+    );
+    defineDeprecatedIndexes(schema, [
+      {
+        ...legacyDefinition,
+        options: { unique: true }
+      },
+      {
+        indexName: 'legacy_compound_1',
+        key: { legacyField: 1, otherField: 1 }
+      }
+    ]);
+    const model = createModel({ schema });
+    await model.collection.createIndex({ customerField: 1 }, { name: 'legacy_field_1' });
+    await model.collection.createIndex(
+      { otherField: 1, legacyField: 1 },
       { name: 'legacy_compound_1' }
     );
 
-    const indexes: DeprecatedMongoIndexDefinition[] = [
-      {
-        collectionName,
-        indexName: 'legacy_compound_1',
-        key: { legacyField: 1, customerField: 1 },
-        deprecatedVersion: '4.15.0',
-        reason: 'test legacy index'
-      }
-    ];
-
-    const report = await MongoIndexManager.cleanupDeprecatedIndexes({
-      db: getDb(),
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
       apply: true,
-      indexes
+      logger
     });
 
-    const indexNames = await getIndexNames(collectionName);
     expect(report.items).toEqual([
-      expect.objectContaining({
-        action: 'skip_mismatch',
-        applied: false,
-        collectionName,
-        indexName: 'legacy_compound_1'
-      })
+      expect.objectContaining({ action: 'skip_mismatch', indexName: 'legacy_field_1' }),
+      expect.objectContaining({ action: 'skip_mismatch', indexName: 'legacy_compound_1' })
     ]);
-    expect(indexNames.has('legacy_compound_1')).toBe(true);
+    expect(await getIndexNames(model)).toEqual(
+      expect.objectContaining(new Set(['_id_', 'legacy_field_1', 'legacy_compound_1']))
+    );
   });
 
-  it('skips cleanup when replacement index is required but missing', async () => {
-    const collectionName = getCleanupCollectionName();
-    await dropCollection(collectionName);
-    const collection = getDb().collection(collectionName);
-    await collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+  it('reports a missing deprecated index and formats its report', async () => {
+    const schema = new Schema({ legacyField: String }, { autoIndex: false });
+    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema });
 
-    const indexes: DeprecatedMongoIndexDefinition[] = [
-      {
-        collectionName,
-        indexName: 'legacy_field_1',
-        key: { legacyField: 1 },
-        deprecatedVersion: '4.15.0',
-        replacementIndexNames: ['current_field_1'],
-        reason: 'test legacy index'
-      }
-    ];
-
-    const report = await MongoIndexManager.cleanupDeprecatedIndexes({
-      db: getDb(),
-      apply: true,
-      indexes
-    });
-
-    const indexNames = await getIndexNames(collectionName);
-    expect(report.items).toEqual([
-      expect.objectContaining({
-        action: 'skip_missing_replacement',
-        applied: false,
-        collectionName,
-        indexName: 'legacy_field_1'
-      })
-    ]);
-    expect(indexNames.has('legacy_field_1')).toBe(true);
-  });
-
-  it('skips cleanup until every replacement index exists', async () => {
-    const collectionName = getCleanupCollectionName();
-    await dropCollection(collectionName);
-    const collection = getDb().collection(collectionName);
-    await collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
-    await collection.createIndex({ currentField: 1 }, { name: 'current_field_1' });
-
-    const indexes: DeprecatedMongoIndexDefinition[] = [
-      {
-        collectionName,
-        indexName: 'legacy_field_1',
-        key: { legacyField: 1 },
-        deprecatedVersion: '4.15.0',
-        replacementIndexNames: ['current_field_1', 'current_field_2'],
-        reason: 'test legacy index'
-      }
-    ];
-
-    const report = await MongoIndexManager.cleanupDeprecatedIndexes({
-      db: getDb(),
-      apply: true,
-      indexes
-    });
-
-    const indexNames = await getIndexNames(collectionName);
-    expect(report.items).toEqual([
-      expect.objectContaining({
-        action: 'skip_missing_replacement',
-        applied: false,
-        collectionName,
-        indexName: 'legacy_field_1',
-        missingReplacementIndexNames: ['current_field_2']
-      })
-    ]);
-    expect(indexNames.has('legacy_field_1')).toBe(true);
-  });
-
-  it('reports missing deprecated indexes and formats the report', async () => {
-    const collectionName = getCleanupCollectionName();
-    await dropCollection(collectionName);
-
-    const report = await MongoIndexManager.cleanupDeprecatedIndexes({
-      db: getDb(),
-      apply: false,
-      indexes: [
-        {
-          collectionName,
-          indexName: 'missing_1',
-          key: { missing: 1 },
-          deprecatedVersion: '4.15.0',
-          reason: 'test missing index'
-        }
-      ]
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true
     });
 
     expect(report.items).toEqual([
-      expect.objectContaining({
-        action: 'skip_missing',
-        collectionName,
-        indexName: 'missing_1'
-      })
+      expect.objectContaining({ action: 'skip_missing', indexName: 'legacy_field_1' })
     ]);
     expect(MongoIndexManager.summarizeCleanupReport(report)).toEqual({
       total: 1,
@@ -494,11 +209,130 @@ describe('MongoIndexManager.cleanupDeprecatedIndexes', () => {
       droppable: 0,
       skippedMissing: 1,
       skippedMismatch: 0,
-      skippedMissingReplacement: 0,
       errors: 0
     });
     expect(MongoIndexManager.formatCleanupReport(report)).toContain(
-      `${collectionName}.missing_1 version=4.15.0`
+      `${model.collection.collectionName}.legacy_field_1 reason=Deprecated index does not exist`
     );
+  });
+
+  it('treats a concurrent IndexNotFound response as an idempotent skip', async () => {
+    const schema = new Schema({ legacyField: String }, { autoIndex: false });
+    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema });
+    await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+    vi.spyOn(model.collection, 'dropIndex').mockRejectedValueOnce({
+      codeName: 'IndexNotFound'
+    });
+
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true
+    });
+
+    expect(report.items).toEqual([
+      expect.objectContaining({
+        action: 'skip_missing',
+        reason: 'Deprecated index was already removed'
+      })
+    ]);
+  });
+
+  it('recognizes the numeric MongoDB IndexNotFound code', async () => {
+    const schema = new Schema({ legacyField: String }, { autoIndex: false });
+    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema });
+    await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+    vi.spyOn(model.collection, 'dropIndex').mockRejectedValueOnce({ code: 27 });
+
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true
+    });
+
+    expect(report.items[0]).toMatchObject({
+      action: 'skip_missing',
+      reason: 'Deprecated index was already removed'
+    });
+  });
+
+  it('captures unexpected inspection errors in the cleanup report', async () => {
+    const schema = new Schema({ legacyField: String }, { autoIndex: false });
+    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema });
+    vi.spyOn(model.collection, 'indexes').mockRejectedValueOnce(new Error('inspection failed'));
+
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true,
+      logger
+    });
+
+    expect(report.items).toEqual([
+      expect.objectContaining({
+        action: 'error',
+        error: 'inspection failed',
+        indexName: 'legacy_field_1'
+      })
+    ]);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to cleanup deprecated MongoDB index',
+      expect.objectContaining({ error: 'inspection failed' })
+    );
+  });
+
+  it('normalizes non-Error cleanup failures into report messages', async () => {
+    const schema = new Schema({ legacyField: String }, { autoIndex: false });
+    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema });
+    await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+    vi.spyOn(model.collection, 'dropIndex').mockRejectedValueOnce('drop failed');
+
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true
+    });
+
+    expect(report.items[0]).toMatchObject({ action: 'error', error: 'drop failed' });
+  });
+
+  it('summarizes every cleanup action and formats error details', () => {
+    const report = {
+      apply: true,
+      items: [
+        {
+          collectionName: 'test_collection',
+          indexName: 'legacy_drop_1',
+          action: 'drop' as const,
+          applied: false,
+          reason: 'Can drop',
+          error: 'test error'
+        },
+        {
+          collectionName: 'test_collection',
+          indexName: 'legacy_mismatch_1',
+          action: 'skip_mismatch' as const,
+          applied: false,
+          reason: 'Mismatch'
+        },
+        {
+          collectionName: 'test_collection',
+          indexName: 'legacy_error_1',
+          action: 'error' as const,
+          applied: false,
+          reason: 'Error'
+        }
+      ]
+    };
+
+    expect(MongoIndexManager.summarizeCleanupReport(report)).toEqual({
+      total: 3,
+      dropped: 0,
+      droppable: 1,
+      skippedMissing: 0,
+      skippedMismatch: 1,
+      errors: 1
+    });
+    expect(MongoIndexManager.formatCleanupReport(report)).toContain('error=test error');
   });
 });

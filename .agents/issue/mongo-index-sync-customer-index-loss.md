@@ -4,7 +4,7 @@
 
 私有化部署客户可能会直接在 MongoDB 中添加自定义索引，用于客户自己的查询、报表、审计或集成任务。FastGPT 服务重启时会加载 Mongoose model，并执行索引同步。当前同步使用 Mongoose `model.syncIndexes()`，会删除 schema 中未声明的索引，导致客户自建索引被清理。
 
-`SYNC_INDEX=false` 可以阻止启动同步，但它同时阻止 FastGPT 新版本缺失索引的创建，升级时可能留下性能问题或唯一约束缺失。因此它只能算临时开关，不是长期索引治理方案。当前决策是不再保留该布尔变量，改为 `MONGO_INDEX_SYNC_MODE` 表达更明确的索引处理模式。
+`SYNC_INDEX=false` 可以阻止启动同步，但它同时阻止 FastGPT 新版本缺失索引的创建，升级时可能留下性能问题或唯一约束缺失。因此它只能算临时开关，不是长期索引治理方案。最终决策是不再保留索引同步环境变量，启动时固定执行 manager 管理的主动安全同步。
 
 ## 证据
 
@@ -46,26 +46,24 @@ Mongoose `syncIndexes()` 的语义是：
 
 能保留客户索引，但无法发现和治理 FastGPT 历史旧索引。比如唯一索引或 TTL 索引的 options 发生变化时，旧索引可能继续影响业务。
 
-当前最终方案仍以 `createIndexes()` 作为安全创建动作，但通过统一的 index manager 包装差异检查、日志和启动入口。默认 `create` 不做任何删除；显式 `sync` 只清理 registry 中登记且精确匹配的 FastGPT 废弃索引。
+当前最终方案仍以 `createIndexes()` 作为安全创建动作，但通过统一的 index manager 包装差异检查、日志和启动入口。创建当前索引后，只清理所属 Schema 显式登记且精确匹配的 FastGPT 废弃索引。
 
-### 推荐：引入索引同步模式
+### 推荐：固定执行主动安全同步
 
-将索引同步拆成不同意图：
+每个 model 固定执行：
 
-- `off`：完全跳过。
-- `create`：只创建缺失索引，不删除未知索引。
-- `dryRun`：只检查差异。
-- `sync`：创建缺失索引，并删除 `deprecatedIndexes` registry 中登记且精确匹配的 FastGPT 废弃索引。
+- 检查并记录当前 Schema 与数据库索引的差异。
+- 创建当前 Schema 缺失的索引。
+- 删除当前 Schema 通过 `registerDeprecatedMongoIndexes` 显式登记、定义精确匹配且替代索引已存在的历史索引。
+- 保留客户自建索引及其他未登记索引。
 
-常规启动不再暴露旧 `syncIndexes()` 全量同步行为，避免重新引入删除客户索引的风险。
-
-私有化默认推荐 `create`。
+启动过程不再暴露模式选项或旧 `syncIndexes()` 全量同步行为，避免不同部署的索引状态因配置分支长期分叉。
 
 ## 已确认方向
 
 1. 默认行为从破坏性全量同步改为 safe create。
-2. 直接移除 `SYNC_INDEX`，不做长期兼容映射。
-3. 启动索引处理不提供按 schema 外索引批量删除的能力；显式 `sync` 只允许删除 registry 中登记且精确匹配的 FastGPT 废弃索引。
+2. 直接移除 `SYNC_INDEX` 和 `MONGO_INDEX_SYNC_MODE`，不做长期兼容映射。
+3. 启动索引处理不提供按 schema 外索引批量删除的能力；只允许删除所属 Schema 登记且精确匹配的 FastGPT 废弃索引。
 4. `llm_request_records.requestId_1` 已确认不再需要，但不在本次启动索引同步中清理。
 
 ## 已知旧索引样例
@@ -79,7 +77,7 @@ Mongoose `syncIndexes()` 的语义是：
 
 ## 已确认边界
 
-1. 常规启动默认只执行 `create`，不会删除未知索引。
-2. `dryRun` 只检查差异，不创建、不删除。
+1. 常规启动固定补建当前索引，并清理所属 Schema 明确声明的废弃索引。
+2. 未登记的 schema 外索引只记录差异，不会删除。
 3. 不保留旧式全量同步入口；Root 管理员 inspect/apply API 或等价脚本作为后续增强，不阻塞本次修复。
-4. 历史旧索引清理必须走 `deprecatedIndexes` registry；客户自建或未知索引不会被 `sync` 删除。
+4. 历史旧索引必须在所属 Schema 中登记；客户自建或未知索引不会被主动同步删除。

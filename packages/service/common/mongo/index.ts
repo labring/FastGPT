@@ -162,15 +162,13 @@ const syncMongoIndex = (model: Model<any>) => {
     return;
   }
 
-  void MongoIndexManager.runModelIndexMode({
+  void MongoIndexManager.syncModelIndexes({
     model,
-    mode: serviceEnv.MONGO_INDEX_SYNC_MODE,
     logger
   }).catch((error) => {
     logger.error('Failed to ensure MongoDB indexes', {
       modelName: model.modelName,
       collectionName: model.collection.collectionName,
-      mode: serviceEnv.MONGO_INDEX_SYNC_MODE,
       error
     });
   });
@@ -179,6 +177,10 @@ const syncMongoIndex = (model: Model<any>) => {
 export const ReadPreference = connectionMongo.mongo.ReadPreference;
 
 export { MongoIndexManager } from './indexManager';
+export {
+  getDeprecatedIndexes as getSchemaDeprecatedMongoIndexes,
+  defineDeprecatedIndexes as defineDeprecatedIndexes
+} from './schemaIndexes';
 export type {
   MongoIndexCleanupAction,
   MongoIndexCleanupReport,
@@ -186,3 +188,4 @@ export type {
   MongoIndexCleanupSummary,
   MongoIndexSyncResult
 } from './indexManager';
+export type { DeprecatedMongoIndexDefinition, DeprecatedMongoIndexOptions } from './schemaIndexes';

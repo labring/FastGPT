@@ -1,14 +1,8 @@
 import { getLogger, LogCategories } from '../logger';
-import type { Connection, Model } from 'mongoose';
-import {
-  deprecatedMongoIndexes as defaultDeprecatedMongoIndexes,
-  type DeprecatedMongoIndexDefinition
-} from './deprecatedIndexes';
-import type { serviceEnv } from '../../env';
+import type { Model } from 'mongoose';
+import { getDeprecatedIndexes, type DeprecatedMongoIndexDefinition } from './schemaIndexes';
 
 const defaultLogger = getLogger(LogCategories.INFRA.MONGO);
-
-type MongoIndexSyncMode = typeof serviceEnv.MONGO_INDEX_SYNC_MODE;
 
 type MongoIndexLogger = {
   debug: (message: string, data?: Record<string, unknown>) => void;
@@ -23,11 +17,11 @@ type MongooseDiffIndexesResult = {
 };
 
 export type MongoIndexSyncResult = {
-  mode: MongoIndexSyncMode;
   modelName: string;
   collectionName: string;
   toDrop: string[];
   toCreate: unknown[];
+  cleanupReport: MongoIndexCleanupReport;
 };
 
 export type MongoIndexDescription = {
@@ -40,21 +34,7 @@ export type MongoIndexDescription = {
   collation?: unknown;
 };
 
-type MongoIndexCollection = {
-  indexes: () => Promise<MongoIndexDescription[]>;
-  dropIndex: (indexName: string) => Promise<unknown>;
-};
-
-type MongoIndexDb = {
-  collection: (collectionName: string) => MongoIndexCollection;
-};
-
-export type MongoIndexCleanupAction =
-  | 'drop'
-  | 'skip_missing'
-  | 'skip_mismatch'
-  | 'skip_missing_replacement'
-  | 'error';
+export type MongoIndexCleanupAction = 'drop' | 'skip_missing' | 'skip_mismatch' | 'error';
 
 export type MongoIndexCleanupReportItem = {
   collectionName: string;
@@ -62,9 +42,6 @@ export type MongoIndexCleanupReportItem = {
   action: MongoIndexCleanupAction;
   applied: boolean;
   reason: string;
-  deprecatedVersion: string;
-  replacementIndexNames?: string[];
-  missingReplacementIndexNames?: string[];
   error?: string;
 };
 
@@ -79,21 +56,11 @@ export type MongoIndexCleanupSummary = {
   droppable: number;
   skippedMissing: number;
   skippedMismatch: number;
-  skippedMissingReplacement: number;
   errors: number;
 };
 
-type RunModelIndexModeParams = {
+type SyncModelIndexesParams = {
   model: Model<any>;
-  mode: MongoIndexSyncMode;
-  logger?: MongoIndexLogger;
-};
-
-type RunDeprecatedIndexCleanupOnceParams = {
-  db: MongoIndexDb;
-  cleanupKey: string;
-  apply: boolean;
-  indexes?: DeprecatedMongoIndexDefinition[];
   logger?: MongoIndexLogger;
 };
 
@@ -108,22 +75,20 @@ const optionKeys = [
 /**
  * MongoDB 索引管理入口。
  *
- * 默认启动期只负责非破坏性补建 schema 索引；只有显式 `sync` 模式才会额外清理
- * `deprecatedIndexes` 中登记的 FastGPT 历史旧索引，避免普通服务重启误删客户自建索引。
+ * 每个 model 固定执行安全同步：补建当前 Schema 索引，再删除该 Schema 明确登记且
+ * 精确匹配的历史索引。Schema 外未知索引只记录不删除，以保护客户自建索引。
  */
 export class MongoIndexManager {
   private static modelIndexTasks = new Map<Model<any>, Promise<MongoIndexSyncResult>>();
-  private static deprecatedCleanupTasks = new Map<string, Promise<MongoIndexCleanupReport>>();
 
   private static getCollectionName(model: Model<any>) {
     return model.collection.collectionName;
   }
 
   /**
-   * 只计算当前 schema 和数据库索引的差异，不创建也不删除任何索引。
+   * 只计算当前 Schema 和数据库索引的差异，不创建也不删除任何索引。
    *
-   * `toDrop` 只表示 Mongoose 认为 schema 外存在的索引。默认安全模式下这些索引
-   * 只会被记录为未知索引，不会删除，以保护客户自建索引。
+   * `toDrop` 仅表示 Mongoose 认为 Schema 外存在的索引，不能直接作为删除清单。
    */
   static async inspectModelIndexes(
     model: Model<any>
@@ -141,19 +106,18 @@ export class MongoIndexManager {
   }
 
   /**
-   * 按配置模式处理单个 Mongoose model 的索引。
+   * 主动同步单个 Model 的索引。
    *
-   * 默认 `create` 只创建 schema 中缺失的索引，并保留所有 schema 外索引。
-   * `sync` 在 model 级别仍只创建缺失索引；废弃索引由连接初始化流程全局清理一次。
+   * 当前索引必须先创建成功，之后才会清理 Schema 本地登记的废弃索引。同一进程内
+   * 针对同一个 Model 的并发调用复用进行中的任务，完成后允许重连或热加载再次检查。
    */
-  static async runModelIndexMode(params: RunModelIndexModeParams): Promise<MongoIndexSyncResult> {
+  static async syncModelIndexes(params: SyncModelIndexesParams): Promise<MongoIndexSyncResult> {
     const existingTask = MongoIndexManager.modelIndexTasks.get(params.model);
     if (existingTask) {
       return existingTask;
     }
 
-    const task = MongoIndexManager.runModelIndexModeInner(params);
-
+    const task = MongoIndexManager.syncModelIndexesInner(params);
     MongoIndexManager.modelIndexTasks.set(params.model, task);
 
     try {
@@ -165,197 +129,96 @@ export class MongoIndexManager {
     }
   }
 
-  /**
-   * 等待指定 Mongoose 连接上已经登记的 model 索引任务结束。
-   *
-   * 全局清理废弃索引前必须先等待替代索引创建完成，否则可能因 replacement 尚不存在而跳过清理。
-   */
-  static async waitForModelIndexTasks(connection: Connection): Promise<void> {
-    while (true) {
-      const tasks = [...MongoIndexManager.modelIndexTasks.entries()]
-        .filter(([model]) => model.db === connection)
-        .map(([, task]) => task);
-
-      if (tasks.length === 0) {
-        return;
-      }
-
-      await Promise.allSettled(tasks);
-    }
-  }
-
-  /**
-   * 对同一个 MongoDB 连接全局执行一次废弃索引清理。
-   *
-   * 清理范围只来自 deprecated registry；重复调用会复用首次任务，不会再次扫描或删除。
-   */
-  static async runDeprecatedIndexCleanupOnce({
-    db,
-    cleanupKey,
-    apply,
-    indexes = defaultDeprecatedMongoIndexes,
-    logger = defaultLogger
-  }: RunDeprecatedIndexCleanupOnceParams): Promise<MongoIndexCleanupReport> {
-    const existingTask = MongoIndexManager.deprecatedCleanupTasks.get(cleanupKey);
-    if (existingTask) {
-      logger.debug('MongoDB deprecated index cleanup skipped', {
-        cleanupKey,
-        reason: 'already_started_or_completed'
-      });
-      return existingTask;
-    }
-
-    const task = MongoIndexManager.cleanupDeprecatedIndexes({
-      db,
-      apply,
-      indexes,
-      logger
-    });
-    MongoIndexManager.deprecatedCleanupTasks.set(cleanupKey, task);
-
-    const report = await task;
-    logger.info('MongoDB deprecated index cleanup finished', {
-      cleanupKey,
-      apply,
-      summary: MongoIndexManager.summarizeCleanupReport(report)
-    });
-    return report;
-  }
-
-  /** 生成不包含凭据的连接级 cleanup 去重键。 */
-  static getConnectionCleanupKey(connection: Connection): string {
-    return [connection.host, connection.port, connection.name].filter(Boolean).join(':');
-  }
-
-  private static async runModelIndexModeInner({
+  private static async syncModelIndexesInner({
     model,
-    mode,
     logger = defaultLogger
-  }: RunModelIndexModeParams): Promise<MongoIndexSyncResult> {
-    const collectionName = MongoIndexManager.getCollectionName(model);
-    const baseResult = {
-      mode,
-      modelName: model.modelName,
-      collectionName,
-      toDrop: [],
-      toCreate: []
-    } satisfies MongoIndexSyncResult;
-
-    if (mode === 'off') {
-      logger.debug('MongoDB index management skipped', {
-        ...MongoIndexManager.buildIndexModeLogData(baseResult),
-        reason: 'mode_off'
-      });
-      return baseResult;
-    }
-
+  }: SyncModelIndexesParams): Promise<MongoIndexSyncResult> {
     const inspection = await MongoIndexManager.inspectModelIndexes(model);
-    const result: MongoIndexSyncResult = {
-      ...baseResult,
-      toDrop: inspection.toDrop,
-      toCreate: inspection.toCreate
-    };
+    const logData = MongoIndexManager.buildIndexSyncLogData(inspection);
 
     logger.debug('MongoDB index diff inspected', {
-      ...MongoIndexManager.buildIndexModeLogData(result),
-      schemaExternalIndexNames: result.toDrop,
-      toCreate: result.toCreate
+      ...logData,
+      schemaExternalIndexNames: inspection.toDrop,
+      toCreate: inspection.toCreate
     });
 
-    if (result.toDrop.length > 0) {
+    if (inspection.toDrop.length > 0) {
       logger.warn('Detected MongoDB indexes not declared by FastGPT schema', {
-        ...MongoIndexManager.buildIndexModeLogData(result),
-        schemaExternalIndexNames: result.toDrop,
-        cleanupPolicy: 'only_registered_deprecated_indexes_can_be_dropped'
+        ...logData,
+        schemaExternalIndexNames: inspection.toDrop,
+        cleanupPolicy: 'only_schema_registered_deprecated_indexes_can_be_dropped'
       });
-    }
-
-    if (mode === 'dryRun') {
-      logger.info(
-        'MongoDB index dry-run completed',
-        MongoIndexManager.buildIndexModeLogData(result)
-      );
-      return result;
-    }
-
-    if (mode === 'sync') {
-      logger.info('MongoDB managed index sync started', {
-        ...MongoIndexManager.buildIndexModeLogData(result),
-        cleanupPolicy: 'deprecated_indexes_are_cleaned_once_per_connection'
-      });
-      logger.debug('MongoDB managed index sync detail', {
-        ...MongoIndexManager.buildIndexModeLogData(result),
-        schemaExternalIndexNames: result.toDrop,
-        toCreate: result.toCreate,
-        cleanupPolicy: 'deprecated_indexes_are_cleaned_once_per_connection'
-      });
-
-      await model.createIndexes({ background: true });
-
-      logger.info('MongoDB managed index sync completed', {
-        ...MongoIndexManager.buildIndexModeLogData(result),
-        cleanupPolicy: 'deprecated_indexes_are_cleaned_once_per_connection'
-      });
-
-      return result;
     }
 
     await model.createIndexes({ background: true });
 
-    logger.info('MongoDB schema indexes ensured', MongoIndexManager.buildIndexModeLogData(result));
-    logger.debug('MongoDB schema index ensure detail', {
-      ...MongoIndexManager.buildIndexModeLogData(result),
-      schemaExternalIndexNames: result.toDrop,
-      toCreate: result.toCreate
+    const cleanupReport = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true,
+      logger
+    });
+    const result: MongoIndexSyncResult = {
+      ...inspection,
+      cleanupReport
+    };
+
+    logger.info('MongoDB indexes synchronized', {
+      ...logData,
+      cleanupSummary: MongoIndexManager.summarizeCleanupReport(cleanupReport)
+    });
+    logger.debug('MongoDB index synchronization detail', {
+      ...logData,
+      schemaExternalIndexNames: inspection.toDrop,
+      toCreate: inspection.toCreate,
+      cleanupReport
     });
 
     return result;
   }
 
   /**
-   * 清理 FastGPT 明确登记的废弃 MongoDB 索引。
+   * 清理当前 Model 所属 Schema 明确登记的废弃索引。
    *
-   * 默认 dry-run 只输出计划；只有 `apply=true` 且 registry 与数据库索引精确匹配时才会删除。
-   * schema 外未知索引不在本函数处理范围内，避免误删客户自建索引。
+   * 只有 name、key 和关键 options 精确匹配时才允许删除；定义不匹配或未知索引均
+   * 保留。`apply=false` 仅供诊断入口复用，启动同步固定传 true。
    */
-  static async cleanupDeprecatedIndexes({
-    db,
+  static async cleanupModelDeprecatedIndexes({
+    model,
     apply,
-    indexes = defaultDeprecatedMongoIndexes,
     logger
   }: {
-    db: MongoIndexDb;
+    model: Model<any>;
     apply: boolean;
-    indexes?: DeprecatedMongoIndexDefinition[];
     logger?: MongoIndexLogger;
   }): Promise<MongoIndexCleanupReport> {
+    const collectionName = MongoIndexManager.getCollectionName(model);
+    const definitions = getDeprecatedIndexes(model.schema);
     const items: MongoIndexCleanupReportItem[] = [];
 
-    if (indexes.length === 0) {
-      return {
-        apply,
-        items
-      };
+    if (definitions.length === 0) {
+      return { apply, items };
     }
 
     logger?.debug('MongoDB deprecated index cleanup started', {
+      modelName: model.modelName,
+      collectionName,
       apply,
-      deprecatedIndexCount: indexes.length
+      deprecatedIndexCount: definitions.length
     });
 
-    for (const definition of indexes) {
+    for (const definition of definitions) {
       try {
-        const collection = db.collection(definition.collectionName);
-        const currentIndexes = await collection.indexes().catch((error) => {
+        const currentIndexes = (await model.collection.indexes().catch((error) => {
           if (MongoIndexManager.isNamespaceNotFoundError(error)) {
             return [];
           }
           throw error;
-        });
+        })) as MongoIndexDescription[];
         const targetIndex = currentIndexes.find((index) => index.name === definition.indexName);
 
         if (!targetIndex) {
           const item = MongoIndexManager.buildCleanupItem({
+            collectionName,
             definition,
             action: 'skip_missing',
             reason: 'Deprecated index does not exist'
@@ -367,9 +230,10 @@ export class MongoIndexManager {
 
         if (!MongoIndexManager.isDeprecatedIndexMatched({ definition, index: targetIndex })) {
           const item = MongoIndexManager.buildCleanupItem({
+            collectionName,
             definition,
             action: 'skip_mismatch',
-            reason: 'Index definition does not match deprecated registry entry'
+            reason: 'Index definition does not match Schema declaration'
           });
           logger?.warn('Skip deprecated MongoDB index cleanup because definition mismatched', {
             ...item,
@@ -382,31 +246,27 @@ export class MongoIndexManager {
           continue;
         }
 
-        const replacementIndexNames = definition.replacementIndexNames ?? [];
-        const missingReplacementIndexNames = replacementIndexNames.filter(
-          (indexName) => !currentIndexes.some((index) => index.name === indexName)
-        );
-
-        if (missingReplacementIndexNames.length > 0) {
-          const item = MongoIndexManager.buildCleanupItem({
-            definition,
-            action: 'skip_missing_replacement',
-            reason: 'Replacement index does not exist',
-            missingReplacementIndexNames
-          });
-          logger?.warn(
-            'Skip deprecated MongoDB index cleanup because replacement is missing',
-            item
-          );
-          items.push(item);
-          continue;
-        }
-
         if (apply) {
-          await collection.dropIndex(definition.indexName);
+          try {
+            await model.collection.dropIndex(definition.indexName);
+          } catch (error) {
+            if (MongoIndexManager.isIndexNotFoundError(error)) {
+              const item = MongoIndexManager.buildCleanupItem({
+                collectionName,
+                definition,
+                action: 'skip_missing',
+                reason: 'Deprecated index was already removed'
+              });
+              logger?.debug('Deprecated MongoDB index was already removed', item);
+              items.push(item);
+              continue;
+            }
+            throw error;
+          }
         }
 
         const item = MongoIndexManager.buildCleanupItem({
+          collectionName,
           definition,
           action: 'drop',
           applied: apply,
@@ -420,6 +280,7 @@ export class MongoIndexManager {
         items.push(item);
       } catch (error) {
         const item = MongoIndexManager.buildCleanupItem({
+          collectionName,
           definition,
           action: 'error',
           reason: 'Failed to inspect or cleanup deprecated index',
@@ -431,14 +292,13 @@ export class MongoIndexManager {
     }
 
     logger?.debug('MongoDB deprecated index cleanup completed', {
+      modelName: model.modelName,
+      collectionName,
       apply,
       summary: MongoIndexManager.summarizeCleanupReport({ apply, items })
     });
 
-    return {
-      apply,
-      items
-    };
+    return { apply, items };
   }
 
   static summarizeCleanupReport(report: MongoIndexCleanupReport): MongoIndexCleanupSummary {
@@ -454,8 +314,6 @@ export class MongoIndexManager {
           summary.skippedMissing += 1;
         } else if (item.action === 'skip_mismatch') {
           summary.skippedMismatch += 1;
-        } else if (item.action === 'skip_missing_replacement') {
-          summary.skippedMissingReplacement += 1;
         } else if (item.action === 'error') {
           summary.errors += 1;
         }
@@ -468,7 +326,6 @@ export class MongoIndexManager {
         droppable: 0,
         skippedMissing: 0,
         skippedMismatch: 0,
-        skippedMissingReplacement: 0,
         errors: 0
       }
     );
@@ -486,14 +343,7 @@ export class MongoIndexManager {
           `- [${item.action}]`,
           item.applied ? 'applied' : 'not-applied',
           `${item.collectionName}.${item.indexName}`,
-          `version=${item.deprecatedVersion}`,
           `reason=${item.reason}`,
-          item.replacementIndexNames?.length
-            ? `replacement=${item.replacementIndexNames.join(',')}`
-            : undefined,
-          item.missingReplacementIndexNames?.length
-            ? `missingReplacement=${item.missingReplacementIndexNames.join(',')}`
-            : undefined,
           item.error ? `error=${item.error}` : undefined
         ]
           .filter(Boolean)
@@ -504,9 +354,10 @@ export class MongoIndexManager {
     return lines.join('\n');
   }
 
-  private static buildIndexModeLogData(result: MongoIndexSyncResult) {
+  private static buildIndexSyncLogData(
+    result: Pick<MongoIndexSyncResult, 'modelName' | 'collectionName' | 'toDrop' | 'toCreate'>
+  ) {
     return {
-      mode: result.mode,
       modelName: result.modelName,
       collectionName: result.collectionName,
       toCreateCount: result.toCreate.length,
@@ -523,14 +374,13 @@ export class MongoIndexManager {
     }
 
     if (value && typeof value === 'object') {
-      const keys = Object.keys(value as Record<string, unknown>);
+      const keys = Object.keys(value);
       const orderedKeys = sortObjectKeys ? keys.sort() : keys;
 
       return orderedKeys.reduce<Record<string, unknown>>((result, key) => {
-        result[key] = MongoIndexManager.normalizeForCompare(
-          (value as Record<string, unknown>)[key],
-          { sortObjectKeys }
-        );
+        result[key] = MongoIndexManager.normalizeForCompare(Reflect.get(value, key), {
+          sortObjectKeys
+        });
         return result;
       }, {});
     }
@@ -587,29 +437,26 @@ export class MongoIndexManager {
   }
 
   private static buildCleanupItem({
+    collectionName,
     definition,
     action,
     applied = false,
     reason,
-    missingReplacementIndexNames,
     error
   }: {
+    collectionName: string;
     definition: DeprecatedMongoIndexDefinition;
     action: MongoIndexCleanupAction;
     applied?: boolean;
     reason: string;
-    missingReplacementIndexNames?: string[];
     error?: string;
   }): MongoIndexCleanupReportItem {
     return {
-      collectionName: definition.collectionName,
+      collectionName,
       indexName: definition.indexName,
       action,
       applied,
       reason,
-      deprecatedVersion: definition.deprecatedVersion,
-      replacementIndexNames: definition.replacementIndexNames,
-      missingReplacementIndexNames,
       error
     };
   }
@@ -626,7 +473,21 @@ export class MongoIndexManager {
       return false;
     }
 
-    const { codeName, message } = error as { codeName?: string; message?: string };
-    return codeName === 'NamespaceNotFound' || message?.includes('ns does not exist') === true;
+    const codeName = Reflect.get(error, 'codeName');
+    const message = Reflect.get(error, 'message');
+    return (
+      codeName === 'NamespaceNotFound' ||
+      (typeof message === 'string' && message.includes('ns does not exist'))
+    );
+  }
+
+  private static isIndexNotFoundError(error: unknown) {
+    if (typeof error !== 'object' || error === null) {
+      return false;
+    }
+
+    const code = Reflect.get(error, 'code');
+    const codeName = Reflect.get(error, 'codeName');
+    return code === 27 || codeName === 'IndexNotFound';
   }
 }
