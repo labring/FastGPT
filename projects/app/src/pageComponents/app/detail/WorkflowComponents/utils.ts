@@ -15,6 +15,7 @@ import type {
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
+import { StoreNodeOutputItemTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
@@ -103,14 +104,13 @@ export const uiWorkflow2StoreWorkflow = ({
         getNodeById,
         childrenNodeIdListMap
       }),
-      outputs: item.data.outputs,
+      outputs: item.data.outputs.map((output) => StoreNodeOutputItemTypeSchema.parse(output)),
       isFolded: item.data.isFolded,
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,
       catchError: item.data.catchError
     };
   });
-
   const nodeIdSet = new Set(formatNodes.map((node) => node.nodeId));
   const formatEdges: StoreEdgeItemType[] = edges
     .map((item) => ({

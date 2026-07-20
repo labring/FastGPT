@@ -43,6 +43,7 @@ import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowModalContext } from '../../context/workflowModalContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { type HelperLinesController } from '../components/HelperLines';
+import { getRemovalNodeIdsWithCore, validateConnectionWithCore } from '../../adapters/command';
 
 /*
   限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
@@ -587,23 +588,34 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   /* node */
   // Remove change node and its child nodes and edges
   const handleRemoveNode = useCallback(
-    (change: NodeRemoveChange, nodeId: string) => {
-      // If the node has child nodes, remove the child nodes
-      const deletedNodeIdList = [nodeId];
-      const deletedEdgeIdList = edges
-        .filter((edge) => edge.source === nodeId || edge.target === nodeId)
-        .map((edge) => edge.id);
+    (_change: NodeRemoveChange, nodeId: string) => {
+      const removalResult = getRemovalNodeIdsWithCore({
+        nodes,
+        edges,
+        nodeId,
+        chatConfig: appDetail.chatConfig
+      });
+      const deletedNodeIdList = (() => {
+        if (removalResult.status === 'success') return removalResult.data;
+        if (removalResult.status === 'domain-error') return [];
 
-      const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
-      if (childNodes.length > 0) {
-        const childNodeIds = childNodes.map((node) => node.id);
-        deletedNodeIdList.push(...childNodeIds);
-
-        const childEdges = edges.filter(
-          (edge) => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target)
+        console.error(
+          '[Workflow Core Adapter] Failed to remove node with Core, falling back to Web behavior',
+          removalResult.error
         );
-        deletedEdgeIdList.push(...childEdges.map((edge) => edge.id));
-      }
+        return [
+          nodeId,
+          ...nodes.filter((node) => node.data.parentNodeId === nodeId).map((node) => node.id)
+        ];
+      })();
+      if (deletedNodeIdList.length === 0) return;
+
+      const deletedEdgeIdList = edges
+        .filter(
+          (edge) =>
+            deletedNodeIdList.includes(edge.source) || deletedNodeIdList.includes(edge.target)
+        )
+        .map((edge) => edge.id);
 
       onNodesChange(
         deletedNodeIdList.map<NodeRemoveChange>((id) => ({
@@ -618,7 +630,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         }))
       );
     },
-    [edges, nodes, onNodesChange, onEdgesChange]
+    [appDetail.chatConfig, edges, nodes, onNodesChange, onEdgesChange]
   );
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
@@ -939,11 +951,30 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         });
       }
 
+      const connectionResult = validateConnectionWithCore({
+        nodes,
+        edges,
+        connection: connect,
+        chatConfig: appDetail.chatConfig
+      });
+      if (connectionResult.status === 'domain-error') {
+        return toast({
+          status: 'warning',
+          title: t('workflow:connection_invalid')
+        });
+      }
+      if (connectionResult.status === 'adapter-error') {
+        console.error(
+          '[Workflow Core Adapter] Failed to validate connection, falling back to Web behavior',
+          connectionResult.error
+        );
+      }
+
       onConnect({
         connect
       });
     },
-    [onConnect, t, toast]
+    [appDetail.chatConfig, edges, nodes, onConnect, t, toast]
   );
 
   /* edge */

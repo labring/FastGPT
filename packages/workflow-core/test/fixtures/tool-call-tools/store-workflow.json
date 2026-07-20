@@ -1,0 +1,265 @@
+{
+  "nodes": [
+    {
+      "flowNodeType": "workflowStart",
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "workflow:template.workflow_start",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "workflow:user_question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": ["reference", "textarea"],
+          "toolDescription": "workflow:user_question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "type": "static",
+          "valueType": "string",
+          "label": "common:core.module.input.label.user question"
+        }
+      ],
+      "nodeId": "start"
+    },
+    {
+      "flowNodeType": "tools",
+      "avatar": "core/workflow/template/toolCall",
+      "avatarLinear": "core/workflow/template/toolCallLinear",
+      "colorSchema": "indigo",
+      "name": "workflow:template.agent",
+      "intro": "workflow:template.agent_intro",
+      "showStatus": true,
+      "version": "4.9.2",
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "model",
+          "label": "common:core.module.input.label.aiModel",
+          "valueType": "string",
+          "renderTypeList": ["settingLLMModel", "reference"]
+        },
+        {
+          "key": "temperature",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": ["hidden"]
+        },
+        {
+          "key": "maxToken",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": ["hidden"]
+        },
+        {
+          "key": "isResponseAnswerText",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": ["hidden"],
+          "value": true
+        },
+        {
+          "key": "aiChatVision",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": ["hidden"],
+          "value": true
+        },
+        {
+          "key": "aiChatAudio",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": ["hidden"],
+          "value": false
+        },
+        {
+          "key": "aiChatVideo",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": ["hidden"],
+          "value": false
+        },
+        {
+          "key": "aiChatExtractFiles",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": ["hidden"],
+          "value": true
+        },
+        {
+          "key": "aiChatReasoning",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": ["hidden"],
+          "value": true
+        },
+        {
+          "key": "aiChatReasoningEffort",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": ["hidden"]
+        },
+        {
+          "key": "aiChatTopP",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": ["hidden"]
+        },
+        {
+          "key": "aiChatStopSign",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": ["hidden"]
+        },
+        {
+          "key": "aiChatResponseFormat",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": ["hidden"]
+        },
+        {
+          "key": "aiChatJsonSchema",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": ["hidden"]
+        },
+        {
+          "key": "useAgentSandbox",
+          "label": "app:use_agent_sandbox",
+          "valueType": "boolean",
+          "renderTypeList": ["switch"],
+          "value": false,
+          "description": "app:use_computer_desc"
+        },
+        {
+          "key": "sandboxEntrypoint",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": ["custom"]
+        },
+        {
+          "key": "systemPrompt",
+          "label": "common:core.ai.Prompt",
+          "valueType": "string",
+          "isRichText": true,
+          "placeholder": "common:core.app.tip.chatNodeSystemPromptTip",
+          "maxLength": 100000,
+          "renderTypeList": ["textarea", "reference"],
+          "description": "common:core.app.tip.systemPromptTip"
+        },
+        {
+          "key": "history",
+          "label": "common:core.module.input.label.chat history",
+          "valueType": "chatHistory",
+          "required": true,
+          "max": 50,
+          "min": 0,
+          "renderTypeList": ["numberInput", "reference"],
+          "value": 6,
+          "description": "workflow:max_dialog_rounds"
+        },
+        {
+          "key": "fileUrlList",
+          "label": "app:workflow.user_file_input",
+          "valueType": "arrayString",
+          "renderTypeList": ["reference", "input"],
+          "debugLabel": "app:workflow.user_file_input",
+          "description": "app:workflow.user_file_input_desc"
+        },
+        {
+          "key": "userChatInput",
+          "label": "workflow:user_question",
+          "valueType": "string",
+          "required": true,
+          "selectedTypeIndex": 0,
+          "renderTypeList": ["reference", "textarea"],
+          "value": ["start", "userChatInput"],
+          "toolDescription": "user question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "type": "static",
+          "valueType": "string",
+          "label": "common:core.module.output.label.Ai response content",
+          "description": "common:core.module.output.description.Ai response content"
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "workflow:error_text"
+        }
+      ],
+      "nodeId": "caller"
+    },
+    {
+      "flowNodeType": "userSelect",
+      "avatar": "core/workflow/template/userSelect",
+      "avatarLinear": "core/workflow/template/userSelectLinear",
+      "colorSchema": "green",
+      "name": "app:workflow.user_select",
+      "intro": "app:workflow.user_select_tip",
+      "inputs": [
+        {
+          "key": "description",
+          "label": "app:workflow.select_description",
+          "valueType": "string",
+          "placeholder": "app:workflow.select_description_placeholder",
+          "renderTypeList": ["textarea"],
+          "description": "app:workflow.select_description_tip"
+        },
+        {
+          "key": "userSelectOptions",
+          "label": "",
+          "valueType": "any",
+          "renderTypeList": ["custom"],
+          "value": [
+            {
+              "value": "Confirm",
+              "key": "option1"
+            },
+            {
+              "value": "Cancel",
+              "key": "option2"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "selectResult",
+          "key": "selectResult",
+          "type": "static",
+          "valueType": "string",
+          "label": "app:workflow.select_result",
+          "required": true
+        }
+      ],
+      "nodeId": "confirm"
+    }
+  ],
+  "edges": [
+    {
+      "source": "start",
+      "sourceHandle": "start-source-right",
+      "target": "caller",
+      "targetHandle": "caller-target-left"
+    },
+    {
+      "source": "caller",
+      "sourceHandle": "selectedTools",
+      "target": "confirm",
+      "targetHandle": "selectedTools"
+    }
+  ],
+  "chatConfig": {}
+}

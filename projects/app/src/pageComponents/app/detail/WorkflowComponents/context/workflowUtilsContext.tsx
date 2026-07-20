@@ -10,6 +10,7 @@ import {
   checkWorkflowNodeIssues
 } from '@/web/core/workflow/workflowCheck';
 import { uiWorkflow2StoreWorkflow } from '../utils';
+import { checkWorkflowNodeAndConnection } from '../adapters/validation';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -222,11 +223,22 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         return;
       }
 
-      const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+      const coreErrorNodeIds = checkWorkflowNodeAndConnection({
+        nodes,
+        edges,
+        chatConfig: appDetail.chatConfig
+      });
+      const {
+        issueMap,
+        hasError: hasWebError,
+        firstErrorNodeId: firstWebErrorNodeId
+      } = checkWorkflowBeforeRunOrPublish({
         nodes,
         edges,
         t
       });
+      const hasError = hasWebError || !!coreErrorNodeIds?.length;
+      const firstErrorNodeId = firstWebErrorNodeId ?? coreErrorNodeIds?.[0];
 
       if (!hasError) {
         onRemoveError();

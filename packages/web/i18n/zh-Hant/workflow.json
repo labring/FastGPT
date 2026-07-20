@@ -30,6 +30,11 @@
   "classification_result": "分類結果",
   "click_to_change_reference": "點擊切換輸入模式",
   "click_to_change_value": "點擊切換變量引用模式",
+  "cli.input.ai_model": "此 AI 節點使用的模型",
+  "cli.input.answer": "固定回答文字或上游輸出引用",
+  "cli.input.system_prompt": "定義助手角色和回答規則的指令",
+  "cli.input.text_editor": "靜態文字或由上游變數組合的文字",
+  "cli.input.user_question": "由工作流程開始節點提供的使用者問題",
   "code.Reset template": "重設範本",
   "code.Reset template confirm": "確定要重設程式碼範本嗎？這將會把所有輸入和輸出重設為範本值。請儲存您目前的程式碼。",
   "code.Switch language confirm": "切換語言將重設代碼，是否繼續？",
@@ -273,5 +278,6 @@
   "workflow_local_draft_auth_expired_notice": "登入已過期，當前編輯內容已自動儲存至本機。請不要關閉頁面，在此分頁重新登入後，即可恢復編排內容。",
   "workflow_local_draft_auth_expired_title": "已自動儲存",
   "workflow_local_draft_relogin": "重新登入",
-  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。"
+  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。",
+  "connection_invalid": "此連線不符合工作流程規則"
 }
