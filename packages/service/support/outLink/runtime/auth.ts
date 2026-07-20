@@ -33,7 +33,7 @@ export const authOutLinkInit = async ({
     }
   });
   if (data?.success !== true) {
-    return Promise.reject(data?.message || data?.msg || OutLinkErrEnum.unAuthUser);
+    return Promise.reject(new UserError(data?.message || data?.msg || OutLinkErrEnum.unAuthUser));
   }
 
   const uid = data?.data?.uid;

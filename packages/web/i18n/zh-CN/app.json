@@ -42,7 +42,7 @@
   "ai_settings": "AI 配置",
   "all_apps": "全部应用",
   "app.Version name": "版本名称",
-  "app.error.publish_unExist_app": "发布失败，请检查工具调用是否正常",
+  "app.error.publish_unExist_app": "发布失败，请检查工具配置是否正确",
   "app.modules.has new version": "新版本",
   "app.version_current": "当前版本",
   "app.version_initial": "初始版本",

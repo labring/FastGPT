@@ -15,6 +15,7 @@ export interface ResponseType<T = any> {
   code: number;
   message: string;
   data: T;
+  errorType?: string;
 }
 
 export interface ProcessedError {
@@ -173,7 +174,8 @@ export const jsonRes = <T = any>(
       statusText: processedError.statusText,
       message: message || processedError.message,
       data: processedError.data !== undefined ? processedError.data : null,
-      zodError: processedError.zodError
+      zodError: processedError.zodError,
+      errorType: error instanceof UserError ? 'UserError' : undefined
     });
 
     return;

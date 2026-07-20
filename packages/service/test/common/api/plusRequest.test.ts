@@ -106,4 +106,22 @@ describe('plusRequest', () => {
       })
     );
   });
+
+  it('Pro 返回 UserError 时转换为 FastGPT UserError', async () => {
+    vi.stubEnv('PRO_URL', 'https://pro.example.com');
+    vi.stubEnv('PRO_TOKEN', configuredProToken);
+    mockRequest.mockResolvedValueOnce({
+      data: {
+        code: 500,
+        message: 'API key has expired',
+        errorType: 'UserError'
+      }
+    });
+
+    const { POST } = await importPlusRequest();
+    await expect(POST('/support/openapi/authLimit', {})).rejects.toMatchObject({
+      name: 'UserError',
+      message: 'API key has expired'
+    });
+  });
 });

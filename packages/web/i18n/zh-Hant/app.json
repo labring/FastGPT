@@ -40,7 +40,7 @@
   "ai_settings": "AI 設定",
   "all_apps": "所有應用程式",
   "app.Version name": "版本名稱",
-  "app.error.publish_unExist_app": "發布失敗，請檢查工具呼叫是否正常",
+  "app.error.publish_unExist_app": "發布失敗，請檢查工具設定是否正確",
   "app.modules.has new version": "新版本",
   "app.version_current": "目前版本",
   "app.version_initial": "初始版本",
