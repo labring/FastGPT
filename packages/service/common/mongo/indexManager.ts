@@ -134,19 +134,11 @@ export class MongoIndexManager {
     logger = defaultLogger
   }: SyncModelIndexesParams): Promise<MongoIndexSyncResult> {
     const inspection = await MongoIndexManager.inspectModelIndexes(model);
-    const logData = MongoIndexManager.buildIndexSyncLogData(inspection);
-
-    logger.debug('MongoDB index diff inspected', {
-      ...logData,
-      schemaExternalIndexNames: inspection.toDrop,
-      toCreate: inspection.toCreate
-    });
 
     if (inspection.toDrop.length > 0) {
       logger.warn('Detected MongoDB indexes not declared by FastGPT schema', {
-        ...logData,
-        schemaExternalIndexNames: inspection.toDrop,
-        cleanupPolicy: 'only_schema_registered_deprecated_indexes_can_be_dropped'
+        collectionName: inspection.collectionName,
+        indexNames: inspection.toDrop
       });
     }
 
@@ -161,17 +153,15 @@ export class MongoIndexManager {
       ...inspection,
       cleanupReport
     };
+    const cleanupSummary = MongoIndexManager.summarizeCleanupReport(cleanupReport);
 
-    logger.info('MongoDB indexes synchronized', {
-      ...logData,
-      cleanupSummary: MongoIndexManager.summarizeCleanupReport(cleanupReport)
-    });
-    logger.debug('MongoDB index synchronization detail', {
-      ...logData,
-      schemaExternalIndexNames: inspection.toDrop,
-      toCreate: inspection.toCreate,
-      cleanupReport
-    });
+    if (inspection.toCreate.length > 0 || cleanupSummary.dropped > 0) {
+      logger.info('MongoDB indexes synchronized', {
+        collectionName: inspection.collectionName,
+        created: inspection.toCreate.length,
+        dropped: cleanupSummary.dropped
+      });
+    }
 
     return result;
   }
@@ -199,13 +189,6 @@ export class MongoIndexManager {
       return { apply, items };
     }
 
-    logger?.debug('MongoDB deprecated index cleanup started', {
-      modelName: model.modelName,
-      collectionName,
-      apply,
-      deprecatedIndexCount: definitions.length
-    });
-
     for (const definition of definitions) {
       try {
         const currentIndexes = (await model.collection.indexes().catch((error) => {
@@ -223,7 +206,6 @@ export class MongoIndexManager {
             action: 'skip_missing',
             reason: 'Deprecated index does not exist'
           });
-          logger?.debug('Deprecated MongoDB index does not exist', item);
           items.push(item);
           continue;
         }
@@ -235,12 +217,9 @@ export class MongoIndexManager {
             action: 'skip_mismatch',
             reason: 'Index definition does not match Schema declaration'
           });
-          logger?.warn('Skip deprecated MongoDB index cleanup because definition mismatched', {
-            ...item,
-            expectedKey: definition.key,
-            actualKey: targetIndex.key,
-            expectedOptions: MongoIndexManager.getExpectedOptions(definition),
-            actualOptions: MongoIndexManager.getActualOptions(targetIndex)
+          logger?.warn('Deprecated MongoDB index definition mismatched', {
+            collectionName,
+            indexName: definition.indexName
           });
           items.push(item);
           continue;
@@ -257,7 +236,6 @@ export class MongoIndexManager {
                 action: 'skip_missing',
                 reason: 'Deprecated index was already removed'
               });
-              logger?.debug('Deprecated MongoDB index was already removed', item);
               items.push(item);
               continue;
             }
@@ -272,11 +250,6 @@ export class MongoIndexManager {
           applied: apply,
           reason: apply ? 'Deprecated index dropped' : 'Deprecated index can be dropped'
         });
-        if (apply) {
-          logger?.info('Dropped deprecated MongoDB index', item);
-        } else {
-          logger?.debug('Deprecated MongoDB index can be dropped', item);
-        }
         items.push(item);
       } catch (error) {
         const item = MongoIndexManager.buildCleanupItem({
@@ -286,17 +259,14 @@ export class MongoIndexManager {
           reason: 'Failed to inspect or cleanup deprecated index',
           error: MongoIndexManager.getErrorMessage(error)
         });
-        logger?.error('Failed to cleanup deprecated MongoDB index', item);
+        logger?.error('Failed to cleanup deprecated MongoDB index', {
+          collectionName,
+          indexName: definition.indexName,
+          error: item.error
+        });
         items.push(item);
       }
     }
-
-    logger?.debug('MongoDB deprecated index cleanup completed', {
-      modelName: model.modelName,
-      collectionName,
-      apply,
-      summary: MongoIndexManager.summarizeCleanupReport({ apply, items })
-    });
 
     return { apply, items };
   }
@@ -352,17 +322,6 @@ export class MongoIndexManager {
     }
 
     return lines.join('\n');
-  }
-
-  private static buildIndexSyncLogData(
-    result: Pick<MongoIndexSyncResult, 'modelName' | 'collectionName' | 'toDrop' | 'toCreate'>
-  ) {
-    return {
-      modelName: result.modelName,
-      collectionName: result.collectionName,
-      toCreateCount: result.toCreate.length,
-      schemaExternalIndexCount: result.toDrop.length
-    };
   }
 
   private static normalizeForCompare(

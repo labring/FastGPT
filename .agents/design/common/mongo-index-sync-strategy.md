@@ -170,10 +170,10 @@ registerDeprecatedMongoIndexes(ChatSchema, [
 
 ### 4. 日志分级
 
-- `debug`：每个 model 输出完整 diff、schema 外索引名称和 schema-local 废弃项扫描明细。
-- `info`：每个 model 输出索引同步结果摘要，并记录实际 drop 的废弃索引。
-- `warn`：输出需要运维关注但不阻塞启动的问题，例如检测到 schema 外索引或废弃索引定义不匹配。
-- `error`：输出索引创建或废弃索引清理失败，保留 model、collection 和 error 信息。
+- 无索引变化时不输出日志，避免每个 model 启动时重复打印空结果。
+- `info`：仅在实际创建或删除索引时输出一条精简摘要。
+- `warn`：输出 schema 外索引或废弃索引定义不匹配，只保留 collection 和索引名称。
+- `error`：输出索引创建或废弃索引清理失败，只保留定位所需字段和错误信息。
 
 ### 5. 本次交付边界
 

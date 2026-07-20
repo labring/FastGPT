@@ -65,10 +65,16 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     ]);
     expect(logger.warn).toHaveBeenCalledWith(
       'Detected MongoDB indexes not declared by FastGPT schema',
-      expect.objectContaining({
-        schemaExternalIndexNames: expect.arrayContaining(['legacy_field_1', 'customer_custom_1'])
-      })
+      {
+        collectionName: model.collection.collectionName,
+        indexNames: expect.arrayContaining(['legacy_field_1', 'customer_custom_1'])
+      }
     );
+    expect(logger.info).toHaveBeenCalledWith('MongoDB indexes synchronized', {
+      collectionName: model.collection.collectionName,
+      created: 1,
+      dropped: 1
+    });
   });
 
   it('does not delete schema-external indexes when the Schema has no deprecated declarations', async () => {
@@ -78,12 +84,15 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
     schema.index({ currentField: 1 }, { name: 'current_field_1' });
     const model = createModel({ schema });
+    await model.collection.createIndex({ currentField: 1 }, { name: 'current_field_1' });
     await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
 
-    const result = await MongoIndexManager.syncModelIndexes({ model });
+    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
 
     expect(await getIndexNames(model)).toContain('customer_custom_1');
     expect(result.cleanupReport.items).toEqual([]);
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.debug).not.toHaveBeenCalled();
   });
 
   it('reuses an in-flight task for concurrent calls on the same Model', async () => {
@@ -147,10 +156,8 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
       expect.objectContaining({ action: 'drop', applied: false, indexName: 'legacy_field_1' })
     ]);
     expect(await getIndexNames(model)).toContain('legacy_field_1');
-    expect(logger.debug).toHaveBeenCalledWith(
-      'Deprecated MongoDB index can be dropped',
-      expect.objectContaining({ indexName: 'legacy_field_1' })
-    );
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.debug).not.toHaveBeenCalled();
   });
 
   it('preserves same-name indexes when key, key order, or options do not match', async () => {
@@ -275,10 +282,11 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
         indexName: 'legacy_field_1'
       })
     ]);
-    expect(logger.error).toHaveBeenCalledWith(
-      'Failed to cleanup deprecated MongoDB index',
-      expect.objectContaining({ error: 'inspection failed' })
-    );
+    expect(logger.error).toHaveBeenCalledWith('Failed to cleanup deprecated MongoDB index', {
+      collectionName: model.collection.collectionName,
+      indexName: 'legacy_field_1',
+      error: 'inspection failed'
+    });
   });
 
   it('normalizes non-Error cleanup failures into report messages', async () => {
