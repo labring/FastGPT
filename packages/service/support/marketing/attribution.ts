@@ -1,6 +1,7 @@
 import { axios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
+import { FastGPT_SEM_Schema } from '@fastgpt/global/support/marketing/type';
 
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
 
@@ -16,6 +17,28 @@ const getContact = (username: string, contact?: string) => {
   const email = candidates.find((value) => value.includes('@'));
   if (email) return email;
   return candidates.find((value) => /^\+?[\d\s()-]{6,20}$/.test(value));
+};
+
+export const resolveCRMVisitorId = ({
+  storedFastgptSem,
+  incomingVisitorId
+}: {
+  storedFastgptSem?: unknown;
+  incomingVisitorId?: string;
+}) => {
+  const parsedFastgptSem = FastGPT_SEM_Schema.safeParse(storedFastgptSem);
+  const fastgptSem = parsedFastgptSem.success ? parsedFastgptSem.data : {};
+  const storedVisitorId = fastgptSem.visitor_id?.trim();
+  const normalizedIncomingVisitorId = incomingVisitorId?.trim();
+  const shouldPersist = !storedVisitorId && !!normalizedIncomingVisitorId;
+
+  return {
+    visitorId: storedVisitorId || normalizedIncomingVisitorId,
+    shouldPersist,
+    fastgptSem: shouldPersist
+      ? { ...fastgptSem, visitor_id: normalizedIncomingVisitorId }
+      : fastgptSem
+  };
 };
 
 /**

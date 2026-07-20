@@ -22,7 +22,38 @@ vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: mocks.serviceEnv
 }));
 
-import { reportCRMVisitorIdentity } from '@fastgpt/service/support/marketing/attribution';
+import {
+  reportCRMVisitorIdentity,
+  resolveCRMVisitorId
+} from '@fastgpt/service/support/marketing/attribution';
+
+describe('resolveCRMVisitorId', () => {
+  it('prefers the visitor id stored on the user', () => {
+    expect(
+      resolveCRMVisitorId({
+        storedFastgptSem: { visitor_id: 'stored-visitor' },
+        incomingVisitorId: 'incoming-visitor'
+      })
+    ).toEqual({
+      visitorId: 'stored-visitor',
+      shouldPersist: false,
+      fastgptSem: { visitor_id: 'stored-visitor' }
+    });
+  });
+
+  it('uses and persists the incoming visitor id when the user has none', () => {
+    expect(
+      resolveCRMVisitorId({
+        storedFastgptSem: { keyword: 'FastGPT' },
+        incomingVisitorId: ' incoming-visitor '
+      })
+    ).toEqual({
+      visitorId: 'incoming-visitor',
+      shouldPersist: true,
+      fastgptSem: { keyword: 'FastGPT', visitor_id: 'incoming-visitor' }
+    });
+  });
+});
 
 describe('reportCRMVisitorIdentity', () => {
   beforeEach(() => {
