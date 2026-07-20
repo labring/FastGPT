@@ -14,13 +14,9 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import { getAgentSandboxArchiveMaxBytes } from '../interface/config';
 import {
-  advanceSandboxOperation,
-  claimSandboxOperation,
-  completeSandboxOperation,
   createSandboxResourcesToArchiveCursor,
   findSandboxInstanceBySandboxId,
   findStaleSandboxOperations,
-  markSandboxOperationFailed,
   type SandboxResourceDoc
 } from '../infrastructure/instance/repository';
 import { getSandboxAdapterConfig } from '../infrastructure/provider/config';
@@ -40,6 +36,7 @@ import {
 } from '../type';
 import { joinSandboxPath } from '../utils';
 import { withSandboxLifecycleLease } from './lease';
+import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from './lifecycle/runner';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -104,12 +101,6 @@ type SandboxArchiveSingleResult =
   | { status: 'success' }
   | { status: 'skipped'; reason: string }
   | { status: 'failed'; error: string };
-
-const requireOperationId = (resource: SandboxResourceDoc) => {
-  const operationId = resource.metadata?.operation?.id;
-  if (!operationId) throw new Error(`Sandbox ${resource.sandboxId} has no archive operation`);
-  return operationId;
-};
 
 const runSandboxCommand = async (
   sandbox: ISandbox,
@@ -367,81 +358,63 @@ async function archiveSandboxWithinLease(params: {
       return { status: 'skipped', reason: 'Sandbox archive operation is still active' };
     }
   }
-
-  const claimed = await claimSandboxOperation({
-    resource: current,
-    status: SandboxInstanceStatusEnum.archiving,
-    type: SandboxOperationTypeEnum.archive,
-    matchLastActiveAt: Boolean(params.inactiveBefore)
-  });
-  params.onClaim?.(claimed);
-  if (!claimed) return { status: 'skipped', reason: 'Resource was modified or occupied' };
-  const operationId = requireOperationId(claimed);
-  let phase = claimed.metadata?.operation?.phase ?? 'claimed';
   let sandbox: ISandbox | undefined;
 
   try {
-    if (phase === 'claimed') {
-      lease.assertValid();
-      const connected = await connectSandboxForArchive(claimed);
-      sandbox = connected.sandbox;
-      await ensureZipAvailableInSandbox(sandbox);
-      const body = await createWorkspaceArchive({
-        sandbox,
-        workDirectory: connected.profile.workDirectory,
-        sandboxId: claimed.sandboxId
-      });
-      lease.assertValid();
-      await getS3SandboxSource().uploadWorkspaceArchive({ sandboxId: claimed.sandboxId, body });
-      lease.assertValid();
-      const uploaded = await advanceSandboxOperation({
-        resource: claimed,
-        operationId,
-        status: SandboxInstanceStatusEnum.archiving,
-        phase: 'archiveUploaded'
-      });
-      if (!uploaded) throw new Error('Sandbox archive operation lost ownership after upload');
-      phase = 'archiveUploaded';
-    }
-
-    if (phase === 'archiveUploaded') {
-      lease.assertValid();
-      await deleteArchivedRemoteResource(claimed);
-      lease.assertValid();
-      const deleted = await advanceSandboxOperation({
-        resource: claimed,
-        operationId,
-        status: SandboxInstanceStatusEnum.archiving,
-        phase: 'providerDeleted'
-      });
-      if (!deleted)
-        throw new Error('Sandbox archive operation lost ownership after provider delete');
-      phase = 'providerDeleted';
-    }
-    if (phase !== 'providerDeleted') {
-      throw new Error(`Unsupported sandbox archive phase: ${phase}`);
-    }
-    const image = getSandboxRuntimeProfile(claimed.provider).defaultImage;
-    const completed = await completeSandboxOperation({
-      resource: claimed,
-      operationId,
-      fromStatus: SandboxInstanceStatusEnum.archiving,
-      status: SandboxInstanceStatusEnum.archived,
-      set: image ? { 'metadata.image': image } : undefined
+    const definition: SandboxLifecycleDefinition = {
+      operationType: SandboxOperationTypeEnum.archive,
+      status: SandboxInstanceStatusEnum.archiving,
+      steps: [
+        {
+          fromPhase: 'claimed',
+          toPhase: 'archiveUploaded',
+          run: async ({ resource: claimed }) => {
+            const connected = await connectSandboxForArchive(claimed);
+            sandbox = connected.sandbox;
+            await ensureZipAvailableInSandbox(sandbox);
+            const body = await createWorkspaceArchive({
+              sandbox,
+              workDirectory: connected.profile.workDirectory,
+              sandboxId: claimed.sandboxId
+            });
+            await getS3SandboxSource().uploadWorkspaceArchive({
+              sandboxId: claimed.sandboxId,
+              body
+            });
+          }
+        },
+        {
+          fromPhase: 'archiveUploaded',
+          toPhase: 'providerDeleted',
+          run: async ({ resource: claimed }) => {
+            await deleteArchivedRemoteResource(claimed);
+          }
+        }
+      ],
+      finish: {
+        type: 'complete',
+        status: SandboxInstanceStatusEnum.archived,
+        set: ({ resource: claimed }) => {
+          const image = getSandboxRuntimeProfile(claimed.provider).defaultImage;
+          return image ? { 'metadata.image': image } : {};
+        }
+      }
+    };
+    const completed = await runSandboxLifecycleOperation({
+      resource: current,
+      lease,
+      definition,
+      matchLastActiveAt: Boolean(params.inactiveBefore),
+      onClaim: params.onClaim,
+      allowClaimConflict: true
     });
-    if (!completed) throw new Error('Sandbox archive operation lost ownership before commit');
+    if (!completed) return { status: 'skipped', reason: 'Resource was modified or occupied' };
     return { status: 'success' };
   } catch (error) {
     const errorText = getErrText(error);
-    await markSandboxOperationFailed({
-      resource: claimed,
-      operationId,
-      status: SandboxInstanceStatusEnum.archiving,
-      error: errorText
-    }).catch(() => undefined);
     logger.error('Failed to archive sandbox', {
-      sandboxId: claimed.sandboxId,
-      provider: claimed.provider,
+      sandboxId: current.sandboxId,
+      provider: current.provider,
       error
     });
     return { status: 'failed', error: errorText };
@@ -668,72 +641,64 @@ export async function restoreArchivedSandboxBeforeUse(params: {
       }
       if (
         current.status === SandboxInstanceStatusEnum.restoring &&
+        !current.metadata?.operation?.error &&
         current.metadata?.operation?.heartbeatAt &&
         current.metadata.operation.heartbeatAt >=
           subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
       ) {
         throw new SandboxLifecycleStateError(current.status);
       }
-
-      const claimed = await claimSandboxOperation({
-        resource: current,
-        status: SandboxInstanceStatusEnum.restoring,
-        type: SandboxOperationTypeEnum.restore,
-        previousStatus: SandboxInstanceStatusEnum.archived
-      });
-      if (!claimed) throw new SandboxLifecycleStateError(current.status);
-      const operationId = requireOperationId(claimed);
-      let phase = claimed.metadata?.operation?.phase ?? 'claimed';
       let sandbox: ISandbox | undefined;
-      let restoredStorage = params.storage ?? claimed.storage;
+      let restoredStorage = params.storage ?? current.storage;
 
       try {
-        if (phase === 'claimed') {
-          lease.assertValid();
-          const target = await createRestoreSandbox(params);
-          sandbox = target.sandbox;
-          restoredStorage ??= target.storage;
-          await ensureUnzipAvailableInSandbox(sandbox);
-          const body = await getS3SandboxSource().downloadWorkspaceArchive({
-            sandboxId: params.sandboxId,
-            maxBytes: getAgentSandboxArchiveMaxBytes()
-          });
-          await restoreWorkspaceArchive({
-            sandbox,
-            workDirectory: target.profile.workDirectory,
-            sandboxId: params.sandboxId,
-            archiveBody: body
-          });
-          lease.assertValid();
-          const installed = await advanceSandboxOperation({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.restoring,
-            phase: 'archiveInstalled'
-          });
-          if (!installed) throw new Error('Sandbox restore operation lost ownership after install');
-          phase = 'archiveInstalled';
-        }
-        if (phase !== 'archiveInstalled') {
-          throw new Error(`Unsupported sandbox restore phase: ${phase}`);
-        }
-        const completed = await completeSandboxOperation({
-          resource: claimed,
-          operationId,
-          fromStatus: SandboxInstanceStatusEnum.restoring,
-          status: SandboxInstanceStatusEnum.running,
-          touchActive: true,
-          set: {
-            provider: params.provider,
-            sourceType: params.sourceType,
-            sourceId: params.sourceId,
-            userId: params.userId,
-            ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
-            ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
-            'metadata.volumeEnabled': Boolean(restoredStorage)
+        const definition: SandboxLifecycleDefinition = {
+          operationType: SandboxOperationTypeEnum.restore,
+          status: SandboxInstanceStatusEnum.restoring,
+          steps: [
+            {
+              fromPhase: 'claimed',
+              toPhase: 'archiveInstalled',
+              run: async () => {
+                const target = await createRestoreSandbox(params);
+                sandbox = target.sandbox;
+                restoredStorage ??= target.storage;
+                await ensureUnzipAvailableInSandbox(target.sandbox);
+                const body = await getS3SandboxSource().downloadWorkspaceArchive({
+                  sandboxId: params.sandboxId,
+                  maxBytes: getAgentSandboxArchiveMaxBytes()
+                });
+                await restoreWorkspaceArchive({
+                  sandbox: target.sandbox,
+                  workDirectory: target.profile.workDirectory,
+                  sandboxId: params.sandboxId,
+                  archiveBody: body
+                });
+              }
+            }
+          ],
+          finish: {
+            type: 'complete',
+            status: SandboxInstanceStatusEnum.running,
+            touchActive: true,
+            set: () => ({
+              provider: params.provider,
+              sourceType: params.sourceType,
+              sourceId: params.sourceId,
+              userId: params.userId,
+              ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
+              ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
+              'metadata.volumeEnabled': Boolean(restoredStorage)
+            })
           }
+        };
+        const completed = await runSandboxLifecycleOperation({
+          resource: current,
+          lease,
+          definition,
+          previousStatus: SandboxInstanceStatusEnum.archived,
+          claimConflictError: new SandboxLifecycleStateError(current.status)
         });
-        if (!completed) throw new Error('Sandbox restore operation lost ownership before commit');
 
         await getS3SandboxSource()
           .deleteWorkspaceArchiveNow({ sandboxId: params.sandboxId })
@@ -745,12 +710,6 @@ export async function restoreArchivedSandboxBeforeUse(params: {
           });
       } catch (error) {
         if (sandbox) await sandbox.stop().catch(() => undefined);
-        await markSandboxOperationFailed({
-          resource: claimed,
-          operationId,
-          status: SandboxInstanceStatusEnum.restoring,
-          error: getErrText(error)
-        }).catch(() => undefined);
         throw error;
       } finally {
         if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);

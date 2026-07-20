@@ -5,23 +5,16 @@
  */
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { subMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import {
-  advanceSandboxOperation,
-  claimSandboxOperation,
-  completeSandboxOperation,
-  deleteClaimedSandboxRecord,
-  findInactiveRunningSandboxResources,
   findSandboxInstanceBySandboxId,
   findSandboxInstanceBySandboxIdAndTeam,
   findSandboxResourceBySandboxIdAndTeam,
   findSandboxResourcesBySource,
   findStaleSandboxOperations,
   findSkillRelatedSandboxResources,
-  markSandboxOperationFailed,
   type SandboxResourceDoc,
   type SandboxResourceRef
 } from '../infrastructure/instance/repository';
@@ -36,6 +29,7 @@ import {
 } from '../type';
 import { withSandboxLifecycleLease } from './lease';
 import { SANDBOX_STALE_ARCHIVING_MINUTES, SandboxLifecycleStateError } from './archive';
+import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from './lifecycle/runner';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 export const SANDBOX_STALE_STOPPING_MINUTES = 15;
@@ -57,12 +51,6 @@ export type GetSandboxInfoParams = {
 export type DeleteSandboxParams = {
   sandboxId: string;
   teamId: string;
-};
-
-const requireOperationId = (resource: SandboxResourceDoc) => {
-  const operationId = resource.metadata?.operation?.id;
-  if (!operationId) throw new Error(`Sandbox ${resource.sandboxId} has no lifecycle operation`);
-  return operationId;
 };
 
 /**
@@ -90,7 +78,8 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
   await withSandboxLifecycleLease({
     sandboxId: resource.sandboxId,
     label: `stop-sandbox:${resource.sandboxId}`,
-    fn: async ({ assertValid }) => {
+    fn: async (lease) => {
+      const { assertValid } = lease;
       const current = await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId });
       if (
         !current ||
@@ -100,54 +89,31 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
         return;
       }
 
-      const claimed = await claimSandboxOperation({
+      const definition: SandboxLifecycleDefinition = {
+        operationType: SandboxOperationTypeEnum.stop,
+        status: SandboxInstanceStatusEnum.stopping,
+        steps: [
+          {
+            fromPhase: 'claimed',
+            toPhase: 'providerStopped',
+            run: async ({ resource: claimed }) => {
+              await buildSandboxResourceAdapter(claimed).stop();
+            }
+          }
+        ],
+        finish: { type: 'complete', status: SandboxInstanceStatusEnum.stopped }
+      };
+      await runSandboxLifecycleOperation({
         resource: {
           ...current,
           ...(resource.lastActiveAt ? { lastActiveAt: resource.lastActiveAt } : {})
         },
-        status: SandboxInstanceStatusEnum.stopping,
-        type: SandboxOperationTypeEnum.stop,
+        lease,
+        definition,
         matchLastActiveAt:
-          current.status === SandboxInstanceStatusEnum.running && Boolean(resource.lastActiveAt)
+          current.status === SandboxInstanceStatusEnum.running && Boolean(resource.lastActiveAt),
+        allowClaimConflict: true
       });
-      if (!claimed) return;
-      const operationId = requireOperationId(claimed);
-      let phase = claimed.metadata?.operation?.phase ?? 'claimed';
-
-      try {
-        if (phase === 'claimed') {
-          assertValid();
-          await buildSandboxResourceAdapter(claimed).stop();
-          assertValid();
-          const stopped = await advanceSandboxOperation({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.stopping,
-            phase: 'providerStopped'
-          });
-          if (!stopped)
-            throw new Error('Sandbox stop operation lost ownership after provider stop');
-          phase = 'providerStopped';
-        }
-        if (phase !== 'providerStopped') {
-          throw new Error(`Unsupported sandbox stop phase: ${phase}`);
-        }
-        const completed = await completeSandboxOperation({
-          resource: claimed,
-          operationId,
-          fromStatus: SandboxInstanceStatusEnum.stopping,
-          status: SandboxInstanceStatusEnum.stopped
-        });
-        if (!completed) throw new Error('Sandbox stop operation lost ownership before commit');
-      } catch (error) {
-        await markSandboxOperationFailed({
-          resource: claimed,
-          operationId,
-          status: SandboxInstanceStatusEnum.stopping,
-          error: getErrText(error)
-        }).catch(() => undefined);
-        throw error;
-      }
     }
   });
 }
@@ -161,87 +127,47 @@ export async function deleteSandboxResource(resource: SandboxResourceRef): Promi
   await withSandboxLifecycleLease({
     sandboxId: resource.sandboxId,
     label: `delete-sandbox:${resource.sandboxId}`,
-    fn: async ({ assertValid }) => {
+    fn: async (lease) => {
+      const { assertValid } = lease;
       const current = await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId });
       if (!current) return;
       assertDeleteCanFenceCurrentOperation(current);
 
-      const claimed = await claimSandboxOperation({
-        resource: current,
+      const definition: SandboxLifecycleDefinition = {
+        operationType: SandboxOperationTypeEnum.delete,
         status: SandboxInstanceStatusEnum.deleting,
-        type: SandboxOperationTypeEnum.delete
+        steps: [
+          {
+            fromPhase: 'claimed',
+            toPhase: 'providerDeleted',
+            run: async ({ resource: claimed }) => {
+              await buildSandboxResourceAdapter(claimed).delete();
+            }
+          },
+          {
+            fromPhase: 'providerDeleted',
+            toPhase: 'volumeDeleted',
+            run: async ({ resource: claimed }) => {
+              if (claimed.provider === 'opensandbox') {
+                await deleteSessionVolume(claimed.sandboxId);
+              }
+            }
+          },
+          {
+            fromPhase: 'volumeDeleted',
+            toPhase: 'archiveDeleted',
+            run: async ({ resource: claimed }) => {
+              await getS3SandboxSource().deleteWorkspaceArchive({ sandboxId: claimed.sandboxId });
+            }
+          }
+        ],
+        finish: { type: 'delete' }
+      };
+      await runSandboxLifecycleOperation({
+        resource: current,
+        lease,
+        definition
       });
-      if (!claimed) throw new Error('Sandbox delete operation failed to claim current record');
-      const operationId = requireOperationId(claimed);
-      let phase = claimed.metadata?.operation?.phase ?? 'claimed';
-
-      try {
-        if (phase === 'claimed') {
-          assertValid();
-          await buildSandboxResourceAdapter(claimed).delete();
-          assertValid();
-          const providerDeleted = await advanceSandboxOperation({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.deleting,
-            phase: 'providerDeleted'
-          });
-          if (!providerDeleted) {
-            throw new Error('Sandbox delete operation lost ownership after provider delete');
-          }
-          phase = 'providerDeleted';
-        }
-
-        if (phase === 'providerDeleted') {
-          if (claimed.provider === 'opensandbox') {
-            assertValid();
-            await deleteSessionVolume(claimed.sandboxId);
-          }
-          assertValid();
-          const volumeDeleted = await advanceSandboxOperation({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.deleting,
-            phase: 'volumeDeleted'
-          });
-          if (!volumeDeleted) {
-            throw new Error('Sandbox delete operation lost ownership after volume delete');
-          }
-          phase = 'volumeDeleted';
-        }
-
-        if (phase === 'volumeDeleted') {
-          assertValid();
-          await getS3SandboxSource().deleteWorkspaceArchive({ sandboxId: claimed.sandboxId });
-          assertValid();
-          const archiveDeleted = await advanceSandboxOperation({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.deleting,
-            phase: 'archiveDeleted'
-          });
-          if (!archiveDeleted) {
-            throw new Error('Sandbox delete operation lost ownership after archive delete');
-          }
-          phase = 'archiveDeleted';
-        }
-        if (phase !== 'archiveDeleted') {
-          throw new Error(`Unsupported sandbox delete phase: ${phase}`);
-        }
-
-        const result = await deleteClaimedSandboxRecord({ resource: claimed, operationId });
-        if (result.deletedCount !== 1) {
-          throw new Error('Sandbox delete operation lost ownership before record cleanup');
-        }
-      } catch (error) {
-        await markSandboxOperationFailed({
-          resource: claimed,
-          operationId,
-          status: SandboxInstanceStatusEnum.deleting,
-          error: getErrText(error)
-        }).catch(() => undefined);
-        throw error;
-      }
     }
   });
 }
@@ -312,5 +238,3 @@ export async function retryStaleStoppingSandboxes(now = new Date()): Promise<voi
   });
   await stopSandboxResources(stale);
 }
-
-export { findInactiveRunningSandboxResources };

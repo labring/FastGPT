@@ -1,16 +1,11 @@
 /** App Sandbox 跨 provider 生命周期迁移。 */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { subMinutes } from 'date-fns';
 import { isRedisLeaseError } from '../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../error';
 import {
-  advanceSandboxOperation,
-  claimSandboxOperation,
-  completeSandboxOperation,
   completeSandboxProviderMigration,
   findSandboxInstanceBySource,
-  markSandboxOperationFailed,
   type SandboxResourceDoc
 } from '../infrastructure/instance/repository';
 import {
@@ -27,6 +22,7 @@ import {
 } from './archive';
 import { withSandboxLifecycleLease } from './lease';
 import { assertSandboxSourceActive } from './sourceGuard';
+import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from './lifecycle/runner';
 
 const findSourceSandboxInstance = (params: {
   sourceType: ChatSourceTypeEnum;
@@ -81,56 +77,35 @@ export async function migrateSandboxProviderBeforeUse(params: {
           throw new SandboxLifecycleStateError(resource.status);
         }
 
-        const claimed = await claimSandboxOperation({
-          resource,
+        const rollbackFromPhase =
+          resource.metadata?.operation?.phase === 'archiveInstalled'
+            ? 'archiveInstalled'
+            : 'claimed';
+        const definition: SandboxLifecycleDefinition = {
+          operationType: SandboxOperationTypeEnum.restore,
           status: SandboxInstanceStatusEnum.restoring,
-          type: SandboxOperationTypeEnum.restore,
+          steps: [
+            {
+              fromPhase: rollbackFromPhase,
+              toPhase: 'rollbackProviderDeleted',
+              run: async ({ resource: claimed }) => {
+                await buildSandboxResourceAdapter(claimed).delete();
+                if (claimed.provider === 'opensandbox') {
+                  await deleteSessionVolume(claimed.sandboxId);
+                }
+              }
+            }
+          ],
+          finish: { type: 'complete', status: SandboxInstanceStatusEnum.archived }
+        };
+        const rolledBack = await runSandboxLifecycleOperation({
+          resource,
+          lease,
+          definition,
           previousStatus: SandboxInstanceStatusEnum.archived
         });
-        if (!claimed?.metadata?.operation?.id) {
-          throw new Error('Stale sandbox restore rollback was not claimed');
-        }
-        const operationId = claimed.metadata.operation.id;
-        let phase = claimed.metadata.operation.phase;
-        try {
-          if (phase === 'claimed' || phase === 'archiveInstalled') {
-            lease.assertValid();
-            await buildSandboxResourceAdapter(claimed).delete();
-            if (claimed.provider === 'opensandbox') {
-              await deleteSessionVolume(claimed.sandboxId);
-            }
-            lease.assertValid();
-            const deleted = await advanceSandboxOperation({
-              resource: claimed,
-              operationId,
-              status: SandboxInstanceStatusEnum.restoring,
-              phase: 'rollbackProviderDeleted'
-            });
-            if (!deleted) {
-              throw new Error('Stale sandbox restore rollback lost ownership after delete');
-            }
-            phase = 'rollbackProviderDeleted';
-          }
-          if (phase !== 'rollbackProviderDeleted') {
-            throw new Error(`Unsupported stale sandbox restore rollback phase: ${phase}`);
-          }
-          const rolledBack = await completeSandboxOperation({
-            resource: claimed,
-            operationId,
-            fromStatus: SandboxInstanceStatusEnum.restoring,
-            status: SandboxInstanceStatusEnum.archived
-          });
-          if (!rolledBack) throw new Error('Stale sandbox restore rollback lost ownership');
-          return rolledBack;
-        } catch (error) {
-          await markSandboxOperationFailed({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.restoring,
-            error: getErrText(error)
-          }).catch(() => undefined);
-          throw error;
-        }
+        if (!rolledBack) throw new Error('Stale sandbox restore rollback was not claimed');
+        return rolledBack;
       };
 
       current = await rollbackStaleRestore(current);
@@ -160,59 +135,40 @@ export async function migrateSandboxProviderBeforeUse(params: {
         throw new SandboxLifecycleStateError(current.status);
       }
 
-      const claimed = await claimSandboxOperation({
-        resource: current,
+      const definition: SandboxLifecycleDefinition = {
+        operationType: SandboxOperationTypeEnum.providerMigration,
         status: SandboxInstanceStatusEnum.providerMigrating,
-        type: SandboxOperationTypeEnum.providerMigration,
+        steps: [
+          {
+            fromPhase: 'claimed',
+            toPhase: 'targetAdapterValidated',
+            run: async ({ resource: claimed }) => {
+              buildSandboxResourceAdapter({
+                provider: params.provider,
+                sandboxId: claimed.sandboxId
+              });
+            }
+          }
+        ],
+        finish: {
+          type: 'custom',
+          run: ({ resource: claimed, operationId }) =>
+            completeSandboxProviderMigration({
+              resource: claimed,
+              operationId,
+              provider: params.provider
+            })
+        }
+      };
+      await runSandboxLifecycleOperation({
+        resource: current,
+        lease,
+        definition,
         previousStatus:
           current.metadata?.operation?.previousStatus ?? SandboxInstanceStatusEnum.archived,
         fromProvider: current.metadata?.operation?.fromProvider ?? current.provider,
         targetProvider: params.provider
       });
-      if (!claimed?.metadata?.operation?.id) {
-        throw new Error('Sandbox provider migration operation was not claimed');
-      }
-      const operationId = claimed.metadata.operation.id;
-      let phase = claimed.metadata.operation.phase;
-
-      try {
-        if (phase === 'claimed') {
-          lease.assertValid();
-          buildSandboxResourceAdapter({
-            provider: params.provider,
-            sandboxId: claimed.sandboxId
-          });
-          const validated = await advanceSandboxOperation({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.providerMigrating,
-            phase: 'targetAdapterValidated'
-          });
-          if (!validated) {
-            throw new Error('Sandbox provider migration lost ownership after target validation');
-          }
-          phase = 'targetAdapterValidated';
-        }
-        if (phase !== 'targetAdapterValidated') {
-          throw new Error(`Unsupported sandbox provider migration phase: ${phase}`);
-        }
-        const completed = await completeSandboxProviderMigration({
-          resource: claimed,
-          operationId,
-          provider: params.provider
-        });
-        if (!completed) {
-          throw new Error('Sandbox provider migration lost ownership before commit');
-        }
-      } catch (error) {
-        await markSandboxOperationFailed({
-          resource: claimed,
-          operationId,
-          status: SandboxInstanceStatusEnum.providerMigrating,
-          error: getErrText(error)
-        }).catch(() => undefined);
-        throw error;
-      }
     }
   }).catch((error) => {
     if (isRedisLeaseError(error)) throw createAgentSandboxInitializingError();

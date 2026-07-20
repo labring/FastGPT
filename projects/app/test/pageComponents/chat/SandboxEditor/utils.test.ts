@@ -15,7 +15,7 @@ describe('SandboxEditor session RPC paths', () => {
     );
   });
 
-  it('prefixes filesystem path and move parameters without changing UI paths', () => {
+  it('scopes filesystem and exec RPC parameters to the Chat session', () => {
     expect(
       scopeSandboxIdeRpcParams('fs/read_file', { path: 'src/index.ts' }, 'sessions/chat-1')
     ).toEqual({ path: 'sessions/chat-1/src/index.ts' });
@@ -28,9 +28,6 @@ describe('SandboxEditor session RPC paths', () => {
     expect(
       scopeSandboxIdeRpcParams('fs/read_dir_recursive', { path: '.' }, 'sessions/chat-1')
     ).toEqual({ path: 'sessions/chat-1' });
-  });
-
-  it('runs IDE Agent exec commands from the Chat session directory', () => {
     expect(
       scopeSandboxIdeRpcParams('fs/exec', { command: 'pwd', timeoutMs: 1000 }, 'sessions/chat-1')
     ).toEqual({

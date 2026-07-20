@@ -25,8 +25,7 @@ import {
   claimSkillSandboxMigrationTarget,
   completeSandboxOperation,
   findSandboxInstanceBySource,
-  markSandboxOperationFailed,
-  type SandboxResourceRef
+  markSandboxOperationFailed
 } from '../infrastructure/instance/repository';
 import { SandboxInstanceStatusEnum, SandboxMetadataSchema, SandboxProviderSchema } from '../type';
 import { getConfiguredSandboxProvider } from '../infrastructure/provider/config';
@@ -41,6 +40,7 @@ import { getSandboxRuntimePaths, getSandboxSessionPathSegment, joinSandboxPath }
 import {
   SANDBOX_STALE_ARCHIVING_MINUTES,
   getSandboxWorkspaceArchiveForMigration,
+  restoreArchivedSandboxBeforeUse,
   restoreSandboxWorkspaceArchiveForMigration
 } from './archive';
 import {
@@ -224,19 +224,20 @@ const createMigrationTarget = async (params: {
   } satisfies MigrationTarget;
 };
 
-/** 把一条旧 Workspace 归档幂等安装到目标 Chat session。 */
-export async function installLegacyWorkspaceArchive(params: {
+/**
+ * 把 Legacy Workspace 从 staging 合并到目标目录。
+ *
+ * 目标现有文件始终优先；Legacy 只补充缺失文件，避免升级后已经产生的新内容被旧归档覆盖。
+ */
+async function mergeLegacyWorkspaceArchive(params: {
   target: MigrationTarget;
   legacySandboxId: string;
-  chatId: string;
   archiveBody: Buffer;
+  targetDirectory: string;
+  removeAppRuntimeSkillCaches: boolean;
 }) {
-  const { target, legacySandboxId, chatId, archiveBody } = params;
+  const { target, legacySandboxId, archiveBody, targetDirectory } = params;
   const { workspaceRoot } = target.getRuntimePaths();
-  const sessionWorkDirectory = joinSandboxPath(
-    joinSandboxPath(workspaceRoot, 'sessions'),
-    getSandboxSessionPathSegment(chatId)
-  );
   const stagingName = createHash('sha256').update(legacySandboxId).digest('hex').slice(0, 40);
   const stagingDirectory = joinSandboxPath(
     joinSandboxPath(workspaceRoot, '.migration'),
@@ -249,21 +250,26 @@ export async function installLegacyWorkspaceArchive(params: {
     archiveBody
   });
 
+  const removeRuntimeSkillCacheCommands = params.removeAppRuntimeSkillCaches
+    ? [
+        'projects="$source/projects"',
+        'if [ -d "$projects" ]; then',
+        '  find "$projects" -mindepth 1 -maxdepth 1 -type d -exec sh -c \'',
+        '    for dir; do',
+        '      name=${dir##*/}',
+        '      case "$name" in ""|*[!0-9a-fA-F]*) continue ;; esac',
+        `      [ "\${#name}" -eq ${LEGACY_SKILL_VERSION_DIRECTORY_NAME_LENGTH} ] && rm -rf -- "$dir"`,
+        '    done',
+        "  ' sh {} +",
+        'fi'
+      ]
+    : [];
   const result = await target.provider.execute(
     [
       'set -e',
       `source=${shellQuote(stagingDirectory)}`,
-      `target=${shellQuote(sessionWorkDirectory)}`,
-      'projects="$source/projects"',
-      'if [ -d "$projects" ]; then',
-      '  find "$projects" -mindepth 1 -maxdepth 1 -type d -exec sh -c \'',
-      '    for dir; do',
-      '      name=${dir##*/}',
-      '      case "$name" in ""|*[!0-9a-fA-F]*) continue ;; esac',
-      `      [ "\${#name}" -eq ${LEGACY_SKILL_VERSION_DIRECTORY_NAME_LENGTH} ] && rm -rf -- "$dir"`,
-      '    done',
-      "  ' sh {} +",
-      'fi',
+      `target=${shellQuote(targetDirectory)}`,
+      ...removeRuntimeSkillCacheCommands,
       'merge_without_overwrite() {',
       '  source_root=$1; target_root=$2',
       '  for source_path in "$source_root"/* "$source_root"/.[!.]* "$source_root"/..?*; do',
@@ -290,6 +296,38 @@ export async function installLegacyWorkspaceArchive(params: {
     throw new Error(result.stderr || result.stdout || 'Failed to commit workspace');
   }
 }
+
+/** 把一条旧 App Workspace 归档幂等安装到目标 Chat session。 */
+export async function installLegacyWorkspaceArchive(params: {
+  target: MigrationTarget;
+  legacySandboxId: string;
+  chatId: string;
+  archiveBody: Buffer;
+}) {
+  const { workspaceRoot } = params.target.getRuntimePaths();
+  return mergeLegacyWorkspaceArchive({
+    target: params.target,
+    legacySandboxId: params.legacySandboxId,
+    archiveBody: params.archiveBody,
+    targetDirectory: joinSandboxPath(
+      joinSandboxPath(workspaceRoot, 'sessions'),
+      getSandboxSessionPathSegment(params.chatId)
+    ),
+    removeAppRuntimeSkillCaches: true
+  });
+}
+
+/** 把旧 Skill Workspace 合并到编辑目标，保留升级后已经产生的文件。 */
+const installLegacySkillWorkspaceArchive = (params: {
+  target: MigrationTarget;
+  legacySandboxId: string;
+  archiveBody: Buffer;
+}) =>
+  mergeLegacyWorkspaceArchive({
+    ...params,
+    targetDirectory: params.target.getRuntimePaths().workspaceRoot,
+    removeAppRuntimeSkillCaches: false
+  });
 
 /** 按步骤清理一条 Legacy 资源；所有关键失败都向上抛出。 */
 async function cleanupLegacyInstance(
@@ -430,8 +468,23 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
       if (phase === 'cleanupPending' && !targetIsStable) {
         throw new Error(`Published Skill migration target is still ${existing?.status}`);
       }
-      if (targetIsStable && (phase === 'pending' || phase === 'archiveReady')) {
-        throw new Error('Published Skill migration target still has an uninstalled Legacy record');
+      if (
+        !cleanupOnly &&
+        existing &&
+        (existing.status === SandboxInstanceStatusEnum.archived ||
+          existing.status === SandboxInstanceStatusEnum.restoring)
+      ) {
+        sourceLease.assertValid();
+        const provider = getConfiguredSandboxProvider();
+        await restoreArchivedSandboxBeforeUse({
+          provider,
+          sandboxId: targetSandboxId,
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          sourceId: item.sourceId,
+          userId: ChatSourceTypeEnum.skillEdit,
+          resourceLimit: existing.limit ?? undefined
+        });
+        sourceLease.assertValid();
       }
 
       if (!cleanupOnly) {
@@ -502,10 +555,9 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
                   maxBytes: getAgentSandboxArchiveMaxBytes()
                 });
                 assertLeasesValid();
-                await restoreSandboxWorkspaceArchiveForMigration({
-                  sandbox: target.provider,
-                  workDirectory: target.getRuntimePaths().workspaceRoot,
-                  sandboxId: item.doc.sandboxId,
+                await installLegacySkillWorkspaceArchive({
+                  target,
+                  legacySandboxId: item.doc.sandboxId,
                   archiveBody: body
                 });
                 assertLeasesValid();
@@ -620,8 +672,25 @@ const migrateAppGroup = async (params: {
       if (cleanupOnly && existing && !targetIsStable) {
         throw new Error(`Published migration target is still ${existing.status}`);
       }
-      if (!cleanupOnly && targetIsStable) {
-        throw new Error('Published migration target still has uninstalled Legacy records');
+      if (
+        !cleanupOnly &&
+        existing &&
+        (existing.status === SandboxInstanceStatusEnum.archived ||
+          existing.status === SandboxInstanceStatusEnum.restoring)
+      ) {
+        // 仅 ensureRunning 会得到空资源；先走正式 restore 状态机恢复 v2 自身归档，
+        // 再由 migration 以目标内容优先的规则合并 Legacy Workspace。
+        sourceLease.assertValid();
+        const provider = getConfiguredSandboxProvider();
+        await restoreArchivedSandboxBeforeUse({
+          provider,
+          sandboxId: targetSandboxId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: first.sourceId,
+          userId: first.userId,
+          resourceLimit: existing.limit ?? undefined
+        });
+        sourceLease.assertValid();
       }
       if (!cleanupOnly) {
         await withSandboxLifecycleLease({

@@ -34,20 +34,6 @@ export const downloadSkillPackageToContext =
     };
   };
 
-/** 在 prepare 链路中显式上报 skill 部署阶段，保持调用处生命周期可读。 */
-export const reportSkillPrepareProgress =
-  ({
-    phase,
-    onProgress
-  }: {
-    phase: SandboxStatusPhase;
-    onProgress?: (phase: SandboxStatusPhase) => void;
-  }): SkillPackagePrepareStep =>
-  async (context) => {
-    onProgress?.(phase);
-    return context;
-  };
-
 /** 将已下载的 skill ZIP 写入 sandbox 并解压到当前工作目录。 */
 export const deployDownloadedSkillPackage =
   ({

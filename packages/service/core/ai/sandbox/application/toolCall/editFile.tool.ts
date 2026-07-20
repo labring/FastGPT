@@ -5,7 +5,6 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_EDIT_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export const SandboxEditFileToolSchema = z.object({
   entries: z.array(
@@ -34,7 +33,3 @@ export const sandboxEditFileTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_EDIT_FILE_TOOL_NAME]: sandboxEditFileTool
-};

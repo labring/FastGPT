@@ -7,7 +7,7 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/utils';
 
 describe('sandbox runtime paths', () => {
-  it('splits App workspace, shared skills and Chat session paths', () => {
+  it('derives App session and Skill Edit workspace paths', () => {
     expect(
       getSandboxRuntimePaths({
         sourceType: ChatSourceTypeEnum.app,
@@ -19,9 +19,6 @@ describe('sandbox runtime paths', () => {
       runtimeSkillsRoot: '/workspace/projects',
       sessionWorkDirectory: '/workspace/sessions/chat-1'
     });
-  });
-
-  it('keeps Skill Edit at the workspace root', () => {
     expect(
       getSandboxRuntimePaths({
         sourceType: ChatSourceTypeEnum.skillEdit,

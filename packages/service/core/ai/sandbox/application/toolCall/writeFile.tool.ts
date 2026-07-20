@@ -5,7 +5,6 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_WRITE_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export const SandboxWriteFileToolSchema = z.object({
   path: z.string(),
@@ -34,7 +33,3 @@ export const sandboxWriteFileTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_WRITE_FILE_TOOL_NAME]: sandboxWriteFileTool
-};

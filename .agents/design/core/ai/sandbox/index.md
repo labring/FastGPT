@@ -50,7 +50,7 @@ provider: opensandbox | sealosdevbox
 | 场景 | sandboxId | 归属 |
 | --- | --- | --- |
 | App chat | `app-<hash(sourceId-effectiveUserId)>` | `sourceType=app`，`userId=effectiveUserId` |
-| Skill Edit | `skillEdit-<hash(sourceId-skillEdit)>` | `sourceType=skillEdit`，`userId=skillEdit` |
+| Skill Edit | `skilledit-<hash(sourceId-skillEdit)>` | `sourceType=skillEdit`，`userId=skillEdit` |
 | Chat Agent Helper | 不支持 Sandbox | 调用时直接报错 |
 
 `agent_sandbox_instances_v2` 使用 `(provider, sandboxId)` 唯一索引，并使用
@@ -162,7 +162,8 @@ Skill Edit 复用编辑器 Sandbox 中的当前工作区，不把编辑中的内
 
 - 不活跃的 running 实例由 cron 停止并标记为 stopped。
 - 删除资源时同步清理 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
-- App chat 删除只清理对应会话 Sandbox；App 删除清理该 source 下所有 Sandbox。
+- App chat 删除只清理聊天记录和 chat S3 文件，不删除共享 Sandbox，也不清理 Sandbox 内的 `sessions/<chatId>` 目录。
+- App 删除清理该 source 下全部用户级 v2 与 Legacy Sandbox，包括 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
 - Skill 删除清理 Skill Edit 相关 Sandbox；普通编辑聊天删除不直接删除共享 edit-debug Sandbox。
 - stopped 实例可进入冷归档；恢复时通过 archive 状态机避免与归档、删除并发。
 - 保活和只读存在性检查不能意外拉起 archived Sandbox。

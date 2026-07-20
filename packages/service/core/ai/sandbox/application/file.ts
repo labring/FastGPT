@@ -32,8 +32,6 @@ type SandboxDirectoryArchive = {
 
 const MAX_ARCHIVE_DEPTH = 20;
 
-const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
-
 const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
 /**

@@ -3,7 +3,6 @@
  */
 import z from 'zod';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import { SANDBOX_FIND_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { defineTool } from './type';
 import { SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES, truncateSandboxToolOutput } from './utils';
 
@@ -59,7 +58,3 @@ export const sandboxFindTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_FIND_TOOL_NAME]: sandboxFindTool
-};

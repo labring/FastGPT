@@ -22,58 +22,27 @@ describe('sandbox lifecycle leases', () => {
     );
   });
 
-  it('builds a source-scoped key and forwards the lease context', async () => {
-    const fn = vi.fn().mockResolvedValue('ok');
-
-    await expect(
-      withSandboxSourceMutationLease({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1',
-        label: 'create-app-sandbox',
-        fn
-      })
-    ).resolves.toBe('ok');
-
-    expect(mocks.withRedisLease).toHaveBeenCalledWith(
-      expect.objectContaining({
-        key: 'agent-sandbox:source:app:app-1',
-        label: 'create-app-sandbox'
-      })
-    );
-    expect(fn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        signal: expect.any(AbortSignal),
-        assertValid: expect.any(Function)
-      })
-    );
-  });
-
-  it('uses a provider-independent lifecycle key', async () => {
+  it('uses separate source, lifecycle and migration lease keys', async () => {
+    await withSandboxSourceMutationLease({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
+      label: 'create-app-sandbox',
+      fn: vi.fn().mockResolvedValue(undefined)
+    });
     await withSandboxLifecycleLease({
       sandboxId: 'stable-id',
       label: 'archive-sandbox',
       fn: vi.fn().mockResolvedValue(undefined)
     });
-
-    expect(mocks.withRedisLease).toHaveBeenCalledWith(
-      expect.objectContaining({
-        key: 'agent-sandbox:lifecycle:stable-id',
-        label: 'archive-sandbox'
-      })
-    );
-  });
-
-  it('keeps the migration job lock separate from resource correctness locks', async () => {
     await withLegacySandboxMigrationJobLease({
       label: 'migrate-user-sandboxes',
       fn: vi.fn().mockResolvedValue(undefined)
     });
 
-    expect(mocks.withRedisLease).toHaveBeenCalledWith(
-      expect.objectContaining({
-        key: 'agent-sandbox:legacy-migration-job',
-        label: 'migrate-user-sandboxes'
-      })
-    );
+    expect(mocks.withRedisLease.mock.calls.map(([params]) => params.key)).toEqual([
+      'agent-sandbox:source:app:app-1',
+      'agent-sandbox:lifecycle:stable-id',
+      'agent-sandbox:legacy-migration-job'
+    ]);
   });
 });

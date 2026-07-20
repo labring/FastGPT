@@ -138,7 +138,7 @@ type SandboxInstance = {
 ### 4.1 ID 生成
 
 - v2 统一使用 `generateSandboxId({ sourceType, sourceId, userId })`。
-- 输出格式为 `sourceType + "-" + hash(sourceId + "-" + userId)`，hash 保留 16 位小写十六进制。
+- 输出格式为 `sourceType.toLowerCase() + "-" + hash(sourceId + "-" + userId)`，hash 保留 16 位小写十六进制。
 - App 使用有效用户 ID；Skill Edit 使用固定值 `ChatSourceTypeEnum.skillEdit`。
 - App 与 Skill Edit 均不把 `chatId` 放入 ID；`chatId` 只映射到 App Sandbox 的 session 目录。
 - 不保留旧三参数 ID 或无前缀 ID 的兼容分支。
@@ -249,16 +249,22 @@ type SandboxInstance = {
    S3 归档并在清理阶段重新删除旧资源；`restoring` 说明归档已经完成，直接重用 S3 归档；
    `failed` 保留在 Legacy 表并返回失败，不创建或发布 v2 目标。
 4. Skill 复用 `pending -> archiveReady -> installed -> cleanupPending` 持久阶段。归档安装到新目标
-   Workspace 根目录，只有 `installed` 已提交后才把目标发布为 `running`。
+   Workspace 根目录；目标已存在时递归合并且始终保留目标现有内容。只有 `installed` 已提交后才把
+   目标发布为 `running`。
 5. 发布成功后删除旧物理 Sandbox、OpenSandbox volume、旧 S3 归档和 Legacy 记录；任一步失败都
    保留 `cleanupPending` 供幂等重试。
+6. 如果升级后的 Skill runtime 已先创建稳定 v2 目标，migration 接管该目标并按相同冲突规则补充
+   Legacy 内容；目标已归档时先复用正式 restore 状态机，再进入 migration operation。
 
 ### 6.2 App Workspace
 
 1. 按 `sourceId + userId` 聚合 Legacy App 记录。
 2. 每个 source 分组获取 `Source Mutation Lease`，确认 App source active 后再获取目标
    `Sandbox Lifecycle Lease`，创建或 CAS 确定性的用户级目标记录为 `legacyMigrating`，并写入
-   `type=legacyMigration` 的 operation。普通 runtime 只能返回忙碌，不能接管成空 Workspace。
+   `type=legacyMigration` 的 operation。普通 runtime 只能返回忙碌，不能接管成空 Workspace；如果
+   升级后的 runtime 已提前发布同一确定性 ID 的 `running/stopped` 目标，migration 允许接管并按
+   目标内容优先的规则合并 Legacy Workspace。目标为 `archived/restoring` 时，migration 先复用正式
+   restore 状态机恢复 v2 自身归档，再接管并合并 Legacy Workspace，禁止只拉起空资源。
 3. migration 模块直接在 `legacyMigration` operation 内按 phase 创建、启动或恢复目标 Sandbox，
    不通过普通 `getSandboxClient` 暴露未完成的目标。
 4. Legacy `metadata.archive.state=archived/deleting/restoring` 的记录仅在 S3 对象存在时复用；Legacy
@@ -296,12 +302,14 @@ type SandboxInstance = {
   Skill 迁移失败不执行统一暂停；目标发布前继续保留旧物理 Sandbox，供修复归档状态后重试。
 - 全部残留 Legacy 记录均为 `installed/cleanupPending` 时，说明迁移发布已经完成；无论目标当前是
   `running`、`stopped` 还是 `archived`，都只继续清理旧资源，不再抢占 `legacyMigrating`。
-- 已发布目标只要仍有 `pending/archiveReady`，就视为发布屏障被破坏并终止，不再修改 Workspace。
+- 已发布的 App 目标仍有 `pending/archiveReady` 时，允许重新进入 `legacyMigrating` 并合并 Legacy
+  Workspace；已有 session 内容优先。目标为 `archived/restoring` 时先完成 v2 归档恢复；恢复失败
+  保留 Legacy 记录且不进入 migration claim，后续重试仍从 restore 状态机继续。
 
 ## 7. 测试范围
 
 - App ID 对相同 App + User 稳定，且不受 Chat ID 影响，并带 `app-` 前缀。
-- 不同 App 或 User 生成不同 ID；Skill Edit 对同一 Skill 稳定并带 `skillEdit-` 前缀。
+- 不同 App 或 User 生成不同 ID；Skill Edit 对同一 Skill 稳定并带 `skilledit-` 前缀。
 - 新表 App `userId` 使用有效用户 ID，Skill Edit `userId` 固定为 `skillEdit`。
 - 新实例 Schema、类型、索引和写入均不包含 `chatId`、`metadata.archive` 或
   `metadata.migration`。
@@ -314,7 +322,7 @@ type SandboxInstance = {
 - Legacy 导入失败保留 migration operation 和旧记录阶段，重试更换 operation ID 后继续。
 - source 删除在两层 lease 下把 `legacyMigrating` 抢占为 `deleting`，旧 operation 不能再提交。
 - Chat 删除不删除共享 Sandbox；App 删除仍删除。
-- Skill 迁移使用新的 `skillEdit-...` 物理 ID 搬迁 Workspace，并在发布后清理旧资源与 S3。
+- Skill 迁移使用新的 `skilledit-...` 物理 ID 搬迁 Workspace，并在发布后清理旧资源与 S3。
 - App 迁移覆盖默认目录、新 session 优先的冲突合并、重试、单条清理和最终状态清理。
 
 ## 8. TODO

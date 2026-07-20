@@ -5,7 +5,6 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { SANDBOX_TOOL_MAX_BYTES, truncateSandboxToolOutput } from './utils';
 
 export const SandboxReadFileToolSchema = z.object({
@@ -79,7 +78,3 @@ export const sandboxReadFileTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_READ_FILE_TOOL_NAME]: sandboxReadFileTool
-};

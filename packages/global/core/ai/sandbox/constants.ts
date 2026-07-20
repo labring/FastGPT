@@ -45,7 +45,7 @@ export const generateSandboxId = ({
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
-}): string => `${sourceType}-${hashStr(`${sourceId}-${userId}`).slice(0, 16)}`;
+}): string => `${sourceType.toLowerCase()}-${hashStr(`${sourceId}-${userId}`).slice(0, 16)}`;
 
 // Prompt
 export const SANDBOX_USER_FILES_PATH = 'user_files/';

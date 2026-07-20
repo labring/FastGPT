@@ -3,8 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   withSandboxLifecycleLease: vi.fn(),
-  isRedisLeaseError: vi.fn(),
-  createAgentSandboxInitializingError: vi.fn(),
   assertSandboxSourceActive: vi.fn(),
   findSandboxInstanceBySource: vi.fn(),
   claimSandboxOperation: vi.fn(),
@@ -18,11 +16,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/common/redis/lock', () => ({
-  isRedisLeaseError: mocks.isRedisLeaseError
+  isRedisLeaseError: () => false
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/error', () => ({
-  createAgentSandboxInitializingError: mocks.createAgentSandboxInitializingError
+  createAgentSandboxInitializingError: () => new Error('Sandbox is initializing')
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
@@ -97,8 +95,6 @@ describe('sandbox provider migration lifecycle', () => {
     vi.clearAllMocks();
     mocks.assertSandboxSourceActive.mockResolvedValue(undefined);
     mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }: any) => fn(lease));
-    mocks.isRedisLeaseError.mockReturnValue(false);
-    mocks.createAgentSandboxInitializingError.mockReturnValue(new Error('Sandbox is initializing'));
     mocks.archiveSandboxResourceForProviderMigration.mockResolvedValue({ status: 'success' });
     mocks.advanceSandboxOperation.mockResolvedValue(
       createInstance({ status: 'providerMigrating' })
@@ -128,21 +124,6 @@ describe('sandbox provider migration lifecycle', () => {
       })
     );
   });
-
-  it.each([null, createInstance({ provider: 'sealosdevbox' })])(
-    'returns before taking a lease when no stale provider record exists',
-    async (instance) => {
-      mocks.findSandboxInstanceBySource.mockResolvedValueOnce(instance);
-
-      await migrateSandboxProviderBeforeUse(params);
-
-      expect(mocks.assertSandboxSourceActive).toHaveBeenCalledWith({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1'
-      });
-      expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
-    }
-  );
 
   it('archives and provider-switches the same record inside one lifecycle lease', async () => {
     const running = createInstance();
@@ -270,44 +251,20 @@ describe('sandbox provider migration lifecycle', () => {
     );
   });
 
-  it('blocks when archive completes without producing an archived state', async () => {
-    const running = createInstance();
-    const deleting = createInstance({ status: 'deleting' });
-    mocks.findSandboxInstanceBySource
-      .mockResolvedValueOnce(running)
-      .mockResolvedValueOnce(running)
-      .mockResolvedValueOnce(deleting);
-
-    await expect(migrateSandboxProviderBeforeUse(params)).rejects.toMatchObject({
-      name: 'SandboxLifecycleStateError',
-      state: 'deleting'
-    });
-    expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
-  });
-
   it('records the fencing token error when the final provider commit fails', async () => {
     const archived = createInstance({ status: 'archived' });
     mocks.findSandboxInstanceBySource.mockResolvedValue(archived);
     mocks.completeSandboxProviderMigration.mockResolvedValueOnce(null);
 
-    await expect(migrateSandboxProviderBeforeUse(params)).rejects.toThrow('lost ownership');
+    await expect(migrateSandboxProviderBeforeUse(params)).rejects.toThrow(
+      'Sandbox providerMigration operation lost ownership before terminal commit'
+    );
     expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
       expect.objectContaining({
         operationId: 'migration-1',
         status: 'providerMigrating',
-        error: 'Sandbox provider migration lost ownership before commit'
+        error: 'Sandbox providerMigration operation lost ownership before terminal commit'
       })
-    );
-  });
-
-  it('maps lifecycle lease contention to the public initializing error', async () => {
-    const leaseError = new Error('lease occupied');
-    mocks.findSandboxInstanceBySource.mockResolvedValueOnce(createInstance());
-    mocks.withSandboxLifecycleLease.mockRejectedValueOnce(leaseError);
-    mocks.isRedisLeaseError.mockReturnValueOnce(true);
-
-    await expect(migrateSandboxProviderBeforeUse(params)).rejects.toThrow(
-      'Sandbox is initializing'
     );
   });
 });

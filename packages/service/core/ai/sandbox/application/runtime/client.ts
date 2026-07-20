@@ -13,6 +13,7 @@ import {
   type ResourceLimits,
   type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
+import type { RedisLeaseContext } from '../../../../../common/redis/lock';
 import {
   getSessionVolumeConfig,
   type VolumeManagerResult
@@ -22,15 +23,10 @@ import { getConfiguredSandboxProvider } from '../../infrastructure/provider/conf
 import { ensureConnectedSandboxRunning } from '../../infrastructure/provider/lifecycle';
 import { deleteSandboxResource, stopSandboxResource } from '../resource';
 import {
-  advanceSandboxOperation,
-  claimSandboxOperation,
-  completeSandboxOperation,
   createSandboxProvisioningInstance,
   existsSandboxInstanceBySandboxId,
   findSandboxInstanceBySource,
-  markSandboxOperationFailed,
-  touchRunningSandboxInstance,
-  type SandboxResourceDoc
+  touchRunningSandboxInstance
 } from '../../infrastructure/instance/repository';
 import {
   SandboxInstanceStatusEnum,
@@ -50,6 +46,7 @@ import {
 } from '../archive';
 import { migrateSandboxProviderBeforeUse } from '../providerMigration';
 import { withSandboxLifecycleLease, withSandboxSourceMutationLease } from '../lease';
+import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '../lifecycle/runner';
 import { assertSandboxSourceActive } from '../sourceGuard';
 import { isRedisLeaseError } from '../../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../../error';
@@ -160,9 +157,9 @@ export class SandboxClient {
       throw new Error('Sandbox runtime instance is not running');
     }
 
-    const runProvisioning = async (assertLeaseValid: () => void, allowRecordCreate: boolean) => {
+    const runProvisioning = async (lease: RedisLeaseContext, allowRecordCreate: boolean) => {
       await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
-      assertLeaseValid();
+      lease.assertValid();
       let current = await findSandboxInstanceBySource({
         sourceType: this.sourceType,
         sourceId: this.sourceId,
@@ -187,14 +184,7 @@ export class SandboxClient {
         return;
       }
 
-      let claimed: SandboxResourceDoc | null = null;
-      if (current.status === SandboxInstanceStatusEnum.stopped) {
-        claimed = await claimSandboxOperation({
-          resource: current,
-          status: SandboxInstanceStatusEnum.provisioning,
-          type: SandboxOperationTypeEnum.provision
-        });
-      } else if (current.status === SandboxInstanceStatusEnum.provisioning) {
+      if (current.status === SandboxInstanceStatusEnum.provisioning) {
         const operation = current.metadata?.operation;
         const stale =
           operation?.heartbeatAt &&
@@ -202,60 +192,39 @@ export class SandboxClient {
         if (!createdHere && !stale) {
           throw new SandboxLifecycleStateError(current.status);
         }
-        claimed = createdHere
-          ? current
-          : await claimSandboxOperation({
-              resource: current,
-              status: SandboxInstanceStatusEnum.provisioning,
-              type: SandboxOperationTypeEnum.provision,
-              previousStatus: operation?.previousStatus
-            });
-      } else {
+      } else if (current.status !== SandboxInstanceStatusEnum.stopped) {
         throw new SandboxLifecycleStateError(current.status);
       }
-      if (!claimed?.metadata?.operation?.id) {
-        throw new Error('Sandbox provisioning operation was not claimed');
-      }
 
-      const operationId = claimed.metadata.operation.id;
-      let phase = claimed.metadata.operation.phase;
-      try {
-        await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
-        if (phase === 'claimed') {
-          assertLeaseValid();
-          await ensureConnectedSandboxRunning(this.provider);
-          assertLeaseValid();
-          const ensured = await advanceSandboxOperation({
-            resource: claimed,
-            operationId,
-            status: SandboxInstanceStatusEnum.provisioning,
-            phase: 'providerEnsured'
-          });
-          if (!ensured) {
-            throw new Error('Sandbox provisioning lost ownership after provider ensure');
+      const definition: SandboxLifecycleDefinition = {
+        operationType: SandboxOperationTypeEnum.provision,
+        status: SandboxInstanceStatusEnum.provisioning,
+        steps: [
+          {
+            fromPhase: 'claimed',
+            toPhase: 'providerEnsured',
+            run: async () => {
+              await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+              await ensureConnectedSandboxRunning(this.provider);
+            }
           }
-          phase = 'providerEnsured';
-        }
-        if (phase !== 'providerEnsured') {
-          throw new Error(`Unsupported sandbox provisioning phase: ${phase}`);
-        }
-        const completed = await completeSandboxOperation({
-          resource: claimed,
-          operationId,
-          fromStatus: SandboxInstanceStatusEnum.provisioning,
+        ],
+        finish: {
+          type: 'complete',
           status: SandboxInstanceStatusEnum.running,
           touchActive: true
-        });
-        if (!completed) throw new Error('Sandbox provisioning lost ownership before commit');
-      } catch (error) {
-        await markSandboxOperationFailed({
-          resource: claimed,
-          operationId,
-          status: SandboxInstanceStatusEnum.provisioning,
-          error: getErrText(error)
-        }).catch(() => undefined);
-        throw error;
-      }
+        }
+      };
+      await runSandboxLifecycleOperation({
+        resource: current,
+        lease,
+        definition,
+        previousStatus:
+          current.status === SandboxInstanceStatusEnum.stopped
+            ? SandboxInstanceStatusEnum.stopped
+            : current.metadata?.operation?.previousStatus,
+        alreadyClaimed: createdHere
+      });
     };
 
     const existing = await findSandboxInstanceBySource({
@@ -267,7 +236,7 @@ export class SandboxClient {
       await withSandboxLifecycleLease({
         sandboxId: this.sandboxId,
         label: `provision-existing-sandbox:${this.sandboxId}`,
-        fn: ({ assertValid }) => runProvisioning(assertValid, false)
+        fn: (lease) => runProvisioning(lease, false)
       });
       return;
     }
@@ -282,11 +251,17 @@ export class SandboxClient {
         await withSandboxLifecycleLease({
           sandboxId: this.sandboxId,
           label: `provision-new-sandbox-lifecycle:${this.sandboxId}`,
-          fn: ({ assertValid }) =>
-            runProvisioning(() => {
-              sourceLease.assertValid();
-              assertValid();
-            }, true)
+          fn: (lease) =>
+            runProvisioning(
+              {
+                ...lease,
+                assertValid: () => {
+                  sourceLease.assertValid();
+                  lease.assertValid();
+                }
+              },
+              true
+            )
         });
       }
     });

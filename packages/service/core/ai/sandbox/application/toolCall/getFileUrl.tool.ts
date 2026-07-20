@@ -9,7 +9,6 @@ import { Readable } from 'stream';
 import { addHours } from 'date-fns';
 import { defineTool } from './type';
 import { getS3ChatSource } from '../../../../../common/s3/sources/chat';
-import { SANDBOX_GET_FILE_URL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 const SandboxGetFileUrlToolSchema = z.object({
   paths: z.array(z.string())
@@ -63,7 +62,3 @@ export const sandboxGetFileUrlTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_GET_FILE_URL_TOOL_NAME]: sandboxGetFileUrlTool
-};
