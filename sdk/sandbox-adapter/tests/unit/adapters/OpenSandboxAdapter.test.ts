@@ -198,6 +198,151 @@ describe('OpenSandboxAdapter', () => {
       expect(adapter.status.state).toBe('Stopped');
     });
 
+    it('should use the persisted upstream id instead of an ambiguous session lookup', async () => {
+      const adapter = makeAdapter({
+        sessionId: 'session-1',
+        upstreamId: 'canonical-instance'
+      });
+      const getSandboxInfo = vi.fn(async () => ({
+        id: 'canonical-instance',
+        status: { state: 'running' }
+      }));
+      const listSandboxInfos = vi.fn();
+      const killSandbox = vi.fn(async () => undefined);
+      const close = vi.fn(async () => undefined);
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        getSandboxInfo,
+        listSandboxInfos,
+        killSandbox,
+        close
+      } as unknown as SandboxManager);
+
+      await adapter.stop();
+
+      expect(getSandboxInfo).toHaveBeenCalledWith('canonical-instance');
+      expect(listSandboxInfos).not.toHaveBeenCalled();
+      expect(killSandbox).toHaveBeenCalledWith('canonical-instance');
+    });
+
+    it('should not fall back to a session lookup when a regular upstream handle is missing', async () => {
+      const adapter = makeAdapter({
+        sessionId: 'session-1',
+        upstreamId: 'missing-instance'
+      });
+      const getSandboxInfo = vi.fn(async () => {
+        throw { status: 404, message: 'sandbox not found' };
+      });
+      const listSandboxInfos = vi.fn();
+      const killSandbox = vi.fn(async () => undefined);
+      const close = vi.fn(async () => undefined);
+      const create = vi.spyOn(Sandbox, 'create');
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        getSandboxInfo,
+        listSandboxInfos,
+        killSandbox,
+        close
+      } as unknown as SandboxManager);
+
+      await expect(adapter.stop()).resolves.toBeUndefined();
+
+      expect(getSandboxInfo).toHaveBeenCalledWith('missing-instance');
+      expect(listSandboxInfos).not.toHaveBeenCalled();
+      expect(killSandbox).not.toHaveBeenCalled();
+      await expect(adapter.ensureRunning()).rejects.toBeInstanceOf(SandboxStateError);
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('should preserve connect failures while inspecting an existing sandbox', async () => {
+      const adapter = makeAdapter({ sessionId: 'session-1' });
+      const listSandboxInfos = vi.fn(async () => ({
+        items: [{ id: 'existing', status: { state: 'running' } }]
+      }));
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        listSandboxInfos,
+        close: vi.fn(async () => undefined)
+      } as unknown as SandboxManager);
+      vi.spyOn(Sandbox, 'connect').mockRejectedValue(new Error('authentication failed'));
+
+      await expect(adapter.getInfo()).rejects.toBeInstanceOf(ConnectionError);
+    });
+
+    it('should reconcile by durable marker when the persisted upstream handle is missing', async () => {
+      const adapter = new OpenSandboxAdapter(
+        {
+          ...MINIMAL_CONNECTION,
+          sessionId: 'session-1',
+          upstreamId: 'missing-instance'
+        },
+        {
+          image: { repository: 'node', tag: '20' },
+          metadata: { durableSagaIdempotencyKey: 'effect-key' }
+        }
+      );
+      const getSandboxInfo = vi.fn(async () => {
+        throw { status: 404, message: 'sandbox not found' };
+      });
+      const listSandboxInfos = vi.fn(async () => ({
+        items: [
+          {
+            id: 'replacement-instance',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            metadata: { durableSagaIdempotencyKey: 'effect-key' },
+            status: { state: 'running' }
+          }
+        ]
+      }));
+      const killSandbox = vi.fn(async () => undefined);
+      const close = vi.fn(async () => undefined);
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        getSandboxInfo,
+        listSandboxInfos,
+        killSandbox,
+        close
+      } as unknown as SandboxManager);
+
+      await expect(adapter.stop()).resolves.toBeUndefined();
+
+      expect(listSandboxInfos).toHaveBeenCalledWith({ metadata: { sessionId: 'session-1' } });
+      expect(killSandbox).toHaveBeenCalledWith('replacement-instance');
+    });
+
+    it('should converge duplicate instances carrying the same durable idempotency marker', async () => {
+      const adapter = new OpenSandboxAdapter(
+        { ...MINIMAL_CONNECTION, sessionId: 'session-1' },
+        {
+          image: { repository: 'node', tag: '20' },
+          metadata: { durableSagaIdempotencyKey: 'effect-key' }
+        }
+      );
+      const listSandboxInfos = vi.fn(async () => ({
+        items: [
+          {
+            id: 'newer',
+            createdAt: new Date('2026-01-02T00:00:00.000Z'),
+            metadata: { durableSagaIdempotencyKey: 'effect-key' },
+            status: { state: 'running' }
+          },
+          {
+            id: 'canonical',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            metadata: { durableSagaIdempotencyKey: 'effect-key' },
+            status: { state: 'running' }
+          }
+        ]
+      }));
+      const killSandbox = vi.fn(async () => undefined);
+      const close = vi.fn(async () => undefined);
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        listSandboxInfos,
+        killSandbox,
+        close
+      } as unknown as SandboxManager);
+
+      await adapter.stop();
+
+      expect(killSandbox.mock.calls).toEqual([['newer'], ['canonical']]);
+    });
+
     it('should treat stop as idempotent when no sandbox exists for the session id', async () => {
       const adapter = makeAdapter({ sessionId: 'session-1' });
       const listSandboxInfos = vi.fn(async () => ({ items: [] }));

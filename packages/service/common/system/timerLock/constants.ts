@@ -16,7 +16,6 @@ export enum TimerIdEnum {
   datasetSyncSchedulerReconcile = 'datasetSyncSchedulerReconcile',
   stopInactiveSandboxes = 'stopInactiveSandboxes',
   archiveInactiveSandboxes = 'archiveInactiveSandboxes',
-  recoverStaleSandboxOperations = 'recoverStaleSandboxOperations',
   enterpriseAuthTaskCleanup = 'enterpriseAuthTaskCleanup',
   /** 纠正长时间卡在 generating 的会话状态 */
   cleanStaleGeneratingChat = 'cleanStaleGeneratingChat'

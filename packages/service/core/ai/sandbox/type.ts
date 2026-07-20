@@ -1,7 +1,7 @@
 /**
  * 沙盒模块共享类型。
  *
- * 只定义 sandbox 实例、provider、生命周期 operation 和 metadata schema，不访问服务端资源。
+ * 只定义 sandbox 实例、provider、生命周期 Saga 和 metadata schema，不访问服务端资源。
  */
 import z from 'zod';
 import {
@@ -47,7 +47,7 @@ export const sandboxStableStatusList = ['running', 'stopped', 'archived'] as con
 export const SandboxStableStatusSchema = z.enum(sandboxStableStatusList);
 export type SandboxStableStatusType = z.infer<typeof SandboxStableStatusSchema>;
 
-export const sandboxOperationTypeList = [
+export const sandboxLifecycleTypeList = [
   'provision',
   'legacyMigration',
   'stop',
@@ -56,7 +56,7 @@ export const sandboxOperationTypeList = [
   'providerMigration',
   'delete'
 ] as const;
-export const SandboxOperationTypeEnum = {
+export const SandboxLifecycleTypeEnum = {
   provision: 'provision',
   legacyMigration: 'legacyMigration',
   stop: 'stop',
@@ -64,9 +64,9 @@ export const SandboxOperationTypeEnum = {
   restore: 'restore',
   providerMigration: 'providerMigration',
   delete: 'delete'
-} as const satisfies Record<(typeof sandboxOperationTypeList)[number], string>;
-export const SandboxOperationTypeSchema = z.enum(sandboxOperationTypeList);
-export type SandboxOperationType = z.infer<typeof SandboxOperationTypeSchema>;
+} as const satisfies Record<(typeof sandboxLifecycleTypeList)[number], string>;
+export const SandboxLifecycleTypeSchema = z.enum(sandboxLifecycleTypeList);
+export type SandboxLifecycleType = z.infer<typeof SandboxLifecycleTypeSchema>;
 export const SandboxSourceTypeSchema = z.enum([
   ChatSourceTypeEnum.app,
   ChatSourceTypeEnum.skillEdit
@@ -97,21 +97,13 @@ export const SandboxImageSchema = z.object({
   tag: z.string().optional()
 });
 
-export const SandboxOperationSchema = z
+export const SandboxActiveSagaSchema = z
   .object({
-    id: z.string().min(1),
-    type: SandboxOperationTypeSchema,
-    phase: z.string().min(1),
-    previousStatus: SandboxStableStatusSchema.optional(),
-    startedAt: z.coerce.date(),
-    heartbeatAt: z.coerce.date(),
-    failedAt: z.coerce.date().optional(),
-    error: z.string().optional(),
-    fromProvider: SandboxProviderSchema.optional(),
-    targetProvider: SandboxProviderSchema.optional()
+    sagaId: z.string().min(1),
+    type: SandboxLifecycleTypeSchema
   })
   .strict();
-export type SandboxOperationTypeSchemaType = z.infer<typeof SandboxOperationSchema>;
+export type SandboxActiveSaga = z.infer<typeof SandboxActiveSagaSchema>;
 
 export const SandboxMetadataSchema = z
   .object({
@@ -123,21 +115,22 @@ export const SandboxMetadataSchema = z
     image: SandboxImageSchema.optional(),
     skillName: z.string().optional(),
     versionId: z.string().optional(),
-    operation: SandboxOperationSchema.optional()
+    /** Adapter 返回的 opaque handle，用于跨进程稳定重绑定同一个上游资源。 */
+    upstreamId: z.string().min(1).optional(),
+    activeSaga: SandboxActiveSagaSchema.optional()
   })
   .strict();
 export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 
-const expectedOperationByStatus: Partial<Record<SandboxInstanceStatusType, SandboxOperationType>> =
-  {
-    provisioning: 'provision',
-    legacyMigrating: 'legacyMigration',
-    stopping: 'stop',
-    archiving: 'archive',
-    restoring: 'restore',
-    providerMigrating: 'providerMigration',
-    deleting: 'delete'
-  };
+const expectedSagaByStatus: Partial<Record<SandboxInstanceStatusType, SandboxLifecycleType>> = {
+  provisioning: 'provision',
+  legacyMigrating: 'legacyMigration',
+  stopping: 'stop',
+  archiving: 'archive',
+  restoring: 'restore',
+  providerMigrating: 'providerMigration',
+  deleting: 'delete'
+};
 
 export const SandboxInstanceZodSchema = z
   .object({
@@ -155,22 +148,22 @@ export const SandboxInstanceZodSchema = z
     metadata: SandboxMetadataSchema.nullish()
   })
   .superRefine((instance, ctx) => {
-    const expectedOperation = expectedOperationByStatus[instance.status];
-    const operation = instance.metadata?.operation;
+    const expectedSaga = expectedSagaByStatus[instance.status];
+    const activeSaga = instance.metadata?.activeSaga;
 
-    if (!expectedOperation && operation) {
+    if (!expectedSaga && activeSaga) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['metadata', 'operation'],
-        message: `Stable status ${instance.status} must not keep an operation`
+        path: ['metadata', 'activeSaga'],
+        message: `Stable status ${instance.status} must not keep an active Saga`
       });
       return;
     }
-    if (expectedOperation && operation?.type !== expectedOperation) {
+    if (expectedSaga && activeSaga?.type !== expectedSaga) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['metadata', 'operation'],
-        message: `Status ${instance.status} requires ${expectedOperation} operation`
+        path: ['metadata', 'activeSaga'],
+        message: `Status ${instance.status} requires ${expectedSaga} active Saga`
       });
     }
   });

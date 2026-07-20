@@ -122,13 +122,6 @@ export async function registerNodeInstrumentation() {
         }
       }),
       runInitializationStep({
-        step: 'init-bullmq-workers',
-        stage: InitialErrorEnum.REDIS_ERROR,
-        action: () => initBullMQWorkers(),
-        logger,
-        getErrText
-      }),
-      runInitializationStep({
         step: 'init-vector-store',
         stage: InitialErrorEnum.VECTORDB_ERROR,
         action: () => initVectorStore(),
@@ -136,6 +129,14 @@ export async function registerNodeInstrumentation() {
         getErrText
       })
     ]);
+
+    await runInitializationStep({
+      step: 'init-bullmq-workers',
+      stage: InitialErrorEnum.REDIS_ERROR,
+      action: () => initBullMQWorkers(),
+      logger,
+      getErrText
+    });
 
     await runInitializationStep({
       step: 'get-init-config',

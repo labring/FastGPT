@@ -27,6 +27,7 @@ export function buildSandboxAdapter(
   providerConfig: SandboxProviderConfig,
   props: {
     sandboxId: string;
+    upstreamId?: string;
     createConfig?: SandboxCreateSpec;
   }
 ): ISandbox {
@@ -39,7 +40,8 @@ export function buildSandboxAdapter(
           baseUrl: providerConfig.baseUrl,
           runtime: providerConfig.runtime,
           useServerProxy: providerConfig.useServerProxy,
-          sessionId: props.sandboxId
+          sessionId: props.sandboxId,
+          ...(props.upstreamId ? { upstreamId: props.upstreamId } : {})
         },
         props.createConfig
       );
@@ -70,6 +72,7 @@ export function buildRuntimeSandboxAdapter(
   providerName: SandboxProviderType,
   sandboxId: string,
   opts: {
+    upstreamId?: string;
     resourceLimits?: ResourceLimits;
     vmConfig?: VolumeManagerResult | undefined;
     createConfig?: SandboxCreateSpec;
@@ -86,6 +89,7 @@ export function buildRuntimeSandboxAdapter(
 
   return buildSandboxAdapter(config.providerConfig, {
     sandboxId,
+    upstreamId: opts.upstreamId,
     createConfig: config.createConfig
   });
 }
@@ -99,6 +103,8 @@ export function buildRuntimeSandboxAdapter(
 export function buildSandboxResourceAdapter(props: {
   provider: SandboxProviderType;
   sandboxId: string;
+  upstreamId?: string;
+  metadata?: Record<string, unknown> | null;
 }): ISandbox {
   const config = getSandboxAdapterConfig({
     provider: props.provider
@@ -106,6 +112,9 @@ export function buildSandboxResourceAdapter(props: {
 
   return buildSandboxAdapter(config.providerConfig, {
     sandboxId: props.sandboxId,
+    upstreamId:
+      props.upstreamId ??
+      (typeof props.metadata?.upstreamId === 'string' ? props.metadata.upstreamId : undefined),
     createConfig: config.createConfig
   });
 }

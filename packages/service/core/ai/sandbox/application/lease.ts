@@ -1,13 +1,12 @@
 /**
  * Sandbox 生命周期锁分层。
  *
- * 统一锁顺序为 Source Mutation Lease -> Sandbox Lifecycle Lease；调用方不得反向嵌套。
+ * Source Mutation Lease 只协调业务删除和管理员迁移；生命周期隔离由 Saga lease provider 负责。
  */
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { withRedisLease, type RedisLeaseContext } from '../../../../common/redis/lock';
 
 const SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS = 11 * 60 * 1000;
-const SANDBOX_LIFECYCLE_LEASE_TTL_MS = 11 * 60 * 1000;
 const LEGACY_MIGRATION_JOB_LEASE_TTL_MS = 3 * 60 * 1000;
 
 type LeaseTask<T> = (context: RedisLeaseContext) => Promise<T>;
@@ -23,19 +22,6 @@ export const withSandboxSourceMutationLease = <T>(params: {
     key: `agent-sandbox:source:${params.sourceType}:${params.sourceId}`,
     label: params.label,
     ttlMs: SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS,
-    fn: params.fn
-  });
-
-/** 串行化同一稳定 sandboxId 在任意 provider 上的远端生命周期操作。 */
-export const withSandboxLifecycleLease = <T>(params: {
-  sandboxId: string;
-  label: string;
-  fn: LeaseTask<T>;
-}) =>
-  withRedisLease({
-    key: `agent-sandbox:lifecycle:${params.sandboxId}`,
-    label: params.label,
-    ttlMs: SANDBOX_LIFECYCLE_LEASE_TTL_MS,
     fn: params.fn
   });
 

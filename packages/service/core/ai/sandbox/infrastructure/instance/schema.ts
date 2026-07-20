@@ -9,8 +9,8 @@ import type { SandboxInstanceSchemaType } from '../../type';
 import {
   SandboxInstanceStatusSchema,
   SandboxLimitSchema,
+  SandboxLifecycleTypeSchema,
   SandboxMetadataSchema,
-  SandboxOperationTypeSchema,
   SandboxProviderSchema,
   SandboxSourceTypeSchema
 } from '../../type';
@@ -21,22 +21,6 @@ import {
  * 记录 FastGPT 业务归属和远端 provider 资源的映射关系，远端资源本身不在 Mongo 中保存。
  */
 export const collectionName = 'agent_sandbox_instances_v2';
-
-const SandboxOperationMongoSchema = new Schema(
-  {
-    id: { type: String, required: true },
-    type: { type: String, enum: SandboxOperationTypeSchema.options, required: true },
-    phase: { type: String, required: true },
-    previousStatus: { type: String, enum: ['running', 'stopped', 'archived'] },
-    startedAt: { type: Date, required: true },
-    heartbeatAt: { type: Date, required: true },
-    failedAt: Date,
-    error: String,
-    fromProvider: { type: String, enum: SandboxProviderSchema.options },
-    targetProvider: { type: String, enum: SandboxProviderSchema.options }
-  },
-  { _id: false, strict: 'throw' }
-);
 
 const SandboxMetadataMongoSchema = new Schema(
   {
@@ -56,7 +40,16 @@ const SandboxMetadataMongoSchema = new Schema(
     },
     skillName: String,
     versionId: String,
-    operation: SandboxOperationMongoSchema
+    upstreamId: String,
+    activeSaga: {
+      type: new Schema(
+        {
+          sagaId: { type: String, required: true },
+          type: { type: String, enum: SandboxLifecycleTypeSchema.options, required: true }
+        },
+        { _id: false, strict: 'throw' }
+      )
+    }
   },
   { _id: false, strict: 'throw' }
 );
@@ -118,7 +111,7 @@ const SandboxInstanceSchema = new Schema(
   }
 );
 
-const expectedOperationByStatus: Record<string, string | undefined> = {
+const expectedSagaByStatus: Record<string, string | undefined> = {
   provisioning: 'provision',
   legacyMigrating: 'legacyMigration',
   running: undefined,
@@ -131,24 +124,27 @@ const expectedOperationByStatus: Record<string, string | undefined> = {
   deleting: 'delete'
 };
 
-SandboxInstanceSchema.pre('validate', function validateLifecycleState() {
-  const status = this.get('status') as string;
-  const operationType = this.get('metadata.operation.type') as string | undefined;
-  const expectedOperation = expectedOperationByStatus[status];
+SandboxInstanceSchema.pre(
+  'validate',
+  function validateLifecycleState(this: { get(path: string): unknown }) {
+    const status = this.get('status') as string;
+    const activeSagaType = this.get('metadata.activeSaga.type') as string | undefined;
+    const expectedSaga = expectedSagaByStatus[status];
 
-  if (!expectedOperation && operationType) {
-    throw new Error(`Stable status ${status} must not keep an operation`);
+    if (!expectedSaga && activeSagaType) {
+      throw new Error(`Stable status ${status} must not keep an activeSaga`);
+    }
+    if (expectedSaga && activeSagaType !== expectedSaga) {
+      throw new Error(`Status ${status} requires ${expectedSaga} activeSaga`);
+    }
   }
-  if (expectedOperation && operationType !== expectedOperation) {
-    throw new Error(`Status ${status} requires ${expectedOperation} operation`);
-  }
-});
+);
 
 SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
 SandboxInstanceSchema.index({ sourceType: 1, sourceId: 1, userId: 1 }, { unique: true });
 SandboxInstanceSchema.index({ sourceType: 1, status: 1, provider: 1 });
 SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1 });
-SandboxInstanceSchema.index({ status: 1, 'metadata.operation.heartbeatAt': 1 });
+SandboxInstanceSchema.index({ status: 1, 'metadata.activeSaga.sagaId': 1 });
 
 /**
  * sandbox 实例 Mongo model。

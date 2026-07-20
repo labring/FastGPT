@@ -6,7 +6,6 @@
  */
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import { subMinutes } from 'date-fns';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../../../skill/model/schema';
 import { MongoAgentSkillsVersion } from '../../../skill/version/schema';
@@ -41,11 +40,7 @@ import {
 } from '../../infrastructure/provider/lifecycle';
 import type { SandboxClient } from '../runtime/client';
 import { getSandboxClient } from '../runtime/client';
-import {
-  SANDBOX_STALE_ARCHIVING_MINUTES,
-  SandboxLifecycleStateError,
-  startSandboxRuntimeUpgradeArchive
-} from '../archive';
+import { SandboxLifecycleStateError, startSandboxRuntimeUpgradeArchive } from '../archive';
 import {
   countRunningSandboxInstancesBySourceType,
   findSandboxInstanceBySandboxId,
@@ -282,11 +277,6 @@ const getStaleRuntimeInstance = (context: SkillEditRuntimeContext) => {
   );
   if (busyInstance) return busyInstance;
 
-  const failedInstance = staleProviderInstances.find((instance) =>
-    Boolean(instance.metadata?.operation?.error)
-  );
-  if (failedInstance) return failedInstance;
-
   const archivedInstance = staleProviderInstances.find(
     (instance) => instance.status === SandboxInstanceStatusEnum.archived
   );
@@ -310,21 +300,29 @@ const getRuntimeUpgradeInstance = (context: SkillEditRuntimeContext) => {
   if (
     currentProviderInstance &&
     currentProviderInstance.status !== SandboxInstanceStatusEnum.archived &&
-    (!isRuntimeUpgradeBusyArchiveState(currentProviderInstance.status) ||
-      Boolean(currentProviderInstance.metadata?.operation?.error))
+    !isRuntimeUpgradeBusyArchiveState(currentProviderInstance.status)
   ) {
     return currentProviderInstance;
   }
 
-  return (
-    staleProviderInstances.find((instance) => Boolean(instance.metadata?.operation?.error)) ??
-    staleProviderInstances.find(
-      (instance) =>
-        (instance.status === SandboxInstanceStatusEnum.running ||
-          instance.status === SandboxInstanceStatusEnum.stopped) &&
-        !isRuntimeImageMatched(runtimeImage, instance.metadata?.image)
-    )
+  return staleProviderInstances.find(
+    (instance) =>
+      (instance.status === SandboxInstanceStatusEnum.running ||
+        instance.status === SandboxInstanceStatusEnum.stopped) &&
+      !isRuntimeImageMatched(runtimeImage, instance.metadata?.image)
   );
+};
+
+/** 读取当前 aggregate 对应的 Saga 失败原因，避免业务层重新推导 heartbeat/stale 状态。 */
+const getActiveSagaFailure = async (instance?: SandboxResourceDoc) => {
+  const sagaId = instance?.metadata?.activeSaga?.sagaId;
+  if (!sagaId) return undefined;
+  const { getSandboxDurableSaga } = await import('../lifecycle/service');
+  const snapshot = await getSandboxDurableSaga(sagaId);
+  if (!snapshot || (snapshot.status !== 'blocked' && snapshot.status !== 'failed')) {
+    return undefined;
+  }
+  return snapshot.lastError?.message ?? `Durable Saga is ${snapshot.status}`;
 };
 
 /**
@@ -344,18 +342,18 @@ export async function getSkillEditRuntimeStatus(
   const { sessionId, runtimeImage } = context;
   const statusInstance = getRuntimeStatusInstance(context);
   const lifecycleStatus = statusInstance?.status;
-  const operationError = statusInstance?.metadata?.operation?.error;
+  const sagaError = await getActiveSagaFailure(statusInstance);
   const isCurrentProviderArchive = isCurrentProviderInstance(context, statusInstance);
   const isRuntimeImageOutdated =
     !!statusInstance && !isRuntimeImageMatched(runtimeImage, statusInstance.metadata?.image);
 
   if (statusInstance && lifecycleStatus === SandboxInstanceStatusEnum.archiving) {
-    if (operationError) {
+    if (sagaError) {
       return buildRuntimeStatusResponse({
         sandboxId: statusInstance.sandboxId,
         status: 'upgradeRequired',
         archiveState: 'failed',
-        lastError: operationError
+        lastError: sagaError
       });
     }
     return buildRuntimeStatusResponse({
@@ -374,36 +372,26 @@ export async function getSkillEditRuntimeStatus(
   }
 
   if (statusInstance && lifecycleStatus === SandboxInstanceStatusEnum.restoring) {
-    const heartbeatAt = statusInstance.metadata?.operation?.heartbeatAt;
-    const canRetryCurrentProviderRestore =
-      isCurrentProviderArchive &&
-      (Boolean(operationError) ||
-        !heartbeatAt ||
-        heartbeatAt < subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES));
-    if (canRetryCurrentProviderRestore) {
-      return buildRuntimeStatusResponse({
-        sandboxId: statusInstance.sandboxId,
-        status: 'readyToInit',
-        archiveState: 'restoring',
-        canUpgrade: false,
-        shouldPoll: false
-      });
-    }
     return buildRuntimeStatusResponse({
       sandboxId: statusInstance.sandboxId,
-      status: isCurrentProviderArchive ? 'upgrading' : 'upgradeRequired',
+      status: sagaError
+        ? 'upgradeRequired'
+        : isCurrentProviderArchive
+          ? 'upgrading'
+          : 'upgradeRequired',
       archiveState: 'restoring',
+      lastError: sagaError,
       canUpgrade: false,
-      shouldPoll: true
+      shouldPoll: !sagaError
     });
   }
 
   if (statusInstance && isRuntimeUpgradeBusyArchiveState(lifecycleStatus)) {
     return buildRuntimeStatusResponse({
       sandboxId: statusInstance.sandboxId,
-      status: operationError ? 'upgradeRequired' : 'upgrading',
-      archiveState: operationError ? 'failed' : 'archiving',
-      lastError: operationError
+      status: sagaError ? 'upgradeRequired' : 'upgrading',
+      archiveState: sagaError ? 'failed' : 'archiving',
+      lastError: sagaError
     });
   }
 

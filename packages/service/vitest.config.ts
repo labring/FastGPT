@@ -12,6 +12,7 @@ export default defineConfig({
       '@fastgpt-sdk/otel/metrics': resolve('../../sdk/otel/src/metrics-entry.ts'),
       '@fastgpt-sdk/otel/tracing': resolve('../../sdk/otel/src/tracing-entry.ts'),
       '@fastgpt-sdk/otel': resolve('../../sdk/otel/src/index.ts'),
+      '@fastgpt-sdk/durable-saga': resolve('../../sdk/durable-saga/src/index.ts'),
       '@fastgpt': resolve('..'),
       '@test': resolve('../../test')
     }

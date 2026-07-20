@@ -2,18 +2,24 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoApp } from '../../../app/schema';
 import { MongoAgentSkills } from '../../skill/model/schema';
+import type { ClientSession } from '../../../../common/mongo';
 
 /** source 不存在或已经设置 deleteTime 时禁止创建、恢复或迁移 Sandbox。 */
 export async function assertSandboxSourceActive(params: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
+  session?: ClientSession;
 }) {
   const active = await (async () => {
     if (params.sourceType === ChatSourceTypeEnum.app) {
-      return MongoApp.exists({ _id: params.sourceId, deleteTime: null });
+      return MongoApp.exists({ _id: params.sourceId, deleteTime: null }).session(
+        params.session ?? null
+      );
     }
     if (params.sourceType === ChatSourceTypeEnum.skillEdit) {
-      return MongoAgentSkills.exists({ _id: params.sourceId, deleteTime: null });
+      return MongoAgentSkills.exists({ _id: params.sourceId, deleteTime: null }).session(
+        params.session ?? null
+      );
     }
     return null;
   })();

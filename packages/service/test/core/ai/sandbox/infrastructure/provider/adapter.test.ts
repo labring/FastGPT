@@ -63,6 +63,7 @@ describe('sandbox provider adapter', () => {
       },
       {
         sandboxId: 'opensandbox-session-1',
+        upstreamId: 'opensandbox-resource-1',
         createConfig: {
           image: { repository: 'runtime-image', tag: 'test' }
         }
@@ -77,6 +78,7 @@ describe('sandbox provider adapter', () => {
         apiKey: 'api-key',
         runtime: 'docker',
         sessionId: 'opensandbox-session-1',
+        upstreamId: 'opensandbox-resource-1',
         useServerProxy: true
       }),
       {
@@ -148,6 +150,31 @@ describe('sandbox provider adapter', () => {
       expect.objectContaining({
         sessionId: 'resource-session-1'
       }),
+      undefined
+    );
+  });
+
+  it('uses the explicit upstream handle before the persisted metadata fallback', () => {
+    buildSandboxResourceAdapter({
+      provider: 'opensandbox',
+      sandboxId: 'resource-session-1',
+      upstreamId: 'explicit-upstream-id',
+      metadata: { upstreamId: 'metadata-upstream-id' }
+    });
+    expect(mocks.createSandbox).toHaveBeenLastCalledWith(
+      'opensandbox',
+      expect.objectContaining({ upstreamId: 'explicit-upstream-id' }),
+      undefined
+    );
+
+    buildSandboxResourceAdapter({
+      provider: 'opensandbox',
+      sandboxId: 'resource-session-1',
+      metadata: { upstreamId: 'metadata-upstream-id' }
+    });
+    expect(mocks.createSandbox).toHaveBeenLastCalledWith(
+      'opensandbox',
+      expect.objectContaining({ upstreamId: 'metadata-upstream-id' }),
       undefined
     );
   });

@@ -11,8 +11,8 @@ const baseInstance = {
   createdAt: new Date()
 };
 
-describe('MongoSandboxInstance schema indexes', () => {
-  it('declares physical and logical sandbox uniqueness', () => {
+describe('MongoSandboxInstance schema', () => {
+  it('declares identity, lifecycle and inactive-query indexes', () => {
     const indexes = MongoSandboxInstance.schema.indexes();
     const providerIndex = indexes.find(
       ([keys, options]) => keys.provider === 1 && keys.sandboxId === 1 && options?.unique === true
@@ -27,87 +27,107 @@ describe('MongoSandboxInstance schema indexes', () => {
 
     expect(providerIndex?.[0]).toEqual({ provider: 1, sandboxId: 1 });
     expect(logicalIndex?.[0]).toEqual({ sourceType: 1, sourceId: 1, userId: 1 });
-
     expect(indexes.some(([keys]) => keys.status === 1 && keys.lastActiveAt === 1)).toBe(true);
     expect(
-      indexes.some(([keys]) => keys.status === 1 && keys['metadata.operation.heartbeatAt'] === 1)
+      indexes.some(([keys]) => keys.status === 1 && keys['metadata.activeSaga.sagaId'] === 1)
     ).toBe(true);
   });
 
-  it('accepts stable states without operation and matching transition operations', async () => {
-    await expect(
-      new MongoSandboxInstance({ ...baseInstance, status: 'running' }).validate()
-    ).resolves.toBeUndefined();
-
-    await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'archiving',
-        metadata: {
-          operation: {
-            id: 'archive-operation',
-            type: 'archive',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
-        }
-      }).validate()
-    ).resolves.toBeUndefined();
+  it('accepts every stable state without activeSaga', async () => {
+    for (const status of ['running', 'stopped', 'archived']) {
+      await expect(
+        new MongoSandboxInstance({ ...baseInstance, status }).validate()
+      ).resolves.toBeUndefined();
+    }
   });
 
-  it('rejects missing, mismatched and stale operations', async () => {
-    await expect(
-      new MongoSandboxInstance({ ...baseInstance, status: 'archiving' }).validate()
-    ).rejects.toThrow('Status archiving requires archive operation');
-
-    await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'archiving',
-        metadata: {
-          operation: {
-            id: 'wrong-operation',
-            type: 'stop',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
-        }
-      }).validate()
-    ).rejects.toThrow('Status archiving requires archive operation');
+  it('accepts only a non-empty upstream handle', async () => {
+    const instance = new MongoSandboxInstance({
+      ...baseInstance,
+      status: 'running',
+      metadata: { upstreamId: 'opensandbox-resource-1' }
+    });
+    await expect(instance.validate()).resolves.toBeUndefined();
+    expect(instance.metadata?.upstreamId).toBe('opensandbox-resource-1');
 
     await expect(
       new MongoSandboxInstance({
         ...baseInstance,
         status: 'running',
-        metadata: {
-          operation: {
-            id: 'stale-operation',
-            type: 'stop',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
-        }
-      }).validate()
-    ).rejects.toThrow('Stable status running must not keep an operation');
-  });
-
-  it('rejects legacy archive and migration metadata in the v2 model', async () => {
-    await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'running',
-        metadata: { archive: { state: 'archived' } }
+        metadata: { upstreamId: '' }
       }).validate()
     ).rejects.toThrow();
+  });
+
+  it('accepts every transitional state with its matching activeSaga', async () => {
+    const transitions = [
+      ['provisioning', 'provision'],
+      ['legacyMigrating', 'legacyMigration'],
+      ['stopping', 'stop'],
+      ['archiving', 'archive'],
+      ['restoring', 'restore'],
+      ['providerMigrating', 'providerMigration'],
+      ['deleting', 'delete']
+    ] as const;
+
+    for (const [status, type] of transitions) {
+      await expect(
+        new MongoSandboxInstance({
+          ...baseInstance,
+          status,
+          metadata: { activeSaga: { sagaId: `${type}-saga`, type } }
+        }).validate()
+      ).resolves.toBeUndefined();
+    }
+  });
+
+  it('rejects transitional states with a missing or mismatched activeSaga', async () => {
+    await expect(
+      new MongoSandboxInstance({ ...baseInstance, status: 'archiving' }).validate()
+    ).rejects.toThrow('Status archiving requires archive activeSaga');
 
     await expect(
       new MongoSandboxInstance({
         ...baseInstance,
+        status: 'archiving',
+        metadata: { activeSaga: { sagaId: 'wrong-saga', type: 'stop' } }
+      }).validate()
+    ).rejects.toThrow('Status archiving requires archive activeSaga');
+  });
+
+  it('rejects stable states that retain an activeSaga', async () => {
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
         status: 'running',
-        metadata: { migration: 'migrating' }
+        metadata: { activeSaga: { sagaId: 'stale-saga', type: 'stop' } }
+      }).validate()
+    ).rejects.toThrow('Stable status running must not keep an activeSaga');
+  });
+
+  it('rejects invalid activeSaga metadata', async () => {
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'stopping',
+        metadata: { activeSaga: { type: 'stop' } }
+      }).validate()
+    ).rejects.toThrow();
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'stopping',
+        metadata: { activeSaga: { sagaId: 'stop-saga', type: 'unknown' } }
+      }).validate()
+    ).rejects.toThrow();
+  });
+
+  it('rejects unsupported metadata fields', async () => {
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'running',
+        metadata: { unexpected: true }
       }).validate()
     ).rejects.toThrow();
   });

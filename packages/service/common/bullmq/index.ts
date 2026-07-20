@@ -28,6 +28,7 @@ export enum QueueNames {
   s3FileDelete = 's3FileDelete',
   collectionUpdate = 'collectionUpdate',
   agentSkillCreate = 'agentSkillCreate',
+  durableSaga = 'durableSaga',
 
   // Delete Queue
   datasetDelete = 'datasetDelete',

@@ -1,0 +1,51 @@
+{
+  "name": "@fastgpt-sdk/durable-saga",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Durable saga runtime with pluggable persistence, leases and wake-up adapters",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "lint": "eslint .",
+    "test": "vitest run --config vitest.config.ts",
+    "prepublishOnly": "pnpm test && pnpm build"
+  },
+  "keywords": [
+    "durable-execution",
+    "saga",
+    "workflow",
+    "state-machine"
+  ],
+  "author": "FastGPT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/labring/FastGPT.git",
+    "directory": "sdk/durable-saga"
+  },
+  "homepage": "https://github.com/labring/FastGPT",
+  "bugs": {
+    "url": "https://github.com/labring/FastGPT/issues"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": "10.x"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
