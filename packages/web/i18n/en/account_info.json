@@ -41,6 +41,7 @@
   "account_cancellation_requested_at": "Requested: {{time}}",
   "account_cancellation_scheduled_at": "Scheduled deletion: {{time}}",
   "account_cancellation_send_code": "Get code",
+  "account_cancellation_submit_success": "Account deletion request submitted",
   "account_cancellation_switch_team": "Switch team",
   "account_cancellation_team_finalizing_desc": "This team is being deleted. Contact the team owner for an update.",
   "account_cancellation_team_pending_desc": "The team owner requested deletion and the team is in its 15-day waiting period. Contact the owner to cancel deletion.",

@@ -97,17 +97,21 @@ export const resolveAccountCancellationAccess = ({
   accountCancellationAccess?: AccountCancellationAccessPreset;
 }) => {
   const preset = accountCancellationAccessPresets[accountCancellationAccess];
+  const keys = requestKeys(req ?? {});
   if (accountCancellationAccess !== 'normal') {
-    const allowed = requestKeys(req ?? {}).some((key) => preset.apis.includes(key));
+    const allowed = keys.some((key) => preset.apis.includes(key));
     if (!allowed) throw new Error(ERROR_ENUM.unAuthorization);
   }
   if (
     accountCancellationAccess === 'selfCancellation' &&
-    !requestKeys(req ?? {}).some((key) =>
-      key.endsWith(' /proApi/support/user/account/cancellation/status')
+    keys.some((key) =>
+      [
+        'POST /proApi/support/user/account/cancellation/verification/create',
+        'POST /proApi/support/user/account/cancellation/submit'
+      ].includes(key)
     )
   ) {
-    // 成员等待页需要读取本人 status，但不能借任意 pending 团队绕过停服提交注销。
+    // 状态查询和取消注销必须可恢复；仅阻止成员借 pending 团队发起新的注销申请。
     return {
       ...preset.options,
       allowCurrentSessionTeamAccountCancellationPending: false

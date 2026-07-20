@@ -104,7 +104,7 @@ const provider = () => {
       if (!loginStore) return;
       try {
         if (loginStore.flow === 'accountCancellation') {
-          await submitAccountCancellation({
+          const result = await submitAccountCancellation({
             method: `oauth/${callback.provider}` as any,
             payload: {
               callbackUrl: loginStore.callbackUrl,
@@ -113,9 +113,16 @@ const provider = () => {
               props
             }
           });
+          if (result.status !== 'pending') {
+            throw new Error('Account cancellation verification is still pending');
+          }
+          toast({
+            status: 'success',
+            title: t('account_info:account_cancellation_submit_success', '注销提交成功')
+          });
           setUserInfo(null);
           setLoginStore(undefined);
-          router.replace('/login?lastRoute=/account/cancel');
+          await router.replace('/login?lastRoute=/account/cancel');
           return;
         }
 
@@ -144,8 +151,11 @@ const provider = () => {
         await onFastGPTLoginSuccess(loginSuccess, res);
       } catch (error) {
         toast({
-          status: 'warning',
-          title: getErrText(error, t('common:support.user.login.error'))
+          status: loginStore.flow === 'accountCancellation' ? 'error' : 'warning',
+          title:
+            loginStore.flow === 'accountCancellation'
+              ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+              : getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
           router.replace(errorRedirectPage);
@@ -170,8 +180,11 @@ const provider = () => {
   useEffect(() => {
     if (error) {
       toast({
-        status: 'warning',
-        title: t('common:support.user.login.Provider error')
+        status: loginStore?.flow === 'accountCancellation' ? 'error' : 'warning',
+        title:
+          loginStore?.flow === 'accountCancellation'
+            ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+            : t('common:support.user.login.Provider error')
       });
       router.replace(errorRedirectPage);
       return;
@@ -193,8 +206,11 @@ const provider = () => {
       });
       if (!callback) {
         toast({
-          status: 'warning',
-          title: t('common:support.user.login.security_failed')
+          status: loginStore?.flow === 'accountCancellation' ? 'error' : 'warning',
+          title:
+            loginStore?.flow === 'accountCancellation'
+              ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+              : t('common:support.user.login.security_failed')
         });
         setTimeout(() => {
           router.replace(errorRedirectPage);
@@ -232,7 +248,7 @@ export default provider;
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ...(await serviceSideProps(context, ['login']))
+      ...(await serviceSideProps(context, ['login', 'account_info']))
     }
   };
 }

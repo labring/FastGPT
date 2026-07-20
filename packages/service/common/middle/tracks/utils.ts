@@ -17,6 +17,24 @@ import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/co
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
+type AccountCancellationTrackData = {
+  uid?: string;
+  teamId?: string;
+  tmbId?: string;
+  userId: string;
+  operatorUserId: string;
+  operatorType: 'self' | 'system' | 'admin';
+  requestSource: 'self' | 'admin';
+  requestedAt: Date;
+  scheduledCancelAt: Date;
+  finalizedAt?: Date;
+  verificationMethod?: string;
+  verificationProvider?: string;
+  affectedTeamIds?: string[];
+  requestId?: string;
+  cronExecutionId?: string;
+};
+
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
   logger.debug('Enqueue track event', {
@@ -192,6 +210,40 @@ export const pushTrack = {
   ) => {
     return createTrack({
       event: TrackEnum.enterpriseAuthBenefitGrant,
+      data
+    });
+  },
+  accountCancellationSubmitSuccess: (
+    data: AccountCancellationTrackData & {
+      operatorType: 'self';
+      requestSource: 'self';
+      verificationMethod: string;
+      affectedTeamIds: string[];
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.accountCancellationSubmitSuccess,
+      data
+    });
+  },
+  accountCancellationCancelSuccess: (
+    data: AccountCancellationTrackData & {
+      operatorType: 'self';
+      requestSource: 'self';
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.accountCancellationCancelSuccess,
+      data
+    });
+  },
+  accountCancellationFinalizeSuccess: (
+    data: AccountCancellationTrackData & {
+      finalizedAt: Date;
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.accountCancellationFinalizeSuccess,
       data
     });
   },

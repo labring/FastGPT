@@ -1,13 +1,7 @@
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import {
-  AccountCancellationStatusEnum,
-  accountCancellationActiveStatuses
-} from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { isAccountCancellationMethod } from '@fastgpt/global/support/user/account/cancellation/utils';
 import { deriveAccountCancellationSchedule } from '@fastgpt/global/support/user/account/cancellation/utils';
-import type { ClientSession } from '../../../../common/mongo';
 import { checkTimerLock, deleteTimerLock } from '../../../../common/system/timerLock/utils';
-import { MongoUser } from '../../schema';
 import { getAccountCancellationAuthKey } from './formatter';
 import { getActiveAccountCancellationByUserId } from './read';
 import { MongoAccountCancellation } from './schema';
@@ -58,44 +52,6 @@ export const assertAccountCancellationMethod = (method: string) => {
   }
 };
 
-/**
- * 以唯一 userId 索引幂等创建 pending。记录只写 userId、status、requestedAt 三个业务字段。
- */
-export const createPendingAccountCancellation = async ({
-  userId,
-  requestedAt = new Date(),
-  session
-}: {
-  userId: string;
-  requestedAt?: Date;
-  session?: ClientSession;
-}) =>
-  withAccountCancellationUserLock(userId, async () => {
-    const user = await MongoUser.findById(userId, { username: 1, status: 1 }).lean();
-    if (!user) throw new Error(UserErrEnum.notUser);
-    if (user.username === 'root') throw new Error('Root account can not be cancelled');
-    if (user.status !== 'active') throw new Error('Account is not active');
-
-    const existing = await getActiveAccountCancellationByUserId(userId);
-    if (existing) return { record: existing, created: false };
-
-    await MongoAccountCancellation.updateOne(
-      { userId },
-      {
-        $setOnInsert: {
-          userId,
-          status: AccountCancellationStatusEnum.pending,
-          requestedAt
-        }
-      },
-      { upsert: true, session }
-    );
-
-    const record = await getActiveAccountCancellationByUserId(userId);
-    if (!record) throw new Error('Account cancellation record was not created');
-    return { record, created: String(record.requestedAt) === String(requestedAt) };
-  });
-
 /** 条件删除 pending；finalizing/completed 永远不会被取消。 */
 export const cancelPendingAccountCancellation = async ({
   userId,
@@ -127,16 +83,3 @@ export const cancelPendingAccountCancellation = async ({
       record
     } as const;
   });
-
-/** finalizer 的原子认领入口；调用方必须先复核派生 scheduledCancelAt。 */
-export const claimAccountCancellationForFinalizing = async (userId: string) =>
-  withAccountCancellationUserLock(userId, async () => {
-    const result = await MongoAccountCancellation.findOneAndUpdate(
-      { userId, status: AccountCancellationStatusEnum.pending },
-      { $set: { status: AccountCancellationStatusEnum.finalizing } },
-      { new: true }
-    ).lean();
-    return result;
-  });
-
-export const getActiveAccountCancellationStatuses = () => [...accountCancellationActiveStatuses];

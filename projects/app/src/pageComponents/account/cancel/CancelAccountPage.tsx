@@ -2,10 +2,7 @@ import { Spinner } from '@chakra-ui/react';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import type {
-  AccountCancellationStatusResponse,
-  SubmitAccountCancellationResponse
-} from '@fastgpt/global/openapi/support/user/account/cancellation/api';
+import type { AccountCancellationStatusResponse } from '@fastgpt/global/openapi/support/user/account/cancellation/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
@@ -21,27 +18,17 @@ const CancelAccountPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
-  const { userInfo, initUserInfo, setUserInfo } = useUserStore();
+  const { userInfo, setUserInfo } = useUserStore();
   const [status, setStatus] = useState<AccountCancellationStatusResponse>();
-  const [submittedResult, setSubmittedResult] =
-    useState<Extract<SubmitAccountCancellationResponse, { status: 'pending' }>>();
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
 
-  const loadStatus = useCallback(async () => {
-    setLoading(true);
-    try {
-      setStatus(await getAccountCancellationStatus());
-    } catch {
-      await router.replace('/account/info');
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
   useEffect(() => {
-    void initUserInfo().then(loadStatus);
-  }, [initUserInfo, loadStatus]);
+    void getAccountCancellationStatus()
+      .then(setStatus)
+      .catch(() => router.replace('/account/info'))
+      .finally(() => setLoading(false));
+  }, [router]);
 
   const memberCancellation = userInfo?.team?.accountCancellation;
   const isMemberView = status?.status === 'none' && !!memberCancellation;
@@ -52,25 +39,21 @@ const CancelAccountPage = () => {
     !memberCancellation;
 
   useEffect(() => {
-    if (loading || !router.isReady || !status || submittedResult) return;
+    if (loading || !router.isReady || !status) return;
     if (status.status === 'pending' || isMemberView || isVerificationView) return;
     void router.replace('/account/info');
-  }, [isMemberView, isVerificationView, loading, router, status, submittedResult]);
+  }, [isMemberView, isVerificationView, loading, router, status]);
 
-  const onSubmitted = useCallback(
-    (result: Extract<SubmitAccountCancellationResponse, { status: 'pending' }>) => {
-      setSubmittedResult(result);
-    },
-    []
-  );
+  const onSubmitted = useCallback(() => {
+    toast({
+      status: 'success',
+      title: t('account_info:account_cancellation_submit_success', '注销提交成功')
+    });
+    setUserInfo(null);
+    void router.replace('/login?lastRoute=/account/cancel');
+  }, [router, setUserInfo, t, toast]);
 
   const onCancel = async () => {
-    if (submittedResult) {
-      setUserInfo(null);
-      await router.replace('/login?lastRoute=/account/cancel');
-      return;
-    }
-
     setCanceling(true);
     try {
       await cancelAccountCancellation();
@@ -92,17 +75,6 @@ const CancelAccountPage = () => {
   const content = (() => {
     if (loading || !status) {
       return <Spinner color="primary.600" />;
-    }
-    if (submittedResult) {
-      return (
-        <CancelPendingPanel
-          requestedAt={submittedResult.requestedAt}
-          scheduledCancelAt={submittedResult.scheduledCancelAt}
-          canCancel={submittedResult.canCancelCancellation}
-          onCancel={() => void onCancel()}
-          loading={canceling}
-        />
-      );
     }
     if (isMemberView && memberCancellation) {
       return (
@@ -132,7 +104,7 @@ const CancelAccountPage = () => {
 
   return (
     <AccountCancellationPageLayout
-      showBack={isVerificationView && !submittedResult}
+      showBack={isVerificationView}
       onBack={() => void router.replace('/account/info')}
       cardProps={
         loading || !status

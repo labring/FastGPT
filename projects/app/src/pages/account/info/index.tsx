@@ -91,9 +91,9 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box w={'100%'} py={[3, '28px']} px={[5, 10]}>
+      <Box py={[3, '28px']} px={[5, 10]} mx={'auto'}>
         {isPc ? (
-          <Flex w={'100%'} alignItems={'flex-start'}>
+          <Flex justifyContent={'center'} maxW={'1080px'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
               <Box mt={6}>
@@ -101,7 +101,7 @@ const Info = () => {
               </Box>
             </Box>
             {!!standardPlan && (
-              <Box ml={'45px'} minW={0} flex={'1 0 0'}>
+              <Box ml={'45px'} flex={'1'} maxW={'600px'}>
                 <PlanUsage />
               </Box>
             )}
@@ -839,7 +839,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
   return (
     <Box>
-      <Grid rowGap="8px" columnGap={4}>
+      <Grid rowGap="16px" columnGap={4}>
         {feConfigs?.docUrl && (
           <Link
             href={getDocPath('/guide/getting-started')}

@@ -788,6 +788,7 @@
   "error.invalid_params": "參數無效",
   "error.llm_track_expired": "請求詳情已過期",
   "error.missingParams": "參數不足",
+  "error.operation_too_frequently": "操作過於頻繁，請稍後再試",
   "error.s3_upload_invalid_file_type": "文件內容不受支援，或副檔名與內容不匹配",
   "error.send_auth_code_too_frequently": "請勿頻繁取得驗證碼",
   "error.verify_code_too_frequently": "驗證過於頻繁，請稍後再試",

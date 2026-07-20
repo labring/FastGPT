@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getErrText, ToastHandledError, UserError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
 describe('getErrText', () => {
   it('should return mapped message for error enum', () => {
@@ -97,6 +98,19 @@ describe('UserError', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe('UserError');
     expect(err.message).toBe('boom');
+  });
+});
+
+describe('verification error responses', () => {
+  it.each([
+    [UserErrEnum.invalidVerificationCode, 400],
+    [UserErrEnum.sendVerificationCodeTooFrequently, 429],
+    [UserErrEnum.verifyCodeTooFrequently, 429]
+  ] as const)('maps %s to HTTP %s', (error, httpStatus) => {
+    expect(ERROR_RESPONSE[error]).toMatchObject({
+      statusText: error,
+      httpStatus
+    });
   });
 });
 

@@ -15,24 +15,32 @@ export async function authUserExist({ userId, username }: { userId?: string; use
   return null;
 }
 
+/**
+ * 加载用户及团队详情。登录恢复可显式允许注销中的团队作为 fallback，便于用户进入等待页取消注销。
+ */
 export async function getUserDetail({
   tmbId,
   userId,
-  isRoot = false
+  isRoot = false,
+  allowAccountCancellationTeamFallback = false
 }: {
   tmbId?: string;
   userId?: string;
   isRoot?: boolean;
+  allowAccountCancellationTeamFallback?: boolean;
 }): Promise<UserType> {
   const tmb = await (async () => {
     if (tmbId) {
       try {
         const result = await getTmbInfoByTmbId({ tmbId });
         return result;
-      } catch (error) {}
+      } catch {}
     }
     if (userId) {
-      const fallback = await getUserFallbackTeam({ userId });
+      const fallback = await getUserFallbackTeam({
+        userId,
+        allowAccountCancellationTeam: allowAccountCancellationTeamFallback
+      });
       if (fallback) return getTmbInfoByTmbId({ tmbId: fallback.tmbId });
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 import { authCode } from '@fastgpt/service/support/user/auth/controller';
@@ -26,8 +26,6 @@ describe('authCode', () => {
       await authCode(params).catch(() => undefined);
     }
 
-    await expect(authCode(params)).rejects.toThrow(
-      i18nT('common:error.verify_code_too_frequently')
-    );
+    await expect(authCode(params)).rejects.toThrow(UserErrEnum.verifyCodeTooFrequently);
   });
 });

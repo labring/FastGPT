@@ -2,7 +2,6 @@ import { addSeconds } from 'date-fns';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { AccountVerificationMaterialTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 import { MongoUser } from '../../../schema';
@@ -67,7 +66,7 @@ export class PasswordAccountVerification extends AccountVerification<
       now: this.dependencies.now()
     });
     if (!material) {
-      throw new UserError(i18nT('common:error.code_error'));
+      throw new UserError(UserErrEnum.invalidVerificationCode);
     }
 
     const user = await MongoUser.findOne({ username, password });

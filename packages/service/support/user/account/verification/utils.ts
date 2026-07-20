@@ -1,5 +1,5 @@
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { checkFixedWindowQpmLimit } from '../../../../common/system/frequencyLimit/redisFixedWindow';
 
 const CodeVerificationConsumeQpm = 10;
@@ -39,6 +39,6 @@ export const assertCodeVerificationConsumeFrequency = async ({
   });
 
   if (!allowed) {
-    throw new UserError(i18nT('common:error.verify_code_too_frequently'));
+    throw new UserError(UserErrEnum.verifyCodeTooFrequently);
   }
 };

@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as preLoginApi from '@/pages/api/support/user/account/preLogin';
-import { MongoUserAuth } from '@fastgpt/service/support/user/auth/schema';
+import { MongoAccountVerificationMaterial } from '@fastgpt/service/support/user/account/verification/schema';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { Call } from '@test/utils/request';
 
 describe('preLogin API', () => {
   beforeEach(async () => {
-    await MongoUserAuth.deleteMany({});
+    await MongoAccountVerificationMaterial.deleteMany({});
   });
 
   it('should return a 6-char verification code for valid username', async () => {
@@ -26,7 +26,7 @@ describe('preLogin API', () => {
     });
 
     expect(res.code).toBe(200);
-    const record = await MongoUserAuth.findOne({
+    const record = await MongoAccountVerificationMaterial.findOne({
       key: 'testuser',
       type: UserAuthTypeEnum.login
     });
@@ -45,8 +45,14 @@ describe('preLogin API', () => {
     expect(res1.code).toBe(200);
     expect(res2.code).toBe(200);
 
-    const record1 = await MongoUserAuth.findOne({ key: 'user1', type: UserAuthTypeEnum.login });
-    const record2 = await MongoUserAuth.findOne({ key: 'user2', type: UserAuthTypeEnum.login });
+    const record1 = await MongoAccountVerificationMaterial.findOne({
+      key: 'user1',
+      type: UserAuthTypeEnum.login
+    });
+    const record2 = await MongoAccountVerificationMaterial.findOne({
+      key: 'user2',
+      type: UserAuthTypeEnum.login
+    });
     expect(record1?.key).toBe('user1');
     expect(record2?.key).toBe('user2');
   });
@@ -55,7 +61,7 @@ describe('preLogin API', () => {
     await Call(preLoginApi.default, { query: { username: 'testuser' } });
     const res2 = await Call(preLoginApi.default, { query: { username: 'testuser' } });
 
-    const records = await MongoUserAuth.find({
+    const records = await MongoAccountVerificationMaterial.find({
       key: 'testuser',
       type: UserAuthTypeEnum.login
     });
@@ -72,7 +78,10 @@ describe('preLogin API', () => {
     const after = new Date();
 
     expect(res.code).toBe(200);
-    const record = await MongoUserAuth.findOne({ key: 'testuser', type: UserAuthTypeEnum.login });
+    const record = await MongoAccountVerificationMaterial.findOne({
+      key: 'testuser',
+      type: UserAuthTypeEnum.login
+    });
     expect(record?.expiredTime).toBeDefined();
     const expiredTime = new Date(record!.expiredTime!).getTime();
     // Should expire ~30 seconds from now (allow ±2s for test execution)

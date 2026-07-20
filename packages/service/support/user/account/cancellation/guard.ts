@@ -26,9 +26,13 @@ export const assertAccountUsable = async ({
   allowCurrentUserOwnedTeamAccountCancellationPending = false,
   allowCurrentSessionTeamAccountCancellationPending = false
 }: AssertAccountUsableProps) => {
-  const tmb = tmbId && !teamId ? await MongoTeamMember.findById(tmbId).lean() : null;
-  const currentUserId = userId || (tmb?.userId ? String(tmb.userId) : undefined);
-  const currentTeamId = teamId || (tmb?.teamId ? String(tmb.teamId) : undefined);
+  // API Key 没有 Session userId；即使已有 teamId，也必须从 tmbId 还原实际成员。
+  const tmb =
+    tmbId && (!userId || !teamId)
+      ? await MongoTeamMember.findById(tmbId, { userId: 1, teamId: 1 }).lean()
+      : null;
+  const currentUserId = userId ?? (tmb?.userId ? String(tmb.userId) : undefined);
+  const currentTeamId = teamId ?? (tmb?.teamId ? String(tmb.teamId) : undefined);
   const [userCancellation, teamCancellation] = await Promise.all([
     allowUserAccountCancellationPending
       ? null
