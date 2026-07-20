@@ -2,9 +2,12 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
@@ -17,17 +20,18 @@ const {
   createLLMResponseMock: vi.fn(),
   compressRequestMessagesMock: vi.fn(),
   compressToolResponseMock: vi.fn(),
-  countGptMessagesTokensMock: vi.fn(async () => 100)
+  countGptMessagesTokensMock: vi.fn(async (args: { messages: ChatCompletionMessageParam[] }) => 100)
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
   getLLMModel: vi.fn(
     (): LLMModelItemType => ({
       type: ModelTypeEnum.llm,
+      id: 'gpt-4',
       provider: 'openai',
       model: 'gpt-4',
       name: 'GPT-4',
@@ -38,7 +42,17 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
       toolChoice: true,
       reasoning: false
     })
-  )
+  ),
+  // Faithful stand-ins for the runtime guards (test models carry isActive:
+  // undefined → both pass through; values match ModelErrEnum).
+  assertModelUsable: (modelData: any) => {
+    if (!modelData) throw 'modelUnExist';
+    if (modelData.isActive === false) throw 'modelDisabled';
+    return modelData;
+  },
+  assertModelActive: (modelData?: { isActive?: boolean }) => {
+    if (modelData?.isActive === false) throw 'modelDisabled';
+  }
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
@@ -113,8 +127,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -177,8 +192,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -232,8 +248,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -261,7 +278,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
   it('applies local context checkpoint compression even without usage', async () => {
     const contextCheckpoint = '<context_checkpoint>local structured history</context_checkpoint>';
-    const usagePush = vi.fn();
     const onAfterCompressContext = vi.fn();
 
     compressRequestMessagesMock.mockImplementation(async () => ({
@@ -281,8 +297,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -292,7 +309,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: []
       },
-      usagePush,
       isAborted: () => false,
       onRunTool: vi.fn(),
       onRunInteractiveTool: vi.fn(),
@@ -312,7 +328,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         contextCheckpoint
       })
     );
-    expect(usagePush).not.toHaveBeenCalledWith([undefined]);
   });
 
   it('reuses request message tokens and counts only appended messages between turns', async () => {
@@ -343,8 +358,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -354,7 +370,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -398,8 +413,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -684,8 +700,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -695,7 +712,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -740,8 +756,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -788,8 +805,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -799,7 +817,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -840,8 +857,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -851,7 +869,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         ],
         tools: [searchTool]
       },
-      usagePush: vi.fn(),
       isAborted: () => false,
       onRunTool,
       onRunInteractiveTool: vi.fn()
@@ -895,8 +912,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         reasoning_effort: 'high',
         stream: true,
         messages: [
@@ -931,8 +949,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -1011,8 +1030,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     try {
       await runAgentLoop({
         maxRunAgentTimes: 5,
+        modelId: 'gpt-4',
+        teamId: 'team_1',
         body: {
-          model: 'gpt-4',
           stream: true,
           messages: [
             {
@@ -1076,8 +1096,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -1133,9 +1154,10 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       batchToolSize: 2,
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -1193,8 +1215,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {
@@ -1234,8 +1257,9 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     const result = await runAgentLoop({
       maxRunAgentTimes: 5,
+      modelId: 'gpt-4',
+      teamId: 'team_1',
       body: {
-        model: 'gpt-4',
         stream: true,
         messages: [
           {

@@ -22,8 +22,8 @@ describe('collection training status api', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',
@@ -100,8 +100,8 @@ describe('collection training status api', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',
@@ -168,15 +168,15 @@ describe('collection training status api', () => {
         name: 'current',
         teamId: root.teamId,
         tmbId: root.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       },
       {
         name: 'other',
         teamId: root.teamId,
         tmbId: root.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
+        vectorModelId: 'test',
+        agentModelId: 'test'
       }
     ]);
     const [collection, otherCollection] = await MongoDatasetCollection.create([
@@ -237,8 +237,8 @@ describe('collection training status api', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const collection = await MongoDatasetCollection.create({
       name: 'test',

@@ -178,7 +178,7 @@ describe('App OpenAPI contracts', () => {
             appId: objectId,
             name: '客服问答评测',
             createTime: '2026-01-02T00:00:00.000Z',
-            evalModel: 'gpt-4o-mini',
+            evalModelId: objectId,
             appName: '客服应用',
             completedCount: 1,
             errorCount: 0,

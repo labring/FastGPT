@@ -58,7 +58,11 @@ const ImportSettings = ({ onClose }: Props) => {
                     : AppTypeEnum.workflow,
                 t
               });
-              await removeUnauthModels({ modules: workflowConfig.nodes, allowedModels: myModels });
+              await removeUnauthModels({
+                modules: workflowConfig.nodes,
+                chatConfig: workflowConfig.chatConfig,
+                allowedModels: myModels
+              });
               await initData(workflowConfig);
               toast({
                 title: t('app:import_configs_success'),

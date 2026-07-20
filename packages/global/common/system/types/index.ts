@@ -5,7 +5,7 @@ import type {
   TTSModelType,
   STTModelType,
   RerankModelItemType
-} from '../../../core/ai/model.schema';
+} from '../../../core/ai/model/type';
 
 export type NavbarItemType = {
   id: string;

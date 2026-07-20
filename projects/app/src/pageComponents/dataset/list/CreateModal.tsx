@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { Box, Flex, Button, Input, HStack } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -17,9 +16,10 @@ import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
 import ApiDatasetForm from '../ApiDatasetForm';
-import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -40,11 +40,13 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, llmModelList, getVlmModelList } = useSystemStore();
+  // Lazy model lists (design §1); defaults are auto-selected by the selectors (§3.2)
+  const { list: embeddingModelList } = useActiveSystemModelList(ModelTypeEnum.embedding);
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
-  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
+  const vllmModelList = useMemo(() => llmModelList.filter((item) => item.vision), [llmModelList]);
 
   const form = useForm<CreateDatasetBody>({
     defaultValues: {
@@ -52,18 +54,14 @@ const CreateModal = ({
       type: type || DatasetTypeEnum.dataset,
       avatar: DatasetTypeMap[type].avatar,
       name: '',
-      intro: '',
-      vectorModel:
-        defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
-      agentModel: defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model,
-      vlmModel: defaultModels.datasetImageLLM?.model
+      intro: ''
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
   const avatar = watch('avatar');
-  const vectorModel = watch('vectorModel');
-  const agentModel = watch('agentModel');
-  const vlmModel = watch('vlmModel');
+  const vectorModel = watch('vectorModelId');
+  const agentModel = watch('agentModelId');
+  const vlmModel = watch('vlmModelId');
   const showApiDatasetForm =
     type === DatasetTypeEnum.apiDataset ||
     type === DatasetTypeEnum.feishu ||
@@ -182,12 +180,14 @@ const CreateModal = ({
               <AIModelSelector
                 w={['100%', '300px']}
                 value={vectorModel}
+                type={'embedding'}
                 list={filterNotHiddenVectorModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.id
                 }))}
+                autoSelectDefault
                 onChange={(e) => {
-                  setValue('vectorModel' as const, e);
+                  setValue('vectorModelId' as const, e);
                 }}
               />
             </Box>
@@ -214,12 +214,15 @@ const CreateModal = ({
               <AIModelSelector
                 w={['100%', '300px']}
                 value={agentModel}
+                type={'llm'}
                 list={llmModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.id
                 }))}
+                autoSelectDefault
+                defaultKey="datasetTextLLM"
                 onChange={(e) => {
-                  setValue('agentModel', e);
+                  setValue('agentModelId', e);
                 }}
               />
             </Box>
@@ -247,12 +250,15 @@ const CreateModal = ({
               <AIModelSelector
                 w={['100%', '300px']}
                 value={vlmModel}
+                type={'llm'}
                 list={vllmModelList.map((item) => ({
                   label: item.name,
-                  value: item.model
+                  value: item.id
                 }))}
+                autoSelectDefault
+                defaultKey="datasetImageLLM"
                 onChange={(e) => {
-                  setValue('vlmModel', e);
+                  setValue('vlmModelId', e);
                 }}
               />
             </Box>

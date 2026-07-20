@@ -8,6 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { errorLogger } from '@/web/common/utils/errorLogger';
 import { useMount } from 'ahooks';
 import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
+import { getModelList } from '@/web/core/ai/config';
 
 const errorText: I18nStringType = {
   'zh-CN':
@@ -22,7 +23,7 @@ function Error() {
   const lang = i18n.language;
   const router = useRouter();
   const { toast } = useToast();
-  const { lastRoute, llmModelList, embeddingModelList } = useSystemStore();
+  const { lastRoute } = useSystemStore();
 
   useMount(() => {
     // Send track
@@ -31,29 +32,34 @@ function Error() {
       log: errorLogger.getLogs()
     });
 
-    let modelError = false;
-    if (llmModelList.length === 0) {
-      modelError = true;
-      toast({
-        title: t('common:llm_model_not_config'),
-        status: 'error'
+    void Promise.all([
+      getModelList({ type: 'llm', isActive: 'active' }),
+      getModelList({ type: 'embedding', isActive: 'active' })
+    ])
+      .then(([llmModelList, embeddingModelList]) => {
+        let modelError = false;
+        if (llmModelList.length === 0) {
+          modelError = true;
+          toast({
+            title: t('common:llm_model_not_config'),
+            status: 'error'
+          });
+        }
+        if (embeddingModelList.length === 0) {
+          modelError = true;
+          toast({
+            title: t('common:error_embedding_not_config'),
+            status: 'error'
+          });
+        }
+        return modelError;
+      })
+      .catch(() => false)
+      .then((modelError) => {
+        setTimeout(() => {
+          void router.push(modelError ? '/config/model?modelTab=config' : '/dashboard/agent');
+        }, 2000);
       });
-    }
-    if (embeddingModelList.length === 0) {
-      modelError = true;
-      toast({
-        title: t('common:error_embedding_not_config'),
-        status: 'error'
-      });
-    }
-
-    setTimeout(() => {
-      if (modelError) {
-        router.push('/config/model?modelTab=config');
-      } else {
-        router.push('/dashboard/agent');
-      }
-    }, 2000);
   });
 
   return (

@@ -1,4 +1,5 @@
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { normalizeDatasetModelIds } from './utils';
 import { MongoDatasetCollection } from './collection/schema';
 import { MongoDataset } from './schema';
 import { delCollectionRelatedSource } from './collection/controller';
@@ -60,7 +61,11 @@ export async function getCollectionWithDataset(collectionId: string) {
   if (!data) {
     return Promise.reject(DatasetErrEnum.unExistCollection);
   }
-  return data;
+  // ⚠️ 热升级兼容：legacy-only dataset（vectorModel/agentModel/vlmModel）回填 canonical 字段
+  return {
+    ...data,
+    dataset: normalizeDatasetModelIds(data.dataset)
+  };
 }
 
 /* delete all data by datasetIds */

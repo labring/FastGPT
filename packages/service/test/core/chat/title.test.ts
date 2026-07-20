@@ -21,7 +21,10 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getDefaultChatTitleModel: getDefaultChatTitleModelMock
 }));
 
@@ -93,8 +96,10 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
         teamId: base.teamId,
         throwError: false,
         saveLLMResponseRecord: false,
+        modelData: expect.objectContaining({
+          model: 'gpt-title'
+        }),
         body: expect.objectContaining({
-          model: 'gpt-title',
           stream: false,
           reasoning_effort: 'none'
         })

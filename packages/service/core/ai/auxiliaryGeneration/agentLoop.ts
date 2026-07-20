@@ -11,7 +11,7 @@ import { createChatCompletionDeltaResponse } from '@fastgpt/global/core/ai/llm/u
 
 type RunAuxiliaryGenerationAgentLoopParams = {
   teamId: string;
-  model: string;
+  modelId: string;
   systemPrompt: string;
   messages: ChatCompletionMessageParam[];
   useVision?: boolean;
@@ -35,7 +35,7 @@ type RunAuxiliaryGenerationAgentLoopParams = {
  */
 export async function runAuxiliaryGenerationAgentLoop({
   teamId,
-  model,
+  modelId,
   systemPrompt,
   messages,
   useVision,
@@ -53,7 +53,7 @@ export async function runAuxiliaryGenerationAgentLoop({
     runtime: {
       teamId,
       llmParams: {
-        model,
+        modelId,
         stream: true,
         useVision,
         useAudio,

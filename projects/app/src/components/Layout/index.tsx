@@ -3,6 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getModelList } from '@/web/core/ai/config';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
@@ -88,15 +89,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useClientTranslation('price');
   const { Loading } = useLoading();
-  const {
-    setLastRoute,
-    loading,
-    feConfigs,
-    llmModelList,
-    embeddingModelList,
-    showProModal,
-    setShowProModal
-  } = useSystemStore();
+  const { setLastRoute, loading, feConfigs, showProModal, setShowProModal } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
@@ -132,30 +125,43 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     void syncDefaultLanguage();
   }, [syncDefaultLanguage]);
 
-  // Check model invalid
+  // Check model invalid (lazy: fetch active lists on demand, design §1)
   useDebounceEffect(
     () => {
-      if (userInfo?.username === 'root') {
-        if (llmModelList.length === 0) {
-          toast({
-            status: 'warning',
-            title: t('common:llm_model_not_config')
-          });
-          if (router.pathname !== '/config/model') {
-            router.push('/config/model?modelTab=config');
+      if (userInfo?.username !== 'root') return;
+
+      let cancelled = false;
+      Promise.all([
+        getModelList({ type: 'llm', isActive: 'active' }),
+        getModelList({ type: 'embedding', isActive: 'active' })
+      ])
+        .then(([llmList, embeddingList]) => {
+          if (cancelled) return;
+          if (llmList.length === 0) {
+            toast({
+              status: 'warning',
+              title: t('common:llm_model_not_config')
+            });
+            if (router.pathname !== '/config/model') {
+              router.push('/config/model?modelTab=config');
+            }
+          } else if (embeddingList.length === 0) {
+            toast({
+              status: 'warning',
+              title: t('common:embedding_model_not_config')
+            });
+            if (router.pathname !== '/config/model') {
+              router.push('/config/model?modelTab=config');
+            }
           }
-        } else if (embeddingModelList.length === 0) {
-          toast({
-            status: 'warning',
-            title: t('common:embedding_model_not_config')
-          });
-          if (router.pathname !== '/config/model') {
-            router.push('/config/model?modelTab=config');
-          }
-        }
-      }
+        })
+        .catch(() => {});
+
+      return () => {
+        cancelled = true;
+      };
     },
-    [embeddingModelList.length, llmModelList.length, userInfo?.username],
+    [userInfo?.username, router.pathname],
     {
       wait: 2000
     }

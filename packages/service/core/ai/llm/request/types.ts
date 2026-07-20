@@ -11,7 +11,7 @@ import type {
   StreamResponseType,
   UnStreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIApiRequestMeta } from '../../config';
 import type { ToolCallEventType } from '../toolCall/type';
@@ -36,7 +36,6 @@ export type LLMRequestBodyType<T> = Omit<
   T,
   'model' | 'stop' | 'response_format' | 'messages' | 'tools'
 > & {
-  model: string | LLMModelItemType;
   stop?: string;
   response_format?: {
     type?: string;
@@ -72,6 +71,9 @@ export type CreateLLMResponseProps<
   saveLLMResponseRecord?: boolean;
   // 请求详情会通过 requestId 暴露给前端查询，必须绑定团队后才能落库。
   teamId: string;
+  // 已解析的模型对象。与 teamId 同级，属于请求上下文而非请求体——
+  // 请求体是 wire 格式，模型名由 llmCompletionsBodyFormat 从 modelData 解析写入。
+  modelData: LLMModelItemType;
 } & ResponseEvents;
 
 export type LLMResponse = {

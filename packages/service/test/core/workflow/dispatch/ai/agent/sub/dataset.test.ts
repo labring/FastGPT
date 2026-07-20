@@ -30,18 +30,30 @@ vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
-  filterDatasetsByTmbId: filterDatasetsByTmbIdMock
+  filterDatasetsByTmbId: filterDatasetsByTmbIdMock,
+  getDatasetModelIds: (dataset: { vectorModelId?: string; vlmModelId?: string }) => dataset
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getEmbeddingModel: vi.fn(() => ({
+    id: 'embedding-model',
     model: 'embedding-model',
-    name: 'Embedding Model'
+    name: 'Embedding Model',
+    vision: false
   })),
-  getLLMModel: vi.fn((model: string) => ({
-    model,
-    name: `${model} name`,
+  getLLMModel: vi.fn((modelId: string) => ({
+    id: modelId,
+    model: modelId,
+    name: `${modelId} name`,
     maxContext: 1000
+  })),
+  getVlmModel: vi.fn((modelId: string) => ({
+    id: modelId,
+    model: modelId,
+    name: `${modelId} name`
   })),
   getRerankModel: vi.fn(() => undefined)
 }));
@@ -71,8 +83,8 @@ describe('dispatchAgentDatasetSearch', () => {
     vi.clearAllMocks();
     findDatasetByIdMock.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model',
-        vlmModel: 'vlm-model'
+        vectorModelId: 'embedding-model',
+        vlmModelId: 'vlm-model'
       })
     });
     filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
@@ -88,15 +100,15 @@ describe('dispatchAgentDatasetSearch', () => {
     });
     formatModelChars2PointsMock.mockImplementation(
       ({
-        model,
+        modelData,
         inputTokens = 0,
         outputTokens = 0
       }: {
-        model?: string;
+        modelData?: { name?: string };
         inputTokens?: number;
         outputTokens?: number;
       }) => ({
-        modelName: `${model || 'unknown'} name`,
+        modelName: modelData?.name ?? `${modelData || 'unknown'} name`,
         totalPoints: (inputTokens + outputTokens) / 100
       })
     );
@@ -126,12 +138,14 @@ describe('dispatchAgentDatasetSearch', () => {
       usingReRank: false,
       queryExtensionResult: {
         llmModel: 'gpt-query',
+        llmModelId: 'gpt-query',
         requestId: 'req_query_extension',
         seconds: 1.2,
         inputTokens: 10,
         outputTokens: 5,
         usedUserOpenAIKey: false,
         embeddingModel: 'embedding-query',
+        embeddingModelId: 'embedding-query',
         embeddingTokens: 6,
         query: 'origin\nexpanded'
       }
@@ -141,7 +155,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModelId: 'gpt-main',
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         similarity: 0.4,
@@ -233,12 +247,14 @@ describe('dispatchAgentDatasetSearch', () => {
       usingReRank: false,
       queryExtensionResult: {
         llmModel: 'gpt-query',
+        llmModelId: 'gpt-query',
         requestId: 'req_query_extension',
         seconds: 1.2,
         inputTokens: 10,
         outputTokens: 5,
         usedUserOpenAIKey: true,
         embeddingModel: 'embedding-query',
+        embeddingModelId: 'embedding-query',
         embeddingTokens: 6,
         query: 'origin\nexpanded'
       }
@@ -261,7 +277,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModelId: 'gpt-main',
       userKey,
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
@@ -326,7 +342,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: 'legacy query' }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModelId: 'gpt-main',
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         searchMode: DatasetSearchModeEnum.embedding
@@ -355,7 +371,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModelId: 'gpt-main',
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }, { datasetId: 'dataset_2' }],
         searchMode: DatasetSearchModeEnum.embedding,
@@ -381,7 +397,7 @@ describe('dispatchAgentDatasetSearch', () => {
       args: JSON.stringify({ query: ['origin'] }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModelId: 'gpt-main',
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         searchMode: DatasetSearchModeEnum.embedding,
@@ -405,6 +421,7 @@ describe('dispatchAgentDatasetSearch', () => {
       usingReRank: false,
       imageCaptionResult: {
         model: 'vlm-model',
+        modelId: 'vlm-model',
         inputTokens: 8,
         outputTokens: 4,
         requestIds: ['req_image_caption'],
@@ -420,7 +437,7 @@ describe('dispatchAgentDatasetSearch', () => {
       }),
       teamId: 'team_1',
       tmbId: 'tmb_1',
-      llmModel: 'gpt-main',
+      llmModelId: 'gpt-main',
       datasetParams: {
         datasets: [{ datasetId: 'dataset_1' }],
         searchMode: DatasetSearchModeEnum.embedding
@@ -431,7 +448,7 @@ describe('dispatchAgentDatasetSearch', () => {
       expect.objectContaining({
         textQueries: ['red shoes'],
         imageQueries: ['https://files.example.com/product.png'],
-        vlmModel: 'vlm-model'
+        vlmModelId: 'vlm-model'
       })
     );
     expect(result.nodeResponse?.datasetQueries).toEqual([

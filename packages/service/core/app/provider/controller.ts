@@ -14,7 +14,7 @@ export async function preloadModelProviders(): Promise<void> {
   global.ModelProviderListCache = ModelProviderListCache;
   global.ModelProviderMapCache = ModelProviderMapCache;
 
-  global.aiproxyChannelsCache = aiproxyChannels;
+  global.aiproxyChannelTemplatesCache = aiproxyChannels;
 }
 
 export const getModelProviders = (language = 'en') => {

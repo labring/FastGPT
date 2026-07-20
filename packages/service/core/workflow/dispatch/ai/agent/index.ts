@@ -14,7 +14,8 @@ import { getAgentDatasetParams, getSubapps } from './sub/utils';
 import { useUserContext } from './adapter/userContext';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getLLMModel } from '../../../../ai/model';
+import { getLLMModel, assertModelUsable } from '../../../../ai/model/cache';
+import { getNodeErrResponse } from '../../utils';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
@@ -54,7 +55,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.aiModelId]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: AgentToolType[];
@@ -68,10 +69,10 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchMode]?: AppFormEditFormType['dataset']['searchMode'];
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
-  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
-  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
@@ -125,12 +126,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       editSkillId,
       useAgentSandbox = false,
       sandboxEntrypoint,
-      model,
+      modelId,
       aiChatReasoning
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const agentModel = getLLMModel(model);
+  // Existence + active in one guard (F2-S3-TC06).
+  const agentModel = assertModelUsable(getLLMModel(modelId));
   props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.vision);
   props.params.aiChatAudio = !!(props.params.aiChatAudio && agentModel.audio);
   props.params.aiChatVideo = !!(props.params.aiChatVideo && agentModel.video);

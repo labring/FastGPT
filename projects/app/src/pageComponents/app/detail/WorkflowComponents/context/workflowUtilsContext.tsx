@@ -4,11 +4,18 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
+import {
+  buildLlmModelMap,
+  storeNode2FlowNode,
+  storeEdge2RenderEdge
+} from '@/web/core/workflow/utils';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
 } from '@/web/core/workflow/workflowCheck';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
   FlowNodeOutputTypeEnum,
@@ -121,6 +128,8 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const llmModelMap = useMemo(() => buildLlmModelMap(llmModelList), [llmModelList]);
   const { toast } = useToast();
   const { fitView } = useReactFlow();
   const { feConfigs } = useSystemStore();
@@ -301,23 +310,24 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       },
       isInit?: boolean
     ) => {
-      const workflow = {
+      const normalizedWorkflow = migrateWorkflowToCurrent({
         nodes: e.nodes,
         edges: e.edges,
         chatConfig: e.chatConfig ?? appDetail.chatConfig
-      };
-      const storeNodes = workflow.nodes;
+      });
+      const storeNodes = normalizedWorkflow.nodes;
 
       const toolNodeIds = new Set(
-        workflow.edges
-          .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+        normalizedWorkflow.edges
+          ?.filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
       const nodes =
         storeNodes?.map((item) =>
-          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId), llmModelMap })
         ) || [];
-      const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+      const edges =
+        normalizedWorkflow.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -335,7 +345,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             edges: edges,
             title: t('app:app.version_initial'),
             isSaved: true,
-            chatConfig: workflow.chatConfig
+            chatConfig: normalizedWorkflow.chatConfig
           }
         ]);
       }
@@ -343,9 +353,9 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // Init memory data
       setNodes(nodes);
       setEdges(edges);
-      setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
+      setAppDetail((state) => ({ ...state, chatConfig: normalizedWorkflow.chatConfig }));
     },
-    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
+    [appDetail.chatConfig, llmModelMap, past, setAppDetail, setEdges, setNodes, setPast, t]
   );
 
   const contextValue = useMemo(() => {

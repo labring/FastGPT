@@ -84,20 +84,24 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box {...accountPageRootStyles} overflowY={['visible', 'auto']} py={[3, 6]} px={[5, 6]}>
+      <Box {...accountPageRootStyles} overflowY={['visible', 'auto']} py={[3, 6]} px={[3, 6]}>
         {isPc ? (
-          <Flex w={'100%'} alignItems={'flex-start'}>
-            <Box flex={'0 0 330px'}>
+          <Flex
+            w={'100%'}
+            maxW={standardPlan ? '1080px' : '780px'}
+            mx={'auto'}
+            gap={standardPlan ? '45px' : 0}
+            alignItems={'flex-start'}
+          >
+            <Box flex={standardPlan ? '0 0 330px' : '1 1 auto'} minW={0}>
               <MyInfo onOpenContact={onOpenContact} />
-              <Box>
+              <Box mt={6}>
                 <Other onOpenContact={onOpenContact} />
               </Box>
             </Box>
             {!!standardPlan && (
-              <Box ml={'45px'} flex={'1 0 0'} minW={0}>
-                <Box maxW={'805px'}>
-                  <PlanUsage />
-                </Box>
+              <Box flex={'1 1 0'} minW={0}>
+                <PlanUsage />
               </Box>
             )}
           </Flex>

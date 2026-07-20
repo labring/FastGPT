@@ -38,11 +38,13 @@ export type AgentLoopEvent =
   | {
       type: 'llm_request_start';
       requestIndex: number;
+      modelId: string;
       modelName: string;
     }
   | {
       type: 'llm_request_end';
       requestIndex: number;
+      modelId: string;
       modelName: string;
       requestId: string;
       finishReason: CompletionFinishReason;

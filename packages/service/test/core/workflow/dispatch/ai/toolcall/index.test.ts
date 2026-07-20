@@ -25,7 +25,10 @@ const {
   ensureAppSandboxRuntimeReadyMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getLLMModel: getLLMModelMock
 }));
 
@@ -110,7 +113,7 @@ const createProps = (overrides: Record<string, any> = {}) =>
     stream: false,
     workflowStreamResponse: vi.fn(),
     params: {
-      model: 'gpt-5',
+      modelId: 'gpt-5',
       systemPrompt: 'system prompt',
       userChatInput: 'current question',
       history: 6,
@@ -130,6 +133,7 @@ describe('dispatchRunTools file context', () => {
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     getLLMModelMock.mockReturnValue({
+      id: 'gpt-5',
       model: 'gpt-5',
       name: 'GPT-5',
       defaultSystemChatPrompt: 'default system prompt',
@@ -282,7 +286,12 @@ describe('dispatchRunTools file context', () => {
   });
 
   it('initializes sandbox client and injects input files before running toolcall', async () => {
-    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
+    global.feConfigs = {
+      ...global.feConfigs,
+      show_agent_sandbox: true,
+      uploadFileMaxAmount: 20,
+      uploadFileMaxSize: 100
+    };
     const sandboxClient = {
       provider: {},
       exec: vi.fn()

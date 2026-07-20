@@ -611,5 +611,55 @@ export const auditLogMap = {
       oldOwnerName: string;
       newOwnerName: string;
     }
+  },
+  // Model
+  [AuditEventEnum.CREATE_MODEL]: {
+    content: i18nT('account_team:log_create_model'),
+    typeLabel: i18nT('account_team:create_model'),
+    params: {} as { name?: string; modelName: string; modelType: string }
+  },
+  [AuditEventEnum.UPDATE_MODEL]: {
+    content: i18nT('account_team:log_update_model'),
+    typeLabel: i18nT('account_team:update_model'),
+    params: {} as { name?: string; modelName: string; modelType: string }
+  },
+  [AuditEventEnum.DELETE_MODEL]: {
+    content: i18nT('account_team:log_delete_model'),
+    typeLabel: i18nT('account_team:delete_model'),
+    params: {} as { name?: string; modelName: string; modelType: string }
+  },
+  [AuditEventEnum.TEST_MODEL]: {
+    content: i18nT('account_team:log_test_model'),
+    typeLabel: i18nT('account_team:test_model'),
+    params: {} as { name?: string; modelName: string; modelType: string }
+  },
+  [AuditEventEnum.UPDATE_SYSTEM_MODEL_DEFAULT]: {
+    content: i18nT('account_team:log_update_system_model_default'),
+    typeLabel: i18nT('account_team:update_system_model_default'),
+    params: {} as Record<string, never>
+  },
+  [AuditEventEnum.UPDATE_MODEL_COLLABORATOR]: {
+    content: i18nT('account_team:log_update_model_collaborator'),
+    typeLabel: i18nT('account_team:update_model_collaborator'),
+    params: {} as {
+      name?: string;
+      modelName: string;
+      modelType: string;
+      tmbList?: string[];
+      groupList?: string[];
+      orgList?: string[];
+      permission: string;
+    }
+  },
+  [AuditEventEnum.DELETE_MODEL_COLLABORATOR]: {
+    content: i18nT('account_team:log_delete_model_collaborator'),
+    typeLabel: i18nT('account_team:delete_model_collaborator'),
+    params: {} as {
+      name?: string;
+      modelName: string;
+      modelType: string;
+      itemName: string;
+      itemValueName: string;
+    }
   }
 } as const;

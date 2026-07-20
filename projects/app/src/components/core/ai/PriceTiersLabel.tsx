@@ -1,8 +1,9 @@
 import React from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { hasConfiguredModelPrice } from '@fastgpt/global/core/ai/pricing';
 
 const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 0);
 
@@ -219,7 +220,7 @@ export const PriceLine = React.memo(
     color?: string;
   }) => {
     const tiers = config.priceTiers || [];
-    if (tiers.length === 0) return <Box>-</Box>;
+    if (!hasConfiguredModelPrice(config) || tiers.length === 0) return <Box>-</Box>;
     return (
       <TierTooltip tiers={tiers} color={color}>
         <SummaryLine tiers={tiers} priceKey={priceKey} unitLabel={unitLabel} fontSize={fontSize} />
@@ -230,7 +231,7 @@ export const PriceLine = React.memo(
 
 const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
   const tiers = config.priceTiers || [];
-  if (tiers.length === 0) return <Box>-</Box>;
+  if (!hasConfiguredModelPrice(config) || tiers.length === 0) return <Box>-</Box>;
   return (
     <TierTooltip tiers={tiers} color={'myGray.700'}>
       <SummaryLine tiers={tiers} priceKey={'input'} unitLabel={unitLabel} fontSize={'sm'} />

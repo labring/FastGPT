@@ -8,7 +8,6 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { mergeAssistantFieldMessages } from '@fastgpt/global/core/chat/adapt';
-import { getLLMModel } from '../../model';
 import { promptToolCallMessageRewrite } from '../promptCall';
 import { loadRequestMessages } from '../utils';
 import { createLLMRequestId } from '../../record/controller';
@@ -48,19 +47,19 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     userKey,
     maxContinuations = 1,
     saveLLMResponseRecord = true,
-    teamId
+    teamId,
+    modelData
   } = args;
   const { messages, useVision, useAudio, useVideo, extractFiles, tools, toolCallMode } = body;
-  const model = getLLMModel(body.model);
 
   // 先把 messages 中的文件/图片等 FastGPT 扩展结构加载成模型可直接消费的消息。
   const requestMessages = await loadRequestMessages({
     messages,
-    useVision: useVision && model.vision,
-    useAudio: useAudio && model.audio,
-    useVideo: useVideo && model.video,
+    useVision: useVision && modelData.vision,
+    useAudio: useAudio && modelData.audio,
+    useVideo: useVideo && modelData.video,
     extractFiles,
-    supportReason: model.reasoning
+    supportReason: modelData.reasoning
   });
   const rewriteMessages = (() => {
     if (tools?.length && toolCallMode === 'prompt') {
@@ -70,10 +69,13 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     return requestMessages;
   })();
   // 统一处理模型别名、默认配置、支持参数裁剪和字段映射。
-  const { requestBody, modelData } = await llmCompletionsBodyFormat({
-    ...body,
-    messages: rewriteMessages
-  });
+  const requestBody = await llmCompletionsBodyFormat(
+    {
+      ...body,
+      messages: rewriteMessages
+    },
+    modelData
+  );
   const accumulator = useLLMResponseAccumulator();
   const initialRequestMessages = mergeAssistantFieldMessages(
     requestBody.messages as ChatCompletionMessageParam[]
@@ -114,6 +116,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         if (currentIsStreamResponse) {
           return createStreamResponse({
             response,
+            modelData,
             body,
             isAborted: args.isAborted,
             onStreaming: args.onStreaming,
@@ -125,6 +128,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
         return createCompleteResponse({
           response,
+          modelData,
           body,
           onStreaming: args.onStreaming,
           onReasoning: args.onReasoning,

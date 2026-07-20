@@ -2,10 +2,12 @@ import type { AuditEventEnum } from '@fastgpt/global/support/user/audit/constant
 import { createTeamProcessors } from './teamProcessors';
 import { createAppProcessors } from './appProcessors';
 import { createDatasetProcessors } from './datasetProcessors';
+import { createModelProcessors } from './modelProcessors';
 
 export type MetadataProcessor = (metadata: any, t: any) => any;
 export const specialProcessors: Partial<Record<AuditEventEnum, MetadataProcessor>> = {
   ...createTeamProcessors,
   ...createAppProcessors,
-  ...createDatasetProcessors
+  ...createDatasetProcessors,
+  ...createModelProcessors
 };

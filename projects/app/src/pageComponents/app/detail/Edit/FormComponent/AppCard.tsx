@@ -12,6 +12,8 @@ import {
 import { useRouter } from 'next/router';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -39,6 +41,7 @@ const AppCard = ({
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { list: llmList } = useActiveSystemModelList(ModelTypeEnum.llm);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
@@ -51,7 +54,7 @@ const AppCard = ({
   const [transitionCreateNew, setTransitionCreateNew] = useState<boolean>();
   const { runAsync: onTransition, loading: transiting } = useRequest(
     async () => {
-      const { nodes, edges } = form2WorkflowFn(appForm, t);
+      const { nodes, edges } = form2WorkflowFn(appForm, t, llmList);
       await onSaveApp({
         nodes,
         edges,

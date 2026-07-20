@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -32,6 +32,8 @@ import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
@@ -66,7 +68,9 @@ const EditForm = ({
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 }) => {
   const { t } = useTranslation();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
+  const { list: llmList } = useActiveSystemModelList(ModelTypeEnum.llm);
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -161,7 +165,7 @@ const EditForm = ({
     onClose: onCloseDatasetParams
   } = useDisclosure();
 
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const selectedModel = getWebLLMModel(appForm.aiSettings.modelId, llmList);
   const promptSkillOption = useMemo(
     () => ({
       ...skillOption,
@@ -187,8 +191,8 @@ const EditForm = ({
     [appForm.aiSettings.useAgentSandbox, onChangeAgentSandbox, skillOption]
   );
   const tokenLimit = useMemo(() => {
-    return selectedModel.quoteMaxToken || 3000;
-  }, [selectedModel.quoteMaxToken]);
+    return selectedModel?.quoteMaxToken || 3000;
+  }, [selectedModel?.quoteMaxToken]);
 
   const updateWelcomeText = useCallback(
     (value: string) => {
@@ -223,6 +227,26 @@ const EditForm = ({
     [setAppForm]
   );
 
+  // 简易 Agent 不暴露多模态开关，文件选择能力直接跟随模型能力。
+  useEffect(() => {
+    setAppForm((state) => ({
+      ...state,
+      chatConfig: {
+        ...state.chatConfig,
+        ...(state.chatConfig.fileSelectConfig
+          ? {
+              fileSelectConfig: {
+                ...state.chatConfig.fileSelectConfig,
+                canSelectImg: !!selectedModel?.vision,
+                canSelectAudio: !!selectedModel?.audio,
+                canSelectVideo: !!selectedModel?.video
+              }
+            }
+          : {})
+      }
+    }));
+  }, [selectedModel, setAppForm]);
+
   return (
     <>
       <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
@@ -239,8 +263,9 @@ const EditForm = ({
             <Box flex={'1 0 0'}>
               <SettingLLMModel
                 bg="myGray.50"
+                resourceContext={{ appId: appDetail._id }}
                 defaultData={{
-                  model: appForm.aiSettings.model,
+                  modelId: appForm.aiSettings.modelId,
                   // temperature: appForm.aiSettings.temperature,
                   // maxToken: appForm.aiSettings.maxToken,
                   // maxHistories: appForm.aiSettings.maxHistories,
@@ -539,7 +564,7 @@ const EditForm = ({
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
                 usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
-                queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
+                queryExtensionModel={appForm.dataset.datasetSearchExtensionModelId}
               />
             </Box>
           )}

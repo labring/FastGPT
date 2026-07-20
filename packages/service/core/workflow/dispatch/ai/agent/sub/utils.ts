@@ -128,10 +128,10 @@ export const getAgentDatasetParams = (
     searchMode: params[NodeInputKeyEnum.datasetSearchMode] || DatasetSearchModeEnum.embedding,
     embeddingWeight: params[NodeInputKeyEnum.datasetSearchEmbeddingWeight],
     usingReRank: params[NodeInputKeyEnum.datasetSearchUsingReRank],
-    rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
+    rerankModelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
     rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
-    datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
+    datasetSearchExtensionModelId: params[NodeInputKeyEnum.datasetSearchExtensionModelId],
     datasetSearchExtensionBg: params[NodeInputKeyEnum.datasetSearchExtensionBg],
     [NodeInputKeyEnum.authTmbId]: params[NodeInputKeyEnum.authTmbId]
   };

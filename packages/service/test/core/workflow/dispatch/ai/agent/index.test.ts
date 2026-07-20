@@ -88,15 +88,6 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () =>
   getAgentRuntimeTools: getAgentRuntimeToolsMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@fastgpt/service/core/ai/skill/runtime')>();
-  return {
-    ...original,
-    getAgentSkillInfos: getAgentSkillInfosMock,
-    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
-  };
-});
-
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
@@ -251,7 +242,7 @@ const createProps = () =>
       clone: vi.fn()
     },
     params: {
-      model: 'gpt-5',
+      modelId: 'gpt-5',
       systemPrompt: 'system prompt',
       userChatInput: '当前问题',
       history: 6,

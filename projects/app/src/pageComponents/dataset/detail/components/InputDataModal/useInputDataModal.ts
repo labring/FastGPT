@@ -11,7 +11,8 @@ import {
   updateDatasetDataIndex
 } from '@/web/core/dataset/api/data';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList, useSystemDefaultModel } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
@@ -128,7 +129,8 @@ export const useInputDataModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { embeddingModelList, defaultModels } = useSystemStore();
+  const { list: embeddingModelList } = useActiveSystemModelList(ModelTypeEnum.embedding);
+  const { data: systemDefault } = useSystemDefaultModel();
 
   const [currentTab, setCurrentTab] = useState<TabEnum>();
   const [deletingIndexClientId, setDeletingIndexClientId] = useState<string>();
@@ -580,11 +582,11 @@ export const useInputDataModal = ({
 
   const maxToken = useMemo(() => {
     const vectorModel =
-      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
-      defaultModels.embedding;
+      embeddingModelList.find((item) => item.id === collection.dataset.vectorModelId) ||
+      embeddingModelList.find((item) => item.id === systemDefault?.embedding?.id);
 
-    return vectorModel?.maxToken || 2000;
-  }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
+    return vectorModel?.contextToken || 2000;
+  }, [collection.dataset.vectorModelId, systemDefault?.embedding?.id, embeddingModelList]);
 
   const submitData = handleSubmit((data) => (dataId ? onUpdateData(data) : sureImportData(data)));
   const showTabs = currentTab === TabEnum.chunk || currentTab === TabEnum.qa;

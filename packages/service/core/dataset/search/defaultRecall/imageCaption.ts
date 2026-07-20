@@ -1,4 +1,4 @@
-import { getVlmModel } from '../../../ai/model';
+import { getLLMModel } from '../../../ai/model/cache';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { normalizeImageToBase64 } from '../utils';
@@ -7,7 +7,8 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 type ImageCaptionQueries = {
-  model?: string;
+  vlmModelId?: string;
+  vlmModelName?: string;
   queries: string[];
   requestIds: string[];
   inputTokens: number;
@@ -32,22 +33,24 @@ const emptyImageCaptionQueries = (): ImageCaptionQueries => ({
  * 原始图片仍可能继续走图片向量召回，所以这里不会抛出错误中断搜索。
  */
 export const getImageCaptionQueries = async ({
-  vlmModel,
+  vlmModelId,
   imageQueries,
   userKey,
   teamId
 }: {
-  vlmModel?: string;
+  vlmModelId?: string;
   imageQueries: string[];
   userKey?: OpenaiAccountType;
   teamId: string;
 }): Promise<ImageCaptionQueries> => {
-  if (!vlmModel || imageQueries.length === 0) {
+  if (!vlmModelId || imageQueries.length === 0) {
     return emptyImageCaptionQueries();
   }
 
-  const vlmModelData = getVlmModel(vlmModel);
-  if (!vlmModelData) {
+  const vlmModelData = getLLMModel(vlmModelId);
+  // 停用模型与不支持 vision 一样按降级处理（F2-S3-TC06）——本函数契约是
+  // 不抛错降级，不能用会 throw 的 assertModelUsable。
+  if (!vlmModelData?.vision || vlmModelData.isActive === false) {
     return emptyImageCaptionQueries();
   }
 
@@ -62,9 +65,9 @@ export const getImageCaptionQueries = async ({
         } = await createLLMResponse({
           userKey,
           teamId,
+          modelData: vlmModelData,
           saveLLMResponseRecord: false,
           body: {
-            model: vlmModelData.model,
             stream: true,
             useVision: true,
             messages: [
@@ -97,7 +100,8 @@ export const getImageCaptionQueries = async ({
         };
       } catch (error) {
         logger.warn('Image caption generation failed during dataset search', {
-          model: vlmModelData.model,
+          vlmModelId: vlmModelData.id,
+          vlmModelName: vlmModelData.model,
           imageIndex: index,
           error
         });
@@ -117,7 +121,8 @@ export const getImageCaptionQueries = async ({
   const billableResults = results.filter((item) => item.inputTokens > 0 || item.outputTokens > 0);
 
   return {
-    model: vlmModelData.model,
+    vlmModelId: vlmModelData.id,
+    vlmModelName: vlmModelData.model,
     queries: validResults.map((item) => item.query),
     requestIds: results.map((item) => item.requestId).filter(Boolean),
     inputTokens: results.reduce((sum, item) => sum + item.inputTokens, 0),

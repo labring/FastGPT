@@ -116,6 +116,20 @@ const ensureDuplicateChatCleanupIndex = async () => {
   );
 };
 
+/**
+ * 正式清理成功后删除本迁移创建的临时索引，避免阻塞同 key 唯一索引的创建。
+ */
+const dropDuplicateChatCleanupIndex = async () => {
+  try {
+    await MongoChat.collection.dropIndex(CLEANUP_DUPLICATE_CHATS_INDEX_NAME);
+  } catch (error) {
+    const codeName = (error as { codeName?: string }).codeName;
+    if (codeName !== 'IndexNotFound' && codeName !== 'NamespaceNotFound') {
+      throw error;
+    }
+  }
+};
+
 const findDuplicateChatGroups = () =>
   MongoChat.aggregate<DuplicateKeyGroup>(
     [
@@ -187,6 +201,10 @@ export async function runCleanupDuplicateChatsMigration(
       const result = await MongoChat.deleteMany({ _id: { $in: deleteIds } });
       deletedDocumentCount += result.deletedCount;
     }
+  }
+
+  if (!params.dryRun) {
+    await dropDuplicateChatCleanupIndex();
   }
 
   return CleanupDuplicateChatsResponseSchema.parse({

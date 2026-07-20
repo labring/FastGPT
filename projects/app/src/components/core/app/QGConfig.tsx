@@ -1,4 +1,5 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, useDisclosure, Switch, type BoxProps } from '@chakra-ui/react';
 
 import React from 'react';
@@ -10,8 +11,9 @@ import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
 import {
   QuestionGuideFooterPrompt,
@@ -47,7 +49,6 @@ const QGConfig = ({
           </AppConfigItemAction>
         }
       />
-
       {isOpen && <QGConfigModal value={value} onChange={onChange} onClose={onClose} />}
     </>
   );
@@ -72,11 +73,12 @@ const QGConfigModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
+  // Lazy llm list (design §1); first active llm as fallback default (§3.2)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   const customPrompt = value.customPrompt;
   const isOpenQG = value.open;
-  const model = value?.model || llmModelList?.[0]?.model;
+  const model = value?.modelId || llmModelList?.[0]?.id;
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -114,16 +116,14 @@ const QGConfigModal = ({
               </Box>
               <Box flex={'1 0 0'}>
                 <AIModelSelector
+                  type={'llm'}
                   width={'100%'}
                   value={model}
-                  list={llmModelList.map((item) => ({
-                    value: item.model,
-                    label: item.name
-                  }))}
+                  autoSelectDefault
                   onChange={(e) => {
                     onChange({
                       ...value,
-                      model: e
+                      modelId: e
                     });
                   }}
                 />

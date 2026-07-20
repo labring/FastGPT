@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
+import { useTheme, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -59,6 +59,8 @@ const SelectMarkCollection = ({
           >
             {datasets.map((item) =>
               (() => {
+                const isModelMissing = item.type !== DatasetTypeEnum.folder && !item.vectorModel;
+
                 return (
                   <Card
                     key={item._id}
@@ -66,14 +68,15 @@ const SelectMarkCollection = ({
                     border={theme.borders.base}
                     boxShadow={'sm'}
                     h={'80px'}
-                    cursor={'pointer'}
+                    cursor={isModelMissing ? 'not-allowed' : 'pointer'}
+                    opacity={isModelMissing ? 0.6 : 1}
                     _hover={{
                       boxShadow: 'md'
                     }}
                     onClick={() => {
                       if (item.type === DatasetTypeEnum.folder) {
                         setParentId(item._id);
-                      } else {
+                      } else if (item.vectorModel) {
                         setAdminMarkData({ ...adminMarkData, datasetId: item._id });
                       }
                     }}
@@ -88,7 +91,7 @@ const SelectMarkCollection = ({
                     </Flex>
                     <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
                       <MyIcon mr={1} name="kbTest" w={'12px'} />
-                      <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
+                      <Box color={'myGray.500'}>{item.vectorModel?.name ?? '-'}</Box>
                     </Flex>
                   </Card>
                 );

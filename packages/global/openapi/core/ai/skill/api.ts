@@ -343,7 +343,13 @@ export const SkillDebugChatBodySchema = z.object({
   chatId: z.string().min(1),
   responseChatItemId: z.string().optional(),
   messages: z.array(ChatCompletionMessageParamSchema),
-  model: z.string().optional(),
+  modelId: z.string().optional(),
+  // ⚠️ 热升级兼容（contract release 移除）：legacy provider 模型名，handler 读取
+  // `modelId ?? model`，name 交给 getter 按名解析；schema 保留声明防止 zod strip 丢弃（热升级分析 §6.8）
+  model: z.string().optional().meta({
+    description: '调试使用的模型名称（已废弃，兼容旧调用方，运行时按名解析）',
+    deprecated: true
+  }),
   systemPrompt: z.string().optional()
 });
 export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;

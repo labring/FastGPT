@@ -1,4 +1,4 @@
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
 import {
   ACTIVE_PLAN_END_TAG,
@@ -539,7 +539,7 @@ export const compressRequestMessages = async ({
   checkIsStopping,
   messageTokens: cachedMessageTokens,
   messages,
-  model,
+  modelData,
   reasoningEffort,
   tools,
   userKey,
@@ -549,7 +549,7 @@ export const compressRequestMessages = async ({
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messageTokens?: number;
   messages: ChatCompletionMessageParam[];
-  model: LLMModelItemType;
+  modelData: LLMModelItemType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey?: OpenaiAccountType;
@@ -599,7 +599,7 @@ export const compressRequestMessages = async ({
     };
   }
 
-  const thresholds = calculateCompressionThresholds(model.maxContext).messages;
+  const thresholds = calculateCompressionThresholds(modelData.maxContext).messages;
 
   if (messageTokens <= thresholds.threshold) {
     return {
@@ -608,13 +608,13 @@ export const compressRequestMessages = async ({
     };
   }
 
-  const checkpointTargetTokenLimit = getRequestCheckpointOutputTargetTokens(model.maxContext);
+  const checkpointTargetTokenLimit = getRequestCheckpointOutputTargetTokens(modelData.maxContext);
   const checkpointCompletionTokenLimit = getCompressionTokenLimit(
-    model.maxContext,
+    modelData.maxContext,
     REQUEST_CHECKPOINT_COMPLETION_ACCEPT_CONTEXT_RATIO
   );
   const checkpointWarnTokenLimit = getCompressionTokenLimit(
-    model.maxContext,
+    modelData.maxContext,
     CHECKPOINT_OUTPUT_TARGET_RATIO
   );
 
@@ -632,9 +632,9 @@ export const compressRequestMessages = async ({
       isAborted: checkIsStopping,
       userKey,
       teamId,
+      modelData,
       body: {
         stream: true,
-        model,
         messages: [
           {
             role: ChatCompletionRequestMessageRoleEnum.System,
@@ -653,13 +653,14 @@ export const compressRequestMessages = async ({
     const totalPoints = usage.usedUserOpenAIKey
       ? 0
       : formatModelChars2Points({
-          model: model.model,
+          modelData,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
         }).totalPoints;
     const compressedUsage = {
       moduleName: i18nT('account_usage:compress_llm_messages'),
-      model: model.name,
+      modelId: modelData.id,
+      model: modelData.name,
       totalPoints,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
@@ -725,7 +726,7 @@ export const compressRequestMessages = async ({
         originalTokens: messageTokens,
         compressedTokens,
         compressedTokenLimit: checkpointWarnTokenLimit,
-        maxContext: model.maxContext,
+        maxContext: modelData.maxContext,
         requestId,
         outputTokens: usage.outputTokens
       });
@@ -779,7 +780,7 @@ function splitIntoChunks(content: string, chunkSize: number): string[] {
  */
 export const compressLargeContent = async ({
   content,
-  model,
+  modelData,
   compressedTokenLimit,
   moduleName = i18nT('account_usage:llm_compress_text'),
   reasoningEffort,
@@ -787,7 +788,7 @@ export const compressLargeContent = async ({
   teamId
 }: {
   content: string;
-  model: LLMModelItemType;
+  modelData: LLMModelItemType;
   compressedTokenLimit: number;
   moduleName?: string;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
@@ -809,21 +810,21 @@ export const compressLargeContent = async ({
   const chunkAndCompress = async (params: {
     content: string;
     compressedTokenLimit: number;
-    model: LLMModelItemType;
+    modelData: LLMModelItemType;
   }): Promise<{
     compressed: string;
     usage: CompressUsageType;
   }> => {
     async function compressSingleChunk(params: {
       chunk: string;
-      model: LLMModelItemType;
+      modelData: LLMModelItemType;
       chunkTokenLimit: number;
       chunkIndex?: number;
     }): Promise<{
       compressed: string;
       usage: CompressUsageType;
     }> {
-      const { chunk, model, chunkTokenLimit, chunkIndex } = params;
+      const { chunk, modelData, chunkTokenLimit, chunkIndex } = params;
 
       const compressPrompt = await getCompressLargeContentPrompt();
       const userPrompt = await getCompressLargeContentUserPrompt({
@@ -843,9 +844,9 @@ export const compressLargeContent = async ({
         throwError: false,
         userKey,
         teamId,
+        modelData,
         saveLLMResponseRecord: false,
         body: {
-          model,
           messages: [
             {
               role: ChatCompletionRequestMessageRoleEnum.System,
@@ -864,7 +865,7 @@ export const compressLargeContent = async ({
       const totalPoints = usage.usedUserOpenAIKey
         ? 0
         : formatModelChars2Points({
-            model: model.model,
+            modelData,
             inputTokens: usage.inputTokens,
             outputTokens: usage.outputTokens
           }).totalPoints;
@@ -894,12 +895,12 @@ export const compressLargeContent = async ({
       };
     }
 
-    const { content, compressedTokenLimit, model } = params;
+    const { content, compressedTokenLimit, modelData } = params;
 
-    const thresholds = calculateCompressionThresholds(model.maxContext);
+    const thresholds = calculateCompressionThresholds(modelData.maxContext);
     const chunkPerThresholds = Math.min(
       thresholds.chunkSize,
-      Math.max(1, Math.floor((model.maxContext - compressedTokenLimit) / 2))
+      Math.max(1, Math.floor((modelData.maxContext - compressedTokenLimit) / 2))
     );
 
     const chunks = splitIntoChunks(content, chunkPerThresholds);
@@ -926,7 +927,7 @@ export const compressLargeContent = async ({
     const compressedChunks = await batchRun(chunks, async (chunk, index) => {
       const result = await compressSingleChunk({
         chunk,
-        model,
+        modelData,
         chunkTokenLimit,
         chunkIndex: index
       });
@@ -965,7 +966,7 @@ export const compressLargeContent = async ({
         const previousMergedLength = merged.length;
         const result = await compressSingleChunk({
           chunk: merged,
-          model,
+          modelData,
           // 留出少量余量，避免模型输出刚好贴线后被 message 包装 token 挤爆。
           chunkTokenLimit: Math.max(1, Math.floor(compressedTokenLimit * 0.9)),
           chunkIndex: undefined
@@ -1090,14 +1091,15 @@ export const compressLargeContent = async ({
     const result = await chunkAndCompress({
       content,
       compressedTokenLimit: effectiveCompressedTokenLimit,
-      model
+      modelData
     });
     // 格式化为 ChatNodeUsageType
     return {
       compressed: result.compressed.trim(),
       usage: {
         moduleName,
-        model: model.name,
+        modelId: modelData.id,
+        model: modelData.name,
         totalPoints: result.usage.totalPoints,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens
@@ -1119,13 +1121,13 @@ export const compressLargeContent = async ({
 
 export const compressToolResponse = async ({
   response,
-  model,
+  modelData,
   reasoningEffort,
   userKey,
   teamId
 }: {
   response: string;
-  model: LLMModelItemType;
+  modelData: LLMModelItemType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
   teamId: string;
@@ -1143,7 +1145,7 @@ export const compressToolResponse = async ({
   const responseTokens = await countPromptTokens(response);
   const { directReturnTokenLimit, lightProcessTokenLimit, llmCompressedTokenLimit } =
     getToolResponseCompressionLimits({
-      maxContext: model.maxContext
+      maxContext: modelData.maxContext
     });
 
   // 不超过 20% context 的工具结果直接发给模型，保持原始结构和可读性。
@@ -1169,7 +1171,7 @@ export const compressToolResponse = async ({
   // 调用通用压缩函数
   const result = await compressLargeContent({
     content: lightProcessedResponse,
-    model,
+    modelData,
     compressedTokenLimit: llmCompressedTokenLimit,
     moduleName: i18nT('account_usage:tool_response_compress'),
     reasoningEffort,
@@ -1185,7 +1187,7 @@ export const compressToolResponse = async ({
       lightProcessedTokens,
       compressedTokens,
       compressedTokenLimit: llmCompressedTokenLimit,
-      maxContext: model.maxContext,
+      maxContext: modelData.maxContext,
       requestIds: result.requestIds
     });
   }

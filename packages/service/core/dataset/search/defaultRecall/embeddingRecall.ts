@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { recallFromVectorStore } from '../../../../common/vectorDB/controller';
 import { getVectors } from '../../../ai/embedding';
-import { getEmbeddingModel, isImageEmbeddingModel } from '../../../ai/model';
+import { getEmbeddingModel, assertModelActive } from '../../../ai/model';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetData } from '../../data/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -37,12 +37,12 @@ const emptyEmbeddingRecallResult = () => ({
  * 会被跳过，避免影响其他文本或图片任务。
  */
 const buildVectorRecallTasks = async ({
-  model,
+  vectorModelId,
   textQueries,
   imageCaptionQueries,
   imageQueries
 }: {
-  model: string;
+  vectorModelId: string;
   textQueries: string[];
   imageCaptionQueries: string[];
   imageQueries: string[];
@@ -50,7 +50,11 @@ const buildVectorRecallTasks = async ({
   tasks: VectorRecallTask[];
   tokens: number;
 }> => {
-  const embeddingModel = getEmbeddingModel(model);
+  const embeddingModel = getEmbeddingModel(vectorModelId);
+  // Effect boundary (F2-S3-TC06): missing model keeps the graceful empty path
+  // below, but a disabled model must not be called — same error as the deepest
+  // guard in getVectors, raised earlier.
+  assertModelActive(embeddingModel);
   const textTasks = [
     ...textQueries.map((query) => ({ source: 'text' as const, query })),
     ...imageCaptionQueries.map((query) => ({ source: 'imageCaption' as const, query }))
@@ -74,7 +78,7 @@ const buildVectorRecallTasks = async ({
 
   const validImageQueries = imageQueries.map((url) => url.trim()).filter(Boolean);
 
-  if (validImageQueries.length > 0 && isImageEmbeddingModel(embeddingModel)) {
+  if (validImageQueries.length > 0 && embeddingModel?.vision) {
     const imageInputs = (
       await Promise.all(
         validImageQueries.map(async (url, index) => {
@@ -110,8 +114,16 @@ const buildVectorRecallTasks = async ({
     };
   }
 
+  // Guard: return empty if embedding model not found
+  if (!embeddingModel) {
+    return {
+      tasks: [],
+      tokens: 0
+    };
+  }
+
   const { tokens, vectors } = await getVectors({
-    model: embeddingModel,
+    modelData: embeddingModel,
     inputs: vectorInputs.map((item) => item.input),
     type: 'query'
   });
@@ -134,7 +146,7 @@ const buildVectorRecallTasks = async ({
 export const embeddingRecall = async ({
   teamId,
   datasetIds,
-  model,
+  vectorModelId,
   imageQueries,
   textQueries,
   imageCaptionQueries,
@@ -144,7 +156,7 @@ export const embeddingRecall = async ({
 }: {
   teamId: string;
   datasetIds: string[];
-  model: string;
+  vectorModelId: string;
   imageQueries: string[];
   textQueries: string[];
   imageCaptionQueries: string[];
@@ -164,7 +176,7 @@ export const embeddingRecall = async ({
   }
 
   const { tasks, tokens } = await buildVectorRecallTasks({
-    model,
+    vectorModelId,
     textQueries,
     imageCaptionQueries,
     imageQueries

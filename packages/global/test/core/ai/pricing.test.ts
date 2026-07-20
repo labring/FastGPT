@@ -2,8 +2,39 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateModelPrice,
   getRuntimeResolvedPriceTiers,
+  hasConfiguredModelPrice,
   sanitizeModelPriceTiers
 } from '@fastgpt/global/core/ai/pricing';
+
+describe('hasConfiguredModelPrice', () => {
+  it('returns false for missing and blank price configurations', () => {
+    expect(hasConfiguredModelPrice()).toBe(false);
+    expect(hasConfiguredModelPrice({})).toBe(false);
+    expect(hasConfiguredModelPrice({ priceTiers: [] })).toBe(false);
+    expect(
+      hasConfiguredModelPrice({
+        priceTiers: [{ inputPrice: undefined, outputPrice: undefined }]
+      })
+    ).toBe(false);
+  });
+
+  it('treats zero-only prices as unconfigured', () => {
+    expect(hasConfiguredModelPrice({ priceTiers: [{ inputPrice: 0, outputPrice: 0 }] })).toBe(
+      false
+    );
+    expect(hasConfiguredModelPrice({ charsPointsPrice: 0 })).toBe(false);
+  });
+
+  it('recognizes positive configured prices', () => {
+    expect(hasConfiguredModelPrice({ priceTiers: [{ inputPrice: 0, outputPrice: 1 }] })).toBe(true);
+    expect(hasConfiguredModelPrice({ charsPointsPrice: 1 })).toBe(true);
+  });
+
+  it('matches the legacy input price activation rule', () => {
+    expect(hasConfiguredModelPrice({ inputPrice: 0 })).toBe(false);
+    expect(hasConfiguredModelPrice({ inputPrice: 1 })).toBe(true);
+  });
+});
 
 describe('sanitizeModelPriceTiers', () => {
   it('should return empty array for non-array input', () => {

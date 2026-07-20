@@ -34,8 +34,6 @@ import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 /**
@@ -90,6 +88,15 @@ export const nodeTemplate2FlowNode = ({
   };
 };
 
+type LlmModelCapabilityMap = Record<string, { reasoning?: boolean }>;
+
+/** Build the model-id lookup needed by workflow output conditions. */
+export const buildLlmModelMap = (llmList: { id: string; reasoning?: boolean }[]) =>
+  llmList.reduce<LlmModelCapabilityMap>((map, model) => {
+    map[model.id] = model;
+    return map;
+  }, {});
+
 type StoreNode2FlowNodeProps = {
   item: StoreNodeItemType;
   selected?: boolean;
@@ -97,6 +104,7 @@ type StoreNode2FlowNodeProps = {
   parentNodeId?: string;
   isTool?: boolean;
   t: TFunction;
+  llmModelMap?: LlmModelCapabilityMap;
 };
 
 /**
@@ -112,7 +120,8 @@ export const storeNode2FlowNode = ({
   zIndex,
   parentNodeId,
   isTool = false,
-  t
+  t,
+  llmModelMap
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
   const template =
@@ -220,16 +229,8 @@ export const storeNode2FlowNode = ({
       : nodeItem.inputs.map((input) => normalizeFlowNodeInputType(input, { isTool }));
 
   // Format output invalid
-  const llmList = useSystemStore.getState().llmModelList;
-  const llmModelMap = llmList.reduce(
-    (acc, model) => {
-      acc[model.model] = model;
-      return acc;
-    },
-    {} as Record<string, LLMModelItemType>
-  );
   nodeItem.outputs.forEach((output) => {
-    if (output.invalidCondition) {
+    if (output.invalidCondition && llmModelMap) {
       output.invalid = output.invalidCondition({ inputs: nodeItem.inputs, llmModelMap });
     }
   });

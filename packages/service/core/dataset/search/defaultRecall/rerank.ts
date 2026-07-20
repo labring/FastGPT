@@ -1,5 +1,5 @@
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { reRankRecall } from '../../../../core/ai/rerank';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';
@@ -16,8 +16,11 @@ const datasetDataReRank = async ({
   results: SearchDataResponseItemType[];
   inputTokens: number;
 }> => {
+  if (!rerankModel) {
+    return Promise.reject('No rerank model');
+  }
   const { results, inputTokens } = await reRankRecall({
-    model: rerankModel,
+    modelData: rerankModel,
     query,
     documents: data.map((item) => ({
       id: item.id,

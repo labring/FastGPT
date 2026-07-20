@@ -459,7 +459,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
           totalPoints: 0.1
         },
         deepSearchResult: {
-          model: 'Qwen-plus',
+          llmModelId: 'qwen-plus-id',
+          llmModelName: 'Qwen-plus',
           inputTokens: 11,
           outputTokens: 5
         }
@@ -501,7 +502,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
           totalPoints: 0.2
         },
         deepSearchResult: {
-          model: 'Qwen-plus',
+          llmModelId: 'qwen-plus-id',
+          llmModelName: 'Qwen-plus',
           inputTokens: 13,
           outputTokens: 7
         }
@@ -545,7 +547,8 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
           totalPoints: expect.closeTo(0.3)
         },
         deepSearchResult: {
-          model: 'Qwen-plus',
+          llmModelId: 'qwen-plus-id',
+          llmModelName: 'Qwen-plus',
           inputTokens: 24,
           outputTokens: 12
         }

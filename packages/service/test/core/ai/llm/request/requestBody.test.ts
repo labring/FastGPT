@@ -4,9 +4,12 @@ import {
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
 import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/llm/request/requestBody';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model/cache';
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getLLMModel: vi.fn()
 }));
 
@@ -23,7 +26,6 @@ const createModel = (overrides: Record<string, any> = {}) =>
   ({
     type: ModelTypeEnum.llm,
     provider: 'openai',
-    model: 'gpt-4o',
     name: 'GPT-4o',
     maxContext: 128000,
     maxResponse: 1000,
@@ -51,39 +53,38 @@ describe('llmCompletionsBodyFormat', () => {
     });
     mockGetLLMModel.mockReturnValue(model);
 
-    const { requestBody, modelData } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
-      messages,
-      stream: false,
-      max_tokens: 5000,
-      temperature: 5,
-      top_p: 0.7,
-      stop: 'END| STOP ',
-      response_format: {
-        type: 'json_schema',
-        json_schema: '{"name":"answer","schema":{"type":"object"}}'
-      },
-      tools: [
-        {
-          type: 'function',
-          function: {
-            name: 'search',
-            description: 'search',
-            parameters: { type: 'object' }
+    const requestBody = await llmCompletionsBodyFormat(
+      {
+        messages,
+        stream: false,
+        max_tokens: 5000,
+        temperature: 5,
+        top_p: 0.7,
+        stop: 'END| STOP ',
+        response_format: {
+          type: 'json_schema',
+          json_schema: '{"name":"answer","schema":{"type":"object"}}'
+        },
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'search',
+              description: 'search',
+              parameters: { type: 'object' }
+            }
           }
-        }
-      ],
-      toolCallMode: 'toolChoice',
-      tool_choice: 'auto',
-      parallel_tool_calls: true,
-      retainDatasetCite: false,
-      useVision: true,
-      requestOrigin: 'test'
-    });
-
-    expect(modelData).toBe(model);
+        ],
+        toolCallMode: 'toolChoice',
+        tool_choice: 'auto',
+        parallel_tool_calls: true,
+        retainDatasetCite: false,
+        useVision: true,
+        requestOrigin: 'test'
+      },
+      model
+    );
     expect(requestBody).toMatchObject({
-      model: 'gpt-4o',
       messages,
       stream: false,
       max_tokens: 1000,
@@ -102,6 +103,8 @@ describe('llmCompletionsBodyFormat', () => {
       frequency_penalty: 0.2
     });
     expect(requestBody).toHaveProperty('tools');
+    // design §3.1: the internal modelId must never reach aiproxy/upstream payloads.
+    expect(requestBody).not.toHaveProperty('modelId');
     expect(requestBody).not.toHaveProperty('toolCallMode');
     expect(requestBody).not.toHaveProperty('retainDatasetCite');
     expect(requestBody).not.toHaveProperty('useVision');
@@ -109,40 +112,38 @@ describe('llmCompletionsBodyFormat', () => {
   });
 
   it('should strip unsupported parameters and omit tools in prompt tool mode', async () => {
-    mockGetLLMModel.mockReturnValue(
-      createModel({
-        maxTemperature: undefined,
-        showTopP: false,
-        showStopSign: false,
-        responseFormatList: [],
-        reasoningEffort: false
-      })
-    );
-
-    const { requestBody } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
-      messages,
-      stream: false,
-      temperature: 5,
-      top_p: 0.7,
-      stop: 'END',
-      response_format: {
-        type: 'json_object'
-      },
-      reasoning_effort: 'high',
-      tools: [
-        {
-          type: 'function',
-          function: {
-            name: 'search',
-            description: 'search',
-            parameters: { type: 'object' }
-          }
-        }
-      ],
-      toolCallMode: 'prompt'
+    const model = createModel({
+      maxTemperature: undefined,
+      showTopP: false,
+      showStopSign: false,
+      responseFormatList: [],
+      reasoningEffort: false
     });
-
+    const requestBody = await llmCompletionsBodyFormat(
+      {
+        messages,
+        stream: false,
+        temperature: 5,
+        top_p: 0.7,
+        stop: 'END',
+        response_format: {
+          type: 'json_object'
+        },
+        reasoning_effort: 'high',
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'search',
+              description: 'search',
+              parameters: { type: 'object' }
+            }
+          }
+        ],
+        toolCallMode: 'prompt'
+      },
+      model
+    );
     expect(requestBody).not.toHaveProperty('temperature');
     expect(requestBody).not.toHaveProperty('top_p');
     expect(requestBody).not.toHaveProperty('stop');
@@ -152,50 +153,51 @@ describe('llmCompletionsBodyFormat', () => {
   });
 
   it('should remove FastGPT private tool schema fields before sending tools to model', async () => {
-    mockGetLLMModel.mockReturnValue(createModel());
+    const model = createModel();
 
-    const { requestBody } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
-      messages,
-      stream: false,
-      tools: [
-        {
-          type: 'function',
-          function: {
-            name: 'search',
-            description: 'search',
-            parameters: {
-              type: 'object',
-              properties: {
-                query: {
-                  type: 'string',
-                  description: 'Search query',
-                  toolDescription: 'Query for model',
-                  'x-tool-description': 'HTTP query',
-                  isToolParam: true,
+    const requestBody = await llmCompletionsBodyFormat(
+      {
+        messages,
+        stream: false,
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'search',
+              description: 'search',
+              parameters: {
+                type: 'object',
+                properties: {
+                  query: {
+                    type: 'string',
+                    description: 'Search query',
+                    toolDescription: 'Query for model',
+                    'x-tool-description': 'HTTP query',
+                    isToolParam: true,
                   isSecret: true
-                },
-                filters: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      key: {
-                        type: 'string',
-                        toolDescription: 'Filter key'
-                      }
-                    },
-                    toolDescription: 'Filter object'
+                  },
+                  filters: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        key: {
+                          type: 'string',
+                          toolDescription: 'Filter key'
+                        }
+                      },
+                      toolDescription: 'Filter object'
+                    }
                   }
                 }
               }
             }
           }
-        }
-      ],
-      toolCallMode: 'toolChoice'
-    });
-
+        ],
+        toolCallMode: 'toolChoice'
+      },
+      model
+    );
     expect(requestBody.tools).toEqual([
       {
         type: 'function',
@@ -228,58 +230,38 @@ describe('llmCompletionsBodyFormat', () => {
   });
 
   it('should apply field map after base formatting', async () => {
-    mockGetLLMModel.mockReturnValue(
-      createModel({
-        fieldMap: {
-          max_tokens: 'max_completion_tokens'
-        }
-      })
-    );
-
-    const { requestBody } = await llmCompletionsBodyFormat({
-      model: 'gpt-4o',
-      messages,
-      stream: false,
-      max_tokens: 300
+    const model = createModel({
+      fieldMap: {
+        max_tokens: 'max_completion_tokens'
+      }
     });
-
+    const requestBody = await llmCompletionsBodyFormat(
+      {
+        messages,
+        stream: false,
+        max_tokens: 300
+      },
+      model
+    );
     expect(requestBody).not.toHaveProperty('max_tokens');
     expect(requestBody).toHaveProperty('max_completion_tokens', 300);
   });
 
   it('should throw when json schema cannot be parsed', async () => {
-    mockGetLLMModel.mockReturnValue(createModel());
+    const model = createModel();
 
     await expect(
-      llmCompletionsBodyFormat({
-        model: 'gpt-4o',
-        messages,
-        stream: false,
-        response_format: {
-          type: 'json_schema',
-          json_schema: '{bad json'
-        }
-      })
+      llmCompletionsBodyFormat(
+        {
+          messages,
+          stream: false,
+          response_format: {
+            type: 'json_schema',
+            json_schema: '{bad json'
+          }
+        },
+        model
+      )
     ).rejects.toThrow('Json schema error');
-  });
-
-  it('should return sanitized body when model is not found', async () => {
-    mockGetLLMModel.mockReturnValue(undefined as any);
-
-    const { requestBody, modelData } = await llmCompletionsBodyFormat({
-      model: 'unknown',
-      messages,
-      stream: false,
-      retainDatasetCite: false,
-      useVision: true,
-      requestOrigin: 'test'
-    });
-
-    expect(modelData).toBeUndefined();
-    expect(requestBody).toEqual({
-      model: 'unknown',
-      messages,
-      stream: false
-    });
   });
 });

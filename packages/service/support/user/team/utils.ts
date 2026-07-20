@@ -27,7 +27,9 @@ export async function getRunningUserInfoByTmbId(tmbId: string) {
       memberName: tmb.name,
       contact: tmb.user.contact || '',
       teamId: tmb.teamId,
-      tmbId: tmb._id
+      tmbId: tmb._id,
+      // Root is identified by the reserved username (see loginByPassword).
+      isRoot: tmb.user.username === 'root'
     };
   }
 

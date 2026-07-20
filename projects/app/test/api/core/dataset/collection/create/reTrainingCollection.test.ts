@@ -64,8 +64,8 @@ const sourceCollection = {
     teamId: 'team-b',
     name: 'source dataset',
     type: 'dataset',
-    vectorModel: 'text-embedding-3-small',
-    agentModel: 'gpt-4o-mini'
+    vectorModelId: 'text-embedding-3-small',
+    agentModelId: 'gpt-4o-mini'
   }
 };
 

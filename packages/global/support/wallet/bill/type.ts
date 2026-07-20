@@ -50,6 +50,7 @@ export type ChatNodeUsageType = {
   outputTokens?: number;
   totalPoints: number;
   moduleName: string;
+  modelId?: string;
   model?: string;
 };
 

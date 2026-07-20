@@ -95,16 +95,20 @@ const DatasetSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  vectorModel: {
+  vectorModelId: {
     type: String,
-    required: true,
-    default: 'text-embedding-3-small'
+    required: true
   },
-  agentModel: {
+  agentModelId: {
     type: String,
-    required: true,
-    default: 'gpt-4o-mini'
+    required: true
   },
+  vlmModelId: String,
+  /** @deprecated 热升级兼容（contract release 移除）：legacy provider 模型名，读取时按名解析 */
+  vectorModel: String,
+  /** @deprecated 热升级兼容（contract release 移除）：legacy provider 模型名，读取时按名解析 */
+  agentModel: String,
+  /** @deprecated 热升级兼容（contract release 移除）：legacy provider 模型名，读取时按名解析 */
   vlmModel: String,
   intro: {
     type: String,

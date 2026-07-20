@@ -1,4 +1,4 @@
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
@@ -11,29 +11,29 @@ import { jsonrepair } from 'jsonrepair';
 */
 export const computedMaxToken = ({
   maxToken,
-  model,
+  modelData,
   min
 }: {
   maxToken?: number;
-  model: LLMModelItemType;
+  modelData: LLMModelItemType;
   min?: number;
 }) => {
   if (maxToken === undefined) return;
 
-  maxToken = Math.min(maxToken, model.maxResponse);
+  maxToken = Math.min(maxToken, modelData.maxResponse);
   return Math.max(maxToken, min || 1);
 };
 
 // FastGPT temperature range: [0,10], ai temperature:[0,2],{0,1]……
 export const computedTemperature = ({
-  model,
+  modelData,
   temperature
 }: {
-  model: LLMModelItemType;
+  modelData: LLMModelItemType;
   temperature: number;
 }) => {
-  if (typeof model.maxTemperature !== 'number') return undefined;
-  temperature = +(model.maxTemperature * (temperature / 10)).toFixed(2);
+  if (typeof modelData.maxTemperature !== 'number') return undefined;
+  temperature = +(modelData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
 
   return temperature;

@@ -64,7 +64,7 @@ const createContext = (overrides: Record<string, any> = {}) =>
       avatar: ''
     }),
     params: {
-      model: 'gpt-4'
+      modelId: 'gpt-4'
     },
     currentFiles: [],
     runningUserInfo: {
@@ -293,7 +293,7 @@ describe('createWorkflowAgentToolProvider', () => {
           }
         ],
         params: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           agent_datasetParams: {
             datasets: [{ datasetId: 'dataset_1' }]
           }
@@ -327,7 +327,7 @@ describe('createWorkflowAgentToolProvider', () => {
         datasetParams: {
           datasets: [{ datasetId: 'dataset_1' }]
         },
-        llmModel: 'gpt-4',
+        llmModelId: 'gpt-4',
         userKey: {
           key: 'user-key'
         }
@@ -352,17 +352,17 @@ describe('createWorkflowAgentToolProvider', () => {
     const provider = createWorkflowAgentToolProvider({
       context: createContext({
         params: {
-          model: 'gpt-4',
+          modelId: 'gpt-4',
           datasets: [{ datasetId: 'dataset_legacy' }],
           similarity: 0.55,
           limit: 3000,
           searchMode: 'embedding',
           embeddingWeight: 0.7,
           usingReRank: true,
-          rerankModel: 'rerank-model',
+          rerankModelId: 'rerank-model',
           rerankWeight: 0.8,
           datasetSearchUsingExtensionQuery: true,
-          datasetSearchExtensionModel: 'extension-model',
+          datasetSearchExtensionModelId: 'extension-model',
           datasetSearchExtensionBg: 'background',
           authTmbId: true
         }
@@ -392,10 +392,10 @@ describe('createWorkflowAgentToolProvider', () => {
           searchMode: 'embedding',
           embeddingWeight: 0.7,
           usingReRank: true,
-          rerankModel: 'rerank-model',
+          rerankModelId: 'rerank-model',
           rerankWeight: 0.8,
           datasetSearchUsingExtensionQuery: true,
-          datasetSearchExtensionModel: 'extension-model',
+          datasetSearchExtensionModelId: 'extension-model',
           datasetSearchExtensionBg: 'background',
           authTmbId: true
         }

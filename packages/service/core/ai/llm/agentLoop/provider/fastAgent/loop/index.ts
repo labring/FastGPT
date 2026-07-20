@@ -225,8 +225,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
     batchToolSize: runtime.batchToolSize ?? 5,
     childrenInteractiveParams: input.childrenInteractiveParams,
+    modelId: runtime.modelId,
     body: {
-      model: runtime.model,
       reasoning_effort: runtime.reasoningEffort,
       stream: runtime.stream ?? true,
       temperature: runtime.temperature,
@@ -263,15 +263,17 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         contextCheckpoint
       });
     },
-    onLLMRequestStart: ({ requestIndex, modelName }) =>
+    onLLMRequestStart: ({ requestIndex, modelId, modelName }) =>
       runtime.emitEvent?.({
         type: 'llm_request_start',
         requestIndex,
+        modelId,
         modelName
       }),
     onLLMRequestEnd: ({
       requestIndex,
       modelName,
+      modelId,
       requestId,
       finishReason,
       answerText,
@@ -285,6 +287,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         ? {
             moduleName: AgentUsageModuleName.agentCall,
             model: modelName,
+            modelId,
             totalPoints: usage.totalPoints,
             inputTokens: usage.inputTokens,
             outputTokens: usage.outputTokens
@@ -294,6 +297,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       emitAgentLoopEvent(runtime, {
         type: 'llm_request_end',
         requestIndex,
+        modelId,
         modelName,
         requestId,
         finishReason: finishReason ?? 'stop',

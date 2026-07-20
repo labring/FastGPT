@@ -84,7 +84,7 @@ describe('openapi/core/chat target schema', () => {
       chatId: 'chat-1',
       questionGuide: {
         open: true,
-        model: 'debug-model'
+        modelId: 'debug-model'
       }
     });
 
@@ -94,7 +94,7 @@ describe('openapi/core/chat target schema', () => {
       chatId: 'chat-1',
       questionGuide: {
         open: true,
-        model: 'debug-model'
+        modelId: 'debug-model'
       }
     });
     expect('skillId' in result).toBe(false);

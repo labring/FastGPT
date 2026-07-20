@@ -241,7 +241,7 @@ const Evaluation = () => {
                         </Td>
                         <Td color={'myGray.900'}>
                           <Box>{formatTime2YMDHM(item.createTime)}</Box>
-                          <Box>{formatTime2YMDHM(item.finishTime)}</Box>
+                          <Box>{formatTime2YMDHM(item.finishTime ?? undefined)}</Box>
                         </Td>
                         <Td color={item.score ? 'myGray.600' : 'myGray.900'}>
                           {typeof item.score === 'number' ? (item.score * 100).toFixed(2) : '-'}

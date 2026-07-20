@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import type { RenderInputProps } from '../type';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
@@ -7,33 +7,31 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
-import { getWebDefaultLLMModel } from '@/web/common/system/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { llmModelList } = useSystemStore();
-
-  const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
-    'workflow_default_llm_model',
-    {
-      defaultValue: getWebDefaultLLMModel()?.model || ''
-    }
-  );
+  // Keep the shared cache fresh with the last chosen chat model; it no longer
+  // pre-fills this node (design §3.2). CommonInputForm's selectLLMModel input
+  // fallback reads it.
+  const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
+    defaultValue: ''
+  });
 
   const onChangeModel = useCallback(
     (e: SettingAIDataType) => {
       for (const key in e) {
-        if (key === NodeInputKeyEnum.aiModel) {
+        // SettingAIDataType.modelId maps to NodeInputKeyEnum.aiModelId in workflow inputs
+        if (key === 'modelId') {
           setDefaultModel(e[key]);
         }
 
-        const input = inputs.find((input) => input.key === key);
+        const inputKey = key === 'modelId' ? NodeInputKeyEnum.aiModelId : key;
+        const input = inputs.find((input) => input.key === inputKey);
         if (input) {
           onChangeNode({
             nodeId,
             type: 'updateInput',
-            key,
+            key: inputKey,
             value: {
               ...input,
               // @ts-ignore
@@ -46,43 +44,20 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
     [inputs, nodeId, onChangeNode, setDefaultModel]
   );
 
-  const { aiModelInput, model } = useMemoEnhance(() => {
-    const aiModelInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
+  const { model } = useMemoEnhance(() => {
+    const aiModelInput = inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId);
     const inputModel = aiModelInput?.value as string | undefined;
-    const modelSet = new Set(llmModelList.map((item) => item.model));
-    const defaultLLMModel = getWebDefaultLLMModel(llmModelList)?.model || '';
-    const validDefaultModel = defaultModel && modelSet.has(defaultModel) ? defaultModel : '';
-    const fallbackModel = validDefaultModel || defaultLLMModel;
 
     return {
-      aiModelInput,
-      model: inputModel || fallbackModel
+      // Keep the node value as-is: when empty, stay empty so the selector's
+      // autoSelectDefault fills the system default (design §3.2), not list[0].
+      model: inputModel ?? ''
     };
-  }, [defaultModel, inputs, llmModelList]);
-
-  /**
-   * settingLLMModel 会用本地缓存模型作为选择器展示值。
-   * 当节点本身还没有 model 时,需要把这个展示兜底值同步写回节点,
-   * 避免后端运行时收到空 model 后回退到系统默认模型。
-   */
-  useEffect(() => {
-    if (!aiModelInput || aiModelInput.value || !model) return;
-
-    setDefaultModel(model);
-    onChangeNode({
-      nodeId,
-      type: 'updateInput',
-      key: aiModelInput.key,
-      value: {
-        ...aiModelInput,
-        value: model
-      }
-    });
-  }, [aiModelInput, model, nodeId, onChangeNode, setDefaultModel]);
+  }, [inputs]);
 
   const llmModelData: SettingAIDataType = useMemoEnhance(
     () => ({
-      model,
+      modelId: model,
       maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
       temperature: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value,
       isResponseAnswerText: inputs.find(

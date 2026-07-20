@@ -35,7 +35,7 @@ export type AvailableSelectedToolItemType = SelectedToolItemType;
 
 export const AppFormEditFormV1TypeSchema = z.object({
   aiSettings: z.object({
-    [NodeInputKeyEnum.aiModel]: z.string(),
+    [NodeInputKeyEnum.aiModelId]: z.string(),
     [NodeInputKeyEnum.aiSystemPrompt]: z.string().optional(),
 
     [NodeInputKeyEnum.aiChatTemperature]: z.number().optional(),

@@ -35,7 +35,8 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
 }) => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
 
-  const modelData = getLLMModel(runtime.llmParams.model);
+  const modelData = getLLMModel(runtime.llmParams.modelId);
+  if (!modelData) return payload;
   const supportParams = getLLMSupportParams(modelData);
   const responseFormat = supportParams.responseFormat
     ? normalizeResponseFormat(runtime.llmParams.responseFormat)
@@ -45,12 +46,12 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
     : undefined;
   const maxTokens =
     typeof runtime.llmParams.maxTokens === 'number'
-      ? computedMaxToken({ model: modelData, maxToken: runtime.llmParams.maxTokens })
+      ? computedMaxToken({ modelData, maxToken: runtime.llmParams.maxTokens })
       : undefined;
   const temperature =
     supportParams.temperature && typeof runtime.llmParams.temperature === 'number'
       ? computedTemperature({
-          model: modelData,
+          modelData,
           temperature: runtime.llmParams.temperature
         })
       : undefined;

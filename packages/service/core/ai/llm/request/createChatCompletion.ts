@@ -1,6 +1,8 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
-import { getAIApi } from '../../config';
+import { getAIApi, getAiproxyScopeHeaders } from '../../config';
+import { normalizeRelayNoChannelError } from '../../channel';
+import { assertModelActive } from '../../model/cache';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { isStreamCompletionResponse } from './response/normalize';
 import type { CreateChatCompletionProps, CreateChatCompletionResult } from './types';
@@ -12,7 +14,7 @@ const logger = getLogger(LogCategories.MODULE.AI.LLM);
  *
  * getAIApi 会根据 userKey 返回实际使用的 OpenAI 客户端和 requestMeta。
  * 当 requestMeta.usedUserOpenAIKey=true 时，说明请求已经走用户 key，
- * 这里必须避免继续叠加模型配置里的 requestUrl/requestAuth，防止覆盖用户自己的配置。
+ * 直接直连用户配置的端点，不经过 aiproxy channel 路由。
  */
 export const createChatCompletion = async ({
   modelData,
@@ -29,24 +31,27 @@ export const createChatCompletion = async ({
   });
 
   try {
+    // modelData is non-optional by type, but guard defensively — undefined must
+    // surface a clear error, not a TypeError. Disabled models must never be
+    // callable at runtime (F2-S3-TC06): deepest choke point, even if a future
+    // call site forgets the guard, every LLM path that lands here is safe.
     if (!modelData) {
-      return Promise.reject(`${body.model} not found`);
+      return Promise.reject(`Chat completion model not found`);
     }
+    assertModelActive(modelData);
     body.model = modelData.model;
 
+    // 用户自有 key 直连用户配置的端点（默认 api.openai.com），不经过 aiproxy channel 路由（design §3.1）。
     logger.debug('Start create chat completion', { model: body.model });
 
-    // requestUrl/requestAuth 只属于系统模型配置。用户 key 请求由 getAIApi 内部完成 baseUrl/key 选择。
+    // 用户 key 请求由 getAIApi 内部完成 baseUrl/key 选择。
     const response = await ai.chat.completions.create(body, {
       ...options,
-      ...(modelData.requestUrl && !requestMeta.usedUserOpenAIKey
-        ? { path: modelData.requestUrl }
-        : {}),
       headers: {
         ...options?.headers,
-        ...(modelData.requestAuth && !requestMeta.usedUserOpenAIKey
-          ? { Authorization: `Bearer ${modelData.requestAuth}` }
-          : {})
+        // Relay scope is a security attribute (design §2.9) — it must win over any
+        // caller-provided header (e.g. Aiproxy-Channel channel lock).
+        ...getAiproxyScopeHeaders(modelData, requestMeta.baseUrl)
       }
     });
 
@@ -76,6 +81,8 @@ export const createChatCompletion = async ({
     }
 
     logger.error('LLM response error', { request: body, error });
-    return Promise.reject(error);
+    // Relay "no available channel" (F2-S4-TC04) → ModelErrEnum.noAvailableChannel;
+    // other errors pass through unchanged.
+    return Promise.reject(normalizeRelayNoChannelError(error));
   }
 };
