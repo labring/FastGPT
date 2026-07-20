@@ -1,5 +1,6 @@
 import { MongoDataset } from '../dataset/schema';
-import { getEmbeddingModel } from '../ai/model';
+import { getDatasetModelIds } from '../dataset/utils';
+import { getEmbeddingModel, getDefaultEmbeddingModel } from '../ai/model/cache';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -187,11 +188,22 @@ export async function rewriteAppWorkflowToDetail({
       }).lean();
 
       if (dataset && !dataset.deleteTime) {
+        const { vectorModelId } = getDatasetModelIds(dataset);
+        const vectorModel = vectorModelId ? getEmbeddingModel(vectorModelId) : undefined;
+        if (vectorModel) {
+          return {
+            datasetId: String(dataset._id),
+            avatar: dataset.avatar,
+            name: dataset.name,
+            vectorModel,
+            isDeleted: false
+          };
+        }
         return {
           datasetId: String(dataset._id),
           avatar: dataset.avatar,
           name: dataset.name,
-          vectorModel: getEmbeddingModel(dataset.vectorModel),
+          vectorModel: undefined,
           isDeleted: false
         };
       }
@@ -201,7 +213,7 @@ export async function rewriteAppWorkflowToDetail({
         datasetId,
         avatar: defaultDeletedDatasetAvatar,
         name: snapshot.name || '',
-        vectorModel: snapshot.vectorModel || getEmbeddingModel(),
+        vectorModel: snapshot.vectorModel || getDefaultEmbeddingModel(),
         isDeleted: true
       };
     };

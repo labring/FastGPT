@@ -71,7 +71,9 @@ export const getEmptyAppsTemplate = (t: any) => {
           version: '481',
           inputs: [
             {
-              key: 'model',
+              // NodeInputKeyEnum.aiModelId = 'modelId' since the model refactor —
+              // the runtime/UI only read the modelId key (design §3.1)
+              key: 'modelId',
               renderTypeList: [
                 FlowNodeInputTypeEnum.settingLLMModel,
                 FlowNodeInputTypeEnum.reference

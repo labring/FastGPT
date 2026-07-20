@@ -1,70 +1,110 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
+import { authModel } from '@fastgpt/service/support/permission/model/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { MongoSystemModel } from '@fastgpt/service/core/ai/model/schema';
+import { normalizeSystemModel } from '@fastgpt/service/core/ai/model/normalize';
+import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/model/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { isObjectId } from '@fastgpt/global/common/string/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  parsePersistedSystemModelConfig,
-  updatedReloadSystemModel
-} from '@fastgpt/service/core/ai/config/utils';
-import {
-  ApiRequestInputParseError,
-  parseApiInput
-} from '@fastgpt/service/common/zod/requestParseError';
-import {
-  UpdateSystemModelBodySchema,
-  UpdateSystemModelResponseSchema,
-  type UpdateSystemModelBody,
-  type UpdateSystemModelResponse
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
-import { ZodError } from 'zod';
+  UpdateModelBodySchema,
+  UpdateModelResponseSchema,
+  type UpdateModelBody,
+  type UpdateModelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
 
-export type updateBody = UpdateSystemModelBody;
+async function handler(
+  req: ApiRequestProps<UpdateModelBody>,
+  _res: ApiResponseType<any>
+): Promise<UpdateModelResponse> {
+  const body = parseApiInput({ req, bodySchema: UpdateModelBodySchema }).body;
+  const { id: modelId, type: bodyType, ...updates } = body;
 
-async function handler(req: ApiRequestProps<updateBody>): Promise<UpdateSystemModelResponse> {
-  await authSystemAdmin({ req });
+  if (!modelId || !isObjectId(modelId)) {
+    return Promise.reject(ModelErrEnum.invalidModelId);
+  }
 
-  const { model, metadata = {} } = parseApiInput({
+  if (Object.keys(updates).length === 0 && !bodyType) {
+    return Promise.reject(ModelErrEnum.noFieldsToUpdate);
+  }
+
+  const {
+    teamId,
+    tmbId,
+    modelData: existingModel,
+    isRoot
+  } = await authModel({
+    modelId,
+    per: WritePermissionVal,
     req,
-    bodySchema: UpdateSystemModelBodySchema
-  }).body;
+    authToken: true
+  });
 
-  const dbModel = await MongoSystemModel.findOne({ model }).lean();
-  const modelData = findModelFromAlldata(model);
+  // Non-root users cannot change price fields or isSystem (price is a platform-wide
+  // config, isSystem decides ownership); they MAY toggle isActive to start/stop
+  // their own private models (decision: non-root can enable/disable own models).
+  if (!isRoot) {
+    delete updates.charsPointsPrice;
+    delete updates.priceTiers;
+    delete updates.inputPrice;
+    delete updates.outputPrice;
+    delete updates.isSystem;
+  }
 
-  const persistedMetadata = (() => {
-    try {
-      return parsePersistedSystemModelConfig({
-        model,
-        metadata: {
-          ...modelData, // system config
-          ...dbModel?.metadata, // db config
-          ...metadata // user config
-        }
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        // metadata 是宽松的增量配置，必须合并后才能校验；失败仍属于请求体错误。
-        throw new ApiRequestInputParseError(error, { inputSource: 'body' });
-      }
-      throw error;
-    }
-  })();
+  // System models do not maintain tmbId/teamId (design data-model §1.2):
+  // strip them from updates to prevent re-attaching team ownership to system models.
+  if (existingModel.isSystem) {
+    delete updates.tmbId;
+    delete updates.teamId;
+  }
 
-  await MongoSystemModel.updateOne(
-    { model },
+  // Validate and clean via the type-specific Zod schema.
+  // Partial mode: the update body schema (UpdateModelBodySchema) is fully partial
+  // (toggle switches send only { id, isActive }), so don't require all fields.
+  const normalized = normalizeSystemModel(
     {
-      model,
-      metadata: persistedMetadata
+      ...updates,
+      type: bodyType ?? existingModel.type
     },
-    {
-      upsert: true
-    }
+    { partial: true }
   );
+
+  // Strip fields that should not be directly written
+  delete normalized.id;
+  delete normalized._id;
+  delete normalized.createdAt;
+  delete normalized.updatedAt;
+  delete normalized.__v;
+  delete normalized.tmbId;
+  delete normalized.teamId;
+  delete normalized.isSystem;
+
+  const fieldsToUpdate = Object.keys(normalized);
+  if (fieldsToUpdate.length === 0) {
+    return Promise.reject(ModelErrEnum.noFieldsToUpdate);
+  }
+
+  await MongoSystemModel.updateOne({ _id: modelId }, { $set: normalized });
 
   await updatedReloadSystemModel();
 
-  return UpdateSystemModelResponseSchema.parse(undefined);
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.UPDATE_MODEL,
+      params: {
+        modelName: existingModel.name || existingModel.model,
+        modelType: getI18nModelType(existingModel.type)
+      }
+    });
+  })();
+
+  return UpdateModelResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

@@ -5,7 +5,7 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { getLLMModel, getEmbeddingModel, getVlmModel, isImageEmbeddingModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel, assertModelUsable } from '../../ai/model';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
@@ -75,9 +75,9 @@ export const pushDataListToTrainingQueue = async ({
   tmbId,
   datasetId,
   collectionId,
-  agentModel,
-  vectorModel,
-  vlmModel,
+  agentModelId,
+  vectorModelId,
+  vlmModelId,
   data,
   billId,
   mode = TrainingModeEnum.chunk,
@@ -92,54 +92,45 @@ export const pushDataListToTrainingQueue = async ({
   data: PushDataChunkType[];
   mode?: TrainingModeEnum;
 
-  agentModel: string;
-  vectorModel: string;
-  vlmModel?: string;
+  agentModelId: string;
+  vectorModelId: string;
+  vlmModelId?: string;
 
   indexSize?: number;
 
   billId: string;
   session?: ClientSession;
 }): Promise<PushDataResponseType> => {
-  const vectorModelData = getEmbeddingModel(vectorModel);
-  if (!vectorModelData) {
-    return Promise.reject(i18nT('common:error_embedding_not_config'));
-  }
-  const agentModelData = getLLMModel(agentModel);
-  if (!agentModelData) {
-    return Promise.reject(i18nT('common:error_llm_not_config'));
-  }
+  // Existence + active in one guard (F2-S3-TC06).
+  const vectorModelData = assertModelUsable(getEmbeddingModel(vectorModelId));
+  const agentModelData = assertModelUsable(getLLMModel(agentModelId));
 
   const { maxToken, weight } = await (async () => {
     if (mode === TrainingModeEnum.chunk) {
       return {
         maxToken: Infinity,
-        model: vectorModelData.model,
         weight: vectorModelData.weight
       };
     }
     if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
       return {
         maxToken: getLLMMaxChunkSize(agentModelData),
-        model: agentModelData.model,
         weight: 0
       };
     }
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
-      const vllmModelData = getVlmModel(vlmModel);
-      if (!vllmModelData) {
-        if (mode === TrainingModeEnum.image && isImageEmbeddingModel(vectorModelData)) {
+      const vlmModelData = vlmModelId ? getVlmModel(vlmModelId) : undefined;
+      if (!vlmModelData) {
+        if (mode === TrainingModeEnum.image && vectorModelData?.vision) {
           return {
             maxToken: Infinity,
-            model: vectorModelData.model,
             weight: vectorModelData.weight
           };
         }
         return Promise.reject(i18nT('common:error_vlm_not_config'));
       }
       return {
-        maxToken: getLLMMaxChunkSize(vllmModelData),
-        model: vllmModelData.model,
+        maxToken: getLLMMaxChunkSize(vlmModelData),
         weight: 0
       };
     }

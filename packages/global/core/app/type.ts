@@ -32,8 +32,14 @@ export const AppTTSConfigTypeSchema = z.object({
   type: z.enum(['none', 'web', 'model']).meta({
     description: '语音播报方式：关闭、浏览器播报或模型播报'
   }),
+  modelId: z.string().optional().meta({
+    description: '模型播报时使用的语音模型ID'
+  }),
+  // ⚠️ 热升级兼容（contract release 移除）：legacy provider 模型名，运行时按
+  // `modelId ?? resolveModelId(model)` 解析（热升级技术分析 §6.6）
   model: z.string().optional().meta({
-    description: '模型播报时使用的语音模型'
+    description: '语音模型名称（已废弃，兼容旧数据，运行时按名解析）',
+    deprecated: true
   }),
   voice: z.string().optional().meta({
     description: '模型播报时使用的音色'
@@ -74,8 +80,14 @@ export const AppQGConfigTypeSchema = z.preprocess(
     open: BoolSchema.meta({
       description: '是否开启问题引导'
     }),
+    modelId: z.string().optional().meta({
+      description: '生成问题引导时使用的模型ID'
+    }),
+    // ⚠️ 热升级兼容（contract release 移除）：legacy provider 模型名，运行时按
+    // `modelId ?? resolveModelId(model)` 解析（热升级技术分析 §6.6）
     model: z.string().optional().meta({
-      description: '生成问题引导时使用的模型'
+      description: '生成问题引导时使用的模型名称（已废弃，兼容旧数据，运行时按名解析）',
+      deprecated: true
     }),
     customPrompt: z.string().optional().meta({
       description: '生成问题引导时追加的自定义提示词'
@@ -263,11 +275,11 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   embeddingWeight: NumSchema.optional(), // embedding weight, fullText weight = 1 - embeddingWeight
 
   usingReRank: BoolSchema.optional(),
-  rerankModel: z.string().optional(),
+  rerankModelId: z.string().optional(),
   rerankWeight: NumSchema.optional(),
 
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
-  datasetSearchExtensionModel: z.string().optional(),
+  datasetSearchExtensionModelId: z.string().optional(),
   datasetSearchExtensionBg: z.string().optional(),
   [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),
 
@@ -276,7 +288,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 
 export type SettingAIDataType = {
-  model: string;
+  modelId: string;
   temperature?: number;
   maxToken?: number;
   isResponseAnswerText?: boolean;

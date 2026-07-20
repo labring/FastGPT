@@ -9,6 +9,7 @@ import { AppVersionPath } from './version';
 import { AppTemplatePath } from './template';
 import { AppPermissionPath } from './permission';
 import { ToolPath } from './tool';
+import { AppEvaluationPath } from './evaluation';
 
 export const AppPath: OpenAPIPath = {
   ...AppCommonPath,
@@ -20,5 +21,6 @@ export const AppPath: OpenAPIPath = {
   ...PublishChannelPath,
   ...McpToolsPath,
   ...HttpToolsPath,
-  ...ToolPath
+  ...ToolPath,
+  ...AppEvaluationPath
 };

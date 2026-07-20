@@ -82,6 +82,100 @@ export const getSelectedInputRenderTypeIndex = (input: {
 };
 
 /**
+ * Extract all modelIds referenced in a workflow's modules and chatConfig.
+ * Used by model permission checks (cross-module auth) to validate every model
+ * a workflow depends on.
+ *
+ * ⚠️ 热升级兼容：同步识别 legacy key（`model`/`rerankModel`/`datasetSearchExtensionModel`/
+ * `datasetDeepSearchModel` 及 datasetParams 内嵌 legacy 字段、chatConfig legacy
+ * `questionGuide.model`/`ttsConfig.model`），否则老前端只传 legacy 值时模型权限校验
+ * 会漏掉（热升级技术分析 §6.4 item 4、§14 风险表）。
+ */
+// @deprecated — legacy workflow model keys kept for the hot-upgrade window.
+export const LEGACY_MODEL_INPUT_KEY_MAP: Record<string, string> = {
+  model: NodeInputKeyEnum.aiModelId,
+  rerankModel: NodeInputKeyEnum.datasetSearchRerankModelId,
+  datasetSearchExtensionModel: NodeInputKeyEnum.datasetSearchExtensionModelId,
+  datasetDeepSearchModel: NodeInputKeyEnum.datasetDeepSearchModelId
+};
+
+// @deprecated — legacy datasetParams model keys kept for the hot-upgrade window.
+export const LEGACY_DATASET_PARAMS_MODEL_KEY_MAP: Record<string, string> = {
+  embeddingModel: 'embeddingModelId',
+  rerankModel: 'rerankModelId',
+  datasetSearchExtensionModel: 'datasetSearchExtensionModelId',
+  datasetDeepSearchModel: 'datasetDeepSearchModelId'
+};
+export function extractWorkflowModelIds({
+  modules = [],
+  chatConfig
+}: {
+  modules?: any[];
+  chatConfig?: any;
+}): string[] {
+  const ids = new Set<string>();
+
+  for (const mod of modules) {
+    for (const input of mod.inputs || []) {
+      if (input.key === NodeInputKeyEnum.aiModelId && typeof input.value === 'string') {
+        ids.add(input.value);
+      }
+      // ⚠️ 热升级兼容：legacy `model` key
+      if (LEGACY_MODEL_INPUT_KEY_MAP[input.key] && typeof input.value === 'string') {
+        ids.add(input.value);
+      }
+      if (
+        input.key === NodeInputKeyEnum.datasetSearchRerankModelId &&
+        typeof input.value === 'string'
+      ) {
+        ids.add(input.value);
+      }
+      if (
+        input.key === NodeInputKeyEnum.datasetSearchExtensionModelId &&
+        typeof input.value === 'string'
+      ) {
+        ids.add(input.value);
+      }
+      if (
+        input.key === NodeInputKeyEnum.datasetDeepSearchModelId &&
+        typeof input.value === 'string'
+      ) {
+        ids.add(input.value);
+      }
+      // datasetParams composite object model fields
+      if (input.key === NodeInputKeyEnum.datasetParams && typeof input.value === 'object') {
+        for (const field of [
+          'embeddingModelId',
+          'rerankModelId',
+          'datasetSearchExtensionModelId',
+          'datasetDeepSearchModelId'
+        ]) {
+          if (typeof input.value[field] === 'string') ids.add(input.value[field]);
+        }
+        // ⚠️ 热升级兼容：datasetParams 内嵌 legacy 字段
+        for (const [legacyField] of Object.entries(LEGACY_DATASET_PARAMS_MODEL_KEY_MAP)) {
+          if (typeof input.value[legacyField] === 'string') ids.add(input.value[legacyField]);
+        }
+      }
+    }
+  }
+
+  // 关闭的问题引导和非模型 TTS 不会发起服务端模型调用，不能让其残留配置阻断主流程。
+  if (chatConfig?.questionGuide?.open === true) {
+    if (chatConfig.questionGuide.modelId) ids.add(chatConfig.questionGuide.modelId);
+    // ⚠️ 热升级兼容：chatConfig legacy 字段
+    if (chatConfig.questionGuide.model) ids.add(chatConfig.questionGuide.model);
+  }
+  if (chatConfig?.ttsConfig?.type === 'model') {
+    if (chatConfig.ttsConfig.modelId) ids.add(chatConfig.ttsConfig.modelId);
+    // ⚠️ 热升级兼容：chatConfig legacy 字段
+    if (chatConfig.ttsConfig.model) ids.add(chatConfig.ttsConfig.model);
+  }
+
+  return Array.from(ids);
+}
+
+/**
  * 判断输入值是否应按工作流引用解析。
  * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，
  * 但它的值仍是 [nodeId, outputId]，运行时必须解析成知识库检索结果。
@@ -830,28 +924,77 @@ export const clientGetWorkflowToolRunUserQuery = ({
 
 export const removeUnauthModels = async ({
   modules,
+  chatConfig,
   allowedModels = new Set()
 }: {
   modules: AppSchemaType['modules'];
+  chatConfig?: AppSchemaType['chatConfig'];
   allowedModels?: Set<string>;
 }) => {
+  // Blank every model field not in the allowed set (create/import flow, AUTH-TC09):
+  // lenient — the app is created and the user re-picks their own models, instead of
+  // rejecting the whole creation (unlike update, AUTH-TC10). Keys mirror
+  // extractWorkflowModelIds so no model field can slip through unauthorized.
+  //
+  // ⚠️ 热升级兼容：同步识别 legacy key（`model`/`rerankModel`/`datasetSearchExtensionModel`/
+  // `datasetDeepSearchModel` 及 datasetParams 内嵌 legacy 字段、chatConfig legacy
+  // `questionGuide.model`/`ttsConfig.model`）。legacy 值一般是 provider 模型名，
+  // 不在 allowedModels（id 集合）中 → 按既有 lenient 规则清空，由用户重新选择。
+  const hasAuth = (value: unknown): value is string =>
+    typeof value === 'string' && allowedModels.has(value);
+
+  const legacyModelInputKeys = Object.keys(LEGACY_MODEL_INPUT_KEY_MAP);
+  const canonicalModelInputKeys = Object.values(LEGACY_MODEL_INPUT_KEY_MAP);
+  const datasetParamsModelFields = [
+    ...Object.values(LEGACY_DATASET_PARAMS_MODEL_KEY_MAP),
+    ...Object.keys(LEGACY_DATASET_PARAMS_MODEL_KEY_MAP)
+  ];
+
   if (modules) {
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
-        if (input.key === 'model') {
-          // 如果是引用类型或历史引用值，跳过静态模型白名单检查。
-          if (
-            getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
-            Array.isArray(input.value)
-          ) {
-            return;
-          }
-          if (!allowedModels.has(input.value)) {
+        // Skip reference inputs (selectedTypeIndex !== 0 or array value)
+        if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
+          return;
+        }
+        if (
+          canonicalModelInputKeys.includes(input.key as NodeInputKeyEnum) ||
+          legacyModelInputKeys.includes(input.key)
+        ) {
+          if (typeof input.value === 'string' && !hasAuth(input.value)) {
             input.value = undefined;
+          }
+        }
+        // datasetParams composite object — blank each embedded model field
+        if (
+          input.key === NodeInputKeyEnum.datasetParams &&
+          typeof input.value === 'object' &&
+          input.value !== null
+        ) {
+          for (const field of datasetParamsModelFields) {
+            if (!hasAuth(input.value[field])) {
+              (input.value as Record<string, unknown>)[field] = undefined;
+            }
           }
         }
       });
     });
+  }
+  // chatConfig model fields
+  if (chatConfig) {
+    if (chatConfig.questionGuide?.modelId && !hasAuth(chatConfig.questionGuide.modelId)) {
+      chatConfig.questionGuide.modelId = undefined;
+    }
+    if (chatConfig.ttsConfig?.modelId && !hasAuth(chatConfig.ttsConfig.modelId)) {
+      chatConfig.ttsConfig.modelId = undefined;
+    }
+    // ⚠️ 热升级兼容：chatConfig legacy 字段
+    if (chatConfig.questionGuide?.model && !hasAuth(chatConfig.questionGuide.model)) {
+      chatConfig.questionGuide.model = undefined;
+    }
+    if (chatConfig.ttsConfig?.model && !hasAuth(chatConfig.ttsConfig.model)) {
+      chatConfig.ttsConfig.model = undefined;
+    }
   }
   return modules;
 };

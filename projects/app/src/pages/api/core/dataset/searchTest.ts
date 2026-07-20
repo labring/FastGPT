@@ -6,9 +6,10 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/next/type';
 import type { NextApiResponse } from 'next';
-import { getRerankModel } from '@fastgpt/service/core/ai/model';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { getRerankModel, assertModelActive } from '@fastgpt/service/core/ai/model/cache';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -37,15 +38,15 @@ export async function handler(
     embeddingWeight,
 
     usingReRank,
-    rerankModel,
+    rerankModelId,
     rerankWeight,
 
     datasetSearchUsingExtensionQuery = false,
-    datasetSearchExtensionModel,
+    datasetSearchExtensionModelId,
     datasetSearchExtensionBg,
 
     datasetDeepSearch = false,
-    datasetDeepSearchModel,
+    datasetDeepSearchModelId,
     datasetDeepSearchMaxTimes,
     datasetDeepSearchBg
   } = parseApiInput({ req, bodySchema: SearchDatasetTestBodySchema }).body;
@@ -85,7 +86,9 @@ export async function handler(
     })
   );
 
-  const rerankModelData = getRerankModel(rerankModel);
+  const rerankModelData = rerankModelId ? getRerankModel(rerankModelId) : undefined;
+  // Rerank is optional, but a configured one must be active (F2-S3-TC06).
+  assertModelActive(rerankModelData);
 
   const searchData = {
     histories: [],
@@ -93,15 +96,15 @@ export async function handler(
     reRankQuery: text,
     textQueries: text ? [text] : [],
     imageQueries: validQueryImageUrls,
-    model: dataset.vectorModel,
-    vlmModel: dataset.vlmModel,
+    vectorModelId: dataset.vectorModelId,
+    vlmModelId: dataset.vlmModelId,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
     searchMode,
     embeddingWeight,
     usingReRank,
-    rerankModel: rerankModelData,
+    [NodeInputKeyEnum.datasetSearchRerankModelId]: rerankModelId,
     rerankWeight
   };
   const {
@@ -115,14 +118,14 @@ export async function handler(
   } = datasetDeepSearch && !!text.trim()
     ? await deepRagSearch({
         ...searchData,
-        datasetDeepSearchModel,
+        datasetDeepSearchModelId,
         datasetDeepSearchMaxTimes,
         datasetDeepSearchBg
       })
     : await defaultSearchDatasetData({
         ...searchData,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModel,
+        datasetSearchExtensionModelId,
         datasetSearchExtensionBg
       });
 
@@ -133,27 +136,33 @@ export async function handler(
     tmbId,
     source,
     embUsage: {
-      model: dataset.vectorModel,
+      modelId: dataset.vectorModelId,
+      model: dataset.vectorModelId,
       inputTokens: embeddingTokens
     },
-    rerankUsage: searchUsingReRank
-      ? {
-          model: rerankModelData.model,
-          inputTokens: reRankInputTokens
-        }
-      : undefined,
+    rerankUsage:
+      searchUsingReRank && rerankModelData
+        ? {
+            modelId: rerankModelData.id,
+            model: rerankModelData.model,
+            inputTokens: reRankInputTokens
+          }
+        : undefined,
     extensionUsage: queryExtensionResult
       ? {
+          modelId: queryExtensionResult.llmModelId,
           model: queryExtensionResult.llmModel,
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens,
           embeddingTokens: queryExtensionResult.embeddingTokens,
-          embeddingModel: dataset.vectorModel
+          embeddingModelId: queryExtensionResult.embeddingModelId,
+          embeddingModel: queryExtensionResult.embeddingModel
         }
       : undefined,
     imageCaptionUsage: imageCaptionResult
       ? {
-          model: imageCaptionResult.model,
+          modelId: imageCaptionResult.vlmModelId,
+          model: imageCaptionResult.vlmModelName,
           inputTokens: imageCaptionResult.inputTokens,
           outputTokens: imageCaptionResult.outputTokens
         }

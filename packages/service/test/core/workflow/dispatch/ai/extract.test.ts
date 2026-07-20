@@ -13,7 +13,10 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getLLMModel: getLLMModelMock
 }));
 
@@ -53,7 +56,7 @@ const createProps = () =>
     params: {
       content: '张三来自杭州',
       history: 6,
-      model: 'deepseek-r1',
+      modelId: 'deepseek-r1',
       description: '提取姓名',
       extractKeys: [
         {
@@ -119,6 +122,7 @@ describe('dispatchContentExtract', () => {
 
   it('uses plain JSON extraction even when the model supports tool choice', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'deepseek-r1',
       model: 'deepseek-r1',
       name: 'DeepSeek R1',
       maxContext: 128000,
@@ -129,8 +133,10 @@ describe('dispatchContentExtract', () => {
 
     const result = await dispatchContentExtract(createProps());
 
+    expect(createLLMResponseMock.mock.calls[0][0].modelData).toMatchObject({
+      id: 'deepseek-r1'
+    });
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
-      model: 'deepseek-r1',
       stream: true
     });
     expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('tools');
@@ -145,6 +151,7 @@ describe('dispatchContentExtract', () => {
 
   it('does not set reasoning effort in completion extraction', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'deepseek-r1',
       model: 'deepseek-r1',
       name: 'DeepSeek R1',
       maxContext: 128000,
@@ -155,14 +162,15 @@ describe('dispatchContentExtract', () => {
 
     await dispatchContentExtract(createProps());
 
-    expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
-      model: 'deepseek-r1'
+    expect(createLLMResponseMock.mock.calls[0][0].modelData).toMatchObject({
+      id: 'deepseek-r1'
     });
     expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
   });
 
   it('does not set reasoning effort for non-reasoning extraction models', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'gpt-4o',
       model: 'gpt-4o',
       name: 'GPT-4o',
       maxContext: 128000,
@@ -178,6 +186,7 @@ describe('dispatchContentExtract', () => {
 
   it('keeps the existing plain JSON slicing behavior', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'gpt-4o',
       model: 'gpt-4o',
       name: 'GPT-4o',
       maxContext: 128000,
@@ -196,6 +205,7 @@ describe('dispatchContentExtract', () => {
 
   it('returns default required fields when the model response has no JSON content', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'gpt-4o',
       model: 'gpt-4o',
       name: 'GPT-4o',
       maxContext: 128000,
@@ -214,6 +224,7 @@ describe('dispatchContentExtract', () => {
 
   it('ignores scalar JSON responses and keeps the workflow running', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'gpt-4o',
       model: 'gpt-4o',
       name: 'GPT-4o',
       maxContext: 128000,
@@ -233,6 +244,7 @@ describe('dispatchContentExtract', () => {
 
   it('extracts multiple fields and removes fields outside the schema', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'gpt-4o',
       model: 'gpt-4o',
       name: 'GPT-4o',
       maxContext: 128000,

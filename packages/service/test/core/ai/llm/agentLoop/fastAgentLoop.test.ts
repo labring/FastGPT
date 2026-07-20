@@ -2,7 +2,7 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
@@ -23,10 +23,11 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
   getLLMModel: vi.fn(
     (): LLMModelItemType => ({
       type: ModelTypeEnum.llm,
+      id: 'gpt-4',
       provider: 'openai',
       model: 'gpt-4',
       name: 'GPT-4',
@@ -37,7 +38,17 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
       toolChoice: true,
       reasoning: false
     })
-  )
+  ),
+  // Faithful stand-ins for the runtime guards (test models carry isActive:
+  // undefined → both pass through; values match ModelErrEnum).
+  assertModelUsable: (modelData: any) => {
+    if (!modelData) throw 'modelUnExist';
+    if (modelData.isActive === false) throw 'modelDisabled';
+    return modelData;
+  },
+  assertModelActive: (modelData?: { isActive?: boolean }) => {
+    if (modelData?.isActive === false) throw 'modelDisabled';
+  }
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
@@ -74,10 +85,8 @@ import {
   createUpdatePlanAgentTool
 } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { createAgentLoopSandboxTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/sandbox';
-import {
-  runFastAgentMainLoop,
-  type AgentLoopRuntime
-} from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop';
+import { runFastAgentMainLoop } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop';
+import type { AgentLoopRuntime } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop/type';
 
 const getFinalAssistantText = (result: { assistantMessages: any[] }) =>
   result.assistantMessages
@@ -106,7 +115,8 @@ const tool = (name: string): ChatCompletionTool => ({
 });
 
 const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime => ({
-  model: 'gpt-4',
+  teamId: 'team_1',
+  modelId: 'gpt-4',
   stream: true,
   toolCatalog: {
     runtimeTools: [tool('search')],

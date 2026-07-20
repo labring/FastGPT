@@ -1,6 +1,6 @@
 import { i18nT } from '../../common/i18n/utils';
 import type { CompletionUsage, ReasoningEffort } from './llm/type';
-import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model.schema';
+import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model/type';
 
 export const getLLMDefaultUsage = (): CompletionUsage => {
   return {
@@ -20,6 +20,7 @@ export enum ModelTypeEnum {
 
 export const defaultQAModels: LLMModelItemType[] = [
   {
+    id: '',
     type: ModelTypeEnum.llm,
     provider: 'OpenAI',
     model: 'gpt-5',
@@ -40,6 +41,7 @@ export const defaultQAModels: LLMModelItemType[] = [
 
 export const defaultVectorModels: EmbeddingModelItemType[] = [
   {
+    id: '',
     type: ModelTypeEnum.embedding,
     provider: 'OpenAI',
     model: 'text-embedding-3-small',
@@ -53,6 +55,7 @@ export const defaultVectorModels: EmbeddingModelItemType[] = [
 
 export const defaultSTTModels: STTModelType[] = [
   {
+    id: '',
     type: ModelTypeEnum.stt,
     provider: 'OpenAI',
     model: 'whisper-1',

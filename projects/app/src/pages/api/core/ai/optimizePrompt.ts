@@ -6,6 +6,7 @@ import { sseErrRes } from '@fastgpt/service/common/response';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import { getLLMModel, assertModelUsable } from '@fastgpt/service/core/ai/model/cache';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -71,7 +72,7 @@ ${originalPrompt}
 };
 
 async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiResponseType) {
-  const { originalPrompt, optimizerInput, model } = parseApiInput({
+  const { originalPrompt, optimizerInput, modelId } = parseApiInput({
     req,
     bodySchema: OptimizePromptBodySchema
   }).body;
@@ -82,6 +83,9 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       authToken: true,
       authApiKey: true
     });
+
+    // Existence + active in one guard (F2-S3-TC06).
+    const modelData = assertModelUsable(getLLMModel(modelId));
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('X-Accel-Buffering', 'no');
@@ -102,9 +106,9 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       usage: { inputTokens, outputTokens }
     } = await createLLMResponse({
       teamId,
+      modelData: modelData,
       saveLLMResponseRecord: false,
       body: {
-        model,
         messages,
         stream: true
       },
@@ -134,7 +138,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+      modelData,
       inputTokens,
       outputTokens
     });
@@ -149,6 +153,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
         {
           moduleName: i18nT('common:support.wallet.usage.Optimize Prompt'),
           amount: totalPoints,
+          modelId: modelData.id,
           model: modelName,
           inputTokens,
           outputTokens

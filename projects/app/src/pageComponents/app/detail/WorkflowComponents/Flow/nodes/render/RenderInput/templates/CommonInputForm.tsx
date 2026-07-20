@@ -10,6 +10,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
@@ -26,12 +28,14 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     (v) => v
   );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { feConfigs, llmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  // Lazy llm list (design §1)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
     {
-      defaultValue: getWebDefaultLLMModel()?.model || ''
+      defaultValue: getWebDefaultLLMModel(llmModelList)?.id || ''
     }
   );
 
@@ -64,7 +68,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (item.key === NodeInputKeyEnum.aiModel) {
+      if (item.key === NodeInputKeyEnum.aiModelId) {
         setDefaultModel(value);
       }
 

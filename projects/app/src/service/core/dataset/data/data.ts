@@ -6,7 +6,7 @@ import type {
   DatasetDataItemType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, assertModelUsable } from '@fastgpt/service/core/ai/model/cache';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
@@ -23,7 +23,7 @@ import {
 
 type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes'> & {
   indexes: NonNullable<UpdateDatasetDataPropsType['indexes']>;
-  model: string;
+  vectorModelId: string;
   indexSize?: number;
   imageIndex?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
@@ -69,8 +69,8 @@ type UpdateDatasetDataSystemIndexesProps = Omit<
 export class DatasetDataOperation {
   private readonly indexOperation: DatasetDataIndexOperation;
 
-  constructor(model?: string) {
-    this.indexOperation = new DatasetDataIndexOperation(model);
+  constructor(vectorModelId?: string) {
+    this.indexOperation = new DatasetDataIndexOperation(vectorModelId);
   }
 
   /**
@@ -114,13 +114,13 @@ export class DatasetDataOperation {
     indexSize = 512,
     indexes,
     indexPrefix,
-    embeddingModel,
+    vectorModelId,
     imageIndex,
     imageDescMap,
     metadata,
     session
   }: CreateDatasetDataPropsType & {
-    embeddingModel: string;
+    vectorModelId: string;
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
@@ -130,11 +130,12 @@ export class DatasetDataOperation {
     const dataQ = q || '';
     const indexQ = q || '';
 
-    if ((!dataQ && !imageId) || !datasetId || !collectionId || !embeddingModel) {
-      return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
+    if ((!dataQ && !imageId) || !datasetId || !collectionId || !vectorModelId) {
+      return Promise.reject('q, datasetId, collectionId, vectorModelId is required');
     }
 
-    const embModel = getEmbeddingModel(embeddingModel)!;
+    // Existence + active in one guard (F2-S3-TC06); replaces the non-null assert.
+    const embModel = assertModelUsable(getEmbeddingModel(vectorModelId));
     indexSize = Math.min(embModel.maxToken, indexSize);
 
     // 系统索引和外部索引在这里统一规范化，确保后续向量写入的输入已去重、切分。
@@ -219,18 +220,16 @@ export class DatasetDataOperation {
     a,
     imageId,
     indexes,
-    model,
+    vectorModelId,
     indexSize = 512,
     indexPrefix,
     imageIndex,
     metadata,
     forceRebuild = false
   }: UpdateDatasetDataByIndexesProps) {
-    const embModel = getEmbeddingModel(model);
+    // Existence + active in one guard (F2-S3-TC06).
+    const embModel = assertModelUsable(getEmbeddingModel(vectorModelId));
 
-    if (!embModel) {
-      return Promise.reject('Embedding model not found');
-    }
     if (!Array.isArray(indexes)) {
       return Promise.reject('indexes is required');
     }
@@ -340,7 +339,7 @@ export class DatasetDataOperation {
     q,
     a,
     imageId,
-    model,
+    vectorModelId,
     indexSize = 512,
     indexPrefix,
     imageIndex
@@ -348,7 +347,8 @@ export class DatasetDataOperation {
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
 
-    const embModel = getEmbeddingModel(model)!;
+    // Existence + active in one guard (F2-S3-TC06); replaces the non-null assert.
+    const embModel = assertModelUsable(getEmbeddingModel(vectorModelId));
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
     const nextImageId = imageId ?? mongoData.imageId;
@@ -491,14 +491,14 @@ export class DatasetDataOperation {
  */
 export const createDatasetData = async (
   props: CreateDatasetDataPropsType & {
-    embeddingModel: string;
+    vectorModelId: string;
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
     session?: ClientSession;
   }
 ) => {
-  return new DatasetDataOperation(props.embeddingModel).create(props);
+  return new DatasetDataOperation(props.vectorModelId).create(props);
 };
 
 /**
@@ -506,7 +506,7 @@ export const createDatasetData = async (
  * 适用于调用方显式提交整组索引的场景。
  */
 export const updateDatasetDataByIndexes = async (props: UpdateDatasetDataByIndexesProps) => {
-  return new DatasetDataOperation(props.model).updateByIndexes(props);
+  return new DatasetDataOperation(props.vectorModelId).updateByIndexes(props);
 };
 
 /**
@@ -516,7 +516,7 @@ export const updateDatasetDataByIndexes = async (props: UpdateDatasetDataByIndex
 export const updateDatasetDataSystemIndexes = async (
   props: UpdateDatasetDataSystemIndexesProps
 ) => {
-  return new DatasetDataOperation(props.model).updateSystemIndexes(props);
+  return new DatasetDataOperation(props.vectorModelId).updateSystemIndexes(props);
 };
 
 /**

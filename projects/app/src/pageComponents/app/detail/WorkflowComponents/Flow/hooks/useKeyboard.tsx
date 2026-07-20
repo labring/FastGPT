@@ -8,6 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import { useWorkflowUtils } from './useUtils';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -81,7 +82,9 @@ export const useKeyboard = () => {
       const newNodes = filteredData.map((item) => {
         const nodeId = getNanoid();
         item.data.inputs.forEach((input) => {
-          if (input.key === 'model') {
+          // Workflow model inputs are stored under the aiModelId key (modelId
+          // string after the model refactor); myModels holds the accessible model ids.
+          if (input.key === NodeInputKeyEnum.aiModelId) {
             if (!myModels?.has(input.value)) input.value = undefined;
           }
         });

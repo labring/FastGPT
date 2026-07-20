@@ -18,7 +18,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import * as responseModule from '@fastgpt/service/common/response';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { afterEach, describe, it, expect, beforeEach, vi } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
@@ -183,7 +183,7 @@ describe('buildDebugRuntimeNodes', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
+      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId);
       expect(modelInput).toBeDefined();
       expect(modelInput!.value).toBe(MODEL);
       expect(modelInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
@@ -280,7 +280,7 @@ describe('buildDebugRuntimeNodes', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, 'claude-3-5-sonnet', SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
 
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
+      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModelId);
       expect(modelInput!.value).toBe('claude-3-5-sonnet');
     });
 
@@ -298,6 +298,8 @@ describe('buildDebugRuntimeNodes', () => {
 // describe: debugChat API handler — parameter validation
 // ═══════════════════════════════════════════════
 describe('debugChat handler — parameter validation', () => {
+  const originalSystemModelIdMap = global.systemModelIdMap;
+  const originalLlmModelNameMap = global.llmModelNameMap;
   let testUser: Awaited<ReturnType<typeof getUser>>;
   let skillId: string;
 
@@ -307,6 +309,25 @@ describe('debugChat handler — parameter validation', () => {
   beforeEach(async () => {
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
+    const modelData = {
+      id: '507f1f77bcf86cd799439012',
+      provider: 'openai',
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      type: 'llm' as const,
+      isActive: true,
+      isSystem: true,
+      maxContext: 128000,
+      maxResponse: 4096,
+      quoteMaxToken: 120000,
+      functionCall: true,
+      toolChoice: true
+    };
+    global.systemModelIdMap = new Map([[modelData.id, modelData]]);
+    global.llmModelNameMap = new Map([
+      [modelData.model, modelData],
+      [modelData.name, modelData]
+    ]);
     debugChatMocks.preChatRound.mockResolvedValue({
       chatId: 'prepared-debug-chat-id',
       responseChatItemId: 'prepared-debug-response-id',
@@ -345,6 +366,11 @@ describe('debugChat handler — parameter validation', () => {
       tmbId: testUser.tmbId
     });
     skillId = String(skill._id);
+  });
+
+  afterEach(() => {
+    global.systemModelIdMap = originalSystemModelIdMap;
+    global.llmModelNameMap = originalLlmModelNameMap;
   });
 
   it('should call sseErrRes when skillId is missing', async () => {

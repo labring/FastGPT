@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -46,6 +48,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     }),
     authApp({ req, authToken: true, appId, per: ReadPermissionVal })
   ]);
+
+  // Model permission: validate all modelIds referenced by workflow nodes (design A3)
+  const modelIds = extractWorkflowModelIds({ modules: nodes, chatConfig });
+  if (modelIds.length > 0) {
+    await authModels({
+      req,
+      authToken: true,
+      modelIds,
+      per: ReadPermissionVal
+    });
+  }
 
   const interactive = getLastInteractiveValue(history);
   const newUsageId = usageId

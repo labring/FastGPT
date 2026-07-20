@@ -16,6 +16,9 @@ import { publishStatusStyle } from '../../constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { buildLlmModelMap } from '@/web/core/workflow/utils';
 import SaveButton from '../../Workflow/components/SaveButton';
 import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import {
@@ -56,6 +59,8 @@ const Header = ({
   form2WorkflowFn: Form2WorkflowFnType;
 }) => {
   const { t } = useTranslation();
+  const { list: llmList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const llmModelMap = buildLlmModelMap(llmList);
   const { isPc } = useSystem();
   const { toast } = useToast();
   const router = useRouter();
@@ -98,7 +103,7 @@ const Header = ({
       versionName?: string;
       autoSave?: boolean;
     }) => {
-      const { nodes, edges } = form2WorkflowFn(appForm, t);
+      const { nodes, edges } = form2WorkflowFn(appForm, t, llmList);
       await onSaveApp({
         nodes,
         edges,
@@ -278,7 +283,7 @@ const Header = ({
                   }
                 }
 
-                const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
+                const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t, llmList);
 
                 const toolNodeIds = new Set(
                   storeEdges
@@ -286,7 +291,12 @@ const Header = ({
                     .map((edge) => edge.target)
                 );
                 const nodes = storeNodes.map((item) =>
-                  storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+                  storeNode2FlowNode({
+                    item,
+                    t,
+                    isTool: toolNodeIds.has(item.nodeId),
+                    llmModelMap
+                  })
                 );
                 const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 

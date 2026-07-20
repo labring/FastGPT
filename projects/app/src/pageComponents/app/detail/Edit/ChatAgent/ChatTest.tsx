@@ -31,6 +31,8 @@ import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableBut
 import ProModal from '@/components/ProTip/ProModal';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useActiveSystemModelList, useSystemDefaultModel } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -42,7 +44,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { t } = useTranslation();
   const { toast } = useToast();
   const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
-  const { feConfigs, llmModelList, defaultModels } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -59,7 +61,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const [helperSelectedModel, setHelperSelectedModel] = useLocalStorageState<string>(
     'chat_agent_helper_model',
     {
-      defaultValue: defaultModels.llm?.model
+      defaultValue: ''
     }
   );
   const ChatAgentHelperRef = useRef<ChatAgentHelperRefType>(null);
@@ -73,13 +75,13 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     edges: appDetail.edges || []
   });
 
-  const modelSelectList = useMemo(
-    () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
-    [llmModelList]
-  );
+  // Lazy llm list + system default (§3.2)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const { data: systemDefault } = useSystemDefaultModel();
+
   const helperModel = useMemo(() => {
-    const modelSet = new Set(llmModelList.map((item) => item.model));
-    const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
+    const modelSet = new Set(llmModelList.map((item) => item.id));
+    const defaultModel = systemDefault?.llm?.id || llmModelList[0]?.id || '';
 
     if (helperSelectedModel && modelSet.has(helperSelectedModel)) {
       return helperSelectedModel;
@@ -87,8 +89,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     if (defaultModel && modelSet.has(defaultModel)) {
       return defaultModel;
     }
-    return llmModelList[0]?.model || '';
-  }, [defaultModels.llm?.model, helperSelectedModel, llmModelList]);
+    return llmModelList[0]?.id || '';
+  }, [systemDefault?.llm?.id, helperSelectedModel, llmModelList]);
   const onChangeHelperModel = useCallback(
     (model: string) => {
       setHelperSelectedModel(model);
@@ -99,6 +101,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     () => (
       <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
         <ChatAIModelSelector
+          type={'llm'}
           h={'36px'}
           w={'fit-content'}
           maxW={'300px'}
@@ -107,12 +110,11 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           bg={'myGray.50'}
           rounded={'10px'}
           value={helperModel}
-          list={modelSelectList}
           onChange={onChangeHelperModel}
         />
       </Box>
     ),
-    [helperModel, modelSelectList, onChangeHelperModel]
+    [helperModel, onChangeHelperModel]
   );
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
@@ -126,7 +128,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   });
 
   useEffect(() => {
-    const { nodes, edges } = form2WorkflowFn(appForm, t);
+    const { nodes, edges } = form2WorkflowFn(appForm, t, llmModelList);
     setWorkflowData({ nodes, edges });
   }, [appForm, form2WorkflowFn, setWorkflowData, t]);
 
@@ -192,7 +194,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       enableSandbox: appForm.aiSettings.useAgentSandbox || false,
       modelConfig: {
-        model: helperModel
+        modelId: helperModel
       }
     }),
     [appForm, helperModel]

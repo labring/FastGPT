@@ -4,7 +4,7 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { getLLMModel } from '../../../../ai/model';
+import { getLLMModel, assertModelUsable } from '../../../../ai/model/cache';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
@@ -33,7 +33,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     chatConfig,
     usageId,
     params: {
-      model,
+      modelId,
       temperature,
       maxToken,
       history = 6,
@@ -65,12 +65,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
 
-  const modelConstantsData = getLLMModel(model);
-  if (!modelConstantsData) {
-    return getNodeErrResponse({
-      error: `Model ${model} is undefined, you need to select a chat model.`
-    });
-  }
+  // Existence + active in one guard (F2-S3-TC06). Throw propagates to the
+  // workflow runner, which converts it to a node error like the deep guard.
+  const modelConstantsData = assertModelUsable(getLLMModel(modelId));
 
   try {
     aiChatVision = modelConstantsData.vision && aiChatVision;
@@ -85,7 +82,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const [datasetCiteData, userFiles] = await Promise.all([
       getDatasetCiteData({
         quoteQA,
-        model: modelConstantsData,
+        modelData: modelConstantsData,
         quoteTemplate: quoteTemplate || getQuoteTemplate(version),
         aiChatQuoteRole,
         datasetQuotePrompt: quotePrompt,
@@ -104,13 +101,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
 
     const max_tokens = computedMaxToken({
-      model: modelConstantsData,
+      modelData: modelConstantsData,
       maxToken
     });
 
     const [filterMessages] = await Promise.all([
       getChatMessages({
-        model: modelConstantsData,
+        modelData: modelConstantsData,
         maxTokens: max_tokens,
         histories: chatHistories,
         datasetCiteSystemPrompt: datasetCiteData.systemPrompt,
@@ -145,8 +142,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       requestId // 获取请求追踪 ID
     } = await createLLMResponse({
       throwError: false,
+      modelData: modelConstantsData,
       body: {
-        model: modelConstantsData.model,
         stream,
         messages: filterMessages,
         temperature,
@@ -183,7 +180,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
 
     const { totalPoints, modelName } = formatModelChars2Points({
-      model: modelConstantsData.model,
+      modelData: modelConstantsData,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
@@ -192,6 +189,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       {
         moduleName: name,
         totalPoints: points,
+        modelId: modelConstantsData.id,
         model: modelName,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
@@ -205,6 +203,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         error,
         responseData: {
           totalPoints: points,
+          modelId: modelConstantsData.id,
           model: modelName,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
@@ -230,6 +229,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: points,
+        modelId: modelConstantsData.id,
         model: modelName,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,

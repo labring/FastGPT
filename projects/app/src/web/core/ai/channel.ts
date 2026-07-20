@@ -1,32 +1,108 @@
-import axios, { type Method, type AxiosResponse } from 'axios';
+import axios, { type Method } from 'axios';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import type {
+  ChannelBody,
+  CreateChannelResponse,
+  DeleteChannelResponse,
+  ListChannelsResponse,
+  ProviderMetasResponse,
+  UpdateChannelBody,
+  UpdateChannelResponse,
+  UpdateChannelStatusBody,
+  UpdateChannelStatusResponse,
+  AffectedModelsResponse,
+  ModelChannelsResponse
+} from '@fastgpt/global/openapi/core/ai/channel/api';
 import {
-  type DashboardDataItemType,
   type ChannelInfoType,
-  type ChannelListResponseType,
   type ChannelLogListItemType,
-  type CreateChannelProps,
+  type ChannelRelatedModelItem,
+  type DashboardDataItemType,
   DashboardDataItemSchema
 } from '@/global/aiproxy/type';
 import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
-interface ResponseDataType {
+/** Channel kind for resource ops — mirrors the openapi ChannelType (design §2.9.4) */
+export type ChannelKind = 'system' | 'team';
+
+// ═══ FastGPT channel APIs (design §2.9.4) — migrated from the aiproxy passthrough ═══
+// groupId is always derived server-side; clients only send the aiproxy channel id.
+
+/** Channel list: root passes groupType (system=系统渠道 / team=全量成员渠道); members omit it (own channels) */
+export const getChannelList = (params?: {
+  groupType?: 'system' | 'team';
+  pageNum?: number;
+  pageSize?: number;
+}) =>
+  GET<ListChannelsResponse>('/core/ai/channel/list', params ?? {}).then((res) => {
+    res.list.sort((a, b) => {
+      if (a.status !== b.status) return a.status - b.status;
+      return (b.priority ?? 0) - (a.priority ?? 0);
+    });
+    return res.list;
+  });
+
+export const postCreateChannel = (data: ChannelBody, groupType: 'system' | 'team') =>
+  POST<CreateChannelResponse>('/core/ai/channel/create', {
+    ...data,
+    groupType
+  });
+
+/** PUT is a full replacement; id selects the channel, the rest is the new payload */
+export const putChannel = (data: ChannelInfoType, channelType: ChannelKind) =>
+  PUT<UpdateChannelResponse>('/core/ai/channel/update', {
+    id: data.id,
+    channelType,
+    type: data.type,
+    name: data.name,
+    key: data.key,
+    base_url: data.base_url,
+    models: data.models,
+    model_mapping: data.model_mapping,
+    priority: data.priority ? Math.max(data.priority, 1) : undefined,
+    status: data.status as UpdateChannelBody['status'],
+    sets: data.sets
+  });
+
+export const putChannelStatus = (id: number, status: ChannelStatusEnum, channelType: ChannelKind) =>
+  POST<UpdateChannelStatusResponse>('/core/ai/channel/status', {
+    id,
+    status: status as UpdateChannelStatusBody['status'],
+    channelType
+  });
+
+/** Delete returns the pre-deletion affected models (design §9.3 delete protection) */
+export const deleteChannel = (id: number, channelType: ChannelKind) =>
+  DELETE<DeleteChannelResponse>('/core/ai/channel/delete', { id, channelType });
+
+/** Pre-check for the delete confirmation dialog (F2-S4/F3-S4) */
+export const getChannelAffectedModels = (id: number, channelType: ChannelKind) =>
+  GET<AffectedModelsResponse>('/core/ai/channel/affectedModels', { id, channelType });
+
+/** All related models of one channel (bucket-wide, model-name match) — hover details.
+ *  Semantically distinct from getChannelAffectedModels (delete protection: only
+ *  models reachable exclusively via this channel). */
+export const getChannelModels = (id: number, channelType: ChannelKind) =>
+  GET<{ models: ChannelRelatedModelItem[] }>('/core/ai/channel/models', { id, channelType });
+
+/** Channels serving one model within its own bucket — hover detail for the
+ *  model list's channelCount column (design §7.3). Reverse of getChannelModels. */
+export const getModelChannels = (modelId: string) =>
+  GET<ModelChannelsResponse>('/core/ai/channel/modelChannels', { modelId });
+
+// ═══ aiproxy admin passthrough (root-only; see pages/api/aiproxy/[...path].ts) ═══
+// Kept for the channel form's provider meta and the root-only log/monitoring pages.
+// NOTE: /api/aiproxy/[...path].ts requires authSystemAdmin, so these calls are root-only.
+
+interface AiproxyResponseDataType {
   success: boolean;
   message: string;
   data: any;
 }
 
-/**
- * 请求成功,检查请求头
- */
-function responseSuccess(response: AxiosResponse<ResponseDataType>) {
-  return response;
-}
-/**
- * 响应数据检查
- */
-function checkRes(data: ResponseDataType) {
+function aiproxyCheckRes(data: AiproxyResponseDataType) {
   if (data === undefined) {
     console.log('error->', data, 'data is empty');
     return Promise.reject(i18nT('common:server_error'));
@@ -36,11 +112,8 @@ function checkRes(data: ResponseDataType) {
   return data.data;
 }
 
-/**
- * 响应错误
- */
-function responseError(err: any) {
-  console.log('error->', 'Request failed', err);
+function aiproxyResponseError(err: any) {
+  console.log('error->', '请求错误', err);
   const data = err?.response?.data || err;
 
   if (!err) {
@@ -56,18 +129,19 @@ function responseError(err: any) {
   return Promise.reject(data);
 }
 
-/* 创建请求实例 */
-const instance = axios.create({
+const aiproxyInstance = axios.create({
   timeout: 60000, // 超时时间
   headers: {
     'content-type': 'application/json'
   }
 });
 
-/* 响应拦截 */
-instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
+aiproxyInstance.interceptors.response.use(
+  (response) => response,
+  (err) => Promise.reject(err)
+);
 
-function request(url: string, data: any, method: Method): any {
+function aiproxyRequest(url: string, data: any, method: Method): any {
   /* 去空 */
   for (const key in data) {
     if (data[key] === undefined) {
@@ -75,7 +149,7 @@ function request(url: string, data: any, method: Method): any {
     }
   }
 
-  return instance
+  return aiproxyInstance
     .request({
       baseURL: getWebReqUrl('/api/aiproxy/api'),
       url,
@@ -83,85 +157,27 @@ function request(url: string, data: any, method: Method): any {
       data: ['POST', 'PUT'].includes(method) ? data : undefined,
       params: !['POST', 'PUT'].includes(method) ? data : undefined
     })
-    .then((res) => checkRes(res.data))
-    .catch((err) => responseError(err));
+    .then((res) => aiproxyCheckRes(res.data))
+    .catch((err) => aiproxyResponseError(err));
 }
 
-/**
- * api请求方式
- * @param {String} url
- * @param {Any} params
- * @param {Object} config
- * @returns
- */
-export function GET<T = undefined>(url: string, params = {}): Promise<T> {
-  return request(url, params, 'GET');
+function aiproxyGET<T = undefined>(url: string, params = {}): Promise<T> {
+  return aiproxyRequest(url, params, 'GET');
 }
-export function POST<T = undefined>(url: string, data = {}): Promise<T> {
-  return request(url, data, 'POST');
+function aiproxyPOST<T = undefined>(url: string, data = {}): Promise<T> {
+  return aiproxyRequest(url, data, 'POST');
 }
-export function PUT<T = undefined>(url: string, data = {}): Promise<T> {
-  return request(url, data, 'PUT');
+function aiproxyPUT<T = undefined>(url: string, data = {}): Promise<T> {
+  return aiproxyRequest(url, data, 'PUT');
 }
-export function DELETE<T = undefined>(url: string, data = {}): Promise<T> {
-  return request(url, data, 'DELETE');
+function aiproxyDELETE<T = undefined>(url: string, data = {}): Promise<T> {
+  return aiproxyRequest(url, data, 'DELETE');
 }
 
-// ====== API ======
-export const getChannelList = () =>
-  GET<ChannelListResponseType>('/channels/all', {
-    page: 1,
-    perPage: 10
-  }).then((res) => {
-    res.sort((a, b) => {
-      if (a.status !== b.status) {
-        return a.status - b.status;
-      }
-      return b.priority - a.priority;
-    });
-    return res;
-  });
-
+/** aiproxy provider metas (defaultBaseUrl/keyHelp) — any authenticated user
+ *  (served by /core/ai/channel/providerMetas with a server-side admin token) */
 export const getChannelProviders = () =>
-  GET<
-    Record<
-      number,
-      {
-        defaultBaseUrl: string;
-        keyHelp: string;
-        name: string;
-      }
-    >
-  >('/channels/type_metas');
-
-export const postCreateChannel = (data: CreateChannelProps) =>
-  POST(`/createChannel`, {
-    type: data.type,
-    name: data.name,
-    base_url: data.base_url,
-    models: data.models,
-    model_mapping: data.model_mapping,
-    key: data.key,
-    priority: 1
-  });
-
-export const putChannelStatus = (id: number, status: ChannelStatusEnum) =>
-  POST(`/channel/${id}/status`, {
-    status
-  });
-export const putChannel = (data: ChannelInfoType) =>
-  PUT(`/channel/${data.id}`, {
-    type: data.type,
-    name: data.name,
-    base_url: data.base_url,
-    models: data.models,
-    model_mapping: data.model_mapping,
-    key: data.key,
-    status: data.status,
-    priority: data.priority ? Math.max(data.priority, 1) : undefined
-  });
-
-export const deleteChannel = (id: number) => DELETE(`/channel/${id}`);
+  GET<ProviderMetasResponse>('/core/ai/channel/providerMetas');
 
 export const getChannelLog = (params: {
   request_id?: string;
@@ -173,10 +189,10 @@ export const getChannelLog = (params: {
   offset: number;
   pageSize: number;
 }) =>
-  GET<{
+  aiproxyGET<{
     logs: ChannelLogListItemType[];
     total: number;
-  }>(`/logs/search`, {
+  }>('/logs/search', {
     result_only: true,
     request_id: params.request_id,
     channel: params.channel,
@@ -194,7 +210,7 @@ export const getChannelLog = (params: {
   });
 
 export const getLogDetail = (id: number) =>
-  GET<{
+  aiproxyGET<{
     request_body: string;
     response_body: string;
   }>(`/logs/detail/${id}`);
@@ -207,7 +223,7 @@ export const getDashboardV2 = (params: {
   timezone: string;
   timespan: 'day' | 'hour' | 'minute';
 }) =>
-  GET<
+  aiproxyGET<
     {
       timestamp: number;
       summary: DashboardDataItemType[];
@@ -218,5 +234,3 @@ export const getDashboardV2 = (params: {
       summary: item.summary.map((item) => DashboardDataItemSchema.parse(item))
     }))
   );
-
-export { responseSuccess, checkRes, responseError, instance, request };

@@ -1,6 +1,8 @@
 import type { NodeHttpResponse } from '../../../types/http';
-import { getAIApi } from '../config';
-import { getTTSModel } from '../model';
+import { getAIApi, getAiproxyScopeHeaders } from '../config';
+import { normalizeRelayNoChannelError } from '../channel';
+import { assertModelActive } from '../model/cache';
+import type { TTSModelType } from '@fastgpt/global/core/ai/model/type';
 import { Readable } from 'stream';
 
 export async function text2Speech({
@@ -8,7 +10,7 @@ export async function text2Speech({
   onSuccess,
   onError,
   input,
-  model,
+  modelData,
   voice,
   speed = 1
 }: {
@@ -16,30 +18,35 @@ export async function text2Speech({
   onSuccess: (e: { model: string; buffer: Buffer }) => void;
   onError: (e: any) => void;
   input: string;
-  model: string;
+  modelData: TTSModelType;
   voice: string;
   speed?: number;
 }) {
-  const modelData = getTTSModel(model)!;
-  const { ai } = getAIApi();
-  const response = await ai.audio.speech.create(
-    {
-      model,
-      // @ts-ignore
-      voice,
-      input,
-      response_format: 'mp3',
-      speed
-    },
-    modelData.requestUrl
-      ? {
-          path: modelData.requestUrl,
-          headers: {
-            ...(modelData.requestAuth ? { Authorization: `Bearer ${modelData.requestAuth}` } : {})
-          }
-        }
-      : {}
-  );
+  // Disabled models must never be callable at runtime (F2-S3-TC06).
+  assertModelActive(modelData);
+  const { ai, requestMeta } = getAIApi();
+  let response;
+  try {
+    response = await ai.audio.speech.create(
+      {
+        model: modelData.model,
+        // @ts-ignore
+        voice,
+        input,
+        response_format: 'mp3',
+        speed
+      },
+      {
+        // Relay scope is a security attribute (design §2.9) — must always be present on the
+        // aiproxy relay; no caller headers are merged here.
+        headers: getAiproxyScopeHeaders(modelData, requestMeta.baseUrl)
+      }
+    );
+  } catch (e) {
+    // Relay "no available channel" (F2-S4-TC04) → ModelErrEnum.noAvailableChannel;
+    // other errors pass through unchanged.
+    throw normalizeRelayNoChannelError(e);
+  }
 
   if (!response.body) {
     throw new Error('Response body is empty');
@@ -54,7 +61,7 @@ export async function text2Speech({
     chunks.push(chunk);
   });
   readableStream.on('end', () => {
-    onSuccess({ model, buffer: Buffer.concat(chunks) });
+    onSuccess({ model: modelData.model, buffer: Buffer.concat(chunks) });
   });
   readableStream.on('error', (e) => {
     onError(e);

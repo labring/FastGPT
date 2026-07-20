@@ -15,7 +15,7 @@ describe('AppChatConfigTypeSchema', () => {
   it('should keep questionGuide object format', () => {
     const questionGuide = {
       open: true,
-      model: 'gpt-5',
+      modelId: 'gpt-5',
       customPrompt: 'test prompt'
     };
 
@@ -60,5 +60,29 @@ describe('AppChatConfigTypeSchema', () => {
     expect(result.variables?.[1].enums).toEqual([
       { label: 'legacy-option', value: 'legacy-option' }
     ]);
+  });
+
+  // ⚠️ 热升级兼容：legacy `model` 字段必须被 schema 保留（防止 zod strip 丢弃，热升级分析 §6.1/§6.8）
+  it('should keep legacy questionGuide.model field', () => {
+    const questionGuide = {
+      open: true,
+      model: 'gpt-4o',
+      customPrompt: 'test prompt'
+    };
+
+    const result = AppChatConfigTypeSchema.parse({ questionGuide });
+    expect(result.questionGuide).toEqual(questionGuide);
+  });
+
+  it('should keep legacy ttsConfig.model field', () => {
+    const ttsConfig = {
+      type: 'model',
+      model: 'tts-1',
+      voice: 'alloy',
+      speed: 1
+    };
+
+    const result = AppChatConfigTypeSchema.parse({ ttsConfig });
+    expect(result.ttsConfig).toEqual(ttsConfig);
   });
 });

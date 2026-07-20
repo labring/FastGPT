@@ -25,8 +25,8 @@ describe('dataset training error list test', () => {
       name: 'test',
       teamId: root.teamId,
       tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
+      vectorModelId: 'test',
+      agentModelId: 'test'
     });
     const [fileCollection, linkCollection] = await MongoDatasetCollection.create([
       {
