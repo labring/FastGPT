@@ -35,6 +35,8 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import { useActiveSystemModelList, useSystemDefaultModel } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
@@ -80,8 +82,11 @@ const HomeChatWindow = () => {
   } = useDisclosure();
 
   const { userInfo } = useUserStore();
-  const { llmModelList, defaultModels, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const { chatId, appId, outLinkAuthData } = useChatStore();
+  // Lazy llm list + system default (design §1, §3.2)
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const { data: systemDefault } = useSystemDefaultModel();
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
@@ -118,14 +123,14 @@ const HomeChatWindow = () => {
   });
 
   const availableModels = useMemo(
-    () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
+    () => llmModelList.map((model) => ({ value: model.id, label: model.name })),
     [llmModelList]
   );
   const [selectedModel, setSelectedModel] = useLocalStorageState<string>('chat_home_model', {
-    defaultValue: defaultModels.llm?.model
+    defaultValue: systemDefault?.llm?.id
   });
   const selectedModelData = useMemo(
-    () => llmModelList.find((model) => model.model === selectedModel),
+    () => llmModelList.find((model) => model.id === selectedModel),
     [llmModelList, selectedModel]
   );
 
@@ -138,7 +143,7 @@ const HomeChatWindow = () => {
           ...state.app.chatConfig,
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!getWebLLMModel(model).vision
+            canSelectImg: !!getWebLLMModel(model, llmModelList)?.vision
           }
         }
       }
@@ -174,7 +179,7 @@ const HomeChatWindow = () => {
     async () => {
       if (!appId || forbidLoadChatRef.current || !feConfigs?.isPlus) return;
 
-      const modelData = getWebLLMModel(selectedModel);
+      const modelData = getWebLLMModel(selectedModel, llmModelList);
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
 
@@ -182,14 +187,14 @@ const HomeChatWindow = () => {
         res.app.chatConfig = {
           fileSelectConfig: {
             ...defaultFileSelectConfig,
-            canSelectImg: !!modelData.vision
+            canSelectImg: !!modelData?.vision
           },
           whisperConfig: defaultWhisperConfig
         };
       } else {
         res.app.chatConfig.fileSelectConfig = {
           ...defaultFileSelectConfig,
-          canSelectImg: !!modelData.vision
+          canSelectImg: !!modelData?.vision
         };
         res.app.chatConfig.whisperConfig = {
           ...defaultWhisperConfig,
@@ -268,7 +273,7 @@ const HomeChatWindow = () => {
       );
 
       const formData = getDefaultAppForm();
-      formData.aiSettings.model = selectedModel;
+      formData.aiSettings.modelId = selectedModel;
       formData.aiSettings.aiChatReasoning = true;
       formData.selectedTools = tools;
       formData.chatConfig = chatBoxData.app.chatConfig || {};
@@ -304,7 +309,7 @@ const HomeChatWindow = () => {
         {isPc && availableModels.length > 0 && (
           <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
             <ChatAIModelSelector
-              cacheModel={false}
+              type={'llm'}
               h={'36px'}
               w={'fit-content'}
               maxW={'300px'}
@@ -313,6 +318,7 @@ const HomeChatWindow = () => {
               bg={'myGray.50'}
               rounded="10px"
               list={availableModels}
+              autoSelectDefault
               value={selectedModel}
               onChange={onChangeModel}
             />
@@ -479,7 +485,6 @@ const HomeChatWindow = () => {
           onChange={onChangeModel}
           onClose={onCloseModelDrawer}
         />
-
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox
             sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}

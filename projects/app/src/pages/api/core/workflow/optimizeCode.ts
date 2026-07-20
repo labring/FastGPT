@@ -7,6 +7,7 @@ import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import { getLLMModel, assertModelUsable } from '@fastgpt/service/core/ai/model/cache';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -17,6 +18,7 @@ import {
 } from '@fastgpt/global/openapi/core/workflow/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
+
 
 const getPromptNodeCopilotSystemPrompt = () => {
   return `
@@ -86,12 +88,13 @@ function main({paramName, paramRefer, paramType}) {
 async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseType) {
   const {
     optimizerInput,
-    model,
+    modelId,
     conversationHistory = []
   } = parseApiInput({
     req,
     bodySchema: OptimizeCodeBodySchema
   }).body;
+  const modelData = assertModelUsable(getLLMModel(modelId));
 
   try {
     const { teamId, tmbId } = await authCert({
@@ -118,9 +121,9 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
 
     const llmResponse = await createLLMResponse({
       teamId,
+      modelData: modelData,
       saveLLMResponseRecord: false,
       body: {
-        model,
         messages,
         stream: true,
         useVision: false
@@ -152,7 +155,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({
-      model,
+      modelData,
       inputTokens,
       outputTokens
     });
@@ -167,6 +170,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
         {
           moduleName: i18nT('common:support.wallet.usage.Code Copilot'),
           amount: totalPoints,
+          modelId: modelData.id,
           model: modelName,
           inputTokens,
           outputTokens

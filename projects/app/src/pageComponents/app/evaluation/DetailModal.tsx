@@ -16,7 +16,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   deleteEvalItem,
@@ -25,7 +25,8 @@ import {
   updateEvalItem
 } from '@/web/core/app/api/evaluation';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { downloadFetch, getWebLLMModel } from '@/web/common/system/utils';
+import { downloadFetch } from '@/web/common/system/utils';
+import { getModelDetail } from '@/web/core/ai/config';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { type TFunction } from 'i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -87,7 +88,11 @@ const EvaluationDetailModal = ({
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
 
-  const modelData = useMemo(() => getWebLLMModel(evalDetail.evalModel), [evalDetail.evalModel]);
+  const { data: modelData } = useRequest(() => getModelDetail({ id: evalDetail.evalModelId }), {
+    manual: false,
+    ready: !!evalDetail.evalModelId,
+    errorToast: ''
+  });
 
   const {
     data: evalItemsList,
@@ -103,7 +108,12 @@ const EvaluationDetailModal = ({
     pollingInterval
   });
 
-  useEffect(() => {
+  // Poll while tasks are running or have errors. Adjusted during render (React
+  // "adjusting state during rendering" pattern) instead of an effect, keyed by
+  // the list reference.
+  const [prevEvalItemsList, setPrevEvalItemsList] = useState(evalItemsList);
+  if (evalItemsList !== prevEvalItemsList) {
+    setPrevEvalItemsList(evalItemsList);
     const hasRunningOrErrorTasks = evalItemsList.some((item) => {
       return (
         item.status === EvaluationStatusEnum.evaluating ||
@@ -112,7 +122,7 @@ const EvaluationDetailModal = ({
       );
     });
     setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
-  }, [evalItemsList]);
+  }
 
   const evalItem = evalItemsList[selectedIndex];
 

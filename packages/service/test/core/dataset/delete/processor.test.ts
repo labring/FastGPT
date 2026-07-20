@@ -21,12 +21,16 @@ describe('datasetDeleteProcessor', () => {
     const user = await getUser('dataset-delete-permission');
     const otherTeamUser = await getUser('dataset-delete-permission-other-team');
     const deleteTime = new Date();
+    const vectorModelId = '68a3e6ec86f02f2167bdf318';
+    const agentModelId = '68a3e6ec86f02f2167bdf319';
 
     const rootDataset = await MongoDataset.create({
       teamId: user.teamId,
       tmbId: user.tmbId,
       name: 'root folder',
       type: DatasetTypeEnum.folder,
+      vectorModelId,
+      agentModelId,
       deleteTime
     });
     const childDataset = await MongoDataset.create({
@@ -35,13 +39,17 @@ describe('datasetDeleteProcessor', () => {
       parentId: rootDataset._id,
       name: 'child dataset',
       type: DatasetTypeEnum.dataset,
+      vectorModelId,
+      agentModelId,
       deleteTime
     });
     const retainedDataset = await MongoDataset.create({
       teamId: user.teamId,
       tmbId: user.tmbId,
       name: 'retained dataset',
-      type: DatasetTypeEnum.dataset
+      type: DatasetTypeEnum.dataset,
+      vectorModelId,
+      agentModelId
     });
 
     await MongoResourcePermission.insertMany([

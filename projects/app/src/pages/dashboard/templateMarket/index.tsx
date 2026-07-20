@@ -11,6 +11,8 @@ import { type TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppTemplateListItemType } from '@fastgpt/global/openapi/core/app/template/api';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemDetail } from '@/web/core/app/api/template';
@@ -44,6 +46,7 @@ const TemplateMarket = ({
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { list: llmList } = useActiveSystemModelList(ModelTypeEnum.llm);
 
   const {
     parentId,
@@ -72,7 +75,8 @@ const TemplateMarket = ({
         // TODO: 特殊类型
         const completeWorkflow = form2AppWorkflow(
           templateDetail.workflow as unknown as AppFormEditFormType,
-          t
+          t,
+          llmList
         );
         templateDetail.workflow = completeWorkflow;
       }

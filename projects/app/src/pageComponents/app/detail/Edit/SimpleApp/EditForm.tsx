@@ -30,6 +30,8 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList, useSystemDefaultModel } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
@@ -71,7 +73,9 @@ const EditForm = ({
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 }) => {
   const { t } = useTranslation();
-  const { defaultModels, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
+  const { list: llmList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const { data: systemDefault } = useSystemDefaultModel();
   const showSandbox = feConfigs.show_agent_sandbox;
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
@@ -112,10 +116,10 @@ const EditForm = ({
     [appForm.chatConfig.variables, t]
   );
 
-  const selectedModel = getWebLLMModel(appForm.aiSettings.model);
+  const selectedModel = getWebLLMModel(appForm.aiSettings.modelId, llmList);
   const tokenLimit = useMemo(() => {
-    return selectedModel.quoteMaxToken || 3000;
-  }, [selectedModel.quoteMaxToken]);
+    return selectedModel?.quoteMaxToken || 3000;
+  }, [selectedModel?.quoteMaxToken]);
 
   const updateWelcomeText = useCallback(
     (value: string) => {
@@ -150,23 +154,43 @@ const EditForm = ({
     [setAppForm]
   );
 
+  // 简易应用不暴露多模态开关，文件选择能力直接跟随模型能力。
+  useEffect(() => {
+    setAppForm((state) => ({
+      ...state,
+      chatConfig: {
+        ...state.chatConfig,
+        ...(state.chatConfig.fileSelectConfig
+          ? {
+              fileSelectConfig: {
+                ...state.chatConfig.fileSelectConfig,
+                canSelectImg: !!selectedModel?.vision,
+                canSelectAudio: !!selectedModel?.audio,
+                canSelectVideo: !!selectedModel?.video
+              }
+            }
+          : {})
+      }
+    }));
+  }, [selectedModel, setAppForm]);
+
   useEffect(() => {
     if (
       appForm.dataset.datasetSearchUsingExtensionQuery &&
-      !appForm.dataset.datasetSearchExtensionModel
+      !appForm.dataset.datasetSearchExtensionModelId
     ) {
       setAppForm((state) => ({
         ...state,
         dataset: {
           ...state.dataset,
-          datasetSearchExtensionModel: defaultModels.llm?.model
+          datasetSearchExtensionModelId: systemDefault?.llm?.id
         }
       }));
     }
   }, [
     appForm.dataset.datasetSearchUsingExtensionQuery,
-    appForm.dataset.datasetSearchExtensionModel,
-    defaultModels.llm?.model,
+    appForm.dataset.datasetSearchExtensionModelId,
+    systemDefault?.llm?.id,
     setAppForm
   ]);
 
@@ -208,7 +232,7 @@ const EditForm = ({
               <SettingLLMModel
                 bg="myGray.50"
                 defaultData={{
-                  model: appForm.aiSettings.model,
+                  modelId: appForm.aiSettings.modelId,
                   temperature: appForm.aiSettings.temperature,
                   maxToken: appForm.aiSettings.maxToken,
                   maxHistories: appForm.aiSettings.maxHistories,
@@ -220,6 +244,7 @@ const EditForm = ({
                   aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
                 }}
                 showMultimodalConfig={false}
+                resourceContext={{ appId: appDetail._id }}
                 onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
@@ -393,7 +418,7 @@ const EditForm = ({
                 limit={appForm.dataset.limit}
                 usingReRank={appForm.dataset.usingReRank}
                 usingExtensionQuery={appForm.dataset.datasetSearchUsingExtensionQuery}
-                queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
+                queryExtensionModel={appForm.dataset.datasetSearchExtensionModelId}
               />
             </Box>
           )}

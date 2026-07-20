@@ -7,7 +7,7 @@ import { OpenGaussVectorCtrl } from './opengauss';
 import { getVectors } from '../../core/ai/embedding';
 import type { GetVectorsProps } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
-import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model/type';
 import {
   MILVUS_ADDRESS,
   PG_ADDRESS,
@@ -48,12 +48,12 @@ type DatasetVectorInput = string | GetVectorsProps['inputs'][number];
  * 传入 string 时保持旧行为，默认按文本生成 embedding。
  */
 export const insertDatasetDataVector = async ({
-  model,
+  modelData,
   inputs,
   ...props
 }: Omit<InsertVectorControllerPropsType, 'vectors'> & {
   inputs: DatasetVectorInput[];
-  model: EmbeddingModelItemType;
+  modelData: EmbeddingModelItemType;
 }) => {
   if (inputs.length === 0) {
     return {
@@ -71,7 +71,7 @@ export const insertDatasetDataVector = async ({
       : input
   );
   const { vectors, tokens } = await getVectors({
-    model,
+    modelData,
     inputs: embeddingInputs,
     type: 'db'
   });

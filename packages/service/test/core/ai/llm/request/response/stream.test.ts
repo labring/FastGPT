@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { StreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 import { parseLLMStreamResponse } from '@fastgpt/service/core/ai/utils';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { parsePromptToolCall } from '@fastgpt/service/core/ai/llm/promptCall';
 import { createStreamResponse } from '@fastgpt/service/core/ai/llm/request/response/stream';
 
@@ -10,16 +9,11 @@ vi.mock('@fastgpt/service/core/ai/utils', () => ({
   parseLLMStreamResponse: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn()
-}));
-
 vi.mock('@fastgpt/service/core/ai/llm/promptCall', () => ({
   parsePromptToolCall: vi.fn()
 }));
 
 const mockParseLLMStreamResponse = vi.mocked(parseLLMStreamResponse);
-const mockGetLLMModel = vi.mocked(getLLMModel);
 const mockParsePromptToolCall = vi.mocked(parsePromptToolCall);
 
 async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T, void, unknown> {
@@ -51,7 +45,6 @@ const createModel = (overrides: Record<string, any> = {}) =>
 describe('createStreamResponse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetLLMModel.mockReturnValue(createModel());
   });
 
   it('should parse plain streamed text and emit streaming callback', async () => {
@@ -86,10 +79,10 @@ describe('createStreamResponse', () => {
     let streamedText = '';
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: true
       },
+      modelData: createModel(),
       response: createMockStreamResponse(chunks),
       onStreaming: ({ text }) => {
         streamedText += text;
@@ -103,8 +96,6 @@ describe('createStreamResponse', () => {
   });
 
   it('should parse streamed reasoning content and answer content separately', async () => {
-    mockGetLLMModel.mockReturnValue(createModel({ reasoning: true }));
-
     const chunks = [
       { choices: [{ delta: { reasoning_content: 'Thinking...' }, finish_reason: null }] },
       { choices: [{ delta: { content: 'Answer' }, finish_reason: 'stop' }] }
@@ -140,10 +131,10 @@ describe('createStreamResponse', () => {
     let answerText = '';
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: true
       },
+      modelData: createModel({ reasoning: true }),
       response: createMockStreamResponse(chunks),
       onReasoning: ({ text }) => {
         reasoningText += text;
@@ -203,7 +194,8 @@ describe('createStreamResponse', () => {
       parsePart: ({ part }: { part: any }) => ({
         reasoningContent: part.choices?.[0]?.delta?.reasoning_content || '',
         content: part.choices?.[0]?.delta?.content || '',
-        responseContent: part.choices?.[0]?.delta?.content || ''
+        responseContent: part.choices?.[0]?.delta?.content || '',
+        finishReason: part.choices?.[0]?.finish_reason || null
       }),
       getResponseData: () => ({
         error: undefined,
@@ -221,7 +213,6 @@ describe('createStreamResponse', () => {
     const onToolParam = vi.fn();
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: true,
         tools: [
@@ -236,6 +227,7 @@ describe('createStreamResponse', () => {
         ],
         toolCallMode: 'toolChoice'
       },
+      modelData: createModel(),
       response: createMockStreamResponse(chunks),
       onStreaming,
       onToolCall,
@@ -279,7 +271,8 @@ describe('createStreamResponse', () => {
         return {
           reasoningContent: '',
           content,
-          responseContent: content
+          responseContent: content,
+          finishReason: part.choices?.[0]?.finish_reason || null
         };
       },
       getResponseData: () => ({
@@ -311,7 +304,6 @@ describe('createStreamResponse', () => {
     const onToolCall = vi.fn();
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: true,
         tools: [
@@ -326,6 +318,7 @@ describe('createStreamResponse', () => {
         ],
         toolCallMode: 'prompt'
       },
+      modelData: createModel(),
       response: createMockStreamResponse(chunks),
       onStreaming: ({ text }) => {
         streamedText += text;
@@ -360,7 +353,8 @@ describe('createStreamResponse', () => {
         return {
           reasoningContent: '',
           content,
-          responseContent: content
+          responseContent: content,
+          finishReason: part.choices?.[0]?.finish_reason || null
         };
       },
       getResponseData: () => ({
@@ -382,7 +376,6 @@ describe('createStreamResponse', () => {
     const onStreaming = vi.fn();
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: true,
         tools: [
@@ -397,6 +390,7 @@ describe('createStreamResponse', () => {
         ],
         toolCallMode: 'prompt'
       },
+      modelData: createModel(),
       response: createMockStreamResponse(chunks),
       onStreaming
     });
@@ -414,7 +408,8 @@ describe('createStreamResponse', () => {
         return {
           reasoningContent: part.choices?.[0]?.delta?.reasoning_content || '',
           content,
-          responseContent: content
+          responseContent: content,
+          finishReason: part.choices?.[0]?.finish_reason || null
         };
       },
       getResponseData: () => ({
@@ -437,7 +432,6 @@ describe('createStreamResponse', () => {
     const onStreaming = vi.fn();
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: true,
         tools: [
@@ -452,6 +446,7 @@ describe('createStreamResponse', () => {
         ],
         toolCallMode: 'prompt'
       },
+      modelData: createModel(),
       response: createMockStreamResponse(chunks),
       onReasoning,
       onStreaming
@@ -487,7 +482,6 @@ describe('createStreamResponse', () => {
 
     const result = await createStreamResponse({
       body: {
-        model: 'gpt-4o',
         messages: [],
         stream: true,
         tools: [
@@ -502,6 +496,7 @@ describe('createStreamResponse', () => {
         ],
         toolCallMode: 'prompt'
       },
+      modelData: createModel(),
       response: createMockStreamResponse([{ choices: [{ delta: { content: 'abc' } }] }])
     });
 

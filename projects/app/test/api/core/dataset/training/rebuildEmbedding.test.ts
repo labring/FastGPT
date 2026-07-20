@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/dataset/training/rebuildEmbedding';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -13,21 +13,25 @@ import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
 const registerEmbeddingModel = ({ model, vision = false }: { model: string; vision?: boolean }) => {
-  global.embeddingModelMap.set(model, {
+  const item = {
     ...global.systemDefaultModel.embedding,
+    id: model,
     model,
     name: model,
     vision
-  });
+  };
+  global.embeddingModelIdMap.set(model, item as any);
 };
 
 const registerVlmModel = (model: string) => {
-  global.llmModelMap.set(model, {
+  const item = {
     ...global.systemDefaultModel.llm,
+    id: model,
     model,
     name: model,
     vision: true
-  });
+  };
+  global.llmModelIdMap.set(model, item as any);
 };
 
 const createDatasetContext = async ({ vlmModel }: { vlmModel?: string } = {}) => {
@@ -36,9 +40,9 @@ const createDatasetContext = async ({ vlmModel }: { vlmModel?: string } = {}) =>
     name: 'test dataset',
     teamId: root.teamId,
     tmbId: root.tmbId,
-    vectorModel: 'old-embedding',
-    agentModel: 'gpt-5',
-    vlmModel
+    vectorModelId: 'old-embedding',
+    agentModelId: 'gpt-5',
+    vlmModelId: vlmModel
   });
   const collection = await MongoDatasetCollection.create({
     name: 'test collection',
@@ -53,7 +57,13 @@ const createDatasetContext = async ({ vlmModel }: { vlmModel?: string } = {}) =>
 };
 
 describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
+  const originalEmbeddingModelIdMap = global.embeddingModelIdMap;
+  const originalLlmModelIdMap = global.llmModelIdMap;
+  const originalSystemEnv = global.systemEnv;
+
   beforeEach(() => {
+    global.embeddingModelIdMap = new Map(originalEmbeddingModelIdMap);
+    global.llmModelIdMap = new Map(originalLlmModelIdMap);
     global.systemEnv = {
       ...global.systemEnv,
       vectorMaxProcess: 1
@@ -62,6 +72,12 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     registerEmbeddingModel({ model: 'vision-embedding', vision: true });
     registerEmbeddingModel({ model: 'text-only-embedding' });
     registerVlmModel('dataset-vlm-model');
+  });
+
+  afterEach(() => {
+    global.embeddingModelIdMap = originalEmbeddingModelIdMap;
+    global.llmModelIdMap = originalLlmModelIdMap;
+    global.systemEnv = originalSystemEnv;
   });
 
   it('should keep image index and enqueue image mode when the new embedding model supports images', async () => {
@@ -85,7 +101,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       auth: root,
       body: {
         datasetId: String(dataset._id),
-        vectorModel: 'vision-embedding'
+        vectorModelId: 'vision-embedding'
       }
     });
 
@@ -94,7 +110,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     const training = await MongoDatasetTraining.findOne({ dataId: data._id }).lean();
 
     expect(res.code).toBe(200);
-    expect(updatedDataset?.vectorModel).toBe('vision-embedding');
+    expect(updatedDataset?.vectorModelId).toBe('vision-embedding');
     expect(updatedCollection?.imageIndex).toBe(true);
     expect(training).toEqual(
       expect.objectContaining({
@@ -125,7 +141,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       auth: root,
       body: {
         datasetId: String(dataset._id),
-        vectorModel: 'text-only-embedding'
+        vectorModelId: 'text-only-embedding'
       }
     });
 
@@ -134,7 +150,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     const training = await MongoDatasetTraining.findOne({ dataId: data._id }).lean();
 
     expect(res.code).toBe(200);
-    expect(updatedDataset?.vectorModel).toBe('text-only-embedding');
+    expect(updatedDataset?.vectorModelId).toBe('text-only-embedding');
     expect(updatedDataset?.chunkSettings?.imageIndex).toBe(false);
     expect(updatedCollection?.imageIndex).toBe(false);
     expect(training).toEqual(
@@ -163,7 +179,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       auth: root,
       body: {
         datasetId: String(dataset._id),
-        vectorModel: 'text-only-embedding'
+        vectorModelId: 'text-only-embedding'
       }
     });
 

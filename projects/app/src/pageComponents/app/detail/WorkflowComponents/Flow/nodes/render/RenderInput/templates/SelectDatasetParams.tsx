@@ -5,7 +5,6 @@ import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
@@ -19,7 +18,6 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     (v) => v.llmMaxQuoteContext
   );
   const { t } = useTranslation();
-  const { defaultModels } = useSystemStore();
 
   const [data, setData] = useState<AppDatasetSearchParamsType>({
     searchMode: DatasetSearchModeEnum.embedding,
@@ -27,10 +25,10 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     limit: 3000,
     similarity: 0.5,
     usingReRank: true,
-    rerankModel: defaultModels.rerank?.model,
+    rerankModelId: '',
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: defaultModels.llm?.model,
+    datasetSearchExtensionModelId: '',
     datasetSearchExtensionBg: ''
   });
 
@@ -71,7 +69,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
         limit={data.limit}
         usingReRank={data.usingReRank}
         usingExtensionQuery={data.datasetSearchUsingExtensionQuery}
-        queryExtensionModel={data.datasetSearchExtensionModel}
+        queryExtensionModel={data.datasetSearchExtensionModelId}
       />
 
       {isOpen && (
@@ -81,7 +79,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           onClose={onClose}
           onSuccess={(e) => {
             setData(e);
-            for (let key in e) {
+            for (const key in e) {
               const item = inputs.find((input) => input.key === key);
               if (!item) continue;
               onChangeNode({

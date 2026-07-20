@@ -17,7 +17,7 @@ describe('getDefaultAppForm', () => {
     const result = getDefaultAppForm();
 
     expect(result.aiSettings).toEqual({
-      model: '',
+      modelId: '',
       isResponseAnswerText: true,
       maxHistories: 6
     });
@@ -32,7 +32,7 @@ describe('getDefaultAppForm', () => {
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: true,
-      rerankModel: '',
+      rerankModelId: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: '',
@@ -60,7 +60,7 @@ describe('getAppType', () => {
   it('should return simple type when config has aiSettings', () => {
     const config = {
       aiSettings: {
-        model: 'gpt-4',
+        modelId: 'gpt-4',
         isResponseAnswerText: true,
         maxHistories: 6
       },
@@ -70,7 +70,7 @@ describe('getAppType', () => {
         limit: 3000,
         searchMode: DatasetSearchModeEnum.embedding,
         usingReRank: true,
-        rerankModel: '',
+        rerankModelId: '',
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: true,
         datasetSearchExtensionBg: ''

@@ -8,8 +8,11 @@ import {
   getLLMMaxChunkSize,
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model/cache';
+import {
+  normalizeDatasetModelIds,
+  replaceS3KeyToPreviewUrl
+} from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -27,18 +30,20 @@ async function handler(
     bodySchema: GetRawTextPreviewChunksBodySchema
   }).body;
 
-  const { dataset } = await authDataset({
+  const { dataset: rawDataset } = await authDataset({
     req,
     authApiKey: true,
     authToken: true,
     datasetId,
     per: WritePermissionVal
   });
+  // ⚠️ 热升级兼容：legacy-only dataset 回填 canonical 字段（getter 按名解析）
+  const dataset = normalizeDatasetModelIds(rawDataset);
 
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
-    llmModel: getLLMModel(dataset.agentModel),
-    vectorModel: getEmbeddingModel(dataset.vectorModel)
+    llmModel: getLLMModel(dataset.agentModelId),
+    vectorModel: getEmbeddingModel(dataset.vectorModelId)
   });
 
   const chunks = await rawText2Chunks({
@@ -48,7 +53,7 @@ async function handler(
     chunkSize: formatChunkSettings.chunkSize,
     paragraphChunkDeep: formatChunkSettings.paragraphChunkDeep,
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
+    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModelId)),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
     maxChunks: maxPreviewChunkCount

@@ -1,4 +1,4 @@
-import { EmbeddingModelItemSchema, LLMModelItemSchema } from '../ai/model.schema';
+import { EmbeddingModelItemSchema, LLMModelItemSchema } from '../ai/model/type';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -78,9 +78,25 @@ export const DatasetSchema = z
     intro: z.string().meta({ description: '简介' }),
     type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
 
-    vectorModel: z.string().meta({ description: '向量模型' }),
-    agentModel: z.string().meta({ description: 'AI 模型' }),
-    vlmModel: z.string().optional().meta({ description: '视觉语言模型' }),
+    vectorModelId: z.string().meta({ description: '向量模型 ID (ObjectId)' }),
+    agentModelId: z.string().meta({ description: 'AI 模型 ID (ObjectId)' }),
+    vlmModelId: z.string().optional().meta({ description: '视觉语言模型 ID (ObjectId)' }),
+
+    // ⚠️ 热升级兼容（2026-08，contract release 移除）：legacy provider 模型名。
+    // 迁移前存量文档只有这些字段；读取时由 getter/resolveModelId 按名解析，
+    // 写入路径 schema 保留声明防止 Mongoose strip 丢弃（技术设计文档 §4.1/§6.1）。
+    vectorModel: z.string().optional().meta({
+      description: '向量模型名称（legacy，热升级兼容，读取时按名解析）',
+      deprecated: true
+    }),
+    agentModel: z.string().optional().meta({
+      description: 'AI 模型名称（legacy，热升级兼容，读取时按名解析）',
+      deprecated: true
+    }),
+    vlmModel: z.string().optional().meta({
+      description: '视觉语言模型名称（legacy，热升级兼容，读取时按名解析）',
+      deprecated: true
+    }),
 
     websiteConfig: z
       .object({
@@ -305,7 +321,9 @@ export const DatasetListItemSchema = z.object({
   intro: z.string().meta({ description: '简介' }),
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
-  vectorModel: EmbeddingModelItemSchema.meta({ description: '向量模型' }),
+  vectorModel: EmbeddingModelItemSchema.optional().meta({
+    description: '向量模型；原模型已删除或无法解析时缺省'
+  }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
   private: z.boolean().optional().meta({ description: '是否私有' }),
   sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' })
@@ -313,15 +331,19 @@ export const DatasetListItemSchema = z.object({
 export type DatasetListItemType = z.infer<typeof DatasetListItemSchema>;
 
 export const DatasetItemSchema = DatasetSchema.omit({
-  vectorModel: true,
-  agentModel: true,
-  vlmModel: true
+  vectorModelId: true,
+  agentModelId: true,
+  vlmModelId: true
 }).extend({
   status: z.enum(DatasetStatusEnum).meta({ description: '状态' }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
-  vectorModel: EmbeddingModelItemSchema.meta({ description: '向量模型' }),
-  agentModel: LLMModelItemSchema.meta({ description: 'AI 模型' }),
-  vlmModel: LLMModelItemSchema.optional().meta({ description: '视觉语言模型' }),
+  vectorModel: EmbeddingModelItemSchema.optional().meta({
+    description: '向量模型 (resolved)；原模型已删除或无法解析时缺省'
+  }),
+  agentModel: LLMModelItemSchema.optional().meta({
+    description: 'AI 模型 (resolved)；原模型已删除或无法解析时缺省'
+  }),
+  vlmModel: LLMModelItemSchema.optional().meta({ description: '视觉语言模型 (resolved)' }),
   permission: PermissionSchema
 });
 export type DatasetItemType = z.infer<typeof DatasetItemSchema>;

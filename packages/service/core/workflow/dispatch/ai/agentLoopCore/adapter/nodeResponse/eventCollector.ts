@@ -173,6 +173,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       moduleType: node.flowNodeType,
       moduleLogo: AgentNodeResponseDisplay.master.moduleLogo,
       runningTime: event.seconds,
+      modelId: event.modelId,
       model: event.modelName,
       llmRequestIds: [event.requestId],
       inputTokens: usage?.inputTokens,

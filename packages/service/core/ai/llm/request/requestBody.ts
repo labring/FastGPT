@@ -5,9 +5,8 @@ import type {
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
-import { getLLMModel } from '../../model';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 
 const privateToolSchemaKeys = new Set([
   'toolDescription',
@@ -56,11 +55,9 @@ const sanitizeCompletionTools = (tools?: ChatCompletionTool[]): ChatCompletionTo
  * - prompt tool 模式下不把 tools 直接传给模型。
  */
 export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>(
-  input: LLMRequestBodyType<T>
-): Promise<{
-  requestBody: InferCompletionsBody<T>;
-  modelData: LLMModelItemType;
-}> => {
+  input: LLMRequestBodyType<T>,
+  modelData: LLMModelItemType
+): Promise<InferCompletionsBody<T>> => {
   const { tools, tool_choice, parallel_tool_calls, toolCallMode, ...body } = input;
   const sanitizedTools = sanitizeCompletionTools(tools);
   // 这些字段只影响 FastGPT 自身逻辑，不能透传给模型供应商。
@@ -70,15 +67,6 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   delete body.useVideo;
   delete body.extractFiles;
   delete body.requestOrigin;
-
-  const modelData = getLLMModel(body.model);
-  if (!modelData) {
-    // 保持旧行为：模型不存在时仍返回清理后的 body，由上层决定如何报错。
-    return {
-      requestBody: body as unknown as InferCompletionsBody<T>,
-      modelData
-    };
-  }
 
   const response_format = (() => {
     if (!body.response_format?.type) return undefined;
@@ -103,7 +91,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   const stop = body.stop ?? undefined;
 
   const maxTokens = computedMaxToken({
-    model: modelData,
+    modelData,
     maxToken: body.max_tokens || undefined
   });
 
@@ -111,11 +99,13 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   let requestBody = {
     ...body,
     max_tokens: maxTokens,
+    // modelId is a platform-internal identifier (LLMRequestBodyType) and must never
+    // reach aiproxy/upstream — strict providers reject unknown top-level fields.
     model: modelData.model,
     temperature:
       typeof body.temperature === 'number'
         ? computedTemperature({
-            model: modelData,
+            modelData,
             temperature: body.temperature
           })
         : undefined,
@@ -128,11 +118,11 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
         tool_choice,
         parallel_tool_calls
       })
-  } as T;
+  } as unknown as T;
 
   requestBody = Object.fromEntries(
     Object.entries(requestBody).filter(([, value]) => value !== null && value !== undefined)
-  ) as T;
+  ) as unknown as T;
 
   // 按模型能力删除不支持的字段，避免不同供应商因为未知参数直接报错。
   const supportParams = getLLMSupportParams(modelData);
@@ -168,8 +158,5 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
     ...modelData?.defaultConfig
   };
 
-  return {
-    requestBody: requestBody as unknown as InferCompletionsBody<T>,
-    modelData
-  };
+  return requestBody as unknown as InferCompletionsBody<T>;
 };

@@ -15,7 +15,7 @@ describe('createAgentNodeResponseCollector', () => {
     const publishOrder: string[] = [];
     const nodeResponseSink = {
       publish: vi.fn(async ([{ response }]: Array<{ response: ChatHistoryItemResType }>) => {
-        publishOrder.push(response.id!);
+        publishOrder.push(response.id);
         return [response];
       })
     };

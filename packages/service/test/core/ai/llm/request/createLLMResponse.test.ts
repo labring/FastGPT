@@ -5,17 +5,19 @@ import type {
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/core/ai/config', () => ({
   getAIApi: vi.fn(),
+  getAiproxyScopeHeaders: vi.fn(() => ({})),
   defaultUserOpenAIBaseUrl: 'https://api.openai.com/v1'
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: vi.fn()
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  getLLMModel: vi.fn(),
+  assertModelActive: () => undefined
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
@@ -74,7 +76,7 @@ vi.mock('@fastgpt/service/core/ai/utils', () => ({
 
 // Import mocked modules
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model/cache';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { parseLLMStreamResponse, parseReasoningContent } from '@fastgpt/service/core/ai/utils';
@@ -94,11 +96,12 @@ const mockGetLLMSupportParams = vi.mocked(getLLMSupportParams);
 const mockPromptToolCallMessageRewrite = vi.mocked(promptToolCallMessageRewrite);
 const mockSaveLLMRequestRecord = vi.mocked(saveLLMRequestRecord);
 
-const createLLMResponse: typeof rawCreateLLMResponse = ((args: any) =>
+type CreateLLMResponseArgs = Omit<Parameters<typeof rawCreateLLMResponse>[0], 'teamId'>;
+const createLLMResponse = ((args: any) =>
   rawCreateLLMResponse({
     teamId: 'team_1',
     ...args
-  })) as typeof rawCreateLLMResponse;
+  })) as (args: CreateLLMResponseArgs) => ReturnType<typeof rawCreateLLMResponse>;
 
 const createMockAIApiResult = (
   ai: any,
@@ -114,6 +117,9 @@ const createMockAIApiResult = (
 
 const defaultSupportParams = {
   vision: false,
+  audio: false,
+  video: false,
+  multimodal: false,
   temperature: true,
   reasoning: false,
   reasoningEffort: false,
@@ -125,6 +131,7 @@ const defaultSupportParams = {
 
 // Helper to create mock model data
 const createMockModelData = (overrides?: Partial<LLMModelItemType>): LLMModelItemType => ({
+  id: 'gpt-4',
   type: ModelTypeEnum.llm,
   provider: 'openai',
   model: 'gpt-4',
@@ -186,12 +193,8 @@ describe('createLLMResponse', () => {
       }
     };
 
-    it('should ignore user baseUrl when user key is missing', async () => {
-      const modelData = createMockModelData({
-        requestUrl: 'https://model.example.com/v1/chat/completions',
-        requestAuth: 'model-key'
-      });
-      mockGetLLMModel.mockReturnValue(modelData);
+    it('should not set request path or authorization from the model when user key is missing', async () => {
+      mockGetLLMModel.mockReturnValue(createMockModelData());
       const createMock = vi.fn().mockResolvedValue(mockTextResponse);
       mockGetAIApi.mockReturnValue(
         createMockAIApiResult(
@@ -204,7 +207,7 @@ describe('createLLMResponse', () => {
           },
           {
             usedUserOpenAIKey: false,
-            baseUrl: 'https://model.example.com/v1'
+            baseUrl: 'https://api.openai.com/v1'
           }
         )
       );
@@ -213,13 +216,12 @@ describe('createLLMResponse', () => {
         userKey: {
           baseUrl: 'https://user.example.com/v1'
         } as any,
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
       });
-
       expect(result.usage.usedUserOpenAIKey).toBe(false);
       expect(mockGetAIApi).toHaveBeenCalledWith({
         userKey: {
@@ -227,12 +229,12 @@ describe('createLLMResponse', () => {
         },
         timeout: 600000
       });
-      expect(createMock.mock.calls[0][1]).toMatchObject({
-        path: 'https://model.example.com/v1/chat/completions',
-        headers: {
-          Authorization: 'Bearer model-key'
-        }
-      });
+      // requestUrl/requestAuth were removed from models (managed by Channels). Without a user key,
+      // routing stays with the env-configured endpoint and the model contributes no custom headers.
+      expect(createMock.mock.calls[0][1]).not.toHaveProperty('path');
+      expect(createMock.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+      // design §3.1: the internal modelId must never reach the wire body (aiproxy/upstream).
+      expect(createMock.mock.calls[0][0]).not.toHaveProperty('modelId');
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           response: expect.objectContaining({
@@ -245,11 +247,7 @@ describe('createLLMResponse', () => {
     });
 
     it('should use user key and default OpenAI baseUrl when only user key is provided', async () => {
-      const modelData = createMockModelData({
-        requestUrl: 'https://model.example.com/v1/chat/completions',
-        requestAuth: 'model-key'
-      });
-      mockGetLLMModel.mockReturnValue(modelData);
+      mockGetLLMModel.mockReturnValue(createMockModelData());
       const createMock = vi.fn().mockResolvedValue(mockTextResponse);
       mockGetAIApi.mockReturnValue(
         createMockAIApiResult(
@@ -271,13 +269,12 @@ describe('createLLMResponse', () => {
         userKey: {
           key: 'user-key'
         } as any,
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
       });
-
       expect(result.usage.usedUserOpenAIKey).toBe(true);
       expect(mockGetAIApi).toHaveBeenCalledWith({
         userKey: {
@@ -311,14 +308,13 @@ describe('createLLMResponse', () => {
       );
 
       await createLLMResponse({
+        modelData: createMockModelData(),
         timeout: 15_000,
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
       });
-
       expect(mockGetAIApi).toHaveBeenCalledWith({
         userKey: undefined,
         timeout: 15_000
@@ -344,17 +340,16 @@ describe('createLLMResponse', () => {
       );
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         throwError: false,
         userKey: {
           key: 'user-key'
         } as any,
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
       });
-
       expect(result.usage).toEqual({
         inputTokens: 0,
         outputTokens: 0,
@@ -383,15 +378,14 @@ describe('createLLMResponse', () => {
       );
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         throwError: false,
         saveLLMResponseRecord: false,
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           stream: false
         }
       });
-
       expect(result.finish_reason).toBe('error');
       expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
     });
@@ -437,8 +431,8 @@ describe('createLLMResponse', () => {
       };
 
       await createLLMResponse({
+        modelData: createMockModelData({ reasoning: true }),
         body: {
-          model: 'gpt-4',
           messages: [
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'make a plan' },
             {
@@ -471,7 +465,6 @@ describe('createLLMResponse', () => {
           stream: false
         }
       });
-
       expect(createMock.mock.calls[0][0].messages).toEqual([
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'make a plan' },
         {
@@ -520,8 +513,8 @@ describe('createLLMResponse', () => {
 
       let streamedText = '';
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         },
@@ -529,7 +522,6 @@ describe('createLLMResponse', () => {
           streamedText += text;
         }
       });
-
       expect(result.isStreamResponse).toBe(false);
       expect(result.answerText).toBe('Hello! How can I help you?');
       expect(result.reasoningText).toBe('');
@@ -566,16 +558,15 @@ describe('createLLMResponse', () => {
       mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         saveLLMResponseRecord: false,
         body: {
-          model: 'gpt-4',
           messages: [
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Generate title' }
           ],
           stream: false
         }
       });
-
       expect(result.answerText).toBe('Internal helper response');
       expect(result.usage).toEqual({
         inputTokens: 5,
@@ -617,13 +608,12 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         }
       });
-
       expect(result.answerText).toBe('Hello without finish reason');
       expect(result.finish_reason).toBe('stop');
       expect(result.error).toBeUndefined();
@@ -670,13 +660,12 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         }
       });
-
       expect(result.answerText).toBe('');
       expect(result.responseEmptyTip).toBeDefined();
     });
@@ -737,8 +726,8 @@ describe('createLLMResponse', () => {
 
       let streamedText = '';
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           stream: true
         },
@@ -746,7 +735,6 @@ describe('createLLMResponse', () => {
           streamedText += text;
         }
       });
-
       expect(result.isStreamResponse).toBe(true);
       expect(result.answerText).toBe('Hello World!');
       expect(result.finish_reason).toBe('stop');
@@ -801,9 +789,9 @@ describe('createLLMResponse', () => {
 
       let streamedText = '';
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         throwError: false,
         body: {
-          model: 'gpt-4',
           messages,
           stream: true
         },
@@ -811,7 +799,6 @@ describe('createLLMResponse', () => {
           streamedText += text;
         }
       });
-
       expect(result.answerText).toBe('Partial answer');
       expect(result.finish_reason).toBe('abnormal_close');
       expect(result.error).toBeUndefined();
@@ -880,8 +867,8 @@ describe('createLLMResponse', () => {
 
       let callCount = 0;
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           stream: true
         },
@@ -890,7 +877,6 @@ describe('createLLMResponse', () => {
           return callCount > 1; // Abort after first chunk
         }
       });
-
       expect(result.finish_reason).toBe('close');
     });
   });
@@ -933,8 +919,8 @@ describe('createLLMResponse', () => {
       let reasoningText = '';
       let answerText = '';
       const result = await createLLMResponse({
+        modelData: createMockModelData({ reasoning: true }),
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         },
@@ -945,7 +931,6 @@ describe('createLLMResponse', () => {
           answerText += text;
         }
       });
-
       expect(result.answerText).toBe('The answer is 4.');
       expect(result.reasoningText).toBe('Let me think... 2 + 2 = 4');
       expect(reasoningText).toBe('Let me think... 2 + 2 = 4');
@@ -987,13 +972,12 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData({ reasoning: true }),
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         }
       });
-
       expect(result.answerText).toBe('Final answer');
       expect(result.reasoningText).toBe('Thinking process here');
     });
@@ -1062,8 +1046,8 @@ describe('createLLMResponse', () => {
       let reasoningText = '';
       let answerText = '';
       const result = await createLLMResponse({
+        modelData: createMockModelData({ reasoning: true }),
         body: {
-          model: 'gpt-4',
           messages,
           stream: true
         },
@@ -1074,7 +1058,6 @@ describe('createLLMResponse', () => {
           answerText += text;
         }
       });
-
       expect(result.answerText).toBe('The answer is 4.');
       expect(result.reasoningText).toBe('Let me think...');
       expect(reasoningText).toBe('Let me think...');
@@ -1147,8 +1130,8 @@ describe('createLLMResponse', () => {
 
       const toolCallResults: ChatCompletionMessageToolCall[] = [];
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           tools,
           stream: false
@@ -1157,7 +1140,6 @@ describe('createLLMResponse', () => {
           toolCallResults.push(call);
         }
       });
-
       expect(result.toolCalls).toHaveLength(1);
       expect(result.toolCalls![0].function.name).toBe('get_weather');
       expect(result.toolCalls![0].function.arguments).toBe('{"location": "Beijing"}');
@@ -1217,14 +1199,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           tools,
           stream: false
         }
       });
-
       expect(result.finish_reason).toBe('tool_calls');
       expect(result.toolCalls).toBeUndefined();
       expect(result.responseEmptyTip).toBe('chat:LLM_model_response_empty');
@@ -1273,6 +1254,7 @@ describe('createLLMResponse', () => {
       mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const result = await createLLMResponse({
+        modelData: createMockModelData({ reasoning: true }),
         body: {
           model: 'gpt-4',
           messages: [
@@ -1408,8 +1390,8 @@ describe('createLLMResponse', () => {
       const toolCallResults: ChatCompletionMessageToolCall[] = [];
       const toolParamResults: string[] = [];
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           tools,
           stream: true
@@ -1421,7 +1403,6 @@ describe('createLLMResponse', () => {
           toolParamResults.push(argsDelta);
         }
       });
-
       expect(result.toolCalls).toHaveLength(1);
       expect(result.toolCalls![0].function.name).toBe('get_weather');
       expect(result.finish_reason).toBe('tool_calls');
@@ -1490,14 +1471,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           tools,
           stream: true
         }
       });
-
       expect(result.finish_reason).toBe('tool_calls');
       expect(result.toolCalls).toBeUndefined();
       expect(result.responseEmptyTip).toBe('chat:LLM_model_response_empty');
@@ -1590,14 +1570,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           tools,
           stream: false
         }
       });
-
       expect(result.toolCalls).toHaveLength(2);
       expect(result.toolCalls![0].function.name).toBe('get_weather');
       expect(result.toolCalls![1].function.name).toBe('get_time');
@@ -1660,14 +1639,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           tools,
           stream: false
         }
       });
-
       expect(result.answerText).toBe('Let me search for that.');
       expect(result.toolCalls).toHaveLength(1);
       expect(result.toolCalls![0].function.name).toBe('search');
@@ -1691,9 +1669,9 @@ describe('createLLMResponse', () => {
 
       await expect(
         createLLMResponse({
+          modelData: createMockModelData(),
           throwError: true,
           body: {
-            model: 'gpt-4',
             messages,
             stream: false
           }
@@ -1734,14 +1712,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         throwError: false,
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         }
       });
-
       expect(result.error).toBeDefined();
       expect(result.finish_reason).toBe('error');
       expect(result.usage.inputTokens).toBe(10);
@@ -1782,9 +1759,9 @@ describe('createLLMResponse', () => {
 
       await expect(
         createLLMResponse({
+          modelData: createMockModelData(),
           throwError: true,
           body: {
-            model: 'gpt-4',
             messages,
             stream: false
           }
@@ -1862,14 +1839,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         throwError: false,
         body: {
-          model: 'gpt-4',
           messages,
           stream: true
         }
       });
-
       expect(result.answerText).toBe('Hello');
       expect(result.finish_reason).toBe('error');
       expect(result.error).toBeDefined();
@@ -1920,13 +1896,12 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         }
       });
-
       expect(result.usage.inputTokens).toBe(50);
       expect(result.usage.outputTokens).toBe(30);
     });
@@ -1963,13 +1938,12 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
         }
       });
-
       expect(result.usage.inputTokens).toBe(45);
       expect(result.usage.outputTokens).toBe(25);
     });
@@ -2022,14 +1996,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
+        maxContinuations: 5,
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
-        },
-        maxContinuations: 5
+        }
       });
-
       expect(mockCreate).toHaveBeenCalledTimes(2);
       expect(result.answerText).toBe('Part 1 of the response...Part 2 completed.');
       expect(result.finish_reason).toBe('stop');
@@ -2067,14 +2040,13 @@ describe('createLLMResponse', () => {
       ];
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
+        maxContinuations: 3,
         body: {
-          model: 'gpt-4',
           messages,
           stream: false
-        },
-        maxContinuations: 3
+        }
       });
-
       expect(mockCreate).toHaveBeenCalledTimes(3);
       expect(result.finish_reason).toBe('length');
     });
@@ -2107,14 +2079,13 @@ describe('createLLMResponse', () => {
       );
 
       await createLLMResponse({
+        modelData: createMockModelData({ reasoning: true }),
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           reasoning_effort: 'high',
           stream: false
         }
       });
-
       expect(mockCreate).toHaveBeenCalledTimes(1);
       expect(mockCreate.mock.calls[0][0].reasoning_effort).toBe('high');
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
@@ -2144,14 +2115,13 @@ describe('createLLMResponse', () => {
       );
 
       await createLLMResponse({
+        modelData: createMockModelData(),
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
           reasoning_effort: 'high',
           stream: false
         }
       });
-
       expect(mockCreate).toHaveBeenCalledTimes(1);
       expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('reasoning_effort');
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
@@ -2191,9 +2161,9 @@ describe('createLLMResponse', () => {
       mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
 
       const result = await createLLMResponse({
+        modelData: createMockModelData(),
         throwError: false,
         body: {
-          model: 'gpt-4',
           messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' }],
           tools: [
             {
@@ -2209,7 +2179,6 @@ describe('createLLMResponse', () => {
           stream: false
         }
       });
-
       expect(result.error).toBeDefined();
       expect(result.requestMessages).toEqual(rewritten);
       expect(result.completeMessages).toEqual(rewritten);
@@ -2237,8 +2206,8 @@ describe('createLLMResponse', () => {
 
       const result = await createLLMResponse({
         throwError: false,
+        modelData: createMockModelData({ reasoning: true }),
         body: {
-          model: 'gpt-4',
           messages: [
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' },
             {
@@ -2253,7 +2222,6 @@ describe('createLLMResponse', () => {
           stream: false
         }
       });
-
       expect(result.error).toBeDefined();
       expect(result.requestMessages).toEqual([
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' },

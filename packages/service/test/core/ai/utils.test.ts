@@ -7,58 +7,58 @@ import {
   parseReasoningContent
 } from '@fastgpt/service/core/ai/utils';
 import type { CompletionFinishReason } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 
 const mockModel = (maxResponse: number, maxTemperature?: number) =>
   ({ maxResponse, maxTemperature }) as LLMModelItemType;
 
 describe('computedMaxToken', () => {
   it('should return undefined when maxToken is undefined', () => {
-    expect(computedMaxToken({ maxToken: undefined, model: mockModel(4096) })).toBeUndefined();
+    expect(computedMaxToken({ maxToken: undefined, modelData: mockModel(4096) })).toBeUndefined();
   });
 
   it('should cap maxToken to model.maxResponse', () => {
-    expect(computedMaxToken({ maxToken: 8000, model: mockModel(4096) })).toBe(4096);
+    expect(computedMaxToken({ maxToken: 8000, modelData: mockModel(4096) })).toBe(4096);
   });
 
   it('should return maxToken when within model.maxResponse', () => {
-    expect(computedMaxToken({ maxToken: 1000, model: mockModel(4096) })).toBe(1000);
+    expect(computedMaxToken({ maxToken: 1000, modelData: mockModel(4096) })).toBe(1000);
   });
 
   it('should enforce minimum of 1 by default', () => {
-    expect(computedMaxToken({ maxToken: 0, model: mockModel(4096) })).toBe(1);
+    expect(computedMaxToken({ maxToken: 0, modelData: mockModel(4096) })).toBe(1);
   });
 
   it('should enforce custom min value', () => {
-    expect(computedMaxToken({ maxToken: 5, model: mockModel(4096), min: 10 })).toBe(10);
+    expect(computedMaxToken({ maxToken: 5, modelData: mockModel(4096), min: 10 })).toBe(10);
   });
 
   it('should use maxToken when it exceeds min', () => {
-    expect(computedMaxToken({ maxToken: 100, model: mockModel(4096), min: 10 })).toBe(100);
+    expect(computedMaxToken({ maxToken: 100, modelData: mockModel(4096), min: 10 })).toBe(100);
   });
 });
 
 describe('computedTemperature', () => {
   it('should return undefined when model has no maxTemperature', () => {
-    expect(computedTemperature({ model: mockModel(4096), temperature: 5 })).toBeUndefined();
+    expect(computedTemperature({ modelData: mockModel(4096), temperature: 5 })).toBeUndefined();
   });
 
   it('should scale temperature proportionally', () => {
     // maxTemperature=2, temperature=5 => 2*(5/10)=1.0
-    expect(computedTemperature({ model: mockModel(4096, 2), temperature: 5 })).toBe(1.0);
+    expect(computedTemperature({ modelData: mockModel(4096, 2), temperature: 5 })).toBe(1.0);
   });
 
   it('should return maxTemperature when temperature=10', () => {
-    expect(computedTemperature({ model: mockModel(4096, 2), temperature: 10 })).toBe(2.0);
+    expect(computedTemperature({ modelData: mockModel(4096, 2), temperature: 10 })).toBe(2.0);
   });
 
   it('should enforce minimum of 0.01', () => {
-    expect(computedTemperature({ model: mockModel(4096, 2), temperature: 0 })).toBe(0.01);
+    expect(computedTemperature({ modelData: mockModel(4096, 2), temperature: 0 })).toBe(0.01);
   });
 
   it('should round to 2 decimal places', () => {
     // maxTemperature=1, temperature=3 => 1*(3/10)=0.30
-    expect(computedTemperature({ model: mockModel(4096, 1), temperature: 3 })).toBe(0.3);
+    expect(computedTemperature({ modelData: mockModel(4096, 1), temperature: 3 })).toBe(0.3);
   });
 });
 

@@ -1788,7 +1788,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: 'modelId',
             label: 'Model',
             value: 'gpt-4',
             selectedTypeIndex: 0,
@@ -1812,7 +1812,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: 'modelId',
             label: 'Model',
             value: 'unauthorized-model',
             selectedTypeIndex: 0,
@@ -1836,7 +1836,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: 'modelId',
             label: 'Model',
             value: 'unauthorized-model',
             selectedTypeIndex: 1,
@@ -1860,7 +1860,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: 'modelId',
             label: 'Model',
             value: ['nodeId', 'outputKey'],
             selectedTypeIndex: 0,
@@ -1899,6 +1899,96 @@ describe('removeUnauthModels', () => {
     expect(result?.[0].inputs[0].value).toBe('some value');
   });
 
+  it('should blank non-LLM model fields not in allowedModels (rerank/extension/deepSearch)', async () => {
+    const modules = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset Search',
+        inputs: [
+          {
+            key: 'rerankModelId',
+            label: 'Rerank',
+            value: 'unauthorized-rerank',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.selectRerankModel]
+          },
+          {
+            key: 'datasetSearchExtensionModelId',
+            label: 'Extension',
+            value: 'authorized-extension',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          },
+          {
+            key: 'datasetDeepSearchModelId',
+            label: 'Deep search',
+            value: 'unauthorized-deep',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const allowedModels = new Set(['authorized-extension']);
+
+    const result = await removeUnauthModels({ modules, allowedModels });
+    const inputs = result?.[0].inputs;
+    expect(inputs?.[0].value).toBeUndefined();
+    expect(inputs?.[1].value).toBe('authorized-extension');
+    expect(inputs?.[2].value).toBeUndefined();
+  });
+
+  it('should blank unauthorized embedded model fields inside datasetParams', async () => {
+    const modules = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset Search',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            label: 'Dataset params',
+            value: {
+              embeddingModelId: 'authorized-embedding',
+              rerankModelId: 'unauthorized-rerank',
+              datasetSearchExtensionModelId: 'unauthorized-extension',
+              datasetDeepSearchModelId: 'unauthorized-deep'
+            },
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.settingDatasetParams]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const allowedModels = new Set(['authorized-embedding']);
+
+    const result = await removeUnauthModels({ modules, allowedModels });
+    const value = result?.[0].inputs[0].value as Record<string, unknown>;
+    expect(value.embeddingModelId).toBe('authorized-embedding');
+    expect(value.rerankModelId).toBeUndefined();
+    expect(value.datasetSearchExtensionModelId).toBeUndefined();
+    expect(value.datasetDeepSearchModelId).toBeUndefined();
+  });
+
+  it('should blank unauthorized chatConfig model fields (questionGuide/ttsConfig)', async () => {
+    const chatConfig = {
+      questionGuide: { open: true, modelId: 'unauthorized-qg' },
+      ttsConfig: { type: 'model', modelId: 'authorized-tts' }
+    };
+    const allowedModels = new Set(['authorized-tts']);
+
+    await removeUnauthModels({
+      modules: undefined as any,
+      chatConfig: chatConfig as any,
+      allowedModels
+    });
+    expect(chatConfig.questionGuide.modelId).toBeUndefined();
+    expect(chatConfig.ttsConfig.modelId).toBe('authorized-tts');
+  });
+
   it('should use empty Set as default for allowedModels', async () => {
     const modules = [
       {
@@ -1907,7 +1997,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat',
         inputs: [
           {
-            key: 'model',
+            key: 'modelId',
             label: 'Model',
             value: 'any-model',
             selectedTypeIndex: 0,
@@ -1930,7 +2020,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat 1',
         inputs: [
           {
-            key: 'model',
+            key: 'modelId',
             label: 'Model',
             value: 'gpt-4',
             selectedTypeIndex: 0,
@@ -1945,7 +2035,7 @@ describe('removeUnauthModels', () => {
         name: 'Chat 2',
         inputs: [
           {
-            key: 'model',
+            key: 'modelId',
             label: 'Model',
             value: 'unauthorized',
             selectedTypeIndex: 0,

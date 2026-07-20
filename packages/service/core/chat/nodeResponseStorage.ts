@@ -134,8 +134,8 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
     moduleName: response.moduleName
   };
 
-  ['parentId', 'moduleLogo', 'model', 'embeddingModel', 'rerankModel'].forEach((key) =>
-    keepString(data, source, key)
+  ['parentId', 'moduleLogo', 'modelId', 'model', 'embeddingModelId', 'rerankModelId'].forEach(
+    (key) => keepString(data, source, key)
   );
 
   const numberKeys = [

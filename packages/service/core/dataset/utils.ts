@@ -4,13 +4,48 @@ import { S3Sources } from '../../common/s3/contracts/type';
 import { isS3ObjectKey } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { S3Buckets } from '../../common/s3/config/constants';
-import { getVlmModelList, isImageEmbeddingModel } from '../ai/model';
+import { getVlmModel, isImageEmbeddingModel } from '../ai/model/cache';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 import { createS3DownloadAccessUrls } from '../../common/s3/accessLink';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
+
+/* ═══ Dataset modelId 归一化（热升级兼容）═══ */
+
+/**
+ * ⚠️ 热升级兼容（2026-08，contract release 移除）：legacy-only 数据集文档
+ * （只有 `vectorModel`/`agentModel`/`vlmModel` provider 模型名，schema 双字段
+ * 落库前由迁移补齐 canonical）在进入 search/training/collection 等业务逻辑前
+ * 统一做只读归一化：`*ModelId ?? *Model`，name 交给 getter 按名解析。
+ *
+ * 集中 helper 避免散落 fallback（热升级技术分析 §6.5）；只做字段回填，不改库。
+ */
+export const getDatasetModelIds = (dataset: {
+  vectorModelId?: string | null;
+  vectorModel?: string | null;
+  agentModelId?: string | null;
+  agentModel?: string | null;
+  vlmModelId?: string | null;
+  vlmModel?: string | null;
+}): {
+  vectorModelId?: string;
+  agentModelId?: string;
+  vlmModelId?: string;
+} => ({
+  vectorModelId: dataset.vectorModelId || dataset.vectorModel || undefined,
+  agentModelId: dataset.agentModelId || dataset.agentModel || undefined,
+  vlmModelId: dataset.vlmModelId || dataset.vlmModel || undefined
+});
+
+/** 同 getDatasetModelIds，但返回回填后的数据集对象（便于展开继续使用 dataset.xxx 字段）。 */
+export const normalizeDatasetModelIds = <T extends Parameters<typeof getDatasetModelIds>[0]>(
+  dataset: T
+): T & ReturnType<typeof getDatasetModelIds> => ({
+  ...dataset,
+  ...getDatasetModelIds(dataset)
+});
 
 /**
  * 匹配 Markdown 链接中的 S3 key，同时兼容 Turndown 的 `<...>` 包装。
@@ -173,24 +208,21 @@ export async function replaceS3KeyToPreviewUrl(documentQuoteText: string, expire
   return content!;
 }
 
-const getAvailableDatasetVlmModel = (vlmModel?: string) => {
-  if (!vlmModel) return;
-
-  const vlmModelList = getVlmModelList();
-
-  return vlmModelList.find((item) => item.model === vlmModel || item.name === vlmModel);
+const getAvailableDatasetVlmModel = (vlmModelId?: string) => {
+  if (!vlmModelId) return;
+  return getVlmModel(vlmModelId);
 };
 
 export const getDatasetImageIndexCapability = ({
-  vectorModel,
-  vlmModel
+  vectorModelId,
+  vlmModelId
 }: {
-  vectorModel?: string;
-  vlmModel?: string;
+  vectorModelId?: string;
+  vlmModelId?: string;
 }) => {
-  const availableVlmModel = getAvailableDatasetVlmModel(vlmModel);
+  const availableVlmModel = getAvailableDatasetVlmModel(vlmModelId);
   const supportVlm = !!availableVlmModel;
-  const supportImageEmbedding = isImageEmbeddingModel(vectorModel);
+  const supportImageEmbedding = !!vectorModelId && isImageEmbeddingModel(vectorModelId);
 
   return {
     availableVlmModel,

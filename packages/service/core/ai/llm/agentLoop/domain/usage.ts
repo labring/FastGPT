@@ -11,6 +11,7 @@ export type AgentLoopUsage = {
   outputTokens?: number;
   totalPoints: number;
   moduleName: string;
+  modelId?: string;
   model?: string;
 };
 

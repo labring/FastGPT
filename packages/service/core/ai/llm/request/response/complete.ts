@@ -3,10 +3,10 @@ import type {
   CompletionFinishReason,
   UnStreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { parseReasoningContent } from '../../../utils';
 import { parsePromptToolCall } from '../../promptCall';
-import { getLLMModel } from '../../../model';
 import type { CompleteParams, CompleteResponse } from '../types';
 
 /**
@@ -17,13 +17,16 @@ import type { CompleteParams, CompleteResponse } from '../types';
  */
 export const createCompleteResponse = async ({
   body,
+  modelData,
   response,
   onStreaming,
   onReasoning,
   onToolCall
-}: CompleteParams & { response: UnStreamResponseType }): Promise<CompleteResponse> => {
+}: CompleteParams & {
+  response: UnStreamResponseType;
+  modelData: LLMModelItemType;
+}): Promise<CompleteResponse> => {
   const { tools, toolCallMode = 'toolChoice', retainDatasetCite = true } = body;
-  const modelData = getLLMModel(body.model);
 
   const finish_reason = response.choices?.[0]?.finish_reason as CompletionFinishReason;
   const usage = response.usage;

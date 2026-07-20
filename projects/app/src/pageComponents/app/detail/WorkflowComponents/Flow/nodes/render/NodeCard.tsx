@@ -25,7 +25,9 @@ import { useDebug } from '../../hooks/useDebug';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { buildLlmModelMap, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/workflowCheck';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
@@ -106,6 +108,8 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const llmModelMap = buildLlmModelMap(llmModelList);
   const {
     children,
     avatar = LOGO_ICON,
@@ -885,6 +889,8 @@ const MenuRender = React.memo(function MenuRender({
   menuForbid?: Props['menuForbid'];
 }) {
   const { t } = useTranslation();
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const llmModelMap = buildLlmModelMap(llmModelList);
   const { openDebugNode, DebugInputModal } = useDebug();
   const { setNodes, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -944,6 +950,7 @@ const MenuRender = React.memo(function MenuRender({
             selected: false
           })),
           storeNode2FlowNode({
+            llmModelMap,
             item: {
               flowNodeType: template.flowNodeType,
               avatar: template.avatar,

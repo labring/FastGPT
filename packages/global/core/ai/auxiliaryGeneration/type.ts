@@ -2,6 +2,7 @@ import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../llm/type';
 import { ChatFileTypeEnum } from '../../chat/constants';
 import { SelectedAgentSkillItemTypeSchema } from '../../app/formEdit/type';
+import { EmbeddingModelItemSchema } from '../model/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatAgentHelperTypeEnum } from './constants';
 import { BoolSchema } from '../../../common/zod';
@@ -25,7 +26,7 @@ export const ChatAgentHelperMetadataSchema = z.object({
   enableSandbox: z.boolean().nullish(),
   modelConfig: z
     .object({
-      model: z.string().optional()
+      modelId: z.string().optional()
     })
     .optional()
 });
@@ -41,10 +42,8 @@ export const AuxiliaryGenerationSelectedDatasetSchema = z.object({
   name: z.string().meta({
     description: '可选知识库名称'
   }),
-  vectorModel: z.object({
-    model: z.string().meta({
-      description: '知识库使用的向量模型'
-    })
+  vectorModel: EmbeddingModelItemSchema.optional().meta({
+    description: '向量模型 (resolved)；原模型已删除或无法解析时缺省'
   }),
   isDeleted: BoolSchema.optional()
 });

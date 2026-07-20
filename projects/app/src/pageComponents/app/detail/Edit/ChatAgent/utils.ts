@@ -65,7 +65,10 @@ export const appWorkflow2AgentForm = ({
   normalizedWorkflow.nodes.forEach((node) => {
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
-      defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
+      defaultAppForm.aiSettings.modelId = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModelId
+      );
       defaultAppForm.aiSettings.systemPrompt = inputMap.get(NodeInputKeyEnum.aiSystemPrompt);
       defaultAppForm.aiSettings.temperature = inputMap.get(NodeInputKeyEnum.aiChatTemperature);
       defaultAppForm.aiSettings.maxHistories = inputMap.get(NodeInputKeyEnum.history);
@@ -144,13 +147,14 @@ export const checkAgentSkillSandboxUnavailable = ({
 
 export function agentForm2AppWorkflow(
   data: AppFormEditFormType,
-  t: any // i18nT
+  t: any, // i18nT
+  llmList: { id: string; model: string; vision?: boolean; audio?: boolean; video?: boolean }[] = []
 ): WorkflowType & {
   chatConfig: AppChatConfigType;
 } {
   const aiChatNodeId = '7BdojPlukIQw';
   const normalizedSandboxEntrypoint = data.aiSettings.sandboxEntrypoint?.trim() || undefined;
-  const modelData = getWebLLMModel(data.aiSettings.model);
+  const modelData = getWebLLMModel(data.aiSettings.modelId, llmList);
   const modelMultimodal = {
     vision: !!modelData?.vision,
     audio: !!modelData?.audio,
@@ -191,11 +195,11 @@ export function agentForm2AppWorkflow(
           version: AgentNode.version,
           inputs: [
             {
-              key: NodeInputKeyEnum.aiModel,
+              key: NodeInputKeyEnum.aiModelId,
               renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
               label: t('common:core.module.input.label.aiModel'),
               valueType: WorkflowIOValueTypeEnum.string,
-              value: data.aiSettings.model
+              value: data.aiSettings.modelId
             },
             {
               key: NodeInputKeyEnum.aiSystemPrompt,
@@ -320,10 +324,10 @@ export function agentForm2AppWorkflow(
                 searchMode: data.dataset.searchMode,
                 embeddingWeight: data.dataset.embeddingWeight,
                 usingReRank: data.dataset.usingReRank,
-                rerankModel: data.dataset.rerankModel,
+                rerankModelId: data.dataset.rerankModelId,
                 rerankWeight: data.dataset.rerankWeight,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
-                datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
+                datasetSearchExtensionModelId: data.dataset.datasetSearchExtensionModelId,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
                 [NodeInputKeyEnum.authTmbId]: data.dataset.authTmbId
               })
@@ -392,7 +396,7 @@ export const getEmptyAgentConfig = (t: any) => {
   return agentForm2AppWorkflow(
     {
       aiSettings: {
-        model: '',
+        modelId: '',
         maxHistories: 6,
         isResponseAnswerText: true,
         aiChatReasoning: true

@@ -8,11 +8,11 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import type { CreateLLMResponseProps } from '../../../../request';
 import { createLLMResponse } from '../../../../request';
 import { compressRequestMessages, compressToolResponse } from '../../../../compress';
-import { getLLMModel } from '../../../../../model';
+import { getLLMModel, assertModelUsable } from '../../../../../model';
 import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopInteractiveToolExecuteParams,
@@ -37,6 +37,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   isAborted: CreateLLMResponseProps['isAborted'];
   userKey?: CreateLLMResponseProps['userKey'];
   teamId: string;
+  modelId: string;
 
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
   /** 每轮压缩时读取最新 plan，避免传入 loop 启动时的过期快照。 */
@@ -62,10 +63,11 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   canBatchTool?: (call: ChatCompletionMessageToolCall) => boolean;
   // 每次 createLLMResponse 的生命周期回调。
   // workflow adapter 用它向客户端展示模型运行状态，并增量收集 requestId。
-  onLLMRequestStart?: (e: { requestIndex: number; modelName: string }) => void;
+  onLLMRequestStart?: (e: { requestIndex: number; modelId: string; modelName: string }) => void;
   onLLMRequestEnd?: (e: {
     requestIndex: number;
     modelName: string;
+    modelId: string;
     requestId: string;
     finishReason?: CompletionFinishReason;
     answerText?: string;
@@ -113,6 +115,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   };
 
   // Usage
+  modelId: string;
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -152,7 +155,7 @@ export const onCompressContext = async ({
     checkIsStopping: isAborted,
     messageTokens,
     messages: requestMessages,
-    model: modelData,
+    modelData,
     reasoningEffort,
     tools,
     userKey,
@@ -190,10 +193,11 @@ export const onCompressContext = async ({
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
   batchToolSize = 1,
-  body: { model, messages, max_tokens, ...body },
+  body: { messages, max_tokens, ...body },
 
   userKey,
   teamId,
+  modelId,
   isAborted,
 
   onAfterCompressContext,
@@ -213,7 +217,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onReasoning,
   onStreaming
 }: RunAgentCallProps<TChildrenResponse>): Promise<RunAgentResponse<TChildrenResponse>> => {
-  const modelData = getLLMModel(model);
+  // Existence + active in one guard (F2-S3-TC06).
+  const modelData = assertModelUsable(getLLMModel(modelId));
 
   let runTimes = 0;
   let toolChildPause:
@@ -354,6 +359,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     if (toolChildPause || stop) {
       return {
         requestIds: [],
+        modelId: modelData.id,
         model: modelData.model,
         inputTokens: 0,
         outputTokens: 0,
@@ -412,6 +418,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     const requestStartTime = Date.now();
     onLLMRequestStart?.({
       requestIndex: runTimes,
+      modelId: modelData.id,
       modelName: modelData.name
     });
     const {
@@ -426,10 +433,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       error
     } = await createLLMResponse({
       throwError: false,
+      modelData,
       body: {
         ...body,
         max_tokens,
-        model: modelData,
         messages: requestMessages,
         tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
@@ -446,13 +453,14 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     const totalPoints = usage.usedUserOpenAIKey
       ? 0
       : formatModelChars2Points({
-          model: modelData,
+          modelData,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
         }).totalPoints;
     onLLMRequestEnd?.({
       requestIndex: runTimes,
       modelName: modelData.name,
+      modelId: modelData.id,
       requestId,
       finishReason,
       answerText: answer,
@@ -555,7 +563,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           const compressStartTime = Date.now();
           const compressionResult = await compressToolResponse({
             response,
-            model: modelData,
+            modelData,
             reasoningEffort: body.reasoning_effort,
             userKey,
             teamId
@@ -690,6 +698,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   return {
     requestIds,
     error: requestError,
+    modelId: modelData.id,
     model: modelData.model,
     inputTokens,
     outputTokens,

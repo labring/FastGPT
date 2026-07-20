@@ -20,6 +20,7 @@ export const DevApiTagsMap = {
   aiSkill: 'AI技能管理',
   sandbox: 'AI 沙盒',
   aiCommon: 'AI 通用接口',
+  model: 'AI 模型管理',
 
   /* 核心-AI 辅助生成 */
   aiAuxiliary: 'AI 辅助生成',
@@ -99,7 +100,8 @@ export const DevApiTagsMap = {
   adminTemplateType: '模板类型管理',
   adminWalletInvoice: '发票管理',
   adminWalletRefund: '退款管理',
-  adminAuth: '管理员认证'
+  adminAuth: '管理员认证',
+  adminModels: '模型管理'
 };
 
 export const SystemOpenApiTagMap = {

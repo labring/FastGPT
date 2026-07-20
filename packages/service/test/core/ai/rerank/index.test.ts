@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model/type';
 
 // hoisted：让 mock 实例可在 beforeEach 中重设
 const { mockCountPromptTokens, mockAxiosPost } = vi.hoisted(() => ({
@@ -20,6 +20,14 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
   }
 }));
 
+vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/config')>()),
+  getAxiosConfig: () => ({
+    baseUrl: 'https://aiproxy.example.com/v1',
+    authorization: 'Bearer test-aiproxy-key'
+  })
+}));
+
 // Mock text2Chunks：按 chunkSize 字符切分，保证测试确定性
 vi.mock('@fastgpt/service/worker/function', () => ({
   text2Chunks: vi.fn(async ({ text, chunkSize }: { text: string; chunkSize: number }) => {
@@ -35,6 +43,7 @@ vi.mock('@fastgpt/service/worker/function', () => ({
 const { reRankRecall } = await import('@fastgpt/service/core/ai/rerank/index');
 
 const mockModel: RerankModelItemType = {
+  id: 'rerank-test',
   provider: 'test',
   model: 'rerank-test',
   name: 'Test Rerank',
@@ -62,7 +71,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'query',
       documents: [
         { id: 'doc1', text: 'hello' },
@@ -84,7 +93,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'q',
       documents: [{ id: 'doc1', text: 'hello' }]
     });
@@ -97,7 +106,7 @@ describe('reRankRecall', () => {
 
   it('documents 为空时直接返回空，不发请求', async () => {
     const result = await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'q',
       documents: []
     });
@@ -108,7 +117,7 @@ describe('reRankRecall', () => {
 
   it('所有文档 text 为空或空白时，返回空结果，不发请求', async () => {
     const result = await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'q',
       documents: [
         { id: 'doc1', text: '' },
@@ -142,7 +151,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 600 },
+      modelData: { ...mockModel, maxToken: 600 },
       query: 'q',
       documents: [
         { id: 'doc1', text: longText },
@@ -173,7 +182,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 600 },
+      modelData: { ...mockModel, maxToken: 600 },
       query: 'q',
       documents: [{ id: 'doc1', text: longText }]
     });
@@ -192,7 +201,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'test', // length=4
       documents: [{ id: 'doc1', text: 'hello' }] // text length=5
     });
@@ -209,7 +218,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'q',
       documents: [{ id: 'doc1', text: 'hello' }]
     });
@@ -219,7 +228,7 @@ describe('reRankRecall', () => {
 
   // ── requestUrl / requestAuth ──────────────────────────────────────────────
 
-  it('有 requestUrl 和 requestAuth 时，使用自定义地址和认证头', async () => {
+  it('使用 baseUrl/rerank 作为默认请求地址，且不携带 modelId', async () => {
     mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [{ index: 0, relevance_score: 0.5 }],
@@ -227,24 +236,25 @@ describe('reRankRecall', () => {
     });
 
     await reRankRecall({
-      model: {
+      modelData: {
         ...mockModel,
-        requestUrl: 'https://custom.rerank.io/rerank',
-        requestAuth: 'secret-key'
+        id: 'rerank-test',
+        model: 'rerank-test'
       },
       query: 'q',
       documents: [{ id: 'doc1', text: 'hello' }]
     });
 
-    expect(mockAxiosPost).toHaveBeenCalledWith(
-      'https://custom.rerank.io/rerank',
-      expect.any(Object),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer secret-key'
-        })
-      })
-    );
+    const url: string = mockAxiosPost.mock.calls[0][0];
+    expect(url.endsWith('/rerank')).toBe(true);
+    // requestUrl/requestAuth were removed from models (managed by Channels);
+    // the provider-model name is still sent for fallback routing.
+    expect(mockAxiosPost.mock.calls[0][1]).toMatchObject({
+      model: 'rerank-test'
+    });
+    // design §3.1: the internal modelId must never reach the wire body.
+    expect(mockAxiosPost.mock.calls[0][1]).not.toHaveProperty('modelId');
+    expect(mockAxiosPost.mock.calls[0][2].headers.Authorization).toBe('Bearer test-aiproxy-key');
   });
 
   it('未设置 requestUrl 时，使用 baseUrl/rerank', async () => {
@@ -255,7 +265,7 @@ describe('reRankRecall', () => {
     });
 
     await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'q',
       documents: [{ id: 'doc1', text: 'hello' }]
     });
@@ -272,7 +282,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: {
+      modelData: {
         ...mockModel,
         defaultConfig: {
           top_k: 1
@@ -310,7 +320,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: {
+      modelData: {
         ...mockModel,
         defaultConfig: {
           topn: 1
@@ -343,21 +353,11 @@ describe('reRankRecall', () => {
 
   // ── 异常场景 ──────────────────────────────────────────────────────────────
 
-  it('model 为 undefined 时 reject', async () => {
-    await expect(
-      reRankRecall({
-        model: undefined,
-        query: 'q',
-        documents: [{ id: 'doc1', text: 'hello' }]
-      })
-    ).rejects.toThrow('No rerank model');
-  });
-
   it('query 超过 maxToken 时 reject', async () => {
     // maxToken=5, query length=26 → docBudget = 5-26 = -21 ≤ 500 → reject
     await expect(
       reRankRecall({
-        model: { ...mockModel, maxToken: 5 },
+        modelData: { ...mockModel, maxToken: 5 },
         query: 'this query is way too long',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
@@ -369,7 +369,7 @@ describe('reRankRecall', () => {
     // maxToken=501, query='q'(length=1) → docBudget = 501-1 = 500 ≤ 500 → reject
     await expect(
       reRankRecall({
-        model: { ...mockModel, maxToken: 501 },
+        modelData: { ...mockModel, maxToken: 501 },
         query: 'q',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
@@ -385,7 +385,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 502 },
+      modelData: { ...mockModel, maxToken: 502 },
       query: 'q',
       documents: [{ id: 'doc1', text: 'hello' }]
     });
@@ -399,7 +399,7 @@ describe('reRankRecall', () => {
 
     await expect(
       reRankRecall({
-        model: mockModel,
+        modelData: mockModel,
         query: 'q',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
@@ -413,7 +413,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: mockModel,
+      modelData: mockModel,
       query: 'q',
       documents: [{ id: 'doc1', text: 'hello' }]
     });

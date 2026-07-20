@@ -19,11 +19,11 @@ export type DatasetSearchToolConfig = {
   searchMode: `${DatasetSearchModeEnum}`;
   embeddingWeight?: number;
   usingReRank: boolean;
-  rerankModel?: string;
+  rerankModelId?: string;
   rerankWeight?: number;
   usingExtensionQuery: boolean;
-  extensionModel?: string;
+  extensionModelId?: string;
   extensionBg?: string;
   collectionFilterMatch?: string;
-  model: string;
+  modelId: string;
 };

@@ -68,16 +68,16 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
  */
 export const datasetSearchQueryExtension = async ({
   query,
-  llmModel,
-  embeddingModel,
+  llmModelId,
+  embeddingModelId,
   userKey,
   teamId,
   extensionBg = '',
   histories = []
 }: {
   query: string;
-  llmModel?: string;
-  embeddingModel?: string;
+  llmModelId?: string;
+  embeddingModelId?: string;
   userKey?: OpenaiAccountType;
   teamId: string;
   extensionBg?: string;
@@ -108,15 +108,15 @@ export const datasetSearchQueryExtension = async ({
 
   // Use LLM to generate extension queries
   const aiExtensionResult = await (async () => {
-    if (!llmModel || !embeddingModel) return;
+    if (!llmModelId || !embeddingModelId) return;
 
     try {
       const result = await queryExtension({
         chatBg: extensionBg,
         query,
         histories,
-        llmModel,
-        embeddingModel,
+        llmModelId,
+        embeddingModelId,
         userKey,
         teamId
       });

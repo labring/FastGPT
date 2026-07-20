@@ -139,7 +139,7 @@ export enum NodeInputKeyEnum {
 
   // latest
   // common
-  aiModel = 'model',
+  aiModelId = 'modelId',
   aiSystemPrompt = 'systemPrompt',
   description = 'description',
   anyInput = 'system_anyInput',
@@ -190,16 +190,16 @@ export enum NodeInputKeyEnum {
 
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',
-  datasetSearchRerankModel = 'rerankModel',
+  datasetSearchRerankModelId = 'rerankModelId',
 
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
-  datasetSearchExtensionModel = 'datasetSearchExtensionModel',
+  datasetSearchExtensionModelId = 'datasetSearchExtensionModelId',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
   datasetSearchInput = 'datasetSearchInput',
   collectionFilterMatch = 'collectionFilterMatch',
   authTmbId = 'authTmbId',
   datasetDeepSearch = 'datasetDeepSearch',
-  datasetDeepSearchModel = 'datasetDeepSearchModel',
+  datasetDeepSearchModelId = 'datasetDeepSearchModelId',
   datasetDeepSearchMaxTimes = 'datasetDeepSearchMaxTimes',
   datasetDeepSearchBg = 'datasetDeepSearchBg',
 

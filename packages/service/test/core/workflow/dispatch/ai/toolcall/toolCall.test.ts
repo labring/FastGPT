@@ -3,6 +3,7 @@ import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
+import type { AgentLoopUsage } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -97,6 +98,7 @@ const createProps = (overrides = {}) =>
     ],
     toolNodes: [],
     toolModel: {
+      id: 'gpt-4',
       model: 'gpt-4',
       name: 'GPT-4'
     },
@@ -124,7 +126,7 @@ const createLoopResult = ({
       totalPoints: 1
     }
   ]
-} = {}) => ({
+}: { usages?: AgentLoopUsage[] } = {}) => ({
   status: 'done' as const,
   usages,
   usage: {
@@ -305,7 +307,8 @@ describe('runToolCall compression node responses', () => {
             retainDatasetCite: true
           },
           llmParams: expect.objectContaining({
-            model: 'gpt-4',
+            modelId: 'gpt-4',
+            promptMode: 'raw',
             maxTokens: 1000,
             temperature: 0,
             topP: 0.7,

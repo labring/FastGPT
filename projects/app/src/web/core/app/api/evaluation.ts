@@ -11,19 +11,19 @@ import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 export const postCreateEvaluation = ({
   file,
   name,
-  evalModel,
+  evalModelId,
   appId,
   percentListen
 }: {
   file: File;
   name: string;
-  evalModel: string;
+  evalModelId: string;
   appId: string;
   percentListen: (percent: number) => void;
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
-  formData.append('data', JSON.stringify({ name, evalModel, appId }));
+  formData.append('data', JSON.stringify({ name, evalModelId, appId }));
 
   return POST(`/proApi/core/app/evaluation/create`, formData, {
     timeout: 600000,

@@ -28,7 +28,10 @@ vi.mock('@fastgpt/service/core/dataset/read', () => ({
   rawText2Chunks: mocks.rawText2Chunks
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined,
+
   getEmbeddingModel: vi.fn(() => ({})),
   getLLMModel: vi.fn(() => ({}))
 }));
@@ -73,8 +76,8 @@ describe('getPreviewChunks', () => {
       teamId: 'team-a',
       tmbId: 'tmb-a',
       dataset: {
-        agentModel: 'gpt',
-        vectorModel: 'embedding'
+        agentModelId: 'gpt',
+        vectorModelId: 'embedding'
       }
     });
     mocks.readDatasetSourceRawText.mockResolvedValue({

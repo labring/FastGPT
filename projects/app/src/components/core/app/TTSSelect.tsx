@@ -7,6 +7,8 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySlider from '@/components/Slider';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
@@ -37,7 +39,8 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const { ttsModelList, getModelProvider } = useSystemStore();
+  const { getModelProvider } = useSystemStore();
+  const { list: ttsModelList } = useActiveSystemModelList(ModelTypeEnum.tts);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -70,9 +73,9 @@ const TTSSelect = ({
               </Box>
             </HStack>
           ),
-          value: model.model,
+          value: model.id,
           children:
-            model.voices?.map((voice) => ({
+            (model as { voices?: { label: string; value: string }[] }).voices?.map((voice) => ({
               label: voice.label,
               value: voice.value
             })) || []
@@ -90,7 +93,7 @@ const TTSSelect = ({
       return [value.type, undefined];
     }
 
-    return [value.model, value.voice];
+    return [value.modelId, value.voice];
   }, [value]);
   const formLabel = useMemo(() => {
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
@@ -131,7 +134,7 @@ const TTSSelect = ({
         onChange({
           ...value,
           type: TTSTypeEnum.model,
-          model: e[0],
+          modelId: e[0],
           voice: e[1]
         });
       }

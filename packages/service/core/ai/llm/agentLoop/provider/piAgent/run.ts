@@ -7,6 +7,7 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   normalizeToolResponseContent,
   removeDatasetCiteText
@@ -68,10 +69,29 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   runtime: AgentLoopRuntime<TChildrenResponse>;
 }): Promise<AgentLoopResult<TChildrenResponse>> => {
   const state = readPiAgentProviderState(input.providerState);
-  const modelName = runtime.llmParams.model;
-  const modelData = getLLMModel(modelName);
+  const modelId = runtime.llmParams.modelId;
+  const modelData = getLLMModel(modelId);
+  if (!modelData || modelData.isActive === false) {
+    return {
+      status: 'error',
+      activePlan: input.activePlan ?? state.activePlan,
+      providerState: state,
+      completeMessages: input.messages,
+      assistantMessages: [],
+      requestIds: [],
+      finishReason: 'error',
+      usages: [],
+      // Distinguish "not configured" from "disabled" (F2-S3-TC06) so the
+      // surfaced message tells the user why the model is unusable.
+      error: new Error(
+        i18nT(
+          modelData ? 'common:code_error.model_error.model_disabled' : 'common:error_llm_not_config'
+        )
+      )
+    };
+  }
   const piModel = buildPiModel(
-    modelName,
+    modelId,
     runtime.llmParams.useVision,
     runtime.llmParams.userKey,
     runtime.llmParams.maxTokens
@@ -411,14 +431,14 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     initialState: {
       systemPrompt: input.systemPrompt ?? '',
       model: piModel,
-      thinkingLevel: getPiThinkingLevel(modelName, runtime.llmParams.reasoningEffort),
+      thinkingLevel: getPiThinkingLevel(modelId, runtime.llmParams.reasoningEffort),
       tools,
       messages: initialPiMessages
     },
     // pi-agent-core 只提供 parallel/sequential 两档。统一使用串行，确保不超过 runtime 的并发上限，
     // 同时避免 plan/ask 和普通工具在同一轮并行修改状态。
     toolExecution: 'sequential',
-    getApiKey: () => getModelApiKey(modelName, runtime.llmParams.userKey),
+    getApiKey: () => getModelApiKey(runtime.llmParams.userKey),
     onPayload: (payload) => {
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;
@@ -435,6 +455,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       runtime.emitEvent?.({
         type: 'llm_request_start',
         requestIndex: nextRequest.requestIndex,
+        modelId: modelData.id,
         modelName: modelData.name
       });
       return mergePiAgentPayload({
@@ -450,7 +471,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           activePlan,
           checkIsStopping: runtime.checkIsStopping,
           messages: standardMessages,
-          model: modelData,
+          modelData,
           reasoningEffort: runtime.llmParams.reasoningEffort,
           tools: normalizationTools,
           userKey: runtime.llmParams.userKey,
@@ -615,7 +636,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       const totalPoints = runtime.llmParams.userKey?.key
         ? 0
         : formatModelChars2Points({
-            model: modelData,
+            modelData,
             inputTokens: requestInputTokens,
             outputTokens: requestOutputTokens
           }).totalPoints;
@@ -624,6 +645,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       llmTotalPoints += totalPoints;
       const usage: AgentLoopUsage = {
         moduleName: AgentUsageModuleName.agentCall,
+        modelId: modelData.id,
         model: modelData.name,
         totalPoints,
         inputTokens: requestInputTokens,
@@ -635,6 +657,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       runtime.emitEvent?.({
         type: 'llm_request_end',
         requestIndex: request.requestIndex,
+        modelId: modelData.id,
         modelName: modelData.name,
         requestId: request.requestId,
         finishReason,
@@ -696,6 +719,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       runtime.emitEvent?.({
         type: 'llm_request_end',
         requestIndex: request.requestIndex,
+        modelId: modelData.id,
         modelName: modelData.name,
         requestId: request.requestId,
         finishReason: requestFinishReason,

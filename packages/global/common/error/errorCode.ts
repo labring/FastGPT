@@ -12,6 +12,7 @@ import SystemErrEnum from './code/system';
 import agentSkillErr from './code/skill';
 import sandboxErr from './code/sandbox';
 import couponErr from './code/coupon';
+import modelErr from './code/model';
 import { i18nT } from '../i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
@@ -43,6 +44,7 @@ export enum ERROR_ENUM {
   unAuthorization = 'unAuthorization',
   unAuthProToken = 'unAuthProToken',
   insufficientQuota = 'insufficientQuota',
+  /** @deprecated Use ModelErrEnum.unAuthModel (model error module) — kept only for ERROR_RESPONSE compat. */
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
   unAuthFile = 'unAuthFile',
@@ -133,5 +135,10 @@ export const ERROR_RESPONSE: Record<
   ...SystemErrEnum,
   ...agentSkillErr,
   ...sandboxErr,
-  ...couponErr
+  ...couponErr,
+  // Model errors: ModelErrEnum.unAuthModel uses the same statusText 'unAuthModel' as
+  // ERROR_ENUM.unAuthModel (code 511). The spread intentionally overrides the 511 entry
+  // with the model error code (513001) — no production code throws ERROR_ENUM.unAuthModel
+  // (legacy model auth now uses ModelErrEnum.unAuthModel). Design §5.1 mandates this key.
+  ...modelErr
 };

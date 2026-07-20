@@ -1,5 +1,7 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
+import { extractWorkflowModelIds } from '@fastgpt/global/core/workflow/utils';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import {
@@ -146,6 +148,19 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     await beforeUpdateAppFormat({
       nodes: nodes === undefined ? undefined : normalizedWorkflow?.nodes
     });
+
+    // Model permission: reject unauthorized modelIds in updated nodes (design AUTH-TC10)
+    if (nodes && nodes.length > 0) {
+      const modelIds = extractWorkflowModelIds({ modules: nodes, chatConfig });
+      if (modelIds.length > 0) {
+        await authModels({
+          req,
+          authToken: true,
+          modelIds,
+          per: ReadPermissionVal
+        });
+      }
+    }
 
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });

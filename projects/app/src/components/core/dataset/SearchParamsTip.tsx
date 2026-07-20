@@ -1,4 +1,5 @@
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { Flex, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import {
   DatasetSearchModeEnum,
@@ -27,15 +28,16 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList } = useSystemStore();
+  const { list: reRankModelList } = useActiveSystemModelList(ModelTypeEnum.rerank);
 
   const hasReRankModel = reRankModelList.length > 0;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
 
+  const { list: llmList } = useActiveSystemModelList(ModelTypeEnum.llm);
   const extensionModelName = useMemo(
-    () => (usingExtensionQuery ? getWebLLMModel(queryExtensionModel)?.name : ''),
-    [usingExtensionQuery, queryExtensionModel]
+    () => (usingExtensionQuery ? getWebLLMModel(queryExtensionModel, llmList)?.name : ''),
+    [usingExtensionQuery, queryExtensionModel, llmList]
   );
 
   return (

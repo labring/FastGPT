@@ -6,7 +6,7 @@ import {
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model/type';
 import type { ChatDispatchProps } from '../../../types/runtime';
 import {
   parseFileContentFromUrls,
@@ -18,7 +18,7 @@ import { getWorkflowFileContext } from '../../../utils/context';
  * 组装系统提示、历史、当前输入和文件上下文，并按模型上下文限制裁剪为 LLM 消息。
  */
 export const getChatMessages = async ({
-  model,
+  modelData,
   maxTokens = 0,
   histories = [],
   datasetCiteSystemPrompt,
@@ -31,7 +31,7 @@ export const getChatMessages = async ({
   usageId,
   runningUserInfo
 }: {
-  model: LLMModelItemType;
+  modelData: LLMModelItemType;
   maxTokens?: number;
   histories: ChatItemMiniType[];
 
@@ -48,7 +48,7 @@ export const getChatMessages = async ({
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) => {
   const concatenateSystemPrompt = [
-    model.defaultSystemChatPrompt,
+    modelData.defaultSystemChatPrompt,
     systemPrompt,
     datasetCiteSystemPrompt
   ]
@@ -98,6 +98,6 @@ export const getChatMessages = async ({
 
   return await filterGPTMessageByMaxContext({
     messages: adaptMessages,
-    maxContext: model.maxContext - maxTokens // filter token. not response maxToken
+    maxContext: modelData.maxContext - maxTokens // filter token. not response maxToken
   });
 };

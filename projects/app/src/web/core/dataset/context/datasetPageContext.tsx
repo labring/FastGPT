@@ -15,7 +15,6 @@ import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getWebLLMModel } from '@/web/common/system/utils';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type DatasetPageContextType = {
@@ -49,10 +48,10 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   },
   datasetId: '',
   datasetDetail: defaultDatasetDetail,
-  loadDatasetDetail: function (id: string): Promise<DatasetItemType> {
+  loadDatasetDetail: function (_id: string): Promise<DatasetItemType> {
     throw new Error('Function not implemented.');
   },
-  updateDataset: function (data: UpdateDatasetBody): Promise<void> {
+  updateDataset: function (_data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
   searchDatasetTagsResult: [],
@@ -64,12 +63,12 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   loadAllDatasetTags: function (): Promise<DatasetTagType[]> {
     throw new Error('Function not implemented.');
   },
-  onCreateCollectionTag: function (tag: string): Promise<void> {
+  onCreateCollectionTag: function (_tag: string): Promise<void> {
     throw new Error('Function not implemented.');
   },
   isCreateCollectionTagLoading: false,
   searchTagKey: '',
-  setSearchTagKey: function (value: SetStateAction<string>): void {
+  setSearchTagKey: function (_value: SetStateAction<string>): void {
     throw new Error('Function not implemented.');
   },
   paths: [],
@@ -85,7 +84,6 @@ export const DatasetPageContextProvider = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
   const loadDatasetDetail = async (id: string) => {
@@ -97,11 +95,18 @@ export const DatasetPageContextProvider = ({
     await putDatasetById(data);
 
     if (datasetId === data.id) {
+      if (data.agentModelId !== undefined || data.vlmModelId !== undefined) {
+        await loadDatasetDetail(datasetId);
+        return;
+      }
+
       setDatasetDetail((state) => ({
         ...state,
         ...data,
-        agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
-        vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : state.vlmModel,
+        // Legacy model-name inputs are API-only; preserve the resolved detail objects.
+        vectorModel: state.vectorModel,
+        agentModel: state.agentModel,
+        vlmModel: state.vlmModel,
         apiDatasetServer: filterApiDatasetServerPublicData(data.apiDatasetServer)
       }));
     }

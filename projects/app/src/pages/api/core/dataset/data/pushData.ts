@@ -13,9 +13,6 @@ import {
   type PushDataResponseType
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
-import { getVlmModel } from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -39,8 +36,8 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const mode = getTrainingModeByCollection({
     ...collection,
     supportImageIndex: getDatasetImageIndexCapability({
-      vectorModel: collection.dataset.vectorModel,
-      vlmModel: collection.dataset.vlmModel
+      vectorModelId: collection.dataset.vectorModelId,
+      vlmModelId: collection.dataset.vlmModelId
     }).supportImageIndex
   });
 
@@ -58,9 +55,9 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
         tmbId,
         appName: collection.name,
         billSource: UsageSourceEnum.training,
-        vectorModel: getEmbeddingModel(collection.dataset.vectorModel)?.name,
-        agentModel: getLLMModel(collection.dataset.agentModel)?.name,
-        vllmModel: getVlmModel(collection.dataset.vlmModel)?.name,
+        vectorModelId: collection.dataset.vectorModelId,
+        agentModelId: collection.dataset.agentModelId,
+        vlmModelId: collection.dataset.vlmModelId,
         session
       });
       return newUsageId;
@@ -74,9 +71,9 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
       teamId,
       tmbId,
       datasetId: collection.datasetId,
-      vectorModel: collection.dataset.vectorModel,
-      agentModel: collection.dataset.agentModel,
-      vlmModel: collection.dataset.vlmModel
+      vectorModelId: collection.dataset.vectorModelId,
+      agentModelId: collection.dataset.agentModelId,
+      vlmModelId: collection.dataset.vlmModelId
     });
   });
 }

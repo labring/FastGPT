@@ -5,6 +5,18 @@ import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
 import { getAIProxyAdminConfig } from '@fastgpt/service/thirdProvider/aiproxy/config';
 
+/**
+ * Root admin passthrough to the aiproxy admin API (design §2.9.4).
+ *
+ * CONSTRAINT: this passthrough CAN write (POST/PUT/DELETE) but bypasses the
+ * channel bucket cache-invalidation built into the typed client
+ * (packages/service/core/ai/channel/api.ts) — writes made through it leave
+ * stale cached lists until the 30s TTL expires. It is kept as a raw
+ * root-only ops channel (logs/monitoring/cross-member troubleshooting); all
+ * channel management that must stay consistent with FastGPT's model views
+ * goes through /api/core/ai/channel/* instead.
+ */
+
 // 特殊路径映射，标记需要在末尾保留斜杠的路径
 const endPathMap: Record<string, boolean> = {
   'api/dashboardv2': true

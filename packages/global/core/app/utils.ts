@@ -9,7 +9,7 @@ import pluginErrList from '../../common/error/code/plugin';
 export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
     aiSettings: {
-      model: '',
+      [NodeInputKeyEnum.aiModelId]: '',
       isResponseAnswerText: true,
       maxHistories: 6
     },
@@ -19,7 +19,7 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: true,
-      rerankModel: '',
+      rerankModelId: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: '',

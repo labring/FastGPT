@@ -266,11 +266,11 @@ describe('VectorDB Controller', () => {
         datasetId: 'dataset_456',
         collectionId: 'col_789',
         inputs: ['hello world', 'test text'],
-        model: mockModel as any
+        modelData: mockModel as any
       });
 
       expect(mockGetVectors).toHaveBeenCalledWith({
-        model: mockModel,
+        modelData: mockModel,
         inputs: [
           {
             type: 'text',
@@ -315,11 +315,11 @@ describe('VectorDB Controller', () => {
             input: 'data:image/png;base64,image'
           }
         ],
-        model: mockModel as any
+        modelData: mockModel as any
       });
 
       expect(mockGetVectors).toHaveBeenCalledWith({
-        model: mockModel,
+        modelData: mockModel,
         inputs: [
           {
             type: 'image',
@@ -354,7 +354,7 @@ describe('VectorDB Controller', () => {
         datasetId: 'dataset_def',
         collectionId: 'col_ghi',
         inputs: ['single input'],
-        model: mockModel as any
+        modelData: mockModel as any
       });
 
       expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
@@ -375,7 +375,7 @@ describe('VectorDB Controller', () => {
         datasetId: 'dataset_def',
         collectionId: 'col_ghi',
         inputs: ['single input'],
-        model: mockModel as any
+        modelData: mockModel as any
       });
 
       expect(result).toEqual({
@@ -405,7 +405,7 @@ describe('VectorDB Controller', () => {
         datasetId: 'dataset_def',
         collectionId: 'col_ghi',
         inputs: ['single input'],
-        model: mockModel as any
+        modelData: mockModel as any
       });
 
       await vi.advanceTimersByTimeAsync(3000);
@@ -427,7 +427,7 @@ describe('VectorDB Controller', () => {
         datasetId: 'dataset_456',
         collectionId: 'col_789',
         inputs: [],
-        model: mockModel as any
+        modelData: mockModel as any
       });
 
       expect(result).toEqual({

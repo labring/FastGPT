@@ -11,6 +11,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDatasetTestResponse } from '@fastgpt/global/openapi/core/dataset/api';
+import type { GetSystemDefaultModelResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { SearchTestFormType, SearchTestImageRef } from '../type';
 
 export const useDatasetSearchTest = ({
@@ -20,14 +21,7 @@ export const useDatasetSearchTest = ({
 }: {
   datasetId: string;
   queryImageRefs: SearchTestImageRef[];
-  defaultModels: {
-    rerank?: {
-      model?: string;
-    };
-    llm?: {
-      model?: string;
-    };
-  };
+  defaultModels?: GetSystemDefaultModelResponse;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -41,12 +35,12 @@ export const useDatasetSearchTest = ({
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.5,
         usingReRank: false,
-        rerankModel: defaultModels?.rerank?.model,
+        rerankModelId: defaultModels?.rerank?.id,
         rerankWeight: 0.5,
         limit: 5000,
         similarity: 0,
         datasetSearchUsingExtensionQuery: false,
-        datasetSearchExtensionModel: defaultModels.llm?.model,
+        datasetSearchExtensionModelId: defaultModels?.llm?.id,
         datasetSearchExtensionBg: ''
       }
     }

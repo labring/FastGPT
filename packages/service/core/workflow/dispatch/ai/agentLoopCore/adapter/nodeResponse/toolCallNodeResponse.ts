@@ -8,6 +8,7 @@ export type CreateAgentLoopCoreToolCallNodeResponseParams = {
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
   toolTotalPoints: number;
+  modelId: string;
   modelName: string;
   query: string;
   completeMessages: ChatCompletionMessageParam[];
@@ -29,6 +30,7 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   toolCallInputTokens,
   toolCallOutputTokens,
   toolTotalPoints,
+  modelId,
   modelName,
   query,
   completeMessages,
@@ -42,6 +44,7 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   toolCallInputTokens,
   toolCallOutputTokens,
   childTotalPoints: toolTotalPoints,
+  modelId,
   model: modelName,
   query,
   historyPreview: getHistoryPreview(

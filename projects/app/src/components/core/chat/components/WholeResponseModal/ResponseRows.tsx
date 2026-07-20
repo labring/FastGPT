@@ -259,8 +259,8 @@ export const DatasetSearchRows = ({
             rawDom={
               <Box>
                 {activeModule.searchUsingReRank ? (
-                  activeModule.rerankModel ? (
-                    <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                  activeModule.rerankModelId ? (
+                    <Box>{`${activeModule.rerankModelId}: ${activeModule.rerankWeight}`}</Box>
                   ) : (
                     'True'
                   )

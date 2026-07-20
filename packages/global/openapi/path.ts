@@ -1,5 +1,7 @@
 import { AIPath } from './core/ai';
 import { SkillPath } from './core/ai/skill';
+import { ModelPath } from './core/ai/model';
+import { ChannelPath } from './core/ai/channel';
 import { AppPath } from './core/app';
 import { ChatPath } from './core/chat';
 import { DatasetPath } from './core/dataset';
@@ -23,7 +25,9 @@ export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...CommonPath,
   ...InvokePath,
   ...AIPath,
-  ...SkillPath
+  ...SkillPath,
+  ...ModelPath,
+  ...ChannelPath
 };
 
 export const openAPITagGroups = [
@@ -52,7 +56,12 @@ export const openAPITagGroups = [
   },
   {
     name: '核心-AI 相关',
-    tags: [DevApiTagsMap.aiSkill, DevApiTagsMap.sandbox, DevApiTagsMap.aiCommon]
+    tags: [
+      DevApiTagsMap.aiSkill,
+      DevApiTagsMap.sandbox,
+      DevApiTagsMap.aiCommon,
+      DevApiTagsMap.model
+    ]
   },
   {
     name: '核心 - AI 辅助生成',
@@ -144,7 +153,8 @@ export const adminOpenAPITagGroups = [
       DevApiTagsMap.adminApps,
       DevApiTagsMap.adminUsers,
       DevApiTagsMap.adminTeams,
-      DevApiTagsMap.adminDatasets
+      DevApiTagsMap.adminDatasets,
+      DevApiTagsMap.adminModels
     ]
   },
   {

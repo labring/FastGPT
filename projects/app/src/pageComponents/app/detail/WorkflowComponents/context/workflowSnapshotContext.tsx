@@ -5,11 +5,14 @@ import { useTranslation } from 'next-i18next';
 import type { Node, Edge } from 'reactflow';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import {
+  buildLlmModelMap,
   compareSnapshot,
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { WorkflowBufferDataContext } from './workflowInitContext';
@@ -97,6 +100,8 @@ const maxSnapshots = 100;
 const snapshotDebounceTime = 1000;
 
 export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNode }) => {
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const llmModelMap = buildLlmModelMap(llmModelList);
   const { t } = useTranslation();
 
   // 获取 WorkflowBufferDataContext 的数据
@@ -312,7 +317,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
           .map((edge) => edge.target)
       );
       const nodes = normalizedWorkflow.nodes.map((item) =>
-        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId), llmModelMap })
       );
 
       resetSnapshot({

@@ -13,8 +13,8 @@ const createDatasetContext = async () => {
     teamId: root.teamId,
     tmbId: root.tmbId,
     type: DatasetTypeEnum.dataset,
-    vectorModel: 'text-embedding-3-small',
-    agentModel: 'gpt-4o-mini'
+    vectorModelId: 'text-embedding-3-small',
+    agentModelId: 'gpt-4o-mini'
   });
   const collection = await MongoDatasetCollection.create({
     name: 'test collection',

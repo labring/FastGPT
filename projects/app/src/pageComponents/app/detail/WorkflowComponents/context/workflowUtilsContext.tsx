@@ -6,9 +6,12 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   adaptCatchError,
+  buildLlmModelMap,
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
+import { useActiveSystemModelList } from '@/web/core/ai/hooks';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
@@ -126,6 +129,8 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const { list: llmModelList } = useActiveSystemModelList(ModelTypeEnum.llm);
+  const llmModelMap = buildLlmModelMap(llmModelList);
   const { toast } = useToast();
   const { fitView } = useReactFlow();
   const { feConfigs } = useSystemStore();
@@ -322,7 +327,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       );
       const nodes =
         storeNodes?.map((item) =>
-          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId), llmModelMap})
         ) || [];
       const edges =
         normalizedWorkflow.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];

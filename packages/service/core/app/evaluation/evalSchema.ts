@@ -31,10 +31,11 @@ const EvaluationSchema = new Schema({
     ref: UsageCollectionName,
     required: true
   },
-  evalModel: {
-    type: String,
-    required: true
+  evalModelId: {
+    type: String
   },
+  /** @deprecated Hot-upgrade compatibility. Use evalModelId. */
+  evalModel: String,
   name: {
     type: String,
     required: true

@@ -11,6 +11,7 @@ type Props = FlexProps & {
   hoverBorderColor?: string;
   tip?: string;
   isLoading?: boolean;
+  isDisabled?: boolean;
 };
 
 const MyIconButton = ({
@@ -22,6 +23,7 @@ const MyIconButton = ({
   size = '1rem',
   tip,
   isLoading = false,
+  isDisabled = false,
   ...props
 }: Props) => {
   return (
@@ -34,14 +36,15 @@ const MyIconButton = ({
         alignItems={'center'}
         bg={'transparent'}
         transition={'background 0.1s'}
-        cursor={'pointer'}
+        cursor={isDisabled ? 'not-allowed' : 'pointer'}
+        opacity={isDisabled ? 0.4 : 1}
         _hover={{
           bg: hoverBg,
           color: hoverColor,
           borderColor: hoverBorderColor
         }}
         onClick={(e) => {
-          if (isLoading) return;
+          if (isLoading || isDisabled) return;
           onClick?.(e);
         }}
         sx={{ userSelect: 'none' }}

@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { mergePiAgentPayload } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/payload';
 
+const MODEL_ID = 'gpt-5-id';
+
 const createModel = (overrides: Record<string, unknown> = {}) =>
   ({
+    id: MODEL_ID,
     type: ModelTypeEnum.llm,
     provider: 'openai',
     model: 'gpt-5',
@@ -23,12 +26,23 @@ const createModel = (overrides: Record<string, unknown> = {}) =>
 const createRuntime = (model: unknown, llmParams: Record<string, unknown> = {}) =>
   ({
     llmParams: {
-      model,
+      modelId: (model as any)?.id ?? MODEL_ID,
       ...llmParams
     }
   }) as any;
 
 describe('mergePiAgentPayload', () => {
+  let originalLlmModelIdMap: typeof global.llmModelIdMap;
+
+  beforeEach(() => {
+    originalLlmModelIdMap = global.llmModelIdMap;
+    global.llmModelIdMap = new Map([[MODEL_ID, createModel()]]) as any;
+  });
+
+  afterEach(() => {
+    global.llmModelIdMap = originalLlmModelIdMap;
+  });
+
   it('maps supported model parameters and parses json5 response schemas', () => {
     const result = mergePiAgentPayload({
       payload: {
@@ -65,24 +79,25 @@ describe('mergePiAgentPayload', () => {
   });
 
   it('omits unsupported optional parameters while preserving max token mapping', () => {
+    const limitedModel = createModel({
+      id: 'limited-id',
+      maxResponse: 1024,
+      maxTemperature: undefined,
+      showTopP: false,
+      showStopSign: false,
+      responseFormatList: []
+    });
+    global.llmModelIdMap = new Map([['limited-id', limitedModel]]) as any;
+
     const result = mergePiAgentPayload({
       payload: { messages: [] },
-      runtime: createRuntime(
-        createModel({
-          maxResponse: 1024,
-          maxTemperature: undefined,
-          showTopP: false,
-          showStopSign: false,
-          responseFormatList: []
-        }),
-        {
-          maxTokens: 2048,
-          temperature: 5,
-          topP: 0.7,
-          stop: '<END>',
-          responseFormat: { type: 'json_object' }
-        }
-      )
+      runtime: createRuntime(limitedModel, {
+        maxTokens: 2048,
+        temperature: 5,
+        topP: 0.7,
+        stop: '<END>',
+        responseFormat: { type: 'json_object' }
+      })
     });
 
     expect(result).toEqual({

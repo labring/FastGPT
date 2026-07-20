@@ -4,11 +4,13 @@ const {
   createLLMResponseMock,
   filterGPTMessageByMaxContextMock,
   getLLMModelMock,
+  getEmbeddingModelMock,
   lazyGreedyQuerySelectionMock
 } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn(),
   filterGPTMessageByMaxContextMock: vi.fn(),
   getLLMModelMock: vi.fn(),
+  getEmbeddingModelMock: vi.fn(),
   lazyGreedyQuerySelectionMock: vi.fn()
 }));
 
@@ -20,8 +22,12 @@ vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
   filterGPTMessageByMaxContext: filterGPTMessageByMaxContextMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: getLLMModelMock
+vi.mock('@fastgpt/service/core/ai/model/cache', () => ({
+  getLLMModel: getLLMModelMock,
+  getEmbeddingModel: getEmbeddingModelMock,
+  // Tests drive valid model data via the mocks above; pass the guards through.
+  assertModelUsable: (model: unknown) => model,
+  assertModelActive: () => undefined
 }));
 
 vi.mock('@fastgpt/service/core/ai/hooks/useTextCosine', () => ({
@@ -37,9 +43,14 @@ describe('queryExtension', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getLLMModelMock.mockReturnValue({
+      id: 'llm-model-id',
       model: 'gpt-query',
       maxContext: 4000,
       reasoning: true
+    });
+    getEmbeddingModelMock.mockReturnValue({
+      id: 'embedding-model-id',
+      model: 'embedding-query'
     });
     filterGPTMessageByMaxContextMock.mockResolvedValue([]);
     lazyGreedyQuerySelectionMock.mockResolvedValue({
@@ -62,8 +73,8 @@ describe('queryExtension', () => {
     await queryExtension({
       query: 'original query',
       histories: [],
-      llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query',
+      llmModelId: 'llm-model-id',
+      embeddingModelId: 'embedding-model-id',
       teamId: 'team_1'
     });
 
@@ -72,6 +83,7 @@ describe('queryExtension', () => {
 
   it('does not send reasoning effort when the query extension model does not support it', async () => {
     getLLMModelMock.mockReturnValue({
+      id: 'llm-model-id',
       model: 'gpt-query',
       maxContext: 4000,
       reasoning: false
@@ -89,8 +101,8 @@ describe('queryExtension', () => {
     await queryExtension({
       query: 'original query',
       histories: [],
-      llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query',
+      llmModelId: 'llm-model-id',
+      embeddingModelId: 'embedding-model-id',
       teamId: 'team_1'
     });
 
@@ -111,8 +123,8 @@ describe('queryExtension', () => {
     const result = await queryExtension({
       query: 'original query',
       histories: [],
-      llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query',
+      llmModelId: 'llm-model-id',
+      embeddingModelId: 'embedding-model-id',
       teamId: 'team_1'
     });
 
@@ -120,7 +132,9 @@ describe('queryExtension', () => {
       rawQuery: 'original query',
       extensionQueries: ['expanded query'],
       llmModel: 'gpt-query',
+      llmModelId: 'llm-model-id',
       embeddingModel: 'embedding-query',
+      embeddingModelId: 'embedding-model-id',
       requestId: 'req_query_extension',
       seconds: expect.any(Number),
       inputTokens: 11,
@@ -144,8 +158,8 @@ describe('queryExtension', () => {
     await queryExtension({
       query: 'original query',
       histories: [],
-      llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query',
+      llmModelId: 'llm-model-id',
+      embeddingModelId: 'embedding-model-id',
       teamId: 'team_1'
     });
 
@@ -171,8 +185,8 @@ describe('queryExtension', () => {
     const result = await queryExtension({
       query: 'original query',
       histories: [],
-      llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query',
+      llmModelId: 'llm-model-id',
+      embeddingModelId: 'embedding-model-id',
       teamId: 'team_1'
     });
 
@@ -206,8 +220,8 @@ describe('queryExtension', () => {
       chatBg: '当前对话围绕产品 A。唯一背景 42。',
       query: '权限资源接入测试问题 42',
       histories: [],
-      llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query',
+      llmModelId: 'llm-model-id',
+      embeddingModelId: 'embedding-model-id',
       teamId: 'team_1',
       generateCount: 4
     });
