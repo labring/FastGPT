@@ -7,11 +7,11 @@ describe('VisitorIdSchema', () => {
       '550e8400-e29b-41d4-a716-446655440000'
     );
     expect(VisitorIdSchema.parse('fg_m1_test_123')).toBe('fg_m1_test_123');
+    expect(VisitorIdSchema.parse('visitor/with/path')).toBe('visitor/with/path');
   });
 
-  it('rejects empty, oversized, and unsupported visitor ids', () => {
+  it('rejects empty and oversized visitor ids', () => {
     expect(VisitorIdSchema.safeParse('  ').success).toBe(false);
     expect(VisitorIdSchema.safeParse('a'.repeat(65)).success).toBe(false);
-    expect(VisitorIdSchema.safeParse('visitor/with/path').success).toBe(false);
   });
 });

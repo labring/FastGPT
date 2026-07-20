@@ -66,8 +66,12 @@ export const getFastGPTSem = (): TrackRegisterParams['fastgpt_sem'] => {
     if (!value) return undefined;
 
     const result = FastGPT_SEM_Schema.safeParse(JSON.parse(value));
-    return result.success ? result.data : undefined;
+    if (result.success) return result.data;
+
+    localStorage.removeItem('fastgpt_sem');
+    return undefined;
   } catch {
+    localStorage.removeItem('fastgpt_sem');
     return undefined;
   }
 };
@@ -88,14 +92,13 @@ export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) =
 
   const currentFastGPTSem = getFastGPTSem();
   const nextFastGPTSem = Object.fromEntries(validEntries);
+  const result = FastGPT_SEM_Schema.safeParse({
+    ...currentFastGPTSem,
+    ...nextFastGPTSem
+  });
 
-  localStorage.setItem(
-    'fastgpt_sem',
-    JSON.stringify({
-      ...currentFastGPTSem,
-      ...nextFastGPTSem
-    })
-  );
+  if (!result.success) return;
+  localStorage.setItem('fastgpt_sem', JSON.stringify(result.data));
 };
 export const removeFastGPTSem = () => {
   localStorage.removeItem('fastgpt_sem');

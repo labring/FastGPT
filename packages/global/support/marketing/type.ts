@@ -7,12 +7,7 @@ export const ShortUrlSchema = z.object({
 });
 export type ShortUrlParams = z.infer<typeof ShortUrlSchema>;
 
-export const VisitorIdSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(64)
-  .regex(/^[A-Za-z0-9_-]+$/);
+export const VisitorIdSchema = z.string().trim().min(1).max(64);
 
 export const FastGPT_SEM_Schema = ShortUrlSchema.extend({
   keyword: z.string().optional(),

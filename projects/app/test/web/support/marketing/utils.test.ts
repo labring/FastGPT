@@ -43,12 +43,21 @@ describe('marketing utils', () => {
 
   it('should persist visitor_id without source attribution fields', () => {
     setFastGPTSem({
-      visitor_id: 'visitor-1'
+      visitor_id: ' visitor-1 '
     });
 
     expect(getFastGPTSem()).toEqual({
       visitor_id: 'visitor-1'
     });
+  });
+
+  it('should not persist an oversized visitor_id', () => {
+    setFastGPTSem({
+      visitor_id: 'a'.repeat(65)
+    });
+
+    expect(localStorage.getItem('fastgpt_sem')).toBeNull();
+    expect(getFastGPTSem()).toBeUndefined();
   });
 
   it('should discard unknown marketing fields', () => {
