@@ -5,6 +5,8 @@ import { ChatPath } from './core/chat';
 import { DatasetPath } from './core/dataset';
 import { PluginPath } from './core/plugin';
 import { SupportPath } from './support';
+import { AdminCorePath } from './admin/core';
+import { AdminSupportPath } from './admin/support';
 import { DevApiTagsMap } from './tag';
 import type { OpenAPIPath } from './type';
 
@@ -102,5 +104,44 @@ export const openAPITagGroups = [
   {
     name: '系统接口',
     tags: [DevApiTagsMap.chatAgentHelper]
+  }
+];
+
+export const adminOpenAPIPaths: NonNullable<OpenAPIPath> = {
+  ...AdminCorePath,
+  ...AdminSupportPath
+};
+
+export const adminOpenAPITagGroups = [
+  {
+    name: '管理员-系统概览',
+    tags: [DevApiTagsMap.adminDashboard, DevApiTagsMap.adminLogs, DevApiTagsMap.adminLicense]
+  },
+  {
+    name: '管理员-资源管理',
+    tags: [
+      DevApiTagsMap.adminApps,
+      DevApiTagsMap.adminUsers,
+      DevApiTagsMap.adminTeams,
+      DevApiTagsMap.adminDatasets
+    ]
+  },
+  {
+    name: '管理员-套餐与支付',
+    tags: [
+      DevApiTagsMap.adminPlans,
+      DevApiTagsMap.adminPays,
+      DevApiTagsMap.adminWalletCoupon,
+      DevApiTagsMap.adminWalletInvoice,
+      DevApiTagsMap.adminWalletRefund
+    ]
+  },
+  {
+    name: '管理员-系统配置',
+    tags: [DevApiTagsMap.adminSettings, DevApiTagsMap.adminInform, DevApiTagsMap.adminAuth]
+  },
+  {
+    name: '管理员-模板管理',
+    tags: [DevApiTagsMap.adminTemplate, DevApiTagsMap.adminTemplateType]
   }
 ];

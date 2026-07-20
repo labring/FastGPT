@@ -72,7 +72,20 @@ export const DevApiTagsMap = {
   adminDashboard: '仪表盘',
   adminInform: '通知管理',
   adminApps: '应用管理',
-  adminWalletCoupon: '兑换码管理'
+  adminWalletCoupon: '兑换码管理',
+  adminUsers: '用户管理',
+  adminTeams: '团队管理',
+  adminDatasets: '知识库管理',
+  adminPays: '订单管理',
+  adminPlans: '套餐管理',
+  adminSettings: '系统配置',
+  adminLogs: '系统日志',
+  adminLicense: '许可证管理',
+  adminTemplate: '模板管理',
+  adminTemplateType: '模板类型管理',
+  adminWalletInvoice: '发票管理',
+  adminWalletRefund: '退款管理',
+  adminAuth: '管理员认证'
 };
 
 export const SystemOpenApiTagMap = {
