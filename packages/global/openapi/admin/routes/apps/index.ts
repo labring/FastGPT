@@ -1,14 +1,13 @@
 import type { OpenAPIPath } from '../../../type';
-import { GetAppsBodySchema, GetAppsResponseSchema } from './api';
 import { DevApiTagsMap } from '../../../tag';
-import { AdminTemplatePath } from './templates';
-import { AdminTemplateTypePath } from './templateType';
+import { GetAppsBodySchema, GetAppsResponseSchema } from '../../core/app/api';
 
-export const AdminAppPath: OpenAPIPath = {
-  '/admin/core/app/getApps': {
+export const AdminRoutesAppsPath: OpenAPIPath = {
+  '/admin/routes/apps/getApps': {
     post: {
-      summary: '获取应用列表',
-      description: '分页获取应用列表，支持按名称和ID搜索',
+      summary: '获取应用列表（路由层）',
+      description:
+        '分页获取应用列表，支持按名称和应用ID搜索。复用与 core/app/getApps 相同的 schema',
       tags: [DevApiTagsMap.adminApps],
       requestBody: {
         content: {
@@ -28,7 +27,5 @@ export const AdminAppPath: OpenAPIPath = {
         }
       }
     }
-  },
-  ...AdminTemplatePath,
-  ...AdminTemplateTypePath
+  }
 };

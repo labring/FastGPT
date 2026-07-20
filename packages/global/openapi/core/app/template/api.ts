@@ -73,7 +73,16 @@ export const GetAppTemplateDetailQuerySchema = z.object({
 });
 export type GetAppTemplateDetailQueryType = z.infer<typeof GetAppTemplateDetailQuerySchema>;
 
-export const GetAppTemplateDetailResponseSchema = AppTemplateSchema.optional().meta({
-  description: '模板详情；未找到模板时为空'
-});
+export const GetAppTemplateDetailResponseSchema = AppTemplateSchema.omit({
+  workflow: true
+})
+  .extend({
+    workflow: z.any().meta({
+      description: '模板对应的应用编排配置；不同应用类型可能使用不同结构'
+    })
+  })
+  .optional()
+  .meta({
+    description: '模板详情；未找到模板时为空'
+  });
 export type GetAppTemplateDetailResponseType = z.infer<typeof GetAppTemplateDetailResponseSchema>;

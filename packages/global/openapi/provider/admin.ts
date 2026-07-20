@@ -1,7 +1,5 @@
 import { createDocument } from 'zod-openapi';
-import { AdminCorePath } from '../admin/core';
-import { AdminSupportPath } from '../admin/support';
-import { DevApiTagsMap } from '../tag';
+import { adminOpenAPIPaths, adminOpenAPITagGroups } from '../path';
 
 export const adminOpenAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -10,27 +8,7 @@ export const adminOpenAPIDocument = createDocument({
     version: '0.1.0',
     description: 'FastGPT Admin API 文档'
   },
-  paths: {
-    ...AdminCorePath,
-    ...AdminSupportPath
-  },
+  paths: adminOpenAPIPaths,
   servers: [{ url: '/api' }],
-  'x-tagGroups': [
-    {
-      name: '仪表盘',
-      tags: [DevApiTagsMap.adminDashboard]
-    },
-    {
-      name: '核心资源管理',
-      tags: [DevApiTagsMap.adminApps]
-    },
-    {
-      name: '系统配置',
-      tags: [DevApiTagsMap.adminInform]
-    },
-    {
-      name: '钱包管理',
-      tags: [DevApiTagsMap.adminWalletCoupon]
-    }
-  ]
+  'x-tagGroups': adminOpenAPITagGroups
 });

@@ -1,7 +1,7 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../logger';
-import { Pool } from 'pg';
-import type { QueryResultRow } from 'pg';
+import * as pg from 'pg';
+import type { Pool, QueryResultRow } from 'pg';
 import { OPENGAUSS_ADDRESS } from '../constants';
 import { serviceEnv } from '../../../env';
 
@@ -12,7 +12,7 @@ export const connectOg = async (): Promise<Pool> => {
     return global.pgClient;
   }
 
-  const pool = new Pool({
+  const pool = new pg.Pool({
     connectionString: OPENGAUSS_ADDRESS,
     max: serviceEnv.DB_MAX_LINK,
     min: 15,
