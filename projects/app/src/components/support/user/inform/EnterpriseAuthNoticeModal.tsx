@@ -123,6 +123,7 @@ const EnterpriseAuthNoticeModal = () => {
       isCentered
       size={'md'}
       title={t('common:enterprise_auth_notice_title')}
+      showCloseButton={false}
       footer={<Button onClick={onClose}>{t('common:enterprise_auth_notice_read')}</Button>}
     >
       <Flex flexDirection={'column'} gap={6} overflow={'hidden'}>
