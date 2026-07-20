@@ -569,7 +569,7 @@ const CreateAppsPage = () => {
         {isPc && (
           <Box flex={1} position={'relative'}>
             <Box
-              position={'absolute'}
+              position={'relative'}
               zIndex={10}
               top={'60px'}
               left={'50%'}
@@ -596,7 +596,7 @@ const CreateAppsPage = () => {
             <MyImage
               src={createAppTypeMap[selectedAppType].imgUrl}
               w={'full'}
-              position={'absolute'}
+              position={'relative'}
               top={0}
               left={0}
               right={0}
