@@ -57,6 +57,7 @@ import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { useAppChatGenerateStatusSync } from './useAppChatGenerateStatusSync';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
 import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   ...homeChatFileSelectConfig,
@@ -244,14 +245,14 @@ const HomeChatWindow = () => {
       generatingMessage
     }: StartChatFnProps) => {
       if (!appId) {
-        return Promise.reject('appId is empty');
+        return Promise.reject(new UserError('appId is empty'));
       }
 
       const histories = messages.slice(-1);
 
       // Home chat uses the selected model and tools. Quick apps enter the normal app chat pane.
       if (!selectedModel) {
-        return Promise.reject('No model selected');
+        return Promise.reject(new UserError('No model selected'));
       }
 
       const tools: FlowNodeTemplateType[] = await Promise.all(

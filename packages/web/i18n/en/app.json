@@ -42,7 +42,7 @@
   "ai_settings": "AI Settings",
   "all_apps": "All Applications",
   "app.Version name": "Version Name",
-  "app.error.publish_unExist_app": "Release failed, please check whether the tool call is normal",
+  "app.error.publish_unExist_app": "Release failed. Please check that the tool configuration is correct",
   "app.modules.has new version": "New Version Available",
   "app.version_current": "Current Version",
   "app.version_initial": "Initial Version",

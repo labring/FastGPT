@@ -13,6 +13,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 /**
  * 解析 Chat Completions 请求最终应归属的团队成员。
@@ -141,7 +142,7 @@ export const authChatCompletionHeaderRequest = async ({
     authType === AuthUserTypeEnum.apikey ? appId || parsedAppId || legacyAppId : appId;
 
   if (!currentAppId) {
-    return Promise.reject('appId is empty');
+    return Promise.reject(new UserError('appId is empty'));
   }
 
   const { app, permission } = await (async () => {

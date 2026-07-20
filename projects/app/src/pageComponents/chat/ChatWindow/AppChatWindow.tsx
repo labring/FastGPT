@@ -37,6 +37,7 @@ import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtil
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { useAppChatGenerateStatusSync } from './useAppChatGenerateStatusSync';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -147,7 +148,7 @@ const AppChatWindow = () => {
       generatingMessage
     }: StartChatFnProps) => {
       if (!appId) {
-        return Promise.reject('appId is empty');
+        return Promise.reject(new UserError('appId is empty'));
       }
 
       const histories = messages.slice(-1);

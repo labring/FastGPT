@@ -23,6 +23,7 @@ type ResponseDataType = {
   code: number;
   message: string;
   data: any;
+  errorType?: string;
 };
 
 /**
@@ -49,6 +50,7 @@ function checkRes(data: ResponseDataType) {
     logger.error('Plus request response is empty', { data });
     return Promise.reject('服务器异常');
   } else if (data?.code && (data.code < 200 || data.code >= 400)) {
+    if (data.errorType === 'UserError') return Promise.reject(new UserError(data.message));
     return Promise.reject(data);
   }
   return data.data;
@@ -66,6 +68,9 @@ function responseError(err: any) {
   }
 
   if (err?.response?.data) {
+    if (err.response.data.errorType === 'UserError') {
+      return Promise.reject(new UserError(err.response.data.message));
+    }
     return Promise.reject(err?.response?.data);
   }
   return Promise.reject(err);
