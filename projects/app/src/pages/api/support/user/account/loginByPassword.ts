@@ -87,7 +87,7 @@ async function handler(
 
   setCookie(res, token);
 
-  await reportCRMVisitorIdentity({
+  void reportCRMVisitorIdentity({
     visitorId: visitorIdentity.visitorId,
     userId: String(user._id),
     username: user.username,
