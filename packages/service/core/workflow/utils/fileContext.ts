@@ -1,4 +1,3 @@
-import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -10,9 +9,9 @@ import type {
   UserChatItemFileItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import type { Readable } from 'node:stream';
 import path from 'node:path';
-import { axios } from '../../../common/api/axios';
+import { getFileMaxSize } from '../../../common/file/utils';
+import { readExternalFileBuffer } from '../../../common/file/read/external';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { S3Buckets } from '../../../common/s3/config/constants';
 import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
@@ -23,8 +22,6 @@ import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 const WORKFLOW_FILE_URL_EXPIRED_HOURS = 2;
-const WORKFLOW_FILE_DOWNLOAD_TIMEOUT_MS = 180_000;
-const DEFAULT_WORKFLOW_FILE_MAX_SIZE = 2 * 1024 * 1024 * 1024;
 
 export type WorkflowFileSource =
   | {
@@ -153,7 +150,7 @@ export const prepareWorkflowFileContext = async ({
   histories,
   scope,
   maxFiles,
-  maxFileSize = DEFAULT_WORKFLOW_FILE_MAX_SIZE,
+  maxFileSize = getFileMaxSize(),
   getPreviewUrl: getPreviewUrlInput = createChatFilePreviewUrlGetter({
     expiredHours: WORKFLOW_FILE_URL_EXPIRED_HOURS
   })
@@ -320,29 +317,18 @@ export const prepareWorkflowFileContext = async ({
       };
     }
 
-    const response = await axios.get<Readable>(ref.source.url, {
-      responseType: 'stream',
-      timeout: WORKFLOW_FILE_DOWNLOAD_TIMEOUT_MS,
-      maxContentLength: limits.maxBytesPerFile
+    const { buffer, contentType, contentDisposition } = await readExternalFileBuffer({
+      url: ref.source.url,
+      maxFileSize: limits.maxBytesPerFile
     });
-    const contentLength = Number(getAxiosHeaderValue(response.headers['content-length']) || 0);
-    if (contentLength > limits.maxBytesPerFile) {
-      response.data.destroy();
-      assertFileSize({ size: contentLength, maxBytes: limits.maxBytesPerFile });
-    }
-    const contentDisposition = getAxiosHeaderValue(response.headers['content-disposition']) || '';
 
     return {
-      buffer: await readStreamToBuffer({
-        stream: response.data,
-        maxBytes: limits.maxBytesPerFile,
-        exceededMessage: `File exceeds maximum allowed size (${limits.maxBytesPerFile} bytes)`
-      }),
+      buffer,
       filename:
-        parseContentDispositionFilename(contentDisposition) ||
+        parseContentDispositionFilename(contentDisposition || '') ||
         ref.name ||
         getFileNameFromUrl(ref.source.url),
-      contentType: getAxiosHeaderValue(response.headers['content-type']),
+      contentType,
       sourceKind: 'external'
     };
   };

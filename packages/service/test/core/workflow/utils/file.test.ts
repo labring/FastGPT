@@ -407,6 +407,15 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         text: 'parsed text'
       })
     );
+    expect(mockIsInternalAddress.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockGetRawTextBuffer.mock.invocationCallOrder[0]!
+    );
+    expect(mockGetRawTextBuffer.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockAxiosGet.mock.invocationCallOrder[0]!
+    );
+    expect(mockAxiosGet.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockReadFileContentByBuffer.mock.invocationCallOrder[0]!
+    );
     expect(result[0]).toMatchObject({
       success: true,
       name: 'report.pdf',

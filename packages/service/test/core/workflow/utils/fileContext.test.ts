@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { getFileMaxSize } from '@fastgpt/service/common/file/utils';
 
 const axiosGetMock = vi.hoisted(() => vi.fn());
 
@@ -81,7 +82,7 @@ describe('prepareWorkflowFileContext', () => {
     global.s3BucketMap = originalS3BucketMap;
   });
 
-  it('uses a 2GB per-file limit by default', async () => {
+  it('uses the system file size limit by default', async () => {
     const { fileContext } = await prepareWorkflowFileContext({
       query: [],
       histories: [],
@@ -92,7 +93,7 @@ describe('prepareWorkflowFileContext', () => {
 
     expect(fileContext.limits).toEqual({
       maxFiles: 20,
-      maxBytesPerFile: 2 * 1024 * 1024 * 1024
+      maxBytesPerFile: getFileMaxSize()
     });
   });
 
@@ -385,10 +386,14 @@ describe('prepareWorkflowFileContext', () => {
     expect(getWorkflowFileContext()).toBeUndefined();
   });
 
-  it('falls back to the SSRF-safe reader for unregistered absolute URLs', async () => {
+  it('uses the same workflow size limit for registered and unregistered URLs', async () => {
     const contextRead = vi.fn().mockResolvedValue({ buffer: Buffer.from('internal') });
-    const readExternalFile = vi.fn().mockResolvedValue(Buffer.from('external'));
+    axiosGetMock.mockResolvedValueOnce({
+      data: Readable.from([Buffer.from('outside')]),
+      headers: {}
+    });
     const fileContext = {
+      limits: { maxFiles: 20, maxBytesPerFile: 7 },
       resolve: vi.fn((url: string) =>
         url === 'https://files.example.com/registered' ? ({ id: 'registered' } as any) : undefined
       ),
@@ -403,20 +408,21 @@ describe('prepareWorkflowFileContext', () => {
       async () => {
         await expect(
           readWorkflowFileBuffer({
-            url: 'https://files.example.com/registered',
-            readExternalFile
+            url: 'https://files.example.com/registered'
           })
         ).resolves.toEqual(Buffer.from('internal'));
         await expect(
           readWorkflowFileBuffer({
-            url: 'https://node.example.com/generated.pdf',
-            readExternalFile
+            url: 'https://node.example.com/generated.pdf'
           })
-        ).resolves.toEqual(Buffer.from('external'));
+        ).resolves.toEqual(Buffer.from('outside'));
       }
     );
 
     expect(contextRead).toHaveBeenCalledTimes(1);
-    expect(readExternalFile).toHaveBeenCalledWith('https://node.example.com/generated.pdf');
+    expect(axiosGetMock).toHaveBeenCalledWith(
+      'https://node.example.com/generated.pdf',
+      expect.objectContaining({ maxContentLength: 7, responseType: 'stream' })
+    );
   });
 });

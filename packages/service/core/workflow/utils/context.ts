@@ -4,6 +4,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import type { MCPClient } from '../../app/mcp';
 import { isAbsoluteHttpUrl } from './fileContext';
 import type { WorkflowFileContext, WorkflowFileRegistrar } from './fileContext';
+import { readExternalFileBuffer } from '../../../common/file/read/external';
 
 type ContextType = {
   mcpClientMemory: Record<string, MCPClient>;
@@ -29,19 +30,18 @@ export const getWorkflowFileContext = () => WorkflowContext.getStore()?.fileCont
 /** 获取只供 Workflow 输入适配器使用的文件登记能力。 */
 export const getWorkflowFileRegistrar = () => WorkflowContext.getStore()?.fileRegistrar;
 
-/** 优先直读当前 Workflow 已登记文件，未登记的绝对外链交给带 SSRF 防护的 reader。 */
-export const readWorkflowFileBuffer = async ({
-  url,
-  readExternalFile
-}: {
-  url: string;
-  readExternalFile: (url: string) => Promise<Buffer>;
-}) => {
+/** 优先读取已登记文件，未登记外链复用相同的 SSRF-safe reader 和 Workflow 大小限制。 */
+export const readWorkflowFileBuffer = async ({ url }: { url: string }) => {
   const fileContext = getWorkflowFileContext();
   const ref = fileContext?.resolve(url);
   if (fileContext && ref) return (await fileContext.read(ref)).buffer;
 
-  return readExternalFile(url);
+  return (
+    await readExternalFileBuffer({
+      url,
+      maxFileSize: fileContext?.limits.maxBytesPerFile
+    })
+  ).buffer;
 };
 
 export const updateWorkflowContextVal = (val: Partial<ContextType>) => {

@@ -7,7 +7,6 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { getS3RawTextSource } from '../../common/s3/sources/rawText';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
-import { axios } from '../../common/api/axios';
 import { S3Buckets } from '../../common/s3/config/constants';
 import { S3Sources } from '../../common/s3/contracts/type';
 import {
@@ -22,7 +21,6 @@ import { addDays } from 'date-fns';
 import { replaceS3KeyToPreviewUrl } from '../dataset/utils';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
-import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import {
   DEFAULT_CONTENT_TYPE,
   normalizeMimeType,
@@ -36,12 +34,14 @@ import {
   type VerifiedS3DownloadAccess
 } from '../../common/s3/accessLink';
 import { getFileMaxSize } from '../../common/file/utils';
-import { readStreamToBuffer } from '../../common/s3/utils';
-import { Readable } from 'node:stream';
 import { validateFileUrlDomain } from '../../common/security/fileUrlValidator';
+import { readExternalFileBuffer } from '../../common/file/read/external';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = {
+  limits?: {
+    maxBytesPerFile: number;
+  };
   resolve: (urlOrId: string) =>
     | {
         name: string;
@@ -538,25 +538,9 @@ export const getFileInfoFromUrl = async ({
   }
 
   const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(url);
-  const maxFileSize = getFileMaxSize();
-  const response = await axios.get<Readable>(url, {
-    responseType: 'stream',
-    timeout: 180_000,
-    maxContentLength: maxFileSize
-  });
-  const contentLength = Number(getAxiosHeaderValue(response.headers['content-length']) || 0);
-  if (contentLength > maxFileSize) {
-    response.data.destroy();
-    throw new UserError(`File exceeds maximum allowed size (${maxFileSize} bytes)`);
-  }
-  const responseStream =
-    response.data instanceof Readable
-      ? response.data
-      : Readable.from([Buffer.from(response.data as unknown as ArrayBuffer)]);
-  const buffer = await readStreamToBuffer({
-    stream: responseStream,
-    maxBytes: maxFileSize,
-    exceededMessage: `File exceeds maximum allowed size (${maxFileSize} bytes)`
+  const { buffer, contentType, contentDisposition } = await readExternalFileBuffer({
+    url,
+    maxFileSize: fileContext?.limits?.maxBytesPerFile ?? getFileMaxSize()
   });
 
   const urlObj = new URL(url, 'http://localhost:3000');
@@ -588,8 +572,7 @@ export const getFileInfoFromUrl = async ({
     }
 
     if (isChatExternalUrl) {
-      const contentDisposition = getAxiosHeaderValue(response.headers['content-disposition']) || '';
-      const matchFilename = parseContentDispositionFilename(contentDisposition);
+      const matchFilename = parseContentDispositionFilename(contentDisposition || '');
       const filename =
         shortDownloadAccess?.filename ||
         matchFilename ||
@@ -613,9 +596,7 @@ export const getFileInfoFromUrl = async ({
     filename,
     extension,
     imageParsePrefix,
-    contentType:
-      shortDownloadAccess?.responseContentType ||
-      getAxiosHeaderValue(response.headers['content-type']),
+    contentType: shortDownloadAccess?.responseContentType || contentType,
     stream: buffer
   };
 };
