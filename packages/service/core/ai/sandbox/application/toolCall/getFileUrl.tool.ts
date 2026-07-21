@@ -8,7 +8,7 @@ import path from 'path';
 import { defineTool } from './type';
 import {
   buildSandboxPreviewFileUrl,
-  createSandboxPreviewTicket,
+  createSandboxPreviewSession,
   resolveSandboxPreviewPath
 } from '../preview';
 
@@ -19,6 +19,11 @@ const SandboxGetFileUrlToolSchema = z.object({
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
   execute: async ({ sandboxInstance, params }) => {
+    if (params.paths.length === 0) {
+      return { response: '[]' };
+    }
+
+    const sandboxId = sandboxInstance.getSandboxId();
     const { sourceType, sourceId, userId, chatId } = sandboxInstance.getContext();
 
     if (!sourceId || userId === undefined || !chatId) {
@@ -44,14 +49,19 @@ export const sandboxGetFileUrlTool = defineTool({
       }
     }
 
-    const ticket = createSandboxPreviewTicket({
+    const sessionId = await createSandboxPreviewSession({
+      sandboxId,
       sourceType,
       sourceId,
       userId,
       chatId
     });
     const result = files.map(({ filePath, relativePath }) => ({
-      fileUrl: buildSandboxPreviewFileUrl({ ticket, filePath }),
+      fileUrl: buildSandboxPreviewFileUrl({
+        sandboxId,
+        sessionId,
+        filePath
+      }),
       filename: path.posix.basename(relativePath)
     }));
 

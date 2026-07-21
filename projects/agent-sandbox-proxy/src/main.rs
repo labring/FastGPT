@@ -29,7 +29,8 @@ struct WsQuery {
 
 #[derive(Deserialize)]
 struct PreviewPath {
-    ticket: String,
+    sandbox_id: String,
+    session_id: String,
     path: String,
 }
 
@@ -76,14 +77,14 @@ fn websocket_router() -> Router {
 
 fn preview_router() -> Router {
     Router::new().route("/health", get(health_check)).route(
-        "/preview/{ticket}/{*path}",
+        "/preview/{sandbox_id}/{session_id}/{*path}",
         get(preview_handler).head(preview_handler),
     )
 }
 
 fn combined_router() -> Router {
     websocket_router().route(
-        "/preview/{ticket}/{*path}",
+        "/preview/{sandbox_id}/{session_id}/{*path}",
         get(preview_handler).head(preview_handler),
     )
 }
@@ -152,15 +153,26 @@ fn verify_ticket_for_channel(
     Ok(claims)
 }
 
-fn verify_preview_ticket(ticket: &str) -> Result<auth::PreviewClaims, String> {
-    let claims = auth::verify_preview_jwt_ticket(ticket)?;
-    if claims.channel != "preview" {
-        return Err("ticket channel mismatch".to_string());
+fn verify_preview_session_id(sandbox_id: &str, session_id: &str) -> Result<(), String> {
+    let Some((source_prefix, sandbox_hash)) = sandbox_id.split_once('-') else {
+        return Err("invalid preview session id".to_string());
+    };
+    let hash_bytes = sandbox_hash.as_bytes();
+    let session_bytes = session_id.as_bytes();
+    if !matches!(source_prefix, "app" | "skilledit")
+        || hash_bytes.len() != 16
+        || !hash_bytes
+            .iter()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
+        || session_bytes.len() != 24
+        || !session_bytes[0].is_ascii_lowercase()
+        || !session_bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric())
+    {
+        return Err("invalid preview session id".to_string());
     }
-    if claims.permission != "read" {
-        return Err("preview ticket requires read permission".to_string());
-    }
-    Ok(claims)
+    Ok(())
 }
 
 async fn fs_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl IntoResponse {
@@ -200,18 +212,19 @@ async fn preview_handler(
     method: Method,
     headers: HeaderMap,
 ) -> Response<Body> {
-    if let Err(error) = verify_preview_ticket(&params.ticket) {
-        error!("[Preview] Ticket verification failed: {}", error);
-        return preview_error_response(StatusCode::UNAUTHORIZED, "Unauthorized preview ticket");
+    if let Err(error) = verify_preview_session_id(&params.sandbox_id, &params.session_id) {
+        error!("[Preview] Session validation failed: {}", error);
+        return preview_error_response(StatusCode::UNAUTHORIZED, "Unauthorized preview session");
     }
+    let preview_credential = format!("{}:{}", params.sandbox_id, params.session_id);
 
-    let address = match resolve_cached_sandbox_address(&params.ticket).await {
+    let address = match resolve_cached_sandbox_address(&preview_credential).await {
         Ok(address) => address,
         Err(error) => {
-            error!("[Preview] Ticket resolution failed: {}", error);
+            error!("[Preview] Session resolution failed: {}", error);
             return preview_error_response(
                 StatusCode::FORBIDDEN,
-                "Preview ticket resolution failed",
+                "Preview session resolution failed",
             );
         }
     };
@@ -220,9 +233,9 @@ async fn preview_handler(
         Ok(response) => response,
         Err(first_error) => {
             error!("[Preview] Cached upstream request failed: {}", first_error);
-            invalidate_cached_sandbox_address(&params.ticket).await;
+            invalidate_cached_sandbox_address(&preview_credential).await;
 
-            let fresh_address = match resolve_cached_sandbox_address(&params.ticket).await {
+            let fresh_address = match resolve_cached_sandbox_address(&preview_credential).await {
                 Ok(address) => address,
                 Err(error) => {
                     error!("[Preview] Upstream re-resolution failed: {}", error);
@@ -242,44 +255,35 @@ async fn preview_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{EncodingKey, Header, encode};
-    use std::time::{SystemTime, UNIX_EPOCH};
 
-    fn preview_ticket(permission: &str) -> String {
-        auth::init_test_proxy_secret();
-        let exp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            + 60;
-        encode(
-            &Header::default(),
-            &auth::PreviewClaims {
-                source_type: "app".to_string(),
-                source_id: "app-id".to_string(),
-                user_id: "user-id".to_string(),
-                chat_id: "chat-id".to_string(),
-                channel: "preview".to_string(),
-                permission: permission.to_string(),
-                exp,
-            },
-            &EncodingKey::from_secret(auth::get_proxy_secret().as_bytes()),
-        )
-        .unwrap()
+    #[test]
+    fn accepts_preview_session_ids() {
+        assert!(
+            verify_preview_session_id("app-0123456789abcdef", "a12345678901234567890123").is_ok()
+        );
+        assert!(
+            verify_preview_session_id("skilledit-0123456789abcdef", "a12345678901234567890123")
+                .is_ok()
+        );
     }
 
     #[test]
-    fn accepts_read_only_preview_tickets() {
-        let ticket = preview_ticket("read");
-        let claims = verify_preview_ticket(&ticket).unwrap();
-        assert_eq!(claims.channel, "preview");
-        assert_eq!(claims.permission, "read");
-    }
-
-    #[test]
-    fn rejects_preview_write_permission_and_channel_mismatch() {
-        let ticket = preview_ticket("write");
-        assert!(verify_preview_ticket(&ticket).is_err());
-        assert!(verify_ticket_for_channel(&ticket, "fs").is_err());
+    fn rejects_invalid_preview_session_ids() {
+        assert!(verify_preview_session_id("short", "a12345678901234567890123").is_err());
+        assert!(verify_preview_session_id("0123456789abcdef", "a12345678901234567890123").is_err());
+        assert!(
+            verify_preview_session_id("other-0123456789abcdef", "a12345678901234567890123")
+                .is_err()
+        );
+        assert!(
+            verify_preview_session_id("app-0123456789abcdef", "A12345678901234567890123").is_err()
+        );
+        assert!(
+            verify_preview_session_id("app-0123456789abcdef", "a1234567890123456789012-").is_err()
+        );
+        assert!(
+            verify_preview_session_id("app-0123456789abcdeG", "a12345678901234567890123").is_err()
+        );
+        assert!(verify_ticket_for_channel("a12345678901234567890123", "fs").is_err());
     }
 }
