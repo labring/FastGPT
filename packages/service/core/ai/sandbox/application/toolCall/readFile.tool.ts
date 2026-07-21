@@ -5,7 +5,6 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { SANDBOX_TOOL_MAX_BYTES, truncateSandboxToolOutput } from './utils';
 
 export const SandboxReadFileToolSchema = z.object({
@@ -26,7 +25,10 @@ export const sandboxReadFileTool = defineTool({
   execute: async ({ sandboxInstance, params }) => {
     await sandboxInstance.ensureAvailable();
 
-    const [file] = await sandboxInstance.provider.readFiles([params.path]);
+    const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
+      allowAbsolutePath: true
+    });
+    const [file] = await sandboxInstance.provider.readFiles([providerPath]);
     if (!file || file.error) {
       throw new Error(`Failed to read file: ${file?.error?.message || params.path}`);
     }
@@ -76,7 +78,3 @@ export const sandboxReadFileTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_READ_FILE_TOOL_NAME]: sandboxReadFileTool
-};

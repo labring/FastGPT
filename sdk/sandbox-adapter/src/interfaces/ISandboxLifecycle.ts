@@ -1,4 +1,4 @@
-import type { SandboxId, SandboxInfo, SandboxStatus } from '../types';
+import type { SandboxEnsureRunningOptions, SandboxId, SandboxInfo, SandboxStatus } from '../types';
 
 /**
  * Interface for sandbox lifecycle operations.
@@ -12,9 +12,10 @@ export interface ISandboxLifecycle {
   readonly status: SandboxStatus;
 
   /**
-   * Ensure the sandbox is running.
+   * Ensure the sandbox is running. When allowCreate is false, a missing or deleting
+   * provider resource must fail instead of being recreated.
    */
-  ensureRunning(): Promise<void>;
+  ensureRunning(options?: SandboxEnsureRunningOptions): Promise<void>;
 
   /**
    * Create a new sandbox with the given configuration.

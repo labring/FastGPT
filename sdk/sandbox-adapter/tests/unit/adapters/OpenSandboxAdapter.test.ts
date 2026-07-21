@@ -131,6 +131,21 @@ describe('OpenSandboxAdapter', () => {
       expect(adapter.status.state).toBe('UnExist');
     });
 
+    it('should treat a raced not-found kill as an idempotent delete', async () => {
+      const adapter = makeAdapter();
+      const killSandbox = vi.fn(async () => {
+        throw { code: 404, message: 'sandbox not found' };
+      });
+      const close = vi.fn(async () => undefined);
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        killSandbox,
+        close
+      } as unknown as SandboxManager);
+
+      await expect(adapter.delete('missing-instance')).resolves.toBeUndefined();
+      expect(adapter.status.state).toBe('UnExist');
+    });
+
     it('should delete an unbound sandbox by looking up the connection session id', async () => {
       const adapter = makeAdapter({ sessionId: 'session-1' });
       const listSandboxInfos = vi.fn(async () => ({
@@ -229,6 +244,32 @@ describe('OpenSandboxAdapter', () => {
       );
       expect(adapter.id).toBe('opensandbox-instance-1');
       expect(adapter.status.state).toBe('Running');
+    });
+
+    it('should not replace a deleting sandbox when creation is disabled', async () => {
+      const adapter = makeAdapter({ sessionId: 'session-1' });
+      const listSandboxInfos = vi.fn(async () => ({
+        items: [
+          {
+            id: 'opensandbox-instance-1',
+            status: { state: 'deleting' }
+          }
+        ]
+      }));
+      const close = vi.fn(async () => undefined);
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        listSandboxInfos,
+        close
+      } as unknown as SandboxManager);
+      const create = vi.spyOn(Sandbox, 'create');
+
+      await expect(adapter.ensureRunning({ allowCreate: false })).rejects.toThrow(
+        'Sandbox session session-1 is deleting'
+      );
+
+      expect(create).not.toHaveBeenCalled();
+      expect(listSandboxInfos).toHaveBeenCalledTimes(1);
+      expect(close).toHaveBeenCalledTimes(1);
     });
 
     it('should wait by session id when existing sandbox is deleting before creating a replacement', async () => {

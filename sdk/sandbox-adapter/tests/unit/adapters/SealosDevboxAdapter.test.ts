@@ -312,6 +312,44 @@ describe('SealosDevboxAdapter', () => {
     expect(adapter.status.state).toBe('Stopped');
   });
 
+  it('should not create a missing Devbox when creation is disabled', async () => {
+    const fetchMock = vi.fn(async () => ({
+      json: async () => ({
+        code: 404,
+        message: 'devbox not found',
+        data: null
+      })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const adapter = new SealosDevboxAdapter(CONFIG);
+
+    await expect(adapter.ensureRunning({ allowCreate: false })).rejects.toMatchObject({
+      code: 'SANDBOX_NOT_FOUND',
+      message: 'Sandbox devbox-1 does not exist'
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not treat a failed Devbox info envelope as a missing resource', async () => {
+    const fetchMock = vi.fn(async () => ({
+      json: async () => ({
+        code: 500,
+        message: 'upstream failed',
+        data: null
+      })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const adapter = new SealosDevboxAdapter(CONFIG);
+
+    await expect(adapter.ensureRunning()).rejects.toMatchObject({
+      code: 'CONNECTION_ERROR',
+      message: 'Failed to get sandbox info: upstream failed'
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('should resume an existing Devbox when phase is Stopped', async () => {
     vi.useFakeTimers();
     const fetchMock = vi

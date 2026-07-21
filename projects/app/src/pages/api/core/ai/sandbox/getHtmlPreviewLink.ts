@@ -41,10 +41,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       sourceId: resolvedSourceId,
       userId: uid,
       chatId
-    }),
-    {
-      failedArchivePolicy: 'clearAndContinue'
-    }
+    })
   );
   const { content, contentType } = await getSandboxFileContent(sandbox, filePath, true);
 

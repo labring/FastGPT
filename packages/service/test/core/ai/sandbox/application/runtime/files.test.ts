@@ -82,6 +82,7 @@ describe('sandbox runtime files', () => {
           url: 'https://files.example.com/private.pdf'
         }
       ],
+      '',
       readInputFile
     );
 
