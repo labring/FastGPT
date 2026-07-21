@@ -165,8 +165,8 @@ x-service-env-config: &x-service-env-config
   WORKFLOW_HTTP_IGNORE_HTTPS_CERT: false
 
 # 向量库相关配置
-x-vec-config: &x-vec-config # ${{vec.config}}
-
+x-vec-config: &x-vec-config
+  # ${{vec.config}}
 
 services:
   # ${{vec.db}}
