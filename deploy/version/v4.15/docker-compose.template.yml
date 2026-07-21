@@ -75,6 +75,8 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
   # 浏览器访问 agent-sandbox-proxy 的地址。启用 Agent/Skill 沙盒时，必须改成单独部署的 proxy 的 ws:// 或 wss:// 地址。
   AGENT_SANDBOX_PROXY_URL:
+  # 浏览器访问 sandbox preview 的 http:// 或 https:// 地址。默认单端口部署时与 WebSocket 使用相同端口。
+  AGENT_SANDBOX_PREVIEW_PROXY_URL:
   AGENT_SANDBOX_OPENSANDBOX_BASEURL:
   AGENT_SANDBOX_OPENSANDBOX_API_KEY:
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
