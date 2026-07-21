@@ -105,8 +105,7 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
 
   return {
     ...original,
-    axios: mockClient,
-    pickOutboundAxios: () => mockClient
+    axios: mockClient
   };
 });
 
