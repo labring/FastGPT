@@ -44,6 +44,7 @@ jobs:
           repository: ${{ github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name || github.repository
             }}
+          allow-unsafe-pr-checkout: true
       - name: Update submodules
         env:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
