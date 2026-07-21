@@ -6,14 +6,14 @@
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSafeSandboxInputFilename } from '../../utils';
-import { readSandboxUrlFile } from '../file';
+import { readSandboxUrlFile, type SandboxInputFileReader } from '../file';
+
+export type { SandboxInputFileReader } from '../file';
 
 export type SandboxInputFile = {
   name: string;
   url: string;
 };
-
-export type SandboxInputFileReader = (url: string) => Promise<Buffer>;
 
 export type SandboxCommandClient = {
   exec: (command: string) => Promise<{

@@ -449,7 +449,7 @@ export const normalizeReadableFileUrl = ({
 
   if (fileContext) {
     const ref = fileContext.resolve(normalizedUrl);
-    return ref?.type === ChatFileTypeEnum.file ? ref.modelUrl : '';
+    if (ref) return ref.type === ChatFileTypeEnum.file ? ref.modelUrl : '';
   }
 
   if (!/^https?:\/\//i.test(normalizedUrl)) return '';
@@ -476,10 +476,6 @@ export const getFileInfoFromUrl = async ({
   fileContext?: FileReadContext;
 }) => {
   const fileRef = fileContext?.resolve(url);
-  if (fileContext && !fileRef) {
-    throw new UserError('File is not registered in the provided context');
-  }
-
   if (fileRef && fileContext) {
     const { buffer, filename, contentType, sourceKind, imageParsePrefix } =
       await fileContext.read(url);

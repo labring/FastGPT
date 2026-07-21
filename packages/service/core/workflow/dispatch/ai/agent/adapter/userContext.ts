@@ -53,7 +53,6 @@ export function parseAgentInputFiles({
       ref: workflowFileContext?.resolve(item.url)
     }))
     .map(({ file, ref }) => {
-      if (workflowFileContext && !ref) return;
       const url = ref?.modelUrl ?? file.url;
       if (!/^https?:\/\//i.test(url)) return;
 

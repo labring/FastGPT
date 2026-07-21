@@ -5,6 +5,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
+  ChatFileStoreValue,
   ChatItemMiniType,
   UserChatItemFileItemType,
   UserChatItemValueItemType
@@ -71,6 +72,15 @@ export type WorkflowFileEntryScope = {
   chatId: string;
 };
 
+export type WorkflowFileRegistrationSource = 'query' | 'history' | 'variable' | 'interactive';
+
+export type WorkflowFileRegistrar = {
+  registerInputFile: (params: {
+    file: ChatFileStoreValue | UserChatItemFileItemType;
+    source: WorkflowFileRegistrationSource;
+  }) => Promise<WorkflowFileRef | undefined>;
+};
+
 type PrepareWorkflowFileContextParams = {
   query: UserChatItemValueItemType[];
   histories: ChatItemMiniType[];
@@ -82,6 +92,7 @@ type PrepareWorkflowFileContextParams = {
 
 export type PreparedWorkflowFileContext = {
   fileContext: WorkflowFileContext;
+  fileRegistrar: WorkflowFileRegistrar;
   getPreviewUrl: (key: string) => Promise<string>;
 };
 
@@ -175,44 +186,47 @@ export const prepareWorkflowFileContext = async ({
     return previewUrlPromise;
   };
 
-  const registerFile = async ({
+  const registerInputFile: WorkflowFileRegistrar['registerInputFile'] = async ({
     file,
     source
-  }: {
-    file: UserChatItemFileItemType;
-    source: 'query' | 'history';
   }) => {
-    const originalUrl = file.url;
+    const originalUrl = 'url' in file ? file.url : undefined;
+    const fileKey =
+      'key' in file && typeof file.key === 'string' && file.key ? file.key : undefined;
     const resolvedFile = await (async () => {
-      if (file.key) {
-        assertAuthorizedKey(file.key);
-        const modelUrl = await getPreviewUrl(file.key);
-        file.url = modelUrl;
+      if (fileKey) {
+        assertAuthorizedKey(fileKey);
+        const modelUrl = await getPreviewUrl(fileKey);
+        if ('url' in file) file.url = modelUrl;
 
         return {
-          identity: `chat:${file.key}`,
+          identity: `chat:${fileKey}`,
           modelUrl,
           fileSource: {
             type: 'chatObject' as const,
-            objectKey: file.key
+            objectKey: fileKey
           }
         };
       }
 
-      if (!isAbsoluteHttpUrl(file.url) || !validateFileUrlDomain(file.url)) {
+      const fileUrl = 'url' in file ? file.url : undefined;
+      if (!isAbsoluteHttpUrl(fileUrl) || !validateFileUrlDomain(fileUrl)) {
         if (source === 'query') {
           throw new UserError('Invalid workflow file URL');
         }
-        logger.warn('Skip unavailable workflow history file', { url: file.url });
-        return;
+        if (source === 'history') {
+          logger.warn('Skip unavailable workflow history file', { url: fileUrl });
+          return;
+        }
+        throw new UserError(`Invalid workflow ${source} file URL`);
       }
 
       return {
-        identity: getExternalIdentity(file.url),
-        modelUrl: file.url,
+        identity: getExternalIdentity(fileUrl),
+        modelUrl: fileUrl,
         fileSource: {
           type: 'externalHttp' as const,
-          url: file.url
+          url: fileUrl
         }
       };
     })();
@@ -223,9 +237,11 @@ export const prepareWorkflowFileContext = async ({
     const existingRef = byIdentity.get(identity);
     if (existingRef) {
       byRuntimeUrl.set(modelUrl, existingRef);
-      if (isAbsoluteHttpUrl(originalUrl)) byRuntimeUrl.set(originalUrl, existingRef);
-      file.url = existingRef.modelUrl;
-      return;
+      if (originalUrl && isAbsoluteHttpUrl(originalUrl)) {
+        byRuntimeUrl.set(originalUrl, existingRef);
+      }
+      if ('url' in file) file.url = existingRef.modelUrl;
+      return existingRef;
     }
 
     const ref: WorkflowFileRef = {
@@ -245,17 +261,18 @@ export const prepareWorkflowFileContext = async ({
     if (isAbsoluteHttpUrl(originalUrl)) byRuntimeUrl.set(originalUrl, ref);
     byIdentity.set(identity, ref);
     refIdentity.set(ref, identity);
+    return ref;
   };
 
   for (const item of query) {
-    if (item.file) await registerFile({ file: item.file, source: 'query' });
+    if (item.file) await registerInputFile({ file: item.file, source: 'query' });
   }
 
   for (const history of histories) {
     if (history.obj !== ChatRoleEnum.Human) continue;
     for (const value of history.value) {
       if ('file' in value && value.file) {
-        await registerFile({ file: value.file, source: 'history' });
+        await registerInputFile({ file: value.file, source: 'history' });
       }
     }
   }
@@ -328,6 +345,9 @@ export const prepareWorkflowFileContext = async ({
 
   return {
     getPreviewUrl,
+    fileRegistrar: {
+      registerInputFile
+    },
     fileContext: {
       limits,
       resolve,

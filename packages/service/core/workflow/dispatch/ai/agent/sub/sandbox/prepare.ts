@@ -22,7 +22,8 @@ import {
   type SandboxPrepareStep
 } from '../../../../../../ai/sandbox/interface/runtime';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getWorkflowFileContext } from '../../../../../utils/context';
+import { readSandboxUrlFile } from '../../../../../../ai/sandbox/interface/file';
+import { readWorkflowFileBuffer } from '../../../../../utils/context';
 
 export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   sandboxClient: SandboxClient;
@@ -90,10 +91,11 @@ export async function ensureAgentSandboxRuntime({
     chatId,
     teamId
   });
-  const fileContext = getWorkflowFileContext();
-  const readInputFile = fileContext
-    ? async (url: string) => (await fileContext.read(url)).buffer
-    : undefined;
+  const readInputFile = (url: string) =>
+    readWorkflowFileBuffer({
+      url,
+      readExternalFile: readSandboxUrlFile
+    });
   const preparedContext = await withAgentSandboxInitLease({
     sandboxId: sandboxContext.sandboxClient.getSandboxId(),
     fn: () => {

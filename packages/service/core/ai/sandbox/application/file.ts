@@ -18,6 +18,8 @@ export type SandboxUrlFile = {
   url: string;
 };
 
+export type SandboxInputFileReader = (url: string) => Promise<Buffer>;
+
 export type SandboxFileContent = {
   content: Buffer;
   contentType: string;
@@ -76,13 +78,17 @@ export const readSandboxUrlFile = async (url: string) => {
  *
  * 这里不负责 sandbox 生命周期，只统一处理下载和 writeFiles。
  */
-export async function writeUrlFilesToSandbox(sandbox: ISandbox, files: SandboxUrlFile[]) {
+export async function writeUrlFilesToSandbox(
+  sandbox: ISandbox,
+  files: SandboxUrlFile[],
+  readInputFile: SandboxInputFileReader = readSandboxUrlFile
+) {
   const writeFileTasks: Promise<FileWriteEntry>[] = [];
 
   for (const { path, url } of files) {
     if (!path) continue;
     writeFileTasks.push(
-      readSandboxUrlFile(url).then((data) => ({
+      readInputFile(url).then((data) => ({
         path,
         data
       }))

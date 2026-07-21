@@ -39,10 +39,11 @@ sandboxClientMock.provider = sandboxProviderMock;
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>()),
   prepareAgentSandboxRuntime: prepareAgentSandboxRuntimeMock,
-  injectCurrentInputFiles: (currentFiles: unknown[]) => async (context: { sandbox: unknown }) => {
-    await injectInputFilesToSandboxMock(context.sandbox, currentFiles);
-    return context;
-  },
+  injectCurrentInputFiles:
+    (currentFiles: unknown[], readInputFile: unknown) => async (context: { sandbox: unknown }) => {
+      await injectInputFilesToSandboxMock(context.sandbox, currentFiles, readInputFile);
+      return context;
+    },
   preparePackageMirrors: () => async (context: { sandbox: unknown }) => {
     await prepareSandboxRuntimeMirrorsMock({
       sandbox: context.sandbox
@@ -149,7 +150,11 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(prepareSandboxRuntimeMirrorsMock.mock.invocationCallOrder[0]).toBeLessThan(
       runAgentSandboxEntrypointMock.mock.invocationCallOrder[0]
     );
-    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
+    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(
+      sandboxProviderMock,
+      currentFiles,
+      expect.any(Function)
+    );
     expect(readSandboxPwdMock).toHaveBeenCalledWith(sandboxClientMock);
     expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
@@ -224,7 +229,11 @@ describe('ensureAgentSandboxRuntime', () => {
         sourceId: 'edit_skill_1'
       })
     );
-    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
+    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(
+      sandboxProviderMock,
+      currentFiles,
+      expect.any(Function)
+    );
     expect(syncBuiltinSkillsToSandboxMock).not.toHaveBeenCalled();
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
@@ -262,7 +271,11 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(prepareSandboxRuntimeMirrorsMock.mock.invocationCallOrder[0]).toBeLessThan(
       injectInputFilesToSandboxMock.mock.invocationCallOrder[0]
     );
-    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
+    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(
+      sandboxProviderMock,
+      currentFiles,
+      expect.any(Function)
+    );
     expect(syncBuiltinSkillsToSandboxMock).not.toHaveBeenCalled();
     expect(prepareAction).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -10,6 +10,8 @@ import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
+import { readSandboxUrlFile } from '../../../../ai/sandbox/interface/file';
+import { readWorkflowFileBuffer } from '../../../utils/context';
 import {
   createAgentSandboxPermissionDeniedError,
   getRunningSandboxId,
@@ -127,6 +129,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
               sourceId: props.runningAppInfo.sourceId,
               userId: props.uid,
               chatId: props.chatId,
+              readInputFile: (url) =>
+                readWorkflowFileBuffer({
+                  url,
+                  readExternalFile: readSandboxUrlFile
+                }),
               files: currentInputFiles.map((file) => ({
                 path: file.sandboxPath!,
                 url: file.url

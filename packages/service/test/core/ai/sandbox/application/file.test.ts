@@ -62,6 +62,23 @@ describe('sandbox file application', () => {
     ]);
   });
 
+  it('uses the injected reader for workflow context files', async () => {
+    const sandbox = { writeFiles: vi.fn(async () => undefined) };
+    const readInputFile = vi.fn().mockResolvedValue(Buffer.from('private'));
+
+    await writeUrlFilesToSandbox(
+      sandbox as any,
+      [{ path: '/workspace/private.pdf', url: 'https://files.example.com/signed' }],
+      readInputFile
+    );
+
+    expect(readInputFile).toHaveBeenCalledWith('https://files.example.com/signed');
+    expect(axiosMock.get).not.toHaveBeenCalled();
+    expect(sandbox.writeFiles).toHaveBeenCalledWith([
+      { path: '/workspace/private.pdf', data: Buffer.from('private') }
+    ]);
+  });
+
   it('rejects relative input URLs instead of calling an internal axios', async () => {
     const sandbox = { writeFiles: vi.fn() };
 

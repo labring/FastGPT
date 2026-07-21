@@ -26,6 +26,7 @@ import {
 } from '@fastgpt/service/core/workflow/utils/fileContext';
 import {
   getWorkflowFileContext,
+  readWorkflowFileBuffer,
   runWithContext
 } from '@fastgpt/service/core/workflow/utils/context';
 
@@ -168,6 +169,53 @@ describe('prepareWorkflowFileContext', () => {
     });
     expect(fileContext.resolve(invalidHistoryFile.file!.url)).toBeUndefined();
     expect(fileContext.limits).toEqual({ maxFiles: 5, maxBytesPerFile: 512 });
+  });
+
+  it('registers trusted variable and interactive files after context creation', async () => {
+    const getPreviewUrl = vi.fn().mockResolvedValue('https://files.example.com/signed-variable');
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl
+    });
+
+    const privateRef = await fileRegistrar.registerInputFile({
+      file: {
+        key: privateKey,
+        name: 'report.pdf',
+        type: ChatFileTypeEnum.file
+      },
+      source: 'variable'
+    });
+    const externalRef = await fileRegistrar.registerInputFile({
+      file: {
+        url: 'https://external.example.com/form.pdf',
+        name: 'form.pdf',
+        type: ChatFileTypeEnum.file
+      },
+      source: 'interactive'
+    });
+
+    expect(privateRef?.source).toEqual({ type: 'chatObject', objectKey: privateKey });
+    expect(externalRef?.source).toEqual({
+      type: 'externalHttp',
+      url: 'https://external.example.com/form.pdf'
+    });
+    expect(fileContext.resolve('https://files.example.com/signed-variable')).toBe(privateRef);
+    expect(fileContext.resolve('https://external.example.com/form.pdf')).toBe(externalRef);
+
+    await expect(
+      fileRegistrar.registerInputFile({
+        file: {
+          key: 'chat/app/other-app/user-1/chat-1/report.pdf',
+          name: 'report.pdf',
+          type: ChatFileTypeEnum.file
+        },
+        source: 'interactive'
+      })
+    ).rejects.toThrow('does not belong to the current workflow');
   });
 
   it('rejects invalid query URLs and configured non-whitelisted domains', async () => {
@@ -318,5 +366,40 @@ describe('prepareWorkflowFileContext', () => {
       }
     );
     expect(getWorkflowFileContext()).toBeUndefined();
+  });
+
+  it('falls back to the SSRF-safe reader for unregistered absolute URLs', async () => {
+    const contextRead = vi.fn().mockResolvedValue({ buffer: Buffer.from('internal') });
+    const readExternalFile = vi.fn().mockResolvedValue(Buffer.from('external'));
+    const fileContext = {
+      resolve: vi.fn((url: string) =>
+        url === 'https://files.example.com/registered' ? ({ id: 'registered' } as any) : undefined
+      ),
+      read: contextRead
+    } as any;
+
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext
+      },
+      async () => {
+        await expect(
+          readWorkflowFileBuffer({
+            url: 'https://files.example.com/registered',
+            readExternalFile
+          })
+        ).resolves.toEqual(Buffer.from('internal'));
+        await expect(
+          readWorkflowFileBuffer({
+            url: 'https://node.example.com/generated.pdf',
+            readExternalFile
+          })
+        ).resolves.toEqual(Buffer.from('external'));
+      }
+    );
+
+    expect(contextRead).toHaveBeenCalledTimes(1);
+    expect(readExternalFile).toHaveBeenCalledWith('https://node.example.com/generated.pdf');
   });
 });

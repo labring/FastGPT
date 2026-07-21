@@ -57,6 +57,8 @@ export type WorkflowVariableStateCreateProps = {
   inputVariables?: Record<string, unknown>;
   // 源变量状态，用于复制变量状态
   sourceVariableState?: WorkflowVariableStateLike;
+  // 只在入口初始化全局文件变量时登记可信文件，节点运行时 set 不得扩展文件 Context。
+  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string>;
 };
 
 /** 根据变量配置从入参中取值，兼容 API label 入参与前端 key 入参。 */
@@ -76,14 +78,22 @@ const getVariableInputValue = ({
 const fileStoreValuesToRuntimeUrls = async ({
   files,
   fileMetaMap,
+  resolveInputFile,
   getPreviewUrl = createChatFilePreviewUrlGetter()
 }: {
   files: ChatFileStoreValue[];
   fileMetaMap: Map<string, ChatFileStoreValue>;
+  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string>;
   getPreviewUrl?: (key: string) => Promise<string>;
 }) => {
   const urls = await Promise.all(
     files.map(async (file) => {
+      if (resolveInputFile) {
+        const url = await resolveInputFile(file);
+        fileMetaMap.set(url, file);
+        return url;
+      }
+
       if ('key' in file) {
         const url = await getPreviewUrl(file.key);
         fileMetaMap.set(url, file);
@@ -121,13 +131,14 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     inputVariables = {},
     externalVariables = {},
     runtimeOnlyVariables = {},
-    sourceVariableState
+    sourceVariableState,
+    resolveInputFile
   }: WorkflowVariableStateCreateProps) {
     const state = new WorkflowVariableState(new Map(), new Map(), sourceVariableState);
 
     for (const item of variablesConfig) {
       const value = getVariableInputValue({ variables: inputVariables, item });
-      await state.initConfiguredVariable(item, value);
+      await state.initConfiguredVariable(item, value, resolveInputFile);
     }
 
     state.setRuntimeOnlyVariables(externalVariables);
@@ -251,7 +262,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
   }
 
   /** 根据变量配置初始化单个用户变量，并完成特殊类型的 store/runtime 转换。 */
-  private async initConfiguredVariable(config: VariableItemType, value: unknown) {
+  private async initConfiguredVariable(
+    config: VariableItemType,
+    value: unknown,
+    resolveInputFile?: (file: ChatFileStoreValue) => Promise<string>
+  ) {
     if (config.type === VariableInputEnum.file) {
       const storeValue = Array.isArray(value)
         ? this.runtimeFileValueToStoreValue(
@@ -260,7 +275,8 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
         : [];
       const runtimeValue = await fileStoreValuesToRuntimeUrls({
         files: storeValue,
-        fileMetaMap: this.fileMetaMap
+        fileMetaMap: this.fileMetaMap,
+        resolveInputFile
       });
       this.state.set(config.key, {
         key: config.key,

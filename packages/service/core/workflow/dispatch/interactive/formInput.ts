@@ -8,6 +8,12 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
+import {
+  normalizeChatFileStoreValues,
+  type ChatFileValueInput
+} from '../../../chat/fileStoreValue';
+import { getWorkflowFileRegistrar } from '../../utils/context';
+import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 
@@ -26,12 +32,30 @@ const isFileSelectObject = (value: unknown): value is { key?: unknown; url?: unk
 
 const formatFileSelectRuntimeValue = async (
   value: unknown,
-  getPreviewUrl: (key: string) => Promise<string>
+  getPreviewUrl: (key: string) => Promise<string>,
+  fileRegistrar?: WorkflowFileRegistrar
 ) => {
   if (!Array.isArray(value)) return value;
 
   const urls = await Promise.all(
     value.map(async (file) => {
+      if (fileRegistrar) {
+        const storeValue = normalizeChatFileStoreValues([
+          typeof file === 'string'
+            ? { url: file }
+            : isFileSelectObject(file)
+              ? (file as ChatFileValueInput)
+              : {}
+        ])[0];
+        if (!storeValue) return;
+
+        const ref = await fileRegistrar.registerInputFile({
+          file: storeValue,
+          source: 'interactive'
+        });
+        return ref?.modelUrl;
+      }
+
       if (typeof file === 'string') return file;
       if (!isFileSelectObject(file)) return;
 
@@ -84,6 +108,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   })();
 
   const getPreviewUrl = createChatFilePreviewUrlGetter({ expiredHours: 1 });
+  const fileRegistrar = getWorkflowFileRegistrar();
   const inputConfigMap = new Map(userInputForms.map((form) => [form.key, form]));
   const userInputEntries = await Promise.all(
     Object.entries(rawUserInputVal).map(async ([key, value]) => {
@@ -93,7 +118,10 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
         return [key, anyValueDecrypt(value)] as const;
       }
       if (inputConfig?.type === FlowNodeInputTypeEnum.fileSelect) {
-        return [key, await formatFileSelectRuntimeValue(value, getPreviewUrl)] as const;
+        return [
+          key,
+          await formatFileSelectRuntimeValue(value, getPreviewUrl, fileRegistrar)
+        ] as const;
       }
       return [key, value] as const;
     })

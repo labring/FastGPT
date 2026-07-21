@@ -146,6 +146,47 @@ describe('WorkflowVariableState', () => {
     ]);
   });
 
+  it('should resolve only initial file variables through the workflow registrar', async () => {
+    const resolveInputFile = vi.fn(async (file) =>
+      'key' in file
+        ? `https://workflow.example.com/${file.key}`
+        : `https://workflow.example.com/external.pdf`
+    );
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ],
+      inputVariables: {
+        files: [
+          {
+            key: 'chat/app/a.pdf',
+            name: 'a.pdf',
+            type: ChatFileTypeEnum.file
+          },
+          {
+            url: 'https://external.example.com/b.pdf',
+            name: 'b.pdf',
+            type: ChatFileTypeEnum.file
+          }
+        ]
+      },
+      resolveInputFile
+    });
+
+    expect(state.get('files')).toEqual([
+      'https://workflow.example.com/chat/app/a.pdf',
+      'https://workflow.example.com/external.pdf'
+    ]);
+    expect(resolveInputFile).toHaveBeenCalledTimes(2);
+
+    await state.set('files', ['https://node.example.com/generated.pdf']);
+    expect(resolveInputFile).toHaveBeenCalledTimes(2);
+    expect(state.get('files')).toEqual(['https://node.example.com/generated.pdf']);
+  });
+
   it('should keep external url files clean and infer string urls on initialization', async () => {
     const state = await createState({
       variablesConfig: [

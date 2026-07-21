@@ -17,7 +17,7 @@ import { toolMap as shellToolMap } from './shell.tool';
 import { toolMap as writeFileToolMap } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../runtime/client';
 import { parseJsonArgs } from '../../../utils';
-import { writeUrlFilesToSandbox } from '../file';
+import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
 import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -107,13 +107,15 @@ export const prepareSandboxToolRuntime = async ({
   sourceId,
   userId,
   chatId,
-  files
+  files,
+  readInputFile
 }: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
   chatId: string;
   files: { path: string; url: string }[];
+  readInputFile?: SandboxInputFileReader;
 }) => {
   const sandboxId = getRunningSandboxId({
     sourceType,
@@ -142,7 +144,7 @@ export const prepareSandboxToolRuntime = async ({
     },
     preparePackageMirrors()
   );
-  await writeUrlFilesToSandbox(instance.provider, files);
+  await writeUrlFilesToSandbox(instance.provider, files, readInputFile);
   return instance;
 };
 

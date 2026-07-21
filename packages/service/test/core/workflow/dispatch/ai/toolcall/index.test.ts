@@ -257,6 +257,7 @@ describe('dispatchRunTools file context', () => {
       sourceId: createProps().runningAppInfo.sourceId,
       userId: 'user_1',
       chatId: 'chat_1',
+      readInputFile: expect.any(Function),
       files: [
         {
           path: '/workspace/a.pdf',

@@ -160,7 +160,7 @@ export async function dispatchWorkFlow({
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
-  const { fileContext, getPreviewUrl } = await prepareWorkflowFileContext({
+  const { fileContext, fileRegistrar, getPreviewUrl } = await prepareWorkflowFileContext({
     query,
     histories,
     scope: {
@@ -218,7 +218,15 @@ export async function dispatchWorkFlow({
     histories,
     variablesConfig: data.chatConfig?.variables,
     inputVariables: data.variables,
-    externalVariables: externalProvider.externalWorkflowVariables
+    externalVariables: externalProvider.externalWorkflowVariables,
+    resolveInputFile: async (file) => {
+      const ref = await fileRegistrar.registerInputFile({
+        file,
+        source: 'variable'
+      });
+      if (!ref) throw new UserError('Invalid workflow variable file');
+      return ref.modelUrl;
+    }
   });
 
   // Stop sign(没有 apiVersion，说明不会有暂停)
@@ -265,7 +273,8 @@ export async function dispatchWorkFlow({
     runWithContext(
       {
         mcpClientMemory: {},
-        fileContext
+        fileContext,
+        fileRegistrar
       },
       (ctx) => {
         runWorkflow({

@@ -8,7 +8,12 @@ export {
   addDirectoryToArchive,
   getSandboxFileContent,
   isSandboxPathDirectory,
+  readSandboxUrlFile,
   resolveSandboxWorkspacePath,
   writeUrlFilesToSandbox
 } from '../application/file';
-export type { SandboxFileContent, SandboxUrlFile } from '../application/file';
+export type {
+  SandboxFileContent,
+  SandboxInputFileReader,
+  SandboxUrlFile
+} from '../application/file';
