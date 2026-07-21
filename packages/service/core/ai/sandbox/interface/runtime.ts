@@ -47,7 +47,7 @@ export {
   syncBuiltinSkillsToSandbox
 } from '../application/runtime/skill';
 
-type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string };
+type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string; chatId: string };
 
 /**
  * 将标准 chat source 映射为 sandbox runtime client 的物理寻址参数。
