@@ -8,10 +8,10 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { setCron } from '../../../../common/system/cron';
 import { subMinutes } from 'date-fns';
 import { findInactiveRunningSandboxResources } from '../infrastructure/instance/repository';
-import { stopSandboxResources } from './resource';
+import { retryStaleStoppingSandboxes, stopSandboxResources } from './resource';
 import { checkTimerLock } from '../../../../common/system/timerLock/utils';
 import { TimerIdEnum } from '../../../../common/system/timerLock/constants';
-import { archiveInactiveSandboxes, clearStaleArchivingSandboxes } from './archive';
+import { archiveInactiveSandboxes, retryStaleArchivingSandboxes } from './archive';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -23,6 +23,12 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
  */
 export const cronJob = async () => {
   setCron('*/10 * * * *', async () => {
+    const locked = await checkTimerLock({
+      timerId: TimerIdEnum.stopInactiveSandboxes,
+      lockMinuted: 9
+    });
+    if (!locked) return;
+
     const instances = await findInactiveRunningSandboxResources(
       subMinutes(new Date(), SANDBOX_SUSPEND_MINUTES)
     );
@@ -31,7 +37,6 @@ export const cronJob = async () => {
     logger.info(`Found running sandboxes inactive > ${SANDBOX_SUSPEND_MINUTES} min`, {
       count: instances.length
     });
-
     await stopSandboxResources(instances);
   });
 
@@ -49,13 +54,15 @@ export const cronJob = async () => {
 
   setCron('*/10 * * * *', async () => {
     const locked = await checkTimerLock({
-      timerId: TimerIdEnum.clearStaleArchivingSandboxes,
+      timerId: TimerIdEnum.recoverStaleSandboxOperations,
       lockMinuted: 9
     });
     if (!locked) return;
 
-    await clearStaleArchivingSandboxes().catch((error) => {
-      logger.error('Sandbox stale archiving cleanup cron failed', { error });
-    });
+    await Promise.all([retryStaleArchivingSandboxes(), retryStaleStoppingSandboxes()]).catch(
+      (error) => {
+        logger.error('Sandbox stale lifecycle recovery cron failed', { error });
+      }
+    );
   });
 };

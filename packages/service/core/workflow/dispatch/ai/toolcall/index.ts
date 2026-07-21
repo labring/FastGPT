@@ -118,8 +118,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           sandboxId: getRunningSandboxId({
             sourceType: props.runningAppInfo.sourceType,
             sourceId: props.runningAppInfo.sourceId,
-            userId: props.uid,
-            chatId: props.chatId
+            userId: props.uid
           }),
           fn: async () => {
             const runtime = await prepareSandboxToolRuntime({

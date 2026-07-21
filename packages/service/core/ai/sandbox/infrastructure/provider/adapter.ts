@@ -55,15 +55,6 @@ export function buildSandboxAdapter(
         props.createConfig
       );
 
-    case 'e2b':
-      if (!providerConfig.apiKey) {
-        throw new Error('AGENT_SANDBOX_E2B_API_KEY required');
-      }
-      return createSandbox('e2b', {
-        apiKey: providerConfig.apiKey,
-        sandboxId: props.sandboxId
-      });
-
     default:
       return assertNever(providerConfig);
   }

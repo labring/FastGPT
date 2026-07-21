@@ -5,7 +5,6 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { truncateSandboxToolOutput } from './utils';
@@ -51,7 +50,3 @@ export const sandboxShellTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_SHELL_TOOL_NAME]: sandboxShellTool
-};

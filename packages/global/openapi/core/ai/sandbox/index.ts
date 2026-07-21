@@ -17,7 +17,7 @@ export const SandboxPath: OpenAPIPath = {
   '/core/ai/sandbox/download': {
     post: {
       summary: '下载沙盒文件或目录',
-      description: '下载指定路径的文件，或将目录打包为 ZIP 下载',
+      description: '下载当前 Chat Session 中的指定文件，或将目录打包为 ZIP 下载',
       tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
@@ -42,7 +42,7 @@ export const SandboxPath: OpenAPIPath = {
     post: {
       summary: '上传文件到沙盒',
       description:
-        '通过 multipart/form-data 上传文件，并写入指定沙盒工作区路径。`file` 字段为二进制文件，`data` 字段为 JSON 序列化的上传参数对象',
+        '通过 multipart/form-data 上传文件，并写入当前 Chat Session 路径。`file` 字段为二进制文件，`data` 字段为 JSON 序列化后的上传参数对象',
       tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
@@ -95,7 +95,7 @@ export const SandboxPath: OpenAPIPath = {
   '/core/ai/sandbox/checkExist': {
     post: {
       summary: '检查沙盒是否存在',
-      description: '根据 appId 和 chatId 检查对应的沙盒实例是否存在',
+      description: '根据 Chat 目标和有效用户检查对应的用户级沙盒实例是否存在',
       tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
@@ -120,7 +120,7 @@ export const SandboxPath: OpenAPIPath = {
   '/core/ai/sandbox/getTicket': {
     post: {
       summary: '获取沙盒 WebSocket 临时凭证',
-      description: '鉴权并返回用于连接 agent-sandbox-proxy 的短期 ticket',
+      description: '鉴权并返回用于连接 agent-sandbox-proxy 的短期 ticket 和当前会话目录',
       tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
@@ -131,7 +131,7 @@ export const SandboxPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '返回沙盒 WebSocket 临时凭证',
+          description: '返回沙盒 WebSocket 临时凭证和运行时目录',
           content: {
             'application/json': {
               schema: SandboxGetTicketResponseSchema

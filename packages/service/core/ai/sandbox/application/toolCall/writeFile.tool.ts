@@ -5,7 +5,6 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_WRITE_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export const SandboxWriteFileToolSchema = z.object({
   path: z.string(),
@@ -16,9 +15,12 @@ export const sandboxWriteFileTool = defineTool({
   zodSchema: SandboxWriteFileToolSchema,
   execute: async ({ sandboxInstance, params }) => {
     await sandboxInstance.ensureAvailable();
+    const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
+      allowAbsolutePath: true
+    });
     const [file] = await sandboxInstance.provider.writeFiles([
       {
-        path: params.path,
+        path: providerPath,
         data: params.content
       }
     ]);
@@ -31,7 +33,3 @@ export const sandboxWriteFileTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_WRITE_FILE_TOOL_NAME]: sandboxWriteFileTool
-};

@@ -16,6 +16,7 @@ import type {
   PermissionEntry,
   ReadFileOptions,
   SandboxEndpointSelector,
+  SandboxEnsureRunningOptions,
   SandboxId,
   SandboxInfo,
   SandboxMetrics,
@@ -69,7 +70,7 @@ export abstract class BaseSandboxAdapter implements ISandbox {
 
   // ==================== Lifecycle Methods ====================
 
-  abstract ensureRunning(): Promise<void>;
+  abstract ensureRunning(options?: SandboxEnsureRunningOptions): Promise<void>;
   abstract create(): Promise<void>;
   abstract start(): Promise<void>;
   abstract stop(): Promise<void>;

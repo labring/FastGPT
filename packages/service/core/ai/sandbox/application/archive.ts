@@ -1,120 +1,80 @@
 /**
- * 沙盒业务层：编排 sandbox 归档、恢复和归档状态迁移。
+ * Sandbox Workspace 归档与恢复。
  *
- * 负责统一处理远端压缩、对象存储、Mongo 状态和 provider 资源生命周期。
+ * 远端副作用始终在 Lifecycle Lease 内、Mongo operation 抢占之后执行。
  */
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { subDays, subMinutes } from 'date-fns';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
+import type { RedisLeaseContext } from '../../../../common/redis/lock';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import { getAgentSandboxArchiveMaxBytes } from '../interface/config';
+import {
+  createSandboxResourcesToArchiveCursor,
+  findSandboxInstanceBySandboxId,
+  findStaleSandboxOperations,
+  type SandboxResourceDoc
+} from '../infrastructure/instance/repository';
 import { getSandboxAdapterConfig } from '../infrastructure/provider/config';
+import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
 import { connectToSandbox, disconnectSandbox } from '../infrastructure/provider/lifecycle';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
-import { joinSandboxPath } from '../utils';
 import {
   deleteSessionVolume,
   getSessionVolumeConfig,
   type VolumeManagerResult
 } from '../infrastructure/volume/service';
 import {
-  clearSandboxArchiveState,
-  clearFailedSandboxArchiveState,
-  clearStaleArchivingSandboxStates,
-  createSandboxResourcesToArchiveCursor,
-  findSandboxInstanceArchiveState,
-  markSandboxArchived,
-  markSandboxArchiving,
-  markSandboxArchivingForRuntimeUpgrade,
-  markSandboxArchiveFailed,
-  markSandboxDeletingError,
-  markStaleDeletingSandboxStatesArchived,
-  markSandboxRestored,
-  markSandboxRestoring,
-  markSandboxResourceStopped,
-  rollbackSandboxRestoring,
-  tryMarkSandboxDeleting,
-  type SandboxResourceDoc
-} from '../infrastructure/instance/repository';
-import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
-import type { SandboxInstanceSchemaType, SandboxProviderType } from '../type';
+  SandboxInstanceStatusEnum,
+  SandboxOperationTypeEnum,
+  type SandboxInstanceSchemaType,
+  type SandboxProviderType
+} from '../type';
+import { joinSandboxPath } from '../utils';
+import { withSandboxLifecycleLease } from './lease';
+import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from './lifecycle/runner';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export const SANDBOX_ARCHIVE_INACTIVE_DAYS = 7;
 const SANDBOX_ARCHIVE_BATCH_SIZE = 5;
 const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
-const SANDBOX_ARCHIVE_FLOW_TIMEOUT_MS = 10 * 60 * 1000;
-export const SANDBOX_STALE_ARCHIVING_MINUTES = 15;
-const SANDBOX_RESTORE_WAIT_TIMEOUT_MS = 180 * 1000;
-const SANDBOX_RESTORE_WAIT_INTERVAL_MS = 1000;
+// 单次归档可能包含安装工具、扫描、压缩和上传；隔离窗口必须覆盖整条确定性命令链。
+export const SANDBOX_STALE_ARCHIVING_MINUTES = 45;
 
 const TEMP_ARCHIVE_FILE = '.fastgpt-sandbox-archive.zip';
 const RESTORE_ARCHIVE_FILE = '.fastgpt-sandbox-restore.zip';
 const EMPTY_ZIP_BUFFER = Buffer.from('504b0506000000000000000000000000000000000000', 'hex');
 const ARCHIVE_TEMP_FILE_NAMES = [TEMP_ARCHIVE_FILE, RESTORE_ARCHIVE_FILE];
 
-const getArchiveStartedAtTime = (resource: SandboxResourceDoc) =>
-  resource.metadata?.archive?.startedAt
-    ? new Date(resource.metadata.archive.startedAt).getTime()
-    : undefined;
+type SandboxPhysicalResource = Pick<
+  SandboxResourceDoc,
+  'provider' | 'sandboxId' | 'status' | 'lastActiveAt'
+> & {
+  metadata?: unknown;
+};
 
-const hasMatchedArchiveWrite = (result: unknown) =>
-  typeof result === 'object' &&
-  result !== null &&
-  'matchedCount' in result &&
-  typeof (result as { matchedCount?: unknown }).matchedCount === 'number' &&
-  (result as { matchedCount: number }).matchedCount > 0;
+const getLegacyArchiveState = (resource: SandboxPhysicalResource) =>
+  (resource.metadata as { archive?: { state?: string } } | undefined)?.archive?.state;
 
-export class SandboxArchiveStateError extends Error {
+export class SandboxLifecycleStateError extends Error {
   constructor(
     readonly state: string,
     message = `Sandbox is ${state}`
   ) {
     super(message);
-    this.name = 'SandboxArchiveStateError';
+    this.name = 'SandboxLifecycleStateError';
   }
 }
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-export type SandboxArchiveFailure = {
-  sandboxId: string;
-  error: string;
-};
-
-export type SandboxArchiveResult = {
-  total: number;
-  successCount: number;
-  skippedCount: number;
-  failCount: number;
-  failures: SandboxArchiveFailure[];
-};
-
-export type SandboxArchiveProgress = {
-  processedCount: number;
-  successCount: number;
-  skippedCount: number;
-  failCount: number;
-  batchSize: number;
-  failures: SandboxArchiveFailure[];
-};
-
-export type SandboxArchiveOptions = {
-  onProgress?: (progress: SandboxArchiveProgress) => void | Promise<void>;
-};
 
 type SandboxArchiveSingleResult =
   | { status: 'success' }
   | { status: 'skipped'; reason: string }
   | { status: 'failed'; error: string };
-
-type FailedArchivePolicy = 'throw' | 'clearAndContinue';
 
 const runSandboxCommand = async (
   sandbox: ISandbox,
@@ -125,75 +85,49 @@ const runSandboxCommand = async (
     timeoutMs: options.timeoutMs,
     maxOutputBytes: options.maxOutputBytes
   });
-
   if (result.exitCode !== 0) {
     throw new Error(result.stderr || result.stdout || `Sandbox command failed: ${command}`);
   }
-
   return result;
 };
 
-/**
- * 归档前确保 sandbox 内存在 zip 命令。
- *
- * 历史 sandbox 镜像可能缺少 zip，定时归档和升级归档都需要在打包前兜底安装。
- */
-const ensureZipAvailableInSandbox = async (params: { sandbox: ISandbox }) => {
-  const { sandbox } = params;
+/** 归档前确保历史镜像中存在 zip。 */
+const ensureZipAvailableInSandbox = async (sandbox: ISandbox) => {
   const command = [
     'if command -v zip >/dev/null 2>&1; then exit 0; fi',
     'if command -v apt-get >/dev/null 2>&1; then',
     '  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zip || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zip);',
-    'elif command -v apk >/dev/null 2>&1; then',
-    '  apk add --no-cache zip;',
-    'elif command -v yum >/dev/null 2>&1; then',
-    '  yum install -y zip;',
-    'elif command -v dnf >/dev/null 2>&1; then',
-    '  dnf install -y zip;',
-    'else',
-    '  echo "No supported package manager found to install zip" >&2;',
-    '  exit 127;',
-    'fi',
-    'command -v zip >/dev/null 2>&1 || { echo "zip command is still unavailable after install" >&2; exit 127; }'
+    'elif command -v apk >/dev/null 2>&1; then apk add --no-cache zip;',
+    'elif command -v yum >/dev/null 2>&1; then yum install -y zip;',
+    'elif command -v dnf >/dev/null 2>&1; then dnf install -y zip;',
+    'else echo "No supported package manager found to install zip" >&2; exit 127; fi',
+    'command -v zip >/dev/null 2>&1'
   ].join('\n');
-
   await runSandboxCommand(sandbox, command, {
     timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
     maxOutputBytes: 8 * 1024
   });
 };
 
-/**
- * 恢复归档前确保 sandbox 内存在 unzip 命令。
- *
- * 新 runtime 镜像通常会内置 unzip，但恢复链路不能把这个作为隐式假设。
- */
-const ensureUnzipAvailableInSandbox = async (params: { sandbox: ISandbox }) => {
-  const { sandbox } = params;
+/** 恢复前确保镜像中存在 unzip。 */
+const ensureUnzipAvailableInSandbox = async (sandbox: ISandbox) => {
   const command = [
     'if command -v unzip >/dev/null 2>&1; then exit 0; fi',
     'if command -v apt-get >/dev/null 2>&1; then',
     '  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip);',
-    'elif command -v apk >/dev/null 2>&1; then',
-    '  apk add --no-cache unzip;',
-    'elif command -v yum >/dev/null 2>&1; then',
-    '  yum install -y unzip;',
-    'elif command -v dnf >/dev/null 2>&1; then',
-    '  dnf install -y unzip;',
-    'else',
-    '  echo "No supported package manager found to install unzip" >&2;',
-    '  exit 127;',
-    'fi',
-    'command -v unzip >/dev/null 2>&1 || { echo "unzip command is still unavailable after install" >&2; exit 127; }'
+    'elif command -v apk >/dev/null 2>&1; then apk add --no-cache unzip;',
+    'elif command -v yum >/dev/null 2>&1; then yum install -y unzip;',
+    'elif command -v dnf >/dev/null 2>&1; then dnf install -y unzip;',
+    'else echo "No supported package manager found to install unzip" >&2; exit 127; fi',
+    'command -v unzip >/dev/null 2>&1'
   ].join('\n');
-
   await runSandboxCommand(sandbox, command, {
     timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
     maxOutputBytes: 8 * 1024
   });
 };
 
-async function buildArchiveRuntimeConfig(resource: SandboxResourceDoc) {
+async function buildArchiveRuntimeConfig(resource: SandboxPhysicalResource) {
   const profile = getSandboxRuntimeProfile(resource.provider);
   const vmConfig =
     resource.provider === 'opensandbox'
@@ -204,69 +138,24 @@ async function buildArchiveRuntimeConfig(resource: SandboxResourceDoc) {
     runtime: true,
     sessionId: resource.sandboxId,
     vmConfig,
-    createConfig: {
-      metadata: {
-        archive: 'true'
-      }
-    }
+    createConfig: { metadata: { archive: 'true' } }
   });
-
-  return {
-    profile,
-    providerConfig,
-    createConfig
-  };
+  return { profile, providerConfig, createConfig };
 }
 
-/**
- * 连接归档流程需要的 sandbox。
- *
- * 注意：这里禁止使用 getSandboxClient/SandboxClient.ensureAvailable，因为运行态 client 会刷新
- * lastActiveAt。归档临时拉起只允许走 provider lifecycle。
- */
-async function connectSandboxForArchive(resource: SandboxResourceDoc) {
+/** 归档临时连接不经过运行态 client，避免刷新 lastActiveAt。 */
+async function connectSandboxForArchive(resource: SandboxPhysicalResource) {
   const { profile, providerConfig, createConfig } = await buildArchiveRuntimeConfig(resource);
-  const sandbox = await connectToSandbox(providerConfig, resource.sandboxId, createConfig);
-
   return {
-    sandbox,
+    sandbox: await connectToSandbox(providerConfig, resource.sandboxId, createConfig),
     profile
   };
 }
 
-async function stopTemporaryLiftedSandbox(resource: SandboxResourceDoc) {
-  if (resource.status !== SandboxStatusEnum.stopped) return;
-
-  const latest = await findSandboxInstanceArchiveState({
-    provider: resource.provider,
-    sandboxId: resource.sandboxId
-  });
-  if (!latest) return;
-  if (latest?.lastActiveAt && latest.lastActiveAt.getTime() !== resource.lastActiveAt.getTime()) {
-    return;
-  }
-  const resourceStartedAt = getArchiveStartedAtTime(resource);
-  const latestStartedAt = latest ? getArchiveStartedAtTime(latest) : undefined;
-  if (resourceStartedAt && latestStartedAt && latestStartedAt !== resourceStartedAt) {
-    return;
-  }
-
-  const sandbox = buildSandboxResourceAdapter(resource);
-  await sandbox.stop();
-  await markSandboxResourceStopped(resource);
-}
-
 async function deleteArchivedRemoteResource(resource: SandboxResourceDoc) {
-  const sandbox = buildSandboxResourceAdapter(resource);
-  await sandbox.delete();
-
+  await buildSandboxResourceAdapter(resource).delete();
   if (resource.provider === 'opensandbox') {
-    await deleteSessionVolume(resource.sandboxId).catch((error) => {
-      logger.error('Failed to delete archived sandbox volume', {
-        sandboxId: resource.sandboxId,
-        error
-      });
-    });
+    await deleteSessionVolume(resource.sandboxId);
   }
 }
 
@@ -280,69 +169,47 @@ async function createWorkspaceArchive(params: {
   const archivePath = joinSandboxPath(workDirectory, TEMP_ARCHIVE_FILE);
   const quotedWorkDirectory = shellQuote(workDirectory);
   const quotedArchiveFile = shellQuote(TEMP_ARCHIVE_FILE);
-  // find -name 匹配 basename；zip -x 需要同时排除根目录和子目录路径。
-  const archiveTempFileFindExcludes = ARCHIVE_TEMP_FILE_NAMES.map(
+  const findExcludes = ARCHIVE_TEMP_FILE_NAMES.map(
     (fileName) => `! -name ${shellQuote(fileName)}`
   ).join(' ');
-  const archiveTempFileZipExcludes = ARCHIVE_TEMP_FILE_NAMES.flatMap((fileName) => [
+  const zipExcludes = ARCHIVE_TEMP_FILE_NAMES.flatMap((fileName) => [
     `-x ${shellQuote(fileName)}`,
     `-x ${shellQuote(`*/${fileName}`)}`
   ]).join(' ');
-  const sizeCheckCmd =
-    `cd ${quotedWorkDirectory} && ` +
-    `find . -type f ${archiveTempFileFindExcludes} ` +
-    `-ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
-  const entryCountCmd =
-    `cd ${quotedWorkDirectory} && ` +
-    `find . -mindepth 1 ${archiveTempFileFindExcludes} ` +
-    `2>/dev/null | wc -l`;
 
-  await runSandboxCommand(sandbox, `mkdir -p ${shellQuote(workDirectory)}`, {
-    timeoutMs: 60 * 1000
-  });
+  await runSandboxCommand(sandbox, `mkdir -p ${quotedWorkDirectory}`, { timeoutMs: 60 * 1000 });
   await sandbox.deleteFiles([archivePath]).catch(() => undefined);
-
   const [sizeResult, entryCountResult] = await Promise.all([
-    runSandboxCommand(sandbox, sizeCheckCmd, {
-      timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
-      maxOutputBytes: 8 * 1024
-    }),
-    runSandboxCommand(sandbox, entryCountCmd, {
-      timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
-      maxOutputBytes: 8 * 1024
-    })
+    runSandboxCommand(
+      sandbox,
+      `cd ${quotedWorkDirectory} && find . -type f ${findExcludes} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`,
+      { timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
+    ),
+    runSandboxCommand(
+      sandbox,
+      `cd ${quotedWorkDirectory} && find . -mindepth 1 ${findExcludes} 2>/dev/null | wc -l`,
+      { timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
+    )
   ]);
   const workspaceBytes = Number.parseInt(sizeResult.stdout.trim(), 10);
   const entryCount = Number.parseInt(entryCountResult.stdout.trim(), 10);
-  if (Number.isFinite(entryCount) && entryCount === 0) {
-    return EMPTY_ZIP_BUFFER;
-  }
+  if (Number.isFinite(entryCount) && entryCount === 0) return EMPTY_ZIP_BUFFER;
   if (Number.isFinite(workspaceBytes) && workspaceBytes > maxArchiveBytes) {
     throw new Error('Sandbox workspace is too large');
   }
 
   await runSandboxCommand(
     sandbox,
-    `cd ${quotedWorkDirectory} && zip -r -y -q ${quotedArchiveFile} . ${archiveTempFileZipExcludes}`,
-    {
-      timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
-      maxOutputBytes: 8 * 1024
-    }
+    `cd ${quotedWorkDirectory} && zip -r -y -q ${quotedArchiveFile} . ${zipExcludes}`,
+    { timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS, maxOutputBytes: 8 * 1024 }
   );
-
   const [archive] = await sandbox.readFiles([archivePath]);
-  if (archive.error) {
-    throw new Error(`Failed to read sandbox archive: ${archive.error.message}`);
-  }
+  if (archive.error) throw new Error(`Failed to read sandbox archive: ${archive.error.message}`);
   const archiveBuffer = Buffer.from(archive.content);
-  if (archiveBuffer.byteLength > maxArchiveBytes) {
-    throw new Error('Sandbox archive is too large');
-  }
-
+  if (archiveBuffer.byteLength > maxArchiveBytes) throw new Error('Sandbox archive is too large');
   await sandbox.deleteFiles([archivePath]).catch((error) => {
     logger.warn('Failed to cleanup sandbox archive temp file', { sandboxId, error });
   });
-
   return archiveBuffer;
 }
 
@@ -353,360 +220,265 @@ async function restoreWorkspaceArchive(params: {
   archiveBody: Buffer;
 }) {
   const { sandbox, workDirectory, sandboxId, archiveBody } = params;
-  const maxArchiveBytes = getAgentSandboxArchiveMaxBytes();
   const archivePath = joinSandboxPath(workDirectory, RESTORE_ARCHIVE_FILE);
   const quotedWorkDirectory = shellQuote(workDirectory);
   const quotedArchiveFile = shellQuote(RESTORE_ARCHIVE_FILE);
-
-  await runSandboxCommand(sandbox, `mkdir -p ${shellQuote(workDirectory)}`, {
-    timeoutMs: 60 * 1000
-  });
-
-  const [writeResult] = await sandbox.writeFiles([
-    {
-      path: archivePath,
-      data: archiveBody
-    }
-  ]);
+  await runSandboxCommand(sandbox, `mkdir -p ${quotedWorkDirectory}`, { timeoutMs: 60 * 1000 });
+  const [writeResult] = await sandbox.writeFiles([{ path: archivePath, data: archiveBody }]);
   if (writeResult.error) {
     throw new Error(`Failed to write sandbox archive: ${writeResult.error.message}`);
   }
-
-  const isEmptyArchive = archiveBody.equals(EMPTY_ZIP_BUFFER);
-  const restoreCommand = isEmptyArchive
+  const command = archiveBody.equals(EMPTY_ZIP_BUFFER)
     ? `cd ${quotedWorkDirectory} && find . -mindepth 1 -maxdepth 1 ! -name ${quotedArchiveFile} -exec rm -rf -- {} + && rm -f ${quotedArchiveFile}`
     : [
         `cd ${quotedWorkDirectory}`,
-        `unzip -Z -t ${quotedArchiveFile} | awk -v max=${maxArchiveBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
+        `unzip -Z -t ${quotedArchiveFile} | awk -v max=${getAgentSandboxArchiveMaxBytes()} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
         `unzip -Z1 ${quotedArchiveFile} | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
         `find . -mindepth 1 -maxdepth 1 ! -name ${quotedArchiveFile} -exec rm -rf -- {} +`,
         `unzip -o -q ${quotedArchiveFile} -d .`,
         `rm -f ${quotedArchiveFile}`
       ].join(' && ');
-
-  await runSandboxCommand(sandbox, restoreCommand, {
+  await runSandboxCommand(sandbox, command, {
     timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
     maxOutputBytes: 8 * 1024
   }).catch(async (error) => {
     await sandbox.deleteFiles([archivePath]).catch(() => undefined);
     throw error;
   });
-
   logger.info('Sandbox workspace restored from archive', { sandboxId });
 }
 
-type SandboxArchiveFlowParams = {
-  archivingDoc: SandboxResourceDoc;
-  logLabel: string;
-  inactiveBefore?: Date;
-  markArchiveFailed: (error: string) => Promise<unknown>;
-};
+/** 获取 Legacy Sandbox 的 Workspace 归档，供本分支 migration 核心流程使用。 */
+export async function getSandboxWorkspaceArchiveForMigration(resource: SandboxPhysicalResource) {
+  const archiveSource = getS3SandboxSource();
+  const archiveState = getLegacyArchiveState(resource);
+  // restoring 已经以 S3 归档为恢复源；migration 应复用该归档，不能再打包半恢复的 Workspace。
+  if (archiveState === 'archived' || archiveState === 'deleting' || archiveState === 'restoring') {
+    if (await archiveSource.isLegacyWorkspaceArchiveExists({ sandboxId: resource.sandboxId })) {
+      return archiveSource.downloadLegacyWorkspaceArchive({
+        sandboxId: resource.sandboxId,
+        maxBytes: getAgentSandboxArchiveMaxBytes()
+      });
+    }
+    throw new Error(`Archived Legacy Sandbox workspace is missing: ${resource.sandboxId}`);
+  }
 
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  let timeout: NodeJS.Timeout | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => {
-      reject(new Error(`Sandbox archive flow timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-  });
-
+  let sandbox: ISandbox | undefined;
   try {
-    return await Promise.race([promise, timeoutPromise]);
+    const connected = await connectSandboxForArchive(resource);
+    sandbox = connected.sandbox;
+    await ensureZipAvailableInSandbox(sandbox);
+    const body = await createWorkspaceArchive({
+      sandbox,
+      workDirectory: connected.profile.workDirectory,
+      sandboxId: resource.sandboxId
+    });
+    await archiveSource.uploadLegacyWorkspaceArchive({ sandboxId: resource.sandboxId, body });
+    return body;
   } finally {
-    if (timeout) {
-      clearTimeout(timeout);
+    if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);
+  }
+}
+
+/** 将已校验的 Workspace 归档恢复到 migration staging 目录。 */
+export async function restoreSandboxWorkspaceArchiveForMigration(params: {
+  sandbox: ISandbox;
+  workDirectory: string;
+  sandboxId: string;
+  archiveBody: Buffer;
+}) {
+  await ensureUnzipAvailableInSandbox(params.sandbox);
+  await restoreWorkspaceArchive(params);
+}
+
+async function archiveSandboxWithinLease(params: {
+  resource: SandboxResourceDoc;
+  lease: RedisLeaseContext;
+  inactiveBefore?: Date;
+  onClaim?: (resource: SandboxResourceDoc | null) => void;
+}): Promise<SandboxArchiveSingleResult> {
+  const { lease } = params;
+  const current = await findSandboxInstanceBySandboxId({ sandboxId: params.resource.sandboxId });
+  if (!current) {
+    params.onClaim?.(null);
+    return { status: 'skipped', reason: 'Sandbox record no longer exists' };
+  }
+  if (current.status === SandboxInstanceStatusEnum.archived) {
+    params.onClaim?.(null);
+    return { status: 'success' };
+  }
+  if (
+    params.inactiveBefore &&
+    (current.status !== SandboxInstanceStatusEnum.stopped ||
+      current.lastActiveAt >= params.inactiveBefore)
+  ) {
+    params.onClaim?.(null);
+    return { status: 'skipped', reason: 'Resource became active or changed state' };
+  }
+  if (
+    current.status !== SandboxInstanceStatusEnum.running &&
+    current.status !== SandboxInstanceStatusEnum.stopped &&
+    current.status !== SandboxInstanceStatusEnum.archiving
+  ) {
+    params.onClaim?.(null);
+    return { status: 'skipped', reason: `Sandbox is ${current.status}` };
+  }
+  if (current.status === SandboxInstanceStatusEnum.archiving) {
+    const operation = current.metadata?.operation;
+    const staleBefore = subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES);
+    // Lease 过期不代表旧 Provider 请求已经终止，隔离窗口内禁止新执行者换 token 接管。
+    if (!operation?.error && (!operation?.heartbeatAt || operation.heartbeatAt >= staleBefore)) {
+      params.onClaim?.(null);
+      return { status: 'skipped', reason: 'Sandbox archive operation is still active' };
     }
   }
-};
-
-/**
- * 执行归档的公共流水线。
- *
- * 不同入口只负责抢占记录、回滚策略和是否需要删除远端前的二次检查；
- * zip workspace、上传 S3、删除远端资源、标记 archived 以及失败清理由这里统一维护。
- */
-async function runSandboxArchiveFlow({
-  archivingDoc,
-  logLabel,
-  inactiveBefore,
-  markArchiveFailed
-}: SandboxArchiveFlowParams): Promise<SandboxArchiveSingleResult> {
-  let connectedSandbox: ISandbox | undefined;
-  let deletingStarted = false;
-
-  const markFailedBeforeDeleting = async (error: string) => {
-    const failedResult = await markArchiveFailed(error);
-    if (hasMatchedArchiveWrite(failedResult)) {
-      await stopTemporaryLiftedSandbox(archivingDoc).catch((stopError) => {
-        logger.error(`Failed to stop temporary lifted sandbox after ${logLabel} archive failure`, {
-          sandboxId: archivingDoc.sandboxId,
-          error: stopError
-        });
-      });
-      return { status: 'failed' as const, error };
-    }
-
-    const latest = await findSandboxInstanceArchiveState({
-      provider: archivingDoc.provider,
-      sandboxId: archivingDoc.sandboxId
-    });
-    if (
-      latest?.metadata?.archive?.state === 'deleting' &&
-      getArchiveStartedAtTime(latest) === getArchiveStartedAtTime(archivingDoc)
-    ) {
-      await markSandboxDeletingError(archivingDoc, error).catch((markError) => {
-        logger.error(`Failed to mark ${logLabel} deleting error after archive failure`, {
-          sandboxId: archivingDoc.sandboxId,
-          provider: archivingDoc.provider,
-          error: markError
-        });
-      });
-    }
-    logger.warn(
-      `Skip stopping temporary lifted sandbox because ${logLabel} archive state changed`,
-      {
-        sandboxId: archivingDoc.sandboxId,
-        provider: archivingDoc.provider
-      }
-    );
-    return { status: 'failed' as const, error };
-  };
-
-  const runFlow = async (): Promise<SandboxArchiveSingleResult> => {
-    try {
-      const { sandbox, profile } = await connectSandboxForArchive(archivingDoc);
-      connectedSandbox = sandbox;
-
-      await ensureZipAvailableInSandbox({
-        sandbox
-      });
-
-      const archiveBuffer = await createWorkspaceArchive({
-        sandbox,
-        workDirectory: profile.workDirectory,
-        sandboxId: archivingDoc.sandboxId
-      });
-
-      await getS3SandboxSource().uploadWorkspaceArchive({
-        sandboxId: archivingDoc.sandboxId,
-        body: archiveBuffer
-      });
-
-      const deletingResult = await tryMarkSandboxDeleting(archivingDoc, { inactiveBefore });
-      if (deletingResult.matchedCount === 0) {
-        await clearSandboxArchiveState(archivingDoc).catch((error) => {
-          logger.error(`Failed to clear skipped ${logLabel} archive state`, {
-            sandboxId: archivingDoc.sandboxId,
-            provider: archivingDoc.provider,
-            error
-          });
-        });
-        await stopTemporaryLiftedSandbox(archivingDoc).catch((error) => {
-          logger.error(`Failed to stop temporary lifted sandbox after ${logLabel} archive skip`, {
-            sandboxId: archivingDoc.sandboxId,
-            provider: archivingDoc.provider,
-            error
-          });
-        });
-        return { status: 'skipped', reason: 'Resource was modified or occupied' };
-      }
-      deletingStarted = true;
-
-      try {
-        await deleteArchivedRemoteResource(archivingDoc);
-      } catch (error: unknown) {
-        logger.error(`Failed to cleanup archived ${logLabel} remote resource`, {
-          sandboxId: archivingDoc.sandboxId,
-          provider: archivingDoc.provider,
-          error
-        });
-        const errorMessage = getErrText(error);
-        await markSandboxDeletingError(
-          archivingDoc,
-          `Failed to delete remote resource: ${errorMessage}`
-        );
-        return { status: 'failed', error: `Failed to delete remote resource: ${errorMessage}` };
-      }
-
-      const archivedResult = await markSandboxArchived(archivingDoc);
-      if (archivedResult.matchedCount === 0) {
-        logger.error(`${logLabel} archive state changed after remote resource deletion`, {
-          sandboxId: archivingDoc.sandboxId,
-          provider: archivingDoc.provider
-        });
-        await markSandboxDeletingError(
-          archivingDoc,
-          'Sandbox record changed after remote deletion'
-        );
-        return {
-          status: 'failed',
-          error: 'Sandbox record changed after remote resource deletion'
-        };
-      }
-      return { status: 'success' };
-    } finally {
-      if (connectedSandbox) {
-        await disconnectSandbox(connectedSandbox).catch(() => undefined);
-      }
-    }
-  };
+  let sandbox: ISandbox | undefined;
 
   try {
-    return await withTimeout(runFlow(), SANDBOX_ARCHIVE_FLOW_TIMEOUT_MS);
-  } catch (error: unknown) {
-    const errorMessage = getErrText(error);
-    if (deletingStarted) {
-      await markSandboxDeletingError(archivingDoc, errorMessage).catch((markError) => {
-        logger.error(`Failed to mark ${logLabel} deleting error after archive failure`, {
-          sandboxId: archivingDoc.sandboxId,
-          provider: archivingDoc.provider,
-          error: markError
-        });
-      });
-      logger.error(`Failed to archive ${logLabel} after deleting started`, {
-        sandboxId: archivingDoc.sandboxId,
-        provider: archivingDoc.provider,
-        error
-      });
-      return { status: 'failed', error: errorMessage };
-    }
-
-    logger.error(`Failed to archive ${logLabel}`, {
-      sandboxId: archivingDoc.sandboxId,
-      provider: archivingDoc.provider,
+    const definition: SandboxLifecycleDefinition = {
+      operationType: SandboxOperationTypeEnum.archive,
+      status: SandboxInstanceStatusEnum.archiving,
+      steps: [
+        {
+          fromPhase: 'claimed',
+          toPhase: 'archiveUploaded',
+          run: async ({ resource: claimed }) => {
+            const connected = await connectSandboxForArchive(claimed);
+            sandbox = connected.sandbox;
+            await ensureZipAvailableInSandbox(sandbox);
+            const body = await createWorkspaceArchive({
+              sandbox,
+              workDirectory: connected.profile.workDirectory,
+              sandboxId: claimed.sandboxId
+            });
+            await getS3SandboxSource().uploadWorkspaceArchive({
+              sandboxId: claimed.sandboxId,
+              body
+            });
+          }
+        },
+        {
+          fromPhase: 'archiveUploaded',
+          toPhase: 'providerDeleted',
+          run: async ({ resource: claimed }) => {
+            await deleteArchivedRemoteResource(claimed);
+          }
+        }
+      ],
+      finish: {
+        type: 'complete',
+        status: SandboxInstanceStatusEnum.archived,
+        set: ({ resource: claimed }) => {
+          const image = getSandboxRuntimeProfile(claimed.provider).defaultImage;
+          return image ? { 'metadata.image': image } : {};
+        }
+      }
+    };
+    const completed = await runSandboxLifecycleOperation({
+      resource: current,
+      lease,
+      definition,
+      matchLastActiveAt: Boolean(params.inactiveBefore),
+      onClaim: params.onClaim,
+      allowClaimConflict: true
+    });
+    if (!completed) return { status: 'skipped', reason: 'Resource was modified or occupied' };
+    return { status: 'success' };
+  } catch (error) {
+    const errorText = getErrText(error);
+    logger.error('Failed to archive sandbox', {
+      sandboxId: current.sandboxId,
+      provider: current.provider,
       error
     });
-    return markFailedBeforeDeleting(errorMessage);
+    return { status: 'failed', error: errorText };
+  } finally {
+    if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);
   }
 }
 
-/**
- * 归档单个 sandbox 实例。
- *
- * inactiveBefore 是归档判断边界，调用方负责用同一个边界查询候选资源并执行归档，
- * 避免同一轮任务中查询时间和二次活跃检查时间不一致。
- */
+/** 归档单个 inactive sandbox。 */
 export async function archiveSandboxResource(
   resource: SandboxResourceDoc,
-  inactiveBefore: Date,
-  options: SandboxArchiveOptions = {}
+  inactiveBefore: Date
 ): Promise<SandboxArchiveSingleResult> {
-  const archivingDoc = await markSandboxArchiving(resource, inactiveBefore);
-  if (!archivingDoc) {
-    return { status: 'skipped', reason: 'Resource was modified or occupied' };
-  }
-
-  return runSandboxArchiveFlow({
-    archivingDoc,
-    logLabel: 'sandbox',
-    inactiveBefore,
-    markArchiveFailed: (error) => markSandboxArchiveFailed(archivingDoc, error)
+  return withSandboxLifecycleLease({
+    sandboxId: resource.sandboxId,
+    label: `archive-sandbox:${resource.sandboxId}`,
+    fn: (lease) => archiveSandboxWithinLease({ resource, lease, inactiveBefore })
   });
 }
 
-/**
- * 用户点击升级 edit-debug runtime 时启动后台归档。
- *
- * 该入口同步完成 archive state CAS，把记录推进到 archiving 后立即返回；
- * 实际 workspace 打包、上传、远端删除在后台执行。进入 deleting 前失败会落到 failed，
- * 进入 deleting 后只记录 error 并保持 deleting，避免运行态绕过 S3 恢复。
- */
+/** provider 迁移持有 Lifecycle Lease 时复用同一归档流水线，避免嵌套锁。 */
+export async function archiveSandboxResourceForProviderMigration(
+  resource: SandboxResourceDoc,
+  lease?: RedisLeaseContext
+) {
+  if (lease) return archiveSandboxWithinLease({ resource, lease });
+  return withSandboxLifecycleLease({
+    sandboxId: resource.sandboxId,
+    label: `archive-provider-migration:${resource.sandboxId}`,
+    fn: (context) => archiveSandboxWithinLease({ resource, lease: context })
+  });
+}
+
+/** 用户触发 runtime 升级后后台持有 lease 完成归档。 */
 export async function startSandboxRuntimeUpgradeArchive(
   resource: SandboxResourceDoc
 ): Promise<
   { success: true; archivingDoc: SandboxResourceDoc } | { success: false; error: string }
 > {
-  const archivingDoc = await markSandboxArchivingForRuntimeUpgrade(resource);
-  if (!archivingDoc) {
-    return { success: false, error: 'Resource was modified or occupied' };
-  }
-
-  void runSandboxArchiveFlow({
-    archivingDoc,
-    logLabel: 'upgraded sandbox',
-    markArchiveFailed: (error) => markSandboxArchiveFailed(archivingDoc, error)
-  }).catch(async (error) => {
-    const errorMessage = getErrText(error);
-    logger.error('Unexpected runtime upgrade archive task failure', {
+  let resolveClaim!: (value: SandboxResourceDoc | null) => void;
+  const claimReady = new Promise<SandboxResourceDoc | null>((resolve) => {
+    resolveClaim = resolve;
+  });
+  let claimResolved = false;
+  const background = withSandboxLifecycleLease({
+    sandboxId: resource.sandboxId,
+    label: `archive-runtime-upgrade:${resource.sandboxId}`,
+    fn: async (lease) => {
+      await archiveSandboxWithinLease({
+        resource,
+        lease,
+        onClaim: (claimed) => {
+          claimResolved = true;
+          resolveClaim(claimed);
+        }
+      });
+    }
+  });
+  void background.catch((error) => {
+    if (!claimResolved) resolveClaim(null);
+    logger.error('Runtime upgrade archive task failed', {
       sandboxId: resource.sandboxId,
-      provider: resource.provider,
       error
     });
-    await markSandboxArchiveFailed(archivingDoc, errorMessage).catch((markError) => {
-      logger.error('Failed to mark runtime upgrade archive failed after unexpected failure', {
-        sandboxId: resource.sandboxId,
-        provider: resource.provider,
-        originalError: errorMessage,
-        error: markError
-      });
-    });
   });
 
-  return { success: true, archivingDoc };
+  const archivingDoc = await claimReady;
+  return archivingDoc
+    ? { success: true, archivingDoc }
+    : { success: false, error: 'Resource was modified or occupied' };
 }
 
-/**
- * 流式读取待归档 sandbox，并按固定批次执行实际归档。
- *
- * cursor 的 batchSize 控制 Mongo 单次返回量；归档 batch 控制远端资源同时拉起数量。
- * 这里不设置总量上限，迁移脚本需要覆盖所有历史待归档记录。
- */
-export async function archiveSandboxResources(params: {
-  inactiveBefore: Date;
-  providers?: SandboxProviderType[];
-  options?: SandboxArchiveOptions;
-}): Promise<SandboxArchiveResult> {
-  const { inactiveBefore, providers, options } = params;
-  const cursor = createSandboxResourcesToArchiveCursor({
-    inactiveBefore,
-    providers
-  });
-
-  let successCount = 0;
-  let skippedCount = 0;
-  const failures: SandboxArchiveFailure[] = [];
+/** 流式归档全部候选，并按固定并发执行。 */
+async function archiveSandboxResources(inactiveBefore: Date) {
+  const cursor = createSandboxResourcesToArchiveCursor(inactiveBefore);
   let batch: SandboxResourceDoc[] = [];
 
   const archiveBatch = async (resources: SandboxResourceDoc[]) => {
-    if (resources.length === 0) return;
-
-    const results = await batchRun(
+    await batchRun(
       resources,
-      async (resource) => ({
-        resource,
-        result: await archiveSandboxResource(resource, inactiveBefore, options)
-      }),
+      (resource) =>
+        archiveSandboxResource(resource, inactiveBefore).catch((error) => {
+          logger.error('Failed to execute sandbox archive task', {
+            sandboxId: resource.sandboxId,
+            provider: resource.provider,
+            error
+          });
+        }),
       SANDBOX_ARCHIVE_BATCH_SIZE
     );
-
-    const batchFailures: SandboxArchiveFailure[] = [];
-    for (const { resource, result } of results) {
-      if (result.status === 'success') {
-        successCount++;
-      } else if (result.status === 'skipped') {
-        skippedCount++;
-      } else {
-        const failure = {
-          sandboxId: resource.sandboxId,
-          error: result.error
-        };
-        failures.push(failure);
-        batchFailures.push(failure);
-      }
-    }
-
-    await Promise.resolve(
-      options?.onProgress?.({
-        processedCount: successCount + skippedCount + failures.length,
-        successCount,
-        skippedCount,
-        failCount: failures.length,
-        batchSize: resources.length,
-        failures: batchFailures
-      })
-    ).catch((error) => {
-      logger.error('Failed to report sandbox archive progress', { error });
-    });
   };
 
   try {
@@ -721,24 +493,23 @@ export async function archiveSandboxResources(params: {
   } finally {
     await cursor.close().catch(() => undefined);
   }
-
-  return {
-    total: successCount + skippedCount + failures.length,
-    successCount,
-    skippedCount,
-    failCount: failures.length,
-    failures
-  };
 }
 
-/**
- * 批量归档超过 7 天未活跃的 sandbox。
- */
 export async function archiveInactiveSandboxes(now = new Date()) {
-  const inactiveBefore = subDays(now, SANDBOX_ARCHIVE_INACTIVE_DAYS);
-  await archiveSandboxResources({
-    inactiveBefore
+  await archiveSandboxResources(subDays(now, SANDBOX_ARCHIVE_INACTIVE_DAYS));
+}
+
+/** 重试超过隔离窗口的 archiving operation。 */
+export async function retryStaleArchivingSandboxes(now = new Date()) {
+  const stale = await findStaleSandboxOperations({
+    statuses: [SandboxInstanceStatusEnum.archiving],
+    heartbeatBefore: subMinutes(now, SANDBOX_STALE_ARCHIVING_MINUTES)
   });
+  return batchRun(
+    stale,
+    (resource) => archiveSandboxResourceForProviderMigration(resource),
+    SANDBOX_ARCHIVE_BATCH_SIZE
+  );
 }
 
 async function createRestoreSandbox(params: {
@@ -761,226 +532,142 @@ async function createRestoreSandbox(params: {
     vmConfig,
     createConfig: params.createConfig
   });
-  const sandbox = await connectToSandbox(providerConfig, params.sandboxId, createConfig);
-
   return {
-    sandbox,
+    sandbox: await connectToSandbox(providerConfig, params.sandboxId, createConfig),
     profile,
     storage: vmConfig?.storage
   };
 }
 
-/**
- * 如果指定 sandbox 已冷归档，则在运行态 ensureAvailable 前恢复工作区。
- */
+/** 在真实用户使用前恢复 archived Workspace。 */
 export async function restoreArchivedSandboxBeforeUse(params: {
   provider: SandboxProviderType;
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  userId?: string;
-  chatId?: string;
+  userId: string;
   vmConfig?: VolumeManagerResult | null;
   storage?: SandboxInstanceSchemaType['storage'];
   resourceLimit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   createConfig?: SandboxCreateSpec;
-  failedArchivePolicy?: FailedArchivePolicy;
 }) {
-  const waitForArchiveBusyDone = async () => {
-    const startAt = Date.now();
-    let lastBusyState = 'restoring';
-    while (Date.now() - startAt < SANDBOX_RESTORE_WAIT_TIMEOUT_MS) {
-      await delay(SANDBOX_RESTORE_WAIT_INTERVAL_MS);
-      const latest = await findSandboxInstanceArchiveState({
-        provider: params.provider,
-        sandboxId: params.sandboxId
-      });
-      const latestArchiveState = latest?.metadata?.archive?.state;
-
-      if (!latestArchiveState) return;
-      if (latestArchiveState === 'archived') {
-        return latest;
-      }
-      if (latestArchiveState !== 'archiving' && latestArchiveState !== 'restoring') {
-        return latest;
-      }
-      lastBusyState = latestArchiveState;
-    }
-
-    throw new SandboxArchiveStateError(lastBusyState);
-  };
-
-  let currentProviderInstance = await findSandboxInstanceArchiveState({
-    provider: params.provider,
-    sandboxId: params.sandboxId
-  });
-  let archiveState = currentProviderInstance?.metadata?.archive?.state;
-
-  if (!archiveState) {
-    return;
-  }
-
-  if (archiveState === 'archiving' || archiveState === 'restoring') {
-    const archivedAfterWait = await waitForArchiveBusyDone();
-    if (!archivedAfterWait) return;
-    currentProviderInstance = archivedAfterWait;
-    archiveState = currentProviderInstance.metadata?.archive?.state;
-  }
-
+  const initial = await findSandboxInstanceBySandboxId({ sandboxId: params.sandboxId });
   if (
-    archiveState === 'failed' &&
-    params.failedArchivePolicy === 'clearAndContinue' &&
-    currentProviderInstance
+    !initial ||
+    initial.status === SandboxInstanceStatusEnum.running ||
+    initial.status === SandboxInstanceStatusEnum.stopped
   ) {
-    await clearFailedSandboxArchiveState(currentProviderInstance);
     return;
   }
-
-  if (archiveState === 'failed') {
-    throw new SandboxArchiveStateError('failed');
+  if (
+    initial.status !== SandboxInstanceStatusEnum.archived &&
+    initial.status !== SandboxInstanceStatusEnum.restoring
+  ) {
+    throw new SandboxLifecycleStateError(initial.status);
   }
 
-  if ((archiveState !== 'archived' && archiveState !== 'deleting') || !currentProviderInstance) {
-    return;
-  }
-
-  let sandbox: ISandbox | undefined;
-  let restoringDoc: SandboxResourceDoc | null = null;
-  try {
-    restoringDoc = await markSandboxRestoring(currentProviderInstance);
-    if (!restoringDoc) {
-      const latest = await findSandboxInstanceArchiveState({
-        provider: params.provider,
-        sandboxId: params.sandboxId
-      });
-      const latestArchiveState = latest?.metadata?.archive?.state;
-      if (!latestArchiveState) {
-        return;
+  return withSandboxLifecycleLease({
+    sandboxId: params.sandboxId,
+    label: `restore-sandbox:${params.sandboxId}`,
+    fn: async (lease) => {
+      const current = await findSandboxInstanceBySandboxId({ sandboxId: params.sandboxId });
+      if (!current || current.status === SandboxInstanceStatusEnum.running) return;
+      if (
+        current.status !== SandboxInstanceStatusEnum.archived &&
+        current.status !== SandboxInstanceStatusEnum.restoring
+      ) {
+        throw new SandboxLifecycleStateError(current.status);
       }
-      if (latestArchiveState === 'archiving' || latestArchiveState === 'restoring') {
-        await waitForArchiveBusyDone();
-        return;
+      if (
+        current.status === SandboxInstanceStatusEnum.restoring &&
+        !current.metadata?.operation?.error &&
+        current.metadata?.operation?.heartbeatAt &&
+        current.metadata.operation.heartbeatAt >=
+          subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
+      ) {
+        throw new SandboxLifecycleStateError(current.status);
       }
-      throw new SandboxArchiveStateError(latestArchiveState);
-    }
+      let sandbox: ISandbox | undefined;
+      let restoredStorage = params.storage ?? current.storage;
 
-    const restoreTarget = await createRestoreSandbox({
-      provider: params.provider,
-      sandboxId: params.sandboxId,
-      vmConfig: params.vmConfig,
-      createConfig: params.createConfig
-    });
-    sandbox = restoreTarget.sandbox;
-    await ensureUnzipAvailableInSandbox({ sandbox });
+      try {
+        const definition: SandboxLifecycleDefinition = {
+          operationType: SandboxOperationTypeEnum.restore,
+          status: SandboxInstanceStatusEnum.restoring,
+          steps: [
+            {
+              fromPhase: 'claimed',
+              toPhase: 'archiveInstalled',
+              run: async () => {
+                const target = await createRestoreSandbox(params);
+                sandbox = target.sandbox;
+                restoredStorage ??= target.storage;
+                await ensureUnzipAvailableInSandbox(target.sandbox);
+                const body = await getS3SandboxSource().downloadWorkspaceArchive({
+                  sandboxId: params.sandboxId,
+                  maxBytes: getAgentSandboxArchiveMaxBytes()
+                });
+                await restoreWorkspaceArchive({
+                  sandbox: target.sandbox,
+                  workDirectory: target.profile.workDirectory,
+                  sandboxId: params.sandboxId,
+                  archiveBody: body
+                });
+              }
+            }
+          ],
+          finish: {
+            type: 'complete',
+            status: SandboxInstanceStatusEnum.running,
+            touchActive: true,
+            set: () => ({
+              provider: params.provider,
+              sourceType: params.sourceType,
+              sourceId: params.sourceId,
+              userId: params.userId,
+              ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
+              ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
+              'metadata.volumeEnabled': Boolean(restoredStorage)
+            })
+          }
+        };
+        const completed = await runSandboxLifecycleOperation({
+          resource: current,
+          lease,
+          definition,
+          previousStatus: SandboxInstanceStatusEnum.archived,
+          claimConflictError: new SandboxLifecycleStateError(current.status)
+        });
 
-    const archiveBody = await getS3SandboxSource().downloadWorkspaceArchive({
-      sandboxId: params.sandboxId,
-      maxBytes: getAgentSandboxArchiveMaxBytes()
-    });
-    await restoreWorkspaceArchive({
-      sandbox,
-      workDirectory: restoreTarget.profile.workDirectory,
-      sandboxId: params.sandboxId,
-      archiveBody
-    });
-    const restoredStorage = params.storage ?? restoreTarget.storage;
-
-    const restoredDoc = await markSandboxRestored(restoringDoc, {
-      sourceType: params.sourceType,
-      sourceId: params.sourceId,
-      userId: params.userId,
-      chatId: params.chatId,
-      storage: restoredStorage,
-      limit: params.resourceLimit,
-      metadata: {
-        volumeEnabled: !!restoredStorage
-      }
-    });
-    if (!restoredDoc) {
-      const latest = await findSandboxInstanceArchiveState({
-        provider: params.provider,
-        sandboxId: params.sandboxId
-      });
-      if (!latest) {
-        throw new Error('Sandbox archive record was deleted during restore');
-      }
-      if (!latest.metadata?.archive?.state) {
-        if (sandbox) {
-          await sandbox.stop().catch((stopError) => {
-            logger.error('Failed to stop duplicate restored sandbox after restore race', {
+        await getS3SandboxSource()
+          .deleteWorkspaceArchiveNow({ sandboxId: params.sandboxId })
+          .catch((error) => {
+            logger.warn('Failed to delete consumed sandbox archive', {
               sandboxId: params.sandboxId,
-              error: stopError
+              error
             });
           });
-        }
-        return;
+      } catch (error) {
+        if (sandbox) await sandbox.stop().catch(() => undefined);
+        throw error;
+      } finally {
+        if (sandbox) await disconnectSandbox(sandbox).catch(() => undefined);
       }
-      throw new SandboxArchiveStateError(latest.metadata.archive.state);
     }
-  } catch (error) {
-    if (sandbox) {
-      await sandbox.stop().catch((stopError) => {
-        logger.error('Failed to stop sandbox after archive restore failure', {
-          sandboxId: params.sandboxId,
-          error: stopError
-        });
-      });
-    }
-    if (restoringDoc) {
-      await rollbackSandboxRestoring(restoringDoc).catch((rollbackError) => {
-        logger.error('Failed to rollback sandbox restoring state', {
-          sandboxId: params.sandboxId,
-          error: rollbackError
-        });
-      });
-    }
-    throw error;
-  } finally {
-    if (sandbox) {
-      await disconnectSandbox(sandbox).catch(() => undefined);
-    }
-  }
+  });
 }
 
-/**
- * 只检查冷归档状态，不触发恢复。
- *
- * keepalive 这类后台保活不能单独恢复已归档实例，否则会在没有真实用户动作时重建资源。
- * archive state 都由归档流程或显式用户请求处理，后台保活只负责阻塞。
- */
-export async function assertSandboxNotArchivedOrBusy(params: {
+/** keepalive 等后台路径只检查状态，不能触发恢复或首次创建。 */
+export async function assertSandboxRuntimeUsableWithoutRestore(params: {
   provider: SandboxProviderType;
   sandboxId: string;
 }) {
-  const instance = await findSandboxInstanceArchiveState(params);
-  const archiveState = instance?.metadata?.archive?.state;
-
+  const instance = await findSandboxInstanceBySandboxId({ sandboxId: params.sandboxId });
   if (
-    archiveState === 'archiving' ||
-    archiveState === 'deleting' ||
-    archiveState === 'archived' ||
-    archiveState === 'restoring' ||
-    archiveState === 'failed'
+    instance &&
+    instance.status !== SandboxInstanceStatusEnum.running &&
+    instance.status !== SandboxInstanceStatusEnum.stopped
   ) {
-    throw new SandboxArchiveStateError(archiveState);
+    throw new SandboxLifecycleStateError(instance.status);
   }
-}
-
-/**
- * 清理超过归档整体 timeout/grace 后仍卡住的归档状态。
- *
- * archiving 尚未确认 S3 包，超时后清理标记；deleting 已有 S3 包，超时后收敛为 archived，
- * 后续启动统一走 restore。
- */
-export async function clearStaleArchivingSandboxes(now = new Date()) {
-  const staleBefore = subMinutes(now, SANDBOX_STALE_ARCHIVING_MINUTES);
-  const [archivingResult, deletingResult] = await Promise.all([
-    clearStaleArchivingSandboxStates(staleBefore),
-    markStaleDeletingSandboxStatesArchived(staleBefore)
-  ]);
-
-  return {
-    archivingResult,
-    deletingResult
-  };
 }

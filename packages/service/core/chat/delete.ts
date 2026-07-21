@@ -1,6 +1,4 @@
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { deleteAppChatRuntimeSandboxes } from '../ai/sandbox/interface/resource';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
@@ -41,8 +39,8 @@ const deleteChatFilesBySourcePrefix = async ({
 /**
  * 按统一 chat source 硬删除标准 chat 资源。
  *
- * 只处理 `chats`、`chatitems`、`chat_item_responses`、chat S3 文件，以及 App chat
- * 绑定的 sandbox 资源；App logs、usage、inputGuide、Skill Edit 编辑沙盒都不属于本函数。
+ * 只处理 `chats`、`chatitems`、`chat_item_responses` 和 chat S3 文件。用户级 App
+ * Sandbox 不跟单个 Chat 生命周期绑定；App logs、usage、inputGuide 也不属于本函数。
  */
 export async function deleteChatResourcesBySource({
   sourceType,
@@ -81,13 +79,7 @@ export async function deleteChatResourcesBySource({
       return chat ? [chat] : [];
     });
   })();
-  const existingChatIds = chatList.map((chat) => chat.chatId).filter(Boolean);
-  await Promise.all([
-    MongoChatItemResponse.deleteMany(chatQuery),
-    sourceType === ChatSourceTypeEnum.app && existingChatIds.length
-      ? deleteAppChatRuntimeSandboxes({ appId: sourceId, chatIds: existingChatIds })
-      : Promise.resolve()
-  ]);
+  await MongoChatItemResponse.deleteMany(chatQuery);
 
   await MongoChatItem.deleteMany(chatQuery);
   await MongoChat.deleteMany(chatQuery);

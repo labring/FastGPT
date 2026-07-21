@@ -24,7 +24,7 @@ application
 infrastructure
   instance repository / provider adapter / runtime profile / volume
       |
-provider: opensandbox | sealosdevbox | e2b
+provider: opensandbox | sealosdevbox
 ```
 
 约束：
@@ -40,20 +40,23 @@ provider: opensandbox | sealosdevbox | e2b
 
 - `sourceType`：当前支持 App 和 Skill Edit。
 - `sourceId`：App id 或 Skill id。
-- `userId/chatId`：按场景补充会话维度。
+- `userId`：实例逻辑身份的一部分。App 使用有效用户 ID；Skill Edit 固定使用
+  `ChatSourceTypeEnum.skillEdit`。
+- `chatId`：只用于 App Sandbox 内的 session 目录，不参与实例或 Provider 资源 ID。
 - `sandboxId`：Provider 侧的物理资源标识，不替代业务归属。
 
 当前寻址规则：
 
 | 场景 | sandboxId | 归属 |
 | --- | --- | --- |
-| App chat | `hash(sourceId-userId-chatId)` 的前 16 位 | `sourceType=app`，保留 userId/chatId |
-| Skill Edit | 固定 edit-debug sandbox id | `sourceType=skillEdit`，sourceId 为 skillId |
+| App chat | `app-<hash(sourceId-effectiveUserId)>` | `sourceType=app`，`userId=effectiveUserId` |
+| Skill Edit | `skilledit-<hash(sourceId-skillEdit)>` | `sourceType=skillEdit`，`userId=skillEdit` |
 | Chat Agent Helper | 不支持 Sandbox | 调用时直接报错 |
 
-`agent_sandbox_instances` 使用 `(provider, sandboxId)` 唯一索引，并为 source、状态和归档查询建立索引。
+`agent_sandbox_instances_v2` 使用 `(provider, sandboxId)` 唯一索引，并使用
+`(sourceType, sourceId, userId)` 唯一约束逻辑身份。v2 不保留旧 ID 生成规则的兼容分支。
 
-旧 `appId`、`type` 和 `metadata.skillId` 字段只用于 4.15.0-beta6 迁移脚本及历史数据识别。新运行态写入和业务查询只使用 `sourceType/sourceId`，不能新增旧字段兼容分支。
+旧 `appId`、`type` 和 `metadata.skillId` 字段只用于 Legacy 数据识别与用户级 Sandbox 迁移。新运行态写入和业务查询只使用 `sourceType/sourceId`，不能新增旧字段兼容分支。
 
 ## Provider 与 Runtime Profile
 
@@ -61,7 +64,6 @@ provider: opensandbox | sealosdevbox | e2b
 
 - `opensandbox`
 - `sealosdevbox`
-- `e2b`
 
 `infrastructure/provider/runtimeProfile` 负责把 Provider 映射为默认镜像、工作目录、HOME、环境变量和创建参数。业务层不能根据 Provider 名称自行拼这些值。
 
@@ -160,7 +162,8 @@ Skill Edit 复用编辑器 Sandbox 中的当前工作区，不把编辑中的内
 
 - 不活跃的 running 实例由 cron 停止并标记为 stopped。
 - 删除资源时同步清理 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
-- App chat 删除只清理对应会话 Sandbox；App 删除清理该 source 下所有 Sandbox。
+- App chat 删除只清理聊天记录和 chat S3 文件，不删除共享 Sandbox，也不清理 Sandbox 内的 `sessions/<chatId>` 目录。
+- App 删除清理该 source 下全部用户级 v2 与 Legacy Sandbox，包括 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
 - Skill 删除清理 Skill Edit 相关 Sandbox；普通编辑聊天删除不直接删除共享 edit-debug Sandbox。
 - stopped 实例可进入冷归档；恢复时通过 archive 状态机避免与归档、删除并发。
 - 保活和只读存在性检查不能意外拉起 archived Sandbox。

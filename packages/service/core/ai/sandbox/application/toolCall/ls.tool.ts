@@ -2,7 +2,6 @@
  * 沙盒业务层：列出目录条目并输出稳定的纯文本列表。
  */
 import z from 'zod';
-import { SANDBOX_LS_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { defineTool } from './type';
 import { SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES, truncateSandboxToolOutput } from './utils';
 
@@ -50,7 +49,3 @@ export const sandboxLsTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_LS_TOOL_NAME]: sandboxLsTool
-};

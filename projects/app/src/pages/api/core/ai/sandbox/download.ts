@@ -16,7 +16,6 @@ import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandb
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   isSandboxPathDirectory,
-  resolveSandboxWorkspacePath,
   addDirectoryToArchive
 } from '@fastgpt/service/core/ai/sandbox/interface/file';
 
@@ -70,7 +69,7 @@ const writeFileStreamResponse = async ({
   res: NextApiResponse;
   path: string;
 }) => {
-  const providerPath = resolveSandboxWorkspacePath(path);
+  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
   const fileInfoMap = await sandbox.provider.getFileInfo([providerPath]).catch(() => undefined);
   const fileInfo = fileInfoMap?.get(providerPath);
 
@@ -118,10 +117,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       sourceId: resolvedSourceId,
       userId: uid,
       chatId
-    }),
-    {
-      failedArchivePolicy: 'clearAndContinue'
-    }
+    })
   );
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);

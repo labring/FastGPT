@@ -158,6 +158,7 @@ describe('saveDeploySkillFromSandbox', () => {
         sandboxId: 'sandbox-1',
         sourceType: 'skillEdit',
         sourceId: 'skill-1',
+        userId: 'skillEdit',
         touchActive: true,
         metadata: expect.objectContaining({
           teamId: 'team-1'

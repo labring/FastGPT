@@ -3,7 +3,6 @@
  */
 import z from 'zod';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import { SANDBOX_GREP_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { defineTool } from './type';
 import { SANDBOX_TOOL_MAX_BYTES, SANDBOX_TOOL_MAX_LINES, truncateSandboxToolOutput } from './utils';
 
@@ -116,7 +115,3 @@ export const sandboxGrepTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_GREP_TOOL_NAME]: sandboxGrepTool
-};

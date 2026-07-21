@@ -14,7 +14,6 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { resolveSandboxWorkspacePath } from '@fastgpt/service/core/ai/sandbox/interface/file';
 import { Readable } from 'node:stream';
 
 async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
@@ -65,13 +64,10 @@ async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
         sourceId: resolvedSourceId,
         userId: uid,
         chatId
-      }),
-      {
-        failedArchivePolicy: 'clearAndContinue'
-      }
+      })
     );
 
-    const providerPath = resolveSandboxWorkspacePath(path);
+    const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
     const [writeResult] = await sandbox.provider.writeFiles([
       {
         path: providerPath,

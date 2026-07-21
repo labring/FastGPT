@@ -19,7 +19,7 @@ export enum TrackEnum {
   freeAccountCleanup = 'freeAccountCleanup',
   auditLogCleanup = 'auditLogCleanup',
   chatHistoryCleanup = 'chatHistoryCleanup',
-  sandboxArchive = 'sandboxArchive',
+  userSandboxMigration = 'userSandboxMigration',
 
   // web tracks
   clientError = 'clientError',
