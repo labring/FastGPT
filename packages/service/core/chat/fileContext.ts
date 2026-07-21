@@ -38,6 +38,7 @@ import {
 import { getFileMaxSize } from '../../common/file/utils';
 import { readStreamToBuffer } from '../../common/s3/utils';
 import { Readable } from 'node:stream';
+import { validateFileUrlDomain } from '../../common/security/fileUrlValidator';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = {
@@ -466,6 +467,40 @@ export const normalizeReadableFileUrl = ({
   }
 };
 
+/**
+ * 在查询解析缓存前确认文件引用可读。
+ *
+ * 已登记文件已由上层 Context 完成授权；未登记 URL 作为动态外链处理，必须先通过
+ * HTTP(S)、域名白名单和内部地址检查，避免缓存命中绕过当前请求的出站策略。
+ */
+const getAuthorizedFileCacheSourceId = async ({
+  url,
+  fileContext
+}: {
+  url: string;
+  fileContext?: FileReadContext;
+}) => {
+  const fileRef = fileContext?.resolve(url);
+  if (fileRef) return fileContext?.getIdentity(url) ?? fileRef.modelUrl;
+
+  if (!/^https?:\/\//i.test(url)) {
+    throw new UserError('File URL must be an absolute HTTP(S) URL');
+  }
+
+  const parsedUrl = new URL(url);
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new UserError('File URL must use HTTP(S)');
+  }
+  if (fileContext && !validateFileUrlDomain(url)) {
+    throw new UserError('Invalid file URL domain');
+  }
+  if (await isInternalAddress(url)) {
+    throw new UserError(PRIVATE_URL_TEXT);
+  }
+
+  return url;
+};
+
 export const getFileInfoFromUrl = async ({
   teamId,
   url,
@@ -600,7 +635,7 @@ export const getFileContentByUrl = async ({
   usageId?: string;
   fileContext?: FileReadContext;
 }) => {
-  const sourceId = fileContext?.getIdentity(url) ?? url;
+  const sourceId = await getAuthorizedFileCacheSourceId({ url, fileContext });
   // Get from buffer
   const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
     sourceId,
@@ -699,15 +734,6 @@ export const parseFileContentFromUrls = async ({
     parseUrlList
       .map(async (url) => {
         try {
-          if (!fileContext?.resolve(url) && (await isInternalAddress(url))) {
-            return {
-              success: false,
-              name: '',
-              url,
-              content: PRIVATE_URL_TEXT
-            };
-          }
-
           const { name, content } = await getFileContentByUrl({
             url,
             teamId,
@@ -759,25 +785,16 @@ export const parseFileInfoFromUrls = async ({
   const readFilesResult = await Promise.all(
     parseUrlList
       .map(async (url) => {
-        // Get from buffer
-        const sourceId = fileContext?.getIdentity(url) ?? url;
-        const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
-          sourceId,
-          customPdfParse: false
-        });
-        if (rawTextBuffer) {
-          return {
-            success: true,
-            name: rawTextBuffer.filename,
-            url
-          };
-        }
-
         try {
-          if (!fileContext?.resolve(url) && (await isInternalAddress(url))) {
+          const sourceId = await getAuthorizedFileCacheSourceId({ url, fileContext });
+          const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
+            sourceId,
+            customPdfParse: false
+          });
+          if (rawTextBuffer) {
             return {
-              success: false,
-              name: '',
+              success: true,
+              name: rawTextBuffer.filename,
               url
             };
           }

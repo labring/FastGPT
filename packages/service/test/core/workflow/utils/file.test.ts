@@ -92,6 +92,14 @@ import type {
   WorkflowFileRef
 } from '@fastgpt/service/core/workflow/utils/fileContext';
 
+const createEmptyWorkflowFileContext = (): WorkflowFileContext => ({
+  limits: { maxFiles: 20, maxBytesPerFile: 1024 },
+  resolve: () => undefined,
+  resolveChatFile: () => undefined,
+  getIdentity: () => undefined,
+  read: vi.fn()
+});
+
 const createHumanMessage = (value: UserChatItemValueItemType[]): ChatItemMiniType => ({
   obj: ChatRoleEnum.Human,
   value
@@ -224,6 +232,60 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
     ]);
     expect(result.map((item) => item.content)).toEqual(['Alpha', 'Beta']);
     expect(result.every((item) => item.success)).toBe(true);
+  });
+
+  it('内部地址即使命中 raw-text 缓存也先拒绝', async () => {
+    mockIsInternalAddress.mockResolvedValue(true);
+    mockGetRawTextBuffer.mockResolvedValue({
+      filename: 'cached.pdf',
+      text: 'cached private content'
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: ['http://internal.svc/cached.pdf'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        success: false,
+        name: '',
+        url: 'http://internal.svc/cached.pdf',
+        content: PRIVATE_URL_TEXT
+      }
+    ]);
+  });
+
+  it('不在文件域名白名单的 URL 不查询 raw-text 缓存', async () => {
+    const originalSystemEnv = global.systemEnv;
+    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    mockIsInternalAddress.mockResolvedValue(false);
+    mockGetRawTextBuffer.mockResolvedValue({
+      filename: 'cached.pdf',
+      text: 'cached blocked content'
+    });
+
+    try {
+      const result = await parseFileContentFromUrls({
+        urls: ['https://blocked.example.com/cached.pdf'],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        fileContext: createEmptyWorkflowFileContext()
+      });
+
+      expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+      expect(result[0]).toMatchObject({
+        success: false,
+        url: 'https://blocked.example.com/cached.pdf',
+        content: 'Invalid file URL domain'
+      });
+    } finally {
+      global.systemEnv = originalSystemEnv;
+    }
   });
 });
 
@@ -648,6 +710,30 @@ describe('parseFileInfoFromUrls', () => {
         success: true,
         name: 'cached.pdf',
         url: 'https://files.example.com/cached.pdf'
+      }
+    ]);
+  });
+
+  it('内部地址在文件信息缓存命中前被拒绝', async () => {
+    mockIsInternalAddress.mockResolvedValue(true);
+    mockGetRawTextBuffer.mockResolvedValue({
+      filename: 'cached.pdf',
+      text: 'cached private content'
+    });
+
+    const result = await parseFileInfoFromUrls({
+      urls: ['http://internal.svc/cached.pdf'],
+      maxFiles: 20,
+      teamId: 'team-1'
+    });
+
+    expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+    expect(mockAxiosGet).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        success: false,
+        name: '',
+        url: 'http://internal.svc/cached.pdf'
       }
     ]);
   });

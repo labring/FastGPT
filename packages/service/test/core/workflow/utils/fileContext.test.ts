@@ -150,6 +150,23 @@ describe('prepareWorkflowFileContext', () => {
     ).rejects.toThrow('does not belong to the current workflow');
   });
 
+  it('skips a history private key that does not belong to the current workflow', async () => {
+    const invalidHistoryKey = 'chat/app/app-1/user-1/other-chat/report.pdf';
+    const historyFile = createFile({ key: invalidHistoryKey });
+    const getPreviewUrl = vi.fn();
+
+    await prepareWorkflowFileContext({
+      query: [],
+      histories: [createHistory(historyFile)],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl
+    });
+
+    expect(getPreviewUrl).not.toHaveBeenCalled();
+    expect(historyFile.file?.url).toBe('/uploading/report.pdf');
+  });
+
   it('registers absolute external URLs and skips invalid history URLs', async () => {
     const queryFile = createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' });
     const invalidHistoryFile = createFile({ key: undefined, url: '/api/system/file/d/legacy' });

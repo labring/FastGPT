@@ -195,6 +195,10 @@ export const prepareWorkflowFileContext = async ({
       'key' in file && typeof file.key === 'string' && file.key ? file.key : undefined;
     const resolvedFile = await (async () => {
       if (fileKey) {
+        if (source === 'history' && !isAuthorizedChatFileS3Key({ key: fileKey, ...scope })) {
+          logger.warn('Skip unauthorized workflow history file', { key: fileKey });
+          return;
+        }
         assertAuthorizedKey(fileKey);
         const modelUrl = await getPreviewUrl(fileKey);
         if ('url' in file) file.url = modelUrl;
