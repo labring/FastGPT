@@ -309,5 +309,33 @@ describe('system utils', () => {
 
       expect(arr).toEqual(arrCopy);
     });
+
+    it('should preserve fail-fast behavior by default', async () => {
+      const fn = vi.fn(async (item: number) => {
+        if (item === 1) throw new Error('first failed');
+        return item;
+      });
+
+      await expect(batchRun([1, 2, 3], fn, 1)).rejects.toThrow('first failed');
+
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should wait for every worker before rejecting when waitForAll is enabled', async () => {
+      const completed: number[] = [];
+      const fn = vi.fn(async (item: number) => {
+        if (item === 1) throw new Error('first failed');
+        await delay(item);
+        completed.push(item);
+        return item;
+      });
+
+      await expect(batchRun([1, 2, 3, 4], fn, 2, { waitForAll: true })).rejects.toThrow(
+        'first failed'
+      );
+
+      expect(fn).toHaveBeenCalledTimes(4);
+      expect(completed.sort((a, b) => a - b)).toEqual([2, 3, 4]);
+    });
   });
 });

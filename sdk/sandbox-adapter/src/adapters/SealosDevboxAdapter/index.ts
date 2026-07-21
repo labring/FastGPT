@@ -1,11 +1,17 @@
 import { CommandPolyfillService } from '@/polyfill/CommandPolyfillService';
-import { CommandExecutionError, ConnectionError, FeatureNotSupportedError } from '../../errors';
+import {
+  CommandExecutionError,
+  ConnectionError,
+  FeatureNotSupportedError,
+  SandboxNotFoundError
+} from '../../errors';
 import type {
   Endpoint,
   ExecuteOptions,
   ExecuteResult,
   SandboxCreateSpec,
   SandboxEndpointSelector,
+  SandboxEnsureRunningOptions,
   SandboxId,
   SandboxInfo,
   SandboxState,
@@ -178,8 +184,13 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
   async getInfo(): Promise<SandboxInfo | null> {
     try {
       const res = await this.api.info(this._id);
-      if (res.code !== 200) return null;
-      if (!res.data) return Promise.reject(res.message);
+      if (this.isNotFoundResponse(res)) return null;
+      if (res.code !== 200 || !res.data) {
+        throw new ConnectionError(
+          `Failed to get sandbox info: ${res.message}`,
+          this.config.baseUrl
+        );
+      }
 
       const data: DevboxInfoData = res.data;
 
@@ -196,6 +207,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
         createdAt: data.creationTimestamp ? new Date(data.creationTimestamp) : new Date()
       };
     } catch (error: any) {
+      if (error instanceof ConnectionError) throw error;
       throw new CommandExecutionError(
         `Failed to get sandbox info`,
         'getInfo',
@@ -204,8 +216,9 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     }
   }
 
-  async ensureRunning(): Promise<void> {
+  async ensureRunning(options: SandboxEnsureRunningOptions = {}): Promise<void> {
     try {
+      const allowCreate = options.allowCreate ?? true;
       const sandbox = await this.getInfoWithProviderRetry();
       if (sandbox) {
         const status = sandbox.status.state;
@@ -221,6 +234,9 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
             await this.start();
             return;
           case 'Deleting':
+            if (!allowCreate) {
+              throw new ConnectionError(`Sandbox ${sandbox.id} is deleting`, this.config.baseUrl);
+            }
             await this.waitUntilDeleted();
             await this.create();
             return;
@@ -234,10 +250,12 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
         }
       }
 
-      // Not found, create sandbox
+      if (!allowCreate) {
+        throw new SandboxNotFoundError(`Sandbox ${this._id} does not exist`);
+      }
       await this.create();
     } catch (error: any) {
-      if (error instanceof ConnectionError) {
+      if (error instanceof ConnectionError || error instanceof SandboxNotFoundError) {
         throw error;
       }
       throw new ConnectionError(`Failed to ensure sandbox running`, this.config.baseUrl, error);

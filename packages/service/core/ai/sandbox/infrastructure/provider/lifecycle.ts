@@ -6,6 +6,7 @@
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
   type ISandbox,
+  type SandboxEnsureRunningOptions,
   type OpenSandboxAdapter,
   type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
@@ -120,9 +121,13 @@ export async function connectToSandbox(
  * 生命周期恢复交给 adapter.ensureRunning 处理，避免外层直接 getInfo 绕过
  * provider adapter 内部对临时网关错误（如 devbox 503/no healthy upstream）的重试。
  * Running 状态仍额外等待命令通道 ready，避免底层 Pod/exec 通道未就绪时抢跑。
+ * `allowCreate: false` 用于无 lifecycle lease 的连接快路径，避免并发删除后重新创建资源。
  */
-export async function ensureConnectedSandboxRunning(sandbox: ISandbox): Promise<void> {
-  await sandbox.ensureRunning();
+export async function ensureConnectedSandboxRunning(
+  sandbox: ISandbox,
+  options: SandboxEnsureRunningOptions = {}
+): Promise<void> {
+  await sandbox.ensureRunning(options);
   await sandbox.waitUntilReady();
   if (sandbox.provider === 'sealosdevbox') {
     await waitUntilSandboxCommandReady(sandbox);

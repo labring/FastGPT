@@ -5,6 +5,7 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
+    resolveRuntimePath: vi.fn((path: string) => path),
     provider: {
       writeFiles: vi.fn(async (files: { path: string; data: string }[]) =>
         files.map((file) => ({

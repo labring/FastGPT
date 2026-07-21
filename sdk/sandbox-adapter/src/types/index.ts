@@ -33,6 +33,7 @@ export type {
   ResourceLimits,
   SandboxCreateSpec,
   SandboxEndpointSelector,
+  SandboxEnsureRunningOptions,
   SandboxId,
   SandboxInfo,
   SandboxMetrics,

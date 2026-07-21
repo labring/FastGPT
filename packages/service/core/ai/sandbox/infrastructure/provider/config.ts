@@ -25,15 +25,7 @@ export type SealosDevboxProviderConfig = {
   token: string;
 };
 
-export type E2BProviderConfig = {
-  provider: 'e2b';
-  apiKey: string;
-};
-
-export type SandboxProviderConfig =
-  | OpenSandboxProviderConfig
-  | SealosDevboxProviderConfig
-  | E2BProviderConfig;
+export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProviderConfig;
 
 export type SandboxCreateConfig = SandboxCreateSpec;
 
@@ -72,7 +64,7 @@ export function getSandboxProviderConfig(
  * 启动运行态和清理历史资源都会经过这层校验，错误应直接暴露为环境配置问题。
  */
 export function validateSandboxConfig(config: SandboxProviderConfig): void {
-  if (config.provider !== 'e2b' && !config.baseUrl) {
+  if (!config.baseUrl) {
     throw new Error('Sandbox provider base URL is required');
   }
 
@@ -86,10 +78,6 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
 
   if (config.provider === 'sealosdevbox' && !config.token) {
     throw new Error('Sandbox provider token is required for sealosdevbox');
-  }
-
-  if (config.provider === 'e2b' && !config.apiKey) {
-    throw new Error('Sandbox provider apiKey is required for e2b');
   }
 }
 
@@ -175,23 +163,6 @@ export function getSandboxAdapterConfig({
                 ...createConfig?.env,
                 ...baseEnv
               }
-            })
-          : undefined
-      };
-    }
-
-    case 'e2b': {
-      const providerConfig: E2BProviderConfig = {
-        provider,
-        apiKey: serviceEnv.AGENT_SANDBOX_E2B_API_KEY ?? ''
-      };
-      validateSandboxConfig(providerConfig);
-
-      return {
-        providerConfig,
-        createConfig: runtime
-          ? profile.buildConfig({
-              createConfig
             })
           : undefined
       };

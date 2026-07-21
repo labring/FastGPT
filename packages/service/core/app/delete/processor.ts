@@ -9,12 +9,13 @@ import { getLogger, LogCategories } from '../../../common/logger';
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
 const deleteApps = async ({ teamId, apps }: { teamId: string; apps: AppSchemaType[] }) => {
+  // 每个 App 使用独立 Source Lease；任务内串行用于限制外部资源清理压力。
   const results = await batchRun(
     apps,
     async (app) => {
       await deleteAppDataProcessor({ app, teamId });
     },
-    3
+    1
   );
 
   return results.flat();
@@ -55,6 +56,7 @@ export const appDeleteProcessor: Processor<AppDeleteJobData> = async (job) => {
         markedAppIds: markedForDelete.map((app) => app._id),
         totalAppIds: apps.map((app) => app._id)
       });
+      throw new Error('App delete safety check mismatch');
     }
 
     const childrenLen = apps.length - 1;

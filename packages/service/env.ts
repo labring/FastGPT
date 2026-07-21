@@ -73,8 +73,6 @@ export const serviceEnv = createEnv({
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional(),
     IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
-    // E2B配置
-    AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),

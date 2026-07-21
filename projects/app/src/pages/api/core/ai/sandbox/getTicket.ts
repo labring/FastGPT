@@ -8,9 +8,11 @@ import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/run
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';
 import jwt from 'jsonwebtoken';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   SandboxGetTicketBodySchema,
+  SandboxGetTicketResponseSchema,
   type SandboxTicketPermission,
   type SandboxGetTicketResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
@@ -55,9 +57,21 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   });
 
   // 2. 调度并确保沙盒已拉起可用
-  await getSandboxClient(sandboxQuery, {
-    failedArchivePolicy: 'clearAndContinue'
-  });
+  const sandbox = await getSandboxClient(sandboxQuery);
+  const { workspaceRoot, sessionWorkDirectory } = sandbox.getRuntimePaths();
+
+  // 用户级 Sandbox 可能由其它 Chat 创建，签发 Ticket 前确保当前 Chat 的 IDE 根目录存在。
+  const prepareDirectoryResult = await sandbox.provider.execute(
+    `mkdir -p ${shellQuote(sessionWorkDirectory)}`,
+    { timeoutMs: 30 * 1000 }
+  );
+  if (prepareDirectoryResult.exitCode !== 0) {
+    throw new Error(
+      prepareDirectoryResult.stderr ||
+        prepareDirectoryResult.stdout ||
+        'Failed to prepare sandbox session directory'
+    );
+  }
 
   // 签发短期 HMAC 凭证，内含租户元数据，不包含任何物理寻址信息。
   const ticket = jwt.sign(
@@ -74,7 +88,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     { expiresIn: TICKET_EXPIRES_IN }
   );
 
-  return { ticket };
+  return SandboxGetTicketResponseSchema.parse({ ticket, workspaceRoot, sessionWorkDirectory });
 }
 
 export default NextAPI(handler);

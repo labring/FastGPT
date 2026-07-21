@@ -356,8 +356,11 @@ describe('App Delete Data Cleanup Verification', () => {
       // 为子应用创建相关数据
       await createAllRelatedTestData(String(childApp._id), teamId);
 
-      // 标记父应用为删除状态
-      await MongoApp.updateOne({ _id: parentApp._id }, { deleteTime: new Date() });
+      // 删除队列只清理已经由 API 事务标记的父子应用。
+      await MongoApp.updateMany(
+        { _id: { $in: [parentApp._id, childApp._id] } },
+        { deleteTime: new Date() }
+      );
 
       // 执行删除（应该级联删除子应用）
       const mockJob = {
@@ -379,6 +382,36 @@ describe('App Delete Data Cleanup Verification', () => {
         _id: { $in: [parentApp._id, childApp._id] },
         teamId
       });
+    });
+
+    it('should reject external cleanup when a nested app is not marked for deletion', async () => {
+      const parentApp = await MongoApp.create({
+        name: 'Safety Parent App',
+        teamId,
+        tmbId: rootUser.tmbId,
+        type: AppTypeEnum.simple,
+        modules: []
+      });
+      const childApp = await MongoApp.create({
+        name: 'Safety Child App',
+        teamId,
+        tmbId: rootUser.tmbId,
+        type: AppTypeEnum.simple,
+        parentId: parentApp._id,
+        modules: []
+      });
+      await MongoApp.updateOne({ _id: parentApp._id }, { deleteTime: new Date() });
+
+      await expect(
+        appDeleteProcessor({
+          data: { teamId, appId: String(parentApp._id) },
+          id: 'test-delete-safety-job'
+        })
+      ).rejects.toThrow('App delete safety check mismatch');
+
+      expect(await MongoApp.countDocuments({ _id: parentApp._id })).toBe(1);
+      expect(await MongoApp.countDocuments({ _id: childApp._id })).toBe(1);
+      await MongoApp.deleteMany({ _id: { $in: [parentApp._id, childApp._id] } });
     });
 
     it('should handle batch deletion of multiple apps', async () => {

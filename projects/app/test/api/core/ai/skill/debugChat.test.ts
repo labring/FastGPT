@@ -1,7 +1,6 @@
 import { buildDebugRuntimeNodes } from '@fastgpt/service/core/ai/skill/debugChat';
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -423,16 +422,12 @@ describe('debugChat handler — parameter validation', () => {
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      type: SandboxTypeEnum.editDebug,
+      userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
       metadata: {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
+        image: { repository: 'test-image', tag: 'latest' }
       }
     });
 
@@ -473,16 +468,12 @@ describe('debugChat handler — parameter validation', () => {
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      type: SandboxTypeEnum.editDebug,
+      userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
       metadata: {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
+        image: { repository: 'test-image', tag: 'latest' }
       }
     });
 
@@ -515,16 +506,12 @@ describe('debugChat handler — parameter validation', () => {
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      type: SandboxTypeEnum.editDebug,
+      userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
       metadata: {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
+        image: { repository: 'test-image', tag: 'latest' }
       }
     });
 

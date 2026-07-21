@@ -4,6 +4,7 @@
  * 只放路径、hash、文件名清洗等无副作用工具，不访问数据库、provider 或业务状态。
  */
 import { createHash } from 'crypto';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type HashContent = string | Buffer | Uint8Array;
 
@@ -14,6 +15,97 @@ export const trimSandboxPathRight = (value: string) =>
 /** 用 sandbox 语义拼接路径，避免不同 provider 工作目录末尾斜杠导致双斜杠。 */
 export const joinSandboxPath = (basePath: string, path: string) =>
   `${trimSandboxPathRight(basePath)}/${path}`;
+
+/** 将 chatId 转成稳定的单个目录名；常规 NanoID 保持原值，异常输入使用 URL 编码。 */
+export const getSandboxSessionPathSegment = (chatId: string) => {
+  if (!chatId) {
+    throw new Error('chatId is required for App sandbox session path');
+  }
+
+  const encoded = encodeURIComponent(chatId);
+  if (encoded !== '.' && encoded !== '..' && Buffer.byteLength(encoded) <= 200) {
+    return encoded;
+  }
+
+  return `chat-${createHash('sha256').update(chatId).digest('hex').slice(0, 40)}`;
+};
+
+export type SandboxRuntimePaths = {
+  workspaceRoot: string;
+  runtimeSkillsRoot: string;
+  sessionWorkDirectory: string;
+};
+
+type ResolveSandboxRuntimePathOptions = {
+  allowAbsolutePath?: boolean;
+};
+
+/** 根据 provider 工作目录和 Chat source 构造本轮 Sandbox 运行时路径。 */
+export const getSandboxRuntimePaths = ({
+  sourceType,
+  workDirectory,
+  chatId
+}: {
+  sourceType: ChatSourceTypeEnum;
+  workDirectory: string;
+  chatId?: string;
+}): SandboxRuntimePaths => {
+  const workspaceRoot = trimSandboxPathRight(workDirectory);
+  const runtimeSkillsRoot = joinSandboxPath(workspaceRoot, 'projects');
+
+  if (sourceType === ChatSourceTypeEnum.app) {
+    return {
+      workspaceRoot,
+      runtimeSkillsRoot,
+      sessionWorkDirectory: joinSandboxPath(
+        joinSandboxPath(workspaceRoot, 'sessions'),
+        getSandboxSessionPathSegment(chatId ?? '')
+      )
+    };
+  }
+
+  return {
+    workspaceRoot,
+    runtimeSkillsRoot,
+    sessionWorkDirectory: workspaceRoot
+  };
+};
+
+/**
+ * 将运行时文件路径解析到当前会话目录，并限制绝对路径只能落在 workspace 内。
+ *
+ * 相对路径始终以 sessionWorkDirectory 为基准；绝对路径用于编辑器从会话目录
+ * 向上浏览 workspace，不把目录层级当作安全隔离边界。
+ */
+export const resolveSandboxRuntimePath = (
+  path: string | undefined,
+  runtimePaths: Pick<SandboxRuntimePaths, 'workspaceRoot' | 'sessionWorkDirectory'>,
+  options: ResolveSandboxRuntimePathOptions = {}
+) => {
+  const rawPath = path || '.';
+  const workspaceRoot = trimSandboxPathRight(runtimePaths.workspaceRoot);
+  const sessionWorkDirectory = trimSandboxPathRight(runtimePaths.sessionWorkDirectory);
+
+  if (rawPath === '.' || rawPath === './' || rawPath === '') {
+    return sessionWorkDirectory;
+  }
+
+  if (rawPath.split('/').includes('..')) {
+    throw new Error('Path traversal detected');
+  }
+
+  if (rawPath.startsWith('/')) {
+    if (!options.allowAbsolutePath) {
+      throw new Error('Absolute sandbox paths are not allowed');
+    }
+    if (rawPath !== workspaceRoot && !rawPath.startsWith(`${workspaceRoot}/`)) {
+      throw new Error('Sandbox path is outside workspace');
+    }
+    return rawPath;
+  }
+
+  return joinSandboxPath(sessionWorkDirectory, rawPath.replace(/^\.\//, ''));
+};
 
 /** 构建 runtime 状态和 manifest 统一使用的内容 hash。 */
 export const buildRuntimeHash = (content: HashContent): string =>

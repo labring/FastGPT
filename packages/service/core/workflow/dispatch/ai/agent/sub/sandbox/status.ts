@@ -12,20 +12,17 @@ export const streamAgentSandboxInitStatus = ({
   workflowStreamResponse,
   sourceType,
   sourceId,
-  userId,
-  chatId
+  userId
 }: {
   workflowStreamResponse?: WorkflowResponseType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
-  chatId: string;
 }) => {
   const effectiveSandboxId = getRunningSandboxId({
     sourceType,
     sourceId,
-    userId,
-    chatId
+    userId
   });
 
   workflowStreamResponse?.(
