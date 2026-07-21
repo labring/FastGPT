@@ -16,10 +16,7 @@ import {
 import { serviceEnv } from '@fastgpt/service/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { buildSandboxClientQueryFromChatSource } from '@/service/core/sandbox/auth';
-import {
-  SANDBOX_PREVIEW_CHANNEL,
-  SandboxPreviewTicketClaimsSchema
-} from '@fastgpt/service/core/ai/sandbox/application/preview';
+import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
 const IDE_AGENT_PORT = 1318;
 const IDE_AGENT_PREVIEW_PORT = 1319;
@@ -29,6 +26,7 @@ const VerifyTicketQuerySchema = z.object({
   ticket: z.string().min(1).optional()
 });
 const SANDBOX_TICKET_HEADER = 'x-sandbox-ticket';
+const SANDBOX_PREVIEW_SESSION_HEADER = 'x-sandbox-preview-session';
 
 const SandboxVerifyTicketResponseSchema = z.object({
   sandbox_url: z.string().min(1),
@@ -51,15 +49,6 @@ const SandboxTicketClaimsSchema = BaseSandboxTicketClaimsSchema.extend({
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string()
 });
-const SandboxProxyTicketClaimsSchema = z.union([
-  SandboxTicketClaimsSchema,
-  SandboxPreviewTicketClaimsSchema
-]);
-
-/** 根据 ticket 通道选择 IDE Agent 的内部监听端口。 */
-const getIdeAgentPort = (channel: z.infer<typeof SandboxProxyTicketClaimsSchema>['channel']) => {
-  return channel === SANDBOX_PREVIEW_CHANNEL ? IDE_AGENT_PREVIEW_PORT : IDE_AGENT_PORT;
-};
 
 async function readIdeAgentPassword(sandbox: SandboxClient) {
   const maxRetries = 3;
@@ -89,7 +78,7 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
 }
 
 /**
- * 校验 proxy ticket，并返回 IDE Agent 的代理连接地址和一次性 agent 口令。
+ * 校验 WebSocket ticket 或 Preview session，并返回 IDE Agent 的代理连接地址和 agent 口令。
  */
 async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketResponse> {
   const secret = authAgentSandboxProxy(req);
@@ -99,31 +88,43 @@ async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketRespons
     querySchema: VerifyTicketQuerySchema
   }).query;
   const headerTicket = req.headers[SANDBOX_TICKET_HEADER];
-  const ticket = z
-    .string()
-    .min(1)
-    .parse((typeof headerTicket === 'string' ? headerTicket : undefined) ?? queryTicket);
+  const headerPreviewSession = req.headers[SANDBOX_PREVIEW_SESSION_HEADER];
 
-  let decoded: z.infer<typeof SandboxProxyTicketClaimsSchema>;
-  try {
-    decoded = SandboxProxyTicketClaimsSchema.parse(jwt.verify(ticket, secret));
-  } catch (err: any) {
-    throw new Error('Invalid ticket signature: ' + err.message);
-  }
+  const authContext = await (async () => {
+    if (typeof headerPreviewSession === 'string') {
+      return {
+        sandboxQuery: await resolveSandboxPreviewSession(headerPreviewSession),
+        ideAgentPort: IDE_AGENT_PREVIEW_PORT
+      };
+    }
 
-  const { sourceType, sourceId, userId, chatId } = decoded;
+    const ticket = z
+      .string()
+      .min(1)
+      .parse((typeof headerTicket === 'string' ? headerTicket : undefined) ?? queryTicket);
 
-  const sandbox = await getSandboxClient(
-    buildSandboxClientQueryFromChatSource({
-      sourceType,
-      sourceId,
-      userId,
-      chatId
-    })
-  );
+    try {
+      const { sourceType, sourceId, userId, chatId } = SandboxTicketClaimsSchema.parse(
+        jwt.verify(ticket, secret)
+      );
+      return {
+        sandboxQuery: buildSandboxClientQueryFromChatSource({
+          sourceType,
+          sourceId,
+          userId,
+          chatId
+        }),
+        ideAgentPort: IDE_AGENT_PORT
+      };
+    } catch (err: any) {
+      throw new Error('Invalid ticket signature: ' + err.message);
+    }
+  })();
+
+  const sandbox = await getSandboxClient(authContext.sandboxQuery);
   const agentPassword = await readIdeAgentPassword(sandbox);
 
-  const endpoint = await sandbox.provider.getEndpoint(getIdeAgentPort(decoded.channel));
+  const endpoint = await sandbox.provider.getEndpoint(authContext.ideAgentPort);
 
   return SandboxVerifyTicketResponseSchema.parse({
     sandbox_url: endpoint.url,
