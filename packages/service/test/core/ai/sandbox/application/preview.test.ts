@@ -1,60 +1,99 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
+vi.mock('@fastgpt/service/common/redis', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/redis')>()),
+  getAllKeysByPrefix: vi.fn(),
+  getGlobalRedisConnection: vi.fn()
+}));
+
+import { getAllKeysByPrefix, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+
 import {
   buildSandboxPreviewFileUrl,
-  createSandboxPreviewTicket,
+  createSandboxPreviewSession,
   resolveSandboxPreviewPath,
-  verifySandboxPreviewTicket
+  resolveSandboxPreviewSession,
+  SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
+  SANDBOX_PREVIEW_SESSION_TTL_SECONDS,
+  SandboxPreviewSessionLimitError
 } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
-const originalProxySecret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
 const originalProxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
 const originalPreviewProxyUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
 const originalProvider = serviceEnv.AGENT_SANDBOX_PROVIDER;
+const redisMock = {
+  set: vi.fn(),
+  get: vi.fn()
+};
+const sessionContext = {
+  sandboxId: '0123456789abcdef',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: 'app-1',
+  userId: 'user-1',
+  chatId: 'chat-1'
+};
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_SECRET = 'preview-secret-1234567890-1234567890';
     serviceEnv.AGENT_SANDBOX_PROXY_URL = 'wss://agent-proxy.example.com/base/';
     serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://agent-preview.example.com:3007/base/';
     serviceEnv.AGENT_SANDBOX_PROVIDER = 'opensandbox';
+    vi.resetAllMocks();
+    vi.mocked(getAllKeysByPrefix).mockResolvedValue([]);
+    redisMock.set.mockResolvedValue('OK');
+    vi.mocked(getGlobalRedisConnection).mockReturnValue(redisMock as any);
   });
 
   afterEach(() => {
-    serviceEnv.AGENT_SANDBOX_PROXY_SECRET = originalProxySecret;
     serviceEnv.AGENT_SANDBOX_PROXY_URL = originalProxyUrl;
     serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = originalPreviewProxyUrl;
     serviceEnv.AGENT_SANDBOX_PROVIDER = originalProvider;
   });
 
-  it('signs and verifies read-only preview claims', () => {
-    const ticket = createSandboxPreviewTicket({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1',
-      chatId: 'chat-1'
-    });
+  it('checks the sandbox limit before creating a 24-character session', async () => {
+    const sessionId = await createSandboxPreviewSession(sessionContext);
 
-    expect(verifySandboxPreviewTicket(ticket)).toMatchObject({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1',
-      chatId: 'chat-1',
-      channel: 'preview',
-      permission: 'read'
-    });
+    expect(sessionId).toMatch(/^[a-z][a-zA-Z0-9]{23}$/);
+    expect(getAllKeysByPrefix).toHaveBeenCalledWith('sandbox:preview:0123456789abcdef');
+    const [sessionKey, payload, expiryMode, ttl] = redisMock.set.mock.calls[0];
+    expect(sessionKey).toMatch(/^sandbox:preview:0123456789abcdef:[a-z][a-zA-Z0-9]{23}$/);
+    expect(JSON.parse(String(payload))).toEqual(sessionContext);
+    expect(expiryMode).toBe('EX');
+    expect(ttl).toBe(SANDBOX_PREVIEW_SESSION_TTL_SECONDS);
+  });
+
+  it('rejects creation at 500 active sessions without deleting old sessions', async () => {
+    vi.mocked(getAllKeysByPrefix).mockResolvedValueOnce(
+      Array.from({ length: SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX }, (_, index) => String(index))
+    );
+    await expect(createSandboxPreviewSession(sessionContext)).rejects.toBeInstanceOf(
+      SandboxPreviewSessionLimitError
+    );
+    expect(redisMock.set).not.toHaveBeenCalled();
+  });
+
+  it('resolves session context until the Redis TTL expires', async () => {
+    redisMock.get.mockResolvedValueOnce(JSON.stringify(sessionContext)).mockResolvedValue(null);
+
+    const credential = '0123456789abcdef:a12345678901234567890123';
+    await expect(resolveSandboxPreviewSession(credential)).resolves.toEqual(sessionContext);
+    await expect(resolveSandboxPreviewSession(credential)).rejects.toThrow(
+      'Invalid or expired sandbox preview session'
+    );
+    await expect(resolveSandboxPreviewSession('invalid')).rejects.toThrow();
   });
 
   it('builds a URL from the dedicated preview proxy and encodes each path segment', () => {
     expect(
       buildSandboxPreviewFileUrl({
-        ticket: 'header.payload.signature',
+        sandboxId: '0123456789abcdef',
+        sessionId: 'a12345678901234567890123',
         filePath: '/workspace/test dir/预览.html'
       })
     ).toBe(
-      'https://agent-preview.example.com:3007/base/preview/header.payload.signature/test%20dir/%E9%A2%84%E8%A7%88.html'
+      'https://agent-preview.example.com:3007/base/preview/0123456789abcdef/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html'
     );
   });
 
@@ -63,7 +102,8 @@ describe('sandbox preview application', () => {
 
     expect(() =>
       buildSandboxPreviewFileUrl({
-        ticket: 'header.payload.signature',
+        sandboxId: '0123456789abcdef',
+        sessionId: 'a12345678901234567890123',
         filePath: '/workspace/index.html'
       })
     ).toThrow('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');

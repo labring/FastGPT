@@ -143,7 +143,8 @@ export const SandboxGetHtmlPreviewLinkBodySchema = withSandboxTarget({
   })
 });
 export const SandboxGetHtmlPreviewLinkResponseSchema = z.string().url().meta({
-  example: 'https://agent-proxy.example.com/preview/token/dist/index.html',
+  example:
+    'https://agent-proxy.example.com/preview/0123456789abcdef/a12345678901234567890123/dist/index.html',
   description: '由 agent-proxy 直接读取 sandbox workspace 的短期 HTML 预览链接'
 });
 export type SandboxGetHtmlPreviewLinkBody = z.input<typeof SandboxGetHtmlPreviewLinkBodySchema>;
