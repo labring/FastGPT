@@ -22,13 +22,23 @@ Notes:
 4. `rootkey` is no longer used as the credential for FastGPT main app calls to Pro/Admin internal APIs. It is only the admin secret for the current system and is used to call `/api/admin/**` APIs, such as the initialization script below.
 5. Open-source deployment files do not include `PRO_TOKEN`. For Pro deployments, add it manually in your private deployment environment variables.
 
-### 2. Docker Image Changes
+### 2. WECOM_LOGIN_AUTO_REDIRECT Environment Variable
+
+Older versions always redirected WeCom terminals to the login page, equivalent to `WECOM_LOGIN_AUTO_REDIRECT=true`. Starting from v4.15.1, this behavior is disabled by default. To keep the previous automatic redirect behavior, add the following environment variable to the FastGPT main app:
+
+```bash
+WECOM_LOGIN_AUTO_REDIRECT=true
+```
+
+If automatic redirects are not needed, leave this variable unset or set it to `false`. Restart the FastGPT main app after changing the environment variable for the configuration to take effect.
+
+### 3. Docker Image Changes
 
 - Update the fastgpt-app (FastGPT main service) image tag to v4.15.1.
 - Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.1.
 - Update the fastgpt-plugin image tag to v1.0.1.
 
-### 3. API Key App Name Initialization
+### 4. API Key App Name Initialization
 
 To keep older API keys compatible and make it easier to find keys previously associated with apps, v4.15.1 adds global API Key tag management and an `appName` display snapshot for historical app-level API Keys. After upgrading, run the initialization script once to backfill app names for existing API Keys whose `appId` field is still present.
 

@@ -24,13 +24,23 @@ FE_DOMAIN=fastgpt_domain
 4. `rootkey` 不再作为 FastGPT 主应用访问 Pro/Admin 内部接口的凭证，仅作为当前系统的管理员密钥，用于调用 `/api/admin/**` 接口，例如下方初始化脚本。
 5. 开源版部署配置文件不会内置 `PRO_TOKEN`。Pro 部署请在私有部署环境变量中手动增加该配置。
 
-### 2. 镜像变更
+### 2. WECOM_LOGIN_AUTO_REDIRECT 环境变量更新
+
+旧版本在企微终端会固定自动跳转登录，行为等同于 `WECOM_LOGIN_AUTO_REDIRECT=true`。v4.15.1 起，该行为默认关闭。如果需要保持旧版本的自动跳转行为，请在 FastGPT 主应用的环境变量中增加：
+
+```bash
+WECOM_LOGIN_AUTO_REDIRECT=true
+```
+
+如果不需要自动跳转，可以不配置该变量，或将其设置为 `false`。修改环境变量后请重启 FastGPT 主应用使配置生效。
+
+### 3. 镜像变更
 
 - 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.1
 - 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.1
 - 更新 fastgpt-plugin 镜像 tag: v1.0.1
 
-### 3. API Key 应用名初始化
+### 4. API Key 应用名初始化
 
 为了兼容旧版 API 密钥，便于找到以前应用关联的密钥，v4.15.1 增加了全局 API Key 标签管理，并为历史应用级 API Key 增加 `appName` 展示快照。升级后建议执行一次初始化脚本，为已有 `appId` 的历史 API Key 自动回填应用名。
 
