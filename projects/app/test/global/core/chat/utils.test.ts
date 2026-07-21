@@ -6,7 +6,7 @@ import {
   SANDBOX_SHELL_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { addStatisticalDataToHistoryItem, getChatItemErrorText } from '@/global/core/chat/utils';
 
 describe('addStatisticalDataToHistoryItem', () => {
   it('marks sandbox usage from streaming tool call cards before responseData is loaded', () => {
@@ -362,6 +362,83 @@ describe('addStatisticalDataToHistoryItem', () => {
       moduleName: 'Agent',
       errorText: 'agent stopped'
     });
+  });
+
+  it('ignores a failed tool child when later tool calls complete', () => {
+    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+      {
+        id: 'agent-response',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent
+      },
+      {
+        id: 'tool-response-1',
+        parentId: 'agent-response',
+        nodeId: 'tool-node-1',
+        moduleName: 'Tool 1',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolRes: 'done'
+      },
+      {
+        id: 'tool-response-2',
+        parentId: 'agent-response',
+        nodeId: 'tool-node-2',
+        moduleName: 'Tool 2',
+        moduleType: FlowNodeTypeEnum.tool,
+        error: 'tool failed'
+      },
+      {
+        id: 'tool-response-3',
+        parentId: 'agent-response',
+        nodeId: 'tool-node-3',
+        moduleName: 'Tool 3',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolRes: 'done'
+      },
+      {
+        id: 'tool-response-4',
+        parentId: 'agent-response',
+        nodeId: 'tool-node-4',
+        moduleName: 'Tool 4',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolRes: 'done'
+      }
+    ];
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: 'done' } }],
+      responseData
+    };
+
+    expect(getChatItemErrorText(responseData)).toBeUndefined();
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toBeUndefined();
+  });
+
+  it('ignores tool errors nested inside an agent response', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: 'done' } }],
+      responseData: [
+        {
+          id: 'agent-response',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          childrenResponses: [
+            {
+              id: 'tool-response',
+              nodeId: 'tool-node',
+              moduleName: 'Tool',
+              moduleType: FlowNodeTypeEnum.tool,
+              errorText: 'tool failed'
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toBeUndefined();
   });
 
   it('does not use HTTP result error as chat bubble error text when node error is absent', () => {
