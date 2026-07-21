@@ -46,8 +46,9 @@ describe('getAllKeysByPrefix', () => {
     redis.scan.mockReset();
     redis.scan.mockResolvedValueOnce(['0', ['other:session:user:one']]);
 
-    await expect(getAllKeysByPrefix('session:user')).rejects.toThrow(
-      'Redis physical key does not belong to the FastGPT keyspace'
-    );
+    await expect(getAllKeysByPrefix('session:user')).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'scan.iterate'
+    });
   });
 });

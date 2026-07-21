@@ -35,10 +35,17 @@ export type RedisBeforeCloseHook = {
 const DEFAULT_HEALTH_CHECK_TIMEOUT_MS = 3_000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
 const DEFAULT_BEFORE_CLOSE_TIMEOUT_MS = 15_000;
+const DEFAULT_COMMAND_TIMEOUT_MS = 5_000;
 
 const roleOptions: Record<
   RedisConnectionRole,
-  Pick<RedisOptions, 'enableOfflineQueue' | 'maxRetriesPerRequest'>
+  Pick<
+    RedisOptions,
+    | 'autoResendUnfulfilledCommands'
+    | 'commandTimeout'
+    | 'enableOfflineQueue'
+    | 'maxRetriesPerRequest'
+  >
 > = {
   'legacy-command': {
     enableOfflineQueue: true,
@@ -46,11 +53,14 @@ const roleOptions: Record<
   },
   command: {
     enableOfflineQueue: true,
-    maxRetriesPerRequest: 3
+    maxRetriesPerRequest: 1,
+    commandTimeout: DEFAULT_COMMAND_TIMEOUT_MS,
+    autoResendUnfulfilledCommands: false
   },
   blocking: {
     enableOfflineQueue: true,
-    maxRetriesPerRequest: null
+    maxRetriesPerRequest: null,
+    autoResendUnfulfilledCommands: false
   },
   queue: {
     enableOfflineQueue: true,
@@ -162,7 +172,7 @@ const isCompatibleExistingCommandClient = ({
  * Runtime 统一管理不同角色的连接、状态、健康检查和关闭。业务 command 连接在 Phase 1
  * 继续保留 keyPrefix 兼容；后续业务 Store 迁移完成后再移除隐式前缀。
  */
-export const useRedisRuntime = ({
+export const createRedisRuntime = ({
   redisUrl,
   clientFactory = (options) => new Redis(options),
   existingCommandClient,
@@ -399,12 +409,12 @@ export const useRedisRuntime = ({
   };
 };
 
-export type RedisRuntime = ReturnType<typeof useRedisRuntime>;
+export type RedisRuntime = ReturnType<typeof createRedisRuntime>;
 
 /** 获取当前进程唯一的 Redis Runtime；兼容 Next.js 开发态模块热重载。 */
 export const getRedisRuntime = (): RedisRuntime => {
   if (!global.redisRuntime) {
-    global.redisRuntime = useRedisRuntime({
+    global.redisRuntime = createRedisRuntime({
       redisUrl: serviceEnv.REDIS_URL,
       existingCommandClient: global.redisClient ?? undefined
     });
