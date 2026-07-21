@@ -149,7 +149,6 @@ describe('sandbox provider config', () => {
         FASTGPT_SESSION_ID: 'session-1',
         FASTGPT_WORKDIR: '/home/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
-        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
         FASTGPT_IDE_MAX_FILE_BYTES: '536870912',
         FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: '67108864',
         FASTGPT_IDE_WS_MAX_FRAME_BYTES: '16777216'

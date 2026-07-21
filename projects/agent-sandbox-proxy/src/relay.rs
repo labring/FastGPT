@@ -63,6 +63,50 @@ fn build_ws_upstream_base_url_with_rewrite(
     Ok(endpoint.as_str().trim_end_matches('/').to_string())
 }
 
+/// 构建只读 preview HTTP 上游地址，并把 workspace 相对路径安全追加到 provider endpoint。
+pub(crate) fn build_http_preview_url(raw_endpoint: &str, path: &str) -> Result<String, String> {
+    let rewrite_host = env::var(LOOPBACK_REWRITE_HOST_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    build_http_preview_url_with_rewrite(raw_endpoint, path, rewrite_host.as_deref())
+}
+
+fn build_http_preview_url_with_rewrite(
+    raw_endpoint: &str,
+    path: &str,
+    rewrite_host: Option<&str>,
+) -> Result<String, String> {
+    if path.is_empty() || path.starts_with('/') || path.contains('\\') || path.contains('\0') {
+        return Err("Invalid workspace preview path".to_string());
+    }
+
+    let path_segments = path.split('/').collect::<Vec<_>>();
+    if path_segments
+        .iter()
+        .any(|segment| segment.is_empty() || *segment == "." || *segment == "..")
+    {
+        return Err("Invalid workspace preview path".to_string());
+    }
+
+    let mut endpoint = parse_sandbox_endpoint(raw_endpoint)?;
+    rewrite_loopback_host(&mut endpoint, rewrite_host)?;
+    use_http_scheme(&mut endpoint)?;
+    endpoint.set_fragment(None);
+
+    {
+        let mut segments = endpoint
+            .path_segments_mut()
+            .map_err(|_| "Sandbox endpoint cannot be used as a base URL".to_string())?;
+        segments.pop_if_empty();
+        segments.push("preview");
+        segments.extend(path_segments);
+    }
+
+    Ok(endpoint.to_string())
+}
+
 fn parse_sandbox_endpoint(raw_endpoint: &str) -> Result<Url, String> {
     let endpoint = raw_endpoint.trim().trim_end_matches('/');
     if endpoint.is_empty() {
@@ -110,70 +154,16 @@ fn use_websocket_scheme(endpoint: &mut Url) -> Result<(), String> {
         .map_err(|_| format!("Failed to set sandbox endpoint scheme to {}", ws_scheme))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::build_ws_upstream_base_url_with_rewrite;
+fn use_http_scheme(endpoint: &mut Url) -> Result<(), String> {
+    let http_scheme = match endpoint.scheme() {
+        "http" | "ws" => "http",
+        "https" | "wss" => "https",
+        scheme => return Err(format!("Unsupported sandbox endpoint scheme: {}", scheme)),
+    };
 
-    #[test]
-    fn rewrites_scheme_less_loopback_endpoint() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "localhost:8090/sandboxes/demo/proxy/1318",
-            Some("host.docker.internal"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            url,
-            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
-        );
-    }
-
-    #[test]
-    fn rewrites_http_loopback_endpoint() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "http://127.0.0.1:8090/sandboxes/demo/proxy/1318/",
-            Some("host.docker.internal"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            url,
-            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
-        );
-    }
-
-    #[test]
-    fn preserves_non_loopback_host() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "http://opensandbox-server:8090/sandboxes/demo/proxy/1318",
-            Some("host.docker.internal"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            url,
-            "ws://opensandbox-server:8090/sandboxes/demo/proxy/1318"
-        );
-    }
-
-    #[test]
-    fn preserves_secure_websocket_scheme() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "https://sandbox.example.com/sandboxes/demo/proxy/1318",
-            None,
-        )
-        .unwrap();
-
-        assert_eq!(url, "wss://sandbox.example.com/sandboxes/demo/proxy/1318");
-    }
-
-    #[test]
-    fn rejects_unsupported_scheme() {
-        let err = build_ws_upstream_base_url_with_rewrite("ftp://localhost/sandboxes/demo", None)
-            .unwrap_err();
-
-        assert!(err.contains("Unsupported sandbox endpoint scheme"));
-    }
+    endpoint
+        .set_scheme(http_scheme)
+        .map_err(|_| format!("Failed to set sandbox endpoint scheme to {}", http_scheme))
 }
 
 /// 连接沙盒内的 IDE Agent，允许 agent 冷启动时出现短暂端口不可用。
@@ -770,5 +760,93 @@ fn tungstenite_to_axum(msg: WsMsg) -> Result<AxumMsg, ()> {
             }
         }))),
         _ => Err(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{build_http_preview_url_with_rewrite, build_ws_upstream_base_url_with_rewrite};
+
+    #[test]
+    fn rewrites_scheme_less_loopback_endpoint() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "localhost:8090/sandboxes/demo/proxy/1318",
+            Some("host.docker.internal"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
+        );
+    }
+
+    #[test]
+    fn rewrites_http_loopback_endpoint() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "http://127.0.0.1:8090/sandboxes/demo/proxy/1318/",
+            Some("host.docker.internal"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
+        );
+    }
+
+    #[test]
+    fn preserves_non_loopback_host() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "http://opensandbox-server:8090/sandboxes/demo/proxy/1318",
+            Some("host.docker.internal"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            "ws://opensandbox-server:8090/sandboxes/demo/proxy/1318"
+        );
+    }
+
+    #[test]
+    fn preserves_secure_websocket_scheme() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "https://sandbox.example.com/sandboxes/demo/proxy/1318",
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(url, "wss://sandbox.example.com/sandboxes/demo/proxy/1318");
+    }
+
+    #[test]
+    fn rejects_unsupported_scheme() {
+        let err = build_ws_upstream_base_url_with_rewrite("ftp://localhost/sandboxes/demo", None)
+            .unwrap_err();
+
+        assert!(err.contains("Unsupported sandbox endpoint scheme"));
+    }
+
+    #[test]
+    fn builds_http_preview_url_with_encoded_workspace_segments() {
+        let url = build_http_preview_url_with_rewrite(
+            "http://127.0.0.1:8090/sandboxes/demo/proxy/1319",
+            "test dir/预览.html",
+            Some("host.docker.internal"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            "http://host.docker.internal:8090/sandboxes/demo/proxy/1319/preview/test%20dir/%E9%A2%84%E8%A7%88.html"
+        );
+    }
+
+    #[test]
+    fn rejects_preview_path_traversal_and_unsupported_scheme() {
+        assert!(build_http_preview_url_with_rewrite("http://sandbox", "../secret", None).is_err());
+        assert!(build_http_preview_url_with_rewrite("http://sandbox", "dir//file", None).is_err());
+        assert!(build_http_preview_url_with_rewrite("ftp://sandbox", "file.txt", None).is_err());
     }
 }

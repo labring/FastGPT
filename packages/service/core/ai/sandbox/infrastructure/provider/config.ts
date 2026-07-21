@@ -108,7 +108,6 @@ export function getSandboxAdapterConfig({
       ? buildBaseSandboxRuntimeEnv({
           sessionId,
           workDirectory: profile.workDirectory,
-          ideAgentBindAddr: serviceEnv.IDE_AGENT_BIND_ADDR,
           ideAgentMaxFileBytes: getAgentSandboxMaxFileBytes(),
           ideAgentWsLimits: {
             maxMessageBytes: serviceEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,

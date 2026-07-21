@@ -5,6 +5,7 @@ import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/de
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
+  AgentSandboxPreviewProxyUrlSchema,
   AgentSandboxProxyUrlSchema,
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
@@ -70,9 +71,9 @@ export const serviceEnv = createEnv({
       .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
       .optional(),
     AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
+    AGENT_SANDBOX_PREVIEW_PROXY_URL: AgentSandboxPreviewProxyUrlSchema.optional(),
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional(),
-    IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),

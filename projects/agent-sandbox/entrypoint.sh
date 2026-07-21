@@ -11,8 +11,7 @@ if [ ! -w "${WORKDIR}" ]; then
 fi
 
 if [ "${IDE_AGENT_ENABLED:-false}" = "true" ]; then
-  BIND_ADDR="${IDE_AGENT_BIND_ADDR:-0.0.0.0:1318}"
-  echo "Starting fastgpt-ide-agent on ${BIND_ADDR}..."
+  echo "Starting fastgpt-ide-agent..."
   fastgpt-ide-agent > /tmp/ide-agent.log 2>&1 &
 fi
 
