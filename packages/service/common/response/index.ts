@@ -210,42 +210,23 @@ export const getSseErrorResponse = (
   shouldClearCookie: boolean;
 } => {
   const errResponseKey = typeof error === 'string' ? error : error?.message;
+  const processedError = processError({ error });
 
-  // Specified error
   if (ERROR_RESPONSE[errResponseKey]) {
-    // login is expired
-    if (errResponseKey === ERROR_ENUM.unAuthorization) {
-      return {
-        event: SseResponseEventEnum.error,
-        data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
-        shouldClearCookie: true
-      };
-    }
-
     return {
       event: SseResponseEventEnum.error,
       data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
-      shouldClearCookie: false
+      shouldClearCookie: processedError.shouldClearCookie
     };
   }
 
-  let msg = error?.response?.statusText || error?.message || '请求错误';
-  if (typeof error === 'string') {
-    msg = error;
-  } else if (proxyError[error?.code]) {
-    msg = '网络连接异常';
-  } else if (error?.response?.data?.error?.message) {
-    msg = error?.response?.data?.error?.message;
-  } else if (error?.error?.message) {
-    msg = `${error?.error?.code} ${error?.error?.message}`;
-  }
-
-  logger.error('SSE error', { message: msg, error });
-
   return {
     event: SseResponseEventEnum.error,
-    data: JSON.stringify({ message: replaceSensitiveText(msg) }),
-    shouldClearCookie: false
+    data: JSON.stringify({
+      message: processedError.message,
+      errorType: error instanceof UserError ? 'UserError' : undefined
+    }),
+    shouldClearCookie: processedError.shouldClearCookie
   };
 };
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -18,7 +19,7 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   }
 }));
 
-const { processError } = await import('../../../common/response');
+const { getSseErrorResponse, processError } = await import('../../../common/response');
 
 function buildZodError() {
   try {
@@ -79,6 +80,43 @@ describe('processError zod logging', () => {
         error
       })
     );
+    expect(logger.info).not.toHaveBeenCalled();
+  });
+});
+
+describe('getSseErrorResponse logging', () => {
+  beforeEach(() => {
+    logger.info.mockClear();
+    logger.error.mockClear();
+  });
+
+  it('keeps UserError out of error-level otel logs', () => {
+    const error = new UserError('Invalid stream input');
+
+    const response = getSseErrorResponse(error);
+
+    expect(JSON.parse(response.data)).toEqual({
+      message: 'Invalid stream input',
+      errorType: 'UserError'
+    });
+    expect(logger.info).toHaveBeenCalledWith('Request error', {
+      url: undefined,
+      message: 'Invalid stream input'
+    });
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps unexpected SSE failures at error level', () => {
+    const error = new Error('Unexpected stream failure');
+
+    const response = getSseErrorResponse(error);
+
+    expect(JSON.parse(response.data)).toEqual({ message: 'Unexpected stream failure' });
+    expect(logger.error).toHaveBeenCalledWith('System unexpected error', {
+      url: undefined,
+      message: 'Unexpected stream failure',
+      error
+    });
     expect(logger.info).not.toHaveBeenCalled();
   });
 });
