@@ -47,6 +47,7 @@ import type { StartChatFnProps, generatingMessageProps } from '../../type';
 import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
+import { getChatItemErrorText } from '@/global/core/chat/utils';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
@@ -805,12 +806,8 @@ export const useChatGenerate = ({
 
                 const responseData = mergeNodeResponseDataByIdAndParent(item.responseData || []);
                 if (!abortSignal?.signal?.aborted) {
-                  const uncaughtErr = responseData.find((r) => r.error && !r.errorCaptured)?.error;
-                  const lastUncapturedErrorText = [...responseData]
-                    .reverse()
-                    .find((r) => r.errorText && !r.errorCaptured)?.errorText;
-                  const err = uncaughtErr ?? lastUncapturedErrorText;
-                  const errorMsg = err ? t(getErrText(err)) : undefined;
+                  const errorText = getChatItemErrorText(responseData)?.errorText;
+                  const errorMsg = errorText ? t(errorText) : undefined;
 
                   return {
                     ...item,

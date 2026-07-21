@@ -3,6 +3,7 @@ import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { SideTabItemType } from './types';
 
@@ -38,6 +39,7 @@ const NormalSideTabItem = ({
 }) => {
   const { t } = useSafeTranslation();
   const leftPad = getSideTabLeftPadding(index);
+  const nodeName = t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs);
 
   return (
     <Flex
@@ -68,18 +70,20 @@ const NormalSideTabItem = ({
         borderRadius={'4px'}
       />
       <Box ml={2} flex={'1 1 0'} minW={0}>
-        <Box
-          fontSize={'12px'}
-          lineHeight={'16px'}
-          fontWeight={500}
-          color={'myGray.900'}
-          letterSpacing={'0.5px'}
-          overflow={'hidden'}
-          whiteSpace={'nowrap'}
-          textOverflow={'ellipsis'}
-        >
-          {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
-        </Box>
+        <MyTooltip label={nodeName} showOnlyWhenOverflow>
+          <Box
+            fontSize={'12px'}
+            lineHeight={'16px'}
+            fontWeight={500}
+            color={'myGray.900'}
+            letterSpacing={'0.5px'}
+            overflow={'hidden'}
+            whiteSpace={'nowrap'}
+            textOverflow={'ellipsis'}
+          >
+            {nodeName}
+          </Box>
+        </MyTooltip>
         <Box
           fontSize={'11px'}
           lineHeight={'16px'}

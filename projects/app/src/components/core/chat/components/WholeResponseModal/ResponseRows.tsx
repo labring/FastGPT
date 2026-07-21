@@ -427,7 +427,11 @@ export const WorkflowResultRows = ({
         />
       )}
       <Row label={t('chat:response.tool_params_result')} value={activeModule.toolParamsResult} />
-      <Row label={t('chat:response.tool_result')} value={activeModule.toolRes} />
+      <Row
+        label={t('chat:response.tool_result')}
+        value={activeModule.toolRes}
+        renderStringAsMarkdown={false}
+      />
     </>
   );
 };

@@ -46,13 +46,15 @@ export const Row = ({
   value,
   rawDom,
   rawDomBoxProps,
-  contentBoxProps
+  contentBoxProps,
+  renderStringAsMarkdown = true
 }: {
   label: string;
   value?: string | number | boolean | object;
   rawDom?: ReactNode;
   rawDomBoxProps?: BoxProps;
   contentBoxProps?: BoxProps;
+  renderStringAsMarkdown?: boolean;
 }) => {
   const { t } = useSafeTranslation();
   const val = value || rawDom;
@@ -63,10 +65,10 @@ export const Row = ({
       return `~~~json\n${JSON.stringify(value, null, 2)}\n~~~`;
     }
     if (typeof value === 'string') {
-      return t(value);
+      return renderStringAsMarkdown ? t(value) : value;
     }
     return `${value}`;
-  }, [isObject, t, value]);
+  }, [isObject, renderStringAsMarkdown, t, value]);
 
   if (rawDom) {
     return (
@@ -99,7 +101,13 @@ export const Row = ({
           ...contentBoxProps?.sx
         }}
       >
-        <Markdown className={markdownStyles.markdown} source={formatValue} />
+        {typeof value === 'string' && !renderStringAsMarkdown ? (
+          <Box whiteSpace={'pre-wrap'} overflowWrap={'anywhere'}>
+            {formatValue}
+          </Box>
+        ) : (
+          <Markdown className={markdownStyles.markdown} source={formatValue} />
+        )}
       </Box>
     </RowRender>
   );
