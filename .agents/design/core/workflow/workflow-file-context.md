@@ -111,6 +111,7 @@ export type WorkflowFileContext = {
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
   getIdentity: (urlOrId: string) => string | undefined;
   read: (target: string | WorkflowFileRef) => Promise<WorkflowFileReadResult>;
+  derive: (files: WorkflowFileInput[]) => WorkflowFileContext;
   limits: WorkflowFileLimits;
 };
 ```
@@ -226,8 +227,12 @@ Sandbox 通用模块不引用 Workflow，也不使用 `requestOrigin`、相对 U
 
 ### 7.5 Child、Loop 和 Parallel
 
-根 Workflow、Child、Loop 和 Parallel 共享同一请求级 Context，不需要 clone 或 merge。
-Context 对消费者保持只读；只有根输入初始化和交互恢复适配器持有 registrar。
+Loop 和 Parallel 共享当前 Context。Child 根据实际传入的 query、history、全局文件变量和
+`fileSelect` 输入派生隔离 Context：父 Context 命中的文件继承可信 Ref 和原 `modelUrl`，不重新
+签名；父 Context 未命中的合法绝对 HTTP(S) URL 在 Child 内登记为外链。Child 不得根据签名
+URL 结构反解私有 key，也不能读取未实际传入的父文件。
+
+Child 交互新增文件仍通过父 registrar 完成根 scope 鉴权，成功后同步加入当前派生 Context。
 
 ## 8. 兼容策略
 
@@ -270,6 +275,8 @@ Context 对消费者保持只读；只有根输入初始化和交互恢复适配
 - Agent history 和当前输入都保留绝对 modelUrl；
 - read_file 未知 id 无法读取；
 - Agent 和 ToolCall Sandbox 注入使用 Context/SSRF 外链组合 reader；
+- Child 只继承实际传入的父 Ref，同一私有文件不重复签名；
+- Child 新绝对 URL 登记为外链，未知私有 key 不得继承；
 - 不可用的无关 history 文件不阻塞本轮请求。
 
 ## 10. TODO
@@ -283,6 +290,7 @@ Context 对消费者保持只读；只有根输入初始化和交互恢复适配
 - [x] 迁移 Sandbox 文件注入；
 - [x] 登记全局文件变量和交互 `fileSelect` 输入；
 - [x] 为 Context 未命中的绝对 URL 增加 SSRF 外链回退；
+- [x] 为 Child Workflow 派生最小文件 Context，并复用父级可信 Ref；
 - [x] 删除 AgentV2 `requestOrigin/internalUrl` 过渡逻辑；
 - [x] 补齐 Context、读取器和消费者测试；
 - [x] 运行全量测试；Admin 既有批处理性能用例在全量并发下超时，隔离复跑 31/31 通过。

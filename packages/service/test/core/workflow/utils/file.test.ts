@@ -95,9 +95,11 @@ import type {
 const createEmptyWorkflowFileContext = (): WorkflowFileContext => ({
   limits: { maxFiles: 20, maxBytesPerFile: 1024 },
   resolve: () => undefined,
+  resolveInputFile: () => undefined,
   resolveChatFile: () => undefined,
   getIdentity: () => undefined,
-  read: vi.fn()
+  read: vi.fn(),
+  derive: () => createEmptyWorkflowFileContext()
 });
 
 const createHumanMessage = (value: UserChatItemValueItemType[]): ChatItemMiniType => ({
@@ -321,6 +323,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     const fileContext: WorkflowFileContext = {
       limits: { maxFiles: 20, maxBytesPerFile: 1024 },
       resolve: (value) => (value === url || value === ref.id ? ref : undefined),
+      resolveInputFile: (file) => ('url' in file && file.url === url ? ref : undefined),
       resolveChatFile: () => ({
         type: ChatFileTypeEnum.file,
         name: ref.name,
@@ -328,7 +331,8 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         url
       }),
       getIdentity: (value) => (value === url ? 'chat:private' : undefined),
-      read
+      read,
+      derive: () => fileContext
     };
 
     const result = await parseFileContentFromUrls({

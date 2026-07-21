@@ -74,6 +74,21 @@ const getVariableInputValue = ({
   return item.defaultValue;
 };
 
+/** 从已知文件字段的运行值中提取文件输入。 */
+export const getWorkflowFileInputsFromValue = (value: unknown) =>
+  Array.isArray(value) ? assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]) : [];
+
+/** 收集 Child 全局文件变量的实际输入，只用于派生请求级文件 Context。 */
+export const getWorkflowFileVariableInputs = ({
+  variablesConfig = [],
+  inputVariables = {}
+}: Pick<WorkflowVariableStateCreateProps, 'variablesConfig' | 'inputVariables'>) =>
+  variablesConfig.flatMap((item) => {
+    if (item.type !== VariableInputEnum.file) return [];
+    const value = getVariableInputValue({ variables: inputVariables, item });
+    return getWorkflowFileInputsFromValue(value);
+  });
+
 /** 将文件存储值转换为运行时 URL，并记录 URL 到 store metadata 的映射。 */
 const fileStoreValuesToRuntimeUrls = async ({
   files,

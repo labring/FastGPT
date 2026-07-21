@@ -27,9 +27,13 @@ import {
 } from '@fastgpt/service/core/workflow/utils/fileContext';
 import {
   getWorkflowFileContext,
+  getWorkflowFileRegistrar,
   readWorkflowFileBuffer,
-  runWithContext
+  runWithContext,
+  runWithDerivedWorkflowFileContext
 } from '@fastgpt/service/core/workflow/utils/context';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 const scope = {
   sourceType: ChatSourceTypeEnum.app,
@@ -234,6 +238,135 @@ describe('prepareWorkflowFileContext', () => {
         source: 'interactive'
       })
     ).rejects.toThrow('does not belong to the current workflow');
+  });
+
+  it('derives an isolated child context from selected parent files and new external URLs', async () => {
+    const firstKey = privateKey;
+    const secondKey = 'chat/app/app-1/user-1/chat-1/other.pdf';
+    const firstFile = createFile({ key: firstKey });
+    const secondFile = createFile({ key: secondKey });
+    const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [firstFile, secondFile],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl
+    });
+    const firstUrl = firstFile.file!.url;
+    const secondUrl = secondFile.file!.url;
+    const childExternalUrl = 'https://child.example.com/generated.pdf';
+
+    const childContext = fileContext.derive([firstUrl, childExternalUrl]);
+
+    expect(childContext.resolve(firstUrl)).toBe(fileContext.resolve(firstUrl));
+    expect(childContext.resolve(secondUrl)).toBeUndefined();
+    expect(
+      childContext.resolveInputFile({
+        key: firstKey,
+        name: 'report.pdf',
+        type: ChatFileTypeEnum.file
+      })
+    ).toBe(fileContext.resolve(firstUrl));
+    expect(childContext.resolve(childExternalUrl)?.source).toEqual({
+      type: 'externalHttp',
+      url: childExternalUrl
+    });
+    await expect(childContext.read(fileContext.resolve(secondUrl)!)).rejects.toThrow(
+      'not selected'
+    );
+    expect(getPreviewUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the parent model URL when a child variable restores its private key', async () => {
+    const getPreviewUrl = vi.fn().mockResolvedValue('https://files.example.com/parent-signed');
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [createFile({ key: privateKey })],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl
+    });
+    const parentUrl = 'https://files.example.com/parent-signed';
+    const sourceVariableState = {
+      getFileStoreValueByRuntimeUrl: vi.fn(() => ({
+        key: privateKey,
+        name: 'report.pdf',
+        type: ChatFileTypeEnum.file
+      }))
+    } as any;
+
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
+      },
+      () =>
+        runWithDerivedWorkflowFileContext({
+          files: [parentUrl],
+          fn: async ({ resolveInputFile }) => {
+            const childState = await WorkflowVariableState.create({
+              timezone: 'Asia/Shanghai',
+              runningAppInfo: {
+                sourceType: ChatSourceTypeEnum.app,
+                sourceId: 'child-app',
+                teamId: 'team-1',
+                tmbId: 'tmb-1',
+                name: 'child'
+              },
+              uid: scope.uid,
+              chatId: scope.chatId,
+              variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+              inputVariables: { files: [parentUrl] },
+              sourceVariableState,
+              resolveInputFile
+            });
+
+            expect(childState.get('files')).toEqual([parentUrl]);
+          }
+        })
+    );
+
+    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds child interactive files to the active derived context', async () => {
+    const interactiveKey = 'chat/app/app-1/user-1/chat-1/interactive.pdf';
+    const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
+    const queryFile = createFile({ key: privateKey });
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [queryFile],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl
+    });
+
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
+      },
+      () =>
+        runWithDerivedWorkflowFileContext({
+          files: [queryFile.file!.url],
+          fn: async () => {
+            const ref = await getWorkflowFileRegistrar()?.registerInputFile({
+              file: {
+                key: interactiveKey,
+                name: 'interactive.pdf',
+                type: ChatFileTypeEnum.file
+              },
+              source: 'interactive'
+            });
+
+            expect(ref).toBeDefined();
+            expect(getWorkflowFileContext()?.resolve(ref!.modelUrl)).toBe(ref);
+          }
+        })
+    );
   });
 
   it('rejects invalid query URLs and configured non-whitelisted domains', async () => {

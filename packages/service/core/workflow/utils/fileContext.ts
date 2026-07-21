@@ -19,6 +19,7 @@ import { isAuthorizedChatFileS3Key } from '../../../common/s3/sources/chat/key';
 import type { ChatS3SourceType } from '../../../common/s3/sources/chat/type';
 import { readStreamToBuffer } from '../../../common/s3/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
+import { normalizeChatFileStoreValue, type RawChatFileValue } from '../../chat/fileStoreValue';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 const WORKFLOW_FILE_URL_EXPIRED_HOURS = 2;
@@ -59,8 +60,12 @@ export type WorkflowFileContext = {
   resolve: (urlOrId: string) => WorkflowFileRef | undefined;
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
   getIdentity: (urlOrId: string) => string | undefined;
+  resolveInputFile: (file: RawChatFileValue) => WorkflowFileRef | undefined;
   read: (target: string | WorkflowFileRef) => Promise<WorkflowFileReadResult>;
+  derive: (files: WorkflowFileInput[]) => WorkflowFileContext;
 };
+
+export type WorkflowFileInput = string | RawChatFileValue;
 
 export type WorkflowFileEntryScope = {
   sourceType: ChatS3SourceType;
@@ -137,6 +142,162 @@ const assertFileSize = ({ size, maxBytes }: { size: number | undefined; maxBytes
   if (size !== undefined && Number.isFinite(size) && size > maxBytes) {
     throw new UserError(`File exceeds maximum allowed size (${maxBytes} bytes)`);
   }
+};
+
+/**
+ * 根据 Child 实际文件输入创建隔离 Context。
+ *
+ * 父 Context 命中的文件继承其可信 Ref；未命中的绝对外链在 Child 内单独登记。
+ * 私有 key 只能从父 Context 继承，禁止通过 URL 结构或未知 key 推断内部对象权限。
+ */
+const createDerivedWorkflowFileContext = ({
+  parent,
+  files
+}: {
+  parent: WorkflowFileContext;
+  files: WorkflowFileInput[];
+}): WorkflowFileContext => {
+  const byId = new Map<string, WorkflowFileRef>();
+  const byRuntimeUrl = new Map<string, WorkflowFileRef>();
+  const byIdentity = new Map<string, WorkflowFileRef>();
+  const refIdentity = new WeakMap<WorkflowFileRef, string>();
+  const inheritedRefs = new WeakSet<WorkflowFileRef>();
+
+  const addRef = ({
+    ref,
+    identity,
+    aliases = [],
+    inherited
+  }: {
+    ref: WorkflowFileRef;
+    identity: string;
+    aliases?: string[];
+    inherited: boolean;
+  }) => {
+    const existingRef = byIdentity.get(identity);
+    if (existingRef) {
+      aliases.forEach((url) => byRuntimeUrl.set(url, existingRef));
+      return existingRef;
+    }
+
+    byId.set(ref.id, ref);
+    byRuntimeUrl.set(ref.modelUrl, ref);
+    aliases.forEach((url) => byRuntimeUrl.set(url, ref));
+    byIdentity.set(identity, ref);
+    refIdentity.set(ref, identity);
+    if (inherited) inheritedRefs.add(ref);
+    return ref;
+  };
+
+  for (const file of files) {
+    const inputUrl = typeof file === 'string' ? file : 'url' in file ? file.url : undefined;
+    const parentRef =
+      (inputUrl ? parent.resolve(inputUrl) : undefined) ||
+      (typeof file === 'string' ? undefined : parent.resolveInputFile(file));
+
+    if (parentRef) {
+      const identity = parent.getIdentity(parentRef.id);
+      if (!identity) throw new UserError('Parent workflow file identity is unavailable');
+      addRef({
+        ref: parentRef,
+        identity,
+        aliases: inputUrl && isAbsoluteHttpUrl(inputUrl) ? [inputUrl] : [],
+        inherited: true
+      });
+      continue;
+    }
+
+    if (typeof file !== 'string' && 'key' in file && file.key) {
+      throw new UserError('Child workflow private file is not registered in the parent context');
+    }
+    if (!isAbsoluteHttpUrl(inputUrl) || !validateFileUrlDomain(inputUrl)) {
+      throw new UserError('Invalid child workflow file URL');
+    }
+
+    const storeValue = normalizeChatFileStoreValue(
+      typeof file === 'string'
+        ? { url: file }
+        : {
+            url: inputUrl,
+            name: file.name,
+            type: file.type
+          }
+    );
+    if (!storeValue || !('url' in storeValue)) {
+      throw new UserError('Invalid child workflow external file');
+    }
+
+    const identity = getExternalIdentity(storeValue.url);
+    addRef({
+      ref: {
+        id: `workflow-file-${getNanoid()}`,
+        name: storeValue.name,
+        type: storeValue.type,
+        modelUrl: storeValue.url,
+        source: {
+          type: 'externalHttp',
+          url: storeValue.url
+        }
+      },
+      identity,
+      inherited: false
+    });
+  }
+
+  const resolve = (urlOrId: string) => byId.get(urlOrId) ?? byRuntimeUrl.get(urlOrId);
+  const resolveInputFile = (file: RawChatFileValue) => {
+    const key = 'key' in file && typeof file.key === 'string' ? file.key : undefined;
+    if (key) return byIdentity.get(`chat:${key}`);
+    return typeof file.url === 'string' ? resolve(file.url) : undefined;
+  };
+
+  const fileContext: WorkflowFileContext = {
+    limits: parent.limits,
+    resolve,
+    resolveInputFile,
+    resolveChatFile: (url) => {
+      const ref = resolve(url);
+      if (!ref) return;
+      return {
+        type: ref.type,
+        name: ref.name,
+        ...(ref.source.type === 'chatObject' ? { key: ref.source.objectKey } : {}),
+        url: ref.modelUrl
+      };
+    },
+    getIdentity: (urlOrId) => {
+      const ref = resolve(urlOrId);
+      return ref ? refIdentity.get(ref) : undefined;
+    },
+    read: async (target) => {
+      const ref = typeof target === 'string' ? resolve(target) : target;
+      if (!ref || !refIdentity.has(ref)) {
+        throw new UserError('Workflow file is not selected for the child context');
+      }
+      if (inheritedRefs.has(ref)) return parent.read(ref);
+      if (ref.source.type !== 'externalHttp') {
+        throw new UserError('Child workflow private file must be inherited from parent context');
+      }
+
+      const { buffer, contentType, contentDisposition } = await readExternalFileBuffer({
+        url: ref.source.url,
+        maxFileSize: parent.limits.maxBytesPerFile
+      });
+      return {
+        buffer,
+        filename:
+          parseContentDispositionFilename(contentDisposition || '') ||
+          ref.name ||
+          getFileNameFromUrl(ref.source.url),
+        contentType,
+        sourceKind: 'external'
+      };
+    },
+    derive: (childFiles) =>
+      createDerivedWorkflowFileContext({ parent: fileContext, files: childFiles })
+  };
+
+  return fileContext;
 };
 
 /**
@@ -284,6 +445,11 @@ export const prepareWorkflowFileContext = async ({
   };
 
   const resolve = (urlOrId: string) => byId.get(urlOrId) ?? byRuntimeUrl.get(urlOrId);
+  const resolveInputFile = (file: RawChatFileValue) => {
+    const key = 'key' in file && typeof file.key === 'string' ? file.key : undefined;
+    if (key) return byIdentity.get(`chat:${key}`);
+    return typeof file.url === 'string' ? resolve(file.url) : undefined;
+  };
 
   const read = async (target: string | WorkflowFileRef): Promise<WorkflowFileReadResult> => {
     const ref = typeof target === 'string' ? resolve(target) : target;
@@ -333,30 +499,34 @@ export const prepareWorkflowFileContext = async ({
     };
   };
 
+  const fileContext: WorkflowFileContext = {
+    limits,
+    resolve,
+    resolveInputFile,
+    resolveChatFile: (url) => {
+      const ref = resolve(url);
+      if (!ref) return;
+
+      return {
+        type: ref.type,
+        name: ref.name,
+        ...(ref.source.type === 'chatObject' ? { key: ref.source.objectKey } : {}),
+        url: ref.modelUrl
+      };
+    },
+    getIdentity: (urlOrId) => {
+      const ref = resolve(urlOrId);
+      return ref ? refIdentity.get(ref) : undefined;
+    },
+    read,
+    derive: (files) => createDerivedWorkflowFileContext({ parent: fileContext, files })
+  };
+
   return {
     getPreviewUrl,
     fileRegistrar: {
       registerInputFile
     },
-    fileContext: {
-      limits,
-      resolve,
-      resolveChatFile: (url) => {
-        const ref = resolve(url);
-        if (!ref) return;
-
-        return {
-          type: ref.type,
-          name: ref.name,
-          ...(ref.source.type === 'chatObject' ? { key: ref.source.objectKey } : {}),
-          url: ref.modelUrl
-        };
-      },
-      getIdentity: (urlOrId) => {
-        const ref = resolve(urlOrId);
-        return ref ? refIdentity.get(ref) : undefined;
-      },
-      read
-    }
+    fileContext
   };
 };
