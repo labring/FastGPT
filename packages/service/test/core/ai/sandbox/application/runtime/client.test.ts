@@ -1,40 +1,39 @@
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SandboxNotFoundError } from '@fastgpt-sdk/sandbox-adapter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: {
-    AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
-    AGENT_SANDBOX_DISK_MB: 20
-  }
+  serviceEnv: { AGENT_SANDBOX_PROVIDER: 'sealosdevbox', AGENT_SANDBOX_DISK_MB: 20 }
 }));
 
 const mocks = vi.hoisted(() => ({
-  logger: {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  },
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
   buildRuntimeSandboxAdapter: vi.fn(),
   ensureConnectedSandboxRunning: vi.fn(),
   deleteSandboxResource: vi.fn(),
   stopSandboxResource: vi.fn(),
   getSessionVolumeConfig: vi.fn(),
   existsSandboxInstanceBySandboxId: vi.fn(),
-  upsertRunningSandboxInstance: vi.fn(),
-  assertSandboxNotArchivedOrBusy: vi.fn(),
+  touchRunningSandboxInstance: vi.fn(),
+  findSandboxInstanceBySource: vi.fn(),
+  createSandboxProvisioningInstance: vi.fn(),
+  claimSandboxOperation: vi.fn(),
+  advanceSandboxOperation: vi.fn(),
+  completeSandboxOperation: vi.fn(),
+  markSandboxOperationFailed: vi.fn(),
+  assertSandboxRuntimeUsableWithoutRestore: vi.fn(),
   restoreArchivedSandboxBeforeUse: vi.fn(),
-  mongoAppFindById: vi.fn(),
-  mongoAgentSkillsFindById: vi.fn(),
-  checkTeamSandboxPermission: vi.fn()
+  migrateSandboxProviderBeforeUse: vi.fn(),
+  withSandboxLifecycleLease: vi.fn(),
+  withSandboxSourceMutationLease: vi.fn(),
+  assertSandboxSourceActive: vi.fn(),
+  isRedisLeaseError: vi.fn(),
+  createAgentSandboxInitializingError: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mocks.logger,
-  LogCategories: {
-    MODULE: {
-      AI: {
-        SANDBOX: 'sandbox'
-      }
-    }
-  }
+  LogCategories: { MODULE: { AI: { SANDBOX: 'sandbox' } } }
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () => ({
@@ -55,279 +54,339 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => 
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
+  advanceSandboxOperation: mocks.advanceSandboxOperation,
+  claimSandboxOperation: mocks.claimSandboxOperation,
+  completeSandboxOperation: mocks.completeSandboxOperation,
+  createSandboxProvisioningInstance: mocks.createSandboxProvisioningInstance,
   existsSandboxInstanceBySandboxId: mocks.existsSandboxInstanceBySandboxId,
-  upsertRunningSandboxInstance: mocks.upsertRunningSandboxInstance
+  findSandboxInstanceBySource: mocks.findSandboxInstanceBySource,
+  markSandboxOperationFailed: mocks.markSandboxOperationFailed,
+  touchRunningSandboxInstance: mocks.touchRunningSandboxInstance
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
-  class SandboxArchiveStateError extends Error {
+  class SandboxLifecycleStateError extends Error {
     constructor(readonly state: string) {
       super(`Sandbox is ${state}`);
-      this.name = 'SandboxArchiveStateError';
+      this.name = 'SandboxLifecycleStateError';
     }
   }
-
   return {
-    SandboxArchiveStateError,
-    assertSandboxNotArchivedOrBusy: mocks.assertSandboxNotArchivedOrBusy,
+    SandboxLifecycleStateError,
+    assertSandboxRuntimeUsableWithoutRestore: mocks.assertSandboxRuntimeUsableWithoutRestore,
     restoreArchivedSandboxBeforeUse: mocks.restoreArchivedSandboxBeforeUse
   };
 });
 
-vi.mock('@fastgpt/service/core/app/schema', () => ({
-  MongoApp: {
-    findById: mocks.mongoAppFindById
-  }
+vi.mock('@fastgpt/service/core/ai/sandbox/application/providerMigration', () => ({
+  migrateSandboxProviderBeforeUse: mocks.migrateSandboxProviderBeforeUse
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/model/schema', () => ({
-  MongoAgentSkills: {
-    findById: mocks.mongoAgentSkillsFindById
-  }
+vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
+  withSandboxLifecycleLease: mocks.withSandboxLifecycleLease,
+  withSandboxSourceMutationLease: mocks.withSandboxSourceMutationLease
 }));
 
-vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
-  checkTeamSandboxPermission: mocks.checkTeamSandboxPermission
+vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', () => ({
+  assertSandboxSourceActive: mocks.assertSandboxSourceActive
+}));
+
+vi.mock('@fastgpt/service/common/redis/lock', () => ({
+  isRedisLeaseError: mocks.isRedisLeaseError
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/error', () => ({
+  createAgentSandboxInitializingError: mocks.createAgentSandboxInitializingError
 }));
 
 import {
   getSandboxClient,
   SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const mockLeanResult = <T>(value: T) => ({
-  lean: vi.fn(async () => value)
-});
-
-const createProvider = () =>
-  ({
-    provider: 'sealosdevbox',
-    execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 }))
-  }) as any;
-
-const createSandboxIdQuery = (sandboxId: string) => ({
-  sandboxId,
+const query = {
+  sandboxId: 'sandbox-1',
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
   userId: 'user-1',
   chatId: 'chat-1'
+};
+
+const createProvider = () => ({
+  provider: 'sealosdevbox',
+  execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 }))
 });
 
-describe('sandbox runtime client application', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
+const createInstance = (status: string, operationId?: string) =>
+  ({
+    provider: 'sealosdevbox',
+    sandboxId: query.sandboxId,
+    sourceType: query.sourceType,
+    sourceId: query.sourceId,
+    userId: query.userId,
+    status,
+    lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
+    metadata: operationId
+      ? {
+          operation: {
+            id: operationId,
+            type: 'provision',
+            phase: 'claimed',
+            startedAt: new Date(),
+            heartbeatAt: new Date()
+          }
+        }
+      : {}
+  }) as any;
 
-    mocks.existsSandboxInstanceBySandboxId.mockResolvedValue(false);
-    mocks.upsertRunningSandboxInstance.mockResolvedValue({ sandboxId: 'sandbox-doc' });
-    mocks.assertSandboxNotArchivedOrBusy.mockResolvedValue(undefined);
-    mocks.restoreArchivedSandboxBeforeUse.mockResolvedValue(undefined);
+describe('sandbox runtime client lifecycle', () => {
+  const assertValid = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.buildRuntimeSandboxAdapter.mockReturnValue(createProvider());
+    mocks.assertSandboxSourceActive.mockResolvedValue(undefined);
+    mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
+    mocks.touchRunningSandboxInstance.mockResolvedValue(createInstance('running'));
+    mocks.findSandboxInstanceBySource.mockResolvedValue(null);
     mocks.ensureConnectedSandboxRunning.mockResolvedValue(undefined);
+    mocks.restoreArchivedSandboxBeforeUse.mockResolvedValue(undefined);
+    mocks.migrateSandboxProviderBeforeUse.mockResolvedValue(undefined);
+    mocks.advanceSandboxOperation.mockResolvedValue(createInstance('provisioning', 'provision-1'));
+    mocks.completeSandboxOperation.mockResolvedValue(createInstance('running'));
+    mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.deleteSandboxResource.mockResolvedValue(undefined);
     mocks.stopSandboxResource.mockResolvedValue(undefined);
-    mocks.buildRuntimeSandboxAdapter.mockReturnValue(createProvider());
-    mocks.mongoAppFindById.mockReturnValue(mockLeanResult(null));
-    mocks.mongoAgentSkillsFindById.mockReturnValue(mockLeanResult(null));
-    mocks.checkTeamSandboxPermission.mockResolvedValue(undefined);
+    mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }: any) =>
+      fn({ signal: new AbortController().signal, assertValid })
+    );
+    mocks.withSandboxSourceMutationLease.mockImplementation(async ({ fn }: any) =>
+      fn({ signal: new AbortController().signal, assertValid })
+    );
+    mocks.isRedisLeaseError.mockReturnValue(false);
+    mocks.createAgentSandboxInitializingError.mockReturnValue(new Error('Sandbox is initializing'));
   });
 
-  it('gets a sandbox client by stable sandbox id and ensures it is available', async () => {
-    const client = await getSandboxClient(createSandboxIdQuery('sandbox-ready-check'));
+  it('uses the running-only touch fast path without taking a lifecycle lease', async () => {
+    const client = await getSandboxClient(query);
 
-    expect(client.getSandboxId()).toBe('sandbox-ready-check');
-    expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
-    expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
-      'sealosdevbox',
-      'sandbox-ready-check',
-      expect.objectContaining({
-        vmConfig: undefined
-      })
+    expect(client.getSandboxId()).toBe(query.sandboxId);
+    expect(mocks.touchRunningSandboxInstance).toHaveBeenCalledWith(
+      expect.objectContaining({ sandboxId: query.sandboxId, metadata: { volumeEnabled: false } })
     );
-    expect(mocks.upsertRunningSandboxInstance).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'sealosdevbox',
-        sandboxId: 'sandbox-ready-check',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1',
-        metadata: {
-          volumeEnabled: false
-        }
-      })
-    );
-    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(1);
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledWith(expect.anything(), {
+      allowCreate: false
+    });
+    expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
   });
 
-  it('prepares FastGPT volume only for OpenSandbox runtime', async () => {
-    const vmConfig = {
-      volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
-      storage: { mountPath: '/workspace' }
-    };
-    mocks.getSessionVolumeConfig.mockResolvedValue(vmConfig);
+  it('repairs a missing running provider under source and lifecycle leases', async () => {
+    mocks.findSandboxInstanceBySource.mockResolvedValue(createInstance('running'));
+    mocks.ensureConnectedSandboxRunning
+      .mockRejectedValueOnce(new SandboxNotFoundError('Sandbox sandbox-1 does not exist'))
+      .mockResolvedValueOnce(undefined);
 
-    await getSandboxClient(createSandboxIdQuery('opensandbox-volume'), {
-      providerName: 'opensandbox'
+    await getSandboxClient(query);
+
+    expect(mocks.withSandboxSourceMutationLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: query.sourceType,
+        sourceId: query.sourceId,
+        label: `repair-missing-sandbox:${query.sandboxId}`
+      })
+    );
+    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxId: query.sandboxId,
+        label: `repair-missing-sandbox-lifecycle:${query.sandboxId}`
+      })
+    );
+    expect(mocks.withSandboxSourceMutationLease.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.withSandboxLifecycleLease.mock.invocationCallOrder[0]
+    );
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenNthCalledWith(1, expect.anything(), {
+      allowCreate: false
+    });
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenNthCalledWith(2, expect.anything());
+    expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
+  });
+
+  it('creates a missing record under source then lifecycle leases and publishes running last', async () => {
+    const provisioning = createInstance('provisioning', 'provision-1');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(null);
+    mocks.createSandboxProvisioningInstance.mockResolvedValue({
+      instance: provisioning,
+      created: true
     });
 
-    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('opensandbox-volume');
-    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledTimes(1);
-    expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'opensandbox',
-        sandboxId: 'opensandbox-volume',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1',
-        vmConfig,
-        storage: { mountPath: '/workspace' },
-        failedArchivePolicy: 'throw'
-      })
+    await getSandboxClient(query);
+
+    expect(mocks.withSandboxSourceMutationLease).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceType: 'app', sourceId: 'app-1' })
     );
-    expect(mocks.assertSandboxNotArchivedOrBusy).not.toHaveBeenCalledWith({
-      provider: 'opensandbox',
-      sandboxId: 'opensandbox-volume'
+    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledWith(
+      expect.objectContaining({ sandboxId: 'sandbox-1' })
+    );
+    expect(mocks.ensureConnectedSandboxRunning.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      mocks.completeSandboxOperation.mock.invocationCallOrder[0]
+    );
+    expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'provision-1', phase: 'providerEnsured' })
+    );
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ fromStatus: 'provisioning', status: 'running', touchActive: true })
+    );
+  });
+
+  it('claims stopped -> provisioning before resuming the provider', async () => {
+    const stopped = createInstance('stopped');
+    const claimed = createInstance('provisioning', 'resume-1');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(stopped);
+    mocks.claimSandboxOperation.mockResolvedValue(claimed);
+
+    await getSandboxClient(query);
+
+    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'provisioning', type: 'provision' })
+    );
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'resume-1', status: 'running' })
+    );
+  });
+
+  it('does not recreate a record deleted while waiting for the lifecycle lease', async () => {
+    const stopped = createInstance('stopped');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValueOnce(stopped).mockResolvedValueOnce(null);
+
+    await expect(getSandboxClient(query)).rejects.toThrow(
+      'Sandbox record disappeared before lifecycle operation was claimed'
+    );
+
+    expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
+    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalled();
+    expect(mocks.withSandboxSourceMutationLease).not.toHaveBeenCalled();
+  });
+
+  it('maps source or lifecycle lease contention to initializing', async () => {
+    const leaseError = new Error('lease occupied');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(null);
+    mocks.withSandboxSourceMutationLease.mockRejectedValueOnce(leaseError);
+    mocks.isRedisLeaseError.mockReturnValueOnce(true);
+
+    await expect(getSandboxClient(query)).rejects.toThrow('Sandbox is initializing');
+  });
+
+  it('publishes a stale providerEnsured phase without reconnecting the provider', async () => {
+    const provisioning = createInstance('provisioning', 'old-provision');
+    provisioning.metadata.operation.phase = 'providerEnsured';
+    provisioning.metadata.operation.heartbeatAt = new Date(0);
+    const reclaimed = createInstance('provisioning', 'resumed-provision');
+    reclaimed.metadata.operation.phase = 'providerEnsured';
+    reclaimed.metadata.operation.heartbeatAt = new Date(0);
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(provisioning);
+    mocks.claimSandboxOperation.mockResolvedValueOnce(reclaimed);
+
+    await getSandboxClient(query);
+
+    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalled();
+    expect(mocks.advanceSandboxOperation).not.toHaveBeenCalled();
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'resumed-provision', status: 'running' })
+    );
+  });
+
+  it('records a provisioning failure and retries it immediately', async () => {
+    const stopped = createInstance('stopped');
+    const failedProvisioning = createInstance('provisioning', 'failed-provision');
+    const retriedProvisioning = createInstance('provisioning', 'retried-provision');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(stopped);
+    mocks.claimSandboxOperation
+      .mockResolvedValueOnce(failedProvisioning)
+      .mockResolvedValueOnce(retriedProvisioning);
+    mocks.markSandboxOperationFailed.mockImplementationOnce(async ({ error }: any) => {
+      failedProvisioning.metadata.operation.error = error;
     });
-    expect(mocks.upsertRunningSandboxInstance).toHaveBeenCalledWith(
+    mocks.ensureConnectedSandboxRunning.mockRejectedValueOnce(new Error('provider failed'));
+
+    await expect(getSandboxClient(query)).rejects.toThrow('provider failed');
+    expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'opensandbox',
-        sandboxId: 'opensandbox-volume',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1',
-        storage: { mountPath: '/workspace' }
+        operationId: 'failed-provision',
+        status: 'provisioning',
+        error: 'provider failed'
       })
     );
-  });
+    expect(mocks.completeSandboxOperation).not.toHaveBeenCalled();
 
-  it('blocks archived sandbox when restore is disabled', async () => {
-    mocks.assertSandboxNotArchivedOrBusy.mockRejectedValueOnce(new Error('Sandbox is archived'));
+    mocks.findSandboxInstanceBySource.mockResolvedValue(failedProvisioning);
+    await getSandboxClient(query);
 
-    await expect(
-      getSandboxClient(createSandboxIdQuery('archived-sandbox'), { restoreArchived: false })
-    ).rejects.toThrow('Sandbox is archived');
-    expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
-  });
-
-  it('blocks archiving sandbox access before runtime can recreate it', async () => {
-    mocks.restoreArchivedSandboxBeforeUse.mockRejectedValueOnce(new Error('Sandbox is archiving'));
-
-    await expect(getSandboxClient(createSandboxIdQuery('archiving-sandbox'))).rejects.toThrow(
-      'Sandbox is archiving'
+    expect(mocks.claimSandboxOperation).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ status: 'provisioning', type: 'provision' })
     );
-    expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
-  });
-
-  it('passes explicit failed archive clear policy for real user runtime requests', async () => {
-    await getSandboxClient(createSandboxIdQuery('failed-policy-sandbox'), {
-      failedArchivePolicy: 'clearAndContinue'
-    });
-
-    expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sandboxId: 'failed-policy-sandbox',
-        failedArchivePolicy: 'clearAndContinue'
-      })
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(2);
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'retried-provision', status: 'running' })
     );
   });
 
-  it('rejects legacy appId query instead of deriving sandbox id in runtime client', async () => {
-    await expect(getSandboxClient({ appId: 'app-1', chatId: 'chat-1' } as any)).rejects.toThrow(
-      'sandboxId is required'
-    );
+  it('guards the source before migration, restore and provider construction', async () => {
+    mocks.assertSandboxSourceActive.mockRejectedValueOnce(new Error('source deleted'));
+
+    await expect(getSandboxClient(query)).rejects.toThrow('source deleted');
+
+    expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
+    expect(mocks.restoreArchivedSandboxBeforeUse).not.toHaveBeenCalled();
     expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
   });
 
-  it('rejects sandboxId-only query before creating an orphan runtime record', async () => {
-    await expect(getSandboxClient({ sandboxId: 'sandbox-without-source' } as any)).rejects.toThrow(
-      'sourceType and sourceId are required'
+  it('does not create or resume when archived restore is disabled', async () => {
+    mocks.assertSandboxRuntimeUsableWithoutRestore.mockRejectedValueOnce(
+      new Error('Sandbox is archived')
     );
-    expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
+
+    await expect(getSandboxClient(query, { restoreArchived: false })).rejects.toThrow(
+      'Sandbox is archived'
+    );
+    expect(mocks.migrateSandboxProviderBeforeUse).not.toHaveBeenCalled();
+    expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
   });
 
-  it('passes resource limits into running instance records and command timeout into exec', async () => {
+  it('returns command failures as ExecuteResult and preserves timeout conversion', async () => {
     const provider = createProvider();
     mocks.buildRuntimeSandboxAdapter.mockReturnValueOnce(provider);
-    const client = new SandboxClient(createSandboxIdQuery('sandbox-with-limits'), {
-      resourceLimits: {
-        cpuCount: 2,
-        memoryMiB: 1024,
-        diskGiB: 4
-      },
-      vmConfig: {
-        volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
-        storage: { mountPath: '/workspace' }
-      }
-    });
+    const client = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
 
     await expect(client.exec('echo ok', 2)).resolves.toEqual({
       stdout: 'ok',
       stderr: '',
       exitCode: 0
     });
-    expect(provider.execute).toHaveBeenCalledWith('echo ok', { timeoutMs: 2_000 });
-    expect(mocks.upsertRunningSandboxInstance).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sandboxId: 'sandbox-with-limits',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1',
-        storage: { mountPath: '/workspace' },
-        limit: {
-          cpuCount: 2,
-          memoryMiB: 1024,
-          diskGiB: 4
-        },
-        metadata: {
-          volumeEnabled: true
-        }
-      })
-    );
-  });
-
-  it('uses resource service when runtime client stop and delete are called', async () => {
-    const client = new SandboxClient(createSandboxIdQuery('runtime-cleanup-sandbox'));
-
-    await client.stop();
-    await client.delete();
-
-    expect(mocks.stopSandboxResource).toHaveBeenCalledWith({
-      provider: 'sealosdevbox',
-      sandboxId: 'runtime-cleanup-sandbox'
+    expect(provider.execute).toHaveBeenCalledWith(expect.stringContaining('echo ok'), {
+      timeoutMs: 2000
     });
-    expect(mocks.deleteSandboxResource).toHaveBeenCalledWith(
-      {
-        provider: 'sealosdevbox',
-        sandboxId: 'runtime-cleanup-sandbox'
-      },
-      {
-        keepArchive: false
-      }
-    );
-  });
 
-  it('returns execute result error when ensureAvailable fails before exec', async () => {
-    mocks.ensureConnectedSandboxRunning.mockRejectedValueOnce(new Error('ensure failed'));
-    const client = new SandboxClient(createSandboxIdQuery('sandbox-ensure-fail'));
-
-    await expect(client.exec('echo never')).resolves.toMatchObject({
+    provider.execute.mockRejectedValueOnce(new Error('exec failed'));
+    await expect(client.exec('false')).resolves.toEqual({
       stdout: '',
-      stderr: expect.stringContaining('Sandbox service is not available'),
+      stderr: 'Failed to execute sandbox: exec failed',
       exitCode: -1
     });
   });
 
-  it('returns execute result error when provider command fails', async () => {
-    const provider = createProvider();
-    provider.execute.mockRejectedValueOnce(new Error('execute failed'));
-    mocks.buildRuntimeSandboxAdapter.mockReturnValueOnce(provider);
-    const client = new SandboxClient(createSandboxIdQuery('sandbox-execute-fail'), {
-      providerName: 'opensandbox',
-      createConfig: {
-        image: { repository: 'test-image' }
-      }
-    });
-
-    await expect(client.exec('echo fail')).resolves.toMatchObject({
-      stdout: '',
-      stderr: expect.stringContaining('Failed to execute sandbox'),
-      exitCode: -1
-    });
+  it('rejects legacy or incomplete runtime queries', async () => {
+    await expect(getSandboxClient({ appId: 'app-1' } as any)).rejects.toThrow(
+      'sandboxId is required'
+    );
+    await expect(getSandboxClient({ sandboxId: 'sandbox-1' } as any)).rejects.toThrow(
+      'sourceType and sourceId are required'
+    );
   });
 });

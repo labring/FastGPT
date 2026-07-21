@@ -44,19 +44,21 @@ describe('prepareAgentSandboxRuntime', () => {
       })
     ).resolves.toEqual({
       sandboxClient: expect.any(Object),
-      workDirectory: '/workspace'
+      workspaceRoot: '/workspace',
+      workDirectory: '/workspace/sessions/chat_1'
     });
 
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
-      {
-        sandboxId: generateSandboxId('app_1', 'user_1', 'chat_1'),
+    expect(mocks.getSandboxClient).toHaveBeenCalledWith({
+      sandboxId: generateSandboxId({
         sourceType: ChatSourceTypeEnum.app,
         sourceId: 'app_1',
-        userId: 'user_1',
-        chatId: 'chat_1'
-      },
-      { failedArchivePolicy: 'clearAndContinue' }
-    );
+        userId: 'user_1'
+      }),
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1'
+    });
   });
 
   it('converts skill edit source into stable edit sandbox id without exposing appId input', async () => {
@@ -71,16 +73,13 @@ describe('prepareAgentSandboxRuntime', () => {
       teamId: 'team_1'
     });
 
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
-      {
-        sandboxId: getEditDebugSandboxId('skill_1'),
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: 'skill_1',
-        userId: '',
-        chatId: 'edit-debug'
-      },
-      { failedArchivePolicy: 'clearAndContinue' }
-    );
+    expect(mocks.getSandboxClient).toHaveBeenCalledWith({
+      sandboxId: getEditDebugSandboxId('skill_1'),
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'skill_1',
+      userId: ChatSourceTypeEnum.skillEdit,
+      chatId: 'edit-debug'
+    });
   });
 
   it('throws structured permission error before creating sandbox client', async () => {

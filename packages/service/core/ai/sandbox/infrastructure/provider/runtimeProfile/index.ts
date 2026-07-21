@@ -5,7 +5,6 @@
  */
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import { serviceEnv } from '../../../../../../env';
-import { buildE2BRuntimeProfile } from './e2b';
 import { buildOpenSandboxRuntimeProfile } from './opensandbox';
 import { buildSealosRuntimeProfile } from './sealosdevbox';
 import type { SandboxRuntimeProfile } from './types';
@@ -43,8 +42,6 @@ export function getSandboxRuntimeProfile(
       return buildOpenSandboxRuntimeProfile();
     case 'sealosdevbox':
       return buildSealosRuntimeProfile();
-    case 'e2b':
-      return buildE2BRuntimeProfile();
     default:
       return assertNever(provider);
   }

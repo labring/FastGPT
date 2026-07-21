@@ -3,6 +3,11 @@
  */
 export type SandboxId = string;
 
+/** Controls whether ensureRunning may create a missing provider resource. */
+export type SandboxEnsureRunningOptions = {
+  allowCreate?: boolean;
+};
+
 /**
  * Sandbox status states.
  */

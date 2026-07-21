@@ -150,6 +150,7 @@ export async function saveDeploySkillFromSandbox({
     sandboxId: sandboxInfo.sandboxId,
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: skillId,
+    userId: ChatSourceTypeEnum.skillEdit,
     metadata: {
       ...(sandboxInfo.metadata || {}),
       versionId

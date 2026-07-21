@@ -30,8 +30,7 @@
     "test": "vitest run --config ./vitest.config.ts"
   },
   "dependencies": {
-    "@alibaba-group/opensandbox": "^0.1.5",
-    "@e2b/code-interpreter": "^2.3.3"
+    "@alibaba-group/opensandbox": "^0.1.5"
   },
   "devDependencies": {
     "@types/node": "catalog:",

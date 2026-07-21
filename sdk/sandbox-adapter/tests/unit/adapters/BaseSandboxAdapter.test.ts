@@ -493,6 +493,19 @@ describe('BaseSandboxAdapter', () => {
     expect(adapter.status.state).toBe('Stopped');
   });
 
+  it('should start an existing mock sandbox without creating a replacement', async () => {
+    const adapter = new MockSandboxAdapter();
+    await adapter.stop();
+    const create = vi.spyOn(adapter, 'create');
+    const start = vi.spyOn(adapter, 'start');
+
+    await adapter.ensureRunning({ allowCreate: false });
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(create).not.toHaveBeenCalled();
+    expect(adapter.status.state).toBe('Running');
+  });
+
   // ==================== normalizePath ====================
 
   describe('normalizePath', () => {

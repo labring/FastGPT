@@ -8,6 +8,7 @@ import mime from 'mime';
 import type { SandboxClient } from './runtime/client';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { readExternalFileBuffer } from '../../../../common/file/read/external';
+import { resolveSandboxRuntimePath } from '../utils';
 
 export type SandboxUrlFile = {
   path: string;
@@ -24,6 +25,7 @@ export type SandboxFileContent = {
 
 type ResolveSandboxWorkspacePathOptions = {
   allowAbsolutePath?: boolean;
+  workspaceRoot?: string;
 };
 
 type SandboxDirectoryArchive = {
@@ -32,14 +34,7 @@ type SandboxDirectoryArchive = {
 
 const MAX_ARCHIVE_DEPTH = 20;
 
-const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
-
 const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
-
-const isWithinSandboxWorkspace = (path: string, workDirectory: string) => {
-  const workspace = trimSandboxPathRight(workDirectory);
-  return path === workspace || path.startsWith(`${workspace}/`);
-};
 
 /** 读取准备写入 Sandbox 的远程文件，禁止相对 URL 回环访问本机 API。 */
 export const readSandboxUrlFile = async (url: string) => {
@@ -83,27 +78,14 @@ export function resolveSandboxWorkspacePath(
   workDirectory = getSandboxWorkDirectory(),
   options: ResolveSandboxWorkspacePathOptions = {}
 ) {
-  const rawPath = path || '.';
-  if (rawPath === '.' || rawPath === './' || rawPath === '') {
-    return trimSandboxPathRight(workDirectory);
-  }
-
-  if (rawPath.split('/').includes('..')) {
-    throw new Error('Path traversal detected');
-  }
-
-  if (rawPath.startsWith('/')) {
-    if (!options.allowAbsolutePath) {
-      throw new Error('Absolute sandbox paths are not allowed');
-    }
-    if (!isWithinSandboxWorkspace(rawPath, workDirectory)) {
-      throw new Error('Sandbox path is outside workspace');
-    }
-    return rawPath;
-  }
-
-  const relativePath = rawPath.replace(/^\.\//, '');
-  return `${trimSandboxPathRight(workDirectory)}/${relativePath}`;
+  return resolveSandboxRuntimePath(
+    path,
+    {
+      workspaceRoot: options.workspaceRoot ?? workDirectory,
+      sessionWorkDirectory: workDirectory
+    },
+    options
+  );
 }
 
 /**
@@ -116,7 +98,7 @@ export async function isSandboxPathDirectory(
   sandbox: SandboxClient,
   path: string
 ): Promise<boolean> {
-  const providerPath = resolveSandboxWorkspacePath(path);
+  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
   const fileInfoMap = await sandbox.provider.getFileInfo([providerPath]);
   const fileInfo = fileInfoMap.get(providerPath);
   return (
@@ -135,7 +117,7 @@ export async function getSandboxFileContent(
   path: string,
   preview?: boolean
 ): Promise<SandboxFileContent> {
-  const providerPath = resolveSandboxWorkspacePath(path);
+  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
   const results = await sandbox.provider.readFiles([providerPath]);
   const result = results[0];
 
@@ -172,9 +154,7 @@ export async function addDirectoryToArchive(
 ): Promise<void> {
   if (depth > MAX_ARCHIVE_DEPTH) return;
 
-  const providerDirPath = resolveSandboxWorkspacePath(dirPath, getSandboxWorkDirectory(), {
-    allowAbsolutePath: true
-  });
+  const providerDirPath = sandbox.resolveRuntimePath(dirPath, { allowAbsolutePath: true });
   const entries = await sandbox.provider.listDirectory(providerDirPath);
 
   for (const entry of entries) {
@@ -183,9 +163,7 @@ export async function addDirectoryToArchive(
     if (entry.isDirectory) {
       await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath, depth + 1);
     } else {
-      const providerFilePath = resolveSandboxWorkspacePath(entry.path, getSandboxWorkDirectory(), {
-        allowAbsolutePath: true
-      });
+      const providerFilePath = sandbox.resolveRuntimePath(entry.path, { allowAbsolutePath: true });
       const results = await sandbox.provider.readFiles([providerFilePath]);
       const result = results[0];
 

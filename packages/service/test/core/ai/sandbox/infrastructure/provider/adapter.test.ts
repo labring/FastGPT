@@ -19,7 +19,6 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'test',
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sealos.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-sealos-token',
-    AGENT_SANDBOX_E2B_API_KEY: 'mock-e2b-token',
     AGENT_SANDBOX_DISK_MB: 20
   }
 }));
@@ -38,38 +37,6 @@ import {
 describe('sandbox provider adapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('builds e2b sandbox adapter through the shared factory', () => {
-    const result = buildSandboxAdapter(
-      {
-        provider: 'e2b',
-        apiKey: 'e2b-token'
-      },
-      {
-        sandboxId: 'e2b-sandbox-1'
-      }
-    );
-
-    expect(result.provider).toBe('e2b');
-    expect(mocks.createSandbox).toHaveBeenCalledWith('e2b', {
-      apiKey: 'e2b-token',
-      sandboxId: 'e2b-sandbox-1'
-    });
-  });
-
-  it('throws when e2b adapter is missing api key', () => {
-    expect(() =>
-      buildSandboxAdapter(
-        {
-          provider: 'e2b',
-          apiKey: ''
-        },
-        {
-          sandboxId: 'e2b-sandbox-1'
-        }
-      )
-    ).toThrow('AGENT_SANDBOX_E2B_API_KEY required');
   });
 
   it('throws when adapter factory receives an unsupported provider', () => {

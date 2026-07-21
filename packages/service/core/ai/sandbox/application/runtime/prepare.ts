@@ -18,6 +18,7 @@ export type SandboxPrepareContext = {
   sandbox: ISandbox;
   sandboxClient?: SandboxCommandClient;
   workDirectory: string;
+  workspaceRoot?: string;
   currentWorkingDirectory?: string;
 };
 
@@ -106,7 +107,12 @@ export const injectCurrentInputFiles =
     readInputFile?: SandboxInputFileReader
   ): SandboxPrepareStep<Context> =>
   async (context) => {
-    await injectInputFilesToSandbox(context.sandbox, currentFiles, readInputFile);
+    await injectInputFilesToSandbox(
+      context.sandbox,
+      currentFiles,
+      context.workDirectory,
+      readInputFile
+    );
     return context;
   };
 
