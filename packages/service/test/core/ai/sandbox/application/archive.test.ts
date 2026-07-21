@@ -85,6 +85,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/config', () => ({
 }));
 
 import {
+  archiveInactiveSandboxes,
   archiveSandboxResource,
   archiveSandboxResourceForProviderMigration,
   getSandboxWorkspaceArchiveForMigration,
@@ -198,6 +199,26 @@ describe('sandbox archive lifecycle', () => {
         set: { 'metadata.image': 'sandbox-image' }
       })
     );
+  });
+
+  it('archives every inactive candidate and closes the cursor', async () => {
+    const close = vi.fn(async () => undefined);
+    mocks.createSandboxResourcesToArchiveCursor.mockReturnValueOnce({
+      async *[Symbol.asyncIterator]() {
+        yield createResource();
+        yield createResource('stopped', { sandboxId: 'sandbox-2' });
+      },
+      close
+    });
+    mocks.withSandboxLifecycleLease.mockResolvedValue({ status: 'success' });
+
+    await archiveInactiveSandboxes(new Date('2026-07-10T00:00:00.000Z'));
+
+    expect(mocks.createSandboxResourcesToArchiveCursor).toHaveBeenCalledWith(
+      new Date('2026-07-03T00:00:00.000Z')
+    );
+    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(2);
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it('rechecks inactivity under the lease before claiming', async () => {

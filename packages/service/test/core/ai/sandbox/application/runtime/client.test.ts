@@ -300,23 +300,41 @@ describe('sandbox runtime client lifecycle', () => {
     );
   });
 
-  it('records provisioning failure without publishing running', async () => {
+  it('records a provisioning failure and retries it immediately', async () => {
     const stopped = createInstance('stopped');
-    const claimed = createInstance('provisioning', 'resume-1');
+    const failedProvisioning = createInstance('provisioning', 'failed-provision');
+    const retriedProvisioning = createInstance('provisioning', 'retried-provision');
     mocks.touchRunningSandboxInstance.mockResolvedValue(null);
     mocks.findSandboxInstanceBySource.mockResolvedValue(stopped);
-    mocks.claimSandboxOperation.mockResolvedValue(claimed);
+    mocks.claimSandboxOperation
+      .mockResolvedValueOnce(failedProvisioning)
+      .mockResolvedValueOnce(retriedProvisioning);
+    mocks.markSandboxOperationFailed.mockImplementationOnce(async ({ error }: any) => {
+      failedProvisioning.metadata.operation.error = error;
+    });
     mocks.ensureConnectedSandboxRunning.mockRejectedValueOnce(new Error('provider failed'));
 
     await expect(getSandboxClient(query)).rejects.toThrow('provider failed');
     expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
       expect.objectContaining({
-        operationId: 'resume-1',
+        operationId: 'failed-provision',
         status: 'provisioning',
         error: 'provider failed'
       })
     );
     expect(mocks.completeSandboxOperation).not.toHaveBeenCalled();
+
+    mocks.findSandboxInstanceBySource.mockResolvedValue(failedProvisioning);
+    await getSandboxClient(query);
+
+    expect(mocks.claimSandboxOperation).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ status: 'provisioning', type: 'provision' })
+    );
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(2);
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'retried-provision', status: 'running' })
+    );
   });
 
   it('guards the source before migration, restore and provider construction', async () => {

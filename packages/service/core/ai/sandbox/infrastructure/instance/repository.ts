@@ -375,13 +375,9 @@ export async function findInactiveRunningSandboxResources(inactiveBefore: Date) 
 }
 
 /** 流式读取 stopped 归档候选。 */
-export function createSandboxResourcesToArchiveCursor(params: {
-  inactiveBefore: Date;
-  providers?: SandboxProviderType[];
-}) {
-  const { inactiveBefore, providers = ['opensandbox', 'sealosdevbox'] } = params;
+export function createSandboxResourcesToArchiveCursor(inactiveBefore: Date) {
   return MongoSandboxInstance.find({
-    provider: { $in: providers },
+    provider: { $in: ['opensandbox', 'sealosdevbox'] },
     status: SandboxInstanceStatusEnum.stopped,
     lastActiveAt: { $lt: inactiveBefore },
     'metadata.operation': { $exists: false }

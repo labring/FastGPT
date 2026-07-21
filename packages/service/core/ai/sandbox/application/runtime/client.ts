@@ -198,7 +198,8 @@ export class SandboxClient {
         const stale =
           operation?.heartbeatAt &&
           operation.heartbeatAt.getTime() < Date.now() - SANDBOX_PROVISIONING_STALE_MS;
-        if (!createdHere && !stale) {
+        // 已记录失败的 operation 不再有活跃执行者，可立即用新的 fencing token 接管重试。
+        if (!createdHere && !operation?.error && !stale) {
           throw new SandboxLifecycleStateError(current.status);
         }
       } else if (current.status !== SandboxInstanceStatusEnum.stopped) {

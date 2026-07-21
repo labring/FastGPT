@@ -32,7 +32,7 @@ const createAppIdentity = () => ({
 });
 
 const collectArchiveCursor = async (inactiveBefore: Date) => {
-  const cursor = createSandboxResourcesToArchiveCursor({ inactiveBefore });
+  const cursor = createSandboxResourcesToArchiveCursor(inactiveBefore);
   const resources: SandboxResourceDoc[] = [];
   try {
     for await (const resource of cursor) resources.push(resource);

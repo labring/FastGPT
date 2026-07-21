@@ -243,17 +243,6 @@ export const pushTrack = {
       }
     });
   },
-  sandboxArchive: (data: {
-    provider: string;
-    sandboxId: string;
-    reason: string;
-    source?: string;
-  }) => {
-    return createTrack({
-      event: TrackEnum.sandboxArchive,
-      data
-    });
-  },
   userSandboxMigration: (
     data: {
       runId: string;
@@ -265,12 +254,16 @@ export const pushTrack = {
           sandboxId: string;
           step:
             | 'prepare_app_target'
+            | 'archive_legacy'
+            | 'archive_workspace'
+            | 'mark_archive_deleting'
             | 'migrate_skill'
             | 'migrate_app'
             | 'delete_sandbox'
             | 'delete_volume'
             | 'verify_archive'
             | 'complete_legacy_record'
+            | 'complete_legacy_archive'
             | 'delete_archive'
             | 'delete_legacy_record'
             | 'stop_failed_legacy';

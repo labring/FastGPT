@@ -71,32 +71,6 @@ export class SandboxLifecycleStateError extends Error {
   }
 }
 
-export type SandboxArchiveFailure = {
-  sandboxId: string;
-  error: string;
-};
-
-export type SandboxArchiveResult = {
-  total: number;
-  successCount: number;
-  skippedCount: number;
-  failCount: number;
-  failures: SandboxArchiveFailure[];
-};
-
-export type SandboxArchiveProgress = {
-  processedCount: number;
-  successCount: number;
-  skippedCount: number;
-  failCount: number;
-  batchSize: number;
-  failures: SandboxArchiveFailure[];
-};
-
-export type SandboxArchiveOptions = {
-  onProgress?: (progress: SandboxArchiveProgress) => void | Promise<void>;
-};
-
 type SandboxArchiveSingleResult =
   | { status: 'success' }
   | { status: 'skipped'; reason: string }
@@ -487,50 +461,24 @@ export async function startSandboxRuntimeUpgradeArchive(
     : { success: false, error: 'Resource was modified or occupied' };
 }
 
-/** 流式归档全部候选，并按固定并发报告进度。 */
-export async function archiveSandboxResources(params: {
-  inactiveBefore: Date;
-  providers?: SandboxProviderType[];
-  options?: SandboxArchiveOptions;
-}): Promise<SandboxArchiveResult> {
-  const cursor = createSandboxResourcesToArchiveCursor(params);
-  let successCount = 0;
-  let skippedCount = 0;
-  const failures: SandboxArchiveFailure[] = [];
+/** 流式归档全部候选，并按固定并发执行。 */
+async function archiveSandboxResources(inactiveBefore: Date) {
+  const cursor = createSandboxResourcesToArchiveCursor(inactiveBefore);
   let batch: SandboxResourceDoc[] = [];
 
   const archiveBatch = async (resources: SandboxResourceDoc[]) => {
-    const results = await batchRun(
+    await batchRun(
       resources,
-      async (resource) => ({
-        resource,
-        result: await archiveSandboxResource(resource, params.inactiveBefore).catch((error) => ({
-          status: 'failed' as const,
-          error: getErrText(error)
-        }))
-      }),
+      (resource) =>
+        archiveSandboxResource(resource, inactiveBefore).catch((error) => {
+          logger.error('Failed to execute sandbox archive task', {
+            sandboxId: resource.sandboxId,
+            provider: resource.provider,
+            error
+          });
+        }),
       SANDBOX_ARCHIVE_BATCH_SIZE
     );
-    const batchFailures: SandboxArchiveFailure[] = [];
-    for (const { resource, result } of results) {
-      if (result.status === 'success') successCount++;
-      else if (result.status === 'skipped') skippedCount++;
-      else {
-        const failure = { sandboxId: resource.sandboxId, error: result.error };
-        failures.push(failure);
-        batchFailures.push(failure);
-      }
-    }
-    await Promise.resolve(
-      params.options?.onProgress?.({
-        processedCount: successCount + skippedCount + failures.length,
-        successCount,
-        skippedCount,
-        failCount: failures.length,
-        batchSize: resources.length,
-        failures: batchFailures
-      })
-    ).catch((error) => logger.error('Failed to report sandbox archive progress', { error }));
   };
 
   try {
@@ -545,19 +493,10 @@ export async function archiveSandboxResources(params: {
   } finally {
     await cursor.close().catch(() => undefined);
   }
-  return {
-    total: successCount + skippedCount + failures.length,
-    successCount,
-    skippedCount,
-    failCount: failures.length,
-    failures
-  };
 }
 
 export async function archiveInactiveSandboxes(now = new Date()) {
-  return archiveSandboxResources({
-    inactiveBefore: subDays(now, SANDBOX_ARCHIVE_INACTIVE_DAYS)
-  });
+  await archiveSandboxResources(subDays(now, SANDBOX_ARCHIVE_INACTIVE_DAYS));
 }
 
 /** 重试超过隔离窗口的 archiving operation。 */

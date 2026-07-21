@@ -245,29 +245,49 @@ type SandboxInstance = {
 任一记录失败时直接拒绝整次任务，错误返回 `_id`、`sandboxId`、字段路径和原因；预检通过前
 不写新表、不连接 Sandbox、不访问 S3，也不产生迁移 Track。
 
+### 6.0 全量预归档屏障
+
+`initUserSandbox` 调整为两个严格分离的阶段。第一阶段只处理 Legacy 资源，不创建、启动或接管
+任何 v2 Sandbox；第二阶段只有在本轮所有待迁移 Legacy 记录都完成第一阶段后才开始：
+
+1. 第一阶段对所有未完成记录生成或复用 Legacy S3 Workspace 归档，确认归档存在后删除旧物理
+   Sandbox 和 OpenSandbox volume，最后把 Legacy 记录提交为 `status=stopped`、
+   `metadata.archive.state=archived` 和 `metadata.userLevelMigration.phase=archiveReady`。
+2. 删除旧物理资源前必须先把已上传归档持久化为可恢复的 `deleting` 状态。进程在删除后、提交
+   `archiveReady` 前退出时，重试必须复用 S3 归档并幂等重试删除，不能重新连接已经删除的实例。
+3. 第一阶段应继续处理本轮其他 Legacy 记录并收集全部失败；只要存在一条归档、归档校验、
+   Sandbox 删除或 volume 删除失败，本轮就不得进入第二阶段，也不得由 migration 创建新的 v2
+   Sandbox。
+4. 第一阶段完成后建立全局屏障检查：全部未完成记录必须至少处于 `archiveReady`；已经进入
+   `installed/cleanupPending` 的历史中断记录也必须确认旧物理资源已删除且 Legacy S3 归档存在。
+5. 第二阶段只从 Legacy S3 下载归档并安装，不再连接、打包、停止或删除旧物理 Sandbox。
+6. `completed` 记录继续作为终态跳过，但整表预检仍校验其 `stopped + archived` 不变量。
+
+上述屏障只约束 `initUserSandbox` 自身，不限制正常用户请求创建 v2 Sandbox。真实用户请求可能在
+某个 source 完成第一阶段并释放 `Source Mutation Lease` 后、全表第一阶段尚未完成前创建 v2
+目标；第二阶段继续接管或复用该目标，并按目标现有内容优先的规则合并 Legacy Workspace。
+
 ### 6.1 Skill Edit
 
 1. 使用 `generateSandboxId({ sourceType: skillEdit, sourceId, userId: skillEdit })` 生成新的目标物理
    ID；不把旧无前缀 `sandboxId` 写入 v2。
-2. 按 Skill 获取 `Source Mutation Lease` 并确认 source active，再按新目标 ID 获取
+2. 全量预归档屏障通过后，按 Skill 获取 `Source Mutation Lease` 并确认 source active，再按新目标 ID 获取
    `Sandbox Lifecycle Lease`。先创建 `legacyMigrating` v2 记录作为发布屏障，普通 runtime 不得抢先
    创建空 Sandbox。
-3. Legacy 无 archive state 时正常打包；`archiving` 重新打包覆盖归档；`deleting` 重用已完成的
-   S3 归档并在清理阶段重新删除旧资源；`restoring` 说明归档已经完成，直接重用 S3 归档；
-   `failed` 保留在 Legacy 表并返回失败，不创建或发布 v2 目标。
-4. Skill 复用 `pending -> archiveReady -> installed -> cleanupPending -> completed` 持久阶段。归档安装到新目标
+3. Skill 第二阶段只接受至少为 `archiveReady` 的 Legacy 记录，并从 Legacy S3 下载归档；归档缺失
+   时失败且不创建或发布目标。
+4. Skill 复用 `archiveReady -> installed -> completed` 持久阶段。归档安装到新目标
    Workspace 根目录；目标已存在时递归合并且始终保留目标现有内容。只有 `installed` 已提交后才把
    目标发布为 `running`。
-5. 发布成功后删除旧物理 Sandbox 和 OpenSandbox volume，确认旧 S3 归档仍存在后，把旧记录的
-   archive state 提交为 `archived`、迁移阶段提交为 `completed`；旧 S3 和 Legacy 记录继续保留。
-   任一步失败都保留 `cleanupPending` 供幂等重试。
+5. 发布成功后只把迁移阶段提交为 `completed`；旧物理资源已在第一阶段删除，旧 S3 和 Legacy
+   记录继续保留。
 6. 如果升级后的 Skill runtime 已先创建稳定 v2 目标，migration 接管该目标并按相同冲突规则补充
    Legacy 内容；目标已归档时先复用正式 restore 状态机，再进入 migration operation。
 
 ### 6.2 App Workspace
 
 1. 按 `sourceId + userId` 聚合 Legacy App 记录。
-2. 每个 source 分组获取 `Source Mutation Lease`，确认 App source active 后再获取目标
+2. 全量预归档屏障通过后，每个 source 分组获取 `Source Mutation Lease`，确认 App source active 后再获取目标
    `Sandbox Lifecycle Lease`，创建或 CAS 确定性的用户级目标记录为 `legacyMigrating`，并写入
    `type=legacyMigration` 的 operation。普通 runtime 只能返回忙碌，不能接管成空 Workspace；如果
    升级后的 runtime 已提前发布同一确定性 ID 的 `running/stopped` 目标，migration 允许接管并按
@@ -275,11 +295,10 @@ type SandboxInstance = {
    restore 状态机恢复 v2 自身归档，再接管并合并 Legacy Workspace，禁止只拉起空资源。
 3. migration 模块直接在 `legacyMigration` operation 内按 phase 创建、启动或恢复目标 Sandbox，
    不通过普通 `getSandboxClient` 暴露未完成的目标。
-4. Legacy `metadata.archive.state=archived/deleting/restoring` 的记录仅在 S3 对象存在时复用；Legacy
-   `archived` 但对象缺失时迁移失败并保留旧记录，禁止连接已删除的远端实例并迁移空 Workspace。
-   其他 Legacy 状态即使残留旧 S3 对象，也从当前 Workspace 重新打包并覆盖。
-5. 每条 Legacy 记录持久保存
-   `pending -> archiveReady -> installed -> cleanupPending -> completed` 阶段。
+4. 第二阶段只接受第一阶段已经提交为 `archiveReady` 的记录，并从 Legacy S3 下载归档。归档缺失
+   时迁移失败，禁止连接已经删除的远端实例或迁移空 Workspace。
+5. 每条 Legacy 记录持久保存 `archiveReady -> installed -> completed` 阶段；`pending` 只属于第一
+   阶段，`cleanupPending` 仅作为旧版本中断状态兼容处理。
 6. 在目标 Sandbox 的 `.migration/<oldSandboxId>` 解压 staging。
 7. 删除 staging 中直接位于 `projects/` 下且名称为 24 位十六进制 ID 的目录。
 8. 目标 session 不存在时 rename staging 到 session；已存在时递归合并 staging，目录同名
@@ -290,29 +309,27 @@ type SandboxInstance = {
 11. 单次任务按 `lastActiveAt` 降序读取全部 Legacy 记录，优先迁移最近活跃的 Workspace；Skill
     按 source 分组并把 Workspace 搬到新物理 ID，固定并发度为 20；App 固定并发度为 5，按
     `sourceId + userId` 分组后组间并发、组内按最近活跃时间顺序串行。
-12. 目标发布后再把每条 Legacy 记录推进到 `cleanupPending`，同步删除旧 Sandbox 和 volume；
-    确认旧归档仍存在后把 archive state 提交为 `archived`、迁移阶段提交为 `completed`。
-    清理失败不再阻止已完整安装的目标运行。
+12. 目标发布后把每条 Legacy 记录提交为 `completed`。旧 Sandbox、volume 和归档校验已经由
+    第一阶段完成，第二阶段不得再执行旧物理资源清理。
 
 ### 6.3 失败与重试
 
 - 目标 Workspace 安装失败时保留 `status=legacyMigrating`，在 operation 中写入失败步骤、时间和
   错误，不删除该条旧记录或 S3。
-- 目标 Workspace 安装成功后，旧 Sandbox、volume 删除或归档存在性确认失败，保留 Legacy 记录的
-  `installed/cleanupPending` 阶段并记录具体步骤，重试从已持久阶段继续，不重复推断或安装
-  Workspace。
+- 第一阶段任一 Legacy 记录失败时继续收集其他归档结果，但全局阻断第二阶段；重试只处理尚未
+  完成预归档的记录。
+- 目标 Workspace 安装成功但发布失败时保留 `installed`，重试接管 migration operation 后完成
+  发布，不重复推断或安装 Workspace。
 - 重试在 Source Lease 和 Lifecycle Lease 下接管旧 `legacyMigration` operation，生成新的
   operation ID，只查询仍存在的 Legacy 记录并从其持久阶段继续。
 - `completed` 是 migration 的终态，后续全量任务只预检但不再处理；目标目录存在但阶段仍为
   `pending/archiveReady` 时不得推断迁移完成。
 - 迁移任务保留 job 级 singleton lease 避免重复调度；每个分组的正确性由 Source Mutation
   Lease 保证，不能依赖全局 lease 阻塞其他 source 的生命周期。
-- 真实迁移完成本轮 App 处理后，批量暂停本轮失败且仍存在的 Legacy App Sandbox，并将旧记录
-  状态更新为 `stopped`；暂停失败记录 `stop_failed_legacy` Track，保留旧记录供人工定位和重试。
-  Skill 迁移失败不执行统一暂停；目标发布前继续保留旧物理 Sandbox，供修复归档状态后重试。
-- 待处理 Legacy 记录均为 `installed/cleanupPending` 时，说明迁移发布已经完成；无论目标当前是
-  `running`、`stopped` 还是 `archived`，都只继续删除旧物理资源并提交 `completed`，不再抢占
-  `legacyMigrating`。已经 `completed` 的记录不进入迁移分组。
+- 第一阶段已经统一删除全部旧物理资源，因此第二阶段失败后不再执行批量 stop；修复后只能从
+  Legacy S3 归档重试。
+- 待处理 Legacy 记录为 `installed` 时说明文件安装已经完成；目标为稳定态时只提交 `completed`，
+  目标仍为 `legacyMigrating` 时接管 operation 完成发布。已经 `completed` 的记录不进入迁移分组。
 - 已发布的 App 目标仍有 `pending/archiveReady` 时，允许重新进入 `legacyMigrating` 并合并 Legacy
   Workspace；已有 session 内容优先。目标为 `archived/restoring` 时先完成 v2 归档恢复；恢复失败
   保留 Legacy 记录且不进入 migration claim，后续重试仍从 restore 状态机继续。
@@ -349,7 +366,7 @@ type SandboxInstance = {
 - [x] 调整 upload/download/preview/ticket/checkExist API 和 Editor 初始目录。
 - [x] 调整 Chat 删除、App 删除、自动 stop/archive/delete 生命周期。
 - [x] 串行化真实用户级迁移与自动 stop 的远端副作用。
-- [x] 删除旧归档脚本，新增只处理 v2 集合的 `initSandboxArchiveV2`。
+- [x] 删除旧归档脚本和 v2 临时归档脚本，v2 闲置归档统一由定时任务执行。
 - [x] 补齐 App Sandbox 跨 provider 归档、CAS 切换和恢复闭环。
 - [x] 增加同步 S3 归档删除与存在性检查。
 - [x] 实现 Skill Edit Legacy 记录迁移。
@@ -358,6 +375,19 @@ type SandboxInstance = {
 - [x] 运行相关 TypeScript 检查。
 - [x] 最后运行全量测试。
 - [x] 更新 Notion 实施进度。
+
+### 8.1 全量预归档屏障调整 TODO
+
+- [x] 明确 `initUserSandbox` 两阶段顺序、全局屏障和失败恢复不变量。
+- [x] 确认屏障只约束 migration，不阻止正常 runtime 首次创建 v2 Sandbox。
+- [x] 实现第一阶段全量 Legacy S3 归档、归档校验和旧 Sandbox/volume 删除。
+- [x] 实现第一阶段全成功后才进入 v2 创建、启动和 S3 合并的全局屏障。
+- [x] 移除第二阶段的旧物理资源删除和失败 App 批量 stop。
+- [x] 兼容 `installed/cleanupPending` 等当前分支可能产生的中断阶段。
+- [x] 补充全局屏障、失败重试、归档后恢复和无旧 Provider 访问的单元测试。
+- [x] 运行 migration 局部测试和相关 TypeScript 检查。
+- [x] 最后运行全量测试；`app/admin` 中多个无关用例在全量并发下超时或性能断言失败，
+  Turborepo 随后中断剩余任务；本次迁移相关 27/27 局部用例与 App TypeScript 检查通过。
 
 ## 9. 生命周期并发深度重构（已确认）
 
@@ -564,13 +594,15 @@ App/Skill 删除和首次 provisioning 必须使用同一个 Source Mutation Lea
 每条 Legacy App/Skill 记录增加持久迁移阶段：
 
 ```text
-pending -> archiveReady -> installed -> cleanupPending -> completed
+pending -> archiveReady -> installed -> completed
 ```
 
-- `archiveReady`：已获得可校验的 S3 归档。
+- `pending`：旧 Workspace 尚未完成预归档和物理资源删除。
+- `archiveReady`：已获得可校验的 S3 归档，且旧 Sandbox 和 volume 已删除；全表记录全部至少到达
+  该阶段后，migration 才能开始创建或接管 v2 目标。
 - `installed`：Workspace 已成功提交到目标 session 或 Skill Workspace，并已把结果写回 Legacy 记录。
-- `cleanupPending`：允许重试旧 Sandbox、volume 删除和归档存在性确认。
 - `completed`：旧物理资源已删除、旧归档仍存在、v2 目标已经发布；普通迁移不再处理。
+- `cleanupPending` 仅兼容当前分支旧链路产生的中断记录；新的两阶段流程不再写入该阶段。
 - `completed` 必须同时满足 Legacy 顶层 `status=stopped` 和 `metadata.archive.state=archived`。
 - 目标 session/Workspace 存在但 Legacy 仍是 `pending/archiveReady` 时，不得推断迁移完成。
 
