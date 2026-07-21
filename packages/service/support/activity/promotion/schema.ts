@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type PromotionRecordSchema as PromotionRecordType } from '@fastgpt/global/support/activity/type';
 import { userCollectionName } from '../../user/schema';
@@ -30,7 +30,7 @@ const PromotionRecordSchema = new Schema({
   }
 });
 
-PromotionRecordSchema.index({ userId: 1 });
+defineIndex(PromotionRecordSchema, { key: { userId: 1 } });
 
 export const MongoPromotionRecord = getMongoModel<PromotionRecordType>(
   'promotionRecord',

@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
@@ -91,20 +91,26 @@ const DatasetDataSchema = new Schema({
 
 try {
   // list collection and count data; list data; delete collection(relate data)
-  DatasetDataSchema.index({
-    teamId: 1,
-    datasetId: 1,
-    collectionId: 1,
-    chunkIndex: 1,
-    updateTime: -1
+  defineIndex(DatasetDataSchema, {
+    key: {
+      teamId: 1,
+      datasetId: 1,
+      collectionId: 1,
+      chunkIndex: 1,
+      updateTime: -1
+    }
   });
   // Recall vectors after data matching
-  DatasetDataSchema.index({ teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 });
+  defineIndex(DatasetDataSchema, {
+    key: { teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 }
+  });
   // rebuild data
-  DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
+  defineIndex(DatasetDataSchema, {
+    key: { rebuilding: 1, teamId: 1, datasetId: 1 }
+  });
 
   // Cron clear invalid data
-  DatasetDataSchema.index({ updateTime: 1 });
+  defineIndex(DatasetDataSchema, { key: { updateTime: 1 } });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build dataset data indexes', { error });

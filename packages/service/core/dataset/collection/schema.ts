@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -96,36 +96,44 @@ DatasetCollectionSchema.virtual('dataset', {
 
 try {
   // auth file
-  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
+  defineIndex(DatasetCollectionSchema, { key: { teamId: 1, fileId: 1 } });
 
   // list collection; deep find collections
-  DatasetCollectionSchema.index({
-    teamId: 1,
-    datasetId: 1,
-    parentId: 1,
-    updateTime: -1
+  defineIndex(DatasetCollectionSchema, {
+    key: {
+      teamId: 1,
+      datasetId: 1,
+      parentId: 1,
+      updateTime: -1
+    }
   });
 
   // Tag filter
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
+  defineIndex(DatasetCollectionSchema, {
+    key: { teamId: 1, datasetId: 1, tags: 1 }
+  });
   // create time filter
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
+  defineIndex(DatasetCollectionSchema, {
+    key: { teamId: 1, datasetId: 1, createTime: 1 }
+  });
 
   // Get collection by external file id
-  DatasetCollectionSchema.index(
-    { datasetId: 1, externalFileId: 1 },
-    {
+  defineIndex(DatasetCollectionSchema, {
+    key: { datasetId: 1, externalFileId: 1 },
+    options: {
       unique: true,
       partialFilterExpression: {
         externalFileId: { $exists: true }
       }
     }
-  );
+  });
 
   // Clear invalid image
-  DatasetCollectionSchema.index({
-    teamId: 1,
-    'metadata.relatedImgId': 1
+  defineIndex(DatasetCollectionSchema, {
+    key: {
+      teamId: 1,
+      'metadata.relatedImgId': 1
+    }
   });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);

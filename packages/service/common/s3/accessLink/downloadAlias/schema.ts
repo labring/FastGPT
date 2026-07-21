@@ -1,5 +1,5 @@
 import { getLogger, LogCategories } from '../../../logger';
-import { getMongoModel, Schema } from '../../../mongo';
+import { defineIndex, getMongoModel, Schema } from '../../../mongo';
 import type { S3DownloadAliasType } from '../type';
 
 export const S3DownloadAliasCollectionName = 's3_download_aliases';
@@ -45,10 +45,21 @@ const S3DownloadAliasMongoSchema = new Schema({
 });
 
 try {
-  S3DownloadAliasMongoSchema.index({ aliasId: 1 }, { unique: true });
-  S3DownloadAliasMongoSchema.index({ aliasKey: 1 }, { unique: true });
-  S3DownloadAliasMongoSchema.index({ purgeAt: 1 }, { expireAfterSeconds: 0 });
-  S3DownloadAliasMongoSchema.index({ bucketName: 1, objectKey: 1 });
+  defineIndex(S3DownloadAliasMongoSchema, {
+    key: { aliasId: 1 },
+    options: { unique: true }
+  });
+  defineIndex(S3DownloadAliasMongoSchema, {
+    key: { aliasKey: 1 },
+    options: { unique: true }
+  });
+  defineIndex(S3DownloadAliasMongoSchema, {
+    key: { purgeAt: 1 },
+    options: { expireAfterSeconds: 0 }
+  });
+  defineIndex(S3DownloadAliasMongoSchema, {
+    key: { bucketName: 1, objectKey: 1 }
+  });
 } catch (error) {
   logger.error('Failed to build S3 download alias indexes', { error });
 }

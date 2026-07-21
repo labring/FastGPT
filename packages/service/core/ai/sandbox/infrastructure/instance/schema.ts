@@ -3,11 +3,7 @@
  *
  * 只描述本地实例记录结构，不编排 provider、归档或运行态流程。
  */
-import {
-  connectionMongo,
-  getMongoModel,
-  defineDeprecatedIndexes
-} from '../../../../../common/mongo';
+import { connectionMongo, defineIndex, getMongoModel } from '../../../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from '../../type';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -79,47 +75,58 @@ const SandboxInstanceSchema = new Schema({
   }
 });
 
-SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
-SandboxInstanceSchema.index({ sourceType: 1, sourceId: 1, chatId: 1 });
-SandboxInstanceSchema.index({ sourceType: 1, status: 1, provider: 1, 'metadata.archive.state': 1 });
-SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 });
-SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.startedAt': 1 });
-SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.deleteStartedAt': 1 });
+defineIndex(SandboxInstanceSchema, {
+  key: { provider: 1, sandboxId: 1 },
+  options: { unique: true }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { sourceType: 1, sourceId: 1, chatId: 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { sourceType: 1, status: 1, provider: 1, 'metadata.archive.state': 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { 'metadata.archive.state': 1, 'metadata.archive.startedAt': 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { 'metadata.archive.state': 1, 'metadata.archive.deleteStartedAt': 1 }
+});
 
-defineDeprecatedIndexes(SandboxInstanceSchema, [
-  {
-    indexName: 'provider_1_appId_1_userId_1_chatId_1',
-    key: { provider: 1, appId: 1, userId: 1, chatId: 1 },
-    options: {
-      unique: true,
-      partialFilterExpression: {
-        appId: { $exists: true },
-        userId: { $exists: true },
-        chatId: { $exists: true }
-      }
+defineIndex(SandboxInstanceSchema, {
+  key: { provider: 1, appId: 1, userId: 1, chatId: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: {
+      appId: { $exists: true },
+      userId: { $exists: true },
+      chatId: { $exists: true }
     }
   },
-  {
-    indexName: 'appId_1_chatId_1',
-    key: { appId: 1, chatId: 1 },
-    options: {
-      unique: true,
-      partialFilterExpression: {
-        appId: { $exists: true },
-        chatId: { $exists: true },
-        type: { $exists: true }
-      }
+  deprecated: true
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { appId: 1, chatId: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: {
+      appId: { $exists: true },
+      chatId: { $exists: true },
+      type: { $exists: true }
     }
   },
-  {
-    indexName: 'metadata.skillId_1',
-    key: { 'metadata.skillId': 1 }
-  },
-  {
-    indexName: 'type_1_chatId_1',
-    key: { type: 1, chatId: 1 }
-  }
-]);
+  deprecated: true
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { 'metadata.skillId': 1 },
+  deprecated: true
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { type: 1, chatId: 1 },
+  deprecated: true
+});
 
 /**
  * sandbox 实例 Mongo model。

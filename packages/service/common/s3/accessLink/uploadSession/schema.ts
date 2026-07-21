@@ -1,5 +1,5 @@
 import { getLogger, LogCategories } from '../../../logger';
-import { getMongoModel, Schema } from '../../../mongo';
+import { defineIndex, getMongoModel, Schema } from '../../../mongo';
 import type { S3UploadSessionType } from '../type';
 
 export const S3UploadSessionCollectionName = 's3_upload_sessions';
@@ -43,9 +43,17 @@ const S3UploadSessionMongoSchema = new Schema({
 });
 
 try {
-  S3UploadSessionMongoSchema.index({ tokenHash: 1 }, { unique: true });
-  S3UploadSessionMongoSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-  S3UploadSessionMongoSchema.index({ bucketName: 1, objectKey: 1 });
+  defineIndex(S3UploadSessionMongoSchema, {
+    key: { tokenHash: 1 },
+    options: { unique: true }
+  });
+  defineIndex(S3UploadSessionMongoSchema, {
+    key: { expiresAt: 1 },
+    options: { expireAfterSeconds: 0 }
+  });
+  defineIndex(S3UploadSessionMongoSchema, {
+    key: { bucketName: 1, objectKey: 1 }
+  });
 } catch (error) {
   logger.error('Failed to build S3 upload session indexes', { error });
 }

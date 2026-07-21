@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import { EvaluationCollectionName } from './evalSchema';
 import {
   EvaluationStatusEnum,
@@ -48,7 +48,7 @@ const EvalItemSchema = new Schema({
   errorMessage: String
 });
 
-EvalItemSchema.index({ evalId: 1, status: 1 });
+defineIndex(EvalItemSchema, { key: { evalId: 1, status: 1 } });
 
 export const MongoEvalItem = getMongoModel<EvalItemSchemaType>(
   EvalItemCollectionName,

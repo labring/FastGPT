@@ -1,5 +1,5 @@
 import { addDays } from 'date-fns';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { TeamCouponSchemaType } from '@fastgpt/global/support/wallet/sub/coupon/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
@@ -44,7 +44,7 @@ const CouponSchema = new Schema({
 });
 
 try {
-  CouponSchema.index({ key: 1 }, { unique: true });
+  defineIndex(CouponSchema, { key: { key: 1 }, options: { unique: true } });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build coupon indexes', { error });

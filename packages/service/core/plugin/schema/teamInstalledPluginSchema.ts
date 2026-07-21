@@ -1,5 +1,5 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo/index';
 import type { TeamInstalledPluginSchemaType } from '@fastgpt/global/core/plugin/schema/type';
 
 const { Schema } = connectionMongo;
@@ -29,7 +29,10 @@ const TeamInstalledPluginSchema = new Schema({
   }
 });
 
-TeamInstalledPluginSchema.index({ teamId: 1, pluginId: 1 }, { unique: true });
+defineIndex(TeamInstalledPluginSchema, {
+  key: { teamId: 1, pluginId: 1 },
+  options: { unique: true }
+});
 
 export const MongoTeamInstalledPlugin = getMongoModel<TeamInstalledPluginSchemaType>(
   collectionName,

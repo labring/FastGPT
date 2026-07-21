@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import type { CountLimitType } from './type';
 import { getLogger, LogCategories } from '../../logger';
 
@@ -27,8 +27,14 @@ const CountLimitSchema = new Schema({
 });
 
 try {
-  CountLimitSchema.index({ type: 1, key: 1 }, { unique: true });
-  CountLimitSchema.index({ createTime: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 }); // ttl 30天
+  defineIndex(CountLimitSchema, {
+    key: { type: 1, key: 1 },
+    options: { unique: true }
+  });
+  defineIndex(CountLimitSchema, {
+    key: { createTime: 1 },
+    options: { expireAfterSeconds: 60 * 60 * 24 * 30 }
+  }); // ttl 30天
 } catch (error) {
   logger.error('Failed to build count limit indexes', { error });
 }

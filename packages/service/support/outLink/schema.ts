@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import {
@@ -111,12 +111,12 @@ OutLinkSchema.virtual('associatedApp', {
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-OutLinkSchema.index({ shareId: -1 });
-OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
+defineIndex(OutLinkSchema, { key: { shareId: -1 } });
+defineIndex(OutLinkSchema, { key: { teamId: 1, tmbId: 1, appId: 1 } });
 // Wechat polling recovery: find online channels on startup
-OutLinkSchema.index(
-  { type: 1, 'app.status': 1 },
-  { partialFilterExpression: { type: 'wechat', 'app.status': 'online' } }
-);
+defineIndex(OutLinkSchema, {
+  key: { type: 1, 'app.status': 1 },
+  options: { partialFilterExpression: { type: 'wechat', 'app.status': 'online' } }
+});
 
 export const MongoOutLink = getMongoModel<OutLinkSchemaType>('outlinks', OutLinkSchema);

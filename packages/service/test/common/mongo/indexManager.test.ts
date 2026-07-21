@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectionMongo, defineDeprecatedIndexes, Schema } from '@fastgpt/service/common/mongo';
+import { connectionMongo, defineIndex, Schema } from '@fastgpt/service/common/mongo';
+import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 
 const logger = {
@@ -24,6 +25,19 @@ const createModel = ({
 const getIndexNames = async (model: ReturnType<typeof createModel>) =>
   new Set((await model.collection.indexes()).map((index) => index.name));
 
+const defineDeprecatedTestIndexes = (
+  schema: InstanceType<typeof Schema>,
+  indexes: DeprecatedMongoIndexDefinition[]
+) => {
+  indexes.forEach(({ indexName, key, options }) => {
+    defineIndex(schema, {
+      key,
+      options: { ...options, name: indexName },
+      deprecated: true
+    });
+  });
+};
+
 const legacyDefinition = {
   indexName: 'legacy_field_1',
   key: { legacyField: 1 }
@@ -43,8 +57,11 @@ describe('MongoIndexManager.syncModelIndexes', () => {
       },
       { autoIndex: false }
     );
-    schema.index({ currentField: 1 }, { name: 'current_field_1' });
-    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    defineIndex(schema, {
+      key: { currentField: 1 },
+      options: { name: 'current_field_1' }
+    });
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
     const model = createModel({ schema });
     await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
     await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
@@ -82,7 +99,10 @@ describe('MongoIndexManager.syncModelIndexes', () => {
       { currentField: String, customerField: String },
       { autoIndex: false }
     );
-    schema.index({ currentField: 1 }, { name: 'current_field_1' });
+    defineIndex(schema, {
+      key: { currentField: 1 },
+      options: { name: 'current_field_1' }
+    });
     const model = createModel({ schema });
     await model.collection.createIndex({ currentField: 1 }, { name: 'current_field_1' });
     await model.collection.createIndex({ customerField: 1 }, { name: 'customer_custom_1' });
@@ -97,7 +117,10 @@ describe('MongoIndexManager.syncModelIndexes', () => {
 
   it('reuses an in-flight task for concurrent calls on the same Model', async () => {
     const schema = new Schema({ currentField: String }, { autoIndex: false });
-    schema.index({ currentField: 1 }, { name: 'current_field_1' });
+    defineIndex(schema, {
+      key: { currentField: 1 },
+      options: { name: 'current_field_1' }
+    });
     const model = createModel({ schema });
     const createIndexes = vi.spyOn(model, 'createIndexes');
 
@@ -115,8 +138,11 @@ describe('MongoIndexManager.syncModelIndexes', () => {
       { currentField: String, conflictingField: String, legacyField: String },
       { autoIndex: false }
     );
-    schema.index({ currentField: 1 }, { name: 'current_field_1' });
-    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    defineIndex(schema, {
+      key: { currentField: 1 },
+      options: { name: 'current_field_1' }
+    });
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
     const model = createModel({ schema });
     await model.collection.createIndex({ conflictingField: 1 }, { name: 'current_field_1' });
     await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
@@ -134,7 +160,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 
   it('supports dry-run without deleting a matched index', async () => {
     const schema = new Schema({ legacyField: String }, { autoIndex: false });
-    defineDeprecatedIndexes(schema, [
+    defineDeprecatedTestIndexes(schema, [
       {
         ...legacyDefinition,
         options: { unique: true }
@@ -165,7 +191,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
       { customerField: String, legacyField: String, otherField: String },
       { autoIndex: false }
     );
-    defineDeprecatedIndexes(schema, [
+    defineDeprecatedTestIndexes(schema, [
       {
         ...legacyDefinition,
         options: { unique: true }
@@ -199,7 +225,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 
   it('reports a missing deprecated index and formats its report', async () => {
     const schema = new Schema({ legacyField: String }, { autoIndex: false });
-    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
     const model = createModel({ schema });
 
     const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
@@ -225,7 +251,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 
   it('treats a concurrent IndexNotFound response as an idempotent skip', async () => {
     const schema = new Schema({ legacyField: String }, { autoIndex: false });
-    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
     const model = createModel({ schema });
     await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
     vi.spyOn(model.collection, 'dropIndex').mockRejectedValueOnce({
@@ -247,7 +273,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 
   it('recognizes the numeric MongoDB IndexNotFound code', async () => {
     const schema = new Schema({ legacyField: String }, { autoIndex: false });
-    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
     const model = createModel({ schema });
     await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
     vi.spyOn(model.collection, 'dropIndex').mockRejectedValueOnce({ code: 27 });
@@ -265,7 +291,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 
   it('captures unexpected inspection errors in the cleanup report', async () => {
     const schema = new Schema({ legacyField: String }, { autoIndex: false });
-    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
     const model = createModel({ schema });
     vi.spyOn(model.collection, 'indexes').mockRejectedValueOnce(new Error('inspection failed'));
 
@@ -291,7 +317,7 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 
   it('normalizes non-Error cleanup failures into report messages', async () => {
     const schema = new Schema({ legacyField: String }, { autoIndex: false });
-    defineDeprecatedIndexes(schema, [legacyDefinition]);
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
     const model = createModel({ schema });
     await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
     vi.spyOn(model.collection, 'dropIndex').mockRejectedValueOnce('drop failed');

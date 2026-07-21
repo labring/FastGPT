@@ -1,4 +1,4 @@
-import { getMongoModel, Schema } from '../../common/mongo';
+import { defineIndex, getMongoModel, Schema } from '../../common/mongo';
 import {
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
@@ -153,9 +153,9 @@ const DatasetSchema = new Schema({
 });
 
 try {
-  DatasetSchema.index({ teamId: 1 });
-  DatasetSchema.index({ type: 1 }); // Admin count
-  DatasetSchema.index({ deleteTime: 1 }); // 添加软删除字段索引
+  defineIndex(DatasetSchema, { key: { teamId: 1 } });
+  defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
+  defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build dataset indexes', { error });

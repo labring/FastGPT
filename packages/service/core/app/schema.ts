@@ -1,5 +1,5 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { Schema, getMongoModel } from '../../common/mongo';
+import { defineIndex, Schema, getMongoModel } from '../../common/mongo';
 import type { AppSchemaType as AppType } from '@fastgpt/global/core/app/type';
 import {
   TeamCollectionName,
@@ -134,24 +134,26 @@ const AppSchema = new Schema(
   }
 );
 
-AppSchema.index({ teamId: 1, updateTime: -1 });
-AppSchema.index({ teamId: 1, type: 1 });
-AppSchema.index({ teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 });
+defineIndex(AppSchema, { key: { teamId: 1, updateTime: -1 } });
+defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
+defineIndex(AppSchema, {
+  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 }
+});
 
 // Schedule
-AppSchema.index(
-  { scheduledTriggerConfig: 1, scheduledTriggerNextTime: -1 },
-  {
+defineIndex(AppSchema, {
+  key: { scheduledTriggerConfig: 1, scheduledTriggerNextTime: -1 },
+  options: {
     partialFilterExpression: {
       scheduledTriggerConfig: { $exists: true }
     }
   }
-);
+});
 
 // Admin count
-AppSchema.index({ type: 1 });
-AppSchema.index({ deleteTime: 1 });
+defineIndex(AppSchema, { key: { type: 1 } });
+defineIndex(AppSchema, { key: { deleteTime: 1 } });
 // Admin search
-AppSchema.index({ name: 1 });
+defineIndex(AppSchema, { key: { name: 1 } });
 
 export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);

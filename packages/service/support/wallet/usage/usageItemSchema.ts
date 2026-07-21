@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { UsageItemSchemaType } from '@fastgpt/global/support/wallet/usage/type';
 import { UsageCollectionName, UsageItemCollectionName } from './constants';
@@ -42,8 +42,11 @@ const UsageItemSchema = new Schema({
 });
 
 try {
-  UsageItemSchema.index({ usageId: 'hashed' });
-  UsageItemSchema.index({ time: 1 }, { expireAfterSeconds: 360 * 24 * 60 * 60 });
+  defineIndex(UsageItemSchema, { key: { usageId: 'hashed' } });
+  defineIndex(UsageItemSchema, {
+    key: { time: 1 },
+    options: { expireAfterSeconds: 360 * 24 * 60 * 60 }
+  });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build usage item indexes', { error });

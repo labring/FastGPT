@@ -1,4 +1,4 @@
-import { getMongoModel, Schema } from '../../mongo';
+import { defineIndex, getMongoModel, Schema } from '../../mongo';
 import type { FrequencyLimitSchemaType } from './type';
 
 const FrequencyLimitSchema = new Schema({
@@ -17,8 +17,11 @@ const FrequencyLimitSchema = new Schema({
 });
 
 try {
-  FrequencyLimitSchema.index({ eventId: 1, expiredTime: 1 });
-  FrequencyLimitSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
+  defineIndex(FrequencyLimitSchema, { key: { eventId: 1, expiredTime: 1 } });
+  defineIndex(FrequencyLimitSchema, {
+    key: { expiredTime: 1 },
+    options: { expireAfterSeconds: 0 }
+  });
 } catch (error) {}
 
 export const MongoFrequencyLimit = getMongoModel<FrequencyLimitSchemaType>(

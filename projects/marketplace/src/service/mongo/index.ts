@@ -32,7 +32,7 @@ export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (process.env.NODE_ENV === 'test' || !MONGO_URL) {
+  if (process.env.NODE_ENV === 'test' || !marketplaceEnv.SYNC_INDEX || !MONGO_URL) {
     return;
   }
 
@@ -51,6 +51,7 @@ const syncMongoIndex = async (model: Model<any>) => {
 };
 
 export const ReadPreference = connectionMongo.mongo.ReadPreference;
+export { defineIndex } from '@fastgpt/service/common/mongo/schemaIndexes';
 
 export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose> {
   if (db.connection.readyState !== 0) {

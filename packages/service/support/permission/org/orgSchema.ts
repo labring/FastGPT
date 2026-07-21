@@ -1,7 +1,7 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { OrgCollectionName } from '@fastgpt/global/support/user/team/org/constant';
 import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import { OrgMemberCollectionName } from './orgMemberSchema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
@@ -60,19 +60,21 @@ OrgSchema.virtual('members', {
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
 try {
-  OrgSchema.index({
-    teamId: 1,
-    path: 1
+  defineIndex(OrgSchema, {
+    key: {
+      teamId: 1,
+      path: 1
+    }
   });
-  OrgSchema.index(
-    {
+  defineIndex(OrgSchema, {
+    key: {
       teamId: 1,
       pathId: 1
     },
-    {
+    options: {
       unique: true
     }
-  );
+  });
 } catch (error) {
   logger.error('Failed to build org indexes', { error });
 }

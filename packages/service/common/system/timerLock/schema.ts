@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../mongo';
 const { Schema } = connectionMongo;
 import { type TimerLockSchemaType } from './type';
 import { getLogger, LogCategories } from '../../logger';
@@ -9,8 +9,7 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 const TimerLockSchema = new Schema({
   timerId: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   expiredTime: {
     type: Date,
@@ -19,7 +18,14 @@ const TimerLockSchema = new Schema({
 });
 
 try {
-  TimerLockSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 5 });
+  defineIndex(TimerLockSchema, {
+    key: { timerId: 1 },
+    options: { unique: true }
+  });
+  defineIndex(TimerLockSchema, {
+    key: { expiredTime: 1 },
+    options: { expireAfterSeconds: 5 }
+  });
 } catch (error) {
   logger.error('Failed to build timer lock indexes', { error });
 }

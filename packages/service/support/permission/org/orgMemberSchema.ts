@@ -1,5 +1,5 @@
 import { OrgCollectionName } from '@fastgpt/global/support/user/team/org/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -44,19 +44,21 @@ OrgMemberSchema.virtual('org', {
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
 try {
-  OrgMemberSchema.index(
-    {
+  defineIndex(OrgMemberSchema, {
+    key: {
       teamId: 1,
       orgId: 1,
       tmbId: 1
     },
-    {
+    options: {
       unique: true
     }
-  );
-  OrgMemberSchema.index({
-    teamId: 1,
-    tmbId: 1
+  });
+  defineIndex(OrgMemberSchema, {
+    key: {
+      teamId: 1,
+      tmbId: 1
+    }
   });
 } catch (error) {
   logger.error('Failed to build org member indexes', { error });

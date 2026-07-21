@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 import {
@@ -71,11 +71,15 @@ const OpenApiSchema = new Schema(
 );
 
 try {
-  OpenApiSchema.index({ teamId: 1 });
-  OpenApiSchema.index({ apiKey: 1 });
-  OpenApiSchema.index({ teamId: 1, tmbId: 1, tagIds: 1, _id: -1 });
-  OpenApiSchema.index({ teamId: 1, tmbId: 1, appId: 1, _id: -1 });
-  OpenApiSchema.index({ teamId: 1, tmbId: 1, name: 1 });
+  defineIndex(OpenApiSchema, { key: { teamId: 1 } });
+  defineIndex(OpenApiSchema, { key: { apiKey: 1 } });
+  defineIndex(OpenApiSchema, {
+    key: { teamId: 1, tmbId: 1, tagIds: 1, _id: -1 }
+  });
+  defineIndex(OpenApiSchema, {
+    key: { teamId: 1, tmbId: 1, appId: 1, _id: -1 }
+  });
+  defineIndex(OpenApiSchema, { key: { teamId: 1, tmbId: 1, name: 1 } });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build OpenAPI indexes', { error });

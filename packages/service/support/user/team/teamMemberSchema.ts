@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type TeamMemberSchema as TeamMemberType } from '@fastgpt/global/support/user/team/type';
 import { userCollectionName } from '../../user/schema';
@@ -68,8 +68,14 @@ TeamMemberSchema.virtual('user', {
 });
 
 try {
-  TeamMemberSchema.index({ teamId: 1 }, { background: true });
-  TeamMemberSchema.index({ userId: 1 }, { background: true });
+  defineIndex(TeamMemberSchema, {
+    key: { teamId: 1 },
+    options: { background: true }
+  });
+  defineIndex(TeamMemberSchema, {
+    key: { userId: 1 },
+    options: { background: true }
+  });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build team member indexes', { error });

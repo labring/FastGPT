@@ -157,6 +157,7 @@ const syncMongoIndex = (model: Model<any>) => {
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PHASE === 'phase-production-build' ||
+    !serviceEnv.SYNC_INDEX ||
     !MONGO_URL
   ) {
     return;
@@ -179,7 +180,7 @@ export const ReadPreference = connectionMongo.mongo.ReadPreference;
 export { MongoIndexManager } from './indexManager';
 export {
   getDeprecatedIndexes as getSchemaDeprecatedMongoIndexes,
-  defineDeprecatedIndexes as defineDeprecatedIndexes
+  defineIndex
 } from './schemaIndexes';
 export type {
   MongoIndexCleanupAction,
@@ -188,4 +189,8 @@ export type {
   MongoIndexCleanupSummary,
   MongoIndexSyncResult
 } from './indexManager';
-export type { DeprecatedMongoIndexDefinition, DeprecatedMongoIndexOptions } from './schemaIndexes';
+export type {
+  DefineMongoIndexOptions,
+  DeprecatedMongoIndexDefinition,
+  DeprecatedMongoIndexOptions
+} from './schemaIndexes';

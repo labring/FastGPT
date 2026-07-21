@@ -1,4 +1,4 @@
-import { Schema, getMongoLogModel } from '../../../common/mongo';
+import { defineIndex, Schema, getMongoLogModel } from '../../../common/mongo';
 import { type TeamAuditSchemaType } from '@fastgpt/global/support/user/audit/type';
 import { AdminAuditEventEnum, AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
@@ -34,8 +34,8 @@ const TeamAuditSchema = new Schema({
   }
 });
 
-TeamAuditSchema.index({ teamId: 1, tmbId: 1, event: 1 });
-TeamAuditSchema.index({ timestamp: 1, teamId: 1 });
+defineIndex(TeamAuditSchema, { key: { teamId: 1, tmbId: 1, event: 1 } });
+defineIndex(TeamAuditSchema, { key: { timestamp: 1, teamId: 1 } });
 
 export const MongoTeamAudit = getMongoLogModel<TeamAuditSchemaType>(
   TeamAuditCollectionName,

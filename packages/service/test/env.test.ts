@@ -9,6 +9,7 @@ const originalEnv = {
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
+  SYNC_INDEX: process.env.SYNC_INDEX,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   PRO_URL: process.env.PRO_URL,
@@ -38,6 +39,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
+    vi.stubEnv('SYNC_INDEX', originalEnv.SYNC_INDEX);
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
@@ -51,6 +53,22 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
+  });
+
+  it('enables MongoDB index synchronization by default and supports disabling it', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('SYNC_INDEX', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYNC_INDEX: true }
+    });
+
+    vi.stubEnv('SYNC_INDEX', 'false');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { SYNC_INDEX: false }
+    });
   });
 
   it('validates SYSTEM_MAX_STRING_LENGTH_M during service env init', async () => {

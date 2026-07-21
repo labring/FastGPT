@@ -1,5 +1,5 @@
 import { AppCollectionName } from '../../app/schema';
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -19,7 +19,10 @@ const ChatInputGuideSchema = new Schema({
 });
 
 try {
-  ChatInputGuideSchema.index({ appId: 1, text: 1 }, { unique: true });
+  defineIndex(ChatInputGuideSchema, {
+    key: { appId: 1, text: 1 },
+    options: { unique: true }
+  });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build chat input guide indexes', { error });

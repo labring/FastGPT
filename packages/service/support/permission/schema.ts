@@ -2,7 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -79,20 +79,22 @@ ResourcePermissionSchema.virtual('org', {
 });
 
 try {
-  ResourcePermissionSchema.index({
-    resourceType: 1,
-    teamId: 1
+  defineIndex(ResourcePermissionSchema, {
+    key: {
+      resourceType: 1,
+      teamId: 1
+    }
   });
 
   // Indexes for resourceId-based resources
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceId: 1,
       groupId: 1
     },
-    {
+    options: {
       unique: true,
       partialFilterExpression: {
         groupId: {
@@ -103,16 +105,16 @@ try {
         }
       }
     }
-  );
+  });
 
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceId: 1,
       orgId: 1
     },
-    {
+    options: {
       unique: true,
       partialFilterExpression: {
         orgId: {
@@ -123,16 +125,16 @@ try {
         }
       }
     }
-  );
+  });
 
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceId: 1,
       tmbId: 1
     },
-    {
+    options: {
       unique: true,
       partialFilterExpression: {
         tmbId: {
@@ -143,33 +145,33 @@ try {
         }
       }
     }
-  );
+  });
 
   // General index for resourceId-based resources
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceId: 1
     },
-    {
+    options: {
       partialFilterExpression: {
         resourceId: {
           $exists: true
         }
       }
     }
-  );
+  });
 
   // Indexes for resourceName-based resources
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceName: 1,
       groupId: 1
     },
-    {
+    options: {
       unique: true,
       partialFilterExpression: {
         groupId: {
@@ -180,16 +182,16 @@ try {
         }
       }
     }
-  );
+  });
 
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceName: 1,
       orgId: 1
     },
-    {
+    options: {
       unique: true,
       partialFilterExpression: {
         orgId: {
@@ -200,16 +202,16 @@ try {
         }
       }
     }
-  );
+  });
 
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceName: 1,
       tmbId: 1
     },
-    {
+    options: {
       unique: true,
       partialFilterExpression: {
         tmbId: {
@@ -220,23 +222,23 @@ try {
         }
       }
     }
-  );
+  });
 
   // General index for resourceName-based resources
-  ResourcePermissionSchema.index(
-    {
+  defineIndex(ResourcePermissionSchema, {
+    key: {
       resourceType: 1,
       teamId: 1,
       resourceName: 1
     },
-    {
+    options: {
       partialFilterExpression: {
         resourceName: {
           $exists: true
         }
       }
     }
-  );
+  });
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build permission indexes', { error });
