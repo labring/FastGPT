@@ -32,8 +32,8 @@ export const SandboxPreviewSessionSchema = z.object({
   sandboxId: SandboxPreviewSandboxIdSchema,
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string().min(1),
-  userId: z.string().optional(),
-  chatId: z.string().min(1).optional()
+  userId: z.string(),
+  chatId: z.string().min(1)
 });
 export type SandboxPreviewSession = z.infer<typeof SandboxPreviewSessionSchema>;
 

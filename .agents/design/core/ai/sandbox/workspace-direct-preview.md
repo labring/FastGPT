@@ -60,8 +60,8 @@ value = {
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  userId?: string;
-  chatId?: string;
+  userId: string;
+  chatId: string;
 };
 ```
 
