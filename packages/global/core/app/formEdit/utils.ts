@@ -156,8 +156,7 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
     selectedType &&
     candidates.includes(selectedType) &&
     (!isGenericSelectedType ||
-      preferredType === FlowNodeInputTypeEnum.input ||
-      preferredType === FlowNodeInputTypeEnum.textarea)
+      preferredType === FlowNodeInputTypeEnum.input)
   ) {
     return selectedType;
   }
@@ -173,8 +172,7 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
 
   if (hasGenericManualInput) {
     // string 类型的 input/textarea 都是合法手动控件，优先保留候选列表中的具体类型。
-    return preferredType === FlowNodeInputTypeEnum.input ||
-      preferredType === FlowNodeInputTypeEnum.textarea
+    return preferredType === FlowNodeInputTypeEnum.input
       ? candidates.includes(FlowNodeInputTypeEnum.input)
         ? FlowNodeInputTypeEnum.input
         : FlowNodeInputTypeEnum.textarea
