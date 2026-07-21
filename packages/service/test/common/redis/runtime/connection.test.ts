@@ -74,12 +74,17 @@ describe('createRedisRuntime', () => {
       maxRetriesPerRequest: 3
     });
     expect((command as unknown as FakeRedisClient).options).toMatchObject({
-      maxRetriesPerRequest: 3
+      autoResendUnfulfilledCommands: false,
+      commandTimeout: 5_000,
+      enableOfflineQueue: true,
+      maxRetriesPerRequest: 1
     });
     expect((command as unknown as FakeRedisClient).options.keyPrefix).toBeUndefined();
     expect((blocking as unknown as FakeRedisClient).options).toMatchObject({
+      autoResendUnfulfilledCommands: false,
       maxRetriesPerRequest: null
     });
+    expect((blocking as unknown as FakeRedisClient).options.commandTimeout).toBeUndefined();
     expect((queue as unknown as FakeRedisClient).options).toMatchObject({
       maxRetriesPerRequest: 3
     });

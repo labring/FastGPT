@@ -1,6 +1,6 @@
 # Redis 中间件服务重构讨论稿
 
-> 状态：Phase 1 已完成并通过代码 review；Phase 2 尚未开始。
+> 状态：Phase 1、Phase 2 已完成并通过代码 review；Phase 3 尚未开始。
 >
 > 目标：先统一 Redis 的连接、key、原子操作、错误策略和业务能力边界，再决定是否分阶段迁移。本文基于当前仓库代码梳理，不代表已经批准的实现方案。
 
@@ -260,8 +260,27 @@ Phase 1 为兼容未迁移的业务调用，legacy command client 仍保留 iore
 ### Phase 2：基础 capability 与 script registry
 
 - 实现 string/hash/counter/scan/stream 的最小窄接口。
-- 把 append+TTL、session hash+TTL、version init、lease renew/release 迁移为命名脚本或 transaction。
+- 把 append+TTL、session hash+TTL、version init、lease renew/release 实现为命名脚本或 transaction；业务调用方仍按 Phase 3/4 的顺序迁移。
 - 加入 operation policy，删除 Redis capability 内部对非幂等写的通用重试。
+
+Phase 2 设计复审结论（2026-07-21）：
+
+- 本阶段只提供 Redis 基础设施能力，不迁移 `SessionStore`、`SystemVersionStore`、`LeaseService` 或现有 cache 调用方，避免跨阶段改变业务错误和降级语义。
+- policy 分为两层：连接 role policy 约束 command timeout、offline queue、请求重试和未完成命令重放；operation policy 只允许显式列入 allowlist 的幂等操作做一次有限重试。
+- timeout 只能限制调用方等待时间，不能证明服务端命令未执行。append、counter、stream append、`SET NX` 和 lease release 等结果敏感操作不自动重试，超时错误必须标记结果可能未知。
+- capability 只接受 branded logical key，在内部转换 physical key；公共入口不导出 physical client、physical key helper 或任意 `eval`。
+- Script Registry 是封闭的 built-in registry，只暴露有固定输入、返回解析和单测的命名方法；业务不能动态注册或执行任意 Lua。
+- blocking stream read 使用 Runtime 管理的专用连接，Redis `BLOCK` deadline 之外再设置客户端 deadline，并在所有结束路径释放连接。
+- Phase 2 使用注入式 unit test 验证参数、返回值、TTL、重试和错误映射；真实 Redis 7.2 的 Lua/Stream/并发语义继续由 T-18 integration test 验证，不用 mock 结果代替服务端原子性证明。
+
+当前实施状态（2026-07-21）：
+
+- [x] physical command role 已启用有界 command timeout、单次 ioredis request retry，并关闭未完成命令自动重放；operation policy 使用固定 allowlist 区分读、状态幂等写和结果敏感写。
+- [x] string/hash/counter/scan/stream capability 已实现；公共入口只导出 logical-key 构造器和 branded type，不导出 physical key helper 或 physical command client。
+- [x] 内置 Script Registry 已实现 append+TTL、hash+TTL、version initialize、lease renew/release；仅 `NOSCRIPT` 回退 `EVAL`，不暴露动态注册或任意脚本执行。
+- [x] Phase 2 注入式单测和 Phase 1 兼容回归已通过；新增生产模块行覆盖率均不低于 96%，分支覆盖率均不低于 95%。
+- [ ] T-18 真实 Redis 7.2 integration test 尚未实现，Lua 原子性、Stream 服务端语义和租约竞争仍不能由本阶段 mock 单测证明。
+- [x] Phase 2 已通过代码 review；独立提交后再讨论是否进入 Phase 3。
 
 ### Phase 3：低风险业务迁移
 
@@ -307,10 +326,10 @@ Phase 1 为兼容未迁移的业务调用，legacy command client 仍保留 iore
 
 - [x] T-01：实现 Redis URL schema/parser，非法协议、非法 db、非法 TLS 参数直接失败，日志脱敏。
 - [x] T-02：实现 legacy-command/command/blocking/queue/worker role factory、连接 registry、状态事件和有序 close API。
-- [ ] T-03：实现 command timeout、offline queue、max retries 的 role policy，并定义可重试 operation allowlist。
+- [x] T-03：实现 command timeout、offline queue、max retries 的 role policy，并定义可重试 operation allowlist。
 - [x] T-04：实现 typed keyspace、namespace、逻辑/物理 key 转换、RFC3986 segment 编码和安全 scan iterator。
-- [ ] T-05：实现 string/hash/counter/scan/stream 窄接口，禁止公共入口暴露 ioredis client。
-- [ ] T-06：实现 script registry，补充 append+TTL、hash+TTL、version init、lease scripts 的参数和返回值校验。
+- [x] T-05：实现 string/hash/counter/scan/stream 窄接口；除迁移期 deprecated legacy 入口和基础设施 factory 外，公共入口不暴露 physical ioredis client。
+- [x] T-06：实现 script registry，补充 append+TTL、hash+TTL、version init、lease scripts 的参数和返回值校验。
 
 ### 业务迁移
 
@@ -327,7 +346,7 @@ Phase 1 为兼容未迁移的业务调用，legacy command client 仍保留 iore
 
 ### 测试、观测与清理
 
-- [ ] T-17：为每个 capability 编写注入式 unit test，覆盖返回值、错误类型、TTL 和降级策略。
+- [x] T-17：为每个 capability 编写注入式 unit test，覆盖返回值、错误类型、TTL 和 operation policy。
 - [ ] T-18：新增 Redis 7.2 integration test，覆盖真实 keyPrefix 替代、SCAN、Lua、Stream、hash TTL、并发限流和租约竞争。
 - [ ] T-19：新增连接故障/超时/恢复测试，验证非幂等写不被无条件重试、blocking connection 会释放。
 - [ ] T-20：升级 test mock 或将业务测试改为 capability fake，禁止继续扩大手写 ioredis mock。
