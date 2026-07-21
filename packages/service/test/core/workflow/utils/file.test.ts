@@ -27,23 +27,16 @@ vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => {
 
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
-  // 把 axios 和 pickOutboundAxios 一起 mock:
-  //   - axios: 直接换成 mock(供绝对 URL 路径)
-  //   - pickOutboundAxios: 不论 URL 类型都返回同一个 mock client(供测试统一断言 .get 调用)
   const mockClient = {
     get: mockAxiosGet,
     defaults: { baseURL: 'http://localhost:3000' }
   };
   return {
     ...mod,
-    axios: mockClient,
-    pickOutboundAxios: () => mockClient
+    axios: mockClient
   };
 });
 
-// 文件下载链路对相对路径走 raw axios + serverRequestBaseUrl,这里也 mock 住,
-// 保证测试不会真发网络请求,且保留对 mockAxiosGet 调用次数的断言能力。
-// outbound.ts 用 axios.create() 创建内部 client,所以 mock 必须提供 create 方法。
 vi.mock('axios', () => {
   const internalClient = {
     get: mockAxiosGet,
@@ -94,6 +87,10 @@ import {
   normalizeReadableFileUrl,
   formatUserQueryWithFiles
 } from '@fastgpt/service/core/chat/fileContext';
+import type {
+  WorkflowFileContext,
+  WorkflowFileRef
+} from '@fastgpt/service/core/workflow/utils/fileContext';
 
 const createHumanMessage = (value: UserChatItemValueItemType[]): ChatItemMiniType => ({
   obj: ChatRoleEnum.Human,
@@ -130,7 +127,7 @@ const rewriteMessagesWithFileContent = async ({
   maxFiles?: number;
 }) =>
   Promise.all(
-    messages.map(async (message, index): Promise<ChatItemMiniType> => {
+    messages.map(async (message): Promise<ChatItemMiniType> => {
       if (message.obj !== ChatRoleEnum.Human) {
         return message;
       }
@@ -152,8 +149,8 @@ describe('normalizeReadableFileUrl', () => {
         url: ' http://localhost:3000/a.pdf ',
         requestOrigin: 'http://localhost:3000'
       })
-    ).toBe('/a.pdf');
-    expect(normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('/a.pdf');
+    ).toBe('http://localhost:3000/a.pdf');
+    expect(normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('');
     expect(normalizeReadableFileUrl({ url: '/image.png' })).toBe('');
     expect(normalizeReadableFileUrl({ url: 'chat/a.pdf' })).toBe('');
     expect(normalizeReadableFileUrl({ url: '' })).toBe('');
@@ -191,8 +188,8 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
     vi.clearAllMocks();
     mockGetRawTextBuffer.mockImplementation(({ sourceId }: { sourceId: string }) => {
       const textMap: Record<string, string> = {
-        '/a.pdf': 'Alpha',
-        '/b.pdf': 'Beta'
+        'http://localhost:3000/a.pdf': 'Alpha',
+        'https://files.example.com/b.pdf': 'Beta'
       };
 
       return textMap[sourceId]
@@ -206,7 +203,7 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
 
   it('在读取前统一标准化 URL', async () => {
     const result = await parseFileContentFromUrls({
-      urls: ['http://localhost:3000/a.pdf', '/b.pdf'],
+      urls: ['http://localhost:3000/a.pdf', 'https://files.example.com/b.pdf'],
       requestOrigin: 'http://localhost:3000',
       maxFiles: 20,
       teamId: 'team-1',
@@ -214,14 +211,17 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
     });
 
     expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(1, {
-      sourceId: '/a.pdf',
+      sourceId: 'http://localhost:3000/a.pdf',
       customPdfParse: undefined
     });
     expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(2, {
-      sourceId: '/b.pdf',
+      sourceId: 'https://files.example.com/b.pdf',
       customPdfParse: undefined
     });
-    expect(result.map((item) => item.url)).toEqual(['/a.pdf', '/b.pdf']);
+    expect(result.map((item) => item.url)).toEqual([
+      'http://localhost:3000/a.pdf',
+      'https://files.example.com/b.pdf'
+    ]);
     expect(result.map((item) => item.content)).toEqual(['Alpha', 'Beta']);
     expect(result.every((item) => item.success)).toBe(true);
   });
@@ -235,6 +235,59 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     mockIsInternalAddress.mockResolvedValue(false);
     mockReadFileContentByBuffer.mockResolvedValue({ rawText: 'parsed text' });
     mockVerifyS3DownloadAccess.mockReset();
+  });
+
+  it('reads registered private workflow files through the workflow context without axios', async () => {
+    const url = 'https://files.example.com/api/system/file/d/signed';
+    const ref: WorkflowFileRef = {
+      id: 'workflow-file-1',
+      name: 'private.pdf',
+      type: ChatFileTypeEnum.file,
+      modelUrl: url,
+      source: {
+        type: 'chatObject',
+        objectKey: 'chat/app/app-1/user-1/chat-1/private.pdf'
+      }
+    };
+    const read = vi.fn().mockResolvedValue({
+      buffer: Buffer.from('%PDF-1.7'),
+      filename: 'private.pdf',
+      contentType: 'application/pdf',
+      sourceKind: 'internal',
+      imageParsePrefix: 'chat/app/app-1/user-1/chat-1/private-parsed'
+    });
+    const fileContext: WorkflowFileContext = {
+      limits: { maxFiles: 20, maxBytesPerFile: 1024 },
+      resolve: (value) => (value === url || value === ref.id ? ref : undefined),
+      resolveChatFile: () => ({
+        type: ChatFileTypeEnum.file,
+        name: ref.name,
+        key: ref.source.type === 'chatObject' ? ref.source.objectKey : undefined,
+        url
+      }),
+      getIdentity: (value) => (value === url ? 'chat:private' : undefined),
+      read
+    };
+
+    const result = await parseFileContentFromUrls({
+      urls: [url],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      fileContext
+    });
+
+    expect(read).toHaveBeenCalledWith(url);
+    expect(mockAxiosGet).not.toHaveBeenCalled();
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'private.pdf',
+      url,
+      content: 'parsed text'
+    });
+    expect(mockAddRawTextBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceId: 'chat:private' })
+    );
   });
 
   it('内部地址命中时返回失败结果和 PRIVATE_URL_TEXT', async () => {
@@ -424,7 +477,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
 
   it('短链解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名', async () => {
     const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
-    const shortUrl = `/api/system/file/d/${signedAlias}`;
+    const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
     mockVerifyS3DownloadAccess.mockResolvedValue({
       bucketName: 'fastgpt-private',
       objectKey: 'chat/app/app1/u1/c1/random-key',
@@ -520,7 +573,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     expect(result[0]).toMatchObject({
       success: true,
       name: 'readme.md',
-      url: '/api/system/file/d/abc123def456ghi789.hp436.abcdefghijklmnop'
+      url: shortUrl
     });
   });
 
@@ -580,13 +633,13 @@ describe('parseFileInfoFromUrls', () => {
     });
 
     const result = await parseFileInfoFromUrls({
-      urls: ['/cached.pdf'],
+      urls: ['https://files.example.com/cached.pdf'],
       maxFiles: 20,
       teamId: 'team-1'
     });
 
     expect(mockGetRawTextBuffer).toHaveBeenCalledWith({
-      sourceId: '/cached.pdf',
+      sourceId: 'https://files.example.com/cached.pdf',
       customPdfParse: false
     });
     expect(mockAxiosGet).not.toHaveBeenCalled();
@@ -594,12 +647,12 @@ describe('parseFileInfoFromUrls', () => {
       {
         success: true,
         name: 'cached.pdf',
-        url: '/cached.pdf'
+        url: 'https://files.example.com/cached.pdf'
       }
     ]);
   });
 
-  it('缓存未命中时只读取文件信息，并按 maxFiles 和 requestOrigin 处理 URL', async () => {
+  it('缓存未命中时只读取绝对 HTTP(S) 文件信息，并按 maxFiles 限制', async () => {
     mockAxiosGet.mockResolvedValue({
       data: Buffer.from('payload'),
       headers: {
@@ -615,49 +668,32 @@ describe('parseFileInfoFromUrls', () => {
     });
 
     expect(mockAxiosGet).toHaveBeenCalledTimes(1);
-    // 注:相对路径走 axios.create({ baseURL }) 创建的内部 client,
-    //    baseURL 在 client 上而不在 .get() 调用参数里。
-    expect(mockAxiosGet).toHaveBeenCalledWith('/report.pdf', {
-      responseType: 'arraybuffer'
-    });
+    expect(mockAxiosGet).toHaveBeenCalledWith(
+      'http://localhost:3000/report.pdf',
+      expect.objectContaining({ responseType: 'stream' })
+    );
     expect(mockReadFileContentByBuffer).not.toHaveBeenCalled();
     expect(result).toEqual([
       {
         success: true,
         name: 'report.pdf',
-        url: '/report.pdf'
+        url: 'http://localhost:3000/report.pdf'
       }
     ]);
   });
 
-  it('短链读取文件信息时使用 alias 文件名，避免把 token 暴露给 read_file 工具', async () => {
+  it('拒绝没有 Workflow key 上下文的相对短链', async () => {
     const signedAlias = 'fileinfoalias01.hp436.abcdefghijklmnop';
     const shortUrl = `/api/system/file/d/${signedAlias}`;
-    mockVerifyS3DownloadAccess.mockResolvedValue({
-      bucketName: 'fastgpt-private',
-      objectKey: 'chat/app/app1/u1/c1/random-key',
-      filename: 'analysis.csv',
-      expiresAt: new Date('2099-01-01T00:00:00.000Z')
-    });
-    mockAxiosGet.mockResolvedValue({
-      data: Buffer.from('a,b\n1,2', 'utf8'),
-      headers: {}
-    });
-
     const result = await parseFileInfoFromUrls({
       urls: [shortUrl],
       maxFiles: 20,
       teamId: 'team-1'
     });
 
-    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
-    expect(result).toEqual([
-      {
-        success: true,
-        name: 'analysis.csv',
-        url: shortUrl
-      }
-    ]);
+    expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+    expect(mockAxiosGet).not.toHaveBeenCalled();
+    expect(result).toEqual([]);
   });
 
   it('nginx 带路径前缀短链读取文件信息时使用 alias 文件名', async () => {

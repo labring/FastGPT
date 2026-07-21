@@ -33,9 +33,9 @@ const hasChildrenResponse = (
 
 export const addPreviewUrlToChatItems = async (
   histories: ChatItemMiniType[],
-  type: 'chatFlow' | 'workflowTool'
+  type: 'chatFlow' | 'workflowTool',
+  getPreviewUrl = createChatFilePreviewUrlGetter()
 ) => {
-  const getPreviewUrl = createChatFilePreviewUrlGetter();
   const sandboxUrlReplacements = new Map<string, string>();
 
   async function refreshSandboxToolFiles() {

@@ -294,7 +294,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
             id: 'file_1',
             name: 'image.png',
             type: ChatFileTypeEnum.image,
-            url: '/api/file/image.png'
+            url: 'https://fastgpt.example.com/api/file/image.png'
           }
         ],
         params: {

@@ -1,31 +1,28 @@
-import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type {
-  UserChatItemFileItemType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
 import { parseUrlToChatFileType } from '../../chat/fileContext';
 
 import { AsyncLocalStorage } from 'async_hooks';
 import type { MCPClient } from '../../app/mcp';
+import type { WorkflowFileContext } from './fileContext';
 
 type ContextType = {
-  queryUrlTypeMap: Record<string, ChatFileTypeEnum>;
-  queryUrlFileMap?: Record<string, UserChatItemFileItemType>;
   mcpClientMemory: Record<string, MCPClient>;
+  fileContext?: WorkflowFileContext;
 };
 
 export const WorkflowContext = new AsyncLocalStorage<ContextType>();
 
-export const runWithContext = (value: ContextType, fn: (ctx: ContextType) => void) => {
+export const runWithContext = <T>(value: ContextType, fn: (ctx: ContextType) => T): T =>
   WorkflowContext.run(value, () => {
     const store = WorkflowContext.getStore()!;
-    fn(store);
+    return fn(store);
   });
-};
 
 export const getWorkflowContext = (): ContextType => {
   return WorkflowContext.getStore()!;
 };
+
+/** 获取当前 Workflow 调用链在入口创建的只读文件上下文。 */
+export const getWorkflowFileContext = () => WorkflowContext.getStore()?.fileContext;
 
 export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
   const context = getWorkflowContext();
@@ -37,48 +34,10 @@ export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
   }
 };
 
-/**
- * 从当前轮用户输入建立 URL 到聊天文件类型的映射。
- *
- * 私有文件会在工作流启动前从稳定 key 恢复成无后缀短链，无法再依赖 URL 后缀推断媒体类型。
- * 该映射保留前端已经确认的 image/audio/video/file 类型，供所有下游节点统一解析 userFiles。
- */
-export const buildQueryUrlTypeMap = (query: UserChatItemValueItemType[]) =>
-  query.reduce<Record<string, ChatFileTypeEnum>>((map, item) => {
-    if (item.file?.url) {
-      map[item.file.url] = item.file.type;
-    }
-    return map;
-  }, {});
-
-/**
- * 从当前轮用户输入建立 URL 到完整文件元数据的映射。
- *
- * 音频模型协议需要从原始文件名获取 mp3/wav 等 format；无后缀短链只能表达访问地址，
- * 因此除类型外还必须保留文件名和 key，避免第一轮媒体输入在出站时被过滤。
- */
-export const buildQueryUrlFileMap = (query: UserChatItemValueItemType[]) =>
-  query.reduce<Record<string, UserChatItemFileItemType>>((map, item) => {
-    if (item.file?.url) {
-      map[item.file.url] = item.file;
-    }
-    return map;
-  }, {});
-
 /** 结合 workflow 运行态文件元数据，将 URL 解析成 ChatBox 文件结构。 */
 export const parseUrlToFileType = (url: string) => {
-  const context = getWorkflowContext();
-  const queryFile = context?.queryUrlFileMap?.[url];
+  const fileContext = getWorkflowFileContext();
+  if (fileContext) return fileContext.resolveChatFile(url);
 
-  if (queryFile) {
-    return {
-      ...queryFile,
-      url
-    };
-  }
-
-  return parseUrlToChatFileType({
-    url,
-    urlTypeMap: context?.queryUrlTypeMap
-  });
+  return parseUrlToChatFileType({ url });
 };

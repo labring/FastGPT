@@ -5,9 +5,13 @@
  */
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import mime from 'mime';
-import { pickOutboundAxios } from '../../../../common/api/axios';
+import { axios } from '../../../../common/api/axios';
 import type { SandboxClient } from './runtime/client';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
+import { getFileMaxSize } from '../../../../common/file/utils';
+import { readStreamToBuffer } from '../../../../common/s3/utils';
+import type { Readable } from 'node:stream';
+import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 
 export type SandboxUrlFile = {
   path: string;
@@ -39,6 +43,34 @@ const isWithinSandboxWorkspace = (path: string, workDirectory: string) => {
   return path === workspace || path.startsWith(`${workspace}/`);
 };
 
+/** 读取准备写入 Sandbox 的远程文件，禁止相对 URL 回环访问本机 API。 */
+export const readSandboxUrlFile = async (url: string) => {
+  if (!/^https?:\/\//i.test(url)) {
+    throw new Error('Sandbox input file URL must be an absolute HTTP(S) URL');
+  }
+  const parsedUrl = new URL(url);
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error('Sandbox input file URL must use HTTP(S)');
+  }
+
+  const maxFileSize = getFileMaxSize();
+  const response = await axios.get<Readable>(url, {
+    responseType: 'stream',
+    timeout: 180_000,
+    maxContentLength: maxFileSize
+  });
+  const contentLength = Number(getAxiosHeaderValue(response.headers['content-length']) || 0);
+  if (contentLength > maxFileSize) {
+    response.data.destroy();
+    throw new Error(`File exceeds maximum allowed size (${maxFileSize} bytes)`);
+  }
+  return readStreamToBuffer({
+    stream: response.data,
+    maxBytes: maxFileSize,
+    exceededMessage: `File exceeds maximum allowed size (${maxFileSize} bytes)`
+  });
+};
+
 /**
  * 将远程 URL 文件写入已存在的 sandbox 实例。
  *
@@ -50,14 +82,10 @@ export async function writeUrlFilesToSandbox(sandbox: ISandbox, files: SandboxUr
   for (const { path, url } of files) {
     if (!path) continue;
     writeFileTasks.push(
-      pickOutboundAxios(url)
-        .get<ArrayBuffer>(url, {
-          responseType: 'arraybuffer'
-        })
-        .then((response) => ({
-          path,
-          data: response.data
-        }))
+      readSandboxUrlFile(url).then((data) => ({
+        path,
+        data
+      }))
     );
   }
 

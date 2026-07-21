@@ -6,6 +6,7 @@ import {
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { formatUserQueryWithFiles, parseFileInfoFromUrls } from '../../../../../chat/fileContext';
+import { getWorkflowFileContext } from '../../../../utils/context';
 import { parseUrlToFileType } from '../../../../utils/context';
 import type { DispatchToolModuleProps, FileInputType } from '../type';
 
@@ -91,7 +92,8 @@ export const useToolMessages = async ({
             urls,
             requestOrigin,
             maxFiles,
-            teamId: runningUserInfo.teamId
+            teamId: runningUserInfo.teamId,
+            fileContext: getWorkflowFileContext()
           }).then((res) =>
             res
               .filter((item) => item.success)

@@ -2,8 +2,7 @@ import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
-import { parseUrlToFileType } from '../../../../utils/context';
-import { getLogger, LogCategories } from '../../../../../../common/logger';
+import { getWorkflowFileContext, parseUrlToFileType } from '../../../../utils/context';
 import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
@@ -22,7 +21,6 @@ export type AgentInputFile = AgentLoopCoreInputFile;
 export type ParseAgentInputFilesParams = {
   files: UserChatItemFileItemType[];
   prefixId: string;
-  requestOrigin?: string;
   maxFiles: number;
 };
 
@@ -30,43 +28,12 @@ export type BuildCurrentAgentInputFilesParams = {
   currentFiles?: string[];
   currentQuery?: ChatItemMiniType['value'];
   currentDataId?: string;
-  requestOrigin?: string;
   maxFiles: number;
 };
 
 type AgentSelectedDatasetInput = AgentLoopCoreSelectedDatasetInput;
 
 type AgentSelectedDatasetContext = AgentLoopCoreSelectedDatasetContext;
-
-export const isValidAgentFileUrl = (url: unknown): url is string => {
-  if (typeof url !== 'string') return false;
-  const validPrefixList = ['/', 'http', 'ws'];
-  return validPrefixList.some((prefix) => url.startsWith(prefix));
-};
-
-export const normalizeAgentFileUrl = ({
-  url,
-  requestOrigin
-}: {
-  url: string;
-  requestOrigin?: string;
-}) => {
-  if (!isValidAgentFileUrl(url)) return '';
-
-  try {
-    // 同源上传文件使用相对路径，避免模型后续通过工具读取时绕回公网域名。
-    if (requestOrigin && url.startsWith(requestOrigin)) {
-      return url.replace(requestOrigin, '');
-    }
-
-    return url;
-  } catch (error) {
-    getLogger(LogCategories.MODULE.AI.AGENT).warn('[Agent user context] Parse url error', {
-      error
-    });
-    return '';
-  }
-};
 
 /**
  * 将 chat value 中携带的文件转换成 Agent 内部稳定文件 id。
@@ -77,24 +44,35 @@ export const normalizeAgentFileUrl = ({
 export function parseAgentInputFiles({
   files,
   prefixId,
-  requestOrigin,
   maxFiles
 }: ParseAgentInputFilesParams): AgentInputFile[] {
+  const workflowFileContext = getWorkflowFileContext();
   const normalizedFiles = files
-    .map((file) => ({
-      file,
-      url: normalizeAgentFileUrl({ url: file.url, requestOrigin })
+    .map((item) => ({
+      file: item,
+      ref: workflowFileContext?.resolve(item.url)
     }))
-    .filter((item): item is { file: UserChatItemFileItemType; url: string } => Boolean(item.url));
+    .map(({ file, ref }) => {
+      if (workflowFileContext && !ref) return;
+      const url = ref?.modelUrl ?? file.url;
+      if (!/^https?:\/\//i.test(url)) return;
+
+      return {
+        file,
+        url,
+        identity: workflowFileContext?.getIdentity(file.url) ?? url
+      };
+    })
+    .filter(Boolean) as { file: UserChatItemFileItemType; url: string; identity: string }[];
 
   const uniqueFiles = Array.from(
     normalizedFiles
       .reduce((map, item) => {
-        if (!map.has(item.url)) {
-          map.set(item.url, item);
+        if (!map.has(item.identity)) {
+          map.set(item.identity, item);
         }
         return map;
-      }, new Map<string, { file: UserChatItemFileItemType; url: string }>())
+      }, new Map<string, (typeof normalizedFiles)[number]>())
       .values()
   );
   const usedNames = new Map<string, number>();
@@ -126,7 +104,6 @@ export function buildCurrentAgentInputFiles({
   currentFiles = [],
   currentQuery,
   currentDataId,
-  requestOrigin,
   maxFiles
 }: BuildCurrentAgentInputFilesParams): AgentInputFile[] {
   const { files: queryFiles = [] } = currentQuery
@@ -142,7 +119,6 @@ export function buildCurrentAgentInputFiles({
       (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
     ),
     prefixId: currentDataId || getNanoid(),
-    requestOrigin,
     maxFiles
   });
 }
@@ -227,7 +203,6 @@ export const useUserContext = async ({
   currentUserInput,
   currentQuery,
   currentDataId,
-  requestOrigin,
   maxFiles,
   selectedDataset,
   authTmbId,
@@ -240,7 +215,6 @@ export const useUserContext = async ({
   currentUserInput: string;
   currentQuery?: ChatItemMiniType['value'];
   currentDataId?: string;
-  requestOrigin?: string;
   maxFiles: number;
   selectedDataset?: AgentSelectedDatasetInput[];
   authTmbId?: boolean;
@@ -278,7 +252,6 @@ export const useUserContext = async ({
     const formatFiles = parseAgentInputFiles({
       files,
       prefixId: getMessagePrefixId(message, index),
-      requestOrigin,
       maxFiles
     });
 
@@ -319,7 +292,6 @@ export const useUserContext = async ({
     currentFiles,
     currentQuery,
     currentDataId,
-    requestOrigin,
     maxFiles
   });
   registerFiles(currentInputFiles);

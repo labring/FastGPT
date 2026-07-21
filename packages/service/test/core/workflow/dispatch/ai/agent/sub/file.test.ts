@@ -30,7 +30,7 @@ describe('dispatchFileRead', () => {
         {
           id: 'file_0',
           name: 'input-doc.txt',
-          url: 'https://example.com/doc.txt'
+          url: 'https://fastgpt.example.com/api/system/file/d/doc'
         }
       ],
       teamId: 'team_1',
@@ -40,7 +40,7 @@ describe('dispatchFileRead', () => {
     });
 
     expect(getFileContentByUrlMock).toHaveBeenCalledWith({
-      url: 'https://example.com/doc.txt',
+      url: 'https://fastgpt.example.com/api/system/file/d/doc',
       teamId: 'team_1',
       tmbId: 'tmb_1',
       customPdfParse: true,
@@ -62,7 +62,7 @@ describe('dispatchFileRead', () => {
       readFiles: [
         {
           name: 'input-doc.txt',
-          url: 'https://example.com/doc.txt'
+          url: 'https://fastgpt.example.com/api/system/file/d/doc'
         }
       ]
     });

@@ -87,15 +87,17 @@ describe('getInputFiles', () => {
 
     runWithContext(
       {
-        queryUrlTypeMap: { [url]: ChatFileTypeEnum.audio },
-        queryUrlFileMap: {
-          [url]: {
-            type: ChatFileTypeEnum.audio,
-            name: 'meeting.mp3',
-            url,
-            key: 'chat/meeting.mp3'
-          }
-        },
+        fileContext: {
+          resolveChatFile: (target: string) =>
+            target === url
+              ? {
+                  type: ChatFileTypeEnum.audio,
+                  name: 'meeting.mp3',
+                  url,
+                  key: 'chat/meeting.mp3'
+                }
+              : undefined
+        } as any,
         mcpClientMemory: {}
       },
       () => {

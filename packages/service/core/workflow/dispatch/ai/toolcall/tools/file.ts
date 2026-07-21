@@ -10,6 +10,7 @@ import {
   type AgentLoopCoreToolRunFlowResponse
 } from '../../agentLoopCore/interface';
 import type { FileInputType } from '../type';
+import { getWorkflowFileContext } from '../../../../utils/context';
 
 const logger = getLogger(LogCategories.MODULE.AI.TOOL_CALL);
 
@@ -89,7 +90,8 @@ export const dispatchReadFileTool = async ({
             teamId,
             tmbId,
             customPdfParse,
-            usageId
+            usageId,
+            fileContext: getWorkflowFileContext()
           });
 
           return {

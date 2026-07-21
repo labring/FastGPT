@@ -10,6 +10,7 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { ChatDispatchProps } from '../../../types/runtime';
 import { parseFileContentFromUrls } from '../../../../chat/fileContext';
 import { rewriteChatMessagesWithFiles } from './fileContext';
+import { getWorkflowFileContext } from '../../../utils/context';
 
 /**
  * 组装系统提示、历史、当前输入和文件上下文，并按模型上下文限制裁剪为 LLM 消息。
@@ -77,7 +78,8 @@ export const getChatMessages = async ({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
         customPdfParse,
-        usageId
+        usageId,
+        fileContext: getWorkflowFileContext()
       });
 
       return files.map((file) => ({

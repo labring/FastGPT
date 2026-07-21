@@ -185,10 +185,11 @@ describe('createWorkflowAgentToolProvider', () => {
     const provider = createWorkflowAgentToolProvider({
       context: createContext({
         usageId: 'usage_1',
+        requestOrigin: 'https://fastgpt.example.com',
         filesMap: {
           file_1: {
             name: 'a.pdf',
-            url: 'https://files/a.pdf'
+            url: 'https://fastgpt.example.com/api/system/file/d/a'
           }
         }
       })
@@ -210,7 +211,13 @@ describe('createWorkflowAgentToolProvider', () => {
 
     expect(dispatchFileReadMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        files: [{ id: 'file_1', name: 'a.pdf', url: 'https://files/a.pdf' }],
+        files: [
+          {
+            id: 'file_1',
+            name: 'a.pdf',
+            url: 'https://fastgpt.example.com/api/system/file/d/a'
+          }
+        ],
         teamId: 'team_1',
         tmbId: 'tmb_1',
         usageId: 'usage_1'
@@ -238,7 +245,7 @@ describe('createWorkflowAgentToolProvider', () => {
         requestOrigin: 'https://fastgpt.example.com',
         currentFiles: [
           {
-            url: '/api/file/image.png'
+            url: 'https://fastgpt.example.com/api/file/image.png'
           }
         ],
         params: {

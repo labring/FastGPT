@@ -3,6 +3,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { DispatchSubAppResponse } from '../../type';
 import { getFileContentByUrl } from '../../../../../../chat/fileContext';
+import { getWorkflowFileContext } from '../../../../../utils/context';
 
 type FileReadParams = {
   files: { id: string; name?: string; url: string }[];
@@ -32,7 +33,8 @@ export const dispatchFileRead = async ({
             teamId,
             tmbId,
             customPdfParse,
-            usageId
+            usageId,
+            fileContext: getWorkflowFileContext()
           });
 
           return {

@@ -16,7 +16,8 @@ vi.mock('@fastgpt/service/core/chat/fileContext', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  parseUrlToFileType: parseUrlToFileTypeMock
+  parseUrlToFileType: parseUrlToFileTypeMock,
+  getWorkflowFileContext: vi.fn(() => undefined)
 }));
 
 const runningUserInfo = {

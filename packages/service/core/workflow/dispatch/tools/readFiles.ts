@@ -8,6 +8,7 @@ import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getNodeErrResponse } from '../utils';
 import { parseFileContentFromUrls } from '../../../chat/fileContext';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { getWorkflowFileContext } from '../../utils/context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -56,7 +57,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       teamId,
       tmbId,
       customPdfParse,
-      usageId
+      usageId,
+      fileContext: getWorkflowFileContext()
     });
     const files = readFilesResult.map((item, index) => ({
       id: `${index}`,

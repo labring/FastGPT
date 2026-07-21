@@ -1,0 +1,322 @@
+import { Readable } from 'node:stream';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+
+const axiosGetMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
+  return {
+    ...mod,
+    axios: {
+      get: axiosGetMock
+    }
+  };
+});
+
+import {
+  isAbsoluteHttpUrl,
+  prepareWorkflowFileContext
+} from '@fastgpt/service/core/workflow/utils/fileContext';
+import {
+  getWorkflowFileContext,
+  runWithContext
+} from '@fastgpt/service/core/workflow/utils/context';
+
+const scope = {
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: 'app-1',
+  uid: 'user-1',
+  chatId: 'chat-1'
+};
+const privateKey = 'chat/app/app-1/user-1/chat-1/report.pdf';
+
+const createFile = (
+  overrides: Partial<UserChatItemValueItemType['file']> = {}
+): UserChatItemValueItemType => ({
+  file: {
+    type: ChatFileTypeEnum.file,
+    name: 'report.pdf',
+    url: '/uploading/report.pdf',
+    ...overrides
+  }
+});
+
+const createHistory = (file: UserChatItemValueItemType): ChatItemMiniType => ({
+  obj: ChatRoleEnum.Human,
+  value: [file]
+});
+
+describe('isAbsoluteHttpUrl', () => {
+  it.each([
+    ['https://files.example.com/a.pdf', true],
+    ['http://files.example.com/a.pdf', true],
+    ['/api/system/file/d/token', false],
+    ['//files.example.com/a.pdf', false],
+    ['file:///tmp/a.pdf', false],
+    ['data:text/plain,a', false],
+    ['ws://files.example.com/a.pdf', false],
+    ['http://[invalid', false]
+  ])('validates %s', (url, expected) => {
+    expect(isAbsoluteHttpUrl(url)).toBe(expected);
+  });
+});
+
+describe('prepareWorkflowFileContext', () => {
+  const originalS3BucketMap = global.s3BucketMap;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    global.systemEnv = { fileUrlWhitelist: [] } as any;
+  });
+
+  afterEach(() => {
+    global.s3BucketMap = originalS3BucketMap;
+  });
+
+  it('uses a 2GB per-file limit by default', async () => {
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl: vi.fn()
+    });
+
+    expect(fileContext.limits).toEqual({
+      maxFiles: 20,
+      maxBytesPerFile: 2 * 1024 * 1024 * 1024
+    });
+  });
+
+  it('validates, signs and deduplicates the same private key across query and history', async () => {
+    const queryFile = createFile({ key: privateKey });
+    const historyFile = createFile({ key: privateKey, url: 'https://old.example.com/report.pdf' });
+    const getPreviewUrl = vi
+      .fn()
+      .mockResolvedValue('https://files.example.com/api/system/file/d/signed');
+
+    const { fileContext, getPreviewUrl: cachedGetPreviewUrl } = await prepareWorkflowFileContext({
+      query: [queryFile],
+      histories: [createHistory(historyFile)],
+      scope,
+      maxFiles: 20,
+      maxFileSize: 1024,
+      getPreviewUrl
+    });
+
+    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
+    expect(queryFile.file?.url).toBe('https://files.example.com/api/system/file/d/signed');
+    expect(historyFile.file?.url).toBe('https://files.example.com/api/system/file/d/signed');
+
+    const queryRef = fileContext.resolve(queryFile.file!.url);
+    const historyRef = fileContext.resolve('https://old.example.com/report.pdf');
+    expect(queryRef).toBe(historyRef);
+    expect(queryRef?.source).toEqual({ type: 'chatObject', objectKey: privateKey });
+    expect(fileContext.resolveChatFile(queryFile.file!.url)).toEqual({
+      type: ChatFileTypeEnum.file,
+      name: 'report.pdf',
+      key: privateKey,
+      url: 'https://files.example.com/api/system/file/d/signed'
+    });
+    expect(fileContext.getIdentity(queryFile.file!.url)).toBe(`chat:${privateKey}`);
+    expect(fileContext.resolve('https://unknown.example.com/new.pdf')).toBeUndefined();
+
+    await cachedGetPreviewUrl(privateKey);
+    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['source type', 'chat/skillEdit/app-1/user-1/chat-1/report.pdf'],
+    ['source id', 'chat/app/app-2/user-1/chat-1/report.pdf'],
+    ['uid', 'chat/app/app-1/user-2/chat-1/report.pdf'],
+    ['chat id', 'chat/app/app-1/user-1/chat-2/report.pdf']
+  ])('rejects a private key with mismatched %s', async (_name, key) => {
+    await expect(
+      prepareWorkflowFileContext({
+        query: [createFile({ key })],
+        histories: [],
+        scope,
+        maxFiles: 20,
+        getPreviewUrl: vi.fn()
+      })
+    ).rejects.toThrow('does not belong to the current workflow');
+  });
+
+  it('registers absolute external URLs and skips invalid history URLs', async () => {
+    const queryFile = createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' });
+    const invalidHistoryFile = createFile({ key: undefined, url: '/api/system/file/d/legacy' });
+
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [queryFile],
+      histories: [createHistory(invalidHistoryFile)],
+      scope,
+      maxFiles: 5,
+      maxFileSize: 512,
+      getPreviewUrl: vi.fn()
+    });
+
+    expect(fileContext.resolve(queryFile.file!.url)?.source).toEqual({
+      type: 'externalHttp',
+      url: 'https://cdn.example.com/report.pdf'
+    });
+    expect(fileContext.resolve(invalidHistoryFile.file!.url)).toBeUndefined();
+    expect(fileContext.limits).toEqual({ maxFiles: 5, maxBytesPerFile: 512 });
+  });
+
+  it('rejects invalid query URLs and configured non-whitelisted domains', async () => {
+    await expect(
+      prepareWorkflowFileContext({
+        query: [createFile({ key: undefined, url: '/api/system/file/d/legacy' })],
+        histories: [],
+        scope,
+        maxFiles: 20,
+        getPreviewUrl: vi.fn()
+      })
+    ).rejects.toThrow('Invalid workflow file URL');
+
+    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    await expect(
+      prepareWorkflowFileContext({
+        query: [createFile({ key: undefined, url: 'https://blocked.example.com/a.pdf' })],
+        histories: [],
+        scope,
+        maxFiles: 20,
+        getPreviewUrl: vi.fn()
+      })
+    ).rejects.toThrow('Invalid workflow file URL');
+  });
+
+  it('reads private objects through S3 with metadata and stream size limits', async () => {
+    const getObjectMetadata = vi.fn().mockResolvedValue({
+      contentLength: 5,
+      contentType: 'application/pdf',
+      metadata: { originFilename: 'report.pdf' }
+    });
+    const downloadObject = vi
+      .fn()
+      .mockResolvedValue({ body: Readable.from([Buffer.from('hello')]) });
+    global.s3BucketMap = {
+      ...originalS3BucketMap,
+      [S3Buckets.private]: {
+        client: { getObjectMetadata, downloadObject }
+      } as any
+    };
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [createFile({ key: privateKey })],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      maxFileSize: 5,
+      getPreviewUrl: vi.fn().mockResolvedValue('https://files.example.com/signed')
+    });
+    const ref = fileContext.resolve('https://files.example.com/signed')!;
+
+    await expect(fileContext.read(ref)).resolves.toEqual({
+      buffer: Buffer.from('hello'),
+      filename: 'report.pdf',
+      contentType: 'application/pdf',
+      sourceKind: 'internal',
+      imageParsePrefix: 'chat/app/app-1/user-1/chat-1/report-parsed'
+    });
+    expect(downloadObject).toHaveBeenCalledWith({ key: privateKey });
+
+    getObjectMetadata.mockResolvedValueOnce({ contentLength: 6, metadata: {} });
+    await expect(fileContext.read(ref)).rejects.toThrow('maximum allowed size');
+  });
+
+  it('reads external files through the SSRF axios and enforces streamed size', async () => {
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      maxFileSize: 5,
+      getPreviewUrl: vi.fn()
+    });
+    const ref = fileContext.resolve('https://cdn.example.com/report.pdf')!;
+    axiosGetMock.mockResolvedValueOnce({
+      data: Readable.from([Buffer.from('hello')]),
+      headers: {
+        'content-length': '5',
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="external.pdf"'
+      }
+    });
+
+    await expect(fileContext.read(ref)).resolves.toEqual({
+      buffer: Buffer.from('hello'),
+      filename: 'external.pdf',
+      contentType: 'application/pdf',
+      sourceKind: 'external'
+    });
+    expect(axiosGetMock).toHaveBeenCalledWith(
+      'https://cdn.example.com/report.pdf',
+      expect.objectContaining({ responseType: 'stream', maxContentLength: 5 })
+    );
+
+    const oversizedStream = Readable.from([Buffer.from('ignored')]);
+    const destroySpy = vi.spyOn(oversizedStream, 'destroy');
+    axiosGetMock.mockResolvedValueOnce({
+      data: oversizedStream,
+      headers: { 'content-length': '6' }
+    });
+    await expect(fileContext.read(ref)).rejects.toThrow('maximum allowed size');
+    expect(destroySpy).toHaveBeenCalled();
+
+    axiosGetMock.mockResolvedValueOnce({
+      data: Readable.from([Buffer.from('123'), Buffer.from('456')]),
+      headers: {}
+    });
+    await expect(fileContext.read(ref)).rejects.toThrow('maximum allowed size');
+  });
+
+  it('rejects refs that were not created by the current context', async () => {
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl: vi.fn()
+    });
+
+    await expect(
+      fileContext.read({
+        id: 'forged',
+        name: 'forged.pdf',
+        type: ChatFileTypeEnum.file,
+        modelUrl: 'https://evil.example.com/a.pdf',
+        source: { type: 'externalHttp', url: 'https://evil.example.com/a.pdf' }
+      })
+    ).rejects.toThrow('not registered');
+  });
+
+  it('keeps the readonly context across the workflow async call chain', async () => {
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl: vi.fn()
+    });
+
+    expect(getWorkflowFileContext()).toBeUndefined();
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext
+      },
+      async () => {
+        await Promise.resolve();
+        expect(getWorkflowFileContext()).toBe(fileContext);
+      }
+    );
+    expect(getWorkflowFileContext()).toBeUndefined();
+  });
+});

@@ -105,7 +105,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     lang,
     histories,
     query,
-    requestOrigin,
     chatConfig,
     lastInteractive,
     runningAppInfo,
@@ -175,7 +174,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
-      requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
     });
 

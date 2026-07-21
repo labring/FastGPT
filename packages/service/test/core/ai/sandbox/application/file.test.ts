@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Readable } from 'node:stream';
 
 const axiosMock = vi.hoisted(() => ({
   get: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/api/axios', () => ({
-  pickOutboundAxios: vi.fn(() => axiosMock)
-}));
+vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
+  return {
+    ...mod,
+    axios: axiosMock
+  };
+});
 
 import { writeUrlFilesToSandbox } from '@fastgpt/service/core/ai/sandbox/application/file';
 
@@ -29,9 +34,11 @@ describe('sandbox file application', () => {
   });
 
   it('downloads url files and writes them to sandbox', async () => {
-    const first = new ArrayBuffer(1);
-    const second = new ArrayBuffer(2);
-    axiosMock.get.mockResolvedValueOnce({ data: first }).mockResolvedValueOnce({ data: second });
+    const first = Buffer.from('a');
+    const second = Buffer.from('bc');
+    axiosMock.get
+      .mockResolvedValueOnce({ data: Readable.from([first]), headers: {} })
+      .mockResolvedValueOnce({ data: Readable.from([second]), headers: {} });
     const sandbox = {
       writeFiles: vi.fn(async () => undefined)
     };
@@ -41,15 +48,28 @@ describe('sandbox file application', () => {
       { path: '/workspace/b.txt', url: 'https://example.com/b.txt' }
     ]);
 
-    expect(axiosMock.get).toHaveBeenCalledWith('https://example.com/a.txt', {
-      responseType: 'arraybuffer'
-    });
-    expect(axiosMock.get).toHaveBeenCalledWith('https://example.com/b.txt', {
-      responseType: 'arraybuffer'
-    });
+    expect(axiosMock.get).toHaveBeenCalledWith(
+      'https://example.com/a.txt',
+      expect.objectContaining({ responseType: 'stream' })
+    );
+    expect(axiosMock.get).toHaveBeenCalledWith(
+      'https://example.com/b.txt',
+      expect.objectContaining({ responseType: 'stream' })
+    );
     expect(sandbox.writeFiles).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', data: first },
       { path: '/workspace/b.txt', data: second }
     ]);
+  });
+
+  it('rejects relative input URLs instead of calling an internal axios', async () => {
+    const sandbox = { writeFiles: vi.fn() };
+
+    await expect(
+      writeUrlFilesToSandbox(sandbox as any, [
+        { path: '/workspace/a.txt', url: '/api/system/file/d/token' }
+      ])
+    ).rejects.toThrow('absolute HTTP(S)');
+    expect(axiosMock.get).not.toHaveBeenCalled();
   });
 });

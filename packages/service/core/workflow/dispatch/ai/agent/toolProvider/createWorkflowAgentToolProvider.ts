@@ -3,7 +3,6 @@ import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
 import {
-  buildAgentLoopCoreSystemToolFileUrl,
   createAgentLoopCoreReadFileExecutor,
   normalizeAgentLoopCoreDatasetSearchResult
 } from '../../agentLoopCore/interface';
@@ -115,11 +114,6 @@ export const createWorkflowAgentToolProvider = ({
     },
     readFileExecutor,
     datasetSearchExecutor,
-    currentInputFiles: context.currentFiles.map((file) =>
-      buildAgentLoopCoreSystemToolFileUrl({
-        url: file.url,
-        requestOrigin: context.requestOrigin
-      })
-    )
+    currentInputFiles: context.currentFiles.map((file) => file.url)
   };
 };

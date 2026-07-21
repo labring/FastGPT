@@ -49,7 +49,6 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -58,7 +57,7 @@ import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../uti
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
-import { buildQueryUrlFileMap, buildQueryUrlTypeMap, runWithContext } from '../utils/context';
+import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
 import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
@@ -77,6 +76,7 @@ import {
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
+import { prepareWorkflowFileContext } from '../utils/fileContext';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -160,7 +160,18 @@ export async function dispatchWorkFlow({
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
-  const getPreviewUrl = createChatFilePreviewUrlGetter();
+  const { fileContext, getPreviewUrl } = await prepareWorkflowFileContext({
+    query,
+    histories,
+    scope: {
+      sourceType: runningAppInfo.sourceType,
+      sourceId: runningAppInfo.sourceId,
+      uid: data.uid,
+      chatId
+    },
+    maxFiles: data.chatConfig?.fileSelectConfig?.maxFiles ?? 20,
+    maxFileSize: data.maxFileSize
+  });
 
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
@@ -186,13 +197,8 @@ export async function dispatchWorkFlow({
       }
       return usageId;
     })(),
-    // Add preview url to chat items
-    addPreviewUrlToChatItems(histories, 'chatFlow'),
-    // Add preview url to query
-    ...query.map(async (item) => {
-      if (!item.file?.key) return;
-      item.file.url = await getPreviewUrl(item.file.key);
-    }),
+    // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
+    addPreviewUrlToChatItems(histories, 'chatFlow', getPreviewUrl),
     // Remove stopping sign
     delAgentRuntimeStopSign({
       ...chatSource,
@@ -202,10 +208,6 @@ export async function dispatchWorkFlow({
 
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
-
-  // 私有文件已恢复为无后缀短链；进入节点调度前保留类型和原始文件名等媒体元数据。
-  const queryUrlTypeMap = buildQueryUrlTypeMap(query);
-  const queryUrlFileMap = buildQueryUrlFileMap(query);
 
   const variableState = await WorkflowVariableState.create({
     timezone,
@@ -262,9 +264,8 @@ export async function dispatchWorkFlow({
   return new Promise((resolve, reject) => {
     runWithContext(
       {
-        queryUrlTypeMap,
-        queryUrlFileMap,
-        mcpClientMemory: {}
+        mcpClientMemory: {},
+        fileContext
       },
       (ctx) => {
         runWorkflow({

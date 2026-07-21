@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { getS3RawTextSource } from '../../common/s3/sources/rawText';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
-import { pickOutboundAxios } from '../../common/api/axios';
+import { axios } from '../../common/api/axios';
 import { S3Buckets } from '../../common/s3/config/constants';
 import { S3Sources } from '../../common/s3/contracts/type';
 import {
@@ -20,7 +20,7 @@ import { S3ChatSource } from '../../common/s3/sources/chat';
 import { readFileContentByBuffer } from '../../common/file/read/utils';
 import { addDays } from 'date-fns';
 import { replaceS3KeyToPreviewUrl } from '../dataset/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import {
@@ -35,6 +35,29 @@ import {
   verifyS3DownloadAccess,
   type VerifiedS3DownloadAccess
 } from '../../common/s3/accessLink';
+import { getFileMaxSize } from '../../common/file/utils';
+import { readStreamToBuffer } from '../../common/s3/utils';
+import { Readable } from 'node:stream';
+
+/** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
+export type FileReadContext = {
+  resolve: (urlOrId: string) =>
+    | {
+        name: string;
+        type: ChatFileTypeEnum;
+        modelUrl: string;
+      }
+    | undefined;
+  resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
+  getIdentity: (urlOrId: string) => string | undefined;
+  read: (urlOrId: string) => Promise<{
+    buffer: Buffer;
+    filename: string;
+    contentType?: string;
+    sourceKind: 'internal' | 'external';
+    imageParsePrefix?: string;
+  }>;
+};
 
 type GetFileProps = {
   requestOrigin?: string;
@@ -43,6 +66,7 @@ type GetFileProps = {
   teamId: string;
   tmbId: string;
   usageId?: string;
+  fileContext?: FileReadContext;
 };
 
 const readableFileExtensions = new Set(['txt', 'md', 'html', 'pdf', 'docx', 'pptx', 'csv', 'xlsx']);
@@ -412,41 +436,96 @@ export const rewriteChatMessagesWithFileContext = async ({
  */
 export const normalizeReadableFileUrl = ({
   url,
-  requestOrigin
+  fileContext
 }: {
   url?: string;
   requestOrigin?: string;
+  fileContext?: FileReadContext;
 }) => {
   if (typeof url !== 'string') return '';
 
-  let normalizedUrl = url.trim();
+  const normalizedUrl = url.trim();
   if (!normalizedUrl) return '';
 
-  const validPrefixList = ['/', 'http', 'ws'];
-  if (!validPrefixList.some((prefix) => normalizedUrl.startsWith(prefix))) {
-    return '';
+  if (fileContext) {
+    const ref = fileContext.resolve(normalizedUrl);
+    return ref?.type === ChatFileTypeEnum.file ? ref.modelUrl : '';
   }
 
+  if (!/^https?:\/\//i.test(normalizedUrl)) return '';
   if (parseUrlToChatFileType({ url: normalizedUrl })?.type !== ChatFileTypeEnum.file) {
     return '';
   }
 
   try {
-    const parsedURL = new URL(normalizedUrl, 'http://localhost:3000');
-    if (requestOrigin && parsedURL.origin === requestOrigin) {
-      normalizedUrl = normalizedUrl.replace(requestOrigin, '');
-    }
-
+    const parsedURL = new URL(normalizedUrl);
+    if (parsedURL.protocol !== 'http:' && parsedURL.protocol !== 'https:') return '';
     return normalizedUrl;
   } catch {
     return '';
   }
 };
 
-export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
+export const getFileInfoFromUrl = async ({
+  teamId,
+  url,
+  fileContext
+}: {
+  teamId: string;
+  url: string;
+  fileContext?: FileReadContext;
+}) => {
+  const fileRef = fileContext?.resolve(url);
+  if (fileContext && !fileRef) {
+    throw new UserError('File is not registered in the provided context');
+  }
+
+  if (fileRef && fileContext) {
+    const { buffer, filename, contentType, sourceKind, imageParsePrefix } =
+      await fileContext.read(url);
+    const isChatExternalUrl = sourceKind === 'external';
+    const resolvedFilename = filename || fileRef.name;
+
+    return {
+      isChatExternalUrl,
+      filename: resolvedFilename,
+      extension: path.extname(resolvedFilename).replace('.', ''),
+      imageParsePrefix: isChatExternalUrl
+        ? getFileS3Key.temp({ teamId, filename: resolvedFilename }).fileParsedPrefix
+        : imageParsePrefix || '',
+      contentType,
+      stream: buffer
+    };
+  }
+
+  if (!/^https?:\/\//i.test(url)) {
+    throw new UserError('File URL must be an absolute HTTP(S) URL');
+  }
+  const parsedUrl = new URL(url);
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new UserError('File URL must use HTTP(S)');
+  }
+
   const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(url);
-  const response = await pickOutboundAxios(url).get(url, {
-    responseType: 'arraybuffer'
+  const maxFileSize = getFileMaxSize();
+  const response = await axios.get<Readable>(url, {
+    responseType: 'stream',
+    timeout: 180_000,
+    maxContentLength: maxFileSize
+  });
+  const contentLength = Number(getAxiosHeaderValue(response.headers['content-length']) || 0);
+  if (contentLength > maxFileSize) {
+    response.data.destroy();
+    throw new UserError(`File exceeds maximum allowed size (${maxFileSize} bytes)`);
+  }
+  const responseStream =
+    response.data instanceof Readable
+      ? response.data
+      : Readable.from([Buffer.from(response.data as unknown as ArrayBuffer)]);
+  const buffer = await readStreamToBuffer({
+    stream: responseStream,
+    maxBytes: maxFileSize,
+    exceededMessage: `File exceeds maximum allowed size (${maxFileSize} bytes)`
   });
 
   const urlObj = new URL(url, 'http://localhost:3000');
@@ -506,7 +585,7 @@ export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url:
     contentType:
       shortDownloadAccess?.responseContentType ||
       getAxiosHeaderValue(response.headers['content-type']),
-    stream: response.data
+    stream: buffer
   };
 };
 
@@ -515,17 +594,20 @@ export const getFileContentByUrl = async ({
   teamId,
   tmbId,
   customPdfParse,
-  usageId
+  usageId,
+  fileContext
 }: {
   url: string;
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
   usageId?: string;
+  fileContext?: FileReadContext;
 }) => {
+  const sourceId = fileContext?.getIdentity(url) ?? url;
   // Get from buffer
   const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
-    sourceId: url,
+    sourceId,
     customPdfParse
   });
   if (rawTextBuffer) {
@@ -537,9 +619,9 @@ export const getFileContentByUrl = async ({
   }
 
   const { isChatExternalUrl, filename, extension, imageParsePrefix, contentType, stream } =
-    await getFileInfoFromUrl({ teamId, url });
+    await getFileInfoFromUrl({ teamId, url, fileContext });
 
-  const buffer = Buffer.from(stream, 'binary');
+  const buffer = stream;
   // Get encoding
   const encoding = (() => {
     if (contentType) {
@@ -581,7 +663,7 @@ export const getFileContentByUrl = async ({
 
   // Add to buffer
   getS3RawTextSource().addRawTextBuffer({
-    sourceId: url,
+    sourceId,
     sourceName: filename,
     text: replacedText,
     customPdfParse
@@ -600,7 +682,8 @@ export const parseFileContentFromUrls = async ({
   teamId,
   tmbId,
   customPdfParse,
-  usageId
+  usageId,
+  fileContext
 }: GetFileProps & {
   urls: string[];
 }): Promise<
@@ -612,7 +695,7 @@ export const parseFileContentFromUrls = async ({
   }[]
 > => {
   const parseUrlList = urls
-    .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
+    .map((url) => normalizeReadableFileUrl({ url, requestOrigin, fileContext }))
     .filter(Boolean)
     .slice(0, maxFiles);
 
@@ -620,7 +703,7 @@ export const parseFileContentFromUrls = async ({
     parseUrlList
       .map(async (url) => {
         try {
-          if (await isInternalAddress(url)) {
+          if (!fileContext?.resolve(url) && (await isInternalAddress(url))) {
             return {
               success: false,
               name: '',
@@ -634,7 +717,8 @@ export const parseFileContentFromUrls = async ({
             teamId,
             tmbId,
             customPdfParse,
-            usageId
+            usageId,
+            fileContext
           });
 
           return { success: true, name, url, content: content };
@@ -656,12 +740,14 @@ export const parseFileInfoFromUrls = async ({
   urls,
   requestOrigin,
   maxFiles,
-  teamId
+  teamId,
+  fileContext
 }: {
   requestOrigin?: string;
   maxFiles: number;
   teamId: string;
   urls: string[];
+  fileContext?: FileReadContext;
 }): Promise<
   {
     success: boolean;
@@ -670,7 +756,7 @@ export const parseFileInfoFromUrls = async ({
   }[]
 > => {
   const parseUrlList = urls
-    .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
+    .map((url) => normalizeReadableFileUrl({ url, requestOrigin, fileContext }))
     .filter(Boolean)
     .slice(0, maxFiles);
 
@@ -678,8 +764,9 @@ export const parseFileInfoFromUrls = async ({
     parseUrlList
       .map(async (url) => {
         // Get from buffer
+        const sourceId = fileContext?.getIdentity(url) ?? url;
         const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
-          sourceId: url,
+          sourceId,
           customPdfParse: false
         });
         if (rawTextBuffer) {
@@ -691,7 +778,7 @@ export const parseFileInfoFromUrls = async ({
         }
 
         try {
-          if (await isInternalAddress(url)) {
+          if (!fileContext?.resolve(url) && (await isInternalAddress(url))) {
             return {
               success: false,
               name: '',
@@ -699,10 +786,10 @@ export const parseFileInfoFromUrls = async ({
             };
           }
 
-          const { filename } = await getFileInfoFromUrl({ teamId, url });
+          const { filename } = await getFileInfoFromUrl({ teamId, url, fileContext });
 
           return { success: true, name: filename, url };
-        } catch (error) {
+        } catch {
           return {
             success: false,
             name: '',
