@@ -343,6 +343,48 @@ describe('addPreviewUrlToChatItems', () => {
     });
   });
 
+  it('清理 workflowTool 历史中无法重新签发的 fileSelect 文件', async () => {
+    const histories = [
+      {
+        obj: 'Human',
+        value: [
+          {
+            text: {
+              content: JSON.stringify([
+                {
+                  renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                  value: [
+                    {
+                      key: 'chat/files/unavailable.pdf',
+                      name: 'unavailable.pdf',
+                      type: ChatFileTypeEnum.file,
+                      url: 'https://old.example.com/unavailable.pdf'
+                    }
+                  ]
+                }
+              ])
+            }
+          }
+        ]
+      }
+    ];
+
+    await addPreviewUrlToChatItems(histories as any, 'workflowTool', async () => undefined);
+
+    expect(JSON.parse(histories[0].value[0].text.content)).toEqual([
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+        value: [
+          {
+            name: 'unavailable.pdf',
+            type: ChatFileTypeEnum.file,
+            url: ''
+          }
+        ]
+      }
+    ]);
+  });
+
   it('重新签发 Sandbox 工具文件链接并隐藏内部 fileRefs', async () => {
     const oldUrl = 'https://old.example.com/file-token';
     const newUrl = 'https://new.example.com/file-token';
@@ -390,5 +432,75 @@ describe('addPreviewUrlToChatItems', () => {
       key: 'chat/app/app-1/user-1/chat-1/report.csv',
       external: true
     });
+  });
+
+  it('清理无法重新签发的 Sandbox fileRefs 和历史链接', async () => {
+    const oldUrl = 'https://old.example.com/file-token';
+    const histories = [
+      {
+        obj: 'AI',
+        value: [
+          {
+            tools: [
+              {
+                id: 'call_file',
+                toolName: 'Sandbox/Get File URL',
+                toolAvatar: '',
+                functionName: 'sandbox_get_file_url',
+                params: '{}',
+                response: JSON.stringify([{ fileUrl: oldUrl, filename: 'report.csv' }]),
+                fileRefs: [
+                  {
+                    key: 'chat/app/app-1/user-1/chat-1/report.csv',
+                    filename: 'report.csv',
+                    url: oldUrl
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            text: {
+              content: `[report.csv](${oldUrl})`
+            }
+          }
+        ]
+      }
+    ];
+
+    await addPreviewUrlToChatItems(histories as any, 'chatFlow', async () => undefined);
+
+    expect(JSON.parse(histories[0].value[0].tools[0].response)).toEqual([
+      { fileUrl: '', filename: 'report.csv' }
+    ]);
+    expect(histories[0].value[0].tools[0]).not.toHaveProperty('fileRefs');
+    expect(histories[0].value[1].text.content).toBe('[report.csv]()');
+  });
+
+  it('不会吞掉历史文件 signer 的系统异常', async () => {
+    const histories = [
+      {
+        obj: 'Human',
+        value: [
+          {
+            text: {
+              content: JSON.stringify([
+                {
+                  renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                  value: [{ key: 'chat/files/report.pdf', name: 'report.pdf' }]
+                }
+              ])
+            }
+          }
+        ]
+      }
+    ];
+    const systemError = new Error('S3 signer unavailable');
+
+    await expect(
+      addPreviewUrlToChatItems(histories as any, 'workflowTool', async () => {
+        throw systemError;
+      })
+    ).rejects.toBe(systemError);
   });
 });

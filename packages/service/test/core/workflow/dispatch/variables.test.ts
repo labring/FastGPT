@@ -267,7 +267,7 @@ describe('WorkflowVariableState', () => {
     ]);
   });
 
-  it('should restore parent file metadata from runtime url in child state', async () => {
+  it('should persist a parent runtime url as external when updating child state', async () => {
     const parent = await createState({
       variablesConfig: [
         {
@@ -300,7 +300,7 @@ describe('WorkflowVariableState', () => {
 
     expect(child.toStoreRecord().childFiles).toEqual([
       {
-        key: 'chat/app/parent.pdf',
+        url: runtimeUrl,
         name: 'parent.pdf',
         type: ChatFileTypeEnum.file
       }

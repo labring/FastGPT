@@ -4,7 +4,10 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { normalizeChatFileStoreValues } from '../../../chat/fileStoreValue';
+import {
+  normalizeChatFileStoreValue,
+  normalizeChatFileStoreValues
+} from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 
 export type PluginInputProps = ModuleDispatchProps<{
@@ -42,7 +45,10 @@ export const dispatchPluginInput = async (
       if (fileInputKeys.has(key) && Array.isArray(val)) {
         params[key] = await Promise.all(
           val.map(async (fileItem) => {
-            const storeValue = normalizeChatFileStoreValues([fileItem])[0];
+            const storeValue =
+              typeof fileItem === 'string'
+                ? normalizeChatFileStoreValue({ url: fileItem })
+                : normalizeChatFileStoreValues([fileItem])[0];
             if (!storeValue) throw new UserError('Invalid workflow plugin file');
 
             const existingRef = fileContext?.resolveInputFile(storeValue);
