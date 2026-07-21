@@ -6,6 +6,12 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
+import {
+  getWorkflowFileContext,
+  runWithContext
+} from '@fastgpt/service/core/workflow/utils/context';
 
 const mocks = vi.hoisted(() => ({
   runWorkflow: vi.fn(),
@@ -161,6 +167,118 @@ describe('agent sub app dispatchPlugin', () => {
           query: 'hello'
         })
       })
+    );
+  });
+
+  it('inherits child workflow tool default file variables from the parent context', async () => {
+    const defaultKey = 'chat/app/parent-app/user/chat/default.pdf';
+    const defaultUrl = 'https://files.example.com/default';
+    const defaultFile = {
+      key: defaultKey,
+      name: 'default.pdf',
+      type: ChatFileTypeEnum.file
+    };
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [{ file: { ...defaultFile, url: '' } }],
+      histories: [],
+      scope: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'parent-app',
+        uid: 'user',
+        chatId: 'chat'
+      },
+      maxFiles: 20,
+      getPreviewUrl: vi.fn().mockResolvedValue(defaultUrl)
+    });
+    mocks.authAppByTmbId.mockResolvedValue({
+      app: {
+        _id: 'child-app',
+        name: 'Child Workflow Tool',
+        teamId: 'child-team',
+        tmbId: 'child-member'
+      }
+    });
+    mocks.getAppVersionById.mockResolvedValue({
+      nodes: [
+        {
+          nodeId: 'pluginInput',
+          name: 'Input',
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'pluginOutput',
+          name: 'Output',
+          flowNodeType: FlowNodeTypeEnum.pluginOutput,
+          inputs: [{ key: 'result', isToolOutput: true }],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'defaultFiles',
+            label: 'defaultFiles',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            defaultValue: [defaultFile],
+            description: ''
+          }
+        ]
+      }
+    });
+    mocks.runWorkflow.mockImplementationOnce(async (props) => {
+      expect(getWorkflowFileContext()?.resolve(defaultUrl)?.source).toEqual({
+        type: 'chatObject',
+        objectKey: defaultKey
+      });
+      expect(props.variableState.get('defaultFiles')).toEqual([defaultUrl]);
+      return {
+        flowUsages: [],
+        runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+          {
+            id: 'pluginOutputResponse',
+            nodeId: 'pluginOutput',
+            moduleName: 'Output',
+            moduleType: FlowNodeTypeEnum.pluginOutput,
+            pluginOutput: { result: 'ok' }
+          }
+        ])
+      };
+    });
+    const variableState = await createVariableState();
+
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
+      },
+      () =>
+        dispatchPlugin({
+          app: { id: 'child-app', name: 'Child Workflow Tool' },
+          runningAppInfo: {
+            sourceType: 'app',
+            sourceId: 'parent-app',
+            teamId: 'team',
+            tmbId: 'member',
+            name: 'parent'
+          },
+          runningUserInfo: { teamId: 'team', tmbId: 'member' },
+          customAppVariables: {},
+          userChatInput: '',
+          timezone: 'Asia/Shanghai',
+          uid: 'user',
+          chatId: 'chat',
+          responseChatItemId: 'response',
+          histories: [],
+          variableState,
+          checkIsStopping: vi.fn(() => false),
+          maxRunTimes: 20,
+          workflowDispatchDeep: 0
+        } as any)
     );
   });
 

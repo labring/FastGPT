@@ -196,9 +196,17 @@ const createDerivedWorkflowFileContext = ({
 
   for (const file of files) {
     const inputUrl = typeof file === 'string' ? file : 'url' in file ? file.url : undefined;
+    const fileKey =
+      typeof file === 'string' || !('key' in file) || typeof file.key !== 'string'
+        ? undefined
+        : file.key;
+    // key 是私有文件的可信身份。对象携带 key 时不能用冲突 URL 降级命中父 Ref。
     const parentRef =
-      (inputUrl ? parent.resolve(inputUrl) : undefined) ||
-      (typeof file === 'string' ? undefined : parent.resolveInputFile(file));
+      fileKey && typeof file !== 'string'
+        ? parent.resolveInputFile(file)
+        : inputUrl
+          ? parent.resolve(inputUrl)
+          : undefined;
 
     if (parentRef) {
       const identity = parent.getIdentity(parentRef.id);
@@ -212,7 +220,7 @@ const createDerivedWorkflowFileContext = ({
       continue;
     }
 
-    if (typeof file !== 'string' && 'key' in file && file.key) {
+    if (fileKey) {
       throw new UserError('Child workflow private file is not registered in the parent context');
     }
     if (!isAbsoluteHttpUrl(inputUrl) || !validateFileUrlDomain(inputUrl)) {
@@ -341,7 +349,7 @@ export const prepareWorkflowFileContext = async ({
 
     const previewUrlPromise = getPreviewUrlInput(key).then((url) => {
       if (!isAbsoluteHttpUrl(url)) {
-        throw new UserError('Workflow file URL must be an absolute HTTP(S) URL');
+        throw new Error('Workflow file signer must return an absolute HTTP(S) URL');
       }
       return url;
     });

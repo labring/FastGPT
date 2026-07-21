@@ -280,6 +280,40 @@ describe('prepareWorkflowFileContext', () => {
     expect(getPreviewUrl).toHaveBeenCalledTimes(2);
   });
 
+  it('does not let a conflicting URL bypass an unknown child private key', async () => {
+    const queryFile = createFile({ key: privateKey });
+    const { fileContext } = await prepareWorkflowFileContext({
+      query: [queryFile],
+      histories: [],
+      scope,
+      maxFiles: 20,
+      getPreviewUrl: vi.fn().mockResolvedValue('https://files.example.com/selected')
+    });
+
+    expect(() =>
+      fileContext.derive([
+        {
+          key: 'chat/app/app-1/user-1/other-chat/unknown.pdf',
+          url: queryFile.file!.url,
+          name: 'unknown.pdf',
+          type: ChatFileTypeEnum.file
+        }
+      ])
+    ).toThrow('not registered in the parent context');
+  });
+
+  it('propagates an invalid signer result as a system error for history files', async () => {
+    await expect(
+      prepareWorkflowFileContext({
+        query: [],
+        histories: [createHistory(createFile({ key: privateKey }))],
+        scope,
+        maxFiles: 20,
+        getPreviewUrl: vi.fn().mockResolvedValue('/api/system/file/d/relative')
+      })
+    ).rejects.toThrow('signer must return an absolute HTTP(S) URL');
+  });
+
   it('keeps the parent model URL when a child variable restores its private key', async () => {
     const getPreviewUrl = vi.fn().mockResolvedValue('https://files.example.com/parent-signed');
     const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({

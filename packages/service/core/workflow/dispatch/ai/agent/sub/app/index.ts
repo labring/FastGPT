@@ -218,15 +218,21 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     name: appData.name,
     isChildApp: true
   };
-  const childFileInputs = nodes.flatMap((node) =>
-    node.flowNodeType === FlowNodeTypeEnum.pluginInput
-      ? node.inputs.flatMap((input) =>
-          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
-            ? getWorkflowFileInputsFromValue(customAppVariables[input.key] ?? input.value)
-            : []
-        )
-      : []
-  );
+  const childFileInputs = [
+    ...getWorkflowFileVariableInputs({
+      variablesConfig: chatConfig.variables ?? [],
+      inputVariables: {}
+    }),
+    ...nodes.flatMap((node) =>
+      node.flowNodeType === FlowNodeTypeEnum.pluginInput
+        ? node.inputs.flatMap((input) =>
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+              ? getWorkflowFileInputsFromValue(customAppVariables[input.key] ?? input.value)
+              : []
+          )
+        : []
+    )
+  ];
 
   const outputFilterMap =
     nodes

@@ -177,12 +177,17 @@ describe('dispatchRunPlugin', () => {
 
   it('Workflow Tool child context only inherits selected files from the parent context', async () => {
     const selectedKey = 'chat/app/app-1/user-1/chat-1/selected.pdf';
+    const defaultKey = 'chat/app/app-1/user-1/chat-1/default.pdf';
     const unselectedKey = 'chat/app/app-1/user-1/chat-1/unselected.pdf';
     const selectedUrl = 'https://files.example.com/selected';
+    const defaultUrl = 'https://files.example.com/default';
     const unselectedUrl = 'https://files.example.com/unselected';
-    const getPreviewUrl = vi.fn(async (key: string) =>
-      key === selectedKey ? selectedUrl : unselectedUrl
-    );
+    const previewUrls = new Map([
+      [selectedKey, selectedUrl],
+      [defaultKey, defaultUrl],
+      [unselectedKey, unselectedUrl]
+    ]);
+    const getPreviewUrl = vi.fn(async (key: string) => previewUrls.get(key)!);
     const selectedFile = {
       file: {
         key: selectedKey,
@@ -199,8 +204,16 @@ describe('dispatchRunPlugin', () => {
         url: ''
       }
     };
+    const defaultFile = {
+      file: {
+        key: defaultKey,
+        name: 'default.pdf',
+        type: ChatFileTypeEnum.file,
+        url: ''
+      }
+    };
     const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
-      query: [selectedFile, unselectedFile],
+      query: [selectedFile, defaultFile, unselectedFile],
       histories: [],
       scope: {
         sourceType: ChatSourceTypeEnum.app,
@@ -245,7 +258,24 @@ describe('dispatchRunPlugin', () => {
         }
       ],
       edges: [],
-      chatConfig: { variables: [] },
+      chatConfig: {
+        variables: [
+          {
+            key: 'defaultFiles',
+            label: 'defaultFiles',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            defaultValue: [
+              {
+                key: defaultKey,
+                name: 'default.pdf',
+                type: ChatFileTypeEnum.file
+              }
+            ],
+            description: ''
+          }
+        ]
+      },
       currentCost: 0
     });
     runWorkflowMock.mockImplementationOnce(async () => {
@@ -254,7 +284,14 @@ describe('dispatchRunPlugin', () => {
         type: 'chatObject',
         objectKey: selectedKey
       });
+      expect(childContext?.resolve(defaultUrl)?.source).toEqual({
+        type: 'chatObject',
+        objectKey: defaultKey
+      });
       expect(childContext?.resolve(unselectedUrl)).toBeUndefined();
+      expect(runWorkflowMock.mock.calls[0]?.[0].variableState.get('defaultFiles')).toEqual([
+        defaultUrl
+      ]);
 
       return {
         flowUsages: [],
@@ -313,6 +350,6 @@ describe('dispatchRunPlugin', () => {
         } as any)
     );
 
-    expect(getPreviewUrl).toHaveBeenCalledTimes(2);
+    expect(getPreviewUrl).toHaveBeenCalledTimes(3);
   });
 });

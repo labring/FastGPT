@@ -31,7 +31,11 @@ import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { getWorkflowFileInputsFromValue, WorkflowVariableState } from '../utils/variables';
+import {
+  getWorkflowFileInputsFromValue,
+  getWorkflowFileVariableInputs,
+  WorkflowVariableState
+} from '../utils/variables';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { getRuntimeNodeResponseSummary } from '../utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
@@ -204,6 +208,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     };
     const childFileInputs = [
       ...files,
+      ...getWorkflowFileVariableInputs({
+        variablesConfig: childWorkflowTool.chatConfig?.variables,
+        inputVariables: {}
+      }),
       ...childWorkflowTool.nodes.flatMap((node) =>
         node.flowNodeType === FlowNodeTypeEnum.pluginInput
           ? node.inputs.flatMap((input) =>
