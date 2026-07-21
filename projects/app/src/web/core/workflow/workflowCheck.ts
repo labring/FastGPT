@@ -35,8 +35,8 @@ import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import {
   canInputBeAgentGenerated,
-  getToolConfigStatus,
   initToolInputTypeByDefaultMode,
+  isToolInputValueConfigured,
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 
@@ -516,17 +516,20 @@ export const checkWorkflowNodeIssues = ({
       });
     }
 
-    // 工具调用下游工具：与 NodeSecret / getToolConfigStatus 共用「尚未激活」判定。
-    if (isToolNode) {
-      const configStatus = getToolConfigStatus({ tool: data });
-      if (configStatus.status === 'waitingForConfig') {
-        addIssue({
-          node,
-          code: 'tool_waiting_config',
-          message: getWorkflowCheckIssueMessage('tool_waiting_config', t),
-          inputKey: NodeInputKeyEnum.systemInputConfig
-        });
-      }
+    // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活。
+    // 普通必填参数为空由下面的通用必填校验单独提示，不能复用整体工具配置状态。
+    const systemInputConfig = inputMap.get(NodeInputKeyEnum.systemInputConfig);
+    if (
+      isToolNode &&
+      systemInputConfig &&
+      !isToolInputValueConfigured({ input: systemInputConfig })
+    ) {
+      addIssue({
+        node,
+        code: 'tool_waiting_config',
+        message: getWorkflowCheckIssueMessage('tool_waiting_config', t),
+        inputKey: NodeInputKeyEnum.systemInputConfig
+      });
     }
 
     if (!workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
@@ -768,7 +771,12 @@ export const checkWorkflowNodeIssues = ({
         }
 
         // Agent 生成字段运行时由模型填写，不需要开发者预填。
-        const normalizedInput = initToolInputTypeByDefaultMode(input);
+        const normalizedInput =
+          isToolNode || input.key === NodeInputKeyEnum.userChatInput
+            ? initToolInputTypeByDefaultMode(input, {
+                allowUserChatInputAgentGenerated: isToolNode
+              })
+            : input;
         if (
           isToolNode &&
           isAgentGeneratedToolInput(normalizedInput) &&

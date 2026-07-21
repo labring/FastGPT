@@ -406,8 +406,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
-        specifier: 0.1.0-alpha.1
-        version: 0.1.0-alpha.1(zod@4.1.12)
+        specifier: 0.1.0-alpha.2
+        version: 0.1.0-alpha.2(zod@4.1.12)
       '@fastgpt-sdk/sandbox-adapter':
         specifier: workspace:*
         version: link:../../sdk/sandbox-adapter
@@ -3126,8 +3126,8 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@fastgpt-plugin/sdk-client@0.1.0-alpha.1':
-    resolution: {integrity: sha512-U69ROZAWjYII1Zw1qpz+zCldfc0LmaHfoyxmANR9AZqIpwlPHi/5sja0+HSZRL0FYFTsM1fBjpOOQ7bTd/7X/Q==}
+  '@fastgpt-plugin/sdk-client@0.1.0-alpha.2':
+    resolution: {integrity: sha512-rk7mSJ6HZj+xcxZQoSWh3zHmHJDcOTke0UrfLSF2aqAgE47rcgv3IT20QWOwtwZZn1YyYnmwITMV5Vem04kFrg==}
     peerDependencies:
       zod: ^4
 
@@ -15866,7 +15866,7 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@fastgpt-plugin/sdk-client@0.1.0-alpha.1(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@0.1.0-alpha.2(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
 

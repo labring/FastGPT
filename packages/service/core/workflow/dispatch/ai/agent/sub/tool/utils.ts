@@ -592,7 +592,8 @@ export const getAgentRuntimeTools = async ({
             if (!savedInput) return input;
             const selectedType = getSavedToolInputSelectedType({
               savedInput,
-              defaultInput: input
+              defaultInput: input,
+              allowUserChatInputAgentGenerated: true
             });
             const renderTypeList = selectedType
               ? Array.from(
@@ -614,7 +615,8 @@ export const getAgentRuntimeTools = async ({
               isToolParam: savedInput.isToolParam ?? input.isToolParam,
               toolDescription: savedInput.toolDescription ?? input.toolDescription
             };
-          })
+          }),
+          { allowUserChatInputAgentGenerated: true }
         );
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {
@@ -660,7 +662,7 @@ export const getAgentRuntimeTools = async ({
               ...input,
               isToolParam: true
             })),
-            { forceDefaultMode: true }
+            { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
           );
           const requestSchema = formatSchema({
             toolId: id,
@@ -746,7 +748,9 @@ export const getAgentRuntimeTools = async ({
         } else {
           // OpenAI function name 不能包含斜杠等字符，runtime map 也使用同一份清洗后的 id。
           const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
-          const inputs = initToolInputsTypeByDefaultMode(toolNode.inputs);
+          const inputs = initToolInputsTypeByDefaultMode(toolNode.inputs, {
+            allowUserChatInputAgentGenerated: true
+          });
           const requestSchema = formatSchema({
             toolId: cleanedPluginId,
             inputs,

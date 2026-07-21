@@ -377,7 +377,10 @@ const NodeTemplateList = ({
             }),
             intro: t(templateNode.intro as any),
             inputs: initToolInputsTypeByDefaultMode(inputsWithAutoFill, {
-              forceDefaultMode: isToolSelector
+              // 插件预览中的 selectedType 是定义侧控件，不代表画布上的最终选择。
+              // 首次插入节点时按 isToolParam 应用默认值；userChatInput 仍由工具选择上下文控制。
+              forceDefaultMode: true,
+              allowUserChatInputAgentGenerated: isToolSelector
             }),
             outputs: templateNode.outputs
               .filter((output) => output.deprecated !== true)

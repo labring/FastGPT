@@ -130,15 +130,22 @@ export async function rewriteAppWorkflowToDetail({
 
   const mergeToolInputDetail = ({
     previewInput,
-    savedInput
+    savedInput,
+    allowUserChatInputAgentGenerated = false
   }: {
     previewInput: FlowNodeInputItemType;
     savedInput?: ToolInputSnapshot;
+    allowUserChatInputAgentGenerated?: boolean;
   }) => {
-    const inputWithDefaultMode = initToolInputTypeByDefaultMode(previewInput);
+    const inputWithDefaultMode = allowUserChatInputAgentGenerated
+      ? initToolInputTypeByDefaultMode(previewInput, {
+          allowUserChatInputAgentGenerated: true
+        })
+      : previewInput;
     const savedSelectedType = getSavedToolInputSelectedType({
       savedInput,
-      defaultInput: previewInput
+      defaultInput: previewInput,
+      allowUserChatInputAgentGenerated
     });
     const selectedType = savedSelectedType ?? inputWithDefaultMode.selectedType;
     const renderTypeList =
@@ -197,6 +204,16 @@ export async function rewriteAppWorkflowToDetail({
 
   await Promise.all(
     nodes.map(async (node) => {
+      if (node.flowNodeType === FlowNodeTypeEnum.toolCall) {
+        node.inputs = node.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.userChatInput
+            ? initToolInputTypeByDefaultMode(input, {
+                allowUserChatInputAgentGenerated: false
+              })
+            : input
+        );
+      }
+
       // Tool node
       if (node.pluginId) {
         const result = await loadToolNode({
@@ -277,7 +294,8 @@ export async function rewriteAppWorkflowToDetail({
                 const mergedInputs = data.inputs.map((input) => {
                   const inputWithTypeConfig = mergeToolInputDetail({
                     previewInput: input,
-                    savedInput: toolInputConfigMap.get(input.key)
+                    savedInput: toolInputConfigMap.get(input.key),
+                    allowUserChatInputAgentGenerated: true
                   });
 
                   return {
