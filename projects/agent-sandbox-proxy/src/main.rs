@@ -1,8 +1,9 @@
 use axum::{
     Router,
-    extract::{Query, ws::WebSocketUpgrade},
-    http::StatusCode,
-    response::IntoResponse,
+    body::Body,
+    extract::{Path, Query, ws::WebSocketUpgrade},
+    http::{HeaderMap, Method, StatusCode},
+    response::{IntoResponse, Response},
     routing::get,
 };
 use serde::Deserialize;
@@ -10,14 +11,26 @@ use std::net::SocketAddr;
 use tracing::{error, info};
 
 mod auth;
+mod preview;
 mod relay;
 
-use auth::resolve_sandbox_address;
+use auth::{
+    invalidate_cached_sandbox_address, resolve_cached_sandbox_address, resolve_sandbox_address,
+};
+use preview::{bad_gateway_response, preview_error_response, proxy_preview_file};
 use relay::handle_relay;
+
+const DEFAULT_PORT: u16 = 1006;
 
 #[derive(Deserialize)]
 struct WsQuery {
     ticket: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct PreviewPath {
+    ticket: String,
+    path: String,
 }
 
 #[tokio::main]
@@ -32,32 +45,64 @@ async fn main() {
         )
         .init();
 
-    let app = Router::new()
+    let port = get_listener_port("PORT", DEFAULT_PORT);
+    let preview_port = get_listener_port("PREVIEW_PORT", port);
+
+    if port == preview_port {
+        info!("FastGPT Agent Sandbox Proxy listening on port {}", port);
+        serve_on_port(port, combined_router())
+            .await
+            .expect("Server encountered a fatal error");
+        return;
+    }
+
+    info!(
+        "FastGPT Agent Sandbox Proxy listening on WebSocket port {} and preview port {}",
+        port, preview_port
+    );
+    tokio::try_join!(
+        serve_on_port(port, websocket_router()),
+        serve_on_port(preview_port, preview_router())
+    )
+    .expect("Server encountered a fatal error");
+}
+
+fn websocket_router() -> Router {
+    Router::new()
         .route("/health", get(health_check))
         .route("/fs", get(fs_handler))
-        .route("/terminal", get(terminal_handler));
+        .route("/terminal", get(terminal_handler))
+}
 
-    let port: u16 = std::env::var("PORT")
+fn preview_router() -> Router {
+    Router::new().route("/health", get(health_check)).route(
+        "/preview/{ticket}/{*path}",
+        get(preview_handler).head(preview_handler),
+    )
+}
+
+fn combined_router() -> Router {
+    websocket_router().route(
+        "/preview/{ticket}/{*path}",
+        get(preview_handler).head(preview_handler),
+    )
+}
+
+fn get_listener_port(name: &str, default_port: u16) -> u16 {
+    std::env::var(name)
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(1006);
+        .unwrap_or(default_port)
+}
+
+/** 在指定端口运行一个独立 Router；不同协议端口由 main 并发托管。 */
+async fn serve_on_port(port: u16, app: Router) -> std::io::Result<()> {
     let addr = SocketAddr::new(
         std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)),
         port,
     );
-
-    info!(
-        "FastGPT Rust Agent Sandbox Proxy starting up on port {}",
-        port
-    );
-
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("Failed to bind to server address");
-
-    axum::serve(listener, app)
-        .await
-        .expect("Server encountered a fatal error during execution");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await
 }
 
 async fn health_check() -> &'static str {
@@ -80,32 +125,10 @@ async fn verify_and_resolve_auth(
         }
     };
 
-    let claims = auth::verify_jwt_ticket(&ticket).map_err(|err| {
+    let claims = verify_ticket_for_channel(&ticket, expected_channel).map_err(|err| {
         error!("[Auth] Local JWT verification failed: {}", err);
         (StatusCode::UNAUTHORIZED, format!("Unauthorized: {}", err))
     })?;
-
-    if claims.channel != expected_channel {
-        error!(
-            "[Auth] JWT channel mismatch. expected: {}, actual: {}",
-            expected_channel, claims.channel
-        );
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            "Unauthorized: ticket channel mismatch".to_string(),
-        ));
-    }
-
-    if expected_channel == "terminal" && claims.permission != "write" {
-        error!(
-            "[Auth] JWT terminal permission mismatch. actual: {}",
-            claims.permission
-        );
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            "Unauthorized: terminal ticket requires write permission".to_string(),
-        ));
-    }
 
     let address = resolve_sandbox_address(&ticket).await.map_err(|err| {
         error!("[Auth] Ticket resolution failed: {}", err);
@@ -113,6 +136,31 @@ async fn verify_and_resolve_auth(
     })?;
 
     Ok((address, claims))
+}
+
+fn verify_ticket_for_channel(
+    ticket: &str,
+    expected_channel: &'static str,
+) -> Result<auth::Claims, String> {
+    let claims = auth::verify_jwt_ticket(ticket)?;
+    if claims.channel != expected_channel {
+        return Err("ticket channel mismatch".to_string());
+    }
+    if expected_channel == "terminal" && claims.permission != "write" {
+        return Err("terminal ticket requires write permission".to_string());
+    }
+    Ok(claims)
+}
+
+fn verify_preview_ticket(ticket: &str) -> Result<auth::PreviewClaims, String> {
+    let claims = auth::verify_preview_jwt_ticket(ticket)?;
+    if claims.channel != "preview" {
+        return Err("ticket channel mismatch".to_string());
+    }
+    if claims.permission != "read" {
+        return Err("preview ticket requires read permission".to_string());
+    }
+    Ok(claims)
 }
 
 async fn fs_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl IntoResponse {
@@ -144,5 +192,94 @@ async fn terminal_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) ->
                 .into_response()
         }
         Err((status, err_msg)) => (status, err_msg).into_response(),
+    }
+}
+
+async fn preview_handler(
+    Path(params): Path<PreviewPath>,
+    method: Method,
+    headers: HeaderMap,
+) -> Response<Body> {
+    if let Err(error) = verify_preview_ticket(&params.ticket) {
+        error!("[Preview] Ticket verification failed: {}", error);
+        return preview_error_response(StatusCode::UNAUTHORIZED, "Unauthorized preview ticket");
+    }
+
+    let address = match resolve_cached_sandbox_address(&params.ticket).await {
+        Ok(address) => address,
+        Err(error) => {
+            error!("[Preview] Ticket resolution failed: {}", error);
+            return preview_error_response(
+                StatusCode::FORBIDDEN,
+                "Preview ticket resolution failed",
+            );
+        }
+    };
+
+    match proxy_preview_file(&address, &params.path, &method, &headers).await {
+        Ok(response) => response,
+        Err(first_error) => {
+            error!("[Preview] Cached upstream request failed: {}", first_error);
+            invalidate_cached_sandbox_address(&params.ticket).await;
+
+            let fresh_address = match resolve_cached_sandbox_address(&params.ticket).await {
+                Ok(address) => address,
+                Err(error) => {
+                    error!("[Preview] Upstream re-resolution failed: {}", error);
+                    return bad_gateway_response();
+                }
+            };
+            proxy_preview_file(&fresh_address, &params.path, &method, &headers)
+                .await
+                .unwrap_or_else(|error| {
+                    error!("[Preview] Upstream retry failed: {}", error);
+                    bad_gateway_response()
+                })
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jsonwebtoken::{EncodingKey, Header, encode};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn preview_ticket(permission: &str) -> String {
+        auth::init_test_proxy_secret();
+        let exp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 60;
+        encode(
+            &Header::default(),
+            &auth::PreviewClaims {
+                source_type: "app".to_string(),
+                source_id: "app-id".to_string(),
+                user_id: "user-id".to_string(),
+                chat_id: "chat-id".to_string(),
+                channel: "preview".to_string(),
+                permission: permission.to_string(),
+                exp,
+            },
+            &EncodingKey::from_secret(auth::get_proxy_secret().as_bytes()),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn accepts_read_only_preview_tickets() {
+        let ticket = preview_ticket("read");
+        let claims = verify_preview_ticket(&ticket).unwrap();
+        assert_eq!(claims.channel, "preview");
+        assert_eq!(claims.permission, "read");
+    }
+
+    #[test]
+    fn rejects_preview_write_permission_and_channel_mismatch() {
+        let ticket = preview_ticket("write");
+        assert!(verify_preview_ticket(&ticket).is_err());
+        assert!(verify_ticket_for_channel(&ticket, "fs").is_err());
     }
 }

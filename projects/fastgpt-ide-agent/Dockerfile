@@ -38,6 +38,6 @@ RUN chmod +x /usr/local/bin/fastgpt-ide-agent \
 
 USER fastgpt
 
-EXPOSE 1318
+EXPOSE 1318 1319
 
 CMD ["fastgpt-ide-agent"]

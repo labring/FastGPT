@@ -13,7 +13,7 @@ export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SANDBOX_GET_FILE_URL_TOOL_NAME,
-    description: '从虚拟机读取指定文件，上传至云存储，返回 2 小时有效期的访问链接',
+    description: '为虚拟机 workspace 中的指定文件返回 2 小时有效期的直连访问链接',
     parameters: {
       type: 'object',
       properties: {
@@ -21,9 +21,9 @@ export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
           type: 'array',
           items: {
             type: 'string',
-            description: '文件访问路径，例如: output.csv'
+            description: 'workspace 文件路径，例如: output.csv'
           },
-          description: '文件访问路径，例如: ["output.csv", "output.txt"]'
+          description: 'workspace 文件路径，例如: ["output.csv", "output.txt"]'
         }
       },
       required: ['paths']

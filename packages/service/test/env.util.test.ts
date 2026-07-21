@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getAgentSandboxMissingRequiredEnvKeys, validateS3Env } from '@fastgpt/service/env.util';
+import {
+  getAgentSandboxMissingRequiredEnvKeys,
+  validateAgentSandboxProxyEnv,
+  validateS3Env
+} from '@fastgpt/service/env.util';
 
 describe('validateS3Env', () => {
   const baseEnv = {
@@ -107,5 +111,25 @@ describe('env util', () => {
         AGENT_SANDBOX_PROVIDER: 'unsupported'
       } as NodeJS.ProcessEnv)
     ).toEqual([]);
+  });
+});
+
+describe('validateAgentSandboxProxyEnv', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('requires separate WebSocket and Preview proxy URLs', () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'ws://proxy.example.com');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', '');
+
+    expect(() => validateAgentSandboxProxyEnv()).toThrow(
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL are required'
+    );
+
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
+    expect(() => validateAgentSandboxProxyEnv()).not.toThrow();
   });
 });
