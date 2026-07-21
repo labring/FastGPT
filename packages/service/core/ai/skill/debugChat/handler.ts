@@ -336,7 +336,6 @@ export async function handleSkillDebugChat(
       }
     }
 
-    logger.error('Skill debug chat error', { error: err, skillId });
     if (streamResponseContext) {
       streamResponseContext.writeStreamError(err);
     } else {

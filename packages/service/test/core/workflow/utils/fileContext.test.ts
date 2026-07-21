@@ -169,7 +169,8 @@ describe('prepareWorkflowFileContext', () => {
     });
 
     expect(getPreviewUrl).not.toHaveBeenCalled();
-    expect(historyFile.file?.url).toBe('/uploading/report.pdf');
+    expect(historyFile.file?.key).toBeUndefined();
+    expect(historyFile.file?.url).toBe('');
   });
 
   it('registers absolute external URLs and skips invalid history URLs', async () => {
@@ -190,6 +191,7 @@ describe('prepareWorkflowFileContext', () => {
       url: 'https://cdn.example.com/report.pdf'
     });
     expect(fileContext.resolve(invalidHistoryFile.file!.url)).toBeUndefined();
+    expect(invalidHistoryFile.file?.url).toBe('');
     expect(fileContext.limits).toEqual({ maxFiles: 5, maxBytesPerFile: 512 });
   });
 

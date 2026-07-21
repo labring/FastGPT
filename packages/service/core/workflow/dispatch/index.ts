@@ -52,7 +52,6 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
@@ -143,19 +142,6 @@ export async function dispatchWorkFlow({
   }
   const chatSource = getWorkflowSource(runningAppInfo);
 
-  // Check url valid
-  const invalidInput = query.some((item) => {
-    if ('file' in item && item.file?.url) {
-      if (!validateFileUrlDomain(item.file.url)) {
-        return true;
-      }
-    }
-  });
-  if (invalidInput) {
-    logger.info('Workflow run blocked due to invalid file url');
-    return Promise.reject(new UserError('Invalid file url'));
-  }
-
   /* Init function */
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
@@ -172,6 +158,14 @@ export async function dispatchWorkFlow({
     maxFiles: data.chatConfig?.fileSelectConfig?.maxFiles ?? 20,
     maxFileSize: data.maxFileSize
   });
+  const getHistoryPreviewUrl = async (key: string) => {
+    try {
+      return await getPreviewUrl(key);
+    } catch (error) {
+      if (!(error instanceof UserError)) throw error;
+      logger.warn('Skip unavailable workflow history file', { key, message: error.message });
+    }
+  };
 
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
@@ -198,7 +192,7 @@ export async function dispatchWorkFlow({
       return usageId;
     })(),
     // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
-    addPreviewUrlToChatItems(histories, 'chatFlow', getPreviewUrl),
+    addPreviewUrlToChatItems(histories, 'chatFlow', getHistoryPreviewUrl),
     // Remove stopping sign
     delAgentRuntimeStopSign({
       ...chatSource,

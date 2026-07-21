@@ -222,10 +222,7 @@ export const getSseErrorResponse = (
 
   return {
     event: SseResponseEventEnum.error,
-    data: JSON.stringify({
-      message: processedError.message,
-      errorType: error instanceof UserError ? 'UserError' : undefined
-    }),
+    data: JSON.stringify({ message: processedError.message }),
     shouldClearCookie: processedError.shouldClearCookie
   };
 };

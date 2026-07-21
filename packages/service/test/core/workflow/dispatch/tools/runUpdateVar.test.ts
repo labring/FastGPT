@@ -119,7 +119,7 @@ describe('WorkflowVariableState file variable updates', () => {
       inputVariables
     });
 
-  it('should restore key file metadata from runtime url map', async () => {
+  it('should persist a previously internal runtime url as an external file after update', async () => {
     const state = await createFileState({
       files: [
         {
@@ -136,7 +136,7 @@ describe('WorkflowVariableState file variable updates', () => {
     expect(result).toEqual(['http://example.com/chat/app/a.png']);
     expect(state.toStoreRecord().files).toEqual([
       {
-        key: 'chat/app/a.png',
+        url: 'http://example.com/chat/app/a.png',
         name: 'a.png',
         type: ChatFileTypeEnum.image
       }
@@ -157,7 +157,7 @@ describe('WorkflowVariableState file variable updates', () => {
     ]);
   });
 
-  it('should keep existing runtime urls when appending object values', async () => {
+  it('should reject key objects when updating file variables', async () => {
     const state = await createFileState({
       files: [
         {
@@ -169,31 +169,16 @@ describe('WorkflowVariableState file variable updates', () => {
     });
     const runtimeUrls = state.get('files') as string[];
 
-    const result = await state.set('files', [
-      runtimeUrls[0],
-      {
-        key: 'chat/app/new.png',
-        name: 'new.png',
-        type: ChatFileTypeEnum.image
-      }
-    ]);
-
-    expect(result).toEqual([
-      'http://example.com/chat/app/old.pdf',
-      'http://example.com/chat/app/new.png'
-    ]);
-    expect(state.toStoreRecord().files).toEqual([
-      {
-        key: 'chat/app/old.pdf',
-        name: 'old.pdf',
-        type: ChatFileTypeEnum.file
-      },
-      {
-        key: 'chat/app/new.png',
-        name: 'new.png',
-        type: ChatFileTypeEnum.image
-      }
-    ]);
+    await expect(
+      state.set('files', [
+        runtimeUrls[0],
+        {
+          key: 'chat/app/new.png',
+          name: 'new.png',
+          type: ChatFileTypeEnum.image
+        }
+      ])
+    ).rejects.toThrow('only accept absolute HTTP(S) URLs');
   });
 
   it('should throw when file variable update value is not an array', async () => {
@@ -201,6 +186,14 @@ describe('WorkflowVariableState file variable updates', () => {
 
     await expect(state.set('files', 'https://external.example.com/report.pdf')).rejects.toThrow(
       'File variable value must be an array'
+    );
+  });
+
+  it('should reject relative urls when updating file variables', async () => {
+    const state = await createFileState();
+
+    await expect(state.set('files', ['/api/system/file/d/local'])).rejects.toThrow(
+      'only accept absolute HTTP(S) URLs'
     );
   });
 });

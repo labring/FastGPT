@@ -811,7 +811,7 @@ describe('WorkflowVariableState file store conversion', () => {
     ]);
   });
 
-  it('should convert runtime urls to file store values when file metadata is provided', async () => {
+  it('should persist all runtime urls as external files after an update', async () => {
     const state = await createFileVariableState({
       files: [
         {
@@ -827,7 +827,7 @@ describe('WorkflowVariableState file store conversion', () => {
 
     expect(state.toStoreRecord().files).toEqual([
       {
-        key: 'chat/app/a.png',
+        url: runtimeUrls[0],
         name: 'a.png',
         type: ChatFileTypeEnum.image
       },

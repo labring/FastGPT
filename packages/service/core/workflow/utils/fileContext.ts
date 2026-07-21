@@ -74,7 +74,12 @@ export type WorkflowFileEntryScope = {
   chatId: string;
 };
 
-export type WorkflowFileRegistrationSource = 'query' | 'history' | 'variable' | 'interactive';
+export type WorkflowFileRegistrationSource =
+  | 'query'
+  | 'history'
+  | 'variable'
+  | 'interactive'
+  | 'plugin';
 
 export type WorkflowFileRegistrar = {
   registerInputFile: (params: {
@@ -348,6 +353,12 @@ export const prepareWorkflowFileContext = async ({
     file,
     source
   }) => {
+    const clearUnavailableHistoryFile = () => {
+      if (source !== 'history') return;
+      if ('key' in file) delete file.key;
+      if ('url' in file) file.url = '';
+    };
+
     const originalUrl = 'url' in file ? file.url : undefined;
     const fileKey =
       'key' in file && typeof file.key === 'string' && file.key ? file.key : undefined;
@@ -355,6 +366,7 @@ export const prepareWorkflowFileContext = async ({
       if (fileKey) {
         if (source === 'history' && !isAuthorizedChatFileS3Key({ key: fileKey, ...scope })) {
           logger.warn('Skip unauthorized workflow history file', { key: fileKey });
+          clearUnavailableHistoryFile();
           return;
         }
         assertAuthorizedKey(fileKey);
@@ -378,6 +390,7 @@ export const prepareWorkflowFileContext = async ({
         }
         if (source === 'history') {
           logger.warn('Skip unavailable workflow history file', { url: fileUrl });
+          clearUnavailableHistoryFile();
           return;
         }
         throw new UserError(`Invalid workflow ${source} file URL`);

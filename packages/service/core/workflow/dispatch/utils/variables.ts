@@ -4,6 +4,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { ChatDispatchProps, WorkflowVariableStateLike } from '../../types/runtime';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
@@ -13,6 +14,7 @@ import {
   assertChatFileRuntimeValue,
   normalizeChatFileStoreValue
 } from '../../../chat/fileStoreValue';
+import { isAbsoluteHttpUrl } from '../../utils/fileContext';
 
 /**
  * 工作流全局变量状态管理器。
@@ -203,8 +205,18 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     }
 
     if (config?.type === VariableInputEnum.file) {
-      const val = value as ChatFileRuntimeValue;
-      const storeValue = this.runtimeFileValueToStoreValue(assertChatFileRuntimeValue(val));
+      if (!Array.isArray(value)) throw new UserError('File variable value must be an array');
+      const storeValue = value.map((url) => {
+        if (!isAbsoluteHttpUrl(url)) {
+          throw new UserError('File variable updates only accept absolute HTTP(S) URLs');
+        }
+
+        const file = normalizeChatFileStoreValue({ url });
+        if (!file || !('url' in file)) {
+          throw new UserError('Invalid external file URL');
+        }
+        return file;
+      });
       const runtimeValue = await fileStoreValuesToRuntimeUrls({
         files: storeValue,
         fileMetaMap: this.fileMetaMap
@@ -343,7 +355,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     });
   }
 
-  /** 将 file runtime 值转回 store 值，优先复用已知 URL 对应的原始 metadata。 */
+  /** 初始化文件变量时恢复原始 store metadata；节点更新不调用该兼容转换。 */
   private runtimeFileValueToStoreValue(value: ChatFileRuntimeValue): ChatFileStoreValue[] {
     return value
       .map((item) => {

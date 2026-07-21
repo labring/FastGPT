@@ -31,10 +31,13 @@ const hasChildrenResponse = (
   'childrenResponse' in interactive.params &&
   !!interactive.params.childrenResponse;
 
+/**
+ * 刷新历史消息中的服务端文件 URL；自定义 signer 返回 undefined 时清理对应运行态引用。
+ */
 export const addPreviewUrlToChatItems = async (
   histories: ChatItemMiniType[],
   type: 'chatFlow' | 'workflowTool',
-  getPreviewUrl = createChatFilePreviewUrlGetter()
+  getPreviewUrl: (key: string) => Promise<string | undefined> = createChatFilePreviewUrlGetter()
 ) => {
   const sandboxUrlReplacements = new Map<string, string>();
 
@@ -51,7 +54,7 @@ export const addPreviewUrlToChatItems = async (
               const replacements = await Promise.all(
                 tool.fileRefs.map(async (fileRef) => ({
                   oldUrl: fileRef.url,
-                  newUrl: await getPreviewUrl(fileRef.key)
+                  newUrl: (await getPreviewUrl(fileRef.key)) ?? ''
                 }))
               );
 
@@ -94,7 +97,14 @@ export const addPreviewUrlToChatItems = async (
 
         if (!file.key) return;
 
-        file.url = await getPreviewUrl(file.key);
+        const previewUrl = await getPreviewUrl(file.key);
+        if (previewUrl) {
+          file.url = previewUrl;
+          return;
+        }
+
+        delete file.key;
+        file.url = '';
       })
     );
   }

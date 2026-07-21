@@ -252,6 +252,47 @@ describe('addPreviewUrlToChatItems', () => {
     });
   });
 
+  it('清理无法重新签发的历史 interactive fileSelect 文件', async () => {
+    const histories = [
+      {
+        obj: 'AI',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              params: {
+                inputForm: [
+                  {
+                    key: 'upload',
+                    type: FlowNodeInputTypeEnum.fileSelect,
+                    value: [
+                      {
+                        key: 'chat/files/unavailable.png',
+                        name: 'unavailable.png',
+                        type: ChatFileTypeEnum.image,
+                        url: 'https://old.example.com/unavailable.png'
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    await addPreviewUrlToChatItems(histories as any, 'chatFlow', async () => undefined);
+
+    expect(histories[0].value[0].interactive.params.inputForm[0].value).toEqual([
+      {
+        name: 'unavailable.png',
+        type: ChatFileTypeEnum.image,
+        url: ''
+      }
+    ]);
+  });
+
   it('为 workflowTool 历史输入中的 fileSelect 值补预览 url', async () => {
     mockCreateGetChatFileURL.mockResolvedValueOnce({
       url: 'https://preview.example.com/doc.pdf'

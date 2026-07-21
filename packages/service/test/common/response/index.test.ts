@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -95,10 +96,7 @@ describe('getSseErrorResponse logging', () => {
 
     const response = getSseErrorResponse(error);
 
-    expect(JSON.parse(response.data)).toEqual({
-      message: 'Invalid stream input',
-      errorType: 'UserError'
-    });
+    expect(JSON.parse(response.data)).toEqual({ message: 'Invalid stream input' });
     expect(logger.info).toHaveBeenCalledWith('Request error', {
       url: undefined,
       message: 'Invalid stream input'
@@ -118,5 +116,15 @@ describe('getSseErrorResponse logging', () => {
       error
     });
     expect(logger.info).not.toHaveBeenCalled();
+  });
+
+  it('keeps specified error responses unchanged for UserError', () => {
+    const error = new UserError(ERROR_ENUM.unAuthorization);
+
+    const response = getSseErrorResponse(error);
+
+    expect(JSON.parse(response.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
+    expect(response.shouldClearCookie).toBe(true);
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });
