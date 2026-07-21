@@ -26,14 +26,19 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/core/ai/sandbox/application/preview')
+  >()),
   createSandboxPreviewFileUrl: mocks.createSandboxPreviewFileUrl,
   resolveSandboxPreviewPath: mocks.resolveSandboxPreviewPath
 }));
 
 import handler from '@/pages/api/core/ai/sandbox/getHtmlPreviewLink';
+import { SandboxPreviewSessionLimitError } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
 const mockJsonRes = vi.mocked(jsonRes);
+const sandboxId = 'app-0123456789abcdef';
 
 const createReq = (filePath = 'dist/index.html') =>
   ({
@@ -58,7 +63,13 @@ describe('sandbox getHtmlPreviewLink API', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011'
     });
-    mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({ sandboxId: 'sandbox-1' });
+    mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: '507f1f77bcf86cd799439011',
+      userId: 'user-1',
+      chatId: 'chat-1'
+    });
     mocks.resolveRuntimePath.mockImplementation((filePath: string) =>
       filePath.startsWith('/') ? filePath : `/workspace/sessions/chat-1/${filePath}`
     );
@@ -75,8 +86,8 @@ describe('sandbox getHtmlPreviewLink API', () => {
       providerPath: '/workspace/sessions/chat-1/dist/index.html',
       relativePath: 'sessions/chat-1/dist/index.html'
     });
-    mocks.createSandboxPreviewFileUrl.mockReturnValue(
-      'https://agent-proxy.example.com/preview/ticket/dist/index.html'
+    mocks.createSandboxPreviewFileUrl.mockResolvedValue(
+      `https://agent-proxy.example.com/preview/${sandboxId}/a12345678901234567890123/dist/index.html`
     );
   });
 
@@ -103,6 +114,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
     expect(mocks.getFileInfo).toHaveBeenCalledWith(['/workspace/sessions/chat-1/dist/index.html']);
     expect(mocks.createSandboxPreviewFileUrl).toHaveBeenCalledWith({
       context: {
+        sandboxId,
         sourceType: ChatSourceTypeEnum.app,
         sourceId: '507f1f77bcf86cd799439011',
         userId: 'user-1',
@@ -111,7 +123,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       filePath: '/workspace/sessions/chat-1/dist/index.html'
     });
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      data: 'https://agent-proxy.example.com/preview/ticket/dist/index.html'
+      data: `https://agent-proxy.example.com/preview/${sandboxId}/a12345678901234567890123/dist/index.html`
     });
   });
 
@@ -146,5 +158,17 @@ describe('sandbox getHtmlPreviewLink API', () => {
       message: 'File is not an HTML file'
     });
     expect(mocks.createSandboxPreviewFileUrl).not.toHaveBeenCalled();
+  });
+
+  it('returns 429 when the sandbox already has 500 active preview sessions', async () => {
+    mocks.createSandboxPreviewFileUrl.mockRejectedValueOnce(new SandboxPreviewSessionLimitError());
+    const res = createRes();
+
+    await handler(createReq(), res);
+
+    expect(mockJsonRes).toHaveBeenCalledWith(res, {
+      code: 429,
+      message: 'Too many active preview links for this sandbox'
+    });
   });
 });

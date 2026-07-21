@@ -3,7 +3,7 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const previewMock = vi.hoisted(() => ({
   resolveSandboxPreviewPath: vi.fn(),
-  createSandboxPreviewTicket: vi.fn(),
+  createSandboxPreviewSession: vi.fn(),
   buildSandboxPreviewFileUrl: vi.fn()
 }));
 
@@ -15,8 +15,10 @@ const getFileInfo = vi.fn();
 const resolveRuntimePath = vi.fn((filePath: string) =>
   filePath.startsWith('/') ? filePath : `/workspace/sessions/chat-1/${filePath}`
 );
+const sandboxId = 'app-0123456789abcdef';
 const createSandboxInstance = () =>
   ({
+    getSandboxId: () => sandboxId,
     getContext: () => ({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
@@ -39,7 +41,7 @@ describe('sandboxGetFileUrlTool', () => {
         relativePath
       };
     });
-    previewMock.createSandboxPreviewTicket.mockReturnValue('ticket');
+    previewMock.createSandboxPreviewSession.mockResolvedValue('a12345678901234567890123');
     previewMock.buildSandboxPreviewFileUrl.mockImplementation(
       ({ filePath }: { filePath: string }) => `preview:${filePath}`
     );
@@ -75,16 +77,38 @@ describe('sandboxGetFileUrlTool', () => {
       '/workspace/file.txt',
       '/workspace/sessions/chat-1/report/data.csv'
     ]);
-    expect(previewMock.createSandboxPreviewTicket).toHaveBeenCalledWith({
+    expect(previewMock.createSandboxPreviewSession).toHaveBeenCalledWith({
+      sandboxId,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
       userId: 'user',
       chatId: 'chat'
     });
-    expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenCalledTimes(2);
+    expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(1, {
+      sandboxId,
+      sessionId: 'a12345678901234567890123',
+      filePath: '/workspace/file.txt'
+    });
+    expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(2, {
+      sandboxId,
+      sessionId: 'a12345678901234567890123',
+      filePath: '/workspace/sessions/chat-1/report/data.csv'
+    });
   });
 
-  it('rejects missing files before issuing a preview ticket', async () => {
+  it('returns an empty result without creating a preview session', async () => {
+    const result = await sandboxGetFileUrlTool.execute({
+      sandboxInstance: createSandboxInstance(),
+      params: { paths: [] }
+    });
+
+    expect(result.response).toBe('[]');
+    expect(resolveRuntimePath).not.toHaveBeenCalled();
+    expect(getFileInfo).not.toHaveBeenCalled();
+    expect(previewMock.createSandboxPreviewSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing files before issuing a preview session', async () => {
     getFileInfo.mockResolvedValue(new Map());
 
     await expect(
@@ -93,6 +117,6 @@ describe('sandboxGetFileUrlTool', () => {
         params: { paths: ['missing.txt'] }
       })
     ).rejects.toThrow('Sandbox preview file not found');
-    expect(previewMock.createSandboxPreviewTicket).not.toHaveBeenCalled();
+    expect(previewMock.createSandboxPreviewSession).not.toHaveBeenCalled();
   });
 });

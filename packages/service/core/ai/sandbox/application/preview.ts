@@ -1,62 +1,105 @@
 /**
- * 沙盒业务层：签发并解析 workspace 只读预览链接。
+ * 沙盒业务层：创建并解析 workspace 只读预览 session。
  *
- * Preview token 只携带业务归属，不包含 provider endpoint 或 IDE Agent 内部口令。文件路径
- * 必须落在当前 provider 的 workDirectory 内，并以 URL path segment 形式传给 agent-proxy。
+ * Preview session 只保存 sandbox 运行态查询参数，不包含 provider endpoint 或 IDE Agent
+ * 内部口令。文件路径必须落在当前 provider 的 workDirectory 内，并以 URL path segment
+ * 形式传给 agent-proxy。
  */
-import jwt from 'jsonwebtoken';
 import z from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { serviceEnv } from '../../../../env';
+import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../../../common/redis';
 import { resolveSandboxWorkspacePath } from './file';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { trimSandboxPathRight } from '../utils';
 
-export const SANDBOX_PREVIEW_CHANNEL = 'preview' as const;
-export const SANDBOX_PREVIEW_PERMISSION = 'read' as const;
-export const SANDBOX_PREVIEW_TOKEN_EXPIRES_SECONDS = 2 * 60 * 60;
+export const SANDBOX_PREVIEW_SESSION_TTL_SECONDS = 2 * 60 * 60;
+export const SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX = 500;
+export const SANDBOX_PREVIEW_SESSION_ID_LENGTH = 24;
+const SANDBOX_PREVIEW_SESSION_KEY_PREFIX = 'sandbox:preview';
 
-export const SandboxPreviewTicketContextSchema = z.object({
+const SandboxPreviewSandboxIdSchema = z.string().regex(/^(?:app|skilledit)-[a-f0-9]{16}$/);
+const SandboxPreviewSessionIdSchema = z
+  .string()
+  .length(SANDBOX_PREVIEW_SESSION_ID_LENGTH)
+  .regex(/^[a-z][a-zA-Z0-9]+$/);
+
+export const SandboxPreviewSessionSchema = z.object({
+  sandboxId: SandboxPreviewSandboxIdSchema,
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string().min(1),
   userId: z.string(),
   chatId: z.string().min(1)
 });
-export type SandboxPreviewTicketContext = z.infer<typeof SandboxPreviewTicketContextSchema>;
+export type SandboxPreviewSession = z.infer<typeof SandboxPreviewSessionSchema>;
 
-export const SandboxPreviewTicketClaimsSchema = SandboxPreviewTicketContextSchema.extend({
-  channel: z.literal(SANDBOX_PREVIEW_CHANNEL),
-  permission: z.literal(SANDBOX_PREVIEW_PERMISSION),
-  iat: z.number().int().nonnegative(),
-  exp: z.number().int().positive()
-});
-export type SandboxPreviewTicketClaims = z.infer<typeof SandboxPreviewTicketClaimsSchema>;
+const getSandboxPreviewSessionPrefix = (sandboxId: string) =>
+  `${SANDBOX_PREVIEW_SESSION_KEY_PREFIX}:${sandboxId}`;
+const getPreviewSessionKey = ({ sandboxId, sessionId }: { sandboxId: string; sessionId: string }) =>
+  `${getSandboxPreviewSessionPrefix(sandboxId)}:${sessionId}`;
 
-const getPreviewSecret = () => {
-  const secret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
-  if (!secret) {
-    throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
+export class SandboxPreviewSessionLimitError extends Error {
+  constructor() {
+    super(
+      `Active sandbox preview session limit reached (${SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX})`
+    );
+    this.name = 'SandboxPreviewSessionLimitError';
   }
-  return secret;
-};
-
-/** 签发一个可读取当前 sandbox workspace 的短期 bearer token。 */
-export function createSandboxPreviewTicket(context: SandboxPreviewTicketContext): string {
-  const parsedContext = SandboxPreviewTicketContextSchema.parse(context);
-  return jwt.sign(
-    {
-      ...parsedContext,
-      channel: SANDBOX_PREVIEW_CHANNEL,
-      permission: SANDBOX_PREVIEW_PERMISSION
-    },
-    getPreviewSecret(),
-    { expiresIn: SANDBOX_PREVIEW_TOKEN_EXPIRES_SECONDS }
-  );
 }
 
-/** 校验 preview token，并返回已收窄的业务 claims。 */
-export function verifySandboxPreviewTicket(token: string): SandboxPreviewTicketClaims {
-  return SandboxPreviewTicketClaimsSchema.parse(jwt.verify(token, getPreviewSecret()));
+/**
+ * 创建短期 Preview session。
+ *
+ * 创建前按 sandboxId 前缀统计仍存在的 Redis key；达到上限时拒绝创建，不删除旧 session。
+ * 每个 session key 独立设置 TTL，过期后由 Redis 自动清理。
+ */
+export async function createSandboxPreviewSession(context: SandboxPreviewSession): Promise<string> {
+  const parsedContext = SandboxPreviewSessionSchema.parse(context);
+  const redis = getGlobalRedisConnection();
+  const sessionKeys = await getAllKeysByPrefix(
+    getSandboxPreviewSessionPrefix(parsedContext.sandboxId)
+  );
+  if (sessionKeys.length >= SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX) {
+    throw new SandboxPreviewSessionLimitError();
+  }
+
+  const sessionId = getNanoid(SANDBOX_PREVIEW_SESSION_ID_LENGTH);
+  await redis.set(
+    getPreviewSessionKey({ sandboxId: parsedContext.sandboxId, sessionId }),
+    JSON.stringify(parsedContext),
+    'EX',
+    SANDBOX_PREVIEW_SESSION_TTL_SECONDS
+  );
+
+  return sessionId;
+}
+
+/**
+ * 解析 Preview session。
+ *
+ * session 有效期完全由 Redis key TTL 管理；TTL 到期后 GET 返回空并按无效 session 拒绝。
+ */
+export async function resolveSandboxPreviewSession(
+  credential: string
+): Promise<SandboxPreviewSession> {
+  const [rawSandboxId, rawSessionId, ...extraSegments] = credential.split(':');
+  if (extraSegments.length > 0) {
+    throw new Error('Invalid sandbox preview session');
+  }
+  const sandboxId = SandboxPreviewSandboxIdSchema.parse(rawSandboxId);
+  const sessionId = SandboxPreviewSessionIdSchema.parse(rawSessionId);
+  const redis = getGlobalRedisConnection();
+  const serializedContext = await redis.get(getPreviewSessionKey({ sandboxId, sessionId }));
+
+  if (!serializedContext) {
+    throw new Error('Invalid or expired sandbox preview session');
+  }
+  const context = SandboxPreviewSessionSchema.parse(JSON.parse(serializedContext));
+  if (context.sandboxId !== sandboxId) {
+    throw new Error('Invalid sandbox preview session');
+  }
+  return context;
 }
 
 /**
@@ -101,29 +144,32 @@ const getSandboxPreviewProxyBaseUrl = () => {
   return url.toString().replace(/\/+$/, '');
 };
 
-/** 使用已签发的 token 构建一个 workspace 文件 URL。 */
+/** 使用已创建的 Preview session 构建一个 workspace 文件 URL。 */
 export function buildSandboxPreviewFileUrl({
-  ticket,
+  sandboxId,
+  sessionId,
   filePath
 }: {
-  ticket: string;
+  sandboxId: string;
+  sessionId: string;
   filePath: string;
 }): string {
   const { relativePath } = resolveSandboxPreviewPath(filePath);
   const encodedPath = relativePath.split('/').map(encodeURIComponent).join('/');
-  return `${getSandboxPreviewProxyBaseUrl()}/preview/${encodeURIComponent(ticket)}/${encodedPath}`;
+  return `${getSandboxPreviewProxyBaseUrl()}/preview/${encodeURIComponent(sandboxId)}/${encodeURIComponent(sessionId)}/${encodedPath}`;
 }
 
-/** 为一个 workspace 文件签发 token 并返回完整 direct preview URL。 */
-export function createSandboxPreviewFileUrl({
+/** 为一个 workspace 文件创建 session 并返回完整 direct preview URL。 */
+export async function createSandboxPreviewFileUrl({
   context,
   filePath
 }: {
-  context: SandboxPreviewTicketContext;
+  context: SandboxPreviewSession;
   filePath: string;
-}): string {
+}): Promise<string> {
   return buildSandboxPreviewFileUrl({
-    ticket: createSandboxPreviewTicket(context),
+    sandboxId: context.sandboxId,
+    sessionId: await createSandboxPreviewSession(context),
     filePath
   });
 }
