@@ -62,4 +62,5 @@ export const SANDBOX_SYSTEM_PROMPT = `## 沙盒能力
 - 使用 ${SANDBOX_FIND_TOOL_NAME} 按 glob 搜索文件路径，优先于通过 shell 调用 find
 - 使用 ${SANDBOX_LS_TOOL_NAME} 列出目录内容，优先于通过 shell 调用 ls
 - 默认将生成文件保存在当前 sandbox 工作目录；若本轮 system-reminder 指定了更具体的产物目录或禁止目录，必须优先遵守
+- HTML 等多文件预览产物必须使用相对资源路径（例如 ./assets/app.js），不要使用 /assets/app.js 这类根路径
 - 若需要将生成的文件链接，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 获取临时访问链接`;
