@@ -6,7 +6,6 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
   AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
-  AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
@@ -58,7 +57,6 @@ describe('sandbox provider config', () => {
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
@@ -104,18 +102,6 @@ describe('sandbox provider config', () => {
     });
   });
 
-  it('parses e2b config from env', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'e2b');
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', 'e2b-token');
-
-    const { getSandboxProviderConfig } = await loadSandboxConfigModule();
-
-    expect(getSandboxProviderConfig()).toEqual({
-      provider: 'e2b',
-      apiKey: 'e2b-token'
-    });
-  });
-
   it('does not default sandbox provider when env is empty', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
 
@@ -128,30 +114,6 @@ describe('sandbox provider config', () => {
     expect(getSandboxProviderConfig).toThrow(
       'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
     );
-  });
-
-  it('keeps e2b runtime create config when runtime adapter config is requested', async () => {
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', 'e2b-token');
-
-    const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
-
-    expect(
-      getSandboxAdapterConfig({
-        provider: 'e2b',
-        runtime: true,
-        createConfig: {
-          env: { A: 'B' }
-        }
-      })
-    ).toEqual({
-      providerConfig: {
-        provider: 'e2b',
-        apiKey: 'e2b-token'
-      },
-      createConfig: {
-        env: { A: 'B' }
-      }
-    });
   });
 
   it('builds sealosdevbox runtime create config from runtime profile', async () => {
@@ -215,7 +177,6 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
         AGENT_SANDBOX_SEALOS_BASEURL: undefined,
         AGENT_SANDBOX_SEALOS_TOKEN: undefined,
-        AGENT_SANDBOX_E2B_API_KEY: undefined,
         AGENT_SANDBOX_DISK_MB: 20
       }
     }));
@@ -229,9 +190,6 @@ describe('sandbox provider config', () => {
       );
       expect(() => getSandboxAdapterConfig({ provider: 'opensandbox' })).toThrow(
         'Sandbox provider base URL is required'
-      );
-      expect(() => getSandboxAdapterConfig({ provider: 'e2b' })).toThrow(
-        'Sandbox provider apiKey is required for e2b'
       );
     } finally {
       vi.doUnmock('@fastgpt/service/env');
@@ -345,17 +303,6 @@ describe('sandbox provider config', () => {
         token: ''
       })
     ).toThrow('Sandbox provider token is required for sealosdevbox');
-  });
-
-  it('validates e2b api key requirement', async () => {
-    const { validateSandboxConfig } = await loadSandboxConfigModule();
-
-    expect(() =>
-      validateSandboxConfig({
-        provider: 'e2b',
-        apiKey: ''
-      })
-    ).toThrow('Sandbox provider apiKey is required for e2b');
   });
 
   it('validates base url, api key and opensandbox runtime requirements', async () => {

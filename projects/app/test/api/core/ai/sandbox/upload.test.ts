@@ -77,7 +77,10 @@ describe('sandbox upload API', () => {
     });
     mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({ sandboxId: 'sandbox-1' });
     mocks.writeFiles.mockResolvedValue([{ bytesWritten: 3, error: null }]);
-    mocks.getSandboxClient.mockResolvedValue({ provider: { writeFiles: mocks.writeFiles } });
+    mocks.getSandboxClient.mockResolvedValue({
+      provider: { writeFiles: mocks.writeFiles },
+      resolveRuntimePath: (path: string) => `/workspace/sessions/chat-1/${path}`
+    });
   });
 
   it('uploads multipart file through sandbox provider after write auth', async () => {
@@ -106,13 +109,10 @@ describe('sandbox upload API', () => {
       userId: 'user-1',
       chatId: 'chat-1'
     });
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
-      { sandboxId: 'sandbox-1' },
-      { failedArchivePolicy: 'clearAndContinue' }
-    );
+    expect(mocks.getSandboxClient).toHaveBeenCalledWith({ sandboxId: 'sandbox-1' });
     expect(mocks.writeFiles).toHaveBeenCalledTimes(1);
     const [[writeEntry]] = mocks.writeFiles.mock.calls[0];
-    expect(writeEntry.path).toBe('/workspace/uploads/a.txt');
+    expect(writeEntry.path).toBe('/workspace/sessions/chat-1/uploads/a.txt');
     expect(writeEntry.data).toBeInstanceOf(ReadableStream);
     expect(mocks.clearDiskTempFiles).toHaveBeenCalledWith(['/tmp/upload-a.txt']);
   });

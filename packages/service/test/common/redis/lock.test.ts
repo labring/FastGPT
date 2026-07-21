@@ -55,9 +55,15 @@ describe('withRedisLease', () => {
     expect(work).not.toHaveBeenCalled();
   });
 
-  it('throws when renewal detects the lease was replaced', async () => {
+  it('invalidates the task context when renewal detects the lease was replaced', async () => {
     vi.useFakeTimers();
     const redis = getRedis();
+    let context:
+      | {
+          signal: AbortSignal;
+          assertValid: () => void;
+        }
+      | undefined;
     let resolveWork!: () => void;
     const workPromise = new Promise<void>((resolve) => {
       resolveWork = resolve;
@@ -68,15 +74,50 @@ describe('withRedisLease', () => {
       label: 'lease-test',
       ttlMs: 60,
       renewIntervalMs: 10,
-      fn: () => workPromise
+      fn: async (leaseContext) => {
+        context = leaseContext;
+        await workPromise;
+      }
     });
 
     await Promise.resolve();
     await redis.set('lock:lease-test', 'other-token', 'PX', 60_000);
     await vi.advanceTimersByTimeAsync(15);
-    resolveWork();
 
+    expect(context?.signal.aborted).toBe(true);
+    expect(() => context?.assertValid()).toThrow(RedisLeaseLostError);
+
+    resolveWork();
     await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
     expect(await redis.get('lock:lease-test')).toBe('other-token');
+  });
+
+  it('invalidates a context when its confirmed expiry is reached', async () => {
+    vi.useFakeTimers();
+    const redis = getRedis();
+    redis.eval.mockRejectedValueOnce(new Error('redis unavailable'));
+    let assertLeaseValid!: () => void;
+    let resolveWork!: () => void;
+    const workPromise = new Promise<void>((resolve) => {
+      resolveWork = resolve;
+    });
+
+    const resultPromise = withRedisLease({
+      key: 'lease-expiry-test',
+      label: 'lease-expiry-test',
+      ttlMs: 60,
+      renewIntervalMs: 50,
+      fn: async ({ assertValid }) => {
+        assertLeaseValid = assertValid;
+        await workPromise;
+      }
+    });
+
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(60);
+    expect(assertLeaseValid).toThrow(RedisLeaseLostError);
+
+    resolveWork();
+    await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
   });
 });

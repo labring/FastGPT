@@ -24,6 +24,7 @@ const createSandboxInstance = () =>
       userId: 'user',
       chatId: 'chat'
     }),
+    resolveRuntimePath: vi.fn((path: string) => path),
     provider: {
       readFileStream: vi.fn(() => Readable.from(['file-content']))
     }

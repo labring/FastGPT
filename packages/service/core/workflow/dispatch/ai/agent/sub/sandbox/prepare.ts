@@ -198,7 +198,7 @@ const injectSelectedSkillFiles =
       teamId,
       tmbId,
       skillIds,
-      workDirectory: context.workDirectory
+      workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);
 

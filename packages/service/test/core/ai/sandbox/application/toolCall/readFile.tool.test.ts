@@ -5,6 +5,7 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 const createSandboxInstance = (content: unknown) =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
+    resolveRuntimePath: vi.fn((path: string) => `/workspace/sessions/chat_1/${path}`),
     provider: {
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
@@ -18,6 +19,7 @@ const createSandboxInstance = (content: unknown) =>
 const createFailedSandboxInstance = (file: unknown) =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
+    resolveRuntimePath: vi.fn((path: string) => `/workspace/sessions/chat_1/${path}`),
     provider: {
       readFiles: vi.fn(async () => [file])
     }
@@ -40,7 +42,9 @@ describe('sandboxReadFileTool', () => {
 
     expect(result.response).toBe('line 1\nline 2\nline 3');
     expect(sandboxInstance.ensureAvailable).toHaveBeenCalledTimes(1);
-    expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith(['notes.txt']);
+    expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith([
+      '/workspace/sessions/chat_1/notes.txt'
+    ]);
   });
 
   it('reads a line range and returns a continuation hint', async () => {

@@ -41,6 +41,8 @@ import {
   getSandboxParentPath,
   joinSandboxPath,
   applySandboxMoveOperationsToExpandedDirs,
+  getSandboxIdeSessionRoot,
+  scopeSandboxIdeRpcParams,
   type SandboxMoveOperation
 } from './utils';
 
@@ -412,6 +414,7 @@ export const useSandboxFileStore = ({
   const resolveConnectRef = useRef<(() => void) | null>(null);
   const rejectConnectRef = useRef<((error: Error) => void) | null>(null);
   const stoppedConnectErrorRef = useRef<Error | null>(null);
+  const ideSessionRootRef = useRef('.');
 
   const resetConnectPromise = useCallback(() => {
     const promise = new Promise<void>((resolve, reject) => {
@@ -486,7 +489,7 @@ export const useSandboxFileStore = ({
             jsonrpc: '2.0',
             id,
             method,
-            params
+            params: scopeSandboxIdeRpcParams(method, params, ideSessionRootRef.current)
           })
         );
       } catch (error) {
@@ -768,6 +771,11 @@ export const useSandboxFileStore = ({
           throw new Error('Ticket not found in response: ' + JSON.stringify(res));
         }
         if (isDestroyed) return;
+
+        ideSessionRootRef.current = getSandboxIdeSessionRoot(
+          res.workspaceRoot,
+          res.sessionWorkDirectory
+        );
 
         const wsUrl = getSandboxProxyWsUrl({ channel: 'fs', ticket });
 
