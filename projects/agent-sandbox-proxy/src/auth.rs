@@ -1,8 +1,12 @@
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::env;
 use std::sync::{LazyLock, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 use tracing::{debug, error};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -43,6 +47,18 @@ pub struct Claims {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PreviewClaims {
+    pub source_type: String,
+    pub source_id: String,
+    pub user_id: String,
+    pub chat_id: String,
+    pub channel: String,
+    pub permission: String,
+    pub exp: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppResponse<T> {
     pub code: u16,
     pub status_text: Option<String>,
@@ -59,9 +75,19 @@ static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 });
 
 static PROXY_SECRET: OnceLock<String> = OnceLock::new();
+static SANDBOX_ADDRESS_CACHE: LazyLock<RwLock<HashMap<[u8; 32], CachedSandboxAddress>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 const DEFAULT_APP_REQUEST_TIMEOUT_SECS: u64 = 10;
+const DEFAULT_ADDRESS_CACHE_TTL_SECS: u64 = 30;
+const MAX_ADDRESS_CACHE_ENTRIES: usize = 2_000;
 const MIN_PROXY_SECRET_BYTES: usize = 32;
+
+#[derive(Clone)]
+struct CachedSandboxAddress {
+    address: SandboxAddress,
+    expires_at: Instant,
+}
 
 fn get_app_request_timeout() -> Duration {
     let seconds = env::var("FASTGPT_APP_REQUEST_TIMEOUT_SECS")
@@ -92,8 +118,12 @@ pub fn get_proxy_secret() -> &'static str {
     })
 }
 
-/// 在代理层边缘进行本地 JWT 验签防刷，直接在第一道闸口过滤非法请求
-pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
+#[cfg(test)]
+pub fn init_test_proxy_secret() {
+    let _ = PROXY_SECRET.set("test-secret-key-1234567890-very-long-32".to_string());
+}
+
+fn decode_jwt_ticket<T: DeserializeOwned>(ticket: &str) -> Result<T, String> {
     let secret = get_proxy_secret();
     let decoding_key = DecodingKey::from_secret(secret.as_bytes());
 
@@ -101,10 +131,20 @@ pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
     let mut validation = Validation::new(Algorithm::HS256);
     validation.leeway = 5;
 
-    let token_data = decode::<Claims>(ticket, &decoding_key, &validation)
+    let token_data = decode::<T>(ticket, &decoding_key, &validation)
         .map_err(|err| format!("JWT signature validation failed: {}", err))?;
 
     Ok(token_data.claims)
+}
+
+/// 在代理层边缘校验既有 WebSocket ticket，保留上游 teamId claims 契约。
+pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
+    decode_jwt_ticket(ticket)
+}
+
+/// 校验只读 Preview ticket；该新通道不引入 WebSocket keepalive 所需的 teamId。
+pub fn verify_preview_jwt_ticket(ticket: &str) -> Result<PreviewClaims, String> {
+    decode_jwt_ticket(ticket)
 }
 
 /// 反向请求 NextJS 主站进行 Ticket 验证，并置换出真实的沙盒物理端点寻址信息 (高安全有状态地址置换方案)
@@ -121,12 +161,13 @@ pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, Str
         request_url
     );
 
-    // 2. 发起内网 HTTP GET 请求 (复用全局共享的 TCP 连接池，自动处理 Keep-Alive 与 URL 编码)
+    // 2. ticket 放在内网 header，避免主站 access log 记录 bearer token。
     let client = get_http_client();
-    let mut request = client.get(&request_url).query(&[("ticket", ticket)]);
-
-    // 3. 安全二次加固：必须携带正确的 AGENT_SANDBOX_PROXY_SECRET，在 Header 中注入安全防刷握手 Token
-    request = request.header("X-Proxy-Token", get_proxy_secret());
+    let request = client
+        .get(&request_url)
+        .header("X-Sandbox-Ticket", ticket)
+        // 3. 共享密钥只用于 proxy 到主站的反向通道认证。
+        .header("X-Proxy-Token", get_proxy_secret());
 
     let response = request
         .send()
@@ -166,6 +207,64 @@ pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, Str
 
     debug!("[Auth] Ticket resolved successfully.");
     Ok(address)
+}
+
+fn get_address_cache_ttl() -> Duration {
+    let seconds = env::var("AGENT_SANDBOX_PROXY_ADDRESS_CACHE_TTL_SECS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(DEFAULT_ADDRESS_CACHE_TTL_SECS);
+    Duration::from_secs(seconds)
+}
+
+fn get_ticket_cache_key(ticket: &str) -> [u8; 32] {
+    Sha256::digest(ticket.as_bytes()).into()
+}
+
+/**
+ * Resolves a preview ticket with a short address cache.
+ *
+ * JWT validity is checked by the caller on every request. This cache only avoids repeating the
+ * FastGPT back-channel lookup and sandbox password read for each resource in one HTML page.
+ */
+pub async fn resolve_cached_sandbox_address(ticket: &str) -> Result<SandboxAddress, String> {
+    let now = Instant::now();
+    let cache_key = get_ticket_cache_key(ticket);
+    if let Some(cached) = SANDBOX_ADDRESS_CACHE.read().await.get(&cache_key)
+        && cached.expires_at > now
+    {
+        return Ok(cached.address.clone());
+    }
+
+    let address = resolve_sandbox_address(ticket).await?;
+    let resolved_at = Instant::now();
+    let mut cache = SANDBOX_ADDRESS_CACHE.write().await;
+    cache.retain(|_, cached| cached.expires_at > resolved_at);
+    if cache.len() >= MAX_ADDRESS_CACHE_ENTRIES
+        && let Some(oldest_key) = cache
+            .iter()
+            .min_by_key(|(_, cached)| cached.expires_at)
+            .map(|(key, _)| *key)
+    {
+        cache.remove(&oldest_key);
+    }
+    cache.insert(
+        cache_key,
+        CachedSandboxAddress {
+            address: address.clone(),
+            expires_at: resolved_at + get_address_cache_ttl(),
+        },
+    );
+
+    Ok(address)
+}
+
+pub async fn invalidate_cached_sandbox_address(ticket: &str) {
+    SANDBOX_ADDRESS_CACHE
+        .write()
+        .await
+        .remove(&get_ticket_cache_key(ticket));
 }
 
 #[cfg(test)]
@@ -284,5 +383,17 @@ mod tests {
         assert!(res.is_err());
         let err = res.unwrap_err();
         assert!(err.contains("ExpiredSignature") || err.contains("validation failed"));
+    }
+
+    #[test]
+    fn test_ticket_cache_key_is_stable_without_retaining_token() {
+        assert_eq!(
+            get_ticket_cache_key("ticket-a"),
+            get_ticket_cache_key("ticket-a")
+        );
+        assert_ne!(
+            get_ticket_cache_key("ticket-a"),
+            get_ticket_cache_key("ticket-b")
+        );
     }
 }

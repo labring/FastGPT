@@ -70,7 +70,8 @@ export const SandboxPath: OpenAPIPath = {
   '/core/ai/sandbox/getHtmlPreviewLink': {
     post: {
       summary: '获取 HTML 文件预览链接',
-      description: '返回用于在浏览器中预览 HTML 文件的链接（S3 托管）',
+      description:
+        '校验文件后签发短期只读链接，由 agent-proxy 直接转发 sandbox workspace 内容，不复制到对象存储',
       tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {

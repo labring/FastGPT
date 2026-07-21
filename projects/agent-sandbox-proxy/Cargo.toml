@@ -14,5 +14,6 @@ serde_json = "1.0.150"
 dotenvy = "0.15.7"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-reqwest = { version = "0.13.4", default-features = false, features = ["json", "query", "rustls"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "query", "rustls", "stream"] }
 jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto"] }
+sha2 = "0.10.9"
