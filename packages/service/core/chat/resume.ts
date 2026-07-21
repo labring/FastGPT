@@ -1,6 +1,8 @@
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
-import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
+import { getGlobalRedisConnection } from '../../common/redis';
+import { getPhysicalRedisConnection, getRedisRuntime } from '../../common/redis/runtime/connection';
+import { toPhysicalRedisKey } from '../../common/redis/runtime/keyspace';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -57,10 +59,8 @@ export const getStreamResumeRedisKeys = ({
 
 type StreamResumeKeys = ReturnType<typeof getStreamResumeRedisKeys>;
 
-const getRawRedisKey = (key: string) => `${FASTGPT_REDIS_PREFIX}${key}`;
-
 const getStreamResumeRedisRawKeys = (keys: StreamResumeKeys) => ({
-  rawKeyOfStream: getRawRedisKey(keys.keyOfStream)
+  rawKeyOfStream: toPhysicalRedisKey(keys.keyOfStream)
 });
 
 export type StreamResumeUnavailableState = {
@@ -280,7 +280,7 @@ const clearStreamResumeMirrorKeys = async (keys: StreamResumeKeys) => {
 };
 
 export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
-  const redis = getGlobalRedisConnection();
+  const redis = getPhysicalRedisConnection();
   const keys = getStreamResumeRedisKeys(params);
   const rawKeys = getStreamResumeRedisRawKeys(keys);
   /** 先清空上一轮镜像，再顺序 XADD；首个 chunk 一定排在清空之后 */
@@ -403,7 +403,7 @@ export const catchUpAllHistoryItems = async ({
   maxReplayLength = 50,
   ...params
 }: ResumeBaseParams & { maxReplayLength?: number }) => {
-  const redis = getGlobalRedisConnection();
+  const redis = getPhysicalRedisConnection();
   const keys = getStreamResumeRedisKeys(params);
   const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
 
@@ -455,11 +455,10 @@ export const _resume = async ({
   cursor: initialCursor,
   ...params
 }: ResumeBaseParams & { cursor?: string }) => {
-  const redis = getGlobalRedisConnection();
-  // BLOCK reserves the socket until data arrives or timeout, so each in-flight resume uses a
-  // dedicated duplicated Redis connection. If high-concurrency deployments hit connection limits,
-  // consider fan-out or a shared blocking pool in a follow-up refactor.
-  const blockingRedis = redis.duplicate();
+  const runtime = getRedisRuntime();
+  const redis = runtime.getCommandConnection();
+  // BLOCK 独占 socket，必须使用 Runtime registry 管理的专用连接，确保请求结束和进程关闭都能释放。
+  const blockingRedis = runtime.createBlockingConnection();
   const keys = getStreamResumeRedisKeys(params);
   const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
 
@@ -526,10 +525,6 @@ export const _resume = async ({
 
     return cursor;
   } finally {
-    try {
-      await blockingRedis.quit();
-    } catch {
-      blockingRedis.disconnect();
-    }
+    await runtime.releaseConnection(blockingRedis);
   }
 };
