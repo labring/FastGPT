@@ -138,7 +138,10 @@ export async function runSandboxLifecycleOperation(
   } satisfies SandboxLifecycleStepContext;
 
   try {
-    const phases = ['claimed', ...definition.steps.map((step) => step.toPhase)];
+    const phases = [
+      definition.steps[0]?.fromPhase ?? 'claimed',
+      ...definition.steps.map((step) => step.toPhase)
+    ];
     let phaseIndex = phases.indexOf(phase);
     if (phaseIndex < 0) {
       throw new Error(`Unsupported ${definition.operationType} phase: ${phase}`);

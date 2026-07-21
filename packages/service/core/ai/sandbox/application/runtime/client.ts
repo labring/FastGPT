@@ -8,6 +8,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
+  SandboxNotFoundError,
   type ExecuteResult,
   type ISandbox,
   type ResourceLimits,
@@ -144,9 +145,15 @@ export class SandboxClient {
       }
     };
     const touched = await touchRunningSandboxInstance(instanceParams);
+    let repairMissingProvider = false;
     if (touched) {
-      await ensureConnectedSandboxRunning(this.provider);
-      return;
+      try {
+        await ensureConnectedSandboxRunning(this.provider, { allowCreate: false });
+        return;
+      } catch (error) {
+        if (!(error instanceof SandboxNotFoundError)) throw error;
+        repairMissingProvider = true;
+      }
     }
 
     if (this.opts.allowCreate === false) {
@@ -180,7 +187,9 @@ export class SandboxClient {
       }
       if (current.status === SandboxInstanceStatusEnum.running) {
         await touchRunningSandboxInstance(instanceParams);
+        lease.assertValid();
         await ensureConnectedSandboxRunning(this.provider);
+        lease.assertValid();
         return;
       }
 
@@ -227,6 +236,46 @@ export class SandboxClient {
       });
     };
 
+    // Provider 自愈与首次创建都遵守 Source -> Lifecycle 锁顺序，防止 Source 删除期间重建资源。
+    const runProvisioningWithSourceLease = (params: {
+      sourceLabel: string;
+      lifecycleLabel: string;
+      allowRecordCreate: boolean;
+    }) =>
+      withSandboxSourceMutationLease({
+        sourceType: this.sourceType,
+        sourceId: this.sourceId,
+        label: params.sourceLabel,
+        fn: async (sourceLease) => {
+          await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+          sourceLease.assertValid();
+          await withSandboxLifecycleLease({
+            sandboxId: this.sandboxId,
+            label: params.lifecycleLabel,
+            fn: (lifecycleLease) =>
+              runProvisioning(
+                {
+                  ...lifecycleLease,
+                  assertValid: () => {
+                    sourceLease.assertValid();
+                    lifecycleLease.assertValid();
+                  }
+                },
+                params.allowRecordCreate
+              )
+          });
+        }
+      });
+
+    if (repairMissingProvider) {
+      await runProvisioningWithSourceLease({
+        sourceLabel: `repair-missing-sandbox:${this.sandboxId}`,
+        lifecycleLabel: `repair-missing-sandbox-lifecycle:${this.sandboxId}`,
+        allowRecordCreate: false
+      });
+      return;
+    }
+
     const existing = await findSandboxInstanceBySource({
       sourceType: this.sourceType,
       sourceId: this.sourceId,
@@ -241,29 +290,10 @@ export class SandboxClient {
       return;
     }
 
-    await withSandboxSourceMutationLease({
-      sourceType: this.sourceType,
-      sourceId: this.sourceId,
-      label: `provision-new-sandbox:${this.sandboxId}`,
-      fn: async (sourceLease) => {
-        await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
-        sourceLease.assertValid();
-        await withSandboxLifecycleLease({
-          sandboxId: this.sandboxId,
-          label: `provision-new-sandbox-lifecycle:${this.sandboxId}`,
-          fn: (lease) =>
-            runProvisioning(
-              {
-                ...lease,
-                assertValid: () => {
-                  sourceLease.assertValid();
-                  lease.assertValid();
-                }
-              },
-              true
-            )
-        });
-      }
+    await runProvisioningWithSourceLease({
+      sourceLabel: `provision-new-sandbox:${this.sandboxId}`,
+      lifecycleLabel: `provision-new-sandbox-lifecycle:${this.sandboxId}`,
+      allowRecordCreate: true
     });
   }
 

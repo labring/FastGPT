@@ -1,5 +1,5 @@
 import { BaseSandboxAdapter } from '@/adapters/BaseSandboxAdapter';
-import { FeatureNotSupportedError } from '@/errors';
+import { FeatureNotSupportedError, SandboxNotFoundError, SandboxStateError } from '@/errors';
 import type {
   ContentReplaceEntry,
   DirectoryEntry,
@@ -16,6 +16,7 @@ import type {
   SandboxId,
   SandboxInfo,
   SandboxMetrics,
+  SandboxEnsureRunningOptions,
   SandboxStatus,
   SearchResult,
   StreamHandlers
@@ -73,8 +74,28 @@ export class MockSandboxAdapter extends BaseSandboxAdapter {
   }
 
   // Lifecycle methods (stubs)
-  async ensureRunning(): Promise<void> {
-    return this.create();
+  async ensureRunning(options: SandboxEnsureRunningOptions = {}): Promise<void> {
+    switch (this._status.state) {
+      case 'Running':
+        return;
+      case 'UnExist':
+        if (options.allowCreate === false) {
+          throw new SandboxNotFoundError(`Sandbox ${this._id} does not exist`);
+        }
+        return this.create();
+      case 'Creating':
+      case 'Starting':
+      case 'Stopping':
+      case 'Stopped':
+        return this.start();
+      case 'Deleting':
+      case 'Error':
+        throw new SandboxStateError(
+          `Sandbox cannot be started from ${this._status.state}`,
+          this._status.state,
+          'Running'
+        );
+    }
   }
 
   async create(): Promise<void> {

@@ -1,4 +1,5 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SandboxNotFoundError } from '@fastgpt-sdk/sandbox-adapter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@fastgpt/service/env', () => ({
@@ -173,8 +174,41 @@ describe('sandbox runtime client lifecycle', () => {
     expect(mocks.touchRunningSandboxInstance).toHaveBeenCalledWith(
       expect.objectContaining({ sandboxId: query.sandboxId, metadata: { volumeEnabled: false } })
     );
-    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(1);
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledWith(expect.anything(), {
+      allowCreate: false
+    });
     expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
+  });
+
+  it('repairs a missing running provider under source and lifecycle leases', async () => {
+    mocks.findSandboxInstanceBySource.mockResolvedValue(createInstance('running'));
+    mocks.ensureConnectedSandboxRunning
+      .mockRejectedValueOnce(new SandboxNotFoundError('Sandbox sandbox-1 does not exist'))
+      .mockResolvedValueOnce(undefined);
+
+    await getSandboxClient(query);
+
+    expect(mocks.withSandboxSourceMutationLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: query.sourceType,
+        sourceId: query.sourceId,
+        label: `repair-missing-sandbox:${query.sandboxId}`
+      })
+    );
+    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxId: query.sandboxId,
+        label: `repair-missing-sandbox-lifecycle:${query.sandboxId}`
+      })
+    );
+    expect(mocks.withSandboxSourceMutationLease.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.withSandboxLifecycleLease.mock.invocationCallOrder[0]
+    );
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenNthCalledWith(1, expect.anything(), {
+      allowCreate: false
+    });
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenNthCalledWith(2, expect.anything());
+    expect(mocks.createSandboxProvisioningInstance).not.toHaveBeenCalled();
   });
 
   it('creates a missing record under source then lifecycle leases and publishes running last', async () => {

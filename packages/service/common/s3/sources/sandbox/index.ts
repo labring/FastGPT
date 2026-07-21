@@ -72,11 +72,6 @@ export class S3SandboxSource extends S3PrivateBucket {
     });
   }
 
-  /** 异步删除 v2 Sandbox 的 Workspace 归档。 */
-  deleteWorkspaceArchive(params: { sandboxId: string }) {
-    return this.addDeleteJob({ key: getWorkspaceArchiveKey(params.sandboxId) });
-  }
-
   /** 同步删除 v2 Sandbox 的 Workspace 归档，返回前保证对象已经不存在。 */
   deleteWorkspaceArchiveNow(params: { sandboxId: string }) {
     return this.deleteWorkspaceArchiveNowByKey({
@@ -104,11 +99,6 @@ export class S3SandboxSource extends S3PrivateBucket {
       ...params,
       key: getLegacyWorkspaceArchiveKey(params.sandboxId)
     });
-  }
-
-  /** 异步删除 Source 最终清理时保留的 Legacy Workspace 归档。 */
-  deleteLegacyWorkspaceArchive(params: { sandboxId: string }) {
-    return this.addDeleteJob({ key: getLegacyWorkspaceArchiveKey(params.sandboxId) });
   }
 
   /** 同步删除 Source 最终清理时保留的 Legacy Workspace 归档。 */

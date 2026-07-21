@@ -10,6 +10,7 @@ import {
   CommandExecutionError,
   ConnectionError,
   FeatureNotSupportedError,
+  SandboxNotFoundError,
   SandboxStateError
 } from '../../errors';
 import type {
@@ -21,6 +22,7 @@ import type {
   ResourceLimits,
   SandboxCreateSpec,
   SandboxEndpointSelector,
+  SandboxEnsureRunningOptions,
   SandboxId,
   SandboxInfo,
   SandboxMetrics,
@@ -337,12 +339,18 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     return false;
   }
 
-  async ensureRunning(): Promise<void> {
+  async ensureRunning(options: SandboxEnsureRunningOptions = {}): Promise<void> {
+    const allowCreate = options.allowCreate ?? true;
     const sandbox = await this.getSandboxBySessionId();
 
     if (sandbox) {
       switch (sandbox.status.state) {
         case 'UnExist':
+          if (!allowCreate) {
+            throw new SandboxNotFoundError(
+              `Sandbox session ${this.connectionConfig.sessionId} does not exist`
+            );
+          }
           await this.create();
           break;
         case 'Running':
@@ -357,6 +365,12 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           await this.resume(sandbox.id);
           break;
         case 'Deleting':
+          if (!allowCreate) {
+            throw new ConnectionError(
+              `Sandbox session ${this.connectionConfig.sessionId} is deleting`,
+              this.connectionConfig.baseUrl
+            );
+          }
           await this.waitUntilSessionDeleted();
           await this.create();
           break;
@@ -366,6 +380,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           throw new ConnectionError(`Sandbox state ${sandbox.status.state} not supported`);
       }
     } else {
+      if (!allowCreate) {
+        throw new SandboxNotFoundError(
+          `Sandbox session ${this.connectionConfig.sessionId} does not exist`
+        );
+      }
       await this.create();
     }
   }

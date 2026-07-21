@@ -12,7 +12,6 @@ const createSourceWithoutConstructor = (exists: boolean) => {
   });
   source.removeObject = vi.fn().mockResolvedValue(undefined);
   source.isObjectExists = vi.fn().mockResolvedValue(exists);
-  source.addDeleteJob = vi.fn().mockResolvedValue(undefined);
   return source;
 };
 

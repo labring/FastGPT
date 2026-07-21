@@ -157,7 +157,9 @@ export async function deleteSandboxResource(resource: SandboxResourceRef): Promi
             fromPhase: 'volumeDeleted',
             toPhase: 'archiveDeleted',
             run: async ({ resource: claimed }) => {
-              await getS3SandboxSource().deleteWorkspaceArchive({ sandboxId: claimed.sandboxId });
+              await getS3SandboxSource().deleteWorkspaceArchiveNow({
+                sandboxId: claimed.sandboxId
+              });
             }
           }
         ],

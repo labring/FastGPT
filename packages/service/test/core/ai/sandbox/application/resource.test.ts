@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
   buildSandboxResourceAdapter: vi.fn(),
   deleteSessionVolume: vi.fn(),
-  deleteWorkspaceArchive: vi.fn(),
+  deleteWorkspaceArchiveNow: vi.fn(),
   withSandboxLifecycleLease: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
   claimSandboxOperation: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => 
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
-  getS3SandboxSource: () => ({ deleteWorkspaceArchive: mocks.deleteWorkspaceArchive })
+  getS3SandboxSource: () => ({ deleteWorkspaceArchiveNow: mocks.deleteWorkspaceArchiveNow })
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
@@ -105,7 +105,7 @@ describe('sandbox resource lifecycle', () => {
     mocks.deleteClaimedSandboxRecord.mockResolvedValue({ deletedCount: 1 });
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
-    mocks.deleteWorkspaceArchive.mockResolvedValue(undefined);
+    mocks.deleteWorkspaceArchiveNow.mockResolvedValue(undefined);
     mocks.findSandboxResourcesBySource.mockResolvedValue([]);
     mocks.findSkillRelatedSandboxResources.mockResolvedValue([]);
     mocks.findStaleSandboxOperations.mockResolvedValue([]);
@@ -200,7 +200,7 @@ describe('sandbox resource lifecycle', () => {
     const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
     expect(adapter.delete).toHaveBeenCalledTimes(1);
     expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('sandbox-1');
-    expect(mocks.deleteWorkspaceArchive).toHaveBeenCalledWith({ sandboxId: 'sandbox-1' });
+    expect(mocks.deleteWorkspaceArchiveNow).toHaveBeenCalledWith({ sandboxId: 'sandbox-1' });
     expect(mocks.advanceSandboxOperation.mock.calls.map((call) => call[0].phase)).toEqual([
       'providerDeleted',
       'volumeDeleted',
@@ -211,15 +211,14 @@ describe('sandbox resource lifecycle', () => {
     );
   });
 
-  it('does not delete the record after a volume failure', async () => {
-    mocks.deleteSessionVolume.mockRejectedValueOnce(new Error('volume failed'));
+  it('does not delete the record after an archive deletion failure', async () => {
+    mocks.deleteWorkspaceArchiveNow.mockRejectedValueOnce(new Error('archive delete failed'));
 
-    await expect(deleteSandboxResource(createResource())).rejects.toThrow('volume failed');
+    await expect(deleteSandboxResource(createResource())).rejects.toThrow('archive delete failed');
 
-    expect(mocks.deleteWorkspaceArchive).not.toHaveBeenCalled();
     expect(mocks.deleteClaimedSandboxRecord).not.toHaveBeenCalled();
     expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'deleting', error: 'volume failed' })
+      expect.objectContaining({ status: 'deleting', error: 'archive delete failed' })
     );
   });
 
@@ -236,7 +235,7 @@ describe('sandbox resource lifecycle', () => {
 
     expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
     expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
-    expect(mocks.deleteWorkspaceArchive).not.toHaveBeenCalled();
+    expect(mocks.deleteWorkspaceArchiveNow).not.toHaveBeenCalled();
     expect(mocks.deleteClaimedSandboxRecord).toHaveBeenCalledWith({
       resource: reclaimed,
       operationId: 'resumed-delete'

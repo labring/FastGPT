@@ -193,14 +193,14 @@ describe('sandbox provider migration lifecycle', () => {
     expect(mocks.completeSandboxProviderMigration).toHaveBeenCalledTimes(1);
   });
 
-  it('rolls a failed old-provider restore back to archived without deleting S3', async () => {
+  it('rolls an archiveInstalled old-provider restore back to archived without deleting S3', async () => {
     const restoring = createInstance({
       status: 'restoring',
       metadata: {
         operation: {
           id: 'old-restore',
           type: 'restore',
-          phase: 'claimed',
+          phase: 'archiveInstalled',
           previousStatus: 'archived',
           startedAt: new Date(0),
           heartbeatAt: new Date(0),

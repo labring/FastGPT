@@ -246,6 +246,32 @@ describe('OpenSandboxAdapter', () => {
       expect(adapter.status.state).toBe('Running');
     });
 
+    it('should not replace a deleting sandbox when creation is disabled', async () => {
+      const adapter = makeAdapter({ sessionId: 'session-1' });
+      const listSandboxInfos = vi.fn(async () => ({
+        items: [
+          {
+            id: 'opensandbox-instance-1',
+            status: { state: 'deleting' }
+          }
+        ]
+      }));
+      const close = vi.fn(async () => undefined);
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        listSandboxInfos,
+        close
+      } as unknown as SandboxManager);
+      const create = vi.spyOn(Sandbox, 'create');
+
+      await expect(adapter.ensureRunning({ allowCreate: false })).rejects.toThrow(
+        'Sandbox session session-1 is deleting'
+      );
+
+      expect(create).not.toHaveBeenCalled();
+      expect(listSandboxInfos).toHaveBeenCalledTimes(1);
+      expect(close).toHaveBeenCalledTimes(1);
+    });
+
     it('should wait by session id when existing sandbox is deleting before creating a replacement', async () => {
       const adapter = new OpenSandboxAdapter(
         { ...MINIMAL_CONNECTION, sessionId: 'session-1' },
