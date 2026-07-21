@@ -38,6 +38,7 @@ import handler from '@/pages/api/core/ai/sandbox/getHtmlPreviewLink';
 import { SandboxPreviewSessionLimitError } from '@fastgpt/service/core/ai/sandbox/application/preview';
 
 const mockJsonRes = vi.mocked(jsonRes);
+const sandboxId = 'app-0123456789abcdef';
 
 const createReq = (filePath = 'dist/index.html') =>
   ({
@@ -63,7 +64,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       sourceId: '507f1f77bcf86cd799439011'
     });
     mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({
-      sandboxId: '0123456789abcdef',
+      sandboxId,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011',
       userId: 'user-1',
@@ -86,7 +87,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       relativePath: 'sessions/chat-1/dist/index.html'
     });
     mocks.createSandboxPreviewFileUrl.mockResolvedValue(
-      'https://agent-proxy.example.com/preview/0123456789abcdef/a12345678901234567890123/dist/index.html'
+      `https://agent-proxy.example.com/preview/${sandboxId}/a12345678901234567890123/dist/index.html`
     );
   });
 
@@ -113,7 +114,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
     expect(mocks.getFileInfo).toHaveBeenCalledWith(['/workspace/sessions/chat-1/dist/index.html']);
     expect(mocks.createSandboxPreviewFileUrl).toHaveBeenCalledWith({
       context: {
-        sandboxId: '0123456789abcdef',
+        sandboxId,
         sourceType: ChatSourceTypeEnum.app,
         sourceId: '507f1f77bcf86cd799439011',
         userId: 'user-1',
@@ -122,7 +123,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       filePath: '/workspace/sessions/chat-1/dist/index.html'
     });
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      data: 'https://agent-proxy.example.com/preview/0123456789abcdef/a12345678901234567890123/dist/index.html'
+      data: `https://agent-proxy.example.com/preview/${sandboxId}/a12345678901234567890123/dist/index.html`
     });
   });
 

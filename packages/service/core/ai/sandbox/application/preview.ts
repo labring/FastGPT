@@ -19,10 +19,7 @@ export const SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX = 500;
 export const SANDBOX_PREVIEW_SESSION_ID_LENGTH = 24;
 const SANDBOX_PREVIEW_SESSION_KEY_PREFIX = 'sandbox:preview';
 
-const SandboxPreviewSandboxIdSchema = z
-  .string()
-  .length(16)
-  .regex(/^[a-f0-9]+$/);
+const SandboxPreviewSandboxIdSchema = z.string().regex(/^(?:app|skilledit)-[a-f0-9]{16}$/);
 const SandboxPreviewSessionIdSchema = z
   .string()
   .length(SANDBOX_PREVIEW_SESSION_ID_LENGTH)

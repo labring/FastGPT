@@ -15,9 +15,10 @@ const getFileInfo = vi.fn();
 const resolveRuntimePath = vi.fn((filePath: string) =>
   filePath.startsWith('/') ? filePath : `/workspace/sessions/chat-1/${filePath}`
 );
+const sandboxId = 'app-0123456789abcdef';
 const createSandboxInstance = () =>
   ({
-    getSandboxId: () => '0123456789abcdef',
+    getSandboxId: () => sandboxId,
     getContext: () => ({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
@@ -77,22 +78,34 @@ describe('sandboxGetFileUrlTool', () => {
       '/workspace/sessions/chat-1/report/data.csv'
     ]);
     expect(previewMock.createSandboxPreviewSession).toHaveBeenCalledWith({
-      sandboxId: '0123456789abcdef',
+      sandboxId,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
       userId: 'user',
       chatId: 'chat'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(1, {
-      sandboxId: '0123456789abcdef',
+      sandboxId,
       sessionId: 'a12345678901234567890123',
       filePath: '/workspace/file.txt'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(2, {
-      sandboxId: '0123456789abcdef',
+      sandboxId,
       sessionId: 'a12345678901234567890123',
       filePath: '/workspace/sessions/chat-1/report/data.csv'
     });
+  });
+
+  it('returns an empty result without creating a preview session', async () => {
+    const result = await sandboxGetFileUrlTool.execute({
+      sandboxInstance: createSandboxInstance(),
+      params: { paths: [] }
+    });
+
+    expect(result.response).toBe('[]');
+    expect(resolveRuntimePath).not.toHaveBeenCalled();
+    expect(getFileInfo).not.toHaveBeenCalled();
+    expect(previewMock.createSandboxPreviewSession).not.toHaveBeenCalled();
   });
 
   it('rejects missing files before issuing a preview session', async () => {

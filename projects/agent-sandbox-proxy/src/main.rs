@@ -154,10 +154,14 @@ fn verify_ticket_for_channel(
 }
 
 fn verify_preview_session_id(sandbox_id: &str, session_id: &str) -> Result<(), String> {
-    let sandbox_bytes = sandbox_id.as_bytes();
+    let Some((source_prefix, sandbox_hash)) = sandbox_id.split_once('-') else {
+        return Err("invalid preview session id".to_string());
+    };
+    let hash_bytes = sandbox_hash.as_bytes();
     let session_bytes = session_id.as_bytes();
-    if sandbox_bytes.len() != 16
-        || !sandbox_bytes
+    if !matches!(source_prefix, "app" | "skilledit")
+        || hash_bytes.len() != 16
+        || !hash_bytes
             .iter()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
         || session_bytes.len() != 24
@@ -254,15 +258,32 @@ mod tests {
 
     #[test]
     fn accepts_preview_session_ids() {
-        assert!(verify_preview_session_id("0123456789abcdef", "a12345678901234567890123").is_ok());
+        assert!(
+            verify_preview_session_id("app-0123456789abcdef", "a12345678901234567890123").is_ok()
+        );
+        assert!(
+            verify_preview_session_id("skilledit-0123456789abcdef", "a12345678901234567890123")
+                .is_ok()
+        );
     }
 
     #[test]
     fn rejects_invalid_preview_session_ids() {
         assert!(verify_preview_session_id("short", "a12345678901234567890123").is_err());
-        assert!(verify_preview_session_id("0123456789abcdef", "A12345678901234567890123").is_err());
-        assert!(verify_preview_session_id("0123456789abcdef", "a1234567890123456789012-").is_err());
-        assert!(verify_preview_session_id("0123456789abcdeG", "a12345678901234567890123").is_err());
+        assert!(verify_preview_session_id("0123456789abcdef", "a12345678901234567890123").is_err());
+        assert!(
+            verify_preview_session_id("other-0123456789abcdef", "a12345678901234567890123")
+                .is_err()
+        );
+        assert!(
+            verify_preview_session_id("app-0123456789abcdef", "A12345678901234567890123").is_err()
+        );
+        assert!(
+            verify_preview_session_id("app-0123456789abcdef", "a1234567890123456789012-").is_err()
+        );
+        assert!(
+            verify_preview_session_id("app-0123456789abcdeG", "a12345678901234567890123").is_err()
+        );
         assert!(verify_ticket_for_channel("a12345678901234567890123", "fs").is_err());
     }
 }

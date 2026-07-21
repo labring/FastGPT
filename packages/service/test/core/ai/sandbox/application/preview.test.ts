@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
@@ -27,8 +28,13 @@ const redisMock = {
   set: vi.fn(),
   get: vi.fn()
 };
+const sandboxId = generateSandboxId({
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: 'app-1',
+  userId: 'user-1'
+});
 const sessionContext = {
-  sandboxId: '0123456789abcdef',
+  sandboxId,
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
   userId: 'user-1',
@@ -56,9 +62,9 @@ describe('sandbox preview application', () => {
     const sessionId = await createSandboxPreviewSession(sessionContext);
 
     expect(sessionId).toMatch(/^[a-z][a-zA-Z0-9]{23}$/);
-    expect(getAllKeysByPrefix).toHaveBeenCalledWith('sandbox:preview:0123456789abcdef');
+    expect(getAllKeysByPrefix).toHaveBeenCalledWith(`sandbox:preview:${sandboxId}`);
     const [sessionKey, payload, expiryMode, ttl] = redisMock.set.mock.calls[0];
-    expect(sessionKey).toMatch(/^sandbox:preview:0123456789abcdef:[a-z][a-zA-Z0-9]{23}$/);
+    expect(sessionKey).toMatch(/^sandbox:preview:app-[a-f0-9]{16}:[a-z][a-zA-Z0-9]{23}$/);
     expect(JSON.parse(String(payload))).toEqual(sessionContext);
     expect(expiryMode).toBe('EX');
     expect(ttl).toBe(SANDBOX_PREVIEW_SESSION_TTL_SECONDS);
@@ -77,7 +83,7 @@ describe('sandbox preview application', () => {
   it('resolves session context until the Redis TTL expires', async () => {
     redisMock.get.mockResolvedValueOnce(JSON.stringify(sessionContext)).mockResolvedValue(null);
 
-    const credential = '0123456789abcdef:a12345678901234567890123';
+    const credential = `${sandboxId}:a12345678901234567890123`;
     await expect(resolveSandboxPreviewSession(credential)).resolves.toEqual(sessionContext);
     await expect(resolveSandboxPreviewSession(credential)).rejects.toThrow(
       'Invalid or expired sandbox preview session'
@@ -88,12 +94,12 @@ describe('sandbox preview application', () => {
   it('builds a URL from the dedicated preview proxy and encodes each path segment', () => {
     expect(
       buildSandboxPreviewFileUrl({
-        sandboxId: '0123456789abcdef',
+        sandboxId,
         sessionId: 'a12345678901234567890123',
         filePath: '/workspace/test dir/预览.html'
       })
     ).toBe(
-      'https://agent-preview.example.com:3007/base/preview/0123456789abcdef/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html'
+      `https://agent-preview.example.com:3007/base/preview/${sandboxId}/a12345678901234567890123/test%20dir/%E9%A2%84%E8%A7%88.html`
     );
   });
 
@@ -102,7 +108,7 @@ describe('sandbox preview application', () => {
 
     expect(() =>
       buildSandboxPreviewFileUrl({
-        sandboxId: '0123456789abcdef',
+        sandboxId,
         sessionId: 'a12345678901234567890123',
         filePath: '/workspace/index.html'
       })

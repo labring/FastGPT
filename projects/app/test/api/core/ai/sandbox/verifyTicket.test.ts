@@ -48,7 +48,7 @@ const createTicket = (channel: 'fs' | 'terminal', permission = 'read') =>
   );
 
 const createReq = (ticket: string) => ({ query: { ticket }, headers: {} }) as any;
-const previewSandboxId = '0123456789abcdef';
+const previewSandboxId = 'app-0123456789abcdef';
 const previewSessionId = 'a12345678901234567890123';
 const previewCredential = `${previewSandboxId}:${previewSessionId}`;
 const createPreviewReq = () =>
