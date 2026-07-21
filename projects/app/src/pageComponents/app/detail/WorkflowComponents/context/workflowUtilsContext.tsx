@@ -152,7 +152,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const toolInputs: FlowNodeInputItemType[] = [];
       const commonInputs: FlowNodeInputItemType[] = [];
       inputs.forEach((item) => {
-        const normalizedInput = isTool ? initToolInputTypeByDefaultMode(item) : item;
+        const normalizedInput =
+          isTool || item.key === NodeInputKeyEnum.userChatInput
+            ? initToolInputTypeByDefaultMode(item, {
+                allowUserChatInputAgentGenerated: isTool
+              })
+            : item;
         const isAgentGeneratedInput =
           isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
         if (isTool && isAgentGeneratedInput && item.canEdit) {

@@ -524,6 +524,35 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
     });
 
+    it('should not materialize fallback selectedType when saving workflow', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'chatNode',
+            name: 'Chat node',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.chatNode,
+            showStatus: true,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.userChatInput,
+                renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+                selectedTypeIndex: 0
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].selectedType).toBeUndefined();
+      expect(result.nodes[0].inputs[0].selectedTypeIndex).toBe(0);
+    });
+
     it('should keep selected dataset snapshot for later server-side save formatting', () => {
       const nodes = [
         {

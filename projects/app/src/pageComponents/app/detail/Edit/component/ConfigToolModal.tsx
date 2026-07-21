@@ -185,7 +185,9 @@ const getSecretInputFormValue = ({
 const getConfigFormValues = (tool: FlowNodeTemplateType) =>
   tool.inputs.reduce(
     (acc, input) => {
-      const normalizedInput = initToolInputTypeByDefaultMode(input);
+      const normalizedInput = initToolInputTypeByDefaultMode(input, {
+        allowUserChatInputAgentGenerated: true
+      });
       const canManuallyConfigure = canInputBeManuallyConfigured(normalizedInput);
       const developerInputType = canManuallyConfigure
         ? getToolInputManualRenderType(normalizedInput)
@@ -272,8 +274,7 @@ const isManualSecretConfigured = (value?: ToolParamsFormType) =>
   value?.type === SystemToolSecretInputTypeEnum.manual &&
   Object.values(value.value ?? {}).some(
     (item) =>
-      !!item?.secret ||
-      (item?.value !== undefined && item.value !== null && item.value !== '')
+      !!item?.secret || (item?.value !== undefined && item.value !== null && item.value !== '')
   );
 
 const getSecretInputInitialExpanded = ({

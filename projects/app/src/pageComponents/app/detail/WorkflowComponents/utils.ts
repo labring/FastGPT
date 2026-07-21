@@ -5,7 +5,6 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   type FlowNodeItemType,
@@ -21,19 +20,10 @@ import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number]) => {
-  const selectedType = input.selectedType ?? getSelectedInputRenderType(input);
-  const normalizedInput = selectedType
-    ? {
-        ...input,
-        selectedType
-      }
-    : input;
-
-  if (normalizedInput.selectedTypeIndex === undefined || normalizedInput.selectedTypeIndex >= 0)
-    return normalizedInput;
+  if (input.selectedTypeIndex === undefined || input.selectedTypeIndex >= 0) return input;
 
   return {
-    ...normalizedInput,
+    ...input,
     selectedTypeIndex: undefined
   };
 };

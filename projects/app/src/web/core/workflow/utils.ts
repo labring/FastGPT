@@ -207,7 +207,7 @@ export const storeNode2FlowNode = ({
           ...templateInput,
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-          selectedType: getSelectedInputRenderType(storeInput) ?? templateInput.selectedType,
+          selectedType: storeInput.selectedType ?? templateInput.selectedType,
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value
         };

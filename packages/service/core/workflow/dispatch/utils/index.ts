@@ -531,7 +531,8 @@ export const rewriteRuntimeWorkFlow = async ({
 
         const selectedType = getSavedToolInputSelectedType({
           savedInput,
-          defaultInput: input
+          defaultInput: input,
+          allowUserChatInputAgentGenerated: true
         });
         const renderTypeList = selectedType
           ? Array.from(
@@ -559,7 +560,8 @@ export const rewriteRuntimeWorkFlow = async ({
           isToolParam: input.isToolParam ?? savedInput.isToolParam,
           toolDescription: savedInput.toolDescription ?? input.toolDescription
         };
-      })
+      }),
+      { allowUserChatInputAgentGenerated: true }
     );
   };
 
@@ -574,7 +576,7 @@ export const rewriteRuntimeWorkFlow = async ({
         ...input,
         isToolParam: true
       })),
-      { forceDefaultMode: true }
+      { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
     )
   });
 

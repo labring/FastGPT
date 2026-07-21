@@ -21,7 +21,8 @@ type RuntimeNode = DispatchToolModuleProps['runtimeNodes'][number];
 const normalizeToolInput = (input: FlowNodeInputItemType) => {
   const selectedType = getSavedToolInputSelectedType({
     savedInput: input,
-    defaultInput: input
+    defaultInput: input,
+    allowUserChatInputAgentGenerated: true
   });
   const hasSavedSelection =
     input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
@@ -30,18 +31,21 @@ const normalizeToolInput = (input: FlowNodeInputItemType) => {
       ? [selectedType, ...input.renderTypeList]
       : input.renderTypeList;
 
-  return initToolInputTypeByDefaultMode({
-    ...input,
-    renderTypeList,
-    ...(selectedType
-      ? {
-          selectedType,
-          selectedTypeIndex: renderTypeList.findIndex((type) => type === selectedType)
-        }
-      : hasSavedSelection
-        ? { selectedType: undefined, selectedTypeIndex: undefined }
-        : {})
-  });
+  return initToolInputTypeByDefaultMode(
+    {
+      ...input,
+      renderTypeList,
+      ...(selectedType
+        ? {
+            selectedType,
+            selectedTypeIndex: renderTypeList.findIndex((type) => type === selectedType)
+          }
+        : hasSavedSelection
+          ? { selectedType: undefined, selectedTypeIndex: undefined }
+          : {})
+    },
+    { allowUserChatInputAgentGenerated: true }
+  );
 };
 
 const isRunnableToolNode = (tool?: RuntimeNode): tool is RuntimeNode => {

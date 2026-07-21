@@ -7,8 +7,8 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  checkNeedsUserConfiguration,
   getToolConfigStatus,
+  initToolInputTypeByDefaultMode,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -358,7 +358,10 @@ export const useSkillManager = ({
         };
       }
 
-      const toolTemplate = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
+      const toolTemplate = await getClientToolPreviewNode({
+        appId: toolId,
+        getLatestVersion: true
+      });
 
       const toolValid = validateToolConfiguration({
         toolTemplate,
@@ -374,7 +377,12 @@ export const useSkillManager = ({
 
       const tool = {
         ...toolTemplate,
-        id: toolTemplate.pluginId!
+        id: toolTemplate.pluginId!,
+        inputs: toolTemplate.inputs.map((input) =>
+          initToolInputTypeByDefaultMode(input, {
+            allowUserChatInputAgentGenerated: true
+          })
+        )
       };
       const configStatus = getToolConfigStatus({ tool }).status;
       const skill = toSkillLabelItem(tool, configStatus);

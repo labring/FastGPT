@@ -41,6 +41,44 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
+describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
+  it('清理工具调用节点用户问题的历史 AI 生成类型', async () => {
+    const userQuestion = {
+      key: NodeInputKeyEnum.userChatInput,
+      label: 'User question',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.textarea
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0
+    };
+    const nodes = [
+      {
+        nodeId: 'tool-call',
+        flowNodeType: FlowNodeTypeEnum.toolCall,
+        inputs: [userQuestion],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(userQuestion).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea]
+    });
+    expect(userQuestion.selectedType).toBeUndefined();
+    expect(userQuestion.selectedTypeIndex).toBeUndefined();
+  });
+});
+
 describe('rewriteAppWorkflowToDetail - agent skills', () => {
   beforeEach(() => {
     getClientToolPreviewNodeMock.mockReset();
