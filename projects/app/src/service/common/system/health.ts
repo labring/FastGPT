@@ -2,6 +2,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { checkRedisHealth } from '@fastgpt/service/common/redis';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { InitialErrorEnum } from '@fastgpt/service/common/system/constants';
 import { loadModelProviders } from '@fastgpt/service/thirdProvider/fastgptPlugin/model';
@@ -13,7 +14,12 @@ export const instrumentationCheck = async () => {
   /* infra */
   // vectorDB - 已验证
   // mongo - 已验证
-  // redis - 已验证
+  // redis
+  try {
+    await checkRedisHealth();
+  } catch (error) {
+    return Promise.reject(`[${InitialErrorEnum.REDIS_ERROR}] Redis: ${getErrText(error)}`);
+  }
   // s3
   try {
     await global.s3BucketMap[S3Buckets.public].checkBucketHealth();

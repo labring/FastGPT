@@ -158,11 +158,7 @@ const createSharedMockRedisClient = () => {
         Promise.resolve(globalRedisStorage.pexpire(key, milliseconds))
       ),
     keys: vi.fn().mockResolvedValue([]),
-    scan: vi.fn().mockImplementation((cursor) => {
-      if (cursor === '0') return ['100', ['key1', 'key2']];
-      if (cursor === '100') return ['0', ['key3']];
-      return ['0', []];
-    }),
+    scan: vi.fn().mockResolvedValue(['0', []]),
 
     // Hash operations
     hget: vi.fn().mockResolvedValue(null),
@@ -250,13 +246,13 @@ vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
 
   return {
     ...actual,
-    newQueueRedisConnection: vi.fn(createSharedMockRedisClient),
-    newWorkerRedisConnection: vi.fn(createSharedMockRedisClient),
+    createQueueRedisConnection: vi.fn(createSharedMockRedisClient),
+    createWorkerRedisConnection: vi.fn(createSharedMockRedisClient),
     getGlobalRedisConnection: vi.fn(() => {
-      if (!global.mockRedisClient) {
-        global.mockRedisClient = createSharedMockRedisClient();
+      if (!global.redisClient) {
+        global.redisClient = createSharedMockRedisClient() as any;
       }
-      return global.mockRedisClient;
+      return global.redisClient;
     }),
     initRedisClient: vi.fn().mockResolvedValue(createSharedMockRedisClient())
   };
@@ -266,4 +262,26 @@ vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
 // This prevents getGlobalRedisConnection() from creating a real Redis client
 if (!global.redisClient) {
   global.redisClient = createSharedMockRedisClient() as any;
+}
+
+// SCAN 等 Runtime 内部能力会绕过公共 legacy mock，提供同一存储上的 physical client。
+if (!global.redisRuntime) {
+  global.redisRuntime = {
+    endpoint: { transport: 'tcp', host: 'localhost', port: 6379, tls: false },
+    getLegacyCommandConnection: vi.fn(() => global.redisClient),
+    getCommandConnection: vi.fn(() => global.redisClient),
+    createBlockingConnection: () => (global.redisClient as any).duplicate(),
+    createQueueConnection: () => createSharedMockRedisClient(),
+    createWorkerConnection: () => createSharedMockRedisClient(),
+    registerBeforeCloseHook: vi.fn(() => () => undefined),
+    getConnectionSnapshot: () => [],
+    checkHealth: async () => ({
+      latencyMs: 0,
+      endpoint: { transport: 'tcp' as const, host: 'localhost', port: 6379, tls: false }
+    }),
+    releaseConnection: async (client: any) => {
+      await client.quit().catch(() => client.disconnect());
+    },
+    close: async () => undefined
+  } as any;
 }

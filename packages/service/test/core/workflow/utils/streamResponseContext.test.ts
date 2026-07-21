@@ -6,7 +6,8 @@ import {
   getStreamResumeRedisKeys,
   resetStreamResumeMirrorGuardForTest
 } from '@fastgpt/service/core/chat/resume';
-import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { FASTGPT_REDIS_PREFIX } from '@fastgpt/service/common/redis/runtime/keyspace';
 import {
   createWorkflowStreamResponseContext,
   isWorkflowSseResponseInitialized,
