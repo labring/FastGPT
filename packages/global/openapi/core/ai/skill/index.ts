@@ -24,11 +24,11 @@ import {
   SkillDebugChatBodySchema,
   SkillRuntimeBodySchema,
   SkillRuntimeInitEventSchema,
-  SkillRuntimeStatusResponseSchema,
   SwitchSkillVersionBodySchema,
   UpdateSkillBodySchema,
   UpdateSkillVersionBodySchema
 } from './api';
+import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
 
 export const SkillPath: OpenAPIPath = {
   '/core/ai/skill/list': {
@@ -261,7 +261,7 @@ export const SkillPath: OpenAPIPath = {
           description: '成功返回 runtime 状态',
           content: {
             'application/json': {
-              schema: SkillRuntimeStatusResponseSchema
+              schema: SandboxRuntimeStatusResponseSchema
             }
           }
         }
@@ -285,7 +285,7 @@ export const SkillPath: OpenAPIPath = {
           description: '成功返回触发后的 runtime 状态',
           content: {
             'application/json': {
-              schema: SkillRuntimeStatusResponseSchema
+              schema: SandboxRuntimeStatusResponseSchema
             }
           }
         }

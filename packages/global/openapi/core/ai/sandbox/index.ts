@@ -7,11 +7,13 @@ import {
   SandboxUploadResponseSchema,
   SandboxCheckExistBodyRawSchema,
   SandboxCheckExistResponseSchema,
+  SandboxRuntimeBodyRawSchema,
   SandboxGetTicketBodyRawSchema,
   SandboxGetTicketResponseSchema,
   SandboxGetHtmlPreviewLinkBodyRawSchema,
   SandboxGetHtmlPreviewLinkResponseSchema
 } from './api';
+import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
 
 export const SandboxPath: OpenAPIPath = {
   '/core/ai/sandbox/download': {
@@ -111,6 +113,56 @@ export const SandboxPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SandboxCheckExistResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/runtime/getStatus': {
+    post: {
+      summary: '获取 Sandbox runtime 镜像升级状态',
+      description: '查询 App 用户级 Sandbox 是否需要镜像升级，不触发创建、恢复或归档',
+      tags: [DevApiTagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxRuntimeBodyRawSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '返回 runtime 镜像升级状态',
+          content: {
+            'application/json': {
+              schema: SandboxRuntimeStatusResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/runtime/upgrade': {
+    post: {
+      summary: '升级 Sandbox runtime 镜像',
+      description: '启动 App 用户级 Sandbox 后台归档，客户端根据返回状态继续轮询',
+      tags: [DevApiTagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxRuntimeBodyRawSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '返回 runtime 镜像升级状态',
+          content: {
+            'application/json': {
+              schema: SandboxRuntimeStatusResponseSchema
             }
           }
         }

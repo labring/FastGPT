@@ -50,7 +50,12 @@ describe('OpenSandboxAdapter', () => {
       expect(adapter.rootPath).toBe('/workspace');
     });
 
-    it('should pass server proxy settings into ConnectionConfig', () => {
+    it('should pass connection settings into ConnectionConfig', () => {
+      const defaultConnection = (
+        makeAdapter() as unknown as {
+          _connection: { requestTimeoutSeconds: number };
+        }
+      )._connection;
       const adapter = makeAdapter({
         apiKey: 'test-api-key',
         useServerProxy: true,
@@ -67,6 +72,7 @@ describe('OpenSandboxAdapter', () => {
         }
       )._connection;
 
+      expect(defaultConnection.requestTimeoutSeconds).toBe(120);
       expect(connection.useServerProxy).toBe(true);
       expect(connection.requestTimeoutSeconds).toBe(60);
       expect(connection.debug).toBe(true);
