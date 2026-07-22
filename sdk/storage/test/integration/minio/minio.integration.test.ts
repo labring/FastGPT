@@ -37,6 +37,21 @@ describe.skipIf(!minioIntegrationProvider.enabled).sequential('MinIO-specific in
     await context?.cleanup();
   });
 
+  it('recreates the stable bucket and removes objects left by an interrupted run', async () => {
+    const interruptedContext = context;
+    const staleKey = `${interruptedContext.rootPrefix}stale/object.txt`;
+    await interruptedContext.storage.uploadObject({ key: staleKey, body: 'stale' });
+    await interruptedContext.storage.destroy();
+
+    context = await minioIntegrationProvider.createContext();
+
+    expect(context.bucket).toBe(interruptedContext.bucket);
+    await expect(context.storage.listObjects({ prefix: staleKey })).resolves.toEqual({
+      bucket: context.bucket,
+      keys: []
+    });
+  });
+
   it('creates a missing bucket through MinioStorageAdapter', () => {
     expect(context.initialEnsureResult).toEqual({
       bucket: context.bucket,

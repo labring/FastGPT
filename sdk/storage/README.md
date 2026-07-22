@@ -199,7 +199,8 @@ pnpm --filter @fastgpt-sdk/storage typecheck:test
 
 真实对象存储的统一契约测试位于 `sdk/storage/test/integration`。复制
 `sdk/storage/.env.test.example` 为 `sdk/storage/.env.test.local`，填写凭证并将对应
-`STORAGE_TEST_<PROVIDER>_ENABLED` 设置为 `true` 后运行：
+`STORAGE_TEST_<PROVIDER>_ENABLED` 设置为 `true`，并配置对应的
+`STORAGE_TEST_<PROVIDER>_BUCKET` 后运行。测试桶名必须以 `fastgpt-sdk-` 开头：
 
 ```bash
 pnpm --filter @fastgpt-sdk/storage test:integration
@@ -210,8 +211,8 @@ pnpm --filter @fastgpt-sdk/storage test:integration:minio
 集成测试分为两层：
 
 - `test/integration/common`：18 个 `IStorage` 通用契约，每个启用的 provider 都运行完全相同的用例。
-- `test/integration/minio`：8 个 MinIO 专项用例，覆盖 400/1000 条分页边界、URL 编码、公共策略和真实 HTTP socket 超时。
+- `test/integration/minio`：9 个 MinIO 专项用例，覆盖中断运行后的桶重建、400/1000 条分页边界、URL 编码、公共策略和真实 HTTP socket 超时。
 
-每个启用的 provider 都会创建独立测试桶，并在结束后清空和删除。未启用的 provider 会被跳过。
+每个 provider 使用配置中的固定专用测试桶。每次 suite 启动时，harness 会先清空并删除可能由上次失败运行遗留的同名桶，再重新创建；结束时也会清理。不要对同一组测试配置并发运行集成测试。未启用的 provider 会被跳过。
 
 发布前会执行 `prepublishOnly` 自动构建产物到 `dist/`。

@@ -4,7 +4,7 @@
 
 1. 将 Storage SDK 测试从仓库级 `test/sdk/storage` 迁移到 `sdk/storage/test`，由 SDK 自己维护测试配置和命令。
 2. 建立一套只依赖 `IStorage` 的统一契约测试，所有 adapter 使用同一组行为断言。
-3. 使用 provider harness 隔离厂商差异。harness 负责读取环境变量、创建独立测试桶、构造 adapter 和清理测试桶。
+3. 使用 provider harness 隔离厂商差异。harness 负责读取环境变量、重建固定专用测试桶、构造 adapter 和清理测试桶。
 4. 集成测试默认跳过，只有 `.env.test.local` 中对应 provider 的开关为 `true` 时才连接真实服务。
 5. 第一阶段完整验证本地 MinIO，包括特殊字符 key、分页列举、批量删除和按前缀跨页删除。
 
@@ -36,7 +36,7 @@
 - 公共 URL 的结构
 - `destroy`
 
-每个测试使用唯一 key 前缀，避免用例之间互相依赖。每个 provider suite 使用唯一 bucket，测试结束后由 harness 清空并删除。
+每个测试使用唯一 key 前缀，避免用例之间互相依赖。每个 provider suite 使用配置中的固定专用 bucket；suite 启动前先删除遗留同名桶再创建，结束后再次清理。固定桶机制不支持同一配置并发执行。
 
 ### Provider Harness
 
@@ -59,6 +59,7 @@ type StorageIntegrationProvider = {
 MinIO：
 
 - `STORAGE_TEST_MINIO_ENABLED`
+- `STORAGE_TEST_MINIO_BUCKET`
 - `STORAGE_TEST_MINIO_ENDPOINT`
 - `STORAGE_TEST_MINIO_REGION`
 - `STORAGE_TEST_MINIO_ACCESS_KEY_ID`
@@ -85,6 +86,7 @@ MinIO：
 - [x] 增加 MinIO 1001 对象分页/分块压力测试。
 - [x] 增加 MinIO 匿名权限边界和真实 socket 超时测试。
 - [x] 运行单元测试、真实 MinIO 集成测试、类型检查和 SDK 构建。
+- [x] 使用固定专用桶，并在 suite 启动前删除遗留桶后重建。
 
 ## TODO
 

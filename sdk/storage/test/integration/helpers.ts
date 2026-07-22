@@ -1,3 +1,5 @@
+import type { IStorage } from '../../src/interface';
+
 /** 构造指定总字节数的 ASCII key，并限制单个路径段长度以兼容文件系统型对象存储。 */
 export const createAsciiKeyAtLength = ({
   prefix,
@@ -24,4 +26,30 @@ export const createAsciiKeyAtLength = ({
   }
 
   return `${prefix}${segments.join('/')}`;
+};
+
+/**
+ * 删除已存在的固定集成测试桶，供下次运行重新创建干净环境。
+ * `DeleteObjectsResult.keys` 是失败项；只要存在失败 key，就保留桶并让测试失败。
+ */
+export const removeIntegrationBucketIfExists = async ({
+  storage,
+  bucketExists,
+  deleteBucket
+}: {
+  storage: IStorage;
+  bucketExists: () => Promise<boolean>;
+  deleteBucket: () => Promise<void>;
+}): Promise<void> => {
+  if (!(await bucketExists())) return;
+
+  const { keys } = await storage.listObjects({});
+  if (keys.length > 0) {
+    const { keys: failedKeys } = await storage.deleteObjectsByMultiKeys({ keys });
+    if (failedKeys.length > 0) {
+      throw new Error(`Failed to clean integration test bucket: ${failedKeys.join(', ')}`);
+    }
+  }
+
+  await deleteBucket();
 };

@@ -2,8 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   CreateBucketCommand,
   DeleteBucketCommand,
-  DeleteObjectsCommand,
-  ListObjectsV2Command,
+  HeadBucketCommand,
   S3Client,
   type BucketLocationConstraint
 } from '@aws-sdk/client-s3';
@@ -13,6 +12,7 @@ import * as Minio from 'minio';
 import { createStorage } from '../../src/factory';
 import type { IStorage } from '../../src/interface';
 import type { EnsureBucketResult } from '../../src/types';
+import { removeIntegrationBucketIfExists } from './helpers';
 
 export type StorageIntegrationProviderName = 'aws-s3' | 'minio' | 'oss' | 'cos';
 
@@ -40,19 +40,30 @@ const getRequiredEnv = (name: string): string => {
   return value;
 };
 
-const createBucketName = (provider: StorageIntegrationProviderName, suffix = '') => {
-  const uniquePart = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
-  return `fastgpt-sdk-${provider}-${uniquePart}${suffix}`.toLowerCase();
+const getTestBucket = (envName: string): string => {
+  const bucket = getRequiredEnv(envName);
+  if (!bucket.startsWith('fastgpt-sdk-')) {
+    throw new Error(`${envName} must start with "fastgpt-sdk-" to protect non-test buckets`);
+  }
+  return bucket;
 };
 
-const clearBucket = async (storage: IStorage) => {
-  const { keys } = await storage.listObjects({});
-  if (keys.length === 0) return;
+const isBucketNotFoundError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
 
-  const { keys: failedKeys } = await storage.deleteObjectsByMultiKeys({ keys });
-  if (failedKeys.length > 0) {
-    throw new Error(`Failed to clean integration test bucket: ${failedKeys.join(', ')}`);
-  }
+  const value = error as {
+    code?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+    $metadata?: { httpStatusCode?: unknown };
+  };
+  return (
+    value.code === 'NoSuchBucket' ||
+    value.code === 'NotFound' ||
+    value.status === 404 ||
+    value.statusCode === 404 ||
+    value.$metadata?.httpStatusCode === 404
+  );
 };
 
 const createContextResult = async ({
@@ -61,14 +72,18 @@ const createContextResult = async ({
   bucket,
   initialEnsureResult,
   createStorage,
-  deleteBucket
+  bucketExists,
+  deleteBucket,
+  destroyProvider
 }: {
   provider: StorageIntegrationProviderName;
   storage: IStorage;
   bucket: string;
   initialEnsureResult: EnsureBucketResult;
   createStorage: () => IStorage;
+  bucketExists: () => Promise<boolean>;
   deleteBucket: () => Promise<void>;
+  destroyProvider?: () => Promise<void> | void;
 }): Promise<StorageIntegrationContext> => ({
   provider,
   storage,
@@ -78,10 +93,13 @@ const createContextResult = async ({
   createStorage,
   cleanup: async () => {
     try {
-      await clearBucket(storage);
-      await deleteBucket();
+      await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
     } finally {
-      await storage.destroy();
+      try {
+        await storage.destroy();
+      } finally {
+        await destroyProvider?.();
+      }
     }
   }
 });
@@ -96,7 +114,7 @@ const createMinioProvider = (): StorageIntegrationProvider => ({
     const secretAccessKey = getRequiredEnv('STORAGE_TEST_MINIO_SECRET_ACCESS_KEY');
     const endpointUrl = new URL(endpoint);
     const useSSL = endpointUrl.protocol === 'https:';
-    const bucket = createBucketName('minio');
+    const bucket = getTestBucket('STORAGE_TEST_MINIO_BUCKET');
     const adminClient = new Minio.Client({
       endPoint: endpointUrl.hostname,
       port: endpointUrl.port ? Number(endpointUrl.port) : useSSL ? 443 : 80,
@@ -116,6 +134,9 @@ const createMinioProvider = (): StorageIntegrationProvider => ({
         credentials: { accessKeyId, secretAccessKey }
       });
     const storage = createMinioStorage();
+    const bucketExists = () => adminClient.bucketExists(bucket);
+    const deleteBucket = () => adminClient.removeBucket(bucket);
+    await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -124,7 +145,8 @@ const createMinioProvider = (): StorageIntegrationProvider => ({
       bucket,
       initialEnsureResult,
       createStorage: createMinioStorage,
-      deleteBucket: () => adminClient.removeBucket(bucket)
+      bucketExists,
+      deleteBucket
     });
   }
 });
@@ -138,22 +160,24 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
     const accessKeyId = getRequiredEnv('STORAGE_TEST_AWS_S3_ACCESS_KEY_ID');
     const secretAccessKey = getRequiredEnv('STORAGE_TEST_AWS_S3_SECRET_ACCESS_KEY');
     const forcePathStyle = isEnabled('STORAGE_TEST_AWS_S3_FORCE_PATH_STYLE');
-    const bucket = createBucketName('aws-s3');
+    const bucket = getTestBucket('STORAGE_TEST_AWS_S3_BUCKET');
     const adminClient = new S3Client({
       endpoint,
       region,
       forcePathStyle,
       credentials: { accessKeyId, secretAccessKey }
     });
-    await adminClient.send(
-      new CreateBucketCommand({
-        Bucket: bucket,
-        CreateBucketConfiguration:
-          region === 'us-east-1'
-            ? undefined
-            : { LocationConstraint: region as BucketLocationConstraint }
-      })
-    );
+    const bucketExists = async () => {
+      try {
+        await adminClient.send(new HeadBucketCommand({ Bucket: bucket }));
+        return true;
+      } catch (error) {
+        if (isBucketNotFoundError(error)) return false;
+        throw error;
+      }
+    };
+    const deleteBucket = () =>
+      adminClient.send(new DeleteBucketCommand({ Bucket: bucket })).then(() => undefined);
     const createAwsStorage = () =>
       createStorage({
         vendor: 'aws-s3',
@@ -165,6 +189,16 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
         credentials: { accessKeyId, secretAccessKey }
       });
     const storage = createAwsStorage();
+    await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
+    await adminClient.send(
+      new CreateBucketCommand({
+        Bucket: bucket,
+        CreateBucketConfiguration:
+          region === 'us-east-1'
+            ? undefined
+            : { LocationConstraint: region as BucketLocationConstraint }
+      })
+    );
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -173,23 +207,9 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
       bucket,
       initialEnsureResult,
       createStorage: createAwsStorage,
-      deleteBucket: async () => {
-        let continuationToken: string | undefined;
-        do {
-          const response = await adminClient.send(
-            new ListObjectsV2Command({ Bucket: bucket, ContinuationToken: continuationToken })
-          );
-          const objects = (response.Contents ?? []).flatMap(({ Key }) => (Key ? [{ Key }] : []));
-          if (objects.length > 0) {
-            await adminClient.send(
-              new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: objects } })
-            );
-          }
-          continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
-        } while (continuationToken);
-        await adminClient.send(new DeleteBucketCommand({ Bucket: bucket }));
-        adminClient.destroy();
-      }
+      bucketExists,
+      deleteBucket,
+      destroyProvider: () => adminClient.destroy()
     });
   }
 });
@@ -202,14 +222,13 @@ const createOssProvider = (): StorageIntegrationProvider => ({
     const region = getRequiredEnv('STORAGE_TEST_OSS_REGION');
     const accessKeyId = getRequiredEnv('STORAGE_TEST_OSS_ACCESS_KEY_ID');
     const secretAccessKey = getRequiredEnv('STORAGE_TEST_OSS_SECRET_ACCESS_KEY');
-    const bucket = createBucketName('oss');
+    const bucket = getTestBucket('STORAGE_TEST_OSS_BUCKET');
     const adminClient = new OSS({
       endpoint,
       region,
       accessKeyId,
       accessKeySecret: secretAccessKey
     });
-    await adminClient.putBucket(bucket);
     const createOssStorage = () =>
       createStorage({
         vendor: 'oss',
@@ -220,6 +239,18 @@ const createOssProvider = (): StorageIntegrationProvider => ({
         credentials: { accessKeyId, secretAccessKey }
       });
     const storage = createOssStorage();
+    const bucketExists = async () => {
+      try {
+        await adminClient.getBucketInfo(bucket);
+        return true;
+      } catch (error) {
+        if (isBucketNotFoundError(error)) return false;
+        throw error;
+      }
+    };
+    const deleteBucket = () => adminClient.deleteBucket(bucket).then(() => undefined);
+    await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
+    await adminClient.putBucket(bucket);
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -228,7 +259,8 @@ const createOssProvider = (): StorageIntegrationProvider => ({
       bucket,
       initialEnsureResult,
       createStorage: createOssStorage,
-      deleteBucket: () => adminClient.deleteBucket(bucket).then(() => undefined)
+      bucketExists,
+      deleteBucket
     });
   }
 });
@@ -241,9 +273,11 @@ const createCosProvider = (): StorageIntegrationProvider => ({
     const appId = getRequiredEnv('STORAGE_TEST_COS_APP_ID');
     const accessKeyId = getRequiredEnv('STORAGE_TEST_COS_ACCESS_KEY_ID');
     const secretAccessKey = getRequiredEnv('STORAGE_TEST_COS_SECRET_ACCESS_KEY');
-    const bucket = createBucketName('cos', `-${appId}`);
+    const bucket = getTestBucket('STORAGE_TEST_COS_BUCKET');
+    if (!bucket.endsWith(`-${appId}`)) {
+      throw new Error('STORAGE_TEST_COS_BUCKET must end with the configured COS app ID');
+    }
     const adminClient = new COS({ SecretId: accessKeyId, SecretKey: secretAccessKey });
-    await adminClient.putBucket({ Bucket: bucket, Region: region });
     const createCosStorage = () =>
       createStorage({
         vendor: 'cos',
@@ -253,6 +287,19 @@ const createCosProvider = (): StorageIntegrationProvider => ({
         credentials: { accessKeyId, secretAccessKey }
       });
     const storage = createCosStorage();
+    const bucketExists = async () => {
+      try {
+        await adminClient.headBucket({ Bucket: bucket, Region: region });
+        return true;
+      } catch (error) {
+        if (isBucketNotFoundError(error)) return false;
+        throw error;
+      }
+    };
+    const deleteBucket = () =>
+      adminClient.deleteBucket({ Bucket: bucket, Region: region }).then(() => undefined);
+    await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
+    await adminClient.putBucket({ Bucket: bucket, Region: region });
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -261,8 +308,8 @@ const createCosProvider = (): StorageIntegrationProvider => ({
       bucket,
       initialEnsureResult,
       createStorage: createCosStorage,
-      deleteBucket: () =>
-        adminClient.deleteBucket({ Bucket: bucket, Region: region }).then(() => undefined)
+      bucketExists,
+      deleteBucket
     });
   }
 });
