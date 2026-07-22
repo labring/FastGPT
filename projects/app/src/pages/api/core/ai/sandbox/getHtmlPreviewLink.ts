@@ -16,7 +16,7 @@ import {
   createSandboxPreviewFileUrl,
   resolveSandboxPreviewPath,
   SandboxPreviewSessionLimitError
-} from '@fastgpt/service/core/ai/sandbox/application/preview';
+} from '@fastgpt/service/core/ai/sandbox/interface/preview';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import mime from 'mime';
 

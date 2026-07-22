@@ -39,8 +39,7 @@ const deleteIsolationMinutesByStatus: Partial<Record<SandboxInstanceStatusType, 
   legacyMigrating: SANDBOX_STALE_ARCHIVING_MINUTES,
   stopping: SANDBOX_STALE_STOPPING_MINUTES,
   archiving: SANDBOX_STALE_ARCHIVING_MINUTES,
-  restoring: SANDBOX_STALE_ARCHIVING_MINUTES,
-  providerMigrating: SANDBOX_STALE_ARCHIVING_MINUTES
+  restoring: SANDBOX_STALE_ARCHIVING_MINUTES
 };
 
 export type GetSandboxInfoParams = {
@@ -79,7 +78,6 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
     sandboxId: resource.sandboxId,
     label: `stop-sandbox:${resource.sandboxId}`,
     fn: async (lease) => {
-      const { assertValid } = lease;
       const current = await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId });
       if (
         !current ||
@@ -128,7 +126,6 @@ export async function deleteSandboxResource(resource: SandboxResourceRef): Promi
     sandboxId: resource.sandboxId,
     label: `delete-sandbox:${resource.sandboxId}`,
     fn: async (lease) => {
-      const { assertValid } = lease;
       const current = await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId });
       if (!current) return;
       assertDeleteCanFenceCurrentOperation(current);

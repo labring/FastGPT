@@ -80,14 +80,14 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/config', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
   getAgentSandboxArchiveMaxBytes: () => 1024 * 1024
 }));
 
 import {
   archiveInactiveSandboxes,
   archiveSandboxResource,
-  archiveSandboxResourceForProviderMigration,
+  archiveSandboxResourceNow,
   getSandboxWorkspaceArchiveForMigration,
   restoreArchivedSandboxBeforeUse,
   retryStaleArchivingSandboxes
@@ -276,7 +276,7 @@ describe('sandbox archive lifecycle', () => {
     mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(providerDeleted);
     mocks.claimSandboxOperation.mockResolvedValueOnce(reclaimed);
 
-    await expect(archiveSandboxResourceForProviderMigration(providerDeleted)).resolves.toEqual({
+    await expect(archiveSandboxResourceNow(providerDeleted)).resolves.toEqual({
       status: 'success'
     });
 

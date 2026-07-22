@@ -3,7 +3,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { BoolSchema } from '@fastgpt/global/common/zod';
-import { migrateLegacySandboxesToUserLevel } from '@fastgpt/service/core/ai/sandbox/application/migration';
+import { migrateLegacySandboxesToUserLevel } from '@fastgpt/service/core/ai/sandbox/interface/migration';
 import z from 'zod';
 
 const InitUserSandboxBodySchema = z.object({
