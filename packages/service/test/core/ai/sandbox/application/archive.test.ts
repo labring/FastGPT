@@ -149,7 +149,9 @@ describe('sandbox archive lifecycle', () => {
     });
     mocks.getSandboxAdapterConfig.mockReturnValue({
       providerConfig: { provider: 'opensandbox' },
-      createConfig: {}
+      createConfig: {
+        image: { repository: 'fastgpt/sandbox', tag: 'v2' }
+      }
     });
     mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
     mocks.connectToSandbox.mockResolvedValue(createSandbox());
@@ -367,7 +369,14 @@ describe('sandbox archive lifecycle', () => {
       mocks.completeSandboxOperation.mock.invocationCallOrder[0]
     );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ fromStatus: 'restoring', status: 'running', touchActive: true })
+      expect.objectContaining({
+        fromStatus: 'restoring',
+        status: 'running',
+        touchActive: true,
+        set: expect.objectContaining({
+          'metadata.image': { repository: 'fastgpt/sandbox', tag: 'v2' }
+        })
+      })
     );
   });
 

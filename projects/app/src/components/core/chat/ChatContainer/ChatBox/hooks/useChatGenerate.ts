@@ -48,6 +48,7 @@ import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
+import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
@@ -100,6 +101,10 @@ type UseChatGenerateProps = {
   generatingScroll: (force?: boolean) => void;
   notifyChatGenerateStatusChange: NotifyChatGenerateStatusChange;
   finishChatGenerateStatus: FinishChatGenerateStatus;
+  onSandboxRuntimeStatus?: (
+    status: SandboxRuntimeStatusResponse,
+    retryPendingPrompt?: () => void
+  ) => void;
 };
 
 const isAbortByLeave = (reason: unknown) => {
@@ -143,7 +148,8 @@ export const useChatGenerate = ({
   scrollToBottom,
   generatingScroll,
   notifyChatGenerateStatusChange,
-  finishChatGenerateStatus
+  finishChatGenerateStatus,
+  onSandboxRuntimeStatus
 }: UseChatGenerateProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -167,6 +173,7 @@ export const useChatGenerate = ({
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
   const generatingMessageQueueRef = useRef<QueuedGeneratingMessage[]>([]);
+  const sendPromptRef = useRef<SendPromptFnType>();
 
   const applyGeneratingMessage = useMemoizedFn(
     (
@@ -255,7 +262,9 @@ export const useChatGenerate = ({
               downloadingPackage: t('chat:sandbox_status_downloadingPackage'),
               uploadingPackage: t('chat:sandbox_status_uploadingPackage'),
               extractingPackage: t('chat:sandbox_status_extractingPackage'),
-              lazyInit: t('chat:sandbox_status_lazyInit')
+              lazyInit: t('chat:sandbox_status_lazyInit'),
+              upgradeRequired: t('skill:sandbox_runtime_upgrade_required'),
+              upgrading: t('skill:sandbox_runtime_upgrade_in_progress')
             };
 
             if (phase === 'ready') {
@@ -592,7 +601,17 @@ export const useChatGenerate = ({
   });
 
   const generatingMessage = useMemoizedFn(
-    (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
+    (
+      message: generatingMessageProps & { autoTTSResponse?: boolean },
+      retryPendingPrompt?: () => void
+    ) => {
+      if (
+        message.event === SseResponseEventEnum.sandboxStatus &&
+        message.sandboxStatus?.runtimeStatus
+      ) {
+        onSandboxRuntimeStatus?.(message.sandboxStatus.runtimeStatus, retryPendingPrompt);
+      }
+
       if (message.event === SseResponseEventEnum.chatTitle && message.title) {
         setChatBoxData((state) =>
           state.sourceKey === sourceKey && state.chatId === chatId
@@ -787,13 +806,25 @@ export const useChatGenerate = ({
               reserveId: true,
               reserveTool: true
             });
+            const retryCurrentPrompt = () => {
+              // 使用发送前的 history 替换失败轮次，同时不清空升级期间新输入的内容。
+              sendPromptRef.current?.({
+                text,
+                files,
+                history,
+                interactive,
+                autoTTSResponse,
+                hideInUI
+              });
+            };
 
             const { responseText } = await onStartChat({
               messages,
               responseChatItemId: responseChatId,
               interactive,
               controller: abortSignal,
-              generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
+              generatingMessage: (e) =>
+                generatingMessage({ ...e, autoTTSResponse }, retryCurrentPrompt),
               variables: requestVariables
             });
 
@@ -905,6 +936,10 @@ export const useChatGenerate = ({
       )();
     }
   );
+
+  useEffect(() => {
+    sendPromptRef.current = sendPrompt;
+  }, [sendPrompt]);
 
   return {
     abortRequest,

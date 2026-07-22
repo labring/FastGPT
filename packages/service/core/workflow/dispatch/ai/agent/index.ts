@@ -22,12 +22,18 @@ import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import {
   ensureAgentSandboxRuntime,
   streamAgentSandboxInitStatus,
+  streamAgentSandboxRuntimeUpgradeStatus,
   type AgentSandboxPrepareAction
 } from './sub/sandbox';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
+import {
+  buildSandboxClientQueryFromChatSource,
+  createAgentSandboxPermissionDeniedError,
+  createSandboxRuntimeUpgradeRequiredError,
+  getAppSandboxRuntimeStatus
+} from '../../../../ai/sandbox/interface/runtime';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import {
   buildAgentLoopCoreInput,
@@ -178,6 +184,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     if (effectiveUseAgentSandbox) {
+      if (runningAppInfo.sourceType === ChatSourceTypeEnum.app) {
+        const sandboxQuery = buildSandboxClientQueryFromChatSource({
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          userId: uid,
+          chatId
+        });
+        const runtimeStatus = await getAppSandboxRuntimeStatus(sandboxQuery);
+
+        if (runtimeStatus.status !== 'readyToInit') {
+          streamAgentSandboxRuntimeUpgradeStatus({
+            workflowStreamResponse,
+            sandboxId: sandboxQuery.sandboxId,
+            runtimeStatus
+          });
+          throw createSandboxRuntimeUpgradeRequiredError(runtimeStatus.status === 'upgrading');
+        }
+      }
+
       streamAgentSandboxInitStatus({
         workflowStreamResponse,
         sourceType: runningAppInfo.sourceType,
