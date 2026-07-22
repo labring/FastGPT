@@ -14,6 +14,7 @@ import {
   findInactiveRunningSandboxResources,
   findSandboxInstanceBySource,
   markSandboxOperationFailed,
+  switchArchivedSandboxProvider,
   touchRunningSandboxInstance,
   type SandboxResourceDoc
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
@@ -250,6 +251,40 @@ describe('sandbox instance lifecycle repository', () => {
         status: SandboxInstanceStatusEnum.running
       })
     ).resolves.toMatchObject({ status: SandboxInstanceStatusEnum.running });
+  });
+
+  it('switches provider only while the record remains archived and operation-free', async () => {
+    const identity = createAppIdentity();
+    const archived = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sourceType: ChatSourceTypeEnum.app,
+      ...identity,
+      status: SandboxInstanceStatusEnum.archived,
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+    const resource = archived.toObject() as SandboxResourceDoc;
+
+    await expect(
+      switchArchivedSandboxProvider({
+        resource,
+        provider: 'sealosdevbox',
+        image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
+      })
+    ).resolves.toMatchObject({
+      provider: 'sealosdevbox',
+      status: SandboxInstanceStatusEnum.archived,
+      metadata: {
+        image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
+      }
+    });
+    await expect(
+      switchArchivedSandboxProvider({
+        resource,
+        provider: 'sealosdevbox',
+        image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
+      })
+    ).resolves.toBeNull();
   });
 
   it('does not reclaim a fresh migration operation before the isolation window', async () => {

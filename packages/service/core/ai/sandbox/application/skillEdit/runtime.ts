@@ -4,7 +4,7 @@
  * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务应通过
  * sandbox/interface/skillEdit 调用，不直接依赖 provider、repository 或 archive 原子能力。
  */
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../../../skill/model/schema';
@@ -49,7 +49,7 @@ import {
 import { SandboxInstanceStatusEnum } from '../../type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
-import { getAgentSandboxSkillMaxBytes } from '../../interface/config';
+import { getAgentSandboxSkillMaxBytes } from '../../config';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 import { createAgentSandboxPermissionDeniedError } from '../../error';
@@ -401,9 +401,15 @@ export async function initSkillEditRuntimeSandbox({
       throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
     }
 
+    /** Provider SDK 的 rawBody 可能挂在当前错误或嵌套 cause 上，仅用于诊断日志。 */
+    const getProviderRawBody = (value: unknown): unknown => {
+      if (!value || typeof value !== 'object') return undefined;
+      if ('rawBody' in value) return value.rawBody;
+      return 'cause' in value ? getProviderRawBody(value.cause) : undefined;
+    };
     addLog.error('[Sandbox] Failed to create sandbox', {
       error,
-      rawBody: (error as any)?.cause?.rawBody ?? (error as any)?.rawBody
+      rawBody: getProviderRawBody(error)
     });
 
     if (sandboxClient && shouldCleanupCreatedSandboxOnFailure) {
@@ -482,10 +488,10 @@ export async function packageSkillInSandbox(params: {
             : Buffer.from(rootGitignore.content).toString('utf-8')
         ];
       }
-    } catch (err: any) {
+    } catch (err) {
       addLog.warn('[Sandbox] Failed to read root .gitignore file', {
         sandboxId,
-        error: err.message
+        error: getErrText(err)
       });
     }
 

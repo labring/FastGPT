@@ -4,6 +4,7 @@ import type {
 } from '@fastgpt/global/core/ai/sandbox/type';
 import { subMinutes } from 'date-fns';
 import {
+  findSandboxInstanceBySandboxId,
   findSandboxResourcesBySource,
   type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
@@ -12,6 +13,7 @@ import type { SandboxProviderType } from '../../type';
 import { SandboxInstanceStatusEnum } from '../../type';
 import { SANDBOX_STALE_ARCHIVING_MINUTES, startSandboxRuntimeUpgradeArchive } from '../archive';
 import type { SandboxClientQuery } from './client';
+import { SANDBOX_PROVISIONING_STALE_MS } from './constants';
 import { isSandboxRuntimeImageMatched, resolveSandboxRuntimeImage } from './image';
 
 export type SandboxRuntimeUpgradeTarget = {
@@ -27,7 +29,6 @@ export const isSandboxRuntimeUpgradeBusyState = (state?: string) =>
   state === SandboxInstanceStatusEnum.archiving ||
   state === SandboxInstanceStatusEnum.deleting ||
   state === SandboxInstanceStatusEnum.restoring ||
-  state === SandboxInstanceStatusEnum.providerMigrating ||
   state === SandboxInstanceStatusEnum.stopping ||
   state === SandboxInstanceStatusEnum.provisioning ||
   state === SandboxInstanceStatusEnum.legacyMigrating;
@@ -67,21 +68,22 @@ export function resolveSandboxRuntimeUpgradeTarget({
     (instance.status === SandboxInstanceStatusEnum.running ||
       instance.status === SandboxInstanceStatusEnum.stopped) &&
     !isSandboxRuntimeImageMatched(targetImage, instance.metadata?.image);
+  const isFailedArchivePrerequisite = (instance: SandboxResourceDoc) =>
+    Boolean(instance.metadata?.operation?.error) &&
+    (instance.status === SandboxInstanceStatusEnum.stopping ||
+      instance.status === SandboxInstanceStatusEnum.archiving);
+  const canStartRuntimeUpgradeArchive = (instance: SandboxResourceDoc) =>
+    isOutdatedStableInstance(instance) || isFailedArchivePrerequisite(instance);
   const statusInstance =
     currentInstance ??
     staleInstances.find((instance) => isSandboxRuntimeUpgradeBusyState(instance.status)) ??
     staleInstances.find((instance) => Boolean(instance.metadata?.operation?.error)) ??
     staleInstances.find((instance) => instance.status === SandboxInstanceStatusEnum.archived) ??
     staleInstances.find(isOutdatedStableInstance);
-  const canArchiveCurrentInstance =
-    currentInstance &&
-    currentInstance.status !== SandboxInstanceStatusEnum.archived &&
-    (!isSandboxRuntimeUpgradeBusyState(currentInstance.status) ||
-      Boolean(currentInstance.metadata?.operation?.error));
-  const upgradeInstance = canArchiveCurrentInstance
-    ? currentInstance
-    : (staleInstances.find((instance) => Boolean(instance.metadata?.operation?.error)) ??
-      staleInstances.find(isOutdatedStableInstance));
+  const upgradeInstance =
+    currentInstance && canStartRuntimeUpgradeArchive(currentInstance)
+      ? currentInstance
+      : staleInstances.find(canStartRuntimeUpgradeArchive);
 
   return {
     sandboxId,
@@ -108,28 +110,50 @@ export function getSandboxRuntimeUpgradeStatus(
   const { targetProvider, targetImage, statusInstance } = context;
   const lifecycleStatus = statusInstance?.status;
   const operationError = statusInstance?.metadata?.operation?.error;
+  const operationHeartbeatAt = statusInstance?.metadata?.operation?.heartbeatAt;
   const isCurrentProviderInstance = statusInstance?.provider === targetProvider;
   const isRuntimeImageOutdated =
     !!statusInstance &&
     !isSandboxRuntimeImageMatched(targetImage, statusInstance.metadata?.image ?? null);
+  const canRetryArchiveIsolationOperation =
+    Boolean(operationError) ||
+    !operationHeartbeatAt ||
+    operationHeartbeatAt < subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES);
+  const canRetryProvisioning =
+    Boolean(operationError) ||
+    Boolean(
+      operationHeartbeatAt &&
+      operationHeartbeatAt.getTime() < Date.now() - SANDBOX_PROVISIONING_STALE_MS
+    );
 
   if (statusInstance && lifecycleStatus === SandboxInstanceStatusEnum.restoring) {
-    const heartbeatAt = statusInstance.metadata?.operation?.heartbeatAt;
-    const canRetryCurrentProviderRestore =
-      isCurrentProviderInstance &&
-      (Boolean(operationError) ||
-        !heartbeatAt ||
-        heartbeatAt < subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES));
-    if (canRetryCurrentProviderRestore) {
+    // 当前 provider 直接续跑 restore；旧 provider 由 provider migration 先回滚再迁移。
+    if (canRetryArchiveIsolationOperation) {
       return buildRuntimeStatusResponse('readyToInit');
     }
     return buildRuntimeStatusResponse('upgrading');
   }
 
-  if (statusInstance && isSandboxRuntimeUpgradeBusyState(lifecycleStatus)) {
+  if (statusInstance && lifecycleStatus === SandboxInstanceStatusEnum.provisioning) {
+    if (isCurrentProviderInstance && canRetryProvisioning) {
+      return buildRuntimeStatusResponse('readyToInit');
+    }
+    return buildRuntimeStatusResponse('upgrading', operationError);
+  }
+
+  if (
+    statusInstance &&
+    (lifecycleStatus === SandboxInstanceStatusEnum.stopping ||
+      lifecycleStatus === SandboxInstanceStatusEnum.archiving)
+  ) {
     return operationError
       ? buildRuntimeStatusResponse('upgradeRequired', operationError)
       : buildRuntimeStatusResponse('upgrading');
+  }
+
+  if (statusInstance && isSandboxRuntimeUpgradeBusyState(lifecycleStatus)) {
+    // deleting 与 legacyMigrating 必须由原业务重试，runtime upgrade 不得改写其 phase。
+    return buildRuntimeStatusResponse('upgrading', operationError);
   }
 
   if (
@@ -167,7 +191,7 @@ async function getAppSandboxRuntimeUpgradeContext(query: SandboxClientQuery) {
   });
 }
 
-/** 启动 runtime 镜像升级归档；并发操作统一返回当前状态供客户端轮询。 */
+/** 恢复失败的前置 stop 并启动镜像升级归档；抢占失败时返回重新读取的真实状态。 */
 export async function triggerSandboxRuntimeUpgrade(
   context: SandboxRuntimeUpgradeTarget
 ): Promise<SandboxRuntimeStatusResponse> {
@@ -179,8 +203,24 @@ export async function triggerSandboxRuntimeUpgrade(
   const runtimeUpgradeInstance = context.upgradeInstance;
   if (!runtimeUpgradeInstance) return status;
 
-  await startSandboxRuntimeUpgradeArchive(runtimeUpgradeInstance);
-  return buildRuntimeStatusResponse('upgrading');
+  if (runtimeUpgradeInstance.status === SandboxInstanceStatusEnum.stopping) {
+    // 只在失败 stop 的用户重试分支加载资源编排，状态查询不得初始化 lifecycle infra。
+    const { stopSandboxResource } = await import('../resource');
+    await stopSandboxResource(runtimeUpgradeInstance);
+  }
+
+  const started = await startSandboxRuntimeUpgradeArchive(runtimeUpgradeInstance);
+  if (started.success) return buildRuntimeStatusResponse('upgrading');
+
+  // 并发请求可能已经推进或完成归档，失败时重新读取，不能伪造 upgrading。
+  const current = await findSandboxInstanceBySandboxId({
+    sandboxId: runtimeUpgradeInstance.sandboxId
+  });
+  return getSandboxRuntimeUpgradeStatus({
+    ...context,
+    statusInstance: current,
+    upgradeInstance: current
+  });
 }
 
 /** 查询 App 用户级 runtime 镜像状态，不执行生命周期副作用。 */

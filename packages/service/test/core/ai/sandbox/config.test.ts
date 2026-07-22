@@ -4,9 +4,9 @@ import {
   getAgentSandboxArchiveMaxBytes,
   getAgentSandboxMaxFileBytes,
   getAgentSandboxSkillMaxBytes
-} from '@fastgpt/service/core/ai/sandbox/interface/config';
+} from '@fastgpt/service/core/ai/sandbox/config';
 
-describe('agent sandbox interface config', () => {
+describe('agent sandbox config', () => {
   const originalAgentSandboxDiskMB = serviceEnv.AGENT_SANDBOX_DISK_MB;
 
   afterEach(() => {

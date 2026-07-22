@@ -51,6 +51,7 @@ import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '.
 import { assertSandboxSourceActive } from '../sourceGuard';
 import { isRedisLeaseError } from '../../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../../error';
+import { SANDBOX_PROVISIONING_STALE_MS } from './constants';
 import { resolveSandboxRuntimeImage } from './image';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
@@ -80,8 +81,6 @@ type SandboxClientOptions = {
   allowCreate?: boolean;
   sourceGuard?: typeof assertSandboxSourceActive;
 };
-
-const SANDBOX_PROVISIONING_STALE_MS = 15 * 60 * 1000;
 
 /**
  * 当前会话运行态 sandbox client。
@@ -234,7 +233,8 @@ export class SandboxClient {
         finish: {
           type: 'complete',
           status: SandboxInstanceStatusEnum.running,
-          touchActive: true
+          touchActive: true,
+          set: runtimeImage ? { 'metadata.image': runtimeImage } : undefined
         }
       };
       await runSandboxLifecycleOperation({

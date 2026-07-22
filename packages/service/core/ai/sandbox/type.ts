@@ -25,7 +25,6 @@ export const sandboxInstanceStatusList = [
   'archiving',
   'archived',
   'restoring',
-  'providerMigrating',
   'deleting'
 ] as const;
 export const SandboxInstanceStatusEnum = {
@@ -37,7 +36,6 @@ export const SandboxInstanceStatusEnum = {
   archiving: 'archiving',
   archived: 'archived',
   restoring: 'restoring',
-  providerMigrating: 'providerMigrating',
   deleting: 'deleting'
 } as const satisfies Record<(typeof sandboxInstanceStatusList)[number], string>;
 export const SandboxInstanceStatusSchema = z.enum(sandboxInstanceStatusList);
@@ -53,7 +51,6 @@ export const sandboxOperationTypeList = [
   'stop',
   'archive',
   'restore',
-  'providerMigration',
   'delete'
 ] as const;
 export const SandboxOperationTypeEnum = {
@@ -62,7 +59,6 @@ export const SandboxOperationTypeEnum = {
   stop: 'stop',
   archive: 'archive',
   restore: 'restore',
-  providerMigration: 'providerMigration',
   delete: 'delete'
 } as const satisfies Record<(typeof sandboxOperationTypeList)[number], string>;
 export const SandboxOperationTypeSchema = z.enum(sandboxOperationTypeList);
@@ -106,9 +102,7 @@ export const SandboxOperationSchema = z
     startedAt: z.coerce.date(),
     heartbeatAt: z.coerce.date(),
     failedAt: z.coerce.date().optional(),
-    error: z.string().optional(),
-    fromProvider: SandboxProviderSchema.optional(),
-    targetProvider: SandboxProviderSchema.optional()
+    error: z.string().optional()
   })
   .strict();
 export type SandboxOperationTypeSchemaType = z.infer<typeof SandboxOperationSchema>;
@@ -135,7 +129,6 @@ const expectedOperationByStatus: Partial<Record<SandboxInstanceStatusType, Sandb
     stopping: 'stop',
     archiving: 'archive',
     restoring: 'restore',
-    providerMigrating: 'providerMigration',
     deleting: 'delete'
   };
 
