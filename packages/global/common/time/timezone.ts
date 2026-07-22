@@ -1,7 +1,7 @@
 import timezones from 'timezones-list';
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
 
 // timezones-list is CJS; under ESM interop the default import may receive
 // {default: [...]} instead of the array. Normalize at import time.
