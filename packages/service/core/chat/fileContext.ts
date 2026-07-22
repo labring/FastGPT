@@ -328,14 +328,13 @@ export const parseUrlToChatFileType = ({
   }
 };
 
-export const formatUserQueryWithFiles = async ({
+export const formatAIChatUserQueryWithFiles = async ({
   userQuery,
   parseFileFn
 }: {
   userQuery: UserChatItemValueItemType[];
   parseFileFn: (urls: string[]) => Promise<
     {
-      id?: string;
       name: string;
       url: string;
       sandboxPath?: string;
@@ -351,22 +350,34 @@ export const formatUserQueryWithFiles = async ({
   const normalizedUserQuery = hasShortLinkFile
     ? await resolveShortLinkMediaFilesInUserQuery(userQuery)
     : userQuery;
-  const urls = normalizedUserQuery
+  const seenFileUrls = new Set<string>();
+  const filteredUserQuery = normalizedUserQuery.filter((item) => {
+    if (!item.file) return true;
+    if (seenFileUrls.has(item.file.url)) return false;
+
+    seenFileUrls.add(item.file.url);
+    return true;
+  });
+  const deduplicatedUserQuery =
+    filteredUserQuery.length === normalizedUserQuery.length
+      ? normalizedUserQuery
+      : filteredUserQuery;
+  const urls = deduplicatedUserQuery
     .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
     .filter(Boolean);
 
   if (urls.length === 0) {
-    return normalizedUserQuery;
+    return deduplicatedUserQuery;
   }
 
   const readFilesResult = await parseFileFn(urls);
 
   if (readFilesResult.length === 0) {
-    return normalizedUserQuery;
+    return deduplicatedUserQuery;
   }
 
-  // 把 file 和 text 合并成一个 text(实际上应该只会有一个 text+多个 files)
-  const text = normalizedUserQuery.find((item) => item.text?.content)?.text?.content;
+  // AI Chat 会把普通文档合并到文本上下文，多模态文件仍作为独立输入发给模型。
+  const text = deduplicatedUserQuery.find((item) => item.text?.content)?.text?.content;
   const fileQuery = getUserFilesPrompt(readFilesResult);
 
   const finalQuery = injectUserQueryPrompt({
@@ -374,7 +385,12 @@ export const formatUserQueryWithFiles = async ({
     filePrompt: fileQuery
   });
 
+  const multimodalItems = deduplicatedUserQuery.filter(
+    (item) => !item.text && item.file?.type !== ChatFileTypeEnum.file
+  );
+
   return [
+    ...multimodalItems,
     {
       text: {
         content: finalQuery
@@ -388,7 +404,7 @@ export const formatUserQueryWithFiles = async ({
  *
  * 历史 Human 消息是否解析由调用方控制；未解析时会移除历史文件项，避免旧文件继续作为模型文件输入。
  */
-export const rewriteChatMessagesWithFileContext = async ({
+export const rewriteAIChatMessagesWithFileContext = async ({
   messages,
   parseHistoryFiles,
   parseFileFn
@@ -397,7 +413,6 @@ export const rewriteChatMessagesWithFileContext = async ({
   parseHistoryFiles: boolean;
   parseFileFn: (urls: string[]) => Promise<
     {
-      id?: string;
       name: string;
       url: string;
       sandboxPath?: string;
@@ -419,7 +434,7 @@ export const rewriteChatMessagesWithFileContext = async ({
         };
       }
 
-      const query = await formatUserQueryWithFiles({
+      const query = await formatAIChatUserQueryWithFiles({
         userQuery: message.value,
         parseFileFn
       });
@@ -740,63 +755,6 @@ export const parseFileContentFromUrls = async ({
             name: '',
             url,
             content: getErrText(error, 'Load file error')
-          };
-        }
-      })
-      .filter(Boolean)
-  );
-
-  return readFilesResult;
-};
-export const parseFileInfoFromUrls = async ({
-  urls,
-  requestOrigin,
-  maxFiles,
-  teamId,
-  fileContext
-}: {
-  requestOrigin?: string;
-  maxFiles: number;
-  teamId: string;
-  urls: string[];
-  fileContext?: FileReadContext;
-}): Promise<
-  {
-    success: boolean;
-    name: string;
-    url: string;
-  }[]
-> => {
-  const parseUrlList = urls
-    .map((url) => normalizeReadableFileUrl({ url, requestOrigin, fileContext }))
-    .filter(Boolean)
-    .slice(0, maxFiles);
-
-  const readFilesResult = await Promise.all(
-    parseUrlList
-      .map(async (url) => {
-        try {
-          const sourceId = await getAuthorizedFileCacheSourceId({ url, fileContext });
-          const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
-            sourceId,
-            customPdfParse: false
-          });
-          if (rawTextBuffer) {
-            return {
-              success: true,
-              name: rawTextBuffer.filename,
-              url
-            };
-          }
-
-          const { filename } = await getFileInfoFromUrl({ teamId, url, fileContext });
-
-          return { success: true, name: filename, url };
-        } catch {
-          return {
-            success: false,
-            name: '',
-            url
           };
         }
       })

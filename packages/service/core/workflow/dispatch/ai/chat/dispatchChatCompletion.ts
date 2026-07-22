@@ -118,7 +118,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         userFiles,
         parseHistoryFiles: fileContextConfig.parseHistoryFiles,
         requestOrigin,
-        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+        maxFiles: chatConfig?.fileSelectConfig?.maxFiles ?? 20,
         customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
         usageId,
         runningUserInfo

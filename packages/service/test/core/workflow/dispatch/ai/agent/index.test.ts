@@ -344,6 +344,31 @@ describe('dispatchRunAgent user context', () => {
     expect(currentText).toContain('当前问题');
   });
 
+  it('removes history files when the node file input is not bound', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.node.inputs = [];
+
+    let result: any;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    const historyText = getMessageTextForTest(loopInput.messages[0].content);
+    const currentText = getMessageTextForTest(loopInput.messages[1].content);
+
+    expect(historyText).toBe('上一轮问题');
+    expect(historyText).not.toContain('https://files.example.com/old.pdf');
+    expect(currentText).toContain('https://files.example.com/current.pdf');
+  });
+
   it('resolves PromptEditor tool references before building the agent system prompt', async () => {
     getAgentRuntimeToolsMock.mockResolvedValueOnce([
       {

@@ -2,7 +2,7 @@ import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { parseUrlToFileType } from '../../../utils/context';
-import { rewriteChatMessagesWithFileContext } from '../../../../chat/fileContext';
+import { rewriteAIChatMessagesWithFileContext } from '../../../../chat/fileContext';
 import type { ChatMessageFileParser } from './type';
 
 /**
@@ -43,7 +43,7 @@ export const rewriteChatMessagesWithFiles = async ({
   parseHistoryFiles: boolean;
   parseFileFn: ChatMessageFileParser;
 }) => {
-  return rewriteChatMessagesWithFileContext({
+  return rewriteAIChatMessagesWithFileContext({
     messages,
     parseHistoryFiles,
     parseFileFn

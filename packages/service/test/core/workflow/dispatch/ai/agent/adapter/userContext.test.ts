@@ -343,6 +343,7 @@ describe('useUserContext', () => {
         });
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [history, createSystemMessage(), createAiMessage('history_ai_1')],
           currentFiles: [
             'https://files.example.com/current.pdf',
@@ -415,6 +416,7 @@ describe('useUserContext', () => {
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createHumanMessage({
               dataId: 'history_1',
@@ -565,6 +567,7 @@ describe('useUserContext', () => {
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createHumanMessage({
               dataId: 'history_human_1',
@@ -636,6 +639,7 @@ describe('useUserContext', () => {
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createSystemMessage(),
             createHumanMessage({
@@ -680,6 +684,7 @@ describe('useUserContext', () => {
 
         const result = await getUserContextMessagesForTest({
           history: explicitHistory,
+          parseHistoryFiles: true,
           histories: [],
           currentFiles: ['https://files.example.com/c.pdf', 'https://files.example.com/a.pdf'],
           currentUserInput: '当前问题',
@@ -696,6 +701,46 @@ describe('useUserContext', () => {
         expect(historyText).not.toContain('https://files.example.com/b.pdf');
         expect(currentText).toContain('<url>https://files.example.com/c.pdf</url>');
         expect(currentText).not.toContain('https://files.example.com/a.pdf');
+      }
+    );
+  });
+
+  it('removes historical files when the node file input is not bound', async () => {
+    await runWithContextAsync(
+      {
+        mcpClientMemory: {}
+      },
+      async () => {
+        const result = await getUserContextMessagesForTest({
+          history: 6,
+          parseHistoryFiles: false,
+          histories: [
+            createHumanMessage({
+              dataId: 'history_human',
+              text: '历史问题',
+              files: [
+                { name: 'old.pdf', url: 'https://files.example.com/old.pdf' },
+                {
+                  name: 'old.png',
+                  url: 'https://files.example.com/old.png',
+                  type: ChatFileTypeEnum.image
+                }
+              ]
+            })
+          ],
+          currentFiles: ['https://files.example.com/current.pdf'],
+          currentUserInput: '当前问题',
+          tmbId: 'tmb_1',
+          timezone: 'Asia/Shanghai',
+          maxFiles: 20
+        });
+
+        const historyPrompt = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        const currentPrompt = chatValue2RuntimePrompt(result.currentUserMessage.value);
+
+        expect(historyPrompt.text).toBe('历史问题');
+        expect(historyPrompt.files).toEqual([]);
+        expect(currentPrompt.text).toContain('https://files.example.com/current.pdf');
       }
     );
   });
@@ -907,6 +952,7 @@ describe('useUserContext', () => {
       async () => {
         const result = await getUserContextMessagesForTest({
           history: 6,
+          parseHistoryFiles: true,
           histories: [
             createHumanMessage({
               dataId: 'history_human',

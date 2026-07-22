@@ -153,10 +153,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   // 初始化对话框输入的文件
   const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-  const fileLinks =
-    fileUrlInput && fileUrlInput.value && fileUrlInput.value.length > 0
-      ? props.params.fileUrlList
-      : undefined;
+  const parseHistoryFiles = !!fileUrlInput?.value?.length;
+  const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   try {
     if (hasSandboxRuntimeDependency && !global.feConfigs?.show_agent_sandbox) {
@@ -170,11 +168,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       currentUserInput: userChatInput,
       currentQuery: query,
       currentDataId: responseChatItemId,
+      parseHistoryFiles,
       selectedDataset: datasetParams?.datasets,
       authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
-      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles ?? 20
     });
 
     if (effectiveUseAgentSandbox) {

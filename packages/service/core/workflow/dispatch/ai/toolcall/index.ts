@@ -37,7 +37,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     runtimeNodes,
     runtimeEdges,
     histories,
-    requestOrigin,
     chatConfig,
     lastInteractive,
     runningUserInfo,
@@ -76,10 +75,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const useVideo = aiChatVideo && toolModel.video;
     const chatHistories = getAgentLoopHistories(history, histories);
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-    const fileLinks =
-      !fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0
-        ? undefined
-        : rawFileLinks;
+    const parseHistoryFiles = !!fileUrlInput?.value?.length;
+    const fileLinks = parseHistoryFiles ? rawFileLinks : undefined;
 
     props.params.aiChatVision = aiChatVision && toolModel.vision;
     props.params.aiChatAudio = useAudio;
@@ -105,11 +102,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       responseChatItemId,
       userChatInput,
       fileLinks,
+      parseHistoryFiles,
       lastInteractive,
       isEntry,
       chatConfig,
-      requestOrigin,
-      runningUserInfo,
       useSandbox
     });
 

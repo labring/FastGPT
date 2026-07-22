@@ -151,7 +151,8 @@ describe('dispatchRunTools file context', () => {
 
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileLinks: undefined
+        fileLinks: undefined,
+        parseHistoryFiles: false
       })
     );
     expect(runToolCallMock).toHaveBeenCalledWith(
@@ -186,7 +187,8 @@ describe('dispatchRunTools file context', () => {
 
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileLinks: ['/current.pdf']
+        fileLinks: ['/current.pdf'],
+        parseHistoryFiles: true
       })
     );
     expect(runToolCallMock).toHaveBeenCalledWith(
