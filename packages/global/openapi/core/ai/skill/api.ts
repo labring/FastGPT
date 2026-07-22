@@ -149,30 +149,10 @@ export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
 export const ImportSkillResponseSchema = IdSchema;
 export type ImportSkillResponse = z.infer<typeof ImportSkillResponseSchema>;
 
-export const SkillRuntimeStatusSchema = z.enum(['readyToInit', 'upgradeRequired', 'upgrading']);
-export const SkillRuntimeArchiveStateSchema = z.enum([
-  'archiving',
-  'deleting',
-  'archived',
-  'restoring',
-  'failed'
-]);
-
 export const SkillRuntimeBodySchema = z.object({
   skillId: IdSchema.describe('技能 ID')
 });
 export type SkillRuntimeBody = z.infer<typeof SkillRuntimeBodySchema>;
-
-export const SkillRuntimeStatusResponseSchema = z.object({
-  sandboxId: z.string().describe('FastGPT sandbox instance key'),
-  status: SkillRuntimeStatusSchema.describe('Skill Edit runtime 当前状态'),
-  archiveState: SkillRuntimeArchiveStateSchema.optional().describe('底层 sandbox 归档状态'),
-  canUpgrade: z.boolean().describe('当前是否允许触发 runtime 升级'),
-  shouldPoll: z.boolean().describe('客户端是否应继续轮询 getStatus'),
-  shouldInit: z.boolean().describe('客户端是否应执行 runtime init'),
-  lastError: z.string().optional().describe('上次 runtime 升级归档失败原因')
-});
-export type SkillRuntimeStatusResponse = z.infer<typeof SkillRuntimeStatusResponseSchema>;
 
 export const SkillRuntimeInitEventSchema = z
   .object({
