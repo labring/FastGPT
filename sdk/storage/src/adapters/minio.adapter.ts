@@ -113,29 +113,68 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
    * 再使用 MinIO SDK 删除，以保留现有 MinIO 校验和兼容性逻辑。
    *
    * 列举和删除按页串行执行，避免对象数量较大时积累无上限的并发删除任务。
+   * 每个列举和删除请求最多等待 60 秒，避免异常连接长期占用删除队列 worker。
    */
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
     const listBatchSize = 400;
+    const requestTimeoutMs = 60_000;
 
     if (!prefix?.trim()) {
       throw new Error('Prefix is required');
     }
+
+    /** 为单次 MinIO 请求设置超时，并在 SDK 支持时主动取消底层请求。 */
+    const withRequestTimeout = async <T>({
+      promise,
+      operation,
+      onTimeout
+    }: {
+      promise: Promise<T>;
+      operation: 'list' | 'delete';
+      onTimeout?: () => void;
+    }): Promise<T> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      try {
+        return await Promise.race([
+          promise,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+              onTimeout?.();
+              reject(
+                new Error(
+                  `Delete by prefix ${operation} timeout after ${requestTimeoutMs}ms: ${prefix}`
+                )
+              );
+            }, requestTimeoutMs);
+          })
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    };
 
     const bucket = this.options.bucket;
     const failedKeys: string[] = [];
     let continuationToken: string | undefined;
 
     do {
-      const listResponse = await this.client.send(
-        new ListObjectsV2Command({
-          Bucket: bucket,
-          Prefix: prefix,
-          ContinuationToken: continuationToken,
-          EncodingType: 'url',
-          MaxKeys: listBatchSize
-        })
-      );
+      const abortController = new AbortController();
+      const listResponse = await withRequestTimeout({
+        promise: this.client.send(
+          new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken,
+            EncodingType: 'url',
+            MaxKeys: listBatchSize
+          }),
+          { abortSignal: abortController.signal }
+        ),
+        operation: 'list',
+        onTimeout: () => abortController.abort()
+      });
       const keys = (listResponse.Contents ?? []).flatMap(({ Key }) => {
         if (!Key) return [];
 
@@ -144,7 +183,10 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       });
 
       if (keys.length > 0) {
-        await this.minioClient.removeObjects(bucket, keys).catch(() => {
+        await withRequestTimeout({
+          promise: this.minioClient.removeObjects(bucket, keys),
+          operation: 'delete'
+        }).catch(() => {
           failedKeys.push(...keys);
         });
       }

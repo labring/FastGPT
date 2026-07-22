@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MinioS3NotFound,
   MinioStorageAdapter
@@ -110,6 +110,10 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
       throw new Error('Entity expansion limit exceeded: 1002 > 1000');
     });
     (adapter as any).minioClient.removeObjects = removeObjects;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it.each(['', '   '])('rejects an empty prefix: %j', async (prefix) => {
@@ -224,6 +228,40 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
       'Invalid MinIO list response: missing continuation token'
     );
     expect(removeObjects).not.toHaveBeenCalled();
+  });
+
+  it('aborts and rejects when listing exceeds the request timeout', async () => {
+    vi.useFakeTimers();
+    listObjects.mockReturnValue(new Promise(() => {}));
+
+    const resultPromise = adapter.deleteObjectsByPrefix({ prefix: 'stuck-list/' });
+    const assertion = expect(resultPromise).rejects.toThrow(
+      'Delete by prefix list timeout after 60000ms: stuck-list/'
+    );
+
+    await vi.advanceTimersByTimeAsync(60000);
+    await assertion;
+
+    expect(listObjects.mock.calls[0]?.[1]?.abortSignal.aborted).toBe(true);
+    expect(removeObjects).not.toHaveBeenCalled();
+  });
+
+  it('marks the page as failed when deletion exceeds the request timeout', async () => {
+    vi.useFakeTimers();
+    listObjects.mockResolvedValueOnce({
+      Contents: [{ Key: 'stuck-delete/file.txt' }],
+      IsTruncated: false
+    });
+    removeObjects.mockReturnValueOnce(new Promise(() => {}));
+
+    const resultPromise = adapter.deleteObjectsByPrefix({ prefix: 'stuck-delete/' });
+    const assertion = expect(resultPromise).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: ['stuck-delete/file.txt']
+    });
+
+    await vi.advanceTimersByTimeAsync(60000);
+    await assertion;
   });
 });
 
