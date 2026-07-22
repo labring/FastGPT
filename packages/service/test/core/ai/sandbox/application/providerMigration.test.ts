@@ -8,11 +8,12 @@ const mocks = vi.hoisted(() => ({
   claimSandboxOperation: vi.fn(),
   advanceSandboxOperation: vi.fn(),
   completeSandboxOperation: vi.fn(),
-  completeSandboxProviderMigration: vi.fn(),
+  switchArchivedSandboxProvider: vi.fn(),
   markSandboxOperationFailed: vi.fn(),
-  archiveSandboxResourceForProviderMigration: vi.fn(),
+  archiveSandboxResourceWithinLease: vi.fn(),
   buildSandboxResourceAdapter: vi.fn(),
-  deleteSessionVolume: vi.fn()
+  deleteSessionVolume: vi.fn(),
+  resolveSandboxRuntimeImage: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/redis/lock', () => ({
@@ -35,9 +36,9 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
   advanceSandboxOperation: mocks.advanceSandboxOperation,
   claimSandboxOperation: mocks.claimSandboxOperation,
   completeSandboxOperation: mocks.completeSandboxOperation,
-  completeSandboxProviderMigration: mocks.completeSandboxProviderMigration,
   findSandboxInstanceBySource: mocks.findSandboxInstanceBySource,
-  markSandboxOperationFailed: mocks.markSandboxOperationFailed
+  markSandboxOperationFailed: mocks.markSandboxOperationFailed,
+  switchArchivedSandboxProvider: mocks.switchArchivedSandboxProvider
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () => ({
@@ -58,9 +59,13 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
   return {
     SANDBOX_STALE_ARCHIVING_MINUTES: 45,
     SandboxLifecycleStateError,
-    archiveSandboxResourceForProviderMigration: mocks.archiveSandboxResourceForProviderMigration
+    archiveSandboxResourceWithinLease: mocks.archiveSandboxResourceWithinLease
   };
 });
+
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/image', () => ({
+  resolveSandboxRuntimeImage: mocks.resolveSandboxRuntimeImage
+}));
 
 import { migrateSandboxProviderBeforeUse } from '@fastgpt/service/core/ai/sandbox/application/providerMigration';
 
@@ -95,12 +100,10 @@ describe('sandbox provider migration lifecycle', () => {
     vi.clearAllMocks();
     mocks.assertSandboxSourceActive.mockResolvedValue(undefined);
     mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }: any) => fn(lease));
-    mocks.archiveSandboxResourceForProviderMigration.mockResolvedValue({ status: 'success' });
-    mocks.advanceSandboxOperation.mockResolvedValue(
-      createInstance({ status: 'providerMigrating' })
-    );
+    mocks.archiveSandboxResourceWithinLease.mockResolvedValue({ status: 'success' });
+    mocks.advanceSandboxOperation.mockResolvedValue(createInstance({ status: 'restoring' }));
     mocks.completeSandboxOperation.mockResolvedValue(createInstance({ status: 'archived' }));
-    mocks.completeSandboxProviderMigration.mockResolvedValue(
+    mocks.switchArchivedSandboxProvider.mockResolvedValue(
       createInstance({
         provider: 'sealosdevbox',
         status: 'archived'
@@ -109,23 +112,13 @@ describe('sandbox provider migration lifecycle', () => {
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.buildSandboxResourceAdapter.mockReturnValue({ delete: vi.fn(async () => undefined) });
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
-    mocks.claimSandboxOperation.mockResolvedValue(
-      createInstance({
-        status: 'providerMigrating',
-        metadata: {
-          operation: {
-            id: 'migration-1',
-            type: 'providerMigration',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
-        }
-      })
-    );
+    mocks.resolveSandboxRuntimeImage.mockReturnValue({
+      repository: 'registry.example.com/sandbox',
+      tag: 'v2'
+    });
   });
 
-  it('archives and provider-switches the same record inside one lifecycle lease', async () => {
+  it('starts archive with the old provider before switching the archived record', async () => {
     const running = createInstance();
     const archived = createInstance({ status: 'archived' });
     mocks.findSandboxInstanceBySource
@@ -135,62 +128,51 @@ describe('sandbox provider migration lifecycle', () => {
 
     await migrateSandboxProviderBeforeUse(params);
 
-    expect(mocks.archiveSandboxResourceForProviderMigration).toHaveBeenCalledWith(running, lease);
-    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resource: archived,
-        status: 'providerMigrating',
-        type: 'providerMigration',
-        previousStatus: 'archived',
-        fromProvider: 'opensandbox',
-        targetProvider: 'sealosdevbox'
-      })
-    );
-    expect(mocks.completeSandboxProviderMigration).toHaveBeenCalledWith({
-      resource: expect.objectContaining({ status: 'providerMigrating' }),
-      operationId: 'migration-1',
-      provider: 'sealosdevbox'
+    expect(mocks.buildSandboxResourceAdapter).toHaveBeenCalledWith({
+      provider: 'sealosdevbox',
+      sandboxId: 'app-sandbox'
+    });
+    expect(mocks.archiveSandboxResourceWithinLease).toHaveBeenCalledWith(running, lease);
+    expect(mocks.archiveSandboxResourceWithinLease.mock.calls[0][0].provider).toBe('opensandbox');
+    expect(mocks.switchArchivedSandboxProvider).toHaveBeenCalledWith({
+      resource: archived,
+      provider: 'sealosdevbox',
+      image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
     });
   });
 
-  it('takes over an interrupted providerMigrating operation without re-archiving', async () => {
-    const migrating = createInstance({
-      status: 'providerMigrating',
-      metadata: {
-        operation: {
-          id: 'old-provider-migration',
-          type: 'providerMigration',
-          phase: 'targetAdapterValidated',
-          previousStatus: 'archived',
-          fromProvider: 'opensandbox',
-          targetProvider: 'sealosdevbox',
-          startedAt: new Date(0),
-          heartbeatAt: new Date(0)
-        }
-      }
-    });
-    mocks.findSandboxInstanceBySource.mockResolvedValue(migrating);
-    mocks.claimSandboxOperation.mockResolvedValueOnce({
-      ...migrating,
-      metadata: {
-        operation: { ...migrating.metadata.operation, id: 'resumed-provider-migration' }
-      }
+  it('validates the target provider before archiving the current resource', async () => {
+    const running = createInstance();
+    mocks.findSandboxInstanceBySource.mockResolvedValue(running);
+    mocks.buildSandboxResourceAdapter.mockImplementationOnce(() => {
+      throw new Error('Target provider is not configured');
     });
 
-    await migrateSandboxProviderBeforeUse(params);
-
-    expect(mocks.archiveSandboxResourceForProviderMigration).not.toHaveBeenCalled();
-    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resource: migrating,
-        status: 'providerMigrating',
-        fromProvider: 'opensandbox',
-        targetProvider: 'sealosdevbox'
-      })
+    await expect(migrateSandboxProviderBeforeUse(params)).rejects.toThrow(
+      'Target provider is not configured'
     );
-    expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
-    expect(mocks.advanceSandboxOperation).not.toHaveBeenCalled();
-    expect(mocks.completeSandboxProviderMigration).toHaveBeenCalledTimes(1);
+
+    expect(mocks.archiveSandboxResourceWithinLease).not.toHaveBeenCalled();
+    expect(mocks.switchArchivedSandboxProvider).not.toHaveBeenCalled();
+  });
+
+  it('accepts a concurrent archived provider switch without replaying archive', async () => {
+    const archived = createInstance({ status: 'archived' });
+    const switched = createInstance({ provider: 'sealosdevbox', status: 'archived' });
+    mocks.findSandboxInstanceBySource
+      .mockResolvedValueOnce(archived)
+      .mockResolvedValueOnce(archived)
+      .mockResolvedValueOnce(switched);
+    mocks.switchArchivedSandboxProvider.mockResolvedValueOnce(null);
+
+    await expect(migrateSandboxProviderBeforeUse(params)).resolves.toBeUndefined();
+
+    expect(mocks.archiveSandboxResourceWithinLease).not.toHaveBeenCalled();
+    expect(mocks.switchArchivedSandboxProvider).toHaveBeenCalledWith({
+      resource: archived,
+      provider: 'sealosdevbox',
+      image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
+    });
   });
 
   it('rolls an archiveInstalled old-provider restore back to archived without deleting S3', async () => {
@@ -218,36 +200,24 @@ describe('sandbox provider migration lifecycle', () => {
         }
       }
     };
-    const providerClaim = createInstance({
-      status: 'providerMigrating',
-      metadata: {
-        operation: {
-          id: 'migration-after-rollback',
-          type: 'providerMigration',
-          phase: 'claimed',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      }
-    });
     mocks.findSandboxInstanceBySource
       .mockResolvedValueOnce(restoring)
       .mockResolvedValueOnce(restoring);
-    mocks.claimSandboxOperation
-      .mockResolvedValueOnce(restoreClaim)
-      .mockResolvedValueOnce(providerClaim);
+    mocks.claimSandboxOperation.mockResolvedValueOnce(restoreClaim);
     mocks.completeSandboxOperation.mockResolvedValueOnce(archived);
 
     await migrateSandboxProviderBeforeUse(params);
 
-    const rollbackAdapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
+    const rollbackAdapter = mocks.buildSandboxResourceAdapter.mock.results[1].value;
     expect(rollbackAdapter.delete).toHaveBeenCalledTimes(1);
     expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('app-sandbox');
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ fromStatus: 'restoring', status: 'archived' })
     );
-    expect(mocks.completeSandboxProviderMigration).toHaveBeenCalledWith(
-      expect.objectContaining({ operationId: 'migration-after-rollback' })
-    );
+    expect(mocks.switchArchivedSandboxProvider).toHaveBeenCalledWith({
+      resource: archived,
+      provider: 'sealosdevbox',
+      image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
+    });
   });
 });

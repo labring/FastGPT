@@ -1,10 +1,10 @@
 /**
- * 沙盒接口层：暴露 Agent sandbox 对外可用的配置派生值。
+ * Sandbox 领域共享配置派生。
  *
- * env.ts 只负责解析原始环境变量；这里承接 sandbox 领域内的大小限制换算，
- * 避免业务调用方散落重复的 MB/bytes 计算。
+ * 这里只把已校验的环境配置换算为领域使用的字节限制，不依赖 interface、application
+ * 或 infrastructure，供各层单向引用。
  */
-import { serviceEnv } from '../../../../env';
+import { serviceEnv } from '../../../env';
 
 const MB_BYTES = 1024 * 1024;
 const toRoundedMBBytes = (mb: number) => Math.round(mb) * MB_BYTES;

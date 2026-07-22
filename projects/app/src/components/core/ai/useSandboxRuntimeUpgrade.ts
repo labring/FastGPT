@@ -99,6 +99,13 @@ export const useSandboxRuntimeUpgrade = ({
     await requestRuntimeStatus(upgrade, setUpgradeError);
   });
 
+  /** 取消当前目标的升级交互，并使已发出的状态请求结果失效。 */
+  const cancelRuntimeUpgrade = useMemoizedFn(() => {
+    requestVersionRef.current += 1;
+    hasStartedUpgradeRef.current = false;
+    setRuntimeState({ targetKey: targetKeyRef.current });
+  });
+
   useLayoutEffect(() => {
     targetKeyRef.current = targetKey;
     requestVersionRef.current += 1;
@@ -119,6 +126,7 @@ export const useSandboxRuntimeUpgrade = ({
     runtimeStatus,
     checkRuntime,
     upgradeRuntime,
+    cancelRuntimeUpgrade,
     applyRuntimeStatus: applyStatus
   };
 };

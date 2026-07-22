@@ -31,9 +31,7 @@ const SandboxOperationMongoSchema = new Schema(
     startedAt: { type: Date, required: true },
     heartbeatAt: { type: Date, required: true },
     failedAt: Date,
-    error: String,
-    fromProvider: { type: String, enum: SandboxProviderSchema.options },
-    targetProvider: { type: String, enum: SandboxProviderSchema.options }
+    error: String
   },
   { _id: false, strict: 'throw' }
 );
@@ -127,7 +125,6 @@ const expectedOperationByStatus: Record<string, string | undefined> = {
   archiving: 'archive',
   archived: undefined,
   restoring: 'restore',
-  providerMigrating: 'providerMigration',
   deleting: 'delete'
 };
 

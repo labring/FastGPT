@@ -17,7 +17,6 @@ import {
   type SandboxSourceType,
   type SandboxStableStatusType
 } from '../../type';
-import { getSandboxRuntimeProfile } from '../provider/runtimeProfile';
 
 const SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE = 100;
 const stableStatuses = new Set<SandboxInstanceStatusType>([
@@ -65,8 +64,6 @@ export type ClaimSandboxOperationParams = {
   type: SandboxOperationType;
   phase?: string;
   previousStatus?: SandboxStableStatusType;
-  fromProvider?: SandboxProviderType;
-  targetProvider?: SandboxProviderType;
   matchLastActiveAt?: boolean;
 };
 
@@ -109,11 +106,6 @@ const buildMetadataSet = (metadata?: Record<string, unknown>) => {
   );
 };
 
-const getCurrentRuntimeImageUpdate = (provider: SandboxProviderType) => {
-  const image = getSandboxRuntimeProfile(provider).defaultImage;
-  return image ? { 'metadata.image': image } : {};
-};
-
 const expectedOperationByStatus: Record<
   Exclude<SandboxInstanceStatusType, SandboxStableStatusType>,
   SandboxOperationType
@@ -123,7 +115,6 @@ const expectedOperationByStatus: Record<
   stopping: SandboxOperationTypeEnum.stop,
   archiving: SandboxOperationTypeEnum.archive,
   restoring: SandboxOperationTypeEnum.restore,
-  providerMigrating: SandboxOperationTypeEnum.providerMigration,
   deleting: SandboxOperationTypeEnum.delete
 };
 
@@ -138,16 +129,7 @@ const assertOperationMatchesStatus = (
 
 /** 原子抢占一条记录进入过渡态，并为本轮操作生成唯一 fencing token。 */
 export async function claimSandboxOperation(params: ClaimSandboxOperationParams) {
-  const {
-    resource,
-    status,
-    type,
-    phase,
-    previousStatus,
-    fromProvider,
-    targetProvider,
-    matchLastActiveAt = false
-  } = params;
+  const { resource, status, type, phase, previousStatus, matchLastActiveAt = false } = params;
   assertOperationMatchesStatus(status, type);
   const now = new Date();
   const operationId = randomUUID();
@@ -156,8 +138,6 @@ export async function claimSandboxOperation(params: ClaimSandboxOperationParams)
     (resource.status && stableStatuses.has(resource.status)
       ? (resource.status as SandboxStableStatusType)
       : resource.metadata?.operation?.previousStatus);
-  const derivedFromProvider = fromProvider ?? resource.metadata?.operation?.fromProvider;
-  const derivedTargetProvider = targetProvider ?? resource.metadata?.operation?.targetProvider;
   const nextPhase =
     phase ??
     (resource.status === status && resource.metadata?.operation?.type === type
@@ -180,9 +160,7 @@ export async function claimSandboxOperation(params: ClaimSandboxOperationParams)
           phase: nextPhase,
           ...(derivedPreviousStatus ? { previousStatus: derivedPreviousStatus } : {}),
           startedAt: now,
-          heartbeatAt: now,
-          ...(derivedFromProvider ? { fromProvider: derivedFromProvider } : {}),
-          ...(derivedTargetProvider ? { targetProvider: derivedTargetProvider } : {})
+          heartbeatAt: now
         }
       }
     },
@@ -578,23 +556,29 @@ export const claimSkillSandboxMigrationTarget = (
     userId: ChatSourceTypeEnum.skillEdit
   });
 
-/** 原子完成 archived 记录的 provider 切换并回到稳定冷态。 */
-export async function completeSandboxProviderMigration(params: {
+/** 在 archived 稳定态内原子切换 provider，不引入无远端副作用的过渡 operation。 */
+export async function switchArchivedSandboxProvider(params: {
   resource: SandboxResourceRef;
-  operationId: string;
   provider: SandboxProviderType;
+  image?: NonNullable<SandboxInstanceSchemaType['metadata']>['image'];
 }) {
-  return completeSandboxOperation({
-    resource: params.resource,
-    operationId: params.operationId,
-    fromStatus: SandboxInstanceStatusEnum.providerMigrating,
-    status: SandboxInstanceStatusEnum.archived,
-    set: {
-      provider: params.provider,
-      lastActiveAt: new Date(),
-      ...getCurrentRuntimeImageUpdate(params.provider)
-    }
-  });
+  return MongoSandboxInstance.findOneAndUpdate(
+    {
+      ...buildSandboxResourceRecordFilter(params.resource),
+      provider: params.resource.provider,
+      sandboxId: params.resource.sandboxId,
+      status: SandboxInstanceStatusEnum.archived,
+      'metadata.operation': { $exists: false }
+    },
+    {
+      $set: {
+        provider: params.provider,
+        lastActiveAt: new Date(),
+        ...(params.image ? { 'metadata.image': params.image } : {})
+      }
+    },
+    { new: true }
+  ).lean<SandboxResourceDoc | null>();
 }
 
 /** 在 running 稳定态更新业务归属或 metadata，不允许唤醒过渡态。 */

@@ -24,7 +24,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/preview', () => ({
   resolveSandboxPreviewSession: mocks.resolveSandboxPreviewSession
 }));
 
