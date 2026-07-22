@@ -448,6 +448,11 @@ export const rewriteAIChatMessagesWithFileContext = async ({
 };
 
 /**
+ * @deprecated Pro 子仓库仍独立引用旧名称；内部 AI Chat 代码应使用语义更明确的新名称。
+ */
+export const rewriteChatMessagesWithFileContext = rewriteAIChatMessagesWithFileContext;
+
+/**
  * 格式化文件 URL，移除请求头部分，只保留文件 URL
  */
 export const normalizeReadableFileUrl = ({
