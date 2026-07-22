@@ -1,6 +1,6 @@
 import type { Readable } from 'node:stream';
 import { Readable as NodeReadable } from 'node:stream';
-import type { MockedFunction } from 'vitest';
+import type { Mock } from 'vitest';
 import type { IStorage } from '../interface';
 import type {
   CopyObjectParams,
@@ -33,7 +33,7 @@ import type {
 } from '../types';
 
 type VitestLike = {
-  fn: <T extends (...args: any[]) => any>(impl?: T) => MockedFunction<T>;
+  fn: <T extends (...args: any[]) => any>(impl?: T) => Mock<T>;
 };
 
 type StoredObject = {
@@ -147,13 +147,13 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   const deleteObjectsByMultiKeys = vi.fn(
     async (p: DeleteObjectsParams): Promise<DeleteObjectsResult> => {
       for (const key of p.keys) objects.delete(key);
-      return { bucket: bucketName, keys: p.keys };
+      return { bucket: bucketName, keys: [] };
     }
   );
 
   const deleteObjectsByPrefix = vi.fn(
     async (p: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> => {
-      if (!p.prefix) {
+      if (!p.prefix?.trim()) {
         throw new Error('prefix must be a non-empty string');
       }
       const keys: string[] = [];
@@ -161,7 +161,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
         if (key.startsWith(p.prefix)) keys.push(key);
       }
       for (const key of keys) objects.delete(key);
-      return { bucket: bucketName, keys };
+      return { bucket: bucketName, keys: [] };
     }
   );
 

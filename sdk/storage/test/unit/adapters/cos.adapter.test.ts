@@ -91,3 +91,24 @@ describe('CosStorageAdapter deletion boundaries', () => {
     expect(getBucket).not.toHaveBeenCalled();
   });
 });
+
+describe('CosStorageAdapter.generatePublicGetUrl', () => {
+  it.each([
+    [undefined, 'https://fastgpt-private.cos.ap-guangzhou.myqcloud.com/folder%20%23/file%2B.txt'],
+    ['cdn.example.com', 'https://cdn.example.com/folder%20%23/file%2B.txt']
+  ])('encodes keys with domain %j', (domain, expectedUrl) => {
+    const adapter = new CosStorageAdapter({
+      vendor: 'cos',
+      bucket: 'fastgpt-private',
+      region: 'ap-guangzhou',
+      protocol: 'https:',
+      domain,
+      credentials: {
+        accessKeyId: 'secret-id',
+        secretAccessKey: 'secret-key'
+      }
+    });
+
+    expect(adapter.generatePublicGetUrl({ key: 'folder #/file+.txt' }).url).toBe(expectedUrl);
+  });
+});

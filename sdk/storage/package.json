@@ -51,6 +51,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:unit": "vitest run --config vitest.config.ts test/unit",
     "test:integration": "vitest run --config vitest.config.ts test/integration",
+    "test:integration:common": "vitest run --config vitest.config.ts test/integration/common",
+    "test:integration:minio": "vitest run --config vitest.config.ts test/integration/minio",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "prepublishOnly": "pnpm build"
   },

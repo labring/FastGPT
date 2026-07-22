@@ -203,9 +203,15 @@ pnpm --filter @fastgpt-sdk/storage typecheck:test
 
 ```bash
 pnpm --filter @fastgpt-sdk/storage test:integration
+pnpm --filter @fastgpt-sdk/storage test:integration:common
+pnpm --filter @fastgpt-sdk/storage test:integration:minio
 ```
 
-每个启用的 provider 都会创建独立测试桶，运行同一套 `IStorage` 契约，并在结束后清空和删除测试桶。未启用的 provider 会被跳过。
+集成测试分为两层：
+
+- `test/integration/common`：18 个 `IStorage` 通用契约，每个启用的 provider 都运行完全相同的用例。
+- `test/integration/minio`：8 个 MinIO 专项用例，覆盖 400/1000 条分页边界、URL 编码、公共策略和真实 HTTP socket 超时。
+
+每个启用的 provider 都会创建独立测试桶，并在结束后清空和删除。未启用的 provider 会被跳过。
 
 发布前会执行 `prepublishOnly` 自动构建产物到 `dist/`。
-

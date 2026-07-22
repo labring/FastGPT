@@ -31,6 +31,7 @@ import type {
 import { PassThrough } from 'node:stream';
 import { camelCase, isError, isNotNil, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
+import { encodeObjectKeyPath } from '../utils';
 
 export class CosStorageAdapter implements IStorage {
   protected readonly client: COS;
@@ -438,12 +439,13 @@ export class CosStorageAdapter implements IStorage {
 
   generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
     const { key } = params;
+    const encodedKey = encodeObjectKeyPath(key);
 
     let url: string;
     if (this.options.domain) {
-      url = `${this.options.protocol}//${this.options.domain}/${key}`;
+      url = `${this.options.protocol}//${this.options.domain}/${encodedKey}`;
     } else {
-      url = `${this.options.protocol}//${this.options.bucket}.cos.${this.options.region}.myqcloud.com/${key}`;
+      url = `${this.options.protocol}//${this.options.bucket}.cos.${this.options.region}.myqcloud.com/${encodedKey}`;
     }
 
     return {

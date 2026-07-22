@@ -22,6 +22,7 @@ export type StorageIntegrationContext = {
   bucket: string;
   rootPrefix: string;
   initialEnsureResult: EnsureBucketResult;
+  createStorage: () => IStorage;
   cleanup: () => Promise<void>;
 };
 
@@ -59,12 +60,14 @@ const createContextResult = async ({
   storage,
   bucket,
   initialEnsureResult,
+  createStorage,
   deleteBucket
 }: {
   provider: StorageIntegrationProviderName;
   storage: IStorage;
   bucket: string;
   initialEnsureResult: EnsureBucketResult;
+  createStorage: () => IStorage;
   deleteBucket: () => Promise<void>;
 }): Promise<StorageIntegrationContext> => ({
   provider,
@@ -72,6 +75,7 @@ const createContextResult = async ({
   bucket,
   rootPrefix: `contract/${randomUUID()}/`,
   initialEnsureResult,
+  createStorage,
   cleanup: async () => {
     try {
       await clearBucket(storage);
@@ -101,15 +105,17 @@ const createMinioProvider = (): StorageIntegrationProvider => ({
       secretKey: secretAccessKey,
       region
     });
-    const storage = createStorage({
-      vendor: 'minio',
-      bucket,
-      endpoint,
-      region,
-      forcePathStyle: true,
-      maxRetries: 1,
-      credentials: { accessKeyId, secretAccessKey }
-    });
+    const createMinioStorage = () =>
+      createStorage({
+        vendor: 'minio',
+        bucket,
+        endpoint,
+        region,
+        forcePathStyle: true,
+        maxRetries: 1,
+        credentials: { accessKeyId, secretAccessKey }
+      });
+    const storage = createMinioStorage();
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -117,6 +123,7 @@ const createMinioProvider = (): StorageIntegrationProvider => ({
       storage,
       bucket,
       initialEnsureResult,
+      createStorage: createMinioStorage,
       deleteBucket: () => adminClient.removeBucket(bucket)
     });
   }
@@ -147,15 +154,17 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
             : { LocationConstraint: region as BucketLocationConstraint }
       })
     );
-    const storage = createStorage({
-      vendor: 'aws-s3',
-      bucket,
-      endpoint,
-      region,
-      forcePathStyle,
-      maxRetries: 1,
-      credentials: { accessKeyId, secretAccessKey }
-    });
+    const createAwsStorage = () =>
+      createStorage({
+        vendor: 'aws-s3',
+        bucket,
+        endpoint,
+        region,
+        forcePathStyle,
+        maxRetries: 1,
+        credentials: { accessKeyId, secretAccessKey }
+      });
+    const storage = createAwsStorage();
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -163,6 +172,7 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
       storage,
       bucket,
       initialEnsureResult,
+      createStorage: createAwsStorage,
       deleteBucket: async () => {
         let continuationToken: string | undefined;
         do {
@@ -175,9 +185,7 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
               new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: objects } })
             );
           }
-          continuationToken = response.IsTruncated
-            ? response.NextContinuationToken
-            : undefined;
+          continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
         } while (continuationToken);
         await adminClient.send(new DeleteBucketCommand({ Bucket: bucket }));
         adminClient.destroy();
@@ -202,14 +210,16 @@ const createOssProvider = (): StorageIntegrationProvider => ({
       accessKeySecret: secretAccessKey
     });
     await adminClient.putBucket(bucket);
-    const storage = createStorage({
-      vendor: 'oss',
-      bucket,
-      endpoint,
-      region,
-      secure: endpoint.startsWith('https:'),
-      credentials: { accessKeyId, secretAccessKey }
-    });
+    const createOssStorage = () =>
+      createStorage({
+        vendor: 'oss',
+        bucket,
+        endpoint,
+        region,
+        secure: endpoint.startsWith('https:'),
+        credentials: { accessKeyId, secretAccessKey }
+      });
+    const storage = createOssStorage();
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -217,6 +227,7 @@ const createOssProvider = (): StorageIntegrationProvider => ({
       storage,
       bucket,
       initialEnsureResult,
+      createStorage: createOssStorage,
       deleteBucket: () => adminClient.deleteBucket(bucket).then(() => undefined)
     });
   }
@@ -233,13 +244,15 @@ const createCosProvider = (): StorageIntegrationProvider => ({
     const bucket = createBucketName('cos', `-${appId}`);
     const adminClient = new COS({ SecretId: accessKeyId, SecretKey: secretAccessKey });
     await adminClient.putBucket({ Bucket: bucket, Region: region });
-    const storage = createStorage({
-      vendor: 'cos',
-      bucket,
-      region,
-      protocol: 'https:',
-      credentials: { accessKeyId, secretAccessKey }
-    });
+    const createCosStorage = () =>
+      createStorage({
+        vendor: 'cos',
+        bucket,
+        region,
+        protocol: 'https:',
+        credentials: { accessKeyId, secretAccessKey }
+      });
+    const storage = createCosStorage();
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -247,15 +260,18 @@ const createCosProvider = (): StorageIntegrationProvider => ({
       storage,
       bucket,
       initialEnsureResult,
+      createStorage: createCosStorage,
       deleteBucket: () =>
         adminClient.deleteBucket({ Bucket: bucket, Region: region }).then(() => undefined)
     });
   }
 });
 
+export const minioIntegrationProvider = createMinioProvider();
+
 export const storageIntegrationProviders: StorageIntegrationProvider[] = [
   createAwsS3Provider(),
-  createMinioProvider(),
+  minioIntegrationProvider,
   createOssProvider(),
   createCosProvider()
 ];

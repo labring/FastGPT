@@ -54,3 +54,38 @@ describe('AwsS3StorageAdapter.deleteObjectsByPrefix', () => {
     expect(send).not.toHaveBeenCalled();
   });
 });
+
+describe('AwsS3StorageAdapter.generatePublicGetUrl', () => {
+  it.each([
+    [
+      { forcePathStyle: true, publicAccessExtraSubPath: undefined },
+      'https://storage.example.com/fastgpt-private/folder%20name/file%20%23%2B.txt'
+    ],
+    [
+      { forcePathStyle: true, publicAccessExtraSubPath: '/proxy/' },
+      'https://storage.example.com/proxy/fastgpt-private/folder%20name/file%20%23%2B.txt'
+    ],
+    [
+      { forcePathStyle: false, publicAccessExtraSubPath: undefined },
+      'https://fastgpt-private.storage.example.com/folder%20name/file%20%23%2B.txt'
+    ],
+    [
+      { forcePathStyle: false, publicAccessExtraSubPath: '/proxy/' },
+      'https://fastgpt-private.storage.example.com/proxy/folder%20name/file%20%23%2B.txt'
+    ]
+  ])('encodes keys for options %j', (overrides, expectedUrl) => {
+    const adapter = new AwsS3StorageAdapter({
+      vendor: 'aws-s3',
+      bucket: 'fastgpt-private',
+      endpoint: 'https://storage.example.com',
+      region: 'us-east-1',
+      credentials: {
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key'
+      },
+      ...overrides
+    });
+
+    expect(adapter.generatePublicGetUrl({ key: 'folder name/file #+.txt' }).url).toBe(expectedUrl);
+  });
+});

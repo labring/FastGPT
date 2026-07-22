@@ -45,6 +45,7 @@ import type { Readable } from 'node:stream';
 import { camelCase, chunk, isNotNil, kebabCase, trim } from 'es-toolkit';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
+import { encodeObjectKeyPath } from '../utils';
 
 export class AwsS3StorageAdapter implements IStorage {
   protected readonly client: S3Client;
@@ -365,13 +366,14 @@ export class AwsS3StorageAdapter implements IStorage {
 
   generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
     const { key } = params;
+    const encodedKey = encodeObjectKeyPath(key);
 
     let url: string;
     if (this.options.forcePathStyle) {
       if (this.options.publicAccessExtraSubPath) {
-        url = `${this.options.endpoint}/${trim(this.options.publicAccessExtraSubPath, '/')}/${this.options.bucket}/${key}`;
+        url = `${this.options.endpoint}/${trim(this.options.publicAccessExtraSubPath, '/')}/${this.options.bucket}/${encodedKey}`;
       } else {
-        url = `${this.options.endpoint}/${this.options.bucket}/${key}`;
+        url = `${this.options.endpoint}/${this.options.bucket}/${encodedKey}`;
       }
     } else {
       const endpoint = new URL(this.options.endpoint);
@@ -379,9 +381,9 @@ export class AwsS3StorageAdapter implements IStorage {
       const host = endpoint.host;
 
       if (this.options.publicAccessExtraSubPath) {
-        url = `${protocol}//${this.options.bucket}.${host}/${trim(this.options.publicAccessExtraSubPath, '/')}/${key}`;
+        url = `${protocol}//${this.options.bucket}.${host}/${trim(this.options.publicAccessExtraSubPath, '/')}/${encodedKey}`;
       } else {
-        url = `${protocol}//${this.options.bucket}.${host}/${key}`;
+        url = `${protocol}//${this.options.bucket}.${host}/${encodedKey}`;
       }
     }
 

@@ -31,6 +31,7 @@ import type {
 import type { Readable } from 'node:stream';
 import { camelCase, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
+import { encodeObjectKeyPath } from '../utils';
 
 export class OssStorageAdapter implements IStorage {
   protected readonly client: OSS;
@@ -315,6 +316,7 @@ export class OssStorageAdapter implements IStorage {
 
   generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
     const { key } = params;
+    const encodedKey = encodeObjectKeyPath(key);
 
     let protocol = 'https:';
     if (!this.options.secure) {
@@ -323,9 +325,9 @@ export class OssStorageAdapter implements IStorage {
 
     let url: string;
     if (this.options.cname) {
-      url = `${protocol}//${this.options.endpoint}/${key}`;
+      url = `${protocol}//${this.options.endpoint}/${encodedKey}`;
     } else {
-      url = `${protocol}//${this.options.bucket}.${this.options.region}.aliyuncs.com/${key}`;
+      url = `${protocol}//${this.options.bucket}.${this.options.region}.aliyuncs.com/${encodedKey}`;
     }
 
     return {

@@ -20,7 +20,7 @@
 
 ### 统一契约测试
 
-目录：`sdk/storage/test/integration`
+目录：`sdk/storage/test/integration/common`
 
 契约函数接收 provider harness，覆盖 `IStorage` 的以下能力：
 
@@ -68,9 +68,23 @@ MinIO：
 
 ## MinIO 专项边界
 
+- MinIO 专项测试独立放在 `sdk/storage/test/integration/minio`，不计入通用契约用例数量。
 - 创建 401 个带空格、`+`、`&` 等字符的对象，使 `deleteObjectsByPrefix` 跨越 400 条分页边界。
 - 验证删除结果无失败 key，且目标 prefix 已清空。
 - 验证 MinIO SDK 返回无法识别的逐对象错误时，adapter 将当前批次全部标记失败。
+- 创建 1001 个对象，验证 `listObjects` 翻页和 `deleteObjectsByMultiKeys` 分块。
+- 使用真实本地 HTTP socket 验证 transport 超时会关闭底层连接。
+- 公共读策略只允许匿名 GET，不允许匿名 PUT。
+- 通用长 key 使用已验证可写、可读、可删除的 512 字节边界。当前 MinIO 服务的更长 key 阈值会受 bucket 和内部路径影响，并可能出现“写入成功但无法通过 API 删除”，因此自动化只额外验证 1025 字节会被拒绝，不制造不可清理对象。
+
+## 第二阶段测试扩充 TODO
+
+- [x] 将通用契约与 MinIO 专项测试拆分到独立目录。
+- [x] 增加零字节、二进制、覆盖写、并发和长 key 通用边界。
+- [x] 增加预取消下载、缺失对象删除和公共 URL 编码边界。
+- [x] 增加 MinIO 1001 对象分页/分块压力测试。
+- [x] 增加 MinIO 匿名权限边界和真实 socket 超时测试。
+- [x] 运行单元测试、真实 MinIO 集成测试、类型检查和 SDK 构建。
 
 ## TODO
 

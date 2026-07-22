@@ -38,3 +38,29 @@ describe('OssStorageAdapter deletion boundaries', () => {
     expect(list).not.toHaveBeenCalled();
   });
 });
+
+describe('OssStorageAdapter.generatePublicGetUrl', () => {
+  it.each([
+    [
+      false,
+      undefined,
+      'https://fastgpt-private.oss-cn-hangzhou.aliyuncs.com/folder%20%23/file%2B.txt'
+    ],
+    [true, 'cdn.example.com', 'https://cdn.example.com/folder%20%23/file%2B.txt']
+  ])('encodes keys with cname=%s', (cname, endpoint, expectedUrl) => {
+    const adapter = new OssStorageAdapter({
+      vendor: 'oss',
+      bucket: 'fastgpt-private',
+      endpoint,
+      region: 'oss-cn-hangzhou',
+      secure: true,
+      cname,
+      credentials: {
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key'
+      }
+    });
+
+    expect(adapter.generatePublicGetUrl({ key: 'folder #/file+.txt' }).url).toBe(expectedUrl);
+  });
+});
