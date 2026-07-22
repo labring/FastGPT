@@ -11,7 +11,7 @@ import { downloadSkillPackage } from '../../../../skill/package';
 import { parseSkillMarkdown } from '../../../../skill/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
-import { getAgentSandboxSkillMaxBytes } from '../../../interface/config';
+import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { joinSandboxPath } from '../../../utils';
 import { authSkillByTmbId } from '../../../../../../support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';

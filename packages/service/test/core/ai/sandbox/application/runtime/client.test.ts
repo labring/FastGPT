@@ -350,7 +350,11 @@ describe('sandbox runtime client lifecycle', () => {
     );
     expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(2);
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ operationId: 'retried-provision', status: 'running' })
+      expect.objectContaining({
+        operationId: 'retried-provision',
+        status: 'running',
+        set: { 'metadata.image': { repository: 'fastgpt/sandbox', tag: 'v2' } }
+      })
     );
   });
 

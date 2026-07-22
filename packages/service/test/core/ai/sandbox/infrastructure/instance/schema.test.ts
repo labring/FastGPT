@@ -94,6 +94,28 @@ describe('MongoSandboxInstance schema indexes', () => {
     ).rejects.toThrow('Stable status running must not keep an operation');
   });
 
+  it('rejects the removed provider migration state and operation', async () => {
+    await expect(
+      new MongoSandboxInstance({ ...baseInstance, status: 'providerMigrating' }).validate()
+    ).rejects.toThrow();
+
+    await expect(
+      new MongoSandboxInstance({
+        ...baseInstance,
+        status: 'archiving',
+        metadata: {
+          operation: {
+            id: 'provider-migration-operation',
+            type: 'providerMigration',
+            phase: 'claimed',
+            startedAt: new Date(),
+            heartbeatAt: new Date()
+          }
+        }
+      }).validate()
+    ).rejects.toThrow();
+  });
+
   it('rejects legacy archive and migration metadata in the v2 model', async () => {
     await expect(
       new MongoSandboxInstance({

@@ -7,7 +7,7 @@ import type { SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { SandboxPrepareContext, SandboxPrepareStep } from '../prepare';
 import { joinSandboxPath } from '../../../utils';
-import { getAgentSandboxSkillMaxBytes } from '../../../interface/config';
+import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { DEFAULT_GITIGNORE_CONTENT, downloadSkillPackage } from '../../../../skill/package';
 
 export type SkillPackagePrepareContext = SandboxPrepareContext & {

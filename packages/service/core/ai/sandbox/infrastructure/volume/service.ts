@@ -7,20 +7,13 @@ import {
   OPEN_SANDBOX_DEFAULT_ROOT_PATH,
   type OpenSandboxConfigType
 } from '@fastgpt-sdk/sandbox-adapter';
-import type { SandboxProviderType, SandboxStorageType } from '../../type';
+import type { SandboxStorageType } from '../../type';
 import { getVolumeManagerEnvConfig } from './config';
 
 export type VolumeManagerResult = {
   volumes: OpenSandboxConfigType['volumes'];
   storage: SandboxStorageType;
 };
-
-/**
- * 判断指定 provider 是否需要 FastGPT 自管 volume。
- *
- * Sealos Devbox 的工作区持久化由 provider 内部管理；只有 OpenSandbox 需要 FastGPT
- * volume-manager 参与挂载和清理。
- */
 
 /**
  * 将 volume-manager 返回的 PVC 名称转换成 OpenSandbox adapter 可识别的卷配置。

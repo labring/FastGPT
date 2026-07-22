@@ -72,6 +72,7 @@ export const useAppSandboxRuntimeUpgrade = ({
   const {
     runtimeStatus,
     upgradeRuntime,
+    cancelRuntimeUpgrade,
     applyRuntimeStatus: applySharedRuntimeStatus
   } = useSandboxRuntimeUpgrade({
     targetKey,
@@ -84,6 +85,12 @@ export const useAppSandboxRuntimeUpgrade = ({
       pendingRetryRef.current = undefined;
       if (upgraded && pendingRetry?.targetKey === targetKey) pendingRetry.retry();
     }
+  });
+
+  const closeRuntimeUpgrade = useMemoizedFn(() => {
+    pendingRetryRef.current = undefined;
+    setOpenTargetKey(undefined);
+    cancelRuntimeUpgrade();
   });
 
   const handleRuntimeStatus = useMemoizedFn(
@@ -114,7 +121,7 @@ export const useAppSandboxRuntimeUpgrade = ({
       secondaryText={t('common:Close')}
       error={runtimeStatus?.lastError}
       onUpgrade={() => void upgradeRuntime()}
-      onClose={() => setOpenTargetKey(undefined)}
+      onClose={closeRuntimeUpgrade}
     />
   );
 
