@@ -7,7 +7,7 @@ import {
   normalizeAgentLoopCoreDatasetSearchResult
 } from '../../agentLoopCore/interface';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
-import { dispatchFileRead } from '../sub/file';
+import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getAgentDatasetParams, getExecuteTool } from '../sub/utils';
 import type { WorkflowAgentToolProvider, WorkflowAgentToolProviderContext } from './type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -60,7 +60,7 @@ export const createWorkflowAgentToolProvider = ({
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
     execute: async ({ files }) =>
-      dispatchFileRead({
+      dispatchWorkflowReadFiles({
         files,
         teamId: context.runningUserInfo.teamId,
         tmbId: context.runningUserInfo.tmbId,

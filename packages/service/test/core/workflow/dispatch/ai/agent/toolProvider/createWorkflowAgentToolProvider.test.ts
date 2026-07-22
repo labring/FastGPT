@@ -2,13 +2,13 @@ import { createWorkflowAgentToolProvider } from '@fastgpt/service/core/workflow/
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it, vi } from 'vitest';
 
-const { dispatchFileReadMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
-  dispatchFileReadMock: vi.fn(),
+const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
+  dispatchWorkflowReadFilesMock: vi.fn(),
   dispatchAgentDatasetSearchMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
-  dispatchFileRead: dispatchFileReadMock
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
+  dispatchWorkflowReadFiles: dispatchWorkflowReadFilesMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
@@ -174,8 +174,15 @@ describe('createWorkflowAgentToolProvider', () => {
   });
 
   it('creates read file executor for direct model URLs', async () => {
-    dispatchFileReadMock.mockResolvedValue({
-      response: 'file content',
+    const response = JSON.stringify([
+      {
+        url: 'https://generated.example.com/result.pdf',
+        name: 'result.pdf',
+        content: 'file content'
+      }
+    ]);
+    dispatchWorkflowReadFilesMock.mockResolvedValue({
+      response,
       usages: [],
       nodeResponse: {
         moduleName: 'File parse'
@@ -203,7 +210,7 @@ describe('createWorkflowAgentToolProvider', () => {
       } as any
     });
 
-    expect(dispatchFileReadMock).toHaveBeenCalledWith(
+    expect(dispatchWorkflowReadFilesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         files: [
           { url: 'https://fastgpt.example.com/api/system/file/d/a' },
@@ -221,6 +228,7 @@ describe('createWorkflowAgentToolProvider', () => {
         moduleName: 'File parse'
       })
     );
+    expect(result.response).toBe(response);
   });
 
   it('creates dataset search executor and current input files from workflow agent context', async () => {

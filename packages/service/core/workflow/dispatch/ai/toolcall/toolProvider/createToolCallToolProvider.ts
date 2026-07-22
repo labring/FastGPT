@@ -13,7 +13,7 @@ import {
 import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchReadFileTool } from '../tools/file';
+import { dispatchWorkflowReadFiles } from '../../readFiles';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -87,22 +87,14 @@ export const createToolCallToolProvider = async ({
   });
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
-    execute: async ({ callId, files }) => {
-      const result = await dispatchReadFileTool({
+    execute: async ({ files }) =>
+      dispatchWorkflowReadFiles({
         files,
-        toolCallId: callId,
         teamId: workflowProps.runningUserInfo.teamId,
         tmbId: workflowProps.runningUserInfo.tmbId,
         customPdfParse: workflowProps.chatConfig?.fileSelectConfig?.customPdfParse,
         usageId: workflowProps.usageId
-      });
-
-      return {
-        response: result.response,
-        usages: result.usages,
-        nodeResponse: result.flowResponse.flowResponses[0]
-      };
-    }
+      })
   });
 
   return {

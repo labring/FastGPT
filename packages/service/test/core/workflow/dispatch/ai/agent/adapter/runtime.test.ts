@@ -4,13 +4,13 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentLoopRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
 
-const { dispatchFileReadMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
-  dispatchFileReadMock: vi.fn(),
+const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
+  dispatchWorkflowReadFilesMock: vi.fn(),
   dispatchAgentDatasetSearchMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
-  dispatchFileRead: dispatchFileReadMock
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
+  dispatchWorkflowReadFiles: dispatchWorkflowReadFilesMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
@@ -220,8 +220,15 @@ describe('createWorkflowAgentLoopRuntime', () => {
   });
 
   it('exposes readFile as an internal tool executor for direct model URLs', async () => {
-    dispatchFileReadMock.mockResolvedValue({
-      response: 'file content',
+    const response = JSON.stringify([
+      {
+        url: 'https://files/a.pdf',
+        name: 'a.pdf',
+        content: 'file content'
+      }
+    ]);
+    dispatchWorkflowReadFilesMock.mockResolvedValue({
+      response,
       usages: [],
       nodeResponse: {
         id: 'call_read_file',
@@ -245,14 +252,14 @@ describe('createWorkflowAgentLoopRuntime', () => {
       })
     });
 
-    expect(dispatchFileReadMock).toHaveBeenCalledWith(
+    expect(dispatchWorkflowReadFilesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         files: [{ url: 'https://files/a.pdf' }]
       })
     );
     expect(result).toEqual(
       expect.objectContaining({
-        response: 'file content',
+        response,
         metadata: expect.objectContaining({
           moduleName: 'Read file'
         })
