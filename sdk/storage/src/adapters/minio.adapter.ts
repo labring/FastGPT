@@ -12,10 +12,13 @@ import { AwsS3StorageAdapter } from './aws-s3.adapter';
 import {
   CreateBucketCommand,
   DeleteBucketLifecycleCommand,
+  ListObjectsV2Command,
   NotFound,
   PutBucketPolicyCommand
 } from '@aws-sdk/client-s3';
 import { chunk } from 'es-toolkit';
+
+export { NotFound as MinioS3NotFound };
 
 /**
  * @description MinIO 存储适配器（基于 minio SDK 和 AWS S3 SDK）
@@ -102,12 +105,18 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
   }
 
   /**
-   * @note 这里的实现可以使用 `@aws-sdk/client-s3` 来列出对象，然后使用 `minio` 来删除对象，但是这里直接使用 `minio` 的 `listObjectsV2` 方法来列出对象了。
+   * 按前缀分页列举并删除 MinIO 对象。
+   *
+   * MinIO SDK 的 listObjectsV2 固定每页返回 1000 条，且其 XML 解析器默认最多展开
+   * 1000 个实体。部分 S3 兼容服务会将每个 ETag 的引号编码为两个 XML 实体，
+   * 导致大批量列举时误触安全上限。因此使用 AWS SDK 控制分页大小和 URL 编码，
+   * 再使用 MinIO SDK 删除，以保留现有 MinIO 校验和兼容性逻辑。
+   *
+   * 列举和删除按页串行执行，避免对象数量较大时积累无上限的并发删除任务。
    */
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
-    const batchSize = 1000;
-    const timeoutMs = 60000;
+    const listBatchSize = 400;
 
     if (!prefix?.trim()) {
       throw new Error('Prefix is required');
@@ -115,83 +124,42 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
 
     const bucket = this.options.bucket;
     const failedKeys: string[] = [];
-    let deleteTasks: Promise<void>[] = [];
+    let continuationToken: string | undefined;
 
-    const stream = this.minioClient.listObjectsV2(bucket, prefix, true);
+    do {
+      const listResponse = await this.client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+          EncodingType: 'url',
+          MaxKeys: listBatchSize
+        })
+      );
+      const keys = (listResponse.Contents ?? []).flatMap(({ Key }) => {
+        if (!Key) return [];
 
-    return await new Promise<DeleteObjectsResult>((resolve, reject) => {
-      let settled = false;
-      let timer: NodeJS.Timeout;
+        // MinIO 的 encoding-type=url 响应会用 + 表示空格，需先转换再解码。
+        return [decodeURIComponent(Key.replace(/\+/g, ' '))];
+      });
 
-      const finish = (error?: any) => {
-        if (settled) return;
-        settled = true;
-
-        if (timer) clearTimeout(timer);
-
-        stream.removeAllListeners();
-        try {
-          stream.destroy();
-        } catch {}
-
-        if (error) {
-          reject(error);
-        } else {
-          resolve({ bucket, keys: failedKeys });
-        }
-      };
-
-      timer = setTimeout(() => {
-        finish(new Error(`Delete by prefix timeout: ${prefix}`));
-      }, timeoutMs);
-
-      const flushBatch = async (keys: string[]) => {
-        if (keys.length === 0) return;
-
-        try {
-          await this.minioClient.removeObjects(bucket, keys);
-        } catch {
+      if (keys.length > 0) {
+        await this.minioClient.removeObjects(bucket, keys).catch(() => {
           failedKeys.push(...keys);
-        }
-      };
+        });
+      }
 
-      let batch: string[] = [];
+      if (!listResponse.IsTruncated) break;
+      if (!listResponse.NextContinuationToken) {
+        throw new Error('Invalid MinIO list response: missing continuation token');
+      }
+      continuationToken = listResponse.NextContinuationToken;
+    } while (true);
 
-      stream.on('data', (obj) => {
-        if (!obj.name) return;
-
-        batch.push(obj.name);
-
-        if (batch.length >= batchSize) {
-          const toDelete = batch;
-          batch = [];
-          deleteTasks.push(flushBatch(toDelete));
-        }
-      });
-
-      stream.on('error', (err) => {
-        finish(err);
-      });
-
-      stream.on('end', async () => {
-        if (timer) clearTimeout(timer);
-
-        try {
-          if (batch.length > 0) {
-            deleteTasks.push(flushBatch(batch));
-          }
-
-          await Promise.all(deleteTasks);
-          finish();
-        } catch (e) {
-          finish(e);
-        }
-      });
-
-      stream.on('pause', () => {
-        stream.resume();
-      });
-    });
+    return {
+      bucket,
+      keys: failedKeys
+    };
   }
 
   async ensureBucket(): Promise<EnsureBucketResult> {
