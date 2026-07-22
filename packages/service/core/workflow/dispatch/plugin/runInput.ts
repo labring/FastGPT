@@ -10,6 +10,8 @@ import {
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 
+const DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES = 5;
+
 export type PluginInputProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
@@ -26,25 +28,27 @@ export const dispatchPluginInput = async (
   const { files } = chatValue2RuntimePrompt(query);
   const fileContext = getWorkflowFileContext();
   const fileRegistrar = getWorkflowFileRegistrar();
-  const fileInputKeys = new Set(
+  const fileInputMaxFiles = new Map(
     node.inputs
       .filter((input) => input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect))
-      .map((input) => input.key)
+      .map(
+        (input) =>
+          [input.key, Math.max(input.maxFiles ?? DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES, 0)] as const
+      )
   );
 
   /*
     对 params 中文件类型数据进行处理
     * 插件单独运行时，这里会是文件对象数组
     * 插件调用时，这个参数可能已经被转换成 string[]
-
-    TODO: 需要 filter max files
   */
   await Promise.all(
     Object.keys(params).map(async (key) => {
       const val = params[key];
-      if (fileInputKeys.has(key) && Array.isArray(val)) {
+      const maxFiles = fileInputMaxFiles.get(key);
+      if (maxFiles !== undefined && Array.isArray(val)) {
         params[key] = await Promise.all(
-          val.map(async (fileItem) => {
+          val.slice(0, maxFiles).map(async (fileItem) => {
             const storeValue =
               typeof fileItem === 'string'
                 ? normalizeChatFileStoreValue({ url: fileItem })

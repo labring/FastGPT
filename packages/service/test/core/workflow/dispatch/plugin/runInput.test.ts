@@ -122,6 +122,40 @@ describe('dispatchPluginInput', () => {
     });
   });
 
+  it('only registers files within the fileSelect maxFiles limit', async () => {
+    mockRegisterInputFile
+      .mockResolvedValueOnce({ modelUrl: 'https://external.example.com/1.pdf' })
+      .mockResolvedValueOnce({ modelUrl: 'https://external.example.com/2.pdf' });
+
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: [
+            'https://external.example.com/1.pdf',
+            'https://external.example.com/2.pdf',
+            'https://external.example.com/3.pdf'
+          ]
+        },
+        query: [],
+        node: {
+          inputs: [
+            {
+              key: 'upload',
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+              maxFiles: 2
+            }
+          ]
+        }
+      } as any)
+    );
+
+    expect(result.data?.upload).toEqual([
+      'https://external.example.com/1.pdf',
+      'https://external.example.com/2.pdf'
+    ]);
+    expect(mockRegisterInputFile).toHaveBeenCalledTimes(2);
+  });
+
   it('reuses a file already selected in the current child context', async () => {
     mockResolveInputFile.mockReturnValueOnce({
       modelUrl: 'https://parent.example.com/signed.pdf'
