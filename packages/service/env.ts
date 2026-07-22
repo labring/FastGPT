@@ -224,7 +224,7 @@ export const serviceEnv = createEnv({
     // ==================== 域名与前端 ====================
     FE_DOMAIN: UrlSchema.meta({
       description:
-        'FastGPT 主应用必填的前端外部访问地址，用于自动补全文件资源路径。例如 https://fastgpt.cn，不能填 localhost。'
+        '客户端访问 FastGPT 的 origin（协议、主机和可选端口），用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。'
     }),
     FILE_DOMAIN: UrlSchema.optional().meta({
       description:

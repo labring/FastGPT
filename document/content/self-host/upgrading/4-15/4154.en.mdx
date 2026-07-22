@@ -7,9 +7,10 @@ description: 'FastGPT V4.15.4 Release Notes'
 
 ### Configure the required FE_DOMAIN
 
-The FastGPT app now validates `FE_DOMAIN` at startup. Set it to the complete, externally accessible
-URL of your FastGPT frontend. Do not use `localhost`. `FE_DOMAIN` is still required when a separate
-`FILE_DOMAIN` is configured.
+FastGPT services now validate `FE_DOMAIN` at startup. Set it to the origin clients use to access
+FastGPT, including the scheme, host, and optional port. Use the public client-facing origin in
+production; local development can use `http://localhost:3000`. `FE_DOMAIN` is still required when a
+separate `FILE_DOMAIN` is configured.
 
 ```bash
 FE_DOMAIN=https://fastgpt.example.com
