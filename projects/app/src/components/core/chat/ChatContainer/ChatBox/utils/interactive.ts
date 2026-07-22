@@ -7,7 +7,7 @@ import {
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { normalizeFormInputResultFile } from '../../../components/FormInputResult';
+import { resolveFormInputFileValues } from '../../../components/FormInputResult';
 import type { ChatSiteItemType } from '../type';
 
 /**
@@ -77,7 +77,8 @@ export const persistAgentPlanAskAnswerToHistories = ({
  * 1. `entryNodeIds` 包含 `nodeResponse.nodeId`；
  * 2. 全历史仅有一个 submitted 表单交互，且其字段 key 与 `formInputResult` 有交集（dataId 变化时的兜底）。
  *
- * `fileSelect` 字段会把 URL 字符串数组归一化为 `{ name, url }[]`（复用 `normalizeFormInputResultFile`）。
+ * `fileSelect` 字段优先保留历史中持久化的 key/url + name/type；
+ * URL 运行结果仅在原始值缺失时兜底。
  * 无任何字段更新时返回原 `histories` 引用，避免触发多余渲染。
  */
 export const refreshSubmittedFormInteractiveValues = ({
@@ -136,11 +137,10 @@ export const refreshSubmittedFormInteractiveValues = ({
             return responseValue;
           }
 
-          return responseValue
-            .map(normalizeFormInputResultFile)
-            .filter((file): file is NonNullable<ReturnType<typeof normalizeFormInputResultFile>> =>
-              Boolean(file)
-            );
+          return resolveFormInputFileValues({
+            storedValue: input.value,
+            runtimeValue: responseValue
+          });
         })();
 
         hasUpdated = true;

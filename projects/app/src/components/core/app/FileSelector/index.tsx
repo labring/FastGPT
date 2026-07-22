@@ -42,6 +42,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import {
   getFileSelectorDisplayIcon,
+  hasFileSelectorError,
   inferFileSelectorType,
   isFileSelectorCleanValueEcho,
   isFileSelectorPreviewUrlMissing,
@@ -49,6 +50,7 @@ import {
   markFileSelectorUploadError,
   markFileSelectorUploading,
   markFileSelectorUploadSuccess,
+  mergeFileSelectorExternalValue,
   sanitizeFileSelectValue
 } from './utils';
 import { isEqual } from 'lodash-es';
@@ -173,11 +175,13 @@ const FileSelector = ({
   customFileExtensionList,
   canLocalUpload,
   canUrlUpload,
+  onFileErrorChange,
   isDisabled = false,
   isInvalid = false
 }: AppFileSelectConfigType & {
   value: FileSelectorInputValueType;
-  onChange: (e: FileSelectorValueItemType[]) => void;
+  onChange?: (e: FileSelectorValueItemType[]) => void;
+  onFileErrorChange?: (hasError: boolean) => void;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
   isDisabled?: boolean;
@@ -204,10 +208,29 @@ const FileSelector = ({
 
   const lastEmittedValue = useRef<FileSelectorValueItemType[]>();
   const skipNextCleanEcho = useRef(false);
+  const onChangeRef = useRef(onChange);
+  const onFileErrorChangeRef = useRef(onFileErrorChange);
   const fetchingPreviewUrlKeys = useRef(new Set<string>());
   const [fileList, setFileList] = useState<FileSelectorRenderItemType[]>(() =>
     formatFileSelectorInternalValue(value)
   );
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    onFileErrorChangeRef.current = onFileErrorChange;
+  }, [onFileErrorChange]);
+
+  const hasFileError = hasFileSelectorError(fileList);
+  useEffect(() => {
+    onFileErrorChangeRef.current?.(hasFileError);
+
+    return () => {
+      onFileErrorChangeRef.current?.(false);
+    };
+  }, [hasFileError]);
 
   useEffect(() => {
     const cleanedValue = sanitizeFileSelectValue(value);
@@ -225,14 +248,17 @@ const FileSelector = ({
 
     skipNextCleanEcho.current = false;
     setFileList((currentFiles) => {
-      const nextFiles = formatFileSelectorInternalValue(value, currentFiles);
+      const nextFiles = mergeFileSelectorExternalValue({
+        currentFiles,
+        externalFiles: formatFileSelectorInternalValue(value, currentFiles)
+      });
       return isEqual(nextFiles, currentFiles) ? currentFiles : nextFiles;
     });
     lastEmittedValue.current = cleanedValue;
     if (!isEqual(cleanedValue, value)) {
-      onChange(cleanedValue);
+      onChangeRef.current?.(cleanedValue);
     }
-  }, [onChange, value]);
+  }, [value]);
 
   const handleChangeFiles = useCallback(
     (files: FileSelectorRenderItemType[], emitChange = true) => {
@@ -242,10 +268,10 @@ const FileSelector = ({
         const cleanedFiles = sanitizeFileSelectValue(files);
         lastEmittedValue.current = cleanedFiles;
         skipNextCleanEcho.current = true;
-        onChange(cleanedFiles);
+        onChangeRef.current?.(cleanedFiles);
       }
     },
-    [onChange]
+    []
   );
 
   // 后端存储值只保留 key；组件渲染时再为 key-only 文件补临时预览 URL。
@@ -376,7 +402,8 @@ const FileSelector = ({
       const filterFiles = markFileSelectorUploading(files);
       if (filterFiles.length === 0) return;
 
-      handleChangeFiles(files);
+      // 上传完成前只更新组件内部渲染态，不能把尚无 key/url 的文件清洗成空数组回写表单。
+      handleChangeFiles(files, false);
 
       await Promise.allSettled(
         filterFiles.map(async (file) => {
@@ -513,7 +540,7 @@ const FileSelector = ({
         )
       );
       const newFiles = [...loadFiles, ...fileList];
-      handleChangeFiles(newFiles);
+      handleChangeFiles(newFiles, false);
       uploadFiles(newFiles);
     },
     [maxSelectFiles, fileList, handleChangeFiles, uploadFiles, toast, t, maxSize]

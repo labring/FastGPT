@@ -678,6 +678,73 @@ describe('mergeResumeCompletedChatRecords', () => {
 });
 
 describe('refreshSubmittedFormInteractiveValues', () => {
+  it('preserves stored file metadata when runtime response only contains a short signed url', () => {
+    const histories = [
+      {
+        id: 'ai-data-id',
+        dataId: 'ai-data-id',
+        obj: ChatRoleEnum.AI,
+        status: 'finish',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              entryNodeIds: ['form-node-id'],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: {
+                description: '',
+                submitted: true,
+                inputForm: [
+                  {
+                    type: 'fileSelect',
+                    key: 'File',
+                    label: 'File',
+                    valueType: 'arrayString',
+                    description: '',
+                    required: false,
+                    defaultValue: '',
+                    canLocalUpload: true,
+                    canSelectFile: true,
+                    maxFiles: 5,
+                    value: [
+                      {
+                        key: 'chat/app/user/chat/report_xxx.pdf',
+                        name: 'report.pdf',
+                        type: ChatFileTypeEnum.file
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ] as ChatSiteItemType[];
+
+    const result = refreshSubmittedFormInteractiveValues({
+      histories,
+      nodeResponse: {
+        id: 'node-response-id',
+        nodeId: 'form-node-id',
+        moduleName: '表单输入',
+        moduleType: FlowNodeTypeEnum.formInput,
+        formInputResult: {
+          File: ['http://localhost:3000/api/system/file/d/opaque-token']
+        }
+      }
+    });
+
+    expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toEqual([
+      {
+        key: 'chat/app/user/chat/report_xxx.pdf',
+        name: 'report.pdf',
+        type: ChatFileTypeEnum.file
+      }
+    ]);
+  });
+
   it('writes resumed form input files back into the submitted interactive node', () => {
     const signedUrl =
       'http://localhost:3000/api/system/file/download/token?filename=H6%E4%BA%A7%E5%93%81%E6%A6%82%E8%BF%B0V1.5_tBF8kj.docx';

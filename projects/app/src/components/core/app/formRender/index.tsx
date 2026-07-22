@@ -225,7 +225,7 @@ const InputRender = (props: InputRenderProps) => {
     return (
       <FileSelector
         value={files}
-        onChange={(e) => onChange?.(e)}
+        onChange={onChange}
         isDisabled={isDisabled}
         isInvalid={isInvalid}
         maxFiles={props.maxFiles}
@@ -237,6 +237,7 @@ const InputRender = (props: InputRenderProps) => {
         customFileExtensionList={props.customFileExtensionList}
         canLocalUpload={props.canLocalUpload}
         canUrlUpload={props.canUrlUpload}
+        onFileErrorChange={props.onFileErrorChange}
       />
     );
   }

@@ -3,7 +3,6 @@ import type {
   EditorVariablePickerType
 } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { InputTypeEnum } from './constant';
-import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { UseFormReturn } from 'react-hook-form';
 import type { BoxProps, MenuProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
@@ -65,6 +64,7 @@ export type SpecificProps = {
   canSelectCustomFileExtension?: boolean;
   customFileExtensionList?: string[];
   maxFiles?: number;
+  onFileErrorChange?: (hasError: boolean) => void;
 
   // timePointSelect & timeRangeSelect
   timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
