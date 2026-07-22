@@ -13,7 +13,7 @@ export const datasetDataSelectField = {
   imageDescMap: 1,
   chunkIndex: 1,
   indexes: 1
-};
+} as const;
 
 /**
  * collection 只需要来源展示字段。
@@ -27,4 +27,4 @@ export const datasetCollectionSelectField = {
   apiFileId: 1,
   externalFileId: 1,
   externalFileUrl: 1
-};
+} as const;

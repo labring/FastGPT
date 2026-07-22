@@ -1,4 +1,7 @@
-import z from 'zod';
+import type { Pool as PgPool } from 'pg';
+import type { Pool as MysqlPool } from 'mysql2/promise';
+import type { MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { z } from 'zod';
 
 // Embedding recall item schema
 export const EmbeddingRecallItemSchema = z.object({
@@ -13,9 +16,21 @@ export const InsertVectorControllerPropsSchema = z.object({
   teamId: z.string(),
   datasetId: z.string(),
   collectionId: z.string(),
-  vectors: z.array(z.array(z.number()))
+  vectors: z.array(z.array(z.number())),
+  textContents: z.array(z.string()).optional()
 });
 export type InsertVectorControllerPropsType = z.infer<typeof InsertVectorControllerPropsSchema>;
+
+// Full-text search props schema
+export const FullTextSearchCtrlPropsSchema = z.object({
+  teamId: z.string(),
+  datasetIds: z.array(z.string()),
+  query: z.string(),
+  limit: z.number(),
+  forbidCollectionIdList: z.array(z.string()),
+  filterCollectionIdList: z.array(z.string()).optional()
+});
+export type FullTextSearchCtrlPropsType = z.infer<typeof FullTextSearchCtrlPropsSchema>;
 
 // Insert vector response schema
 export const InsertVectorResponseSchema = z.object({
@@ -101,6 +116,11 @@ export interface VectorControllerType {
    * Embedding recall/search vectors
    */
   embRecall(props: EmbeddingRecallCtrlPropsType): Promise<EmbeddingRecallResponseType>;
+
+  /**
+   * Full-text search (Milvus 2.6+ BM25 only)
+   */
+  fullTextSearch?(props: FullTextSearchCtrlPropsType): Promise<EmbeddingRecallResponseType>;
 
   /**
    * Get vector data by time range
