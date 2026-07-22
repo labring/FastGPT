@@ -14,7 +14,10 @@ import {
   assertChatFileRuntimeValue,
   normalizeChatFileStoreValue
 } from '../../../chat/fileStoreValue';
+import { getWorkflowFileContext } from '../../utils/context';
 import { isAbsoluteHttpUrl } from '../../utils/fileContext';
+
+const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
 
 /**
  * 工作流全局变量状态管理器。
@@ -60,7 +63,7 @@ export type WorkflowVariableStateCreateProps = {
   // 源变量状态，用于复制变量状态
   sourceVariableState?: WorkflowVariableStateLike;
   // 只在入口初始化全局文件变量时登记可信文件，节点运行时 set 不得扩展文件 Context。
-  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string>;
+  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
 };
 
 /** 根据变量配置从入参中取值，兼容 API label 入参与前端 key 入参。 */
@@ -77,8 +80,13 @@ const getVariableInputValue = ({
 };
 
 /** 从已知文件字段的运行值中提取文件输入。 */
-export const getWorkflowFileInputsFromValue = (value: unknown) =>
-  Array.isArray(value) ? assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]) : [];
+export const getWorkflowFileInputsFromValue = (value: unknown, maxFiles?: number) =>
+  Array.isArray(value)
+    ? assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
+        0,
+        Math.max(maxFiles ?? DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES, 0)
+      )
+    : [];
 
 /** 收集 Child 全局文件变量的实际输入，只用于派生请求级文件 Context。 */
 export const getWorkflowFileVariableInputs = ({
@@ -88,7 +96,7 @@ export const getWorkflowFileVariableInputs = ({
   variablesConfig.flatMap((item) => {
     if (item.type !== VariableInputEnum.file) return [];
     const value = getVariableInputValue({ variables: inputVariables, item });
-    return getWorkflowFileInputsFromValue(value);
+    return getWorkflowFileInputsFromValue(value, item.maxFiles);
   });
 
 /** 将文件存储值转换为运行时 URL，并记录 URL 到 store metadata 的映射。 */
@@ -100,13 +108,14 @@ const fileStoreValuesToRuntimeUrls = async ({
 }: {
   files: ChatFileStoreValue[];
   fileMetaMap: Map<string, ChatFileStoreValue>;
-  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string>;
+  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
   getPreviewUrl?: (key: string) => Promise<string>;
 }) => {
   const urls = await Promise.all(
     files.map(async (file) => {
       if (resolveInputFile) {
         const url = await resolveInputFile(file);
+        if (!url) return;
         fileMetaMap.set(url, file);
         return url;
       }
@@ -206,7 +215,13 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
 
     if (config?.type === VariableInputEnum.file) {
       if (!Array.isArray(value)) throw new UserError('File variable value must be an array');
-      const files = value.map((url) => {
+      const maxFileAmount = Math.max(
+        getWorkflowFileContext()?.limits.maxFileAmount ??
+          config.maxFiles ??
+          DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES,
+        0
+      );
+      const files = value.slice(0, maxFileAmount).map((url) => {
         if (!isAbsoluteHttpUrl(url)) {
           throw new UserError('File variable updates only accept absolute HTTP(S) URLs');
         }
@@ -295,12 +310,15 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
   private async initConfiguredVariable(
     config: VariableItemType,
     value: unknown,
-    resolveInputFile?: (file: ChatFileStoreValue) => Promise<string>
+    resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>
   ) {
     if (config.type === VariableInputEnum.file) {
       const storeValue = Array.isArray(value)
         ? this.runtimeFileValueToStoreValue(
-            assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[])
+            assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
+              0,
+              Math.max(config.maxFiles ?? DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES, 0)
+            )
           )
         : [];
       const runtimeValue = await fileStoreValuesToRuntimeUrls({

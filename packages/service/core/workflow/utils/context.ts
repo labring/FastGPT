@@ -62,13 +62,44 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   fn
 }: {
   files: WorkflowFileInput[];
-  fn: (scope: { resolveInputFile?: (file: ChatFileStoreValue) => Promise<string> }) => Promise<T>;
+  fn: (scope: {
+    resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
+  }) => Promise<T>;
 }): Promise<T> => {
   const parentStore = WorkflowContext.getStore();
   const parentFileContext = parentStore?.fileContext;
   if (!parentStore || !parentFileContext) return fn({});
 
-  const selectedFiles = [...files];
+  const maxFileAmount = Math.max(parentFileContext.limits.maxFileAmount, 0);
+  const seenFileIdentities = new Set<string>();
+  const truncatedFileIdentities = new Set<string>();
+  const selectedFiles: WorkflowFileInput[] = [];
+
+  const getFileIdentity = (file: WorkflowFileInput) => {
+    const parentRef =
+      typeof file === 'string'
+        ? parentFileContext.resolve(file)
+        : parentFileContext.resolveInputFile(file);
+
+    if (parentRef) return parentFileContext.getIdentity(parentRef.modelUrl);
+    if (typeof file === 'string') return `url:${file}`;
+    if ('key' in file && typeof file.key === 'string') return `key:${file.key}`;
+    if (typeof file.url === 'string') return `url:${file.url}`;
+  };
+
+  // 同一文件可能同时来自 query、变量和节点输入，去重后再计算 Workflow 容量。
+  for (const file of files) {
+    const identity = getFileIdentity(file);
+    if (identity && seenFileIdentities.has(identity)) continue;
+    if (identity) seenFileIdentities.add(identity);
+
+    if (selectedFiles.length >= maxFileAmount) {
+      if (identity) truncatedFileIdentities.add(identity);
+      continue;
+    }
+
+    selectedFiles.push(file);
+  }
   let childFileContext = parentFileContext.derive(selectedFiles);
   const childStore: ContextType = {
     ...parentStore,
@@ -78,13 +109,18 @@ export const runWithDerivedWorkflowFileContext = async <T>({
 
   const resolveInputFile = async (file: ChatFileStoreValue) => {
     const ref = childFileContext.resolveInputFile(file);
-    if (!ref) throw new UserError('Child workflow file is not selected in its file context');
-    return ref.modelUrl;
+    if (ref) return ref.modelUrl;
+    if (truncatedFileIdentities.has(getFileIdentity(file) ?? '')) return;
+    throw new UserError('Child workflow file is not selected in its file context');
   };
 
   const childRegistrar: WorkflowFileRegistrar | undefined = parentStore.fileRegistrar
     ? {
         registerInputFile: async (params) => {
+          const existingRef = childFileContext.resolveInputFile(params.file);
+          if (existingRef) return existingRef;
+          if (selectedFiles.length >= maxFileAmount) return;
+
           const ref = await parentStore.fileRegistrar!.registerInputFile(params);
           if (!ref) return;
           selectedFiles.push(ref.modelUrl);

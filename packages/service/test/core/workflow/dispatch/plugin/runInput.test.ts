@@ -156,6 +156,24 @@ describe('dispatchPluginInput', () => {
     expect(mockRegisterInputFile).toHaveBeenCalledTimes(2);
   });
 
+  it('silently drops files rejected by the workflow file capacity', async () => {
+    mockRegisterInputFile
+      .mockResolvedValueOnce({ modelUrl: 'https://external.example.com/1.pdf' })
+      .mockResolvedValueOnce(undefined);
+
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: ['https://external.example.com/1.pdf', 'https://external.example.com/2.pdf']
+        },
+        query: [],
+        node: pluginInputNode
+      } as any)
+    );
+
+    expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
+  });
+
   it('reuses a file already selected in the current child context', async () => {
     mockResolveInputFile.mockReturnValueOnce({
       modelUrl: 'https://parent.example.com/signed.pdf'

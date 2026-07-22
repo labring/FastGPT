@@ -165,4 +165,56 @@ describe('dispatchFormInput', () => {
     );
     expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
   });
+
+  it('silently slices fileSelect values by the form maxFiles limit', async () => {
+    const registerInputFile = vi.fn(async ({ file }) => ({
+      modelUrl: 'url' in file ? file.url : undefined
+    }));
+
+    const result = await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileRegistrar: { registerInputFile } as any
+      },
+      () =>
+        dispatchFormInput({
+          histories: [{ obj: 'Human', value: [] }],
+          node: { isEntry: true },
+          params: {
+            [NodeInputKeyEnum.description]: 'upload',
+            [NodeInputKeyEnum.userInputForms]: [
+              {
+                key: 'upload',
+                label: 'upload',
+                type: FlowNodeInputTypeEnum.fileSelect,
+                value: [],
+                valueType: WorkflowIOValueTypeEnum.arrayString,
+                required: false,
+                maxFiles: 2
+              }
+            ]
+          },
+          query: [
+            {
+              text: {
+                content: JSON.stringify({
+                  upload: [
+                    'https://external.example.com/1.pdf',
+                    'https://external.example.com/2.pdf',
+                    'https://external.example.com/3.pdf'
+                  ]
+                })
+              }
+            }
+          ],
+          lastInteractive: { type: 'userInput' }
+        } as any)
+    );
+
+    expect(result.data?.upload).toEqual([
+      'https://external.example.com/1.pdf',
+      'https://external.example.com/2.pdf'
+    ]);
+    expect(registerInputFile).toHaveBeenCalledTimes(2);
+  });
 });

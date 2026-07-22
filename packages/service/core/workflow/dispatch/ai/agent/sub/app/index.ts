@@ -227,7 +227,10 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       node.flowNodeType === FlowNodeTypeEnum.pluginInput
         ? node.inputs.flatMap((input) =>
             input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
-              ? getWorkflowFileInputsFromValue(customAppVariables[input.key] ?? input.value)
+              ? getWorkflowFileInputsFromValue(
+                  customAppVariables[input.key] ?? input.value,
+                  input.maxFiles
+                )
               : []
           )
         : []

@@ -367,6 +367,46 @@ describe('prepareWorkflowFileContext', () => {
     expect(getPreviewUrl).toHaveBeenCalledTimes(1);
   });
 
+  it('only suppresses child variable files explicitly truncated by the workflow limit', async () => {
+    const parentUrl = 'https://files.example.com/parent-signed';
+    const overflowUrl = 'https://external.example.com/overflow.pdf';
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [createFile({ key: privateKey })],
+      histories: [],
+      scope,
+      maxFileAmount: 1,
+      getPreviewUrl: vi.fn().mockResolvedValue(parentUrl)
+    });
+
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
+      },
+      () =>
+        runWithDerivedWorkflowFileContext({
+          files: [parentUrl, overflowUrl],
+          fn: async ({ resolveInputFile }) => {
+            await expect(
+              resolveInputFile?.({
+                url: overflowUrl,
+                name: 'overflow.pdf',
+                type: ChatFileTypeEnum.file
+              })
+            ).resolves.toBeUndefined();
+            await expect(
+              resolveInputFile?.({
+                url: 'https://external.example.com/unlisted.pdf',
+                name: 'unlisted.pdf',
+                type: ChatFileTypeEnum.file
+              })
+            ).rejects.toThrow('not selected in its file context');
+          }
+        })
+    );
+  });
+
   it('adds child interactive files to the active derived context', async () => {
     const interactiveKey = 'chat/app/app-1/user-1/chat-1/interactive.pdf';
     const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
@@ -403,6 +443,59 @@ describe('prepareWorkflowFileContext', () => {
           }
         })
     );
+  });
+
+  it('deduplicates child inputs before silently enforcing the workflow file limit', async () => {
+    const getPreviewUrl = vi.fn(async (key: string) => `https://files.example.com/${key}`);
+    const queryFile = createFile({ key: privateKey });
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [queryFile],
+      histories: [],
+      scope,
+      maxFileAmount: 2,
+      getPreviewUrl
+    });
+
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
+      },
+      () =>
+        runWithDerivedWorkflowFileContext({
+          files: [queryFile.file!.url, queryFile.file!.url],
+          fn: async () => {
+            const acceptedRef = await getWorkflowFileRegistrar()?.registerInputFile({
+              file: {
+                url: 'https://external.example.com/accepted.pdf',
+                name: 'accepted.pdf',
+                type: ChatFileTypeEnum.file
+              },
+              source: 'interactive'
+            });
+            const overflowRef = await getWorkflowFileRegistrar()?.registerInputFile({
+              file: {
+                url: 'https://external.example.com/overflow.pdf',
+                name: 'overflow.pdf',
+                type: ChatFileTypeEnum.file
+              },
+              source: 'interactive'
+            });
+
+            expect(acceptedRef).toBeDefined();
+            expect(overflowRef).toBeUndefined();
+            expect(
+              getWorkflowFileContext()?.resolve('https://external.example.com/accepted.pdf')
+            ).toBe(acceptedRef);
+            expect(
+              getWorkflowFileContext()?.resolve('https://external.example.com/overflow.pdf')
+            ).toBeUndefined();
+          }
+        })
+    );
+
+    expect(getPreviewUrl).toHaveBeenCalledTimes(1);
   });
 
   it('rejects invalid query URLs and configured non-whitelisted domains', async () => {

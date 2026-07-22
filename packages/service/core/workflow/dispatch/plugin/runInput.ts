@@ -47,7 +47,7 @@ export const dispatchPluginInput = async (
       const val = params[key];
       const maxFiles = fileInputMaxFiles.get(key);
       if (maxFiles !== undefined && Array.isArray(val)) {
-        params[key] = await Promise.all(
+        const fileUrls = await Promise.all(
           val.slice(0, maxFiles).map(async (fileItem) => {
             const storeValue =
               typeof fileItem === 'string'
@@ -63,9 +63,11 @@ export const dispatchPluginInput = async (
               file: storeValue,
               source: 'plugin'
             });
-            if (!ref) throw new UserError('Invalid workflow plugin file');
-            return ref.modelUrl;
+            return ref?.modelUrl;
           })
+        );
+        params[key] = fileUrls.filter(
+          (url): url is string => typeof url === 'string' && Boolean(url)
         );
       }
     })
