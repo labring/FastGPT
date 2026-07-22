@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
-import { AwsS3StorageAdapter } from '../../../../sdk/storage/src/adapters/aws-s3.adapter';
+import { AwsS3StorageAdapter } from '../../../src/adapters/aws-s3.adapter';
 
 const createAdapter = () =>
   new AwsS3StorageAdapter({
@@ -39,5 +39,18 @@ describe('AwsS3StorageAdapter.downloadObject', () => {
       }),
       { abortSignal: controller.signal }
     );
+  });
+});
+
+describe('AwsS3StorageAdapter.deleteObjectsByPrefix', () => {
+  it('rejects a whitespace-only prefix without calling S3', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client.send = send;
+
+    await expect(adapter.deleteObjectsByPrefix({ prefix: '   ' })).rejects.toThrow(
+      'Prefix is required'
+    );
+    expect(send).not.toHaveBeenCalled();
   });
 });

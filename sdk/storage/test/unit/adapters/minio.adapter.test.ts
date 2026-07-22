@@ -3,7 +3,7 @@ import {
   createMinioTimeoutTransport,
   MinioS3NotFound,
   MinioStorageAdapter
-} from '../../../../sdk/storage/src/adapters/minio.adapter';
+} from '../../../src/adapters/minio.adapter';
 
 describe('createMinioTimeoutTransport', () => {
   afterEach(() => {
@@ -148,6 +148,21 @@ describe('MinioStorageAdapter.deleteObjectsByMultiKeys', () => {
     expect(removeObjects).toHaveBeenNthCalledWith(1, 'fastgpt-private', keys.slice(0, 1000));
     expect(removeObjects).toHaveBeenNthCalledWith(2, 'fastgpt-private', keys.slice(1000));
   });
+
+  it.each([
+    ['an error without a key', [{ Code: 'AccessDenied', Message: 'permission denied' }]],
+    ['an error for an unexpected key', [{ Key: 'another-prefix/file.txt' }]],
+    ['a non-array response', undefined]
+  ])('marks the whole batch as failed for %s', async (_case, response) => {
+    const adapter = createAdapter();
+    const keys = ['dataset/first.txt', 'dataset/second.txt'];
+    (adapter as any).minioClient.removeObjects = vi.fn().mockResolvedValue(response);
+
+    await expect(adapter.deleteObjectsByMultiKeys({ keys })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys
+    });
+  });
 });
 
 describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
@@ -158,7 +173,7 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
   beforeEach(() => {
     adapter = createAdapter();
     listObjects = vi.fn();
-    removeObjects = vi.fn().mockResolvedValue(undefined);
+    removeObjects = vi.fn().mockResolvedValue([]);
     (adapter as any).client.send = listObjects;
     (adapter as any).minioClient.listObjectsV2 = vi.fn(() => {
       throw new Error('Entity expansion limit exceeded: 1002 > 1000');
@@ -186,8 +201,8 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
       { length: 101 },
       (_, index) => `dataset/team%20%26%20one/file-${index + 400}.txt`
     );
-    let resolveFirstDelete: (() => void) | undefined;
-    const firstDelete = new Promise<void>((resolve) => {
+    let resolveFirstDelete: ((value: []) => void) | undefined;
+    const firstDelete = new Promise<[]>((resolve) => {
       resolveFirstDelete = resolve;
     });
 
@@ -201,7 +216,7 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
         Contents: secondPageKeys.map((Key) => ({ Key })),
         IsTruncated: false
       });
-    removeObjects.mockReturnValueOnce(firstDelete).mockResolvedValueOnce(undefined);
+    removeObjects.mockReturnValueOnce(firstDelete).mockResolvedValueOnce([]);
 
     const resultPromise = adapter.deleteObjectsByPrefix({ prefix: 'dataset/team & one/' });
     await vi.waitFor(() => expect(removeObjects).toHaveBeenCalledTimes(1));
@@ -224,7 +239,7 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
       firstPageKeys.map((key) => decodeURIComponent(key))
     );
 
-    resolveFirstDelete?.();
+    resolveFirstDelete?.([]);
     await expect(resultPromise).resolves.toEqual({ bucket: 'fastgpt-private', keys: [] });
 
     expect(listObjects).toHaveBeenCalledTimes(2);
@@ -259,7 +274,7 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
         { Key: 'parsed/first.txt' },
         { Error: { Key: 'parsed/file with spaces.txt' } }
       ])
-      .mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce([]);
 
     await expect(adapter.deleteObjectsByPrefix({ prefix: 'parsed/' })).resolves.toEqual({
       bucket: 'fastgpt-private',
@@ -274,6 +289,19 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
       IsTruncated: false
     });
     removeObjects.mockRejectedValueOnce(new Error('MinIO request timeout after 60000ms'));
+
+    await expect(adapter.deleteObjectsByPrefix({ prefix: 'failed/' })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: ['failed/first.txt', 'failed/second.txt']
+    });
+  });
+
+  it('marks the whole page as failed when an error item has no key', async () => {
+    listObjects.mockResolvedValueOnce({
+      Contents: [{ Key: 'failed/first.txt' }, { Key: 'failed/second.txt' }],
+      IsTruncated: false
+    });
+    removeObjects.mockResolvedValueOnce([{ Code: 'AccessDenied', Message: 'permission denied' }]);
 
     await expect(adapter.deleteObjectsByPrefix({ prefix: 'failed/' })).resolves.toEqual({
       bucket: 'fastgpt-private',

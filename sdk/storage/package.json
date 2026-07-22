@@ -48,6 +48,10 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
+    "test": "vitest run --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.config.ts test/unit",
+    "test:integration": "vitest run --config vitest.config.ts test/integration",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {

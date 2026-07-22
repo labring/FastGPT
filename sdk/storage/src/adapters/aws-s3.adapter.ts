@@ -237,7 +237,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
-    if (!prefix) {
+    if (!prefix?.trim()) {
       throw new Error('Prefix is required');
     }
 

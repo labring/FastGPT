@@ -148,7 +148,7 @@ const storage = createStorage({
 
 > 重要：当前实现状态（以代码为准）：
 > - `generatePresignedPutUrl`：**AWS S3 / MinIO / COS / OSS 已实现**。
-> - `generatePresignedGetUrl`：目前各 adapter 仍为 **未实现**（会抛 `Error('Method not implemented.')`）。
+> - `generatePresignedGetUrl`：**AWS S3 / MinIO / COS / OSS 已实现**。
 
 ### 预签名 PUT 直传示例（浏览器 / 前端）
 
@@ -191,10 +191,21 @@ await fetch(putUrl, {
 ## 开发与构建
 
 ```bash
-pnpm -C FastGPT/packages/storage dev
-pnpm -C FastGPT/packages/storage build
+pnpm --filter @fastgpt-sdk/storage dev
+pnpm --filter @fastgpt-sdk/storage build
+pnpm --filter @fastgpt-sdk/storage test:unit
+pnpm --filter @fastgpt-sdk/storage typecheck:test
 ```
 
-发布前会执行 `prepublishOnly` 自动构建产物到 `dist/`。
+真实对象存储的统一契约测试位于 `sdk/storage/test/integration`。复制
+`sdk/storage/.env.test.example` 为 `sdk/storage/.env.test.local`，填写凭证并将对应
+`STORAGE_TEST_<PROVIDER>_ENABLED` 设置为 `true` 后运行：
 
+```bash
+pnpm --filter @fastgpt-sdk/storage test:integration
+```
+
+每个启用的 provider 都会创建独立测试桶，运行同一套 `IStorage` 契约，并在结束后清空和删除测试桶。未启用的 provider 会被跳过。
+
+发布前会执行 `prepublishOnly` 自动构建产物到 `dist/`。
 

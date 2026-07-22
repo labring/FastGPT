@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CosStorageAdapter } from '../../../../sdk/storage/src/adapters/cos.adapter';
+import { CosStorageAdapter } from '../../../src/adapters/cos.adapter';
 
 const createAdapter = () =>
   new CosStorageAdapter({
@@ -64,5 +64,30 @@ describe('CosStorageAdapter.downloadObject', () => {
     controller.abort(new Error('client aborted'));
 
     expect(body.destroyed).toBe(true);
+  });
+});
+
+describe('CosStorageAdapter deletion boundaries', () => {
+  it('treats an empty key list as a no-op', async () => {
+    const adapter = createAdapter();
+    const deleteMultipleObject = vi.fn();
+    (adapter as any).client.deleteMultipleObject = deleteMultipleObject;
+
+    await expect(adapter.deleteObjectsByMultiKeys({ keys: [] })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: []
+    });
+    expect(deleteMultipleObject).not.toHaveBeenCalled();
+  });
+
+  it('rejects a whitespace-only prefix without listing objects', async () => {
+    const adapter = createAdapter();
+    const getBucket = vi.fn();
+    (adapter as any).client.getBucket = getBucket;
+
+    await expect(adapter.deleteObjectsByPrefix({ prefix: '   ' })).rejects.toThrow(
+      'Prefix is required'
+    );
+    expect(getBucket).not.toHaveBeenCalled();
   });
 });

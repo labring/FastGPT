@@ -309,7 +309,7 @@ export interface IStorage {
    *
    * 注意：
    * - 各厂商对单次批量删除的最大数量限制不同，adapter 可能需要分批处理。
-   * - 返回的 `deleted` 通常只包含实际删除/确认删除的 key。
+   * - 返回的 `keys` 只包含删除失败、需要上层重试的 key；空数组表示全部成功。
    */
   deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult>;
 

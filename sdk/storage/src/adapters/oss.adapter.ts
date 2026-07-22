@@ -193,6 +193,13 @@ export class OssStorageAdapter implements IStorage {
   async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
     const { keys } = params;
 
+    if (keys.length === 0) {
+      return {
+        bucket: this.options.bucket,
+        keys: []
+      };
+    }
+
     const result = await this.client.deleteMulti(keys, { quiet: true });
 
     return {
@@ -203,7 +210,7 @@ export class OssStorageAdapter implements IStorage {
 
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
-    if (!prefix) {
+    if (!prefix?.trim()) {
       throw new Error('Prefix is required');
     }
 

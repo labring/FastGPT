@@ -24,13 +24,6 @@ export { NotFound as MinioS3NotFound };
 
 const minioRequestTimeoutMs = 60_000;
 
-type MinioRemoveObjectsError = {
-  Key?: string;
-  Error?: {
-    Key?: string;
-  };
-};
-
 /**
  * 为 MinIO 删除请求注入总请求超时。Promise 超时无法取消底层 HTTP 请求，
  * transport 层主动 destroy 才能避免队列重试时积累悬挂连接。
@@ -58,15 +51,34 @@ export const createMinioTimeoutTransport = ({
  * 提取 MinIO 批量删除响应中的失败 key。
  *
  * MinIO 8.x 运行时直接返回错误对象数组，但类型声明仍保留了 Error 嵌套，
- * 因此同时兼容两种结构，避免静默丢失逐对象删除错误。
+ * 因此同时兼容两种结构。响应结构异常或无法定位失败对象时，将当前批次
+ * 全部标记为失败，避免上层把不完整响应误判为删除成功。
  */
-const getFailedKeysFromMinioRemove = (result: unknown): string[] => {
-  if (!Array.isArray(result)) return [];
+const getFailedKeysFromMinioRemove = ({
+  result,
+  requestedKeys
+}: {
+  result: unknown;
+  requestedKeys: string[];
+}): string[] => {
+  if (!Array.isArray(result)) return requestedKeys;
 
-  return result.flatMap((item: MinioRemoveObjectsError | null | undefined) => {
-    const key = item?.Key ?? item?.Error?.Key;
-    return key ? [key] : [];
-  });
+  const requestedKeySet = new Set(requestedKeys);
+  const failedKeys: string[] = [];
+
+  for (const item of result) {
+    const key = (() => {
+      if (!item || typeof item !== 'object') return;
+      if ('Key' in item && typeof item.Key === 'string') return item.Key;
+      if (!('Error' in item) || !item.Error || typeof item.Error !== 'object') return;
+      if ('Key' in item.Error && typeof item.Error.Key === 'string') return item.Error.Key;
+    })();
+    if (!key || !requestedKeySet.has(key)) return requestedKeys;
+
+    failedKeys.push(key);
+  }
+
+  return failedKeys;
 };
 
 /**
@@ -150,7 +162,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
 
     for (const chunk of chunks) {
       const result = await this.minioClient.removeObjects(this.options.bucket, chunk);
-      failedKeys.push(...getFailedKeysFromMinioRemove(result));
+      failedKeys.push(...getFailedKeysFromMinioRemove({ result, requestedKeys: chunk }));
     }
 
     return {
@@ -237,7 +249,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
         await this.minioClient
           .removeObjects(bucket, keys)
           .then((result) => {
-            failedKeys.push(...getFailedKeysFromMinioRemove(result));
+            failedKeys.push(...getFailedKeysFromMinioRemove({ result, requestedKeys: keys }));
           })
           .catch(() => {
             failedKeys.push(...keys);
