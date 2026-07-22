@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type {
   APIFileItemType,
   ApiDatasetDetailResponse,
@@ -8,9 +7,9 @@ import type {
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { Method } from 'axios';
 import { axios, createProxyAxios } from '../../../../common/api/axios';
-import { delRedisCache, getRedisCache, setRedisCache } from '../../../../common/redis/cache';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
+import { dingtalkAccessTokenStore } from '../../../../common/redis/stores';
 
 type DingtalkAccessTokenResponse = {
   accessToken: string;
@@ -89,9 +88,7 @@ type ListAllByNextTokenProps<T> = {
 
 const dingtalkBaseUrl = serviceEnv.DINGTALK_BASE_URL;
 const dingtalkOapiBaseUrl = serviceEnv.DINGTALK_OAPI_BASE_URL;
-const tokenSafeWindowSeconds = 5 * 60;
 const dingtalkListPageSize = 100;
-const refreshingTokenMap = new Map<string, Promise<string>>();
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 const instance = createProxyAxios({
@@ -109,11 +106,6 @@ const cleanParams = <T extends Record<string, any>>(data: T): T => {
   });
   return data;
 };
-
-const hashSecret = (secret = '') => createHash('sha256').update(secret).digest('hex').slice(0, 12);
-
-const getDingtalkAccessTokenCacheKey = ({ appKey, appSecret }: DingtalkServerType) =>
-  `dataset:dingtalk:accessToken:${appKey}:${hashSecret(appSecret)}`;
 
 const isRateLimitError = (error: any) => {
   const status = error?.response?.status;
@@ -175,49 +167,10 @@ const requestDingtalkAccessToken = async ({
 };
 
 const getDingtalkAccessToken = async (server: DingtalkServerType) => {
-  const cacheKey = getDingtalkAccessTokenCacheKey(server);
-
-  try {
-    const cachedToken = await getRedisCache(cacheKey);
-    if (cachedToken) return cachedToken;
-  } catch (error) {
-    logger.warn('DingTalk accessToken cache read failed', {
-      provider: 'dingtalk',
-      appKey: server.appKey,
-      error
-    });
-  }
-
-  const refreshing = refreshingTokenMap.get(cacheKey);
-  if (refreshing) return refreshing;
-
-  const promise = (async () => {
-    try {
-      const { accessToken, expireIn } = await requestDingtalkAccessToken(server);
-      const ttl = Math.max(expireIn - tokenSafeWindowSeconds, 60);
-
-      try {
-        await setRedisCache(cacheKey, accessToken, ttl);
-      } catch (error) {
-        logger.warn('DingTalk accessToken cache write failed', {
-          provider: 'dingtalk',
-          appKey: server.appKey,
-          ttl,
-          error
-        });
-      }
-
-      return accessToken;
-    } catch (error) {
-      await delRedisCache(cacheKey).catch(() => undefined);
-      return Promise.reject(error);
-    } finally {
-      refreshingTokenMap.delete(cacheKey);
-    }
-  })();
-
-  refreshingTokenMap.set(cacheKey, promise);
-  return promise;
+  return dingtalkAccessTokenStore.getOrRefresh({
+    server,
+    fetchToken: () => requestDingtalkAccessToken(server)
+  });
 };
 
 const request = async <T>({

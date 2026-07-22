@@ -1,13 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockAxiosPost, mockRequest, mockGetRedisCache, mockSetRedisCache, mockDelRedisCache } =
-  vi.hoisted(() => ({
-    mockAxiosPost: vi.fn(),
-    mockRequest: vi.fn(),
-    mockGetRedisCache: vi.fn(),
-    mockSetRedisCache: vi.fn(),
-    mockDelRedisCache: vi.fn()
-  }));
+const {
+  mockAxiosPost,
+  mockRequest,
+  mockRedisStringGet,
+  mockRedisStringSet,
+  mockRedisStringDelete
+} = vi.hoisted(() => ({
+  mockAxiosPost: vi.fn(),
+  mockRequest: vi.fn(),
+  mockRedisStringGet: vi.fn(),
+  mockRedisStringSet: vi.fn(),
+  mockRedisStringDelete: vi.fn()
+}));
 
 vi.mock('../../../../../common/api/axios', () => ({
   axios: {
@@ -18,25 +23,27 @@ vi.mock('../../../../../common/api/axios', () => ({
   }))
 }));
 
-vi.mock('../../../../../common/redis/cache', () => ({
-  getRedisCache: mockGetRedisCache,
-  setRedisCache: mockSetRedisCache,
-  delRedisCache: mockDelRedisCache
-}));
-
-vi.mock('../../../../../common/logger', () => ({
-  getLogger: () => ({
-    warn: vi.fn(),
-    error: vi.fn()
-  }),
-  LogCategories: {
-    MODULE: {
-      DATASET: {
-        API_DATASET: 'dataset.apiDataset'
-      }
+vi.mock('../../../../../common/redis/capability', () => ({
+  redisCapabilities: {
+    string: {
+      get: mockRedisStringGet,
+      set: mockRedisStringSet,
+      delete: mockRedisStringDelete
     }
   }
 }));
+
+vi.mock('../../../../../common/logger', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../../../../common/logger')>();
+
+  return {
+    ...original,
+    getLogger: () => ({
+      warn: vi.fn(),
+      error: vi.fn()
+    })
+  };
+});
 
 import { useDingtalkDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/dingtalkDataset/api';
 
@@ -71,9 +78,9 @@ const mockTokenAndUser = () => {
 describe('useDingtalkDatasetRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetRedisCache.mockResolvedValue(null);
-    mockSetRedisCache.mockResolvedValue(undefined);
-    mockDelRedisCache.mockResolvedValue(undefined);
+    mockRedisStringGet.mockResolvedValue(null);
+    mockRedisStringSet.mockResolvedValue(undefined);
+    mockRedisStringDelete.mockResolvedValue(undefined);
     mockTokenAndUser();
   });
 
@@ -126,11 +133,11 @@ describe('useDingtalkDatasetRequest', () => {
         type: 'folder'
       })
     ]);
-    expect(mockSetRedisCache).toHaveBeenCalledWith(
-      expect.stringContaining('dataset:dingtalk:accessToken:ding-app:'),
-      'access-token',
-      6900
-    );
+    expect(mockRedisStringSet).toHaveBeenCalledWith({
+      key: expect.stringContaining('cache:dataset:dingtalk:accessToken:ding-app:'),
+      value: 'access-token',
+      ttlMs: 6_900_000
+    });
     expect(mockRequest).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
@@ -142,7 +149,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should list folder children with nextToken and filter unsupported nodes', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest
       .mockResolvedValueOnce({
         data: {
@@ -204,7 +211,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should read online document blocks content', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockImplementation(({ url }: { url: string }) => {
       if (url.includes('/blocks')) {
         return Promise.resolve({
@@ -247,7 +254,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should read title from nested node detail response', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockImplementation(({ url }: { url: string }) => {
       if (url.includes('/blocks')) {
         return Promise.resolve({
@@ -357,7 +364,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should fetch node detail for non-root file', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockResolvedValueOnce({
       data: {
         node: {
@@ -425,7 +432,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should map workspace and node fallback fields', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest
       .mockResolvedValueOnce({
         data: {
@@ -500,7 +507,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should return empty list when parentId resolves to empty string', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
 
     const request = useDingtalkDatasetRequest({
       dingtalkServer: {
@@ -517,7 +524,7 @@ describe('useDingtalkDatasetRequest', () => {
 
   it('should retry rate limited node list once', async () => {
     vi.useFakeTimers();
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest
       .mockRejectedValueOnce({
         response: {
@@ -561,7 +568,7 @@ describe('useDingtalkDatasetRequest', () => {
 
   it('should reject with readable message when node list keeps being rate limited', async () => {
     vi.useFakeTimers();
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockRejectedValue({
       response: {
         status: 429,
@@ -587,7 +594,7 @@ describe('useDingtalkDatasetRequest', () => {
 
   it('should reject permission message when node list retry fails without rate limit', async () => {
     vi.useFakeTimers();
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest
       .mockRejectedValueOnce({
         response: {
@@ -611,7 +618,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should read paged document blocks content', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockImplementation(
       ({ url, params }: { url: string; params?: Record<string, any> }) => {
         if (url.includes('/blocks') && !params?.nextToken) {
@@ -662,7 +669,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should reject unsupported document content without leaking raw response', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest
       .mockResolvedValueOnce({
         data: {
@@ -705,8 +712,8 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should continue when token cache read and write fail', async () => {
-    mockGetRedisCache.mockRejectedValueOnce(new Error('redis read failed'));
-    mockSetRedisCache.mockRejectedValueOnce(new Error('redis write failed'));
+    mockRedisStringGet.mockRejectedValueOnce(new Error('redis read failed'));
+    mockRedisStringSet.mockRejectedValueOnce(new Error('redis write failed'));
     mockRequest.mockResolvedValueOnce({
       data: {
         workspaces: []
@@ -718,7 +725,7 @@ describe('useDingtalkDatasetRequest', () => {
 
     expect(result).toEqual([]);
     expect(mockAxiosPost).toHaveBeenCalled();
-    expect(mockSetRedisCache).toHaveBeenCalled();
+    expect(mockRedisStringSet).toHaveBeenCalled();
   });
 
   it('should reject readable message when accessToken request is rate limited', async () => {
@@ -734,7 +741,7 @@ describe('useDingtalkDatasetRequest', () => {
     const request = useDingtalkDatasetRequest({ dingtalkServer: server });
 
     await expect(request.listFiles({})).rejects.toBe('钉钉鉴权接口请求过快，请稍后重试');
-    expect(mockDelRedisCache).toHaveBeenCalled();
+    expect(mockRedisStringDelete).toHaveBeenCalled();
   });
 
   it('should reject readable message when accessToken response is empty', async () => {
@@ -766,7 +773,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should reject readable message when workspace list fails', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockRejectedValueOnce(new Error('wiki permission denied'));
 
     const request = useDingtalkDatasetRequest({
@@ -782,7 +789,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should reject readable message when document blocks request fails', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockImplementation(({ url }: { url: string }) => {
       if (url.includes('/blocks')) {
         return Promise.reject(new Error('doc permission denied'));
@@ -811,7 +818,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should keep string error when document blocks request rejects with string', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockImplementation(({ url }: { url: string }) => {
       if (url.includes('/blocks')) {
         return Promise.reject('raw string error');
@@ -838,7 +845,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should ignore blank block text and unsupported primitive values', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockImplementation(({ url }: { url: string }) => {
       if (url.includes('/blocks')) {
         return Promise.resolve({
@@ -871,7 +878,7 @@ describe('useDingtalkDatasetRequest', () => {
   });
 
   it('should reject when node detail cannot be formatted', async () => {
-    mockGetRedisCache.mockResolvedValue('cached-token');
+    mockRedisStringGet.mockResolvedValue('cached-token');
     mockRequest.mockResolvedValueOnce({
       data: {
         node: {

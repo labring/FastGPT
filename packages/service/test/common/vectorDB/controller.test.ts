@@ -22,24 +22,18 @@ import {
 } from '@fastgpt/service/common/vectorDB/controller';
 
 // Mock redis cache functions
-const mockGetRedisCache = vi.fn();
-const mockSetRedisCache = vi.fn();
-const mockDelRedisCache = vi.fn();
+const mockRedisStringGet = vi.fn();
+const mockRedisStringSet = vi.fn();
+const mockRedisStringDelete = vi.fn();
 const mockLoggerWarn = vi.fn();
 
-vi.mock('@fastgpt/service/common/redis/cache', () => ({
-  setRedisCache: (...args: any[]) => mockSetRedisCache(...args),
-  getRedisCache: (...args: any[]) => mockGetRedisCache(...args),
-  delRedisCache: (...args: any[]) => mockDelRedisCache(...args),
-  CacheKeyEnum: {
-    team_vector_count: 'team_vector_count',
-    team_point_surplus: 'team_point_surplus',
-    team_point_total: 'team_point_total'
-  },
-  CacheKeyEnumTime: {
-    team_vector_count: 1800,
-    team_point_surplus: 60,
-    team_point_total: 60
+vi.mock('@fastgpt/service/common/redis/capability', () => ({
+  redisCapabilities: {
+    string: {
+      set: (...args: any[]) => mockRedisStringSet(...args),
+      get: (...args: any[]) => mockRedisStringGet(...args),
+      delete: (...args: any[]) => mockRedisStringDelete(...args)
+    }
   }
 }));
 
@@ -60,9 +54,11 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 describe('VectorDB Controller', () => {
   beforeEach(() => {
     resetVectorMocks();
-    mockGetRedisCache.mockReset();
-    mockSetRedisCache.mockReset();
-    mockDelRedisCache.mockReset();
+    mockRedisStringGet.mockReset();
+    mockRedisStringSet.mockReset();
+    mockRedisStringDelete.mockReset();
+    mockRedisStringSet.mockResolvedValue(undefined);
+    mockRedisStringDelete.mockResolvedValue(false);
     mockLoggerWarn.mockReset();
     mockGetVectors.mockClear();
   });
@@ -132,7 +128,7 @@ describe('VectorDB Controller', () => {
 
   describe('getVectorCountByTeamId', () => {
     it('should return cached count if available', async () => {
-      mockGetRedisCache.mockResolvedValue('150');
+      mockRedisStringGet.mockResolvedValue('150');
 
       const result = await getVectorCountByTeamId('team_123');
 
@@ -141,7 +137,7 @@ describe('VectorDB Controller', () => {
     });
 
     it('should fetch from Vector and cache if no cache exists', async () => {
-      mockGetRedisCache.mockResolvedValue(null);
+      mockRedisStringGet.mockResolvedValue(null);
       mockGetVectorCount.mockResolvedValue(200);
 
       const result = await getVectorCountByTeamId('team_456');
@@ -151,7 +147,7 @@ describe('VectorDB Controller', () => {
     });
 
     it('should handle undefined cache value', async () => {
-      mockGetRedisCache.mockResolvedValue(undefined);
+      mockRedisStringGet.mockResolvedValue(undefined);
       mockGetVectorCount.mockResolvedValue(50);
 
       const result = await getVectorCountByTeamId('team_789');
@@ -161,7 +157,7 @@ describe('VectorDB Controller', () => {
     });
 
     it('should fallback to Vector count when cache read fails', async () => {
-      mockGetRedisCache.mockRejectedValueOnce(new Error('redis down'));
+      mockRedisStringGet.mockRejectedValueOnce(new Error('redis down'));
       mockGetVectorCount.mockResolvedValue(200);
 
       const result = await getVectorCountByTeamId('team_456');
@@ -176,7 +172,7 @@ describe('VectorDB Controller', () => {
 
     it('should fallback to Vector count when cache read times out', async () => {
       vi.useFakeTimers();
-      mockGetRedisCache.mockReturnValueOnce(new Promise(() => {}));
+      mockRedisStringGet.mockReturnValueOnce(new Promise(() => {}));
       mockGetVectorCount.mockResolvedValue(120);
 
       const resultPromise = getVectorCountByTeamId('team_timeout');
@@ -193,19 +189,19 @@ describe('VectorDB Controller', () => {
 
     it('should not block count result when cache write times out', async () => {
       vi.useFakeTimers();
-      mockGetRedisCache.mockResolvedValue(null);
+      mockRedisStringGet.mockResolvedValue(null);
       mockGetVectorCount.mockResolvedValue(300);
-      mockSetRedisCache.mockReturnValueOnce(new Promise(() => {}));
+      mockRedisStringSet.mockReturnValueOnce(new Promise(() => {}));
 
       const result = await getVectorCountByTeamId('team_set_timeout');
 
       expect(result).toBe(300);
       expect(mockGetVectorCount).toHaveBeenCalledWith({ teamId: 'team_set_timeout' });
-      expect(mockSetRedisCache).toHaveBeenCalledWith(
-        'team_vector_count:team_set_timeout',
-        300,
-        1800
-      );
+      expect(mockRedisStringSet).toHaveBeenCalledWith({
+        key: 'cache:team_vector_count:team_set_timeout',
+        value: '300',
+        ttlMs: 1_800_000
+      });
 
       await vi.advanceTimersByTimeAsync(3000);
 
@@ -351,7 +347,7 @@ describe('VectorDB Controller', () => {
         model: mockModel as any
       });
 
-      expect(mockDelRedisCache).toHaveBeenCalledWith('team_vector_count:team_abc');
+      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
     });
 
     it('should return insert result when team vector cache invalidation fails', async () => {
@@ -362,7 +358,7 @@ describe('VectorDB Controller', () => {
       mockVectorInsert.mockResolvedValue({
         insertIds: ['id_1']
       });
-      mockDelRedisCache.mockRejectedValueOnce(new Error('redis down'));
+      mockRedisStringDelete.mockRejectedValueOnce(new Error('redis down'));
 
       const result = await insertDatasetDataVector({
         teamId: 'team_abc',
@@ -376,7 +372,7 @@ describe('VectorDB Controller', () => {
         tokens: 50,
         insertIds: ['id_1']
       });
-      expect(mockDelRedisCache).toHaveBeenCalledWith('team_vector_count:team_abc');
+      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
       expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
         teamId: 'team_abc',
         error: expect.any(Error)
@@ -392,7 +388,7 @@ describe('VectorDB Controller', () => {
       mockVectorInsert.mockResolvedValue({
         insertIds: ['id_1']
       });
-      mockDelRedisCache.mockReturnValueOnce(new Promise(() => {}));
+      mockRedisStringDelete.mockReturnValueOnce(new Promise(() => {}));
 
       const resultPromise = insertDatasetDataVector({
         teamId: 'team_abc',
@@ -408,7 +404,7 @@ describe('VectorDB Controller', () => {
         tokens: 50,
         insertIds: ['id_1']
       });
-      expect(mockDelRedisCache).toHaveBeenCalledWith('team_vector_count:team_abc');
+      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
       expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
         teamId: 'team_abc',
         error: expect.any(Error)
@@ -430,7 +426,7 @@ describe('VectorDB Controller', () => {
       });
       expect(mockGetVectors).not.toHaveBeenCalled();
       expect(mockVectorInsert).not.toHaveBeenCalled();
-      expect(mockDelRedisCache).not.toHaveBeenCalled();
+      expect(mockRedisStringDelete).not.toHaveBeenCalled();
     });
   });
 
@@ -492,12 +488,12 @@ describe('VectorDB Controller', () => {
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
-      expect(mockDelRedisCache).toHaveBeenCalledWith('team_vector_count:team_cache_test');
+      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_cache_test');
     });
 
     it('should return delete result when team vector cache invalidation fails', async () => {
       mockVectorDelete.mockResolvedValue({ deletedCount: 5 });
-      mockDelRedisCache.mockRejectedValueOnce(new Error('redis down'));
+      mockRedisStringDelete.mockRejectedValueOnce(new Error('redis down'));
 
       const props = {
         teamId: 'team_cache_test',
@@ -508,7 +504,7 @@ describe('VectorDB Controller', () => {
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
-      expect(mockDelRedisCache).toHaveBeenCalledWith('team_vector_count:team_cache_test');
+      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_cache_test');
       expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
         teamId: 'team_cache_test',
         error: expect.any(Error)
@@ -518,7 +514,7 @@ describe('VectorDB Controller', () => {
     it('should return delete result when team vector cache invalidation times out', async () => {
       vi.useFakeTimers();
       mockVectorDelete.mockResolvedValue({ deletedCount: 5 });
-      mockDelRedisCache.mockReturnValueOnce(new Promise(() => {}));
+      mockRedisStringDelete.mockReturnValueOnce(new Promise(() => {}));
 
       const props = {
         teamId: 'team_cache_test',
@@ -531,7 +527,7 @@ describe('VectorDB Controller', () => {
 
       await expect(resultPromise).resolves.toEqual({ deletedCount: 5 });
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
-      expect(mockDelRedisCache).toHaveBeenCalledWith('team_vector_count:team_cache_test');
+      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_cache_test');
       expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
         teamId: 'team_cache_test',
         error: expect.any(Error)

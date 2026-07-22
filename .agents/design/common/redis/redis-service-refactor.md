@@ -1,6 +1,6 @@
 # Redis 中间件服务重构讨论稿
 
-> 状态：Phase 1、Phase 2 已完成并通过代码 review；Phase 3 尚未开始。
+> 状态：Phase 1、Phase 2、Phase 3A 已完成并通过代码 review；Phase 3B1 尚未开始。
 >
 > 目标：先统一 Redis 的连接、key、原子操作、错误策略和业务能力边界，再决定是否分阶段迁移。本文基于当前仓库代码梳理，不代表已经批准的实现方案。
 
@@ -19,7 +19,7 @@
 业务 service / API
         |
         v
-业务 Redis Store（Session、StreamResume、RateLimit、Lease、TokenCache ...）
+业务 Redis Store（Session、StreamResume、RateLimit、Lease、各业务专用 Cache ...）
         |
         v
 窄接口的 Redis capability（string/hash/stream/scan/script）
@@ -192,8 +192,23 @@ fastgpt:<namespace>:<version?>:<segment>...
 | `WorkflowStopSignalStore` | workflow 与 auxiliary generation 共享同一停止协议 |
 | `StreamResumeStore` | 聊天恢复镜像、memory pressure 保护、blocking read 生命周期 |
 | `OutLinkStreamStore` | Wechat/Wecom 长轮询结果、reset/end 标记和原子 TTL |
-| `TokenCache` | Dingtalk/Wecom/provider/suite/二维码等短字符串及 TTL |
-| `TeamCacheStore` | vector count、wallet points、QPM 配置等可回源缓存 |
+| `DingtalkAccessTokenStore` | Dingtalk token、动态 TTL、进程内 single-flight 和 Redis fail-open |
+| `TeamVectorCountStore` | 团队向量数量的 read-through、超时回源和 best-effort 失效 |
+| `WechatQrLoginStore` | 二维码登录状态、JSON codec、固定 TTL 和损坏数据处理 |
+| `WecomAccessTokenStore` | provider/suite access token 的动态 TTL 和上游错误传播 |
+| `WecomSuiteTicketStore` | 外部事件被动写入、永久保存、缺失时 fail-closed |
+| `DailyActiveDedupeStore` | 按用户和日期原子去重，Redis 故障不阻断主流程 |
+| `TeamPointCache` | 计费积分读取、增量更新、双 key 一致性和回源策略 |
+| `TeamQpmConfigStore` | 团队 QPM 配置读取，与限流器共享 fail-closed 合同 |
+| `PendingPaymentStore` | 待支付订单协调状态、旧订单取消和并发创建策略 |
+
+Redis-backed Store 统一存放，但不合并业务抽象：
+
+- shared Store 放在 `packages/service/common/redis/stores/*.ts`，测试对应放在 `packages/service/test/common/redis/stores/*.test.ts`，业务调用方统一从 `@fastgpt/service/common/redis/stores` 导入。
+- `pro` 专属 Store 保持子模块所有权，放在 `pro/admin/src/service/common/redis/stores/*.ts`，不得为了集中目录把闭源业务实现上移到 shared package。
+- Store 可以负责 key、TTL、codec、Redis deadline、原子操作、错误降级和基于 callback 的 single-flight；不得直接依赖 Axios、Mongo、BullMQ、支付 SDK、业务 controller 或 `core/**`、`support/**` 实现。
+- 上游请求、数据库回源、支付副作用和跨服务协调仍留在所属业务域；集中的是 Redis adapter 的物理位置，不是把不同业务重新合并成泛化 Cache/Store。
+- `stores/index.ts` 是唯一业务导入入口；Store 文件直接依赖 `../capability` 和 `../runtime/keyspace`，不能通过 Redis 根入口反向导入自身形成 barrel cycle。
 
 业务层只依赖对应 Store 的 type，不需要知道 Redis 命令、前缀或 serializer。
 
@@ -284,17 +299,64 @@ Phase 2 设计复审结论（2026-07-21）：
 
 ### Phase 3：低风险业务迁移
 
-按风险从低到高迁移：
+Phase 3 设计复审结论（2026-07-22）：
 
-1. Dingtalk/Wecom/provider/suite/Wechat QR/token/pending order `TokenCache`。
-2. vector count、tracking、普通 wallet cache `TeamCacheStore`。
-3. `SystemVersionStore` 和 common cache。
+- 不再实现泛化的 `TokenCache` 或 `TeamCacheStore`。它们会把凭据、结构化登录状态、计费增量、限流配置和普通可回源缓存错误地收敛到同一错误合同。
+- 每个子阶段开始前冻结对应 key、TTL、serializer、调用方和故障语义；未进入本阶段的关键状态不得借迁移顺手改变。
+- 第一轮保持物理 key 和序列化格式不变。使用 typed key builder 时，必须针对历史 key 写兼容断言，不能因 segment 编码改变已有 key。
+- 每个子阶段只运行对应 Store 和调用方的定向测试；完成后停止实现，等待代码 review，通过后再提交和进入下一子阶段。
 
-每组迁移都保留原有物理 key，先做等价行为测试，再删除旧 cache helper 的调用。
+Phase 3 迁移合同：
+
+| 子阶段 | Store | 兼容物理 key | value / TTL | 目标故障与并发语义 |
+| --- | --- | --- | --- | --- |
+| 3A | `DingtalkAccessTokenStore` | `fastgpt:cache:dataset:dingtalk:accessToken:${appKey}:${secretHash}` | token string；`max(expireIn - 300, 60)` 秒 | Redis 读写 fail-open，上游鉴权错误继续传播；保留进程内 single-flight；失败后的删除为 best-effort |
+| 3A | `TeamVectorCountStore` | `fastgpt:cache:team_vector_count:${teamId}` | decimal string；1800 秒 | 读失败或 3 秒超时按 miss 回源；写和失效不阻断主结果；移除业务层与旧 helper 的双重重试 |
+| 3B1 | `WechatQrLoginStore` | `fastgpt:cache:publish:wechat:qrcode:${outLinkId}:${tmbId}` | 现有 QR JSON；480 秒 | miss 返回 expired；Redis 读写错误维持 fail-closed；用 typed codec 校验，损坏数据维持显式内部错误，不静默当作登录成功 |
+| 3B2 | `WecomAccessTokenStore` | `fastgpt:wecom:provider_access_token`、`fastgpt:wecom:suite_access_token` | token string；`expires_in - 10` 秒 | Redis 和上游错误维持 fail-closed；纯迁移不新增 single-flight，也不在本阶段实现上游提前失效后的自动刷新 |
+| 3B2 | `WecomSuiteTicketStore` | `fastgpt:wecom:suite_ticket` | ticket string；永久 | 外部事件覆盖写入；缺失、读取失败和写入失败均 fail-closed；不得套用 access token 的 TTL/刷新合同 |
+| 3C | `DailyActiveDedupeStore` | `fastgpt:cache:dailyUserActive:${uid}_${YYYY-MM-DD}` | `1`；86400 秒 | 本修订提议从 `GET -> SET` 改为 `SET NX EX`；Redis 故障 fail-open 并记录日志，不阻断登录或 tracking 主流程 |
+| 3D | `SystemVersionStore` | `fastgpt:VERSION_KEY:${key}`、`fastgpt:VERSION_KEY:${key}:${id}` | UUID string；永久 | Redis 错误维持 fail-closed；首次初始化使用原子脚本；`id='*'` 只删除子 key，保留无 id 的 base key，维持历史扫描语义 |
+
+现有调用边界（首轮迁移不得扩大）：
+
+- Dingtalk token 只服务 `useDingtalkDatasetRequest` 内的鉴权请求。
+- vector count 只服务团队向量数量读取，以及向量写入、删除后的失效。
+- Wechat QR 只服务二维码 generate/status 两个 API；确认成功后的 Mongo 更新和 polling 启动仍属于调用方事务边界。
+- Wecom provider/suite token 继续服务现有 pay、license、invoice、auth、corp 调用；suite ticket 写入仍由现有事件处理器触发。
+- daily active dedupe 只包围 `dailyUserActive` tracking，不接管 login 或 tokenLogin 主流程。
+- System version 继续服务 model permission 的读取、按 team 刷新和全量子 key 失效，不在本阶段扩展新的 version namespace。
+
+实施顺序：
+
+1. **Phase 3A**：迁移 Dingtalk access token 和 vector count。二者现有行为测试较完整，是首个实现阶段。
+2. **Phase 3B1**：迁移 Wechat QR，先建立 typed codec 和损坏数据测试。
+3. **Phase 3B2**：迁移 Wecom provider/suite token 与 suite ticket；`pro` 子模块单独提交和 review。
+4. **Phase 3C**：迁移 daily active dedupe，补多实例并发语义测试。
+5. **Phase 3D**：迁移 `SystemVersionStore`，补首次初始化并发和真实 SCAN 定向 integration test。
+
+Phase 3A 当前实施状态（2026-07-22）：
+
+- [x] `DingtalkAccessTokenStore` 已迁移到 Phase 2 string capability，保持历史物理 key、动态 TTL、Redis fail-open 和进程内 single-flight。
+- [x] `TeamVectorCountStore` 已迁移到 `common/redis/stores` 并基于 Phase 2 string capability，保持 1800 秒 TTL、3 秒 deadline、回源和 best-effort 写/失效。
+- [x] `DingtalkAccessTokenStore` 与 `TeamVectorCountStore` 已通过统一 `stores/index.ts` 导出；Store 内部直接依赖 capability/keyspace，不存在 Redis 根 barrel cycle。
+- [x] Dingtalk 和 vector 生产调用方已移除对 legacy `common/redis/cache.ts` 的依赖；vector set 不再叠加业务层通用重试。
+- [x] 4 个 Phase 3A 定向测试文件共 74 项测试通过；两个新增 Store 的行、函数、语句和分支覆盖率均为 100%。
+- [x] Phase 3A 已通过代码 review；独立提交后进入 Phase 3B1。
+
+以下能力移出 Phase 3：
+
+- wallet points 是主动增量维护的计费状态，不是普通 TeamCache；移入 Phase 4，使用专用 `TeamPointCache`。
+- team QPM 配置直接参与限流；与 Phase 4 的 `FixedWindowRateLimiter` 一起迁移。
+- Wecom pending order 协调外部支付取消/创建副作用；移入 Phase 4，先确定 Redis 故障、数据库回源和并发创建策略。
+- Wechat polling failure counter 属于 outLink 状态机；移入 Phase 5，与 outLink 可靠性语义一起处理。
 
 ### Phase 4：关键一致性能力
 
 - 合并两套固定窗口限流为 `FixedWindowRateLimiter`，API 层只负责响应头和错误映射。
+- 实现 `TeamQpmConfigStore` 并与限流器统一 fail-closed/fallback 合同，避免配置缓存失败时隐式放行。
+- 实现 `TeamPointCache`；第一轮保持现有两个物理 key，明确双 key 不一致时的回源规则，非幂等增量禁止自动重试。
+- 实现 `PendingPaymentStore`；编码前先确认 Redis 不可用时是否拒绝创建、能否从账单回源，以及 team 级并发/幂等策略。
 - 迁移 `SessionStore`，补充 session hash+TTL、并发创建、扫描清理和损坏数据测试。
 - 迁移 `LeaseService`，保持 sandbox 的 fail-closed 语义和现有业务错误映射。
 - 迁移 workflow/auxiliary 共用的 `WorkflowStopSignalStore`。
@@ -304,6 +366,7 @@ Phase 2 设计复审结论（2026-07-21）：
 - 迁移 `StreamResumeStore`，消除手工 raw prefix 和业务层 `CALL`。
 - 将 memory pressure、stale cleanup、blocking connection 的生命周期纳入 Store/Runtime。
 - 迁移 Wechat/Wecom outLink stream；第一阶段保留字符串物理格式，用原子 append+TTL；不要同时改变消费协议。
+- 将 Wechat polling failure counter 收口为专用状态能力，修复 `GET -> SET` 的多 worker 竞态，并明确命令结果未知时的处理策略。
 
 ### Phase 6：删除旧入口与上线治理
 
@@ -313,13 +376,15 @@ Phase 2 设计复审结论（2026-07-21）：
 
 ## 7. Tasks（讨论通过后执行）
 
-以下 tasks 是整体实现清单；已完成项反映当前 Phase 1 状态，未完成项不是本轮实现承诺。
+以下 tasks 是整体实现清单；已完成项反映当前实施状态，未完成项不是本轮实现承诺。Phase 3 的字母子任务必须按子阶段逐组 review，不能一次性批量实现。
 
 ### 需求与合同
 
-- [ ] R-01：确认 standalone Redis 7.2 为第一阶段唯一支持拓扑，记录未来 Cluster/Sentinel 扩展边界。
+- [x] R-01：确认 standalone Redis 7.2 为第一阶段唯一支持拓扑，记录未来 Cluster/Sentinel 扩展边界。
 - [ ] R-02：导出全仓 Redis key/TTL/serializer/调用方清单，建立物理 key 兼容表。
 - [ ] R-03：逐项确认 session、计费缓存、限流、停止信号、stream mirror、tracking 的 fail-open/fail-closed 策略。
+- [x] R-02a：已冻结 Phase 3 范围内的 key、TTL、serializer、调用边界和物理 key 兼容表；全仓 R-02 在后续阶段继续补齐。
+- [x] R-03a：已冻结 Phase 3 范围内的错误、降级和并发语义；wallet、pending payment、QPM 已移出并保留为 Phase 4 决策。
 - [x] R-04：确认迁移期间保留 legacy `keyPrefix`，新增 physical port 隔离；BullMQ namespace 本阶段保持不变。
 
 ### Runtime 与基础能力
@@ -333,21 +398,34 @@ Phase 2 设计复审结论（2026-07-21）：
 
 ### 业务迁移
 
-- [ ] T-07：实现 `TokenCache`，迁移 Dingtalk/Wecom/provider/suite/二维码/订单缓存。
-- [ ] T-08：实现 `TeamCacheStore`，迁移 vector、wallet、tracking 的可回源缓存。
-- [ ] T-09：实现 `SystemVersionStore`，修复首次初始化竞态和批量失效扫描。
-- [ ] T-10：实现并接入统一 `FixedWindowRateLimiter`，删除重复限流事务代码。
+- [x] T-07a（Phase 3A）：实现 `DingtalkAccessTokenStore`，保持历史 key、动态 TTL、fail-open 和 single-flight。
+- [x] T-07b（Phase 3A）：实现 `TeamVectorCountStore`，保持 1800 秒 TTL、3 秒回源 deadline 和 best-effort 写/失效。
+- [ ] T-08a（Phase 3B1）：实现 `WechatQrLoginStore`，保持 QR JSON 物理格式并加入 typed codec。
+- [ ] T-08b（Phase 3B2）：实现 `WecomAccessTokenStore`，分别管理 provider/suite token，不顺带改变刷新行为。
+- [ ] T-08c（Phase 3B2）：实现 `WecomSuiteTicketStore`，保持永久保存和缺失时 fail-closed。
+- [ ] T-08d（Phase 3C）：实现 `DailyActiveDedupeStore`，使用 `SET NX EX` 并保持 tracking fail-open。
+- [ ] T-09（Phase 3D）：实现 `SystemVersionStore`，原子化首次初始化并保持 wildcard 仅删除子 key。
+- [ ] T-10：实现并接入 `TeamQpmConfigStore` 和统一 `FixedWindowRateLimiter`，删除重复限流事务代码。
+- [ ] T-10a：实现 `TeamPointCache`，补双 key 不一致、回源、Redis 故障和非幂等增量结果未知测试。
+- [ ] T-10b：实现 `PendingPaymentStore`，在已批准的故障与并发策略下迁移 Wecom pending order。
 - [ ] T-11：实现 `SessionStore`，保持 hash 字段兼容并修复 hash+TTL 非原子写。
 - [ ] T-12：实现 `LeaseService`，迁移 sandbox 并保持 fail-closed 和错误映射。
 - [ ] T-13：实现 `WorkflowStopSignalStore`，迁移 workflow 与 auxiliary generation。
 - [ ] T-14：实现 `StreamResumeStore`，在 Phase 1 physical port 迁移基础上继续收口业务协议和故障策略。
 - [ ] T-15：实现 `OutLinkStreamStore`，保持 Wechat/Wecom 消费协议兼容并修复 append 重放风险。
+- [ ] T-15a：迁移 Wechat polling failure counter，消除多 worker 的读改写竞态。
 - [x] T-16：改造 BullMQ adapter，只从 Runtime 获取 queue/worker connection，注册 before-close hook，关闭对象池并禁止 shutdown 重启。
 
 ### 测试、观测与清理
 
 - [x] T-17：为每个 capability 编写注入式 unit test，覆盖返回值、错误类型、TTL 和 operation policy。
+- [x] T-17a（Phase 3A）：只运行 Dingtalk、vector 和新增 Store 定向测试，覆盖物理 key、动态/固定 TTL、single-flight、超时回源和 Redis 读写失败。
+- [ ] T-17b1（Phase 3B1）：只运行 Wechat QR 和新增 Store 定向测试，覆盖 codec、480 秒 TTL、miss、损坏数据和 fail-closed。
+- [ ] T-17b2（Phase 3B2）：只运行 Wecom access token/suite ticket 和新增 Store 定向测试，覆盖动态 TTL、永久 key、miss 和 fail-closed。
+- [ ] T-17c（Phase 3C）：只运行 tracking 定向测试，覆盖 `SET NX EX` 的首次/重复返回和 Redis fail-open；并发原子性由真实 Redis 测试证明。
 - [ ] T-18：新增 Redis 7.2 integration test，覆盖真实 keyPrefix 替代、SCAN、Lua、Stream、hash TTL、并发限流和租约竞争。
+- [ ] T-18a（Phase 3C）：运行 daily active 定向 integration test，证明多个并发调用只有一个获得首次写入结果。
+- [ ] T-18b（Phase 3D）：运行 SystemVersion 定向 integration test，覆盖首次初始化并发、真实 SCAN 分页、仅删除子 key 和保留 base key。
 - [ ] T-19：新增连接故障/超时/恢复测试，验证非幂等写不被无条件重试、blocking connection 会释放。
 - [ ] T-20：升级 test mock 或将业务测试改为 capability fake，禁止继续扩大手写 ioredis mock。
 - [ ] T-21：补充 Redis metrics/logging，验证敏感信息不出现在日志和指标。
@@ -378,6 +456,13 @@ Phase 2 设计复审结论（2026-07-21）：
 ## 10. 决策状态
 
 已确认：Phase 1 只支持 standalone Redis 7.2；迁移期间保留 legacy `keyPrefix`，physical port 必须隔离；URL query/hash 严格拒绝；启动 instrumentation 执行有 deadline 的 Redis health check；BullMQ namespace 本阶段不变。
+
+本轮 Phase 3 修订已确认：
+
+1. 接受 3A -> 3B1 -> 3B2 -> 3C -> 3D 的拆分，并将 wallet points、QPM、pending payment 和 Wechat polling failure counter 移出 Phase 3。
+2. 批准 daily active dedupe 从非原子的 `GET -> SET` 改为 `SET NX EX`；这是一项显式行为修复，不是纯等价迁移。
+3. 接受 Wechat QR 损坏数据继续 fail-closed，以及 Wecom access token 在纯迁移阶段不新增 single-flight/提前失效自动刷新。
+4. 确认 SystemVersion 的 `id='*'` 只删除子 key、保留 base key，按实际历史行为而不是旧注释解释“all keys”。
 
 进入相关业务迁移阶段前仍需确认：
 
