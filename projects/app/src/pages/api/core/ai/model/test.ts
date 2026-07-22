@@ -134,6 +134,7 @@ const testSTTModel = async (model: STTModelType, headers: Record<string, string>
   const { text } = await aiTranscriptions({
     model,
     fileStream: fs.createReadStream(path),
+    filename: 'test.mp3',
     headers
   });
   logger.info(`STT result: ${text}`);
