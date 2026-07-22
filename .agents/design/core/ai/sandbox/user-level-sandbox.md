@@ -88,7 +88,6 @@ type SandboxInstance = {
     | 'archiving'
     | 'archived'
     | 'restoring'
-    | 'providerMigrating'
     | 'deleting';
   lastActiveAt: Date;
   createdAt: Date;
@@ -111,7 +110,6 @@ type SandboxInstance = {
         | 'stop'
         | 'archive'
         | 'restore'
-        | 'providerMigration'
         | 'delete';
       phase: string;
       previousStatus?: 'running' | 'stopped' | 'archived';
@@ -119,8 +117,6 @@ type SandboxInstance = {
       heartbeatAt: Date;
       failedAt?: Date;
       error?: string;
-      fromProvider?: SandboxProviderType;
-      targetProvider?: SandboxProviderType;
     };
   };
 };
@@ -219,11 +215,10 @@ type SandboxInstance = {
    `provider + status + metadata.operation`。
 3. `running/stopped` 记录先通过标准 archive 状态机稳定进入 `archived`；任何过渡态必须恢复或
    接管原操作，不能提前创建新 provider 的空 Workspace。
-4. 将 `archived` CAS 为 `providerMigrating` 并写入 operation。按 phase 校验目标 adapter、清理
-   旧 provider 残留，随后用 `_id + oldProvider + providerMigrating + operation.id` CAS 更新同一条
-   记录的 provider 和目标 runtime image，最终回到 `archived`，不创建第二条记录。
-5. CAS 失败时重新读取：已经由同一 operation 或并发请求切到目标 provider 则继续，否则返回
-   状态变化错误；旧 operation 不得覆盖新 operation 的结果。
+4. 在归档旧资源前校验目标 adapter 配置。归档成功后，持有同一个 Lifecycle Lease，通过
+   `_id + oldProvider + status=archived + operation 不存在` CAS 原子更新同一条记录的 provider 和
+   目标 runtime image；Provider 切换本身没有远端副作用，不创建额外过渡态或 operation。
+5. CAS 失败时重新读取：已经由并发请求切到目标 provider 则继续，否则返回状态变化错误。
 6. 标准 restore 状态机在新 provider 恢复 Workspace；恢复成功后删除已消费的 S3 归档。
 7. 部署切换期间必须保留旧 provider 的连接凭据；从 OpenSandbox 迁出时还需保留对应的
    volume-manager 配置，直到旧记录全部完成归档和远端资源清理。
@@ -463,7 +458,6 @@ type SandboxStatus =
   | 'archiving'
   | 'archived'
   | 'restoring'
-  | 'providerMigrating'
   | 'deleting';
 ```
 
@@ -471,7 +465,7 @@ type SandboxStatus =
 
 - 稳定态：`running`、`stopped`、`archived`。
 - 过渡态：`provisioning`、`legacyMigrating`、`stopping`、`archiving`、`restoring`、
-  `providerMigrating`、`deleting`。
+  `deleting`。
 
 不设置通用 `failed` 状态。不同操作失败后的资源确定性和恢复方式不同，统一落入 `failed`
 会丢失正在执行的操作语义。远端调用已经开始后发生错误，记录保留在原过渡态，由
@@ -490,7 +484,6 @@ type SandboxOperation = {
     | 'stop'
     | 'archive'
     | 'restore'
-    | 'providerMigration'
     | 'delete';
   phase: string;
   previousStatus?: 'running' | 'stopped' | 'archived';
@@ -498,8 +491,6 @@ type SandboxOperation = {
   heartbeatAt: Date;
   failedAt?: Date;
   error?: string;
-  fromProvider?: SandboxProviderType;
-  targetProvider?: SandboxProviderType;
 };
 ```
 
@@ -531,7 +522,7 @@ type SandboxOperation = {
 | 停止 | `running` -> `stopping` | `stopping` -> `stopped` | `claimed`、`providerStopped` |
 | 归档 | `running/stopped` -> `archiving` | `archiving` -> `archived` | `claimed`、`archiveUploaded`、`providerDeleted` |
 | 恢复 | `archived` -> `restoring` | `restoring` -> `running` | `claimed`、`archiveInstalled` |
-| Provider 切换 | `archived` -> `providerMigrating` | `providerMigrating` -> `archived` | `claimed`、`targetAdapterValidated` |
+| Provider 切换 | 保持 `archived` | 保持 `archived` | Lifecycle Lease 内预校验目标配置并原子 CAS provider，不创建 operation |
 | source 删除 | 任意状态 -> `deleting` | 删除 Mongo 记录 | `claimed`、`providerDeleted`、`volumeDeleted`、`archiveDeleted` |
 
 过渡态不能被普通 runtime、keepalive 或 cron 直接改写成稳定态，只能由持有匹配
@@ -547,12 +538,11 @@ type SandboxOperation = {
 | `archiving.archiveUploaded` | 继续删除 provider/volume |
 | `archiving.providerDeleted` | 直接提交 `archived`，禁止重建空 provider 覆盖归档 |
 | `restoring.archiveInstalled` | 直接提交 `running`，不重复下载或解压 |
-| `providerMigrating.targetAdapterValidated` | 直接原子切换 provider 并回到 `archived` |
 | `deleting.providerDeleted/volumeDeleted/archiveDeleted` | 从下一项清理步骤继续 |
 
 旧 provider 上中断的 `restoring` 不能直接开始 provider 切换。超过隔离窗口或明确记录错误后，
 先重新 fencing `restore`，幂等删除旧 provider 的半成品容器和 volume，但保留 S3 归档；提交回
-`archived` 后再进入 `providerMigrating`。
+`archived` 后直接原子切换 provider。
 
 ### 9.5 统一资源操作协议
 
@@ -680,3 +670,14 @@ TODO：
 - [x] 保留每个远端生命周期的主流程、失败安全边界和断点续跑覆盖。
 - [x] 运行收敛后受影响的 Sandbox 测试和格式检查。
 - [x] 对比 `upstream/main` 复核测试净增量。
+
+### 9.13 Provider 迁移链路归一化 TODO
+
+- [x] 确认 Provider 迁移与 Legacy 迁移只共享归档、物理资源清理和 Archive 安装原语；Legacy
+  N:1 合并继续保留独立 `legacyMigrating` 发布屏障。
+- [x] 删除 `providerMigrating` status、`providerMigration` operation 及其专用上下文字段。
+- [x] 把目标 adapter 校验前移到旧 Provider 归档前，配置无效时保持原运行资源可用。
+- [x] 在 `archived` 稳定态和 Lifecycle Lease 内原子 CAS provider 与目标 runtime image。
+- [x] 调整 runtime upgrade 状态解释、Repository 和 Provider migration facade 测试。
+- [x] 运行受影响的 Sandbox 局部测试和类型检查；最终根级 `pnpm test` 因并发覆盖率目录竞争及
+  Admin 用例超时未能一次通过，Service 全量和该 Admin 用例隔离复跑均通过。

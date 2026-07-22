@@ -26,16 +26,14 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@fastgpt/service/core/ai/sandbox/application/preview')
-  >()),
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/preview', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/preview')>()),
   createSandboxPreviewFileUrl: mocks.createSandboxPreviewFileUrl,
   resolveSandboxPreviewPath: mocks.resolveSandboxPreviewPath
 }));
 
 import handler from '@/pages/api/core/ai/sandbox/getHtmlPreviewLink';
-import { SandboxPreviewSessionLimitError } from '@fastgpt/service/core/ai/sandbox/application/preview';
+import { SandboxPreviewSessionLimitError } from '@fastgpt/service/core/ai/sandbox/interface/preview';
 
 const mockJsonRes = vi.mocked(jsonRes);
 const sandboxId = 'app-0123456789abcdef';

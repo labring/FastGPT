@@ -61,8 +61,6 @@ export type RunSandboxLifecycleParams = {
   lease: RedisLeaseContext;
   definition: SandboxLifecycleDefinition;
   previousStatus?: SandboxStableStatusType;
-  fromProvider?: SandboxResourceDoc['provider'];
-  targetProvider?: SandboxResourceDoc['provider'];
   matchLastActiveAt?: boolean;
   onClaim?: (resource: SandboxResourceDoc | null) => void;
   /** 创建占位记录时 operation 已在同一条 Mongo create 中抢占。 */
@@ -111,8 +109,6 @@ export async function runSandboxLifecycleOperation(
         status: definition.status,
         type: definition.operationType,
         previousStatus: params.previousStatus,
-        fromProvider: params.fromProvider,
-        targetProvider: params.targetProvider,
         matchLastActiveAt: params.matchLastActiveAt
       });
   if (!claimed) {

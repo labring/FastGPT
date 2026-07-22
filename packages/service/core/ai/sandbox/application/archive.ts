@@ -12,7 +12,7 @@ import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import type { RedisLeaseContext } from '../../../../common/redis/lock';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
-import { getAgentSandboxArchiveMaxBytes } from '../interface/config';
+import { getAgentSandboxArchiveMaxBytes } from '../config';
 import {
   createSandboxResourcesToArchiveCursor,
   findSandboxInstanceBySandboxId,
@@ -410,15 +410,19 @@ export async function archiveSandboxResource(
   });
 }
 
-/** provider 迁移持有 Lifecycle Lease 时复用同一归档流水线，避免嵌套锁。 */
-export async function archiveSandboxResourceForProviderMigration(
+/** 调用方已经持有 Lifecycle Lease 时复用标准归档流水线，避免嵌套锁。 */
+export async function archiveSandboxResourceWithinLease(
   resource: SandboxResourceDoc,
-  lease?: RedisLeaseContext
+  lease: RedisLeaseContext
 ) {
-  if (lease) return archiveSandboxWithinLease({ resource, lease });
+  return archiveSandboxWithinLease({ resource, lease });
+}
+
+/** 不带 inactive 条件立即执行或接管标准归档流水线。 */
+export async function archiveSandboxResourceNow(resource: SandboxResourceDoc) {
   return withSandboxLifecycleLease({
     sandboxId: resource.sandboxId,
-    label: `archive-provider-migration:${resource.sandboxId}`,
+    label: `archive-sandbox-now:${resource.sandboxId}`,
     fn: (context) => archiveSandboxWithinLease({ resource, lease: context })
   });
 }
@@ -508,7 +512,7 @@ export async function retryStaleArchivingSandboxes(now = new Date()) {
   });
   return batchRun(
     stale,
-    (resource) => archiveSandboxResourceForProviderMigration(resource),
+    (resource) => archiveSandboxResourceNow(resource),
     SANDBOX_ARCHIVE_BATCH_SIZE
   );
 }
@@ -638,7 +642,7 @@ export async function restoreArchivedSandboxBeforeUse(params: {
             })
           }
         };
-        const completed = await runSandboxLifecycleOperation({
+        await runSandboxLifecycleOperation({
           resource: current,
           lease,
           definition,

@@ -32,21 +32,22 @@ import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
+import { createToolRunner } from './type';
 
 const ToolMap = {
-  [SANDBOX_EDIT_FILE_TOOL_NAME]: sandboxEditFileTool,
-  [SANDBOX_FIND_TOOL_NAME]: sandboxFindTool,
-  [SANDBOX_GET_FILE_URL_TOOL_NAME]: sandboxGetFileUrlTool,
-  [SANDBOX_GREP_TOOL_NAME]: sandboxGrepTool,
-  [SANDBOX_LS_TOOL_NAME]: sandboxLsTool,
-  [SANDBOX_READ_FILE_TOOL_NAME]: sandboxReadFileTool,
-  [SANDBOX_SHELL_TOOL_NAME]: sandboxShellTool,
-  [SANDBOX_WRITE_FILE_TOOL_NAME]: sandboxWriteFileTool
+  [SANDBOX_EDIT_FILE_TOOL_NAME]: createToolRunner(sandboxEditFileTool),
+  [SANDBOX_FIND_TOOL_NAME]: createToolRunner(sandboxFindTool),
+  [SANDBOX_GET_FILE_URL_TOOL_NAME]: createToolRunner(sandboxGetFileUrlTool),
+  [SANDBOX_GREP_TOOL_NAME]: createToolRunner(sandboxGrepTool),
+  [SANDBOX_LS_TOOL_NAME]: createToolRunner(sandboxLsTool),
+  [SANDBOX_READ_FILE_TOOL_NAME]: createToolRunner(sandboxReadFileTool),
+  [SANDBOX_SHELL_TOOL_NAME]: createToolRunner(sandboxShellTool),
+  [SANDBOX_WRITE_FILE_TOOL_NAME]: createToolRunner(sandboxWriteFileTool)
 };
 
 export type SandboxToolCallResult = {
   success: boolean;
-  input: Record<string, any>;
+  input: Record<string, unknown>;
   response: string;
   fileRefs?: SandboxFileRef[];
   durationSeconds: number;
@@ -81,24 +82,22 @@ export const runSandboxTools = async ({
     };
   }
 
-  const parsedArgs = tool.zodSchema.safeParse(parseJsonArgs(args));
-  if (!parsedArgs.success) {
+  const result = await tool({
+    sandboxInstance: sandboxClient,
+    input: parseJsonArgs<Record<string, unknown>>(args)
+  });
+  if (!result.success) {
     return {
       success: false,
       input: {},
-      response: parsedArgs.error.message,
+      response: result.error,
       durationSeconds: getDuration()
     };
   }
 
-  const result = await tool.execute({
-    sandboxInstance: sandboxClient,
-    params: parsedArgs.data as any
-  });
-
   return {
     success: true,
-    input: parsedArgs.data,
+    input: result.input,
     response: result.response,
     ...(result.fileRefs?.length ? { fileRefs: result.fileRefs } : {}),
     durationSeconds: getDuration()

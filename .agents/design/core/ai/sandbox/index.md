@@ -185,11 +185,15 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 | --- | --- |
 | Runtime 接口 | `packages/service/core/ai/sandbox/interface/runtime.ts` |
 | Tool 接口 | `packages/service/core/ai/sandbox/interface/toolCall` |
+| Resource 接口 | `packages/service/core/ai/sandbox/interface/resource` |
+| Preview 接口 | `packages/service/core/ai/sandbox/interface/preview` |
+| Migration 接口 | `packages/service/core/ai/sandbox/interface/migration` |
 | Runtime client | `packages/service/core/ai/sandbox/application/runtime/client.ts` |
 | 初始化 pipeline | `packages/service/core/ai/sandbox/application/runtime/prepare.ts` |
 | Skill runtime | `packages/service/core/ai/sandbox/application/runtime/skill` |
 | 资源服务 | `packages/service/core/ai/sandbox/application/resource.ts` |
 | 归档服务 | `packages/service/core/ai/sandbox/application/archive.ts` |
+| Legacy migration | `packages/service/core/ai/sandbox/application/legacyMigration` |
 | 实例仓储 | `packages/service/core/ai/sandbox/infrastructure/instance` |
 | Provider profile | `packages/service/core/ai/sandbox/infrastructure/provider/runtimeProfile` |
 
@@ -203,3 +207,49 @@ Sandbox 改动应按影响范围覆盖：
 - 初始化 lease、prepare 顺序和 entrypoint 幂等性。
 - 各 Sandbox 工具的参数、输出裁剪和错误路径。
 - Skill 包权限、大小、路径安全、部署、扫描和内置 Skill etag 同步。
+
+## 结构收敛设计
+
+### 目标
+
+Sandbox 模块严格保持 `interface -> application -> infrastructure` 单向依赖：
+
+- 外部生产代码只能从 `interface/*` 引用 Sandbox 能力。
+- `interface` 只做稳定能力导出和调用参数适配，不承载内部共享配置。
+- `application` 只做生命周期和业务编排，不直接访问 Sandbox Mongoose Model。
+- `infrastructure/instance` 集中 v2 与 Legacy Sandbox 的 Mongo 读写。
+- 聚合导出只使用目录 `index.ts`，不保留非 `index.ts` 的兼容转发文件。
+
+### Legacy migration 拆分
+
+原单文件迁移按职责拆为 `application/legacyMigration`：
+
+- `types.ts`：迁移输入、结果和内部共享类型。
+- `workspace.ts`：Archive staging、无覆盖合并和目标 Sandbox 创建。
+- `cleanup.ts`：Legacy 归档前清理与 Source 删除清理。
+- `service.ts`：迁移分组、发布屏障、并发控制和管理员入口。
+- `index.ts`：对 Sandbox 内部及 interface 聚合导出。
+
+Legacy Mongo 查询和阶段提交下沉到 `infrastructure/instance/legacyRepository.ts`。Repository
+只执行数据访问；迁移阶段判断、归档顺序和发布规则仍由 application 决定。
+
+### 公共入口与类型
+
+- 新增 `interface/preview` 和 `interface/migration`，替换 App API 对 application 的直接依赖。
+- `interface/admin`、`interface/config`、`interface/file`、`interface/resource` 使用目录
+  `index.ts` 聚合，不保留同名转发文件。
+- Sandbox 工具 Registry 在定义工具时封装 Zod 校验与类型关联，执行入口不使用 `any`。
+- 增加架构边界测试，阻止 application/infrastructure 反向依赖 interface、外部生产代码绕过
+  interface，以及内部相对导入循环。
+
+### 结构收敛 TODO
+
+- [x] 把 Sandbox 大小配置移出 interface，修正 application/infrastructure 的反向依赖。
+- [x] 新增 Legacy Repository，删除 application 对 `MongoLegacySandboxInstance` 的直接访问。
+- [x] 拆分 Legacy migration 的 workspace、cleanup、service 和 types 职责。
+- [x] 新增 Preview/Migration interface，替换外部 application 直连。
+- [x] 删除非 `index.ts` 的纯转发文件并更新全部导入。
+- [x] 消除 Sandbox 生产代码中的 `any` 强制断言。
+- [x] 增加依赖边界测试，并运行 Sandbox 局部测试和 App 类型检查。
+- [x] 运行最终全量测试；Sandbox 用例通过，仓库全量结果被 3 个无关的既有性能/超时用例阻断。
+
