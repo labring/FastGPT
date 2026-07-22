@@ -13,7 +13,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
   authCert: mocks.authCert
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/migration', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/migration', () => ({
   migrateLegacySandboxesToUserLevel: mocks.migrateLegacySandboxesToUserLevel
 }));
 

@@ -16,7 +16,7 @@ import {
 import { serviceEnv } from '@fastgpt/service/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { buildSandboxClientQueryFromChatSource } from '@/service/core/sandbox/auth';
-import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/application/preview';
+import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/interface/preview';
 
 const IDE_AGENT_PORT = 1318;
 const IDE_AGENT_PREVIEW_PORT = 1319;

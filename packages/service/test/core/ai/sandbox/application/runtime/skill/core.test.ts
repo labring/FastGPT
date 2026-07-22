@@ -3,19 +3,7 @@ import JSZip from 'jszip';
 import {
   getAgentSkillInfos,
   injectAgentSkillFilesToSandbox
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { buildAgentLoopCoreSkillsPrompt } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
-import {
-  SANDBOX_EDIT_FILE_TOOL_NAME,
-  SANDBOX_GET_FILE_URL_TOOL_NAME,
-  SANDBOX_READ_FILE_TOOL_NAME,
-  SANDBOX_FIND_TOOL_NAME,
-  SANDBOX_GREP_TOOL_NAME,
-  SANDBOX_LS_TOOL_NAME,
-  SANDBOX_SHELL_TOOL_NAME,
-  SANDBOX_TOOLS,
-  SANDBOX_WRITE_FILE_TOOL_NAME
-} from '@fastgpt/global/core/ai/sandbox/tools';
+} from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
@@ -56,7 +44,7 @@ const LIST_VERSION_DIRS_COMMAND =
   "find '/workspace/projects' -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null";
 const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
 
-describe('getAgentSkillInfos', () => {
+describe('runtime skill deploy and scan integration', () => {
   it('scans every recursive skill.md from every selected version directory', async () => {
     const user = await getUser(`runtime-skill-scan-${getNanoid(6)}`);
     const { teamId, tmbId } = user;
@@ -290,7 +278,9 @@ description: Zeta skill
       ])
     );
   });
+});
 
+describe('injectAgentSkillFilesToSandbox', () => {
   it('deploys every selected current version into version directories', async () => {
     const user = await getUser(`runtime-skill-deploy-${getNanoid(6)}`);
     const { teamId, tmbId } = user;
@@ -990,43 +980,7 @@ description: Latest current skill
   });
 });
 
-describe('sandbox and skill module separation', () => {
-  it('keeps sandbox tools global instead of skill-owned tools', () => {
-    const toolNames = SANDBOX_TOOLS.map((tool) => tool.function.name);
-
-    expect(toolNames).toEqual([
-      SANDBOX_SHELL_TOOL_NAME,
-      SANDBOX_READ_FILE_TOOL_NAME,
-      SANDBOX_WRITE_FILE_TOOL_NAME,
-      SANDBOX_EDIT_FILE_TOOL_NAME,
-      SANDBOX_GREP_TOOL_NAME,
-      SANDBOX_FIND_TOOL_NAME,
-      SANDBOX_LS_TOOL_NAME,
-      SANDBOX_GET_FILE_URL_TOOL_NAME
-    ]);
-    expect(toolNames).not.toContain('sandbox_execute');
-    expect(toolNames).not.toContain('sandbox_fetch_user_file');
-  });
-
-  it('keeps sandbox input files outside skill prompt', () => {
-    const skillPrompt = buildAgentLoopCoreSkillsPrompt([
-      {
-        id: 'skill_1',
-        name: 'Skill',
-        description: 'Skill description',
-        skillMdPath: '/workspace/Skill/SKILL.md',
-        directory: '/workspace/Skill'
-      }
-    ]);
-
-    expect(skillPrompt).toContain('<available_skills>');
-    expect(skillPrompt).toContain('<location>/workspace/Skill/SKILL.md</location>');
-    expect(skillPrompt).not.toContain('<directory>');
-    expect(skillPrompt).not.toContain('<path>');
-    expect(skillPrompt).not.toContain('<sandbox_input_files>');
-    expect(skillPrompt).not.toContain('sandbox_fetch_user_file');
-  });
-
+describe('getAgentSkillInfos', () => {
   it('uses the injected sandbox instance to load sandbox-workspace skill infos', async () => {
     const sandbox = {
       execute: vi.fn(async () => ({

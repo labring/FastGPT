@@ -26,7 +26,7 @@ import { MongoAgentSkills } from '../../../skill/model/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import type { SaveDeploySkillResponse } from '@fastgpt/global/core/ai/skill/api';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
@@ -75,10 +75,8 @@ export async function saveDeploySkillFromSandbox({
       sandboxId: sandboxInfo.sandboxId,
       workDirectory: runtimeProfile.workDirectory
     });
-  } catch (error: any) {
-    return Promise.reject(
-      new UserError(`Failed to package skill directory: ${error.message || 'Unknown error'}`)
-    );
+  } catch (error) {
+    return Promise.reject(new UserError(`Failed to package skill directory: ${getErrText(error)}`));
   }
 
   const versionId = new Types.ObjectId().toString();
@@ -94,11 +92,12 @@ export async function saveDeploySkillFromSandbox({
       packageObjectId: versionId,
       zipBuffer: packageBuffer
     });
-  } catch (error: any) {
-    if (error?.message === SkillErrEnum.archiveTooLarge) {
+  } catch (error) {
+    const errorText = getErrText(error);
+    if (errorText === SkillErrEnum.archiveTooLarge) {
       return Promise.reject(SkillErrEnum.archiveTooLarge);
     }
-    throw new UserError(`Failed to upload package: ${error.message || 'Unknown error'}`);
+    throw new UserError(`Failed to upload package: ${errorText}`);
   }
 
   const deployResult = await mongoSessionRun(async (session) => {

@@ -4,8 +4,8 @@ import { subMinutes } from 'date-fns';
 import { isRedisLeaseError } from '../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../error';
 import {
-  completeSandboxProviderMigration,
   findSandboxInstanceBySource,
+  switchArchivedSandboxProvider,
   type SandboxResourceDoc
 } from '../infrastructure/instance/repository';
 import {
@@ -16,13 +16,14 @@ import {
 import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
 import { deleteSessionVolume } from '../infrastructure/volume/service';
 import {
-  archiveSandboxResourceForProviderMigration,
+  archiveSandboxResourceWithinLease,
   SANDBOX_STALE_ARCHIVING_MINUTES,
   SandboxLifecycleStateError
 } from './archive';
 import { withSandboxLifecycleLease } from './lease';
 import { assertSandboxSourceActive } from './sourceGuard';
 import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from './lifecycle/runner';
+import { resolveSandboxRuntimeImage } from './runtime/image';
 
 const findSourceSandboxInstance = (params: {
   sourceType: ChatSourceTypeEnum;
@@ -65,6 +66,13 @@ export async function migrateSandboxProviderBeforeUse(params: {
           `Sandbox provider migration sandboxId mismatch: expected ${params.sandboxId}, received ${current.sandboxId}`
         );
       }
+
+      // 目标配置无效时保留旧 Provider 资源可用，不先执行破坏性的归档。
+      buildSandboxResourceAdapter({
+        provider: params.provider,
+        sandboxId: current.sandboxId
+      });
+      lease.assertValid();
 
       /** 清理崩溃 restore 留下的旧 provider 半成品，但保留 S3 归档作为迁移事实。 */
       const rollbackStaleRestore = async (
@@ -110,65 +118,34 @@ export async function migrateSandboxProviderBeforeUse(params: {
 
       current = await rollbackStaleRestore(current);
 
-      if (
-        current.status === SandboxInstanceStatusEnum.providerMigrating &&
-        current.metadata?.operation?.targetProvider !== params.provider
-      ) {
-        throw new SandboxLifecycleStateError(current.status);
-      }
-
-      if (
-        current.status !== SandboxInstanceStatusEnum.archived &&
-        current.status !== SandboxInstanceStatusEnum.providerMigrating
-      ) {
-        const archived = await archiveSandboxResourceForProviderMigration(current, lease);
+      if (current.status !== SandboxInstanceStatusEnum.archived) {
+        // current 仍是旧 provider 记录；标准归档由该记录构造连接和删除适配器。
+        const archived = await archiveSandboxResourceWithinLease(current, lease);
         if (archived.status === 'failed') {
           throw new Error(`Failed to archive sandbox before provider migration: ${archived.error}`);
         }
         current = await findSourceSandboxInstance(params);
       }
       if (!current || current.provider === params.provider) return;
-      if (
-        current.status !== SandboxInstanceStatusEnum.archived &&
-        current.status !== SandboxInstanceStatusEnum.providerMigrating
-      ) {
+      if (current.status !== SandboxInstanceStatusEnum.archived) {
         throw new SandboxLifecycleStateError(current.status);
       }
 
-      const definition: SandboxLifecycleDefinition = {
-        operationType: SandboxOperationTypeEnum.providerMigration,
-        status: SandboxInstanceStatusEnum.providerMigrating,
-        steps: [
-          {
-            fromPhase: 'claimed',
-            toPhase: 'targetAdapterValidated',
-            run: async ({ resource: claimed }) => {
-              buildSandboxResourceAdapter({
-                provider: params.provider,
-                sandboxId: claimed.sandboxId
-              });
-            }
-          }
-        ],
-        finish: {
-          type: 'custom',
-          run: ({ resource: claimed, operationId }) =>
-            completeSandboxProviderMigration({
-              resource: claimed,
-              operationId,
-              provider: params.provider
-            })
-        }
-      };
-      await runSandboxLifecycleOperation({
+      lease.assertValid();
+      const switched = await switchArchivedSandboxProvider({
         resource: current,
-        lease,
-        definition,
-        previousStatus:
-          current.metadata?.operation?.previousStatus ?? SandboxInstanceStatusEnum.archived,
-        fromProvider: current.metadata?.operation?.fromProvider ?? current.provider,
-        targetProvider: params.provider
+        provider: params.provider,
+        image: resolveSandboxRuntimeImage({
+          provider: params.provider,
+          sandboxId: current.sandboxId
+        })
       });
+      if (switched) return;
+
+      // CAS 冲突只接受其他执行者已经完成同一目标切换，不能覆盖新的生命周期状态。
+      current = await findSourceSandboxInstance(params);
+      if (current?.provider === params.provider) return;
+      throw new Error('Sandbox provider changed state before archived provider switch');
     }
   }).catch((error) => {
     if (isRedisLeaseError(error)) throw createAgentSandboxInitializingError();

@@ -4,7 +4,7 @@
  * 只负责把环境变量转换成 adapter 可用的配置，不执行远端生命周期动作。
  */
 import { serviceEnv } from '../../../../../env';
-import { getAgentSandboxMaxFileBytes } from '../../interface/config';
+import { getAgentSandboxMaxFileBytes } from '../../config';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
 import { getSandboxRuntimeProfile, buildBaseSandboxRuntimeEnv } from './runtimeProfile';
