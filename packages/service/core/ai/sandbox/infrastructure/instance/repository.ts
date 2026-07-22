@@ -56,6 +56,7 @@ export type SandboxResourceRef = Partial<
 export type SandboxSourceParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
+  userId?: string;
 };
 
 export type ClaimSandboxOperationParams = {
@@ -87,9 +88,9 @@ const buildCurrentOperationFilter = (resource: SandboxResourceRef) => {
     : { 'metadata.operation': { $exists: false } };
 };
 
-const buildSandboxResourceSourceQuery = ({ sourceType, sourceId }: SandboxSourceParams) => {
+const buildSandboxResourceSourceQuery = ({ sourceType, sourceId, userId }: SandboxSourceParams) => {
   if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.skillEdit) {
-    return { sourceType, sourceId };
+    return { sourceType, sourceId, ...(userId ? { userId } : {}) };
   }
   if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
     throw new Error('ChatAgentHelper source does not support sandbox resources');
@@ -453,18 +454,6 @@ export async function findSandboxInstanceBySource(params: {
     userId: params.userId,
     ...(params.status ? { status: params.status } : {})
   }).lean<SandboxResourceDoc | null>();
-}
-
-export async function findSandboxResourcesBySourceExcludeProvider(params: {
-  provider: SandboxProviderType;
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-}) {
-  return MongoSandboxInstance.find({
-    provider: { $ne: params.provider },
-    sourceType: params.sourceType,
-    sourceId: params.sourceId
-  }).lean<SandboxResourceDoc[]>();
 }
 
 export async function countRunningSandboxInstancesBySourceType(

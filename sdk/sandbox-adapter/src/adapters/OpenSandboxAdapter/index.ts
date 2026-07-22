@@ -40,6 +40,7 @@ import { toOpenSandboxWriteData, verifyCommittedUpload } from './uploadRecovery'
 import { getWriteEntryByteLength } from '@/utils/files';
 
 const DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024;
+const DEFAULT_REQUEST_TIMEOUT_SECONDS = 120;
 export type { OpenSandboxConfigType } from './type';
 
 /**
@@ -142,7 +143,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     return new ConnectionConfig({
       domain: baseUrl,
       apiKey,
-      requestTimeoutSeconds,
+      requestTimeoutSeconds: requestTimeoutSeconds ?? DEFAULT_REQUEST_TIMEOUT_SECONDS,
       debug,
       useServerProxy
     });
