@@ -19,6 +19,7 @@ import {
   findStaleSandboxOperations,
   type SandboxResourceDoc
 } from '../infrastructure/instance/repository';
+import { resolveSandboxRuntimeImage } from './runtime/image';
 import { getSandboxAdapterConfig } from '../infrastructure/provider/config';
 import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
 import { connectToSandbox, disconnectSandbox } from '../infrastructure/provider/lifecycle';
@@ -565,6 +566,11 @@ export async function restoreArchivedSandboxBeforeUse(params: {
   ) {
     throw new SandboxLifecycleStateError(initial.status);
   }
+  const runtimeImage = resolveSandboxRuntimeImage({
+    provider: params.provider,
+    sandboxId: params.sandboxId,
+    createConfig: params.createConfig
+  });
 
   return withSandboxLifecycleLease({
     sandboxId: params.sandboxId,
@@ -627,7 +633,8 @@ export async function restoreArchivedSandboxBeforeUse(params: {
               userId: params.userId,
               ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
               ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
-              'metadata.volumeEnabled': Boolean(restoredStorage)
+              'metadata.volumeEnabled': Boolean(restoredStorage),
+              ...(runtimeImage ? { 'metadata.image': runtimeImage } : {})
             })
           }
         };

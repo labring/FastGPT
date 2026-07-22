@@ -20,6 +20,7 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
+import { SandboxFileRefSchema, type SandboxRuntimeStatusResponse } from '../ai/sandbox/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -58,6 +59,9 @@ export type SandboxStatusPhase =
   | 'extractingPackage' // extracting package in sandbox
   // Lazy-init phases
   | 'lazyInit' // LLM first calls sandbox tool, triggers container creation
+  // Runtime image upgrade phases
+  | 'upgradeRequired'
+  | 'upgrading'
   // Terminal phases
   | 'ready' // sandbox is ready
   | 'failed'; // initialization failed
@@ -70,6 +74,7 @@ export type SandboxStatusItemType = {
   skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
   // 'uploadingPackage', 'extractingPackage' in session-runtime
   message?: string; // optional human-readable message
+  runtimeStatus?: SandboxRuntimeStatusResponse; // present for runtime image upgrade phases
 };
 
 /* Skill module response */

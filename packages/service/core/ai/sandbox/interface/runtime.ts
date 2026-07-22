@@ -16,7 +16,8 @@ export {
 } from '../application/runtime/client';
 export {
   createAgentSandboxInitializingError,
-  createAgentSandboxPermissionDeniedError
+  createAgentSandboxPermissionDeniedError,
+  createSandboxRuntimeUpgradeRequiredError
 } from '../error';
 export type { SandboxClientQuery } from '../application/runtime/client';
 export { prepareAgentSandboxRuntime } from '../application/runtime';
@@ -24,6 +25,10 @@ export type { AgentSandboxRuntimeContext } from '../application/runtime';
 export { getRunningSandboxId } from '../utils/id';
 export { getSandboxRuntimeProfile } from '../application/runtime';
 export type { SandboxRuntimeProfile } from '../application/runtime';
+export {
+  getAppSandboxRuntimeStatus,
+  upgradeAppSandboxRuntime
+} from '../application/runtime/upgrade';
 export {
   runAgentSandboxEntrypoint,
   runSandboxEntrypoint,
