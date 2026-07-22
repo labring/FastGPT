@@ -303,7 +303,7 @@ services:
           *x-service-env-config,
           *x-app-env-config
         ]
-      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
+      # 必填。前端外部可访问的地址，用于自动补全文件资源路径。例如 https://fastgpt.cn，不能填 localhost。
       FE_DOMAIN:
       # 文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容
       FILE_DOMAIN:

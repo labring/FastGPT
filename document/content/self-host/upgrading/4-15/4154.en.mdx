@@ -3,9 +3,23 @@ title: 'V4.15.4 (In Progress)'
 description: 'FastGPT V4.15.4 Release Notes'
 ---
 
+## 📦 Upgrade Guide
+
+### Configure the required FE_DOMAIN
+
+The FastGPT app now validates `FE_DOMAIN` at startup. Set it to the complete, externally accessible
+URL of your FastGPT frontend. Do not use `localhost`. `FE_DOMAIN` is still required when a separate
+`FILE_DOMAIN` is configured.
+
+```bash
+FE_DOMAIN=https://fastgpt.example.com
+```
+
 ## 🚀 New Features
 
 ## ⚙️ Improvements
+
+1. Added Workflow file context management to reduce duplicate URL signing and address potential security issues.
 
 ## 🐛 Fixes
 

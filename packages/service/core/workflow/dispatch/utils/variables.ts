@@ -206,21 +206,24 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
 
     if (config?.type === VariableInputEnum.file) {
       if (!Array.isArray(value)) throw new UserError('File variable value must be an array');
-      const storeValue = value.map((url) => {
+      const files = value.map((url) => {
         if (!isAbsoluteHttpUrl(url)) {
           throw new UserError('File variable updates only accept absolute HTTP(S) URLs');
         }
 
-        const file = normalizeChatFileStoreValue({ url });
-        if (!file || !('url' in file)) {
+        const storeValue =
+          this.getFileStoreValueByRuntimeUrl(url) ?? normalizeChatFileStoreValue({ url });
+        if (!storeValue) {
           throw new UserError('Invalid external file URL');
         }
-        return file;
+
+        return { runtimeUrl: url, storeValue };
       });
-      const runtimeValue = await fileStoreValuesToRuntimeUrls({
-        files: storeValue,
-        fileMetaMap: this.fileMetaMap
+      files.forEach(({ runtimeUrl, storeValue }) => {
+        this.fileMetaMap.set(runtimeUrl, storeValue);
       });
+      const storeValue = files.map((file) => file.storeValue);
+      const runtimeValue = files.map((file) => file.runtimeUrl);
       this.state.set(key, {
         key,
         config,
@@ -355,7 +358,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     });
   }
 
-  /** 初始化文件变量时恢复原始 store metadata；节点更新不调用该兼容转换。 */
+  /** 初始化文件变量时恢复原始 store metadata。 */
   private runtimeFileValueToStoreValue(value: ChatFileRuntimeValue): ChatFileStoreValue[] {
     return value
       .map((item) => {

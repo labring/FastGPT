@@ -3,6 +3,16 @@ title: 'V4.15.4(进行中)'
 description: 'FastGPT V4.15.4 更新说明'
 ---
 
+## 📦 升级指南
+
+### 配置必填的 FE_DOMAIN
+
+FastGPT 主应用启动时会校验 `FE_DOMAIN`。请将它配置为用户能够访问的 FastGPT 前端完整地址，不要使用 `localhost`。即使配置了独立的 `FILE_DOMAIN`，仍需要配置 `FE_DOMAIN`。
+
+```bash
+FE_DOMAIN=https://fastgpt.example.com
+```
+
 ## 🚀 新增内容
 
 ## ⚙️ 优化
