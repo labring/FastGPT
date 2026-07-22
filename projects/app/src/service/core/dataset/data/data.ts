@@ -26,11 +26,13 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   model: string;
   indexSize?: number;
   imageIndex?: boolean;
+  /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
+  forceRebuild?: boolean;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q'
+  'indexes' | 'q' | 'forceRebuild'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -218,7 +220,8 @@ export class DatasetDataOperation {
     model,
     indexSize = 512,
     indexPrefix,
-    imageIndex
+    imageIndex,
+    forceRebuild = false
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = getEmbeddingModel(model);
 
@@ -256,8 +259,11 @@ export class DatasetDataOperation {
     // patchResult 先保留旧 dataId；insertVectorForPatch 会为 create/update 项写入新向量并回填新 dataId。
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
-      nextIndexes: indexesWithExistingSystemIds
+      nextIndexes: indexesWithExistingSystemIds,
+      isSameIndex: forceRebuild ? () => false : undefined
     });
+    // 先保存旧向量 id；insertVectorForPatch 会原地把 update 项替换成新 dataId。
+    const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
 
     // 提前刷新 updateTime，方便 job 扫到该 data 进行处理。
     const updateTime = mongoData.updateTime;
@@ -272,7 +278,6 @@ export class DatasetDataOperation {
     });
 
     const newIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
-    const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
 
     await mongoSessionRun(async (session) => {
       // 仅在 Q/A 变化时记录历史，最多保留最近 10 条旧内容。

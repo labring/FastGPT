@@ -360,6 +360,74 @@ describe('Dataset data service', () => {
       );
     });
 
+    it('should rebuild vectors when forceRebuild is enabled even if index text is unchanged', async () => {
+      const { data } = await createMongoData({
+        q: 'same question',
+        a: 'same answer',
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'same custom index',
+            dataId: 'custom_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.default,
+            text: 'same question',
+            dataId: 'question_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.default,
+            text: 'same answer',
+            dataId: 'answer_old'
+          }
+        ]
+      });
+
+      const result = await updateDatasetDataByIndexes({
+        dataId: String(data._id),
+        q: 'same question',
+        a: 'same answer',
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'same custom index',
+            dataId: 'custom_old'
+          }
+        ],
+        model: 'text-embedding-3-small',
+        indexSize: 50,
+        forceRebuild: true
+      });
+
+      const updatedData = await MongoDatasetData.findById(data._id).lean();
+      const deleteCall = mockVectorDelete.mock.calls[0]?.[0];
+
+      expect(result.tokens).toBeGreaterThan(0);
+      expect(mockVectorInsert).toHaveBeenCalledTimes(1);
+      expect(updatedData?.indexes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'same custom index',
+            dataId: 'id_1'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.default,
+            text: 'same question',
+            dataId: 'id_2'
+          }),
+          expect.objectContaining({
+            type: DatasetDataIndexTypeEnum.default,
+            text: 'same answer',
+            dataId: 'id_3'
+          })
+        ])
+      );
+      expect(deleteCall?.idList).toEqual(
+        expect.arrayContaining(['custom_old', 'question_old', 'answer_old'])
+      );
+    });
+
     it('should reject invalid update-by-indexes requests', async () => {
       const { data } = await createMongoData();
 
