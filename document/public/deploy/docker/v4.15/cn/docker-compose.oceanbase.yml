@@ -165,8 +165,8 @@ x-service-env-config: &x-service-env-config
   WORKFLOW_HTTP_IGNORE_HTTPS_CERT: false
 
 # 向量库相关配置
-x-vec-config: &x-vec-config #   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql
-
+x-vec-config: &x-vec-config
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql
 
 services:
   fastgpt-vector:

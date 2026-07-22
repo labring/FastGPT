@@ -165,9 +165,9 @@ x-service-env-config: &x-service-env-config
   WORKFLOW_HTTP_IGNORE_HTTPS_CERT: false
 
 # 向量库相关配置
-x-vec-config: &x-vec-config #   MILVUS_ADDRESS: zilliz_cloud_address
+x-vec-config: &x-vec-config
+  MILVUS_ADDRESS: zilliz_cloud_address
   MILVUS_TOKEN: zilliz_cloud_token
-
 
 services:
   fastgpt-mongo:

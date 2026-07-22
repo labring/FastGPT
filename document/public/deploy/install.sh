@@ -286,7 +286,7 @@ randomize_compose_credentials() {
     replace_text "mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin" "mongodb://myusername:$mongo_password@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin"
     replace_text "- MONGO_INITDB_ROOT_PASSWORD=mypassword" "- MONGO_INITDB_ROOT_PASSWORD=$mongo_password"
     replace_text "'-p', 'mypassword'" "'-p', '$mongo_password'"
-    replace_text '"mypassword",' "\"$mongo_password\","
+    replace_text "'mypassword'," "'$mongo_password',"
     replace_text " mongo -u myusername -p mypassword " " mongo -u myusername -p $mongo_password "
 
     # Redis 密码需要同时改连接串、启动命令和健康检查。

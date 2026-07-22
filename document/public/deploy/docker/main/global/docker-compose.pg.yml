@@ -213,6 +213,9 @@ services:
       AIPROXY_API_TOKEN: *x-aiproxy-token
       # MCP Server 代理地址，用于 MCP 使用方式页拼接 SSE 地址
       SSE_MCP_SERVER_PROXY_ENDPOINT:
+      # 官网访客归因 CRM；地址需包含 /api/v1，为空时不进行身份上报
+      CRM_API_URL:
+      CRM_API_KEY:
 
       # ==================== 日志与监控 ====================
       # 传递给 OTLP 收集器的服务名称

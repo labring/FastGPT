@@ -390,4 +390,4 @@ volumes:
   fastgpt-seekdb-config:
   fastgpt-aiproxy_pg:
 
-${{vec.extraBlock}}
+# ${{vec.extraBlock}}
