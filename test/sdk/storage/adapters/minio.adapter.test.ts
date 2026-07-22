@@ -1,8 +1,59 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  createMinioTimeoutTransport,
   MinioS3NotFound,
   MinioStorageAdapter
 } from '../../../../sdk/storage/src/adapters/minio.adapter';
+
+describe('createMinioTimeoutTransport', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('destroys the underlying request when the request timeout expires', () => {
+    vi.useFakeTimers();
+    const destroy = vi.fn();
+    const request = {
+      once: vi.fn(),
+      destroy
+    };
+    const transport = {
+      request: vi.fn(() => request)
+    };
+    const timeoutTransport = createMinioTimeoutTransport({
+      transport: transport as any,
+      timeoutMs: 1234
+    });
+
+    expect(timeoutTransport.request({} as any)).toBe(request);
+    vi.advanceTimersByTime(1234);
+
+    expect(destroy).toHaveBeenCalledOnce();
+    expect(destroy.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ message: 'MinIO request timeout after 1234ms' })
+    );
+  });
+
+  it('clears the timeout when the request closes', () => {
+    vi.useFakeTimers();
+    const destroy = vi.fn();
+    const request = {
+      once: vi.fn(),
+      destroy
+    };
+    const timeoutTransport = createMinioTimeoutTransport({
+      transport: { request: vi.fn(() => request) } as any,
+      timeoutMs: 1234
+    });
+
+    timeoutTransport.request({} as any);
+    expect(request.once).toHaveBeenCalledWith('close', expect.any(Function));
+    request.once.mock.calls[0]?.[1]();
+    vi.advanceTimersByTime(1234);
+
+    expect(destroy).not.toHaveBeenCalled();
+  });
+});
 
 const createAdapter = () =>
   new MinioStorageAdapter({
@@ -83,13 +134,16 @@ describe('MinioStorageAdapter.deleteObjectsByMultiKeys', () => {
 
   it('splits deletion into batches of at most 1000 keys', async () => {
     const adapter = createAdapter();
-    const removeObjects = vi.fn().mockResolvedValue(undefined);
+    const removeObjects = vi
+      .fn()
+      .mockResolvedValueOnce([{ Key: 'dataset/file-3.txt' }])
+      .mockResolvedValueOnce([{ Error: { Key: 'dataset/file-1000.txt' } }]);
     const keys = Array.from({ length: 1001 }, (_, index) => `dataset/file-${index}.txt`);
     (adapter as any).minioClient.removeObjects = removeObjects;
 
     await expect(adapter.deleteObjectsByMultiKeys({ keys })).resolves.toEqual({
       bucket: 'fastgpt-private',
-      keys: []
+      keys: ['dataset/file-3.txt', 'dataset/file-1000.txt']
     });
     expect(removeObjects).toHaveBeenNthCalledWith(1, 'fastgpt-private', keys.slice(0, 1000));
     expect(removeObjects).toHaveBeenNthCalledWith(2, 'fastgpt-private', keys.slice(1000));
@@ -189,7 +243,7 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
     expect((adapter as any).minioClient.listObjectsV2).not.toHaveBeenCalled();
   });
 
-  it('collects failed keys and continues deleting later pages', async () => {
+  it('collects per-object failures and continues deleting later pages', async () => {
     listObjects
       .mockResolvedValueOnce({
         Contents: [{ Key: 'parsed/first.txt' }, { Key: 'parsed/file+with+spaces.txt' }],
@@ -201,7 +255,10 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
         IsTruncated: false
       });
     removeObjects
-      .mockRejectedValueOnce(new Error('delete failed'))
+      .mockResolvedValueOnce([
+        { Key: 'parsed/first.txt' },
+        { Error: { Key: 'parsed/file with spaces.txt' } }
+      ])
       .mockResolvedValueOnce(undefined);
 
     await expect(adapter.deleteObjectsByPrefix({ prefix: 'parsed/' })).resolves.toEqual({
@@ -209,6 +266,19 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
       keys: ['parsed/first.txt', 'parsed/file with spaces.txt']
     });
     expect(removeObjects).toHaveBeenNthCalledWith(2, 'fastgpt-private', ['parsed/last.txt']);
+  });
+
+  it('marks the whole page as failed when the delete request rejects', async () => {
+    listObjects.mockResolvedValueOnce({
+      Contents: [{ Key: 'failed/first.txt' }, { Key: 'failed/second.txt' }],
+      IsTruncated: false
+    });
+    removeObjects.mockRejectedValueOnce(new Error('MinIO request timeout after 60000ms'));
+
+    await expect(adapter.deleteObjectsByPrefix({ prefix: 'failed/' })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: ['failed/first.txt', 'failed/second.txt']
+    });
   });
 
   it('skips deletion for an empty result page', async () => {
@@ -244,24 +314,6 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
 
     expect(listObjects.mock.calls[0]?.[1]?.abortSignal.aborted).toBe(true);
     expect(removeObjects).not.toHaveBeenCalled();
-  });
-
-  it('marks the page as failed when deletion exceeds the request timeout', async () => {
-    vi.useFakeTimers();
-    listObjects.mockResolvedValueOnce({
-      Contents: [{ Key: 'stuck-delete/file.txt' }],
-      IsTruncated: false
-    });
-    removeObjects.mockReturnValueOnce(new Promise(() => {}));
-
-    const resultPromise = adapter.deleteObjectsByPrefix({ prefix: 'stuck-delete/' });
-    const assertion = expect(resultPromise).resolves.toEqual({
-      bucket: 'fastgpt-private',
-      keys: ['stuck-delete/file.txt']
-    });
-
-    await vi.advanceTimersByTimeAsync(60000);
-    await assertion;
   });
 });
 

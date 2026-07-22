@@ -1,4 +1,6 @@
 import * as Minio from 'minio';
+import * as http from 'node:http';
+import * as https from 'node:https';
 import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
 import type {
   DeleteObjectParams,
@@ -19,6 +21,53 @@ import {
 import { chunk } from 'es-toolkit';
 
 export { NotFound as MinioS3NotFound };
+
+const minioRequestTimeoutMs = 60_000;
+
+type MinioRemoveObjectsError = {
+  Key?: string;
+  Error?: {
+    Key?: string;
+  };
+};
+
+/**
+ * 为 MinIO 删除请求注入总请求超时。Promise 超时无法取消底层 HTTP 请求，
+ * transport 层主动 destroy 才能避免队列重试时积累悬挂连接。
+ */
+export const createMinioTimeoutTransport = ({
+  transport,
+  timeoutMs
+}: {
+  transport: NonNullable<Minio.ClientOptions['transport']>;
+  timeoutMs: number;
+}): NonNullable<Minio.ClientOptions['transport']> => ({
+  request: ((...args: unknown[]) => {
+    const request = Reflect.apply(transport.request, transport, args) as http.ClientRequest;
+    const timeout = setTimeout(() => {
+      request.destroy(new Error(`MinIO request timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+    timeout.unref();
+    request.once('close', () => clearTimeout(timeout));
+
+    return request;
+  }) as NonNullable<Minio.ClientOptions['transport']>['request']
+});
+
+/**
+ * 提取 MinIO 批量删除响应中的失败 key。
+ *
+ * MinIO 8.x 运行时直接返回错误对象数组，但类型声明仍保留了 Error 嵌套，
+ * 因此同时兼容两种结构，避免静默丢失逐对象删除错误。
+ */
+const getFailedKeysFromMinioRemove = (result: unknown): string[] => {
+  if (!Array.isArray(result)) return [];
+
+  return result.flatMap((item: MinioRemoveObjectsError | null | undefined) => {
+    const key = item?.Key ?? item?.Error?.Key;
+    return key ? [key] : [];
+  });
+};
 
 /**
  * @description MinIO 存储适配器（基于 minio SDK 和 AWS S3 SDK）
@@ -56,6 +105,10 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     const endpointUrl = new URL(options.endpoint);
     const useSSL = endpointUrl.protocol === 'https:';
     const port = endpointUrl.port ? parseInt(endpointUrl.port, 10) : useSSL ? 443 : 80;
+    const transport = createMinioTimeoutTransport({
+      transport: useSSL ? https : http,
+      timeoutMs: minioRequestTimeoutMs
+    });
 
     this.minioClient = new Minio.Client({
       endPoint: endpointUrl.hostname,
@@ -64,7 +117,8 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       accessKey: options.credentials.accessKeyId,
       secretKey: options.credentials.secretAccessKey,
       region: options.region,
-      pathStyle: options.forcePathStyle
+      pathStyle: options.forcePathStyle,
+      transport
     });
   }
 
@@ -92,15 +146,16 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     // 每次 removeObjects 最多删除 1000 个对象
     // 因此需要将对象列表分块
     const chunks = chunk(keys, 1000);
+    const failedKeys: string[] = [];
 
     for (const chunk of chunks) {
-      await this.minioClient.removeObjects(this.options.bucket, chunk);
+      const result = await this.minioClient.removeObjects(this.options.bucket, chunk);
+      failedKeys.push(...getFailedKeysFromMinioRemove(result));
     }
 
-    // Minio Client 的 removeObjects 不返回失败列表，假设全部成功
     return {
       bucket: this.options.bucket,
-      keys: []
+      keys: failedKeys
     };
   }
 
@@ -118,21 +173,18 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
     const listBatchSize = 400;
-    const requestTimeoutMs = 60_000;
 
     if (!prefix?.trim()) {
       throw new Error('Prefix is required');
     }
 
-    /** 为单次 MinIO 请求设置超时，并在 SDK 支持时主动取消底层请求。 */
-    const withRequestTimeout = async <T>({
+    /** 为单次列举请求设置超时，并主动取消 AWS SDK 底层请求。 */
+    const withListRequestTimeout = async <T>({
       promise,
-      operation,
       onTimeout
     }: {
       promise: Promise<T>;
-      operation: 'list' | 'delete';
-      onTimeout?: () => void;
+      onTimeout: () => void;
     }): Promise<T> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -141,13 +193,13 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
           promise,
           new Promise<never>((_, reject) => {
             timer = setTimeout(() => {
-              onTimeout?.();
+              onTimeout();
               reject(
                 new Error(
-                  `Delete by prefix ${operation} timeout after ${requestTimeoutMs}ms: ${prefix}`
+                  `Delete by prefix list timeout after ${minioRequestTimeoutMs}ms: ${prefix}`
                 )
               );
-            }, requestTimeoutMs);
+            }, minioRequestTimeoutMs);
           })
         ]);
       } finally {
@@ -161,7 +213,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
 
     do {
       const abortController = new AbortController();
-      const listResponse = await withRequestTimeout({
+      const listResponse = await withListRequestTimeout({
         promise: this.client.send(
           new ListObjectsV2Command({
             Bucket: bucket,
@@ -172,7 +224,6 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
           }),
           { abortSignal: abortController.signal }
         ),
-        operation: 'list',
         onTimeout: () => abortController.abort()
       });
       const keys = (listResponse.Contents ?? []).flatMap(({ Key }) => {
@@ -183,12 +234,14 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       });
 
       if (keys.length > 0) {
-        await withRequestTimeout({
-          promise: this.minioClient.removeObjects(bucket, keys),
-          operation: 'delete'
-        }).catch(() => {
-          failedKeys.push(...keys);
-        });
+        await this.minioClient
+          .removeObjects(bucket, keys)
+          .then((result) => {
+            failedKeys.push(...getFailedKeysFromMinioRemove(result));
+          })
+          .catch(() => {
+            failedKeys.push(...keys);
+          });
       }
 
       if (!listResponse.IsTruncated) break;
