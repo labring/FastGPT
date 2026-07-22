@@ -22,7 +22,6 @@ type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
     nodeId: string;
     flowNodeType: FlowNodeTypeEnum;
   };
-  filesMap: UseUserContextResult['filesMap'];
   currentFiles: UseUserContextResult['currentFiles'];
   sandboxClient?: SandboxClient;
 };

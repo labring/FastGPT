@@ -98,7 +98,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     // 交互恢复入口会由子工具继续接管，父 ToolCall 节点本轮不再作为入口节点。
     props.node.isEntry = false;
 
-    const { messages, allFiles, currentInputFiles } = await useToolMessages({
+    const { messages, currentInputFiles } = await useToolMessages({
       defaultSystemPrompt: toolModel.defaultSystemChatPrompt,
       systemPrompt,
       chatHistories,
@@ -175,7 +175,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
       return runToolCall({
         ...props,
-        allFiles,
         currentInputFiles,
         sandboxClient,
         runtimeNodes,

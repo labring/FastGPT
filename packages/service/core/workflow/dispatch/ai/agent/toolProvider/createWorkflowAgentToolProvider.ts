@@ -58,17 +58,7 @@ export const createWorkflowAgentToolProvider = ({
       }
     : undefined;
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
-    enabled: Object.keys(context.filesMap).length > 0,
-    resolveFiles: (ids) =>
-      ids.map((id) => {
-        const file = context.filesMap[id];
-
-        return {
-          id,
-          ...(file?.name ? { name: file.name } : {}),
-          url: file?.url || ''
-        };
-      }),
+    enabled: true,
     execute: async ({ files }) =>
       dispatchFileRead({
         files,

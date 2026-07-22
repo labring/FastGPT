@@ -7,7 +7,6 @@ import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/interface/runtime';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSafeSandboxInputFilename } from '../../../../../ai/sandbox/interface/runtime';
 import {
   buildAgentLoopCoreUserReminderInput,
@@ -20,14 +19,12 @@ export type AgentInputFile = AgentLoopCoreInputFile;
 
 export type ParseAgentInputFilesParams = {
   files: UserChatItemFileItemType[];
-  prefixId: string;
   maxFiles: number;
 };
 
 export type BuildCurrentAgentInputFilesParams = {
   currentFiles?: string[];
   currentQuery?: ChatItemMiniType['value'];
-  currentDataId?: string;
   maxFiles: number;
 };
 
@@ -36,14 +33,13 @@ type AgentSelectedDatasetInput = AgentLoopCoreSelectedDatasetInput;
 type AgentSelectedDatasetContext = AgentLoopCoreSelectedDatasetContext;
 
 /**
- * 将 chat value 中携带的文件转换成 Agent 内部稳定文件 id。
+ * 将 chat value 中携带的文件转换成 Agent 可直接消费的 model URL 文件描述。
  *
  * 该函数只负责 URL 归一化、去重、限量和类型解析；调用方决定这些文件用于
- * read_files 映射、sandbox 注入，还是 user reminder。
+ * read_files、sandbox 注入，还是 user reminder。
  */
 export function parseAgentInputFiles({
   files,
-  prefixId,
   maxFiles
 }: ParseAgentInputFilesParams): AgentInputFile[] {
   const workflowFileContext = getWorkflowFileContext();
@@ -84,7 +80,6 @@ export function parseAgentInputFiles({
       const type = file.type && file.type !== ChatFileTypeEnum.file ? file.type : parsedFile.type;
 
       return {
-        id: `${prefixId}-${index}`,
         name: getSafeSandboxInputFilename(file.name || parsedFile.name || url, index, usedNames),
         type,
         url: parsedFile.url
@@ -97,12 +92,11 @@ export function parseAgentInputFiles({
  * 解析本轮用户输入文件。
  *
  * 返回值保留图片、音频、视频和文档文件。全部文件会注入 sandbox 并写入 user reminder；
- * 只有文档文件进入 read_files 映射，多模态文件同时保留在当前用户消息的 files 中。
+ * 文档文件可由 read_files 直接读取，多模态文件同时保留在当前用户消息的 files 中。
  */
 export function buildCurrentAgentInputFiles({
   currentFiles = [],
   currentQuery,
-  currentDataId,
   maxFiles
 }: BuildCurrentAgentInputFilesParams): AgentInputFile[] {
   const { files: queryFiles = [] } = currentQuery
@@ -117,7 +111,6 @@ export function buildCurrentAgentInputFiles({
     files: currentInputFiles.map(
       (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
     ),
-    prefixId: currentDataId || getNanoid(),
     maxFiles
   });
 }
@@ -177,8 +170,6 @@ export type UseUserContextResult = {
   chatHistories: ChatItemMiniType[];
   currentFiles: AgentInputFile[];
   queryInput: string;
-  fileUrlMap: Record<string, string>;
-  filesMap: Record<string, Pick<AgentInputFile, 'name' | 'url'>>;
   getCurrentMessages: (params?: {
     skillInfos?: DeployedSkillInfo[];
     currentWorkingDirectory?: string;
@@ -191,7 +182,7 @@ export type UseUserContextResult = {
 /**
  * 准备 Agent 本轮 user context。
  *
- * 第一阶段先解析历史文件、本轮输入文件、read_files 映射和知识库上下文；
+ * 第一阶段先解析历史文件、本轮输入文件和知识库上下文；
  * sandbox/skill 初始化依赖 currentFiles。等 sandbox 返回 cwd、skill 返回 SKILL.md
  * 元信息后，再通过 getCurrentMessages 生成最终模型 messages。
  */
@@ -221,40 +212,17 @@ export const useUserContext = async ({
   timezone: string;
 }): Promise<UseUserContextResult> => {
   const chatHistories = getAgentLoopHistories(history, histories);
-  const fileUrlMap: Record<string, string> = {};
-  // filesMap 只给 read_files 使用，因此只登记 document 类型文件。
-  const filesMap: UseUserContextResult['filesMap'] = {};
 
-  const getMessagePrefixId = (message: ChatItemMiniType, index: number) =>
-    message.dataId || `${index}`;
-
-  const registerFiles = (files: AgentInputFile[]) => {
-    if (files.length === 0) return;
-
-    for (const file of files) {
-      fileUrlMap[file.id] = file.url;
-      if (file.type === ChatFileTypeEnum.file) {
-        filesMap[file.id] = {
-          name: file.name,
-          url: file.url
-        };
-      }
-    }
-  };
-
-  // 先处理历史，确保历史 assistant tool call 中已有的 file id 能在本轮重新映射到 URL。
-  const rewrittenHistories = chatHistories.map((message, index) => {
+  const rewrittenHistories = chatHistories.map((message) => {
     if (message.obj !== ChatRoleEnum.Human) return message;
 
     const { files } = chatValue2RuntimePrompt(message.value);
 
     const formatFiles = parseAgentInputFiles({
       files,
-      prefixId: getMessagePrefixId(message, index),
       maxFiles
     });
 
-    registerFiles(formatFiles);
     if (formatFiles.length === 0) return message;
 
     // 历史消息每轮只补文件段，不补 datasets/time。
@@ -290,10 +258,8 @@ export const useUserContext = async ({
   const currentInputFiles = buildCurrentAgentInputFiles({
     currentFiles,
     currentQuery,
-    currentDataId,
     maxFiles
   });
-  registerFiles(currentInputFiles);
 
   // 获取知识库
   const selectedDatasetWithIntro = await loadAgentDatasetContext(selectedDataset, tmbId, authTmbId);
@@ -302,8 +268,6 @@ export const useUserContext = async ({
     chatHistories,
     currentFiles: currentInputFiles,
     queryInput,
-    fileUrlMap,
-    filesMap,
     getCurrentMessages: ({ skillInfos, currentWorkingDirectory } = {}) => {
       const currentUserMessage: ChatItemMiniType = {
         ...currentMessage,

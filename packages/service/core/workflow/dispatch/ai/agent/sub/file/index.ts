@@ -6,7 +6,7 @@ import { getFileContentByUrl } from '../../../../../../chat/fileContext';
 import { getWorkflowFileContext } from '../../../../../utils/context';
 
 type FileReadParams = {
-  files: { id: string; name?: string; url: string }[];
+  files: { name?: string; url: string }[];
 
   teamId: string;
   tmbId: string;
@@ -26,7 +26,7 @@ export const dispatchFileRead = async ({
 }: FileReadParams): Promise<DispatchSubAppResponse> => {
   try {
     const readFilesResult = await Promise.all(
-      files.map(async ({ id, url, name: inputName }) => {
+      files.map(async ({ url, name: inputName }) => {
         try {
           const { name, content } = await getFileContentByUrl({
             url,
@@ -34,17 +34,18 @@ export const dispatchFileRead = async ({
             tmbId,
             customPdfParse,
             usageId,
-            fileContext: getWorkflowFileContext()
+            fileContext: getWorkflowFileContext(),
+            validateExternalUrlDomain: false
           });
 
           return {
-            id,
+            url,
             name: inputName ?? name,
             content
           };
         } catch (error) {
           return {
-            id,
+            url,
             name: inputName ?? '',
             content: getErrText(error, 'Load file error')
           };

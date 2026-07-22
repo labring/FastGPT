@@ -124,7 +124,6 @@ describe('dispatchRunTools file context', () => {
     useToolNodeListMock.mockReturnValue([]);
     useToolMessagesMock.mockResolvedValue({
       messages: [],
-      allFiles: new Map(),
       currentInputFiles: []
     });
     getSandboxClientMock.mockResolvedValue({
@@ -231,10 +230,8 @@ describe('dispatchRunTools file context', () => {
     getSandboxClientMock.mockResolvedValueOnce(sandboxClient);
     useToolMessagesMock.mockResolvedValueOnce({
       messages: [],
-      allFiles: new Map(),
       currentInputFiles: [
         {
-          id: 'file_1',
           name: 'a.pdf',
           url: 'https://files/a.pdf',
           sandboxPath: '/workspace/a.pdf'

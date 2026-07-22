@@ -94,26 +94,7 @@ export type ToolDispatchContext = Pick<
   getSubAppInfo: GetSubAppInfoFnType;
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
-  fileUrlMap?: Record<string, string>;
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
-};
-
-/** 将工具参数中完整匹配的 Agent 文件 id 递归替换为真实 URL。 */
-export const replaceAgentFileIdsWithUrls = <T>(value: T, fileUrlMap: Record<string, string>): T => {
-  if (!value || Object.keys(fileUrlMap).length === 0) return value;
-
-  const replaceValue = (input: unknown): unknown => {
-    if (typeof input === 'string') return fileUrlMap[input] || input;
-    if (Array.isArray(input)) return input.map(replaceValue);
-    if (input && typeof input === 'object') {
-      return Object.fromEntries(
-        Object.entries(input).map(([key, item]) => [key, replaceValue(item)])
-      );
-    }
-    return input;
-  };
-
-  return replaceValue(value) as T;
 };
 
 const filterAgentWorkflowRuntimeParams = (params: Record<string, any>) => {
@@ -156,7 +137,6 @@ export const getAgentDatasetParams = (
 export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
-  fileUrlMap = {},
   checkIsStopping,
   runningUserInfo,
   runningAppInfo,
@@ -223,13 +203,10 @@ export const getExecuteTool = ({
             response: 'Params is not object'
           };
         }
-        const requestParams = replaceAgentFileIdsWithUrls(
-          {
-            ...tool.params,
-            ...toolCallParams
-          },
-          fileUrlMap
-        );
+        const requestParams = {
+          ...tool.params,
+          ...toolCallParams
+        };
 
         if (tool.type === 'tool') {
           const { response, usages, nodeResponse } = await dispatchTool({

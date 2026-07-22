@@ -33,8 +33,7 @@ type ResponseType = {
 };
 
 export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
-  const { messages, toolNodes, toolModel, childrenInteractiveParams, allFiles, ...workflowProps } =
-    props;
+  const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
     checkIsStopping,
     runtimeNodes,
@@ -85,8 +84,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowProps,
     runtimeNodes,
     runtimeEdges,
-    allFiles,
-    fileUrlList,
     cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse
   });
   getProviderToolInfo = toolProvider.getToolInfo;

@@ -102,7 +102,6 @@ const getUserContextMessagesForTest = async ({
   return {
     chatHistories: context.chatHistories,
     queryInput: context.queryInput,
-    filesMap: context.filesMap,
     ...context.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -115,25 +114,21 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
   it('generates file XML block for document files only', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
-        id: 'current-0',
         name: 'guide.pdf',
         type: ChatFileTypeEnum.file,
         url: '/guide.pdf'
       },
       {
-        id: 'current-1',
         name: 'chart.png',
         type: ChatFileTypeEnum.image,
         url: '/chart.png'
       },
       {
-        id: 'current-2',
         name: 'voice.mp3',
         type: ChatFileTypeEnum.audio,
         url: 'https://files.example.com/voice.mp3'
       },
       {
-        id: 'current-3',
         name: 'demo.mp4',
         type: ChatFileTypeEnum.video,
         url: 'https://files.example.com/demo.mp4'
@@ -141,11 +136,12 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
     ]);
 
     expect(result).toContain('## 对话文件');
-    expect(result).toContain('<id>current-0</id>');
+    expect(result).toContain('<url>/guide.pdf</url>');
     expect(result).toContain('<name>guide.pdf</name>');
-    expect(result).toContain('<id>current-1</id>');
-    expect(result).toContain('<id>current-2</id>');
-    expect(result).toContain('<id>current-3</id>');
+    expect(result).toContain('<url>/chart.png</url>');
+    expect(result).toContain('<url>https://files.example.com/voice.mp3</url>');
+    expect(result).toContain('<url>https://files.example.com/demo.mp4</url>');
+    expect(result).not.toContain('<id>');
     expect(result).toContain('<type>image</type>');
     expect(result).toContain('<type>audio</type>');
     expect(result).toContain('<type>video</type>');
@@ -154,14 +150,13 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
   it('escapes XML fields in file metadata', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
-        id: `current-&-'"-0`,
         name: `a<b>&"c"'d.pdf`,
         type: ChatFileTypeEnum.file,
         url: '/guide.pdf'
       }
     ]);
 
-    expect(result).toContain('<id>current-&amp;-&apos;&quot;-0</id>');
+    expect(result).toContain('<url>/guide.pdf</url>');
     expect(result).toContain('<name>a&lt;b&gt;&amp;&quot;c&quot;&apos;d.pdf</name>');
   });
 
@@ -185,7 +180,6 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
       ],
       filesInfo: [
         {
-          id: 'current-0',
           name: 'guide.pdf',
           type: ChatFileTypeEnum.file,
           url: '/guide.pdf'
@@ -327,7 +321,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
 });
 
 describe('useUserContext', () => {
-  it('rewrites histories and current input while keeping file ids consistent with maps', async () => {
+  it('rewrites histories and current input with direct model URLs', async () => {
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
         {
@@ -373,23 +367,12 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'history_1-0': {
-            name: 'old.pdf',
-            url: 'https://files.example.com/old.pdf'
-          },
-          'current_chat_item-0': {
-            name: 'current.pdf',
-            url: 'https://files.example.com/current.pdf'
-          }
-        });
-
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText, files: currentFiles } = chatValue2RuntimePrompt(
           result.currentUserMessage.value
         );
 
-        expect(historyText).toContain('<id>history_1-0</id>');
+        expect(historyText).toContain('<url>https://files.example.com/old.pdf</url>');
         expect(historyText).not.toContain('当前 sandbox 工作目录');
         expect(historyText).not.toContain('当前时间');
         expect(currentFiles).toEqual([
@@ -401,21 +384,20 @@ describe('useUserContext', () => {
         ]);
         expect(currentText).toContain('## 背景信息');
         expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
-        expect(currentText).toContain('<id>current_chat_item-0</id>');
-        expect(currentText).toContain('<id>current_chat_item-1</id>');
+        expect(currentText).toContain('<url>https://files.example.com/current.pdf</url>');
+        expect(currentText).toContain('<url>https://files.example.com/current.png</url>');
+        expect(currentText).not.toContain('<id>current_chat_item-');
         expect(currentText).toContain('## 知识库');
         expect(currentText).toContain('<description>后端读取到的知识库介绍</description>');
         expect(currentText).toContain('2026-05-14 10:00:00 Thursday');
         expect(currentText).toContain('当前问题');
         expect(result.currentFiles).toEqual([
           {
-            id: 'current_chat_item-0',
             name: 'current.pdf',
             type: ChatFileTypeEnum.file,
             url: 'https://files.example.com/current.pdf'
           },
           {
-            id: 'current_chat_item-1',
             name: 'current.png',
             type: ChatFileTypeEnum.image,
             url: 'https://files.example.com/current.png'
@@ -575,7 +557,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('uses human dataId for historical human messages', async () => {
+  it('rewrites historical files to direct model URLs', async () => {
     await runWithContextAsync(
       {
         mcpClientMemory: {}
@@ -597,12 +579,9 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'history_human_1-0': {
-            name: 'old.pdf',
-            url: 'https://files.example.com/old.pdf'
-          }
-        });
+        const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        expect(text).toContain('<url>https://files.example.com/old.pdf</url>');
+        expect(text).not.toContain('<id>');
       }
     );
   });
@@ -634,15 +613,8 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'current_chat_item-0': {
-            name: 'current.pdf',
-            url: 'https://files.example.com/current.pdf'
-          }
-        });
         expect(result.currentFiles).toEqual([
           {
-            id: 'current_chat_item-0',
             name: 'current.pdf',
             type: ChatFileTypeEnum.file,
             url: 'https://files.example.com/current.pdf'
@@ -656,7 +628,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('uses message index when historical human has no human dataId', async () => {
+  it('rewrites historical files without requiring a message dataId', async () => {
     await runWithContextAsync(
       {
         mcpClientMemory: {}
@@ -681,14 +653,9 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(result.filesMap).toEqual({
-          '1-0': {
-            name: 'old.pdf',
-            url: 'https://files.example.com/old.pdf'
-          }
-        });
         const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[1].value);
-        expect(text).toContain('<id>1-0</id>');
+        expect(text).toContain('<url>https://files.example.com/old.pdf</url>');
+        expect(text).not.toContain('<id>');
       }
     );
   });
@@ -723,21 +690,17 @@ describe('useUserContext', () => {
         });
 
         expect(result.chatHistories).toBe(explicitHistory);
-        expect(result.filesMap).toEqual({
-          'history_human-0': {
-            name: 'a.pdf',
-            url: 'https://files.example.com/a.pdf'
-          },
-          'current_ai-0': {
-            name: 'c.pdf',
-            url: 'https://files.example.com/c.pdf'
-          }
-        });
+        const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
+        expect(historyText).toContain('<url>https://files.example.com/a.pdf</url>');
+        expect(historyText).not.toContain('https://files.example.com/b.pdf');
+        expect(currentText).toContain('<url>https://files.example.com/c.pdf</url>');
+        expect(currentText).not.toContain('https://files.example.com/a.pdf');
       }
     );
   });
 
-  it('keeps media files in sandbox and user context but excludes them from read_files', async () => {
+  it('keeps valid media and document URLs in sandbox and user context', async () => {
     const dataImage = 'data:image/png;base64,AAAA';
     await runWithContextAsync(
       {
@@ -762,27 +725,18 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(result.filesMap).toEqual({
-          'current_ai-0': {
-            name: 'doc.pdf',
-            url: 'https://files.example.com/doc.pdf'
-          }
-        });
         expect(result.currentFiles).toEqual([
           {
-            id: 'current_ai-0',
             name: 'doc.pdf',
             type: ChatFileTypeEnum.file,
             url: 'https://files.example.com/doc.pdf'
           },
           {
-            id: 'current_ai-1',
             name: 'voice.mp3',
             type: ChatFileTypeEnum.audio,
             url: 'https://files.example.com/voice.mp3'
           },
           {
-            id: 'current_ai-2',
             name: 'demo.mp4',
             type: ChatFileTypeEnum.video,
             url: 'https://files.example.com/demo.mp4'
@@ -802,9 +756,10 @@ describe('useUserContext', () => {
             url: 'https://files.example.com/demo.mp4'
           }
         ]);
-        expect(text).toContain('<id>current_ai-0</id>');
-        expect(text).toContain('<id>current_ai-1</id>');
-        expect(text).toContain('<id>current_ai-2</id>');
+        expect(text).toContain('<url>https://files.example.com/doc.pdf</url>');
+        expect(text).toContain('<url>https://files.example.com/voice.mp3</url>');
+        expect(text).toContain('<url>https://files.example.com/demo.mp4</url>');
+        expect(text).not.toContain('<id>');
         expect(text).toContain('<type>audio</type>');
         expect(text).toContain('<type>video</type>');
         expect(text).not.toContain(dataImage);
@@ -831,13 +786,6 @@ describe('useUserContext', () => {
           requestOrigin: Symbol('invalid-origin'),
           maxFiles: 20
         } as any);
-
-        expect(result.filesMap).toEqual({
-          'current_ai-0': {
-            name: 'doc.pdf',
-            url: 'https://files.example.com/doc.pdf'
-          }
-        });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).toContain('## 对话文件');
@@ -873,12 +821,13 @@ describe('useUserContext', () => {
         });
 
         expect(result.queryInput).toBe('原始问题');
-        expect(result.filesMap).toEqual({
-          'current_ai-0': {
+        expect(result.currentFiles).toEqual([
+          {
             name: 'report v1.pdf',
+            type: ChatFileTypeEnum.file,
             url: 'https://files.example.com/uploads/report%20v1.pdf'
           }
-        });
+        ]);
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).toContain('<name>report v1.pdf</name>');
       }
@@ -982,7 +931,7 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(result.filesMap).toEqual({});
+        expect(result.currentFiles).toEqual([]);
         expect(result.rewrittenHistories[0]).toBe(result.chatHistories[0]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -1016,7 +965,7 @@ describe('useUserContext', () => {
         expect(result.chatHistories).toEqual([]);
         expect(result.rewrittenHistories).toEqual([]);
         expect(result.queryInput).toBe('');
-        expect(result.filesMap).toEqual({});
+        expect(result.currentFiles).toEqual([]);
 
         const { text, files } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(files).toEqual([]);

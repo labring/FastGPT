@@ -5,7 +5,6 @@ import { READ_FILES_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/interfa
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export type AgentLoopCoreInputFile = {
-  id: string;
   name: string;
   type: ChatFileTypeEnum;
   url: string;
@@ -45,7 +44,6 @@ export const buildAgentLoopCoreInputFilesPrompt = (files: AgentLoopCoreInputFile
 ${files
   .map(
     (file) => `<file>
-<id>${escapeXml(file.id)}</id>
 <name>${escapeXml(file.name)}</name>
 <type>${escapeXml(file.type)}</type>
 <url>${escapeXml(file.url)}</url>

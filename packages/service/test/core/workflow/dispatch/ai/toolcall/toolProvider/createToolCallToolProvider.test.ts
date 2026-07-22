@@ -64,8 +64,6 @@ const createProvider = (overrides: Record<string, any> = {}) =>
         target: 'search'
       }
     ] as any,
-    allFiles: new Map(),
-    fileUrlList: undefined,
     cacheToolFlowResponse: vi.fn(),
     ...overrides
   });
@@ -321,19 +319,8 @@ describe('createToolCallToolProvider', () => {
     });
   });
 
-  it('creates read file system executor from toolcall file context', async () => {
-    const provider = await createProvider({
-      allFiles: new Map([
-        [
-          'file_1',
-          {
-            id: 'file_1',
-            name: 'a.pdf',
-            url: 'https://files/a.pdf'
-          }
-        ]
-      ])
-    });
+  it('always creates the direct-URL read file system executor', async () => {
+    const provider = await createProvider();
 
     expect(provider.readFileExecutor).toBeDefined();
   });

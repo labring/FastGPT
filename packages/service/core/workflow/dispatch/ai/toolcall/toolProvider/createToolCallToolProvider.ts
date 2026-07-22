@@ -13,7 +13,7 @@ import {
 import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchReadFileTool, getToolCallFileUrl } from '../tools/file';
+import { dispatchReadFileTool } from '../tools/file';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -35,8 +35,6 @@ export const createToolCallToolProvider = async ({
   workflowProps,
   runtimeNodes,
   runtimeEdges,
-  allFiles,
-  fileUrlList,
   cacheToolFlowResponse
 }: {
   messages: DispatchToolModuleProps['messages'];
@@ -45,17 +43,10 @@ export const createToolCallToolProvider = async ({
   lang: DispatchToolModuleProps['lang'];
   workflowProps: Omit<
     DispatchToolModuleProps,
-    | 'messages'
-    | 'toolNodes'
-    | 'toolModel'
-    | 'childrenInteractiveParams'
-    | 'allFiles'
-    | 'currentInputFiles'
+    'messages' | 'toolNodes' | 'toolModel' | 'childrenInteractiveParams' | 'currentInputFiles'
   >;
   runtimeNodes: DispatchToolModuleProps['runtimeNodes'];
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
-  allFiles: DispatchToolModuleProps['allFiles'];
-  fileUrlList?: string[];
   cacheToolFlowResponse: CacheToolFlowResponse;
 }): Promise<ToolCallToolProvider> => {
   const { finalMessages, tools, getToolInfo } = await useToolCatalog({
@@ -95,21 +86,7 @@ export const createToolCallToolProvider = async ({
     cacheToolFlowResponse
   });
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
-    enabled: allFiles.size > 0,
-    resolveFiles: (ids) =>
-      ids.map((id) => {
-        const file = allFiles.get(id);
-
-        return {
-          id,
-          ...(file?.name ? { name: file.name } : {}),
-          url: getToolCallFileUrl({
-            id,
-            allFiles,
-            fileUrlList
-          })
-        };
-      }),
+    enabled: true,
     execute: async ({ callId, files }) => {
       const result = await dispatchReadFileTool({
         files,

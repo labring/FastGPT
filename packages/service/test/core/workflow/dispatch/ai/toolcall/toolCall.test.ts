@@ -110,7 +110,6 @@ const createProps = (overrides = {}) =>
       model: 'gpt-4',
       name: 'GPT-4'
     },
-    allFiles: new Map(),
     currentInputFiles: [],
     ...overrides
   }) as any;
@@ -568,9 +567,10 @@ describe('runToolCall compression node responses', () => {
     expect(sandboxFlowResponse.flowUsages).toEqual([]);
   });
 
-  it('handles invalid system read-file ids without throwing in the adapter', async () => {
+  it('passes known and dynamically generated URLs directly to read_files', async () => {
     dispatchReadFileToolMock.mockResolvedValue({
-      response: '<file><id>missing</id><content>Load file error</content></file>',
+      response:
+        '<file><url>https://files/missing.pdf</url><content>Load file error</content></file>',
       usages: [],
       flowResponse: {
         flowResponses: [
@@ -595,7 +595,7 @@ describe('runToolCall compression node responses', () => {
         type: 'function',
         function: {
           name: 'read_files',
-          arguments: '{"ids":["known","missing"]}'
+          arguments: '{"urls":["https://files/known.pdf","https://files/missing.pdf"]}'
         }
       };
       const fileResult = await options.runtime.systemTools.readFile.execute({
@@ -615,27 +615,11 @@ describe('runToolCall compression node responses', () => {
       return createLoopResult();
     });
 
-    const result = await runToolCall(
-      createProps({
-        allFiles: new Map([
-          ['known', { id: 'known', name: 'known.pdf', url: 'https://files/known.pdf' }]
-        ])
-      })
-    );
+    const result = await runToolCall(createProps());
 
     expect(dispatchReadFileToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        files: [
-          {
-            id: 'known',
-            name: 'known.pdf',
-            url: 'https://files/known.pdf'
-          },
-          {
-            id: 'missing',
-            url: ''
-          }
-        ],
+        files: [{ url: 'https://files/known.pdf' }, { url: 'https://files/missing.pdf' }],
         toolCallId: 'call_read'
       })
     );

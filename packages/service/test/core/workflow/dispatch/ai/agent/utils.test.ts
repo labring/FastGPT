@@ -20,22 +20,22 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
 }));
 
 describe('Agent read_files tool protocol', () => {
-  it('defines read_files with ids parameter', async () => {
+  it('defines read_files with urls parameter', async () => {
     const readFileTool = createReadFilesTool();
 
     expect(readFileTool.function.name).toBe(READ_FILES_TOOL_NAME);
     expect(readFileTool.function.parameters).toEqual({
       type: 'object',
       properties: {
-        ids: {
+        urls: {
           type: 'array',
           items: {
             type: 'string'
           },
-          description: 'File IDs'
+          description: 'Absolute HTTP(S) file URLs'
         }
       },
-      required: ['ids']
+      required: ['urls']
     });
   });
 

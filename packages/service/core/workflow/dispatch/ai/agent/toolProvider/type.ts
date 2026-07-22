@@ -7,7 +7,6 @@ import type { SubAppRuntimeType } from '../type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type WorkflowAgentToolProviderContext = ToolDispatchContext & {
-  filesMap: UseUserContextResult['filesMap'];
   currentFiles: UseUserContextResult['currentFiles'];
 };
 

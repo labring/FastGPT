@@ -55,7 +55,7 @@ describe('useToolMessages', () => {
         ? userQuery.find((item) => item.text)?.text?.content
         : userQuery;
 
-      return `formatted:${text}:${files.map((file: { id: string }) => file.id).join(',')}`;
+      return `formatted:${text}:${files.map((file: { url: string }) => file.url).join(',')}`;
     });
   });
 
@@ -104,27 +104,15 @@ describe('useToolMessages', () => {
       {
         dataId: 'response_1',
         obj: ChatRoleEnum.Human,
-        value: 'formatted:question:response_1-0'
+        value: 'formatted:question:https://files/a.pdf'
       }
     ]);
     expect(result.currentInputFiles).toEqual([
       {
-        id: 'response_1-0',
         name: 'a.pdf',
         url: 'https://files/a.pdf',
         sandboxPath: `${SANDBOX_USER_FILES_PATH}a.pdf`
       }
-    ]);
-    expect([...result.allFiles.entries()]).toEqual([
-      [
-        'response_1-0',
-        {
-          id: 'response_1-0',
-          name: 'a.pdf',
-          url: 'https://files/a.pdf',
-          sandboxPath: `${SANDBOX_USER_FILES_PATH}a.pdf`
-        }
-      ]
     ]);
   });
 
@@ -175,7 +163,7 @@ describe('useToolMessages', () => {
       {
         dataId: 'history_1',
         obj: ChatRoleEnum.Human,
-        value: 'formatted:history question:history_1-0'
+        value: 'formatted:history question:https://files/a.pdf'
       },
       {
         obj: ChatRoleEnum.AI,

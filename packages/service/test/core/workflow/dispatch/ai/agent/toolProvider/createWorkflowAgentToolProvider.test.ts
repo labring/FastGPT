@@ -46,7 +46,6 @@ const createContext = (overrides: Record<string, any> = {}) =>
     params: {
       model: 'gpt-4'
     },
-    filesMap: {},
     currentFiles: [],
     runningUserInfo: {
       teamId: 'team_1',
@@ -174,7 +173,7 @@ describe('createWorkflowAgentToolProvider', () => {
     });
   });
 
-  it('creates read file executor from workflow agent file context', async () => {
+  it('creates read file executor for direct model URLs', async () => {
     dispatchFileReadMock.mockResolvedValue({
       response: 'file content',
       usages: [],
@@ -185,13 +184,7 @@ describe('createWorkflowAgentToolProvider', () => {
     const provider = createWorkflowAgentToolProvider({
       context: createContext({
         usageId: 'usage_1',
-        requestOrigin: 'https://fastgpt.example.com',
-        filesMap: {
-          file_1: {
-            name: 'a.pdf',
-            url: 'https://fastgpt.example.com/api/system/file/d/a'
-          }
-        }
+        requestOrigin: 'https://fastgpt.example.com'
       })
     });
 
@@ -204,7 +197,8 @@ describe('createWorkflowAgentToolProvider', () => {
         type: 'function',
         function: {
           name: 'read_files',
-          arguments: '{"ids":["file_1"]}'
+          arguments:
+            '{"urls":["https://fastgpt.example.com/api/system/file/d/a","https://generated.example.com/result.pdf"]}'
         }
       } as any
     });
@@ -212,11 +206,8 @@ describe('createWorkflowAgentToolProvider', () => {
     expect(dispatchFileReadMock).toHaveBeenCalledWith(
       expect.objectContaining({
         files: [
-          {
-            id: 'file_1',
-            name: 'a.pdf',
-            url: 'https://fastgpt.example.com/api/system/file/d/a'
-          }
+          { url: 'https://fastgpt.example.com/api/system/file/d/a' },
+          { url: 'https://generated.example.com/result.pdf' }
         ],
         teamId: 'team_1',
         tmbId: 'tmb_1',

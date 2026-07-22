@@ -43,7 +43,6 @@ export const useToolMessages = async ({
   runningUserInfo: DispatchToolModuleProps['runningUserInfo'];
   useSandbox: boolean;
 }) => {
-  const allFiles = new Map<string, FileInputType>();
   const currentInputFiles: FileInputType[] = [];
   const userFiles = getUserFilesFromLinks({ fileLinks });
   const concatenateSystemPrompt = [defaultSystemPrompt, systemPrompt]
@@ -72,7 +71,7 @@ export const useToolMessages = async ({
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
 
   /**
-   * 文件链接会被替换成供 LLM 调用 read_file 的 id。
+   * 文件链接会作为 model URL 暴露给 LLM，供 read_files 和其他工具直接使用。
    * 当前轮输入文件额外记录下来，用于 sandbox 场景先上传到隔离目录。
    */
   const messages = await Promise.all(
@@ -82,9 +81,8 @@ export const useToolMessages = async ({
       }
 
       /**
-       * 重写 human query，把文件 URL 替换成 read_file 可识别的文件 id。
+       * 重写 human query，补充 read_files 可直接使用的文件 URL。
        */
-      const prefixId = message.dataId || `${index}`;
       const query = await formatUserQueryWithFiles({
         userQuery: message.value,
         parseFileFn: async (urls) => {
@@ -97,17 +95,13 @@ export const useToolMessages = async ({
           }).then((res) =>
             res
               .filter((item) => item.success)
-              .map((item, index) => ({
-                id: `${prefixId}-${index}`,
+              .map((item) => ({
                 name: item.name,
                 url: item.url,
                 sandboxPath: useSandbox ? `${SANDBOX_USER_FILES_PATH}${item.name}` : undefined
               }))
           );
 
-          files.forEach((file) => {
-            allFiles.set(file.id, file);
-          });
           if (index === runtimeMessages.length - 1) {
             currentInputFiles.push(...files);
           }
@@ -125,7 +119,6 @@ export const useToolMessages = async ({
 
   return {
     messages,
-    allFiles,
     currentInputFiles
   };
 };

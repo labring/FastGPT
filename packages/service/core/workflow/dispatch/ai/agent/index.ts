@@ -204,7 +204,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
     });
     // 获取请求上下文
-    const { chatHistories, queryInput, fileUrlMap, filesMap } = userContext;
+    const { chatHistories, queryInput } = userContext;
     const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -251,8 +251,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getSubAppInfo,
         getSubApp,
         completionTools: agentCompletionTools,
-        fileUrlMap,
-        filesMap,
         currentFiles: userContext.currentFiles,
         sandboxClient,
         streamResponseFn: workflowStreamResponse

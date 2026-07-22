@@ -475,10 +475,12 @@ export const normalizeReadableFileUrl = ({
  */
 const getAuthorizedFileCacheSourceId = async ({
   url,
-  fileContext
+  fileContext,
+  validateExternalUrlDomain = true
 }: {
   url: string;
   fileContext?: FileReadContext;
+  validateExternalUrlDomain?: boolean;
 }) => {
   const fileRef = fileContext?.resolve(url);
   if (fileRef) return fileContext?.getIdentity(url) ?? fileRef.modelUrl;
@@ -491,7 +493,7 @@ const getAuthorizedFileCacheSourceId = async ({
   if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
     throw new UserError('File URL must use HTTP(S)');
   }
-  if (fileContext && !validateFileUrlDomain(url)) {
+  if (fileContext && validateExternalUrlDomain && !validateFileUrlDomain(url)) {
     throw new UserError('Invalid file URL domain');
   }
   if (await isInternalAddress(url)) {
@@ -607,7 +609,8 @@ export const getFileContentByUrl = async ({
   tmbId,
   customPdfParse,
   usageId,
-  fileContext
+  fileContext,
+  validateExternalUrlDomain
 }: {
   url: string;
   teamId: string;
@@ -615,8 +618,14 @@ export const getFileContentByUrl = async ({
   customPdfParse?: boolean;
   usageId?: string;
   fileContext?: FileReadContext;
+  /** 动态工具 URL 可跳过上传文件域名白名单，底层仍执行 HTTP(S)、SSRF 和大小校验。 */
+  validateExternalUrlDomain?: boolean;
 }) => {
-  const sourceId = await getAuthorizedFileCacheSourceId({ url, fileContext });
+  const sourceId = await getAuthorizedFileCacheSourceId({
+    url,
+    fileContext,
+    validateExternalUrlDomain
+  });
   // Get from buffer
   const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
     sourceId,

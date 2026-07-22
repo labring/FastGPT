@@ -9,7 +9,6 @@ import {
   AgentNodeResponseDisplay,
   type AgentLoopCoreToolRunFlowResponse
 } from '../../agentLoopCore/interface';
-import type { FileInputType } from '../type';
 import { getWorkflowFileContext } from '../../../../utils/context';
 
 const logger = getLogger(LogCategories.MODULE.AI.TOOL_CALL);
@@ -23,28 +22,8 @@ export const ReadFileToolDisplay = {
   avatar: AgentNodeResponseDisplay.readFile.moduleLogo
 };
 
-export const getToolCallFileUrl = ({
-  id,
-  allFiles,
-  fileUrlList
-}: {
-  id: string;
-  allFiles: Map<string, FileInputType>;
-  fileUrlList?: string[];
-}) => {
-  const file = allFiles.get(id);
-  if (file?.url) return file.url;
-
-  const index = Number(id);
-  if (Array.isArray(fileUrlList) && Number.isInteger(index) && index >= 0) {
-    return fileUrlList[index] || '';
-  }
-
-  return '';
-};
-
 type FileReadParams = {
-  files: { id: string; name?: string; url: string }[];
+  files: { name?: string; url: string }[];
   toolCallId: string;
 
   teamId: string;
@@ -83,7 +62,7 @@ export const dispatchReadFileTool = async ({
 
   try {
     const readFilesResult = await Promise.all(
-      files.map(async ({ url, id, name: inputName }) => {
+      files.map(async ({ url, name: inputName }) => {
         try {
           const { name, content } = await getFileContentByUrl({
             url,
@@ -91,17 +70,18 @@ export const dispatchReadFileTool = async ({
             tmbId,
             customPdfParse,
             usageId,
-            fileContext: getWorkflowFileContext()
+            fileContext: getWorkflowFileContext(),
+            validateExternalUrlDomain: false
           });
 
           return {
-            id,
+            url,
             name: inputName || name,
             content
           };
         } catch (error) {
           return {
-            id,
+            url,
             name: inputName || url,
             content: getErrText(error, 'Load file error')
           };
@@ -113,7 +93,7 @@ export const dispatchReadFileTool = async ({
     const response = readFilesResult
       .map(
         (file) => `<file>
-<id>${file.id}</id>
+<url>${file.url}</url>
 <name>${file.name}</name>
 <content>${file.content}</content>
 </file>`
@@ -126,7 +106,7 @@ export const dispatchReadFileTool = async ({
       flowResponse: getFlowResponse({
         readFiles: readFilesResult.map((file) => ({
           name: file.name,
-          url: files.find((item) => item.id === file.id)?.url || ''
+          url: file.url
         }))
       })
     };

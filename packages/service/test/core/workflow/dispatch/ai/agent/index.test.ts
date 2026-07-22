@@ -333,8 +333,10 @@ describe('dispatchRunAgent user context', () => {
     const historyText = getMessageTextForTest(loopInput.messages[0].content);
     const currentText = getMessageTextForTest(loopInput.messages[1].content);
     expect(loopInput.messages.map((message: any) => message.role)).toEqual(['user', 'user']);
-    expect(historyText).toContain('<id>history_human_1-0</id>');
-    expect(currentText).toContain('<id>current_ai_1-0</id>');
+    expect(historyText).toContain('<url>https://files.example.com/old.pdf</url>');
+    expect(currentText).toContain('<url>https://files.example.com/current.pdf</url>');
+    expect(historyText).not.toContain('<id>');
+    expect(currentText).not.toContain('<id>current_ai_1-');
     expect(historyText).not.toContain('## 知识库');
     expect(historyText).not.toContain('## 背景信息');
     expect(currentText).toContain('## 知识库');

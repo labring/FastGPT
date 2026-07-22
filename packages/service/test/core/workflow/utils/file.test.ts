@@ -85,7 +85,8 @@ import {
   parseFileContentFromUrls,
   parseFileInfoFromUrls,
   normalizeReadableFileUrl,
-  formatUserQueryWithFiles
+  formatUserQueryWithFiles,
+  getFileContentByUrl
 } from '@fastgpt/service/core/chat/fileContext';
 import type {
   WorkflowFileContext,
@@ -285,6 +286,44 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
         url: 'https://blocked.example.com/cached.pdf',
         content: 'Invalid file URL domain'
       });
+    } finally {
+      global.systemEnv = originalSystemEnv;
+    }
+  });
+
+  it('动态工具 URL 可跳过文件域名白名单，但仍先执行内网地址检查', async () => {
+    const originalSystemEnv = global.systemEnv;
+    global.systemEnv = { fileUrlWhitelist: ['allowed.example.com'] } as any;
+    mockGetRawTextBuffer.mockResolvedValue({
+      filename: 'generated.pdf',
+      text: 'generated content'
+    });
+
+    try {
+      mockIsInternalAddress.mockResolvedValue(false);
+      await expect(
+        getFileContentByUrl({
+          url: 'https://generated.example.com/result.pdf',
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          fileContext: createEmptyWorkflowFileContext(),
+          validateExternalUrlDomain: false
+        })
+      ).resolves.toMatchObject({
+        name: 'generated.pdf',
+        content: 'generated content'
+      });
+
+      mockIsInternalAddress.mockResolvedValue(true);
+      await expect(
+        getFileContentByUrl({
+          url: 'http://internal.svc/result.pdf',
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          fileContext: createEmptyWorkflowFileContext(),
+          validateExternalUrlDomain: false
+        })
+      ).rejects.toThrow(PRIVATE_URL_TEXT);
     } finally {
       global.systemEnv = originalSystemEnv;
     }
@@ -993,10 +1032,9 @@ describe('formatUserQueryWithFiles', () => {
     }
   });
 
-  it('把 parseFileFn 返回的 id、sandboxPath 和 content 注入到文本 prompt', async () => {
+  it('把 parseFileFn 返回的 URL、sandboxPath 和 content 注入到文本 prompt', async () => {
     const parseFileFn = vi.fn(async () => [
       {
-        id: 'file-1',
         name: 'a.pdf',
         url: '/a.pdf',
         sandboxPath: 'user_files/a.pdf',
@@ -1020,7 +1058,7 @@ describe('formatUserQueryWithFiles', () => {
 
     const content = result[0].text?.content;
     expect(content).toContain('总结这个文件');
-    expect(content).toContain('<id>file-1</id>');
+    expect(content).not.toContain('<id>');
     expect(content).toContain('<name>a.pdf</name>');
     expect(content).toContain('<url>/a.pdf</url>');
     expect(content).toContain('<sandboxPath>user_files/a.pdf</sandboxPath>');

@@ -52,7 +52,6 @@ const createContext = (overrides = {}) =>
       toolDescription: ''
     }),
     getSubApp: vi.fn(),
-    filesMap: {},
     currentFiles: [],
     runningAppInfo: {
       id: 'app_1'
@@ -220,7 +219,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     );
   });
 
-  it('exposes readFile as a internal tool executor when files are available', async () => {
+  it('exposes readFile as an internal tool executor for direct model URLs', async () => {
     dispatchFileReadMock.mockResolvedValue({
       response: 'file content',
       usages: [],
@@ -232,14 +231,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }
     });
     const { runtime } = createWorkflowAgentLoopRuntime({
-      context: createContext({
-        filesMap: {
-          file_1: {
-            name: 'a.pdf',
-            url: 'https://files/a.pdf'
-          }
-        }
-      }),
+      context: createContext(),
       usagePush: vi.fn(),
       executeToolFactory: vi.fn()
     });
@@ -249,13 +241,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       call: toolCall({
         id: 'call_read_file',
         name: 'read_files',
-        args: '{"ids":["file_1"]}'
+        args: '{"urls":["https://files/a.pdf"]}'
       })
     });
 
     expect(dispatchFileReadMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        files: [{ id: 'file_1', name: 'a.pdf', url: 'https://files/a.pdf' }]
+        files: [{ url: 'https://files/a.pdf' }]
       })
     );
     expect(result).toEqual(

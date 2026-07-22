@@ -265,7 +265,7 @@ describe('runFastAgentLoop', () => {
         id: 'read_file_call',
         name: 'read_files',
         args: {
-          ids: ['file_1']
+          urls: ['https://files.example.com/file_1']
         }
       }),
       text({
@@ -342,7 +342,7 @@ describe('runFastAgentLoop', () => {
         id: 'runtime_read_file_call',
         name: 'read_files',
         args: {
-          ids: ['file_1']
+          urls: ['https://files.example.com/file_1']
         }
       }),
       text({

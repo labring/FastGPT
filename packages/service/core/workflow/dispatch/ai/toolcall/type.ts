@@ -37,7 +37,6 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   toolNodes: ToolNodeItemType[];
   toolModel: LLMModelItemType;
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<WorkflowInteractiveResponseType>;
-  allFiles: Map<string, FileInputType>;
   currentInputFiles: FileInputType[];
   sandboxClient?: SandboxClient;
 };
@@ -55,7 +54,6 @@ export type ToolNodeItemType = {
 };
 
 export type FileInputType = {
-  id: string;
   name: string;
   url: string;
   sandboxPath?: string;

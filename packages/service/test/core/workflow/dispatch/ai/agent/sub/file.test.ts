@@ -28,7 +28,6 @@ describe('dispatchFileRead', () => {
     const result = await dispatchFileRead({
       files: [
         {
-          id: 'file_0',
           name: 'input-doc.txt',
           url: 'https://fastgpt.example.com/api/system/file/d/doc'
         }
@@ -44,12 +43,14 @@ describe('dispatchFileRead', () => {
       teamId: 'team_1',
       tmbId: 'tmb_1',
       customPdfParse: true,
-      usageId: 'usage_1'
+      usageId: 'usage_1',
+      fileContext: undefined,
+      validateExternalUrlDomain: false
     });
     expect(result.response).toBe(
       JSON.stringify([
         {
-          id: 'file_0',
+          url: 'https://fastgpt.example.com/api/system/file/d/doc',
           name: 'input-doc.txt',
           content: 'large file content'
         }
@@ -75,12 +76,10 @@ describe('dispatchFileRead', () => {
     const result = await dispatchFileRead({
       files: [
         {
-          id: 'file_1',
           name: 'failed.docx',
           url: 'https://example.com/error.docx'
         },
         {
-          id: 'file_2',
           url: 'https://example.com/error-without-name.docx'
         }
       ],
@@ -91,12 +90,12 @@ describe('dispatchFileRead', () => {
     expect(result.response).toBe(
       JSON.stringify([
         {
-          id: 'file_1',
+          url: 'https://example.com/error.docx',
           name: 'failed.docx',
           content: 'download failed'
         },
         {
-          id: 'file_2',
+          url: 'https://example.com/error-without-name.docx',
           name: '',
           content: 'download failed'
         }
@@ -108,7 +107,6 @@ describe('dispatchFileRead', () => {
     const result = await dispatchFileRead({
       files: [
         {
-          id: 'file_2',
           url: 'https://example.com/doc.txt'
         }
       ],
@@ -119,7 +117,7 @@ describe('dispatchFileRead', () => {
     expect(result.response).toBe(
       JSON.stringify([
         {
-          id: 'file_2',
+          url: 'https://example.com/doc.txt',
           name: 'doc.txt',
           content: 'large file content'
         }
