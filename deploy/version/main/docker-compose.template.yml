@@ -161,7 +161,7 @@ services:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config, *x-no-proxy-config]
       HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
-      # 必填。客户端访问 FastGPT 的 origin，用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。
+      # 必填。客户端访问 FastGPT 时使用的地址，由协议、主机和可选端口组成，用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。
       FE_DOMAIN:
       # root key（最高权限）
       ROOT_KEY: *x-system-key
