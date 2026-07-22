@@ -23,3 +23,14 @@ export const createAgentSandboxPermissionDeniedError = () =>
  */
 export const createAgentSandboxInitializingError = () =>
   new UserError(SandboxErrEnum.agentSandboxInitializing);
+
+/**
+ * 生成 runtime 镜像升级阻断错误。
+ *
+ * Agent 会先通过 sandboxStatus SSE 告知前端升级状态；该错误只负责终止本轮 workflow，
+ * 避免继续使用旧镜像。
+ */
+export const createSandboxRuntimeUpgradeRequiredError = (upgrading = false) =>
+  new UserError(
+    upgrading ? SandboxErrEnum.runtimeUpgradeInProgress : SandboxErrEnum.runtimeUpgradeRequired
+  );

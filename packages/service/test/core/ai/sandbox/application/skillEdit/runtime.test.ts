@@ -13,9 +13,8 @@ const mocks = vi.hoisted(() => ({
   getSandboxClient: vi.fn(),
   startSandboxRuntimeUpgradeArchive: vi.fn(),
   countRunningSandboxInstancesBySourceType: vi.fn(),
-  findSandboxInstanceBySandboxId: vi.fn(),
   findSandboxInstanceBySandboxIdAndSource: vi.fn(),
-  findSandboxResourcesBySourceExcludeProvider: vi.fn(),
+  findSandboxResourcesBySource: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn(),
   checkTeamSandboxPermission: vi.fn(),
   prepareSandbox: vi.fn(),
@@ -91,9 +90,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
   countRunningSandboxInstancesBySourceType: mocks.countRunningSandboxInstancesBySourceType,
-  findSandboxInstanceBySandboxId: mocks.findSandboxInstanceBySandboxId,
   findSandboxInstanceBySandboxIdAndSource: mocks.findSandboxInstanceBySandboxIdAndSource,
-  findSandboxResourcesBySourceExcludeProvider: mocks.findSandboxResourcesBySourceExcludeProvider,
+  findSandboxResourcesBySource: mocks.findSandboxResourcesBySource,
   updateSandboxInstanceRecordBySandboxId: mocks.updateSandboxInstanceRecordBySandboxId
 }));
 
@@ -153,12 +151,11 @@ const createResource = (status = 'running', overrides: Record<string, unknown> =
 
 const createContext = (
   params: {
-    existingInstance?: any;
-    statusInstance?: any;
-    staleProviderInstances?: any[];
+    runtimeInstance?: any;
   } = {}
-): SkillEditRuntimeContext =>
-  ({
+): SkillEditRuntimeContext => {
+  const { runtimeInstance } = params;
+  return {
     skillId: 'skill-1',
     teamId: 'team-1',
     tmbId: 'tmb-1',
@@ -174,9 +171,15 @@ const createContext = (
     currentVersion: { _id: 'version-1', skillId: 'skill-1', storageKey: 'storage-key' },
     sessionId: 'edit-debug-skill-1',
     targetVersionId: 'version-1',
-    existingInstance: params.statusInstance ?? params.existingInstance ?? null,
-    staleProviderInstances: params.staleProviderInstances ?? []
-  }) as any;
+    runtimeUpgradeTarget: {
+      sandboxId: 'edit-debug-skill-1',
+      targetProvider: 'opensandbox',
+      targetImage: { repository: 'runtime-image', tag: 'v2' },
+      statusInstance: runtimeInstance,
+      upgradeInstance: runtimeInstance
+    }
+  } as any;
+};
 
 const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error | null }) => ({
   execute: vi.fn(async (command: string) => {
@@ -259,106 +262,22 @@ describe('skill edit runtime status', () => {
     vi.clearAllMocks();
   });
 
-  it('reports ready for a matching stable runtime and upgradeRequired for an outdated image', async () => {
+  it('uses the shared runtime target for status checks and upgrades', async () => {
     await expect(
-      getSkillEditRuntimeStatus({ context: createContext({ existingInstance: createResource() }) })
-    ).resolves.toMatchObject({ status: 'readyToInit', shouldInit: true });
+      getSkillEditRuntimeStatus({ context: createContext({ runtimeInstance: createResource() }) })
+    ).resolves.toEqual({ status: 'readyToInit' });
 
-    await expect(
-      getSkillEditRuntimeStatus({
-        context: createContext({
-          existingInstance: createResource('running', {
-            metadata: { image: { repository: 'old-image', tag: 'v1' }, versionId: 'version-1' }
-          })
-        })
-      })
-    ).resolves.toMatchObject({ status: 'upgradeRequired', canUpgrade: true });
-  });
-
-  it('reads archiving and failure only from top-level status and operation', async () => {
-    const archiving = createResource('archiving', {
-      metadata: {
-        operation: {
-          id: 'archive-1',
-          type: 'archive',
-          phase: 'claimed',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      }
-    });
-    await expect(
-      getSkillEditRuntimeStatus({
-        context: createContext({ statusInstance: archiving })
-      })
-    ).resolves.toMatchObject({ status: 'upgrading', archiveState: 'archiving' });
-
-    archiving.metadata.operation.error = 'upload failed';
-    await expect(
-      getSkillEditRuntimeStatus({
-        context: createContext({ statusInstance: archiving })
-      })
-    ).resolves.toMatchObject({
-      status: 'upgradeRequired',
-      archiveState: 'failed',
-      lastError: 'upload failed'
-    });
-  });
-
-  it('lets archived and stale failed restoring records enter init', async () => {
-    await expect(
-      getSkillEditRuntimeStatus({
-        context: createContext({ statusInstance: createResource('archived') })
-      })
-    ).resolves.toMatchObject({ status: 'readyToInit', archiveState: 'archived' });
-
-    const restoring = createResource('restoring', {
-      metadata: {
-        operation: {
-          id: 'restore-1',
-          type: 'restore',
-          phase: 'claimed',
-          startedAt: new Date(0),
-          heartbeatAt: new Date(0),
-          error: 'worker stopped'
-        }
-      }
-    });
-    await expect(
-      getSkillEditRuntimeStatus({
-        context: createContext({ statusInstance: restoring })
-      })
-    ).resolves.toMatchObject({
-      status: 'readyToInit',
-      archiveState: 'restoring',
-      shouldPoll: false
-    });
-  });
-
-  it('keeps a fresh restoring operation in polling state', async () => {
-    const restoring = createResource('restoring', {
-      metadata: {
-        operation: {
-          id: 'restore-1',
-          type: 'restore',
-          phase: 'claimed',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      }
-    });
-
-    await expect(
-      getSkillEditRuntimeStatus({
-        context: createContext({ statusInstance: restoring })
-      })
-    ).resolves.toMatchObject({ status: 'upgrading', archiveState: 'restoring', shouldPoll: true });
-  });
-
-  it('starts archive only for an upgradeable stable runtime', async () => {
     const outdated = createResource('running', {
-      metadata: { image: { repository: 'old-image', tag: 'v1' }, versionId: 'version-1' }
+      metadata: {
+        image: { repository: 'old-image', tag: 'v1' },
+        versionId: 'version-1'
+      }
     });
+    await expect(
+      getSkillEditRuntimeStatus({
+        context: createContext({ runtimeInstance: outdated })
+      })
+    ).resolves.toEqual({ status: 'upgradeRequired' });
     mocks.startSandboxRuntimeUpgradeArchive.mockResolvedValueOnce({
       success: true,
       archivingDoc: createResource('archiving')
@@ -366,9 +285,9 @@ describe('skill edit runtime status', () => {
 
     await expect(
       triggerSkillEditRuntimeUpgrade({
-        context: createContext({ existingInstance: outdated })
+        context: createContext({ runtimeInstance: outdated })
       })
-    ).resolves.toMatchObject({ status: 'upgrading', archiveState: 'archiving' });
+    ).resolves.toEqual({ status: 'upgrading' });
     expect(mocks.startSandboxRuntimeUpgradeArchive).toHaveBeenCalledWith(outdated);
   });
 });
@@ -396,7 +315,7 @@ describe('skill edit runtime initialization', () => {
     const stopped = createResource('stopped');
 
     await initSkillEditRuntimeSandbox({
-      context: createContext({ existingInstance: stopped })
+      context: createContext({ runtimeInstance: stopped })
     });
 
     expect(mocks.getSandboxClient).toHaveBeenCalledWith(
@@ -428,7 +347,7 @@ describe('skill edit runtime initialization', () => {
     });
 
     await initSkillEditRuntimeSandbox({
-      context: createContext({ statusInstance: archived })
+      context: createContext({ runtimeInstance: archived })
     });
 
     expect(mocks.updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
@@ -461,7 +380,7 @@ describe('skill edit runtime initialization', () => {
     mocks.prepareSandbox.mockRejectedValueOnce(new Error('deploy failed'));
     await expect(
       initSkillEditRuntimeSandbox({
-        context: createContext({ existingInstance: createResource('running') })
+        context: createContext({ runtimeInstance: createResource('running') })
       })
     ).rejects.toThrow('deploy failed');
     expect(client.delete).not.toHaveBeenCalled();
@@ -482,8 +401,7 @@ describe('skill edit runtime context and read-only query', () => {
       skillId: 'skill-1',
       storageKey: 'storage-key'
     });
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValue(null);
-    mocks.findSandboxResourcesBySourceExcludeProvider.mockResolvedValue([]);
+    mocks.findSandboxResourcesBySource.mockResolvedValue([]);
   });
 
   it('checks permission before reading skill runtime context', async () => {

@@ -51,6 +51,7 @@ import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '.
 import { assertSandboxSourceActive } from '../sourceGuard';
 import { isRedisLeaseError } from '../../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../../error';
+import { resolveSandboxRuntimeImage } from './image';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -126,6 +127,11 @@ export class SandboxClient {
   async ensureAvailable() {
     const sourceGuard = this.opts.sourceGuard ?? assertSandboxSourceActive;
     await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+    const runtimeImage = resolveSandboxRuntimeImage({
+      provider: this.providerName,
+      sandboxId: this.sandboxId,
+      createConfig: this.opts.createConfig
+    });
     const instanceParams = {
       provider: this.providerName,
       sandboxId: this.sandboxId,
@@ -177,7 +183,13 @@ export class SandboxClient {
         if (!allowRecordCreate) {
           throw new Error('Sandbox record disappeared before lifecycle operation was claimed');
         }
-        const created = await createSandboxProvisioningInstance(instanceParams);
+        const created = await createSandboxProvisioningInstance({
+          ...instanceParams,
+          metadata: {
+            ...instanceParams.metadata,
+            ...(runtimeImage ? { image: runtimeImage } : {})
+          }
+        });
         current = created.instance;
         createdHere = created.created;
       }

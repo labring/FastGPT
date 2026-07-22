@@ -28,7 +28,8 @@ const mocks = vi.hoisted(() => ({
   withSandboxSourceMutationLease: vi.fn(),
   assertSandboxSourceActive: vi.fn(),
   isRedisLeaseError: vi.fn(),
-  createAgentSandboxInitializingError: vi.fn()
+  createAgentSandboxInitializingError: vi.fn(),
+  resolveSandboxRuntimeImage: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -99,6 +100,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/error', () => ({
   createAgentSandboxInitializingError: mocks.createAgentSandboxInitializingError
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/image', () => ({
+  resolveSandboxRuntimeImage: mocks.resolveSandboxRuntimeImage
+}));
+
 import {
   getSandboxClient,
   SandboxClient
@@ -165,6 +170,10 @@ describe('sandbox runtime client lifecycle', () => {
     );
     mocks.isRedisLeaseError.mockReturnValue(false);
     mocks.createAgentSandboxInitializingError.mockReturnValue(new Error('Sandbox is initializing'));
+    mocks.resolveSandboxRuntimeImage.mockReturnValue({
+      repository: 'fastgpt/sandbox',
+      tag: 'v2'
+    });
   });
 
   it('uses the running-only touch fast path without taking a lifecycle lease', async () => {
@@ -233,6 +242,14 @@ describe('sandbox runtime client lifecycle', () => {
     );
     expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'provision-1', phase: 'providerEnsured' })
+    );
+    expect(mocks.createSandboxProvisioningInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {
+          volumeEnabled: false,
+          image: { repository: 'fastgpt/sandbox', tag: 'v2' }
+        }
+      })
     );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ fromStatus: 'provisioning', status: 'running', touchActive: true })
