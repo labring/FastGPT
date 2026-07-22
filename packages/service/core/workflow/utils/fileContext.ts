@@ -1,6 +1,5 @@
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
@@ -35,7 +34,6 @@ export type WorkflowFileSource =
     };
 
 export type WorkflowFileRef = {
-  id: string;
   name: string;
   type: ChatFileTypeEnum;
   modelUrl: string;
@@ -57,9 +55,9 @@ export type WorkflowFileReadResult = {
 
 export type WorkflowFileContext = {
   limits: WorkflowFileLimits;
-  resolve: (urlOrId: string) => WorkflowFileRef | undefined;
+  resolve: (url: string) => WorkflowFileRef | undefined;
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
-  getIdentity: (urlOrId: string) => string | undefined;
+  getIdentity: (url: string) => string | undefined;
   resolveInputFile: (file: RawChatFileValue) => WorkflowFileRef | undefined;
   read: (target: string | WorkflowFileRef) => Promise<WorkflowFileReadResult>;
   derive: (files: WorkflowFileInput[]) => WorkflowFileContext;
@@ -162,7 +160,6 @@ const createDerivedWorkflowFileContext = ({
   parent: WorkflowFileContext;
   files: WorkflowFileInput[];
 }): WorkflowFileContext => {
-  const byId = new Map<string, WorkflowFileRef>();
   const byRuntimeUrl = new Map<string, WorkflowFileRef>();
   const byIdentity = new Map<string, WorkflowFileRef>();
   const refIdentity = new WeakMap<WorkflowFileRef, string>();
@@ -185,7 +182,6 @@ const createDerivedWorkflowFileContext = ({
       return existingRef;
     }
 
-    byId.set(ref.id, ref);
     byRuntimeUrl.set(ref.modelUrl, ref);
     aliases.forEach((url) => byRuntimeUrl.set(url, ref));
     byIdentity.set(identity, ref);
@@ -209,7 +205,7 @@ const createDerivedWorkflowFileContext = ({
           : undefined;
 
     if (parentRef) {
-      const identity = parent.getIdentity(parentRef.id);
+      const identity = parent.getIdentity(parentRef.modelUrl);
       if (!identity) throw new UserError('Parent workflow file identity is unavailable');
       addRef({
         ref: parentRef,
@@ -243,7 +239,6 @@ const createDerivedWorkflowFileContext = ({
     const identity = getExternalIdentity(storeValue.url);
     addRef({
       ref: {
-        id: `workflow-file-${getNanoid()}`,
         name: storeValue.name,
         type: storeValue.type,
         modelUrl: storeValue.url,
@@ -257,7 +252,7 @@ const createDerivedWorkflowFileContext = ({
     });
   }
 
-  const resolve = (urlOrId: string) => byId.get(urlOrId) ?? byRuntimeUrl.get(urlOrId);
+  const resolve = (url: string) => byRuntimeUrl.get(url);
   const resolveInputFile = (file: RawChatFileValue) => {
     const key = 'key' in file && typeof file.key === 'string' ? file.key : undefined;
     if (key) return byIdentity.get(`chat:${key}`);
@@ -278,8 +273,8 @@ const createDerivedWorkflowFileContext = ({
         url: ref.modelUrl
       };
     },
-    getIdentity: (urlOrId) => {
-      const ref = resolve(urlOrId);
+    getIdentity: (url) => {
+      const ref = resolve(url);
       return ref ? refIdentity.get(ref) : undefined;
     },
     read: async (target) => {
@@ -329,7 +324,6 @@ export const prepareWorkflowFileContext = async ({
     expiredHours: WORKFLOW_FILE_URL_EXPIRED_HOURS
   })
 }: PrepareWorkflowFileContextParams): Promise<PreparedWorkflowFileContext> => {
-  const byId = new Map<string, WorkflowFileRef>();
   const byRuntimeUrl = new Map<string, WorkflowFileRef>();
   const byIdentity = new Map<string, WorkflowFileRef>();
   const refIdentity = new WeakMap<WorkflowFileRef, string>();
@@ -428,7 +422,6 @@ export const prepareWorkflowFileContext = async ({
     }
 
     const ref: WorkflowFileRef = {
-      id: `workflow-file-${getNanoid()}`,
       name:
         file.name ||
         (fileSource.type === 'chatObject'
@@ -439,7 +432,6 @@ export const prepareWorkflowFileContext = async ({
       source: fileSource
     };
 
-    byId.set(ref.id, ref);
     byRuntimeUrl.set(modelUrl, ref);
     if (isAbsoluteHttpUrl(originalUrl)) byRuntimeUrl.set(originalUrl, ref);
     byIdentity.set(identity, ref);
@@ -465,7 +457,7 @@ export const prepareWorkflowFileContext = async ({
     maxBytesPerFile: maxFileSize
   };
 
-  const resolve = (urlOrId: string) => byId.get(urlOrId) ?? byRuntimeUrl.get(urlOrId);
+  const resolve = (url: string) => byRuntimeUrl.get(url);
   const resolveInputFile = (file: RawChatFileValue) => {
     const key = 'key' in file && typeof file.key === 'string' ? file.key : undefined;
     if (key) return byIdentity.get(`chat:${key}`);
@@ -535,8 +527,8 @@ export const prepareWorkflowFileContext = async ({
         url: ref.modelUrl
       };
     },
-    getIdentity: (urlOrId) => {
-      const ref = resolve(urlOrId);
+    getIdentity: (url) => {
+      const ref = resolve(url);
       return ref ? refIdentity.get(ref) : undefined;
     },
     read,

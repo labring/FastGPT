@@ -5,9 +5,9 @@ import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/cor
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getAIChatFileContextConfig,
-  getInputFiles,
-  rewriteChatMessagesWithFiles
+  getInputFiles
 } from '../../../../../core/workflow/dispatch/ai/chat';
+import { rewriteChatMessagesWithFileContext } from '../../../../../core/chat/fileContext';
 import { runWithContext } from '../../../../../core/workflow/utils/context';
 import { loadRequestMessages } from '../../../../../core/ai/llm/utils';
 import { serviceEnv } from '../../../../../env';
@@ -140,7 +140,7 @@ describe('getInputFiles', () => {
   });
 });
 
-describe('rewriteChatMessagesWithFiles', () => {
+describe('rewriteChatMessagesWithFileContext', () => {
   const parseFileFn = vi.fn(async (urls: string[]) =>
     urls.map((url) => ({
       name: url.split('/').pop() || 'file.pdf',
@@ -154,7 +154,7 @@ describe('rewriteChatMessagesWithFiles', () => {
   });
 
   it('禁用历史文件解析时只解析当前轮 Human 文件', async () => {
-    const result = await rewriteChatMessagesWithFiles({
+    const result = await rewriteChatMessagesWithFileContext({
       messages: [
         createHumanMessage({
           text: '历史问题',
@@ -192,7 +192,7 @@ describe('rewriteChatMessagesWithFiles', () => {
   });
 
   it('启用历史文件解析时会解析历史和当前轮 Human 文件', async () => {
-    const result = await rewriteChatMessagesWithFiles({
+    const result = await rewriteChatMessagesWithFileContext({
       messages: [
         createHumanMessage({
           text: '历史问题',

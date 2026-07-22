@@ -34,7 +34,6 @@ export const buildReadFilesOutputText = (
 
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
-    requestOrigin,
     runningUserInfo: { teamId, tmbId },
     histories,
     chatConfig,
@@ -52,7 +51,6 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     const readFilesResult = await parseFileContentFromUrls({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
-      requestOrigin,
       maxFiles,
       teamId,
       tmbId,

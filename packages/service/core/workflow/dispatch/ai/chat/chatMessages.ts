@@ -8,8 +8,10 @@ import {
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { ChatDispatchProps } from '../../../types/runtime';
-import { parseFileContentFromUrls } from '../../../../chat/fileContext';
-import { rewriteChatMessagesWithFiles } from './fileContext';
+import {
+  parseFileContentFromUrls,
+  rewriteChatMessagesWithFileContext
+} from '../../../../chat/fileContext';
 import { getWorkflowFileContext } from '../../../utils/context';
 
 /**
@@ -24,7 +26,6 @@ export const getChatMessages = async ({
   userChatInput,
   userFiles,
   parseHistoryFiles,
-  requestOrigin,
   maxFiles,
   customPdfParse,
   usageId,
@@ -41,7 +42,6 @@ export const getChatMessages = async ({
   userFiles: UserChatItemFileItemType[];
   parseHistoryFiles: boolean;
 
-  requestOrigin?: string;
   maxFiles: number;
   customPdfParse?: boolean;
   usageId?: string;
@@ -67,13 +67,12 @@ export const getChatMessages = async ({
     }
   ];
 
-  const messages = await rewriteChatMessagesWithFiles({
+  const messages = await rewriteChatMessagesWithFileContext({
     messages: rawUserMessages,
     parseHistoryFiles,
     parseFileFn: async (urls) => {
       const files = await parseFileContentFromUrls({
         urls,
-        requestOrigin,
         maxFiles,
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,

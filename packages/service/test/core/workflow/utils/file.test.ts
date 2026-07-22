@@ -156,8 +156,7 @@ describe('normalizeReadableFileUrl', () => {
   it('标准化可读取的文档 URL，并过滤非文档 URL', () => {
     expect(
       normalizeReadableFileUrl({
-        url: ' http://localhost:3000/a.pdf ',
-        requestOrigin: 'http://localhost:3000'
+        url: ' http://localhost:3000/a.pdf '
       })
     ).toBe('http://localhost:3000/a.pdf');
     expect(normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('');
@@ -172,16 +171,7 @@ describe('normalizeReadableFileUrl', () => {
     expect(normalizeReadableFileUrl({ url: 123 as unknown as string })).toBe('');
   });
 
-  it('requestOrigin 不匹配时保留原 URL', () => {
-    expect(
-      normalizeReadableFileUrl({
-        url: 'http://other.example.com/a.pdf',
-        requestOrigin: 'http://localhost:3000'
-      })
-    ).toBe('http://other.example.com/a.pdf');
-  });
-
-  it('requestOrigin 未提供时保留绝对 URL', () => {
+  it('保留绝对 URL', () => {
     expect(normalizeReadableFileUrl({ url: 'http://example.com/a.pdf' })).toBe(
       'http://example.com/a.pdf'
     );
@@ -214,7 +204,6 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
   it('在读取前统一标准化 URL', async () => {
     const result = await parseFileContentFromUrls({
       urls: ['http://localhost:3000/a.pdf', 'https://files.example.com/b.pdf'],
-      requestOrigin: 'http://localhost:3000',
       maxFiles: 20,
       teamId: 'team-1',
       tmbId: 'tmb-1'
@@ -342,7 +331,6 @@ describe('parseFileContentFromUrls (external fetch)', () => {
   it('reads registered private workflow files through the workflow context without axios', async () => {
     const url = 'https://files.example.com/api/system/file/d/signed';
     const ref: WorkflowFileRef = {
-      id: 'workflow-file-1',
       name: 'private.pdf',
       type: ChatFileTypeEnum.file,
       modelUrl: url,
@@ -360,7 +348,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     });
     const fileContext: WorkflowFileContext = {
       limits: { maxFiles: 20, maxBytesPerFile: 1024 },
-      resolve: (value) => (value === url || value === ref.id ? ref : undefined),
+      resolve: (value) => (value === url ? ref : undefined),
       resolveInputFile: (file) => ('url' in file && file.url === url ? ref : undefined),
       resolveChatFile: () => ({
         type: ChatFileTypeEnum.file,
@@ -674,7 +662,6 @@ describe('parseFileContentFromUrls (external fetch)', () => {
 
     const result = await parseFileContentFromUrls({
       urls: [shortUrl],
-      requestOrigin: 'http://localhost:3000',
       maxFiles: 20,
       teamId: 'team-1',
       tmbId: 'tmb-1'

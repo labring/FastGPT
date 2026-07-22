@@ -42,7 +42,7 @@ export type FileReadContext = {
   limits?: {
     maxBytesPerFile: number;
   };
-  resolve: (urlOrId: string) =>
+  resolve: (url: string) =>
     | {
         name: string;
         type: ChatFileTypeEnum;
@@ -50,8 +50,8 @@ export type FileReadContext = {
       }
     | undefined;
   resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
-  getIdentity: (urlOrId: string) => string | undefined;
-  read: (urlOrId: string) => Promise<{
+  getIdentity: (url: string) => string | undefined;
+  read: (url: string) => Promise<{
     buffer: Buffer;
     filename: string;
     contentType?: string;
@@ -61,6 +61,7 @@ export type FileReadContext = {
 };
 
 type GetFileProps = {
+  // Pro 子仓库仍会传入该字段；绝对 URL 读取已不依赖请求来源。
   requestOrigin?: string;
   maxFiles: number;
   customPdfParse?: boolean;
@@ -404,7 +405,7 @@ export const formatAIChatUserQueryWithFiles = async ({
  *
  * 历史 Human 消息是否解析由调用方控制；未解析时会移除历史文件项，避免旧文件继续作为模型文件输入。
  */
-export const rewriteAIChatMessagesWithFileContext = async ({
+export const rewriteChatMessagesWithFileContext = async ({
   messages,
   parseHistoryFiles,
   parseFileFn
@@ -447,20 +448,12 @@ export const rewriteAIChatMessagesWithFileContext = async ({
   );
 };
 
-/**
- * @deprecated Pro 子仓库仍独立引用旧名称；内部 AI Chat 代码应使用语义更明确的新名称。
- */
-export const rewriteChatMessagesWithFileContext = rewriteAIChatMessagesWithFileContext;
-
-/**
- * 格式化文件 URL，移除请求头部分，只保留文件 URL
- */
+/** 将已授权引用或绝对 HTTP(S) URL 归一化为可解析的文档 URL。 */
 export const normalizeReadableFileUrl = ({
   url,
   fileContext
 }: {
   url?: string;
-  requestOrigin?: string;
   fileContext?: FileReadContext;
 }) => {
   if (typeof url !== 'string') return '';
@@ -718,7 +711,6 @@ export const getFileContentByUrl = async ({
 };
 export const parseFileContentFromUrls = async ({
   urls,
-  requestOrigin,
   maxFiles,
   teamId,
   tmbId,
@@ -736,7 +728,7 @@ export const parseFileContentFromUrls = async ({
   }[]
 > => {
   const parseUrlList = urls
-    .map((url) => normalizeReadableFileUrl({ url, requestOrigin, fileContext }))
+    .map((url) => normalizeReadableFileUrl({ url, fileContext }))
     .filter(Boolean)
     .slice(0, maxFiles);
 

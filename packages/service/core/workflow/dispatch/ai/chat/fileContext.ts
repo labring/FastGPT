@@ -1,9 +1,7 @@
-import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { parseUrlToFileType } from '../../../utils/context';
-import { rewriteAIChatMessagesWithFileContext } from '../../../../chat/fileContext';
-import type { ChatMessageFileParser } from './type';
 
 /**
  * 根据 AI Chat 节点的文件链接输入计算文件上下文开关。
@@ -25,29 +23,6 @@ export const getAIChatFileContextConfig = ({
     fileLinks: hasFileUrlInput ? rawFileLinks : undefined,
     parseHistoryFiles: hasFileUrlInput
   };
-};
-
-/**
- * 在发送给 LLM 前把 Human 消息里的普通文件解析为文本。
- *
- * 当前轮 Human 消息始终允许根据已归一化的 `fileLinks` 解析；历史 Human 消息只有在
- * 节点显式绑定文件链接输入时才解析。未绑定时会移除历史 Human 的 file item，避免后续
- * 适配层继续从历史中生成 `file_url` / `image_url`。
- */
-export const rewriteChatMessagesWithFiles = async ({
-  messages,
-  parseHistoryFiles,
-  parseFileFn
-}: {
-  messages: ChatItemMiniType[];
-  parseHistoryFiles: boolean;
-  parseFileFn: ChatMessageFileParser;
-}) => {
-  return rewriteAIChatMessagesWithFileContext({
-    messages,
-    parseHistoryFiles,
-    parseFileFn
-  });
 };
 
 /**
