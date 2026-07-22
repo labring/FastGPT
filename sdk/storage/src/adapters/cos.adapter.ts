@@ -31,7 +31,17 @@ import type {
 import { PassThrough } from 'node:stream';
 import { camelCase, isError, isNotNil, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
-import { encodeObjectKeyPath } from '../utils';
+import {
+  bindAbortSignalToReadable,
+  encodeObjectKeyPath,
+  throwIfStorageDownloadAborted
+} from '../utils';
+import {
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertStorageObjectPrefix,
+  assertRequiredStorageObjectPrefix
+} from '../objectKey';
 
 export class CosStorageAdapter implements IStorage {
   protected readonly client: COS;
@@ -63,6 +73,7 @@ export class CosStorageAdapter implements IStorage {
 
   async checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     let exists = false;
     await new Promise<void>((resolve, reject) => {
@@ -97,6 +108,7 @@ export class CosStorageAdapter implements IStorage {
 
   async getObjectMetadata(params: GetObjectMetadataParams): Promise<GetObjectMetadataResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     const result = await new Promise<COS.HeadObjectResult>((resolve, reject) => {
       this.client.headObject(
@@ -162,6 +174,7 @@ export class CosStorageAdapter implements IStorage {
 
   async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    assertStorageObjectKey(key);
 
     const headers: Record<string, string> = {};
     if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
@@ -200,17 +213,11 @@ export class CosStorageAdapter implements IStorage {
   }
 
   async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
-    params.abortSignal?.throwIfAborted();
+    assertStorageObjectKey(params.key);
+    throwIfStorageDownloadAborted(params.abortSignal);
 
     const passThrough = new PassThrough();
-    const abortDownload = () => {
-      passThrough.destroy();
-    };
-
-    params.abortSignal?.addEventListener('abort', abortDownload, { once: true });
-    passThrough.once('close', () => {
-      params.abortSignal?.removeEventListener('abort', abortDownload);
-    });
+    bindAbortSignalToReadable({ readable: passThrough, abortSignal: params.abortSignal });
 
     this.client.getObject(
       {
@@ -235,6 +242,7 @@ export class CosStorageAdapter implements IStorage {
 
   async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     await new Promise<COS.DeleteObjectResult>((resolve, reject) => {
       this.client.deleteObject(
@@ -260,6 +268,7 @@ export class CosStorageAdapter implements IStorage {
 
   async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
     const { keys } = params;
+    assertStorageObjectKeys(keys);
 
     if (keys.length === 0) {
       return {
@@ -292,9 +301,7 @@ export class CosStorageAdapter implements IStorage {
 
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
-    if (!prefix?.trim()) {
-      throw new Error('Prefix is required');
-    }
+    assertRequiredStorageObjectPrefix(prefix);
 
     const fails: StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
@@ -362,6 +369,7 @@ export class CosStorageAdapter implements IStorage {
 
   async generatePresignedPutUrl(params: PresignedPutUrlParams): Promise<PresignedPutUrlResult> {
     const { key, expiredSeconds, metadata, contentType } = params;
+    assertStorageObjectKey(key);
 
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
@@ -406,6 +414,7 @@ export class CosStorageAdapter implements IStorage {
 
   async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
     const { key, expiredSeconds, responseContentType } = params;
+    assertStorageObjectKey(key);
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
     const url = await new Promise<string>((resolve, reject) => {
@@ -439,6 +448,7 @@ export class CosStorageAdapter implements IStorage {
 
   generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
     const { key } = params;
+    assertStorageObjectKey(key);
     const encodedKey = encodeObjectKeyPath(key);
 
     let url: string;
@@ -457,6 +467,7 @@ export class CosStorageAdapter implements IStorage {
 
   async listObjects(params: ListObjectsParams): Promise<ListObjectsResult> {
     const { prefix } = params;
+    assertStorageObjectPrefix(prefix);
 
     let keys: StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
@@ -499,6 +510,8 @@ export class CosStorageAdapter implements IStorage {
 
   async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
     const { sourceKey, targetKey } = params;
+    assertStorageObjectKey(sourceKey, 'sourceKey');
+    assertStorageObjectKey(targetKey, 'targetKey');
 
     const encodedSourceKey = sourceKey
       .split('/')

@@ -5,6 +5,19 @@ import {
   UploadFileHintSchema,
   UploadPolicySchema
 } from '../uploadPolicy/type';
+import { assertStorageObjectKey } from '@fastgpt-sdk/storage';
+
+/** FastGPT 入口与底层 Storage SDK 共用同一套对象 key 规范。 */
+export const StorageObjectKeySchema = z.string().superRefine((key, context) => {
+  try {
+    assertStorageObjectKey(key);
+  } catch (error) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: error instanceof Error ? error.message : 'Invalid storage object key'
+    });
+  }
+});
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -38,7 +51,7 @@ export type StorageDownloadUrlMode = z.infer<typeof StorageDownloadUrlModeSchema
 
 export const CreatePostPresignedUrlParamsSchema = z.object({
   filename: z.string().min(1),
-  rawKey: z.string().min(1),
+  rawKey: StorageObjectKeySchema,
   contentType: UploadFileHintSchema.shape.contentType,
   declaredExtension: UploadFileHintSchema.shape.declaredExtension,
   declaredFilename: UploadFileHintSchema.shape.declaredFilename,
@@ -64,7 +77,7 @@ export const CreatePostPresignedUrlResultSchema = z.object({
 });
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
 export const CreateGetPresignedUrlParamsSchema = z.object({
-  key: z.string().nonempty(),
+  key: StorageObjectKeySchema,
   expiredHours: z.number().positive().optional(),
   responseContentType: z.string().nonempty().optional()
 });
@@ -74,7 +87,7 @@ export const UploadImage2S3BucketParamsSchema = z
   .object({
     base64Img: z.string().nonempty().optional(),
     buffer: z.instanceof(Buffer).optional(),
-    uploadKey: z.string().nonempty(),
+    uploadKey: StorageObjectKeySchema,
     mimetype: z.string().nonempty(),
     filename: z.string().nonempty(),
     expiredTime: z.coerce.date().optional()
@@ -87,7 +100,7 @@ export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketPara
 export const UploadFileByBodySchema = z.object({
   body: z.union([z.instanceof(Buffer), z.string(), z.instanceof(Readable)]),
   contentType: z.string().optional(),
-  key: z.string().nonempty(),
+  key: StorageObjectKeySchema,
   filename: z.string().nonempty(),
   expiredTime: z.coerce.date().optional()
 });

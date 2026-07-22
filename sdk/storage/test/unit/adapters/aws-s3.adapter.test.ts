@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 import { AwsS3StorageAdapter } from '../../../src/adapters/aws-s3.adapter';
 
@@ -17,6 +17,22 @@ const createAdapter = () =>
   });
 
 describe('AwsS3StorageAdapter.downloadObject', () => {
+  it('rejects a pre-aborted download without dispatching an AWS request', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client.send = send;
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      adapter.downloadObject({
+        key: 'dataset/team/file.txt',
+        abortSignal: controller.signal
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it('passes the caller abort signal to the AWS request handler', async () => {
     const adapter = createAdapter();
     const body = Readable.from([Buffer.from('file')]);
@@ -40,6 +56,24 @@ describe('AwsS3StorageAdapter.downloadObject', () => {
       { abortSignal: controller.signal }
     );
   });
+
+  it('destroys an in-flight body with the caller abort reason', async () => {
+    const adapter = createAdapter();
+    const body = new PassThrough();
+    (adapter as any).client.send = vi.fn().mockResolvedValue({ Body: body });
+    const controller = new AbortController();
+    const abortReason = new Error('client aborted');
+    const result = await adapter.downloadObject({
+      key: 'dataset/team/file.txt',
+      abortSignal: controller.signal
+    });
+    result.body.on('error', () => {});
+
+    controller.abort(abortReason);
+
+    expect(result.body.errored).toBe(abortReason);
+    expect(result.body.destroyed).toBe(true);
+  });
 });
 
 describe('AwsS3StorageAdapter.deleteObjectsByPrefix', () => {
@@ -52,6 +86,25 @@ describe('AwsS3StorageAdapter.deleteObjectsByPrefix', () => {
       'Prefix is required'
     );
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it('preserves failures collected before a later listing page is empty', async () => {
+    const adapter = createAdapter();
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        Contents: [{ Key: 'dataset/failed.txt' }],
+        IsTruncated: true,
+        NextContinuationToken: 'next-page'
+      })
+      .mockResolvedValueOnce({ Errors: [{ Key: 'dataset/failed.txt' }] })
+      .mockResolvedValueOnce({ Contents: [], IsTruncated: false });
+    (adapter as any).client.send = send;
+
+    await expect(adapter.deleteObjectsByPrefix({ prefix: 'dataset/' })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: ['dataset/failed.txt']
+    });
   });
 });
 

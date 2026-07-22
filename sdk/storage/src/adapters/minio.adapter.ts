@@ -19,6 +19,11 @@ import {
   PutBucketPolicyCommand
 } from '@aws-sdk/client-s3';
 import { chunk } from 'es-toolkit';
+import {
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertRequiredStorageObjectPrefix
+} from '../objectKey';
 
 export { NotFound as MinioS3NotFound };
 
@@ -136,6 +141,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
 
   async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     await this.minioClient.removeObject(this.options.bucket, key);
 
@@ -147,6 +153,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
 
   async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
     const { keys } = params;
+    assertStorageObjectKeys(keys);
 
     if (keys.length === 0) {
       return {
@@ -186,9 +193,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     const { prefix } = params;
     const listBatchSize = 400;
 
-    if (!prefix?.trim()) {
-      throw new Error('Prefix is required');
-    }
+    assertRequiredStorageObjectPrefix(prefix);
 
     /** 为单次列举请求设置超时，并主动取消 AWS SDK 底层请求。 */
     const withListRequestTimeout = async <T>({
@@ -205,12 +210,12 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
           promise,
           new Promise<never>((_, reject) => {
             timer = setTimeout(() => {
-              onTimeout();
-              reject(
-                new Error(
-                  `Delete by prefix list timeout after ${minioRequestTimeoutMs}ms: ${prefix}`
-                )
+              const timeoutError = new Error(
+                `Delete by prefix list timeout after ${minioRequestTimeoutMs}ms: ${prefix}`
               );
+              // 先固定 Promise.race 的结果，再 abort 底层请求，避免 AbortError 抢先返回。
+              reject(timeoutError);
+              onTimeout();
             }, minioRequestTimeoutMs);
           })
         ]);

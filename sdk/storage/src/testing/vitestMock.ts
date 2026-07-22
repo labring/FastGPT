@@ -31,6 +31,13 @@ import type {
   UploadObjectParams,
   UploadObjectResult
 } from '../types';
+import {
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertStorageObjectPrefix,
+  assertRequiredStorageObjectPrefix
+} from '../objectKey';
+import { bindAbortSignalToReadable, throwIfStorageDownloadAborted } from '../utils';
 
 type VitestLike = {
   fn: <T extends (...args: any[]) => any>(impl?: T) => Mock<T>;
@@ -101,11 +108,13 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
 
   const checkObjectExists = vi.fn(
     async ({ key }: ExistsObjectParams): Promise<ExistsObjectResult> => {
+      assertStorageObjectKey(key);
       return { bucket: bucketName, key, exists: objects.has(key) };
     }
   );
 
   const uploadObject = vi.fn(async (p: UploadObjectParams): Promise<UploadObjectResult> => {
+    assertStorageObjectKey(p.key);
     const buf = await bodyToBuffer(p.body);
     const contentLength = p.contentLength ?? buf.length;
     objects.set(p.key, {
@@ -120,32 +129,28 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   });
 
   const downloadObject = vi.fn(async (p: DownloadObjectParams): Promise<DownloadObjectResult> => {
-    p.abortSignal?.throwIfAborted();
+    assertStorageObjectKey(p.key);
+    throwIfStorageDownloadAborted(p.abortSignal);
 
     const obj = objects.get(p.key);
     if (!obj) {
       throw new Error(`Object not found: ${p.key}`);
     }
     const body = bufferToReadable(obj.body);
-    const abortDownload = () => {
-      body.destroy();
-    };
-
-    p.abortSignal?.addEventListener('abort', abortDownload, { once: true });
-    body.once('close', () => {
-      p.abortSignal?.removeEventListener('abort', abortDownload);
-    });
+    bindAbortSignalToReadable({ readable: body, abortSignal: p.abortSignal });
 
     return { bucket: bucketName, key: p.key, body };
   });
 
   const deleteObject = vi.fn(async (p: DeleteObjectParams): Promise<DeleteObjectResult> => {
+    assertStorageObjectKey(p.key);
     objects.delete(p.key);
     return { bucket: bucketName, key: p.key };
   });
 
   const deleteObjectsByMultiKeys = vi.fn(
     async (p: DeleteObjectsParams): Promise<DeleteObjectsResult> => {
+      assertStorageObjectKeys(p.keys);
       for (const key of p.keys) objects.delete(key);
       return { bucket: bucketName, keys: [] };
     }
@@ -153,9 +158,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
 
   const deleteObjectsByPrefix = vi.fn(
     async (p: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> => {
-      if (!p.prefix?.trim()) {
-        throw new Error('prefix must be a non-empty string');
-      }
+      assertRequiredStorageObjectPrefix(p.prefix);
       const keys: string[] = [];
       for (const key of objects.keys()) {
         if (key.startsWith(p.prefix)) keys.push(key);
@@ -167,6 +170,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
 
   const generatePresignedPutUrl = vi.fn(
     async (p: PresignedPutUrlParams): Promise<PresignedPutUrlResult> => {
+      assertStorageObjectKey(p.key);
       const putUrl = `${baseUrl}/put/${encodeURIComponent(bucketName)}/${encodeURIComponent(p.key)}`;
       // mock: 直接透传 metadata 作为“headers”
       const metadata: Record<string, string> = p.metadata ? { ...p.metadata } : {};
@@ -176,6 +180,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
 
   const generatePresignedGetUrl = vi.fn(
     async (p: PresignedGetUrlParams): Promise<PresignedGetUrlResult> => {
+      assertStorageObjectKey(p.key);
       const query = p.responseContentType
         ? `?response-content-type=${encodeURIComponent(p.responseContentType)}`
         : '';
@@ -186,12 +191,14 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
 
   const generatePublicGetUrl = vi.fn(
     ({ key }: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult => {
+      assertStorageObjectKey(key);
       const publicGetUrl = `${baseUrl}/public/${encodeURIComponent(bucketName)}/${encodeURIComponent(key)}`;
       return { url: publicGetUrl, bucket: bucketName, key };
     }
   );
 
   const listObjects = vi.fn(async (p: ListObjectsParams): Promise<ListObjectsResult> => {
+    assertStorageObjectPrefix(p.prefix);
     const keys = Array.from(objects.keys()).filter((k) =>
       p.prefix ? k.startsWith(p.prefix) : true
     );
@@ -200,6 +207,8 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   });
 
   const copyObjectInSelfBucket = vi.fn(async (p: CopyObjectParams): Promise<CopyObjectResult> => {
+    assertStorageObjectKey(p.sourceKey, 'sourceKey');
+    assertStorageObjectKey(p.targetKey, 'targetKey');
     const src = objects.get(p.sourceKey);
     if (!src) {
       throw new Error(`Source object not found: ${p.sourceKey}`);
@@ -210,6 +219,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
 
   const getObjectMetadata = vi.fn(
     async (p: GetObjectMetadataParams): Promise<GetObjectMetadataResult> => {
+      assertStorageObjectKey(p.key);
       const obj = objects.get(p.key);
       if (!obj) {
         throw new Error(`Object not found: ${p.key}`);

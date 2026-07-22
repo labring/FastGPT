@@ -171,10 +171,10 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         expect(contents).toEqual(entries.map(({ content }) => content));
       });
 
-      it('round-trips and deletes a portable 512-byte object key', async () => {
+      it('round-trips and deletes an object key at the portable 850-byte limit', async () => {
         const keyPrefix = `${context.rootPrefix}long-key/`;
-        const key = createAsciiKeyAtLength({ prefix: keyPrefix, byteLength: 512 });
-        expect(Buffer.byteLength(key)).toBe(512);
+        const key = createAsciiKeyAtLength({ prefix: keyPrefix, byteLength: 850 });
+        expect(Buffer.byteLength(key)).toBe(850);
 
         await context.storage.uploadObject({ key, body: 'long-key-content' });
         await expect(context.storage.checkObjectExists({ key })).resolves.toMatchObject({
@@ -192,7 +192,7 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
       });
 
       it('lists and copies keys containing path and URL-sensitive characters', async () => {
-        const sourceKey = `${context.rootPrefix}special/team & +/%25/\u6587\u4ef6.txt`;
+        const sourceKey = `${context.rootPrefix}special/team # & + % ?/\u6587\u4ef6-\ud83d\ude00.txt`;
         const targetKey = `${context.rootPrefix}special/copied file.txt`;
         await context.storage.uploadObject({ key: sourceKey, body: 'special-content' });
 
@@ -241,13 +241,14 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
       });
 
       it('generates a public URL that preserves reserved characters inside the key path', () => {
-        const key = `${context.rootPrefix}public/folder name/file #+&.txt`;
+        const key = `${context.rootPrefix}public/folder name/file #+&%?.txt`;
         const result = context.storage.generatePublicGetUrl({ key });
 
         expect(result).toMatchObject({ bucket: context.bucket, key });
         const url = new URL(result.url);
         expect(decodeURIComponent(url.pathname).endsWith(`/${key}`)).toBe(true);
         expect(url.hash).toBe('');
+        expect(url.search).toBe('');
       });
 
       it('rejects a download that was aborted before dispatch', async () => {

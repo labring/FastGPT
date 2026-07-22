@@ -343,6 +343,24 @@ describe('MinioStorageAdapter.deleteObjectsByPrefix', () => {
     expect(listObjects.mock.calls[0]?.[1]?.abortSignal.aborted).toBe(true);
     expect(removeObjects).not.toHaveBeenCalled();
   });
+
+  it('keeps the timeout error stable when abort immediately rejects the list request', async () => {
+    vi.useFakeTimers();
+    listObjects.mockImplementation((_command, { abortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        abortSignal.addEventListener('abort', () => reject(abortSignal.reason), { once: true });
+      });
+    });
+
+    const resultPromise = adapter.deleteObjectsByPrefix({ prefix: 'stuck-list/' });
+    const assertion = expect(resultPromise).rejects.toThrow(
+      'Delete by prefix list timeout after 60000ms: stuck-list/'
+    );
+
+    await vi.advanceTimersByTimeAsync(60000);
+    await assertion;
+    expect(removeObjects).not.toHaveBeenCalled();
+  });
 });
 
 describe('MinioStorageAdapter.ensureBucket', () => {

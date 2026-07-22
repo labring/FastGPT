@@ -35,7 +35,19 @@ export type {
   GetObjectMetadataParams,
   GetObjectMetadataResult
 } from './types';
-export { NoSuchBucketError, NoBucketReadPermissionError, EmptyObjectError } from './errors';
+export {
+  NoSuchBucketError,
+  NoBucketReadPermissionError,
+  EmptyObjectError,
+  InvalidStorageObjectKeyError
+} from './errors';
+export type { InvalidStorageObjectKeyReason } from './errors';
+export {
+  MAX_STORAGE_OBJECT_KEY_UTF8_BYTES,
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertStorageObjectPrefix
+} from './objectKey';
 export { AwsS3StorageAdapter } from './adapters/aws-s3.adapter';
 export { CosStorageAdapter } from './adapters/cos.adapter';
 export { MinioStorageAdapter } from './adapters/minio.adapter';

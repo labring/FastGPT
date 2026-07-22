@@ -63,7 +63,7 @@ describe('createVitestStorageMock', () => {
     const storage = createVitestStorageMock({ vi });
     storage.__putObject('file.txt', { body: Buffer.from('file') });
     await expect(storage.deleteObjectsByPrefix({ prefix: '   ' })).rejects.toThrow(
-      'prefix must be a non-empty string'
+      'Prefix is required'
     );
 
     const controller = new AbortController();
@@ -71,6 +71,23 @@ describe('createVitestStorageMock', () => {
     await expect(
       storage.downloadObject({ key: 'file.txt', abortSignal: controller.signal })
     ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('destroys an in-flight download with the caller abort reason', async () => {
+    const storage = createVitestStorageMock({ vi });
+    storage.__putObject('file.txt', { body: Buffer.from('file') });
+    const controller = new AbortController();
+    const abortReason = new Error('client aborted');
+    const { body } = await storage.downloadObject({
+      key: 'file.txt',
+      abortSignal: controller.signal
+    });
+    body.on('error', () => {});
+
+    controller.abort(abortReason);
+
+    expect(body.errored).toBe(abortReason);
+    expect(body.destroyed).toBe(true);
   });
 
   it('copies object buffers independently and resets state', async () => {

@@ -52,6 +52,22 @@ describe('CosStorageAdapter.generatePresignedGetUrl', () => {
 });
 
 describe('CosStorageAdapter.downloadObject', () => {
+  it('rejects a pre-aborted download without requesting the object', async () => {
+    const adapter = createAdapter();
+    const getObject = vi.fn();
+    (adapter as any).client.getObject = getObject;
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      adapter.downloadObject({
+        key: 'dataset/team/file.txt',
+        abortSignal: controller.signal
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(getObject).not.toHaveBeenCalled();
+  });
+
   it('destroys the output stream when the caller aborts the download', async () => {
     const adapter = createAdapter();
     (adapter as any).client.getObject = vi.fn();
@@ -61,8 +77,11 @@ describe('CosStorageAdapter.downloadObject', () => {
       key: 'dataset/team/file.txt',
       abortSignal: controller.signal
     });
-    controller.abort(new Error('client aborted'));
+    const abortReason = new Error('client aborted');
+    body.on('error', () => {});
+    controller.abort(abortReason);
 
+    expect(body.errored).toBe(abortReason);
     expect(body.destroyed).toBe(true);
   });
 });

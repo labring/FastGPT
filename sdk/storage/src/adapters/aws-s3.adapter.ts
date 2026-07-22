@@ -45,7 +45,17 @@ import type { Readable } from 'node:stream';
 import { camelCase, chunk, isNotNil, kebabCase, trim } from 'es-toolkit';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
-import { encodeObjectKeyPath } from '../utils';
+import {
+  bindAbortSignalToReadable,
+  encodeObjectKeyPath,
+  throwIfStorageDownloadAborted
+} from '../utils';
+import {
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertStorageObjectPrefix,
+  assertRequiredStorageObjectPrefix
+} from '../objectKey';
 
 export class AwsS3StorageAdapter implements IStorage {
   protected readonly client: S3Client;
@@ -70,6 +80,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     let exists = false;
 
@@ -98,6 +109,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async getObjectMetadata(params: GetObjectMetadataParams): Promise<GetObjectMetadataResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     const result = await this.client.send(
       new HeadObjectCommand({
@@ -136,6 +148,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    assertStorageObjectKey(key);
 
     const meta: StorageObjectMetadata = {};
     if (metadata) {
@@ -168,6 +181,8 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
     const { key, abortSignal } = params;
+    assertStorageObjectKey(key);
+    throwIfStorageDownloadAborted(abortSignal);
 
     const result = await this.client.send(
       new GetObjectCommand({
@@ -180,16 +195,19 @@ export class AwsS3StorageAdapter implements IStorage {
     if (!result.Body) {
       throw new EmptyObjectError('Object is undefined');
     }
+    const body = result.Body as Readable;
+    bindAbortSignalToReadable({ readable: body, abortSignal });
 
     return {
       key,
       bucket: this.options.bucket,
-      body: result.Body as Readable
+      body
     };
   }
 
   async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     await this.client.send(
       new DeleteObjectCommand({
@@ -206,6 +224,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
     const { keys } = params;
+    assertStorageObjectKeys(keys);
 
     if (keys.length === 0) {
       return {
@@ -238,9 +257,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
-    if (!prefix?.trim()) {
-      throw new Error('Prefix is required');
-    }
+    assertRequiredStorageObjectPrefix(prefix);
 
     const fails: StorageObjectKey[] = [];
     let isTruncated = false;
@@ -259,7 +276,7 @@ export class AwsS3StorageAdapter implements IStorage {
       if (!listResponse.Contents || listResponse.Contents.length === 0) {
         return {
           bucket: this.options.bucket,
-          keys: []
+          keys: fails
         };
       }
 
@@ -288,6 +305,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async generatePresignedPutUrl(params: PresignedPutUrlParams): Promise<PresignedPutUrlResult> {
     const { key, expiredSeconds, metadata, contentType } = params;
+    assertStorageObjectKey(key);
 
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
@@ -342,6 +360,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
     const { key, expiredSeconds, responseContentType } = params;
+    assertStorageObjectKey(key);
 
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
@@ -366,6 +385,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
     const { key } = params;
+    assertStorageObjectKey(key);
     const encodedKey = encodeObjectKeyPath(key);
 
     let url: string;
@@ -396,6 +416,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async listObjects(params: ListObjectsParams): Promise<ListObjectsResult> {
     const { prefix } = params;
+    assertStorageObjectPrefix(prefix);
 
     let keys: StorageObjectKey[] = [];
     let isTruncated = false;
@@ -432,6 +453,8 @@ export class AwsS3StorageAdapter implements IStorage {
 
   async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
     const { sourceKey, targetKey } = params;
+    assertStorageObjectKey(sourceKey, 'sourceKey');
+    assertStorageObjectKey(targetKey, 'targetKey');
 
     const encodedSourceKey = sourceKey
       .split('/')

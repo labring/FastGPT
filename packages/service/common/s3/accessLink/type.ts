@@ -1,5 +1,5 @@
 import z from 'zod';
-import { UploadConstraintsSchema } from '../contracts/type';
+import { StorageObjectKeySchema, UploadConstraintsSchema } from '../contracts/type';
 import { UploadFileHintSchema, UploadPolicySchema } from '../uploadPolicy/type';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 
@@ -10,7 +10,7 @@ const HexSha256Schema = z
   .regex(/^[a-f0-9]+$/);
 
 export const S3AccessBucketNameSchema = z.string().min(1);
-export const S3AccessObjectKeySchema = z.string().min(1);
+export const S3AccessObjectKeySchema = StorageObjectKeySchema;
 
 export const S3DownloadAliasIdSchema = UrlSafeTokenSchema.min(12).max(32);
 export const S3DownloadAliasKeySchema = HexSha256Schema;
