@@ -14,6 +14,7 @@ import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkflowReadFiles } from '../../readFiles';
+import { getWorkflowFileContext } from '../../../../utils/context';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -85,6 +86,10 @@ export const createToolCallToolProvider = async ({
     runWorkflowTool,
     cacheToolFlowResponse
   });
+  const readFileMaxFileAmount =
+    getWorkflowFileContext()?.limits.maxFileAmount ??
+    workflowProps.chatConfig?.fileSelectConfig?.maxFiles ??
+    20;
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
     execute: async ({ files }) =>
@@ -93,7 +98,8 @@ export const createToolCallToolProvider = async ({
         teamId: workflowProps.runningUserInfo.teamId,
         tmbId: workflowProps.runningUserInfo.tmbId,
         customPdfParse: workflowProps.chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId: workflowProps.usageId
+        usageId: workflowProps.usageId,
+        maxFileAmount: readFileMaxFileAmount
       })
   });
 
@@ -106,6 +112,7 @@ export const createToolCallToolProvider = async ({
       params: AgentLoopInteractiveToolExecuteParams<WorkflowInteractiveResponseType>
     ) => runInteractiveTool(params),
     readFileExecutor,
+    readFileMaxFileAmount,
     datasetSearchExecutor:
       datasetSearchNodeIds.length > 0
         ? createAgentLoopCoreWorkflowSystemToolExecutor({

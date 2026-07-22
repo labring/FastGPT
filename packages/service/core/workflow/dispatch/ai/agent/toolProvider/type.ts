@@ -15,6 +15,7 @@ export type WorkflowAgentToolProvider = AgentLoopCoreToolProvider<
   WorkflowInteractiveResponseType
 > & {
   readFileExecutor?: AgentLoopReadFileExecutor;
+  readFileMaxFileAmount: number;
   datasetSearchExecutor?: AgentLoopDatasetSearchExecutor;
   currentInputFiles: string[];
 };

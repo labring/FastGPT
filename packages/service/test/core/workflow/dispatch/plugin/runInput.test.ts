@@ -155,7 +155,7 @@ describe('dispatchPluginInput', () => {
         uid: 'user-1',
         chatId: 'chat-1'
       },
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl
     });
 

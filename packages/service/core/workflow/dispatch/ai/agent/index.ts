@@ -173,7 +173,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
-      maxFiles: chatConfig?.fileSelectConfig?.maxFiles ?? 20
+      maxFileAmount: chatConfig?.fileSelectConfig?.maxFiles ?? 20
     });
 
     if (effectiveUseAgentSandbox) {

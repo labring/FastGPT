@@ -30,6 +30,7 @@ describe('createAgentLoopCoreSystemTools', () => {
         sandboxClient,
         readFile: {
           enabled: true,
+          maxFileAmount: 6,
           execute: readFileExecute as any
         },
         datasetSearch: {
@@ -51,6 +52,7 @@ describe('createAgentLoopCoreSystemTools', () => {
       },
       readFile: {
         enabled: true,
+        maxFileAmount: 6,
         execute: readFileExecute
       },
       datasetSearch: {

@@ -49,14 +49,6 @@ describe('sandboxGetFileUrlTool', () => {
     });
 
     expect(JSON.parse(result.response)).toEqual([{ fileUrl: 'signed-url', filename: 'file.txt' }]);
-    expect(result.fileRefs).toEqual([
-      {
-        key: 'chat/file.txt',
-        filename: 'file.txt',
-        url: 'signed-url'
-      }
-    ]);
-    expect(result.response).not.toContain('chat/file.txt');
     expect(sandbox.provider.readFileStream).toHaveBeenCalledWith('/workspace/file.txt');
     expect(s3Mock.uploadChatFile).toHaveBeenCalledWith(
       expect.objectContaining({

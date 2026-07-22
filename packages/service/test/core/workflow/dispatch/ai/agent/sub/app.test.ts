@@ -187,7 +187,7 @@ describe('agent sub app dispatchPlugin', () => {
         uid: 'user',
         chatId: 'chat'
       },
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl: vi.fn().mockResolvedValue(defaultUrl)
     });
     mocks.authAppByTmbId.mockResolvedValue({

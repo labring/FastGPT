@@ -21,7 +21,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
 
 describe('Agent read_files tool protocol', () => {
   it('defines read_files with urls parameter', async () => {
-    const readFileTool = createReadFilesTool();
+    const readFileTool = createReadFilesTool({ maxFileAmount: 3 });
 
     expect(readFileTool.function.name).toBe(READ_FILES_TOOL_NAME);
     expect(readFileTool.function.parameters).toEqual({
@@ -29,6 +29,7 @@ describe('Agent read_files tool protocol', () => {
       properties: {
         urls: {
           type: 'array',
+          maxItems: 3,
           items: {
             type: 'string'
           },

@@ -12,18 +12,18 @@ import {
 
 type ParseWorkflowAIInputFilesParams = {
   files: UserChatItemFileItemType[];
-  maxFiles: number;
+  maxFileAmount: number;
 };
 
 type BuildWorkflowAICurrentInputFilesParams = {
   currentFiles?: string[];
   currentQuery?: ChatItemMiniType['value'];
-  maxFiles: number;
+  maxFileAmount: number;
 };
 
 type RewriteWorkflowAIUserMessageWithFilesParams = {
   message: ChatItemMiniType;
-  maxFiles: number;
+  maxFileAmount: number;
   files?: AgentLoopCoreInputFile[];
   query?: string;
   reminderContext?: AgentLoopCoreUserReminderContext;
@@ -32,7 +32,7 @@ type RewriteWorkflowAIUserMessageWithFilesParams = {
 
 type RewriteWorkflowAIHistoryMessageWithFilesParams = Pick<
   RewriteWorkflowAIUserMessageWithFilesParams,
-  'message' | 'maxFiles' | 'transformFiles'
+  'message' | 'maxFileAmount' | 'transformFiles'
 > & {
   parseHistoryFiles: boolean;
 };
@@ -45,7 +45,7 @@ type RewriteWorkflowAIHistoryMessageWithFilesParams = Pick<
  */
 export const parseWorkflowAIInputFiles = ({
   files,
-  maxFiles
+  maxFileAmount
 }: ParseWorkflowAIInputFilesParams): AgentLoopCoreInputFile[] => {
   const workflowFileContext = getWorkflowFileContext();
   const normalizedFiles = files
@@ -78,7 +78,7 @@ export const parseWorkflowAIInputFiles = ({
   const usedNames = new Map<string, number>();
 
   return uniqueFiles
-    .slice(0, maxFiles)
+    .slice(0, maxFileAmount)
     .map(({ file, url }, index) => {
       const parsedFile = parseUrlToFileType(url);
       if (!parsedFile) return;
@@ -97,7 +97,7 @@ export const parseWorkflowAIInputFiles = ({
 export const buildWorkflowAICurrentInputFiles = ({
   currentFiles = [],
   currentQuery,
-  maxFiles
+  maxFileAmount
 }: BuildWorkflowAICurrentInputFilesParams): AgentLoopCoreInputFile[] => {
   const { files: queryFiles = [] } = currentQuery
     ? chatValue2RuntimePrompt(currentQuery)
@@ -109,7 +109,7 @@ export const buildWorkflowAICurrentInputFiles = ({
 
   return parseWorkflowAIInputFiles({
     files: inputUrls.map((url) => queryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }),
-    maxFiles
+    maxFileAmount
   });
 };
 
@@ -121,14 +121,15 @@ export const buildWorkflowAICurrentInputFiles = ({
  */
 export const rewriteWorkflowAIUserMessageWithFiles = ({
   message,
-  maxFiles,
+  maxFileAmount,
   files: inputFiles,
   query,
   reminderContext,
   transformFiles
 }: RewriteWorkflowAIUserMessageWithFilesParams) => {
   const { files: messageFiles = [] } = chatValue2RuntimePrompt(message.value);
-  const parsedFiles = inputFiles ?? parseWorkflowAIInputFiles({ files: messageFiles, maxFiles });
+  const parsedFiles =
+    inputFiles ?? parseWorkflowAIInputFiles({ files: messageFiles, maxFileAmount });
   const files = transformFiles?.(parsedFiles) ?? parsedFiles;
 
   return {
@@ -150,7 +151,7 @@ export const rewriteWorkflowAIUserMessageWithFiles = ({
  */
 export const rewriteWorkflowAIHistoryMessageWithFiles = ({
   message,
-  maxFiles,
+  maxFileAmount,
   parseHistoryFiles,
   transformFiles
 }: RewriteWorkflowAIHistoryMessageWithFilesParams) => {
@@ -169,7 +170,7 @@ export const rewriteWorkflowAIHistoryMessageWithFiles = ({
 
   return rewriteWorkflowAIUserMessageWithFiles({
     message,
-    maxFiles,
+    maxFileAmount,
     transformFiles
   });
 };

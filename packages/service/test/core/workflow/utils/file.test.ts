@@ -93,7 +93,7 @@ import type {
 } from '@fastgpt/service/core/workflow/utils/fileContext';
 
 const createEmptyWorkflowFileContext = (): WorkflowFileContext => ({
-  limits: { maxFiles: 20, maxBytesPerFile: 1024 },
+  limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
   resolve: () => undefined,
   resolveInputFile: () => undefined,
   resolveChatFile: () => undefined,
@@ -347,7 +347,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       imageParsePrefix: 'chat/app/app-1/user-1/chat-1/private-parsed'
     });
     const fileContext: WorkflowFileContext = {
-      limits: { maxFiles: 20, maxBytesPerFile: 1024 },
+      limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
       resolve: (value) => (value === url ? ref : undefined),
       resolveInputFile: (file) => ('url' in file && file.url === url ? ref : undefined),
       resolveChatFile: () => ({

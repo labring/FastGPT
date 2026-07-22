@@ -91,12 +91,12 @@ describe('prepareWorkflowFileContext', () => {
       query: [],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl: vi.fn()
     });
 
     expect(fileContext.limits).toEqual({
-      maxFiles: 20,
+      maxFileAmount: 20,
       maxBytesPerFile: getFileMaxSize()
     });
   });
@@ -112,8 +112,8 @@ describe('prepareWorkflowFileContext', () => {
       query: [queryFile],
       histories: [createHistory(historyFile)],
       scope,
-      maxFiles: 20,
-      maxFileSize: 1024,
+      maxFileAmount: 20,
+      maxBytesPerFile: 1024,
       getPreviewUrl
     });
 
@@ -149,7 +149,7 @@ describe('prepareWorkflowFileContext', () => {
         query: [createFile({ key })],
         histories: [],
         scope,
-        maxFiles: 20,
+        maxFileAmount: 20,
         getPreviewUrl: vi.fn()
       })
     ).rejects.toThrow('does not belong to the current workflow');
@@ -164,7 +164,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [],
       histories: [createHistory(historyFile)],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl
     });
 
@@ -181,8 +181,8 @@ describe('prepareWorkflowFileContext', () => {
       query: [queryFile],
       histories: [createHistory(invalidHistoryFile)],
       scope,
-      maxFiles: 5,
-      maxFileSize: 512,
+      maxFileAmount: 5,
+      maxBytesPerFile: 512,
       getPreviewUrl: vi.fn()
     });
 
@@ -192,7 +192,7 @@ describe('prepareWorkflowFileContext', () => {
     });
     expect(fileContext.resolve(invalidHistoryFile.file!.url)).toBeUndefined();
     expect(invalidHistoryFile.file?.url).toBe('');
-    expect(fileContext.limits).toEqual({ maxFiles: 5, maxBytesPerFile: 512 });
+    expect(fileContext.limits).toEqual({ maxFileAmount: 5, maxBytesPerFile: 512 });
   });
 
   it('registers trusted variable and interactive files after context creation', async () => {
@@ -201,7 +201,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl
     });
 
@@ -252,7 +252,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [firstFile, secondFile],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl
     });
     const firstUrl = firstFile.file!.url;
@@ -286,7 +286,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [queryFile],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl: vi.fn().mockResolvedValue('https://files.example.com/selected')
     });
 
@@ -308,7 +308,7 @@ describe('prepareWorkflowFileContext', () => {
         query: [],
         histories: [createHistory(createFile({ key: privateKey }))],
         scope,
-        maxFiles: 20,
+        maxFileAmount: 20,
         getPreviewUrl: vi.fn().mockResolvedValue('/api/system/file/d/relative')
       })
     ).rejects.toThrow('signer must return an absolute HTTP(S) URL');
@@ -320,7 +320,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [createFile({ key: privateKey })],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl
     });
     const parentUrl = 'https://files.example.com/parent-signed';
@@ -375,7 +375,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [queryFile],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl
     });
 
@@ -411,7 +411,7 @@ describe('prepareWorkflowFileContext', () => {
         query: [createFile({ key: undefined, url: '/api/system/file/d/legacy' })],
         histories: [],
         scope,
-        maxFiles: 20,
+        maxFileAmount: 20,
         getPreviewUrl: vi.fn()
       })
     ).rejects.toThrow('Invalid workflow file URL');
@@ -422,7 +422,7 @@ describe('prepareWorkflowFileContext', () => {
         query: [createFile({ key: undefined, url: 'https://blocked.example.com/a.pdf' })],
         histories: [],
         scope,
-        maxFiles: 20,
+        maxFileAmount: 20,
         getPreviewUrl: vi.fn()
       })
     ).rejects.toThrow('Invalid workflow file URL');
@@ -447,8 +447,8 @@ describe('prepareWorkflowFileContext', () => {
       query: [createFile({ key: privateKey })],
       histories: [],
       scope,
-      maxFiles: 20,
-      maxFileSize: 5,
+      maxFileAmount: 20,
+      maxBytesPerFile: 5,
       getPreviewUrl: vi.fn().mockResolvedValue('https://files.example.com/signed')
     });
     const ref = fileContext.resolve('https://files.example.com/signed')!;
@@ -471,8 +471,8 @@ describe('prepareWorkflowFileContext', () => {
       query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
       histories: [],
       scope,
-      maxFiles: 20,
-      maxFileSize: 5,
+      maxFileAmount: 20,
+      maxBytesPerFile: 5,
       getPreviewUrl: vi.fn()
     });
     const ref = fileContext.resolve('https://cdn.example.com/report.pdf')!;
@@ -517,7 +517,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl: vi.fn()
     });
 
@@ -537,7 +537,7 @@ describe('prepareWorkflowFileContext', () => {
       query: [createFile({ key: undefined, url: 'https://cdn.example.com/report.pdf' })],
       histories: [],
       scope,
-      maxFiles: 20,
+      maxFileAmount: 20,
       getPreviewUrl: vi.fn()
     });
 
@@ -562,7 +562,7 @@ describe('prepareWorkflowFileContext', () => {
       headers: {}
     });
     const fileContext = {
-      limits: { maxFiles: 20, maxBytesPerFile: 7 },
+      limits: { maxFileAmount: 20, maxBytesPerFile: 7 },
       resolve: vi.fn((url: string) =>
         url === 'https://files.example.com/registered' ? ({ id: 'registered' } as any) : undefined
       ),

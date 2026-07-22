@@ -96,7 +96,13 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
       ...(runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
         ? { sandboxTools: createAgentLoopSandboxTools() }
         : {}),
-      ...(runtime.systemTools?.readFile?.enabled ? { readFileTool: createReadFilesTool() } : {}),
+      ...(runtime.systemTools?.readFile?.enabled
+        ? {
+            readFileTool: createReadFilesTool({
+              maxFileAmount: runtime.systemTools.readFile.maxFileAmount
+            })
+          }
+        : {}),
       ...(runtime.systemTools?.datasetSearch?.enabled
         ? { datasetSearchTool: createDatasetSearchTool() }
         : {})

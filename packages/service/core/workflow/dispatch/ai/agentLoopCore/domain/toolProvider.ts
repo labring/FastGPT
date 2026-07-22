@@ -10,7 +10,6 @@ import type {
   AgentLoopToolExecutionResult
 } from '../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreSystemToolInfo } from './toolInfo';
-import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 export type AgentLoopCoreUserToolInfo<TRaw = unknown> = {
   type: 'user';
@@ -35,7 +34,6 @@ export type AgentLoopCoreToolRunResult<TChildrenResponse = unknown> = {
   interactive?: TChildrenResponse;
   stop?: boolean;
   errorMessage?: string;
-  fileRefs?: SandboxFileRef[];
   nodeResponse?: ChatHistoryItemResType;
 };
 
@@ -63,7 +61,6 @@ export const normalizeAgentLoopCoreToolRunResult = <TChildrenResponse = unknown>
   interactive,
   stop = false,
   errorMessage,
-  fileRefs,
   nodeResponse
 }: AgentLoopCoreToolRunResult<TChildrenResponse>): AgentLoopToolExecutionResult<TChildrenResponse> => {
   return {
@@ -73,7 +70,6 @@ export const normalizeAgentLoopCoreToolRunResult = <TChildrenResponse = unknown>
     interactive,
     stop,
     errorMessage,
-    fileRefs,
     metadata: nodeResponse
   };
 };

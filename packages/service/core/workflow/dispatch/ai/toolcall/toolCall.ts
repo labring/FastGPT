@@ -131,6 +131,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
           readFile: toolProvider.readFileExecutor
             ? {
                 enabled: true,
+                maxFileAmount: toolProvider.readFileMaxFileAmount,
                 execute: toolProvider.readFileExecutor
               }
             : undefined,

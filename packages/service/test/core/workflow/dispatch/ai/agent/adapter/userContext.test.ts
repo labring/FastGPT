@@ -365,7 +365,7 @@ describe('useUserContext', () => {
           currentWorkingDirectory: '/workspace',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
@@ -438,7 +438,7 @@ describe('useUserContext', () => {
           ],
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
@@ -482,7 +482,7 @@ describe('useUserContext', () => {
           authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
@@ -539,7 +539,7 @@ describe('useUserContext', () => {
           authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(MongoDataset.find).toHaveBeenCalledWith(
@@ -579,7 +579,7 @@ describe('useUserContext', () => {
           currentDataId: 'current_chat_item',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
@@ -613,7 +613,7 @@ describe('useUserContext', () => {
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.currentFiles).toEqual([
@@ -654,7 +654,7 @@ describe('useUserContext', () => {
           currentUserInput: '当前问题',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[1].value);
@@ -664,7 +664,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('accepts explicit history arrays and respects maxFiles per message', async () => {
+  it('accepts explicit history arrays and respects maxFileAmount per message', async () => {
     await runWithContextAsync(
       {
         mcpClientMemory: {}
@@ -691,7 +691,7 @@ describe('useUserContext', () => {
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 1
+          maxFileAmount: 1
         });
 
         expect(result.chatHistories).toBe(explicitHistory);
@@ -732,7 +732,7 @@ describe('useUserContext', () => {
           currentUserInput: '当前问题',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const historyPrompt = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
@@ -767,7 +767,7 @@ describe('useUserContext', () => {
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.currentFiles).toEqual([
@@ -829,7 +829,7 @@ describe('useUserContext', () => {
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           requestOrigin: Symbol('invalid-origin'),
-          maxFiles: 20
+          maxFileAmount: 20
         } as any);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -862,7 +862,7 @@ describe('useUserContext', () => {
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.queryInput).toBe('原始问题');
@@ -902,7 +902,7 @@ describe('useUserContext', () => {
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -933,7 +933,7 @@ describe('useUserContext', () => {
           currentDataId: 'current_ai',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
@@ -974,7 +974,7 @@ describe('useUserContext', () => {
           }),
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.currentFiles).toEqual([]);
@@ -1005,7 +1005,7 @@ describe('useUserContext', () => {
           currentUserInput: '只问一个问题',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.chatHistories).toEqual([]);
@@ -1065,7 +1065,7 @@ describe('useUserContext', () => {
           currentUserInput: 'A',
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
-          maxFiles: 20
+          maxFileAmount: 20
         });
 
         expect(result.chatHistories).toEqual(histories);

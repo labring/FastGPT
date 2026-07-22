@@ -41,7 +41,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     params: { fileUrlList = [] },
     usageId
   } = props;
-  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
+  const maxFileAmount = chatConfig?.fileSelectConfig?.maxFiles || 20;
   const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
 
   // Get files from histories
@@ -51,7 +51,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     const readFilesResult = await parseFileContentFromUrls({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
-      maxFiles,
+      maxFiles: maxFileAmount,
       teamId,
       tmbId,
       customPdfParse,

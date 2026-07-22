@@ -29,7 +29,8 @@ describe('dispatchWorkflowReadFiles', () => {
       teamId: 'team_1',
       tmbId: 'tmb_1',
       customPdfParse: true,
-      usageId: 'usage_1'
+      usageId: 'usage_1',
+      maxFileAmount: 20
     });
 
     expect(getFileContentByUrlMock).toHaveBeenCalledWith({
@@ -76,7 +77,8 @@ describe('dispatchWorkflowReadFiles', () => {
         }
       ],
       teamId: 'team_1',
-      tmbId: 'tmb_1'
+      tmbId: 'tmb_1',
+      maxFileAmount: 20
     });
 
     expect(JSON.parse(result.response)).toEqual([
@@ -101,5 +103,44 @@ describe('dispatchWorkflowReadFiles', () => {
         url: 'https://files.example.com/unknown.pdf'
       }
     ]);
+  });
+
+  it('only reads the first maxFileAmount items with at most 5 concurrent tasks', async () => {
+    let activeTasks = 0;
+    let maxActiveTasks = 0;
+    const pendingResolvers: Array<() => void> = [];
+    getFileContentByUrlMock.mockImplementation(async ({ url }: { url: string }) => {
+      activeTasks += 1;
+      maxActiveTasks = Math.max(maxActiveTasks, activeTasks);
+      await new Promise<void>((resolve) => pendingResolvers.push(resolve));
+      activeTasks -= 1;
+
+      return {
+        name: url.split('/').at(-1) ?? 'file',
+        content: `content:${url}`
+      };
+    });
+
+    const resultPromise = dispatchWorkflowReadFiles({
+      files: Array.from({ length: 8 }, (_, index) => ({
+        url: `https://files.example.com/${index + 1}.pdf`
+      })),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      maxFileAmount: 7
+    });
+
+    await vi.waitFor(() => expect(getFileContentByUrlMock).toHaveBeenCalledTimes(5));
+    expect(activeTasks).toBe(5);
+
+    pendingResolvers.splice(0, 5).forEach((resolve) => resolve());
+    await vi.waitFor(() => expect(getFileContentByUrlMock).toHaveBeenCalledTimes(7));
+    pendingResolvers.splice(0).forEach((resolve) => resolve());
+
+    const result = await resultPromise;
+    expect(maxActiveTasks).toBe(5);
+    expect(getFileContentByUrlMock).toHaveBeenCalledTimes(7);
+    expect(JSON.parse(result.response)).toHaveLength(7);
+    expect(result.nodeResponse.readFiles.at(-1)?.url).toBe('https://files.example.com/7.pdf');
   });
 });

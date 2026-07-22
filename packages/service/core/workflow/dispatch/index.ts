@@ -155,8 +155,8 @@ export async function dispatchWorkFlow({
       uid: data.uid,
       chatId
     },
-    maxFiles: data.chatConfig?.fileSelectConfig?.maxFiles ?? 20,
-    maxFileSize: data.maxFileSize
+    maxFileAmount: data.chatConfig?.fileSelectConfig?.maxFiles ?? 20,
+    maxBytesPerFile: data.maxBytesPerFile
   });
   const getHistoryPreviewUrl = async (key: string) => {
     try {

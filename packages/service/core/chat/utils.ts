@@ -39,57 +39,6 @@ export const addPreviewUrlToChatItems = async (
   type: 'chatFlow' | 'workflowTool',
   getPreviewUrl: (key: string) => Promise<string | undefined> = createChatFilePreviewUrlGetter()
 ) => {
-  const sandboxUrlReplacements = new Map<string, string>();
-
-  async function refreshSandboxToolFiles() {
-    await Promise.all(
-      histories.map(async (item) => {
-        if (item.obj !== ChatRoleEnum.AI) return;
-
-        await Promise.all(
-          item.value.flatMap((value) =>
-            (value.tools ?? []).map(async (tool) => {
-              if (!tool.fileRefs?.length) return;
-
-              const replacements = await Promise.all(
-                tool.fileRefs.map(async (fileRef) => ({
-                  oldUrl: fileRef.url,
-                  newUrl: (await getPreviewUrl(fileRef.key)) ?? ''
-                }))
-              );
-
-              replacements.forEach(({ oldUrl, newUrl }) => {
-                sandboxUrlReplacements.set(oldUrl, newUrl);
-                if (tool.response) {
-                  tool.response = tool.response.replaceAll(oldUrl, newUrl);
-                }
-              });
-
-              // fileRefs 只用于服务端持久化，不能进入历史接口或下一轮模型上下文。
-              delete tool.fileRefs;
-            })
-          )
-        );
-      })
-    );
-
-    if (sandboxUrlReplacements.size === 0) return;
-
-    histories.forEach((item) => {
-      if (item.obj !== ChatRoleEnum.AI) return;
-
-      item.value.forEach((value) => {
-        if (!value.text?.content) return;
-
-        let content = value.text.content;
-        sandboxUrlReplacements.forEach((newUrl, oldUrl) => {
-          content = content.replaceAll(oldUrl, newUrl);
-        });
-        value.text.content = content;
-      });
-    });
-  }
-
   async function addPreviewUrlToFileValue(files: ChatFileValueWithPreview[]) {
     await Promise.all(
       files.map(async (file) => {
@@ -166,9 +115,6 @@ export const addPreviewUrlToChatItems = async (
       })
     );
   }
-
-  // 先刷新工具产出文件，确保后续历史上下文不会继续引用过期链接。
-  await refreshSandboxToolFiles();
 
   // Presign file urls
   await Promise.all(

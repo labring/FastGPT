@@ -287,6 +287,7 @@ describe('runFastAgentLoop', () => {
         systemTools: {
           readFile: {
             enabled: true,
+            maxFileAmount: 20,
             execute: executeReadFile
           }
         },

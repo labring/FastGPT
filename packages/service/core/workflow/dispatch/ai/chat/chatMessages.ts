@@ -26,7 +26,7 @@ export const getChatMessages = async ({
   userChatInput,
   userFiles,
   parseHistoryFiles,
-  maxFiles,
+  maxFileAmount,
   customPdfParse,
   usageId,
   runningUserInfo
@@ -42,7 +42,7 @@ export const getChatMessages = async ({
   userFiles: UserChatItemFileItemType[];
   parseHistoryFiles: boolean;
 
-  maxFiles: number;
+  maxFileAmount: number;
   customPdfParse?: boolean;
   usageId?: string;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
@@ -73,7 +73,7 @@ export const getChatMessages = async ({
     parseFileFn: async (urls) => {
       const files = await parseFileContentFromUrls({
         urls,
-        maxFiles,
+        maxFiles: maxFileAmount,
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
         customPdfParse,

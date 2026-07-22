@@ -7,7 +7,11 @@ export const ReadFilesToolParamsSchema = z.object({
   urls: z.array(z.string())
 });
 
-export const createReadFilesTool = (): ChatCompletionTool => ({
+export const createReadFilesTool = ({
+  maxFileAmount
+}: {
+  maxFileAmount: number;
+}): ChatCompletionTool => ({
   type: 'function',
   function: {
     name: READ_FILES_TOOL_NAME,
@@ -17,6 +21,7 @@ export const createReadFilesTool = (): ChatCompletionTool => ({
       properties: {
         urls: {
           type: 'array',
+          maxItems: maxFileAmount,
           items: {
             type: 'string'
           },

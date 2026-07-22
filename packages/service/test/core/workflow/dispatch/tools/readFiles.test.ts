@@ -44,12 +44,12 @@ describe('dispatchReadFiles', () => {
 
     expect(mockparseFileContentFromUrls).toHaveBeenCalledWith({
       urls: ['/a.pdf', '/b.pdf'],
-      requestOrigin: 'http://localhost:3000',
       maxFiles: 20,
       teamId: 'team-1',
       tmbId: 'tmb-1',
       customPdfParse: false,
-      usageId: 'usage-1'
+      usageId: 'usage-1',
+      fileContext: undefined
     });
 
     const text = result.data?.[NodeOutputKeyEnum.text];

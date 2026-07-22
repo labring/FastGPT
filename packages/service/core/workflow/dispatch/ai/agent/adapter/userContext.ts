@@ -101,7 +101,7 @@ export const useUserContext = async ({
   currentUserInput,
   currentQuery,
   currentDataId,
-  maxFiles,
+  maxFileAmount,
   parseHistoryFiles = false,
   selectedDataset,
   authTmbId,
@@ -114,7 +114,7 @@ export const useUserContext = async ({
   currentUserInput: string;
   currentQuery?: ChatItemMiniType['value'];
   currentDataId?: string;
-  maxFiles: number;
+  maxFileAmount: number;
   parseHistoryFiles?: boolean;
   selectedDataset?: AgentSelectedDatasetInput[];
   authTmbId?: boolean;
@@ -127,7 +127,7 @@ export const useUserContext = async ({
     (message) =>
       rewriteWorkflowAIHistoryMessageWithFiles({
         message,
-        maxFiles,
+        maxFileAmount,
         parseHistoryFiles
       }).message
   );
@@ -147,7 +147,7 @@ export const useUserContext = async ({
   const currentInputFiles = buildWorkflowAICurrentInputFiles({
     currentFiles,
     currentQuery,
-    maxFiles
+    maxFileAmount
   });
 
   // 获取知识库
@@ -161,7 +161,7 @@ export const useUserContext = async ({
       // 当前 Human 才注入 sandbox、skill、知识库和当前时间，历史只保留稳定文件上下文。
       const { message: currentUserMessage } = rewriteWorkflowAIUserMessageWithFiles({
         message: currentMessage,
-        maxFiles,
+        maxFileAmount,
         files: currentInputFiles,
         query: currentUserInput,
         reminderContext: {

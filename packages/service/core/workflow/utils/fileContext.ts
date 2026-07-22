@@ -41,7 +41,7 @@ export type WorkflowFileRef = {
 };
 
 export type WorkflowFileLimits = {
-  maxFiles: number;
+  maxFileAmount: number;
   maxBytesPerFile: number;
 };
 
@@ -90,8 +90,8 @@ type PrepareWorkflowFileContextParams = {
   query: UserChatItemValueItemType[];
   histories: ChatItemMiniType[];
   scope: WorkflowFileEntryScope;
-  maxFiles: number;
-  maxFileSize?: number;
+  maxFileAmount: number;
+  maxBytesPerFile?: number;
   getPreviewUrl?: (key: string) => Promise<string>;
 };
 
@@ -318,8 +318,8 @@ export const prepareWorkflowFileContext = async ({
   query,
   histories,
   scope,
-  maxFiles,
-  maxFileSize = getFileMaxSize(),
+  maxFileAmount,
+  maxBytesPerFile = getFileMaxSize(),
   getPreviewUrl: getPreviewUrlInput = createChatFilePreviewUrlGetter({
     expiredHours: WORKFLOW_FILE_URL_EXPIRED_HOURS
   })
@@ -453,8 +453,8 @@ export const prepareWorkflowFileContext = async ({
   }
 
   const limits: WorkflowFileLimits = {
-    maxFiles,
-    maxBytesPerFile: maxFileSize
+    maxFileAmount,
+    maxBytesPerFile
   };
 
   const resolve = (url: string) => byRuntimeUrl.get(url);

@@ -1,4 +1,5 @@
 import { createWorkflowAgentToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -57,6 +58,32 @@ const createContext = (overrides: Record<string, any> = {}) =>
   }) as any;
 
 describe('createWorkflowAgentToolProvider', () => {
+  it('uses the current Workflow FileContext maxFileAmount limit', () => {
+    const provider = runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext: {
+          limits: {
+            maxFileAmount: 4,
+            maxBytesPerFile: 1024
+          }
+        } as any
+      },
+      () =>
+        createWorkflowAgentToolProvider({
+          context: createContext({
+            chatConfig: {
+              fileSelectConfig: {
+                maxFiles: 9
+              }
+            }
+          })
+        })
+    );
+
+    expect(provider.readFileMaxFileAmount).toBe(4);
+  });
+
   it('exposes Workflow Agent runtime tools and tool info through the core provider protocol', () => {
     const provider = createWorkflowAgentToolProvider({
       context: createContext()

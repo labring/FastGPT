@@ -356,14 +356,12 @@ export const createAgentLoopCoreAssistantEventCollector = ({
             toolAvatar: toolInfo?.avatar || '',
             functionName,
             params: event.call.function.arguments ?? '',
-            response: event.response,
-            ...(event.fileRefs?.length ? { fileRefs: event.fileRefs } : {})
+            response: event.response
           });
         } else {
           updateToolResponse(event.call.id, (tool) => ({
             ...tool,
-            response: appendUniqueDelta(tool.response, event.response),
-            ...(event.fileRefs?.length ? { fileRefs: event.fileRefs } : {})
+            response: appendUniqueDelta(tool.response, event.response)
           }));
         }
 

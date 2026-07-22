@@ -9,6 +9,7 @@ export type CreateAgentLoopCoreSystemToolsParams = {
   sandboxClient?: SandboxClient;
   readFile?: {
     enabled: boolean;
+    maxFileAmount: number;
     execute: AgentLoopReadFileExecutor;
   };
   datasetSearch?: {
@@ -49,6 +50,7 @@ export const createAgentLoopCoreSystemTools = ({
     ? {
         readFile: {
           enabled: true,
+          maxFileAmount: readFile.maxFileAmount,
           execute: readFile.execute
         }
       }

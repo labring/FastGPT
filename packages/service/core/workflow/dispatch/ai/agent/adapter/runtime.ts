@@ -143,6 +143,7 @@ export const createWorkflowAgentLoopRuntime = ({
         readFile: toolProvider.readFileExecutor
           ? {
               enabled: true,
+              maxFileAmount: toolProvider.readFileMaxFileAmount,
               execute: toolProvider.readFileExecutor
             }
           : undefined

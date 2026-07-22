@@ -42,7 +42,6 @@ import {
   stripUserContentFileUrls
 } from './utils/prepare';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
-import { isChatFileS3KeyForChat } from '../../common/s3/sources/chat/key';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -86,12 +85,8 @@ export const persistChatFiles = async ({
   contents,
   variables,
   variableList,
-  sourceType,
-  sourceId,
-  chatId,
   session
-}: ChatSourceParams & {
-  chatId: string;
+}: {
   contents: (UserChatItemType | AIChatItemType)[];
   variables?: Record<string, any>;
   variableList?: VariableItemType[];
@@ -110,26 +105,7 @@ export const persistChatFiles = async ({
               keys.push(valueItem.file.key);
             }
 
-            // 2. Sandbox 生成文件只在对话落库时转为正式资产。
-            if ('tools' in valueItem && valueItem.tools) {
-              valueItem.tools.forEach((tool) => {
-                tool.fileRefs?.forEach((fileRef) => {
-                  if (
-                    !isChatFileS3KeyForChat({
-                      key: fileRef.key,
-                      sourceType,
-                      sourceId,
-                      chatId
-                    })
-                  ) {
-                    throw new Error('Sandbox file reference does not belong to the current chat');
-                  }
-                  keys.push(fileRef.key);
-                });
-              });
-            }
-
-            // 3. query 是特殊格式的（工作流工具 + 表单输入）
+            // 2. query 是特殊格式的（工作流工具 + 表单输入）
             if ('text' in valueItem && valueItem.text?.content) {
               try {
                 const parsed = JSON.parse(valueItem.text.content);
@@ -404,8 +380,6 @@ export const finalizeChatRound = async (props: Props) => {
       contents: processedContent,
       variables,
       variableList,
-      ...chatSource,
-      chatId,
       session
     });
 
@@ -642,8 +616,6 @@ export const pushChatRecords = async (props: Props) => {
         contents: processedContent,
         variables,
         variableList,
-        ...chatSource,
-        chatId,
         session
       });
 
@@ -1041,8 +1013,6 @@ export const updateInteractiveChat = async ({
       contents: [userContent, aiContent],
       variables,
       variableList,
-      ...chatSource,
-      chatId,
       session
     });
   });

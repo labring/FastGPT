@@ -353,7 +353,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       seconds,
       errorMessage,
       usages,
-      fileRefs,
       toolResponseCompress,
       metadata
     }) => {
@@ -369,7 +368,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         seconds,
         errorMessage,
         usages,
-        fileRefs,
         toolResponseCompress,
         metadata
       });
@@ -460,8 +458,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         });
         return createToolResponse(sandboxResult.response, {
           skipResponseCompress: true,
-          errorMessage: sandboxResult.success ? undefined : sandboxResult.response,
-          fileRefs: sandboxResult.fileRefs
+          errorMessage: sandboxResult.success ? undefined : sandboxResult.response
         });
       }
 

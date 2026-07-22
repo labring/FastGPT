@@ -6,7 +6,6 @@ import type {
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { AgentAskPayload } from './systemTool/ask';
 import type { AgentLoopUsage } from './usage';
-import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 export type AgentLoopToolResponseCompress = {
   response: string;
@@ -85,7 +84,6 @@ export type AgentLoopEvent =
       errorMessage?: string;
       seconds: number;
       usages?: AgentLoopUsage[];
-      fileRefs?: SandboxFileRef[];
       toolResponseCompress?: AgentLoopToolResponseCompress;
       /** executeTool 返回的 opaque metadata，agent-loop 不解释其业务结构。 */
       metadata?: unknown;

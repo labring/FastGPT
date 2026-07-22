@@ -10,7 +10,7 @@ import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import type { WorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 
 describe('parseWorkflowAIInputFiles', () => {
-  it('returns no files when maxFiles is zero', () => {
+  it('returns no files when maxFileAmount is zero', () => {
     expect(
       parseWorkflowAIInputFiles({
         files: [
@@ -20,7 +20,7 @@ describe('parseWorkflowAIInputFiles', () => {
             url: 'https://files.example.com/report.pdf'
           }
         ],
-        maxFiles: 0
+        maxFileAmount: 0
       })
     ).toEqual([]);
   });
@@ -54,7 +54,7 @@ describe('parseWorkflowAIInputFiles', () => {
           url: 'https://'
         }
       ],
-      maxFiles: 2
+      maxFileAmount: 2
     });
 
     expect(result).toEqual([
@@ -75,7 +75,7 @@ describe('parseWorkflowAIInputFiles', () => {
     const inputUrl = 'https://app.example.com/api/system/file/d/signed';
     const modelUrl = 'https://model-files.example.com/report.pdf?signature=1';
     const fileContext = {
-      limits: { maxFiles: 20, maxBytesPerFile: 1024 },
+      limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
       resolve: vi.fn((url: string) =>
         url === inputUrl
           ? {
@@ -112,7 +112,7 @@ describe('parseWorkflowAIInputFiles', () => {
               url: inputUrl
             }
           ],
-          maxFiles: 20
+          maxFileAmount: 20
         })
       ).toEqual([
         {
@@ -158,7 +158,7 @@ describe('rewriteWorkflowAIUserMessageWithFiles', () => {
 
     const { message: result, files: inputFiles } = rewriteWorkflowAIUserMessageWithFiles({
       message,
-      maxFiles: 20
+      maxFileAmount: 20
     });
     const { text, files } = chatValue2RuntimePrompt(result.value);
 

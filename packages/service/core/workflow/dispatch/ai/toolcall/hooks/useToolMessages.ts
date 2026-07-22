@@ -53,7 +53,7 @@ export const useToolMessages = async ({
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...chatHistories
   ];
-  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles ?? 20;
+  const maxFileAmount = chatConfig?.fileSelectConfig?.maxFiles ?? 20;
 
   /**
    * 文件链接会作为 model URL 暴露给 LLM，供 read_files 和其他工具直接使用。
@@ -70,7 +70,7 @@ export const useToolMessages = async ({
     (message) =>
       rewriteWorkflowAIHistoryMessageWithFiles({
         message,
-        maxFiles,
+        maxFileAmount,
         parseHistoryFiles,
         transformFiles
       }).message
@@ -88,7 +88,7 @@ export const useToolMessages = async ({
           files: userFiles
         })
       },
-      maxFiles,
+      maxFileAmount,
       transformFiles
     });
     messages.push(message);

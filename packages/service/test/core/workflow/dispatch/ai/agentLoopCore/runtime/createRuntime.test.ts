@@ -40,6 +40,7 @@ describe('createAgentLoopCoreRuntime', () => {
         askEnabled: false,
         readFile: {
           enabled: true,
+          maxFileAmount: 4,
           execute: readFileExecute as any
         }
       },
@@ -65,6 +66,7 @@ describe('createAgentLoopCoreRuntime', () => {
       },
       readFile: {
         enabled: true,
+        maxFileAmount: 4,
         execute: readFileExecute
       }
     });
