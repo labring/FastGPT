@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
-import { getRedisCache, delRedisCache } from '@fastgpt/service/common/redis/cache';
+import { wechatQrLoginStore } from '@fastgpt/service/common/redis/stores';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { startWechatPolling } from '@fastgpt/service/support/outLink/wechat/mq';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
@@ -13,7 +13,6 @@ import {
   type WechatQrcodeStatusResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getWechatQrcodeCacheKey } from '@fastgpt/service/support/outLink/wechat/qrcode';
 import { assertWechatOutLink } from '@fastgpt/service/support/outLink/wechat/utils';
 
 async function handler(
@@ -35,13 +34,11 @@ async function handler(
   });
   await assertWechatOutLink(outLink);
 
-  const cacheKey = getWechatQrcodeCacheKey({ outLinkId, tmbId });
-  const raw = await getRedisCache(cacheKey);
-  if (!raw) {
+  const qrData = await wechatQrLoginStore.get({ outLinkId, tmbId });
+  if (!qrData) {
     return WechatQrcodeStatusResponseSchema.parse({ status: 'expired' });
   }
 
-  const qrData = JSON.parse(raw);
   const client = new ILinkClient();
   const statusData = await client.getQRCodeStatus(qrData.qrcode);
 
@@ -62,7 +59,7 @@ async function handler(
       }
     );
 
-    await delRedisCache(cacheKey);
+    await wechatQrLoginStore.delete({ outLinkId, tmbId });
     await startWechatPolling(outLink.shareId);
   }
 

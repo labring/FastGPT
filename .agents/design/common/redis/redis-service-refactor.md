@@ -1,6 +1,6 @@
 # Redis 中间件服务重构讨论稿
 
-> 状态：Phase 1、Phase 2、Phase 3A 已完成并通过代码 review；Phase 3B1 尚未开始。
+> 状态：Phase 1、Phase 2、Phase 3A、Phase 3B1 已完成并通过代码 review；Phase 3B2 尚未开始。
 >
 > 目标：先统一 Redis 的连接、key、原子操作、错误策略和业务能力边界，再决定是否分阶段迁移。本文基于当前仓库代码梳理，不代表已经批准的实现方案。
 
@@ -344,6 +344,15 @@ Phase 3A 当前实施状态（2026-07-22）：
 - [x] 4 个 Phase 3A 定向测试文件共 74 项测试通过；两个新增 Store 的行、函数、语句和分支覆盖率均为 100%。
 - [x] Phase 3A 已通过代码 review；独立提交后进入 Phase 3B1。
 
+Phase 3B1 当前实施状态（2026-07-22）：
+
+- [x] `WechatQrLoginStore` 已集中到 `common/redis/stores`，保持历史物理 key、JSON value 和 480 秒 TTL。
+- [x] typed codec 会校验写入数据和 Redis 中的 JSON；只有真实 miss 返回 `undefined`，损坏数据抛出显式 `RedisInvalidResponseError`。
+- [x] generate/status API 已移除 legacy `common/redis/cache.ts` 和业务目录 key helper；权限、Mongo 更新与 polling 仍保留在原调用边界。
+- [x] Redis 读、写、删除错误继续 fail-closed；status API 只把 Store miss 映射为 `expired`。
+- [x] 3 个 Phase 3B1 定向测试文件共 20 项测试通过；Store 和两个 API 的行、函数、语句和分支覆盖率均为 100%。
+- [x] Phase 3B1 已通过代码 review；独立提交后进入 Phase 3B2。
+
 以下能力移出 Phase 3：
 
 - wallet points 是主动增量维护的计费状态，不是普通 TeamCache；移入 Phase 4，使用专用 `TeamPointCache`。
@@ -400,7 +409,7 @@ Phase 3A 当前实施状态（2026-07-22）：
 
 - [x] T-07a（Phase 3A）：实现 `DingtalkAccessTokenStore`，保持历史 key、动态 TTL、fail-open 和 single-flight。
 - [x] T-07b（Phase 3A）：实现 `TeamVectorCountStore`，保持 1800 秒 TTL、3 秒回源 deadline 和 best-effort 写/失效。
-- [ ] T-08a（Phase 3B1）：实现 `WechatQrLoginStore`，保持 QR JSON 物理格式并加入 typed codec。
+- [x] T-08a（Phase 3B1）：实现 `WechatQrLoginStore`，保持 QR JSON 物理格式并加入 typed codec。
 - [ ] T-08b（Phase 3B2）：实现 `WecomAccessTokenStore`，分别管理 provider/suite token，不顺带改变刷新行为。
 - [ ] T-08c（Phase 3B2）：实现 `WecomSuiteTicketStore`，保持永久保存和缺失时 fail-closed。
 - [ ] T-08d（Phase 3C）：实现 `DailyActiveDedupeStore`，使用 `SET NX EX` 并保持 tracking fail-open。
@@ -420,7 +429,7 @@ Phase 3A 当前实施状态（2026-07-22）：
 
 - [x] T-17：为每个 capability 编写注入式 unit test，覆盖返回值、错误类型、TTL 和 operation policy。
 - [x] T-17a（Phase 3A）：只运行 Dingtalk、vector 和新增 Store 定向测试，覆盖物理 key、动态/固定 TTL、single-flight、超时回源和 Redis 读写失败。
-- [ ] T-17b1（Phase 3B1）：只运行 Wechat QR 和新增 Store 定向测试，覆盖 codec、480 秒 TTL、miss、损坏数据和 fail-closed。
+- [x] T-17b1（Phase 3B1）：只运行 Wechat QR 和新增 Store 定向测试，覆盖 codec、480 秒 TTL、miss、损坏数据和 fail-closed。
 - [ ] T-17b2（Phase 3B2）：只运行 Wecom access token/suite ticket 和新增 Store 定向测试，覆盖动态 TTL、永久 key、miss 和 fail-closed。
 - [ ] T-17c（Phase 3C）：只运行 tracking 定向测试，覆盖 `SET NX EX` 的首次/重复返回和 Redis fail-open；并发原子性由真实 Redis 测试证明。
 - [ ] T-18：新增 Redis 7.2 integration test，覆盖真实 keyPrefix 替代、SCAN、Lua、Stream、hash TTL、并发限流和租约竞争。
