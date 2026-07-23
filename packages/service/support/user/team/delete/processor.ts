@@ -35,9 +35,18 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
     const startTime = Date.now();
 
     // App/Dataset 使用独立队列删除，这类残留在 team-delete 重试耗尽前不应升级为 ERR。
-    class TeamResourcesStillDeletingError extends Error {}
+    class TeamResourcesStillDeletingError extends Error {
+      constructor(
+        readonly remainingApps: number,
+        readonly remainingDatasets: number
+      ) {
+        super('Team resources are still being deleted');
+      }
+    }
 
-    logger.info('Team delete started', { teamId });
+    if (job.attemptsMade === 0) {
+      logger.info('Team delete started', { teamId });
+    }
 
     try {
       // 1. 检查团队是否存在
@@ -101,9 +110,7 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
       ]);
       if (remainingApps > 0 || remainingDatasets > 0) {
         // App/Dataset worker 必须先完成，否则删除团队后 finalizer 无法再按 teamId 观察残留。
-        throw new TeamResourcesStillDeletingError(
-          `Team resources are still being deleted: apps=${remainingApps}, datasets=${remainingDatasets}`
-        );
+        throw new TeamResourcesStillDeletingError(remainingApps, remainingDatasets);
       }
 
       // 6. 删除团队信息
@@ -184,16 +191,19 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
     } catch (error) {
       const maxAttempts = job.opts.attempts ?? 1;
       const isFinalAttempt = job.attemptsMade + 1 >= maxAttempts;
-      if (error instanceof TeamResourcesStillDeletingError && !isFinalAttempt) {
-        logger.warn('Team delete waiting for resource deletion', {
-          teamId,
-          attempt: job.attemptsMade + 1,
-          maxAttempts,
-          error
-        });
-      } else {
-        logger.error('Team delete failed', { teamId, error });
+      if (error instanceof TeamResourcesStillDeletingError) {
+        if (isFinalAttempt) {
+          logger.error('Team delete failed after retries', {
+            teamId,
+            attempts: maxAttempts,
+            remainingApps: error.remainingApps,
+            remainingDatasets: error.remainingDatasets
+          });
+        }
+        throw error;
       }
+
+      logger.error('Team delete failed', { teamId, error });
       throw error;
     }
   });

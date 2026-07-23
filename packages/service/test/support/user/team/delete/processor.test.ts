@@ -109,33 +109,46 @@ describe('teamDeleteProcessor failure logging', () => {
     mocks.countDatasets.mockResolvedValue(0);
   });
 
-  it('logs expected resource deletion lag as a warning before the final attempt', async () => {
+  it('silently retries expected resource deletion lag before the final attempt', async () => {
     const job = createJob(0);
 
     await expect(teamDeleteProcessor(job)).rejects.toThrow(
-      'Team resources are still being deleted: apps=1, datasets=0'
+      'Team resources are still being deleted'
     );
 
-    expect(mocks.loggerWarn).toHaveBeenCalledWith('Team delete waiting for resource deletion', {
-      teamId: 'team-1',
-      attempt: 1,
-      maxAttempts: 10,
-      error: expect.any(Error)
-    });
+    expect(mocks.loggerInfo).toHaveBeenCalledWith('Team delete started', { teamId: 'team-1' });
+    expect(mocks.loggerWarn).not.toHaveBeenCalled();
+    expect(mocks.loggerError).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat the start log during retries', async () => {
+    const job = createJob(1);
+
+    await expect(teamDeleteProcessor(job)).rejects.toThrow(
+      'Team resources are still being deleted'
+    );
+
+    expect(mocks.loggerInfo).not.toHaveBeenCalled();
+    expect(mocks.loggerWarn).not.toHaveBeenCalled();
     expect(mocks.loggerError).not.toHaveBeenCalled();
   });
 
   it('logs expected resource deletion lag as an error on the final attempt', async () => {
     const job = createJob(9);
 
+    mocks.countApps.mockResolvedValueOnce(5);
+
     await expect(teamDeleteProcessor(job)).rejects.toThrow(
-      'Team resources are still being deleted: apps=1, datasets=0'
+      'Team resources are still being deleted'
     );
 
+    expect(mocks.loggerInfo).not.toHaveBeenCalled();
     expect(mocks.loggerWarn).not.toHaveBeenCalled();
-    expect(mocks.loggerError).toHaveBeenCalledWith('Team delete failed', {
+    expect(mocks.loggerError).toHaveBeenCalledWith('Team delete failed after retries', {
       teamId: 'team-1',
-      error: expect.any(Error)
+      attempts: 10,
+      remainingApps: 5,
+      remainingDatasets: 0
     });
   });
 
