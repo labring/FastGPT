@@ -230,7 +230,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     // Merge global variables from database
     const variables = chatDetail?.variables ?? {};
-    const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
       teamId: String(outLinkConfig.teamId),
       chatConfig,
       query
@@ -281,6 +285,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       histories,
       query: workflowQuery,
       maxFileAmount,
+      maxBytesPerFile,
       chatConfig,
       stream: enableStreaming,
       workflowStreamResponse,

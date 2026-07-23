@@ -36,6 +36,7 @@ import {
 import { getFileMaxSize } from '../../common/file/utils';
 import { validateFileUrlDomain } from '../../common/security/fileUrlValidator';
 import { readExternalFileBuffer } from '../../common/file/read/external';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = {
@@ -329,20 +330,17 @@ export const parseUrlToChatFileType = ({
   }
 };
 
-export const formatAIChatUserQueryWithFiles = async ({
-  userQuery,
-  parseFileFn
-}: {
-  userQuery: UserChatItemValueItemType[];
-  parseFileFn: (urls: string[]) => Promise<
-    {
-      name: string;
-      url: string;
-      sandboxPath?: string;
-      content?: string;
-    }[]
-  >;
-}): Promise<UserChatItemValueItemType[]> => {
+type ParsedFileItem = {
+  name: string;
+  url: string;
+  sandboxPath?: string;
+  content?: string;
+};
+
+type ParseFileFn = (urls: string[]) => Promise<ParsedFileItem[]>;
+
+/** 归一化短链文件类型，并按 URL 去除同一条消息中的重复文件。 */
+const prepareAIChatUserQueryFiles = async (userQuery: UserChatItemValueItemType[]) => {
   const hasShortLinkFile = userQuery.some(
     (item) =>
       item.file?.type === ChatFileTypeEnum.file &&
@@ -363,22 +361,29 @@ export const formatAIChatUserQueryWithFiles = async ({
     filteredUserQuery.length === normalizedUserQuery.length
       ? normalizedUserQuery
       : filteredUserQuery;
-  const urls = deduplicatedUserQuery
+
+  return deduplicatedUserQuery;
+};
+
+const getAIChatDocumentUrls = (userQuery: UserChatItemValueItemType[]) =>
+  userQuery
     .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
     .filter(Boolean);
 
-  if (urls.length === 0) {
-    return deduplicatedUserQuery;
-  }
-
-  const readFilesResult = await parseFileFn(urls);
-
+/** 将已经解析的文件正文合并进单条 Human 消息。 */
+const mergeAIChatUserQueryWithFiles = ({
+  userQuery,
+  readFilesResult
+}: {
+  userQuery: UserChatItemValueItemType[];
+  readFilesResult: ParsedFileItem[];
+}): UserChatItemValueItemType[] => {
   if (readFilesResult.length === 0) {
-    return deduplicatedUserQuery;
+    return userQuery;
   }
 
   // AI Chat 会把普通文档合并到文本上下文，多模态文件仍作为独立输入发给模型。
-  const text = deduplicatedUserQuery.find((item) => item.text?.content)?.text?.content;
+  const text = userQuery.find((item) => item.text?.content)?.text?.content;
   const fileQuery = getUserFilesPrompt(readFilesResult);
 
   const finalQuery = injectUserQueryPrompt({
@@ -386,7 +391,7 @@ export const formatAIChatUserQueryWithFiles = async ({
     filePrompt: fileQuery
   });
 
-  const multimodalItems = deduplicatedUserQuery.filter(
+  const multimodalItems = userQuery.filter(
     (item) => !item.text && item.file?.type !== ChatFileTypeEnum.file
   );
 
@@ -400,6 +405,24 @@ export const formatAIChatUserQueryWithFiles = async ({
   ];
 };
 
+export const formatAIChatUserQueryWithFiles = async ({
+  userQuery,
+  parseFileFn
+}: {
+  userQuery: UserChatItemValueItemType[];
+  parseFileFn: ParseFileFn;
+}): Promise<UserChatItemValueItemType[]> => {
+  const preparedUserQuery = await prepareAIChatUserQueryFiles(userQuery);
+  const urls = getAIChatDocumentUrls(preparedUserQuery);
+
+  if (urls.length === 0) {
+    return preparedUserQuery;
+  }
+
+  const readFilesResult = await parseFileFn(urls);
+  return mergeAIChatUserQueryWithFiles({ userQuery: preparedUserQuery, readFilesResult });
+};
+
 /**
  * 在发送给 LLM 前把 Human 消息里的普通文件解析为文本上下文。
  *
@@ -408,20 +431,16 @@ export const formatAIChatUserQueryWithFiles = async ({
 export const rewriteChatMessagesWithFileContext = async ({
   messages,
   parseHistoryFiles,
+  maxFiles,
   parseFileFn
 }: {
   messages: ChatItemMiniType[];
   parseHistoryFiles: boolean;
-  parseFileFn: (urls: string[]) => Promise<
-    {
-      name: string;
-      url: string;
-      sandboxPath?: string;
-      content?: string;
-    }[]
-  >;
+  maxFiles?: number;
+  parseFileFn: ParseFileFn;
 }) => {
-  return Promise.all(
+  const fileLimit = Math.max(0, Math.floor(maxFiles ?? Number.MAX_SAFE_INTEGER));
+  const preparedMessages = await Promise.all(
     messages.map(async (message, index): Promise<ChatItemMiniType> => {
       if (message.obj !== ChatRoleEnum.Human) {
         return message;
@@ -435,17 +454,34 @@ export const rewriteChatMessagesWithFileContext = async ({
         };
       }
 
-      const query = await formatAIChatUserQueryWithFiles({
-        userQuery: message.value,
-        parseFileFn
-      });
-
       return {
         ...message,
-        value: query
+        value: await prepareAIChatUserQueryFiles(message.value)
       };
     })
   );
+
+  const messageFileUrls = preparedMessages.map((message) =>
+    message.obj === ChatRoleEnum.Human
+      ? getAIChatDocumentUrls(message.value).slice(0, fileLimit)
+      : []
+  );
+  const uniqueFileUrls = Array.from(new Set(messageFileUrls.flat()));
+  const parsedFiles = uniqueFileUrls.length > 0 ? await parseFileFn(uniqueFileUrls) : [];
+  const parsedFileMap = new Map(parsedFiles.map((file) => [file.url, file]));
+
+  return preparedMessages.map((message, index) => {
+    if (message.obj !== ChatRoleEnum.Human) return message;
+
+    const readFilesResult = messageFileUrls[index]
+      .map((url) => parsedFileMap.get(url))
+      .filter((file): file is ParsedFileItem => file !== undefined);
+
+    return {
+      ...message,
+      value: mergeAIChatUserQueryWithFiles({ userQuery: message.value, readFilesResult })
+    };
+  });
 };
 
 /** 将已授权引用或绝对 HTTP(S) URL 归一化为可解析的文档 URL。 */
@@ -732,30 +768,30 @@ export const parseFileContentFromUrls = async ({
     .filter(Boolean)
     .slice(0, maxFiles);
 
-  const readFilesResult = await Promise.all(
-    parseUrlList
-      .map(async (url) => {
-        try {
-          const { name, content } = await getFileContentByUrl({
-            url,
-            teamId,
-            tmbId,
-            customPdfParse,
-            usageId,
-            fileContext
-          });
+  const readFilesResult = await batchRun(
+    parseUrlList,
+    async (url) => {
+      try {
+        const { name, content } = await getFileContentByUrl({
+          url,
+          teamId,
+          tmbId,
+          customPdfParse,
+          usageId,
+          fileContext
+        });
 
-          return { success: true, name, url, content: content };
-        } catch (error) {
-          return {
-            success: false,
-            name: '',
-            url,
-            content: getErrText(error, 'Load file error')
-          };
-        }
-      })
-      .filter(Boolean)
+        return { success: true, name, url, content };
+      } catch (error) {
+        return {
+          success: false,
+          name: '',
+          url,
+          content: getErrText(error, 'Load file error')
+        };
+      }
+    },
+    5
   );
 
   return readFilesResult;

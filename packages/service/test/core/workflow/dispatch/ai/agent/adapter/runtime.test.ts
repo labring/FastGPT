@@ -236,7 +236,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
   it('exposes readFile as an internal tool executor for direct model URLs', async () => {
     const response = JSON.stringify([
       {
-        url: 'https://files/a.pdf',
         name: 'a.pdf',
         content: 'file content'
       }

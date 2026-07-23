@@ -81,7 +81,11 @@ export const getScheduleTriggerApp = async () => {
           }
         }
       ];
-      const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+      const {
+        query: workflowQuery,
+        maxFileAmount,
+        maxBytesPerFile
+      } = await prepareWorkflowFileQuery({
         teamId: String(app.teamId),
         chatConfig,
         query: userQuery
@@ -189,6 +193,7 @@ export const getScheduleTriggerApp = async () => {
             variables: {},
             query: workflowQuery,
             maxFileAmount,
+            maxBytesPerFile,
             chatConfig,
             histories: [],
             stream: false,

@@ -98,6 +98,8 @@ type Props = Omit<
   agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
   /** 已在持久化前计算完成的用户级 Workflow 文件数量上限。 */
   maxFileAmount: number;
+  /** 已按团队配置优先、系统配置兜底计算完成的单文件读取上限。 */
+  maxBytesPerFile: number;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;

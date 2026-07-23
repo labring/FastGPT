@@ -176,6 +176,7 @@ describe('rewriteChatMessagesWithFileContext', () => {
         })
       ],
       parseHistoryFiles: false,
+      maxFiles: 20,
       parseFileFn
     });
 
@@ -214,17 +215,44 @@ describe('rewriteChatMessagesWithFileContext', () => {
         })
       ],
       parseHistoryFiles: true,
+      maxFiles: 20,
       parseFileFn
     });
 
-    expect(parseFileFn).toHaveBeenCalledTimes(2);
-    expect(parseFileFn).toHaveBeenNthCalledWith(1, ['/history.pdf']);
-    expect(parseFileFn).toHaveBeenNthCalledWith(2, ['/current.pdf']);
+    expect(parseFileFn).toHaveBeenCalledTimes(1);
+    expect(parseFileFn).toHaveBeenCalledWith(['/history.pdf', '/current.pdf']);
 
     const historyText = result[0].value.find((item) => item.text)?.text?.content;
     const currentText = result[2].value.find((item) => item.text)?.text?.content;
 
     expect(historyText).toContain('/history.pdf content');
     expect(currentText).toContain('/current.pdf content');
+  });
+
+  it('历史和当前轮引用相同文件时只解析一次并回填到两条消息', async () => {
+    const result = await rewriteChatMessagesWithFileContext({
+      messages: [
+        createHumanMessage({
+          text: '历史问题',
+          fileUrl: '/shared.pdf'
+        }),
+        createHumanMessage({
+          text: '继续回答',
+          fileUrl: '/shared.pdf'
+        })
+      ],
+      parseHistoryFiles: true,
+      maxFiles: 20,
+      parseFileFn
+    });
+
+    expect(parseFileFn).toHaveBeenCalledTimes(1);
+    expect(parseFileFn).toHaveBeenCalledWith(['/shared.pdf']);
+    expect(result[0].value.find((item) => item.text)?.text?.content).toContain(
+      '/shared.pdf content'
+    );
+    expect(result[1].value.find((item) => item.text)?.text?.content).toContain(
+      '/shared.pdf content'
+    );
   });
 });

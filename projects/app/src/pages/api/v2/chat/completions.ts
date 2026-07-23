@@ -286,7 +286,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
       teamId,
       chatConfig,
       query: userQuestion.value
@@ -382,6 +386,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       variables,
       query: removeEmptyUserInput(workflowQuery),
       maxFileAmount,
+      maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
       histories: newHistories,

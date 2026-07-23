@@ -572,14 +572,13 @@ describe('runToolCall compression node responses', () => {
     dispatchWorkflowReadFilesMock.mockResolvedValue({
       response: JSON.stringify([
         {
-          url: 'https://files/known.pdf',
           name: 'known.pdf',
           content: 'known content'
         },
         {
-          url: 'https://files/missing.pdf',
           name: 'https://files/missing.pdf',
-          content: 'Load file error'
+          content: '',
+          error: 'Load file error'
         }
       ]),
       usages: [],
@@ -612,14 +611,13 @@ describe('runToolCall compression node responses', () => {
       });
       expect(JSON.parse(fileResult.response)).toEqual([
         {
-          url: 'https://files/known.pdf',
           name: 'known.pdf',
           content: 'known content'
         },
         {
-          url: 'https://files/missing.pdf',
           name: 'https://files/missing.pdf',
-          content: 'Load file error'
+          content: '',
+          error: 'Load file error'
         }
       ]);
       options.runtime.emitEvent({

@@ -70,10 +70,12 @@ export const getChatMessages = async ({
   const messages = await rewriteChatMessagesWithFileContext({
     messages: rawUserMessages,
     parseHistoryFiles,
+    maxFiles: maxFileAmount,
     parseFileFn: async (urls) => {
       const files = await parseFileContentFromUrls({
         urls,
-        maxFiles: maxFileAmount,
+        // 每条消息已经按 Workflow 上限截取，这里统一解析去重后的文件集合。
+        maxFiles: urls.length,
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
         customPdfParse,

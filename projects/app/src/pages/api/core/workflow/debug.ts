@@ -73,7 +73,11 @@ async function handler(
       });
   const responseChatItemId = getNanoid();
   const workflowChatConfig = chatConfig || app.chatConfig;
-  const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+  const {
+    query: workflowQuery,
+    maxFileAmount,
+    maxBytesPerFile
+  } = await prepareWorkflowFileQuery({
     teamId: String(app.teamId),
     chatConfig: workflowChatConfig,
     query
@@ -104,6 +108,7 @@ async function handler(
     variables,
     query: workflowQuery,
     maxFileAmount,
+    maxBytesPerFile,
     chatConfig: workflowChatConfig,
     histories: history,
     stream: false,

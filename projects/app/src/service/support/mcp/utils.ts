@@ -230,7 +230,11 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(app._id)
     };
-    const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
       teamId: String(app.teamId),
       chatConfig,
       query: userQuestion.value
@@ -278,6 +282,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         responseChatItemId: preparedRound.responseChatItemId,
         query: removeEmptyUserInput(workflowQuery),
         maxFileAmount,
+        maxBytesPerFile,
         chatConfig,
         histories: [],
         stream: false,

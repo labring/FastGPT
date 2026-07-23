@@ -150,7 +150,11 @@ export async function handleSkillDebugChat(
     const chatConfig = {
       fileSelectConfig: skillDebugFileSelectConfig
     };
-    const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
       teamId,
       chatConfig,
       query: userQuestion.value
@@ -228,6 +232,7 @@ export async function handleSkillDebugChat(
       variables: {},
       query: removeEmptyUserInput(workflowQuery),
       maxFileAmount,
+      maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
       histories: newHistories,

@@ -232,9 +232,7 @@ describe('prepareWorkflowFileContext', () => {
     });
 
     expect(getPreviewUrl).not.toHaveBeenCalled();
-    const preparedFile = (histories[0].value[0] as UserChatItemValueItemType).file;
-    expect(preparedFile?.key).toBeUndefined();
-    expect(preparedFile?.url).toBe('');
+    expect(histories[0].value).toEqual([]);
     expect(historyFile.file?.key).toBe(invalidHistoryKey);
   });
 
@@ -255,9 +253,8 @@ describe('prepareWorkflowFileContext', () => {
       type: 'externalHttp',
       url: 'https://cdn.example.com/report.pdf'
     });
-    const preparedFile = (histories[0].value[0] as UserChatItemValueItemType).file;
     expect(fileContext.resolve(invalidHistoryFile.file!.url)).toBeUndefined();
-    expect(preparedFile?.url).toBe('');
+    expect(histories[0].value).toEqual([]);
     expect(invalidHistoryFile.file?.url).toBe('/api/system/file/d/legacy');
     expect(fileContext.limits).toEqual({ maxFileAmount: 5, maxBytesPerFile: 512 });
   });

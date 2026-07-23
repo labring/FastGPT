@@ -222,7 +222,6 @@ describe('createWorkflowAgentToolProvider', () => {
   it('creates read file executor for direct model URLs', async () => {
     const response = JSON.stringify([
       {
-        url: 'https://generated.example.com/result.pdf',
         name: 'result.pdf',
         content: 'file content'
       }

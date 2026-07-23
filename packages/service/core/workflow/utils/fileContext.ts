@@ -434,35 +434,38 @@ export const prepareWorkflowFileContext = async ({
   const prepareFile = async (
     file: UserChatItemFileItemType,
     source: 'query' | 'history'
-  ): Promise<UserChatItemFileItemType> => {
+  ): Promise<UserChatItemFileItemType | undefined> => {
     const ref = await registerInputFile({ file, source });
     if (ref) return { ...file, ...('url' in file ? { url: ref.modelUrl } : {}) };
-
-    const { key: _key, ...rest } = file;
-    return { ...rest, url: '' };
   };
 
   const preparedQuery: UserChatItemValueItemType[] = await Promise.all(
-    query.map(async (item) => ({
-      ...item,
-      ...(item.file ? { file: await prepareFile(item.file, 'query') } : {})
-    }))
+    query.map(async (item) => {
+      if (!item.file) return { ...item };
+
+      const file = await prepareFile(item.file, 'query');
+      if (!file) throw new UserError('Workflow query file is unavailable');
+      return { ...item, file };
+    })
   );
   const preparedHistories: ChatItemMiniType[] = await Promise.all(
-    histories.map(
-      async (history) =>
-        ({
-          ...history,
-          value: await Promise.all(
-            history.value.map(async (value) => ({
-              ...value,
-              ...(history.obj === ChatRoleEnum.Human && 'file' in value && value.file
-                ? { file: await prepareFile(value.file, 'history') }
-                : {})
-            }))
-          )
-        }) as ChatItemMiniType
-    )
+    histories.map(async (history) => {
+      const value = await Promise.all(
+        history.value.map(async (value) => {
+          if (history.obj !== ChatRoleEnum.Human || !('file' in value) || !value.file) {
+            return { ...value };
+          }
+
+          const file = await prepareFile(value.file, 'history');
+          return file ? { ...value, file } : undefined;
+        })
+      );
+
+      return {
+        ...history,
+        value: value.filter((item): item is NonNullable<typeof item> => item !== undefined)
+      } as ChatItemMiniType;
+    })
   );
 
   const limits: WorkflowFileLimits = {

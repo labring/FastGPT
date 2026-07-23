@@ -45,20 +45,20 @@ export const addPreviewUrlToChatItems = async (
       return { ...file, url: previewUrl };
     }
 
-    const { key: _key, ...rest } = file;
-    return { ...rest, url: '' };
+    return;
   }
 
   async function addPreviewUrlToValue(value: RuntimeValue) {
     if (!Array.isArray(value)) return value;
 
-    return Promise.all(
+    const files = await Promise.all(
       value.map((file) =>
         file && typeof file === 'object'
           ? addPreviewUrlToFileValue(file as ChatFileValueWithPreview)
           : file
       )
     );
+    return files.filter((file) => file !== undefined);
   }
 
   async function addToInteractive(

@@ -225,6 +225,50 @@ describe('parseFileContentFromUrls (buffer hit)', () => {
     expect(result.every((item) => item.success)).toBe(true);
   });
 
+  it('最多并发读取 5 个文件并保持结果顺序', async () => {
+    const urls = Array.from({ length: 6 }, (_, index) => `https://files.example.com/${index}.pdf`);
+    let releaseFirstBatch = () => {};
+    const firstBatchGate = new Promise<void>((resolve) => {
+      releaseFirstBatch = resolve;
+    });
+    let started = 0;
+    let active = 0;
+    let maxActive = 0;
+
+    mockGetRawTextBuffer.mockImplementation(async ({ sourceId }: { sourceId: string }) => {
+      const currentIndex = started++;
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+
+      if (currentIndex < 5) {
+        await firstBatchGate;
+      }
+
+      active -= 1;
+      return {
+        filename: sourceId.split('/').pop(),
+        text: sourceId
+      };
+    });
+
+    const resultPromise = parseFileContentFromUrls({
+      urls,
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    await vi.waitFor(() => expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(5));
+    expect(maxActive).toBe(5);
+
+    releaseFirstBatch();
+    const result = await resultPromise;
+
+    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(6);
+    expect(maxActive).toBe(5);
+    expect(result.map((item) => item.url)).toEqual(urls);
+  });
+
   it('内部地址即使命中 raw-text 缓存也先拒绝', async () => {
     mockIsInternalAddress.mockResolvedValue(true);
     mockGetRawTextBuffer.mockResolvedValue({

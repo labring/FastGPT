@@ -293,13 +293,7 @@ describe('addPreviewUrlToChatItems', () => {
       async () => undefined
     );
 
-    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([
-      {
-        name: 'unavailable.png',
-        type: ChatFileTypeEnum.image,
-        url: ''
-      }
-    ]);
+    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([]);
     expect(histories).toEqual(originalHistories);
   });
 
@@ -391,13 +385,7 @@ describe('addPreviewUrlToChatItems', () => {
     expect(JSON.parse(result[0].value[0].text.content)).toEqual([
       {
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
-        value: [
-          {
-            name: 'unavailable.pdf',
-            type: ChatFileTypeEnum.file,
-            url: ''
-          }
-        ]
+        value: []
       }
     ]);
     expect(histories).toEqual(originalHistories);

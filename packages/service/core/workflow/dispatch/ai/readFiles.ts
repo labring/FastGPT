@@ -61,15 +61,21 @@ export const dispatchWorkflowReadFiles = async ({
         return {
           url,
           name: inputName ?? url,
-          content: getErrText(error, 'Load file error')
+          content: '',
+          error: getErrText(error, 'Load file error')
         };
       }
     },
     5
   );
+  const toolResponse = readFilesResult.map((item) =>
+    'error' in item
+      ? { name: item.name, content: item.content, error: item.error }
+      : { name: item.name, content: item.content }
+  );
 
   return {
-    response: JSON.stringify(readFilesResult),
+    response: JSON.stringify(toolResponse),
     usages,
     nodeResponse: {
       moduleType: FlowNodeTypeEnum.readFiles,

@@ -15,7 +15,12 @@ type Props = ModuleDispatchProps<{
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
-  [NodeOutputKeyEnum.rawResponse]: { filename: string; url: string; text: string }[];
+  [NodeOutputKeyEnum.rawResponse]: {
+    filename: string;
+    url: string;
+    text: string;
+    error?: string;
+  }[];
 }>;
 
 /**
@@ -76,7 +81,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
         [NodeOutputKeyEnum.rawResponse]: readFilesResult.map((item) => ({
           filename: item.name,
           url: item.url,
-          text: item.content
+          text: item.success ? item.content : '',
+          ...(item.success ? {} : { error: item.content })
         }))
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

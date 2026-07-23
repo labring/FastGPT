@@ -182,7 +182,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
-    const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
       teamId: String(teamId),
       chatConfig,
       query: userQuestion.value
@@ -260,6 +264,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       variables,
       query: removeEmptyUserInput(workflowQuery),
       maxFileAmount,
+      maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
       histories: newHistories,

@@ -12,13 +12,22 @@ export const getWorkflowFileAmountLimits = ({
   systemMaxFileAmount: number;
   queryMaxFileAmount?: number;
 }) => {
-  const maxFileAmount = teamMaxFileAmount || systemMaxFileAmount;
+  const maxFileAmount = teamMaxFileAmount ?? systemMaxFileAmount;
 
   return {
     maxFileAmount,
     queryMaxFileAmount: queryMaxFileAmount ?? maxFileAmount
   };
 };
+
+/** 按团队配置优先、系统配置兜底计算单文件读取上限，并转换为字节。 */
+export const getWorkflowFileSizeLimit = ({
+  teamMaxFileSize,
+  systemMaxFileSize
+}: {
+  teamMaxFileSize?: number;
+  systemMaxFileSize: number;
+}) => (teamMaxFileSize ?? systemMaxFileSize) * 1024 * 1024;
 
 /** 按上传上限静默过滤根 query 文件，保留非文件输入及原始顺序。 */
 export const filterWorkflowQueryFiles = ({
@@ -62,6 +71,10 @@ export const prepareWorkflowFileQuery = async ({
 
   return {
     query: filterWorkflowQueryFiles({ query, maxFileAmount: queryMaxFileAmount }),
-    maxFileAmount
+    maxFileAmount,
+    maxBytesPerFile: getWorkflowFileSizeLimit({
+      teamMaxFileSize: planStatus.standard?.maxUploadFileSize,
+      systemMaxFileSize: global.feConfigs.uploadFileMaxSize
+    })
   };
 };

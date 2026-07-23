@@ -96,6 +96,38 @@ describe('dispatchReadFiles', () => {
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(text);
   });
 
+  it('单文件失败时 rawResponse 返回 error，组合文本仍包含错误内容', async () => {
+    mockparseFileContentFromUrls.mockResolvedValue([
+      { success: true, name: 'a.pdf', url: '/a.pdf', content: 'Alpha' },
+      {
+        success: false,
+        name: 'b.pdf',
+        url: '/b.pdf',
+        content: 'File exceeds maximum allowed size'
+      }
+    ]);
+
+    const result = await dispatchReadFiles({
+      ...baseProps,
+      params: { fileUrlList: ['/a.pdf', '/b.pdf'] }
+    });
+
+    expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual([
+      { filename: 'a.pdf', url: '/a.pdf', text: 'Alpha' },
+      {
+        filename: 'b.pdf',
+        url: '/b.pdf',
+        text: '',
+        error: 'File exceeds maximum allowed size'
+      }
+    ]);
+
+    const text = result.data?.[NodeOutputKeyEnum.text];
+    expect(text).toContain('## a.pdf\nAlpha');
+    expect(text).toContain('## b.pdf\nFile exceeds maximum allowed size');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(text);
+  });
+
   it('忽略 query maxFiles，并保留 customPdfParse 配置', async () => {
     await dispatchReadFiles({
       ...baseProps,

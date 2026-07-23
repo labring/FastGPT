@@ -44,7 +44,6 @@ describe('dispatchWorkflowReadFiles', () => {
     });
     expect(JSON.parse(result.response)).toEqual([
       {
-        url: 'https://files.example.com/input.pdf',
         name: 'parsed.pdf',
         content: 'Alpha content'
       }
@@ -63,7 +62,7 @@ describe('dispatchWorkflowReadFiles', () => {
     });
   });
 
-  it('keeps per-file failures in the same JSON and node response shape', async () => {
+  it('returns per-file failures through error without mixing them into content', async () => {
     getFileContentByUrlMock.mockRejectedValue(new Error('download failed'));
 
     const result = await dispatchWorkflowReadFiles({
@@ -83,14 +82,14 @@ describe('dispatchWorkflowReadFiles', () => {
 
     expect(JSON.parse(result.response)).toEqual([
       {
-        url: 'https://files.example.com/report.pdf',
         name: 'report.pdf',
-        content: 'download failed'
+        content: '',
+        error: 'download failed'
       },
       {
-        url: 'https://files.example.com/unknown.pdf',
         name: 'https://files.example.com/unknown.pdf',
-        content: 'download failed'
+        content: '',
+        error: 'download failed'
       }
     ]);
     expect(result.nodeResponse.readFiles).toEqual([
