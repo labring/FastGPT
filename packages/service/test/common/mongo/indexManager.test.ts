@@ -186,16 +186,13 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
     expect(logger.debug).not.toHaveBeenCalled();
   });
 
-  it('preserves same-name indexes when key, key order, or options do not match', async () => {
+  it('preserves same-name indexes when key or key order does not match', async () => {
     const schema = new Schema(
       { customerField: String, legacyField: String, otherField: String },
       { autoIndex: false }
     );
     defineDeprecatedTestIndexes(schema, [
-      {
-        ...legacyDefinition,
-        options: { unique: true }
-      },
+      legacyDefinition,
       {
         indexName: 'legacy_compound_1',
         key: { legacyField: 1, otherField: 1 }
@@ -221,6 +218,91 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
     expect(await getIndexNames(model)).toEqual(
       expect.objectContaining(new Set(['_id_', 'legacy_field_1', 'legacy_compound_1']))
     );
+  });
+
+  it('drops a deprecated index even when options differ, as long as key matches', async () => {
+    const schema = new Schema({ legacyField: String }, { autoIndex: false });
+    defineDeprecatedTestIndexes(schema, [
+      {
+        ...legacyDefinition,
+        options: { unique: true }
+      }
+    ]);
+    const model = createModel({ schema });
+    // 同名同 key 但 option 不同：只按 key 匹配，仍允许删除
+    await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true,
+      logger
+    });
+
+    expect(report.items).toEqual([
+      expect.objectContaining({ action: 'drop', applied: true, indexName: 'legacy_field_1' })
+    ]);
+    expect(await getIndexNames(model)).not.toContain('legacy_field_1');
+  });
+
+  it('matches MongoDB text indexes via weights instead of the stored _fts key', async () => {
+    const schema = new Schema(
+      { title: String, body: String, otherField: String },
+      { autoIndex: false }
+    );
+    defineDeprecatedTestIndexes(schema, [
+      {
+        indexName: 'title_text_body_text',
+        key: { title: 'text', body: 'text' }
+      }
+    ]);
+    const model = createModel({ schema });
+    await model.collection.createIndex(
+      { title: 'text', body: 'text' },
+      { name: 'title_text_body_text' }
+    );
+
+    const indexes = (await model.collection.indexes()) as Array<Record<string, unknown>>;
+    const textIndex = indexes.find((index) => index.name === 'title_text_body_text');
+    expect(textIndex?.key).toEqual({ _fts: 'text', _ftsx: 1 });
+    expect(textIndex?.weights).toEqual({ title: 1, body: 1 });
+
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true,
+      logger
+    });
+
+    expect(report.items).toEqual([
+      expect.objectContaining({
+        action: 'drop',
+        applied: true,
+        indexName: 'title_text_body_text'
+      })
+    ]);
+    expect(await getIndexNames(model)).not.toContain('title_text_body_text');
+  });
+
+  it('skips text indexes when declared text fields do not match weights', async () => {
+    const schema = new Schema({ title: String, body: String }, { autoIndex: false });
+    defineDeprecatedTestIndexes(schema, [
+      {
+        indexName: 'title_text',
+        key: { title: 'text' }
+      }
+    ]);
+    const model = createModel({ schema });
+    await model.collection.createIndex({ body: 'text' }, { name: 'title_text' });
+
+    const report = await MongoIndexManager.cleanupModelDeprecatedIndexes({
+      model,
+      apply: true,
+      logger
+    });
+
+    expect(report.items).toEqual([
+      expect.objectContaining({ action: 'skip_mismatch', indexName: 'title_text' })
+    ]);
+    expect(await getIndexNames(model)).toContain('title_text');
   });
 
   it('reports a missing deprecated index and formats its report', async () => {

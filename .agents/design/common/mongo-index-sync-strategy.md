@@ -50,7 +50,7 @@ defineIndex(ChatSchema, {
 
 - 未设置 `deprecated` 时，`defineIndex()` 代理 `Schema.index()`，该索引属于当前 Schema。
 - 显式设置 `deprecated: true` 时，只在 Schema 实例上登记清理元数据，不再把索引加入 Mongoose Schema。
-- 废弃索引元数据包含索引名、key 和参与精确匹配的关键 options；不包含 collection name，collection 由 model 推导。
+- 废弃索引元数据包含索引名、key，以及可选的 options 快照（仅供阅读/排查，不参与删除匹配）；不包含 collection name，collection 由 model 推导。
 - 未显式提供索引名时，按 MongoDB 默认规则由 key 推导。
 - 同一 Schema 内重复登记同名废弃索引属于配置错误，应立即抛错。
 - FastGPT 管理的索引不再使用字段级 `index: true` 或 `unique: true` 隐式声明，避免绕开统一入口。
@@ -65,22 +65,20 @@ defineIndex(ChatSchema, {
 2. `toDrop` 仅表示数据库中存在但当前 Schema 未声明的索引，记录 `warn` 后保留。
 3. `createIndexes({ background: true })` 创建当前 Schema 索引。
 4. 当 `MONGO_DEPRECATE_INDEX=true` 时，从 `model.schema` 读取废弃索引声明。
-5. 在 model 对应 collection 中逐项查询并精确匹配。
-6. 仅删除 name、key 和关键 options 全部匹配的索引。
+5. 在 model 对应 collection 中按 name 查找废弃索引。
+6. 仅删除 name 与 key 匹配的索引；options 不参与匹配。
 
-关键 options 包括：
+key 匹配规则：
 
-- `unique`
-- `sparse`
-- `expireAfterSeconds`
-- `partialFilterExpression`
-- `collation`
+- 普通索引：`listIndexes` 的 key 与声明 key 按字段顺序精确相等。
+- text 索引：MongoDB 会把 key 改写为 `{ _fts: "text", _ftsx: 1 }`，因此改为比较声明中的 text 字段集合与 `weights` 字段集合。
+- options（`unique` / `sparse` / TTL / partial / collation）故意不参与匹配，减少重复声明成本；声明方需自行确认同名同 key 的索引确实可删。
 
 清理结果分为：
 
 - `drop`：定义匹配，已删除或在 dry-run 中可删除。
 - `skip_missing`：索引不存在或已被其他实例删除。
-- `skip_mismatch`：同名索引的 key 或 options 不匹配，保留并告警。
+- `skip_mismatch`：同名索引的 key 不匹配，保留并告警。
 - `error`：查询或删除失败，保留错误信息。
 
 同一进程内同一 model 的并发调用复用正在执行的任务；任务完成后移除缓存，允许热加载或重连再次检查。多实例重复清理时，`IndexNotFound` 视为幂等跳过。
@@ -115,7 +113,7 @@ defineIndex(ChatSchema, {
 
 1. 未登记的 Schema 外索引不会被删除，包括客户自建索引和无法确认所有权的历史索引。
 2. `createIndexes()` 不会修改已存在索引的 options。TTL、唯一约束、partial filter 等变化必须通过明确迁移处理。
-3. 错误的 Schema 本地废弃声明会在启动时触发清理，因此精确匹配和代码 review 是必须保留的防线。
+3. 错误的 Schema 本地废弃声明会在启动时触发清理，因此 name + key 匹配和代码 review 是必须保留的防线。
 4. 启动流程不暴露 Mongoose 全量同步能力；需要诊断时复用 manager 的 inspect/dry-run 能力。
 5. `MONGO_DEPRECATE_INDEX=false` 只关闭废弃索引清理，当前 Schema 缺失的索引仍会创建。
 6. 客户自建索引应显式设置自定义名称，不使用 MongoDB 按 key 生成的默认名称，避免与 FastGPT 系统内置索引重名。
@@ -133,7 +131,7 @@ defineIndex(ChatSchema, {
 
 1. 启动时创建当前 Schema 缺失索引，并保留所有未登记的 Schema 外索引。
 2. Schema 未登记废弃索引时不执行删除。
-3. 只有 name、key 和关键 options 精确匹配的废弃索引会被删除。
+3. 只有 name 与 key 匹配的废弃索引会被删除；text 索引通过 weights 字段集合匹配。
 4. 当前索引创建失败时不删除废弃索引。
 5. 同名但定义不同的索引保留并告警。
 6. 已不存在的废弃索引和多实例并发重复清理保持幂等。

@@ -32,6 +32,8 @@ export type MongoIndexDescription = {
   expireAfterSeconds?: number;
   partialFilterExpression?: unknown;
   collation?: unknown;
+  weights?: Record<string, unknown>;
+  textIndexVersion?: number;
 };
 
 export type MongoIndexCleanupAction = 'drop' | 'skip_missing' | 'skip_mismatch' | 'error';
@@ -64,19 +66,11 @@ type SyncModelIndexesParams = {
   logger?: MongoIndexLogger;
 };
 
-const optionKeys = [
-  'unique',
-  'sparse',
-  'expireAfterSeconds',
-  'partialFilterExpression',
-  'collation'
-] as const;
-
 /**
  * MongoDB 索引管理入口。
  *
  * 每个 model 固定执行安全同步：补建当前 Schema 索引，再删除该 Schema 明确登记且
- * 精确匹配的历史索引。Schema 外未知索引只记录不删除，以保护客户自建索引。
+ * name + key 匹配的历史索引。Schema 外未知索引只记录不删除，以保护客户自建索引。
  */
 export class MongoIndexManager {
   private static modelIndexTasks = new Map<Model<any>, Promise<MongoIndexSyncResult>>();
@@ -169,8 +163,9 @@ export class MongoIndexManager {
   /**
    * 清理当前 Model 所属 Schema 明确登记的废弃索引。
    *
-   * 只有 name、key 和关键 options 精确匹配时才允许删除；定义不匹配或未知索引均
-   * 保留。`apply=false` 仅供诊断入口复用，启动同步固定传 true。
+   * 只有 name 与 key 匹配时才允许删除；key 不匹配或未知索引均保留。text 索引会
+   * 兼容 MongoDB 返回的 `_fts/_ftsx` 形态。`apply=false` 仅供诊断入口复用，启动
+   * 同步固定传 true。
    */
   static async cleanupModelDeprecatedIndexes({
     model,
@@ -358,26 +353,54 @@ export class MongoIndexManager {
     );
   }
 
-  private static getExpectedOptions(definition: DeprecatedMongoIndexDefinition) {
-    return optionKeys.reduce<Record<string, unknown>>((result, key) => {
-      const value = definition.options?.[key];
-      if (value !== undefined) {
-        result[key] = value;
-      }
-      return result;
-    }, {});
+  /**
+   * 判断声明 key 是否为 text 索引（字段值包含 `"text"`）。
+   *
+   * MongoDB 创建后会把 text 索引 key 改写为 `{ _fts: "text", _ftsx: 1 }`，
+   * 因此清理匹配不能直接用声明 key 和 listIndexes 的 key 做对象相等比较。
+   */
+  private static isTextIndexDefinition(key: DeprecatedMongoIndexDefinition['key']) {
+    return Object.values(key as Record<string, unknown>).some((value) => value === 'text');
   }
 
-  private static getActualOptions(index: MongoIndexDescription) {
-    return optionKeys.reduce<Record<string, unknown>>((result, key) => {
-      const value = index[key];
-      if (value !== undefined) {
-        result[key] = value;
-      }
-      return result;
-    }, {});
+  /** 判断 listIndexes 返回的索引是否为 text 索引。 */
+  private static isStoredTextIndex(index: MongoIndexDescription) {
+    return (
+      index.key?._fts === 'text' ||
+      typeof index.textIndexVersion === 'number' ||
+      (index.weights != null && typeof index.weights === 'object')
+    );
   }
 
+  /**
+   * 从废弃声明中提取 text 字段列表，保持声明顺序。
+   * 非 text 前缀/后缀字段暂不参与匹配，当前 FastGPT 未使用混合 text 复合索引。
+   */
+  private static getDeclaredTextFields(key: DeprecatedMongoIndexDefinition['key']) {
+    return Object.entries(key as Record<string, unknown>)
+      .filter(([, value]) => value === 'text')
+      .map(([field]) => field);
+  }
+
+  /**
+   * 从数据库索引描述中提取 text 字段列表。
+   * 优先使用 `weights`（字段 -> 权重），这是 listIndexes 暴露业务字段的权威来源。
+   */
+  private static getStoredTextFields(index: MongoIndexDescription) {
+    if (index.weights && typeof index.weights === 'object') {
+      return Object.keys(index.weights);
+    }
+    return [];
+  }
+
+  /**
+   * 废弃索引删除前的安全校验：name 已由调用方定位，这里只校验 key。
+   *
+   * - 普通索引：key 对象按声明顺序精确相等
+   * - text 索引：声明字段集合与 weights 字段集合相等（忽略 `_fts/_ftsx` 形态差异）
+   * - options（unique/sparse/TTL 等）不参与匹配，避免重复声明成本；同名同 key 下
+   *   option 冲突极少，需由声明方自行确认
+   */
   private static isDeprecatedIndexMatched({
     definition,
     index
@@ -385,14 +408,23 @@ export class MongoIndexManager {
     definition: DeprecatedMongoIndexDefinition;
     index: MongoIndexDescription;
   }) {
-    if (!MongoIndexManager.isSameValue(index.key, definition.key, { sortObjectKeys: false })) {
-      return false;
+    const definitionIsText = MongoIndexManager.isTextIndexDefinition(definition.key);
+    const storedIsText = MongoIndexManager.isStoredTextIndex(index);
+
+    if (definitionIsText || storedIsText) {
+      if (!definitionIsText || !storedIsText) {
+        return false;
+      }
+
+      // weights 字段顺序不一定等于声明顺序，按字段名集合比较即可
+      return MongoIndexManager.isSameValue(
+        [...MongoIndexManager.getDeclaredTextFields(definition.key)].sort(),
+        [...MongoIndexManager.getStoredTextFields(index)].sort(),
+        { sortObjectKeys: false }
+      );
     }
 
-    return MongoIndexManager.isSameValue(
-      MongoIndexManager.getActualOptions(index),
-      MongoIndexManager.getExpectedOptions(definition)
-    );
+    return MongoIndexManager.isSameValue(index.key, definition.key, { sortObjectKeys: false });
   }
 
   private static buildCleanupItem({
