@@ -50,6 +50,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
 import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
 import { AccountCancellationConfirmModal } from '@/pageComponents/account/cancel/AccountCancellationConfirmModal';
+import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -153,6 +154,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
+  const passwordChangeAuthorization = usePasswordChangeStore((state) => state.authorization);
   const {
     isOpen: isOpenUpdateContact,
     onClose: onCloseUpdateContact,
@@ -221,6 +223,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       window.removeEventListener('hashchange', triggerEnterpriseAuthFromHash);
     };
   }, [triggerEnterpriseAuthFromHash]);
+
+  useEffect(() => {
+    if (passwordChangeAuthorization?.required === false) onOpenUpdatePsw();
+  }, [onOpenUpdatePsw, passwordChangeAuthorization]);
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
     {
@@ -273,9 +279,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         {feConfigs?.isPlus && (
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
-            <Box flex={1}>*****</Box>
+            <Box flex={1}>
+              {userInfo?.hasPassword ? '*****' : t('account_info:password_not_set')}
+            </Box>
             <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('account_info:change')}
+              {userInfo?.hasPassword ? t('account_info:change') : t('account_info:set_password')}
             </Button>
           </Flex>
         )}

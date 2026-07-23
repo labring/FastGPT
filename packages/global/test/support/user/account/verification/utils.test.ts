@@ -29,7 +29,9 @@ const resolve = (username: string, overrides: CapabilityOverrides = {}) =>
         ...capabilities.oauth,
         ...overrides.oauth
       }
-    }
+    },
+    allowPasswordFallback: true,
+    oldPasswordAvailable: true
   });
 
 describe('resolveAccountVerificationByUsername', () => {
@@ -67,6 +69,43 @@ describe('resolveAccountVerificationByUsername', () => {
       accountKind: 'phone',
       method: 'oldPassword'
     });
+  });
+
+  it('requires both password fallback policy and a stored password', () => {
+    expect(
+      resolveAccountVerificationByUsername({
+        username: 'local',
+        capabilities,
+        allowPasswordFallback: true,
+        oldPasswordAvailable: false
+      })
+    ).toEqual({
+      status: 'unsupported',
+      accountKind: 'local',
+      unsupportedReason: 'no_available_verification_method'
+    });
+
+    expect(
+      resolveAccountVerificationByUsername({
+        username: 'local',
+        capabilities,
+        allowPasswordFallback: false
+      })
+    ).toEqual({
+      status: 'unsupported',
+      accountKind: 'local',
+      unsupportedReason: 'no_available_verification_method'
+    });
+  });
+
+  it('keeps a configured non-password method ahead of password fallback', () => {
+    expect(
+      resolveAccountVerificationByUsername({
+        username: 'user@example.com',
+        capabilities,
+        allowPasswordFallback: false
+      })
+    ).toEqual({ status: 'supported', accountKind: 'email', method: 'code' });
   });
 
   it.each([

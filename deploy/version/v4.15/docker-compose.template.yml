@@ -14,6 +14,8 @@ x-file-token-key: &x-file-token-key 'filetokenkey'
 x-aes256-secret-key: &x-aes256-secret-key 'fastgptsecret'
 # Invoke 反向调用 JWT 密钥，至少 32 位
 x-invoke-token-secret: &x-invoke-token-secret 'fastgpt_invoke_token_secret_32_chars_min'
+# 通用 JWT 签名密钥，至少 32 位；FastGPT 与 Pro 必须保持一致
+x-jwt-secret: &x-jwt-secret 'replace_with_a_random_secret_at_least_32_chars'
 # plugin auth token，v4.15 plugin 服务要求至少 32 位
 x-plugin-auth-token: &x-plugin-auth-token 'fastgpt-plugin-token-please-change'
 # code sandbox token
@@ -120,6 +122,7 @@ x-service-env-config: &x-service-env-config
   FILE_TOKEN_KEY: *x-file-token-key
   AES256_SECRET_KEY: *x-aes256-secret-key
   INVOKE_TOKEN_SECRET: *x-invoke-token-secret
+  JWT_SECRET: *x-jwt-secret
   MULTIPLE_DATA_TO_BASE64: false
   USE_IP_LIMIT: false
   CHECK_INTERNAL_IP: false

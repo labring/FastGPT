@@ -1,5 +1,8 @@
 import { AccountVerificationMaterialTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
-import type { CodeAccountVerificationScene } from '@fastgpt/global/support/user/account/verification/type';
+import type {
+  AccountVerificationPurpose,
+  CodeAccountVerificationScene
+} from '@fastgpt/global/support/user/account/verification/type';
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 
 const { Schema } = connectionMongo;
@@ -10,7 +13,7 @@ export type AccountVerificationMaterialSchemaType = {
   code?: string;
   openid?: string;
   userIdHash?: string;
-  purpose?: 'login' | 'accountCancellation';
+  purpose?: AccountVerificationPurpose;
   scene?: CodeAccountVerificationScene;
   provider?: string;
   callbackHash?: string;

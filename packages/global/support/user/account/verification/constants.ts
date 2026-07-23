@@ -6,7 +6,8 @@ export enum AccountVerificationMaterialTypeEnum {
   captcha = 'captcha',
   login = 'login',
   oauthLogin = 'oauthLogin',
-  accountCancellation = 'accountCancellation'
+  accountCancellation = 'accountCancellation',
+  passwordChange = 'passwordChange'
 }
 
 export enum AccountVerificationMethodEnum {

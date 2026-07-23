@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
+const validJwtSecret = 'fastgpt_test_jwt_signing_secret_32_chars';
 
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
@@ -11,6 +12,7 @@ const originalEnv = {
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
+  JWT_SECRET: process.env.JWT_SECRET,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
@@ -31,6 +33,10 @@ const importServiceEnv = async () => {
 };
 
 describe('serviceEnv', () => {
+  beforeEach(() => {
+    vi.stubEnv('JWT_SECRET', validJwtSecret);
+  });
+
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
@@ -40,6 +46,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
+    vi.stubEnv('JWT_SECRET', originalEnv.JWT_SECRET);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
@@ -133,6 +140,30 @@ describe('serviceEnv', () => {
       serviceEnv: {
         INVOKE_TOKEN_SECRET: validInvokeTokenSecret
       }
+    });
+  });
+
+  it('requires JWT_SECRET outside tests and uses a test-only default during vitest', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('JWT_SECRET', undefined);
+    vi.stubEnv('VITEST', undefined);
+    vi.stubEnv('NODE_ENV', 'production');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('JWT_SECRET', 'short-secret');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('JWT_SECRET', validJwtSecret);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { JWT_SECRET: validJwtSecret }
+    });
+
+    vi.stubEnv('JWT_SECRET', undefined);
+    vi.stubEnv('VITEST', 'true');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { JWT_SECRET: validJwtSecret }
     });
   });
 

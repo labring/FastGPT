@@ -4,6 +4,7 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { AccountVerificationMaterialTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
+import type { AccountVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 import { MongoUser } from '../../../schema';
 import { consumeVerificationMaterial, upsertVerificationMaterial } from '../entity';
 import { AccountVerification, type LocalAccountIdentity } from '../service';
@@ -18,9 +19,23 @@ type PasswordVerificationDependencies = {
  * Session、团队加载及 Wecom 登录策略由上层登录应用服务负责。
  */
 export class PasswordAccountVerification extends AccountVerification<
-  { username: string },
+  {
+    username: string;
+    materialKey?: string;
+    materialType?: `${AccountVerificationMaterialTypeEnum}`;
+    userIdHash?: string;
+    purpose?: AccountVerificationPurpose;
+  },
   { code: string },
-  { username: string; password: string; code: string },
+  {
+    username: string;
+    password: string;
+    code: string;
+    materialKey?: string;
+    materialType?: `${AccountVerificationMaterialTypeEnum}`;
+    userIdHash?: string;
+    purpose?: AccountVerificationPurpose;
+  },
   LocalAccountIdentity
 > {
   private readonly dependencies: PasswordVerificationDependencies;
@@ -34,14 +49,28 @@ export class PasswordAccountVerification extends AccountVerification<
     };
   }
 
-  async create({ username }: { username: string }) {
+  async create({
+    username,
+    materialKey = username,
+    materialType = AccountVerificationMaterialTypeEnum.login,
+    userIdHash,
+    purpose = 'login'
+  }: {
+    username: string;
+    materialKey?: string;
+    materialType?: `${AccountVerificationMaterialTypeEnum}`;
+    userIdHash?: string;
+    purpose?: AccountVerificationPurpose;
+  }) {
     const code = this.dependencies.generateCode();
     const now = this.dependencies.now();
 
     await upsertVerificationMaterial({
-      key: username,
-      type: AccountVerificationMaterialTypeEnum.login,
+      key: materialKey,
+      type: materialType,
       code,
+      userIdHash,
+      purpose,
       createTime: now,
       expiredTime: addSeconds(now, 30)
     });
@@ -52,16 +81,26 @@ export class PasswordAccountVerification extends AccountVerification<
   async consume({
     username,
     password,
-    code
+    code,
+    materialKey = username,
+    materialType = AccountVerificationMaterialTypeEnum.login,
+    userIdHash,
+    purpose = 'login'
   }: {
     username: string;
     password: string;
     code: string;
+    materialKey?: string;
+    materialType?: `${AccountVerificationMaterialTypeEnum}`;
+    userIdHash?: string;
+    purpose?: AccountVerificationPurpose;
   }): Promise<LocalAccountIdentity> {
     const material = await consumeVerificationMaterial({
-      key: username,
-      type: AccountVerificationMaterialTypeEnum.login,
+      key: materialKey,
+      type: materialType,
       code,
+      userIdHash,
+      purpose,
       caseInsensitiveCode: true,
       now: this.dependencies.now()
     });

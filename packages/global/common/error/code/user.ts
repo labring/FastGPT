@@ -10,7 +10,8 @@ export enum UserErrEnum {
   accountCancellationPending = 'accountCancellationPending',
   invalidVerificationCode = 'invalidVerificationCode',
   sendVerificationCodeTooFrequently = 'sendVerificationCodeTooFrequently',
-  verifyCodeTooFrequently = 'verifyCodeTooFrequently'
+  verifyCodeTooFrequently = 'verifyCodeTooFrequently',
+  passwordChangeAuthorizationInvalid = 'passwordChangeAuthorizationInvalid'
 }
 const errList = [
   {
@@ -47,6 +48,11 @@ const errList = [
     statusText: UserErrEnum.verifyCodeTooFrequently,
     message: i18nT('common:error.verify_code_too_frequently'),
     httpStatus: 429
+  },
+  {
+    statusText: UserErrEnum.passwordChangeAuthorizationInvalid,
+    message: 'Password change authorization is invalid',
+    httpStatus: 403
   }
 ];
 export default errList.reduce((acc, cur, index) => {

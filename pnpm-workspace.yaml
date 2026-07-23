@@ -32,6 +32,7 @@ catalog:
   '@t3-oss/env-core': 0.13.10
   '@tanstack/react-query': ^4.24.10
   '@types/js-yaml': ^4.0.9
+  '@types/jsdom': ^21.1.7
   '@types/jsonwebtoken': ^9.0.3
   '@types/lodash-es': ^4
   '@types/mime-types': ^3.0.1
@@ -57,6 +58,7 @@ catalog:
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
+  jsdom: 26.1.0
   json5: ^2.2.3
   jsonwebtoken: ^9.0.3
   lodash-es: ^4.17.21

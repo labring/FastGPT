@@ -41,6 +41,8 @@ export const serviceEnv = createEnv({
 
     // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
     INVOKE_TOKEN_SECRET: z.string().min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters'),
+    // 新增 JWT 类型共用的签名密钥；每种 Token 仍需在业务入口校验独立 purpose。
+    JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
 
     // ==================== 服务地址与集成 ====================
     // 插件

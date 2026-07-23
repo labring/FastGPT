@@ -1,5 +1,4 @@
 import { resolveAccountVerificationByUsername } from '../verification/utils';
-import { AccountVerificationMethodEnum } from '../verification/constants';
 import type { AccountCancellationResolveResult, AccountCancellationResolverInput } from './type';
 
 /** 将统一 resolver 的结果收窄为注销允许的非密码验证方式。 */
@@ -16,20 +15,16 @@ export const resolveAccountCancellationByUsername = ({
     };
   }
 
-  const result = resolveAccountVerificationByUsername({ username: account, capabilities });
-  if (result.status === 'unsupported') {
+  const result = resolveAccountVerificationByUsername({
+    username: account,
+    capabilities,
+    allowPasswordFallback: false
+  });
+  if (result.status === 'unsupported' || result.method === 'oldPassword') {
     return {
       status: 'unsupported',
       accountKind: result.accountKind,
       unsupportedReason: 'verification_unavailable'
-    };
-  }
-
-  if (result.method === AccountVerificationMethodEnum.oldPassword) {
-    return {
-      status: 'unsupported',
-      accountKind: result.accountKind,
-      unsupportedReason: 'password_verification_not_allowed'
     };
   }
 

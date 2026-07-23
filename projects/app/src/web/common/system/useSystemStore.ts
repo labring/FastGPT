@@ -28,7 +28,8 @@ type LoginStoreType = {
   state: string;
   callbackUrl: string;
   lastTmbId?: string;
-  flow?: 'login' | 'accountCancellation';
+  flow?: 'login' | 'accountCancellation' | 'passwordChange';
+  passwordChangeRequired?: boolean;
 };
 
 export type NotSufficientModalType =
@@ -143,7 +144,7 @@ export const useSystemStore = create<State>()(
             set((state) => {
               state.gitStar = git.stargazers_count;
             });
-          } catch (error) {}
+          } catch {}
         },
 
         notSufficientModalType: undefined,

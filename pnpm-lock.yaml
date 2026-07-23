@@ -54,6 +54,9 @@ catalogs:
     '@types/js-yaml':
       specifier: ^4.0.9
       version: 4.0.9
+    '@types/jsdom':
+      specifier: ^21.1.7
+      version: 21.1.7
     '@types/jsonwebtoken':
       specifier: ^9.0.3
       version: 9.0.9
@@ -120,6 +123,9 @@ catalogs:
     js-yaml:
       specifier: ^4.1.1
       version: 4.1.1
+    jsdom:
+      specifier: 26.1.0
+      version: 26.1.0
     json5:
       specifier: ^2.2.3
       version: 2.2.3
@@ -1544,6 +1550,9 @@ importers:
       '@types/js-yaml':
         specifier: 'catalog:'
         version: 4.0.9
+      '@types/jsdom':
+        specifier: 'catalog:'
+        version: 21.1.7
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
@@ -1574,6 +1583,9 @@ importers:
       eslint-config-next:
         specifier: catalog:lint
         version: 16.2.6(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
+      jsdom:
+        specifier: 'catalog:'
+        version: 26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10)
       tailwindcss:
         specifier: ^3
         version: 3.4.18(tsx@4.20.6)(yaml@2.8.4)

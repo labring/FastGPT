@@ -167,6 +167,33 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(false);
   });
 
+  it.each([
+    ['missing', undefined],
+    ['empty', ''],
+    ['null', null]
+  ])('should return false when password is %s', async (_label, password) => {
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
+    const update =
+      password === undefined
+        ? { $set: { passwordUpdateTime: new Date(0) }, $unset: { password: 1 } }
+        : { $set: { password, passwordUpdateTime: new Date(0) } };
+    await MongoUser.collection.updateOne({ _id: testUser._id }, update as any);
+
+    const res = await Call(checkPswExpiredApi.default, {
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toBe(false);
+  });
+
   it('should reject request without authentication', async () => {
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
     const res = await Call(checkPswExpiredApi.default, {});
