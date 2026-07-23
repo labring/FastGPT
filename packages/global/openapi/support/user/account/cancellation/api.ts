@@ -28,7 +28,7 @@ export const AccountCancellationStatusResponseSchema = z
           .meta({ description: '当前账号脱敏值', example: 'us***@example.com' }),
         unavailableReason: AccountCancellationUnavailableReasonSchema.optional().meta({
           description: '不可申请原因',
-          example: 'password_verification_not_allowed'
+          example: 'verification_unavailable'
         })
       })
       .strict(),

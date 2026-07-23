@@ -52,6 +52,31 @@ describe('tokenLogin API', () => {
     expect(res.data.team).toBeDefined();
     expect(res.data.team.teamId).toBe(String(testTeam._id));
     expect(res.data.team.tmbId).toBe(String(testTmb._id));
+    expect(res.data.hasPassword).toBe(true);
+    expect(res.data).not.toHaveProperty('password');
+    expect(res.data).not.toHaveProperty('passwordUpdateTime');
+  });
+
+  it('derives a missing password as hasPassword=false without exposing internal fields', async () => {
+    await MongoUser.collection.updateOne(
+      { _id: testUser._id },
+      { $unset: { password: 1 }, $set: { passwordUpdateTime: new Date() } }
+    );
+
+    const res = await Call(tokenLoginApi.default, {
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.hasPassword).toBe(false);
+    expect(res.data).not.toHaveProperty('password');
+    expect(res.data).not.toHaveProperty('passwordUpdateTime');
   });
 
   it('should return owner permissions for root session', async () => {
