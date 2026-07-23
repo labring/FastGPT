@@ -132,6 +132,10 @@ export const useNodeTemplates = () => {
 
   useDebounceEffect(
     () => {
+      if (templateType === TemplateTypeEnum.systemTools) {
+        return;
+      }
+
       if (searchKeyLock.current) {
         return;
       }
@@ -143,7 +147,7 @@ export const useNodeTemplates = () => {
         source: parentSource
       });
     },
-    [searchKey, parentSource],
+    [searchKey, parentSource, templateType],
     {
       wait: 300
     }
@@ -167,9 +171,12 @@ export const useNodeTemplates = () => {
       setSearchKey('');
       setParentId(parentId);
       setParentSource(nextParentSource);
-      loadNodeTemplates({ parentId, source: nextParentSource });
+
+      if (templateType !== TemplateTypeEnum.systemTools) {
+        loadNodeTemplates({ parentId, source: nextParentSource });
+      }
     },
-    [loadNodeTemplates, parentSource]
+    [loadNodeTemplates, parentSource, templateType]
   );
   const onUpdateTemplateType = useCallback(
     (type: TemplateTypeEnum) => {
@@ -179,16 +186,22 @@ export const useNodeTemplates = () => {
       setParentSource(undefined);
       setSelectedTagIds([]);
       setTemplateType(type);
-      loadNodeTemplates({ type });
+
+      if (type !== TemplateTypeEnum.systemTools) {
+        loadNodeTemplates({ type });
+      }
     },
     [loadNodeTemplates]
   );
   const onUpdateSelectedTagIds = useCallback(
     (tags: string[]) => {
       setSelectedTagIds(tags);
-      loadNodeTemplates({ parentId, searchVal: searchKey, tags, source: parentSource });
+
+      if (templateType !== TemplateTypeEnum.systemTools) {
+        loadNodeTemplates({ parentId, searchVal: searchKey, tags, source: parentSource });
+      }
     },
-    [loadNodeTemplates, parentId, parentSource, searchKey]
+    [loadNodeTemplates, parentId, parentSource, searchKey, templateType]
   );
 
   const templates = useMemo(() => {

@@ -51,6 +51,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -82,14 +83,20 @@ const NodeTemplateListItem = ({
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
+  const templateAppType = (template as NodeTemplateListItemType & { appType?: AppTypeEnum })
+    .appType;
   const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
+  const isMcpToolSet =
+    templateType === TemplateTypeEnum.myTools &&
+    template.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    templateAppType === AppTypeEnum.mcpToolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  // 系统工具集只有在工具调用的工具选择器里才允许直接创建节点。
-  const allowDirectAddSystemToolSet = isSystemToolSet && isToolSelector;
+  // 工具集只有在工具调用的工具选择器里才允许直接创建节点。
+  const allowDirectAddToolSet = (isSystemToolSet || isMcpToolSet) && isToolSelector;
   const canDragCreateNode =
     !isPopover &&
     (!template.isFolder || template.flowNodeType === FlowNodeTypeEnum.toolSet) &&
-    (!isSystemToolSet || allowDirectAddSystemToolSet);
+    (!(isSystemToolSet || isMcpToolSet) || allowDirectAddToolSet);
   const showExpandArrow = template.isFolder || isSystemToolSet;
   const isDebugTool = isDebugToolSource(template.source);
 
@@ -156,7 +163,7 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
-          if (isSystemToolSet && !allowDirectAddSystemToolSet) {
+          if ((isSystemToolSet || isMcpToolSet) && !allowDirectAddToolSet) {
             onUpdateParentId(template.id, template.source);
             return;
           }

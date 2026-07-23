@@ -119,4 +119,48 @@ describe('getClientToolPreviewNode', () => {
     expect(result.inputs[0]?.key).toBe('q');
     expect((result as any).jsonSchema).toBeUndefined();
   });
+
+  it('writes mcp tool description onto preview node intro', async () => {
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: '507f1f77bcf86cd799439011',
+        teamId: '507f1f77bcf86cd799439012',
+        type: AppTypeEnum.mcpToolSet,
+        name: 'MCP Tools',
+        avatar: 'mcp.svg',
+        intro: 'MCP toolset'
+      })
+    });
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            mcpToolSet: {
+              toolList: [
+                {
+                  name: 'search',
+                  description: 'Search MCP resources',
+                  inputSchema: { type: 'object', properties: { q: { type: 'string' } } }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      edges: [],
+      chatConfig: {},
+      versionId: 'version-id',
+      versionName: 'Version 1'
+    });
+
+    const result = await getClientToolPreviewNode({
+      appId: 'mcp-507f1f77bcf86cd799439011/search',
+      lang: 'en'
+    });
+
+    expect(result.intro).toBe('Search MCP resources');
+    expect(result.toolConfig?.mcpTool).toEqual({
+      toolId: 'mcp-507f1f77bcf86cd799439011/search'
+    });
+  });
 });
