@@ -66,6 +66,23 @@ describe('PasswordAccountVerification', () => {
     ).rejects.toBe(UserErrEnum.account_psw_error);
   });
 
+  it.each([
+    ['missing', undefined],
+    ['empty', ''],
+    ['null', null]
+  ])('does not reveal that an existing account has a %s password', async (_label, password) => {
+    const user = await MongoUser.create({ username: `user-${_label}` });
+    if (password !== undefined) {
+      await MongoUser.collection.updateOne({ _id: user._id }, { $set: { password } });
+    }
+    const verification = new PasswordAccountVerification({ generateCode: () => 'ABC123' });
+    await verification.create({ username: user.username });
+
+    await expect(
+      verification.consume({ username: user.username, password: 'password', code: 'ABC123' })
+    ).rejects.toBe(UserErrEnum.account_psw_error);
+  });
+
   it('rejects forbidden users after consuming their code', async () => {
     await MongoUser.create({
       username: 'user',

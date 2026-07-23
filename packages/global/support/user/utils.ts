@@ -14,3 +14,7 @@ export const getRandomUserAvatar = () => {
 
   return defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
 };
+
+/** 统一判断持久化密码是否存在；历史缺失、null 和空字符串都按未设置处理。 */
+export const hasStoredPassword = (password: unknown): password is string =>
+  typeof password === 'string' && password.length > 0;

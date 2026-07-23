@@ -103,6 +103,7 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
+    sessionCreatedAt,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy
@@ -120,7 +121,8 @@ export async function parseHeaderCert({
         openApiKey: authResponse.apikey,
         authType: AuthUserTypeEnum.apikey,
         apiKeyAuthProxy: authResponse.apiKeyAuthProxy,
-        sourceName: authResponse.sourceName
+        sourceName: authResponse.sourceName,
+        sessionCreatedAt: undefined
       };
     }
     if (authToken && (token || cookie)) {
@@ -135,7 +137,8 @@ export async function parseHeaderCert({
         openApiKey: '',
         authType: AuthUserTypeEnum.token,
         isRoot: res.isRoot,
-        sessionId: res.sessionId
+        sessionId: res.sessionId,
+        sessionCreatedAt: res.createdAt
       };
     }
     if (authRoot && rootkey) {
@@ -148,7 +151,8 @@ export async function parseHeaderCert({
         appId: '',
         openApiKey: '',
         authType: AuthUserTypeEnum.root,
-        isRoot: true
+        isRoot: true,
+        sessionCreatedAt: undefined
       };
     }
 
@@ -195,7 +199,8 @@ export async function parseHeaderCert({
     apiKeyAuthProxy,
     apikey: openApiKey,
     isRoot: !!isRoot,
-    sessionId
+    sessionId,
+    sessionCreatedAt
   };
 }
 

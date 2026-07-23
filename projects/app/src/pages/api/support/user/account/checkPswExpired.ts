@@ -4,6 +4,7 @@ import { checkPswExpired } from '@/service/support/user/account/password';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import type { CheckPswExpiredResponseType } from '@fastgpt/global/openapi/support/user/account/password/api';
+import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
 
 async function handler(
   req: ApiRequestProps,
@@ -11,9 +12,9 @@ async function handler(
 ): Promise<CheckPswExpiredResponseType> {
   const { userId } = await authCert({ req, authToken: true });
 
-  const user = await MongoUser.findById(userId, 'passwordUpdateTime');
+  const user = await MongoUser.findById(userId).select('+password passwordUpdateTime');
 
-  if (!user) {
+  if (!user || !hasStoredPassword(user.password)) {
     return false;
   }
 

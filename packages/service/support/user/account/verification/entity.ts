@@ -1,6 +1,7 @@
 import type { ClientSession, FilterQuery } from 'mongoose';
 import { AccountVerificationMaterialTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 import type { CodeAccountVerificationScene } from '@fastgpt/global/support/user/account/verification/type';
+import type { AccountVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 import {
   MongoAccountVerificationMaterial,
   type AccountVerificationMaterialSchemaType
@@ -12,7 +13,7 @@ type MaterialIdentity = {
   type: `${AccountVerificationMaterialTypeEnum}`;
   scene?: CodeAccountVerificationScene;
   userIdHash?: string;
-  purpose?: 'login' | 'accountCancellation';
+  purpose?: AccountVerificationPurpose;
   provider?: string;
   callbackHash?: string;
 };
@@ -148,7 +149,7 @@ export const updateWechatMaterialIdentity = (
     openid: string;
     materialType?: `${AccountVerificationMaterialTypeEnum}`;
     userIdHash?: string;
-    purpose?: 'login' | 'accountCancellation';
+    purpose?: AccountVerificationPurpose;
     now?: Date;
   },
   session?: ClientSession

@@ -36,7 +36,10 @@ export type RecognizedAccountKind = z.infer<typeof RecognizedAccountKindSchema>;
 export const AccountKindSchema = z.union([RecognizedAccountKindSchema, z.literal('invalid')]);
 export type AccountKind = z.infer<typeof AccountKindSchema>;
 
-export const AccountVerificationUnsupportedReasonSchema = z.literal('empty_username');
+export const AccountVerificationUnsupportedReasonSchema = z.enum([
+  'empty_username',
+  'no_available_verification_method'
+]);
 
 export const AccountVerificationResolutionSchema = z.discriminatedUnion('status', [
   z.object({
@@ -47,20 +50,38 @@ export const AccountVerificationResolutionSchema = z.discriminatedUnion('status'
   }),
   z.object({
     status: z.literal('unsupported'),
-    accountKind: z.literal('invalid'),
+    accountKind: AccountKindSchema,
     method: z.undefined().optional(),
     unsupportedReason: AccountVerificationUnsupportedReasonSchema
   })
 ]);
 export type AccountVerificationResolution = z.infer<typeof AccountVerificationResolutionSchema>;
 
+export type AccountVerificationPasswordPolicy =
+  | {
+      allowPasswordFallback: false;
+      oldPasswordAvailable?: never;
+    }
+  | {
+      allowPasswordFallback: true;
+      oldPasswordAvailable: boolean;
+    };
+
 export const CodeAccountVerificationSceneSchema = z.enum([
   'register',
   'findPassword',
   'bindNotification',
-  'accountCancellation'
+  'accountCancellation',
+  'passwordChange'
 ]);
 export type CodeAccountVerificationScene = z.infer<typeof CodeAccountVerificationSceneSchema>;
+
+export const AccountVerificationPurposeSchema = z.enum([
+  'login',
+  'accountCancellation',
+  'passwordChange'
+]);
+export type AccountVerificationPurpose = z.infer<typeof AccountVerificationPurposeSchema>;
 
 export const OAuthAccountVerificationProviderSchema = z.enum(oauthAccountVerificationProviders);
 export type OAuthAccountVerificationProvider = z.infer<

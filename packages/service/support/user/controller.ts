@@ -4,6 +4,7 @@ import { getTmbInfoByTmbId } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { getUserFallbackTeam } from './team/fallback';
+import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -45,7 +46,7 @@ export async function getUserDetail({
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
-  const user = await MongoUser.findById(tmb.userId);
+  const user = await MongoUser.findById(tmb.userId).select('+password');
 
   if (!user) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -67,6 +68,7 @@ export async function getUserDetail({
     permission,
     contact: user.contact,
     language: user.language,
-    tags: user.tags
+    tags: user.tags,
+    hasPassword: hasStoredPassword(user.password)
   };
 }

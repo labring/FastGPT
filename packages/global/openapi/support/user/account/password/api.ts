@@ -1,59 +1,220 @@
 import { z } from 'zod';
 import { LanguageSchema } from '../../../../../common/i18n/type';
-import { AccountContactUsernameSchema } from '../../../../../support/user/account/verification/type';
+import {
+  AccountContactUsernameSchema,
+  AccountVerificationMethodSchema
+} from '../../../../../support/user/account/verification/type';
 
-// ===== Update password by old password =====
-export const UpdatePasswordByOldBodySchema = z
+const DateTimeSchema = z.iso.datetime({ offset: true });
+const OAuthVerificationMethods = [
+  'oauth/github',
+  'oauth/google',
+  'oauth/microsoft',
+  'oauth/wecom',
+  'oauth/sso'
+] as const;
+
+const OAuthCreatePayloadSchema = z
   .object({
-    oldPsw: z.string().trim().min(1).meta({
-      example: 'hashed_old_password',
-      description: '旧密码（已加密）'
-    }),
-    newPsw: z.string().trim().min(1).meta({
-      example: 'hashed_new_password',
-      description: '新密码（已加密）'
-    })
+    callbackUrl: z.url().max(2048),
+    isWecomWorkTerminal: z.boolean().optional()
   })
-  .meta({
-    example: {
-      oldPsw: 'hashed_old_password',
-      newPsw: 'hashed_new_password'
-    }
-  });
-export type UpdatePasswordByOldBodyType = z.infer<typeof UpdatePasswordByOldBodySchema>;
-export const UpdatePasswordByOldResponseSchema = z.any().meta({
-  description: '用户信息'
-});
-export type UpdatePasswordByOldResponseType = z.infer<typeof UpdatePasswordByOldResponseSchema>;
+  .strict();
 
-// ===== Check password expired =====
+const OAuthPropsSchema = z
+  .record(
+    z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]+$/)
+      .max(64),
+    z.string().max(4096)
+  )
+  .refine((props) => Object.keys(props).length <= 20, {
+    message: 'OAuth props contain too many keys'
+  });
+
+const OAuthConsumePayloadSchema = z
+  .object({
+    callbackUrl: z.url().max(2048),
+    code: z.string().min(1).max(4096),
+    state: z.string().min(16).max(256).optional(),
+    props: OAuthPropsSchema.optional()
+  })
+  .strict();
+
+const CodeVerificationCreateSchema = z
+  .object({
+    method: z.literal('code'),
+    payload: z
+      .object({
+        captcha: z.string().min(1).max(64),
+        googleToken: z.string().max(4096).optional()
+      })
+      .strict()
+  })
+  .strict();
+
+const OldPasswordVerificationCreateSchema = z
+  .object({
+    method: z.literal('oldPassword'),
+    payload: z.object({}).strict()
+  })
+  .strict();
+
+const WechatVerificationCreateSchema = z
+  .object({
+    method: z.literal('wechat'),
+    payload: z.object({}).strict()
+  })
+  .strict();
+
+export const CreatePasswordVerificationBodySchema = z.discriminatedUnion('method', [
+  CodeVerificationCreateSchema,
+  OldPasswordVerificationCreateSchema,
+  WechatVerificationCreateSchema,
+  ...OAuthVerificationMethods.map((method) =>
+    z
+      .object({
+        method: z.literal(method),
+        payload: OAuthCreatePayloadSchema
+      })
+      .strict()
+  )
+] as [
+  typeof CodeVerificationCreateSchema,
+  typeof OldPasswordVerificationCreateSchema,
+  typeof WechatVerificationCreateSchema,
+  ...any[]
+]);
+export type CreatePasswordVerificationBody = z.infer<typeof CreatePasswordVerificationBodySchema>;
+
+export const CreatePasswordVerificationResponseSchema = z.discriminatedUnion('method', [
+  z.object({ method: z.literal('code'), sent: z.literal(true), maskedTarget: z.string() }).strict(),
+  z.object({ method: z.literal('oldPassword'), preLoginCode: z.string().min(1) }).strict(),
+  z
+    .object({
+      method: z.literal('wechat'),
+      code: z.string().min(16),
+      codeUrl: z.url(),
+      expiredAt: DateTimeSchema.optional()
+    })
+    .strict(),
+  ...OAuthVerificationMethods.map((method) =>
+    z
+      .object({
+        method: z.literal(method),
+        state: z.string().min(16),
+        url: z.url()
+      })
+      .strict()
+  )
+] as [any, any, any, ...any[]]);
+export type CreatePasswordVerificationResponse = z.infer<
+  typeof CreatePasswordVerificationResponseSchema
+>;
+
+const CodeVerificationConsumeSchema = z
+  .object({
+    method: z.literal('code'),
+    payload: z.object({ code: z.string().min(1).max(32) }).strict()
+  })
+  .strict();
+
+const OldPasswordVerificationConsumeSchema = z
+  .object({
+    method: z.literal('oldPassword'),
+    payload: z
+      .object({
+        password: z.string().length(64),
+        preLoginCode: z.string().min(1).max(128)
+      })
+      .strict()
+  })
+  .strict();
+
+const WechatVerificationConsumeSchema = z
+  .object({
+    method: z.literal('wechat'),
+    payload: z.object({ code: z.string().min(1).max(128) }).strict()
+  })
+  .strict();
+
+export const SensitiveAccountVerificationBodySchema = z.discriminatedUnion('method', [
+  CodeVerificationConsumeSchema,
+  OldPasswordVerificationConsumeSchema,
+  WechatVerificationConsumeSchema,
+  ...OAuthVerificationMethods.map((method) =>
+    z
+      .object({
+        method: z.literal(method),
+        payload: OAuthConsumePayloadSchema
+      })
+      .strict()
+  )
+] as [
+  typeof CodeVerificationConsumeSchema,
+  typeof OldPasswordVerificationConsumeSchema,
+  typeof WechatVerificationConsumeSchema,
+  ...any[]
+]);
+export type SensitiveAccountVerificationBody = z.infer<
+  typeof SensitiveAccountVerificationBodySchema
+>;
+
+export const PasswordAuthorizationBodySchema = z.discriminatedUnion('source', [
+  z.object({ source: z.literal('recentLogin') }).strict(),
+  z
+    .object({
+      source: z.literal('accountVerification'),
+      verification: SensitiveAccountVerificationBodySchema
+    })
+    .strict()
+]);
+export type PasswordAuthorizationBody = z.infer<typeof PasswordAuthorizationBodySchema>;
+
+export const PasswordAuthorizationResponseSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      status: z.literal('authorized'),
+      token: z.string().min(1).max(4096),
+      expiredAt: DateTimeSchema
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('verificationRequired'),
+      method: AccountVerificationMethodSchema
+    })
+    .strict(),
+  z.object({ status: z.literal('verificationPending') }).strict(),
+  z
+    .object({
+      status: z.literal('verificationUnavailable'),
+      reason: z.literal('no_available_verification_method')
+    })
+    .strict()
+]);
+export type PasswordAuthorizationResponse = z.infer<typeof PasswordAuthorizationResponseSchema>;
+
+export const UpdatePasswordBodySchema = z
+  .object({
+    newPsw: z.string().length(64).meta({
+      description: '沿用现有客户端 SHA-256 协议的新密码摘要'
+    }),
+    passwordChangeToken: z.string().min(1).max(4096)
+  })
+  .strict();
+export type UpdatePasswordBody = z.infer<typeof UpdatePasswordBodySchema>;
+
+export const UpdatePasswordResponseSchema = z.undefined().meta({ description: '密码设置成功' });
+export type UpdatePasswordResponse = z.infer<typeof UpdatePasswordResponseSchema>;
+
 export const CheckPswExpiredResponseSchema = z.boolean().meta({
   example: false,
   description: '密码是否已过期'
 });
 export type CheckPswExpiredResponseType = z.infer<typeof CheckPswExpiredResponseSchema>;
 
-// ===== Reset expired password =====
-export const ResetExpiredPswBodySchema = z
-  .object({
-    newPsw: z.string().trim().min(1).meta({
-      example: 'hashed_new_password',
-      description: '新密码（已加密）'
-    })
-  })
-  .meta({
-    example: {
-      newPsw: 'hashed_new_password'
-    }
-  });
-export type ResetExpiredPswBodyType = z.infer<typeof ResetExpiredPswBodySchema>;
-
-export const ResetExpiredPswResponseSchema = z.undefined().meta({
-  description: '重置成功'
-});
-export type ResetExpiredPswResponseType = z.infer<typeof ResetExpiredPswResponseSchema>;
-
-// ===== Find Password (update by code) =====
 export const UpdatePasswordByCodeBodySchema = z
   .object({
     username: AccountContactUsernameSchema.meta({ description: '用户名（邮箱或手机号）' }),
@@ -63,5 +224,4 @@ export const UpdatePasswordByCodeBodySchema = z
     language: LanguageSchema.optional().meta({ description: '语言' })
   })
   .strict();
-
 export type UpdatePasswordByCodeBodyType = z.infer<typeof UpdatePasswordByCodeBodySchema>;

@@ -3,6 +3,7 @@ import {
   AccountPhoneUsernameSchema,
   type AccountVerificationCapabilities,
   type AccountVerificationMethod,
+  type AccountVerificationPasswordPolicy,
   type AccountVerificationResolution,
   type RecognizedAccountKind
 } from './type';
@@ -13,11 +14,13 @@ import {
  */
 export const resolveAccountVerificationByUsername = ({
   username,
-  capabilities
+  capabilities,
+  allowPasswordFallback,
+  oldPasswordAvailable
 }: {
   username: string;
   capabilities: AccountVerificationCapabilities;
-}): AccountVerificationResolution => {
+} & AccountVerificationPasswordPolicy): AccountVerificationResolution => {
   const normalizedUsername = username.trim();
   if (!normalizedUsername) {
     return {
@@ -99,9 +102,26 @@ export const resolveAccountVerificationByUsername = ({
     }
   };
 
+  const method = candidateMethods.find(isMethodAvailable);
+  if (method) {
+    return {
+      status: 'supported',
+      accountKind,
+      method
+    };
+  }
+
+  if (allowPasswordFallback && oldPasswordAvailable) {
+    return {
+      status: 'supported',
+      accountKind,
+      method: 'oldPassword'
+    };
+  }
+
   return {
-    status: 'supported',
+    status: 'unsupported',
     accountKind,
-    method: candidateMethods.find(isMethodAvailable) ?? 'oldPassword'
+    unsupportedReason: 'no_available_verification_method'
   };
 };

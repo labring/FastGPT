@@ -13,10 +13,7 @@ import type {
   WxLoginBodyType,
   GetWXLoginQRResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
-import type {
-  UpdatePasswordByCodeBodyType,
-  UpdatePasswordByOldBodyType
-} from '@fastgpt/global/openapi/support/user/account/password/api';
+import type { UpdatePasswordByCodeBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type {
@@ -94,15 +91,6 @@ export const postFindPassword = ({
     code,
     ...props,
     password: hashStr(password)
-  });
-export const updatePasswordByOld = ({ oldPsw, newPsw }: UpdatePasswordByOldBodyType) =>
-  POST('/support/user/account/updatePasswordByOld', {
-    oldPsw: hashStr(oldPsw),
-    newPsw: hashStr(newPsw)
-  });
-export const resetPassword = (newPsw: string) =>
-  POST('/support/user/account/resetExpiredPsw', {
-    newPsw: hashStr(newPsw)
   });
 // Check the whether password has expired
 export const getCheckPswExpired = () => GET<boolean>('/support/user/account/checkPswExpired');
