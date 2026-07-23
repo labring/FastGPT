@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import createHandler from '@/pages/api/support/mcp/create';
+import deleteHandler from '@/pages/api/support/mcp/delete';
 import listHandler from '@/pages/api/support/mcp/list';
+import updateHandler from '@/pages/api/support/mcp/update';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -107,5 +109,132 @@ describe('support/mcp publish management', () => {
 
     expect(result.code).toBe(500);
     expect(await MongoMcpKey.findOne({ name: 'member proxy mcp' })).toBeNull();
+  });
+
+  it('allows the owner to enable authProxy on their MCP publication', async () => {
+    const { owner } = await getFakeUsers(1);
+    const app = await MongoApp.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'owner update app',
+      type: AppTypeEnum.simple
+    });
+    const mcp = await MongoMcpKey.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'owner update mcp',
+      apps: []
+    });
+
+    const result = await Call(updateHandler, {
+      auth: owner,
+      body: {
+        id: String(mcp._id),
+        authProxy: true,
+        apps: [
+          {
+            appId: String(app._id),
+            appName: app.name,
+            toolName: 'owner_update_tool',
+            description: 'Owner update tool'
+          }
+        ]
+      }
+    });
+
+    expect(result.code).toBe(200);
+    expect((await MongoMcpKey.findById(mcp._id).lean())?.authProxy).toBe(true);
+  });
+
+  it('rejects enabling authProxy when a non-owner updates their MCP publication', async () => {
+    const { members } = await getFakeUsers(1);
+    const [member] = members;
+    const app = await MongoApp.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'member update app',
+      type: AppTypeEnum.simple
+    });
+    const mcp = await MongoMcpKey.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'member update mcp',
+      apps: []
+    });
+
+    const result = await Call(updateHandler, {
+      auth: member,
+      body: {
+        id: String(mcp._id),
+        authProxy: true,
+        apps: [
+          {
+            appId: String(app._id),
+            appName: app.name,
+            toolName: 'member_update_tool',
+            description: 'Member update tool'
+          }
+        ]
+      }
+    });
+
+    expect(result.code).toBe(500);
+    expect((await MongoMcpKey.findById(mcp._id).lean())?.authProxy).toBe(false);
+  });
+
+  it('allows a non-owner to disable an existing authProxy setting', async () => {
+    const { members } = await getFakeUsers(1);
+    const [member] = members;
+    const app = await MongoApp.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'member disable app',
+      type: AppTypeEnum.simple
+    });
+    const mcp = await MongoMcpKey.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'member disable mcp',
+      authProxy: true,
+      apps: []
+    });
+
+    const result = await Call(updateHandler, {
+      auth: member,
+      body: {
+        id: String(mcp._id),
+        authProxy: false,
+        apps: [
+          {
+            appId: String(app._id),
+            appName: app.name,
+            toolName: 'member_disable_tool',
+            description: 'Member disable tool'
+          }
+        ]
+      }
+    });
+
+    expect(result.code).toBe(200);
+    expect((await MongoMcpKey.findById(mcp._id).lean())?.authProxy).toBe(false);
+  });
+
+  it('does not allow a team owner to delete another member publication', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [member] = members;
+    const mcp = await MongoMcpKey.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'member private mcp',
+      apps: []
+    });
+
+    const result = await Call(deleteHandler, {
+      auth: owner,
+      query: { id: String(mcp._id) }
+    });
+
+    expect(result.code).toBe(500);
+    expect(await MongoMcpKey.findById(mcp._id)).not.toBeNull();
   });
 });

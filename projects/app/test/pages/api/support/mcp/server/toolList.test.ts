@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import {
   callMcpServerTool,
   pluginNodes2InputSchema,
@@ -179,6 +179,10 @@ describe('toolList', () => {
 });
 
 describe('callMcpServerTool', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('returns workflowTool pluginOutput using the same value source as main', async () => {
     vi.mocked(MongoMcpKey.findOne).mockReturnValue({
       lean: () => ({
@@ -282,5 +286,49 @@ describe('callMcpServerTool', () => {
         })
       })
     );
+  });
+
+  it('does not dispatch when the effective member has no app read permission', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({
+        teamId: 'team-id',
+        tmbId: 'publisher-tmb-id',
+        authProxy: false,
+        apps: [
+          {
+            appId: 'app-id',
+            toolName: 'private_tool',
+            description: 'private tool'
+          }
+        ]
+      })
+    } as any);
+    vi.mocked(MongoApp.find).mockReturnValue({
+      lean: () => [
+        {
+          _id: 'app-id',
+          name: 'Private App',
+          type: AppTypeEnum.workflow,
+          teamId: 'team-id',
+          tmbId: 'app-owner-tmb-id'
+        }
+      ]
+    } as any);
+    vi.mocked(authAppByTmbId).mockRejectedValue(new Error('unAuthApp'));
+
+    await expect(
+      callMcpServerTool({
+        key: 'mcp-key',
+        toolName: 'private_tool',
+        inputs: {}
+      })
+    ).rejects.toThrow('unAuthApp');
+
+    expect(authAppByTmbId).toHaveBeenCalledWith({
+      tmbId: 'publisher-tmb-id',
+      appId: 'app-id',
+      per: expect.any(Number)
+    });
+    expect(dispatchWorkFlow).not.toHaveBeenCalled();
   });
 });

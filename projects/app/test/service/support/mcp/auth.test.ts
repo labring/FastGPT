@@ -92,6 +92,83 @@ describe('MCP auth proxy', () => {
     );
   });
 
+  it('rejects a tmbId that does not resolve to an active team member', async () => {
+    vi.mocked(MongoTeamMember.findOne).mockReturnValue(mockLeanQuery(null) as any);
+
+    await expect(
+      resolveMcpEffectiveTmbId({
+        mcp: {
+          teamId: 'team-id',
+          tmbId: 'publisher-tmb-id',
+          authProxy: true
+        },
+        authProxy: { tmbId: '68ad85a7463006c963799a05' }
+      })
+    ).rejects.toBe(ERROR_ENUM.unAuthorization);
+  });
+
+  it('resolves an active member in the publishing team by username', async () => {
+    vi.mocked(MongoUser.findOne).mockReturnValue(mockLeanQuery({ _id: 'user-id' }) as any);
+    vi.mocked(MongoTeamMember.findOne).mockReturnValue(
+      mockLeanQuery({ _id: '68ad85a7463006c963799a05' }) as any
+    );
+
+    await expect(
+      resolveMcpEffectiveTmbId({
+        mcp: {
+          teamId: 'team-id',
+          tmbId: 'publisher-tmb-id',
+          authProxy: true
+        },
+        authProxy: { username: 'user@example.com' }
+      })
+    ).resolves.toBe('68ad85a7463006c963799a05');
+
+    expect(MongoUser.findOne).toHaveBeenCalledWith({ username: 'user@example.com' });
+    expect(MongoTeamMember.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team-id',
+        userId: 'user-id'
+      })
+    );
+  });
+
+  it('rejects a username that does not resolve to an active team member', async () => {
+    vi.mocked(MongoUser.findOne).mockReturnValue(mockLeanQuery(null) as any);
+
+    await expect(
+      resolveMcpEffectiveTmbId({
+        mcp: {
+          teamId: 'team-id',
+          tmbId: 'publisher-tmb-id',
+          authProxy: true
+        },
+        authProxy: { username: 'missing@example.com' }
+      })
+    ).rejects.toBe(ERROR_ENUM.unAuthorization);
+  });
+
+  it('accepts username and tmbId when they resolve to the same member', async () => {
+    vi.mocked(MongoUser.findOne).mockReturnValue(mockLeanQuery({ _id: 'user-id' }) as any);
+    vi.mocked(MongoTeamMember.findOne)
+      .mockReturnValueOnce(mockLeanQuery({ _id: '68ad85a7463006c963799a05' }) as any)
+      .mockReturnValueOnce(mockLeanQuery({ _id: '68ad85a7463006c963799a05' }) as any);
+
+    await expect(
+      resolveMcpEffectiveTmbId({
+        mcp: {
+          teamId: 'team-id',
+          tmbId: 'publisher-tmb-id',
+          authProxy: true
+        },
+        authProxy: {
+          username: 'user@example.com',
+          tmbId: '68ad85a7463006c963799a05'
+        }
+      })
+    ).resolves.toBe('68ad85a7463006c963799a05');
+  });
+
   it('rejects when username and tmbId resolve to different members', async () => {
     vi.mocked(MongoUser.findOne).mockReturnValue(mockLeanQuery({ _id: 'user-id' }) as any);
     vi.mocked(MongoTeamMember.findOne)
