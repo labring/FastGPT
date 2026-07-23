@@ -5,6 +5,7 @@ import type { StorageDownloadUrlMode } from './common/s3/contracts/type';
 import type { StorageVendorSchema } from './env.const';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
+const TEST_JWT_SECRET = 'fastgpt_test_jwt_signing_secret_32_chars';
 const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
 /**
  * 测试套件会在多个 workspace（包含 pro/admin 子模块）里直接导入 serviceEnv。
@@ -17,6 +18,11 @@ export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
     process.env.INVOKE_TOKEN_SECRET ??
     (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
       ? TEST_INVOKE_TOKEN_SECRET
+      : undefined),
+  JWT_SECRET:
+    process.env.JWT_SECRET ??
+    (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
+      ? TEST_JWT_SECRET
       : undefined),
   PRO_TOKEN:
     process.env.PRO_TOKEN ??
