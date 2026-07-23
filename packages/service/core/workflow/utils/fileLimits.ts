@@ -3,6 +3,7 @@ import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import {
   getFileAmountLimit,
   getFileSizeLimitBytes,
+  getModuleFileAmountLimit,
   getUserFileAmountLimit
 } from '@fastgpt/global/core/workflow/fileLimit';
 import { getTeamPlanStatus } from '../../../support/wallet/sub/utils';
@@ -90,15 +91,14 @@ export const prepareWorkflowFileQuery = async ({
   limits?: WorkflowFileLimits;
 }) => {
   const workflowFileLimits = limits ?? (await getWorkflowFileLimits({ teamId }));
-  const { maxFileAmount, queryMaxFileAmount } = getWorkflowFileAmountLimits({
-    teamMaxFileAmount: workflowFileLimits.maxFileAmount,
-    systemMaxFileAmount: global.feConfigs.uploadFileMaxAmount,
-    queryMaxFileAmount: chatConfig?.fileSelectConfig?.maxFiles
+  const queryMaxFileAmount = getModuleFileAmountLimit({
+    userMaxFileAmount: workflowFileLimits.maxFileAmount,
+    moduleMaxFileAmount: chatConfig?.fileSelectConfig?.maxFiles
   });
 
   return {
     query: filterWorkflowQueryFiles({ query, maxFileAmount: queryMaxFileAmount }),
-    maxFileAmount,
+    maxFileAmount: workflowFileLimits.maxFileAmount,
     maxBytesPerFile: workflowFileLimits.maxBytesPerFile
   };
 };
