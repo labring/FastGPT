@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { createVitestStorageMock } from '../../../sdk/storage/src/testing/vitestMock';
+import { createVitestStorageMock } from '../../../sdk/storage/src/helper/mock';
 
 const mockStorageByBucket = new Map<string, ReturnType<typeof createVitestStorageMock>>();
 const getMockStorage = (bucketName: string) => {
