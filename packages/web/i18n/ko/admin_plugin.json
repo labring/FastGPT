@@ -1,0 +1,17 @@
+{
+  "toolkit_no_runtime_config": "런타임 설정이 없습니다",
+  "toolkit_reset_runtime_config_confirm": "런타임 설정을 기본값으로 재설정하시겠습니까?",
+  "toolkit_runtime_config": "런타임 설정",
+  "toolkit_runtime_config_invalid_integer": "{{label}}은(는) 정수여야 합니다",
+  "toolkit_runtime_config_invalid_number": "{{label}}은(는) 유효한 숫자여야 합니다",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod": "Pod당 최대 동시 요청 수",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod_tip": "단일 Pod가 동시에 처리할 수 있는 최대 요청 수",
+  "toolkit_runtime_config_max_pods": "최대 워커 노드 수",
+  "toolkit_runtime_config_max_pods_tip": "이 도구 런타임에 대해 시작할 수 있는 최대 Pod 수",
+  "toolkit_runtime_config_min_pods": "최소 워커 노드 수",
+  "toolkit_runtime_config_min_pods_over_max_pods": "최소 워커 노드 수는 최대 워커 노드 수를 초과할 수 없습니다",
+  "toolkit_runtime_config_min_pods_tip": "이 도구 런타임을 위해 유지할 최소 Pod 수입니다. 0으로 설정하면 0까지 축소할 수 있습니다",
+  "toolkit_runtime_config_min_value": "{{label}}은(는) {{min}}보다 작을 수 없습니다",
+  "toolkit_runtime_config_pod_timeout": "Pod 타임아웃",
+  "toolkit_runtime_config_pod_timeout_tip": "Pod가 이 값보다 오래 유휴 상태로 있으면 회수됩니다"
+}

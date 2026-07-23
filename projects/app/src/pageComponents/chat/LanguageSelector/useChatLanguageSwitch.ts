@@ -8,7 +8,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export type ChatLanguageSelectorMode = 'account' | 'share';
 
-export const chatLanguageList: localeType[] = [LangEnum.zh_CN, LangEnum.zh_Hant, LangEnum.en];
+export const chatLanguageList: localeType[] = [
+  LangEnum.zh_CN,
+  LangEnum.zh_Hant,
+  LangEnum.en,
+  LangEnum.ko
+];
 
 /**
  * 聊天页语言切换业务逻辑。

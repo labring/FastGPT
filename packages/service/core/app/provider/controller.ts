@@ -25,5 +25,7 @@ export const getModelProvider = (provider?: string, language = 'en') => {
     return defaultProvider;
   }
 
-  return global.ModelProviderMapCache[language as langType][provider] ?? defaultProvider;
+  // Locales without a pre-built provider name/avatar map (e.g. those not covered by langType)
+  // fall back to the default provider info instead of throwing.
+  return global.ModelProviderMapCache[language as langType]?.[provider] ?? defaultProvider;
 };

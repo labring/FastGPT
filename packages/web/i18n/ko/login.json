@@ -1,0 +1,18 @@
+{
+  "Chinese_ip_tip": "중국 본토 IP로 감지되었습니다. 클릭하면 중국 본토 버전으로 이동합니다.",
+  "Login": "로그인",
+  "agree": "동의",
+  "cookies_tip": "본 웹사이트는 더 나은 서비스 경험을 제공하기 위해 쿠키를 사용합니다. 사이트를 계속 이용하시면 쿠키 정책에 동의하는 것으로 간주됩니다.",
+  "forget_password": "비밀번호 찾기",
+  "login_success": "로그인 성공",
+  "no_remind": "다시 알리지 않기",
+  "password_condition": "비밀번호는 4~60자여야 합니다",
+  "password_tip": "비밀번호는 최소 8자 이상이어야 하며, 숫자, 문자, 특수문자 중 최소 두 가지 조합을 포함해야 합니다",
+  "policy_tip": "본 서비스를 이용함으로써 <lineBreak/>당사의<termsLink> 이용약관 </termsLink>&<privacyLink> 개인정보처리방침</privacyLink>을 읽고 동의한 것으로 간주됩니다",
+  "privacy_policy": "개인정보처리방침",
+  "redirect": "이동",
+  "register": "회원가입",
+  "reset_password_tip": "새 비밀번호는 최소 8자 이상이어야 하며, 숫자, 문자, 특수문자 중 최소 두 가지 조합을 포함해야 합니다",
+  "root_password_placeholder": "root 사용자 비밀번호는 환경 변수 DEFAULT_ROOT_PSW의 값입니다",
+  "use_root_login": "root 사용자로 로그인"
+}

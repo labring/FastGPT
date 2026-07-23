@@ -10,11 +10,12 @@ export type I18nStringType = z.infer<typeof I18nStringSchema>;
 export enum LangEnum {
   'zh_CN' = 'zh-CN',
   'zh_Hant' = 'zh-Hant',
-  'en' = 'en'
+  'en' = 'en',
+  'ko' = 'ko'
 }
 
 export type localeType = `${LangEnum}`;
-export const LocaleList = ['en', 'zh-CN', 'zh-Hant'] as const;
+export const LocaleList = ['en', 'zh-CN', 'zh-Hant', 'ko'] as const;
 
 export const LanguageSchema = z.enum(LocaleList).meta({ description: '用户语言偏好' });
 
@@ -30,6 +31,10 @@ export const langMap = {
   [LangEnum.zh_Hant]: {
     label: '繁体中文',
     avatar: 'common/language/China'
+  },
+  [LangEnum.ko]: {
+    label: '한국어',
+    avatar: 'common/language/Korea'
   }
 };
 
