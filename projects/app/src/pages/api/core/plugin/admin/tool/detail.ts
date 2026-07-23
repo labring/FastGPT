@@ -30,7 +30,8 @@ async function handler(
     pluginId: toolId,
     lang,
     source: 'system',
-    version
+    version,
+    maskSecrets: true
   });
 
   return AdminSystemToolDetailSchema.parse({

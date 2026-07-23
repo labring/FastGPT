@@ -54,6 +54,8 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { SystemToolSecretMaskedValue } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 const FORM_LABEL_WIDTH = '160px';
@@ -454,6 +456,43 @@ const SystemToolConfigModal = ({
         {item.description && <QuestionTip label={item.description} pt={1} />}
       </HStack>
     );
+
+    if (item.inputType === 'secret' && fieldValue === SystemToolSecretMaskedValue) {
+      return (
+        <ConfigRow key={item.key} label={labelSection}>
+          <Flex alignItems={'center'} gap={2}>
+            <Flex
+              flex={1}
+              borderRadius={'6px'}
+              border={'0.5px solid'}
+              borderColor={'primary.200'}
+              bg={'primary.50'}
+              h={8}
+              px={3}
+              alignItems={'center'}
+              gap={1}
+            >
+              <MyIcon name="checkCircle" w={'16px'} color={'primary.600'} />
+              <Box fontSize={'sm'} fontWeight={'medium'} color={'primary.600'}>
+                {t('common:had_auth_value')}
+              </Box>
+            </Flex>
+            {!isToolOffline && (
+              <IconButton
+                name="edit"
+                aria-label={t('common:Edit')}
+                onClick={() => {
+                  setValue(`secretsVal.${item.key}`, '', {
+                    shouldDirty: true,
+                    shouldValidate: true
+                  });
+                }}
+              />
+            )}
+          </Flex>
+        </ConfigRow>
+      );
+    }
 
     if (item.inputType === 'switch') {
       return (

@@ -280,7 +280,14 @@ const SecretInputModal = ({
                                         {t('common:had_auth_value')}
                                       </Box>
                                     </Flex>
-                                    <IconButton name="edit" onClick={() => setEditIndex(i)} />
+                                    <IconButton
+                                      name="edit"
+                                      onClick={() => {
+                                        setEditIndex(i);
+                                        // 进入编辑态即表示替换该密钥，空提交需要清除旧密文。
+                                        setValue(`value.${item.key}.secret` as any, '');
+                                      }}
+                                    />
                                   </>
                                 )}
                               </Flex>
@@ -346,7 +353,12 @@ const SecretInputModal = ({
               }
             ]}
             value={configType}
-            onChange={(e) => setValue('type', e)}
+            onChange={(e) => {
+              setValue('type', e);
+              if (e !== SystemToolSecretInputTypeEnum.manual) {
+                setValue('value', undefined);
+              }
+            }}
           />
         </Box>
       </>

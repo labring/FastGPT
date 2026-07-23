@@ -8,6 +8,13 @@ import {
   type UpdateSystemToolBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
+import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import {
+  encryptSystemToolSecrets,
+  getSystemToolSecretKeys
+} from '@fastgpt/service/core/app/tool/systemTool/secrets';
 
 export type updateToolQuery = Record<string, never>;
 
@@ -20,7 +27,9 @@ const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
     Object.entries(fields).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
 
-async function handler(
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export async function handler(
   req: ApiRequestProps<updateToolBody, updateToolQuery>,
   _res: ApiResponseType<any>
 ): Promise<updateToolResponse> {
@@ -38,6 +47,24 @@ async function handler(
     return Promise.reject('Workflow tool should be updated through app update api');
   }
 
+  const storedSecretsVal = await (async () => {
+    if (!('secretsVal' in updateFields) || updateFields.secretsVal === null) {
+      return updateFields.secretsVal;
+    }
+
+    const toolDetail = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId,
+      source: 'system'
+    });
+    const inputList = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
+
+    return encryptSystemToolSecrets({
+      secretsVal: updateFields.secretsVal,
+      existingSecretsVal: SystemToolCodec.getConfiguredSecretsVal(plugin),
+      secretKeys: getSystemToolSecretKeys(inputList)
+    });
+  })();
+
   // 基础更新字段
   const baseUpdateFields = omitUndefinedFields({
     pluginId,
@@ -51,7 +78,7 @@ async function handler(
   });
   if ('secretsVal' in updateFields) {
     Object.assign(baseUpdateFields, {
-      secretsVal: updateFields.secretsVal ?? null
+      secretsVal: storedSecretsVal ?? null
     });
   }
 
@@ -71,6 +98,15 @@ async function handler(
       { upsert: true, session }
     );
 
+    if ('secretsVal' in updateFields) {
+      // 工具集的系统密钥只由父工具维护，覆盖历史子工具记录，避免子工具残留旧密钥。
+      await MongoSystemTool.updateMany(
+        { pluginId: { $regex: `^${escapeRegExp(pluginId)}/` } },
+        { secretsVal: storedSecretsVal ?? null },
+        { session }
+      );
+    }
+
     // 如果有子工具，更新子工具
     for await (const tool of updateFields.children || []) {
       const childPluginId = tool.id.includes('/') ? tool.id : `${pluginId}/${tool.id}`;
@@ -86,7 +122,7 @@ async function handler(
       });
       if ('secretsVal' in updateFields) {
         Object.assign(childUpdateFields, {
-          secretsVal: updateFields.secretsVal
+          secretsVal: storedSecretsVal
         });
       }
 

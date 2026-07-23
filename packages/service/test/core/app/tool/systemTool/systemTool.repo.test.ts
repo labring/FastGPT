@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import {
+  SystemToolSecretMaskedValue,
+  SystemToolSystemSecretStatusEnum
+} from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -7,6 +10,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
@@ -215,6 +219,7 @@ describe('SystemToolRepo.getSystemToolList', () => {
       createPluginTool({
         pluginId: 'getTime',
         name: 'Get Time',
+        hasSecret: true,
         source: 'debug:tmbId:tmb-1'
       })
     ]);
@@ -223,7 +228,8 @@ describe('SystemToolRepo.getSystemToolList', () => {
         pluginId: 'getTime',
         pluginOrder: 1,
         tags: [],
-        status: PluginStatusEnum.SoonOffline
+        status: PluginStatusEnum.SoonOffline,
+        secretsVal: { apiKey: 'production-secret' }
       })
     ]);
 
@@ -236,6 +242,7 @@ describe('SystemToolRepo.getSystemToolList', () => {
       source: 'debug:tmbId:tmb-1',
       status: PluginStatusEnum.Normal
     });
+    expect(tools[0].hasSystemSecret).toBe(false);
   });
 });
 
@@ -408,6 +415,197 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     expect(tool).not.toHaveProperty('inputs');
     expect(tool).not.toHaveProperty('outputs');
     expect(tool).not.toHaveProperty('secrets');
+  });
+
+  it('uses the parent tool secret for toolset child details', async () => {
+    const parentSecrets = { apiKey: 'parent-secret' };
+    mocks.findSystemTool
+      .mockResolvedValueOnce({
+        pluginId: 'systemTool-weather/forecast',
+        currentCost: 1,
+        systemKeyCost: 2,
+        secretsVal: { apiKey: 'stale-child-secret' },
+        customConfig: {}
+      })
+      .mockResolvedValueOnce({
+        pluginId: 'systemTool-weather',
+        secretsVal: parentSecrets,
+        customConfig: {}
+      });
+    mocks.findSystemTools.mockResolvedValue([]);
+    mocks.getTool.mockResolvedValue({
+      source: 'system',
+      isToolset: true,
+      name: { en: 'Weather' },
+      description: { en: 'Weather intro' },
+      pluginId: 'weather',
+      version: '1.0.0',
+      icon: 'weather.svg',
+      tags: [],
+      toolDescription: 'Weather tool',
+      hasSecret: true,
+      secretSchema: {
+        type: 'object',
+        properties: { apiKey: { type: 'string', isSecret: true } }
+      },
+      children: [
+        {
+          id: 'forecast',
+          name: { en: 'Forecast' },
+          description: { en: 'Forecast intro' },
+          toolDescription: 'Forecast tool'
+        }
+      ]
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-weather/forecast'
+    });
+
+    expect(tool.secretsVal).toEqual(parentSecrets);
+    expect(tool.hasSystemSecret).toBe(true);
+  });
+
+  it('masks configured system secrets for administrator details', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      secretsVal: { apiKey: { secret: encryptSecret('production-secret'), value: '' } },
+      customConfig: {}
+    });
+    mocks.findSystemTools.mockResolvedValue([]);
+    mocks.getTool.mockResolvedValue({
+      source: 'system',
+      isToolset: false,
+      name: { en: 'Weather' },
+      description: { en: 'Weather intro' },
+      pluginId: 'weather',
+      version: '1.0.0',
+      icon: 'weather.svg',
+      tags: [],
+      toolDescription: 'Weather tool',
+      hasSecret: true,
+      secretSchema: {
+        type: 'object',
+        properties: { apiKey: { type: 'string', isSecret: true } }
+      }
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-weather',
+      maskSecrets: true
+    });
+
+    expect(tool.secretsVal).toEqual({ apiKey: SystemToolSecretMaskedValue });
+  });
+
+  it('masks legacy inputListVal values without exposing the plaintext', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      inputListVal: { apiKey: 'legacy-secret' },
+      customConfig: {}
+    });
+    mocks.findSystemTools.mockResolvedValue([]);
+    mocks.getTool.mockResolvedValue({
+      source: 'system',
+      isToolset: false,
+      name: { en: 'Weather' },
+      description: { en: 'Weather intro' },
+      pluginId: 'weather',
+      version: '1.0.0',
+      icon: 'weather.svg',
+      tags: [],
+      toolDescription: 'Weather tool',
+      hasSecret: true,
+      secretSchema: {
+        type: 'object',
+        properties: { apiKey: { type: 'string', isSecret: true } }
+      }
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-weather',
+      maskSecrets: true
+    });
+
+    expect(tool.secretsVal).toEqual({ apiKey: SystemToolSecretMaskedValue });
+  });
+
+  it('treats an explicit null parent secret as disabled for toolset children', async () => {
+    mocks.findSystemTool
+      .mockResolvedValueOnce({
+        pluginId: 'systemTool-weather/forecast',
+        secretsVal: { apiKey: 'stale-child-secret' },
+        customConfig: {}
+      })
+      .mockResolvedValueOnce({
+        pluginId: 'systemTool-weather',
+        secretsVal: null,
+        customConfig: {}
+      });
+    mocks.findSystemTools.mockResolvedValue([]);
+    mocks.getTool.mockResolvedValue({
+      source: 'system',
+      isToolset: true,
+      name: { en: 'Weather' },
+      description: { en: 'Weather intro' },
+      pluginId: 'weather',
+      version: '1.0.0',
+      icon: 'weather.svg',
+      tags: [],
+      toolDescription: 'Weather tool',
+      hasSecret: true,
+      secretSchema: {
+        type: 'object',
+        properties: { apiKey: { type: 'string', isSecret: true } }
+      },
+      children: [
+        {
+          id: 'forecast',
+          name: { en: 'Forecast' },
+          description: { en: 'Forecast intro' }
+        }
+      ]
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-weather/forecast'
+    });
+
+    expect(tool.secretsVal).toBeUndefined();
+    expect(tool.hasSystemSecret).toBe(false);
+  });
+
+  it('hides configured system secrets from debug details', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      secretsVal: { apiKey: 'production-secret' },
+      customConfig: {}
+    });
+    mocks.getTool.mockResolvedValue({
+      source: 'debug:tmbId:tmb-1',
+      isToolset: false,
+      name: { en: 'Weather' },
+      description: { en: 'Weather intro' },
+      pluginId: 'weather',
+      version: '1.0.0',
+      icon: 'weather.svg',
+      tags: [],
+      toolDescription: 'Weather tool',
+      hasSecret: true,
+      secretSchema: {
+        type: 'object',
+        properties: { apiKey: { type: 'string', isSecret: true } }
+      }
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-weather',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(tool.hasSystemSecret).toBe(false);
+    expect(tool.secretsVal).toBeUndefined();
+    expect(tool.systemSecretStatus).toBe(SystemToolSystemSecretStatusEnum.unconfigured);
   });
 
   it('omits null schemas returned by plugin client', async () => {
@@ -1019,6 +1217,93 @@ describe('SystemToolRepo.getSystemToolRuntime', () => {
     });
 
     expect(tool.secretsVal).toEqual({ apiKey: 'prod-secret' });
+  });
+
+  it('decrypts encrypted system secrets before production runtime', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      currentCost: 1,
+      systemKeyCost: 2,
+      secretsVal: { apiKey: { secret: encryptSecret('encrypted-prod-secret'), value: '' } },
+      customConfig: {}
+    });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-weather',
+      source: 'system'
+    });
+
+    expect(tool.secretsVal).toEqual({ apiKey: 'encrypted-prod-secret' });
+  });
+
+  it('reads legacy inputListVal values for production runtime', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      currentCost: 1,
+      systemKeyCost: 2,
+      inputListVal: { apiKey: 'legacy-prod-secret' },
+      customConfig: {}
+    });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-weather',
+      source: 'system'
+    });
+
+    expect(tool.secretsVal).toEqual({ apiKey: 'legacy-prod-secret' });
+  });
+
+  it('uses the parent system secret for toolset child runtime', async () => {
+    mocks.findSystemTool
+      .mockResolvedValueOnce({
+        pluginId: 'systemTool-weather/forecast',
+        secretsVal: { apiKey: 'stale-child-secret' },
+        customConfig: {}
+      })
+      .mockResolvedValueOnce({
+        pluginId: 'systemTool-weather',
+        secretsVal: { apiKey: 'parent-secret' },
+        customConfig: {}
+      });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-weather/forecast',
+      source: 'system'
+    });
+
+    expect(tool.secretsVal).toEqual({ apiKey: 'parent-secret' });
+  });
+
+  it('keeps debug runtime fail-closed for workflow tool secrets', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-workflow-tool',
+      secretsVal: { apiKey: 'production-secret' },
+      customConfig: {
+        associatedPluginId: 'app-id'
+      }
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-workflow-tool',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(tool.secretsVal).toBeUndefined();
   });
 });
 
