@@ -44,8 +44,8 @@ const TemplateImportModal = ({
   );
 
   const handleDownloadTemplate = () => {
-    const templateContent = `q,a,indexes
-"Who are you?","I am an AI assistant, here to help with your questions and provide support. I can assist with learning, daily life queries, and creative ideas.","1. What are you?\n2. What can you do?\n3. What topics can you help with?\n4. How do you assist users?\n5. What's your goal?","Who are you? I am an AI assistant..."
+    const templateContent = `q,a,indexes,indexes
+"Who are you?","I am an AI assistant, here to help with your questions and provide support.","1. What are you?\n2. What can you do?","Who are you? I am an AI assistant..."
 "What are you?","I am an AI assistant designed to help users with their questions and provide support across various topics.","What are you?","I am an AI assistant..."`;
 
     const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });

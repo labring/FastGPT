@@ -310,24 +310,57 @@ export const rawText2Chunks = async ({
     q: string;
     a: string;
     indexes?: string[];
+    metadata?: Record<string, any>;
     imageIdList?: string[];
   }[]
 > => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
+    if (csvArr.length < 2) return { chunks: [] };
+
+    const headers = csvArr[0].map((h) => h.trim().toLowerCase());
+
+    // Build column index mapping
+    let qIdx = -1,
+      aIdx = -1;
+    const indexesIdxs: number[] = [];
+    const metadataKeys: { idx: number; key: string }[] = [];
+
+    headers.forEach((header, idx) => {
+      if (header === 'q') {
+        qIdx = idx;
+      } else if (header === 'a') {
+        aIdx = idx;
+      } else if (header === 'indexes') {
+        indexesIdxs.push(idx);
+      } else {
+        metadataKeys.push({ idx, key: csvArr[0][idx].trim() });
+      }
+    });
+
     const chunks = csvArr
       .slice(1)
-      .map((item) => ({
-        q: item[0] || '',
-        a: item[1] || '',
-        indexes: item.slice(2).filter((item) => item.trim()),
-        imageIdList
-      }))
+      .map((item) => {
+        const q = qIdx >= 0 ? item[qIdx] || '' : '';
+        const a = aIdx >= 0 ? item[aIdx] || '' : '';
+
+        const indexes = indexesIdxs.map((idx) => (item[idx] || '').trim()).filter(Boolean);
+
+        // Build metadata: only include non-empty values
+        let metadata: Record<string, any> | undefined;
+        for (const { idx, key } of metadataKeys) {
+          const val = (item[idx] || '').trim();
+          if (val) {
+            metadata = metadata || {};
+            metadata[key] = val;
+          }
+        }
+
+        return { q, a, indexes, metadata, imageIdList };
+      })
       .filter((item) => item.q || item.a);
 
-    return {
-      chunks
-    };
+    return { chunks };
   };
 
   if (backupParse) {

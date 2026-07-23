@@ -55,7 +55,10 @@ async function handler(req: ApiRequestProps) {
       getFormatText: false
     });
 
-    if (!rawText.trim().startsWith('q,a,indexes')) {
+    // Check first two columns are q and a (case-insensitive). Other columns are metadata or indexes.
+    const firstLine = rawText.trim().split('\n')[0];
+    const headerCols = firstLine.split(',').map((h) => h.trim().toLowerCase());
+    if (headerCols[0] !== 'q' || headerCols[1] !== 'a') {
       return Promise.reject(i18nT('dataset:template_file_invalid'));
     }
 

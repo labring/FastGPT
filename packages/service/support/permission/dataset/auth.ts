@@ -218,6 +218,7 @@ export async function authDatasetData({
     indexes: datasetData.indexes,
     datasetId: String(datasetData.datasetId),
     collectionId: String(datasetData.collectionId),
+    metadata: datasetData.metadata,
     sourceName: result.collection.name || '',
     sourceId: result.collection?.fileId || result.collection?.rawLink,
     isOwner: String(datasetData.tmbId) === String(result.tmbId)
