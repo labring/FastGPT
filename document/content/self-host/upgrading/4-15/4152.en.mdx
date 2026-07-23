@@ -26,20 +26,6 @@ Starting with V4.15.2, `AGENT_ENGINE` uses new enum values. Update the environme
 
 The previous values are no longer supported. Using `default` or `pi` will fail environment variable validation and prevent FastGPT from starting. If `AGENT_ENGINE` is not set, FastGPT uses `fastAgent` by default.
 
-### MongoDB Index Synchronization Changes
-
-Starting with V4.15.2, FastGPT no longer uses the `MONGO_INDEX_SYNC_MODE` environment variable. `SYNC_INDEX` remains the master switch for safe MongoDB index synchronization and defaults to `true`. Set it to `false` only when your deployment has additional constraints that prevent startup synchronization.
-
-FastGPT now performs a safe synchronization automatically at startup:
-
-- Creates indexes that are missing from the current FastGPT schemas.
-- Removes only historical FastGPT indexes explicitly declared by the corresponding schema and whose name, key, and relevant options match exactly.
-- Preserves custom indexes and any other indexes that are not explicitly declared as deprecated.
-
-This process does not call Mongoose's full `syncIndexes()` operation, so indexes are never removed simply because they are absent from a FastGPT schema.
-
-Setting `SYNC_INDEX=false` skips both missing-index creation and explicitly declared deprecated-index cleanup. After an upgrade, you must ensure that the database indexes meet the requirements of the current FastGPT version.
-
 ### Configure the File Download URL Mode
 
 V4.15.2 introduces the `STORAGE_DOWNLOAD_URL_MODE` environment variable, which defaults to `short-proxy`.
