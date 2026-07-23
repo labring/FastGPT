@@ -4,7 +4,7 @@
  * 统一把 sandbox 业务错误转换成 UserError，不承载 provider 或数据库逻辑。
  */
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 
 /**
  * 生成 Agent 虚拟机权限错误。
@@ -24,13 +24,6 @@ export const createAgentSandboxPermissionDeniedError = () =>
 export const createAgentSandboxInitializingError = () =>
   new UserError(SandboxErrEnum.agentSandboxInitializing);
 
-/**
- * 生成 runtime 镜像升级阻断错误。
- *
- * Agent 会先通过 sandboxStatus SSE 告知前端升级状态；该错误只负责终止本轮 workflow，
- * 避免继续使用旧镜像。
- */
-export const createSandboxRuntimeUpgradeRequiredError = (upgrading = false) =>
-  new UserError(
-    upgrading ? SandboxErrEnum.runtimeUpgradeInProgress : SandboxErrEnum.runtimeUpgradeRequired
-  );
+/** 将底层迁移异常转换为可展示且经过敏感信息替换的用户错误。 */
+export const createSandboxRuntimeUpgradeFailedError = (error: unknown) =>
+  new UserError(getErrText(error, SandboxErrEnum.runtimeUpgradeFailed));

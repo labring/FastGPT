@@ -22,7 +22,7 @@ import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import {
   ensureAgentSandboxRuntime,
   streamAgentSandboxInitStatus,
-  streamAgentSandboxRuntimeUpgradeStatus,
+  streamAgentSandboxUpgradeStatus,
   type AgentSandboxPrepareAction
 } from './sub/sandbox';
 import type { RuntimeNodeResponseSummary } from '../../type';
@@ -30,8 +30,7 @@ import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import {
   buildSandboxClientQueryFromChatSource,
   createAgentSandboxPermissionDeniedError,
-  createSandboxRuntimeUpgradeRequiredError,
-  getAppSandboxRuntimeStatus
+  ensureAppSandboxRuntimeReady
 } from '../../../../ai/sandbox/interface/runtime';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import {
@@ -193,16 +192,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           userId: uid,
           chatId
         });
-        const runtimeStatus = await getAppSandboxRuntimeStatus(sandboxQuery);
-
-        if (runtimeStatus.status !== 'readyToInit') {
-          streamAgentSandboxRuntimeUpgradeStatus({
-            workflowStreamResponse,
-            sandboxId: sandboxQuery.sandboxId,
-            runtimeStatus
-          });
-          throw createSandboxRuntimeUpgradeRequiredError(runtimeStatus.status === 'upgrading');
-        }
+        await ensureAppSandboxRuntimeReady({
+          query: sandboxQuery,
+          onUpgrade: () =>
+            streamAgentSandboxUpgradeStatus({
+              workflowStreamResponse,
+              sandboxId: sandboxQuery.sandboxId
+            })
+        });
       }
 
       streamAgentSandboxInitStatus({
@@ -229,6 +226,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       prepareActions: agentSandboxPrepareActions,
       currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
     });
+
     // 获取请求上下文
     const { chatHistories, queryInput, fileUrlMap, filesMap } = userContext;
     const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({

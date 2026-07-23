@@ -25,7 +25,7 @@ const {
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
-  getAppSandboxRuntimeStatusMock
+  ensureAppSandboxRuntimeReadyMock
 } = vi.hoisted(() => ({
   runAgentLoopMock: vi.fn(),
   serviceEnvMock: {
@@ -46,7 +46,7 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
-  getAppSandboxRuntimeStatusMock: vi.fn()
+  ensureAppSandboxRuntimeReadyMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/env', () => ({
@@ -92,7 +92,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
         workDirectory: original.getSandboxRuntimeProfile().workDirectory
       };
     }),
-    getAppSandboxRuntimeStatus: getAppSandboxRuntimeStatusMock,
+    ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock,
     getAgentSkillInfos: getAgentSkillInfosMock,
     injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
   };
@@ -265,9 +265,7 @@ describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
-    getAppSandboxRuntimeStatusMock.mockResolvedValue({
-      status: 'readyToInit'
-    });
+    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     serviceEnvMock.AGENT_ENGINE = 'fastAgent';
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
@@ -494,12 +492,13 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
-  it('streams upgradeRequired and stops before preparing an outdated App sandbox', async () => {
+  it('streams upgrading and continues the same workflow after silent App sandbox migration', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
-    getAppSandboxRuntimeStatusMock.mockResolvedValueOnce({
-      status: 'upgradeRequired'
+    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
+      onUpgrade?.();
+      return true;
     });
 
     let resultPromise: Promise<any> | undefined;
@@ -517,24 +516,60 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(getAppSandboxRuntimeStatusMock).toHaveBeenCalledOnce();
-    expect(props.workflowStreamResponse).toHaveBeenCalledWith({
-      event: 'sandboxStatus',
-      data: {
-        sandboxId: getRunningSandboxId({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: 'app_1',
-          userId: 'user_1'
-        }),
-        phase: 'upgradeRequired',
-        runtimeStatus: {
-          status: 'upgradeRequired'
+    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledOnce();
+    const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
+      .map(([event]: [{ event: string; data: unknown }]) => event)
+      .filter((event: { event: string }) => event.event === 'sandboxStatus');
+    expect(sandboxStatusEvents).toEqual([
+      {
+        event: 'sandboxStatus',
+        data: {
+          sandboxId: getRunningSandboxId({
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: 'app_1',
+            userId: 'user_1'
+          }),
+          phase: 'upgrading'
+        }
+      },
+      {
+        event: 'sandboxStatus',
+        data: {
+          sandboxId: getRunningSandboxId({
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: 'app_1',
+            userId: 'user_1'
+          }),
+          phase: 'lazyInit'
         }
       }
-    });
+    ]);
+    expect(getSandboxClientMock).toHaveBeenCalledOnce();
+    expect(runAgentLoopMock).toHaveBeenCalledOnce();
+    expect(result.error).toBeUndefined();
+  });
+
+  it('returns the concrete silent migration failure reason', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+
+    let resultPromise: Promise<any> | undefined;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    const result = await resultPromise!;
+
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
-    expect(result.error?.system_error_text).toBe('skill:sandbox_runtime_upgrade_required');
+    expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 
   it('omits pwd reminder when sandbox pwd cannot be resolved', async () => {
