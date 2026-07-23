@@ -81,8 +81,8 @@ export const formatAgentLoopCoreToolResponse = (toolResponses: any) => {
 };
 
 /**
- * 这些 runtime edge/node 是为一次 tool workflow 派生出的副本。
- * 初始化阶段直接在副本上标记入口状态，避免后续调度还要维护额外的 entry 集合。
+ * 初始化阶段直接在传入的 runtime edge/node 上标记入口状态。
+ * 调用方需要根据自身的状态隔离要求决定是否先创建副本。
  */
 export const initAgentLoopCoreWorkflowToolEdges = (
   edges: RuntimeEdgeItemType[],
@@ -265,6 +265,9 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
  *
  * ToolCall 和未来的简化 Agent 都可以把“某个 runtime node 作为工具入口运行”的能力交给这里。
  * 节点外壳只负责提供实际 runWorkflow 函数、展示信息和缓存/流式回调。
+ *
+ * 已知问题：普通 Workflow Tool 的首次执行和交互恢复都会复用并修改父流程的 runtime graph。
+ * 当前保留原有状态传递行为，后续需要通过子流程快照和显式同步完成隔离。
  */
 export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknown>({
   runtimeNodes,

@@ -887,7 +887,12 @@ describe('storeEdges2RuntimeEdges', () => {
     } as WorkflowInteractiveResponseType;
 
     const result = storeEdges2RuntimeEdges(edges, lastInteractive);
-    expect(result).toBe(memoryEdges);
+    expect(result).toEqual(memoryEdges);
+    expect(result).not.toBe(memoryEdges);
+    expect(result[0]).not.toBe(memoryEdges[0]);
+
+    result[0].status = 'waiting';
+    expect(memoryEdges[0].status).toBe('active');
   });
 
   it('should return converted edges when lastInteractive has empty memoryEdges', () => {
