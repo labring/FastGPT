@@ -23,10 +23,14 @@ async function handler(req: ApiRequestProps): Promise<McpCreateResponseType> {
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
-  const { name, apps } = parseApiInput({ req, bodySchema: McpCreateBodySchema }).body;
+  const { name, apps, authProxy } = parseApiInput({ req, bodySchema: McpCreateBodySchema }).body;
+
+  if (authProxy && !permission.isOwner) {
+    return Promise.reject(TeamErrEnum.unPermission);
+  }
 
   // Count mcp length
-  const totalMcp = await MongoMcpKey.countDocuments({ teamId });
+  const totalMcp = await MongoMcpKey.countDocuments({ teamId, tmbId });
   if (totalMcp >= 100) {
     return Promise.reject('暂时只支持100个MCP服务');
   }
@@ -56,6 +60,7 @@ async function handler(req: ApiRequestProps): Promise<McpCreateResponseType> {
     teamId,
     tmbId,
     name,
+    authProxy,
     apps: uniqueApps
   });
 

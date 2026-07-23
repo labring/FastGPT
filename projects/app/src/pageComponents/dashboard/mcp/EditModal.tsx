@@ -9,6 +9,7 @@ import {
   Input,
   ModalBody,
   ModalFooter,
+  Switch,
   Table,
   TableContainer,
   Tbody,
@@ -21,7 +22,7 @@ import {
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { type McpAppType } from '@fastgpt/global/support/mcp/type';
 import { useTranslation } from 'next-i18next';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -36,15 +37,18 @@ import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { postCreateMcpServer, putUpdateMcpServer } from '../../../web/support/mcp/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export type EditMcForm = {
   id?: string;
   name: string;
+  authProxy: boolean;
   apps: McpAppType[];
 };
 
 export const defaultForm: EditMcForm = {
   name: '',
+  authProxy: false,
   apps: []
 };
 
@@ -257,6 +261,7 @@ const EditMcpModal = ({
   onSuccess: () => void;
 }) => {
   const { t } = useTranslation();
+  const { userInfo } = useUserStore();
   const isEdit = !!editMcp.id;
   const {
     isOpen: isOpenSelectApp,
@@ -281,6 +286,7 @@ const EditMcpModal = ({
     (data: EditMcForm) =>
       postCreateMcpServer({
         name: data.name,
+        authProxy: data.authProxy,
         apps: data.apps.map((item) => ({
           appId: item.appId,
           toolName: item.toolName,
@@ -299,6 +305,7 @@ const EditMcpModal = ({
       putUpdateMcpServer({
         id: data.id!,
         name: data.name,
+        authProxy: data.authProxy,
         apps: data.apps.map((item) => ({
           appId: item.appId,
           toolName: item.toolName,
@@ -331,6 +338,23 @@ const EditMcpModal = ({
             </FormLabel>
             <Input {...register('name', { required: true })} maxLength={100} bg={'myGray.50'} />
           </Box>
+          <Flex mt={4} alignItems={'center'} gap={3}>
+            <FormLabel display={'flex'} mb={0} alignItems={'center'}>
+              {t('dashboard_mcp:auth_proxy')}
+              <QuestionTip ml={1} label={t('dashboard_mcp:auth_proxy_tip')} />
+            </FormLabel>
+            <Controller
+              control={control}
+              name="authProxy"
+              render={({ field }) => (
+                <Switch
+                  isChecked={field.value}
+                  isDisabled={!userInfo?.permission.isOwner && !field.value}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                />
+              )}
+            />
+          </Flex>
           <Box mt={6}>
             <Flex justifyContent={'space-between'} alignItems={'center'}>
               <FormLabel>{t('dashboard_mcp:apps')}</FormLabel>

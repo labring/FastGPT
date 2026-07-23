@@ -10,16 +10,29 @@ import {
   McpUpdateResponseSchema,
   type McpUpdateResponseType
 } from '@fastgpt/global/openapi/support/mcpServer/api';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 async function handler(req: ApiRequestProps): Promise<McpUpdateResponseType> {
-  const { id: mcpId, name, apps } = parseApiInput({ req, bodySchema: McpUpdateBodySchema }).body;
-  const { tmbId } = await authMcp({
+  const {
+    id: mcpId,
+    name,
+    apps,
+    authProxy
+  } = parseApiInput({
+    req,
+    bodySchema: McpUpdateBodySchema
+  }).body;
+  const { tmbId, permission } = await authMcp({
     req,
     authToken: true,
     authApiKey: true,
     mcpId,
     per: WritePermissionVal
   });
+
+  if (authProxy && !permission.isOwner) {
+    return Promise.reject(TeamErrEnum.unPermission);
+  }
 
   // 对 apps 中的 id 进行去重，确保每个应用只出现一次
   const uniqueAppIds = new Set<string>();
@@ -47,6 +60,7 @@ async function handler(req: ApiRequestProps): Promise<McpUpdateResponseType> {
     {
       $set: {
         ...(name && { name }),
+        ...(authProxy !== undefined && { authProxy }),
         apps: uniqueApps
       }
     }
