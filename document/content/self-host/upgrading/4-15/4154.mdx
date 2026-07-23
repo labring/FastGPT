@@ -14,15 +14,17 @@ FE_DOMAIN=https://fastgpt.example.com
 ```
 ### MongoDB 索引同步调整
 
-V4.15.4 起，不再使用 `MONGO_INDEX_SYNC_MODE` 环境变量。`SYNC_INDEX` 保留为 MongoDB 安全索引同步的总开关，默认值为 `true`；仅在部署环境有额外限制时设置为 `false`。
+V4.15.4 起，`SYNC_INDEX` 弃用，新增 `MONGO_DEPRECATE_INDEX` 环境变量，用于控制是否清理 Schema 显式标记的废弃索引，默认值为 `true`。设置为 `false` 时只跳过废弃索引清理，不影响当前 Schema 缺失索引的创建。
 
 FastGPT 启动时会自动执行安全的主动同步：
 
 - 创建当前 FastGPT Schema 中缺失的索引。
-- 仅删除对应 Schema 明确标记为废弃、且 name、key 和关键 options 完全匹配的 FastGPT 历史索引。
+- 仅删除对应 Schema 明确标记为废弃、且 name、key 和关键 options 完全匹配的 FastGPT 系统内置历史索引。
 - 保留客户自建索引及其他未声明的索引。
 
 该同步不会调用 Mongoose 的全量 `syncIndexes()`，因此不会按“未在 Schema 中声明”这一条件批量删除索引。
+
+> **默认开启与删除边界：`MONGO_DEPRECATE_INDEX` 默认为 `true`，仅删除 FastGPT Schema 显式声明为废弃、且索引定义精确匹配的系统内置索引，不会删除客户自建索引。建议为自建索引显式设置自定义名称，不要使用 MongoDB 按 key 生成的默认名称，避免与 FastGPT 系统内置索引重名。**
 
 > **旧索引清理说明：V4.15.4 不会把任何已有历史索引标记为废弃，因此升级到该版本时不会自动删除旧索引。后续版本会在确认安全后，通过 Schema 中的显式废弃标记逐步清理对应索引。**
 
@@ -34,7 +36,7 @@ FastGPT 启动时会自动执行安全的主动同步：
 
 V4.15.3 的索引同步会删除所有未在当时 Schema 中声明的索引，其中可能包含客户自建索引。执行上述步骤前，请先备份数据库并检查现有索引；如需保留自建索引，请记录其定义并在同步后重新创建，或不要使用 V4.15.3 进行全量清理。
 
-`SYNC_INDEX=false` 会跳过缺失索引创建，以及未来版本可能声明的废弃索引清理。关闭后需自行确保数据库索引与当前版本要求一致。
+`MONGO_DEPRECATE_INDEX=false` 会跳过未来版本可能声明的废弃索引清理，但不会跳过缺失索引的创建。
 
 ## 🚀 新增内容
 

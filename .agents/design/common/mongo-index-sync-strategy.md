@@ -21,14 +21,13 @@
 ## 最终决策
 
 1. 禁止在启动索引管理中调用 `syncIndexes()` 或 `cleanIndexes()`。
-2. `SYNC_INDEX` 是唯一启动开关，默认值为 `true`：
-   - `true`：执行固定的安全同步链路。
-   - `false`：跳过差异检查、索引创建和废弃索引清理，由部署方自行维护索引。
-3. 不提供 `MONGO_INDEX_SYNC_MODE`，也不提供可切换回全量删除的启动模式。
-4. 当前索引和废弃索引统一通过 `defineIndex()` 声明；废弃索引必须声明在所属 Schema 文件中。
-5. Schema 外且未被显式声明为废弃的索引只告警、不删除。
-6. 删除废弃索引前必须先成功创建当前 Schema 索引；创建失败时不进入删除阶段。
-7. 主 Service、日志库和 Marketplace 统一复用 `MongoIndexManager`，保持同步语义与错误处理一致。
+2. `SYNC_INDEX` 弃用；启动时固定检查差异并补建当前 Schema 缺失的索引。
+3. `MONGO_DEPRECATE_INDEX` 仅控制是否清理显式声明的 FastGPT 系统内置废弃索引，默认值为 `true`；设置为 `false` 不影响缺失索引的创建。
+4. 不提供可切换回全量删除的启动模式。
+5. 当前索引和废弃索引统一通过 `defineIndex()` 声明；废弃索引必须声明在所属 Schema 文件中。
+6. Schema 外且未被显式声明为废弃的索引只告警、不删除。
+7. 删除废弃索引前必须先成功创建当前 Schema 索引；创建失败时不进入删除阶段。
+8. 主 Service、日志库和 Marketplace 统一复用 `MongoIndexManager`，保持同步语义与错误处理一致。
 
 ## 索引声明
 
@@ -60,12 +59,12 @@ defineIndex(ChatSchema, {
 
 ## 启动同步流程
 
-当环境允许且 `SYNC_INDEX=true` 时，每个 model 执行以下流程：
+每个 model 启动时执行以下流程：
 
 1. `diffIndexes({ indexOptionsToCreate: true })` 生成 `toCreate` 和 `toDrop`。
 2. `toDrop` 仅表示数据库中存在但当前 Schema 未声明的索引，记录 `warn` 后保留。
 3. `createIndexes({ background: true })` 创建当前 Schema 索引。
-4. 从 `model.schema` 读取废弃索引声明。
+4. 当 `MONGO_DEPRECATE_INDEX=true` 时，从 `model.schema` 读取废弃索引声明。
 5. 在 model 对应 collection 中逐项查询并精确匹配。
 6. 仅删除 name、key 和关键 options 全部匹配的索引。
 
@@ -118,7 +117,8 @@ defineIndex(ChatSchema, {
 2. `createIndexes()` 不会修改已存在索引的 options。TTL、唯一约束、partial filter 等变化必须通过明确迁移处理。
 3. 错误的 Schema 本地废弃声明会在启动时触发清理，因此精确匹配和代码 review 是必须保留的防线。
 4. 启动流程不暴露 Mongoose 全量同步能力；需要诊断时复用 manager 的 inspect/dry-run 能力。
-5. `SYNC_INDEX=false` 会关闭整条链路，部署方必须自行承担缺失索引和历史索引的维护责任。
+5. `MONGO_DEPRECATE_INDEX=false` 只关闭废弃索引清理，当前 Schema 缺失的索引仍会创建。
+6. 客户自建索引应显式设置自定义名称，不使用 MongoDB 按 key 生成的默认名称，避免与 FastGPT 系统内置索引重名。
 
 ## 已知暂不处理的历史索引
 
@@ -131,14 +131,14 @@ defineIndex(ChatSchema, {
 
 ## 验收标准
 
-1. 开启同步时创建当前 Schema 缺失索引，并保留所有未登记的 Schema 外索引。
+1. 启动时创建当前 Schema 缺失索引，并保留所有未登记的 Schema 外索引。
 2. Schema 未登记废弃索引时不执行删除。
 3. 只有 name、key 和关键 options 精确匹配的废弃索引会被删除。
 4. 当前索引创建失败时不删除废弃索引。
 5. 同名但定义不同的索引保留并告警。
 6. 已不存在的废弃索引和多实例并发重复清理保持幂等。
 7. 当前所有业务 Schema 均未登记废弃索引，启动同步不会自动删除历史索引。
-8. 主 Service、日志库和 Marketplace 在 `SYNC_INDEX=true` 时调用同一 manager，关闭时均跳过同步。
+8. 主 Service、日志库和 Marketplace 始终调用同一 manager，并由 `MONGO_DEPRECATE_INDEX` 统一控制废弃索引清理。
 
 ## 后续事项
 
