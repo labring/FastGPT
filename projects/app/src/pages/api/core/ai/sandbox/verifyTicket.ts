@@ -23,9 +23,8 @@ const IDE_AGENT_PREVIEW_PORT = 1319;
 const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-password"';
 
 const VerifyTicketQuerySchema = z.object({
-  ticket: z.string().min(1).optional()
+  ticket: z.string()
 });
-const SANDBOX_TICKET_HEADER = 'x-sandbox-ticket';
 const SANDBOX_PREVIEW_SESSION_HEADER = 'x-sandbox-preview-session';
 
 const SandboxVerifyTicketResponseSchema = z.object({
@@ -83,11 +82,6 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
 async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketResponse> {
   const secret = authAgentSandboxProxy(req);
 
-  const { ticket: queryTicket } = parseApiInput({
-    req,
-    querySchema: VerifyTicketQuerySchema
-  }).query;
-  const headerTicket = req.headers[SANDBOX_TICKET_HEADER];
   const headerPreviewSession = req.headers[SANDBOX_PREVIEW_SESSION_HEADER];
 
   const authContext = await (async () => {
@@ -98,10 +92,10 @@ async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketRespons
       };
     }
 
-    const ticket = z
-      .string()
-      .min(1)
-      .parse((typeof headerTicket === 'string' ? headerTicket : undefined) ?? queryTicket);
+    const { ticket } = parseApiInput({
+      req,
+      querySchema: VerifyTicketQuerySchema
+    }).query;
 
     try {
       const { sourceType, sourceId, userId, chatId } = SandboxTicketClaimsSchema.parse(
