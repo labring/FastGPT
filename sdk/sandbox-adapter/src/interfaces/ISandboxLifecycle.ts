@@ -28,9 +28,7 @@ export interface ISandboxLifecycle {
    */
   start(): Promise<void>;
 
-  /**
-   * Stop a running sandbox (graceful shutdown).
-   */
+  /** Stop or suspend a running sandbox according to the provider lifecycle. */
   stop(): Promise<void>;
 
   /**

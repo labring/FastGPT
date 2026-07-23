@@ -134,8 +134,8 @@ export interface SandboxCreateSpec {
   /** Environment variables injected when the sandbox is created. */
   env?: Record<string, string>;
 
-  /** App-level metadata for traceability; providers may persist or ignore it. */
-  metadata?: Record<string, unknown>;
+  /** String metadata persisted by providers for filtering and traceability. */
+  metadata?: Record<string, string>;
 
   /** Provider-visible labels, mainly used by Kubernetes-backed providers such as Sealos. */
   labels?: LabelSpec[];

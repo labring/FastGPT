@@ -9,6 +9,7 @@ import { pickOutboundAxios } from '../../../../common/api/axios';
 import type { SandboxClient } from './runtime/client';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { resolveSandboxRuntimePath } from '../utils';
+import { Readable } from 'node:stream';
 
 export type SandboxUrlFile = {
   path: string;
@@ -27,7 +28,7 @@ type ResolveSandboxWorkspacePathOptions = {
 };
 
 type SandboxDirectoryArchive = {
-  append: (source: Buffer, data: { name: string }) => void;
+  append: (source: NodeJS.ReadableStream, data: { name: string }) => void;
 };
 
 const MAX_ARCHIVE_DEPTH = 20;
@@ -157,12 +158,9 @@ export async function addDirectoryToArchive(
       await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath, depth + 1);
     } else {
       const providerFilePath = sandbox.resolveRuntimePath(entry.path, { allowAbsolutePath: true });
-      const results = await sandbox.provider.readFiles([providerFilePath]);
-      const result = results[0];
-
-      if (!result.error) {
-        archive.append(Buffer.from(result.content), { name: entryArchivePath });
-      }
+      archive.append(Readable.from(sandbox.provider.readFileStream(providerFilePath)), {
+        name: entryArchivePath
+      });
     }
   }
 }

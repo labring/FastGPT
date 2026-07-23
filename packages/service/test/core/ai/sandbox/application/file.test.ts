@@ -37,6 +37,7 @@ function makeProvider(
     listDirectory: vi.fn(),
     writeFiles: vi.fn(),
     readFiles: vi.fn(),
+    readFileStream: vi.fn(),
     getFileInfo: vi.fn(),
     ensureRunning: vi.fn(),
     execute: vi.fn(),
@@ -228,20 +229,25 @@ describe('addDirectoryToArchive', () => {
     return { append: vi.fn() } as unknown as import('archiver').Archiver;
   }
 
-  it('混合场景：成功文件和失败文件', async () => {
+  it('逐文件把 provider download stream 交给 archive', async () => {
     const archive = makeArchive();
     const entries = [
       makeDirectoryEntry('ok.py', { path: '/workspace/ok.py' }),
-      makeDirectoryEntry('bad.py', { path: '/workspace/bad.py' })
+      makeDirectoryEntry('other.py', { path: '/workspace/other.py' })
     ];
-    const readFiles = vi
-      .fn()
-      .mockResolvedValueOnce([makeReadResult('/workspace/ok.py', 'print(1)')])
-      .mockResolvedValueOnce([makeReadResult('/workspace/bad.py', '', new Error('fail'))]);
-    const sandbox = makeSandbox({ listDirectory: vi.fn().mockResolvedValue(entries), readFiles });
+    const readFileStream = vi.fn((_path: string) =>
+      (async function* () {
+        yield new TextEncoder().encode('content');
+      })()
+    );
+    const sandbox = makeSandbox({
+      listDirectory: vi.fn().mockResolvedValue(entries),
+      readFileStream
+    });
     await addDirectoryToArchive(sandbox, archive, '/workspace', '');
-    expect(archive.append).toHaveBeenCalledTimes(1);
-    expect(archive.append).toHaveBeenCalledWith(expect.any(Buffer), { name: 'ok.py' });
+    expect(archive.append).toHaveBeenCalledTimes(2);
+    expect(archive.append).toHaveBeenCalledWith(expect.anything(), { name: 'ok.py' });
+    expect(readFileStream).toHaveBeenCalledWith('/workspace/ok.py');
   });
 
   it('深层嵌套目录递归正确', async () => {
@@ -253,10 +259,14 @@ describe('addDirectoryToArchive', () => {
         makeDirectoryEntry('b', { isDirectory: true, path: '/workspace/a/b' })
       ])
       .mockResolvedValueOnce([makeDirectoryEntry('c.txt', { path: '/workspace/a/b/c.txt' })]);
-    const readFiles = vi.fn().mockResolvedValue([makeReadResult('/workspace/a/b/c.txt', 'deep')]);
-    const sandbox = makeSandbox({ listDirectory, readFiles });
+    const readFileStream = vi.fn(() =>
+      (async function* () {
+        yield new TextEncoder().encode('deep');
+      })()
+    );
+    const sandbox = makeSandbox({ listDirectory, readFileStream });
     await addDirectoryToArchive(sandbox, archive, '/workspace', '');
-    expect(archive.append).toHaveBeenCalledWith(expect.any(Buffer), { name: 'a/b/c.txt' });
+    expect(archive.append).toHaveBeenCalledWith(expect.anything(), { name: 'a/b/c.txt' });
   });
 
   it('超过最大深度限制时停止递归', async () => {

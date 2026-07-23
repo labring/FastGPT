@@ -72,11 +72,22 @@ describe.skipIf(!shouldRun).sequential('OpenSandboxAdapter Integration Tests', (
     }
   }, 130_000);
 
-  describe('Basic Tests', () => {
-    it('should initialize with the expected OpenSandbox configuration', () => {
-      expect(adapter.provider).toBe('opensandbox');
-      expect(adapter.runtime).toBe(process.env.OPENSANDBOX_RUNTIME);
-    });
+  describe('Lifecycle Reuse', () => {
+    it('should resume the same sandbox with its workspace intact after close', async () => {
+      const sandboxId = adapter.id;
+      expect(sandboxId).toBeDefined();
+
+      await adapter.execute("printf 'persisted' > /workspace/.reuse-check");
+      await adapter.stop();
+      await adapter.close();
+      await adapter.ensureRunning();
+
+      expect(adapter.id).toBe(sandboxId);
+      await expect(adapter.execute('cat /workspace/.reuse-check')).resolves.toMatchObject({
+        stdout: 'persisted',
+        exitCode: 0
+      });
+    }, 90_000);
   });
 
   describe('Security Runtime Tests', () => {

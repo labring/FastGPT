@@ -21,7 +21,7 @@ export type SandboxRuntimeCreateConfigInput = {
   image?: SandboxImageConfigType;
   entrypoint?: string | string[];
   env?: Record<string, string>;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, string>;
   createConfig?: SandboxCreateSpec;
   resourceLimits?: SandboxCreateSpec['resourceLimits'];
   volumes?: SandboxCreateSpec['volumes'];

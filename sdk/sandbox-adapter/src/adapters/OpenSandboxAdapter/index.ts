@@ -2,17 +2,14 @@ import type {
   Execution,
   ExecutionHandlers,
   NetworkPolicy as SdkNetworkPolicy,
-  SandboxInfo as SdkSandboxInfo,
-  WriteEntry as SdkWriteEntry
+  SandboxInfo as SdkSandboxInfo
 } from '@alibaba-group/opensandbox';
 import {
   ConnectionConfig,
-  DEFAULT_HEALTH_CHECK_POLLING_INTERVAL_MILLIS,
-  DEFAULT_READY_TIMEOUT_SECONDS,
   Sandbox,
+  SandboxApiException,
   SandboxException,
-  SandboxManager,
-  type Endpoint as SdkEndpoint
+  SandboxManager
 } from '@alibaba-group/opensandbox';
 import {
   CommandExecutionError,
@@ -23,10 +20,18 @@ import {
 } from '../../errors';
 import type {
   Endpoint,
+  ContentReplaceEntry,
+  DirectoryEntry,
   ExecuteOptions,
   ExecuteResult,
+  FileDeleteResult,
+  FileInfo,
+  FileReadResult,
   FileWriteEntry,
   FileWriteResult,
+  MoveEntry,
+  PermissionEntry,
+  ReadFileOptions,
   ResourceLimits,
   SandboxCreateSpec,
   SandboxEndpointSelector,
@@ -36,16 +41,15 @@ import type {
   SandboxMetrics,
   SandboxState,
   SandboxStatus,
+  SearchResult,
   StreamHandlers
 } from '@/types';
 import { BaseSandboxAdapter } from '../BaseSandboxAdapter';
-import { CommandPolyfillService } from '@/polyfill/CommandPolyfillService';
 import { BoundedOutputBuffer } from '@/utils/outputBuffer';
 import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@/constants';
 import { formatImageSpec, parseImageSpec } from '@/utils/image';
 import type { OpenSandboxConfigType } from './type';
-import { toOpenSandboxWriteData, verifyCommittedUpload } from './uploadRecovery';
-import { getWriteEntryByteLength } from '@/utils/files';
+import { getFileDataByteLength } from '@/utils/files';
 
 const DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024;
 const DEFAULT_REQUEST_TIMEOUT_SECONDS = 120;
@@ -97,14 +101,11 @@ export type OpenSandboxConnectionConfig = {
  *
  * @example
  * ```typescript
- * const adapter = new OpenSandboxAdapter({
- *   baseUrl: 'https://api.opensandbox.example.com',
- *   apiKey: 'your-api-key'
- * });
- *
- * await adapter.create({
- *   image: { repository: 'node', tag: '18-alpine' }
- * });
+ * const adapter = new OpenSandboxAdapter(
+ *   { sessionId: 'session-1', baseUrl: 'https://api.opensandbox.example.com' },
+ *   { image: { repository: 'node', tag: '18-alpine' } }
+ * );
+ * await adapter.ensureRunning();
  *
  * const result = await adapter.execute('node --version');
  * console.log(result.stdout); // v18.x.x
@@ -116,16 +117,14 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
 
   private _sandbox?: Sandbox;
   private readonly _connection: ConnectionConfig;
-  private _id?: SandboxId;
 
   constructor(
-    private connectionConfig: OpenSandboxConnectionConfig,
-    private createConfig?: SandboxCreateSpec
+    private readonly connectionConfig: OpenSandboxConnectionConfig,
+    private readonly createConfig?: SandboxCreateSpec
   ) {
     super();
     this.runtime = connectionConfig.runtime ?? 'docker';
     this._connection = this.createConnectionConfig();
-    this.polyfillService = new CommandPolyfillService(this);
   }
 
   get rootPath(): string {
@@ -135,12 +134,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   }
 
   get id(): SandboxId | undefined {
-    return this._id;
-  }
-
-  private set sandbox(sandbox: Sandbox | undefined) {
-    this._sandbox = sandbox;
-    this._id = sandbox?.id;
+    return this._sandbox?.id;
   }
 
   private get sandbox(): Sandbox {
@@ -154,14 +148,10 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     return this._sandbox;
   }
 
-  /**
-   * Replaces a statically-created SDK client and releases the previous independent transport.
-   * Instance resume is handled separately because the SDK intentionally shares its transport with
-   * the fresh Sandbox object it returns.
-   */
+  /** Replaces the bound SDK client and releases its transport. */
   private async replaceSandbox(sandbox: Sandbox): Promise<void> {
     const previous = this._sandbox;
-    this.sandbox = sandbox;
+    this._sandbox = sandbox;
     if (previous && previous !== sandbox) {
       await previous.close().catch(() => undefined);
     }
@@ -170,7 +160,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   /** Releases the currently bound SDK client without changing the remote sandbox lifecycle. */
   private async releaseSandbox(): Promise<void> {
     const current = this._sandbox;
-    this.sandbox = undefined;
+    this._sandbox = undefined;
     await current?.close().catch(() => undefined);
   }
 
@@ -189,20 +179,14 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   // ==================== Status Mapping ====================
 
   private static readonly STATE_MAP: Record<string, SandboxState> = {
-    pending: 'Creating',
     running: 'Running',
     creating: 'Creating',
     resuming: 'Starting',
-    starting: 'Starting',
     pausing: 'Stopping',
-    stopping: 'Stopping',
-    stopped: 'Stopped',
     deleting: 'Deleting',
     error: 'Error',
-    failed: 'Error',
     paused: 'Stopped',
-    deleted: 'UnExist',
-    terminated: 'UnExist'
+    deleted: 'UnExist'
   };
 
   private mapStatus(sdkStatus: {
@@ -248,65 +232,23 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     };
   }
 
-  private parseResourceLimits(resource?: Record<string, string>): ResourceLimits | undefined {
-    if (!resource) return undefined;
-
-    const result: ResourceLimits = {};
-
-    const cpu = resource.cpu;
-    if (cpu) {
-      const cpuCount = Number.parseInt(cpu, 10);
-      if (!Number.isNaN(cpuCount)) result.cpuCount = cpuCount;
-    }
-
-    const memory = resource.memory;
-    if (memory) {
-      const match = memory.match(/^(\d+)(Mi|Gi)$/);
-      if (match) {
-        const value = Number.parseInt(match[1] ?? '0', 10);
-        result.memoryMiB = match[2] === 'Mi' ? value : value * 1024;
-      }
-    }
-
-    const disk = resource.disk;
-    if (disk) {
-      const match = disk.match(/^(\d+)Gi$/);
-      if (match) {
-        result.diskGiB = Number.parseInt(match[1] ?? '0', 10);
-      }
-    }
-
-    return result;
-  }
-
   private getCommandTimeoutSeconds(timeoutMs?: number): number | undefined {
     if (timeoutMs === undefined || timeoutMs <= 0) return undefined;
     return Math.ceil(timeoutMs / 1000);
   }
 
-  private extractExitCode(execution: Pick<Execution, 'exitCode' | 'error'>): number {
-    if (typeof execution.exitCode === 'number') return execution.exitCode;
-
-    const rawValue = execution.error?.value?.trim();
-    if (rawValue) {
-      const parsed = Number.parseInt(rawValue, 10);
-      if (!Number.isNaN(parsed)) {
-        return parsed;
-      }
-    }
-
-    const traceback = execution.error?.traceback ?? [];
-    for (const line of traceback) {
-      const match = line.match(/exit status (\d+)/i);
-      if (match?.[1]) {
-        const parsed = Number.parseInt(match[1], 10);
-        if (!Number.isNaN(parsed)) {
-          return parsed;
-        }
-      }
-    }
-
-    return execution.error ? 1 : 0;
+  private toExecuteResult(
+    execution: Execution,
+    stdout: BoundedOutputBuffer,
+    stderr: BoundedOutputBuffer
+  ): ExecuteResult {
+    return {
+      stdout: stdout.toString(),
+      stderr: stderr.toString(),
+      exitCode: execution.exitCode ?? null,
+      durationMs: execution.complete?.executionTimeMs,
+      truncated: stdout.truncated || stderr.truncated
+    };
   }
 
   // ==================== Lifecycle Methods ====================
@@ -337,7 +279,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     const activeItems = result.items.filter(
       (item) => this.mapStatus(item.status).state !== 'UnExist'
     );
-    const info = activeItems.find((item) => item.id === this._id) ?? activeItems[0];
+    const info = activeItems.find((item) => item.id === this._sandbox?.id) ?? activeItems[0];
     return info ? this.resolveSandboxInfo(info) : undefined;
   }
 
@@ -403,126 +345,25 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     );
   }
 
-  private async waitUntilSessionDeleted({
-    manager,
-    timeoutMs = DEFAULT_LIFECYCLE_TIMEOUT_MS
-  }: {
-    manager: SandboxManager;
-    timeoutMs?: number;
-  }): Promise<void> {
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeoutMs) {
-      if (!(await this.getSandboxBySessionId(manager))) return;
-      await this.sleep(LIFECYCLE_POLL_INTERVAL_MS);
-    }
-
-    throw new SandboxStateError(
-      `Sandbox session ${this.connectionConfig.sessionId} was not deleted within ${timeoutMs}ms`,
-      'Deleting',
-      'UnExist'
-    );
-  }
-
   private isNotFoundError(error: unknown): boolean {
-    let current: unknown = error;
-    while (current && typeof current === 'object') {
-      const value = current as {
-        status?: unknown;
-        statusCode?: unknown;
-        code?: unknown;
-        message?: unknown;
-        error?: { code?: unknown; message?: unknown };
-        cause?: unknown;
-      };
-      const code = String(value.code ?? value.error?.code ?? '').toLowerCase();
-      const message = String(value.message ?? value.error?.message ?? '').toLowerCase();
-      const status = Number(value.status ?? value.statusCode);
-      if (
-        status === 404 ||
-        code.includes('not_found') ||
-        code.includes('notfound') ||
-        code === '404' ||
-        message.includes('not found')
-      ) {
-        return true;
-      }
-      current = value.cause;
-    }
-    return false;
+    return error instanceof SandboxApiException && error.statusCode === 404;
   }
 
   private getSdkErrorCode(error: unknown): string | undefined {
-    if (error instanceof SandboxException) return error.error.code;
-    if (!error || typeof error !== 'object') return undefined;
-    const value = error as { code?: unknown; error?: { code?: unknown } };
-    const code = value.code ?? value.error?.code;
-    return typeof code === 'string' ? code : undefined;
+    return error instanceof SandboxException ? error.error.code : undefined;
   }
 
   private getSdkErrorMessage(error: unknown): string | undefined {
-    if (error instanceof SandboxException) return error.error.message;
-    if (!error || typeof error !== 'object') return undefined;
-    const value = error as { message?: unknown; error?: { message?: unknown } };
-    const message = value.message ?? value.error?.message;
-    return typeof message === 'string' ? message : undefined;
+    return error instanceof SandboxException ? error.error.message : undefined;
   }
 
-  private convertMetadata(metadata?: Record<string, unknown>): Record<string, string> {
-    const result: Record<string, string> = {};
-    for (const [key, value] of Object.entries(metadata ?? {})) {
-      if (value === undefined) continue;
-      const serialized = (() => {
-        if (typeof value === 'string') return value;
-        if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-          return String(value);
-        }
-        return JSON.stringify(value);
-      })();
-      if (serialized !== undefined) result[key] = serialized;
-    }
-    return result;
-  }
-
-  /** Uses the SDK custom health hook while retaining FastGPT's command-channel fallback. */
-  private async isSandboxHealthy(sandbox: Sandbox): Promise<boolean> {
-    try {
-      if (await sandbox.health.ping()) return true;
-    } catch {
-      // Execd ping may briefly return 500 after the lifecycle state becomes Running.
-    }
-
-    try {
-      const execution = await sandbox.commands.run(
-        'true',
-        { timeoutSeconds: 3 },
-        { skipAccumulation: true }
-      );
-      return this.extractExitCode(execution) === 0;
-    } catch {
-      return false;
-    }
-  }
-
-  private getSdkConnectionOptions() {
+  private getSdkOptions() {
     return {
       connectionConfig: this._connection,
       skipHealthCheck: this.createConfig?.skipHealthCheck,
-      healthCheck: (sandbox: Sandbox) => this.isSandboxHealthy(sandbox),
       readyTimeoutSeconds: this.createConfig?.readyTimeoutSeconds,
       healthCheckPollingInterval: this.createConfig?.healthCheckPollingInterval
     };
-  }
-
-  private async waitUntilSandboxReady(sandbox: Sandbox): Promise<void> {
-    if (this.createConfig?.skipHealthCheck) return;
-    await sandbox.waitUntilReady({
-      readyTimeoutSeconds: this.createConfig?.readyTimeoutSeconds ?? DEFAULT_READY_TIMEOUT_SECONDS,
-      pollingIntervalMillis:
-        this.createConfig?.healthCheckPollingInterval ??
-        DEFAULT_HEALTH_CHECK_POLLING_INTERVAL_MILLIS,
-      healthCheck: (target) => this.isSandboxHealthy(target)
-    });
   }
 
   private async createMissingSandbox(allowCreate: boolean): Promise<void> {
@@ -538,13 +379,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   private async ensureResolvedSandboxRunning({
     resolved,
     allowCreate,
-    readInfo,
-    waitUntilDeleted
+    readInfo
   }: {
     resolved: ResolvedSandboxInfo;
     allowCreate: boolean;
     readInfo: SandboxInfoReader;
-    waitUntilDeleted: () => Promise<void>;
   }): Promise<void> {
     const sandboxId = resolved.info.id;
     switch (resolved.status.state) {
@@ -590,7 +429,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
             this.connectionConfig.baseUrl
           );
         }
-        await waitUntilDeleted();
+        await this.waitUntilSandboxState({
+          sandboxId,
+          expectedStates: ['UnExist'],
+          readInfo
+        });
         await this.releaseSandbox();
         await this.create();
         return;
@@ -612,14 +455,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         await this.ensureResolvedSandboxRunning({
           resolved,
           allowCreate,
-          readInfo: async () => boundSandbox.getInfo(),
-          waitUntilDeleted: async () => {
-            await this.waitUntilSandboxState({
-              sandboxId: boundSandbox.id,
-              expectedStates: ['UnExist'],
-              readInfo: async () => boundSandbox.getInfo()
-            });
-          }
+          readInfo: async () => boundSandbox.getInfo()
         });
         return;
       } catch (error) {
@@ -639,8 +475,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         resolved,
         allowCreate,
         readInfo: async () =>
-          (await this.getSandboxById({ manager, sandboxId: resolved.info.id }))?.info,
-        waitUntilDeleted: async () => this.waitUntilSessionDeleted({ manager })
+          (await this.getSandboxById({ manager, sandboxId: resolved.info.id }))?.info
       });
     });
   }
@@ -665,14 +500,14 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
       const resource = this.convertResourceLimits(cfg.resourceLimits);
 
       const sandbox = await Sandbox.create({
-        ...this.getSdkConnectionOptions(),
+        ...this.getSdkOptions(),
         image,
         entrypoint: cfg.entrypoint,
         timeoutSeconds: cfg.timeoutSeconds ?? null,
         resource,
         env: cfg.env,
         metadata: {
-          ...this.convertMetadata(cfg.metadata),
+          ...cfg.metadata,
           sessionId: this.connectionConfig.sessionId
         },
         networkPolicy: this.convertNetworkPolicy(cfg.networkPolicy),
@@ -689,17 +524,12 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   }
 
   async connect(sandboxId: string): Promise<void> {
-    if (this._sandbox?.id === sandboxId) {
-      this._status = { state: 'Running' };
-      return;
-    }
-
     try {
       this._status = { state: 'Starting' };
 
       const sandbox = await Sandbox.connect({
         sandboxId,
-        ...this.getSdkConnectionOptions()
+        ...this.getSdkOptions()
       });
       await this.replaceSandbox(sandbox);
       this._status = { state: 'Running' };
@@ -716,35 +546,24 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   private async resume(sandboxId: string): Promise<void> {
     try {
       this._status = { state: 'Starting' };
-
-      const boundSandbox = this._sandbox?.id === sandboxId ? this._sandbox : undefined;
-      if (boundSandbox) {
-        // Instance resume returns a fresh object that intentionally shares the current transport.
-        const resumed = await boundSandbox.resume({ skipHealthCheck: true });
-        this.sandbox = resumed;
-        await this.waitUntilSandboxReady(resumed);
-      } else {
-        const resumed = await Sandbox.resume({
-          sandboxId,
-          ...this.getSdkConnectionOptions()
-        });
-        await this.replaceSandbox(resumed);
-      }
+      const resumed = await Sandbox.resume({ sandboxId, ...this.getSdkOptions() });
+      await this.replaceSandbox(resumed);
       this._status = { state: 'Running' };
     } catch (error) {
       const code = this.getSdkErrorCode(error);
       if (code === 'DOCKER::SANDBOX_NOT_PAUSED') {
-        if (this._sandbox?.id !== sandboxId) await this.connect(sandboxId);
-        this._status = { state: 'Running' };
+        await this.connect(sandboxId);
         return;
       }
       if (code === 'SANDBOX::API_NOT_SUPPORTED') {
+        await this.releaseSandbox();
         throw new FeatureNotSupportedError(
           'Start/resume not supported by this runtime',
           'start',
           this.provider
         );
       }
+      await this.releaseSandbox();
       this._status = { state: 'Error', message: String(error) };
       throw new ConnectionError(
         `Failed to resume sandbox ${sandboxId}`,
@@ -852,7 +671,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
       }
       const message = this.getSdkErrorMessage(error);
 
-      if (message?.includes('already paused')) {
+      if (message?.toLowerCase().includes('already paused')) {
         this._status = { state: 'Stopped' };
         return;
       }
@@ -874,9 +693,10 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   }
 
   async delete(sandboxId?: SandboxId): Promise<void> {
+    const affectsBoundSandbox = !this._sandbox || !sandboxId || sandboxId === this._sandbox.id;
     try {
-      this._status = { state: 'Deleting' };
-      const targetId = sandboxId ?? this._id;
+      if (affectsBoundSandbox) this._status = { state: 'Deleting' };
+      const targetId = sandboxId ?? this._sandbox?.id;
 
       if (targetId && targetId === this._sandbox?.id) {
         const boundSandbox = this._sandbox;
@@ -905,11 +725,13 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
             (await this.getSandboxById({ manager, sandboxId: resolved.info.id }))?.info
         });
       });
-      this._status = { state: 'UnExist' };
+      if (affectsBoundSandbox) this._status = { state: 'UnExist' };
     } catch (error) {
       if (this.isNotFoundError(error)) {
-        if (!sandboxId || sandboxId === this._id) await this.releaseSandbox();
-        this._status = { state: 'UnExist' };
+        if (affectsBoundSandbox) {
+          await this.releaseSandbox();
+          this._status = { state: 'UnExist' };
+        }
         return;
       }
       throw new CommandExecutionError(
@@ -937,62 +759,26 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   }
 
   private async getOpenSandboxEndpoint(port: number): Promise<Endpoint> {
-    const sdkEndpoint = (await this.sandbox.getEndpoint(port)) as SdkEndpoint;
-
-    const raw = sdkEndpoint.endpoint;
-    try {
-      const url = new URL(raw);
-      const parsedPort = url.port ? Number.parseInt(url.port, 10) : undefined;
-      return {
-        host: url.hostname,
-        port: parsedPort !== undefined && Number.isFinite(parsedPort) ? parsedPort : port,
-        protocol: url.protocol === 'https:' ? 'https' : 'http',
-        url: raw
-      };
-    } catch {
-      // OpenSandbox docker runtime may return "host:port" or path-based host strings.
-    }
-
-    const colonIdx = raw.lastIndexOf(':');
-    const hasPathBeforeColon = colonIdx !== -1 && raw.slice(0, colonIdx).includes('/');
-
-    if (colonIdx !== -1 && !hasPathBeforeColon) {
-      // "host:port" format
-      const host = raw.slice(0, colonIdx);
-      const parsedPort = Number.parseInt(raw.slice(colonIdx + 1), 10);
-      const portNumber = Number.isNaN(parsedPort) ? port : parsedPort;
-      const protocol: 'http' | 'https' = port === 443 ? 'https' : 'http';
-      return { host, port: portNumber, protocol, url: `${protocol}://${raw}` };
-    }
-
-    // Path-based routing: "domain/route/.../44772" (reverse proxy with HTTPS)
+    const raw = await this.sandbox.getEndpointUrl(port);
+    const url = new URL(raw);
+    const endpointPort = url.port ? Number.parseInt(url.port, 10) : port;
     return {
-      host: raw,
-      port: port,
-      protocol: 'https',
-      url: `https://${raw}`
+      host: url.hostname,
+      port: endpointPort,
+      protocol: url.protocol === 'https:' ? 'https' : 'http',
+      url: raw
     };
   }
 
   private convertSandboxInfo(info: SdkSandboxInfo): SandboxInfo {
     return {
       id: info.id,
-      image:
-        info.image === undefined
-          ? undefined
-          : typeof info.image === 'string'
-            ? parseImageSpec(info.image)
-            : 'uri' in info.image
-              ? parseImageSpec(info.image.uri)
-              : info.image,
+      image: info.image === undefined ? undefined : parseImageSpec(info.image.uri),
       entrypoint: info.entrypoint,
       metadata: info.metadata,
       status: this.mapStatus(info.status),
       createdAt: info.createdAt,
-      expiresAt: info.expiresAt ?? undefined,
-      resourceLimits: this.parseResourceLimits(
-        (info as Record<string, unknown>).resourceLimits as Record<string, string> | undefined
-      )
+      expiresAt: info.expiresAt ?? undefined
     };
   }
 
@@ -1027,122 +813,150 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   }
 
   // ==================== File System ====================
-  async writeFiles(entries: FileWriteEntry[]): Promise<FileWriteResult[]> {
-    const results: FileWriteResult[] = [];
-
-    /**
-     * Reads back committed file content for small-file verification.
-     *
-     * The SDK download endpoint is preferred. If that endpoint is temporarily unhealthy alongside
-     * upload/info, fall back to the command polyfill so the guard can still verify already-written
-     * small files.
-     */
-    const readCommittedFileBytes = async (path: string): Promise<Uint8Array | undefined> => {
-      const sdkBytes = await this.sandbox.files.readBytes(path).catch(() => undefined);
-      if (sdkBytes) return sdkBytes;
-
-      const [readResult] = await super.readFiles([path]).catch(() => []);
-      if (!readResult || readResult.error) return undefined;
-      return readResult.content;
-    };
-
-    /**
-     * Returns the committed file size after a failed upload.
-     *
-     * Prefer the SDK metadata API, but fall back to `stat` through the command channel because the
-     * same OpenSandbox false-negative window can make `/files/info` return 500 immediately after
-     * `/files/upload` has already written the file.
-     */
-    const getCommittedFileSize = async (path: string): Promise<number | undefined> => {
-      const fileInfoMap = await this.sandbox.files.getFileInfo([path]).catch(() => undefined);
-      const fileInfoSize = fileInfoMap?.[path]?.size;
-      if (typeof fileInfoSize === 'number') return fileInfoSize;
-
-      // `/files/info` may fail in the same false-negative window as `/files/upload`.
-      // Fall back to `stat` through the command channel; this is still metadata-only.
-      const result = await this.execute(
-        `stat -c '%s' ${this.escapeShellArg(path)} 2>/dev/null || stat -f '%z' ${this.escapeShellArg(path)} 2>/dev/null || echo STAT_FAILED`,
-        { maxOutputBytes: 1024 }
-      ).catch(() => undefined);
-      const statSize = Number.parseInt(result?.stdout.trim() ?? '', 10);
-      return Number.isFinite(statSize) ? statSize : undefined;
-    };
-
-    /**
-     * Writes one file through the OpenSandbox SDK and keeps the normal success path unchanged.
-     *
-     * The extra verification is intentionally local to `writeFiles`: only SDK upload failures enter
-     * the false-negative guard, so healthy uploads still cost exactly one `/files/upload` request.
-     */
-    const writeFileWithUploadFalseNegativeGuard = async ({
-      entry,
-      normalizedPath,
-      data,
-      bytesWritten
-    }: {
-      entry: FileWriteEntry;
-      normalizedPath: string;
-      data: NonNullable<SdkWriteEntry['data']>;
-      bytesWritten: number;
-    }) => {
-      try {
-        await this.sandbox.files.writeFiles([
-          {
+  async readFiles(paths: string[], options?: ReadFileOptions): Promise<FileReadResult[]> {
+    return Promise.all(
+      paths.map(async (path) => {
+        const normalizedPath = this.normalizePath(path);
+        try {
+          const range = options?.range ? `bytes=${options.range}` : undefined;
+          const content = await this.sandbox.files.readBytes(normalizedPath, { range });
+          return { path: normalizedPath, content, error: null };
+        } catch (error) {
+          return {
             path: normalizedPath,
-            data,
-            mode: entry.mode,
-            owner: entry.owner,
-            group: entry.group
-          }
-        ]);
-      } catch (error) {
-        if (
-          await verifyCommittedUpload({
-            entry,
-            normalizedPath,
-            bytesWritten,
-            error,
-            getCommittedFileSize,
-            readCommittedFileBytes
-          })
-        ) {
-          return;
+            content: new Uint8Array(),
+            error: error instanceof Error ? error : new Error(String(error))
+          };
         }
-        throw error;
-      }
-    };
+      })
+    );
+  }
 
-    for (const entry of entries) {
-      const normalizedPath = this.normalizePath(entry.path);
-      try {
-        // Calculate bytes from the caller's original input before converting Uint8Array to
-        // ArrayBuffer for the OpenSandbox SDK. The value is later used by the false-negative
-        // guard to verify that the committed file has the expected size.
-        const bytesWritten = await getWriteEntryByteLength(entry);
-        const data = toOpenSandboxWriteData(entry.data);
+  async writeFiles(entries: FileWriteEntry[]): Promise<FileWriteResult[]> {
+    return Promise.all(
+      entries.map(async (entry) => {
+        const path = this.normalizePath(entry.path);
+        try {
+          await this.sandbox.files.writeFiles([{ ...entry, path }]);
+          return { path, bytesWritten: getFileDataByteLength(entry.data), error: null };
+        } catch (error) {
+          return {
+            path,
+            bytesWritten: 0,
+            error: error instanceof Error ? error : new Error(String(error))
+          };
+        }
+      })
+    );
+  }
 
-        await writeFileWithUploadFalseNegativeGuard({
-          entry,
-          normalizedPath,
-          data,
-          bytesWritten
-        });
-
-        results.push({ path: normalizedPath, bytesWritten, error: null });
-      } catch (error) {
-        results.push({
-          path: normalizedPath,
-          bytesWritten: 0,
-          error: error instanceof Error ? error : new Error(String(error))
-        });
-      }
+  async deleteFiles(paths: string[]): Promise<FileDeleteResult[]> {
+    const normalizedPaths = paths.map((path) => this.normalizePath(path));
+    try {
+      await this.sandbox.files.deleteFiles(normalizedPaths);
+      return normalizedPaths.map((path) => ({ path, success: true, error: null }));
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      return normalizedPaths.map((path) => ({ path, success: false, error: normalizedError }));
     }
+  }
 
-    return results;
+  async moveFiles(entries: MoveEntry[]): Promise<void> {
+    await this.sandbox.files.moveFiles(
+      entries.map(({ source, destination }) => ({
+        src: this.normalizePath(source),
+        dest: this.normalizePath(destination)
+      }))
+    );
+  }
+
+  async replaceContent(entries: ContentReplaceEntry[]): Promise<void> {
+    await this.sandbox.files.replaceContents(
+      entries.map((entry) => ({ ...entry, path: this.normalizePath(entry.path) }))
+    );
+  }
+
+  async createDirectories(
+    paths: string[],
+    options?: { mode?: number; owner?: string; group?: string }
+  ): Promise<void> {
+    await this.sandbox.files.createDirectories(
+      paths.map((path) => ({ path: this.normalizePath(path), ...options }))
+    );
+  }
+
+  async deleteDirectories(
+    paths: string[],
+    _options?: { recursive?: boolean; force?: boolean }
+  ): Promise<void> {
+    await this.sandbox.files.deleteDirectories(paths.map((path) => this.normalizePath(path)));
+  }
+
+  async listDirectory(path: string): Promise<DirectoryEntry[]> {
+    const entries = await this.sandbox.files.listDirectory({ path: this.normalizePath(path) });
+    return entries.map((entry) => ({
+      name: entry.path.split('/').filter(Boolean).pop() ?? entry.path,
+      path: entry.path,
+      isDirectory: entry.type === 'directory',
+      isFile: entry.type === 'file',
+      size: entry.size,
+      modifiedAt: entry.modifiedAt
+    }));
+  }
+
+  async getFileInfo(paths: string[]): Promise<Map<string, FileInfo>> {
+    const info = await this.sandbox.files.getFileInfo(
+      paths.map((path) => this.normalizePath(path))
+    );
+    return new Map(
+      Object.entries(info).map(([path, entry]) => [
+        path,
+        {
+          ...entry,
+          isDirectory: entry.type === 'directory',
+          isFile: entry.type === 'file',
+          isSymlink: entry.type === 'symlink'
+        }
+      ])
+    );
+  }
+
+  async setPermissions(entries: PermissionEntry[]): Promise<void> {
+    const paths = entries.map((entry) => this.normalizePath(entry.path));
+    const currentInfo = entries.some((entry) => entry.mode === undefined)
+      ? await this.sandbox.files.getFileInfo(paths)
+      : {};
+
+    await this.sandbox.files.setPermissions(
+      entries.map((entry, index) => {
+        const path = paths[index] as string;
+        const mode = entry.mode ?? currentInfo[path]?.mode;
+        if (mode === undefined) {
+          throw new Error(`Cannot preserve file mode for ${path}`);
+        }
+        return { ...entry, path, mode };
+      })
+    );
+  }
+
+  async search(pattern: string, path: string = '.'): Promise<SearchResult[]> {
+    const results = await this.sandbox.files.search({
+      path: this.normalizePath(path),
+      pattern
+    });
+    return results.map((entry) => ({
+      path: entry.path,
+      isDirectory: entry.type === 'directory',
+      isFile: entry.type === 'file'
+    }));
   }
 
   override readFileStream(path: string): AsyncIterable<Uint8Array> {
     return this.sandbox.files.readBytesStream(this.normalizePath(path));
+  }
+
+  override async writeFileStream(path: string, stream: ReadableStream<Uint8Array>): Promise<void> {
+    await this.sandbox.files.writeFiles([{ path: this.normalizePath(path), data: stream }]);
   }
 
   // ==================== Command Execution ====================
@@ -1157,7 +971,8 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         {
           workingDirectory: this.normalizePath(options?.workingDirectory),
           background: options?.background,
-          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
+          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs),
+          envs: options?.env
         },
         {
           skipAccumulation: true,
@@ -1167,16 +982,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           onStderr: (msg) => {
             stderrBuf.append(msg.text);
           }
-        }
+        },
+        options?.signal
       );
 
-      const exitCode = this.extractExitCode(execution);
-      return {
-        stdout: stdoutBuf.toString(),
-        stderr: stderrBuf.toString(),
-        exitCode,
-        truncated: stdoutBuf.truncated || stderrBuf.truncated
-      };
+      return this.toExecuteResult(execution, stdoutBuf, stderrBuf);
     } catch (error) {
       if (error instanceof SandboxStateError) throw error;
       throw new CommandExecutionError(
@@ -1239,19 +1049,15 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         {
           workingDirectory: this.normalizePath(options?.workingDirectory),
           background: options?.background,
-          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
+          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs),
+          envs: options?.env
         },
-        sdkHandlers
+        sdkHandlers,
+        options?.signal
       );
 
       if (onComplete && stdoutBuf && stderrBuf) {
-        const exitCode = this.extractExitCode(execution);
-        await onComplete({
-          stdout: stdoutBuf.toString(),
-          stderr: stderrBuf.toString(),
-          exitCode,
-          truncated: stdoutBuf.truncated || stderrBuf.truncated
-        });
+        await onComplete(this.toExecuteResult(execution, stdoutBuf, stderrBuf));
       }
     } catch (error) {
       throw new CommandExecutionError(
@@ -1272,9 +1078,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
         {
           workingDirectory: this.normalizePath(options?.workingDirectory),
           background: true,
-          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
+          timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs),
+          envs: options?.env
         },
-        { skipAccumulation: true }
+        { skipAccumulation: true },
+        options?.signal
       );
 
       if (!execution.id) {
@@ -1326,7 +1134,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   // ==================== Health Check ====================
 
   async ping(): Promise<boolean> {
-    return this.isSandboxHealthy(this.sandbox);
+    return this.sandbox.isHealthy();
   }
 
   async getMetrics(): Promise<SandboxMetrics> {
