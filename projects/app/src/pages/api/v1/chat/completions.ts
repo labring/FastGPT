@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -280,6 +281,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
+    const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+      teamId,
+      chatConfig,
+      query: userQuestion.value
+    });
+    const workflowUserQuestion: UserChatItemType = {
+      ...userQuestion,
+      value: workflowQuery
+    };
+
     const preparedRound = await preChatRound({
       ...chatSource,
       chatId,
@@ -289,7 +300,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceName: sourceName || '',
       shareId,
       outLinkUid: outLinkUserId,
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle
@@ -366,7 +377,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
       variables,
-      query: removeEmptyUserInput(userQuestion.value),
+      query: removeEmptyUserInput(workflowQuery),
+      maxFileAmount,
       lastInteractive: interactive,
       chatConfig,
       histories: newHistories,
@@ -402,7 +414,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       outLinkUid: outLinkUserId,
       source,
       sourceName: sourceName || '',
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       aiContent: aiResponse,
       metadata: {
         ...metadata,

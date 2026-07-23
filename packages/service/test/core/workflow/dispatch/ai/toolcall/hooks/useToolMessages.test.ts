@@ -2,7 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { useToolMessages } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { useToolMessages as useToolMessagesWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
+
+const useToolMessages: typeof useToolMessagesWithoutContext = (props) =>
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+        resolve: () => undefined,
+        resolveChatFile: () => undefined,
+        getIdentity: () => undefined
+      } as any
+    },
+    () => useToolMessagesWithoutContext(props)
+  );
 
 describe('useToolMessages', () => {
   it('rewrites document URLs and records current sandbox input files', async () => {

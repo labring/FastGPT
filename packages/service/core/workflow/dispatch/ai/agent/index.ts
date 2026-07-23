@@ -25,6 +25,7 @@ import {
   type AgentSandboxPrepareAction
 } from './sub/sandbox';
 import type { RuntimeNodeResponseSummary } from '../../type';
+import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
@@ -173,7 +174,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
-      maxFileAmount: chatConfig?.fileSelectConfig?.maxFiles ?? 20
+      maxFileAmount: getWorkflowFileMaxAmount()
     });
 
     if (effectiveUseAgentSandbox) {

@@ -19,7 +19,7 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
-import { getWorkflowChatFileInputs, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { runWithDerivedWorkflowFileContext } from '../../utils/context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -70,24 +70,27 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     files,
     text: userChatInput
   });
+  let filteredChildHistories = chatHistories;
+  let filteredChildQuery = childQuery;
 
   const { assistantResponses, system_memories, runtimeNodeResponseSummary } =
     await runWithDerivedWorkflowFileContext({
-      files: [
-        ...getWorkflowChatFileInputs({ query: childQuery, histories: chatHistories }),
-        ...getWorkflowFileVariableInputs({
-          variablesConfig: appData.chatConfig?.variables,
-          inputVariables: childInputVariables
-        })
-      ],
-      fn: async ({ resolveInputFile }) => {
+      query: childQuery,
+      histories: chatHistories,
+      files: getWorkflowFileVariableInputs({
+        variablesConfig: appData.chatConfig?.variables,
+        inputVariables: childInputVariables
+      }),
+      fn: async ({ resolveInputFile, query: filteredQuery, histories: filteredHistories }) => {
+        filteredChildHistories = filteredHistories;
+        filteredChildQuery = filteredQuery;
         const childVariableState = await WorkflowVariableState.create({
           timezone: props.timezone,
           runningAppInfo: childRunningAppInfo,
           uid: props.uid,
           chatId: props.chatId,
           responseChatItemId: props.responseChatItemId,
-          histories: chatHistories,
+          histories: filteredHistories,
           variablesConfig: appData.chatConfig?.variables,
           inputVariables: childInputVariables,
           externalVariables: externalProvider?.externalWorkflowVariables,
@@ -105,16 +108,16 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
           runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
           variableState: childVariableState,
           chatConfig: appData.chatConfig,
-          histories: chatHistories,
-          query: childQuery
+          histories: filteredHistories,
+          query: filteredQuery
         });
       }
     });
 
-  const completeMessages = chatHistories.concat([
+  const completeMessages = filteredChildHistories.concat([
     {
       obj: ChatRoleEnum.Human,
-      value: query
+      value: filteredChildQuery
     },
     {
       obj: ChatRoleEnum.AI,

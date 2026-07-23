@@ -19,6 +19,10 @@ import { isAbsoluteHttpUrl } from '../../utils/fileContext';
 
 const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
 
+type WorkflowVariableRuntimeConfig = VariableItemType & {
+  maxFiles: number;
+};
+
 /**
  * 工作流全局变量状态管理器。
  *
@@ -38,7 +42,7 @@ const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
  */
 export type WorkflowVariableStateItem = {
   key: string;
-  config?: VariableItemType;
+  config?: WorkflowVariableRuntimeConfig;
   storeValue: unknown;
   runtimeValue: unknown;
   runtimeOnly?: boolean;
@@ -62,6 +66,8 @@ export type WorkflowVariableStateCreateProps = {
   inputVariables?: Record<string, unknown>;
   // 源变量状态，用于复制变量状态
   sourceVariableState?: WorkflowVariableStateLike;
+  // 根 Workflow 创建状态时尚未进入 AsyncLocalStorage，需要显式传入请求级文件数量限制。
+  maxFileAmount?: number;
   // 只在入口初始化全局文件变量时登记可信文件，节点运行时 set 不得扩展文件 Context。
   resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
 };
@@ -91,12 +97,16 @@ export const getWorkflowFileInputsFromValue = (value: unknown, maxFiles?: number
 /** 收集 Child 全局文件变量的实际输入，只用于派生请求级文件 Context。 */
 export const getWorkflowFileVariableInputs = ({
   variablesConfig = [],
-  inputVariables = {}
-}: Pick<WorkflowVariableStateCreateProps, 'variablesConfig' | 'inputVariables'>) =>
+  inputVariables = {},
+  maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount
+}: Pick<
+  WorkflowVariableStateCreateProps,
+  'variablesConfig' | 'inputVariables' | 'maxFileAmount'
+>) =>
   variablesConfig.flatMap((item) => {
     if (item.type !== VariableInputEnum.file) return [];
     const value = getVariableInputValue({ variables: inputVariables, item });
-    return getWorkflowFileInputsFromValue(value, item.maxFiles);
+    return getWorkflowFileInputsFromValue(value, item.maxFiles ?? maxFileAmount);
   });
 
 /** 将文件存储值转换为运行时 URL，并记录 URL 到 store metadata 的映射。 */
@@ -158,13 +168,19 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     externalVariables = {},
     runtimeOnlyVariables = {},
     sourceVariableState,
+    maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount ??
+      DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES,
     resolveInputFile
   }: WorkflowVariableStateCreateProps) {
     const state = new WorkflowVariableState(new Map(), new Map(), sourceVariableState);
 
     for (const item of variablesConfig) {
-      const value = getVariableInputValue({ variables: inputVariables, item });
-      await state.initConfiguredVariable(item, value, resolveInputFile);
+      const config: WorkflowVariableRuntimeConfig = {
+        ...item,
+        maxFiles: Math.max(item.maxFiles ?? maxFileAmount, 0)
+      };
+      const value = getVariableInputValue({ variables: inputVariables, item: config });
+      await state.initConfiguredVariable(config, value, resolveInputFile);
     }
 
     state.setRuntimeOnlyVariables(externalVariables);
@@ -215,13 +231,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
 
     if (config?.type === VariableInputEnum.file) {
       if (!Array.isArray(value)) throw new UserError('File variable value must be an array');
-      const maxFileAmount = Math.max(
-        getWorkflowFileContext()?.limits.maxFileAmount ??
-          config.maxFiles ??
-          DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES,
-        0
-      );
-      const files = value.slice(0, maxFileAmount).map((url) => {
+      const files = value.slice(0, config.maxFiles).map((url) => {
         if (!isAbsoluteHttpUrl(url)) {
           throw new UserError('File variable updates only accept absolute HTTP(S) URLs');
         }
@@ -308,7 +318,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
 
   /** 根据变量配置初始化单个用户变量，并完成特殊类型的 store/runtime 转换。 */
   private async initConfiguredVariable(
-    config: VariableItemType,
+    config: WorkflowVariableRuntimeConfig,
     value: unknown,
     resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>
   ) {
@@ -317,7 +327,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
         ? this.runtimeFileValueToStoreValue(
             assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
               0,
-              Math.max(config.maxFiles ?? DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES, 0)
+              config.maxFiles
             )
           )
         : [];

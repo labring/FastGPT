@@ -19,11 +19,7 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
-import {
-  getWorkflowChatFileInputs,
-  parseUrlToFileType,
-  runWithDerivedWorkflowFileContext
-} from '../../utils/context';
+import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { getRuntimeNodeResponseSummary } from '../utils';
@@ -126,6 +122,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       name: appData.name,
       isChildApp: true
     };
+    let filteredChildHistories = chatHistories;
+    let filteredChildQuery = theQuery;
 
     const {
       flowUsages,
@@ -136,20 +134,21 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       customFeedbacks,
       runtimeNodeResponseSummary
     } = await runWithDerivedWorkflowFileContext({
-      files: [
-        ...getWorkflowChatFileInputs({ query: theQuery, histories: chatHistories }),
-        ...getWorkflowFileVariableInputs({
-          variablesConfig: chatConfig.variables,
-          inputVariables: childrenAppVariables
-        })
-      ],
-      fn: async ({ resolveInputFile }) => {
+      query: theQuery,
+      histories: chatHistories,
+      files: getWorkflowFileVariableInputs({
+        variablesConfig: chatConfig.variables,
+        inputVariables: childrenAppVariables
+      }),
+      fn: async ({ resolveInputFile, query: childQuery, histories: childHistories }) => {
+        filteredChildHistories = childHistories;
+        filteredChildQuery = childQuery;
         const childrenVariableState = await WorkflowVariableState.create({
           timezone: props.timezone,
           runningAppInfo: childRunningAppInfo,
           chatId: props.chatId,
           responseChatItemId: props.responseChatItemId,
-          histories: chatHistories,
+          histories: childHistories,
           uid: props.uid,
           variablesConfig: chatConfig.variables,
           inputVariables: childrenAppVariables,
@@ -179,18 +178,18 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           runningUserInfo: await getRunningUserInfoByTmbId(appData.tmbId),
           runtimeNodes,
           runtimeEdges,
-          histories: chatHistories,
+          histories: childHistories,
           variableState: childrenVariableState,
-          query: theQuery,
+          query: childQuery,
           chatConfig
         });
       }
     });
 
-    const completeMessages = chatHistories.concat([
+    const completeMessages = filteredChildHistories.concat([
       {
         obj: ChatRoleEnum.Human,
-        value: query
+        value: filteredChildQuery
       },
       {
         obj: ChatRoleEnum.AI,

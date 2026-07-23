@@ -14,7 +14,7 @@ import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkflowReadFiles } from '../../readFiles';
-import { getWorkflowFileContext } from '../../../../utils/context';
+import { getWorkflowFileMaxAmount } from '../../../../utils/context';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -86,10 +86,7 @@ export const createToolCallToolProvider = async ({
     runWorkflowTool,
     cacheToolFlowResponse
   });
-  const readFileMaxFileAmount =
-    getWorkflowFileContext()?.limits.maxFileAmount ??
-    workflowProps.chatConfig?.fileSelectConfig?.maxFiles ??
-    20;
+  const readFileMaxFileAmount = getWorkflowFileMaxAmount();
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
     execute: async ({ files }) =>

@@ -252,7 +252,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     workflowInteractiveResponse
   } = await runWithDerivedWorkflowFileContext({
     files: childFileInputs,
-    fn: async ({ resolveInputFile }) => {
+    fn: async ({ resolveInputFile, filterFiles }) => {
+      const filteredCustomAppVariables = { ...customAppVariables };
       const childrenVariableState = await WorkflowVariableState.create({
         timezone: data.timezone,
         runningAppInfo: childRunningAppInfo,
@@ -275,15 +276,15 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
               ...node,
               showStatus: false,
               inputs: node.inputs.map((input) => {
-                let val = customAppVariables[input.key] ?? input.value;
+                let val = filteredCustomAppVariables[input.key] ?? input.value;
                 if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
                   val = anyValueDecrypt(val);
                 } else if (
                   input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-                  Array.isArray(val) &&
-                  customAppVariables[input.key]
+                  Array.isArray(val)
                 ) {
-                  customAppVariables[input.key] = val.map((item) =>
+                  val = filterFiles(val);
+                  filteredCustomAppVariables[input.key] = val.map((item: any) =>
                     typeof item === 'string' ? item : item.url
                   );
                 }
@@ -323,7 +324,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables: {
             ...runtimeVariables,
-            ...customAppVariables
+            ...filteredCustomAppVariables
           }
         }).value,
         stream: false,

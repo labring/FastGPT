@@ -99,6 +99,8 @@ export type PreparedWorkflowFileContext = {
   fileContext: WorkflowFileContext;
   fileRegistrar: WorkflowFileRegistrar;
   getPreviewUrl: (key: string) => Promise<string>;
+  query: UserChatItemValueItemType[];
+  histories: ChatItemMiniType[];
 };
 
 /** 只接受带显式协议的绝对 HTTP(S) URL，拒绝相对路径和 protocol-relative URL。 */
@@ -312,7 +314,7 @@ const createDerivedWorkflowFileContext = ({
  * 在 Workflow 请求入口校验并登记 query/history 文件。
  *
  * 私有 Ref 只能由归属根 Workflow 的 chat object key 创建；外链只接受绝对 HTTP(S)。
- * 返回的签名函数按 key 缓存，供 history 其他服务端文件引用复用同一个两小时 URL。
+ * 返回新的运行态 query/histories，不修改调用方数据；签名函数按 key 缓存，供其它历史文件引用复用。
  */
 export const prepareWorkflowFileContext = async ({
   query,
@@ -355,12 +357,6 @@ export const prepareWorkflowFileContext = async ({
     file,
     source
   }) => {
-    const clearUnavailableHistoryFile = () => {
-      if (source !== 'history') return;
-      if ('key' in file) delete file.key;
-      if ('url' in file) file.url = '';
-    };
-
     const originalUrl = 'url' in file ? file.url : undefined;
     const fileKey =
       'key' in file && typeof file.key === 'string' && file.key ? file.key : undefined;
@@ -368,12 +364,10 @@ export const prepareWorkflowFileContext = async ({
       if (fileKey) {
         if (source === 'history' && !isAuthorizedChatFileS3Key({ key: fileKey, ...scope })) {
           logger.warn('Skip unauthorized workflow history file', { key: fileKey });
-          clearUnavailableHistoryFile();
           return;
         }
         assertAuthorizedKey(fileKey);
         const modelUrl = await getPreviewUrl(fileKey);
-        if ('url' in file) file.url = modelUrl;
 
         return {
           identity: `chat:${fileKey}`,
@@ -392,7 +386,6 @@ export const prepareWorkflowFileContext = async ({
         }
         if (source === 'history') {
           logger.warn('Skip unavailable workflow history file', { url: fileUrl });
-          clearUnavailableHistoryFile();
           return;
         }
         throw new UserError(`Invalid workflow ${source} file URL`);
@@ -417,7 +410,6 @@ export const prepareWorkflowFileContext = async ({
       if (originalUrl && isAbsoluteHttpUrl(originalUrl)) {
         byRuntimeUrl.set(originalUrl, existingRef);
       }
-      if ('url' in file) file.url = existingRef.modelUrl;
       return existingRef;
     }
 
@@ -439,18 +431,39 @@ export const prepareWorkflowFileContext = async ({
     return ref;
   };
 
-  for (const item of query) {
-    if (item.file) await registerInputFile({ file: item.file, source: 'query' });
-  }
+  const prepareFile = async (
+    file: UserChatItemFileItemType,
+    source: 'query' | 'history'
+  ): Promise<UserChatItemFileItemType> => {
+    const ref = await registerInputFile({ file, source });
+    if (ref) return { ...file, ...('url' in file ? { url: ref.modelUrl } : {}) };
 
-  for (const history of histories) {
-    if (history.obj !== ChatRoleEnum.Human) continue;
-    for (const value of history.value) {
-      if ('file' in value && value.file) {
-        await registerInputFile({ file: value.file, source: 'history' });
-      }
-    }
-  }
+    const { key: _key, ...rest } = file;
+    return { ...rest, url: '' };
+  };
+
+  const preparedQuery: UserChatItemValueItemType[] = await Promise.all(
+    query.map(async (item) => ({
+      ...item,
+      ...(item.file ? { file: await prepareFile(item.file, 'query') } : {})
+    }))
+  );
+  const preparedHistories: ChatItemMiniType[] = await Promise.all(
+    histories.map(
+      async (history) =>
+        ({
+          ...history,
+          value: await Promise.all(
+            history.value.map(async (value) => ({
+              ...value,
+              ...(history.obj === ChatRoleEnum.Human && 'file' in value && value.file
+                ? { file: await prepareFile(value.file, 'history') }
+                : {})
+            }))
+          )
+        }) as ChatItemMiniType
+    )
+  );
 
   const limits: WorkflowFileLimits = {
     maxFileAmount,
@@ -540,6 +553,8 @@ export const prepareWorkflowFileContext = async ({
     fileRegistrar: {
       registerInputFile
     },
-    fileContext
+    fileContext,
+    query: preparedQuery,
+    histories: preparedHistories
   };
 };

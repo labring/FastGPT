@@ -199,7 +199,9 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await expect(addPreviewUrlToChatItems(histories as any, 'chatFlow')).resolves.toBeUndefined();
+    await expect(addPreviewUrlToChatItems(histories as any, 'chatFlow')).resolves.toEqual(
+      histories
+    );
     expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
   });
 
@@ -236,9 +238,10 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'chatFlow');
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(histories as any, 'chatFlow');
 
-    expect(histories[0].value[0].interactive.params.inputForm[0].value).toEqual([
+    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([
       {
         key: 'chat/files/image.png',
         name: 'image.png',
@@ -250,6 +253,7 @@ describe('addPreviewUrlToChatItems', () => {
       key: 'chat/files/image.png',
       external: true
     });
+    expect(histories).toEqual(originalHistories);
   });
 
   it('清理无法重新签发的历史 interactive fileSelect 文件', async () => {
@@ -282,15 +286,21 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'chatFlow', async () => undefined);
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(
+      histories as any,
+      'chatFlow',
+      async () => undefined
+    );
 
-    expect(histories[0].value[0].interactive.params.inputForm[0].value).toEqual([
+    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([
       {
         name: 'unavailable.png',
         type: ChatFileTypeEnum.image,
         url: ''
       }
     ]);
+    expect(histories).toEqual(originalHistories);
   });
 
   it('为 workflowTool 历史输入中的 fileSelect 值补预览 url', async () => {
@@ -322,9 +332,10 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'workflowTool');
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(histories as any, 'workflowTool');
 
-    expect(JSON.parse(histories[0].value[0].text.content)).toEqual([
+    expect(JSON.parse(result[0].value[0].text.content)).toEqual([
       {
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
         value: [
@@ -341,6 +352,7 @@ describe('addPreviewUrlToChatItems', () => {
       key: 'chat/files/doc.pdf',
       external: true
     });
+    expect(histories).toEqual(originalHistories);
   });
 
   it('清理 workflowTool 历史中无法重新签发的 fileSelect 文件', async () => {
@@ -369,9 +381,14 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'workflowTool', async () => undefined);
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(
+      histories as any,
+      'workflowTool',
+      async () => undefined
+    );
 
-    expect(JSON.parse(histories[0].value[0].text.content)).toEqual([
+    expect(JSON.parse(result[0].value[0].text.content)).toEqual([
       {
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
         value: [
@@ -383,6 +400,7 @@ describe('addPreviewUrlToChatItems', () => {
         ]
       }
     ]);
+    expect(histories).toEqual(originalHistories);
   });
 
   it('不会吞掉历史文件 signer 的系统异常', async () => {

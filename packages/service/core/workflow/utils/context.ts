@@ -34,45 +34,88 @@ export const getWorkflowContext = (): ContextType => {
 /** 获取当前 Workflow 调用链在入口创建的只读文件上下文。 */
 export const getWorkflowFileContext = () => WorkflowContext.getStore()?.fileContext;
 
+/** 获取 Workflow 内部无独立配置的统一文件数量上限。 */
+export const getWorkflowFileMaxAmount = () => {
+  const maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount;
+  if (maxFileAmount === undefined) {
+    throw new Error('Workflow file context is unavailable');
+  }
+  return maxFileAmount;
+};
+
 /** 获取只供 Workflow 输入适配器使用的文件登记能力。 */
 export const getWorkflowFileRegistrar = () => WorkflowContext.getStore()?.fileRegistrar;
 
-/** 收集 Child query/history 中实际携带的文件输入。 */
-export const getWorkflowChatFileInputs = ({
-  query = [],
-  histories = []
+/**
+ * 为 Child 运行创建独立的聊天输入引用。
+ *
+ * Child 不会修改这些输入，但在父子运行边界复制消息、value 及其常用嵌套字段，可以避免
+ * 后续节点实现意外原地写入时污染 Parent 的 query/history。
+ */
+const cloneChildChatInputs = ({
+  query,
+  histories
 }: {
-  query?: UserChatItemValueItemType[];
-  histories?: ChatItemMiniType[];
-}): WorkflowFileInput[] => [
-  ...query.flatMap((item) => (item.file ? [item.file] : [])),
-  ...histories.flatMap((history) =>
-    history.obj === ChatRoleEnum.Human
-      ? history.value.flatMap((item) => ('file' in item && item.file ? [item.file] : []))
-      : []
-  )
-];
+  query: UserChatItemValueItemType[];
+  histories: ChatItemMiniType[];
+}) => {
+  const cloneValue = <Value extends ChatItemMiniType['value'][number]>(value: Value): Value =>
+    ({
+      ...value,
+      ...('text' in value && value.text ? { text: { ...value.text } } : {}),
+      ...('file' in value && value.file ? { file: { ...value.file } } : {})
+    }) as Value;
+
+  return {
+    query: query.map((item) => cloneValue(item)),
+    histories: histories.map((history) => ({
+      ...history,
+      value: history.value.map((value) => cloneValue(value))
+    })) as ChatItemMiniType[]
+  };
+};
+
+/** 为 Child 返回独立的文件对象引用，字符串 URL 作为不可变值直接复用。 */
+const cloneChildFile = (file: WorkflowFileInput): WorkflowFileInput =>
+  typeof file === 'string' ? file : { ...file };
+
+const cloneChildFiles = <File extends WorkflowFileInput>(files: File[]): File[] =>
+  files.map((file) => cloneChildFile(file) as File);
 
 /**
- * 使用 Child 实际文件输入派生隔离 Context，并在该异步调用链内执行 Child。
+ * 先按父 Context 额度过滤 Child 的实际 query/history/其它文件输入，再派生隔离 Context。
  * Child 交互新增文件会通过父 registrar 鉴权，再同步加入当前派生 Context。
  */
 export const runWithDerivedWorkflowFileContext = async <T>({
+  query = [],
+  histories = [],
   files,
   fn
 }: {
+  query?: UserChatItemValueItemType[];
+  histories?: ChatItemMiniType[];
   files: WorkflowFileInput[];
   fn: (scope: {
     resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
+    query: UserChatItemValueItemType[];
+    histories: ChatItemMiniType[];
+    filterFiles: <File extends WorkflowFileInput>(files: File[]) => File[];
   }) => Promise<T>;
 }): Promise<T> => {
   const parentStore = WorkflowContext.getStore();
   const parentFileContext = parentStore?.fileContext;
-  if (!parentStore || !parentFileContext) return fn({});
+  if (!parentStore || !parentFileContext) {
+    const childInputs = cloneChildChatInputs({ query, histories });
+    return fn({
+      ...childInputs,
+      filterFiles: (files) => cloneChildFiles(files)
+    });
+  }
 
   const maxFileAmount = Math.max(parentFileContext.limits.maxFileAmount, 0);
   const seenFileIdentities = new Set<string>();
-  const truncatedFileIdentities = new Set<string>();
+  const acceptedFileIdentities = new Set<string>();
+  const rejectedFileIdentities = new Set<string>();
   const selectedFiles: WorkflowFileInput[] = [];
 
   const getFileIdentity = (file: WorkflowFileInput) => {
@@ -87,19 +130,59 @@ export const runWithDerivedWorkflowFileContext = async <T>({
     if (typeof file.url === 'string') return `url:${file.url}`;
   };
 
-  // 同一文件可能同时来自 query、变量和节点输入，去重后再计算 Workflow 容量。
-  for (const file of files) {
+  const selectFile = (file: WorkflowFileInput) => {
     const identity = getFileIdentity(file);
-    if (identity && seenFileIdentities.has(identity)) continue;
+    if (identity && seenFileIdentities.has(identity)) {
+      return acceptedFileIdentities.has(identity);
+    }
     if (identity) seenFileIdentities.add(identity);
 
     if (selectedFiles.length >= maxFileAmount) {
-      if (identity) truncatedFileIdentities.add(identity);
-      continue;
+      if (identity) rejectedFileIdentities.add(identity);
+      return false;
     }
 
     selectedFiles.push(file);
+    if (identity) acceptedFileIdentities.add(identity);
+    return true;
+  };
+
+  const selectedQuery = query.filter((item) => !item.file || selectFile(item.file));
+
+  // 显式变量和节点输入优先于历史文件，避免旧历史占满 Child 的当前输入额度。
+  files.forEach(selectFile);
+
+  // 选择阶段从新到旧扫描历史；输出仍保持原有消息和值顺序。
+  for (let historyIndex = histories.length - 1; historyIndex >= 0; historyIndex -= 1) {
+    const history = histories[historyIndex];
+    if (history.obj !== ChatRoleEnum.Human) continue;
+    for (let valueIndex = history.value.length - 1; valueIndex >= 0; valueIndex -= 1) {
+      const value = history.value[valueIndex];
+      if ('file' in value && value.file) selectFile(value.file);
+    }
   }
+
+  const isSelectedFile = (file: WorkflowFileInput) => {
+    const identity = getFileIdentity(file);
+    return identity ? acceptedFileIdentities.has(identity) : false;
+  };
+  const selectedHistories = histories.map((history) =>
+    history.obj === ChatRoleEnum.Human
+      ? {
+          ...history,
+          value: history.value.filter(
+            (value) => !('file' in value) || !value.file || isSelectedFile(value.file)
+          )
+        }
+      : history
+  );
+  const { query: filteredQuery, histories: filteredHistories } = cloneChildChatInputs({
+    query: selectedQuery,
+    histories: selectedHistories
+  });
+  const filterFiles = <File extends WorkflowFileInput>(inputFiles: File[]) =>
+    cloneChildFiles(inputFiles.filter(isSelectedFile));
+
   let childFileContext = parentFileContext.derive(selectedFiles);
   const childStore: ContextType = {
     ...parentStore,
@@ -110,31 +193,48 @@ export const runWithDerivedWorkflowFileContext = async <T>({
   const resolveInputFile = async (file: ChatFileStoreValue) => {
     const ref = childFileContext.resolveInputFile(file);
     if (ref) return ref.modelUrl;
-    if (truncatedFileIdentities.has(getFileIdentity(file) ?? '')) return;
+    if (rejectedFileIdentities.has(getFileIdentity(file) ?? '')) return;
     throw new UserError('Child workflow file is not selected in its file context');
   };
 
+  let registrationQueue = Promise.resolve();
   const childRegistrar: WorkflowFileRegistrar | undefined = parentStore.fileRegistrar
     ? {
-        registerInputFile: async (params) => {
-          const existingRef = childFileContext.resolveInputFile(params.file);
-          if (existingRef) return existingRef;
-          if (selectedFiles.length >= maxFileAmount) return;
+        registerInputFile: (params) => {
+          const registration = registrationQueue.then(async () => {
+            const existingRef = childFileContext.resolveInputFile(params.file);
+            if (existingRef) return existingRef;
+            if (selectedFiles.length >= maxFileAmount) return;
 
-          const ref = await parentStore.fileRegistrar!.registerInputFile(params);
-          if (!ref) return;
-          selectedFiles.push(ref.modelUrl);
-          const currentParentFileContext = parentStore.fileContext ?? parentFileContext;
-          childFileContext = currentParentFileContext.derive(selectedFiles);
-          childStore.fileContext = childFileContext;
-          return ref;
+            const ref = await parentStore.fileRegistrar!.registerInputFile(params);
+            if (!ref) return;
+            selectedFiles.push(ref.modelUrl);
+            const identity = parentFileContext.getIdentity(ref.modelUrl);
+            if (identity) acceptedFileIdentities.add(identity);
+            const currentParentFileContext = parentStore.fileContext ?? parentFileContext;
+            childFileContext = currentParentFileContext.derive(selectedFiles);
+            childStore.fileContext = childFileContext;
+            return ref;
+          });
+          registrationQueue = registration.then(
+            () => undefined,
+            () => undefined
+          );
+          return registration;
         }
       }
     : undefined;
 
   childStore.fileRegistrar = childRegistrar;
 
-  return runWithContext(childStore, () => fn({ resolveInputFile }));
+  return runWithContext(childStore, () =>
+    fn({
+      resolveInputFile,
+      query: filteredQuery,
+      histories: filteredHistories,
+      filterFiles
+    })
+  );
 };
 
 /** 优先读取已登记文件，未登记外链复用相同的 SSRF-safe reader 和 Workflow 大小限制。 */

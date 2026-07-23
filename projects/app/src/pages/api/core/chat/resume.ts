@@ -131,9 +131,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodeResponsePreviewProjection: chatItemResponsePreviewProjection
     });
 
-    await addPreviewUrlToChatItems(result.histories, 'chatFlow');
+    const histories = await addPreviewUrlToChatItems(result.histories, 'chatFlow');
 
-    const list = transformPreviewHistories(result.histories, showCite).map((item) => ({
+    const list = transformPreviewHistories(histories, showCite).map((item) => ({
       ...item,
       id: item.dataId!
     }));

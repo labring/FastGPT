@@ -3,6 +3,7 @@ import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/consta
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockparseFileContentFromUrls = vi.hoisted(() => vi.fn());
 
@@ -11,9 +12,23 @@ vi.mock('@fastgpt/service/core/chat/fileContext', () => ({
 }));
 
 import {
-  dispatchReadFiles,
+  dispatchReadFiles as dispatchReadFilesWithoutContext,
   getHistoryFileLinks
 } from '@fastgpt/service/core/workflow/dispatch/tools/readFiles';
+
+const WORKFLOW_MAX_FILE_AMOUNT = 7;
+const dispatchReadFiles: typeof dispatchReadFilesWithoutContext = (props) =>
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: WORKFLOW_MAX_FILE_AMOUNT, maxBytesPerFile: 1024 },
+        resolve: () => undefined,
+        resolveChatFile: () => undefined
+      } as any
+    },
+    () => dispatchReadFilesWithoutContext(props)
+  );
 
 const baseProps = {
   requestOrigin: 'http://localhost:3000',
@@ -44,12 +59,14 @@ describe('dispatchReadFiles', () => {
 
     expect(mockparseFileContentFromUrls).toHaveBeenCalledWith({
       urls: ['/a.pdf', '/b.pdf'],
-      maxFiles: 20,
+      maxFiles: WORKFLOW_MAX_FILE_AMOUNT,
       teamId: 'team-1',
       tmbId: 'tmb-1',
       customPdfParse: false,
       usageId: 'usage-1',
-      fileContext: undefined
+      fileContext: expect.objectContaining({
+        limits: expect.objectContaining({ maxFileAmount: WORKFLOW_MAX_FILE_AMOUNT })
+      })
     });
 
     const text = result.data?.[NodeOutputKeyEnum.text];
@@ -79,7 +96,7 @@ describe('dispatchReadFiles', () => {
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(text);
   });
 
-  it('chatConfig 提供 maxFiles 和 customPdfParse 时按其值传入', async () => {
+  it('忽略 query maxFiles，并保留 customPdfParse 配置', async () => {
     await dispatchReadFiles({
       ...baseProps,
       chatConfig: {
@@ -93,13 +110,13 @@ describe('dispatchReadFiles', () => {
 
     expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
       expect.objectContaining({
-        maxFiles: 5,
+        maxFiles: WORKFLOW_MAX_FILE_AMOUNT,
         customPdfParse: true
       })
     );
   });
 
-  it('chatConfig 缺失时 maxFiles 兜底为 20，customPdfParse 兜底为 false', async () => {
+  it('chatConfig 缺失时使用 Context limit，customPdfParse 兜底为 false', async () => {
     await dispatchReadFiles({
       ...baseProps,
       chatConfig: undefined,
@@ -107,11 +124,11 @@ describe('dispatchReadFiles', () => {
     });
 
     expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
-      expect.objectContaining({ maxFiles: 20, customPdfParse: false })
+      expect.objectContaining({ maxFiles: WORKFLOW_MAX_FILE_AMOUNT, customPdfParse: false })
     );
   });
 
-  it('fileSelectConfig.maxFiles 为 0/undefined 时仍兜底为 20', async () => {
+  it('fileSelectConfig.maxFiles 不影响 Context limit', async () => {
     await dispatchReadFiles({
       ...baseProps,
       chatConfig: { fileSelectConfig: { maxFiles: 0 } },
@@ -119,7 +136,7 @@ describe('dispatchReadFiles', () => {
     });
 
     expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
-      expect.objectContaining({ maxFiles: 20 })
+      expect.objectContaining({ maxFiles: WORKFLOW_MAX_FILE_AMOUNT })
     );
   });
 

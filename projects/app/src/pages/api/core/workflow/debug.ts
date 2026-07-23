@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import type { PostWorkflowDebugResponse } from '@/global/core/workflow/api';
@@ -71,6 +72,12 @@ async function handler(
         source: UsageSourceEnum.fastgpt
       });
   const responseChatItemId = getNanoid();
+  const workflowChatConfig = chatConfig || app.chatConfig;
+  const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+    teamId: String(app.teamId),
+    chatConfig: workflowChatConfig,
+    query
+  });
 
   /* start process */
   const { debugResponse, newVariables, flatNodeResponses } = await dispatchWorkFlow({
@@ -95,8 +102,9 @@ async function handler(
     defaultSkipNodeQueue: skipNodeQueue,
     lastInteractive: interactive,
     variables,
-    query: query,
-    chatConfig: chatConfig || app.chatConfig,
+    query: workflowQuery,
+    maxFileAmount,
+    chatConfig: workflowChatConfig,
     histories: history,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES,

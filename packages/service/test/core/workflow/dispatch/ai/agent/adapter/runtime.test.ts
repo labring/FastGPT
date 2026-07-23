@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createWorkflowAgentLoopRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
+import { createWorkflowAgentLoopRuntime as createWorkflowAgentLoopRuntimeWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
   dispatchWorkflowReadFilesMock: vi.fn(),
@@ -65,6 +66,19 @@ const createContext = (overrides = {}) =>
     chatConfig: {},
     ...overrides
   }) as any;
+
+const createWorkflowAgentLoopRuntime: typeof createWorkflowAgentLoopRuntimeWithoutContext = (
+  props
+) =>
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+      } as any
+    },
+    () => createWorkflowAgentLoopRuntimeWithoutContext(props)
+  );
 
 const toolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: string }) => ({
   id,

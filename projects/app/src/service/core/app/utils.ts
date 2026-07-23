@@ -32,6 +32,7 @@ import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
 
@@ -80,6 +81,11 @@ export const getScheduleTriggerApp = async () => {
           }
         }
       ];
+      const { query: workflowQuery, maxFileAmount } = await prepareWorkflowFileQuery({
+        teamId: String(app.teamId),
+        chatConfig,
+        query: userQuery
+      });
 
       const usageId = await retryFn(() =>
         createChatUsageRecord({
@@ -93,7 +99,7 @@ export const getScheduleTriggerApp = async () => {
 
       const userContent: UserChatItemType & { dataId?: string } = {
         obj: ChatRoleEnum.Human,
-        value: userQuery
+        value: workflowQuery
       };
       const chatSource = {
         sourceType: ChatSourceTypeEnum.app,
@@ -181,7 +187,8 @@ export const getScheduleTriggerApp = async () => {
             runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
             runtimeEdges: storeEdges2RuntimeEdges(edges),
             variables: {},
-            query: userQuery,
+            query: workflowQuery,
+            maxFileAmount,
             chatConfig,
             histories: [],
             stream: false,

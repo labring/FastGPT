@@ -8,9 +8,23 @@ import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { Readable } from 'node:stream';
+
+const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
+  runWithWorkflowContext(
+    {
+      ...value,
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+        resolve: () => undefined,
+        resolveChatFile: () => undefined,
+        getIdentity: () => undefined
+      } as any
+    },
+    fn
+  );
 
 const {
   runAgentLoopMock,

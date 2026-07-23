@@ -14,6 +14,7 @@ import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
 import type { ChatProps, ChatResponse } from './type';
+import { getWorkflowFileMaxAmount } from '../../../utils/context';
 
 /**
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
@@ -117,7 +118,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         userChatInput,
         userFiles,
         parseHistoryFiles: fileContextConfig.parseHistoryFiles,
-        maxFileAmount: chatConfig?.fileSelectConfig?.maxFiles ?? 20,
+        maxFileAmount: getWorkflowFileMaxAmount(),
         customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
         usageId,
         runningUserInfo

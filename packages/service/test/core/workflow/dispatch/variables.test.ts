@@ -10,7 +10,6 @@ import {
 } from '../../../../core/workflow/dispatch/utils/variables';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
-import { runWithContext } from '../../../../core/workflow/utils/context';
 
 const mockGetChatFilePreviewUrl = vi.fn(async (key: string) => `http://preview.local/${key}`);
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
@@ -217,19 +216,20 @@ describe('WorkflowVariableState', () => {
     });
 
     expect(state.get('files')).toEqual(inputVariables.files.slice(0, 2));
-    expect(getWorkflowFileVariableInputs({ variablesConfig, inputVariables })).toEqual(
-      inputVariables.files.slice(0, 2)
-    );
+    expect(
+      getWorkflowFileVariableInputs({ variablesConfig, inputVariables, maxFileAmount: 1 })
+    ).toEqual(inputVariables.files.slice(0, 2));
     expect(resolveInputFile).toHaveBeenCalledTimes(2);
   });
 
-  it('should silently slice runtime file updates by the workflow file limit', async () => {
+  it('should prefer the variable file limit for runtime file updates', async () => {
     const state = await createState({
+      maxFileAmount: 1,
       variablesConfig: [
         {
           key: 'files',
           type: VariableInputEnum.file,
-          maxFiles: 5
+          maxFiles: 2
         } as any
       ]
     });
@@ -239,18 +239,65 @@ describe('WorkflowVariableState', () => {
       'https://external.example.com/3.pdf'
     ];
 
-    const result = await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext: {
-          limits: { maxFileAmount: 2 }
-        } as any
-      },
-      () => state.set('files', files)
-    );
+    const result = await state.set('files', files);
 
     expect(result).toEqual(files.slice(0, 2));
     expect(state.get('files')).toEqual(files.slice(0, 2));
+  });
+
+  it('should fall back to the workflow file limit for runtime file updates', async () => {
+    const state = await createState({
+      maxFileAmount: 2,
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ]
+    });
+    const files = [
+      'https://external.example.com/1.pdf',
+      'https://external.example.com/2.pdf',
+      'https://external.example.com/3.pdf'
+    ];
+
+    const result = await state.set('files', files);
+
+    expect(result).toEqual(files.slice(0, 2));
+    expect(state.get('files')).toEqual(files.slice(0, 2));
+    expect(
+      getWorkflowFileVariableInputs({
+        variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+        inputVariables: { files },
+        maxFileAmount: 2
+      })
+    ).toEqual(files.slice(0, 2));
+  });
+
+  it('should default runtime file updates to five files', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ]
+    });
+    const files = Array.from(
+      { length: 6 },
+      (_, index) => `https://external.example.com/${index + 1}.pdf`
+    );
+
+    const result = await state.set('files', files);
+
+    expect(result).toEqual(files.slice(0, 5));
+    expect(state.get('files')).toEqual(files.slice(0, 5));
+    expect(
+      getWorkflowFileVariableInputs({
+        variablesConfig: [{ key: 'files', type: VariableInputEnum.file } as any],
+        inputVariables: { files }
+      })
+    ).toEqual(files.slice(0, 5));
   });
 
   it('should keep external url files clean and infer string urls on initialization', async () => {

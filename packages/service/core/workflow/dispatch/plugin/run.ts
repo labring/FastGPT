@@ -231,15 +231,31 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       runtimeNodeResponseSummary,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     } = await runWithDerivedWorkflowFileContext({
+      histories: props.histories,
       files: childFileInputs,
-      fn: async ({ resolveInputFile }) => {
+      fn: async ({ resolveInputFile, histories: childHistories, filterFiles }) => {
+        const childRuntimeNodes = runtimeNodes.map((node) =>
+          node.flowNodeType === FlowNodeTypeEnum.pluginInput
+            ? {
+                ...node,
+                inputs: node.inputs.map((input) => ({
+                  ...input,
+                  value:
+                    input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+                    Array.isArray(input.value)
+                      ? filterFiles(input.value)
+                      : input.value
+                }))
+              }
+            : node
+        );
         const childVariableState = await WorkflowVariableState.create({
           timezone: props.timezone,
           runningAppInfo: childRunningAppInfo,
           uid: props.uid,
           chatId: props.chatId,
           responseChatItemId: props.responseChatItemId,
-          histories: props.histories,
+          histories: childHistories,
           variablesConfig: childWorkflowTool.chatConfig?.variables ?? [],
           inputVariables: {},
           externalVariables: externalProvider?.externalWorkflowVariables,
@@ -269,13 +285,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             isChildApp: true
           },
           variableState: childVariableState,
+          histories: childHistories,
           query: serverGetWorkflowToolRunUserQuery({
             pluginInputs: getWorkflowToolInputsFromStoreNodes(childWorkflowTool.nodes),
             variables: runtimeVariables,
-            files
+            files: filterFiles(files)
           }).value,
           chatConfig: childWorkflowTool.chatConfig ?? {},
-          runtimeNodes,
+          runtimeNodes: childRuntimeNodes,
           runtimeEdges: storeEdges2RuntimeEdges(childWorkflowTool.edges)
         });
       }

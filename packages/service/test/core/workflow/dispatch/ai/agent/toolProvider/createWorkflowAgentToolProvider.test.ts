@@ -1,5 +1,8 @@
-import { createWorkflowAgentToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { createWorkflowAgentToolProvider as createWorkflowAgentToolProviderWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
+import {
+  getWorkflowFileContext,
+  runWithContext
+} from '@fastgpt/service/core/workflow/utils/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +18,22 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
   dispatchAgentDatasetSearch: dispatchAgentDatasetSearchMock
 }));
+
+const createWorkflowAgentToolProvider: typeof createWorkflowAgentToolProviderWithoutContext = (
+  props
+) => {
+  if (getWorkflowFileContext()) return createWorkflowAgentToolProviderWithoutContext(props);
+
+  return runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+      } as any
+    },
+    () => createWorkflowAgentToolProviderWithoutContext(props)
+  );
+};
 
 const createContext = (overrides: Record<string, any> = {}) =>
   ({

@@ -3,7 +3,8 @@ import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
-import { runToolCall } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
+import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { dispatchWorkflowReadFilesMock, getSandboxToolInfoMock, runAgentLoopMock, runWorkflowMock } =
@@ -102,6 +103,17 @@ const createProps = (overrides = {}) =>
     currentInputFiles: [],
     ...overrides
   }) as any;
+
+const runToolCall: typeof runToolCallWithoutContext = (props) =>
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+      } as any
+    },
+    () => runToolCallWithoutContext(props)
+  );
 
 const createLoopResult = ({
   usages = [

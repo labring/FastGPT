@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { parseUrlToFileType } from '../../../../utils/context';
+import { getWorkflowFileMaxAmount, parseUrlToFileType } from '../../../../utils/context';
 import {
   rewriteWorkflowAIHistoryMessageWithFiles,
   rewriteWorkflowAIUserMessageWithFiles
@@ -53,7 +53,7 @@ export const useToolMessages = async ({
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...chatHistories
   ];
-  const maxFileAmount = chatConfig?.fileSelectConfig?.maxFiles ?? 20;
+  const maxFileAmount = getWorkflowFileMaxAmount();
 
   /**
    * 文件链接会作为 model URL 暴露给 LLM，供 read_files 和其他工具直接使用。

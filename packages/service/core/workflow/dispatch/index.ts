@@ -96,6 +96,8 @@ type Props = Omit<
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
   agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
+  /** 已在持久化前计算完成的用户级 Workflow 文件数量上限。 */
+  maxFileAmount: number;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -133,7 +135,6 @@ export async function dispatchWorkFlow({
     apiVersion
   } = data;
   const responseChatItemId = data.responseChatItemId;
-
   if (stream && res && !isWorkflowSseResponseInitialized(res)) {
     // HTTP SSE 响应必须由调用入口提前初始化，dispatch 只执行 workflow，不隐式管理响应协议。
     return Promise.reject(
@@ -146,7 +147,13 @@ export async function dispatchWorkFlow({
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
-  const { fileContext, fileRegistrar, getPreviewUrl } = await prepareWorkflowFileContext({
+  const {
+    fileContext,
+    fileRegistrar,
+    getPreviewUrl,
+    query: runtimeQuery,
+    histories: preparedHistories
+  } = await prepareWorkflowFileContext({
     query,
     histories,
     scope: {
@@ -155,7 +162,7 @@ export async function dispatchWorkFlow({
       uid: data.uid,
       chatId
     },
-    maxFileAmount: data.chatConfig?.fileSelectConfig?.maxFiles ?? 20,
+    maxFileAmount: data.maxFileAmount,
     maxBytesPerFile: data.maxBytesPerFile
   });
   const getHistoryPreviewUrl = async (key: string) => {
@@ -167,7 +174,7 @@ export async function dispatchWorkFlow({
     }
   };
 
-  const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
+  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
     (() => {
       if (lastInteractive?.usageId) {
@@ -192,7 +199,7 @@ export async function dispatchWorkFlow({
       return usageId;
     })(),
     // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
-    addPreviewUrlToChatItems(histories, 'chatFlow', getHistoryPreviewUrl),
+    addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
     // Remove stopping sign
     delAgentRuntimeStopSign({
       ...chatSource,
@@ -209,10 +216,11 @@ export async function dispatchWorkFlow({
     uid: data.uid,
     chatId,
     responseChatItemId,
-    histories,
+    histories: runtimeHistories,
     variablesConfig: data.chatConfig?.variables,
     inputVariables: data.variables,
     externalVariables: externalProvider.externalWorkflowVariables,
+    maxFileAmount: data.maxFileAmount,
     resolveInputFile: async (file) => {
       const ref = await fileRegistrar.registerInputFile({
         file,
@@ -276,8 +284,8 @@ export async function dispatchWorkFlow({
           responseChatItemId,
           nodeResponseSink,
           checkIsStopping,
-          query,
-          histories,
+          query: runtimeQuery,
+          histories: runtimeHistories,
           timezone,
           externalProvider,
           variableState,
