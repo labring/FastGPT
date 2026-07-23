@@ -87,8 +87,7 @@ export async function ensureAgentSandboxRuntime({
     sourceType,
     sourceId,
     userId,
-    chatId,
-    teamId
+    chatId
   });
   const readInputFile = (url: string) => readWorkflowFileBuffer({ url });
   const preparedContext = await withAgentSandboxInitLease({

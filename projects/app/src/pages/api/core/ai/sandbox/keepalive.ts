@@ -3,10 +3,8 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { keepaliveSandboxSession } from '@fastgpt/service/core/ai/sandbox/interface/session';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { z } from 'zod';
-import {
-  authAgentSandboxProxy,
-  buildSandboxClientQueryFromChatSource
-} from '@/service/core/sandbox/auth';
+import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
+import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const KeepAliveBaseBodySchema = z.object({

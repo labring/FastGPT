@@ -71,9 +71,7 @@ export const useToolCatalog = async ({
     })
     .filter((tool): tool is ChatCompletionTool => !!tool);
 
-  const sandboxEnabled = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
-
-  if (sandboxEnabled) {
+  if (useAgentSandbox) {
     const systemMessage = messages.find((message) => message.role === 'system');
     if (systemMessage) {
       finalMessages = messages.map((message) =>

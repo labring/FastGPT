@@ -81,6 +81,18 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
 /* node  */
 export const getGuideModule = (nodes: StoreNodeItemType[]) =>
   nodes.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
+
+/** 判断 App 工作流是否有 Agent 或 ToolCall 节点开启 Sandbox。 */
+export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
+  nodes.some(
+    (node) =>
+      (node.flowNodeType === FlowNodeTypeEnum.agent ||
+        node.flowNodeType === FlowNodeTypeEnum.toolCall) &&
+      node.inputs.some(
+        (input) => input.key === NodeInputKeyEnum.useAgentSandbox && input.value === true
+      )
+  );
+
 export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value ?? '';

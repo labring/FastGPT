@@ -40,7 +40,7 @@ const {
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
-  getAppSandboxRuntimeStatusMock
+  ensureAppSandboxRuntimeReadyMock
 } = vi.hoisted(() => ({
   runAgentLoopMock: vi.fn(),
   serviceEnvMock: {
@@ -61,7 +61,7 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
-  getAppSandboxRuntimeStatusMock: vi.fn()
+  ensureAppSandboxRuntimeReadyMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/env', () => ({
@@ -96,18 +96,12 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
 
   return {
     ...original,
-    prepareAgentSandboxRuntime: vi.fn(async (params) => {
-      try {
-        await checkTeamSandboxPermissionMock(params.teamId);
-      } catch {
-        throw original.createAgentSandboxPermissionDeniedError();
-      }
-      return {
-        sandboxClient: await getSandboxClientMock(params),
-        workDirectory: original.getSandboxRuntimeProfile().workDirectory
-      };
-    }),
-    getAppSandboxRuntimeStatus: getAppSandboxRuntimeStatusMock,
+    prepareAgentSandboxRuntime: vi.fn(async (params) => ({
+      sandboxClient: await getSandboxClientMock(params),
+      workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
+      workDirectory: original.getSandboxRuntimeProfile().workDirectory
+    })),
+    ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock,
     getAgentSkillInfos: getAgentSkillInfosMock,
     injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
   };
@@ -279,9 +273,7 @@ describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
-    getAppSandboxRuntimeStatusMock.mockResolvedValue({
-      status: 'readyToInit'
-    });
+    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     serviceEnvMock.AGENT_ENGINE = 'fastAgent';
     (global as any).feConfigs = {
       ...(global as any).feConfigs,
@@ -492,8 +484,7 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1',
-      teamId: 'team_1'
+      chatId: 'chat_1'
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
     const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
@@ -520,18 +511,18 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1',
-      teamId: 'team_1'
+      chatId: 'chat_1'
     });
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
-  it('streams upgradeRequired and stops before preparing an outdated App sandbox', async () => {
+  it('streams upgrading and continues the same workflow after silent App sandbox migration', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
-    getAppSandboxRuntimeStatusMock.mockResolvedValueOnce({
-      status: 'upgradeRequired'
+    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
+      onUpgrade?.();
+      return true;
     });
 
     let resultPromise: Promise<any> | undefined;
@@ -549,24 +540,60 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(getAppSandboxRuntimeStatusMock).toHaveBeenCalledOnce();
-    expect(props.workflowStreamResponse).toHaveBeenCalledWith({
-      event: 'sandboxStatus',
-      data: {
-        sandboxId: getRunningSandboxId({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: 'app_1',
-          userId: 'user_1'
-        }),
-        phase: 'upgradeRequired',
-        runtimeStatus: {
-          status: 'upgradeRequired'
+    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledOnce();
+    const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
+      .map(([event]: [{ event: string; data: unknown }]) => event)
+      .filter((event: { event: string }) => event.event === 'sandboxStatus');
+    expect(sandboxStatusEvents).toEqual([
+      {
+        event: 'sandboxStatus',
+        data: {
+          sandboxId: getRunningSandboxId({
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: 'app_1',
+            userId: 'user_1'
+          }),
+          phase: 'upgrading'
+        }
+      },
+      {
+        event: 'sandboxStatus',
+        data: {
+          sandboxId: getRunningSandboxId({
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: 'app_1',
+            userId: 'user_1'
+          }),
+          phase: 'lazyInit'
         }
       }
-    });
+    ]);
+    expect(getSandboxClientMock).toHaveBeenCalledOnce();
+    expect(runAgentLoopMock).toHaveBeenCalledOnce();
+    expect(result.error).toBeUndefined();
+  });
+
+  it('returns the concrete silent migration failure reason', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+
+    let resultPromise: Promise<any> | undefined;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    const result = await resultPromise!;
+
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
-    expect(result.error?.system_error_text).toBe('skill:sandbox_runtime_upgrade_required');
+    expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 
   it('omits pwd reminder when sandbox pwd cannot be resolved', async () => {
@@ -602,6 +629,8 @@ describe('dispatchRunAgent user context', () => {
     props.params.useAgentSandbox = false;
     props.params.skills = [];
     props.params.editSkillId = 'edit_skill_1';
+    props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
+    props.runningAppInfo.sourceId = 'edit_skill_1';
 
     let result: any;
     runWithContext(
@@ -615,11 +644,10 @@ describe('dispatchRunAgent user context', () => {
     await result;
 
     expect(getSandboxClientMock).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app_1',
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'edit_skill_1',
       userId: 'user_1',
-      chatId: 'chat_1',
-      teamId: 'team_1'
+      chatId: 'chat_1'
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
@@ -1060,11 +1088,34 @@ describe('dispatchRunAgent user context', () => {
     ]);
   });
 
-  it('throws error and interrupts when checkTeamSandboxPermission fails', async () => {
+  it.each([
+    {
+      name: 'the app disables sandbox',
+      configure: (props: ReturnType<typeof createProps>) => {
+        props.params.useAgentSandbox = false;
+        props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+      }
+    },
+    {
+      name: 'the system disables sandbox',
+      configure: (props: ReturnType<typeof createProps>) => {
+        props.params.useAgentSandbox = true;
+        props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+        global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+      }
+    },
+    {
+      name: 'the team plan has no sandbox permission',
+      configure: (props: ReturnType<typeof createProps>) => {
+        props.params.useAgentSandbox = true;
+        props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+        checkTeamSandboxPermissionMock.mockRejectedValueOnce(new Error('no permission'));
+      }
+    }
+  ])('continues without sandbox or skills when $name', async ({ configure }) => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
-    props.params.useAgentSandbox = true;
-    checkTeamSandboxPermissionMock.mockRejectedValueOnce(new Error('no permission'));
+    configure(props);
 
     let promise: any;
     runWithContext(
@@ -1076,9 +1127,45 @@ describe('dispatchRunAgent user context', () => {
       }
     );
     const result = await promise;
+
+    expect(result.error).toBeUndefined();
+    expect(result.data.answerText).toBe('ok');
+    expect(getSandboxClientMock).not.toHaveBeenCalled();
+    expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
+    expect(runAgentLoopMock).toHaveBeenCalledOnce();
+
+    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).not.toContain('## 沙盒能力');
+    expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).not.toContain(
+      '<available_skills>'
+    );
+    expect(runAgentLoopMock.mock.calls[0][0].runtime.systemTools.sandbox).toBeUndefined();
+  });
+
+  it('keeps Skill Edit sandbox dependency blocking when the system disables sandbox', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
+    props.runningAppInfo.sourceId = 'skill_1';
+    props.params.editSkillId = 'skill_1';
+    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+
+    let promise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        promise = dispatchRunAgent(props);
+      }
+    );
+    const result = await promise!;
+
     expect(result.error?.system_error_text).toBe(
       'common:code_error.sandbox_error.agent_sandbox_permission_denied'
     );
     expect(getSandboxClientMock).not.toHaveBeenCalled();
+    expect(runAgentLoopMock).not.toHaveBeenCalled();
   });
 });

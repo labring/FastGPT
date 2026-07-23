@@ -16,11 +16,11 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@/service/core/sandbox/auth', () => ({
-  authAgentSandboxProxy: mocks.authAgentSandboxProxy,
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+  authAgentSandboxProxy: mocks.authAgentSandboxProxy
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
   getSandboxClient: mocks.getSandboxClient
 }));
 
@@ -91,7 +91,7 @@ describe('sandbox verifyTicket API', () => {
     expect(mocks.getEndpoint).toHaveBeenCalledWith(1318);
   });
 
-  it('prefers the preview session header over the legacy query transport', async () => {
+  it('prefers the preview session header over the WebSocket ticket query', async () => {
     const req = createPreviewReq();
     req.query.ticket = 'invalid-legacy-ticket';
 
@@ -112,7 +112,7 @@ describe('sandbox verifyTicket API', () => {
     expect(mocks.getSandboxClient).not.toHaveBeenCalled();
   });
 
-  it('rejects requests without a ticket in either transport', async () => {
+  it('rejects requests without a WebSocket ticket or preview session', async () => {
     await expect(handler({ query: {}, headers: {} } as any)).rejects.toThrow();
     expect(mocks.getSandboxClient).not.toHaveBeenCalled();
   });
