@@ -28,7 +28,7 @@ type ResolveSandboxWorkspacePathOptions = {
 };
 
 type SandboxDirectoryArchive = {
-  append: (source: NodeJS.ReadableStream, data: { name: string }) => void;
+  append: (source: Readable, data: { name: string }) => unknown;
 };
 
 const MAX_ARCHIVE_DEPTH = 20;

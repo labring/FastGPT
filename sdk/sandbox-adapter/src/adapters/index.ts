@@ -1,43 +1,54 @@
-import { SealosDevboxAdapter, type SealosDevboxConfig } from './SealosDevboxAdapter';
-import { OpenSandboxAdapter, type OpenSandboxConnectionConfig } from './OpenSandboxAdapter';
-import type { ISandbox } from '@/interfaces';
-import type { SandboxCreateSpec } from '@/types';
+import {
+  SealosDevboxAdapter,
+  type SealosDevboxConfig,
+  type SealosDevboxCreateConfig
+} from './sealos-devbox';
+import {
+  OpenSandboxAdapter,
+  type OpenSandboxConfigType,
+  type OpenSandboxConnectionConfig
+} from './opensandbox';
+import type { ISandbox } from '@/contracts';
 
-export { SealosDevboxAdapter } from './SealosDevboxAdapter';
-export type { SealosDevboxConfig } from './SealosDevboxAdapter';
-export { OpenSandboxAdapter } from './OpenSandboxAdapter';
-export type { OpenSandboxConfigType, OpenSandboxConnectionConfig } from './OpenSandboxAdapter';
+export { SealosDevboxAdapter } from './sealos-devbox';
+export type { SealosDevboxConfig, SealosDevboxCreateConfig } from './sealos-devbox';
+export { OpenSandboxAdapter } from './opensandbox';
+export { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from './opensandbox';
+export type {
+  OpenSandboxConfigType,
+  OpenSandboxConnectionConfig,
+  SandboxRuntimeType
+} from './opensandbox';
+export { BaseSandboxAdapter } from './base';
 export type { Volume as OpenSandboxVolume } from '@alibaba-group/opensandbox';
 
 export type SandboxProviderType = 'opensandbox' | 'sealosdevbox';
 
-/** Maps each provider name to its constructor (connection) config type. */
-type SandboxConnectionConfig = {
-  opensandbox: OpenSandboxConnectionConfig;
-  sealosdevbox: SealosDevboxConfig;
-};
+/** Provider-specific factory input. Unsupported create fields cannot cross this boundary. */
+export type SandboxFactoryConfig =
+  | {
+      provider: 'opensandbox';
+      connectionConfig: OpenSandboxConnectionConfig;
+      createConfig?: OpenSandboxConfigType;
+    }
+  | {
+      provider: 'sealosdevbox';
+      connectionConfig: SealosDevboxConfig;
+      createConfig?: SealosDevboxCreateConfig;
+    };
 
 /**
- * Create a sandbox provider instance.
- * The return type is inferred from the provider name.
- *
- * @param config Provider configuration
- * @returns Configured sandbox instance
- * @throws Error if provider type is unknown
+ * Create a sandbox provider instance from a provider-specific connection and create config.
  */
-export function createSandbox<P extends SandboxProviderType>(
-  provider: P,
-  config: SandboxConnectionConfig[P],
-  createConfig?: SandboxCreateSpec
-): ISandbox {
-  switch (provider) {
+export function createSandbox(config: SandboxFactoryConfig): ISandbox {
+  switch (config.provider) {
     case 'opensandbox':
-      return new OpenSandboxAdapter(config as OpenSandboxConnectionConfig, createConfig);
+      return new OpenSandboxAdapter(config.connectionConfig, config.createConfig);
 
     case 'sealosdevbox':
-      return new SealosDevboxAdapter(config as SealosDevboxConfig, createConfig);
+      return new SealosDevboxAdapter(config.connectionConfig, config.createConfig);
 
     default:
-      throw new Error(`Unknown provider: ${provider}`);
+      throw new Error('Unknown sandbox provider');
   }
 }

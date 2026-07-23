@@ -1,7 +1,7 @@
 /**
  * File information/metadata.
  */
-export interface FileInfo {
+export type FileInfo = {
   path: string;
   size?: number;
   modifiedAt?: Date;
@@ -12,31 +12,31 @@ export interface FileInfo {
   isDirectory?: boolean;
   isFile?: boolean;
   isSymlink?: boolean;
-}
+};
 
 /**
  * Directory entry.
  */
-export interface DirectoryEntry {
+export type DirectoryEntry = {
   name: string;
   path: string;
   isDirectory: boolean;
   isFile: boolean;
   size?: number;
   modifiedAt?: Date;
-}
+};
 
 /**
  * Entry for writing a file.
  */
-export interface FileWriteEntry {
+export type FileWriteEntry = {
   /** File path */
   path: string;
 
   /** File content (various types supported) */
   data: string | Uint8Array | ArrayBuffer | Blob | ReadableStream<Uint8Array>;
 
-  /** File permissions (octal) */
+  /** POSIX permission bitmask, for example `0o644`. */
   mode?: number;
 
   /** Owner */
@@ -44,78 +44,78 @@ export interface FileWriteEntry {
 
   /** Group */
   group?: string;
-}
+};
 
 /**
  * Entry for permission changes.
  */
-export interface PermissionEntry {
+export type PermissionEntry = {
   path: string;
   mode?: number;
   owner?: string;
   group?: string;
-}
+};
 
 /**
  * Result of reading a file.
  */
-export interface FileReadResult {
+export type FileReadResult = {
   path: string;
   content: Uint8Array;
   error: Error | null;
-}
+};
 
 /**
  * Result of writing a file.
  */
-export interface FileWriteResult {
+export type FileWriteResult = {
   path: string;
   bytesWritten: number;
   error: Error | null;
-}
+};
 
 /**
  * Result of deleting a file.
  */
-export interface FileDeleteResult {
+export type FileDeleteResult = {
   path: string;
   success: boolean;
   error: Error | null;
-}
+};
 
 /**
  * Search result.
  */
-export interface SearchResult {
+export type SearchResult = {
   path: string;
   isDirectory?: boolean;
   isFile?: boolean;
-}
+};
 
 /**
  * Move/rename entry.
  */
-export interface MoveEntry {
+export type MoveEntry = {
   source: string;
   destination: string;
-}
+};
 
 /**
  * Content replacement entry.
  */
-export interface ContentReplaceEntry {
+export type ContentReplaceEntry = {
   path: string;
   oldContent: string;
   newContent: string;
-}
+};
 
 /**
  * File read options.
  */
-export interface ReadFileOptions {
-  /** Character encoding (default: binary/Uint8Array) */
-  encoding?: 'utf-8' | 'base64' | 'binary';
+export type ReadFileOptions = {
+  /** Zero-based byte offset. Defaults to the beginning of the file. */
+  offset?: number;
 
-  /** Byte range to read (format: "start-end" or "start-") */
-  range?: string;
-}
+  /** Maximum number of bytes to read. Omit to read to the end of the file. */
+  length?: number;
+};

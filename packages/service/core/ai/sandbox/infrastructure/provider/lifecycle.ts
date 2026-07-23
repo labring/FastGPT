@@ -7,7 +7,6 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
   type ISandbox,
   type SandboxEnsureRunningOptions,
-  type OpenSandboxAdapter,
   type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
 import { buildSandboxAdapter } from './adapter';
@@ -205,10 +204,8 @@ export async function connectReadySandboxByInstance(
 /**
  * 断开需要显式关闭连接的 provider adapter。
  *
- * 目前只有 OpenSandbox adapter 需要 close；其它 provider 没有长连接资源。
+ * Provider without local transports implements close as an idempotent no-op.
  */
 export async function disconnectSandbox(sandbox: ISandbox): Promise<void> {
-  if (sandbox.provider === 'opensandbox') {
-    await (sandbox as OpenSandboxAdapter).close();
-  }
+  await sandbox.close();
 }

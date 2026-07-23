@@ -1,3 +1,5 @@
+import type { Volume as OpenSandboxVolume } from '@alibaba-group/opensandbox';
+
 /**
  * Unique identifier for a sandbox.
  */
@@ -24,61 +26,61 @@ export type SandboxState =
 /**
  * Sandbox status information.
  */
-export interface SandboxStatus {
+export type SandboxStatus = {
   state: SandboxState;
   reason?: string;
   message?: string;
-}
+};
 
 /**
  * Resource limits for a sandbox.
  */
-export interface ResourceLimits {
+export type ResourceLimits = {
   cpuCount?: number;
   memoryMiB?: number;
   diskGiB?: number;
-}
+};
 
 /**
  * Image specification for sandbox creation.
  */
-export interface ImageSpec {
+export type ImageSpec = {
   repository: string;
   tag?: string;
   digest?: string;
-}
+};
 
-export interface LabelSpec {
+export type LabelSpec = {
   key: string;
   value: string;
-}
+};
 
-export interface LifecyclePolicy {
+export type LifecyclePolicy = {
   pauseAt?: string;
   archiveAfterPauseTime?: string;
-}
+};
 
-export interface KubeAccessPolicy {
+export type KubeAccessPolicy = {
   enabled?: boolean;
   roleTemplate?: 'view' | 'edit' | 'admin';
-}
+};
 
 export type NetworkRuleAction = 'allow' | 'deny';
 
-export interface NetworkRule {
+export type NetworkRule = {
   action: NetworkRuleAction;
   target: string;
-}
+};
 
-export interface NetworkPolicy {
+export type NetworkPolicy = {
   defaultAction?: NetworkRuleAction;
   egress?: NetworkRule[];
-}
+};
 
 /**
  * Information about a sandbox.
  */
-export interface SandboxInfo {
+export type SandboxInfo = {
   id: SandboxId;
   image?: ImageSpec;
   entrypoint: string[];
@@ -87,38 +89,52 @@ export interface SandboxInfo {
   createdAt: Date;
   expiresAt?: Date;
   resourceLimits?: ResourceLimits;
-}
+};
 
 /**
  * Sandbox metrics.
  */
-export interface SandboxMetrics {
+export type SandboxMetrics = {
   cpuCount: number;
   cpuUsedPercentage: number;
   memoryTotalMiB: number;
   memoryUsedMiB: number;
   timestamp: number;
-}
+};
 
 /**
  * Endpoint information for accessing sandbox services.
  */
-export interface Endpoint {
+export type Endpoint = {
   host: string;
   port: number;
   protocol: 'http' | 'https';
   url: string;
-}
+};
+
+/** Provider features that callers must check before using optional operations. */
+export type SandboxCapabilities = {
+  readonly command: {
+    readonly streaming: boolean;
+    readonly background: boolean;
+    readonly interrupt: boolean;
+  };
+  readonly filesystem: {
+    readonly streamingRead: boolean;
+    readonly streamingWrite: boolean;
+  };
+  readonly metrics: boolean;
+  readonly expirationRenewal: boolean;
+};
 
 /**
  * App-facing create spec shared by callers that choose a provider at runtime.
  *
  * The surface is intentionally wider than any single provider API: FastGPT builds
- * one runtime profile, then each adapter maps the fields its backend supports and
- * ignores the rest. Keep provider-specific fields documented here so callers do
- * not need to import per-adapter request types.
+ * one runtime profile and maps it to a provider-specific create config before it
+ * reaches the adapter factory.
  */
-export interface SandboxCreateSpec {
+export type SandboxCreateSpec = {
   /** Container image to run. Required by OpenSandbox, optional for Sealos template-based devboxes. */
   image?: ImageSpec;
 
@@ -146,8 +162,8 @@ export interface SandboxCreateSpec {
   /** Kubernetes permission template for providers that expose in-sandbox kube access. */
   kubeAccess?: KubeAccessPolicy;
 
-  /** Provider-native volume mount specs; shape is intentionally provider-defined. */
-  volumes?: unknown[];
+  /** OpenSandbox volume mounts. */
+  volumes?: OpenSandboxVolume[];
 
   /** Provider-native outbound network policy. OpenSandbox currently matches FQDN/wildcard rules. */
   networkPolicy?: NetworkPolicy;
@@ -169,6 +185,6 @@ export interface SandboxCreateSpec {
 
   /** Readiness polling interval in milliseconds. */
   healthCheckPollingInterval?: number;
-}
+};
 
 export type SandboxEndpointSelector = number;

@@ -4,169 +4,87 @@
 
 最后核对：2026-07-23
 
-## 1. 背景与目标
+## 1. 最终决策
 
-FastGPT 会在 Sandbox 闲置 5 分钟后调用 provider adapter 的 `stop()`。当前
-`OpenSandboxAdapter.stop()` 删除远端 sandbox，导致下次使用时只能重新创建，无法保留
-容器状态。本次调整要求 OpenSandbox 的 `stop()` 使用 pause，并通过 resume 复用原实例。
+OpenSandbox 的 `stop()` 删除远端 sandbox，不调用 pause。Sealos Devbox 继续在 `stop()` 时调用
+pause，因此公共 `stop()` 表示“执行 provider 的停止策略”，不承诺所有 provider 都能从同一个远端
+实例恢复。
 
-同时完整核对 `OpenSandboxAdapter` 与当前 OpenSandbox JavaScript SDK 的实现，处理生命周期
-状态、HTTP agent 释放、readiness、命令输出和测试职责中已经存在的问题。
+OpenSandbox stop 只删除远端计算资源，不删除 FastGPT 管理的 workspace volume、Mongo 实例记录或
+S3 archive。后续重新使用时，FastGPT 仍以稳定业务 `sandboxId` 构造 adapter，`ensureRunning()` 在
+确认远端资源不存在后创建新的 sandbox，并重新挂载原 workspace volume。
 
-## 2. 范围
+业务级 `deleteSandboxResource()` 与 stop 不同，它会继续清理远端 sandbox、workspace volume、S3
+archive 和 Mongo 实例记录。
 
-- `OpenSandboxAdapter` 的 create/connect/ensure/start/stop/delete/getInfo/close 生命周期。
-- OpenSandbox SDK 的 ConnectionConfig、Sandbox、SandboxManager、readiness 和命令执行约定。
-- 基于 FastGPT `sandboxId` 的远端实例复用，以及同一 adapter 内的 SDK client 复用。
-- OpenSandbox adapter 单元测试、上传恢复 helper 测试和 OpenSandbox 集成测试。
-- OpenSandbox SDK 依赖与锁文件版本。
+## 2. 调用链
 
-不调整 FastGPT application 层的 5 分钟 cron、Mongo 生命周期状态机和其他 sandbox provider。
+5 分钟闲置回收链路：
 
-## 3. 当前实现审查
+```text
+cron
+  -> stopSandboxResources()
+  -> stopSandboxResource()
+  -> buildSandboxResourceAdapter()
+  -> OpenSandboxAdapter.stop()
+  -> OpenSandboxLifecycle.delete()
+```
 
-### 3.1 已有 reuse
+OpenSandbox adapter 有两种删除路径：
 
-当前已经存在远端资源复用，但不是 SDK 内置的 pool：
+1. adapter 已绑定 SDK `Sandbox` client 时调用 `sandbox.kill()`。
+2. cron 构造的临时 adapter 没有绑定 client，通过 `metadata.sessionId` 找到远端资源后调用
+   `SandboxManager.killSandbox()`。
 
-1. FastGPT 把稳定的业务 `sandboxId` 作为 adapter `sessionId`。
-2. 创建 OpenSandbox 时写入 `metadata.sessionId`。
-3. `ensureRunning()` 通过 `SandboxManager.listSandboxInfos()` 按 metadata 查找远端实例。
-4. 找到运行中实例时 connect，找到暂停实例时 resume，不存在时才 create。
+两条路径都等待远端状态进入 `Deleted/UnExist`，随后释放本地 transport。资源已经不存在时按幂等
+成功处理。
 
-因此本次不新增另一套资源池。需要保留并强化 metadata 寻址，使 pause 后仍能找到同一个远端
-sandbox。
+## 3. 保留的复用能力
 
-### 3.2 本地 SDK client 未复用
+metadata 寻址仍然保留，但不再表示“stop 后复用同一远端 id”。它用于：
 
-`ensureRunning()` 在远端状态为 Running 时始终调用 `Sandbox.connect()`，即使 adapter 已经绑定
-同一个 `Sandbox`。SDK 的每个静态 create/connect 和 SandboxManager 都可能持有独立的 undici
-agent；旧 `Sandbox` 没有 close 就被覆盖，会泄漏 client 资源。
+- FastGPT 进程重启后重新连接仍在运行的 sandbox。
+- 并发请求复用已经创建但尚未绑定到当前 adapter 的 sandbox。
+- 外部系统暂停 sandbox 时，`ensureRunning()` 仍可识别 Paused/Pausing 并恢复。
+- stop 删除后，过滤 Deleted 资源并按原业务 session 创建新的 sandbox。
 
-目标行为：
+同一 adapter 已绑定且远端仍为 Running 时继续复用 SDK client，避免重复 connect 和 transport 泄漏。
 
-- 已绑定同一个 Running sandbox 时直接复用，不重新 connect。
-- 静态 create/connect 替换旧实例时释放旧实例。
-- resume 统一走静态 SDK API，替换 client 后释放旧 transport。
-- `close()` 幂等释放并解除绑定。
+## 4. 删除的冗余逻辑
 
-### 3.3 SandboxManager 生命周期过碎
+- 删除 OpenSandbox stop 专用的 `pauseResolvedSandbox()` 状态编排。
+- 删除 `Sandbox.pause()` 和 `SandboxManager.pauseSandbox()` 分支。
+- 删除 already-paused 和 pause-not-supported 错误兼容。
+- 删除 stop 等待 Paused、stop 后 resume 同一 id 的测试假设。
+- 共享 lifecycle contract 不再把 stop 描述为可恢复暂停。
 
-删除等待会每秒创建并关闭一个 SandboxManager。每个 manager 都拥有独立 transport，这会产生
-不必要的 agent churn。
+Paused/Pausing 状态映射及 resume 逻辑仍保留，用于处理 provider 外部产生的暂停状态，不参与
+FastGPT 的闲置 stop 主链路。
 
-目标行为是在一次顶层 lifecycle 操作内只创建一个 manager，查找、pause/kill 和轮询共用它，
-并在 `finally` 中关闭。manager 不提升为 adapter 长生命周期字段，因为资源 cron 构造临时 adapter
-后只调用 stop/delete，不保证额外调用 close。
+## 5. 其他 adapter 契约
 
-### 3.4 生命周期状态映射不完整
+- OpenSandbox SDK 固定使用 `@alibaba-group/opensandbox` 0.1.10 及以上当前契约，不兼容 0.1.6。
+- package 仅发布 ESM，不生成或声明 CommonJS 入口。
+- OpenSandbox 文件读取使用原生 `readBytes/readBytesStream`，写入使用原生 `writeFiles`。
+- Sealos 文件上传和下载继续使用原生 HTTP request/response stream。
+- FastGPT 仍在使用非流式 `execute/readFiles/writeFiles`，这些接口继续保留。
+- `close()` 只释放本地 transport，不改变远端生命周期。
 
-当前映射缺少 OpenSandbox 0.1.10 的 `Pausing` 和 `Resuming`。尤其是 pause API 返回 202 后会经历
-`Running -> Pausing -> Paused`；如果 stop 在 202 后立即返回，FastGPT 会提前把本地记录标成
-stopped，紧接着 resume 也可能因为仍在 Pausing 而失败。
+## 6. 验收标准
 
-目标映射：
+1. OpenSandbox `stop()` 不引用 pause API。
+2. 已绑定路径调用 `Sandbox.kill()`，未绑定 cron 路径调用 `SandboxManager.killSandbox()`。
+3. stop 等待远端删除完成并把 adapter 状态更新为 `UnExist`。
+4. stop 不触发 workspace volume、archive 或 Mongo 记录删除。
+5. 后续运行态请求可用相同业务 sandboxId 创建新的远端 sandbox。
+6. Sealos `stop()` 仍调用 pause，不受本次变更影响。
+7. OpenSandbox 定向单测、TypeScript 检查、ESM build 和 diff 检查通过，不运行全量测试。
 
-| OpenSandbox | Adapter |
-| --- | --- |
-| Creating | Creating |
-| Running | Running |
-| Resuming | Starting |
-| Pausing | Stopping |
-| Paused | Stopped |
-| Deleting | Deleting |
-| Deleted | UnExist |
-| Error / unknown | Error |
+## 7. TODO
 
-`stop()` 必须等到 Paused 或资源已不存在才返回；遇到 Pausing 时只等待，不重复发 pause。恢复时
-遇到 Pausing 先等 Paused，再发 resume。
-
-### 3.5 未遵循当前 SDK 约定的实现
-
-- create 和 start 在 SDK 内置 readiness 之后又调用 adapter `waitUntilReady()`，重复轮询，并让
-  `skipHealthCheck` 失效。
-- adapter 不应覆盖 SDK 默认健康定义；`Sandbox.isHealthy()` 已负责把 ping 异常收敛为 `false`。
-- bound stop/delete 仍通过额外的 SandboxManager 操作，没有使用 `sandbox.pause()` / `kill()`；
-  当前 SDK 会在这两个 instance 方法中同步失效 endpoint cache。
-- `getInfo()` 为读取生命周期信息强制 connect execd，导致 Paused sandbox 被错误返回为不存在。
-- 命令 exit code 忽略 SDK 已提供的 `execution.exitCode`。
-- SDK 0.1.10 支持 handler `skipAccumulation`；adapter 已自行使用有界 buffer 时应禁用 SDK 的重复
-  日志累积，避免长输出双份占用内存。
-- OpenSandbox metadata 实际要求 `Record<string, string>`，当前 provider 类型和透传中仍有
-  `any` / `unknown` 未归一化。
-
-## 4. 开发设计
-
-### 4.1 Manager 作用域
-
-增加内部 `withSandboxManager()`：每次顶层管理操作创建一个 manager，通过 callback 复用，
-最后无条件 close。查找、按 id 获取状态、pause、kill 和状态轮询都接收同一个 manager。
-
-### 4.2 远端状态等待
-
-增加统一状态轮询 helper，输入 sandbox id、期望 adapter 状态和 info getter：
-
-- 404 视为 `UnExist`。
-- 到达期望状态后返回最新 info。
-- Error 立即抛出 ConnectionError。
-- 超时抛出 SandboxStateError，并保留当前状态和期望状态。
-
-stop 使用 `Stopped | UnExist` 作为完成条件。ensure/start 对 Pausing 使用 `Stopped`，对
-Creating/Resuming 使用 `Running`。
-
-### 4.3 生命周期操作
-
-- `create()`：使用 `Sandbox.create()`，metadata 在类型入口约束为字符串；readiness 完全交给 SDK。
-- `connect()`：显式连接会刷新 client；新连接成功后替换绑定并关闭旧的独立 Sandbox client。
-- `ensureRunning()`：优先读取已绑定 sandbox 的 info；未绑定时按 `metadata.sessionId` 查找。
-  Running 复用、Paused resume、Pausing 等待后 resume、Creating/Resuming 等待后 connect、Deleting
-  按 `allowCreate` 决定等待重建或报错。
-- `start()`：复用 ensure 语义但禁止创建；resume 统一返回新的独立 SDK client。
-- `stop()`：bound sandbox 使用 `sandbox.pause()`，unbound sandbox 使用 manager pause；等待 Paused
-  后返回，不清除绑定。
-- `delete()`：bound target 使用 `sandbox.kill()`，unbound/显式其他 id 使用 manager kill；删除后
-  close 并清除匹配绑定。
-- `getInfo()`：bound 时用 `sandbox.getInfo()`；unbound 时直接用 manager 的 lifecycle info，不为
-  Paused sandbox 建立 execd 连接。
-- `close()`：未绑定时也成功，释放后清除本地引用，不改变远端状态。
-
-### 4.4 Readiness 与命令输出
-
-create/connect/resume 使用 SDK 默认 readiness；adapter `ping()` 直接委托 `Sandbox.isHealthy()`，
-不再用执行命令覆盖健康端点语义。
-
-命令结果直接使用 SDK 的 `execution.exitCode` 和 `execution.complete.executionTimeMs`。execute 和
-executeStream handler 开启 `skipAccumulation`，adapter 继续用 `BoundedOutputBuffer` 控制输出上限。
-
-### 4.5 类型与测试收敛
-
-- touched provider config 使用 `type`，移除 `any`。
-- `OpenSandboxConfigType` 从共享 create spec 派生，只收窄 image、metadata、volumes。
-- Adapter 测试使用统一 SDK sandbox/manager factory，移除访问真实保留端口的伪单测。
-- 错误类自身行为只留在 errors 测试，不在 adapter 测试重复验证。
-- 文件操作直接委托 SDK 0.1.10 的原生 filesystem facade，不保留 uploadRecovery 专用补偿层。
-- 增加 pause 完成等待、Pausing 后 resume、bound Running client 复用、paused getInfo、幂等 close、
-  transport 替换释放和 SDK exitCode 测试。
-- 集成测试恢复 stop/start contract，并修正 `timeout` 为 `timeoutSeconds`。
-
-## 5. 验收标准
-
-1. 5 分钟闲置 stop 对 OpenSandbox 发 pause，不发 delete。
-2. stop 仅在 Paused/不存在后完成，本地 stopped 不领先于远端状态。
-3. 后续 ensure/start 恢复同一个 OpenSandbox id，工作区状态保留。
-4. 同一 adapter 重复 ensure Running 不创建新的 SDK Sandbox client。
-5. 所有临时 SandboxManager 和被替换/断开的独立 Sandbox client 都会释放 transport。
-6. Paused sandbox 的 getInfo 可正常返回，不依赖 execd connect。
-7. OpenSandbox 单元测试、adapter build 和格式检查通过；按用户要求不运行仓库全量测试。
-
-## 6. TODO
-
-- [x] 完整审查 OpenSandboxAdapter、调用方、现有测试和当前 OpenSandbox SDK。
-- [x] 明确已有 metadata 远端复用和缺失的本地 client 复用。
-- [x] 重构状态映射、manager 作用域和 lifecycle 轮询。
-- [x] 改造 create/connect/ensure/start/stop/delete/getInfo/close。
-- [x] 接入 SDK 默认 readiness、isHealthy、exitCode 和 skipAccumulation。
-- [x] 收敛 provider 类型和 upload recovery 类型。
-- [x] 清理并补充 OpenSandbox adapter 单元测试和集成测试配置。
-- [x] 更新 OpenSandbox SDK 依赖及 lockfile（已确认只支持 0.1.10，不保留 0.1.6 兼容）。
-- [x] 只运行 sandbox-adapter 定向测试、build、格式与 diff 检查。
+- [x] 核对 5 分钟 stop 到 provider adapter 的完整调用链。
+- [x] 将 OpenSandbox stop 收敛为现有 delete 流程。
+- [x] 删除 pause 专用状态机、错误兼容和测试假设。
+- [x] 覆盖 bound `kill()` 与 unbound `killSandbox()` 两条路径。
+- [x] 更新公共 lifecycle 文档、README 和集成测试语义。
+- [x] 运行定向测试、类型检查、build 和 diff 检查。
