@@ -21,12 +21,22 @@ Starting with V4.15.4, FastGPT no longer uses the `MONGO_INDEX_SYNC_MODE` enviro
 FastGPT now performs safe index synchronization automatically at startup:
 
 - Creates indexes that are missing from the current FastGPT schemas.
-- Removes only historical FastGPT indexes explicitly declared by the corresponding schema and whose name, key, and relevant options match exactly.
+- Removes only historical FastGPT indexes explicitly marked as deprecated by the corresponding schema and whose name, key, and relevant options match exactly.
 - Preserves custom indexes and any other indexes that are not explicitly declared as deprecated.
 
 This process does not call Mongoose's full `syncIndexes()` operation, so indexes are never removed simply because they are absent from a FastGPT schema.
 
-Setting `SYNC_INDEX=false` skips both missing-index creation and explicitly declared deprecated-index cleanup. After an upgrade, you must ensure that the database indexes meet the requirements of the current FastGPT version.
+> **Legacy index cleanup: V4.15.4 does not mark any existing historical indexes as deprecated, so upgrading to this version does not automatically remove old indexes. Future releases will explicitly mark verified obsolete indexes in their schemas and remove them incrementally.**
+
+To fully remove obsolete indexes before upgrading to V4.15.4:
+
+1. Upgrade to and start V4.15.3 once.
+2. Set `SYNC_INDEX=true`, restart the services, and wait for index synchronization to finish.
+3. After confirming that index synchronization succeeded, upgrade to V4.15.4.
+
+V4.15.3 removes every index that is not declared in its schemas, which may include custom indexes. Back up your database and review the existing indexes before following this procedure. If custom indexes must be preserved, record their definitions and recreate them after synchronization, or do not use V4.15.3 for full cleanup.
+
+Setting `SYNC_INDEX=false` skips missing-index creation and any deprecated-index cleanup that may be introduced in future releases. You must then ensure that the database indexes meet the requirements of the current FastGPT version.
 
 ## 🚀 New Features
 
