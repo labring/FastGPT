@@ -17,17 +17,13 @@ const TimerLockSchema = new Schema({
   }
 });
 
-try {
-  defineIndex(TimerLockSchema, {
-    key: { timerId: 1 },
-    options: { unique: true }
-  });
-  defineIndex(TimerLockSchema, {
-    key: { expiredTime: 1 },
-    options: { expireAfterSeconds: 5 }
-  });
-} catch (error) {
-  logger.error('Failed to build timer lock indexes', { error });
-}
+defineIndex(TimerLockSchema, {
+  key: { timerId: 1 },
+  options: { unique: true }
+});
+defineIndex(TimerLockSchema, {
+  key: { expiredTime: 1 },
+  options: { expireAfterSeconds: 5 }
+});
 
 export const MongoTimerLock = getMongoModel<TimerLockSchemaType>(collectionName, TimerLockSchema);

@@ -22,15 +22,8 @@ describe('MongoSandboxInstance schema indexes', () => {
     expect(legacyIndex).toBeUndefined();
   });
 
-  it('declares replaced sandbox indexes as deprecated on the same Schema', () => {
-    const deprecatedIndexes = getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema);
-
-    expect(deprecatedIndexes.map((index) => index.indexName)).toEqual([
-      'provider_1_appId_1_userId_1_chatId_1',
-      'appId_1_chatId_1',
-      'metadata.skillId_1',
-      'type_1_chatId_1'
-    ]);
+  it('does not register historical sandbox indexes for automatic cleanup', () => {
+    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
   });
 
   it('declares source lookup index for migrated sandbox instances', () => {

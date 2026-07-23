@@ -23,11 +23,7 @@ const systemConfigSchema = new Schema({
   }
 });
 
-try {
-  defineIndex(systemConfigSchema, { key: { type: 1 } });
-} catch (error) {
-  logger.error('Failed to build system config indexes', { error });
-}
+defineIndex(systemConfigSchema, { key: { type: 1 } });
 
 export const MongoSystemConfigs = getMongoModel<SystemConfigsType>(
   collectionName,

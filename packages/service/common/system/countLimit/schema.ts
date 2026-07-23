@@ -26,17 +26,13 @@ const CountLimitSchema = new Schema({
   }
 });
 
-try {
-  defineIndex(CountLimitSchema, {
-    key: { type: 1, key: 1 },
-    options: { unique: true }
-  });
-  defineIndex(CountLimitSchema, {
-    key: { createTime: 1 },
-    options: { expireAfterSeconds: 60 * 60 * 24 * 30 }
-  }); // ttl 30天
-} catch (error) {
-  logger.error('Failed to build count limit indexes', { error });
-}
+defineIndex(CountLimitSchema, {
+  key: { type: 1, key: 1 },
+  options: { unique: true }
+});
+defineIndex(CountLimitSchema, {
+  key: { createTime: 1 },
+  options: { expireAfterSeconds: 60 * 60 * 24 * 30 }
+}); // ttl 30天
 
 export const MongoCountLimit = getMongoModel<CountLimitType>(collectionName, CountLimitSchema);

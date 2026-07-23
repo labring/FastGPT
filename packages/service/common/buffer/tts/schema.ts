@@ -25,15 +25,11 @@ const TTSBufferSchema = new Schema({
   }
 });
 
-try {
-  defineIndex(TTSBufferSchema, { key: { bufferId: 1 } });
-  //  24 hour
-  defineIndex(TTSBufferSchema, {
-    key: { createTime: 1 },
-    options: { expireAfterSeconds: 24 * 60 * 60 }
-  });
-} catch (error) {
-  logger.error('Failed to build TTS buffer indexes', { error });
-}
+defineIndex(TTSBufferSchema, { key: { bufferId: 1 } });
+//  24 hour
+defineIndex(TTSBufferSchema, {
+  key: { createTime: 1 },
+  options: { expireAfterSeconds: 24 * 60 * 60 }
+});
 
 export const MongoTTSBuffer = getMongoModel<TTSBufferSchemaType>(collectionName, TTSBufferSchema);

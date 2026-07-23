@@ -9,7 +9,6 @@ import {
 import { UsageCollectionName, UsageItemCollectionName } from './constants';
 import { AppCollectionName } from '../../../core/app/schema';
 import { DatasetCollectionName } from '../../../core/dataset/schema';
-import { getLogger, LogCategories } from '../../../common/logger';
 import { agentSkillsCollectionName } from '@fastgpt/global/core/ai/skill/constants';
 
 const UsageSchema = new Schema(
@@ -76,18 +75,13 @@ UsageSchema.virtual('usageItems', {
   foreignField: 'usageId'
 });
 
-try {
-  defineIndex(UsageSchema, {
-    key: { teamId: 1, tmbId: 1, source: 1, time: 1, appName: 1, _id: -1 }
-  });
+defineIndex(UsageSchema, {
+  key: { teamId: 1, tmbId: 1, source: 1, time: 1, appName: 1, _id: -1 }
+});
 
-  defineIndex(UsageSchema, {
-    key: { time: 1 },
-    options: { expireAfterSeconds: 360 * 24 * 60 * 60 }
-  });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build usage indexes', { error });
-}
+defineIndex(UsageSchema, {
+  key: { time: 1 },
+  options: { expireAfterSeconds: 360 * 24 * 60 * 60 }
+});
 
 export const MongoUsage = getMongoModel<UsageSchemaType>(UsageCollectionName, UsageSchema);

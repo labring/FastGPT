@@ -42,21 +42,17 @@ const S3UploadSessionMongoSchema = new Schema({
   revokedAt: Date
 });
 
-try {
-  defineIndex(S3UploadSessionMongoSchema, {
-    key: { tokenHash: 1 },
-    options: { unique: true }
-  });
-  defineIndex(S3UploadSessionMongoSchema, {
-    key: { expiresAt: 1 },
-    options: { expireAfterSeconds: 0 }
-  });
-  defineIndex(S3UploadSessionMongoSchema, {
-    key: { bucketName: 1, objectKey: 1 }
-  });
-} catch (error) {
-  logger.error('Failed to build S3 upload session indexes', { error });
-}
+defineIndex(S3UploadSessionMongoSchema, {
+  key: { tokenHash: 1 },
+  options: { unique: true }
+});
+defineIndex(S3UploadSessionMongoSchema, {
+  key: { expiresAt: 1 },
+  options: { expireAfterSeconds: 0 }
+});
+defineIndex(S3UploadSessionMongoSchema, {
+  key: { bucketName: 1, objectKey: 1 }
+});
 
 export const MongoS3UploadSession = getMongoModel<S3UploadSessionType>(
   S3UploadSessionCollectionName,

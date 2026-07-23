@@ -5,7 +5,6 @@ import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetDataCollectionName } from './schema';
-import { getLogger, LogCategories } from '../../../common/logger';
 
 export const DatasetDataTextCollectionName = 'dataset_data_texts';
 
@@ -33,22 +32,17 @@ const DatasetDataTextSchema = new Schema({
   fullTextToken: String
 });
 
-try {
-  defineIndex(DatasetDataTextSchema, {
-    key: { teamId: 1, fullTextToken: 'text' },
-    options: {
-      name: 'teamId_1_fullTextToken_text',
-      default_language: 'none'
-    }
-  });
-  defineIndex(DatasetDataTextSchema, {
-    key: { teamId: 1, datasetId: 1, collectionId: 1 }
-  });
-  defineIndex(DatasetDataTextSchema, { key: { dataId: 'hashed' } });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build dataset data text indexes', { error });
-}
+defineIndex(DatasetDataTextSchema, {
+  key: { teamId: 1, fullTextToken: 'text' },
+  options: {
+    name: 'teamId_1_fullTextToken_text',
+    default_language: 'none'
+  }
+});
+defineIndex(DatasetDataTextSchema, {
+  key: { teamId: 1, datasetId: 1, collectionId: 1 }
+});
+defineIndex(DatasetDataTextSchema, { key: { dataId: 'hashed' } });
 
 export const MongoDatasetDataText = getMongoModel<DatasetDataTextSchemaType>(
   DatasetDataTextCollectionName,

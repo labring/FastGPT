@@ -59,24 +59,20 @@ OrgSchema.virtual('members', {
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-try {
-  defineIndex(OrgSchema, {
-    key: {
-      teamId: 1,
-      path: 1
-    }
-  });
-  defineIndex(OrgSchema, {
-    key: {
-      teamId: 1,
-      pathId: 1
-    },
-    options: {
-      unique: true
-    }
-  });
-} catch (error) {
-  logger.error('Failed to build org indexes', { error });
-}
+defineIndex(OrgSchema, {
+  key: {
+    teamId: 1,
+    path: 1
+  }
+});
+defineIndex(OrgSchema, {
+  key: {
+    teamId: 1,
+    pathId: 1
+  },
+  options: {
+    unique: true
+  }
+});
 
 export const MongoOrgModel = getMongoModel<OrgSchemaType>(OrgCollectionName, OrgSchema);

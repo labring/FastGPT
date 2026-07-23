@@ -4,7 +4,7 @@
 
 - 状态：已落地
 - 适用范围：主 Service、日志库、Marketplace 和 `pro/admin` 中由 FastGPT 管理的 MongoDB Schema
-- 最终结论：启动时只补建当前 Schema 索引，并清理所属 Schema 明确声明且精确匹配的废弃索引；任何未知索引一律保留
+- 最终结论：启动时只补建当前 Schema 索引；仅当业务 Schema 明确登记废弃索引时才执行精确清理，任何未知索引一律保留。当前没有业务 Schema 登记废弃索引
 
 ## 问题与根因
 
@@ -101,7 +101,7 @@ defineIndex(ChatSchema, {
 - `projects/marketplace/src/service/mongo/index.ts`
   - Marketplace 的 model 注册入口，复用同一 manager 并完整捕获异步错误。
 
-原中心废弃索引清单已删除；chat 与 sandbox instance 的废弃索引分别维护在对应 Schema 文件中。
+原中心废弃索引清单已删除。当前 chat、sandbox instance 和 Agent Skill 均未登记废弃索引，因此启动同步不会自动删除任何历史索引；manager 仅保留显式清理能力供后续经过单独确认的迁移使用。
 
 ## 日志与失败处理
 
@@ -137,7 +137,7 @@ defineIndex(ChatSchema, {
 4. 当前索引创建失败时不删除废弃索引。
 5. 同名但定义不同的索引保留并告警。
 6. 已不存在的废弃索引和多实例并发重复清理保持幂等。
-7. chat 与 sandbox instance 的废弃索引迁移后行为保持不变。
+7. 当前所有业务 Schema 均未登记废弃索引，启动同步不会自动删除历史索引。
 8. 主 Service、日志库和 Marketplace 在 `SYNC_INDEX=true` 时调用同一 manager，关闭时均跳过同步。
 
 ## 后续事项

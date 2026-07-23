@@ -130,10 +130,6 @@ defineIndex(AgentSkillsSchema, {
 });
 // 分类筛选。
 defineIndex(AgentSkillsSchema, { key: { category: 1 } });
-defineIndex(AgentSkillsSchema, {
-  key: { teamId: 1, parentId: 1, deleteTime: 1 },
-  deprecated: true
-});
 
 export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,

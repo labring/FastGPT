@@ -16,13 +16,11 @@ const FrequencyLimitSchema = new Schema({
   }
 });
 
-try {
-  defineIndex(FrequencyLimitSchema, { key: { eventId: 1, expiredTime: 1 } });
-  defineIndex(FrequencyLimitSchema, {
-    key: { expiredTime: 1 },
-    options: { expireAfterSeconds: 0 }
-  });
-} catch (error) {}
+defineIndex(FrequencyLimitSchema, { key: { eventId: 1, expiredTime: 1 } });
+defineIndex(FrequencyLimitSchema, {
+  key: { expiredTime: 1 },
+  options: { expireAfterSeconds: 0 }
+});
 
 export const MongoFrequencyLimit = getMongoModel<FrequencyLimitSchemaType>(
   'frequency_limit',

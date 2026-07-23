@@ -44,25 +44,21 @@ const S3DownloadAliasMongoSchema = new Schema({
   disabledAt: Date
 });
 
-try {
-  defineIndex(S3DownloadAliasMongoSchema, {
-    key: { aliasId: 1 },
-    options: { unique: true }
-  });
-  defineIndex(S3DownloadAliasMongoSchema, {
-    key: { aliasKey: 1 },
-    options: { unique: true }
-  });
-  defineIndex(S3DownloadAliasMongoSchema, {
-    key: { purgeAt: 1 },
-    options: { expireAfterSeconds: 0 }
-  });
-  defineIndex(S3DownloadAliasMongoSchema, {
-    key: { bucketName: 1, objectKey: 1 }
-  });
-} catch (error) {
-  logger.error('Failed to build S3 download alias indexes', { error });
-}
+defineIndex(S3DownloadAliasMongoSchema, {
+  key: { aliasId: 1 },
+  options: { unique: true }
+});
+defineIndex(S3DownloadAliasMongoSchema, {
+  key: { aliasKey: 1 },
+  options: { unique: true }
+});
+defineIndex(S3DownloadAliasMongoSchema, {
+  key: { purgeAt: 1 },
+  options: { expireAfterSeconds: 0 }
+});
+defineIndex(S3DownloadAliasMongoSchema, {
+  key: { bucketName: 1, objectKey: 1 }
+});
 
 export const MongoS3DownloadAlias = getMongoModel<S3DownloadAliasType>(
   S3DownloadAliasCollectionName,

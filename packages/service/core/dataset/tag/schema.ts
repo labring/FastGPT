@@ -2,7 +2,6 @@ import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { defineIndex, connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 import { DatasetCollectionName } from '../schema';
 import { type DatasetCollectionTagsSchemaType } from '@fastgpt/global/core/dataset/type';
-import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 
 export const DatasetCollectionTagsName = 'dataset_collection_tags';
@@ -24,14 +23,9 @@ const DatasetCollectionTagsSchema = new Schema({
   }
 });
 
-try {
-  defineIndex(DatasetCollectionTagsSchema, {
-    key: { teamId: 1, datasetId: 1, tag: 1 }
-  });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build dataset tag indexes', { error });
-}
+defineIndex(DatasetCollectionTagsSchema, {
+  key: { teamId: 1, datasetId: 1, tag: 1 }
+});
 
 export const MongoDatasetCollectionTags = getMongoModel<DatasetCollectionTagsSchemaType>(
   DatasetCollectionTagsName,

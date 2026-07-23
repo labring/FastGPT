@@ -35,19 +35,15 @@ export const MemberGroupSchema = new Schema(
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-try {
-  defineIndex(MemberGroupSchema, {
-    key: {
-      teamId: 1,
-      name: 1
-    },
-    options: {
-      unique: true
-    }
-  });
-} catch (error) {
-  logger.error('Failed to build member group indexes', { error });
-}
+defineIndex(MemberGroupSchema, {
+  key: {
+    teamId: 1,
+    name: 1
+  },
+  options: {
+    unique: true
+  }
+});
 
 export const MongoMemberGroupModel = getMongoModel<MemberGroupSchemaType>(
   MemberGroupCollectionName,

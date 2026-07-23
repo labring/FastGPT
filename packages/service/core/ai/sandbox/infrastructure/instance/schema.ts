@@ -95,39 +95,6 @@ defineIndex(SandboxInstanceSchema, {
   key: { 'metadata.archive.state': 1, 'metadata.archive.deleteStartedAt': 1 }
 });
 
-defineIndex(SandboxInstanceSchema, {
-  key: { provider: 1, appId: 1, userId: 1, chatId: 1 },
-  options: {
-    unique: true,
-    partialFilterExpression: {
-      appId: { $exists: true },
-      userId: { $exists: true },
-      chatId: { $exists: true }
-    }
-  },
-  deprecated: true
-});
-defineIndex(SandboxInstanceSchema, {
-  key: { appId: 1, chatId: 1 },
-  options: {
-    unique: true,
-    partialFilterExpression: {
-      appId: { $exists: true },
-      chatId: { $exists: true },
-      type: { $exists: true }
-    }
-  },
-  deprecated: true
-});
-defineIndex(SandboxInstanceSchema, {
-  key: { 'metadata.skillId': 1 },
-  deprecated: true
-});
-defineIndex(SandboxInstanceSchema, {
-  key: { type: 1, chatId: 1 },
-  deprecated: true
-});
-
 /**
  * sandbox 实例 Mongo model。
  *

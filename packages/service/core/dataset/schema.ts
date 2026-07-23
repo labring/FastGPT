@@ -14,7 +14,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { userCollectionName } from '../../support/user/schema';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { getLogger, LogCategories } from '../../common/logger';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -152,13 +151,8 @@ const DatasetSchema = new Schema({
   yuqueServer: Object
 });
 
-try {
-  defineIndex(DatasetSchema, { key: { teamId: 1 } });
-  defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
-  defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build dataset indexes', { error });
-}
+defineIndex(DatasetSchema, { key: { teamId: 1 } });
+defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
+defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
 
 export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);

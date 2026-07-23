@@ -43,26 +43,22 @@ OrgMemberSchema.virtual('org', {
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-try {
-  defineIndex(OrgMemberSchema, {
-    key: {
-      teamId: 1,
-      orgId: 1,
-      tmbId: 1
-    },
-    options: {
-      unique: true
-    }
-  });
-  defineIndex(OrgMemberSchema, {
-    key: {
-      teamId: 1,
-      tmbId: 1
-    }
-  });
-} catch (error) {
-  logger.error('Failed to build org member indexes', { error });
-}
+defineIndex(OrgMemberSchema, {
+  key: {
+    teamId: 1,
+    orgId: 1,
+    tmbId: 1
+  },
+  options: {
+    unique: true
+  }
+});
+defineIndex(OrgMemberSchema, {
+  key: {
+    teamId: 1,
+    tmbId: 1
+  }
+});
 
 export const MongoOrgMemberModel = getMongoModel<OrgMemberSchemaType>(
   OrgMemberCollectionName,

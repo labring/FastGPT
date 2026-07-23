@@ -38,14 +38,8 @@ describe('chat schema indexes', () => {
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
   });
 
-  it('declares the replaced chat identity index as deprecated on the same Schema', () => {
-    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toEqual([
-      expect.objectContaining({
-        indexName: 'appId_1_chatId_1',
-        key: { appId: 1, chatId: 1 },
-        options: { unique: true }
-      })
-    ]);
+  it('does not register historical chat indexes for automatic cleanup', () => {
+    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toEqual([]);
   });
 
   it('keeps legacy chat item read and pagination indexes', () => {

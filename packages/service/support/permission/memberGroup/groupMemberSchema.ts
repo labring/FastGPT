@@ -36,21 +36,17 @@ GroupMemberSchema.virtual('group', {
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-try {
-  defineIndex(GroupMemberSchema, {
-    key: {
-      groupId: 1
-    }
-  });
+defineIndex(GroupMemberSchema, {
+  key: {
+    groupId: 1
+  }
+});
 
-  defineIndex(GroupMemberSchema, {
-    key: {
-      tmbId: 1
-    }
-  });
-} catch (error) {
-  logger.error('Failed to build group member indexes', { error });
-}
+defineIndex(GroupMemberSchema, {
+  key: {
+    tmbId: 1
+  }
+});
 
 export const MongoGroupMemberModel = getMongoModel<GroupMemberSchemaType>(
   GroupMemberCollectionName,

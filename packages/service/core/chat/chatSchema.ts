@@ -256,10 +256,4 @@ defineIndex(ChatSchema, {
   }
 });
 
-defineIndex(ChatSchema, {
-  key: { appId: 1, chatId: 1 },
-  options: { unique: true },
-  deprecated: true
-});
-
 export const MongoChat = getMongoModel<ChatSchemaType>(chatCollectionName, ChatSchema);
