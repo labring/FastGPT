@@ -3,15 +3,15 @@ import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
 import {
-  buildAgentLoopCoreSystemToolFileUrl,
   createAgentLoopCoreReadFileExecutor,
   normalizeAgentLoopCoreDatasetSearchResult
 } from '../../agentLoopCore/interface';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
-import { dispatchFileRead } from '../sub/file';
+import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getAgentDatasetParams, getExecuteTool } from '../sub/utils';
 import type { WorkflowAgentToolProvider, WorkflowAgentToolProviderContext } from './type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getWorkflowFileMaxAmount } from '../../../../utils/context';
 
 /**
  * 创建 Workflow Agent 节点的工具 provider。
@@ -58,25 +58,17 @@ export const createWorkflowAgentToolProvider = ({
         });
       }
     : undefined;
+  const readFileMaxFileAmount = getWorkflowFileMaxAmount();
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
-    enabled: Object.keys(context.filesMap).length > 0,
-    resolveFiles: (ids) =>
-      ids.map((id) => {
-        const file = context.filesMap[id];
-
-        return {
-          id,
-          ...(file?.name ? { name: file.name } : {}),
-          url: file?.url || ''
-        };
-      }),
+    enabled: true,
     execute: async ({ files }) =>
-      dispatchFileRead({
+      dispatchWorkflowReadFiles({
         files,
         teamId: context.runningUserInfo.teamId,
         tmbId: context.runningUserInfo.tmbId,
         customPdfParse: context.chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId: context.usageId
+        usageId: context.usageId,
+        maxFileAmount: readFileMaxFileAmount
       })
   });
 
@@ -114,12 +106,8 @@ export const createWorkflowAgentToolProvider = ({
       });
     },
     readFileExecutor,
+    readFileMaxFileAmount,
     datasetSearchExecutor,
-    currentInputFiles: context.currentFiles.map((file) =>
-      buildAgentLoopCoreSystemToolFileUrl({
-        url: file.url,
-        requestOrigin: context.requestOrigin
-      })
-    )
+    currentInputFiles: context.currentFiles.map((file) => file.url)
   };
 };

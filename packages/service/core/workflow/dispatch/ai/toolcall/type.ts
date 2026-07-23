@@ -9,6 +9,7 @@ import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../ai/llm/agentLoop/interface';
 import type { SandboxClient } from '../../../../ai/sandbox/interface/runtime';
+import type { AgentLoopCoreInputFile } from '../agentLoopCore/interface';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -37,7 +38,6 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   toolNodes: ToolNodeItemType[];
   toolModel: LLMModelItemType;
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<WorkflowInteractiveResponseType>;
-  allFiles: Map<string, FileInputType>;
   currentInputFiles: FileInputType[];
   sandboxClient?: SandboxClient;
 };
@@ -54,9 +54,4 @@ export type ToolNodeItemType = {
   toolParams: RuntimeNodeItemType['inputs'];
 };
 
-export type FileInputType = {
-  id: string;
-  name: string;
-  url: string;
-  sandboxPath?: string;
-};
+export type FileInputType = AgentLoopCoreInputFile;

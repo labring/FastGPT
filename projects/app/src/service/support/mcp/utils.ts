@@ -31,6 +31,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
+import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import {
   failChatRound,
@@ -229,13 +230,26 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(app._id)
     };
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
+      teamId: String(app.teamId),
+      chatConfig,
+      query: userQuestion.value
+    });
+    const workflowUserQuestion: UserChatItemType = {
+      ...userQuestion,
+      value: workflowQuery
+    };
     const preparedRound = await preChatRound({
       ...chatSource,
       chatId,
       teamId: String(app.teamId),
       tmbId: String(app.tmbId),
       source: ChatSourceEnum.mcp,
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       responseChatItemId,
       fixedTitle: pluginFixedTitle
     });
@@ -266,7 +280,9 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         runtimeEdges: storeEdges2RuntimeEdges(edges),
         variables,
         responseChatItemId: preparedRound.responseChatItemId,
-        query: removeEmptyUserInput(userQuestion.value),
+        query: removeEmptyUserInput(workflowQuery),
+        maxFileAmount,
+        maxBytesPerFile,
         chatConfig,
         histories: [],
         stream: false,
@@ -294,7 +310,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         appChatConfig: chatConfig,
         variables: newVariables,
         source: ChatSourceEnum.mcp,
-        userContent: userQuestion,
+        userContent: workflowUserQuestion,
         aiContent: aiResponse,
         durationSeconds,
         nodeResponseSummary

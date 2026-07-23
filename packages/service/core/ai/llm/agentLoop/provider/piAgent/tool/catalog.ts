@@ -14,7 +14,9 @@ const getPiAgentSystemTools = <TChildrenResponse = unknown>(
   ...(runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
     ? createAgentLoopSandboxTools()
     : []),
-  ...(runtime.systemTools?.readFile?.enabled ? [createReadFilesTool()] : []),
+  ...(runtime.systemTools?.readFile?.enabled
+    ? [createReadFilesTool({ maxFileAmount: runtime.systemTools.readFile.maxFileAmount })]
+    : []),
   ...(runtime.systemTools?.datasetSearch?.enabled ? [createDatasetSearchTool()] : [])
 ];
 

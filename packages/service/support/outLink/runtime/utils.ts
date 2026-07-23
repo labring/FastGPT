@@ -22,6 +22,7 @@ import {
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
 import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
+import { prepareWorkflowFileQuery } from '../../../core/workflow/utils/fileLimits';
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { authOutLinkLimit } from './auth';
@@ -229,10 +230,19 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     // Merge global variables from database
     const variables = chatDetail?.variables ?? {};
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
+      teamId: String(outLinkConfig.teamId),
+      chatConfig,
+      query
+    });
     const userContent: UserChatItemType & { dataId?: string } = {
       dataId: messageId,
       obj: ChatRoleEnum.Human,
-      value: query
+      value: workflowQuery
     };
     const preparedRound = await preChatRound({
       ...chatSource,
@@ -273,7 +283,9 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       responseChatItemId: preparedRound.responseChatItemId,
       variables,
       histories,
-      query: query,
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile,
       chatConfig,
       stream: enableStreaming,
       workflowStreamResponse,

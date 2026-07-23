@@ -211,7 +211,7 @@ export const storeEdges2RuntimeEdges = (
   if (lastInteractive) {
     const memoryEdges = lastInteractive.memoryEdges || [];
     if (memoryEdges && memoryEdges.length > 0) {
-      return memoryEdges;
+      return memoryEdges.map((edge) => ({ ...edge }));
     }
   }
 

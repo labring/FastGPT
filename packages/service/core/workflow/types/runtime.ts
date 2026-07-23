@@ -60,6 +60,8 @@ export type ChatDispatchProps = {
   checkIsStopping: () => boolean;
   lang?: localeType;
   requestOrigin?: string;
+  /** Workflow 服务端读取单个输入文件的最大字节数；缺省使用系统文件大小限制。 */
+  maxBytesPerFile?: number;
   mode: 'test' | 'chat' | 'debug';
   timezone: string;
   externalProvider: ExternalProviderType;

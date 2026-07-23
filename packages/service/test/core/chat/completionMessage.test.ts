@@ -16,13 +16,20 @@ import {
 } from '@fastgpt/service/core/chat/completionMessage';
 import { serviceEnv } from '@fastgpt/service/env';
 
-const normalize = (messages: ChatCompletionMessageParam[]) =>
+const normalize = (
+  messages: ChatCompletionMessageParam[],
+  limits: { maxFileAmount: number; maxBytesPerFile: number } = {
+    maxFileAmount: 10,
+    maxBytesPerFile: 10 * 1024 * 1024
+  }
+) =>
   normalizeCompletionMessages({
     messages,
     sourceType: ChatSourceTypeEnum.app,
     sourceId: '507f1f77bcf86cd799439011',
     chatId: 'chat-1',
-    uid: 'user-1'
+    uid: 'user-1',
+    ...limits
   });
 
 describe('getCompletionStartHookText', () => {
@@ -58,7 +65,6 @@ describe('normalizeCompletionMessages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
-    global.feConfigs.uploadFileMaxSize = 10;
     mocks.uploadChatFile.mockResolvedValue({
       key: 'chat/app/507f1f77bcf86cd799439011/user-1/chat-1/image_123456.jpg',
       accessUrl: {
@@ -127,7 +133,7 @@ describe('normalizeCompletionMessages', () => {
     });
   });
 
-  it('keeps messages unchanged when base64 model input is enabled', async () => {
+  it('uploads base64 images regardless of the model base64 setting', async () => {
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     const messages: ChatCompletionMessageParam[] = [
       {
@@ -143,8 +149,19 @@ describe('normalizeCompletionMessages', () => {
 
     const result = await normalize(messages);
 
-    expect(result).toBe(messages);
-    expect(mocks.uploadChatFile).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            key: 'chat/app/507f1f77bcf86cd799439011/user-1/chat-1/image_123456.jpg',
+            image_url: { url: 'https://s3.example.com/image.jpg' }
+          }
+        ]
+      }
+    ]);
+    expect(mocks.uploadChatFile).toHaveBeenCalledTimes(1);
   });
 
   it('keeps remote images and non-user messages without uploading', async () => {
@@ -187,22 +204,80 @@ describe('normalizeCompletionMessages', () => {
   });
 
   it('rejects decoded images larger than the upload limit', async () => {
-    global.feConfigs.uploadFileMaxSize = 0.000001;
+    await expect(
+      normalize(
+        [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${Buffer.from('too-large').toString('base64')}`
+                }
+              }
+            ]
+          }
+        ],
+        {
+          maxFileAmount: 10,
+          maxBytesPerFile: 1
+        }
+      )
+    ).rejects.toThrow('Image size exceeds limit');
+    expect(mocks.uploadChatFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects too many base64 images before uploading any file', async () => {
+    const createImagePart = (value: string) => ({
+      type: 'image_url' as const,
+      image_url: { url: `data:image/png;base64,${Buffer.from(value).toString('base64')}` }
+    });
 
     await expect(
-      normalize([
+      normalize(
+        [
+          {
+            role: 'user',
+            content: [createImagePart('first'), createImagePart('second')]
+          }
+        ],
         {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/png;base64,${Buffer.from('too-large').toString('base64')}`
-              }
-            }
-          ]
+          maxFileAmount: 1,
+          maxBytesPerFile: 10 * 1024 * 1024
         }
-      ])
+      )
+    ).rejects.toThrow('Image amount exceeds limit');
+    expect(mocks.uploadChatFile).not.toHaveBeenCalled();
+  });
+
+  it('validates every base64 image before uploading any file', async () => {
+    await expect(
+      normalize(
+        [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${Buffer.from('valid').toString('base64')}`
+                }
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${Buffer.from('too-large').toString('base64')}`
+                }
+              }
+            ]
+          }
+        ],
+        {
+          maxFileAmount: 2,
+          maxBytesPerFile: 5
+        }
+      )
     ).rejects.toThrow('Image size exceeds limit');
     expect(mocks.uploadChatFile).not.toHaveBeenCalled();
   });

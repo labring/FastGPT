@@ -18,7 +18,7 @@ export type AgentLoopCoreSystemToolNodeResponseInput = Omit<
 export type AgentLoopCoreParsedReadFileCall =
   | {
       success: true;
-      ids: string[];
+      urls: string[];
     }
   | {
       success: false;
@@ -27,14 +27,12 @@ export type AgentLoopCoreParsedReadFileCall =
     };
 
 export type AgentLoopCoreReadFileItem = {
-  id: string;
   name?: string;
   url: string;
 };
 
 export type CreateAgentLoopCoreReadFileExecutorParams = {
   enabled: boolean;
-  resolveFiles: (ids: string[]) => AgentLoopCoreReadFileItem[];
   execute: (params: { callId: string; files: AgentLoopCoreReadFileItem[] }) => Promise<{
     response: string;
     usages?: ChatNodeUsageType[];
@@ -74,19 +72,18 @@ export const parseAgentLoopCoreReadFileCall = (
 
   return {
     success: true,
-    ids: toolParams.data.ids
+    urls: toolParams.data.urls
   };
 };
 
 /**
  * 创建 read_files system tool 执行器。
  *
- * core 统一处理 LLM 参数校验、文件 id 到文件列表的结构转换入口、usage 默认值和
+ * core 统一处理 LLM URL 参数校验、文件列表结构转换、usage 默认值和
  * nodeResponse 运行字段补齐；真实文件来源和解析服务仍由 Workflow Agent/ToolCall 外壳注入。
  */
 export const createAgentLoopCoreReadFileExecutor = ({
   enabled,
-  resolveFiles,
   execute
 }: CreateAgentLoopCoreReadFileExecutorParams): AgentLoopReadFileExecutor | undefined => {
   if (!enabled) return undefined;
@@ -98,7 +95,7 @@ export const createAgentLoopCoreReadFileExecutor = ({
     const startTime = Date.now();
     const result = await execute({
       callId: call.id,
-      files: resolveFiles(toolParams.ids)
+      files: toolParams.urls.map((url) => ({ url }))
     });
     const usages = result.usages ?? [];
 

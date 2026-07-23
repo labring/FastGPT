@@ -10,18 +10,18 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 
 describe('agentLoopCore system tool helpers', () => {
-  it('parses read file ids from tool call arguments', () => {
+  it('parses read file urls from tool call arguments', () => {
     expect(
       parseAgentLoopCoreReadFileCall({
         function: {
           arguments: JSON.stringify({
-            ids: ['file-1', 'file-2']
+            urls: ['https://files.example.com/1.pdf', 'https://files.example.com/2.pdf']
           })
         }
       })
     ).toEqual({
       success: true,
-      ids: ['file-1', 'file-2']
+      urls: ['https://files.example.com/1.pdf', 'https://files.example.com/2.pdf']
     });
   });
 
@@ -29,7 +29,7 @@ describe('agentLoopCore system tool helpers', () => {
     const result = parseAgentLoopCoreReadFileCall({
       function: {
         arguments: JSON.stringify({
-          ids: 'file-1'
+          urls: 'https://files.example.com/1.pdf'
         })
       }
     });
@@ -37,15 +37,15 @@ describe('agentLoopCore system tool helpers', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.usages).toEqual([]);
-      expect(result.response).toContain('ids');
+      expect(result.response).toContain('urls');
       expect(result.response.toLowerCase()).toContain('array');
     }
   });
 
-  it('creates a normalized read file executor from caller supplied file resolver', async () => {
+  it('creates a normalized read file executor for caller supplied urls', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-05T00:00:01.000Z'));
-    const execute = vi.fn(async ({ files }) => ({
+    const execute = vi.fn(async () => ({
       response: '<file>content</file>',
       usages: [
         {
@@ -61,12 +61,6 @@ describe('agentLoopCore system tool helpers', () => {
     try {
       const executor = createAgentLoopCoreReadFileExecutor({
         enabled: true,
-        resolveFiles: (ids) =>
-          ids.map((id) => ({
-            id,
-            name: `${id}.pdf`,
-            url: `/file/${id}.pdf`
-          })),
         execute
       });
 
@@ -78,7 +72,7 @@ describe('agentLoopCore system tool helpers', () => {
           function: {
             name: 'read_files',
             arguments: JSON.stringify({
-              ids: ['file_1']
+              urls: ['https://files.example.com/file_1.pdf']
             })
           }
         },
@@ -89,9 +83,7 @@ describe('agentLoopCore system tool helpers', () => {
         callId: 'call_read',
         files: [
           {
-            id: 'file_1',
-            name: 'file_1.pdf',
-            url: '/file/file_1.pdf'
+            url: 'https://files.example.com/file_1.pdf'
           }
         ]
       });
@@ -121,7 +113,6 @@ describe('agentLoopCore system tool helpers', () => {
     expect(
       createAgentLoopCoreReadFileExecutor({
         enabled: false,
-        resolveFiles: vi.fn(),
         execute: vi.fn()
       })
     ).toBeUndefined();

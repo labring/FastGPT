@@ -1,14 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Readable } from 'node:stream';
 
-const { pickOutboundAxiosGetMock } = vi.hoisted(() => ({
-  pickOutboundAxiosGetMock: vi.fn()
+const { axiosGetMock } = vi.hoisted(() => ({
+  axiosGetMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/api/axios', () => ({
-  pickOutboundAxios: () => ({
-    get: pickOutboundAxiosGetMock
-  })
-}));
+vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
+  return {
+    ...mod,
+    axios: { get: axiosGetMock }
+  };
+});
 
 describe('sandbox runtime files', () => {
   it('writes input files with safe unique filenames', async () => {
@@ -18,7 +21,10 @@ describe('sandbox runtime files', () => {
       writeFiles: vi.fn()
     };
 
-    pickOutboundAxiosGetMock.mockResolvedValue({ data: new ArrayBuffer(1) });
+    axiosGetMock.mockImplementation(async () => ({
+      data: Readable.from([Buffer.from('a')]),
+      headers: {}
+    }));
 
     await injectInputFilesToSandbox(sandbox as any, [
       {
@@ -42,19 +48,49 @@ describe('sandbox runtime files', () => {
     expect(sandbox.writeFiles).toHaveBeenCalledWith([
       {
         path: 'user_files/current.pdf',
-        data: expect.any(ArrayBuffer)
+        data: Buffer.from('a')
       },
       {
         path: 'user_files/current-1.pdf',
-        data: expect.any(ArrayBuffer)
+        data: Buffer.from('a')
       },
       {
         path: 'user_files/report.txt',
-        data: expect.any(ArrayBuffer)
+        data: Buffer.from('a')
       },
       {
         path: 'user_files/file-3',
-        data: expect.any(ArrayBuffer)
+        data: Buffer.from('a')
+      }
+    ]);
+  });
+
+  it('uses an injected file reader without downloading the URL', async () => {
+    const { injectInputFilesToSandbox } =
+      await import('@fastgpt/service/core/ai/sandbox/application/runtime/files');
+    const sandbox = {
+      writeFiles: vi.fn()
+    };
+    const readInputFile = vi.fn().mockResolvedValue(Buffer.from('private file'));
+    axiosGetMock.mockClear();
+
+    await injectInputFilesToSandbox(
+      sandbox as any,
+      [
+        {
+          name: 'private.pdf',
+          url: 'https://files.example.com/private.pdf'
+        }
+      ],
+      readInputFile
+    );
+
+    expect(readInputFile).toHaveBeenCalledWith('https://files.example.com/private.pdf');
+    expect(axiosGetMock).not.toHaveBeenCalled();
+    expect(sandbox.writeFiles).toHaveBeenCalledWith([
+      {
+        path: 'user_files/private.pdf',
+        data: Buffer.from('private file')
       }
     ]);
   });

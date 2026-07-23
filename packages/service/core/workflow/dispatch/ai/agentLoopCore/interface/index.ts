@@ -5,12 +5,16 @@ export {
 } from '../application/run';
 
 export { buildAgentLoopCoreInput } from '../application/context/input';
+export {
+  rewriteAgentLoopCoreUserMessageWithFiles,
+  type AgentLoopCoreInputFile
+} from '../application/context/files';
 export { readAgentLoopCoreActivePlan } from '../application/context/activePlan';
 export { buildAgentLoopCoreRequestMessages } from '../application/context/messages';
 export { buildAgentLoopCoreSystemPrompt } from '../application/context/prompt';
 export {
   buildAgentLoopCoreUserReminderInput,
-  type AgentLoopCoreInputFile,
+  type AgentLoopCoreUserReminderContext,
   type AgentLoopCoreSelectedDatasetContext,
   type AgentLoopCoreSelectedDatasetInput
 } from '../application/context/reminder';

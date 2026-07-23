@@ -1,19 +1,39 @@
-import { createWorkflowAgentToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
+import { createWorkflowAgentToolProvider as createWorkflowAgentToolProviderWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
+import {
+  getWorkflowFileContext,
+  runWithContext
+} from '@fastgpt/service/core/workflow/utils/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it, vi } from 'vitest';
 
-const { dispatchFileReadMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
-  dispatchFileReadMock: vi.fn(),
+const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
+  dispatchWorkflowReadFilesMock: vi.fn(),
   dispatchAgentDatasetSearchMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
-  dispatchFileRead: dispatchFileReadMock
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
+  dispatchWorkflowReadFiles: dispatchWorkflowReadFilesMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
   dispatchAgentDatasetSearch: dispatchAgentDatasetSearchMock
 }));
+
+const createWorkflowAgentToolProvider: typeof createWorkflowAgentToolProviderWithoutContext = (
+  props
+) => {
+  if (getWorkflowFileContext()) return createWorkflowAgentToolProviderWithoutContext(props);
+
+  return runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+      } as any
+    },
+    () => createWorkflowAgentToolProviderWithoutContext(props)
+  );
+};
 
 const createContext = (overrides: Record<string, any> = {}) =>
   ({
@@ -46,7 +66,6 @@ const createContext = (overrides: Record<string, any> = {}) =>
     params: {
       model: 'gpt-4'
     },
-    filesMap: {},
     currentFiles: [],
     runningUserInfo: {
       teamId: 'team_1',
@@ -58,6 +77,32 @@ const createContext = (overrides: Record<string, any> = {}) =>
   }) as any;
 
 describe('createWorkflowAgentToolProvider', () => {
+  it('uses the current Workflow FileContext maxFileAmount limit', () => {
+    const provider = runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext: {
+          limits: {
+            maxFileAmount: 4,
+            maxBytesPerFile: 1024
+          }
+        } as any
+      },
+      () =>
+        createWorkflowAgentToolProvider({
+          context: createContext({
+            chatConfig: {
+              fileSelectConfig: {
+                maxFiles: 9
+              }
+            }
+          })
+        })
+    );
+
+    expect(provider.readFileMaxFileAmount).toBe(4);
+  });
+
   it('exposes Workflow Agent runtime tools and tool info through the core provider protocol', () => {
     const provider = createWorkflowAgentToolProvider({
       context: createContext()
@@ -174,9 +219,15 @@ describe('createWorkflowAgentToolProvider', () => {
     });
   });
 
-  it('creates read file executor from workflow agent file context', async () => {
-    dispatchFileReadMock.mockResolvedValue({
-      response: 'file content',
+  it('creates read file executor for direct model URLs', async () => {
+    const response = JSON.stringify([
+      {
+        name: 'result.pdf',
+        content: 'file content'
+      }
+    ]);
+    dispatchWorkflowReadFilesMock.mockResolvedValue({
+      response,
       usages: [],
       nodeResponse: {
         moduleName: 'File parse'
@@ -185,12 +236,7 @@ describe('createWorkflowAgentToolProvider', () => {
     const provider = createWorkflowAgentToolProvider({
       context: createContext({
         usageId: 'usage_1',
-        filesMap: {
-          file_1: {
-            name: 'a.pdf',
-            url: 'https://files/a.pdf'
-          }
-        }
+        requestOrigin: 'https://fastgpt.example.com'
       })
     });
 
@@ -203,14 +249,18 @@ describe('createWorkflowAgentToolProvider', () => {
         type: 'function',
         function: {
           name: 'read_files',
-          arguments: '{"ids":["file_1"]}'
+          arguments:
+            '{"urls":["https://fastgpt.example.com/api/system/file/d/a","https://generated.example.com/result.pdf"]}'
         }
       } as any
     });
 
-    expect(dispatchFileReadMock).toHaveBeenCalledWith(
+    expect(dispatchWorkflowReadFilesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        files: [{ id: 'file_1', name: 'a.pdf', url: 'https://files/a.pdf' }],
+        files: [
+          { url: 'https://fastgpt.example.com/api/system/file/d/a' },
+          { url: 'https://generated.example.com/result.pdf' }
+        ],
         teamId: 'team_1',
         tmbId: 'tmb_1',
         usageId: 'usage_1'
@@ -223,6 +273,7 @@ describe('createWorkflowAgentToolProvider', () => {
         moduleName: 'File parse'
       })
     );
+    expect(result.response).toBe(response);
   });
 
   it('creates dataset search executor and current input files from workflow agent context', async () => {
@@ -238,7 +289,7 @@ describe('createWorkflowAgentToolProvider', () => {
         requestOrigin: 'https://fastgpt.example.com',
         currentFiles: [
           {
-            url: '/api/file/image.png'
+            url: 'https://fastgpt.example.com/api/file/image.png'
           }
         ],
         params: {

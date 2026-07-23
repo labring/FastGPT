@@ -13,5 +13,6 @@ export type ToolCallToolProvider = AgentLoopCoreToolProvider<
   finalMessages: ChatCompletionMessageParam[];
   getToolInfo: (name: string) => ToolInfo | undefined;
   readFileExecutor?: AgentLoopReadFileExecutor;
+  readFileMaxFileAmount: number;
   datasetSearchExecutor?: AgentLoopDatasetSearchExecutor;
 };

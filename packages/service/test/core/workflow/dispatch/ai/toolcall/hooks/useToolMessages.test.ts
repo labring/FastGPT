@@ -1,64 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { describe, expect, it } from 'vitest';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { useToolMessages } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { useToolMessages as useToolMessagesWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
 
-const { formatUserQueryWithFilesMock, parseFileInfoFromUrlsMock, parseUrlToFileTypeMock } =
-  vi.hoisted(() => ({
-    formatUserQueryWithFilesMock: vi.fn(),
-    parseFileInfoFromUrlsMock: vi.fn(),
-    parseUrlToFileTypeMock: vi.fn()
-  }));
-
-vi.mock('@fastgpt/service/core/chat/fileContext', () => ({
-  formatUserQueryWithFiles: formatUserQueryWithFilesMock,
-  parseFileInfoFromUrls: parseFileInfoFromUrlsMock
-}));
-
-vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  parseUrlToFileType: parseUrlToFileTypeMock
-}));
-
-const runningUserInfo = {
-  teamId: 'team_1',
-  tmbId: 'tmb_1',
-  username: 'user',
-  teamName: 'team',
-  memberName: 'member',
-  contact: ''
-} as any;
+const useToolMessages: typeof useToolMessagesWithoutContext = (props) =>
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+        resolve: () => undefined,
+        resolveChatFile: () => undefined,
+        getIdentity: () => undefined
+      } as any
+    },
+    () => useToolMessagesWithoutContext(props)
+  );
 
 describe('useToolMessages', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    parseUrlToFileTypeMock.mockImplementation((url: string) => ({
-      type: 'file',
-      name: 'linked.pdf',
-      url
-    }));
-    parseFileInfoFromUrlsMock.mockResolvedValue([
-      {
-        success: true,
-        name: 'a.pdf',
-        url: 'https://files/a.pdf'
-      },
-      {
-        success: false,
-        name: 'bad.pdf',
-        url: 'https://files/bad.pdf'
-      }
-    ]);
-    formatUserQueryWithFilesMock.mockImplementation(async ({ userQuery, parseFileFn }) => {
-      const files = await parseFileFn(['https://files/a.pdf', 'https://files/bad.pdf']);
-      const text = Array.isArray(userQuery)
-        ? userQuery.find((item) => item.text)?.text?.content
-        : userQuery;
-
-      return `formatted:${text}:${files.map((file: { id: string }) => file.id).join(',')}`;
-    });
-  });
-
-  it('builds runtime messages and records current input files', async () => {
+  it('rewrites document URLs and records current sandbox input files', async () => {
     const result = await useToolMessages({
       defaultSystemPrompt: 'default prompt',
       systemPrompt: 'custom prompt',
@@ -70,7 +32,8 @@ describe('useToolMessages', () => {
       ],
       responseChatItemId: 'response_1',
       userChatInput: 'question',
-      fileLinks: ['https://files/link.pdf', ''],
+      fileLinks: ['https://files.example.com/report.pdf'],
+      parseHistoryFiles: true,
       lastInteractive: undefined,
       isEntry: true,
       chatConfig: {
@@ -78,20 +41,13 @@ describe('useToolMessages', () => {
           maxFiles: 1
         }
       },
-      requestOrigin: 'https://fastgpt.example.com',
-      runningUserInfo,
       useSandbox: true
     });
 
-    expect(parseUrlToFileTypeMock).toHaveBeenCalledWith('https://files/link.pdf');
-    expect(parseUrlToFileTypeMock).toHaveBeenCalledWith('');
-    expect(parseFileInfoFromUrlsMock).toHaveBeenCalledWith({
-      urls: ['https://files/a.pdf', 'https://files/bad.pdf'],
-      requestOrigin: 'https://fastgpt.example.com',
-      maxFiles: 1,
-      teamId: 'team_1'
-    });
-    expect(result.messages).toEqual([
+    const currentMessage = result.messages[2];
+    const { text, files } = chatValue2RuntimePrompt(currentMessage.value);
+
+    expect(result.messages.slice(0, 2)).toEqual([
       {
         obj: ChatRoleEnum.System,
         value: [{ text: { content: 'default prompt\n\n-----\n\ncustom prompt' } }]
@@ -99,82 +55,74 @@ describe('useToolMessages', () => {
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'history answer' } }]
-      },
-      {
-        dataId: 'response_1',
-        obj: ChatRoleEnum.Human,
-        value: 'formatted:question:response_1-0'
       }
     ]);
+    expect(files).toEqual([]);
+    expect(text).toContain('question');
+    expect(text).toContain('<name>report.pdf</name>');
+    expect(text).toContain('<type>file</type>');
+    expect(text).toContain('<url>https://files.example.com/report.pdf</url>');
+    expect(text).toContain(`<sandboxPath>${SANDBOX_USER_FILES_PATH}report.pdf</sandboxPath>`);
     expect(result.currentInputFiles).toEqual([
       {
-        id: 'response_1-0',
-        name: 'a.pdf',
-        url: 'https://files/a.pdf',
-        sandboxPath: `${SANDBOX_USER_FILES_PATH}a.pdf`
+        name: 'report.pdf',
+        type: ChatFileTypeEnum.file,
+        url: 'https://files.example.com/report.pdf',
+        sandboxPath: `${SANDBOX_USER_FILES_PATH}report.pdf`
       }
-    ]);
-    expect([...result.allFiles.entries()]).toEqual([
-      [
-        'response_1-0',
-        {
-          id: 'response_1-0',
-          name: 'a.pdf',
-          url: 'https://files/a.pdf',
-          sandboxPath: `${SANDBOX_USER_FILES_PATH}a.pdf`
-        }
-      ]
     ]);
   });
 
-  it('keeps the pending tool history and skips only the new user input during interactive resume', async () => {
+  it('keeps multimodal URLs separate from document reminder content', async () => {
     const result = await useToolMessages({
-      chatHistories: [
-        {
-          dataId: 'history_1',
-          obj: ChatRoleEnum.Human,
-          value: [{ text: { content: 'history question' } }]
-        },
-        {
-          obj: ChatRoleEnum.AI,
-          value: [
-            {
-              tools: [
-                {
-                  id: 'call_1',
-                  toolName: 'Select',
-                  toolAvatar: '',
-                  functionName: 'select_project',
-                  params: '{"scope":"active"}',
-                  response: 'waiting for selection'
-                }
-              ]
-            }
-          ]
-        }
-      ],
+      chatHistories: [],
       responseChatItemId: 'response_1',
-      userChatInput: 'new question',
-      fileLinks: [],
-      lastInteractive: {
-        toolCallId: 'call_1'
-      } as any,
+      userChatInput: 'analyze all inputs',
+      fileLinks: [
+        'https://files.example.com/report.pdf',
+        'https://files.example.com/chart.png',
+        'https://files.example.com/voice.mp3',
+        'https://files.example.com/demo.mp4'
+      ],
+      parseHistoryFiles: true,
+      lastInteractive: undefined,
       isEntry: true,
       chatConfig: {},
-      runningUserInfo,
       useSandbox: false
     });
 
-    expect(parseFileInfoFromUrlsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        maxFiles: 20
-      })
-    );
-    expect(result.messages).toEqual([
+    const { text, files } = chatValue2RuntimePrompt(result.messages[0].value);
+
+    expect(files).toEqual([
+      {
+        name: 'chart.png',
+        type: ChatFileTypeEnum.image,
+        url: 'https://files.example.com/chart.png'
+      },
+      {
+        name: 'voice.mp3',
+        type: ChatFileTypeEnum.audio,
+        url: 'https://files.example.com/voice.mp3'
+      },
+      {
+        name: 'demo.mp4',
+        type: ChatFileTypeEnum.video,
+        url: 'https://files.example.com/demo.mp4'
+      }
+    ]);
+    expect(text).toContain('<url>https://files.example.com/report.pdf</url>');
+    expect(text).toContain('<url>https://files.example.com/chart.png</url>');
+    expect(text).toContain('<url>https://files.example.com/voice.mp3</url>');
+    expect(text).toContain('<url>https://files.example.com/demo.mp4</url>');
+    expect(result.currentInputFiles).toHaveLength(4);
+  });
+
+  it('keeps pending tool history and skips the new user input during interactive resume', async () => {
+    const history = [
       {
         dataId: 'history_1',
         obj: ChatRoleEnum.Human,
-        value: 'formatted:history question:history_1-0'
+        value: [{ text: { content: 'history question' } }]
       },
       {
         obj: ChatRoleEnum.AI,
@@ -193,7 +141,112 @@ describe('useToolMessages', () => {
           }
         ]
       }
-    ]);
+    ];
+
+    const result = await useToolMessages({
+      chatHistories: history,
+      responseChatItemId: 'response_1',
+      userChatInput: 'new question',
+      fileLinks: [],
+      parseHistoryFiles: false,
+      lastInteractive: {
+        toolCallId: 'call_1'
+      } as any,
+      isEntry: true,
+      chatConfig: {},
+      useSandbox: false
+    });
+
+    expect(result.messages).toEqual(history);
     expect(result.currentInputFiles).toEqual([]);
+  });
+
+  it('removes historical files without changing current files when history parsing is disabled', async () => {
+    const result = await useToolMessages({
+      chatHistories: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            { text: { content: 'history question' } },
+            {
+              file: {
+                type: ChatFileTypeEnum.file,
+                name: 'old.pdf',
+                url: 'https://files.example.com/old.pdf'
+              }
+            },
+            {
+              file: {
+                type: ChatFileTypeEnum.image,
+                name: 'old.png',
+                url: 'https://files.example.com/old.png'
+              }
+            }
+          ]
+        }
+      ],
+      responseChatItemId: 'response_1',
+      userChatInput: 'current question',
+      fileLinks: ['https://files.example.com/current.pdf'],
+      parseHistoryFiles: false,
+      lastInteractive: undefined,
+      isEntry: true,
+      chatConfig: {},
+      useSandbox: false
+    });
+
+    expect(chatValue2RuntimePrompt(result.messages[0].value)).toEqual({
+      text: 'history question',
+      files: []
+    });
+    expect(chatValue2RuntimePrompt(result.messages[1].value).text).toContain(
+      'https://files.example.com/current.pdf'
+    );
+    expect(result.currentInputFiles).toHaveLength(1);
+  });
+
+  it('rewrites historical documents and multimodal files when history parsing is enabled', async () => {
+    const result = await useToolMessages({
+      chatHistories: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            { text: { content: 'history question' } },
+            {
+              file: {
+                type: ChatFileTypeEnum.file,
+                name: 'old.pdf',
+                url: 'https://files.example.com/old.pdf'
+              }
+            },
+            {
+              file: {
+                type: ChatFileTypeEnum.image,
+                name: 'old.png',
+                url: 'https://files.example.com/old.png'
+              }
+            }
+          ]
+        }
+      ],
+      responseChatItemId: 'response_1',
+      userChatInput: 'current question',
+      fileLinks: [],
+      parseHistoryFiles: true,
+      lastInteractive: undefined,
+      isEntry: true,
+      chatConfig: {},
+      useSandbox: false
+    });
+
+    const historyPrompt = chatValue2RuntimePrompt(result.messages[0].value);
+    expect(historyPrompt.text).toContain('https://files.example.com/old.pdf');
+    expect(historyPrompt.files).toEqual([
+      {
+        type: ChatFileTypeEnum.image,
+        name: 'old.png',
+        url: 'https://files.example.com/old.png'
+      }
+    ]);
   });
 });

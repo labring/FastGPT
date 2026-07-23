@@ -199,7 +199,9 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await expect(addPreviewUrlToChatItems(histories as any, 'chatFlow')).resolves.toBeUndefined();
+    await expect(addPreviewUrlToChatItems(histories as any, 'chatFlow')).resolves.toEqual(
+      histories
+    );
     expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
   });
 
@@ -236,9 +238,10 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'chatFlow');
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(histories as any, 'chatFlow');
 
-    expect(histories[0].value[0].interactive.params.inputForm[0].value).toEqual([
+    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([
       {
         key: 'chat/files/image.png',
         name: 'image.png',
@@ -250,6 +253,48 @@ describe('addPreviewUrlToChatItems', () => {
       key: 'chat/files/image.png',
       external: true
     });
+    expect(histories).toEqual(originalHistories);
+  });
+
+  it('清理无法重新签发的历史 interactive fileSelect 文件', async () => {
+    const histories = [
+      {
+        obj: 'AI',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              params: {
+                inputForm: [
+                  {
+                    key: 'upload',
+                    type: FlowNodeInputTypeEnum.fileSelect,
+                    value: [
+                      {
+                        key: 'chat/files/unavailable.png',
+                        name: 'unavailable.png',
+                        type: ChatFileTypeEnum.image,
+                        url: 'https://old.example.com/unavailable.png'
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(
+      histories as any,
+      'chatFlow',
+      async () => undefined
+    );
+
+    expect(result[0].value[0].interactive.params.inputForm[0].value).toEqual([]);
+    expect(histories).toEqual(originalHistories);
   });
 
   it('为 workflowTool 历史输入中的 fileSelect 值补预览 url', async () => {
@@ -281,9 +326,10 @@ describe('addPreviewUrlToChatItems', () => {
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'workflowTool');
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(histories as any, 'workflowTool');
 
-    expect(JSON.parse(histories[0].value[0].text.content)).toEqual([
+    expect(JSON.parse(result[0].value[0].text.content)).toEqual([
       {
         renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
         value: [
@@ -300,54 +346,75 @@ describe('addPreviewUrlToChatItems', () => {
       key: 'chat/files/doc.pdf',
       external: true
     });
+    expect(histories).toEqual(originalHistories);
   });
 
-  it('重新签发 Sandbox 工具文件链接并隐藏内部 fileRefs', async () => {
-    const oldUrl = 'https://old.example.com/file-token';
-    const newUrl = 'https://new.example.com/file-token';
-    mockCreateGetChatFileURL.mockResolvedValueOnce({ url: newUrl });
+  it('清理 workflowTool 历史中无法重新签发的 fileSelect 文件', async () => {
     const histories = [
       {
-        obj: 'AI',
+        obj: 'Human',
         value: [
           {
-            tools: [
-              {
-                id: 'call_file',
-                toolName: 'Sandbox/Get File URL',
-                toolAvatar: '',
-                functionName: 'sandbox_get_file_url',
-                params: '{}',
-                response: JSON.stringify([{ fileUrl: oldUrl, filename: 'report.csv' }]),
-                fileRefs: [
-                  {
-                    key: 'chat/app/app-1/user-1/chat-1/report.csv',
-                    filename: 'report.csv',
-                    url: oldUrl
-                  }
-                ]
-              }
-            ]
-          },
-          {
             text: {
-              content: `[report.csv](${oldUrl})`
+              content: JSON.stringify([
+                {
+                  renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                  value: [
+                    {
+                      key: 'chat/files/unavailable.pdf',
+                      name: 'unavailable.pdf',
+                      type: ChatFileTypeEnum.file,
+                      url: 'https://old.example.com/unavailable.pdf'
+                    }
+                  ]
+                }
+              ])
             }
           }
         ]
       }
     ];
 
-    await addPreviewUrlToChatItems(histories as any, 'chatFlow');
+    const originalHistories = structuredClone(histories);
+    const result = await addPreviewUrlToChatItems(
+      histories as any,
+      'workflowTool',
+      async () => undefined
+    );
 
-    expect(JSON.parse(histories[0].value[0].tools[0].response)).toEqual([
-      { fileUrl: newUrl, filename: 'report.csv' }
+    expect(JSON.parse(result[0].value[0].text.content)).toEqual([
+      {
+        renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+        value: []
+      }
     ]);
-    expect(histories[0].value[0].tools[0]).not.toHaveProperty('fileRefs');
-    expect(histories[0].value[1].text.content).toBe(`[report.csv](${newUrl})`);
-    expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
-      key: 'chat/app/app-1/user-1/chat-1/report.csv',
-      external: true
-    });
+    expect(histories).toEqual(originalHistories);
+  });
+
+  it('不会吞掉历史文件 signer 的系统异常', async () => {
+    const histories = [
+      {
+        obj: 'Human',
+        value: [
+          {
+            text: {
+              content: JSON.stringify([
+                {
+                  renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                  value: [{ key: 'chat/files/report.pdf', name: 'report.pdf' }]
+                }
+              ])
+            }
+          }
+        ]
+      }
+    ];
+    const systemError = new Error('S3 signer unavailable');
+
+    await expect(
+      addPreviewUrlToChatItems(histories as any, 'workflowTool', async () => {
+        throw systemError;
+      })
+    ).rejects.toBe(systemError);
   });
 });

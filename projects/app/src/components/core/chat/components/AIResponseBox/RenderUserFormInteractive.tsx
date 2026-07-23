@@ -4,29 +4,10 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import { normalizeFormInputResultFile } from '../FormInputResult';
+import { resolveFormInputFileValues } from '../FormInputResult';
 import { FormInputComponent } from '../Interactive/InteractiveComponents';
 import InteractiveCard from './InteractiveCard';
 import { onSendPrompt } from './utils';
-
-/** 恢复/渲染表单时，把 fileSelect 字段值归一化为 `{ name, url }[]`，与流恢复逻辑保持一致。 */
-const normalizeRecoveredFormValue = ({
-  inputType,
-  value
-}: {
-  inputType: FlowNodeInputTypeEnum;
-  value: unknown;
-}) => {
-  if (inputType !== FlowNodeInputTypeEnum.fileSelect || !Array.isArray(value)) {
-    return value;
-  }
-
-  return value
-    .map(normalizeFormInputResultFile)
-    .filter((file): file is NonNullable<ReturnType<typeof normalizeFormInputResultFile>> =>
-      Boolean(file)
-    );
-};
 
 /**
  * 从同条 AI 消息的 `responseData` 中查找某字段的 `formInputResult` 值（渲染层兜底）。
@@ -66,7 +47,8 @@ const getInputFormValueFromResponseData = ({
 /**
  * 渲染已提交/待提交的 `userInput` 工作流交互表单。
  *
- * defaultValues 优先级：`responseData.formInputResult`（恢复兜底）> `inputForm.value` > `defaultValue`。
+ * fileSelect 始终优先使用 inputForm.value 中持久化的原始文件信息；
+ * responseData.formInputResult 只为缺少原始值的旧历史兜底。
  * 非最后一条子消息时强制 `submitted: true`，禁止重复提交历史表单。
  */
 const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive({
@@ -87,11 +69,16 @@ const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive(
         interactive,
         inputKey: item.key
       });
-      if (responseValue !== undefined) {
-        acc[item.key] = normalizeRecoveredFormValue({
-          inputType: item.type,
-          value: responseValue
+      if (item.type === FlowNodeInputTypeEnum.fileSelect) {
+        acc[item.key] = resolveFormInputFileValues({
+          storedValue: item.value,
+          runtimeValue: responseValue
         });
+        return acc;
+      }
+
+      if (responseValue !== undefined) {
+        acc[item.key] = responseValue;
         return acc;
       }
 
@@ -125,10 +112,10 @@ const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive(
             submitted: interactive.params.submitted || !isLastChild
           }}
           defaultValues={defaultValues}
-          SubmitButton={({ onSubmit, isFileUploading }) => (
+          SubmitButton={({ onSubmit, isFileUploading, hasFileError }) => (
             <Button
               onClick={() => onSubmit(handleFormSubmit)()}
-              isDisabled={isFileUploading}
+              isDisabled={isFileUploading || hasFileError}
               isLoading={isFileUploading}
             >
               {t('common:Submit')}

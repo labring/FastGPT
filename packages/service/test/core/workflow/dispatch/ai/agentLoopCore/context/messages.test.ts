@@ -160,22 +160,21 @@ describe('agentLoopCore reminder helpers', () => {
   it('builds escaped file and skill reminder blocks', () => {
     const filePrompt = buildAgentLoopCoreInputFilesPrompt([
       {
-        id: `current-&-'"-0`,
         name: `a<b>&"c"'d.pdf`,
         type: ChatFileTypeEnum.file,
         url: '/guide.pdf'
       },
       {
-        id: 'image-0',
         name: 'image.png',
         type: ChatFileTypeEnum.image,
         url: '/image.png'
       }
     ]);
 
-    expect(filePrompt).toContain('<id>current-&amp;-&apos;&quot;-0</id>');
+    expect(filePrompt).toContain('<url>/guide.pdf</url>');
     expect(filePrompt).toContain('<name>a&lt;b&gt;&amp;&quot;c&quot;&apos;d.pdf</name>');
-    expect(filePrompt).toContain('image-0');
+    expect(filePrompt).toContain('<url>/image.png</url>');
+    expect(filePrompt).not.toContain('<id>');
 
     const skillPrompt = buildAgentLoopCoreSkillsPrompt([
       {
@@ -198,7 +197,6 @@ describe('agentLoopCore reminder helpers', () => {
       query: '帮我总结',
       filesInfo: [
         {
-          id: 'current-0',
           name: 'guide.pdf',
           type: ChatFileTypeEnum.file,
           url: '/guide.pdf'

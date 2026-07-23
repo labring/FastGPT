@@ -9,7 +9,8 @@ import {
   injectInputFilesToSandbox,
   readSandboxPwd,
   type SandboxCommandClient,
-  type SandboxInputFile
+  type SandboxInputFile,
+  type SandboxInputFileReader
 } from './files';
 import { prepareSandboxRuntimeMirrors } from './mirrors';
 
@@ -101,10 +102,11 @@ export const emptyWorkDirectory =
 /** 将本轮用户输入文件写入 sandbox 的 user_files 目录。 */
 export const injectCurrentInputFiles =
   <Context extends SandboxPrepareContext>(
-    currentFiles: SandboxInputFile[]
+    currentFiles: SandboxInputFile[],
+    readInputFile?: SandboxInputFileReader
   ): SandboxPrepareStep<Context> =>
   async (context) => {
-    await injectInputFilesToSandbox(context.sandbox, currentFiles);
+    await injectInputFilesToSandbox(context.sandbox, currentFiles, readInputFile);
     return context;
   };
 

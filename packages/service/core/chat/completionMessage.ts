@@ -4,10 +4,8 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getFileMaxSize } from '../../common/file/utils';
 import { isValidImageContentType } from '../../common/file/image/utils';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { serviceEnv } from '../../env';
 
 type NormalizeCompletionMessagesProps = {
   messages: ChatCompletionMessageParam[];
@@ -15,6 +13,8 @@ type NormalizeCompletionMessagesProps = {
   sourceId: string;
   chatId: string;
   uid: string;
+  maxFileAmount: number;
+  maxBytesPerFile: number;
 };
 
 /**
@@ -48,7 +48,13 @@ const imageExtensionMap: Record<string, string> = {
 /**
  * 解析图片 Data URL，并在解码前校验格式和大小，避免超大 base64 产生额外内存峰值。
  */
-const parseImageDataUrl = (dataUrl: string) => {
+const parseImageDataUrl = ({
+  dataUrl,
+  maxBytesPerFile
+}: {
+  dataUrl: string;
+  maxBytesPerFile: number;
+}) => {
   const match = dataUrl.match(/^data:([^;,]+);base64,([A-Za-z0-9+/=\r\n]+)$/i);
   if (!match) {
     throw new UserError('Invalid image base64 data URL');
@@ -62,9 +68,10 @@ const parseImageDataUrl = (dataUrl: string) => {
   const base64 = match[2].replace(/[\r\n]/g, '');
   const paddingLength = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
   const decodedSize = Math.floor((base64.length * 3) / 4) - paddingLength;
-  const maxSize = getFileMaxSize();
-  if (decodedSize <= 0 || decodedSize > maxSize) {
-    throw new UserError(`Image size exceeds limit: ${decodedSize} bytes, maximum ${maxSize} bytes`);
+  if (decodedSize <= 0 || decodedSize > maxBytesPerFile) {
+    throw new UserError(
+      `Image size exceeds limit: ${decodedSize} bytes, maximum ${maxBytesPerFile} bytes`
+    );
   }
 
   const body = Buffer.from(base64, 'base64');
@@ -85,21 +92,43 @@ const parseImageDataUrl = (dataUrl: string) => {
 /**
  * 规范化 completions 消息中的 base64 图片。
  *
- * 当模型允许直接使用 URL 时，先把 Data URL 上传到当前会话的私有 S3 路径，再用临时预览
- * URL 覆写运行态消息，并附带稳定 key。运行结束后聊天持久化只保存 key，不保存 base64 或
- * 过期签名 URL。同一请求中重复出现的 Data URL 只上传一次。
+ * Data URL 始终先上传到当前会话的私有 S3 路径，再用临时预览 URL 覆写运行态消息并附带
+ * 稳定 key。模型层根据 MULTIPLE_DATA_TO_BASE64 决定是否重新读取并转换为 base64。
+ * 上传前统一校验数量和大小，避免部分文件已上传后才发现请求超限；相同 Data URL 只上传一次。
  */
 export const normalizeCompletionMessages = async ({
   messages,
   sourceType,
   sourceId,
   chatId,
-  uid
+  uid,
+  maxFileAmount,
+  maxBytesPerFile
 }: NormalizeCompletionMessagesProps): Promise<ChatCompletionMessageParam[]> => {
-  if (serviceEnv.MULTIPLE_DATA_TO_BASE64) return messages;
-
   const chatS3 = getS3ChatSource();
   const uploadCache = new Map<string, Promise<{ key: string; url: string }>>();
+  const parsedImageCache = new Map<string, ReturnType<typeof parseImageDataUrl>>();
+
+  const base64ImageParts = messages.flatMap((message) => {
+    if (message.role !== 'user' || !Array.isArray(message.content)) return [];
+
+    return message.content.filter(
+      (part): part is Extract<ChatCompletionContentPart, { type: 'image_url' }> =>
+        part.type === 'image_url' && /^data:image\//i.test(part.image_url.url)
+    );
+  });
+  const fileLimit = Math.max(0, Math.floor(maxFileAmount));
+  if (base64ImageParts.length > fileLimit) {
+    throw new UserError(
+      `Image amount exceeds limit: ${base64ImageParts.length}, maximum ${fileLimit}`
+    );
+  }
+
+  base64ImageParts.forEach((part) => {
+    const dataUrl = part.image_url.url;
+    if (parsedImageCache.has(dataUrl)) return;
+    parsedImageCache.set(dataUrl, parseImageDataUrl({ dataUrl, maxBytesPerFile }));
+  });
 
   const normalizeImagePart = async (
     part: Extract<ChatCompletionContentPart, { type: 'image_url' }>
@@ -112,7 +141,9 @@ export const normalizeCompletionMessages = async ({
       if (cached) return cached;
 
       const upload = (async () => {
-        const { body, contentType, filename } = parseImageDataUrl(dataUrl);
+        const parsedImage = parsedImageCache.get(dataUrl);
+        if (!parsedImage) throw new Error('Base64 image was not validated before upload');
+        const { body, contentType, filename } = parsedImage;
         const { key, accessUrl } = await chatS3.uploadChatFile({
           sourceType,
           sourceId,

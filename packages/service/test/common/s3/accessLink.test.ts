@@ -21,7 +21,7 @@ const loadAccessLinkModules = async (
   vi.stubEnv('FILE_TOKEN_KEY', strongFileTokenKey);
   vi.stubEnv('FILE_DOMAIN', env.fileDomain ?? 'https://files.example.com/');
   vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', env.fileDownloadPublicUrlPrefix);
-  vi.stubEnv('FE_DOMAIN', env.feDomain);
+  vi.stubEnv('FE_DOMAIN', env.feDomain ?? 'https://app.example.com');
   vi.stubEnv('NEXT_PUBLIC_BASE_URL', env.nextPublicBaseUrl ?? '/fastgpt');
 
   const [accessLink, downloadAliasSchema, uploadSessionSchema] = await Promise.all([

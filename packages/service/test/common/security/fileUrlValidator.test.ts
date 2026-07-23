@@ -17,7 +17,7 @@ describe('fileUrlValidator', () => {
     vi.stubEnv('STORAGE_S3_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', undefined);
-    vi.stubEnv('FE_DOMAIN', undefined);
+    vi.stubEnv('FE_DOMAIN', 'https://fastgpt.example.com');
     vi.stubEnv('PRO_URL', undefined);
   });
 

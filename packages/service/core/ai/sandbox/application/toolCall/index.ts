@@ -17,12 +17,11 @@ import { toolMap as shellToolMap } from './shell.tool';
 import { toolMap as writeFileToolMap } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../runtime/client';
 import { parseJsonArgs } from '../../../utils';
-import { writeUrlFilesToSandbox } from '../file';
+import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
 import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId } from '../../utils/id';
-import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 const ToolMap = {
   ...editFileToolMap,
@@ -39,7 +38,6 @@ export type SandboxToolCallResult = {
   success: boolean;
   input: Record<string, any>;
   response: string;
-  fileRefs?: SandboxFileRef[];
   durationSeconds: number;
 };
 
@@ -91,7 +89,6 @@ export const runSandboxTools = async ({
     success: true,
     input: parsedArgs.data,
     response: result.response,
-    ...(result.fileRefs?.length ? { fileRefs: result.fileRefs } : {}),
     durationSeconds: getDuration()
   };
 };
@@ -107,13 +104,15 @@ export const prepareSandboxToolRuntime = async ({
   sourceId,
   userId,
   chatId,
-  files
+  files,
+  readInputFile
 }: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
   chatId: string;
   files: { path: string; url: string }[];
+  readInputFile?: SandboxInputFileReader;
 }) => {
   const sandboxId = getRunningSandboxId({
     sourceType,
@@ -142,7 +141,7 @@ export const prepareSandboxToolRuntime = async ({
     },
     preparePackageMirrors()
   );
-  await writeUrlFilesToSandbox(instance.provider, files);
+  await writeUrlFilesToSandbox(instance.provider, files, readInputFile);
   return instance;
 };
 

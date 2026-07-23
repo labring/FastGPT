@@ -22,7 +22,6 @@ type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
     nodeId: string;
     flowNodeType: FlowNodeTypeEnum;
   };
-  filesMap: UseUserContextResult['filesMap'];
   currentFiles: UseUserContextResult['currentFiles'];
   sandboxClient?: SandboxClient;
 };
@@ -144,6 +143,7 @@ export const createWorkflowAgentLoopRuntime = ({
         readFile: toolProvider.readFileExecutor
           ? {
               enabled: true,
+              maxFileAmount: toolProvider.readFileMaxFileAmount,
               execute: toolProvider.readFileExecutor
             }
           : undefined

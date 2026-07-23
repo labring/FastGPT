@@ -8,13 +8,19 @@ import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getNodeErrResponse } from '../utils';
 import { parseFileContentFromUrls } from '../../../chat/fileContext';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../utils/context';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
-  [NodeOutputKeyEnum.rawResponse]: { filename: string; url: string; text: string }[];
+  [NodeOutputKeyEnum.rawResponse]: {
+    filename: string;
+    url: string;
+    text: string;
+    error?: string;
+  }[];
 }>;
 
 /**
@@ -33,7 +39,6 @@ export const buildReadFilesOutputText = (
 
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
-    requestOrigin,
     runningUserInfo: { teamId, tmbId },
     histories,
     chatConfig,
@@ -41,7 +46,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     params: { fileUrlList = [] },
     usageId
   } = props;
-  const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
+  const maxFileAmount = getWorkflowFileMaxAmount();
   const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
 
   // Get files from histories
@@ -51,12 +56,12 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     const readFilesResult = await parseFileContentFromUrls({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
-      requestOrigin,
-      maxFiles,
+      maxFiles: maxFileAmount,
       teamId,
       tmbId,
       customPdfParse,
-      usageId
+      usageId,
+      fileContext: getWorkflowFileContext()
     });
     const files = readFilesResult.map((item, index) => ({
       id: `${index}`,
@@ -76,7 +81,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
         [NodeOutputKeyEnum.rawResponse]: readFilesResult.map((item) => ({
           filename: item.name,
           url: item.url,
-          text: item.content
+          text: item.success ? item.content : '',
+          ...(item.success ? {} : { error: item.content })
         }))
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

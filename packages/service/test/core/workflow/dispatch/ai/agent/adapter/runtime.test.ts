@@ -2,15 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createWorkflowAgentLoopRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
+import { createWorkflowAgentLoopRuntime as createWorkflowAgentLoopRuntimeWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/runtime';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
-const { dispatchFileReadMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
-  dispatchFileReadMock: vi.fn(),
+const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock } = vi.hoisted(() => ({
+  dispatchWorkflowReadFilesMock: vi.fn(),
   dispatchAgentDatasetSearchMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
-  dispatchFileRead: dispatchFileReadMock
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
+  dispatchWorkflowReadFiles: dispatchWorkflowReadFilesMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
@@ -52,7 +53,6 @@ const createContext = (overrides = {}) =>
       toolDescription: ''
     }),
     getSubApp: vi.fn(),
-    filesMap: {},
     currentFiles: [],
     runningAppInfo: {
       id: 'app_1'
@@ -66,6 +66,19 @@ const createContext = (overrides = {}) =>
     chatConfig: {},
     ...overrides
   }) as any;
+
+const createWorkflowAgentLoopRuntime: typeof createWorkflowAgentLoopRuntimeWithoutContext = (
+  props
+) =>
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+      } as any
+    },
+    () => createWorkflowAgentLoopRuntimeWithoutContext(props)
+  );
 
 const toolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: string }) => ({
   id,
@@ -220,9 +233,15 @@ describe('createWorkflowAgentLoopRuntime', () => {
     );
   });
 
-  it('exposes readFile as a internal tool executor when files are available', async () => {
-    dispatchFileReadMock.mockResolvedValue({
-      response: 'file content',
+  it('exposes readFile as an internal tool executor for direct model URLs', async () => {
+    const response = JSON.stringify([
+      {
+        name: 'a.pdf',
+        content: 'file content'
+      }
+    ]);
+    dispatchWorkflowReadFilesMock.mockResolvedValue({
+      response,
       usages: [],
       nodeResponse: {
         id: 'call_read_file',
@@ -232,14 +251,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }
     });
     const { runtime } = createWorkflowAgentLoopRuntime({
-      context: createContext({
-        filesMap: {
-          file_1: {
-            name: 'a.pdf',
-            url: 'https://files/a.pdf'
-          }
-        }
-      }),
+      context: createContext(),
       usagePush: vi.fn(),
       executeToolFactory: vi.fn()
     });
@@ -249,18 +261,18 @@ describe('createWorkflowAgentLoopRuntime', () => {
       call: toolCall({
         id: 'call_read_file',
         name: 'read_files',
-        args: '{"ids":["file_1"]}'
+        args: '{"urls":["https://files/a.pdf"]}'
       })
     });
 
-    expect(dispatchFileReadMock).toHaveBeenCalledWith(
+    expect(dispatchWorkflowReadFilesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        files: [{ id: 'file_1', name: 'a.pdf', url: 'https://files/a.pdf' }]
+        files: [{ url: 'https://files/a.pdf' }]
       })
     );
     expect(result).toEqual(
       expect.objectContaining({
-        response: 'file content',
+        response,
         metadata: expect.objectContaining({
           moduleName: 'Read file'
         })
@@ -294,7 +306,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
             id: 'file_1',
             name: 'image.png',
             type: ChatFileTypeEnum.image,
-            url: '/api/file/image.png'
+            url: 'https://fastgpt.example.com/api/file/image.png'
           }
         ],
         params: {

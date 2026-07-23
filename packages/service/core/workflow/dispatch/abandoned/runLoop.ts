@@ -45,6 +45,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     lastInteractive?.type === 'loopInteractive' ? lastInteractive?.params : undefined;
   let lastIndex = interactiveData?.currentIndex;
 
+  // 已知问题：旧 Loop 恢复时会继续写入历史 loopResult；为保持旧流程行为暂不复制。
   const outputValueArr = interactiveData ? interactiveData.loopResult : [];
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
@@ -67,6 +68,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     // Init entry
     if (isInteractiveResponseIndex) {
+      // 已知问题：旧 Loop 会直接修改并传递父级 runtimeNodes；该弃用节点暂时保留兼容行为。
       runtimeNodes.forEach((node) => {
         if (interactiveData?.childrenResponse?.entryNodeIds.includes(node.nodeId)) {
           node.isEntry = true;

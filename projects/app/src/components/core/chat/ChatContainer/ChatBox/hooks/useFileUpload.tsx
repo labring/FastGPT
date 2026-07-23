@@ -31,6 +31,7 @@ import {
 } from '../utils/uploadTask';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
+import { getFileAmountLimit, getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -85,18 +86,17 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
-  // 文件数量限制：配置的maxFiles || 团队套餐 || 系统配置 || 默认值
-  const maxSelectFiles =
-    fileSelectConfig?.maxFiles ||
-    teamPlanStatus?.standard?.maxUploadFileCount ||
-    feConfigs?.uploadFileMaxAmount ||
-    10;
-  // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
-  const maxSize =
-    (teamPlanStatus?.standard?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
-    1024 *
-    1024;
-  const canSelectFileAmount = maxSelectFiles - fileList.length;
+  // Query 模块配额与用户配额取更小值。
+  const maxSelectFiles = getFileAmountLimit({
+    moduleMaxFileAmount: fileSelectConfig?.maxFiles,
+    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
+    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+  });
+  const maxSize = getFileSizeLimitBytes({
+    teamMaxFileSize: teamPlanStatus?.standard?.maxUploadFileSize,
+    systemMaxFileSize: feConfigs?.uploadFileMaxSize ?? 500
+  });
+  const canSelectFileAmount = Math.max(maxSelectFiles - fileList.length, 0);
 
   const { icon: selectFileIcon, label: selectFileLabel } = useMemo(() => {
     if (canUploadFile) {
@@ -242,14 +242,17 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         return [];
       }
 
-      // Filter max files
-      if (files.length > maxSelectFiles) {
-        files = files.slice(0, maxSelectFiles);
+      // 选择器之外的调用入口也按当前列表重新计算，避免并发选择或配额下调后超限。
+      const remainingFileAmount = Math.max(maxSelectFiles - fileListRef.current.length, 0);
+      if (files.length > remainingFileAmount) {
+        files = files.slice(0, remainingFileAmount);
         toast({
           status: 'warning',
           title: t('chat:file_amount_over', { max: maxSelectFiles })
         });
       }
+
+      if (files.length === 0) return [];
 
       // Filter files by max size
       const filterFilesByMaxSize = files.filter((file) => file.size <= maxSize);

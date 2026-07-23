@@ -1,5 +1,6 @@
 import React from 'react';
 import Markdown from '@/components/Markdown';
+import { sanitizeFileSelectValue } from '../../app/FileSelector/utils';
 
 /**
  * 表单输入结果中的单个文件项。
@@ -65,6 +66,30 @@ export const normalizeFormInputResultFile = (
       typeof file.name === 'string' && file.name ? file.name : getFilenameFromFormInputFileUrl(url),
     url
   };
+};
+
+/**
+ * 获取 fileSelect 的历史展示值。
+ *
+ * 首次提交时保存的 key/url + name/type 是唯一真源；工作流节点生成的签名 URL
+ * 仅在旧历史缺少原始存储值时兜底，避免短链接覆盖文件名和类型。
+ */
+export const resolveFormInputFileValues = ({
+  storedValue,
+  runtimeValue
+}: {
+  storedValue: unknown;
+  runtimeValue: unknown;
+}) => {
+  const storedFiles = sanitizeFileSelectValue(Array.isArray(storedValue) ? storedValue : []);
+  if (storedFiles.length > 0) return storedFiles;
+
+  if (!Array.isArray(runtimeValue)) return [];
+  return runtimeValue
+    .map(normalizeFormInputResultFile)
+    .filter((file): file is NonNullable<ReturnType<typeof normalizeFormInputResultFile>> =>
+      Boolean(file)
+    );
 };
 
 /** 将用户提交的完整表单结果统一展示为格式化 JSON。 */

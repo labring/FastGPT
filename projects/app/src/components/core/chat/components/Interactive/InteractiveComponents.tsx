@@ -88,6 +88,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   SubmitButton: (e: {
     onSubmit: UseFormHandleSubmit<Record<string, any>>;
     isFileUploading: boolean;
+    hasFileError: boolean;
   }) => React.JSX.Element;
 }) {
   const { t } = useTranslation();
@@ -98,6 +99,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 
   const runtimeFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
   const formValues = watch();
+  const [fileErrorKeys, setFileErrorKeys] = React.useState<Set<string>>(() => new Set());
 
   React.useEffect(() => {
     reset(defaultValues);
@@ -116,6 +118,20 @@ export const FormInputComponent = React.memo(function FormInputComponent({
       return false;
     });
   }, [inputForm, formValues, runtimeFileUploading]);
+
+  const updateFileError = React.useCallback((key: string, hasError: boolean) => {
+    setFileErrorKeys((currentKeys) => {
+      if (currentKeys.has(key) === hasError) return currentKeys;
+
+      const nextKeys = new Set(currentKeys);
+      if (hasError) {
+        nextKeys.add(key);
+      } else {
+        nextKeys.delete(key);
+      }
+      return nextKeys;
+    });
+  }, []);
 
   return (
     <Box>
@@ -177,6 +193,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                       isDisabled={submitted}
                       isInvalid={!!error}
                       isRichText={false}
+                      onFileErrorChange={(hasError) => updateFileError(input.key, hasError)}
                     />
                     {error && error.message && <FormErrorMessage>{error.message}</FormErrorMessage>}
                   </FormControl>
@@ -189,7 +206,11 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 
       {!submitted && (
         <Flex justifyContent={'flex-end'} mt={4}>
-          <SubmitButton onSubmit={handleSubmit} isFileUploading={isFileUploading} />
+          <SubmitButton
+            onSubmit={handleSubmit}
+            isFileUploading={isFileUploading}
+            hasFileError={fileErrorKeys.size > 0}
+          />
         </Flex>
       )}
     </Box>

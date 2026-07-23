@@ -13,7 +13,8 @@ import {
 import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchReadFileTool, getToolCallFileUrl } from '../tools/file';
+import { dispatchWorkflowReadFiles } from '../../readFiles';
+import { getWorkflowFileMaxAmount } from '../../../../utils/context';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -35,8 +36,6 @@ export const createToolCallToolProvider = async ({
   workflowProps,
   runtimeNodes,
   runtimeEdges,
-  allFiles,
-  fileUrlList,
   cacheToolFlowResponse
 }: {
   messages: DispatchToolModuleProps['messages'];
@@ -45,17 +44,10 @@ export const createToolCallToolProvider = async ({
   lang: DispatchToolModuleProps['lang'];
   workflowProps: Omit<
     DispatchToolModuleProps,
-    | 'messages'
-    | 'toolNodes'
-    | 'toolModel'
-    | 'childrenInteractiveParams'
-    | 'allFiles'
-    | 'currentInputFiles'
+    'messages' | 'toolNodes' | 'toolModel' | 'childrenInteractiveParams' | 'currentInputFiles'
   >;
   runtimeNodes: DispatchToolModuleProps['runtimeNodes'];
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
-  allFiles: DispatchToolModuleProps['allFiles'];
-  fileUrlList?: string[];
   cacheToolFlowResponse: CacheToolFlowResponse;
 }): Promise<ToolCallToolProvider> => {
   const { finalMessages, tools, getToolInfo } = await useToolCatalog({
@@ -94,38 +86,18 @@ export const createToolCallToolProvider = async ({
     runWorkflowTool,
     cacheToolFlowResponse
   });
+  const readFileMaxFileAmount = getWorkflowFileMaxAmount();
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
-    enabled: allFiles.size > 0,
-    resolveFiles: (ids) =>
-      ids.map((id) => {
-        const file = allFiles.get(id);
-
-        return {
-          id,
-          ...(file?.name ? { name: file.name } : {}),
-          url: getToolCallFileUrl({
-            id,
-            allFiles,
-            fileUrlList
-          })
-        };
-      }),
-    execute: async ({ callId, files }) => {
-      const result = await dispatchReadFileTool({
+    enabled: true,
+    execute: async ({ files }) =>
+      dispatchWorkflowReadFiles({
         files,
-        toolCallId: callId,
         teamId: workflowProps.runningUserInfo.teamId,
         tmbId: workflowProps.runningUserInfo.tmbId,
         customPdfParse: workflowProps.chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId: workflowProps.usageId
-      });
-
-      return {
-        response: result.response,
-        usages: result.usages,
-        nodeResponse: result.flowResponse.flowResponses[0]
-      };
-    }
+        usageId: workflowProps.usageId,
+        maxFileAmount: readFileMaxFileAmount
+      })
   });
 
   return {
@@ -137,6 +109,7 @@ export const createToolCallToolProvider = async ({
       params: AgentLoopInteractiveToolExecuteParams<WorkflowInteractiveResponseType>
     ) => runInteractiveTool(params),
     readFileExecutor,
+    readFileMaxFileAmount,
     datasetSearchExecutor:
       datasetSearchNodeIds.length > 0
         ? createAgentLoopCoreWorkflowSystemToolExecutor({

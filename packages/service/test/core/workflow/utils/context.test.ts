@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildQueryUrlFileMap,
-  buildQueryUrlTypeMap,
   parseUrlToFileType,
   runWithContext,
   getWorkflowContext,
@@ -9,151 +7,18 @@ import {
 } from '../../../../core/workflow/utils/context';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const createWorkflowContext = (queryUrlTypeMap: Record<string, ChatFileTypeEnum>) => ({
-  queryUrlTypeMap,
+const createWorkflowContext = () => ({
   mcpClientMemory: {}
 });
 
 describe('WorkflowContext', () => {
-  describe('buildQueryUrlTypeMap', () => {
-    it('should preserve media types for opaque first-round file urls', () => {
-      const audioUrl = '/api/system/file/d/audio-token-without-extension';
-      const videoUrl = '/api/system/file/d/video-token-without-extension';
-      const imageUrl = '/api/system/file/d/image-token-without-extension';
-      const fileUrl = '/api/system/file/d/file-token-without-extension';
-
-      const queryUrlTypeMap = buildQueryUrlTypeMap([
-        {
-          file: {
-            type: ChatFileTypeEnum.audio,
-            name: 'sample.mp3',
-            url: audioUrl,
-            key: 'chat/sample.mp3'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.video,
-            name: 'sample.mp4',
-            url: videoUrl,
-            key: 'chat/sample.mp4'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.image,
-            name: 'sample.png',
-            url: imageUrl,
-            key: 'chat/sample.png'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'sample.pdf',
-            url: fileUrl,
-            key: 'chat/sample.pdf'
-          }
-        },
-        {
-          text: {
-            content: 'Describe these files'
-          }
-        }
-      ]);
-
-      expect(queryUrlTypeMap).toEqual({
-        [audioUrl]: ChatFileTypeEnum.audio,
-        [videoUrl]: ChatFileTypeEnum.video,
-        [imageUrl]: ChatFileTypeEnum.image,
-        [fileUrl]: ChatFileTypeEnum.file
-      });
-
-      runWithContext(createWorkflowContext(queryUrlTypeMap), () => {
-        expect(parseUrlToFileType(audioUrl)?.type).toBe(ChatFileTypeEnum.audio);
-        expect(parseUrlToFileType(videoUrl)?.type).toBe(ChatFileTypeEnum.video);
-        expect(parseUrlToFileType(imageUrl)?.type).toBe(ChatFileTypeEnum.image);
-        expect(parseUrlToFileType(fileUrl)?.type).toBe(ChatFileTypeEnum.file);
-      });
-    });
-
-    it('should ignore query items without a file url', () => {
-      expect(
-        buildQueryUrlTypeMap([
-          {
-            file: {
-              type: ChatFileTypeEnum.audio,
-              name: 'sample.mp3',
-              url: '',
-              key: 'chat/sample.mp3'
-            }
-          },
-          {
-            text: {
-              content: 'Describe this file'
-            }
-          }
-        ])
-      ).toEqual({});
-    });
-  });
-
-  describe('buildQueryUrlFileMap', () => {
-    it('should preserve the original filename for an opaque first-round audio url', () => {
-      const url = '/api/system/file/d/audio-token-without-extension';
-      const queryUrlFileMap = buildQueryUrlFileMap([
-        {
-          file: {
-            type: ChatFileTypeEnum.audio,
-            name: 'meeting.mp3',
-            url,
-            key: 'chat/meeting.mp3'
-          }
-        }
-      ]);
-
-      runWithContext(
-        {
-          ...createWorkflowContext({ [url]: ChatFileTypeEnum.audio }),
-          queryUrlFileMap
-        },
-        () => {
-          expect(parseUrlToFileType(url)).toEqual({
-            type: ChatFileTypeEnum.audio,
-            name: 'meeting.mp3',
-            url,
-            key: 'chat/meeting.mp3'
-          });
-        }
-      );
-    });
-
-    it('should ignore query items without a file url', () => {
-      expect(
-        buildQueryUrlFileMap([
-          {
-            file: {
-              type: ChatFileTypeEnum.audio,
-              name: 'meeting.mp3',
-              url: '',
-              key: 'chat/meeting.mp3'
-            }
-          }
-        ])
-      ).toEqual({});
-    });
-  });
-
   describe('runWithContext / getWorkflowContext', () => {
     it('should provide context inside callback', () => {
-      const ctx = createWorkflowContext({
-        'http://a.com/f.pdf': ChatFileTypeEnum.file
-      });
+      const ctx = createWorkflowContext();
 
       runWithContext(ctx, () => {
         const store = getWorkflowContext();
-        expect(store).toBeDefined();
-        expect(store?.queryUrlTypeMap).toEqual(ctx.queryUrlTypeMap);
+        expect(store).toBe(ctx);
       });
     });
 
@@ -162,23 +27,23 @@ describe('WorkflowContext', () => {
     });
 
     it('should isolate nested contexts', () => {
-      const outer = createWorkflowContext({ a: ChatFileTypeEnum.file });
-      const inner = createWorkflowContext({ b: ChatFileTypeEnum.image });
+      const outer = createWorkflowContext();
+      const inner = createWorkflowContext();
 
       runWithContext(outer, () => {
-        expect(getWorkflowContext()?.queryUrlTypeMap).toEqual(outer.queryUrlTypeMap);
+        expect(getWorkflowContext()).toBe(outer);
 
         runWithContext(inner, () => {
-          expect(getWorkflowContext()?.queryUrlTypeMap).toEqual(inner.queryUrlTypeMap);
+          expect(getWorkflowContext()).toBe(inner);
         });
 
         // outer context restored
-        expect(getWorkflowContext()?.queryUrlTypeMap).toEqual(outer.queryUrlTypeMap);
+        expect(getWorkflowContext()).toBe(outer);
       });
     });
 
     it('should work with async functions', async () => {
-      const ctx = createWorkflowContext({ url1: ChatFileTypeEnum.image });
+      const ctx = createWorkflowContext();
 
       await new Promise<void>((resolve) => {
         runWithContext(ctx, async () => {
@@ -192,64 +57,31 @@ describe('WorkflowContext', () => {
 
   describe('updateWorkflowContextVal', () => {
     it('should update existing context values', () => {
-      const ctx = createWorkflowContext({ a: ChatFileTypeEnum.file });
+      const ctx = createWorkflowContext();
+      const mcpClientMemory = {};
 
       runWithContext(ctx, () => {
-        updateWorkflowContextVal({
-          queryUrlTypeMap: { b: ChatFileTypeEnum.image }
-        });
+        updateWorkflowContextVal({ mcpClientMemory });
 
         const store = getWorkflowContext();
-        expect(store?.queryUrlTypeMap).toEqual({ b: ChatFileTypeEnum.image });
+        expect(store?.mcpClientMemory).toBe(mcpClientMemory);
       });
     });
 
     it('should do nothing when called outside context', () => {
       // Should not throw
       expect(() => {
-        updateWorkflowContextVal({ queryUrlTypeMap: { x: ChatFileTypeEnum.file } });
+        updateWorkflowContextVal({});
       }).not.toThrow();
     });
 
     it('should support partial updates', () => {
-      const ctx = createWorkflowContext({ a: ChatFileTypeEnum.file });
+      const ctx = createWorkflowContext();
 
       runWithContext(ctx, () => {
         // Update with empty partial — no keys iterated
         updateWorkflowContextVal({});
-        expect(getWorkflowContext()?.queryUrlTypeMap).toEqual({ a: ChatFileTypeEnum.file });
-      });
-    });
-  });
-
-  describe('parseUrlToFileType with context', () => {
-    it('should use queryUrlTypeMap to determine file type', () => {
-      const url = 'https://example.com/unknown-resource';
-      const ctx = createWorkflowContext({ [url]: ChatFileTypeEnum.image });
-
-      runWithContext(ctx, () => {
-        const result = parseUrlToFileType(url);
-        expect(result?.type).toBe(ChatFileTypeEnum.image);
-      });
-    });
-
-    it('should prefer context type over extension-based detection', () => {
-      const url = 'https://example.com/photo.png';
-      const ctx = createWorkflowContext({ [url]: ChatFileTypeEnum.file });
-
-      runWithContext(ctx, () => {
-        const result = parseUrlToFileType(url);
-        // Context says file, even though extension is image
-        expect(result?.type).toBe(ChatFileTypeEnum.file);
-      });
-    });
-
-    it('should fall back to extension detection when URL not in context', () => {
-      const ctx = createWorkflowContext({ 'other-url': ChatFileTypeEnum.file });
-
-      runWithContext(ctx, () => {
-        const result = parseUrlToFileType('https://example.com/photo.png');
-        expect(result?.type).toBe(ChatFileTypeEnum.image);
+        expect(getWorkflowContext()).toBe(ctx);
       });
     });
   });

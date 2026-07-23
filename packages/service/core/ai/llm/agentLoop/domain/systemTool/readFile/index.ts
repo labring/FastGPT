@@ -4,10 +4,14 @@ import z from 'zod';
 export const READ_FILES_TOOL_NAME = 'read_files';
 
 export const ReadFilesToolParamsSchema = z.object({
-  ids: z.array(z.string())
+  urls: z.array(z.string())
 });
 
-export const createReadFilesTool = (): ChatCompletionTool => ({
+export const createReadFilesTool = ({
+  maxFileAmount
+}: {
+  maxFileAmount: number;
+}): ChatCompletionTool => ({
   type: 'function',
   function: {
     name: READ_FILES_TOOL_NAME,
@@ -15,15 +19,16 @@ export const createReadFilesTool = (): ChatCompletionTool => ({
     parameters: {
       type: 'object',
       properties: {
-        ids: {
+        urls: {
           type: 'array',
+          maxItems: maxFileAmount,
           items: {
             type: 'string'
           },
-          description: 'File IDs'
+          description: 'Absolute HTTP(S) file URLs'
         }
       },
-      required: ['ids']
+      required: ['urls']
     }
   }
 });

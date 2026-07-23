@@ -4,7 +4,7 @@ import { READ_FILES_TOOL_NAME } from '../agentLoop/interface';
  * 将本轮上传文件整理为文本上下文，包含文件名、沙盒路径和可选文件内容。
  */
 export const getUserFilesPrompt = (
-  files: { id?: string; name: string; url: string; sandboxPath?: string; content?: string }[] = []
+  files: { name: string; url: string; sandboxPath?: string; content?: string }[] = []
 ) => {
   if (files.length === 0) return '';
   return `## 对话文件
@@ -15,7 +15,6 @@ export const getUserFilesPrompt = (
 ${files
   .map((file) =>
     `<file>
-${file.id ? `<id>${file.id}</id>` : ''}
 <name>${file.name}</name>
 <url>${file.url}</url>
 ${file.sandboxPath ? `<sandboxPath>${file.sandboxPath}</sandboxPath>` : ''}

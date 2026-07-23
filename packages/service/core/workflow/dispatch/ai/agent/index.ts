@@ -25,6 +25,7 @@ import {
   type AgentSandboxPrepareAction
 } from './sub/sandbox';
 import type { RuntimeNodeResponseSummary } from '../../type';
+import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
@@ -105,7 +106,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     lang,
     histories,
     query,
-    requestOrigin,
     chatConfig,
     lastInteractive,
     runningAppInfo,
@@ -154,10 +154,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   // 初始化对话框输入的文件
   const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-  const fileLinks =
-    fileUrlInput && fileUrlInput.value && fileUrlInput.value.length > 0
-      ? props.params.fileUrlList
-      : undefined;
+  const parseHistoryFiles = !!fileUrlInput?.value?.length;
+  const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   try {
     if (hasSandboxRuntimeDependency && !global.feConfigs?.show_agent_sandbox) {
@@ -171,12 +169,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       currentUserInput: userChatInput,
       currentQuery: query,
       currentDataId: responseChatItemId,
+      parseHistoryFiles,
       selectedDataset: datasetParams?.datasets,
       authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
-      requestOrigin,
-      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
+      maxFileAmount: getWorkflowFileMaxAmount()
     });
 
     if (effectiveUseAgentSandbox) {
@@ -206,7 +204,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
     });
     // 获取请求上下文
-    const { chatHistories, queryInput, fileUrlMap, filesMap } = userContext;
+    const { chatHistories, queryInput } = userContext;
     const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -253,8 +251,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getSubAppInfo,
         getSubApp,
         completionTools: agentCompletionTools,
-        fileUrlMap,
-        filesMap,
         currentFiles: userContext.currentFiles,
         sandboxClient,
         streamResponseFn: workflowStreamResponse

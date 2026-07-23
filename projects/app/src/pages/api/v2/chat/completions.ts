@@ -9,6 +9,10 @@ import {
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import {
+  getWorkflowFileLimits,
+  prepareWorkflowFileQuery
+} from '@fastgpt/service/core/workflow/utils/fileLimits';
+import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
@@ -178,13 +182,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return;
     }
 
+    const workflowFileLimits = await getWorkflowFileLimits({ teamId });
+
     const chatMessages = GPTMessages2Chats({
       messages: await normalizeCompletionMessages({
         messages,
         sourceType: ChatSourceTypeEnum.app,
         sourceId: String(app._id),
         chatId,
-        uid: String(outLinkUserId || tmbId)
+        uid: String(outLinkUserId || tmbId),
+        ...workflowFileLimits
       })
     });
 
@@ -285,6 +292,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
+      teamId,
+      chatConfig,
+      query: userQuestion.value,
+      limits: workflowFileLimits
+    });
+    const workflowUserQuestion: UserChatItemType = {
+      ...userQuestion,
+      value: workflowQuery
+    };
+
     const preparedRound = await preChatRound({
       ...chatSource,
       chatId,
@@ -294,7 +316,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceName: sourceName || '',
       shareId,
       outLinkUid: outLinkUserId,
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle
@@ -369,7 +391,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
       variables,
-      query: removeEmptyUserInput(userQuestion.value),
+      query: removeEmptyUserInput(workflowQuery),
+      maxFileAmount,
+      maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
       histories: newHistories,
@@ -407,7 +431,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       outLinkUid: outLinkUserId,
       source,
       sourceName: sourceName || '',
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       aiContent: aiResponse,
       metadata: {
         originIp,

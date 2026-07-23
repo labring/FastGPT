@@ -31,6 +31,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { getDefaultLLMModel } from '../../model';
 import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
+import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { getChatItems } from '../../../chat/controller';
@@ -146,13 +147,29 @@ export async function handleSkillDebugChat(
 
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories);
+    const chatConfig = {
+      fileSelectConfig: skillDebugFileSelectConfig
+    };
+    const {
+      query: workflowQuery,
+      maxFileAmount,
+      maxBytesPerFile
+    } = await prepareWorkflowFileQuery({
+      teamId,
+      chatConfig,
+      query: userQuestion.value
+    });
+    const workflowUserQuestion: UserChatItemType = {
+      ...userQuestion,
+      value: workflowQuery
+    };
     const preparedRound = await preChatRound({
       ...chatSource,
       chatId,
       teamId,
       tmbId,
       source: ChatSourceEnum.test,
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       responseChatItemId: responseChatItemIdFromBody,
       interactive
     });
@@ -213,11 +230,11 @@ export async function handleSkillDebugChat(
       runtimeNodes,
       runtimeEdges,
       variables: {},
-      query: removeEmptyUserInput(userQuestion.value),
+      query: removeEmptyUserInput(workflowQuery),
+      maxFileAmount,
+      maxBytesPerFile,
       lastInteractive: interactive,
-      chatConfig: {
-        fileSelectConfig: skillDebugFileSelectConfig
-      },
+      chatConfig,
       histories: newHistories,
       stream: true,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
@@ -280,7 +297,7 @@ export async function handleSkillDebugChat(
       appChatConfig: {},
       variables: {},
       source: ChatSourceEnum.test,
-      userContent: userQuestion,
+      userContent: workflowUserQuestion,
       aiContent: aiResponse,
       durationSeconds,
       nodeResponseSummary,
@@ -336,7 +353,6 @@ export async function handleSkillDebugChat(
       }
     }
 
-    logger.error('Skill debug chat error', { error: err, skillId });
     if (streamResponseContext) {
       streamResponseContext.writeStreamError(err);
     } else {

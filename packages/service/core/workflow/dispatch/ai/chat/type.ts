@@ -26,13 +26,3 @@ export type ChatResponse = DispatchNodeResultType<
     [NodeOutputKeyEnum.errorText]: string;
   }
 >;
-
-export type ChatMessageFileParser = (urls: string[]) => Promise<
-  {
-    id?: string;
-    name: string;
-    url: string;
-    sandboxPath?: string;
-    content?: string;
-  }[]
->;

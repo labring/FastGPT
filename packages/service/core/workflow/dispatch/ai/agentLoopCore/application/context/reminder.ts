@@ -1,15 +1,8 @@
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { DeployedSkillInfo } from '../../../../../../ai/sandbox/interface/runtime';
 import { READ_FILES_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/interface';
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
-
-export type AgentLoopCoreInputFile = {
-  id: string;
-  name: string;
-  type: ChatFileTypeEnum;
-  url: string;
-};
+import type { AgentLoopCoreInputFile } from './files';
 
 export type AgentLoopCoreSelectedDatasetInput = Pick<SelectedDatasetType, 'datasetId'> &
   Partial<Omit<SelectedDatasetType, 'datasetId'>>;
@@ -27,9 +20,6 @@ const escapeXml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 
-export const filterAgentLoopCoreDocumentFiles = (files: AgentLoopCoreInputFile[] = []) =>
-  files.filter((file) => file.type === ChatFileTypeEnum.file);
-
 /**
  * 生成当前输入文件的模型可见提示。
  * 文档可通过 read_files 读取；其他多模态文件同时保留 URL，供模型或工具引用。
@@ -45,10 +35,10 @@ export const buildAgentLoopCoreInputFilesPrompt = (files: AgentLoopCoreInputFile
 ${files
   .map(
     (file) => `<file>
-<id>${escapeXml(file.id)}</id>
 <name>${escapeXml(file.name)}</name>
 <type>${escapeXml(file.type)}</type>
 <url>${escapeXml(file.url)}</url>
+${file.sandboxPath ? `<sandboxPath>${escapeXml(file.sandboxPath)}</sandboxPath>` : ''}
 </file>`
   )
   .join('\n')}`;
@@ -134,6 +124,13 @@ ${currentWorkingDirectory ? `当前 sandbox 工作目录: ${currentWorkingDirect
  * 生成当前用户消息内的动态上下文提醒。
  * 该内容是 user message 的一部分，不是 system role prompt；历史消息只应注入稳定文件片段。
  */
+export type AgentLoopCoreUserReminderContext = {
+  skillInfos?: DeployedSkillInfo[];
+  selectedDataset?: AgentLoopCoreSelectedDatasetContext[];
+  currentTime?: string;
+  currentWorkingDirectory?: string;
+};
+
 export const buildAgentLoopCoreUserReminderInput = ({
   query = '',
   skillInfos,
@@ -141,13 +138,9 @@ export const buildAgentLoopCoreUserReminderInput = ({
   selectedDataset,
   currentTime,
   currentWorkingDirectory
-}: {
+}: AgentLoopCoreUserReminderContext & {
   query?: string;
-  skillInfos?: DeployedSkillInfo[];
   filesInfo?: AgentLoopCoreInputFile[];
-  selectedDataset?: AgentLoopCoreSelectedDatasetContext[];
-  currentTime?: string;
-  currentWorkingDirectory?: string;
 }) => {
   const reminder = [
     buildAgentLoopCoreSkillsPrompt(skillInfos),

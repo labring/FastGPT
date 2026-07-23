@@ -133,6 +133,9 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mocks.logger,
   LogCategories: {
+    INFRA: {
+      FILE: 'file'
+    },
     MODULE: {
       AI: {
         AGENT: 'agent'

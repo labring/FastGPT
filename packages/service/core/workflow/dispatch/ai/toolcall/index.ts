@@ -10,6 +10,7 @@ import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
+import { readWorkflowFileBuffer } from '../../../utils/context';
 import {
   createAgentSandboxPermissionDeniedError,
   getRunningSandboxId,
@@ -36,7 +37,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     runtimeNodes,
     runtimeEdges,
     histories,
-    requestOrigin,
     chatConfig,
     lastInteractive,
     runningUserInfo,
@@ -75,10 +75,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const useVideo = aiChatVideo && toolModel.video;
     const chatHistories = getAgentLoopHistories(history, histories);
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
-    const fileLinks =
-      !fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0
-        ? undefined
-        : rawFileLinks;
+    const parseHistoryFiles = !!fileUrlInput?.value?.length;
+    const fileLinks = parseHistoryFiles ? rawFileLinks : undefined;
 
     props.params.aiChatVision = aiChatVision && toolModel.vision;
     props.params.aiChatAudio = useAudio;
@@ -97,18 +95,17 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     // 交互恢复入口会由子工具继续接管，父 ToolCall 节点本轮不再作为入口节点。
     props.node.isEntry = false;
 
-    const { messages, allFiles, currentInputFiles } = await useToolMessages({
+    const { messages, currentInputFiles } = await useToolMessages({
       defaultSystemPrompt: toolModel.defaultSystemChatPrompt,
       systemPrompt,
       chatHistories,
       responseChatItemId,
       userChatInput,
       fileLinks,
+      parseHistoryFiles,
       lastInteractive,
       isEntry,
       chatConfig,
-      requestOrigin,
-      runningUserInfo,
       useSandbox
     });
 
@@ -127,6 +124,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
               sourceId: props.runningAppInfo.sourceId,
               userId: props.uid,
               chatId: props.chatId,
+              readInputFile: (url) => readWorkflowFileBuffer({ url }),
               files: currentInputFiles.map((file) => ({
                 path: file.sandboxPath!,
                 url: file.url
@@ -173,7 +171,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
       return runToolCall({
         ...props,
-        allFiles,
         currentInputFiles,
         sandboxClient,
         runtimeNodes,

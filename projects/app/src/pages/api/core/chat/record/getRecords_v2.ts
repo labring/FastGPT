@@ -91,7 +91,10 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   });
 
   // Presign file urls
-  await addPreviewUrlToChatItems(result.histories, isPlugin ? 'workflowTool' : 'chatFlow');
+  result.histories = await addPreviewUrlToChatItems(
+    result.histories,
+    isPlugin ? 'workflowTool' : 'chatFlow'
+  );
 
   // Remove important information
   if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {

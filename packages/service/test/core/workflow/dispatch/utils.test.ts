@@ -38,6 +38,7 @@ vi.mock('@fastgpt/service/core/workflow/utils', () => ({
 const mockMongoAppFindOne = vi.fn();
 const mockMongoAppFind = vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) }));
 vi.mock('@fastgpt/service/core/app/schema', () => ({
+  AppCollectionName: 'apps',
   MongoApp: {
     findOne: (...args: any[]) => mockMongoAppFindOne(...args),
     find: (...args: any[]) => mockMongoAppFind(...args)
@@ -811,7 +812,7 @@ describe('WorkflowVariableState file store conversion', () => {
     ]);
   });
 
-  it('should convert runtime urls to file store values when file metadata is provided', async () => {
+  it('should preserve private file metadata when updating with its runtime url', async () => {
     const state = await createFileVariableState({
       files: [
         {

@@ -49,16 +49,14 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
-import { buildQueryUrlFileMap, buildQueryUrlTypeMap, runWithContext } from '../utils/context';
+import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
 import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
@@ -77,6 +75,7 @@ import {
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
+import { prepareWorkflowFileContext } from '../utils/fileContext';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -97,6 +96,10 @@ type Props = Omit<
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
   agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
+  /** 已在持久化前计算完成的用户级 Workflow 文件数量上限。 */
+  maxFileAmount: number;
+  /** 已按团队配置优先、系统配置兜底计算完成的单文件读取上限。 */
+  maxBytesPerFile: number;
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
@@ -134,7 +137,6 @@ export async function dispatchWorkFlow({
     apiVersion
   } = data;
   const responseChatItemId = data.responseChatItemId;
-
   if (stream && res && !isWorkflowSseResponseInitialized(res)) {
     // HTTP SSE 响应必须由调用入口提前初始化，dispatch 只执行 workflow，不隐式管理响应协议。
     return Promise.reject(
@@ -143,26 +145,38 @@ export async function dispatchWorkFlow({
   }
   const chatSource = getWorkflowSource(runningAppInfo);
 
-  // Check url valid
-  const invalidInput = query.some((item) => {
-    if ('file' in item && item.file?.url) {
-      if (!validateFileUrlDomain(item.file.url)) {
-        return true;
-      }
-    }
-  });
-  if (invalidInput) {
-    logger.info('Workflow run blocked due to invalid file url');
-    return Promise.reject(new UserError('Invalid file url'));
-  }
-
   /* Init function */
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
-  const getPreviewUrl = createChatFilePreviewUrlGetter();
+  const {
+    fileContext,
+    fileRegistrar,
+    getPreviewUrl,
+    query: runtimeQuery,
+    histories: preparedHistories
+  } = await prepareWorkflowFileContext({
+    query,
+    histories,
+    scope: {
+      sourceType: runningAppInfo.sourceType,
+      sourceId: runningAppInfo.sourceId,
+      uid: data.uid,
+      chatId
+    },
+    maxFileAmount: data.maxFileAmount,
+    maxBytesPerFile: data.maxBytesPerFile
+  });
+  const getHistoryPreviewUrl = async (key: string) => {
+    try {
+      return await getPreviewUrl(key);
+    } catch (error) {
+      if (!(error instanceof UserError)) throw error;
+      logger.warn('Skip unavailable workflow history file', { key, message: error.message });
+    }
+  };
 
-  const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
+  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
     (() => {
       if (lastInteractive?.usageId) {
@@ -186,13 +200,8 @@ export async function dispatchWorkFlow({
       }
       return usageId;
     })(),
-    // Add preview url to chat items
-    addPreviewUrlToChatItems(histories, 'chatFlow'),
-    // Add preview url to query
-    ...query.map(async (item) => {
-      if (!item.file?.key) return;
-      item.file.url = await getPreviewUrl(item.file.key);
-    }),
+    // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
+    addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
     // Remove stopping sign
     delAgentRuntimeStopSign({
       ...chatSource,
@@ -203,20 +212,25 @@ export async function dispatchWorkFlow({
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
 
-  // 私有文件已恢复为无后缀短链；进入节点调度前保留类型和原始文件名等媒体元数据。
-  const queryUrlTypeMap = buildQueryUrlTypeMap(query);
-  const queryUrlFileMap = buildQueryUrlFileMap(query);
-
   const variableState = await WorkflowVariableState.create({
     timezone,
     runningAppInfo,
     uid: data.uid,
     chatId,
     responseChatItemId,
-    histories,
+    histories: runtimeHistories,
     variablesConfig: data.chatConfig?.variables,
     inputVariables: data.variables,
-    externalVariables: externalProvider.externalWorkflowVariables
+    externalVariables: externalProvider.externalWorkflowVariables,
+    maxFileAmount: data.maxFileAmount,
+    resolveInputFile: async (file) => {
+      const ref = await fileRegistrar.registerInputFile({
+        file,
+        source: 'variable'
+      });
+      if (!ref) throw new UserError('Invalid workflow variable file');
+      return ref.modelUrl;
+    }
   });
 
   // Stop sign(没有 apiVersion，说明不会有暂停)
@@ -262,9 +276,9 @@ export async function dispatchWorkFlow({
   return new Promise((resolve, reject) => {
     runWithContext(
       {
-        queryUrlTypeMap,
-        queryUrlFileMap,
-        mcpClientMemory: {}
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
       },
       (ctx) => {
         runWorkflow({
@@ -272,8 +286,8 @@ export async function dispatchWorkFlow({
           responseChatItemId,
           nodeResponseSink,
           checkIsStopping,
-          query,
-          histories,
+          query: runtimeQuery,
+          histories: runtimeHistories,
           timezone,
           externalProvider,
           variableState,

@@ -5,14 +5,16 @@
  */
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import mime from 'mime';
-import { pickOutboundAxios } from '../../../../common/api/axios';
 import type { SandboxClient } from './runtime/client';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
+import { readExternalFileBuffer } from '../../../../common/file/read/external';
 
 export type SandboxUrlFile = {
   path: string;
   url: string;
 };
+
+export type SandboxInputFileReader = (url: string) => Promise<Buffer>;
 
 export type SandboxFileContent = {
   content: Buffer;
@@ -39,25 +41,30 @@ const isWithinSandboxWorkspace = (path: string, workDirectory: string) => {
   return path === workspace || path.startsWith(`${workspace}/`);
 };
 
+/** 读取准备写入 Sandbox 的远程文件，禁止相对 URL 回环访问本机 API。 */
+export const readSandboxUrlFile = async (url: string) => {
+  return (await readExternalFileBuffer({ url })).buffer;
+};
+
 /**
  * 将远程 URL 文件写入已存在的 sandbox 实例。
  *
  * 这里不负责 sandbox 生命周期，只统一处理下载和 writeFiles。
  */
-export async function writeUrlFilesToSandbox(sandbox: ISandbox, files: SandboxUrlFile[]) {
+export async function writeUrlFilesToSandbox(
+  sandbox: ISandbox,
+  files: SandboxUrlFile[],
+  readInputFile: SandboxInputFileReader = readSandboxUrlFile
+) {
   const writeFileTasks: Promise<FileWriteEntry>[] = [];
 
   for (const { path, url } of files) {
     if (!path) continue;
     writeFileTasks.push(
-      pickOutboundAxios(url)
-        .get<ArrayBuffer>(url, {
-          responseType: 'arraybuffer'
-        })
-        .then((response) => ({
-          path,
-          data: response.data
-        }))
+      readInputFile(url).then((data) => ({
+        path,
+        data
+      }))
     );
   }
 

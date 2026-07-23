@@ -124,7 +124,6 @@ describe('dispatchRunTools file context', () => {
     useToolNodeListMock.mockReturnValue([]);
     useToolMessagesMock.mockResolvedValue({
       messages: [],
-      allFiles: new Map(),
       currentInputFiles: []
     });
     getSandboxClientMock.mockResolvedValue({
@@ -152,7 +151,8 @@ describe('dispatchRunTools file context', () => {
 
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileLinks: undefined
+        fileLinks: undefined,
+        parseHistoryFiles: false
       })
     );
     expect(runToolCallMock).toHaveBeenCalledWith(
@@ -187,7 +187,8 @@ describe('dispatchRunTools file context', () => {
 
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileLinks: ['/current.pdf']
+        fileLinks: ['/current.pdf'],
+        parseHistoryFiles: true
       })
     );
     expect(runToolCallMock).toHaveBeenCalledWith(
@@ -231,10 +232,8 @@ describe('dispatchRunTools file context', () => {
     getSandboxClientMock.mockResolvedValueOnce(sandboxClient);
     useToolMessagesMock.mockResolvedValueOnce({
       messages: [],
-      allFiles: new Map(),
       currentInputFiles: [
         {
-          id: 'file_1',
           name: 'a.pdf',
           url: 'https://files/a.pdf',
           sandboxPath: '/workspace/a.pdf'
@@ -257,6 +256,7 @@ describe('dispatchRunTools file context', () => {
       sourceId: createProps().runningAppInfo.sourceId,
       userId: 'user_1',
       chatId: 'chat_1',
+      readInputFile: expect.any(Function),
       files: [
         {
           path: '/workspace/a.pdf',

@@ -222,9 +222,9 @@ export const serviceEnv = createEnv({
     TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
 
     // ==================== 域名与前端 ====================
-    FE_DOMAIN: UrlSchema.optional().meta({
+    FE_DOMAIN: UrlSchema.meta({
       description:
-        '前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。'
+        '客户端访问 FastGPT 时使用的地址（由协议、主机和可选端口组成），用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。'
     }),
     FILE_DOMAIN: UrlSchema.optional().meta({
       description:

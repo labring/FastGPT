@@ -33,7 +33,6 @@ import {
 import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
-import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
@@ -105,7 +104,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       interactive?: TChildrenResponse;
       stop?: boolean;
       errorMessage?: string;
-      fileRefs?: SandboxFileRef[];
       metadata?: unknown;
     }>;
   }) => {
@@ -133,7 +131,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       assistantMessages,
       usages,
       errorMessage: result.errorMessage,
-      fileRefs: result.fileRefs,
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
@@ -296,7 +293,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
                 response: sandboxResult.response,
                 assistantMessages: [],
                 usages: [],
-                fileRefs: sandboxResult.fileRefs,
                 errorMessage: sandboxResult.success ? undefined : sandboxResult.response
               };
             }
@@ -308,7 +304,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   }
 
   if (runtime.systemTools?.readFile?.enabled) {
-    const readFileTool = createReadFilesTool();
+    const readFileTool = createReadFilesTool({
+      maxFileAmount: runtime.systemTools.readFile.maxFileAmount
+    });
     tools.push({
       name: readFileTool.function.name,
       label: readFileTool.function.name,

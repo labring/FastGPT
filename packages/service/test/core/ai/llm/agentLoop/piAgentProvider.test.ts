@@ -713,6 +713,7 @@ describe('runPiAgentLoop', () => {
           ask: { enabled: true },
           readFile: {
             enabled: true,
+            maxFileAmount: 20,
             execute: vi.fn()
           },
           datasetSearch: {

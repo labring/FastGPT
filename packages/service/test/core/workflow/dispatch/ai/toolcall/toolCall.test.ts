@@ -3,12 +3,13 @@ import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
-import { runToolCall } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
+import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { dispatchReadFileToolMock, getSandboxToolInfoMock, runAgentLoopMock, runWorkflowMock } =
+const { dispatchWorkflowReadFilesMock, getSandboxToolInfoMock, runAgentLoopMock, runWorkflowMock } =
   vi.hoisted(() => ({
-    dispatchReadFileToolMock: vi.fn(),
+    dispatchWorkflowReadFilesMock: vi.fn(),
     getSandboxToolInfoMock: vi.fn(),
     runAgentLoopMock: vi.fn(),
     runWorkflowMock: vi.fn()
@@ -38,20 +39,9 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: runWorkflowMock
 }));
 
-vi.mock(
-  '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file',
-  async (importOriginal) => {
-    const original =
-      await importOriginal<
-        typeof import('@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file')
-      >();
-
-    return {
-      ...original,
-      dispatchReadFileTool: dispatchReadFileToolMock
-    };
-  }
-);
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/readFiles', () => ({
+  dispatchWorkflowReadFiles: dispatchWorkflowReadFilesMock
+}));
 
 const createProps = (overrides = {}) =>
   ({
@@ -110,10 +100,20 @@ const createProps = (overrides = {}) =>
       model: 'gpt-4',
       name: 'GPT-4'
     },
-    allFiles: new Map(),
     currentInputFiles: [],
     ...overrides
   }) as any;
+
+const runToolCall: typeof runToolCallWithoutContext = (props) =>
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+      } as any
+    },
+    () => runToolCallWithoutContext(props)
+  );
 
 const createLoopResult = ({
   usages = [
@@ -568,20 +568,27 @@ describe('runToolCall compression node responses', () => {
     expect(sandboxFlowResponse.flowUsages).toEqual([]);
   });
 
-  it('handles invalid system read-file ids without throwing in the adapter', async () => {
-    dispatchReadFileToolMock.mockResolvedValue({
-      response: '<file><id>missing</id><content>Load file error</content></file>',
+  it('passes known and dynamically generated URLs directly to read_files', async () => {
+    dispatchWorkflowReadFilesMock.mockResolvedValue({
+      response: JSON.stringify([
+        {
+          name: 'known.pdf',
+          content: 'known content'
+        },
+        {
+          name: 'https://files/missing.pdf',
+          content: '',
+          error: 'Load file error'
+        }
+      ]),
       usages: [],
-      flowResponse: {
-        flowResponses: [
-          {
-            id: 'call_read',
-            nodeId: 'call_read',
-            moduleName: 'File parse'
-          }
-        ],
-        flowUsages: [],
-        runTimes: 0
+      nodeResponse: {
+        moduleType: FlowNodeTypeEnum.readFiles,
+        moduleName: 'File parse',
+        readFiles: [
+          { name: 'known.pdf', url: 'https://files/known.pdf' },
+          { name: 'https://files/missing.pdf', url: 'https://files/missing.pdf' }
+        ]
       }
     });
     runAgentLoopMock.mockImplementation(async (options) => {
@@ -595,13 +602,24 @@ describe('runToolCall compression node responses', () => {
         type: 'function',
         function: {
           name: 'read_files',
-          arguments: '{"ids":["known","missing"]}'
+          arguments: '{"urls":["https://files/known.pdf","https://files/missing.pdf"]}'
         }
       };
       const fileResult = await options.runtime.systemTools.readFile.execute({
         call,
         messages: []
       });
+      expect(JSON.parse(fileResult.response)).toEqual([
+        {
+          name: 'known.pdf',
+          content: 'known content'
+        },
+        {
+          name: 'https://files/missing.pdf',
+          content: '',
+          error: 'Load file error'
+        }
+      ]);
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
@@ -615,28 +633,11 @@ describe('runToolCall compression node responses', () => {
       return createLoopResult();
     });
 
-    const result = await runToolCall(
-      createProps({
-        allFiles: new Map([
-          ['known', { id: 'known', name: 'known.pdf', url: 'https://files/known.pdf' }]
-        ])
-      })
-    );
+    const result = await runToolCall(createProps());
 
-    expect(dispatchReadFileToolMock).toHaveBeenCalledWith(
+    expect(dispatchWorkflowReadFilesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        files: [
-          {
-            id: 'known',
-            name: 'known.pdf',
-            url: 'https://files/known.pdf'
-          },
-          {
-            id: 'missing',
-            url: ''
-          }
-        ],
-        toolCallId: 'call_read'
+        files: [{ url: 'https://files/known.pdf' }, { url: 'https://files/missing.pdf' }]
       })
     );
     expect(result.toolDispatchFlowResponses[0].flowResponses[0]).toEqual(
@@ -847,59 +848,5 @@ describe('runToolCall compression node responses', () => {
         ]
       })
     ]);
-  });
-
-  it('attaches internal Sandbox file refs to the persisted tool response', async () => {
-    const call = {
-      id: 'call_file',
-      type: 'function',
-      function: {
-        name: 'sandbox_get_file_url',
-        arguments: '{"paths":["report.csv"]}'
-      }
-    };
-    const fileRefs = [
-      {
-        key: 'chat/app/app_1/user_1/chat_1/report.csv',
-        filename: 'report.csv',
-        url: 'https://files/report'
-      }
-    ];
-    runAgentLoopMock.mockImplementation(async (options) => {
-      options.runtime.emitEvent({
-        type: 'tool_run_end',
-        call,
-        rawResponse: '[{"fileUrl":"https://files/report","filename":"report.csv"}]',
-        response: '[{"fileUrl":"https://files/report","filename":"report.csv"}]',
-        seconds: 0.1,
-        fileRefs
-      });
-
-      return {
-        ...createLoopResult(),
-        assistantMessages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            content: null,
-            tool_calls: [call]
-          },
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: call.id,
-            content: '[{"fileUrl":"https://files/report","filename":"report.csv"}]'
-          }
-        ]
-      };
-    });
-
-    const result = await runToolCall(createProps());
-
-    expect(result.assistantResponses[0].tools?.[0]).toEqual(
-      expect.objectContaining({
-        id: call.id,
-        functionName: call.function.name,
-        fileRefs
-      })
-    );
   });
 });

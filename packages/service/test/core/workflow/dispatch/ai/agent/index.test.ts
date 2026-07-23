@@ -8,8 +8,23 @@ import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { Readable } from 'node:stream';
+
+const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
+  runWithWorkflowContext(
+    {
+      ...value,
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+        resolve: () => undefined,
+        resolveChatFile: () => undefined,
+        getIdentity: () => undefined
+      } as any
+    },
+    fn
+  );
 
 const {
   runAgentLoopMock,
@@ -104,7 +119,7 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
 
   return {
     ...original,
-    pickOutboundAxios: () => mockClient
+    axios: mockClient
   };
 });
 
@@ -146,7 +161,7 @@ const createProps = () =>
       inputs: [
         {
           key: NodeInputKeyEnum.fileUrlList,
-          value: ['/current.pdf']
+          value: ['https://files.example.com/current.pdf']
         }
       ]
     },
@@ -163,7 +178,7 @@ const createProps = () =>
           files: [
             {
               name: 'old.pdf',
-              url: '/old.pdf',
+              url: 'https://files.example.com/old.pdf',
               type: ChatFileTypeEnum.file
             }
           ]
@@ -180,7 +195,7 @@ const createProps = () =>
       files: [
         {
           name: 'current.pdf',
-          url: '/current.pdf',
+          url: 'https://files.example.com/current.pdf',
           type: ChatFileTypeEnum.file
         }
       ]
@@ -233,7 +248,7 @@ const createProps = () =>
       systemPrompt: 'system prompt',
       userChatInput: '当前问题',
       history: 6,
-      fileUrlList: ['/current.pdf'],
+      fileUrlList: ['https://files.example.com/current.pdf'],
       agent_selectedTools: [],
       skills: [],
       agent_datasetParams: {
@@ -252,7 +267,6 @@ const createProps = () =>
     }
   }) as any;
 
-const getEditSkillsRootPath = () => getSandboxRuntimeProfile().skillsRootPath;
 const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
@@ -271,7 +285,8 @@ describe('dispatchRunAgent user context', () => {
       stderr: ''
     });
     axiosGetMock.mockResolvedValue({
-      data: new ArrayBuffer(1)
+      data: Readable.from([Buffer.from('a')]),
+      headers: {}
     });
     getAgentRuntimeToolsMock.mockResolvedValue([]);
     getSandboxClientMock.mockResolvedValue({
@@ -320,10 +335,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/current.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       () => {
@@ -336,13 +347,40 @@ describe('dispatchRunAgent user context', () => {
     const historyText = getMessageTextForTest(loopInput.messages[0].content);
     const currentText = getMessageTextForTest(loopInput.messages[1].content);
     expect(loopInput.messages.map((message: any) => message.role)).toEqual(['user', 'user']);
-    expect(historyText).toContain('<id>history_human_1-0</id>');
-    expect(currentText).toContain('<id>current_ai_1-0</id>');
+    expect(historyText).toContain('<url>https://files.example.com/old.pdf</url>');
+    expect(currentText).toContain('<url>https://files.example.com/current.pdf</url>');
+    expect(historyText).not.toContain('<id>');
+    expect(currentText).not.toContain('<id>current_ai_1-');
     expect(historyText).not.toContain('## 知识库');
     expect(historyText).not.toContain('## 背景信息');
     expect(currentText).toContain('## 知识库');
     expect(currentText).toContain('## 背景信息');
     expect(currentText).toContain('当前问题');
+  });
+
+  it('removes history files when the node file input is not bound', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.node.inputs = [];
+
+    let result: any;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    const historyText = getMessageTextForTest(loopInput.messages[0].content);
+    const currentText = getMessageTextForTest(loopInput.messages[1].content);
+
+    expect(historyText).toBe('上一轮问题');
+    expect(historyText).not.toContain('https://files.example.com/old.pdf');
+    expect(currentText).toContain('https://files.example.com/current.pdf');
   });
 
   it('resolves PromptEditor tool references before building the agent system prompt', async () => {
@@ -377,7 +415,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -399,7 +436,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -435,10 +471,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/current.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       () => {
@@ -498,10 +530,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/current.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       () => {
@@ -526,10 +554,6 @@ describe('dispatchRunAgent user context', () => {
     let result: any;
     runWithContext(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/current.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       () => {
@@ -564,7 +588,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -606,7 +629,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -652,7 +674,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -699,7 +720,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -775,7 +795,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -889,7 +908,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -969,7 +987,6 @@ describe('dispatchRunAgent user context', () => {
     let resultPromise: Promise<any>;
     runWithContext(
       {
-        queryUrlTypeMap: {},
         mcpClientMemory: {}
       },
       () => {
@@ -1000,10 +1017,6 @@ describe('dispatchRunAgent user context', () => {
     let promise: any;
     runWithContext(
       {
-        queryUrlTypeMap: {
-          '/old.pdf': ChatFileTypeEnum.file,
-          '/current.pdf': ChatFileTypeEnum.file
-        },
         mcpClientMemory: {}
       },
       () => {

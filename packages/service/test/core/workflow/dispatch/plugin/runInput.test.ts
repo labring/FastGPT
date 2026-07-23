@@ -1,59 +1,77 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchPluginInput } from '@fastgpt/service/core/workflow/dispatch/plugin/runInput';
+import {
+  getWorkflowFileContext,
+  runWithContext
+} from '@fastgpt/service/core/workflow/utils/context';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const { mockCreateGetChatFileURL } = vi.hoisted(() => ({
-  mockCreateGetChatFileURL: vi.fn()
+const { mockRegisterInputFile, mockResolveInputFile } = vi.hoisted(() => ({
+  mockRegisterInputFile: vi.fn(),
+  mockResolveInputFile: vi.fn()
 }));
 
-type MockCreatePreviewOptions = {
-  expiredHours?: number;
+const pluginInputNode = {
+  inputs: [
+    {
+      key: 'upload',
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect]
+    }
+  ]
 };
-
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  getS3ChatSource: () => ({
-    createGetChatFileURL: mockCreateGetChatFileURL
-  }),
-  createChatFilePreviewUrlGetter: (options?: MockCreatePreviewOptions) => async (key: string) => {
-    const { url } = await mockCreateGetChatFileURL({
-      key,
-      external: true,
-      ...options
-    });
-    return url;
-  }
-}));
 
 describe('dispatchPluginInput', () => {
   beforeEach(() => {
-    mockCreateGetChatFileURL.mockReset();
+    mockRegisterInputFile.mockReset();
+    mockResolveInputFile.mockReset();
   });
 
-  it('presigns key-only file params before exposing plugin inputs', async () => {
-    mockCreateGetChatFileURL.mockResolvedValueOnce({
-      url: 'https://preview.example.com/doc.pdf'
-    });
-
-    const result = await dispatchPluginInput({
-      params: {
-        upload: [
-          {
-            type: ChatFileTypeEnum.file,
-            key: 'chat/files/doc.pdf',
-            name: 'doc.pdf'
-          },
-          {
-            type: ChatFileTypeEnum.image,
-            key: 'chat/files/image.png',
-            name: 'image.png',
-            url: 'https://existing.example.com/image.png'
-          }
-        ]
+  const runWithMockFileContext = <T>(fn: () => Promise<T>, maxFileAmount = 5) =>
+    runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext: {
+          resolveInputFile: mockResolveInputFile,
+          limits: { maxFileAmount }
+        } as any,
+        fileRegistrar: {
+          registerInputFile: mockRegisterInputFile
+        } as any
       },
-      query: []
-    } as any);
+      fn
+    );
+
+  it('registers file params in the current workflow file context', async () => {
+    mockRegisterInputFile
+      .mockResolvedValueOnce({ modelUrl: 'https://preview.example.com/doc.pdf' })
+      .mockResolvedValueOnce({ modelUrl: 'https://existing.example.com/image.png' });
+
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: [
+            {
+              type: ChatFileTypeEnum.file,
+              key: 'chat/files/doc.pdf',
+              name: 'doc.pdf'
+            },
+            {
+              type: ChatFileTypeEnum.image,
+              key: 'chat/files/image.png',
+              name: 'image.png',
+              url: 'https://existing.example.com/image.png'
+            }
+          ]
+        },
+        query: [],
+        node: pluginInputNode
+      } as any)
+    );
 
     expect(result.data?.upload).toEqual([
       'https://preview.example.com/doc.pdf',
@@ -61,23 +79,228 @@ describe('dispatchPluginInput', () => {
     ]);
     expect(result.data?.[NodeOutputKeyEnum.userFiles]).toEqual([]);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toEqual({});
-    expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
-      key: 'chat/files/doc.pdf',
-      external: true,
-      expiredHours: 1
+    expect(mockRegisterInputFile).toHaveBeenNthCalledWith(1, {
+      file: {
+        type: ChatFileTypeEnum.file,
+        key: 'chat/files/doc.pdf',
+        name: 'doc.pdf'
+      },
+      source: 'plugin'
+    });
+    expect(mockRegisterInputFile).toHaveBeenNthCalledWith(2, {
+      file: {
+        type: ChatFileTypeEnum.image,
+        key: 'chat/files/image.png',
+        name: 'image.png'
+      },
+      source: 'plugin'
     });
   });
 
-  it('keeps plugin-called string url arrays unchanged', async () => {
-    const result = await dispatchPluginInput({
-      params: {
-        upload: ['https://external.example.com/doc.pdf']
-      },
-      query: []
-    } as any);
+  it('registers plugin-called string url arrays in the current workflow file context', async () => {
+    mockRegisterInputFile.mockResolvedValueOnce({
+      modelUrl: 'https://external.example.com/doc.pdf'
+    });
+
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: ['https://external.example.com/doc.pdf']
+        },
+        query: [],
+        node: pluginInputNode
+      } as any)
+    );
 
     expect(result.data?.upload).toEqual(['https://external.example.com/doc.pdf']);
-    expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
+    expect(mockRegisterInputFile).toHaveBeenCalledWith({
+      file: {
+        type: ChatFileTypeEnum.file,
+        name: 'doc.pdf',
+        url: 'https://external.example.com/doc.pdf'
+      },
+      source: 'plugin'
+    });
+  });
+
+  it('only registers files within the fileSelect maxFiles limit', async () => {
+    mockRegisterInputFile
+      .mockResolvedValueOnce({ modelUrl: 'https://external.example.com/1.pdf' })
+      .mockResolvedValueOnce({ modelUrl: 'https://external.example.com/2.pdf' });
+
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: [
+            'https://external.example.com/1.pdf',
+            'https://external.example.com/2.pdf',
+            'https://external.example.com/3.pdf'
+          ]
+        },
+        query: [],
+        node: {
+          inputs: [
+            {
+              key: 'upload',
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+              maxFiles: 2
+            }
+          ]
+        }
+      } as any)
+    );
+
+    expect(result.data?.upload).toEqual([
+      'https://external.example.com/1.pdf',
+      'https://external.example.com/2.pdf'
+    ]);
+    expect(mockRegisterInputFile).toHaveBeenCalledTimes(2);
+  });
+
+  it('caps the fileSelect maxFiles limit by the workflow user quota', async () => {
+    mockRegisterInputFile.mockResolvedValue({
+      modelUrl: 'https://external.example.com/1.pdf'
+    });
+
+    const result = await runWithMockFileContext(
+      () =>
+        dispatchPluginInput({
+          params: {
+            upload: ['https://external.example.com/1.pdf', 'https://external.example.com/2.pdf']
+          },
+          query: [],
+          node: {
+            inputs: [
+              {
+                key: 'upload',
+                renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                maxFiles: 2
+              }
+            ]
+          }
+        } as any),
+      1
+    );
+
+    expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
+    expect(mockRegisterInputFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('silently drops files rejected by the workflow file capacity', async () => {
+    mockRegisterInputFile
+      .mockResolvedValueOnce({ modelUrl: 'https://external.example.com/1.pdf' })
+      .mockResolvedValueOnce(undefined);
+
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: ['https://external.example.com/1.pdf', 'https://external.example.com/2.pdf']
+        },
+        query: [],
+        node: pluginInputNode
+      } as any)
+    );
+
+    expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
+  });
+
+  it('reuses a file already selected in the current child context', async () => {
+    mockResolveInputFile.mockReturnValueOnce({
+      modelUrl: 'https://parent.example.com/signed.pdf'
+    });
+
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: ['https://parent.example.com/signed.pdf']
+        },
+        query: [],
+        node: pluginInputNode
+      } as any)
+    );
+
+    expect(result.data?.upload).toEqual(['https://parent.example.com/signed.pdf']);
+    expect(mockRegisterInputFile).not.toHaveBeenCalled();
+  });
+
+  it('uses the real workflow context for scope checks, signing and external registration', async () => {
+    const privateKey = 'chat/app/app-1/user-1/chat-1/report.pdf';
+    const signedUrl = 'https://files.example.com/signed-report';
+    const externalUrl = 'https://external.example.com/report.pdf';
+    const getPreviewUrl = vi.fn().mockResolvedValue(signedUrl);
+    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+      query: [],
+      histories: [],
+      scope: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
+        uid: 'user-1',
+        chatId: 'chat-1'
+      },
+      maxFileAmount: 20,
+      getPreviewUrl
+    });
+
+    await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext,
+        fileRegistrar
+      },
+      async () => {
+        const result = await dispatchPluginInput({
+          params: {
+            upload: [
+              {
+                type: ChatFileTypeEnum.file,
+                key: privateKey,
+                name: 'report.pdf'
+              },
+              externalUrl
+            ]
+          },
+          query: [],
+          node: pluginInputNode
+        } as any);
+
+        expect(result.data?.upload).toEqual([signedUrl, externalUrl]);
+        expect(getPreviewUrl).toHaveBeenCalledTimes(1);
+        expect(getWorkflowFileContext()?.resolve(signedUrl)?.source).toEqual({
+          type: 'chatObject',
+          objectKey: privateKey
+        });
+        expect(getWorkflowFileContext()?.resolve(externalUrl)?.source).toEqual({
+          type: 'externalHttp',
+          url: externalUrl
+        });
+
+        await expect(
+          dispatchPluginInput({
+            params: {
+              upload: [
+                {
+                  type: ChatFileTypeEnum.file,
+                  key: 'chat/app/app-1/user-1/other-chat/secret.pdf',
+                  name: 'secret.pdf'
+                }
+              ]
+            },
+            query: [],
+            node: pluginInputNode
+          } as any)
+        ).rejects.toThrow('does not belong to the current workflow');
+
+        await expect(
+          dispatchPluginInput({
+            params: {
+              upload: ['/api/system/file/d/relative-token']
+            },
+            query: [],
+            node: pluginInputNode
+          } as any)
+        ).rejects.toThrow('Invalid workflow plugin file URL');
+      }
+    );
   });
 
   it('keeps legacy userFiles from top-level query files', async () => {
@@ -96,7 +319,10 @@ describe('dispatchPluginInput', () => {
             content: 'ignored'
           }
         }
-      ]
+      ],
+      node: {
+        inputs: []
+      }
     } as any);
 
     expect(result.data?.[NodeOutputKeyEnum.userFiles]).toEqual([

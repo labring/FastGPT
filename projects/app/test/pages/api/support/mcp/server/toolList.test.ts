@@ -63,6 +63,10 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
+  getTeamPlanStatus: vi.fn(async () => ({ standard: { maxUploadFileCount: 20 } }))
+}));
+
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn()

@@ -75,7 +75,7 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
     [GetChatTypeEnum.home]: commonField
   };
 
-  const { total, histories } = await getChatItems({
+  const { total, histories: sourceHistories } = await getChatItems({
     sourceType,
     sourceId: resolvedSourceId,
     chatId,
@@ -87,7 +87,10 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   });
 
   // Presign file urls
-  await addPreviewUrlToChatItems(histories, isPlugin ? 'workflowTool' : 'chatFlow');
+  const histories = await addPreviewUrlToChatItems(
+    sourceHistories,
+    isPlugin ? 'workflowTool' : 'chatFlow'
+  );
 
   histories.forEach((item) => {
     // Remove important information

@@ -238,7 +238,7 @@ describe('stream resume api', () => {
       uid: 'user-test',
       showCite: true
     } as any);
-    vi.mocked(addPreviewUrlToChatItems).mockResolvedValue(undefined);
+    vi.mocked(addPreviewUrlToChatItems).mockImplementation(async (histories) => histories);
   });
 
   it('should replay history in batches and then continue with live stream until done', async () => {

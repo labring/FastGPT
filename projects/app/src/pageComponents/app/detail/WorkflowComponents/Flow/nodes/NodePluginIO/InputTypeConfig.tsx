@@ -48,6 +48,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
+import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const InputTypeConfig = ({
   form,
@@ -121,9 +122,12 @@ const InputTypeConfig = ({
       : undefined;
 
   const maxFiles = watch('maxFiles') ?? 5;
-  // 文件数量限制：团队套餐 || 系统配置 || 默认值
+  // 模块可配置上限不能超过用户配额，额外保留节点配置的 50 个上限。
   const maxSelectFiles = Math.min(
-    teamPlanStatus?.standard?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+    getUserFileAmountLimit({
+      teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
+      systemMaxFileAmount: feConfigs.uploadFileMaxAmount
+    }),
     50
   );
   const canSelectFile = watch('canSelectFile') ?? true;

@@ -168,7 +168,8 @@ describe('sandbox toolCall index', () => {
     );
     expect(fileApplicationMock.writeUrlFilesToSandbox).toHaveBeenCalledWith(
       sandbox.provider,
-      files
+      files,
+      undefined
     );
   });
 

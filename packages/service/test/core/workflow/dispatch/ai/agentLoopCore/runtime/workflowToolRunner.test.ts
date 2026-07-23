@@ -108,7 +108,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     const call = createCall({
       id: 'call_read',
       name: 'read_files',
-      args: '{"ids":["file_1","missing"]}'
+      args: '{"urls":["https://files.example.com/file_1","https://files.example.com/missing"]}'
     });
 
     const result = await runTool({ call });

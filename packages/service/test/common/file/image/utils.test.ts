@@ -385,12 +385,12 @@ describe('getImageBase64', () => {
 
 describe('addEndpointToImageUrl', () => {
   beforeEach(() => {
-    vi.stubEnv('FE_DOMAIN', undefined);
+    vi.stubEnv('FE_DOMAIN', 'https://example.com');
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', undefined);
   });
 
   afterEach(() => {
-    vi.stubEnv('FE_DOMAIN', undefined);
+    vi.stubEnv('FE_DOMAIN', 'https://example.com');
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', undefined);
   });
 
@@ -398,12 +398,6 @@ describe('addEndpointToImageUrl', () => {
     const { addEndpointToImageUrl } = await loadUtilsModule();
     return addEndpointToImageUrl;
   };
-
-  it('should return text unchanged when FE_DOMAIN is not set', async () => {
-    const addEndpointToImageUrl = await loadAddEndpointToImageUrl();
-    const text = '/api/system/img/abc123.png';
-    expect(addEndpointToImageUrl(text)).toBe(text);
-  });
 
   it('should prepend FE_DOMAIN to matching image URLs without subRoute', async () => {
     vi.stubEnv('FE_DOMAIN', 'https://example.com');

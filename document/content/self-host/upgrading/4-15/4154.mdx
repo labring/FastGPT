@@ -3,9 +3,21 @@ title: 'V4.15.4(进行中)'
 description: 'FastGPT V4.15.4 更新说明'
 ---
 
+## 📦 升级指南
+
+### 配置必填的 FE_DOMAIN
+
+FastGPT 服务启动时会校验 `FE_DOMAIN`。请将它配置为客户端访问 FastGPT 时使用的地址，该地址由协议、主机和可选端口组成。公网部署应填写客户端实际使用的公网访问地址；本地开发可使用 `http://localhost:3000`。
+
+```bash
+FE_DOMAIN=https://fastgpt.example.com
+```
+
 ## 🚀 新增内容
 
 ## ⚙️ 优化
+
+1. 工作流文件上下文管理，减少重复签发以及避免潜在安全问题。
 
 ## 🐛 修复
 

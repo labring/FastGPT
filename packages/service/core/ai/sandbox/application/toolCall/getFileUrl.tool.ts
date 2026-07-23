@@ -47,17 +47,11 @@ export const sandboxGetFileUrlTool = defineTool({
           external: true
         });
 
-        return {
-          responseFile: { fileUrl, filename },
-          fileRef: { key, filename, url: fileUrl }
-        };
+        return { fileUrl, filename };
       })
     );
 
-    return {
-      response: JSON.stringify(result.map((item) => item.responseFile)),
-      fileRefs: result.map((item) => item.fileRef)
-    };
+    return { response: JSON.stringify(result) };
   }
 });
 

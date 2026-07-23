@@ -19,9 +19,14 @@ import { serverGetWorkflowToolRunUserQuery } from '../../../../../../app/tool/wo
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
-import { WorkflowVariableState } from '../../../../utils/variables';
+import {
+  getWorkflowFileInputsFromValue,
+  getWorkflowFileVariableInputs,
+  WorkflowVariableState
+} from '../../../../utils/variables';
 import { getRuntimeNodeResponseSummary } from '../../../../utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -87,19 +92,6 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     name: appData.name,
     isChildApp: true
   };
-  const childrenVariableState = await WorkflowVariableState.create({
-    timezone: data.timezone,
-    runningAppInfo: childRunningAppInfo,
-    chatId: data.chatId,
-    responseChatItemId: data.responseChatItemId,
-    histories: [],
-    uid: data.uid,
-    variablesConfig: chatConfig.variables ?? [],
-    inputVariables: customAppVariables,
-    externalVariables: externalProvider?.externalWorkflowVariables,
-    sourceVariableState: variableState
-  });
-
   const runtimeNodes = rewriteNodeOutputByHistories(
     storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes))
   );
@@ -110,31 +102,53 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     flowUsages,
     runtimeNodeResponseSummary,
     workflowInteractiveResponse
-  } = await runWorkflow({
-    ...data,
-    runningAppInfo: {
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: String(appData._id),
-      name: appData.name,
-      teamId: String(appData.teamId),
-      tmbId: String(appData.tmbId),
-      isChildApp: true
-    },
-    runningUserInfo,
-    runtimeNodes,
-    runtimeEdges,
-    chatConfig,
-    histories: [],
-    variableState: childrenVariableState,
-    query: [
-      {
-        text: {
-          content: userChatInput
-        }
-      }
-    ],
-    stream: false,
-    workflowStreamResponse: undefined
+  } = await runWithDerivedWorkflowFileContext({
+    files: getWorkflowFileVariableInputs({
+      variablesConfig: chatConfig.variables ?? [],
+      inputVariables: customAppVariables
+    }),
+    fn: async ({ resolveInputFile }) => {
+      const childrenVariableState = await WorkflowVariableState.create({
+        timezone: data.timezone,
+        runningAppInfo: childRunningAppInfo,
+        chatId: data.chatId,
+        responseChatItemId: data.responseChatItemId,
+        histories: [],
+        uid: data.uid,
+        variablesConfig: chatConfig.variables ?? [],
+        inputVariables: customAppVariables,
+        externalVariables: externalProvider?.externalWorkflowVariables,
+        sourceVariableState: variableState,
+        resolveInputFile
+      });
+
+      return runWorkflow({
+        ...data,
+        runningAppInfo: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: String(appData._id),
+          name: appData.name,
+          teamId: String(appData.teamId),
+          tmbId: String(appData.tmbId),
+          isChildApp: true
+        },
+        runningUserInfo,
+        runtimeNodes,
+        runtimeEdges,
+        chatConfig,
+        histories: [],
+        variableState: childrenVariableState,
+        query: [
+          {
+            text: {
+              content: userChatInput
+            }
+          }
+        ],
+        stream: false,
+        workflowStreamResponse: undefined
+      });
+    }
   });
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
@@ -204,54 +218,24 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     name: appData.name,
     isChildApp: true
   };
-  const childrenVariableState = await WorkflowVariableState.create({
-    timezone: data.timezone,
-    runningAppInfo: childRunningAppInfo,
-    chatId: data.chatId,
-    responseChatItemId: data.responseChatItemId,
-    histories: [],
-    uid: data.uid,
-    variablesConfig: chatConfig.variables ?? [],
-    inputVariables: {},
-    externalVariables: externalProvider?.externalWorkflowVariables,
-    sourceVariableState: variableState
-  });
-  const runtimeVariables = childrenVariableState.toRuntimeRecord();
-  const runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)).map(
-    (node) => {
-      // Update plugin input value
-      if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-        return {
-          ...node,
-          showStatus: false,
-          inputs: node.inputs.map((input) => {
-            let val = customAppVariables[input.key] ?? input.value;
-            if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
-              val = anyValueDecrypt(val);
-            } else if (
-              input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-              Array.isArray(val) &&
-              customAppVariables[input.key]
-            ) {
-              customAppVariables[input.key] = val.map((item) =>
-                typeof item === 'string' ? item : item.url
-              );
-            }
-
-            return {
-              ...input,
-              value: val
-            };
-          })
-        };
-      }
-      return {
-        ...node,
-        showStatus: false
-      };
-    }
-  );
-  const runtimeEdges = storeEdges2RuntimeEdges(edges);
+  const childFileInputs = [
+    ...getWorkflowFileVariableInputs({
+      variablesConfig: chatConfig.variables ?? [],
+      inputVariables: {}
+    }),
+    ...nodes.flatMap((node) =>
+      node.flowNodeType === FlowNodeTypeEnum.pluginInput
+        ? node.inputs.flatMap((input) =>
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+              ? getWorkflowFileInputsFromValue(
+                  customAppVariables[input.key] ?? input.value,
+                  input.maxFiles
+                )
+              : []
+          )
+        : []
+    )
+  ];
 
   const outputFilterMap =
     nodes
@@ -266,32 +250,87 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     flowUsages,
     runtimeNodeResponseSummary,
     workflowInteractiveResponse
-  } = await runWorkflow({
-    ...data,
-    runningAppInfo: {
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: String(appData._id),
-      // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
-      name: appData.name,
-      teamId: appData.teamId || runningAppInfo.teamId,
-      tmbId: appData.tmbId || runningAppInfo.tmbId,
-      isChildApp: true
-    },
-    runningUserInfo,
-    runtimeNodes,
-    runtimeEdges,
-    chatConfig,
-    histories: [],
-    variableState: childrenVariableState,
-    query: serverGetWorkflowToolRunUserQuery({
-      pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
-      variables: {
-        ...runtimeVariables,
-        ...customAppVariables
-      }
-    }).value,
-    stream: false,
-    workflowStreamResponse: undefined
+  } = await runWithDerivedWorkflowFileContext({
+    files: childFileInputs,
+    fn: async ({ resolveInputFile, filterFiles }) => {
+      const filteredCustomAppVariables = { ...customAppVariables };
+      const childrenVariableState = await WorkflowVariableState.create({
+        timezone: data.timezone,
+        runningAppInfo: childRunningAppInfo,
+        chatId: data.chatId,
+        responseChatItemId: data.responseChatItemId,
+        histories: [],
+        uid: data.uid,
+        variablesConfig: chatConfig.variables ?? [],
+        inputVariables: {},
+        externalVariables: externalProvider?.externalWorkflowVariables,
+        sourceVariableState: variableState,
+        resolveInputFile
+      });
+      const runtimeVariables = childrenVariableState.toRuntimeRecord();
+      const runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)).map(
+        (node) => {
+          // Update plugin input value
+          if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+            return {
+              ...node,
+              showStatus: false,
+              inputs: node.inputs.map((input) => {
+                let val = filteredCustomAppVariables[input.key] ?? input.value;
+                if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+                  val = anyValueDecrypt(val);
+                } else if (
+                  input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+                  Array.isArray(val)
+                ) {
+                  val = filterFiles(val);
+                  filteredCustomAppVariables[input.key] = val.map((item: any) =>
+                    typeof item === 'string' ? item : item.url
+                  );
+                }
+
+                return {
+                  ...input,
+                  value: val
+                };
+              })
+            };
+          }
+          return {
+            ...node,
+            showStatus: false
+          };
+        }
+      );
+
+      return runWorkflow({
+        ...data,
+        runningAppInfo: {
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: String(appData._id),
+          // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
+          name: appData.name,
+          teamId: appData.teamId || runningAppInfo.teamId,
+          tmbId: appData.tmbId || runningAppInfo.tmbId,
+          isChildApp: true
+        },
+        runningUserInfo,
+        runtimeNodes,
+        runtimeEdges: storeEdges2RuntimeEdges(edges),
+        chatConfig,
+        histories: [],
+        variableState: childrenVariableState,
+        query: serverGetWorkflowToolRunUserQuery({
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
+          variables: {
+            ...runtimeVariables,
+            ...filteredCustomAppVariables
+          }
+        }).value,
+        stream: false,
+        workflowStreamResponse: undefined
+      });
+    }
   });
 
   const runtimeSummary = getRuntimeNodeResponseSummary({

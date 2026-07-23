@@ -10,10 +10,15 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { getFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
 
   const [urlInput, setUrlInput] = useState('');
   const values = useMemo(() => {
@@ -23,8 +28,12 @@ const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
     return [];
   }, [item.value]);
 
-  // 文件数量限制：节点配置的maxFiles || 团队套餐 || 默认值
-  const maxSelectFiles = item.maxFiles || 10;
+  const maxSelectFiles = getFileAmountLimit({
+    moduleMaxFileAmount: item.maxFiles,
+    defaultModuleMaxFileAmount: 5,
+    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
+    systemMaxFileAmount: feConfigs.uploadFileMaxAmount
+  });
   const isMaxSelected = values.length >= maxSelectFiles;
 
   const handleAddUrl = useCallback(

@@ -31,143 +31,126 @@ const hasChildrenResponse = (
   'childrenResponse' in interactive.params &&
   !!interactive.params.childrenResponse;
 
+/** 刷新历史消息中的服务端文件 URL，返回新 histories，不修改传入对象。 */
 export const addPreviewUrlToChatItems = async (
   histories: ChatItemMiniType[],
-  type: 'chatFlow' | 'workflowTool'
+  type: 'chatFlow' | 'workflowTool',
+  getPreviewUrl: (key: string) => Promise<string | undefined> = createChatFilePreviewUrlGetter()
 ) => {
-  const getPreviewUrl = createChatFilePreviewUrlGetter();
-  const sandboxUrlReplacements = new Map<string, string>();
+  async function addPreviewUrlToFileValue(file: ChatFileValueWithPreview) {
+    if (!file.key) return { ...file };
 
-  async function refreshSandboxToolFiles() {
-    await Promise.all(
-      histories.map(async (item) => {
-        if (item.obj !== ChatRoleEnum.AI) return;
+    const previewUrl = await getPreviewUrl(file.key);
+    if (previewUrl) {
+      return { ...file, url: previewUrl };
+    }
 
-        await Promise.all(
-          item.value.flatMap((value) =>
-            (value.tools ?? []).map(async (tool) => {
-              if (!tool.fileRefs?.length) return;
-
-              const replacements = await Promise.all(
-                tool.fileRefs.map(async (fileRef) => ({
-                  oldUrl: fileRef.url,
-                  newUrl: await getPreviewUrl(fileRef.key)
-                }))
-              );
-
-              replacements.forEach(({ oldUrl, newUrl }) => {
-                sandboxUrlReplacements.set(oldUrl, newUrl);
-                if (tool.response) {
-                  tool.response = tool.response.replaceAll(oldUrl, newUrl);
-                }
-              });
-
-              // fileRefs 只用于服务端持久化，不能进入历史接口或下一轮模型上下文。
-              delete tool.fileRefs;
-            })
-          )
-        );
-      })
-    );
-
-    if (sandboxUrlReplacements.size === 0) return;
-
-    histories.forEach((item) => {
-      if (item.obj !== ChatRoleEnum.AI) return;
-
-      item.value.forEach((value) => {
-        if (!value.text?.content) return;
-
-        let content = value.text.content;
-        sandboxUrlReplacements.forEach((newUrl, oldUrl) => {
-          content = content.replaceAll(oldUrl, newUrl);
-        });
-        value.text.content = content;
-      });
-    });
+    return;
   }
 
-  async function addPreviewUrlToFileValue(files: ChatFileValueWithPreview[]) {
-    await Promise.all(
-      files.map(async (file) => {
-        if (!file || typeof file !== 'object') return;
+  async function addPreviewUrlToValue(value: RuntimeValue) {
+    if (!Array.isArray(value)) return value;
 
-        if (!file.key) return;
-
-        file.url = await getPreviewUrl(file.key);
-      })
+    const files = await Promise.all(
+      value.map((file) =>
+        file && typeof file === 'object'
+          ? addPreviewUrlToFileValue(file as ChatFileValueWithPreview)
+          : file
+      )
     );
+    return files.filter((file) => file !== undefined);
   }
 
-  async function addToInteractive(interactive: WorkflowInteractiveResponseType) {
+  async function addToInteractive(
+    interactive: WorkflowInteractiveResponseType
+  ): Promise<WorkflowInteractiveResponseType> {
+    let params = interactive.params ? { ...interactive.params } : interactive.params;
+
     if (interactive.type === 'userInput' && Array.isArray(interactive.params?.inputForm)) {
-      await Promise.all(
-        interactive.params.inputForm.map(async (input) => {
-          if (input.type === FlowNodeInputTypeEnum.fileSelect) {
-            const files = formatFileValueList(input.value);
-            await addPreviewUrlToFileValue(files);
-          }
-        })
-      );
+      params = {
+        ...params,
+        inputForm: await Promise.all(
+          interactive.params.inputForm.map(async (input) => ({
+            ...input,
+            value:
+              input.type === FlowNodeInputTypeEnum.fileSelect
+                ? await addPreviewUrlToValue(input.value)
+                : input.value
+          }))
+        )
+      };
     }
 
     if (hasChildrenResponse(interactive)) {
-      await addToInteractive(interactive.params.childrenResponse);
+      params = {
+        ...params,
+        childrenResponse: await addToInteractive(interactive.params.childrenResponse)
+      };
     }
+
+    return { ...interactive, params } as WorkflowInteractiveResponseType;
   }
 
-  async function addToChatflow(item: ChatItemMiniType) {
-    await Promise.all(
-      item.value.map(async (value) => {
-        if ('file' in value && value.file && value.file.key) {
-          await addPreviewUrlToFileValue([value.file]);
-        }
-
-        if ('interactive' in value && value.interactive) {
-          await addToInteractive(value.interactive);
-        }
-      })
-    );
+  async function addToChatflow(item: ChatItemMiniType): Promise<ChatItemMiniType> {
+    return {
+      ...item,
+      value: await Promise.all(
+        item.value.map(async (value) => ({
+          ...value,
+          ...('file' in value && value.file
+            ? { file: await addPreviewUrlToFileValue(value.file) }
+            : {}),
+          ...('interactive' in value && value.interactive
+            ? { interactive: await addToInteractive(value.interactive) }
+            : {})
+        }))
+      )
+    } as ChatItemMiniType;
   }
 
-  async function addToWorkflowTool(item: ChatItemMiniType) {
-    if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) return;
+  async function addToWorkflowTool(item: ChatItemMiniType): Promise<ChatItemMiniType> {
+    if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) {
+      return { ...item, value: [...item.value] } as ChatItemMiniType;
+    }
 
-    await Promise.all(
-      item.value.map(async (value, index) => {
-        if (!('text' in value)) return;
-        const inputValueString = value.text?.content || '';
-        const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
+    return {
+      ...item,
+      value: await Promise.all(
+        item.value.map(async (value) => {
+          if (!('text' in value)) return { ...value };
+          const inputValueString = value.text?.content || '';
+          const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
 
-        await Promise.all(
-          parsedInputValue.map(async (input) => {
-            if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect)) {
-              return;
+          const nextInputValue = await Promise.all(
+            parsedInputValue.map(async (input) => {
+              if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect)) {
+                return { ...input };
+              }
+              return {
+                ...input,
+                value: await addPreviewUrlToValue(input.value)
+              };
+            })
+          );
+
+          return {
+            ...value,
+            text: {
+              ...value.text,
+              content: JSON.stringify(nextInputValue)
             }
-            const files = formatFileValueList(input.value);
-            await addPreviewUrlToFileValue(files);
-          })
-        );
-
-        item.value[index].text = {
-          ...value.text,
-          content: JSON.stringify(parsedInputValue)
-        };
-      })
-    );
+          };
+        })
+      )
+    } as ChatItemMiniType;
   }
 
-  // 先刷新工具产出文件，确保后续历史上下文不会继续引用过期链接。
-  await refreshSandboxToolFiles();
-
-  // Presign file urls
-  await Promise.all(
+  return Promise.all(
     histories.map(async (item) => {
       if (type === 'chatFlow') {
-        await addToChatflow(item);
-      } else if (type === 'workflowTool') {
-        await addToWorkflowTool(item);
+        return addToChatflow(item);
       }
+      return addToWorkflowTool(item);
     })
   );
 };

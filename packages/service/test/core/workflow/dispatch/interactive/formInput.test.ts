@@ -7,6 +7,7 @@ import {
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchFormInput } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const { mockCreateGetChatFileURL } = vi.hoisted(() => ({
   mockCreateGetChatFileURL: vi.fn()
@@ -96,5 +97,173 @@ describe('dispatchFormInput', () => {
       external: true,
       expiredHours: 1
     });
+  });
+
+  it('registers key and external fileSelect values in the workflow file context', async () => {
+    const registerInputFile = vi.fn(async ({ file }) => ({
+      modelUrl:
+        'key' in file
+          ? `https://preview.example.com/${file.key}`
+          : `https://registered.example.com/${file.name}`
+    }));
+
+    const result = await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileRegistrar: { registerInputFile } as any
+      },
+      () =>
+        dispatchFormInput({
+          histories: [{ obj: 'Human', value: [] }],
+          node: { isEntry: true },
+          params: {
+            [NodeInputKeyEnum.description]: 'upload',
+            [NodeInputKeyEnum.userInputForms]: [
+              {
+                key: 'upload',
+                label: 'upload',
+                type: FlowNodeInputTypeEnum.fileSelect,
+                value: [],
+                valueType: WorkflowIOValueTypeEnum.arrayString,
+                required: false
+              }
+            ]
+          },
+          query: [
+            {
+              text: {
+                content: JSON.stringify({
+                  upload: [
+                    { key: 'chat/app/app-1/user-1/chat-1/upload.png' },
+                    { url: 'https://external.example.com/report.pdf', name: 'report.pdf' }
+                  ]
+                })
+              }
+            }
+          ],
+          lastInteractive: { type: 'userInput' }
+        } as any)
+    );
+
+    expect(result.data?.upload).toEqual([
+      'https://preview.example.com/chat/app/app-1/user-1/chat-1/upload.png',
+      'https://registered.example.com/report.pdf'
+    ]);
+    expect(registerInputFile).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        source: 'interactive',
+        file: expect.objectContaining({ key: expect.any(String) })
+      })
+    );
+    expect(registerInputFile).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        source: 'interactive',
+        file: expect.objectContaining({ url: expect.any(String) })
+      })
+    );
+    expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
+  });
+
+  it('silently slices fileSelect values by the form maxFiles limit', async () => {
+    const registerInputFile = vi.fn(async ({ file }) => ({
+      modelUrl: 'url' in file ? file.url : undefined
+    }));
+
+    const result = await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileRegistrar: { registerInputFile } as any
+      },
+      () =>
+        dispatchFormInput({
+          histories: [{ obj: 'Human', value: [] }],
+          node: { isEntry: true },
+          params: {
+            [NodeInputKeyEnum.description]: 'upload',
+            [NodeInputKeyEnum.userInputForms]: [
+              {
+                key: 'upload',
+                label: 'upload',
+                type: FlowNodeInputTypeEnum.fileSelect,
+                value: [],
+                valueType: WorkflowIOValueTypeEnum.arrayString,
+                required: false,
+                maxFiles: 2
+              }
+            ]
+          },
+          query: [
+            {
+              text: {
+                content: JSON.stringify({
+                  upload: [
+                    'https://external.example.com/1.pdf',
+                    'https://external.example.com/2.pdf',
+                    'https://external.example.com/3.pdf'
+                  ]
+                })
+              }
+            }
+          ],
+          lastInteractive: { type: 'userInput' }
+        } as any)
+    );
+
+    expect(result.data?.upload).toEqual([
+      'https://external.example.com/1.pdf',
+      'https://external.example.com/2.pdf'
+    ]);
+    expect(registerInputFile).toHaveBeenCalledTimes(2);
+  });
+
+  it('caps the form maxFiles limit by the workflow user quota', async () => {
+    const registerInputFile = vi.fn(async ({ file }) => ({
+      modelUrl: 'url' in file ? file.url : undefined
+    }));
+
+    const result = await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext: { limits: { maxFileAmount: 1 } } as any,
+        fileRegistrar: { registerInputFile } as any
+      },
+      () =>
+        dispatchFormInput({
+          histories: [{ obj: 'Human', value: [] }],
+          node: { isEntry: true },
+          params: {
+            [NodeInputKeyEnum.description]: 'upload',
+            [NodeInputKeyEnum.userInputForms]: [
+              {
+                key: 'upload',
+                label: 'upload',
+                type: FlowNodeInputTypeEnum.fileSelect,
+                value: [],
+                valueType: WorkflowIOValueTypeEnum.arrayString,
+                required: false,
+                maxFiles: 2
+              }
+            ]
+          },
+          query: [
+            {
+              text: {
+                content: JSON.stringify({
+                  upload: [
+                    'https://external.example.com/1.pdf',
+                    'https://external.example.com/2.pdf'
+                  ]
+                })
+              }
+            }
+          ],
+          lastInteractive: { type: 'userInput' }
+        } as any)
+    );
+
+    expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
+    expect(registerInputFile).toHaveBeenCalledTimes(1);
   });
 });

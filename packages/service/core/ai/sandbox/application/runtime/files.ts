@@ -5,8 +5,10 @@
  */
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { pickOutboundAxios } from '../../../../../common/api/axios';
 import { getSafeSandboxInputFilename } from '../../utils';
+import { readSandboxUrlFile, type SandboxInputFileReader } from '../file';
+
+export type { SandboxInputFileReader } from '../file';
 
 export type SandboxInputFile = {
   name: string;
@@ -41,7 +43,11 @@ export const readSandboxPwd = async (sandboxClient: SandboxCommandClient) => {
  * 路径规则和通用 toolcall 保持一致：用户文件直接写入 user_files/<文件名>。
  * 这里直接消费 currentFiles，避免先构造中间 sandbox file 结构再二次遍历。
  */
-export const injectInputFilesToSandbox = async (sandbox: ISandbox, files: SandboxInputFile[]) => {
+export const injectInputFilesToSandbox = async (
+  sandbox: ISandbox,
+  files: SandboxInputFile[],
+  readInputFile: SandboxInputFileReader = readSandboxUrlFile
+) => {
   const writeFileTasks: Promise<FileWriteEntry>[] = [];
   const usedNames = new Map<string, number>();
 
@@ -49,14 +55,10 @@ export const injectInputFilesToSandbox = async (sandbox: ISandbox, files: Sandbo
     const filename = getSafeSandboxInputFilename(file.name, index, usedNames);
     const path = `${SANDBOX_USER_FILES_PATH}${filename}`;
     writeFileTasks.push(
-      pickOutboundAxios(file.url)
-        .get<ArrayBuffer>(file.url, {
-          responseType: 'arraybuffer'
-        })
-        .then((response) => ({
-          path,
-          data: response.data
-        }))
+      readInputFile(file.url).then((data) => ({
+        path,
+        data
+      }))
     );
   }
 

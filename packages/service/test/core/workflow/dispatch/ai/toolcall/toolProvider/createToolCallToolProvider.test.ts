@@ -2,6 +2,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolProvider';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { runWorkflowMock } = vi.hoisted(() => ({
@@ -25,50 +26,57 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
   }) as any;
 
 const createProvider = (overrides: Record<string, any> = {}) =>
-  createToolCallToolProvider({
-    messages: [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: 'hello'
-      }
-    ],
-    toolNodes: [createToolNode()],
-    useAgentSandbox: false,
-    lang: 'en' as any,
-    workflowProps: {
-      runningAppInfo: {
-        id: 'app_1'
-      },
-      uid: 'user_1',
-      chatId: 'chat_1',
-      runningUserInfo: {
-        teamId: 'team_1',
-        tmbId: 'tmb_1'
-      },
-      chatConfig: {},
-      usageId: 'usage_1'
-    } as any,
-    runtimeNodes: [
-      {
-        nodeId: 'search',
-        inputs: [
+  runWithContext(
+    {
+      mcpClientMemory: {},
+      fileContext: {
+        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+      } as any
+    },
+    () =>
+      createToolCallToolProvider({
+        messages: [
           {
-            key: 'q',
-            value: ''
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
           }
-        ]
-      }
-    ] as any,
-    runtimeEdges: [
-      {
-        target: 'search'
-      }
-    ] as any,
-    allFiles: new Map(),
-    fileUrlList: undefined,
-    cacheToolFlowResponse: vi.fn(),
-    ...overrides
-  });
+        ],
+        toolNodes: [createToolNode()],
+        useAgentSandbox: false,
+        lang: 'en' as any,
+        workflowProps: {
+          runningAppInfo: {
+            id: 'app_1'
+          },
+          uid: 'user_1',
+          chatId: 'chat_1',
+          runningUserInfo: {
+            teamId: 'team_1',
+            tmbId: 'tmb_1'
+          },
+          chatConfig: {},
+          usageId: 'usage_1'
+        } as any,
+        runtimeNodes: [
+          {
+            nodeId: 'search',
+            inputs: [
+              {
+                key: 'q',
+                value: ''
+              }
+            ]
+          }
+        ] as any,
+        runtimeEdges: [
+          {
+            target: 'search'
+          }
+        ] as any,
+        cacheToolFlowResponse: vi.fn(),
+        ...overrides
+      })
+  );
 
 describe('createToolCallToolProvider', () => {
   beforeEach(() => {
@@ -321,19 +329,8 @@ describe('createToolCallToolProvider', () => {
     });
   });
 
-  it('creates read file system executor from toolcall file context', async () => {
-    const provider = await createProvider({
-      allFiles: new Map([
-        [
-          'file_1',
-          {
-            id: 'file_1',
-            name: 'a.pdf',
-            url: 'https://files/a.pdf'
-          }
-        ]
-      ])
-    });
+  it('always creates the direct-URL read file system executor', async () => {
+    const provider = await createProvider();
 
     expect(provider.readFileExecutor).toBeDefined();
   });
