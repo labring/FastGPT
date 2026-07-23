@@ -1,118 +1,30 @@
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
-import type { UserChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import {
-  getWorkflowEntryNodeIds,
-  getMaxHistoryLimitFromNodes,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
-import { getAppLatestVersion } from '../../../core/app/version/controller';
-import { MongoApp } from '../../../core/app/schema';
-import { getChatItems } from '../../../core/chat/controller';
-import {
-  failChatRound,
-  finalizeChatRound,
-  type Props as SaveChatProps
-} from '../../../core/chat/saveChat';
-import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
-import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
-import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
-import { prepareWorkflowFileQuery } from '../../../core/workflow/utils/fileLimits';
-import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { authOutLinkLimit } from './auth';
-import { addOutLinkUsage } from '../../../support/outLink/tools';
-import { getLogger, LogCategories } from '../../../common/logger';
 import { appendRedisCache } from '../../../common/redis/cache';
-import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
-import { getUsageSourceByPublishChannel } from '@fastgpt/global/support/wallet/usage/tools';
-import {
-  getChatSourceByPublishChannel,
-  removeAIResponseCite
-} from '@fastgpt/global/core/chat/utils';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { MongoChat } from '../../../core/chat/chatSchema';
-import { buildChatSourceQuery, type ChatSourceParams } from '../../../core/chat/source';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { MongoChatItem } from '../../../core/chat/chatItemSchema';
+import { getLogger, LogCategories } from '../../../common/logger';
+import { runOutlinkRuntime } from './service';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
 
-// 新开历史记录, 把原来 chatId 替换
-const RESET_CHAT_INPUT: Record<string, boolean> = {
-  Reset: true,
-  '/reset': true
-};
-const RESET_CHAT_REPLY = '对话已重置。\n\n The chat records have been reset.';
-/**
- * 重置指定 chat source 下的 outLink 会话。
- *
- * 该函数会直接改写 chats/chatitems 物理记录，因此入参必须使用业务层
- * `sourceType/sourceId`，避免 outLink App 调用链继续把 sourceId 命名为 appId。
- */
-export const resetChat = ({
-  sourceType,
-  sourceId,
-  chatId
-}: ChatSourceParams & { chatId: string }) => {
-  const newChatId = getNanoid(26);
-  const chatSourceQuery = buildChatSourceQuery({
-    sourceType,
-    sourceId
-  });
-
-  return mongoSessionRun(async (session) => {
-    await MongoChat.updateOne(
-      {
-        ...chatSourceQuery,
-        chatId
-      },
-      {
-        $set: {
-          chatId: newChatId
-        }
-      },
-      { session }
-    );
-    await MongoChatItem.updateMany(
-      {
-        ...chatSourceQuery,
-        chatId
-      },
-      {
-        $set: {
-          chatId: newChatId
-        }
-      },
-      { session }
-    );
-  });
-};
-
 export type outLinkInvokeChatProps<T extends OutlinkAppType> = {
   outLinkConfig: OutLinkSchemaType<T>;
-  chatId: string; // specific chat
+  chatId: string;
   query: UserChatItemValueItemType[];
   messageId: string;
   chatUserId: string;
-  // Called once with complete response content (all channels except wecom)
   onReply?: (replyContent: string) => Promise<void>;
-  // Called for each streaming chunk (feishu and other push channels)
   onStreamChunk?: (text: string) => Promise<void>;
   streamId?: string;
 };
 
-const DEFAULT_REPLY = 'This is default reply';
-
 export const STREAM_END_FLAG = '[DONE]';
 export const STREAM_CACHE_KEY_PREFIX = 'streamResponse:';
 
+/** Adapts legacy callback and Redis delivery to the shared runtime response stream.
+ *
+ * @deprecated Use `runOutlinkRuntime` with a provider adapter.
+ * Remove this function after all providers migrate to the new runtime.
+ */
 export async function outlinkInvokeChat<T extends OutlinkAppType>({
   outLinkConfig,
   chatId,
@@ -124,304 +36,52 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   streamId
 }: outLinkInvokeChatProps<T>) {
   const streamResKey = `${STREAM_CACHE_KEY_PREFIX}${streamId}`;
-  const roundState = {
-    preparedRound: undefined as PreChatRoundResult | undefined,
-    sourceId: '',
-    finalized: false
-  };
 
-  try {
-    // Get app workflow config
-    const [app, { nodes, chatConfig, edges }] = await Promise.all([
-      MongoApp.findById(outLinkConfig.appId).lean(),
-      getAppLatestVersion(outLinkConfig.appId)
-    ]);
+  return runOutlinkRuntime({
+    outLinkConfig,
+    message: { chatId, query, messageId, chatUserId },
+    respond: async (events) => {
+      let started = false;
 
-    if (!nodes || !chatConfig || !app) {
-      return Promise.reject('Invalid chat');
-    }
-    const chatSource = {
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: String(app._id)
-    };
+      for await (const event of events) {
+        if (event.type === 'start') {
+          started = true;
+          if (streamId) await appendRedisCache(streamResKey, '', 120);
+          continue;
+        }
 
-    // Check whether the chatId is valid
-    const userQuestion = query.find((item) => item.text)?.text?.content || '';
-    if (RESET_CHAT_INPUT[userQuestion]) {
-      await resetChat({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: outLinkConfig.appId,
-        chatId
-      });
-      await onReply?.(RESET_CHAT_REPLY);
-      if (streamId) {
-        await appendRedisCache(streamResKey, RESET_CHAT_REPLY, 60);
-        await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
-      }
-      return;
-    }
-
-    // Load chat histories and global variables in parallel
-    const [{ histories }, chatDetail] = await Promise.all([
-      getChatItems({
-        ...chatSource,
-        chatId,
-        offset: 0,
-        limit: getMaxHistoryLimitFromNodes(nodes),
-        field: `obj value`
-      }),
-      MongoChat.findOne(
-        { ...buildChatSourceQuery(chatSource), chatId },
-        'source variableList variables'
-      )
-    ]);
-
-    // dedupe
-    if (histories.find((item) => item.dataId === messageId)) {
-      return; // dupelicated messaage, do noting
-    }
-
-    await authOutLinkLimit({
-      outLinkUid: chatUserId,
-      outLink: outLinkConfig as any, // HACK, we do not need to provide app: T
-      question: userQuestion,
-      ip: chatId
-    });
-
-    const enableStreaming = !!streamId || !!onStreamChunk;
-
-    const workflowStreamResponse = enableStreaming
-      ? async ({
-          event,
-          data
-        }: {
-          write?: (text: string) => void;
-          event?: SseResponseEventEnum;
-          data: string | Record<string, any>;
-        }) => {
-          if (!event || typeof data === 'string') return;
-
-          if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
-            try {
-              const text = data.choices?.[0]?.delta?.content;
-              if (text) {
-                if (streamId) {
-                  await appendRedisCache(streamResKey, text, 60);
-                }
-                if (onStreamChunk) {
-                  await onStreamChunk(text);
-                }
-              }
-            } catch (error) {
-              logger.error('Outlink real-time streaming failed', {
-                streamId,
-                messageId,
-                error
-              });
-            }
+        if (event.type === 'chunk') {
+          try {
+            if (streamId) await appendRedisCache(streamResKey, event.content, 60);
+            await onStreamChunk?.(event.content);
+          } catch (error) {
+            logger.error('Outlink real-time streaming failed', {
+              streamId,
+              messageId,
+              error
+            });
           }
+          continue;
         }
-      : undefined;
 
-    // Initialize Redis key only when needed
-    if (streamId) {
-      await appendRedisCache(streamResKey, '', 120);
-    }
-
-    // Merge global variables from database
-    const variables = chatDetail?.variables ?? {};
-    const {
-      query: workflowQuery,
-      maxFileAmount,
-      maxBytesPerFile
-    } = await prepareWorkflowFileQuery({
-      teamId: String(outLinkConfig.teamId),
-      chatConfig,
-      query
-    });
-    const userContent: UserChatItemType & { dataId?: string } = {
-      dataId: messageId,
-      obj: ChatRoleEnum.Human,
-      value: workflowQuery
-    };
-    const preparedRound = await preChatRound({
-      ...chatSource,
-      chatId,
-      teamId: String(outLinkConfig.teamId),
-      tmbId: String(outLinkConfig.tmbId),
-      source: getChatSourceByPublishChannel(outLinkConfig.type),
-      sourceName: outLinkConfig.name,
-      shareId: outLinkConfig.shareId,
-      outLinkUid: chatUserId,
-      userContent,
-      responseChatItemId: messageId
-    });
-    roundState.preparedRound = preparedRound;
-    roundState.sourceId = chatSource.sourceId;
-
-    const {
-      assistantResponses,
-      newVariables,
-      flowUsages,
-      durationSeconds,
-      system_memories,
-      nodeResponseSummary
-    } = await dispatchWorkFlow({
-      apiVersion: 'v2',
-      mode: 'chat',
-      usageSource: getUsageSourceByPublishChannel(outLinkConfig.type),
-      runningAppInfo: {
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: String(app._id),
-        name: app.name,
-        teamId: app.teamId,
-        tmbId: app.tmbId
-      },
-      runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
-      uid: chatUserId || outLinkConfig.tmbId,
-      chatId: preparedRound.chatId,
-      responseChatItemId: preparedRound.responseChatItemId,
-      variables,
-      histories,
-      query: workflowQuery,
-      maxFileAmount,
-      maxBytesPerFile,
-      chatConfig,
-      stream: enableStreaming,
-      workflowStreamResponse,
-      runtimeEdges: storeEdges2RuntimeEdges(edges),
-      runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-      retainDatasetCite: false,
-      nodeResponseWriteConfig: {
-        persistToDb: true,
-        retainInMemory: false
-      }
-    });
-
-    // Format results
-    const formatAssistantResponses = removeAIResponseCite(assistantResponses, false);
-    let responseContent = formatAssistantResponses
-      .map((response) => {
-        return response.text?.content;
-      })
-      .filter(Boolean)
-      .join('\n')
-      .trim();
-    if (responseContent.length === 0) {
-      responseContent = DEFAULT_REPLY;
-    }
-
-    const replyResult = await (async () => {
-      try {
-        if (streamId) {
-          // wecom model: Redis handles streaming, no reply needed
-          return { success: true };
+        if (event.type === 'done') {
+          if (!started) {
+            await onReply?.(event.content);
+            if (streamId) {
+              await appendRedisCache(streamResKey, event.content, 60);
+              await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
+            }
+          } else if (streamId) {
+            await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
+          } else {
+            await onReply?.(event.content);
+          }
+          continue;
         }
-        await onReply?.(responseContent);
-        return { success: true };
-      } catch (error) {
-        logger.error('Outlink reply callback failed', { error: getErrResponse(error) });
-        return {
-          success: false,
-          errmsg: getErrText(error)
-        };
-      }
-    })();
 
-    // Save and reply
-    const saveParams: SaveChatProps = {
-      ...chatSource,
-      chatId: preparedRound.chatId,
-      teamId: outLinkConfig.teamId,
-      tmbId: outLinkConfig.tmbId,
-      outLinkUid: chatUserId,
-      nodes,
-      appChatConfig: chatConfig,
-      variables: newVariables,
-      shareId: outLinkConfig.shareId,
-      source: getChatSourceByPublishChannel(outLinkConfig.type),
-      sourceName: outLinkConfig.name,
-      userContent,
-      aiContent: {
-        dataId: preparedRound.responseChatItemId,
-        obj: ChatRoleEnum.AI,
-        value: assistantResponses,
-        memories: system_memories
-      },
-      metadata: {},
-      durationSeconds,
-      errorMsg: replyResult?.success ? undefined : replyResult?.errmsg,
-      nodeResponseSummary
-    };
-    await finalizeChatRound(saveParams);
-    roundState.finalized = true;
-
-    const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-    addOutLinkUsage({
-      shareId: outLinkConfig.shareId,
-      totalPoints: totalPoints
-    });
-
-    if (streamId) {
-      await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
-    }
-  } catch (error) {
-    const { preparedRound } = roundState;
-    if (!roundState.finalized && preparedRound?.shouldPersistChatRound && roundState.sourceId) {
-      if (preparedRound.shouldFinalizePreparedRound) {
-        await failChatRound({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: preparedRound.chatId,
-          responseChatItemId: preparedRound.responseChatItemId,
-          error
-        }).catch((saveError) => {
-          logger.error('Outlink invoke chat mark error failed', {
-            shareId: outLinkConfig.shareId,
-            chatId,
-            messageId,
-            error: saveError
-          });
-        });
-      } else {
-        await updateChatGenerateStatus({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: roundState.sourceId,
-          chatId: preparedRound.chatId,
-          status: ChatGenerateStatusEnum.error
-        }).catch((saveError) => {
-          logger.error('Outlink invoke chat unlock failed', {
-            shareId: outLinkConfig.shareId,
-            chatId,
-            messageId,
-            error: saveError
-          });
-        });
+        if (streamId) await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
+        await onReply?.(event.content);
       }
     }
-
-    logger.error('Outlink invoke chat failed', {
-      shareId: outLinkConfig.shareId,
-      chatId,
-      messageId,
-      streamId,
-      error
-    });
-
-    try {
-      if (streamId) {
-        await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
-      }
-      await onReply?.(`App run error: ${getErrText(error)}`);
-    } catch (error) {
-      logger.error('Outlink invoke chat fallback reply failed', {
-        shareId: outLinkConfig.shareId,
-        chatId,
-        messageId,
-        streamId,
-        error
-      });
-    }
-  }
+  });
 }
