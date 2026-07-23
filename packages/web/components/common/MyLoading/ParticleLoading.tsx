@@ -8,6 +8,7 @@ const config = {
   durationMs: 3000,
   rotationDurationMs: 16000,
   pulseDurationMs: 4600,
+  strokeWidth: 8.33,
   orbitRadius: 7,
   detailAmplitude: 2.7,
   petalCount: 5,
@@ -46,6 +47,12 @@ const getRotation = (time: number) => {
   return -((time % config.rotationDurationMs) / config.rotationDurationMs) * 360;
 };
 
+const buildPath = (detailScale: number, steps = 480) =>
+  Array.from({ length: steps + 1 }, (_, index) => {
+    const pathPoint = point(index / steps, detailScale);
+    return `${index === 0 ? 'M' : 'L'} ${pathPoint.x.toFixed(2)} ${pathPoint.y.toFixed(2)}`;
+  }).join(' ');
+
 const getParticle = (index: number, progress: number, detailScale: number) => {
   const tailOffset = index / (config.particleCount - 1);
   const p = point(normalizeProgress(progress - tailOffset * config.trailSpan), detailScale);
@@ -68,6 +75,7 @@ const getParticleSize = (size: SpinnerProps['size']) => {
 
 const ParticleLoading = ({ size = 'lg' }: { size?: SpinnerProps['size'] }) => {
   const groupRef = useRef<SVGGElement>(null);
+  const pathRef = useRef<SVGPathElement>(null);
   const particleRefs = useRef<(SVGCircleElement | null)[]>([]);
   const boxSize = getParticleSize(size);
 
@@ -85,6 +93,7 @@ const ParticleLoading = ({ size = 'lg' }: { size?: SpinnerProps['size'] }) => {
       if (groupRef.current) {
         groupRef.current.setAttribute('transform', `rotate(${getRotation(time)} 50 50)`);
       }
+      pathRef.current?.setAttribute('d', buildPath(detailScale));
 
       for (let i = 0; i < particleRefs.current.length; i++) {
         const node = particleRefs.current[i];
@@ -114,6 +123,14 @@ const ParticleLoading = ({ size = 'lg' }: { size?: SpinnerProps['size'] }) => {
         aria-hidden="true"
       >
         <g ref={groupRef}>
+          <path
+            ref={pathRef}
+            stroke="#000000"
+            strokeWidth={config.strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.04}
+          />
           {indices.map((i) => (
             <circle
               key={i}
