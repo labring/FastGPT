@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
+  buildSandboxClientQueryFromChatSource,
   getSandboxClient,
   type SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
@@ -15,7 +16,6 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { serviceEnv } from '@fastgpt/service/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { buildSandboxClientQueryFromChatSource } from '@/service/core/sandbox/auth';
 import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/interface/preview';
 
 const IDE_AGENT_PORT = 1318;
@@ -23,9 +23,8 @@ const IDE_AGENT_PREVIEW_PORT = 1319;
 const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-password"';
 
 const VerifyTicketQuerySchema = z.object({
-  ticket: z.string().min(1).optional()
+  ticket: z.string()
 });
-const SANDBOX_TICKET_HEADER = 'x-sandbox-ticket';
 const SANDBOX_PREVIEW_SESSION_HEADER = 'x-sandbox-preview-session';
 
 const SandboxVerifyTicketResponseSchema = z.object({
@@ -83,11 +82,6 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
 async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketResponse> {
   const secret = authAgentSandboxProxy(req);
 
-  const { ticket: queryTicket } = parseApiInput({
-    req,
-    querySchema: VerifyTicketQuerySchema
-  }).query;
-  const headerTicket = req.headers[SANDBOX_TICKET_HEADER];
   const headerPreviewSession = req.headers[SANDBOX_PREVIEW_SESSION_HEADER];
 
   const authContext = await (async () => {
@@ -98,10 +92,10 @@ async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketRespons
       };
     }
 
-    const ticket = z
-      .string()
-      .min(1)
-      .parse((typeof headerTicket === 'string' ? headerTicket : undefined) ?? queryTicket);
+    const { ticket } = parseApiInput({
+      req,
+      querySchema: VerifyTicketQuerySchema
+    }).query;
 
     try {
       const { sourceType, sourceId, userId, chatId } = SandboxTicketClaimsSchema.parse(

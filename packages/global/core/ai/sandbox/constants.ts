@@ -23,6 +23,16 @@ export const SandboxStatusEnum = {
   running: 'running',
   stopped: 'stopped'
 } as const;
+
+/** 普通 App Chat 中 Sandbox 不可用的产品态原因。 */
+export enum SandboxUnavailableReasonEnum {
+  appDisabled = 'appDisabled',
+  teamPlanUnavailable = 'teamPlanUnavailable',
+  systemDisabled = 'systemDisabled'
+}
+
+/** Chat Test 保存本轮实际 Sandbox 开关的 metadata key。 */
+export const APP_SANDBOX_ENABLED_CHAT_METADATA_KEY = 'appSandboxEnabled';
 export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxStatusEnum];
 
 // ---- 沙盒实例类型 ----

@@ -1,11 +1,9 @@
 /**
  * 沙盒业务层：准备 Agent 运行态 sandbox。
  *
- * 负责权限校验、sandboxId 计算和运行态 client 创建，不注入具体 Skill 包。
+ * 负责 sandboxId 计算和运行态 client 创建，不注入具体 Skill 包。
  */
 import { getSandboxClient, type SandboxClient } from './client';
-import { createAgentSandboxPermissionDeniedError } from '../../error';
-import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 import { getSandboxRuntimeProfile as resolveSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import type {
   SandboxRuntimeProfile,
@@ -39,28 +37,21 @@ export function getSandboxRuntimeProfile(provider?: SandboxProviderType): Sandbo
 /**
  * 准备 Agent 运行需要的 sandbox runtime。
  *
- * 该函数只负责 sandbox 维度：权限校验、实例获取和 runtime profile 解析。
+ * 该函数只负责 sandbox 维度：实例获取和 runtime profile 解析。
+ * 权限与产品可用性必须由上层在进入 runtime 前完成，避免底层通过布尔参数绕过校验。
  * skill 注入、entrypoint 和扫描由 skill runtime 自己处理。
  */
 export async function prepareAgentSandboxRuntime({
   sourceType,
   sourceId,
   userId,
-  chatId,
-  teamId
+  chatId
 }: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
   chatId: string;
-  teamId: string;
 }): Promise<AgentSandboxRuntimeContext> {
-  try {
-    await checkTeamSandboxPermission(teamId);
-  } catch {
-    throw createAgentSandboxPermissionDeniedError();
-  }
-
   const sandboxUserId = getSandboxUserId({ sourceType, userId });
   const sandboxId = getRunningSandboxId({
     sourceType,

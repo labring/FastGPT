@@ -11,7 +11,7 @@ import { ChatTypeEnum } from '../../constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSiteItemType } from '../../type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useSandboxEditor, useSandboxOpenGuard } from '@/pageComponents/chat/SandboxEditor/hook';
 import { WorkflowRuntimeContext } from '../../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
@@ -61,6 +61,12 @@ const AIChatBubbleActions = ({
   );
   const canUseAgentSandbox = enableSandbox && !!sourceTarget.sourceId && isPc && useAgentSandbox;
   const { onOpenSandboxModal, SandboxEditorModal } = useSandboxEditor({
+    enabled: canUseAgentSandbox,
+    chatTarget,
+    chatId,
+    outLinkAuthData
+  });
+  const { onOpenSandbox } = useSandboxOpenGuard({
     enabled: canUseAgentSandbox,
     chatTarget,
     chatId,
@@ -154,7 +160,7 @@ const AIChatBubbleActions = ({
               userSelect={'none'}
               transition={footerActionTransition}
               _hover={footerActionHoverStyle}
-              onClick={onOpenSandboxModal}
+              onClick={() => void onOpenSandbox(onOpenSandboxModal)}
             >
               <MyIcon
                 name={'core/chat/monitor'}

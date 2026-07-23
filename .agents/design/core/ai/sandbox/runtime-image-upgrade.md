@@ -1,4 +1,4 @@
-# App Sandbox Runtime 镜像升级设计
+# Sandbox Runtime 配置迁移设计
 
 状态：已完成
 
@@ -6,115 +6,128 @@
 
 ## 1. 目标与范围
 
-App Chat 和 Skill Edit runtime 在真正使用 sandbox 前比较目标镜像与实例记录中的镜像，避免镜像升级后继续连接旧实例。升级通过现有归档与恢复链路保存完整 workspace，并在下一次初始化时使用当前镜像恢复。
+App Chat 和 Workflow 在 Agent 真正使用 sandbox 前比较目标 provider、目标镜像与现有实例记录。
+任一配置不一致时，在本轮 Workflow 内静默完成归档和迁移，不再要求用户确认，也不重放请求。
+Skill Edit 继续保留显式升级弹窗，由 Skill 页面独立维护查询、确认和轮询。
 
-本设计只处理 runtime 镜像一致性和升级交互，不改变以下边界：
+本设计不改变以下边界：
 
 - 物理 App sandbox 身份仍为 `app + effectiveUid`，`chatId` 只决定 session 工作目录和鉴权目标。
 - 镜像只比较 `repository + tag`，不比较 digest。
 - 仅当 Agent 节点确认本轮 `effectiveUseAgentSandbox=true` 后检查，不在页面进入时预检查。
-- 版本数据迁移的发布顺序和 Preview session 容量控制由各自设计处理。
+- 迁移复用现有 archive、restore 和 provider migration 生命周期，不新增数据库迁移状态。
 
 ## 2. 产品决策
 
-- 镜像不一致时阻断本轮 Agent sandbox 初始化，通过 `sandboxStatus` SSE 打开升级弹窗。
-- 用户确认后归档物理 sandbox；归档包含整个 workspace，包括所有 `sessions/<chatId>`。
-- 弹窗保持打开时，升级完成后自动重放原始输入对应的整轮工作流。
-- 自动重放可能重复执行 Agent 节点之前已经完成的 webhook、写库或付费工具，这是产品接受的行为边界，不承诺整轮幂等。
-- 用户关闭弹窗后，前端必须清空待回放回调、停止轮询，并忽略关闭前发出的在途状态响应。
-- 关闭弹窗只取消客户端后续行为；服务端已经抢占成功的归档任务继续执行，避免留下半归档状态。
+- App Chat 和 Workflow 的镜像或 provider 不一致都采用静默升级。
+- 静默升级期间通过 `sandboxStatus: upgrading` 展示“沙盒升级中”。
+- 迁移收敛后发送原有 `sandboxStatus: lazyInit`，继续展示“虚拟机运行中”，并在同一次
+  Workflow 内恢复或创建目标 runtime。
+- 不再弹出 App 升级弹窗，不再从前端调用升级 API，也不再自动重放用户输入。
+- 迁移失败时终止当前 Agent 节点，并把已脱敏的底层失败原因写入 Workflow 错误结果。
+- Skill Edit 仍保留用户确认、后台归档和轮询，相关弹窗和控制状态收回 Skill 模块内部。
 
-## 3. 主链路
+## 3. App Chat / Workflow 主链路
 
 ```text
 Agent 节点确认本轮需要 sandbox
   -> 查询同一 source 的实例并解析目标 provider/image
-  -> readyToInit
-       -> 发送 sandboxStatus: lazyInit
+  -> provider 和 image 均一致
+       -> sandboxStatus: lazyInit
        -> 正常创建、恢复或连接 runtime
-  -> upgradeRequired
-       -> 发送 sandboxStatus: upgradeRequired
-       -> 以受控错误结束本轮请求
-       -> 用户确认后触发归档
-  -> upgrading
-       -> 发送 sandboxStatus: upgrading
-       -> 前端展示进度并轮询
-
-归档完成 -> archived 被解释为 readyToInit
-  -> 弹窗仍打开：关闭弹窗并自动重放原始输入
-  -> 弹窗已关闭：不更新 UI，不自动重放
+  -> provider 或 image 不一致
+       -> sandboxStatus: upgrading
+       -> 当前请求同步推进或等待既有迁移 operation
+       -> 迁移收敛到目标 provider 的 archived/可初始化状态
+       -> sandboxStatus: lazyInit
+       -> 正常恢复目标 runtime
+       -> 继续当前 Agent 节点和当前 Workflow
+  -> 迁移失败
+       -> 抛出包含实际失败原因的迁移错误
+       -> 当前 Agent 节点按标准 Workflow 错误结果结束
 ```
+
+静默迁移不会重放 Workflow，因此迁移前已经运行过的 webhook、写库或计费节点不会重复执行。
 
 ## 4. 服务端设计
 
 ### 4.1 实例选择
 
-App 与 Skill 共用 runtime upgrade service：
+App 和 Skill 继续复用无副作用的 runtime 状态解释：
 
-- 按 `sourceType + sourceId + userId` 一次读取逻辑实例。
+- 按 `sourceType + sourceId + userId` 读取逻辑实例。
 - 当前 provider 实例优先作为状态实例。
-- 没有当前 provider 实例时，旧 provider 的过渡态、失败态、已归档实例和旧镜像稳定态依次作为状态来源。
-- 只有旧镜像的 `running/stopped`，或失败的 `stopping/archiving` 可以成为 runtime upgrade 的归档候选。
+- 没有当前 provider 实例时，旧 provider 的过渡态、失败态、已归档实例和旧镜像稳定态依次
+  作为状态来源。
+- 只有旧镜像的 `running/stopped`，或失败的 `stopping/archiving` 可以成为镜像升级归档候选。
 - 当前 provider 记录的 `sandboxId` 与目标身份不一致时直接报错，不在错误记录上继续生命周期操作。
 
-### 4.2 状态解释与恢复职责
+### 4.2 App 静默迁移编排
 
-`getStatus` 只解释状态，不执行创建、恢复、迁移或归档副作用。状态响应统一为 `readyToInit | upgradeRequired | upgrading`，并可携带 `lastError`。
+`ensureAppSandboxRuntimeReady` 只在 provider 或镜像变化时接管迁移：
 
-| 实例状态 | 返回状态 | 后续职责 |
-| --- | --- | --- |
-| 无实例、`archived`、镜像一致的稳定态 | `readyToInit` | 正常 runtime 初始化 |
-| 镜像不一致的 `running/stopped` | `upgradeRequired` | 用户确认后启动归档 |
-| 活跃 `stopping/archiving` | `upgrading` | 原 operation 或恢复 cron 继续推进 |
-| 失败 `stopping/archiving` | `upgradeRequired` + error | stop 先续跑到 `stopped`，archive 从 checkpoint 续跑 |
-| `restoring` | 可接管时 `readyToInit`，否则 `upgrading` | 当前 provider 续跑 restore；旧 provider 先回滚半成品再迁移 |
-| 当前 provider 的 `provisioning` | 明确失败或心跳超过 15 分钟时 `readyToInit`，否则 `upgrading` | runtime provisioning 使用新 fencing token 接管 |
-| 旧 provider 的 `provisioning` | `upgrading` + optional error | runtime upgrade 不越权改写其他 owner 的 operation |
-| `deleting/legacyMigrating` | `upgrading` + optional error | source 删除流程或管理员迁移流程恢复 |
+- 镜像变化：同步调用标准 archive 流水线，完整保存 workspace，随后由正常 runtime 初始化恢复。
+- provider 变化：调用标准 provider migration，在同一 lifecycle lease 内归档旧资源并原子切换记录。
+- 已有活跃 operation：当前请求轮询真实记录，不能并发启动第二条迁移链。
+- Redis lease 竞争或初始化占用：视为并发迁移，等待后重新读取状态。
+- 失败的 `stopping`：先由 stop owner 完成到 `stopped`，再继续归档。
+- `archived` 且配置变化：无需重复归档，直接收敛 provider/image 后交给正常 restore。
+- 配置一致的普通生命周期状态不由升级编排等待，保持原 runtime client 的既有处理。
+- 等待超过 archive 隔离窗口时按超时失败，避免 Workflow 无限占用。
 
-`restoring` 的可接管条件与 archive 隔离窗口一致：operation 明确失败、缺少心跳，或心跳超过
-45 分钟。`provisioning` 使用自己的 15 分钟隔离窗口；缺少心跳不能被 runtime 自动接管，因为
-provisioning owner 同样会拒绝这种记录。Provider 切换在 `archived` 稳定态内原子完成，不产生
-独立过渡状态。
+迁移函数返回是否观察到配置变化，仅用于决定是否发送 `upgrading` 进度；不把数据库的细粒度
+生命周期状态暴露给 Chat 前端。
 
-### 4.3 升级触发
+### 4.3 状态解释和 Skill 显式升级
 
-- 状态不是 `upgradeRequired` 时不执行副作用，直接返回当前状态。
-- 失败的 `stopping` 必须先调用 stop owner 完成停止，再启动 archive。
-- 失败的 `archiving` 复用 archive checkpoint，不重建独立升级状态机。
-- archive claim 失败时重新读取实例并解释真实状态，不能无条件返回 `upgrading`。
-- lifecycle lease、operation token 和 Mongo CAS 保证并发确认只由一个执行者推进。
+通用状态仍为 `readyToInit | upgradeRequired | upgrading`，供 Skill Edit 的状态 API 和显式升级
+入口使用。Skill 的 `triggerSandboxRuntimeUpgrade` 继续启动后台 archive，页面每 3 秒轮询状态。
 
-### 4.4 镜像持久化
-
-- 首次 provisioning 创建记录时写入本次实际使用的 runtime image。
-- provisioning 发布为 `running` 时再次写入实际 runtime image，覆盖恢复旧 operation 时的历史值。
-- archive restore 发布为 `running` 时写入恢复使用的 runtime image。
-- 普通 touch running 不覆盖镜像，避免在一致性检查前丢失旧镜像证据。
-- 历史实例缺失 `metadata.image` 时按镜像不一致处理。
-
-## 5. 前端设计
-
-- App 与 Skill 共用 `useSandboxRuntimeUpgrade`，统一处理状态应用、升级请求、轮询、错误和目标切换。
-- App adapter 只维护聊天目标、弹窗文案和待回放请求；Skill adapter 保留原有退出语义。
-- 收到 `upgrading` 后每 3 秒查询状态；收到 `readyToInit` 后停止轮询。
-- App 只有在控制器确实经历过升级且弹窗仍属于同一 target 时才执行待回放回调。
-- 关闭弹窗或切换 App/chat/outlink 身份时递增请求版本，使旧请求结果失效，并清空 modal、轮询和待回放状态。
-
-## 6. API 与权限
+App Chat 不再暴露 `upgradeRequired` SSE，也不再调用以下 API：
 
 - `POST /api/core/ai/sandbox/runtime/getStatus`
 - `POST /api/core/ai/sandbox/runtime/upgrade`
 
-两个接口复用标准 sandbox chat target、`authSandboxSession` 和 effective uid。App 分享链接用户升级自己的用户级 sandbox，不修改 App 配置，因此沿用会话使用权限，不要求 App 编辑权限。接口使用共享 Zod schema、`parseApiInput`、响应 schema 校验，并登记 OpenAPI path。
+对应 App API 路由、OpenAPI path 和 Chat 请求封装删除。Skill runtime API 保持不变。
 
-## 7. 验证清单
+### 4.4 错误处理
 
-- [x] App 与 Skill 复用镜像标准化、实例选择、状态解释和归档触发。
-- [x] Agent 在发送 `lazyInit` 前阻断旧镜像。
-- [x] 首次创建、provisioning 完成和 archive restore 持久化实际镜像。
-- [x] App runtime API、OpenAPI、鉴权和 SSE 状态已接入。
-- [x] 升级完成自动重放；关闭弹窗清理回放、轮询和在途响应。
-- [x] 失败 stop/archive 可恢复，不可归档状态不会进入通用 archive 循环。
-- [x] lifecycle owner 的接管条件与 runtime 状态解释保持一致。
-- [x] 保留纯状态、并发 claim、生命周期顺序、镜像持久化和取消在途响应测试；删除重复适配层测试。
+- archive 返回 `failed` 时使用其具体 `error`。
+- provider migration、身份校验、状态恢复和超时异常使用实际错误文本。
+- 错误经过统一敏感信息替换后包装为 `UserError`，Agent dispatch 记录服务端日志并把错误文本写入
+  `errorText` 和 `toolResponse.error`。
+- 不再用 `runtimeUpgradeRequired` 受控错误中断并等待前端重放。
+
+## 5. 前端设计
+
+### 5.1 App Chat
+
+- ChatBox 只消费 `sandboxStatus` 并渲染粗粒度进度。
+- 新增 `upgrading -> 沙盒升级中...`，保留 `lazyInit -> 虚拟机运行中...`。
+- 删除 App 升级弹窗、升级 hook、状态轮询、待回放回调和自动重放逻辑。
+- 迁移错误沿用 Workflow 的标准错误展示，不增加独立迁移弹窗。
+
+### 5.2 Skill Edit
+
+- Skill 页面内部维护 `runtimeStatus`、请求版本、确认升级和轮询。
+- Skill 升级弹窗直接放回 Skill `Content`，不再使用 App/Skill 共享组件和 hook。
+- 用户退出、请求失效和初始化失败仍沿用 Skill 原有行为。
+
+## 6. 并发与一致性
+
+- lifecycle lease、operation token 和 Mongo CAS 保证同一个 sandbox 只有一个迁移执行者。
+- 竞争请求只等待和重新读取，不伪造完成状态。
+- provider 切换只有在旧资源已归档后才发布，目标配置无效时保留旧资源。
+- 首次 provisioning、provisioning 完成和 archive restore 都持久化实际使用的 runtime image。
+- 普通 touch running 不覆盖镜像，避免一致性检查前丢失旧镜像证据。
+- 历史实例缺失 `metadata.image` 时按镜像不一致处理。
+
+## 7. TODO 与验证
+
+- [x] App provider/image 不一致改为服务端静默迁移。
+- [x] App Chat 和 Workflow 在同一次执行内继续 runtime 初始化及 Agent loop。
+- [x] 新增 `upgrading` SSE 和三语 Chat 文案。
+- [x] 删除 App 升级 API、OpenAPI、弹窗、轮询和自动重放。
+- [x] 共享升级弹窗和 hook 收回 Skill Edit 内部。
+- [x] 迁移异常透传具体失败原因。
+- [x] 定向验证镜像迁移、provider 迁移、状态顺序和错误传播。

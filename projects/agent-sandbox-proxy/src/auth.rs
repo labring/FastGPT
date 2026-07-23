@@ -1,5 +1,4 @@
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -70,7 +69,6 @@ const DEFAULT_APP_REQUEST_TIMEOUT_SECS: u64 = 10;
 const DEFAULT_ADDRESS_CACHE_TTL_SECS: u64 = 30;
 const MAX_ADDRESS_CACHE_ENTRIES: usize = 2_000;
 const MIN_PROXY_SECRET_BYTES: usize = 32;
-const SANDBOX_TICKET_HEADER: &str = "X-Sandbox-Ticket";
 const SANDBOX_PREVIEW_SESSION_HEADER: &str = "X-Sandbox-Preview-Session";
 
 #[derive(Clone)]
@@ -108,7 +106,8 @@ pub fn get_proxy_secret() -> &'static str {
     })
 }
 
-fn decode_jwt_ticket<T: DeserializeOwned>(ticket: &str) -> Result<T, String> {
+/// 在代理层边缘进行本地 JWT 验签防刷，直接在第一道闸口过滤非法请求
+pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
     let secret = get_proxy_secret();
     let decoding_key = DecodingKey::from_secret(secret.as_bytes());
 
@@ -116,22 +115,14 @@ fn decode_jwt_ticket<T: DeserializeOwned>(ticket: &str) -> Result<T, String> {
     let mut validation = Validation::new(Algorithm::HS256);
     validation.leeway = 5;
 
-    let token_data = decode::<T>(ticket, &decoding_key, &validation)
+    let token_data = decode::<Claims>(ticket, &decoding_key, &validation)
         .map_err(|err| format!("JWT signature validation failed: {}", err))?;
 
     Ok(token_data.claims)
 }
 
-/// 在代理层边缘校验既有 WebSocket ticket，保留上游 teamId claims 契约。
-pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
-    decode_jwt_ticket(ticket)
-}
-
-/// 反向请求 NextJS 主站验证凭证，并置换出真实的沙盒物理端点寻址信息。
-async fn request_sandbox_address(
-    credential: &str,
-    credential_header: &'static str,
-) -> Result<SandboxAddress, String> {
+/// 反向请求 NextJS 主站进行 Ticket 验证，并置换出真实的沙盒物理端点寻址信息 (高安全有状态地址置换方案)
+pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, String> {
     // 1. 读取主站内网 API 基准地址 (默认 http://localhost:3000)
     let app_url =
         env::var("FASTGPT_APP_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
@@ -140,17 +131,16 @@ async fn request_sandbox_address(
     let request_url = format!("{}/api/core/ai/sandbox/verifyTicket", clean_app_url);
 
     debug!(
-        "[Auth] Back-channel requesting App to resolve credential. Target: {}",
+        "[Auth] Back-channel requesting App to resolve ticket. Target: {}",
         request_url
     );
 
-    // 2. 凭证放在内网 header，避免主站 access log 记录 bearer token。
+    // 2. 发起内网 HTTP GET 请求 (复用全局共享的 TCP 连接池，自动处理 Keep-Alive 与 URL 编码)
     let client = get_http_client();
-    let request = client
-        .get(&request_url)
-        .header(credential_header, credential)
-        // 3. 共享密钥只用于 proxy 到主站的反向通道认证。
-        .header("X-Proxy-Token", get_proxy_secret());
+    let mut request = client.get(&request_url).query(&[("ticket", ticket)]);
+
+    // 3. 安全二次加固：必须携带正确的 AGENT_SANDBOX_PROXY_SECRET，在 Header 中注入安全防刷握手 Token
+    request = request.header("X-Proxy-Token", get_proxy_secret());
 
     let response = request
         .send()
@@ -188,18 +178,62 @@ async fn request_sandbox_address(
 
     let address = app_res.data;
 
-    debug!("[Auth] Credential resolved successfully.");
+    debug!("[Auth] Ticket resolved successfully.");
     Ok(address)
-}
-
-/// 验证既有 WebSocket JWT ticket 并解析 sandbox 地址。
-pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, String> {
-    request_sandbox_address(ticket, SANDBOX_TICKET_HEADER).await
 }
 
 /// 验证有状态 Preview session 并解析只读 HTTP sandbox 地址。
 async fn resolve_preview_sandbox_address(session_id: &str) -> Result<SandboxAddress, String> {
-    request_sandbox_address(session_id, SANDBOX_PREVIEW_SESSION_HEADER).await
+    let app_url =
+        env::var("FASTGPT_APP_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+    let request_url = format!(
+        "{}/api/core/ai/sandbox/verifyTicket",
+        app_url.trim_end_matches('/')
+    );
+
+    debug!(
+        "[Auth] Back-channel requesting App to resolve preview session. Target: {}",
+        request_url
+    );
+
+    let response = get_http_client()
+        .get(&request_url)
+        .header(SANDBOX_PREVIEW_SESSION_HEADER, session_id)
+        .header("X-Proxy-Token", get_proxy_secret())
+        .send()
+        .await
+        .map_err(|err| format!("HTTP request to App verifyTicket failed: {}", err))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let err_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        error!(
+            "[Auth] Preview session validation rejected by App (Status {}): {}",
+            status, err_text
+        );
+        return Err(format!("Preview session rejected by App: {}", err_text));
+    }
+
+    let app_res = response
+        .json::<AppResponse<SandboxAddress>>()
+        .await
+        .map_err(|err| format!("Failed to parse response JSON from App: {}", err))?;
+
+    if app_res.code != 200 {
+        return Err(format!(
+            "App returned error code {}: {:?}",
+            app_res.code,
+            app_res
+                .status_text
+                .unwrap_or_else(|| "Unknown error".to_string())
+        ));
+    }
+
+    debug!("[Auth] Preview session resolved successfully.");
+    Ok(app_res.data)
 }
 
 fn get_address_cache_ttl() -> Duration {
@@ -211,8 +245,8 @@ fn get_address_cache_ttl() -> Duration {
     Duration::from_secs(seconds)
 }
 
-fn get_ticket_cache_key(ticket: &str) -> [u8; 32] {
-    Sha256::digest(ticket.as_bytes()).into()
+fn get_preview_session_cache_key(session_id: &str) -> [u8; 32] {
+    Sha256::digest(session_id.as_bytes()).into()
 }
 
 /**
@@ -221,9 +255,11 @@ fn get_ticket_cache_key(ticket: &str) -> [u8; 32] {
  * Session validity is checked by FastGPT on cache misses. This cache avoids repeating the
  * back-channel lookup and sandbox password read for each resource in one HTML page.
  */
-pub async fn resolve_cached_sandbox_address(session_id: &str) -> Result<SandboxAddress, String> {
+pub async fn resolve_cached_preview_sandbox_address(
+    session_id: &str,
+) -> Result<SandboxAddress, String> {
     let now = Instant::now();
-    let cache_key = get_ticket_cache_key(session_id);
+    let cache_key = get_preview_session_cache_key(session_id);
     if let Some(cached) = SANDBOX_ADDRESS_CACHE.read().await.get(&cache_key)
         && cached.expires_at > now
     {
@@ -253,11 +289,11 @@ pub async fn resolve_cached_sandbox_address(session_id: &str) -> Result<SandboxA
     Ok(address)
 }
 
-pub async fn invalidate_cached_sandbox_address(session_id: &str) {
+pub async fn invalidate_cached_preview_sandbox_address(session_id: &str) {
     SANDBOX_ADDRESS_CACHE
         .write()
         .await
-        .remove(&get_ticket_cache_key(session_id));
+        .remove(&get_preview_session_cache_key(session_id));
 }
 
 #[cfg(test)]
@@ -379,14 +415,14 @@ mod tests {
     }
 
     #[test]
-    fn test_ticket_cache_key_is_stable_without_retaining_token() {
+    fn test_preview_session_cache_key_is_stable_without_retaining_credential() {
         assert_eq!(
-            get_ticket_cache_key("ticket-a"),
-            get_ticket_cache_key("ticket-a")
+            get_preview_session_cache_key("session-a"),
+            get_preview_session_cache_key("session-a")
         );
         assert_ne!(
-            get_ticket_cache_key("ticket-a"),
-            get_ticket_cache_key("ticket-b")
+            get_preview_session_cache_key("session-a"),
+            get_preview_session_cache_key("session-b")
         );
     }
 }

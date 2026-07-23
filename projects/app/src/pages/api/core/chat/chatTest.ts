@@ -56,6 +56,8 @@ import {
   type WorkflowStreamResponseContext
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
+import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -286,7 +288,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       aiContent: aiResponse,
       durationSeconds,
       metadata: {
-        originIp
+        originIp,
+        [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: isAppSandboxEnabledInNodes(nodes)
       },
       nodeResponseSummary
     };
