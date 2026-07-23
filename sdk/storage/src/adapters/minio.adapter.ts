@@ -23,7 +23,7 @@ import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertRequiredStorageObjectPrefix
-} from '../objectKey';
+} from '../assert';
 
 export { NotFound as MinioS3NotFound };
 
@@ -195,42 +195,14 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
 
     assertRequiredStorageObjectPrefix(prefix);
 
-    /** 为单次列举请求设置超时，并主动取消 AWS SDK 底层请求。 */
-    const withListRequestTimeout = async <T>({
-      promise,
-      onTimeout
-    }: {
-      promise: Promise<T>;
-      onTimeout: () => void;
-    }): Promise<T> => {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-
-      try {
-        return await Promise.race([
-          promise,
-          new Promise<never>((_, reject) => {
-            timer = setTimeout(() => {
-              const timeoutError = new Error(
-                `Delete by prefix list timeout after ${minioRequestTimeoutMs}ms: ${prefix}`
-              );
-              // 先固定 Promise.race 的结果，再 abort 底层请求，避免 AbortError 抢先返回。
-              reject(timeoutError);
-              onTimeout();
-            }, minioRequestTimeoutMs);
-          })
-        ]);
-      } finally {
-        if (timer) clearTimeout(timer);
-      }
-    };
-
     const bucket = this.options.bucket;
     const failedKeys: string[] = [];
     let continuationToken: string | undefined;
 
     do {
       const abortController = new AbortController();
-      const listResponse = await withListRequestTimeout({
+      const listResponse = await this._withListRequestTimeout({
+        prefix,
         promise: this.client.send(
           new ListObjectsV2Command({
             Bucket: bucket,
@@ -272,6 +244,36 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       bucket,
       keys: failedKeys
     };
+  }
+
+  private async _withListRequestTimeout<T>({
+    prefix,
+    promise,
+    onTimeout
+  }: {
+    prefix: string;
+    promise: Promise<T>;
+    onTimeout: () => void;
+  }): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            const timeoutError = new Error(
+              `Delete by prefix list timeout after ${minioRequestTimeoutMs}ms: ${prefix}`
+            );
+            // 先固定 Promise.race 的结果，再 abort 底层请求，避免 AbortError 抢先返回。
+            reject(timeoutError);
+            onTimeout();
+          }, minioRequestTimeoutMs);
+        })
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   async ensureBucket(): Promise<EnsureBucketResult> {

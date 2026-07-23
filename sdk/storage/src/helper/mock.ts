@@ -36,7 +36,7 @@ import {
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix
-} from '../objectKey';
+} from '../assert';
 import { bindAbortSignalToReadable, throwIfStorageDownloadAborted } from '../utils';
 
 type VitestLike = {

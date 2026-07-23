@@ -1,6 +1,10 @@
 import { Readable } from 'node:stream';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { StorageIntegrationContext, StorageIntegrationProvider } from '../providers';
+import {
+  ValidTestBucketNamePrefixPattern,
+  type StorageIntegrationContext,
+  type StorageIntegrationProvider
+} from '../providers';
 import { createAsciiKeyAtLength } from '../helpers';
 
 const readBody = async (body: Readable): Promise<Buffer> => {
@@ -30,7 +34,7 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
       });
 
       it('creates a dedicated bucket and reports it through the interface', async () => {
-        expect(context.bucket).toMatch(/^fastgpt-sdk-/);
+        expect(context.bucket).toMatch(ValidTestBucketNamePrefixPattern);
         expect(context.storage.bucketName).toBe(context.bucket);
         expect(context.initialEnsureResult).toMatchObject({ bucket: context.bucket });
         expect(context.initialEnsureResult.created || context.initialEnsureResult.exists).toBe(

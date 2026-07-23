@@ -40,12 +40,13 @@ const getRequiredEnv = (name: string): string => {
   return value;
 };
 
+export const ValidTestBucketNamePrefixPattern = /^fastgpt-sdk\.integration-/;
 const getTestBucket = (envName: string): string => {
   const bucket = getRequiredEnv(envName);
-  if (!bucket.startsWith('fastgpt-sdk-')) {
-    throw new Error(`${envName} must start with "fastgpt-sdk-" to protect non-test buckets`);
+  if (ValidTestBucketNamePrefixPattern.test(bucket)) {
+    return bucket;
   }
-  return bucket;
+  throw new Error(`Met invalid bucket name to protect non-test buckets`);
 };
 
 const isBucketNotFoundError = (error: unknown): boolean => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createVitestStorageMock } from '../../src/testing/vitestMock';
+import { createVitestStorageMock } from '../../src/helper/mock';
 import { removeIntegrationBucketIfExists } from '../integration/helpers';
 
 describe('removeIntegrationBucketIfExists', () => {

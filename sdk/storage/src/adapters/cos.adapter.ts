@@ -41,7 +41,7 @@ import {
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix
-} from '../objectKey';
+} from '../assert';
 
 export class CosStorageAdapter implements IStorage {
   protected readonly client: COS;

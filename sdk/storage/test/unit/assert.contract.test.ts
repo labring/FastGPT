@@ -5,7 +5,7 @@ import { CosStorageAdapter } from '../../src/adapters/cos.adapter';
 import { MinioStorageAdapter } from '../../src/adapters/minio.adapter';
 import { OssStorageAdapter } from '../../src/adapters/oss.adapter';
 import { InvalidStorageObjectKeyError } from '../../src/errors';
-import { createVitestStorageMock } from '../../src/testing/vitestMock';
+import { createVitestStorageMock } from '../../src/helper/mock';
 
 type GuardedStorage = {
   storage: IStorage;

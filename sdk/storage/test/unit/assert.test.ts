@@ -6,7 +6,7 @@ import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix
-} from '../../src/objectKey';
+} from '../../src/assert';
 
 const expectInvalidKey = ({
   value,

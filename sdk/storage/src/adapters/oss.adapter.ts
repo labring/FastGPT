@@ -41,7 +41,7 @@ import {
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix
-} from '../objectKey';
+} from '../assert';
 
 export class OssStorageAdapter implements IStorage {
   protected readonly client: OSS;

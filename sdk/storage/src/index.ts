@@ -1,6 +1,6 @@
 export { createStorage } from './factory';
-export { createVitestStorageMock } from './testing/vitestMock';
-export type { VitestStorageMock, CreateVitestStorageMockParams } from './testing/vitestMock';
+export { createVitestStorageMock } from './helper/mock';
+export type { VitestStorageMock, CreateVitestStorageMockParams } from './helper/mock';
 export type {
   IStorage,
   IStorageOptions,
@@ -47,7 +47,7 @@ export {
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix
-} from './objectKey';
+} from './assert';
 export { AwsS3StorageAdapter } from './adapters/aws-s3.adapter';
 export { CosStorageAdapter } from './adapters/cos.adapter';
 export { MinioStorageAdapter } from './adapters/minio.adapter';

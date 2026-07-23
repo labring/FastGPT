@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
-import { createVitestStorageMock } from '../../src/testing/vitestMock';
+import { createVitestStorageMock } from '../../src/helper/mock';
 
 const readBody = async (body: Readable) => {
   const chunks: Buffer[] = [];

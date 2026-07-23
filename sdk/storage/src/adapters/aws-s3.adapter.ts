@@ -55,7 +55,7 @@ import {
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix
-} from '../objectKey';
+} from '../assert';
 
 export class AwsS3StorageAdapter implements IStorage {
   protected readonly client: S3Client;
