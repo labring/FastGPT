@@ -22,6 +22,8 @@ export {
 export type { SandboxClientQuery } from '../application/runtime/client';
 export { prepareAgentSandboxRuntime } from '../application/runtime';
 export type { AgentSandboxRuntimeContext } from '../application/runtime';
+export { assertSandboxAvailable, resolveAppSandboxAvailability } from '../application/availability';
+export type { AppSandboxAvailability } from '../application/availability';
 export { getRunningSandboxId } from '../utils/id';
 export { getSandboxRuntimeProfile } from '../application/runtime';
 export type { SandboxRuntimeProfile } from '../application/runtime';

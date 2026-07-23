@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
+  buildSandboxClientQueryFromChatSource,
   getSandboxClient,
   type SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
@@ -15,7 +16,6 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { serviceEnv } from '@fastgpt/service/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { buildSandboxClientQueryFromChatSource } from '@/service/core/sandbox/auth';
 import { resolveSandboxPreviewSession } from '@fastgpt/service/core/ai/sandbox/interface/preview';
 
 const IDE_AGENT_PORT = 1318;

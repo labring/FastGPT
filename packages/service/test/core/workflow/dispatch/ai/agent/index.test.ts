@@ -81,17 +81,11 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
 
   return {
     ...original,
-    prepareAgentSandboxRuntime: vi.fn(async (params) => {
-      try {
-        await checkTeamSandboxPermissionMock(params.teamId);
-      } catch {
-        throw original.createAgentSandboxPermissionDeniedError();
-      }
-      return {
-        sandboxClient: await getSandboxClientMock(params),
-        workDirectory: original.getSandboxRuntimeProfile().workDirectory
-      };
-    }),
+    prepareAgentSandboxRuntime: vi.fn(async (params) => ({
+      sandboxClient: await getSandboxClientMock(params),
+      workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
+      workDirectory: original.getSandboxRuntimeProfile().workDirectory
+    })),
     ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock,
     getAgentSkillInfos: getAgentSkillInfosMock,
     injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
@@ -458,8 +452,7 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1',
-      teamId: 'team_1'
+      chatId: 'chat_1'
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
     const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
@@ -486,8 +479,7 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1',
-      teamId: 'team_1'
+      chatId: 'chat_1'
     });
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
@@ -609,6 +601,8 @@ describe('dispatchRunAgent user context', () => {
     props.params.useAgentSandbox = false;
     props.params.skills = [];
     props.params.editSkillId = 'edit_skill_1';
+    props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
+    props.runningAppInfo.sourceId = 'edit_skill_1';
 
     let result: any;
     runWithContext(
@@ -626,11 +620,10 @@ describe('dispatchRunAgent user context', () => {
     await result;
 
     expect(getSandboxClientMock).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app_1',
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'edit_skill_1',
       userId: 'user_1',
-      chatId: 'chat_1',
-      teamId: 'team_1'
+      chatId: 'chat_1'
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
@@ -1078,11 +1071,34 @@ describe('dispatchRunAgent user context', () => {
     ]);
   });
 
-  it('throws error and interrupts when checkTeamSandboxPermission fails', async () => {
+  it.each([
+    {
+      name: 'the app disables sandbox',
+      configure: (props: ReturnType<typeof createProps>) => {
+        props.params.useAgentSandbox = false;
+        props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+      }
+    },
+    {
+      name: 'the system disables sandbox',
+      configure: (props: ReturnType<typeof createProps>) => {
+        props.params.useAgentSandbox = true;
+        props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+        global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+      }
+    },
+    {
+      name: 'the team plan has no sandbox permission',
+      configure: (props: ReturnType<typeof createProps>) => {
+        props.params.useAgentSandbox = true;
+        props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+        checkTeamSandboxPermissionMock.mockRejectedValueOnce(new Error('no permission'));
+      }
+    }
+  ])('continues without sandbox or skills when $name', async ({ configure }) => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
-    props.params.useAgentSandbox = true;
-    checkTeamSandboxPermissionMock.mockRejectedValueOnce(new Error('no permission'));
+    configure(props);
 
     let promise: any;
     runWithContext(
@@ -1098,9 +1114,45 @@ describe('dispatchRunAgent user context', () => {
       }
     );
     const result = await promise;
+
+    expect(result.error).toBeUndefined();
+    expect(result.data.answerText).toBe('ok');
+    expect(getSandboxClientMock).not.toHaveBeenCalled();
+    expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
+    expect(runAgentLoopMock).toHaveBeenCalledOnce();
+
+    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).not.toContain('## 沙盒能力');
+    expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).not.toContain(
+      '<available_skills>'
+    );
+    expect(runAgentLoopMock.mock.calls[0][0].runtime.systemTools.sandbox).toBeUndefined();
+  });
+
+  it('keeps Skill Edit sandbox dependency blocking when the system disables sandbox', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
+    props.runningAppInfo.sourceId = 'skill_1';
+    props.params.editSkillId = 'skill_1';
+    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+
+    let promise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        promise = dispatchRunAgent(props);
+      }
+    );
+    const result = await promise!;
+
     expect(result.error?.system_error_text).toBe(
       'common:code_error.sandbox_error.agent_sandbox_permission_denied'
     );
     expect(getSandboxClientMock).not.toHaveBeenCalled();
+    expect(runAgentLoopMock).not.toHaveBeenCalled();
   });
 });

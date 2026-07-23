@@ -86,8 +86,7 @@ export async function ensureAgentSandboxRuntime({
     sourceType,
     sourceId,
     userId,
-    chatId,
-    teamId
+    chatId
   });
 
   const preparedContext = await withAgentSandboxInitLease({

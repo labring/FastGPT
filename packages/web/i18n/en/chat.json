@@ -215,6 +215,7 @@
   "sandbox_status_ready_warm": "Sandbox is ready (warm start)",
   "sandbox_status_uploadingPackage": "Uploading skill package to sandbox...",
   "sandbox_terminal": "Terminal",
+  "sandbox_unavailable_toast": "The virtual machine feature has been disabled and is temporarily unavailable.",
   "sandbox_unzip": "Unzip",
   "sandbox_unzip_failed": "Unzip failed",
   "sandbox_unzip_success": "Unzipped",

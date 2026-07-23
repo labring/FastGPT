@@ -1,6 +1,7 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
 import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../../chat/api';
+import { SandboxUnavailableReasonSchema } from '../../../../core/ai/sandbox/type';
 
 const SandboxBaseShape = {
   chatId: z.string().meta({
@@ -77,7 +78,10 @@ export type SandboxUploadResponse = z.infer<typeof SandboxUploadResponseSchema>;
 export const SandboxCheckExistBodyRawSchema = createOutLinkChatTargetInputSchema(SandboxBaseShape);
 export const SandboxCheckExistBodySchema = withSandboxTarget({});
 export const SandboxCheckExistResponseSchema = z.object({
-  exists: z.boolean().describe('沙盒是否存在')
+  exists: z.boolean().describe('沙盒是否存在'),
+  unavailableReason: SandboxUnavailableReasonSchema.optional().describe(
+    '普通 App Chat 中沙盒不可用的产品态原因'
+  )
 });
 export type SandboxCheckExistBody = z.input<typeof SandboxCheckExistBodySchema>;
 export type SandboxCheckExistRuntimeBody = z.output<typeof SandboxCheckExistBodySchema>;

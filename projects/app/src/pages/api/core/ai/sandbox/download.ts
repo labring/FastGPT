@@ -3,11 +3,9 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
+import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import {
-  authSandboxSession,
-  buildSandboxClientQueryFromChatSource
-} from '@/service/core/sandbox/auth';
-import {
+  buildSandboxClientQueryFromChatSource,
   getSandboxClient,
   type SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
@@ -102,7 +100,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     uid,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
-  } = await authSandboxSession({
+  } = await authSandboxRuntimeSession({
     req,
     sourceType,
     sourceId,

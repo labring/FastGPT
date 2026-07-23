@@ -112,6 +112,7 @@ const createProps = (overrides: Record<string, any> = {}) =>
 describe('dispatchRunTools file context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     getLLMModelMock.mockReturnValue({
       model: 'gpt-5',
@@ -133,6 +134,7 @@ describe('dispatchRunTools file context', () => {
     });
     runToolCallMock.mockResolvedValue({
       toolWorkflowInteractiveResponse: undefined,
+      toolDispatchFlowResponses: [],
       runtimeNodeResponseSummary: createRuntimeNodeResponseSummary(),
       runTimes: 0,
       toolTotalPoints: 0,
@@ -199,19 +201,67 @@ describe('dispatchRunTools file context', () => {
     );
   });
 
-  it('should throw error when team has no permission', async () => {
-    vi.mocked(checkTeamSandboxPermission).mockRejectedValue(new Error('no permission'));
-    global.feConfigs = { show_agent_sandbox: true };
+  it.each([
+    {
+      name: 'the app disables sandbox',
+      configure: () => undefined,
+      useAgentSandbox: false
+    },
+    {
+      name: 'the system disables sandbox',
+      configure: () => {
+        global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
+      },
+      useAgentSandbox: true
+    },
+    {
+      name: 'the team plan has no sandbox permission',
+      configure: () => {
+        vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
+      },
+      useAgentSandbox: true
+    }
+  ])('continues ordinary tool calls when $name', async ({ configure, useAgentSandbox }) => {
+    configure();
 
-    const promise = dispatchRunTools(
-      createProps({
-        params: {
-          ...createProps().params,
-          useAgentSandbox: true
-        }
+    const props = createProps({
+      params: {
+        ...createProps().params,
+        useAgentSandbox
+      }
+    });
+    const result = await dispatchRunTools(props);
+
+    expect(result.error).toBeUndefined();
+    expect(getSandboxClientMock).not.toHaveBeenCalled();
+    expect(useToolMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ useSandbox: false })
+    );
+    expect(runToolCallMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxClient: undefined,
+        params: expect.objectContaining({
+          useAgentSandbox: false,
+          sandboxEntrypoint: undefined
+        })
       })
     );
+  });
 
+  it('keeps non-app sandbox permission failures blocking', async () => {
+    vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
+    const props = createProps({
+      runningAppInfo: {
+        ...createProps().runningAppInfo,
+        sourceType: ChatSourceTypeEnum.skillEdit
+      },
+      params: {
+        ...createProps().params,
+        useAgentSandbox: true
+      }
+    });
+
+    const promise = dispatchRunTools(props);
     await expect(promise).rejects.toMatchObject({
       message: SandboxErrEnum.agentSandboxPermissionDenied
     });
@@ -223,7 +273,7 @@ describe('dispatchRunTools file context', () => {
   });
 
   it('initializes sandbox client and injects input files before running toolcall', async () => {
-    global.feConfigs = { show_agent_sandbox: true };
+    global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
     const sandboxClient = {
       provider: {},
       exec: vi.fn()

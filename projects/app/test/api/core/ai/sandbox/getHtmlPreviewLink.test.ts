@@ -4,7 +4,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  authSandboxSession: vi.fn(),
+  authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   createSandboxPreviewFileUrl: vi.fn(),
   getFileInfo: vi.fn(),
@@ -17,12 +17,12 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: vi.fn((handler) => handler)
 }));
 
-vi.mock('@/service/core/sandbox/auth', () => ({
-  authSandboxSession: mocks.authSandboxSession,
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+vi.mock('@/service/core/sandbox/access', () => ({
+  authSandboxRuntimeSession: mocks.authSandboxRuntimeSession
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
   getSandboxClient: mocks.getSandboxClient
 }));
 
@@ -56,7 +56,7 @@ const createRes = () => {
 describe('sandbox getHtmlPreviewLink API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authSandboxSession.mockResolvedValue({
+    mocks.authSandboxRuntimeSession.mockResolvedValue({
       uid: 'user-1',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011'
@@ -95,7 +95,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
 
     await handler(req, res);
 
-    expect(mocks.authSandboxSession).toHaveBeenCalledWith({
+    expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledWith({
       req,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011',

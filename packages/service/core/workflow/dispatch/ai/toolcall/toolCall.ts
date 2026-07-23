@@ -127,10 +127,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         systemTools: {
           planEnabled: false,
           askEnabled: false,
-          sandboxClient:
-            useAgentSandbox && global.feConfigs?.show_agent_sandbox
-              ? workflowProps.sandboxClient
-              : undefined,
+          sandboxClient: useAgentSandbox ? workflowProps.sandboxClient : undefined,
           readFile: toolProvider.readFileExecutor
             ? {
                 enabled: true,

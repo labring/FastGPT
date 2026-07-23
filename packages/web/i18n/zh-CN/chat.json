@@ -215,6 +215,7 @@
   "sandbox_status_ready_warm": "沙箱环境就绪（热启动）",
   "sandbox_status_uploadingPackage": "正在上传技能包到沙箱...",
   "sandbox_terminal": "终端",
+  "sandbox_unavailable_toast": "虚拟机功能已被关闭，暂时无法使用",
   "sandbox_unzip": "解压",
   "sandbox_unzip_failed": "解压失败",
   "sandbox_unzip_success": "解压完成",

@@ -1,4 +1,8 @@
 import z from 'zod';
+import { SandboxUnavailableReasonEnum } from './constants';
+
+export const SandboxUnavailableReasonSchema = z.enum(SandboxUnavailableReasonEnum);
+export type SandboxUnavailableReason = z.infer<typeof SandboxUnavailableReasonSchema>;
 
 export const SandboxImageConfigSchema = z.object({
   repository: z.string(),

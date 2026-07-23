@@ -51,8 +51,7 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { getAgentSandboxSkillMaxBytes } from '../../config';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
-import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
-import { createAgentSandboxPermissionDeniedError } from '../../error';
+import { assertSandboxAvailable } from '../availability';
 import {
   emptyWorkDirectory,
   preparePackageMirrors,
@@ -113,11 +112,7 @@ export async function getSkillEditRuntimeContext(params: {
 }): Promise<SkillEditRuntimeContext> {
   const { skillId, teamId, tmbId, entrypoint } = params;
 
-  try {
-    await checkTeamSandboxPermission(teamId);
-  } catch {
-    throw createAgentSandboxPermissionDeniedError();
-  }
+  await assertSandboxAvailable(teamId);
 
   const providerConfig = getSandboxProviderConfig();
   const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);

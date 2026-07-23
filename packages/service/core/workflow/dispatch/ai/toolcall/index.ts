@@ -8,15 +8,16 @@ import { type DispatchToolModuleProps } from './type';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
-import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
 import {
-  createAgentSandboxPermissionDeniedError,
+  assertSandboxAvailable,
   getRunningSandboxId,
   getSandboxRuntimeProfile,
+  resolveAppSandboxAvailability,
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/interface/runtime';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreToolCallNodeResponse,
@@ -40,6 +41,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     chatConfig,
     lastInteractive,
     runningUserInfo,
+    runningAppInfo,
     externalProvider,
     responseChatItemId,
     params: {
@@ -58,15 +60,18 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
   } = props;
 
-  if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
-    try {
-      await checkTeamSandboxPermission(runningUserInfo.teamId);
-    } catch {
-      throw createAgentSandboxPermissionDeniedError();
-    }
+  const isAppChat = runningAppInfo.sourceType === ChatSourceTypeEnum.app;
+  const appSandboxAvailability = isAppChat
+    ? await resolveAppSandboxAvailability({
+        appEnabled: !!useAgentSandbox,
+        teamId: runningAppInfo.teamId
+      })
+    : undefined;
+  if (!isAppChat && useAgentSandbox) {
+    await assertSandboxAvailable(runningAppInfo.teamId);
   }
 
-  const useSandbox = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
+  const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
     const toolModel = getLLMModel(model);

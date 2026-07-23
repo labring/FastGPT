@@ -212,6 +212,7 @@
   "sandbox_status_ready_warm": "沙箱環境就緒（熱啟動）",
   "sandbox_status_uploadingPackage": "正在上傳技能包到沙箱...",
   "sandbox_terminal": "終端機",
+  "sandbox_unavailable_toast": "虛擬機功能已被關閉，暫時無法使用",
   "sandbox_unzip": "解壓",
   "sandbox_unzip_failed": "解壓失敗",
   "sandbox_unzip_success": "解壓完成",

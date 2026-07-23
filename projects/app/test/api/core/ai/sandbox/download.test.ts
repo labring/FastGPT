@@ -9,11 +9,12 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: vi.fn((handler) => handler)
 }));
 
-vi.mock('@/service/core/sandbox/auth', () => ({
-  authSandboxSession: vi.fn()
+vi.mock('@/service/core/sandbox/access', () => ({
+  authSandboxRuntimeSession: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+  buildSandboxClientQueryFromChatSource: vi.fn(),
   getSandboxClient: vi.fn()
 }));
 

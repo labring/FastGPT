@@ -16,11 +16,11 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@/service/core/sandbox/auth', () => ({
-  authAgentSandboxProxy: mocks.authAgentSandboxProxy,
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+  authAgentSandboxProxy: mocks.authAgentSandboxProxy
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
   getSandboxClient: mocks.getSandboxClient
 }));
 
