@@ -12,8 +12,9 @@ import {
   normalizeChatFileStoreValues,
   type ChatFileValueInput
 } from '../../../chat/fileStoreValue';
-import { getWorkflowFileRegistrar } from '../../utils/context';
+import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
+import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 const DEFAULT_FORM_FILE_INPUT_MAX_FILES = 5;
@@ -115,6 +116,8 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   })();
 
   const getPreviewUrl = createChatFilePreviewUrlGetter({ expiredHours: 1 });
+  const userMaxFileAmount =
+    getWorkflowFileContext()?.limits.maxFileAmount ?? DEFAULT_FORM_FILE_INPUT_MAX_FILES;
   const fileRegistrar = getWorkflowFileRegistrar();
   const inputConfigMap = new Map(userInputForms.map((form) => [form.key, form]));
   const userInputEntries = await Promise.all(
@@ -129,7 +132,11 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
           key,
           await formatFileSelectRuntimeValue({
             value,
-            maxFiles: inputConfig.maxFiles,
+            maxFiles: getModuleFileAmountLimit({
+              userMaxFileAmount,
+              moduleMaxFileAmount: inputConfig.maxFiles,
+              defaultModuleMaxFileAmount: DEFAULT_FORM_FILE_INPUT_MAX_FILES
+            }),
             getPreviewUrl,
             fileRegistrar
           })

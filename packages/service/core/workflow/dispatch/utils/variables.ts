@@ -16,6 +16,7 @@ import {
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext } from '../../utils/context';
 import { isAbsoluteHttpUrl } from '../../utils/fileContext';
+import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
 
@@ -86,11 +87,20 @@ const getVariableInputValue = ({
 };
 
 /** 从已知文件字段的运行值中提取文件输入。 */
-export const getWorkflowFileInputsFromValue = (value: unknown, maxFiles?: number) =>
+export const getWorkflowFileInputsFromValue = (
+  value: unknown,
+  moduleMaxFileAmount?: number,
+  userMaxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount ??
+    DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
+) =>
   Array.isArray(value)
     ? assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
         0,
-        Math.max(maxFiles ?? DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES, 0)
+        getModuleFileAmountLimit({
+          userMaxFileAmount,
+          moduleMaxFileAmount,
+          defaultModuleMaxFileAmount: DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
+        })
       )
     : [];
 
@@ -106,7 +116,7 @@ export const getWorkflowFileVariableInputs = ({
   variablesConfig.flatMap((item) => {
     if (item.type !== VariableInputEnum.file) return [];
     const value = getVariableInputValue({ variables: inputVariables, item });
-    return getWorkflowFileInputsFromValue(value, item.maxFiles ?? maxFileAmount);
+    return getWorkflowFileInputsFromValue(value, item.maxFiles, maxFileAmount);
   });
 
 /** 将文件存储值转换为运行时 URL，并记录 URL 到 store metadata 的映射。 */
@@ -177,7 +187,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     for (const item of variablesConfig) {
       const config: WorkflowVariableRuntimeConfig = {
         ...item,
-        maxFiles: Math.max(item.maxFiles ?? maxFileAmount, 0)
+        maxFiles: getModuleFileAmountLimit({
+          userMaxFileAmount: maxFileAmount,
+          moduleMaxFileAmount: item.maxFiles,
+          defaultModuleMaxFileAmount: DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
+        })
       };
       const value = getVariableInputValue({ variables: inputVariables, item: config });
       await state.initConfiguredVariable(config, value, resolveInputFile);

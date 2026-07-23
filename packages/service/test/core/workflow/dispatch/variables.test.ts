@@ -218,11 +218,11 @@ describe('WorkflowVariableState', () => {
     expect(state.get('files')).toEqual(inputVariables.files.slice(0, 2));
     expect(
       getWorkflowFileVariableInputs({ variablesConfig, inputVariables, maxFileAmount: 1 })
-    ).toEqual(inputVariables.files.slice(0, 2));
+    ).toEqual(inputVariables.files.slice(0, 1));
     expect(resolveInputFile).toHaveBeenCalledTimes(2);
   });
 
-  it('should prefer the variable file limit for runtime file updates', async () => {
+  it('should cap the variable file limit by the workflow user quota', async () => {
     const state = await createState({
       maxFileAmount: 1,
       variablesConfig: [
@@ -241,8 +241,8 @@ describe('WorkflowVariableState', () => {
 
     const result = await state.set('files', files);
 
-    expect(result).toEqual(files.slice(0, 2));
-    expect(state.get('files')).toEqual(files.slice(0, 2));
+    expect(result).toEqual(files.slice(0, 1));
+    expect(state.get('files')).toEqual(files.slice(0, 1));
   });
 
   it('should fall back to the workflow file limit for runtime file updates', async () => {

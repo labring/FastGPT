@@ -217,4 +217,53 @@ describe('dispatchFormInput', () => {
     ]);
     expect(registerInputFile).toHaveBeenCalledTimes(2);
   });
+
+  it('caps the form maxFiles limit by the workflow user quota', async () => {
+    const registerInputFile = vi.fn(async ({ file }) => ({
+      modelUrl: 'url' in file ? file.url : undefined
+    }));
+
+    const result = await runWithContext(
+      {
+        mcpClientMemory: {},
+        fileContext: { limits: { maxFileAmount: 1 } } as any,
+        fileRegistrar: { registerInputFile } as any
+      },
+      () =>
+        dispatchFormInput({
+          histories: [{ obj: 'Human', value: [] }],
+          node: { isEntry: true },
+          params: {
+            [NodeInputKeyEnum.description]: 'upload',
+            [NodeInputKeyEnum.userInputForms]: [
+              {
+                key: 'upload',
+                label: 'upload',
+                type: FlowNodeInputTypeEnum.fileSelect,
+                value: [],
+                valueType: WorkflowIOValueTypeEnum.arrayString,
+                required: false,
+                maxFiles: 2
+              }
+            ]
+          },
+          query: [
+            {
+              text: {
+                content: JSON.stringify({
+                  upload: [
+                    'https://external.example.com/1.pdf',
+                    'https://external.example.com/2.pdf'
+                  ]
+                })
+              }
+            }
+          ],
+          lastInteractive: { type: 'userInput' }
+        } as any)
+    );
+
+    expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
+    expect(registerInputFile).toHaveBeenCalledTimes(1);
+  });
 });

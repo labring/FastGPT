@@ -9,6 +9,7 @@ import {
   normalizeChatFileStoreValues
 } from '../../../chat/fileStoreValue';
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
+import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES = 5;
 
@@ -28,12 +29,21 @@ export const dispatchPluginInput = async (
   const { files } = chatValue2RuntimePrompt(query);
   const fileContext = getWorkflowFileContext();
   const fileRegistrar = getWorkflowFileRegistrar();
+  const userMaxFileAmount =
+    fileContext?.limits.maxFileAmount ?? DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES;
   const fileInputMaxFiles = new Map(
     node.inputs
       .filter((input) => input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect))
       .map(
         (input) =>
-          [input.key, Math.max(input.maxFiles ?? DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES, 0)] as const
+          [
+            input.key,
+            getModuleFileAmountLimit({
+              userMaxFileAmount,
+              moduleMaxFileAmount: input.maxFiles,
+              defaultModuleMaxFileAmount: DEFAULT_PLUGIN_FILE_INPUT_MAX_FILES
+            })
+          ] as const
       )
   );
 

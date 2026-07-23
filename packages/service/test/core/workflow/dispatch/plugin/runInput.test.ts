@@ -31,12 +31,13 @@ describe('dispatchPluginInput', () => {
     mockResolveInputFile.mockReset();
   });
 
-  const runWithMockFileContext = <T>(fn: () => Promise<T>) =>
+  const runWithMockFileContext = <T>(fn: () => Promise<T>, maxFileAmount = 5) =>
     runWithContext(
       {
         mcpClientMemory: {},
         fileContext: {
-          resolveInputFile: mockResolveInputFile
+          resolveInputFile: mockResolveInputFile,
+          limits: { maxFileAmount }
         } as any,
         fileRegistrar: {
           registerInputFile: mockRegisterInputFile
@@ -154,6 +155,35 @@ describe('dispatchPluginInput', () => {
       'https://external.example.com/2.pdf'
     ]);
     expect(mockRegisterInputFile).toHaveBeenCalledTimes(2);
+  });
+
+  it('caps the fileSelect maxFiles limit by the workflow user quota', async () => {
+    mockRegisterInputFile.mockResolvedValue({
+      modelUrl: 'https://external.example.com/1.pdf'
+    });
+
+    const result = await runWithMockFileContext(
+      () =>
+        dispatchPluginInput({
+          params: {
+            upload: ['https://external.example.com/1.pdf', 'https://external.example.com/2.pdf']
+          },
+          query: [],
+          node: {
+            inputs: [
+              {
+                key: 'upload',
+                renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+                maxFiles: 2
+              }
+            ]
+          }
+        } as any),
+      1
+    );
+
+    expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
+    expect(mockRegisterInputFile).toHaveBeenCalledTimes(1);
   });
 
   it('silently drops files rejected by the workflow file capacity', async () => {

@@ -10,6 +10,7 @@ vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
 
 import {
   getWorkflowFileAmountLimits,
+  getWorkflowFileLimits,
   prepareWorkflowFileQuery
 } from '@fastgpt/service/core/workflow/utils/fileLimits';
 
@@ -75,6 +76,22 @@ describe('prepareWorkflowFileQuery', () => {
     expect(result.query).toHaveLength(20);
   });
 
+  it('reuses preloaded Workflow limits without querying the team plan again', async () => {
+    getTeamPlanStatusMock.mockResolvedValue({ standard: undefined });
+    const limits = await getWorkflowFileLimits({ teamId: 'team-1' });
+    getTeamPlanStatusMock.mockClear();
+
+    const result = await prepareWorkflowFileQuery({
+      teamId: 'team-1',
+      query: [createFile('first.pdf')],
+      limits
+    });
+
+    expect(result.maxFileAmount).toBe(20);
+    expect(result.maxBytesPerFile).toBe(100 * 1024 * 1024);
+    expect(getTeamPlanStatusMock).not.toHaveBeenCalled();
+  });
+
   it('preserves an explicit zero team file count instead of falling back to the system limit', () => {
     expect(
       getWorkflowFileAmountLimits({
@@ -85,5 +102,23 @@ describe('prepareWorkflowFileQuery', () => {
       maxFileAmount: 0,
       queryMaxFileAmount: 0
     });
+  });
+
+  it('caps the query module limit by the team quota', async () => {
+    getTeamPlanStatusMock.mockResolvedValue({
+      standard: { maxUploadFileCount: 2, maxUploadFileSize: 50 }
+    });
+    const files = Array.from({ length: 3 }, (_, index) => createFile(`${index}.pdf`));
+
+    const result = await prepareWorkflowFileQuery({
+      teamId: 'team-1',
+      chatConfig: {
+        fileSelectConfig: { maxFiles: 3 }
+      },
+      query: files
+    });
+
+    expect(result.query).toEqual(files.slice(0, 2));
+    expect(result.maxFileAmount).toBe(2);
   });
 });

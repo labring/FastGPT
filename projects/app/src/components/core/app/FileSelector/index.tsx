@@ -59,6 +59,7 @@ import {
   hasChatTargetInput,
   useChatApiTarget
 } from '@/web/core/chat/utils';
+import { getFileAmountLimit, getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
 
 type WebkitFileSystemFileEntry = {
   isFile: true;
@@ -383,17 +384,17 @@ const FileSelector = ({
       customFileExtensionList
     ]
   );
-  // 文件数量限制：组件参数 || 团队套餐 || 系统配置 || 默认值
-  const maxSelectFiles =
-    maxFiles ||
-    teamPlanStatus?.standard?.maxUploadFileCount ||
-    feConfigs?.uploadFileMaxAmount ||
-    10;
-  // 文件大小限制（MB）：团队套餐 || 系统配置 || 默认值
-  const maxSize =
-    (teamPlanStatus?.standard?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
-    1024 *
-    1024;
+  // Form/Plugin 文件输入的模块配额与用户配额取更小值。
+  const maxSelectFiles = getFileAmountLimit({
+    moduleMaxFileAmount: maxFiles,
+    defaultModuleMaxFileAmount: 5,
+    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
+    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+  });
+  const maxSize = getFileSizeLimitBytes({
+    teamMaxFileSize: teamPlanStatus?.standard?.maxUploadFileSize,
+    systemMaxFileSize: feConfigs?.uploadFileMaxSize ?? 500
+  });
   const canSelectFileAmount = Math.max(maxSelectFiles - fileList.length, 0);
   const isMaxSelected = canSelectFileAmount <= 0;
 

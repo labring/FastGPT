@@ -8,7 +8,10 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { prepareWorkflowFileQuery } from '@fastgpt/service/core/workflow/utils/fileLimits';
+import {
+  getWorkflowFileLimits,
+  prepareWorkflowFileQuery
+} from '@fastgpt/service/core/workflow/utils/fileLimits';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -179,13 +182,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return;
     }
 
+    const workflowFileLimits = await getWorkflowFileLimits({ teamId });
+
     const chatMessages = GPTMessages2Chats({
       messages: await normalizeCompletionMessages({
         messages,
         sourceType: ChatSourceTypeEnum.app,
         sourceId: String(app._id),
         chatId,
-        uid: String(outLinkUserId || tmbId)
+        uid: String(outLinkUserId || tmbId),
+        ...workflowFileLimits
       })
     });
 
@@ -293,7 +299,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await prepareWorkflowFileQuery({
       teamId,
       chatConfig,
-      query: userQuestion.value
+      query: userQuestion.value,
+      limits: workflowFileLimits
     });
     const workflowUserQuestion: UserChatItemType = {
       ...userQuestion,

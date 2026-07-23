@@ -26,7 +26,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
-import { resolveFileSelectConfigMaxFiles } from './fileSelectConfig';
+import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const FileSelect = ({
   forbidVision = false,
@@ -44,9 +44,9 @@ const FileSelect = ({
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // 对话可配置的文件数量不能超过团队套餐；未配置套餐时沿用系统上传上限。
-  const maxSelectFiles = resolveFileSelectConfigMaxFiles({
-    teamPlanMaxFiles: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFiles: feConfigs.uploadFileMaxAmount
+  const maxSelectFiles = getUserFileAmountLimit({
+    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
+    systemMaxFileAmount: feConfigs.uploadFileMaxAmount
   });
 
   const [localValue, setLocalValue] = useState(value);
