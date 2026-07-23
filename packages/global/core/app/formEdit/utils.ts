@@ -52,6 +52,9 @@ type InputRenderTypeState = {
   selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
 };
 
+type SavedToolInputTypeState = InputRenderTypeState &
+  Pick<Partial<FlowNodeInputItemType>, 'isToolParam' | 'toolDescription'>;
+
 type ToolInputTypeState = InputRenderTypeState &
   Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
   Pick<Partial<FlowNodeInputItemType>, 'isToolParam' | 'list' | 'enums' | 'enum' | 'valueType'>;
@@ -186,15 +189,18 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
  * 读取已保存工具配置里的最终选择。
  * 旧协议的 selectedTypeIndex: 0 只是旧默认项；当新 schema 声明该字段默认作为工具参数时，
  * 需要继续应用新的 Agent 生成默认值。显式 selectedType 和非零索引保留。
+ * 更早的存量工作流没有 selectedType/isToolParam，可由调用方显式开启 toolDescription 兼容。
  */
 export const getSavedToolInputSelectedType = ({
   savedInput,
   defaultInput,
-  allowUserChatInputAgentGenerated = false
+  allowUserChatInputAgentGenerated = false,
+  allowLegacyToolDescriptionFallback = false
 }: {
-  savedInput?: InputRenderTypeState;
+  savedInput?: SavedToolInputTypeState;
   defaultInput: ToolInputTypeState;
   allowUserChatInputAgentGenerated?: boolean;
+  allowLegacyToolDescriptionFallback?: boolean;
 }) => {
   if (!savedInput) return;
   if (
@@ -209,6 +215,20 @@ export const getSavedToolInputSelectedType = ({
       ? undefined
       : getSelectedInputRenderType(savedInput));
   if (savedInput.selectedType) return savedInput.selectedType;
+
+  // 上线 selectedType 前，已落库工具输入通过 toolDescription 表示最终由 AI 生成。
+  // renderTypeList 已含 agentGenerated 的过渡数据继续按索引读取，避免覆盖当时的手动选择。
+  const isLegacyToolDescriptionSelection =
+    allowLegacyToolDescriptionFallback &&
+    savedInput.isToolParam === undefined &&
+    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated);
+  if (isLegacyToolDescriptionSelection) {
+    if (savedInput.toolDescription && canInputBeAgentGenerated(defaultInput)) {
+      return FlowNodeInputTypeEnum.agentGenerated;
+    }
+    return getSelectedInputRenderType(savedInput);
+  }
+
   if (savedInput.selectedTypeIndex === undefined) return;
 
   const isLegacyDefaultManualType =
