@@ -1,6 +1,7 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
 import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../../chat/api';
+import { SandboxUnavailableReasonSchema } from '../../../../core/ai/sandbox/type';
 
 const SandboxBaseShape = {
   chatId: z.string().meta({
@@ -77,32 +78,14 @@ export type SandboxUploadResponse = z.infer<typeof SandboxUploadResponseSchema>;
 export const SandboxCheckExistBodyRawSchema = createOutLinkChatTargetInputSchema(SandboxBaseShape);
 export const SandboxCheckExistBodySchema = withSandboxTarget({});
 export const SandboxCheckExistResponseSchema = z.object({
-  exists: z.boolean().describe('沙盒是否存在')
+  exists: z.boolean().describe('沙盒是否存在'),
+  unavailableReason: SandboxUnavailableReasonSchema.optional().describe(
+    '普通 App Chat 中沙盒不可用的产品态原因'
+  )
 });
 export type SandboxCheckExistBody = z.input<typeof SandboxCheckExistBodySchema>;
 export type SandboxCheckExistRuntimeBody = z.output<typeof SandboxCheckExistBodySchema>;
 export type SandboxCheckExistResponse = z.infer<typeof SandboxCheckExistResponseSchema>;
-
-/* ============================================================================
- * API: 获取 Sandbox runtime 镜像升级状态
- * Route: POST /api/core/ai/sandbox/runtime/getStatus
- * Method: POST
- * Description: 查询 App 用户级 Sandbox 是否需要镜像升级，不创建、恢复或归档实例
- * Tags: ['Sandbox', 'Read']
- * ============================================================================ */
-export const SandboxRuntimeBodyRawSchema = createOutLinkChatTargetInputSchema(SandboxBaseShape);
-export const SandboxRuntimeBodySchema = withSandboxTarget({});
-export type SandboxRuntimeBody = z.input<typeof SandboxRuntimeBodySchema>;
-export type SandboxRuntimeRuntimeBody = z.output<typeof SandboxRuntimeBodySchema>;
-
-/* ============================================================================
- * API: 升级 Sandbox runtime 镜像
- * Route: POST /api/core/ai/sandbox/runtime/upgrade
- * Method: POST
- * Description: 为 App 用户级 Sandbox 启动后台归档，归档完成后由正常运行态恢复当前镜像
- * Tags: ['Sandbox', 'Write']
- * ============================================================================ */
-// 升级与状态查询使用同一个 App Chat sandbox 目标结构。
 
 /* ============================================================================
  * API: 获取沙盒 WebSocket 临时访问凭证

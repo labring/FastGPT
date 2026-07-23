@@ -22,7 +22,7 @@ import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import {
   ensureAgentSandboxRuntime,
   streamAgentSandboxInitStatus,
-  streamAgentSandboxRuntimeUpgradeStatus,
+  streamAgentSandboxUpgradeStatus,
   type AgentSandboxPrepareAction
 } from './sub/sandbox';
 import type { RuntimeNodeResponseSummary } from '../../type';
@@ -30,9 +30,9 @@ import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import {
   buildSandboxClientQueryFromChatSource,
-  createAgentSandboxPermissionDeniedError,
-  createSandboxRuntimeUpgradeRequiredError,
-  getAppSandboxRuntimeStatus
+  assertSandboxAvailable,
+  ensureAppSandboxRuntimeReady,
+  resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/interface/runtime';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import {
@@ -150,12 +150,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
   const hasSandboxRuntimeDependency = !!editSkillId || skillIds.length > 0;
-  const effectiveUseAgentSandbox =
-    hasSandboxRuntimeDependency || (!!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox);
+  const sandboxRequested = hasSandboxRuntimeDependency || !!useAgentSandbox;
+  const isAppChat = runningAppInfo.sourceType === ChatSourceTypeEnum.app;
+  const appSandboxAvailability = isAppChat
+    ? await resolveAppSandboxAvailability({
+        appEnabled: !!useAgentSandbox,
+        teamId: runningAppInfo.teamId
+      })
+    : undefined;
+  const effectiveUseAgentSandbox = isAppChat
+    ? appSandboxAvailability?.available === true
+    : sandboxRequested;
+  const effectiveSkillIds = effectiveUseAgentSandbox ? skillIds : [];
+  const effectiveSelectedSkills = effectiveUseAgentSandbox ? selectedSkills : [];
   const effectiveSandboxEntrypoint =
-    effectiveUseAgentSandbox && useAgentSandbox && global.feConfigs?.show_agent_sandbox
-      ? sandboxEntrypoint
-      : undefined;
+    effectiveUseAgentSandbox && useAgentSandbox ? sandboxEntrypoint : undefined;
   const skipSandboxInputFiles = runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit;
 
   // 初始化对话框输入的文件
@@ -164,8 +173,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   try {
-    if (hasSandboxRuntimeDependency && !global.feConfigs?.show_agent_sandbox) {
-      throw createAgentSandboxPermissionDeniedError();
+    if (!isAppChat && sandboxRequested) {
+      await assertSandboxAvailable(runningAppInfo.teamId);
     }
 
     const userContext = await useUserContext({
@@ -191,16 +200,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           userId: uid,
           chatId
         });
-        const runtimeStatus = await getAppSandboxRuntimeStatus(sandboxQuery);
-
-        if (runtimeStatus.status !== 'readyToInit') {
-          streamAgentSandboxRuntimeUpgradeStatus({
-            workflowStreamResponse,
-            sandboxId: sandboxQuery.sandboxId,
-            runtimeStatus
-          });
-          throw createSandboxRuntimeUpgradeRequiredError(runtimeStatus.status === 'upgrading');
-        }
+        await ensureAppSandboxRuntimeReady({
+          query: sandboxQuery,
+          onUpgrade: () =>
+            streamAgentSandboxUpgradeStatus({
+              workflowStreamResponse,
+              sandboxId: sandboxQuery.sandboxId
+            })
+        });
       }
 
       streamAgentSandboxInitStatus({
@@ -221,12 +228,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       tmbId: runningUserInfo.tmbId,
       needSandboxRuntime: effectiveUseAgentSandbox,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
-      skillIds,
-      selectedSkills,
+      skillIds: effectiveSkillIds,
+      selectedSkills: effectiveSelectedSkills,
       editSkillId,
       prepareActions: agentSandboxPrepareActions,
       currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
     });
+
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
     const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({

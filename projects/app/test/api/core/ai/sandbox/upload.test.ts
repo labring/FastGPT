@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 
 const mocks = vi.hoisted(() => ({
-  authSandboxSession: vi.fn(),
+  authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   clearDiskTempFiles: vi.fn(),
   getAgentSandboxMaxFileBytes: vi.fn(),
@@ -19,9 +19,8 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: vi.fn((handler) => handler)
 }));
 
-vi.mock('@/service/core/sandbox/auth', () => ({
-  authSandboxSession: mocks.authSandboxSession,
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+vi.mock('@/service/core/sandbox/access', () => ({
+  authSandboxRuntimeSession: mocks.authSandboxRuntimeSession
 }));
 
 vi.mock('@fastgpt/service/common/file/multer', () => ({
@@ -36,6 +35,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/config', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
   getSandboxClient: mocks.getSandboxClient
 }));
 
@@ -70,7 +70,7 @@ describe('sandbox upload API', () => {
       },
       getReadStream: mocks.getReadStream
     });
-    mocks.authSandboxSession.mockResolvedValue({
+    mocks.authSandboxRuntimeSession.mockResolvedValue({
       uid: 'user-1',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011'
@@ -95,7 +95,7 @@ describe('sandbox upload API', () => {
       request: req,
       maxFileSize: 10
     });
-    expect(mocks.authSandboxSession).toHaveBeenCalledWith({
+    expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledWith({
       req,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011',

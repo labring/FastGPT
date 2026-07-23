@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mocks = vi.hoisted(() => ({
-  authSandboxSession: vi.fn(),
+  authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   getSandboxClient: vi.fn(),
   execute: vi.fn()
@@ -12,12 +12,12 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
 }));
 
-vi.mock('@/service/core/sandbox/auth', () => ({
-  authSandboxSession: mocks.authSandboxSession,
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+vi.mock('@/service/core/sandbox/access', () => ({
+  authSandboxRuntimeSession: mocks.authSandboxRuntimeSession
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
   getSandboxClient: mocks.getSandboxClient
 }));
 
@@ -34,7 +34,7 @@ describe('sandbox getTicket API', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authSandboxSession.mockResolvedValue({
+    mocks.authSandboxRuntimeSession.mockResolvedValue({
       uid: 'user-1',
       teamId: 'team-1',
       sourceType: ChatSourceTypeEnum.app,
@@ -75,6 +75,7 @@ describe('sandbox getTicket API', () => {
       workspaceRoot: '/workspace',
       sessionWorkDirectory: '/workspace/sessions/chat-1'
     });
+    expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledOnce();
     expect(mocks.getSandboxClient).toHaveBeenCalledWith(
       expect.objectContaining({ sandboxId: 'user-sandbox-1', chatId: 'chat-1' })
     );
