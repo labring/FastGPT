@@ -31,7 +31,9 @@ const workflowToolPreservedInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.timeRangeSelect,
   FlowNodeInputTypeEnum.customVariable,
   // Agent 生成由工具配置补充，也需要在工作流工具往返时保留。
-  FlowNodeInputTypeEnum.agentGenerated
+  FlowNodeInputTypeEnum.agentGenerated,
+  // 内部变量不对外暴露，但需要保留元数据和默认值供工作流 runtime 恢复。
+  FlowNodeInputTypeEnum.hidden
 ]);
 
 const nodeInputJsonSchemaMetadataKeys = [

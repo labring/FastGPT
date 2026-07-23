@@ -505,15 +505,17 @@ export const clientGetWorkflowToolRunUserQuery = ({
     pluginInputs: FlowNodeInputItemType[];
     variables: Record<string, any>;
   }) => {
-    const pluginInputsWithValue = pluginInputs.map((input) => {
-      const { key } = input;
-      const value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
+    const pluginInputsWithValue = pluginInputs
+      .filter((input) => !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden))
+      .map((input) => {
+        const { key } = input;
+        const value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
 
-      return {
-        ...input,
-        value
-      };
-    });
+        return {
+          ...input,
+          value
+        };
+      });
     return JSON.stringify(pluginInputsWithValue);
   };
 

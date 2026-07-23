@@ -28,6 +28,7 @@ import type {
   FlowNodeInputItemType,
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import z from 'zod';
 
 /**
@@ -137,11 +138,10 @@ export async function rewriteAppWorkflowToDetail({
     savedInput?: ToolInputSnapshot;
     allowUserChatInputAgentGenerated?: boolean;
   }) => {
-    const inputWithDefaultMode = allowUserChatInputAgentGenerated
-      ? initToolInputTypeByDefaultMode(previewInput, {
-          allowUserChatInputAgentGenerated: true
-        })
-      : previewInput;
+    const inputWithDefaultMode = initToolInputTypeByDefaultMode(previewInput, {
+      forceDefaultMode: true,
+      allowUserChatInputAgentGenerated
+    });
     const savedSelectedType = getSavedToolInputSelectedType({
       savedInput,
       defaultInput: previewInput,
@@ -204,6 +204,10 @@ export async function rewriteAppWorkflowToDetail({
 
   await Promise.all(
     nodes.map(async (node) => {
+      if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+        node.inputs = normalizeWorkflowToolInputsDefaultMode(node.inputs);
+      }
+
       if (node.flowNodeType === FlowNodeTypeEnum.toolCall) {
         node.inputs = node.inputs.map((input) =>
           input.key === NodeInputKeyEnum.userChatInput

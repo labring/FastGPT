@@ -19,6 +19,10 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppLatestVersion: mocks.getAppLatestVersion
 }));
 
+import {
+  serverGetWorkflowToolRunUserQuery,
+  updateWorkflowToolInputByVariables
+} from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { validateSystemToolWorkflowAssociation } from '@fastgpt/service/core/app/tool/workflowTool/service';
 
 const createAppQuery = (app: Record<string, unknown> | null) => ({
@@ -83,5 +87,44 @@ describe('validateSystemToolWorkflowAssociation', () => {
       'Workflow app not found'
     );
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
+  });
+});
+
+describe('workflow tool internal inputs', () => {
+  it('keeps internal defaults and excludes them from external variables and query content', () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        inputs: [
+          {
+            key: 'internal',
+            defaultValue: 'internal default',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          },
+          {
+            key: 'query',
+            value: 'old query',
+            renderTypeList: [FlowNodeInputTypeEnum.input]
+          }
+        ]
+      }
+    ] as any;
+
+    const runtimeNodes = updateWorkflowToolInputByVariables(nodes, {
+      internal: 'external value',
+      query: 'new query'
+    });
+    const runtimeInput = runtimeNodes[0].inputs;
+
+    expect(runtimeInput).toEqual([
+      expect.objectContaining({ key: 'internal', value: 'internal default' }),
+      expect.objectContaining({ key: 'query', value: 'new query' })
+    ]);
+
+    const query = serverGetWorkflowToolRunUserQuery({
+      pluginInputs: runtimeInput,
+      variables: { internal: 'external value', query: 'new query' }
+    });
+    expect(JSON.stringify(query.value)).not.toContain('internal');
   });
 });

@@ -41,6 +41,44 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
+describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
+  it('回显旧版工作流工具输入的默认 AI 生成配置并保留显式关闭', async () => {
+    const legacyInput = {
+      key: 'legacy',
+      label: 'Legacy',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      toolDescription: 'Legacy AI parameter'
+    };
+    const explicitManualInput = {
+      key: 'manual',
+      label: 'Manual',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      toolDescription: 'Parameter description',
+      isToolParam: false
+    };
+    const nodes = [
+      {
+        nodeId: 'plugin-input',
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        inputs: [legacyInput, explicitManualInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({ isToolParam: true });
+    expect(nodes[0].inputs[1]).toMatchObject({ isToolParam: false });
+  });
+});
+
 describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
   it('清理工具调用节点用户问题的历史 AI 生成类型', async () => {
     const userQuestion = {
@@ -71,11 +109,11 @@ describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
       isRoot: false
     });
 
-    expect(userQuestion).toMatchObject({
+    expect(nodes[0].inputs[0]).toMatchObject({
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea]
     });
-    expect(userQuestion.selectedType).toBeUndefined();
-    expect(userQuestion.selectedTypeIndex).toBeUndefined();
+    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
   });
 });
 

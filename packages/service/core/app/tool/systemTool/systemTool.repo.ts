@@ -39,6 +39,7 @@ import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { Types } from '../../../../common/mongo';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 type SystemToolRuntimeType = {
   id: string;
@@ -101,9 +102,10 @@ const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] })
 
   return {
     inputSchema: nodeInputs2JsonSchema({
-      inputs: pluginInput?.inputs ?? [],
+      inputs: normalizeWorkflowToolInputsDefaultMode(pluginInput?.inputs ?? []),
       includeNodeMetadata: true,
-      filterInternalInputs: true
+      // 保留 hidden 输入的 schema metadata/defaultValue，runtime 会在模型和外部参数边界过滤它们。
+      filterInternalInputs: false
     }),
     outputSchema: nodeOutputs2JsonSchema({
       outputs:

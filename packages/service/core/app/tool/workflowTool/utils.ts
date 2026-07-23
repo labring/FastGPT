@@ -21,6 +21,13 @@ export const updateWorkflowToolInputByVariables = (
       ? {
           ...node,
           inputs: node.inputs.map((input) => {
+            if (input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden)) {
+              return {
+                ...input,
+                value: input.value ?? input.defaultValue
+              };
+            }
+
             const parseValue = (() => {
               try {
                 if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
@@ -33,7 +40,7 @@ export const updateWorkflowToolInputByVariables = (
                 )
                   return variables[input.key];
                 return JSON.parse(variables[input.key]);
-              } catch (e) {
+              } catch {
                 return variables[input.key];
               }
             })();
@@ -65,32 +72,34 @@ export const serverGetWorkflowToolRunUserQuery = ({
     pluginInputs: FlowNodeInputItemType[];
     variables: Record<string, any>;
   }) => {
-    const pluginInputsWithValue = pluginInputs.map((input) => {
-      const { key } = input;
-      let value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
+    const pluginInputsWithValue = pluginInputs
+      .filter((input) => !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden))
+      .map((input) => {
+        const { key } = input;
+        let value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
 
-      if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
-        value = encryptSecretValue(value);
-      } else if (
-        input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-        Array.isArray(value)
-      ) {
-        value = value.map((item) => {
-          return {
-            id: item.id,
-            key: item.key,
-            name: item.name,
-            type: item.type,
-            url: item.key ? undefined : item.url
-          };
-        });
-      }
+        if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+          value = encryptSecretValue(value);
+        } else if (
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+          Array.isArray(value)
+        ) {
+          value = value.map((item) => {
+            return {
+              id: item.id,
+              key: item.key,
+              name: item.name,
+              type: item.type,
+              url: item.key ? undefined : item.url
+            };
+          });
+        }
 
-      return {
-        ...input,
-        value
-      };
-    });
+        return {
+          ...input,
+          value
+        };
+      });
     return JSON.stringify(pluginInputsWithValue);
   };
 
