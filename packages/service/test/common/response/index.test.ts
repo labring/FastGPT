@@ -103,7 +103,8 @@ describe('jsonRes business HTTP status', () => {
   it.each([
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
-    [UserErrEnum.verifyCodeTooFrequently, 429]
+    [UserErrEnum.verifyCodeTooFrequently, 429],
+    [UserErrEnum.newPasswordSameAsOld, 400]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
     const response = createResponse();
 

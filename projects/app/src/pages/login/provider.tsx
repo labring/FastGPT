@@ -52,7 +52,7 @@ const provider = () => {
   const lastTmbId = loginStore?.lastTmbId || '';
   const verificationFailureTitle = (() => {
     if (loginStore?.flow === 'passwordChange') {
-      return t('account_info:password_verification_failed');
+      return t('common:password_verification_failed');
     }
     if (loginStore?.flow === 'accountCancellation') {
       return t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试');

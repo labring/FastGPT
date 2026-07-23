@@ -27,8 +27,8 @@ describe('password account API', () => {
     );
   });
 
-  it('requests authorization from recent login', async () => {
-    const body = { source: 'recentLogin' } as const;
+  it('starts the password-change verification flow', async () => {
+    const body = { source: 'verificationMethod' } as const;
 
     await authorizePasswordChange(body);
 

@@ -15,7 +15,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { getErrResponse } from '@fastgpt/global/common/error/utils';
+import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type {
   PasswordAuthorizationResponse,
@@ -51,6 +51,18 @@ type Props = {
   showExpiredPrompt?: boolean;
   onClose?: () => void;
   onSuccess?: () => void | Promise<void>;
+};
+
+const invalidInputStyles = {
+  borderColor: 'red.500',
+  _focus: {
+    borderColor: 'red.500',
+    boxShadow: '0 0 0 1px var(--chakra-colors-red-500)'
+  },
+  _focusVisible: {
+    borderColor: 'red.500',
+    boxShadow: '0 0 0 1px var(--chakra-colors-red-500)'
+  }
 };
 
 /** 统一承接设置、修改和过期重置密码的短期授权状态机。 */
@@ -98,7 +110,7 @@ const PasswordChangeModal = ({
 
   const requestAuthorization = useCallback(async () => {
     try {
-      const result = await authorizePasswordChange({ source: 'recentLogin' });
+      const result = await authorizePasswordChange({ source: 'verificationMethod' });
       if (result.status === 'authorized') {
         setStage({ type: 'password', authorization: result });
         return;
@@ -110,7 +122,7 @@ const PasswordChangeModal = ({
       setStage({ type: 'unavailable' });
     } catch {
       setStage({ type: 'unavailable' });
-      toast({ status: 'error', title: t('account_info:password_verification_failed') });
+      toast({ status: 'error', title: t('common:password_verification_failed') });
     }
   }, [t, toast]);
 
@@ -149,16 +161,21 @@ const PasswordChangeModal = ({
       reset();
       setStoredAuthorization(undefined);
       await initUserInfo();
-      toast({ status: 'success', title: t('account_info:password_set_success') });
+      toast({ status: 'success', title: t('common:password_set_success') });
       await onSuccess?.();
     } catch (error) {
-      if (getErrResponse(error)?.statusText === UserErrEnum.passwordChangeAuthorizationInvalid) {
+      const errorResponse = getErrResponse(error);
+      if (errorResponse?.statusText === UserErrEnum.passwordChangeAuthorizationInvalid) {
         reset();
         setStoredAuthorization(undefined);
         setStage({ type: 'authorizing' });
         return;
       }
-      toast({ status: 'error', title: t('account_info:password_update_error') });
+      const errorTitle =
+        errorResponse?.statusText === UserErrEnum.newPasswordSameAsOld
+          ? t(getErrText(error, t('common:user.Password has no change')) as any)
+          : t('common:password_update_error');
+      toast({ status: 'error', title: errorTitle });
     } finally {
       setSubmitting(false);
     }
@@ -166,12 +183,10 @@ const PasswordChangeModal = ({
 
   const title = (() => {
     if (stage.type === 'verification' || stage.type === 'unavailable') {
-      return t('account_info:password_verification_title');
+      return t('common:password_verification_title');
     }
-    if (required || !userInfo?.hasPassword) return t('account_info:password_set_title');
-    return userInfo?.hasPassword
-      ? t('account_info:update_password')
-      : t('account_info:password_set_title');
+    if (required || !userInfo?.hasPassword) return t('common:password_set_title');
+    return userInfo?.hasPassword ? t('common:update_password') : t('common:password_set_title');
   })();
 
   const isWechatVerification = stage.type === 'verification' && stage.method === 'wechat';
@@ -181,34 +196,34 @@ const PasswordChangeModal = ({
     <MyModal
       isOpen
       onClose={required ? undefined : closeFlow}
-      closeOnOverlayClick={!required}
+      closeOnOverlayClick={!required && stage.type !== 'password'}
       isCentered
       w={modalWidth}
       maxW={['calc(100vw - 32px)', modalWidth]}
-      borderRadius="10px"
-      boxShadow="0 4px 10px rgba(19, 51, 107, 0.1), 0 0 1px rgba(19, 51, 107, 0.1)"
+      borderRadius="semilg"
+      boxShadow="3.5"
       overflow="hidden"
     >
       {stage.type === 'prompt' && (
         <VStack align="stretch" spacing={6} p={8}>
-          <Text fontSize="20px" fontWeight="500" lineHeight="26px">
+          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
             {title}
           </Text>
-          <Text fontSize="14px" lineHeight="20px">
-            {t('account_info:password_expired_tip')}
+          <Text fontSize="sm" lineHeight="20px">
+            {t('common:password_expired_tip')}
           </Text>
           <Flex justify="flex-end">
             <Button
-              h="32px"
-              minH="32px"
-              w="64px"
-              px="14px"
-              borderRadius="6px"
-              fontSize="12px"
-              lineHeight="16px"
+              h={8}
+              minH={8}
+              w={16}
+              px={3.5}
+              borderRadius="sm"
+              fontSize="mini"
+              lineHeight={4}
               onClick={() => setStage({ type: 'authorizing' })}
             >
-              {t('account_info:password_expired_action')}
+              {t('common:password_expired_action')}
             </Button>
           </Flex>
         </VStack>
@@ -216,14 +231,14 @@ const PasswordChangeModal = ({
 
       {stage.type === 'authorizing' && (
         <Box p={8}>
-          <Text fontSize="20px" fontWeight="500" lineHeight="26px">
+          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
             {title}
           </Text>
           <Center minH="120px" mt={6}>
             <VStack spacing={3}>
               <Spinner color="primary.600" />
               <Text color="myGray.600" fontSize="sm">
-                {t('account_info:password_authorizing')}
+                {t('common:password_authorizing')}
               </Text>
             </VStack>
           </Center>
@@ -232,14 +247,14 @@ const PasswordChangeModal = ({
 
       {stage.type === 'unavailable' && (
         <Box p={8}>
-          <Text fontSize="20px" fontWeight="500" lineHeight="26px">
+          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
             {title}
           </Text>
-          <Text mt={6} color="myGray.600" fontSize="14px" lineHeight="20px" textAlign="center">
-            {t('account_info:password_verification_unavailable')}
+          <Text mt={6} color="myGray.600" fontSize="sm" lineHeight="20px" textAlign="center">
+            {t('common:password_verification_unavailable')}
           </Text>
-          <Button mt={6} h="40px" w="100%" onClick={() => setStage({ type: 'authorizing' })}>
-            {t('account_info:password_verification_retry')}
+          <Button mt={6} h={10} w="100%" onClick={() => setStage({ type: 'authorizing' })}>
+            {t('common:password_verification_retry')}
           </Button>
         </Box>
       )}
@@ -247,11 +262,11 @@ const PasswordChangeModal = ({
       {stage.type === 'verification' && (
         <Box p={8}>
           <VStack align="stretch" spacing={2}>
-            <Text fontSize="20px" fontWeight="500" lineHeight="26px">
+            <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
               {title}
             </Text>
-            <Text fontSize="14px" lineHeight="20px">
-              {t('account_info:password_verification_description')}
+            <Text fontSize="sm" lineHeight="20px">
+              {t('common:password_verification_description')}
             </Text>
           </VStack>
           <Box mt={6}>
@@ -270,63 +285,61 @@ const PasswordChangeModal = ({
 
       {stage.type === 'password' && (
         <Box p={8}>
-          <Text fontSize="20px" fontWeight="500" lineHeight="26px">
+          <Text fontSize="lg" fontWeight="medium" lineHeight="26px">
             {title}
           </Text>
           <VStack align="stretch" spacing={6} mt={6}>
             <FormControl isInvalid={!!errors.newPassword}>
               <Input
-                h="40px"
+                size="lg"
                 type="password"
                 bg="myGray.50"
-                borderColor="myGray.200"
-                borderRadius="8px"
-                placeholder={t('account_info:password_new_placeholder')}
-                aria-label={t('account_info:password_new_placeholder')}
+                _invalid={invalidInputStyles}
+                placeholder={t('common:password_new_placeholder')}
+                aria-label={t('common:password_new_placeholder')}
                 {...register('newPassword', {
-                  required: t('account_info:password_new_placeholder'),
-                  validate: (value) => checkPasswordRule(value) || t('login:password_tip')
+                  required: t('common:password_new_placeholder'),
+                  validate: (value) => checkPasswordRule(value) || t('common:password_tip')
                 })}
               />
-              {errors.newPassword?.message ? (
-                <FormErrorMessage mt={2} fontSize="12px" lineHeight="16px">
-                  {errors.newPassword.message}
-                </FormErrorMessage>
-              ) : (
-                <Text mt={2} color="myGray.400" fontSize="12px" fontWeight="500" lineHeight="16px">
-                  {t('account_info:password_tip')}
-                </Text>
-              )}
+              <Text
+                mt={2}
+                color={errors.newPassword ? 'red.500' : 'myGray.400'}
+                fontSize="mini"
+                fontWeight="medium"
+                lineHeight={4}
+              >
+                {t('common:password_tip')}
+              </Text>
             </FormControl>
             <FormControl isInvalid={!!errors.confirmPassword}>
               <Input
-                h="40px"
+                size="lg"
                 type="password"
                 bg="myGray.50"
-                borderColor="myGray.200"
-                borderRadius="8px"
-                placeholder={t('account_info:password_confirm_placeholder')}
-                aria-label={t('account_info:password_confirm_placeholder')}
+                _invalid={invalidInputStyles}
+                placeholder={t('common:password_confirm_placeholder')}
+                aria-label={t('common:password_confirm_placeholder')}
                 {...register('confirmPassword', {
-                  required: t('account_info:password_confirm_placeholder'),
+                  required: t('common:password_confirm_placeholder'),
                   validate: (value) =>
-                    value === getValues('newPassword') || t('user:password.not_match')
+                    value === getValues('newPassword') || t('common:password_not_match')
                 })}
               />
               {errors.confirmPassword?.message && (
-                <FormErrorMessage mt={2} fontSize="12px" lineHeight="16px">
+                <FormErrorMessage mt={2} fontSize="mini" lineHeight={4}>
                   {errors.confirmPassword.message}
                 </FormErrorMessage>
               )}
             </FormControl>
             <Button
-              h="40px"
+              size="lg"
               w="100%"
-              borderRadius="8px"
+              fontSize="sm"
               isLoading={submitting}
               onClick={handleSubmit(submitNewPassword)}
             >
-              {t('account_info:password_confirm_action')}
+              {t('common:password_confirm_action')}
             </Button>
           </VStack>
         </Box>

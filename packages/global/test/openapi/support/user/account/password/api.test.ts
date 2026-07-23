@@ -1,12 +1,33 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   CreatePasswordVerificationBodySchema,
   PasswordAuthorizationBodySchema,
   SensitiveAccountVerificationBodySchema,
   UpdatePasswordBodySchema
 } from '@fastgpt/global/openapi/support/user/account/password/api';
+import type {
+  CreatePasswordVerificationBody,
+  CreatePasswordVerificationResponse,
+  PasswordAuthorizationBody,
+  SensitiveAccountVerificationBody
+} from '@fastgpt/global/openapi/support/user/account/password/api';
 
 describe('password API contracts', () => {
+  it('preserves the inferred verification contracts', () => {
+    expectTypeOf<CreatePasswordVerificationBody>().not.toBeAny();
+    expectTypeOf<CreatePasswordVerificationResponse>().not.toBeAny();
+    expectTypeOf<SensitiveAccountVerificationBody>().not.toBeAny();
+
+    type AccountVerificationAuthorization = Extract<
+      PasswordAuthorizationBody,
+      { source: 'accountVerification' }
+    >;
+    expectTypeOf<AccountVerificationAuthorization>().toEqualTypeOf<{
+      source: 'accountVerification';
+      verification: SensitiveAccountVerificationBody;
+    }>();
+  });
+
   it('accepts an empty old-password create payload without client identity fields', () => {
     expect(
       CreatePasswordVerificationBodySchema.parse({ method: 'oldPassword', payload: {} })
@@ -36,13 +57,17 @@ describe('password API contracts', () => {
     ).toThrow();
   });
 
-  it('keeps recent login authorization strict', () => {
-    expect(PasswordAuthorizationBodySchema.parse({ source: 'recentLogin' })).toEqual({
-      source: 'recentLogin'
+  it('keeps the verification-flow initializer strict', () => {
+    expect(PasswordAuthorizationBodySchema.parse({ source: 'verificationMethod' })).toEqual({
+      source: 'verificationMethod'
     });
     expect(() =>
-      PasswordAuthorizationBodySchema.parse({ source: 'recentLogin', userId: 'other-user' })
+      PasswordAuthorizationBodySchema.parse({
+        source: 'verificationMethod',
+        userId: 'other-user'
+      })
     ).toThrow();
+    expect(() => PasswordAuthorizationBodySchema.parse({ source: 'recentLogin' })).toThrow();
   });
 
   it('requires a SHA-256 digest and a bounded authorization token for updates', () => {

@@ -17,6 +17,7 @@ import { useTranslation } from 'next-i18next';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { AccountVerificationMethod } from '@fastgpt/global/support/user/account/verification/type';
 import { OAuthAccountVerificationProviderSchema } from '@fastgpt/global/support/user/account/verification/type';
+import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
 import type {
   CreatePasswordVerificationBody,
   CreatePasswordVerificationResponse,
@@ -27,6 +28,10 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import SendCodeAuthModal from './SendCodeAuthModal';
 import { getClientToken } from '@/web/support/user/hooks/useSendCode';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  isAccountVerificationCodeError,
+  isAccountVerificationRateLimitError
+} from '@/web/support/user/account/verification/error';
 
 type AuthorizedPasswordChange = Extract<PasswordAuthorizationResponse, { status: 'authorized' }>;
 
@@ -77,12 +82,19 @@ export const AccountVerificationPanel = ({
   const createRequested = useRef(false);
   const wechatPolling = useRef(false);
 
-  const showVerificationFailure = useCallback(() => {
-    toast({
-      status: 'error',
-      title: t('account_info:password_verification_failed')
-    });
-  }, [t, toast]);
+  const showVerificationFailure = useCallback(
+    (error?: unknown) => {
+      toast({
+        status: 'error',
+        title: isAccountVerificationCodeError(error)
+          ? t('common:error.code_error')
+          : isAccountVerificationRateLimitError(error)
+            ? t('common:error.operation_too_frequently')
+            : t('common:password_verification_failed')
+      });
+    },
+    [t, toast]
+  );
 
   const submitVerification = useCallback(
     async (verification: SensitiveAccountVerificationBody) => {
@@ -108,9 +120,9 @@ export const AccountVerificationPanel = ({
         setWechatQR(result);
         setWechatNow(Date.now());
       }
-    } catch {
+    } catch (error) {
       setCreateFailed(true);
-      showVerificationFailure();
+      showVerificationFailure(error);
     } finally {
       setCreating(false);
     }
@@ -150,11 +162,11 @@ export const AccountVerificationPanel = ({
           payload: { code: wechatQR.code }
         });
         if (authorized) disposed = true;
-      } catch {
+      } catch (error) {
         disposed = true;
         setWechatQR(undefined);
         setCreateFailed(true);
-        showVerificationFailure();
+        showVerificationFailure(error);
       } finally {
         wechatPolling.current = false;
       }
@@ -181,9 +193,9 @@ export const AccountVerificationPanel = ({
       });
       if (result.method !== 'code') throw new Error('Verification method mismatch');
       setCodeCountDown(60);
-      toast({ status: 'success', title: t('account_info:password_code_sent') });
-    } catch {
-      showVerificationFailure();
+      toast({ status: 'success', title: t('common:password_code_sent') });
+    } catch (error) {
+      showVerificationFailure(error);
       throw new Error('Failed to send verification code');
     } finally {
       setCodeSending(false);
@@ -196,24 +208,14 @@ export const AccountVerificationPanel = ({
       setSubmitting(true);
       try {
         await submitVerification({ method, payload: { code: verificationCode } });
-      } catch {
-        setCode('');
-        showVerificationFailure();
+      } catch (error) {
+        showVerificationFailure(error);
       } finally {
         setSubmitting(false);
       }
     },
     [method, showVerificationFailure, submitVerification, submitting]
   );
-
-  // 设计稿不提供独立提交按钮，六位验证码输入完成后直接消费验证材料。
-  useEffect(() => {
-    const verificationCode = code.trim();
-    if (method !== 'code' || verificationCode.length !== 6) return;
-
-    const timer = window.setTimeout(() => void submitCode(verificationCode), 0);
-    return () => window.clearTimeout(timer);
-  }, [code, method, submitCode]);
 
   const submitOldPassword = async () => {
     if (method !== 'oldPassword' || !oldPassword || !preLoginCode) return;
@@ -223,11 +225,11 @@ export const AccountVerificationPanel = ({
         method,
         payload: { password: hashStr(oldPassword), preLoginCode }
       });
-    } catch {
+    } catch (error) {
       // 预登录材料在密码校验前即被一次性消费，失败后必须重新创建才能再次尝试。
       setOldPassword('');
       setPreLoginCode(undefined);
-      showVerificationFailure();
+      showVerificationFailure(error);
       void createBoundVerification();
     } finally {
       setSubmitting(false);
@@ -239,7 +241,13 @@ export const AccountVerificationPanel = ({
     setSubmitting(true);
     try {
       const callbackUrl = `${window.location.origin}/login/provider`;
-      const result = await createVerification({ method, payload: { callbackUrl } });
+      const result = await createVerification({
+        method,
+        payload: {
+          callbackUrl,
+          isWecomWorkTerminal: checkIsWecomTerminal()
+        }
+      });
       if (result.method !== method) throw new Error('Verification method mismatch');
       const provider = OAuthAccountVerificationProviderSchema.parse(method.slice('oauth/'.length));
       useSystemStore.getState().setLoginStore({
@@ -251,9 +259,9 @@ export const AccountVerificationPanel = ({
         passwordChangeRequired: required
       });
       await router.replace(result.url);
-    } catch {
+    } catch (error) {
       setSubmitting(false);
-      showVerificationFailure();
+      showVerificationFailure(error);
     }
   };
 
@@ -266,17 +274,17 @@ export const AccountVerificationPanel = ({
     return (
       <VStack align="stretch" spacing={6}>
         <Input
-          h="40px"
+          h={10}
           value={username}
           isDisabled
           bg="myGray.25"
           borderColor="myGray.100"
           _disabled={{ opacity: 1, color: 'myGray.400', cursor: 'default' }}
-          aria-label={t('account_info:user_account')}
+          aria-label={t('common:user.Account')}
         />
         <InputGroup>
           <Input
-            h="40px"
+            h={10}
             pr="120px"
             value={code}
             isDisabled={submitting}
@@ -285,30 +293,39 @@ export const AccountVerificationPanel = ({
             bg="myGray.50"
             borderColor="myGray.200"
             onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            aria-label={t('user:password.verification_code')}
+            aria-label={t('common:support.user.info.verification_code')}
             onKeyDown={(event) => {
               if (event.key === 'Enter') void submitCode(code.trim());
             }}
           />
-          <InputRightElement h="40px" w="120px" justifyContent="flex-end" pr={3}>
+          <InputRightElement h={10} w="120px" justifyContent="flex-end" pr={3}>
             <Button
               h="18px"
               minW={0}
               p={0}
               variant="unstyled"
               color={codeCountDown > 0 ? 'myGray.400' : 'primary.700'}
-              fontSize="12px"
+              fontSize="mini"
               isDisabled={codeSending || submitting || codeCountDown > 0}
               onClick={onOpenCaptcha}
             >
               {codeSending
-                ? t('account_info:password_code_sending')
+                ? t('common:password_code_sending')
                 : codeCountDown > 0
-                  ? t('account_info:password_code_countdown', { seconds: codeCountDown })
-                  : t('account_info:password_send_code')}
+                  ? t('common:password_code_countdown', { seconds: codeCountDown })
+                  : t('common:password_send_code')}
             </Button>
           </InputRightElement>
         </InputGroup>
+        <Button
+          h={10}
+          w="100%"
+          isLoading={submitting}
+          isDisabled={code.trim().length !== 6}
+          onClick={() => void submitCode(code.trim())}
+        >
+          {t('common:password_verify')}
+        </Button>
         {isCaptchaOpen && (
           <SendCodeAuthModal
             username={username}
@@ -325,13 +342,13 @@ export const AccountVerificationPanel = ({
     return (
       <VStack align="stretch" spacing={6}>
         <Input
-          h="40px"
+          h={10}
           value={username}
           isDisabled
           bg="myGray.25"
           borderColor="myGray.100"
           _disabled={{ opacity: 1, color: 'myGray.400', cursor: 'default' }}
-          aria-label={t('account_info:user_account')}
+          aria-label={t('common:user.Account')}
         />
         <VStack align="stretch" spacing={6}>
           {creating ? (
@@ -341,31 +358,31 @@ export const AccountVerificationPanel = ({
           ) : createFailed || !preLoginCode ? (
             <Center h="104px">
               <Button w="100%" onClick={retryCreate}>
-                {t('account_info:password_verification_retry')}
+                {t('common:password_verification_retry')}
               </Button>
             </Center>
           ) : (
             <>
               <Input
-                h="40px"
+                h={10}
                 type="password"
                 value={oldPassword}
                 bg="myGray.50"
                 borderColor="myGray.200"
                 onChange={(event) => setOldPassword(event.target.value)}
-                placeholder={t('account_info:password_old_placeholder')}
+                placeholder={t('common:password_old_placeholder')}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') void submitOldPassword();
                 }}
               />
               <Button
-                h="40px"
+                h={10}
                 w="100%"
                 isLoading={submitting}
                 isDisabled={!oldPassword}
                 onClick={() => void submitOldPassword()}
               >
-                {t('account_info:password_verify')}
+                {t('common:password_verify')}
               </Button>
             </>
           )}
@@ -377,8 +394,8 @@ export const AccountVerificationPanel = ({
   if (method === 'wechat') {
     return (
       <VStack w={['100%', '380px']} mx="auto" spacing={6}>
-        <Text color="myGray.600" fontSize="16px" fontWeight="500" lineHeight="24px">
-          {t('account_info:password_wechat_scan')}
+        <Text color="myGray.600" fontSize="md" fontWeight="medium" lineHeight={6}>
+          {t('common:password_wechat_scan')}
         </Text>
         <Center
           w="226px"
@@ -388,14 +405,14 @@ export const AccountVerificationPanel = ({
           borderWidth="1px"
           borderColor="borderColor.low"
           borderRadius="md"
-          p="4px"
+          p={1}
         >
           {creating ? (
             <Spinner color="primary.600" />
           ) : wechatQR && !wechatExpired ? (
             <Image
               src={wechatQR.codeUrl}
-              alt={t('account_info:password_wechat_qr')}
+              alt={t('common:password_wechat_qr')}
               w="100%"
               h="100%"
               objectFit="contain"
@@ -405,12 +422,12 @@ export const AccountVerificationPanel = ({
               <Text color="myGray.600" fontSize="sm" textAlign="center">
                 {t(
                   createFailed
-                    ? 'account_info:password_wechat_load_failed'
-                    : 'account_info:password_wechat_expired'
+                    ? 'common:password_wechat_load_failed'
+                    : 'common:password_wechat_expired'
                 )}
               </Text>
               <Button size="sm" onClick={retryCreate}>
-                {t('account_info:password_verification_retry')}
+                {t('common:password_verification_retry')}
               </Button>
             </VStack>
           )}
@@ -431,16 +448,16 @@ export const AccountVerificationPanel = ({
   return (
     <Box>
       <Input
-        h="40px"
+        h={10}
         value={username}
         isDisabled
         bg="myGray.25"
         borderColor="myGray.100"
         _disabled={{ opacity: 1, color: 'myGray.400', cursor: 'default' }}
-        aria-label={t('account_info:user_account')}
+        aria-label={t('common:user.Account')}
       />
-      <Button mt={6} h="40px" w="100%" isLoading={submitting} onClick={() => void submitOAuth()}>
-        {t('account_info:password_oauth_start', { provider: providerLabel })}
+      <Button mt={6} h={10} w="100%" isLoading={submitting} onClick={() => void submitOAuth()}>
+        {t('common:password_oauth_start', { provider: providerLabel })}
       </Button>
     </Box>
   );

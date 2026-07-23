@@ -10,7 +10,7 @@
   "password.confirm": "确认密码",
   "password.email_phone_error": "邮箱/手机号格式错误",
   "password.email_phone_void": "邮箱/手机号不能为空",
-  "password.not_match": "两次密码不一致",
+  "password.not_match": "两次密码输入不一致",
   "password.retrieve": "找回密码",
   "password.retrieved": "密码已找回",
   "password.retrieved_account": "找回 {{account}} 账号",

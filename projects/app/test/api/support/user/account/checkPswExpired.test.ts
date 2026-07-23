@@ -149,6 +149,28 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(true);
   });
 
+  it('should return false for root when password expiry is configured', async () => {
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
+
+    await MongoUser.findByIdAndUpdate(testUser._id, {
+      $unset: { passwordUpdateTime: '' }
+    });
+
+    const res = await Call(checkPswExpiredApi.default, {
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: true,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toBe(false);
+  });
+
   it('should return false when user is not found', async () => {
     const nonExistentId = '000000000000000000000001';
     const checkPswExpiredApi = await loadCheckPswExpiredApi();

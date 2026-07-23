@@ -18,6 +18,7 @@ import type {
   AccountVerificationMethod,
   OAuthAccountVerificationProvider
 } from '@fastgpt/global/support/user/account/verification/type';
+import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
 import { resolveAccountCancellationByUsername } from '@fastgpt/global/support/user/account/cancellation';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type {
@@ -33,7 +34,10 @@ import {
 } from '@/web/support/user/account/cancellation/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { isAccountCancellationCodeError, isAccountCancellationRateLimitError } from './utils';
+import {
+  isAccountVerificationCodeError,
+  isAccountVerificationRateLimitError
+} from '@/web/support/user/account/verification/error';
 
 const getCapabilities = (feConfigs: FastGPTFeConfigsType) => ({
   ...(feConfigs.accountVerification?.accountCancellation ?? {
@@ -110,9 +114,9 @@ export const VerificationPanel = ({
     (error?: unknown) => {
       toast({
         status: 'error',
-        title: isAccountCancellationCodeError(error)
+        title: isAccountVerificationCodeError(error)
           ? t('common:error.code_error')
-          : isAccountCancellationRateLimitError(error)
+          : isAccountVerificationRateLimitError(error)
             ? t('common:error.operation_too_frequently')
             : t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
       });
@@ -192,9 +196,9 @@ export const VerificationPanel = ({
     } catch (error) {
       toast({
         status: 'error',
-        title: isAccountCancellationCodeError(error)
+        title: isAccountVerificationCodeError(error)
           ? t('common:error.code_error')
-          : isAccountCancellationRateLimitError(error)
+          : isAccountVerificationRateLimitError(error)
             ? t('common:error.operation_too_frequently')
             : t('account_info:account_cancellation_code_send_failed', '验证码发送失败，请重试')
       });
@@ -224,7 +228,10 @@ export const VerificationPanel = ({
       const callbackUrl = `${window.location.origin}/login/provider`;
       const result = await createAccountCancellationVerification({
         method,
-        payload: { callbackUrl }
+        payload: {
+          callbackUrl,
+          isWecomWorkTerminal: checkIsWecomTerminal()
+        }
       });
       if (result.method !== method) return;
       const provider = method.slice('oauth/'.length) as OAuthAccountVerificationProvider;

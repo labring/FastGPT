@@ -16,7 +16,7 @@ export const PasswordPath: OpenAPIPath = {
   '/proApi/support/user/account/password/authorization': {
     post: {
       summary: '获取修改密码授权',
-      description: '通过近期登录或当前账号的唯一身份验证方式签发短期改密授权',
+      description: '通过当前账号的唯一身份验证方式签发短期改密授权',
       tags: [DevApiTagsMap.userLogin, 'Account Verification'],
       requestBody: {
         content: { 'application/json': { schema: PasswordAuthorizationBodySchema } }
@@ -61,6 +61,10 @@ export const PasswordPath: OpenAPIPath = {
         200: {
           description: '密码设置成功',
           content: { 'application/json': { schema: UpdatePasswordResponseSchema } }
+        },
+        400: {
+          description: '新密码与当前密码相同',
+          content: { 'application/json': { schema: z.null() } }
         }
       }
     }
@@ -92,7 +96,7 @@ export const PasswordPath: OpenAPIPath = {
           content: { 'application/json': { schema: {} } }
         },
         400: {
-          description: '请求参数或验证码错误',
+          description: '请求参数、验证码错误或新密码与当前密码相同',
           content: { 'application/json': { schema: z.null() } }
         },
         429: {

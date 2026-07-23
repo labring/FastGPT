@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { serviceEnv } from '../../../../env';
+import { MongoUser } from '../../schema';
 
 export const PASSWORD_CHANGE_TOKEN_TTL_SECONDS = 5 * 60;
 
@@ -74,3 +75,20 @@ export class PasswordChangeTokenService {
 }
 
 export const passwordChangeTokenService = new PasswordChangeTokenService();
+
+/**
+ * 阻止用户侧改密流程复用当前密码。密码查询交由 Mongoose schema setter 处理，
+ * 以兼容客户端摘要和数据库持久化摘要的现有双层哈希协议。
+ */
+export const assertNewPasswordDiffersFromCurrent = async ({
+  userId,
+  newPassword
+}: {
+  userId: string;
+  newPassword: string;
+}) => {
+  const isSamePassword = await MongoUser.exists({ _id: userId, password: newPassword });
+  if (isSamePassword) {
+    throw new UserError(UserErrEnum.newPasswordSameAsOld);
+  }
+};

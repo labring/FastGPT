@@ -24,7 +24,12 @@ vi.mock('next/router', () => ({
 }));
 
 vi.mock('next-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key })
+  useTranslation: () => ({
+    t: (key: string) => {
+      if (!key.startsWith('common:')) throw new Error(`Unexpected i18n namespace: ${key}`);
+      return key;
+    }
+  })
 }));
 
 vi.mock('@fastgpt/web/hooks/useToast', () => ({
@@ -126,10 +131,27 @@ describe('PasswordChangeModal', () => {
 
   const getConfirmButton = () => {
     const button = [...container.querySelectorAll('button')].find(
-      (item) => item.textContent === 'account_info:password_confirm_action'
+      (item) => item.textContent === 'common:password_confirm_action'
     );
     if (!button) throw new Error('Confirm button did not render');
     return button;
+  };
+
+  const completeOldPasswordVerification = async () => {
+    await flushEffects();
+    const oldPasswordInput = container.querySelector<HTMLInputElement>(
+      'input[placeholder="common:password_old_placeholder"]'
+    );
+    if (!oldPasswordInput) throw new Error('Old password input did not render');
+
+    changeInput(oldPasswordInput, 'Existing-password-123');
+    const verifyButton = [...container.querySelectorAll('button')].find(
+      (item) => item.textContent === 'common:password_verify'
+    );
+    if (!verifyButton) throw new Error('Password verification button did not render');
+
+    act(() => verifyButton.click());
+    await flushEffects();
   };
 
   beforeAll(async () => {
@@ -167,7 +189,17 @@ describe('PasswordChangeModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authorizePasswordChange.mockResolvedValue(authorized);
+    mocks.authorizePasswordChange.mockImplementation(({ source }: { source: string }) =>
+      Promise.resolve(
+        source === 'verificationMethod'
+          ? { status: 'verificationRequired', method: 'oldPassword' }
+          : authorized
+      )
+    );
+    mocks.createPasswordVerification.mockResolvedValue({
+      method: 'oldPassword',
+      preLoginCode: 'pre-login-code'
+    });
     mocks.updatePassword.mockResolvedValue(undefined);
     mocks.initUserInfo.mockResolvedValue(undefined);
     usePasswordChangeStore.getState().setAuthorization(undefined);
@@ -194,28 +226,39 @@ describe('PasswordChangeModal', () => {
     await flushEffects();
   };
 
-  it('enters the password form from recent login and shows validation errors', async () => {
+  it('requires verification before showing the password form and disables overlay close', async () => {
     const onSuccess = vi.fn();
     await renderModal({ onSuccess, onClose: vi.fn() });
 
-    const newPasswordInput = getInput('account_info:password_new_placeholder');
-    const confirmPasswordInput = getInput('account_info:password_confirm_placeholder');
-    expect(document.activeElement).not.toBe(newPasswordInput);
-    expect(document.activeElement).not.toBe(confirmPasswordInput);
+    expect(
+      container.querySelector('input[aria-label="common:password_new_placeholder"]')
+    ).toBeNull();
+    expect(mocks.authorizePasswordChange).toHaveBeenCalledWith({ source: 'verificationMethod' });
     expect(container.querySelector('[data-testid="password-modal"]')).toMatchObject({
       dataset: expect.objectContaining({ closable: 'true', overlayClose: 'true' })
     });
-    expect(container.textContent).toContain('account_info:password_tip');
+
+    await completeOldPasswordVerification();
+
+    const newPasswordInput = getInput('common:password_new_placeholder');
+    const confirmPasswordInput = getInput('common:password_confirm_placeholder');
+    expect(document.activeElement).not.toBe(newPasswordInput);
+    expect(document.activeElement).not.toBe(confirmPasswordInput);
+    expect(container.querySelector('[data-testid="password-modal"]')).toMatchObject({
+      dataset: expect.objectContaining({ closable: 'true', overlayClose: 'false' })
+    });
+    expect(container.textContent).toContain('common:password_tip');
     expect(container.textContent).not.toContain('common:Cancel');
-    expect(mocks.authorizePasswordChange).toHaveBeenCalledTimes(1);
+    expect(mocks.authorizePasswordChange).toHaveBeenCalledTimes(2);
 
     changeInput(newPasswordInput, 'short');
     changeInput(confirmPasswordInput, 'different');
     act(() => getConfirmButton().click());
     await flushEffects();
 
-    expect(container.textContent).toContain('login:password_tip');
-    expect(container.textContent).toContain('user:password.not_match');
+    expect(container.textContent?.match(/common:password_tip/g)).toHaveLength(1);
+    expect(newPasswordInput.getAttribute('aria-invalid')).toBe('true');
+    expect(container.textContent).toContain('common:password_not_match');
     expect(mocks.updatePassword).not.toHaveBeenCalled();
 
     changeInput(newPasswordInput, 'Strong-password-123');
@@ -241,31 +284,61 @@ describe('PasswordChangeModal', () => {
   });
 
   it('clears the password form and returns to verification when the JWT is invalid', async () => {
-    mocks.authorizePasswordChange
-      .mockResolvedValueOnce(authorized)
-      .mockResolvedValueOnce({ status: 'verificationRequired', method: 'oldPassword' });
-    mocks.createPasswordVerification.mockResolvedValue({
-      method: 'oldPassword',
-      preLoginCode: 'new-pre-login-code'
-    });
     mocks.updatePassword.mockRejectedValue({
       statusText: UserErrEnum.passwordChangeAuthorizationInvalid
     });
     await renderModal({ onClose: vi.fn() });
+    await completeOldPasswordVerification();
 
-    changeInput(getInput('account_info:password_new_placeholder'), 'Strong-password-123');
-    changeInput(getInput('account_info:password_confirm_placeholder'), 'Strong-password-123');
+    changeInput(getInput('common:password_new_placeholder'), 'Strong-password-123');
+    changeInput(getInput('common:password_confirm_placeholder'), 'Strong-password-123');
     act(() => getConfirmButton().click());
     await flushEffects();
     await flushEffects();
 
-    expect(mocks.authorizePasswordChange).toHaveBeenCalledTimes(2);
+    expect(mocks.authorizePasswordChange).toHaveBeenCalledTimes(3);
     expect(
-      container.querySelector('input[aria-label="account_info:password_new_placeholder"]')
+      container.querySelector('input[aria-label="common:password_new_placeholder"]')
     ).toBeNull();
     expect(
-      container.querySelector('input[placeholder="account_info:password_old_placeholder"]')
+      container.querySelector('input[placeholder="common:password_old_placeholder"]')
     ).not.toBeNull();
     expect(usePasswordChangeStore.getState().authorization).toBeUndefined();
+  });
+
+  it.each([
+    ['voluntary password change', false],
+    ['expired required password change', true]
+  ])('shows the same-password business error for %s', async (_caseName, isExpired) => {
+    mocks.updatePassword.mockRejectedValue({
+      statusText: UserErrEnum.newPasswordSameAsOld,
+      message: 'common:user.Password has no change'
+    });
+    await renderModal(
+      isExpired ? { required: true, showExpiredPrompt: true } : { onClose: vi.fn() }
+    );
+
+    if (isExpired) {
+      const continueButton = [...container.querySelectorAll('button')].find(
+        (item) => item.textContent === 'common:password_expired_action'
+      );
+      if (!continueButton) throw new Error('Expired password action did not render');
+
+      act(() => continueButton.click());
+      await flushEffects();
+      await flushEffects();
+    }
+
+    await completeOldPasswordVerification();
+
+    changeInput(getInput('common:password_new_placeholder'), 'Strong-password-123');
+    changeInput(getInput('common:password_confirm_placeholder'), 'Strong-password-123');
+    act(() => getConfirmButton().click());
+    await flushEffects();
+
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'error',
+      title: 'common:user.Password has no change'
+    });
   });
 });
