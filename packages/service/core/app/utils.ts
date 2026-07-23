@@ -1,7 +1,10 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
@@ -145,7 +148,8 @@ export async function rewriteAppWorkflowToDetail({
     const savedSelectedType = getSavedToolInputSelectedType({
       savedInput,
       defaultInput: previewInput,
-      allowUserChatInputAgentGenerated
+      allowUserChatInputAgentGenerated,
+      allowLegacyToolDescriptionFallback: true
     });
     const selectedType = savedSelectedType ?? inputWithDefaultMode.selectedType;
     const renderTypeList =
@@ -220,6 +224,32 @@ export async function rewriteAppWorkflowToDetail({
 
       // Tool node
       if (node.pluginId) {
+        node.inputs = node.inputs.map((input) => {
+          const selectedType = getSavedToolInputSelectedType({
+            savedInput: input,
+            defaultInput: input,
+            allowUserChatInputAgentGenerated: true,
+            allowLegacyToolDescriptionFallback: true
+          });
+          if (
+            input.selectedType !== undefined ||
+            selectedType !== FlowNodeInputTypeEnum.agentGenerated
+          ) {
+            return input;
+          }
+
+          const renderTypeList = input.renderTypeList.includes(selectedType)
+            ? input.renderTypeList
+            : [selectedType, ...input.renderTypeList];
+
+          return {
+            ...input,
+            renderTypeList,
+            selectedType,
+            selectedTypeIndex: renderTypeList.findIndex((type) => type === selectedType)
+          };
+        });
+
         const result = await loadToolNode({
           id: node.pluginId,
           versionId: node.version ?? '',

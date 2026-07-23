@@ -22,7 +22,8 @@ const normalizeToolInput = (input: FlowNodeInputItemType) => {
   const selectedType = getSavedToolInputSelectedType({
     savedInput: input,
     defaultInput: input,
-    allowUserChatInputAgentGenerated: true
+    allowUserChatInputAgentGenerated: true,
+    allowLegacyToolDescriptionFallback: true
   });
   const hasSavedSelection =
     input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
