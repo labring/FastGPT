@@ -45,6 +45,7 @@ export const McpListResponseItemSchema = z.object({
   key: z.string().meta({ example: 'abcDEF123...', description: 'MCP Server 访问密钥' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
+  authProxy: z.boolean().default(false).meta({ description: '是否允许调用方代理团队成员身份' }),
   apps: z.array(McpAppSchema).meta({ description: '应用工具列表' })
 });
 export const McpListResponseSchema = z.array(McpListResponseItemSchema);
@@ -57,6 +58,9 @@ export type McpListResponseType = z.infer<typeof McpListResponseSchema>;
 
 export const McpCreateBodySchema = z.object({
   name: McpNameSchema,
+  authProxy: z.boolean().default(false).meta({
+    description: '是否允许调用方代理团队成员身份，仅团队所有者可开启'
+  }),
   apps: McpAppsBodySchema
 });
 export type McpCreateBodyType = z.infer<typeof McpCreateBodySchema>;
@@ -72,6 +76,9 @@ export type McpCreateResponseType = z.infer<typeof McpCreateResponseSchema>;
 export const McpUpdateBodySchema = z.object({
   id: ObjectIdSchema.meta({ description: 'MCP Server ID' }),
   name: McpNameSchema.optional(),
+  authProxy: z.boolean().optional().meta({
+    description: '是否允许调用方代理团队成员身份，仅团队所有者可开启'
+  }),
   apps: McpAppsBodySchema
 });
 export type McpUpdateBodyType = z.infer<typeof McpUpdateBodySchema>;
@@ -180,3 +187,18 @@ export const McpServerToolCallResponseSchema = z.string().meta({
   description: 'MCP 工具执行后的文本结果'
 });
 export type McpServerToolCallResponse = z.infer<typeof McpServerToolCallResponseSchema>;
+export const McpAuthProxySchema = z
+  .object({
+    username: z.string().trim().min(1).max(128).optional().meta({
+      example: 'user@example.com',
+      description: '代理调用的团队成员用户名'
+    }),
+    tmbId: ObjectIdSchema.optional().meta({
+      description: '代理调用的团队成员 ID'
+    })
+  })
+  .strict()
+  .refine(({ username, tmbId }) => !!username || !!tmbId, {
+    message: 'authProxy.username or authProxy.tmbId is required'
+  });
+export type McpAuthProxyType = z.infer<typeof McpAuthProxySchema>;
