@@ -2,14 +2,17 @@ import z from 'zod';
 import type { PublishChannelEnum } from './constant';
 import { BoolSchema } from '../../common/zod';
 
-// Feishu Config interface
-export interface FeishuAppType {
-  appId: string;
-  appSecret: string;
-  // Encrypt config
-  // refer to: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/configure-encrypt-key
-  encryptKey?: string; // no secret if null
-}
+export const FeishuAppSchema = z.object({
+  appId: z.string().trim().min(1),
+  appSecret: z.string().trim().min(1),
+  encryptKey: z.string().trim().optional()
+});
+
+/**
+ * Feishu app config.
+ * @see https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/configure-encrypt-key
+ */
+export type FeishuAppType = z.infer<typeof FeishuAppSchema>;
 
 export interface DingtalkAppType {
   clientId: string;
