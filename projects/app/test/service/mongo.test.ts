@@ -57,7 +57,7 @@ describe('initRootUser', () => {
     });
   });
 
-  it('updates password and update time when the configured password changes', async () => {
+  it('updates password when the configured password changes', async () => {
     const updateOne = vi.fn().mockResolvedValue(undefined);
     mocks.selectPassword.mockResolvedValue({
       _id: 'root-id',
@@ -69,14 +69,13 @@ describe('initRootUser', () => {
 
     expect(updateOne).toHaveBeenCalledWith(
       {
-        password: hashStr('configured-root-password'),
-        passwordUpdateTime: expect.any(Date)
+        password: hashStr('configured-root-password')
       },
       { session: 'mongo-session' }
     );
   });
 
-  it('writes password update time when creating root for the first time', async () => {
+  it('creates root with the configured password', async () => {
     mocks.selectPassword.mockResolvedValue(null);
     mocks.createUser.mockResolvedValue([{ _id: 'new-root-id' }]);
 
@@ -86,8 +85,7 @@ describe('initRootUser', () => {
       [
         {
           username: 'root',
-          password: hashStr('configured-root-password'),
-          passwordUpdateTime: expect.any(Date)
+          password: hashStr('configured-root-password')
         }
       ],
       { session: 'mongo-session', ordered: true }

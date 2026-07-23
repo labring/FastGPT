@@ -11,7 +11,8 @@ export enum UserErrEnum {
   invalidVerificationCode = 'invalidVerificationCode',
   sendVerificationCodeTooFrequently = 'sendVerificationCodeTooFrequently',
   verifyCodeTooFrequently = 'verifyCodeTooFrequently',
-  passwordChangeAuthorizationInvalid = 'passwordChangeAuthorizationInvalid'
+  passwordChangeAuthorizationInvalid = 'passwordChangeAuthorizationInvalid',
+  newPasswordSameAsOld = 'newPasswordSameAsOld'
 }
 const errList = [
   {
@@ -53,6 +54,11 @@ const errList = [
     statusText: UserErrEnum.passwordChangeAuthorizationInvalid,
     message: 'Password change authorization is invalid',
     httpStatus: 403
+  },
+  {
+    statusText: UserErrEnum.newPasswordSameAsOld,
+    message: i18nT('common:user.Password has no change'),
+    httpStatus: 400
   }
 ];
 export default errList.reduce((acc, cur, index) => {

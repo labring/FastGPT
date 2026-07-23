@@ -8,7 +8,7 @@ import { appEnv } from '@/env';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
-/** 初始化 root 用户，并仅在运维配置密码真实变化时刷新密码更新时间。 */
+/** 初始化 root 用户，并仅在运维配置密码真实变化时更新密码。 */
 export async function initRootUser(retry = 3): Promise<any> {
   try {
     const rootUser = await MongoUser.findOne({ username: 'root' }).select('+password');
@@ -25,8 +25,7 @@ export async function initRootUser(retry = 3): Promise<any> {
         if (passwordChanged) {
           await rootUser.updateOne(
             {
-              password,
-              passwordUpdateTime: new Date()
+              password
             },
             { session }
           );
@@ -36,8 +35,7 @@ export async function initRootUser(retry = 3): Promise<any> {
           [
             {
               username: 'root',
-              password,
-              passwordUpdateTime: new Date()
+              password
             }
           ],
           { session, ordered: true }

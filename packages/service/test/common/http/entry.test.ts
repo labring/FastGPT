@@ -93,7 +93,8 @@ describe('createApiEntry error status', () => {
   it.each([
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
-    [UserErrEnum.verifyCodeTooFrequently, 429]
+    [UserErrEnum.verifyCodeTooFrequently, 429],
+    [UserErrEnum.newPasswordSameAsOld, 400]
   ] as const)('returns and traces the configured status for %s', async (errorKey, httpStatus) => {
     const response = createResponse();
     const handler = createApiEntry({})(async () => {

@@ -41,6 +41,22 @@ V4.15.3 removes every index that is not declared in its schemas, which may inclu
 
 Setting `MONGO_DEPRECATE_INDEX=false` skips deprecated-index cleanup that may be introduced in future releases, but does not skip creation of missing indexes.
 
+### Add the JWT Signing Secret
+
+`JWT_SECRET` is now required in production. Before updating the images for an existing deployment, generate a random secret with at least 32 characters:
+
+```bash
+openssl rand -hex 32
+```
+
+Set the generated value on the `fastgpt` service:
+
+```dotenv
+JWT_SECRET=<random-secret-generated-above>
+```
+
+For commercial edition deployments, set the same value on the `fastgpt-pro` service. Redeploy or restart the affected services after updating the configuration. Do not use the example value from the deployment template in production.
+
 ## 🚀 New Features
 
 ## ⚙️ Improvements
