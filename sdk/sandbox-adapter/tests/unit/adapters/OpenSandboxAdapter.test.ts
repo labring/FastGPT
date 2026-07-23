@@ -1,788 +1,697 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Sandbox, SandboxManager } from '@alibaba-group/opensandbox';
-import { OpenSandboxAdapter } from '@/adapters/OpenSandboxAdapter';
-import type { OpenSandboxConnectionConfig } from '@/adapters/OpenSandboxAdapter';
-import { ConnectionError, SandboxStateError } from '@/errors';
-import type { ResourceLimits } from '@/types';
-import type { OpenSandboxConfigType } from '@/adapters/OpenSandboxAdapter/type';
+import {
+  Sandbox,
+  SandboxError,
+  SandboxException,
+  SandboxManager,
+  type ExecutionHandlers,
+  type SandboxInfo as SdkSandboxInfo,
+  type WriteEntry as SdkWriteEntry
+} from '@alibaba-group/opensandbox';
+import {
+  OpenSandboxAdapter,
+  type OpenSandboxConnectionConfig
+} from '@/adapters/OpenSandboxAdapter';
+import {
+  CommandExecutionError,
+  FeatureNotSupportedError,
+  SandboxNotFoundError,
+  SandboxStateError
+} from '@/errors';
 
 const MINIMAL_CONNECTION: OpenSandboxConnectionConfig = {
   sessionId: 'test-session',
   baseUrl: 'http://localhost'
 };
 
-function makeAdapter(extra?: Partial<OpenSandboxConnectionConfig>): OpenSandboxAdapter {
-  return new OpenSandboxAdapter({ ...MINIMAL_CONNECTION, ...extra });
-}
+const NOT_FOUND_ERROR = Object.assign(new Error('sandbox not found'), { statusCode: 404 });
 
-/**
- * Unit tests for OpenSandboxAdapter.
- *
- * These tests verify the OpenSandboxAdapter lifecycle, filesystem operations,
- * command execution, and health checks using mocked SDK behavior.
- */
+const makeAdapter = ({
+  connection,
+  createConfig
+}: {
+  connection?: Partial<OpenSandboxConnectionConfig>;
+  createConfig?: ConstructorParameters<typeof OpenSandboxAdapter>[1];
+} = {}) => new OpenSandboxAdapter({ ...MINIMAL_CONNECTION, ...connection }, createConfig);
+
+const makeSdkInfo = ({
+  id = 'sandbox-1',
+  state = 'Running',
+  overrides = {}
+}: {
+  id?: string;
+  state?: string;
+  overrides?: Partial<SdkSandboxInfo> & Record<string, unknown>;
+} = {}): SdkSandboxInfo =>
+  ({
+    id,
+    image: { uri: 'node:20' },
+    entrypoint: ['tail', '-f', '/dev/null'],
+    metadata: { sessionId: MINIMAL_CONNECTION.sessionId },
+    status: { state },
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: null,
+    ...overrides
+  }) as SdkSandboxInfo;
+
+const createSandboxMock = ({
+  id = 'sandbox-1',
+  infoSequence = [makeSdkInfo({ id })],
+  resumeTo
+}: {
+  id?: string;
+  infoSequence?: Array<SdkSandboxInfo | Error>;
+  resumeTo?: Sandbox;
+} = {}) => {
+  const getInfo = vi.fn(async () => makeSdkInfo({ id }));
+  for (const value of infoSequence) {
+    getInfo.mockImplementationOnce(async () => {
+      if (value instanceof Error) throw value;
+      return value;
+    });
+  }
+
+  const pause = vi.fn(async () => undefined);
+  const kill = vi.fn(async () => undefined);
+  const close = vi.fn(async () => undefined);
+  const waitUntilReady = vi.fn(async () => undefined);
+  const healthPing = vi.fn(async () => true);
+  const commandRun = vi.fn(
+    async (_command: string, _options?: unknown, _handlers?: ExecutionHandlers) => ({
+      logs: { stdout: [], stderr: [] },
+      result: [],
+      exitCode: 0
+    })
+  );
+  const interrupt = vi.fn(async () => undefined);
+  const readBytes = vi.fn(async () => new Uint8Array());
+  const readBytesStream = vi.fn(async function* () {
+    yield new Uint8Array();
+  });
+  const getFileInfo = vi.fn(async () => ({}));
+  const writeFiles = vi.fn(async (_entries: SdkWriteEntry[]) => undefined);
+
+  const sandbox = {
+    id,
+    getInfo,
+    pause,
+    kill,
+    close,
+    waitUntilReady,
+    health: { ping: healthPing },
+    commands: { run: commandRun, interrupt },
+    files: { readBytes, readBytesStream, getFileInfo, writeFiles },
+    metrics: { getMetrics: vi.fn() },
+    getEndpoint: vi.fn(),
+    renew: vi.fn()
+  } as unknown as Sandbox;
+  const resume = vi.fn(async () => resumeTo ?? sandbox);
+  (sandbox as unknown as { resume: typeof resume }).resume = resume;
+
+  return {
+    sandbox,
+    getInfo,
+    pause,
+    resume,
+    kill,
+    close,
+    waitUntilReady,
+    healthPing,
+    commandRun,
+    interrupt,
+    readBytes,
+    readBytesStream,
+    getFileInfo,
+    writeFiles
+  };
+};
+
+const bindSandbox = (adapter: OpenSandboxAdapter, sandbox: Sandbox) => {
+  const target = adapter as unknown as { _sandbox?: Sandbox; _id?: string };
+  target._sandbox = sandbox;
+  target._id = sandbox.id;
+};
+
+const mockManager = ({
+  items = [],
+  infoSequence = []
+}: {
+  items?: SdkSandboxInfo[];
+  infoSequence?: Array<SdkSandboxInfo | Error>;
+} = {}) => {
+  const listSandboxInfos = vi.fn(async () => ({ items }));
+  const fallbackInfo = infoSequence.at(-1) ?? items[0] ?? NOT_FOUND_ERROR;
+  const getSandboxInfo = vi.fn(async () => {
+    if (fallbackInfo instanceof Error) throw fallbackInfo;
+    return fallbackInfo;
+  });
+  for (const value of infoSequence) {
+    getSandboxInfo.mockImplementationOnce(async () => {
+      if (value instanceof Error) throw value;
+      return value;
+    });
+  }
+  const pauseSandbox = vi.fn(async () => undefined);
+  const resumeSandbox = vi.fn(async () => undefined);
+  const killSandbox = vi.fn(async () => undefined);
+  const close = vi.fn(async () => undefined);
+  const manager = {
+    listSandboxInfos,
+    getSandboxInfo,
+    pauseSandbox,
+    resumeSandbox,
+    killSandbox,
+    close
+  } as unknown as SandboxManager;
+  vi.spyOn(SandboxManager, 'create').mockReturnValue(manager);
+
+  return {
+    listSandboxInfos,
+    getSandboxInfo,
+    pauseSandbox,
+    resumeSandbox,
+    killSandbox,
+    close
+  };
+};
+
 describe('OpenSandboxAdapter', () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.unstubAllGlobals();
   });
 
-  describe('Lifecycle Methods', () => {
-    it('should initialize with custom connection config', () => {
-      const adapter = makeAdapter({ apiKey: 'test-api-key' });
-
-      expect(adapter.provider).toBe('opensandbox');
-      expect(adapter.status.state).toBe('Creating');
-    });
-
-    it('should use /workspace as the default root path', () => {
-      const adapter = makeAdapter();
-
-      expect(adapter.rootPath).toBe('/workspace');
-    });
-
-    it('should use the configured volume mount path as root path', () => {
-      const adapter = new OpenSandboxAdapter(MINIMAL_CONNECTION, {
-        image: { repository: 'node', tag: '20' },
-        volumes: [{ name: 'workspace', mountPath: '/workspace/' }]
-      } as OpenSandboxConfigType);
-
-      expect(adapter.rootPath).toBe('/workspace');
-    });
-
-    it('should pass connection settings into ConnectionConfig', () => {
-      const defaultConnection = (
-        makeAdapter() as unknown as {
-          _connection: { requestTimeoutSeconds: number };
-        }
-      )._connection;
+  describe('configuration', () => {
+    it('maps connection, runtime, and root path configuration', () => {
       const adapter = makeAdapter({
-        apiKey: 'test-api-key',
-        useServerProxy: true,
-        requestTimeoutSeconds: 60,
-        debug: true
+        connection: {
+          apiKey: 'api-key',
+          requestTimeoutSeconds: 60,
+          useServerProxy: true,
+          debug: true,
+          runtime: 'kubernetes'
+        },
+        createConfig: {
+          image: { repository: 'node', tag: '20' },
+          volumes: [{ name: 'workspace', mountPath: '/data/' }]
+        }
       });
       const connection = (
         adapter as unknown as {
           _connection: {
-            useServerProxy: boolean;
             requestTimeoutSeconds: number;
+            useServerProxy: boolean;
             debug: boolean;
           };
         }
       )._connection;
 
-      expect(defaultConnection.requestTimeoutSeconds).toBe(120);
-      expect(connection.useServerProxy).toBe(true);
-      expect(connection.requestTimeoutSeconds).toBe(60);
-      expect(connection.debug).toBe(true);
-    });
-
-    it('should throw SandboxStateError when accessing sandbox before initialization', async () => {
-      const adapter = makeAdapter();
-
-      // Attempting operations before create/connect should throw
-      await expect(adapter.execute('echo test')).rejects.toThrow(SandboxStateError);
-    });
-
-    it('should handle connection errors gracefully', async () => {
-      // Test with a URL that will fail - using a reserved port that won't have a server
-      const config: OpenSandboxConfigType = {
-        image: { repository: 'nginx', tag: 'latest' }
-      };
-      const adapter = new OpenSandboxAdapter(
-        { ...MINIMAL_CONNECTION, baseUrl: 'http://localhost:65530' },
-        config
-      );
-
-      // Should throw an error when SDK fails
-      try {
-        await adapter.create();
-        // If we reach here without throwing, that's unexpected
-        expect(true).toBe(false); // Force failure if no error thrown
-      } catch (error) {
-        expect(error instanceof ConnectionError || error instanceof Error).toBe(true);
-      }
-    });
-
-    it('should handle connect errors gracefully', async () => {
-      const adapter = makeAdapter({ baseUrl: 'http://localhost:65530' });
-
-      try {
-        await adapter.connect('non-existent-sandbox-id');
-        expect(true).toBe(false);
-      } catch (error) {
-        expect(error instanceof ConnectionError || error instanceof Error).toBe(true);
-      }
-    });
-
-    it('should delete the provided sandbox id through lifecycle API without connecting', async () => {
-      const adapter = makeAdapter();
-      const killSandbox = vi.fn(async () => undefined);
-      const close = vi.fn(async () => undefined);
-      const managerCreate = vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        killSandbox,
-        close
-      } as unknown as SandboxManager);
-      const connect = vi.spyOn(adapter, 'connect').mockImplementation(async () => {
-        throw new Error('delete(sandboxId) should not connect to execd');
+      expect(adapter.provider).toBe('opensandbox');
+      expect(adapter.runtime).toBe('kubernetes');
+      expect(adapter.rootPath).toBe('/data');
+      expect(connection).toMatchObject({
+        requestTimeoutSeconds: 60,
+        useServerProxy: true,
+        debug: true
       });
-
-      await expect(adapter.delete('opensandbox-instance-1')).resolves.toBeUndefined();
-
-      expect(managerCreate).toHaveBeenCalledTimes(1);
-      expect(killSandbox).toHaveBeenCalledWith('opensandbox-instance-1');
-      expect(close).toHaveBeenCalledTimes(1);
-      expect(connect).not.toHaveBeenCalled();
-      expect(adapter.status.state).toBe('UnExist');
     });
 
-    it('should treat a raced not-found kill as an idempotent delete', async () => {
+    it('uses default runtime, root path, and request timeout', () => {
       const adapter = makeAdapter();
-      const killSandbox = vi.fn(async () => {
-        throw { code: 404, message: 'sandbox not found' };
+      const connection = (adapter as unknown as { _connection: { requestTimeoutSeconds: number } })
+        ._connection;
+
+      expect(adapter.runtime).toBe('docker');
+      expect(adapter.rootPath).toBe('/workspace');
+      expect(connection.requestTimeoutSeconds).toBe(120);
+    });
+  });
+
+  describe('create and connect', () => {
+    it('creates through the SDK with string metadata and one custom readiness check', async () => {
+      const adapter = makeAdapter({
+        connection: { sessionId: 'session-1' },
+        createConfig: {
+          image: { repository: 'node', tag: '20' },
+          metadata: { teamId: 'team-1', retry: 2 },
+          resourceLimits: { cpuCount: 2, memoryMiB: 512, diskGiB: 10 },
+          networkPolicy: {
+            defaultAction: 'allow',
+            egress: [{ action: 'deny', target: 'localhost' }]
+          },
+          extensions: { traceId: 'trace-1' }
+        }
       });
-      const close = vi.fn(async () => undefined);
-      vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        killSandbox,
-        close
-      } as unknown as SandboxManager);
+      const created = createSandboxMock();
+      const create = vi.spyOn(Sandbox, 'create').mockResolvedValue(created.sandbox);
+      const adapterWait = vi.spyOn(adapter, 'waitUntilReady');
 
-      await expect(adapter.delete('missing-instance')).resolves.toBeUndefined();
-      expect(adapter.status.state).toBe('UnExist');
-    });
+      await adapter.create();
 
-    it('should delete an unbound sandbox by looking up the connection session id', async () => {
-      const adapter = makeAdapter({ sessionId: 'session-1' });
-      const listSandboxInfos = vi.fn(async () => ({
-        items: [
-          {
-            id: 'opensandbox-instance-1',
-            status: { state: 'running' }
-          }
-        ]
-      }));
-      const killSandbox = vi.fn(async () => undefined);
-      const close = vi.fn(async () => undefined);
-      vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        listSandboxInfos,
-        killSandbox,
-        close
-      } as unknown as SandboxManager);
-
-      await expect(adapter.delete()).resolves.toBeUndefined();
-
-      expect(listSandboxInfos).toHaveBeenCalledWith({ metadata: { sessionId: 'session-1' } });
-      expect(killSandbox).toHaveBeenCalledWith('opensandbox-instance-1');
-      expect(close).toHaveBeenCalledTimes(2);
-      expect(adapter.status.state).toBe('UnExist');
-    });
-
-    it('should stop an unbound sandbox by looking up the connection session id', async () => {
-      const adapter = makeAdapter({ sessionId: 'session-1' });
-      const listSandboxInfos = vi.fn(async () => ({
-        items: [
-          {
-            id: 'opensandbox-instance-1',
-            status: { state: 'running' }
-          }
-        ]
-      }));
-      const killSandbox = vi.fn(async () => undefined);
-      const close = vi.fn(async () => undefined);
-      vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        listSandboxInfos,
-        killSandbox,
-        close
-      } as unknown as SandboxManager);
-
-      await expect(adapter.stop()).resolves.toBeUndefined();
-
-      expect(listSandboxInfos).toHaveBeenCalledWith({ metadata: { sessionId: 'session-1' } });
-      expect(killSandbox).toHaveBeenCalledWith('opensandbox-instance-1');
-      expect(close).toHaveBeenCalledTimes(2);
-      expect(adapter.status.state).toBe('Stopped');
-    });
-
-    it('should treat stop as idempotent when no sandbox exists for the session id', async () => {
-      const adapter = makeAdapter({ sessionId: 'session-1' });
-      const listSandboxInfos = vi.fn(async () => ({ items: [] }));
-      const killSandbox = vi.fn(async () => undefined);
-      const close = vi.fn(async () => undefined);
-      vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        listSandboxInfos,
-        killSandbox,
-        close
-      } as unknown as SandboxManager);
-
-      await expect(adapter.stop()).resolves.toBeUndefined();
-
-      expect(listSandboxInfos).toHaveBeenCalledWith({ metadata: { sessionId: 'session-1' } });
-      expect(killSandbox).not.toHaveBeenCalled();
-      expect(close).toHaveBeenCalledTimes(1);
-      expect(adapter.status.state).toBe('Stopped');
-    });
-
-    it('should connect to an existing creating sandbox resolved by session id', async () => {
-      const adapter = makeAdapter({ sessionId: 'session-1' });
-      const listSandboxInfos = vi.fn(async () => ({
-        items: [
-          {
-            id: 'opensandbox-instance-1',
-            status: { state: 'creating' }
-          }
-        ]
-      }));
-      const close = vi.fn(async () => undefined);
-      vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        listSandboxInfos,
-        close
-      } as unknown as SandboxManager);
-      const connect = vi.spyOn(Sandbox, 'connect').mockResolvedValue({
-        id: 'opensandbox-instance-1'
-      } as unknown as Sandbox);
-
-      await expect(adapter.ensureRunning()).resolves.toBeUndefined();
-
-      expect(listSandboxInfos).toHaveBeenCalledWith({ metadata: { sessionId: 'session-1' } });
-      expect(connect).toHaveBeenCalledWith(
-        expect.objectContaining({ sandboxId: 'opensandbox-instance-1' })
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: 'node:20',
+          metadata: { teamId: 'team-1', retry: '2', sessionId: 'session-1' },
+          resource: { cpu: '2', memory: '512Mi', disk: '10Gi' },
+          healthCheck: expect.any(Function),
+          networkPolicy: {
+            defaultAction: 'allow',
+            egress: [{ action: 'deny', target: 'localhost' }]
+          },
+          extensions: { traceId: 'trace-1' }
+        })
       );
-      expect(adapter.id).toBe('opensandbox-instance-1');
+      expect(adapterWait).not.toHaveBeenCalled();
+      expect(adapter.id).toBe('sandbox-1');
       expect(adapter.status.state).toBe('Running');
     });
 
-    it('should not replace a deleting sandbox when creation is disabled', async () => {
-      const adapter = makeAdapter({ sessionId: 'session-1' });
-      const listSandboxInfos = vi.fn(async () => ({
-        items: [
-          {
-            id: 'opensandbox-instance-1',
-            status: { state: 'deleting' }
-          }
-        ]
-      }));
-      const close = vi.fn(async () => undefined);
-      vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        listSandboxInfos,
-        close
-      } as unknown as SandboxManager);
-      const create = vi.spyOn(Sandbox, 'create');
+    it('requires an image when creating an OpenSandbox resource', async () => {
+      const adapter = makeAdapter({ createConfig: {} });
 
-      await expect(adapter.ensureRunning({ allowCreate: false })).rejects.toThrow(
-        'Sandbox session session-1 is deleting'
+      await expect(adapter.create()).rejects.toThrow(
+        'createConfig.image is required for opensandbox provider'
       );
-
-      expect(create).not.toHaveBeenCalled();
-      expect(listSandboxInfos).toHaveBeenCalledTimes(1);
-      expect(close).toHaveBeenCalledTimes(1);
     });
 
-    it('should wait by session id when existing sandbox is deleting before creating a replacement', async () => {
-      const adapter = new OpenSandboxAdapter(
-        { ...MINIMAL_CONNECTION, sessionId: 'session-1' },
-        { image: { repository: 'node', tag: '20' } }
+    it('closes the previous independent SDK client when connecting to another id', async () => {
+      const adapter = makeAdapter();
+      const previous = createSandboxMock({ id: 'sandbox-old' });
+      const next = createSandboxMock({ id: 'sandbox-new' });
+      bindSandbox(adapter, previous.sandbox);
+      vi.spyOn(Sandbox, 'connect').mockResolvedValue(next.sandbox);
+
+      await adapter.connect('sandbox-new');
+
+      expect(previous.close).toHaveBeenCalledTimes(1);
+      expect(adapter.id).toBe('sandbox-new');
+    });
+
+    it('does not reconnect an already bound id', async () => {
+      const adapter = makeAdapter();
+      const bound = createSandboxMock();
+      bindSandbox(adapter, bound.sandbox);
+      const connect = vi.spyOn(Sandbox, 'connect');
+
+      await adapter.connect('sandbox-1');
+
+      expect(connect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reuse and ensureRunning', () => {
+    it('reuses the bound Running SDK client without manager lookup or reconnect', async () => {
+      const adapter = makeAdapter();
+      const bound = createSandboxMock({
+        infoSequence: [makeSdkInfo({ state: 'Running' })]
+      });
+      bindSandbox(adapter, bound.sandbox);
+      const managerCreate = vi.spyOn(SandboxManager, 'create');
+      const connect = vi.spyOn(Sandbox, 'connect');
+
+      await adapter.ensureRunning();
+
+      expect(bound.getInfo).toHaveBeenCalledTimes(1);
+      expect(managerCreate).not.toHaveBeenCalled();
+      expect(connect).not.toHaveBeenCalled();
+      expect(adapter.status.state).toBe('Running');
+    });
+
+    it('finds an unbound Running resource by session metadata and connects once', async () => {
+      const adapter = makeAdapter({ connection: { sessionId: 'session-1' } });
+      const info = makeSdkInfo({ overrides: { metadata: { sessionId: 'session-1' } } });
+      const manager = mockManager({ items: [info] });
+      const connected = createSandboxMock();
+      const connect = vi.spyOn(Sandbox, 'connect').mockResolvedValue(connected.sandbox);
+
+      await adapter.ensureRunning();
+
+      expect(manager.listSandboxInfos).toHaveBeenCalledWith({
+        metadata: { sessionId: 'session-1' },
+        pageSize: 100
+      });
+      expect(connect).toHaveBeenCalledTimes(1);
+      expect(manager.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('resumes an unbound Paused resource instead of creating a replacement', async () => {
+      const adapter = makeAdapter();
+      const manager = mockManager({ items: [makeSdkInfo({ state: 'Paused' })] });
+      const resumed = createSandboxMock();
+      const resume = vi.spyOn(Sandbox, 'resume').mockResolvedValue(resumed.sandbox);
+      const create = vi.spyOn(Sandbox, 'create');
+
+      await adapter.ensureRunning();
+
+      expect(resume).toHaveBeenCalledWith(
+        expect.objectContaining({ sandboxId: 'sandbox-1', healthCheck: expect.any(Function) })
       );
+      expect(create).not.toHaveBeenCalled();
+      expect(manager.close).toHaveBeenCalledTimes(1);
+      expect(adapter.id).toBe('sandbox-1');
+    });
+
+    it('waits for Pausing to become Paused before resuming the same bound resource', async () => {
+      const adapter = makeAdapter();
+      const resumed = createSandboxMock();
+      const bound = createSandboxMock({
+        infoSequence: [makeSdkInfo({ state: 'Pausing' }), makeSdkInfo({ state: 'Paused' })],
+        resumeTo: resumed.sandbox
+      });
+      bindSandbox(adapter, bound.sandbox);
       vi.spyOn(
         adapter as unknown as { sleep(ms: number): Promise<void> },
         'sleep'
       ).mockResolvedValue(undefined);
-      vi.spyOn(adapter, 'ping').mockResolvedValue(true);
-      const listSandboxInfos = vi
-        .fn()
-        .mockResolvedValueOnce({
-          items: [
-            {
-              id: 'opensandbox-instance-1',
-              status: { state: 'deleting' }
-            }
-          ]
-        })
-        .mockResolvedValueOnce({
-          items: [
-            {
-              id: 'opensandbox-instance-1',
-              status: { state: 'deleting' }
-            }
-          ]
-        })
-        .mockResolvedValueOnce({ items: [] });
-      const close = vi.fn(async () => undefined);
-      vi.spyOn(SandboxManager, 'create').mockReturnValue({
-        listSandboxInfos,
-        close
-      } as unknown as SandboxManager);
-      const create = vi.spyOn(Sandbox, 'create').mockResolvedValue({
-        id: 'opensandbox-instance-2',
-        waitUntilReady: vi.fn(async () => undefined)
-      } as unknown as Sandbox);
 
-      await expect(adapter.ensureRunning()).resolves.toBeUndefined();
+      await adapter.ensureRunning();
 
-      expect(listSandboxInfos).toHaveBeenCalledTimes(3);
-      expect(create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          metadata: expect.objectContaining({ sessionId: 'session-1' })
-        })
+      expect(bound.resume).toHaveBeenCalledWith({ skipHealthCheck: true });
+      expect(resumed.waitUntilReady).toHaveBeenCalledWith(
+        expect.objectContaining({ healthCheck: expect.any(Function) })
       );
-      expect(adapter.id).toBe('opensandbox-instance-2');
+      expect(adapter.id).toBe('sandbox-1');
       expect(adapter.status.state).toBe('Running');
     });
 
-    it('should create sandbox with network policy and extensions', async () => {
-      const adapter = new OpenSandboxAdapter({ ...MINIMAL_CONNECTION, sessionId: 'session-1' }, {
-        image: { repository: 'node', tag: '20' },
-        resourceLimits: { cpuCount: 1, memoryMiB: 256 },
-        metadata: { teamId: 'team-1' },
-        networkPolicy: {
-          defaultAction: 'allow',
-          egress: [{ action: 'deny', target: 'host.docker.internal' }]
-        },
-        extensions: {
-          traceId: 'trace-1'
-        }
-      } as OpenSandboxConfigType);
-      vi.spyOn(adapter, 'ping').mockResolvedValue(true);
-      const create = vi.spyOn(Sandbox, 'create').mockResolvedValue({
-        id: 'opensandbox-instance-1',
-        health: {
-          ping: vi.fn(async () => true)
-        }
-      } as unknown as Sandbox);
+    it('does not create a missing resource when creation is disabled', async () => {
+      const adapter = makeAdapter();
+      const manager = mockManager();
+      const create = vi.spyOn(Sandbox, 'create');
 
-      await expect(adapter.create()).resolves.toBeUndefined();
+      await expect(adapter.ensureRunning({ allowCreate: false })).rejects.toBeInstanceOf(
+        SandboxNotFoundError
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(manager.close).toHaveBeenCalledTimes(1);
+    });
+  });
 
-      expect(create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          networkPolicy: {
-            defaultAction: 'allow',
-            egress: [{ action: 'deny', target: 'host.docker.internal' }]
-          },
-          extensions: {
-            traceId: 'trace-1'
-          },
-          resource: {
-            cpu: '1',
-            memory: '256Mi'
-          },
-          metadata: expect.objectContaining({
-            teamId: 'team-1',
-            sessionId: 'session-1'
-          })
+  describe('pause and resume', () => {
+    it('pauses an unbound resource, waits for Paused, and never kills it', async () => {
+      const adapter = makeAdapter({ connection: { sessionId: 'session-1' } });
+      const manager = mockManager({
+        items: [makeSdkInfo({ state: 'Running' })],
+        infoSequence: [makeSdkInfo({ state: 'Pausing' }), makeSdkInfo({ state: 'Paused' })]
+      });
+      vi.spyOn(
+        adapter as unknown as { sleep(ms: number): Promise<void> },
+        'sleep'
+      ).mockResolvedValue(undefined);
+
+      await adapter.stop();
+
+      expect(manager.pauseSandbox).toHaveBeenCalledWith('sandbox-1');
+      expect(manager.killSandbox).not.toHaveBeenCalled();
+      expect(manager.getSandboxInfo).toHaveBeenCalledTimes(2);
+      expect(manager.close).toHaveBeenCalledTimes(1);
+      expect(adapter.status.state).toBe('Stopped');
+    });
+
+    it('uses bound pause and resumes the same resource without closing its shared transport', async () => {
+      const adapter = makeAdapter();
+      const resumed = createSandboxMock();
+      const bound = createSandboxMock({
+        infoSequence: [
+          makeSdkInfo({ state: 'Running' }),
+          makeSdkInfo({ state: 'Pausing' }),
+          makeSdkInfo({ state: 'Paused' }),
+          makeSdkInfo({ state: 'Paused' })
+        ],
+        resumeTo: resumed.sandbox
+      });
+      bindSandbox(adapter, bound.sandbox);
+      vi.spyOn(
+        adapter as unknown as { sleep(ms: number): Promise<void> },
+        'sleep'
+      ).mockResolvedValue(undefined);
+
+      await adapter.stop();
+      await adapter.start();
+
+      expect(bound.pause).toHaveBeenCalledTimes(1);
+      expect(bound.resume).toHaveBeenCalledWith({ skipHealthCheck: true });
+      expect(bound.close).not.toHaveBeenCalled();
+      expect(adapter.id).toBe('sandbox-1');
+      expect(adapter.status.state).toBe('Running');
+    });
+
+    it('does not issue another pause while the resource is already Pausing', async () => {
+      const adapter = makeAdapter();
+      const manager = mockManager({
+        items: [makeSdkInfo({ state: 'Pausing' })],
+        infoSequence: [makeSdkInfo({ state: 'Paused' })]
+      });
+
+      await adapter.stop();
+
+      expect(manager.pauseSandbox).not.toHaveBeenCalled();
+      expect(adapter.status.state).toBe('Stopped');
+    });
+
+    it('maps unsupported pause to FeatureNotSupportedError', async () => {
+      const adapter = makeAdapter();
+      const bound = createSandboxMock({
+        infoSequence: [makeSdkInfo({ state: 'Running' })]
+      });
+      bound.pause.mockRejectedValue(
+        new SandboxException({
+          error: new SandboxError('SANDBOX::API_NOT_SUPPORTED', 'Pause is not supported')
         })
       );
+      bindSandbox(adapter, bound.sandbox);
+
+      await expect(adapter.stop()).rejects.toBeInstanceOf(FeatureNotSupportedError);
     });
 
-    it('should fall back to command execution when health ping is temporarily unhealthy', async () => {
+    it('treats a missing remote resource as an idempotent stop', async () => {
       const adapter = makeAdapter();
-      const run = vi.fn(async () => ({}));
-      (
-        adapter as unknown as {
-          _sandbox: {
-            health: { ping: () => Promise<boolean> };
-            commands: { run: typeof run };
-          };
-        }
-      )._sandbox = {
-        health: { ping: vi.fn(async () => false) },
-        commands: { run }
-      };
+      const manager = mockManager();
 
-      await expect(adapter.ping()).resolves.toBe(true);
+      await expect(adapter.stop()).resolves.toBeUndefined();
 
-      expect(run).toHaveBeenCalledWith(
-        'true',
-        expect.objectContaining({
-          timeoutSeconds: 3
-        }),
-        expect.any(Object)
-      );
-    });
-
-    it('should report unhealthy when health ping and command fallback both fail', async () => {
-      const adapter = makeAdapter();
-      (
-        adapter as unknown as {
-          _sandbox: {
-            health: { ping: () => Promise<boolean> };
-            commands: { run: () => Promise<unknown> };
-          };
-        }
-      )._sandbox = {
-        health: { ping: vi.fn(async () => false) },
-        commands: { run: vi.fn(async () => ({ error: { value: '1' } })) }
-      };
-
-      await expect(adapter.ping()).resolves.toBe(false);
+      expect(manager.pauseSandbox).not.toHaveBeenCalled();
+      expect(adapter.status.state).toBe('Stopped');
     });
   });
 
-  describe('Resource Conversion', () => {
-    it('should convert ResourceLimits to SDK format', () => {
+  describe('delete and close', () => {
+    it('kills a bound resource through the SDK instance and releases its client', async () => {
       const adapter = makeAdapter();
-      const convertResourceLimits = (
-        adapter as unknown as {
-          convertResourceLimits(limits?: ResourceLimits): Record<string, string> | undefined;
-        }
-      ).convertResourceLimits;
+      const bound = createSandboxMock({ infoSequence: [NOT_FOUND_ERROR] });
+      bindSandbox(adapter, bound.sandbox);
 
-      // Full limits
-      const limits: ResourceLimits = {
-        cpuCount: 2,
-        memoryMiB: 512,
-        diskGiB: 10
-      };
-      const converted = convertResourceLimits(limits);
-      expect(converted).toEqual({
-        cpu: '2',
-        memory: '512Mi',
-        disk: '10Gi'
+      await adapter.delete();
+
+      expect(bound.kill).toHaveBeenCalledTimes(1);
+      expect(bound.close).toHaveBeenCalledTimes(1);
+      expect(adapter.id).toBeUndefined();
+      expect(adapter.status.state).toBe('UnExist');
+    });
+
+    it('kills an explicit unbound id with one manager and waits for deletion', async () => {
+      const adapter = makeAdapter();
+      const manager = mockManager({
+        infoSequence: [makeSdkInfo(), NOT_FOUND_ERROR]
       });
 
-      // Partial limits
-      const partial: ResourceLimits = { cpuCount: 4 };
-      expect(convertResourceLimits(partial)).toEqual({ cpu: '4' });
+      await adapter.delete('sandbox-1');
 
-      // Empty limits
-      expect(convertResourceLimits({})).toEqual({});
-
-      // Undefined
-      expect(convertResourceLimits(undefined)).toBeUndefined();
+      expect(manager.killSandbox).toHaveBeenCalledWith('sandbox-1');
+      expect(manager.close).toHaveBeenCalledTimes(1);
+      expect(adapter.status.state).toBe('UnExist');
     });
 
-    it('should parse SDK resource limits to ResourceLimits', () => {
+    it('closes idempotently without changing remote lifecycle', async () => {
       const adapter = makeAdapter();
-      const parseResourceLimits = (
-        adapter as unknown as {
-          parseResourceLimits(resource?: Record<string, string>): ResourceLimits | undefined;
-        }
-      ).parseResourceLimits;
+      const bound = createSandboxMock();
+      bindSandbox(adapter, bound.sandbox);
 
-      // Full resource limits
-      const sdkLimits = {
-        cpu: '2',
-        memory: '512Mi',
-        disk: '10Gi'
-      };
-      const parsed = parseResourceLimits(sdkLimits);
-      expect(parsed).toEqual({
-        cpuCount: 2,
-        memoryMiB: 512,
-        diskGiB: 10
+      await adapter.close();
+      await adapter.close();
+
+      expect(bound.close).toHaveBeenCalledTimes(1);
+      expect(bound.pause).not.toHaveBeenCalled();
+      expect(bound.kill).not.toHaveBeenCalled();
+      expect(adapter.id).toBeUndefined();
+    });
+  });
+
+  describe('lifecycle info', () => {
+    it('reads Paused info through SandboxManager without connecting execd', async () => {
+      const adapter = makeAdapter();
+      const info = makeSdkInfo({
+        state: 'Paused',
+        overrides: { resourceLimits: { cpu: '2', memory: '2Gi', disk: '10Gi' } }
       });
+      const manager = mockManager({ items: [info] });
+      const connect = vi.spyOn(Sandbox, 'connect');
 
-      // GiB memory conversion
-      const gibMemory = { memory: '2Gi' };
-      expect(parseResourceLimits(gibMemory)).toEqual({ memoryMiB: 2048 });
-
-      // Empty object
-      expect(parseResourceLimits({})).toEqual({});
-
-      // Undefined
-      expect(parseResourceLimits(undefined)).toBeUndefined();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should wrap SDK errors in ConnectionError for create', async () => {
-      const adapter = new OpenSandboxAdapter(
-        { ...MINIMAL_CONNECTION, baseUrl: 'http://localhost:1' }, // Invalid port
-        { image: { repository: 'test' } }
-      );
-
-      try {
-        await adapter.create();
-      } catch (error) {
-        // Should be a connection-related error
-        expect(error instanceof Error).toBe(true);
-      }
+      await expect(adapter.getInfo()).resolves.toMatchObject({
+        id: 'sandbox-1',
+        status: { state: 'Stopped' },
+        resourceLimits: { cpuCount: 2, memoryMiB: 2048, diskGiB: 10 }
+      });
+      expect(connect).not.toHaveBeenCalled();
+      expect(manager.close).toHaveBeenCalledTimes(1);
     });
 
-    it('should wrap SDK errors in ConnectionError for connect', async () => {
-      const adapter = makeAdapter({ baseUrl: 'http://localhost:1' });
-
-      try {
-        await adapter.connect('invalid-id');
-      } catch (error) {
-        expect(error instanceof Error).toBe(true);
-      }
-    });
-
-    it('should provide meaningful error messages', () => {
-      const connectionError = new ConnectionError(
-        'Failed to create sandbox',
-        'http://example.com',
-        new Error('Network timeout')
-      );
-
-      expect(connectionError.message).toContain('Failed to create sandbox');
-      expect(connectionError.endpoint).toBe('http://example.com');
-      expect(connectionError.cause).toBeDefined();
-    });
-
-    it('should create SandboxStateError with expected state', () => {
-      const stateError = new SandboxStateError('Sandbox not initialized', 'UnExist', 'Running');
-
-      expect(stateError.message).toContain('Sandbox not initialized');
-      expect(stateError.currentState).toBe('UnExist');
-      expect(stateError.requiredState).toBe('Running');
-    });
-  });
-
-  describe('Endpoints', () => {
-    it('parses full URL endpoints without prepending another protocol', async () => {
+    it('maps transitional SDK states and returns null for a missing session', async () => {
       const adapter = makeAdapter();
+      mockManager({ items: [makeSdkInfo({ state: 'Resuming' })] });
+
+      await expect(adapter.getInfo()).resolves.toMatchObject({ status: { state: 'Starting' } });
+
+      vi.restoreAllMocks();
+      mockManager();
+      await expect(adapter.getInfo()).resolves.toBeNull();
+    });
+  });
+
+  describe('endpoint and command execution', () => {
+    it('parses an absolute SDK endpoint without duplicating the protocol', async () => {
+      const adapter = makeAdapter();
+      const bound = createSandboxMock();
       (
-        adapter as unknown as {
-          _sandbox: {
-            getEndpoint: (port: number) => Promise<{ endpoint: string }>;
-          };
+        bound.sandbox as unknown as {
+          getEndpoint: (port: number) => Promise<{ endpoint: string }>;
         }
-      )._sandbox = {
-        getEndpoint: vi.fn(async () => ({
-          endpoint: 'http://127.0.0.1:18080/proxy/abc'
-        }))
-      };
+      ).getEndpoint = vi.fn(async () => ({ endpoint: 'http://127.0.0.1:18080/proxy/abc' }));
+      bindSandbox(adapter, bound.sandbox);
 
       await expect(adapter.getEndpoint(1318)).resolves.toMatchObject({
+        host: '127.0.0.1',
+        port: 18080,
         protocol: 'http',
         url: 'http://127.0.0.1:18080/proxy/abc'
       });
     });
-  });
 
-  describe('Wait Until Ready', () => {
-    it('should timeout when sandbox not ready', async () => {
+    it('uses SDK exitCode, command timeout, and skipAccumulation', async () => {
       const adapter = makeAdapter();
-
-      // Without proper initialization, should timeout or error
-      try {
-        await adapter.waitUntilReady(100); // Short timeout
-      } catch (error) {
-        // Expected to throw since sandbox not created
-        expect(error instanceof Error).toBe(true);
-      }
-    });
-  });
-
-  describe('Runtime Configuration', () => {
-    it('should default to docker runtime', () => {
-      expect(makeAdapter().runtime).toBe('docker');
-    });
-
-    it('should accept kubernetes runtime explicitly', () => {
-      expect(makeAdapter({ runtime: 'kubernetes' }).runtime).toBe('kubernetes');
-    });
-  });
-
-  describe('getInfo', () => {
-    it('should return null when sandbox not initialized', async () => {
-      const adapter = makeAdapter();
-      vi.spyOn(adapter as any, 'getSandboxBySessionId').mockResolvedValue(undefined);
-      const info = await adapter.getInfo();
-      expect(info).toBeNull();
-    });
-  });
-
-  describe('Command Execution', () => {
-    it('should pass command timeout to OpenSandbox commands', async () => {
-      const adapter = makeAdapter();
-      const run = vi.fn(async (_command, _options, handlers) => {
-        handlers.onStdout({ text: 'ok\n' });
-        return {};
+      const bound = createSandboxMock();
+      bound.commandRun.mockImplementation(async (_command, _options, handlers) => {
+        handlers?.onStdout?.({ text: 'ok\n', timestamp: Date.now() });
+        return {
+          logs: { stdout: [], stderr: [] },
+          result: [],
+          exitCode: 7
+        };
       });
-      (adapter as any).sandbox = {
-        commands: { run }
-      };
+      bindSandbox(adapter, bound.sandbox);
 
-      const result = await adapter.execute('sleep 10', { timeoutMs: 2_000 });
-
-      expect(result.stdout).toBe('ok\n');
-      expect(run).toHaveBeenCalledWith(
-        'sleep 10',
-        expect.objectContaining({
-          timeoutSeconds: 2
-        }),
-        expect.any(Object)
+      await expect(adapter.execute('exit 7', { timeoutMs: 2_100 })).resolves.toMatchObject({
+        stdout: 'ok\n',
+        exitCode: 7
+      });
+      expect(bound.commandRun).toHaveBeenCalledWith(
+        'exit 7',
+        expect.objectContaining({ timeoutSeconds: 3 }),
+        expect.objectContaining({ skipAccumulation: true })
       );
     });
 
-    it('should pass stream command timeout to OpenSandbox commands', async () => {
+    it('streams bounded output and emits one completion result', async () => {
       const adapter = makeAdapter();
-      const run = vi.fn(async (_command, _options, handlers) => {
-        await handlers.onStdout?.({ text: 'ok\n' });
-        return {};
+      const bound = createSandboxMock();
+      bound.commandRun.mockImplementation(async (_command, _options, handlers) => {
+        await handlers?.onStdout?.({ text: 'streamed', timestamp: Date.now() });
+        return {
+          logs: { stdout: [], stderr: [] },
+          result: [],
+          exitCode: 0
+        };
       });
-      (adapter as any).sandbox = {
-        commands: { run }
-      };
+      bindSandbox(adapter, bound.sandbox);
+      const onComplete = vi.fn();
 
-      await adapter.executeStream('sleep 10', {}, { timeoutMs: 2_100 });
+      await adapter.executeStream('echo streamed', { onComplete });
 
-      expect(run).toHaveBeenCalledWith(
-        'sleep 10',
-        expect.objectContaining({
-          timeoutSeconds: 3
-        }),
-        expect.any(Object)
+      expect(onComplete).toHaveBeenCalledWith(
+        expect.objectContaining({ stdout: 'streamed', exitCode: 0 })
+      );
+      expect(bound.commandRun).toHaveBeenCalledWith(
+        'echo streamed',
+        expect.any(Object),
+        expect.objectContaining({ skipAccumulation: true })
       );
     });
-  });
 
-  describe('readFileStream', () => {
-    it('should stream file through OpenSandbox native readBytesStream', async () => {
-      const adapter = makeAdapter();
-      async function* streamChunks() {
-        yield new TextEncoder().encode('native ');
-        yield new TextEncoder().encode('stream');
-      }
-      const mockReadBytesStream = vi.fn(() => streamChunks());
-
-      (adapter as any).sandbox = {
-        files: {
-          readBytesStream: mockReadBytesStream
-        }
-      };
-
-      const received: Uint8Array[] = [];
-      for await (const chunk of adapter.readFileStream('test.txt')) {
-        received.push(chunk);
-      }
-
-      expect(new TextDecoder().decode(Buffer.concat(received))).toBe('native stream');
-      expect(mockReadBytesStream).toHaveBeenCalledWith('/workspace/test.txt');
+    it('throws SandboxStateError when executing before a client is bound', async () => {
+      await expect(makeAdapter().execute('true')).rejects.toBeInstanceOf(SandboxStateError);
     });
   });
 
-  describe('writeFiles', () => {
-    it('should slice Uint8Array with byte offset and pass clean ArrayBuffer to SDK', async () => {
+  describe('health and files', () => {
+    it('falls back to the command channel when SDK health ping is transiently unhealthy', async () => {
       const adapter = makeAdapter();
+      const bound = createSandboxMock();
+      bound.healthPing.mockRejectedValue(new Error('ping failed'));
+      bindSandbox(adapter, bound.sandbox);
 
-      // Mock sandbox and files.writeFiles
-      const mockWriteFiles = vi.fn().mockResolvedValue(undefined);
-      const mockSandbox = {
-        files: {
-          writeFiles: mockWriteFiles
-        }
-      };
-
-      // Inject mock sandbox
-      (adapter as any).sandbox = mockSandbox;
-      (adapter as any)._status = { state: 'Running' };
-
-      // Create a Uint8Array backed by a shared buffer pool (with offset)
-      const sharedBuffer = new ArrayBuffer(20);
-      const dataWithOffset = new Uint8Array(sharedBuffer, 5, 10);
-      dataWithOffset.fill(65); // Fill with 'A's
-
-      const result = await adapter.writeFiles([{ path: '/test.txt', data: dataWithOffset }]);
-
-      expect(result[0].error).toBeNull();
-      expect(result[0].bytesWritten).toBe(10);
-
-      // Verify that the data passed to SDK's writeFiles is an ArrayBuffer
-      // and its byteLength is exactly 10 (not the 20 of the sharedBuffer)
-      expect(mockWriteFiles).toHaveBeenCalledTimes(1);
-      const callArgs = mockWriteFiles.mock.calls[0][0];
-      expect(callArgs[0].path).toBe('/test.txt');
-
-      const passedData = callArgs[0].data;
-      expect(passedData).toBeInstanceOf(ArrayBuffer);
-      expect(passedData.byteLength).toBe(10);
-
-      // Also verify we sliced it correctly by reading the contents
-      const view = new Uint8Array(passedData);
-      expect(view[0]).toBe(65);
-      expect(view[9]).toBe(65);
+      await expect(adapter.ping()).resolves.toBe(true);
+      expect(bound.commandRun).toHaveBeenCalledWith(
+        'true',
+        { timeoutSeconds: 3 },
+        { skipAccumulation: true }
+      );
     });
 
-    it('should treat upload 500 as success when small file content was actually written', async () => {
+    it('uses the native read stream with a normalized path', async () => {
       const adapter = makeAdapter();
-      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
-        statusCode: 500
+      const bound = createSandboxMock();
+      bound.readBytesStream.mockImplementation(async function* () {
+        yield new TextEncoder().encode('native');
       });
-      const content = 'hello opensandbox';
-      const encoded = new TextEncoder().encode(content);
-      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
-      const mockGetFileInfo = vi.fn().mockResolvedValue({
-        '/test.txt': { path: '/test.txt', size: encoded.byteLength }
-      });
-      const mockReadBytes = vi.fn().mockResolvedValue(encoded);
+      bindSandbox(adapter, bound.sandbox);
 
-      (adapter as any).sandbox = {
-        files: {
-          writeFiles: mockWriteFiles,
-          getFileInfo: mockGetFileInfo,
-          readBytes: mockReadBytes
-        }
-      };
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of adapter.readFileStream('file.txt')) chunks.push(chunk);
 
-      const result = await adapter.writeFiles([{ path: '/test.txt', data: content }]);
+      expect(new TextDecoder().decode(chunks[0])).toBe('native');
+      expect(bound.readBytesStream).toHaveBeenCalledWith('/workspace/file.txt');
+    });
 
-      expect(result).toEqual([
-        { path: '/test.txt', bytesWritten: encoded.byteLength, error: null }
+    it('passes a clean ArrayBuffer view to the SDK', async () => {
+      const adapter = makeAdapter();
+      const bound = createSandboxMock();
+      bindSandbox(adapter, bound.sandbox);
+      const pooled = new ArrayBuffer(8);
+      const data = new Uint8Array(pooled, 2, 3);
+      data.set([1, 2, 3]);
+
+      await expect(adapter.writeFiles([{ path: 'file.bin', data }])).resolves.toEqual([
+        { path: '/workspace/file.bin', bytesWritten: 3, error: null }
       ]);
-      expect(mockGetFileInfo).toHaveBeenCalledWith(['/test.txt']);
-      expect(mockReadBytes).toHaveBeenCalledWith('/test.txt');
+      const written = bound.writeFiles.mock.calls[0]?.[0]?.[0]?.data;
+      expect(written).toBeInstanceOf(ArrayBuffer);
+      expect(Array.from(new Uint8Array(written as ArrayBuffer))).toEqual([1, 2, 3]);
     });
 
-    it('should fall back to command stat when OpenSandbox file info also fails', async () => {
+    it('wires upload false-negative recovery through the dedicated verifier', async () => {
       const adapter = makeAdapter();
-      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
-        statusCode: 500
+      const bound = createSandboxMock();
+      const data = new TextEncoder().encode('committed');
+      bound.writeFiles.mockRejectedValue(
+        Object.assign(new Error('Upload failed (status=500)'), { statusCode: 500 })
+      );
+      bound.getFileInfo.mockResolvedValue({
+        '/workspace/file.bin': { path: '/workspace/file.bin', size: data.byteLength }
       });
-      const data = new TextEncoder().encode('fallback');
-      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
-      const mockGetFileInfo = vi.fn().mockRejectedValue(new Error('Get file info failed'));
-      const mockRun = vi.fn(async (_command, _options, handlers) => {
-        handlers.onStdout({ text: `${data.byteLength}\n` });
-        return {};
-      });
-      const mockReadBytes = vi.fn().mockResolvedValue(data);
+      bound.readBytes.mockResolvedValue(data);
+      bindSandbox(adapter, bound.sandbox);
 
-      (adapter as any).sandbox = {
-        files: {
-          writeFiles: mockWriteFiles,
-          getFileInfo: mockGetFileInfo,
-          readBytes: mockReadBytes
-        },
-        commands: {
-          run: mockRun
-        }
-      };
-
-      const result = await adapter.writeFiles([{ path: '/large.bin', data }]);
-
-      expect(result[0].error).toBeNull();
-      expect(result[0].bytesWritten).toBe(data.byteLength);
-      expect(mockRun).toHaveBeenCalledTimes(1);
-      expect(mockReadBytes).toHaveBeenCalledWith('/large.bin');
+      await expect(adapter.writeFiles([{ path: 'file.bin', data }])).resolves.toEqual([
+        { path: '/workspace/file.bin', bytesWritten: data.byteLength, error: null }
+      ]);
     });
 
-    it('should keep upload 500 as error when committed file size mismatches', async () => {
+    it('wraps command failures with adapter context', async () => {
       const adapter = makeAdapter();
-      const uploadError = Object.assign(new Error('Upload failed (status=500)'), {
-        statusCode: 500
-      });
-      const mockWriteFiles = vi.fn().mockRejectedValue(uploadError);
-      const mockGetFileInfo = vi.fn().mockResolvedValue({
-        '/broken.txt': { path: '/broken.txt', size: 1 }
-      });
-      const mockReadBytes = vi.fn();
+      const bound = createSandboxMock();
+      bound.commandRun.mockRejectedValue(new Error('execd unavailable'));
+      bindSandbox(adapter, bound.sandbox);
 
-      (adapter as any).sandbox = {
-        files: {
-          writeFiles: mockWriteFiles,
-          getFileInfo: mockGetFileInfo,
-          readBytes: mockReadBytes
-        }
-      };
-
-      const result = await adapter.writeFiles([{ path: '/broken.txt', data: 'mismatch' }]);
-
-      expect(result[0].error).toBe(uploadError);
-      expect(result[0].bytesWritten).toBe(0);
-      expect(mockReadBytes).not.toHaveBeenCalled();
+      await expect(adapter.execute('false')).rejects.toBeInstanceOf(CommandExecutionError);
     });
   });
 });

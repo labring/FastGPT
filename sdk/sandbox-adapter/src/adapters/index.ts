@@ -12,10 +12,10 @@ export type { Volume as OpenSandboxVolume } from '@alibaba-group/opensandbox';
 export type SandboxProviderType = 'opensandbox' | 'sealosdevbox';
 
 /** Maps each provider name to its constructor (connection) config type. */
-interface SandboxConnectionConfig {
+type SandboxConnectionConfig = {
   opensandbox: OpenSandboxConnectionConfig;
   sealosdevbox: SealosDevboxConfig;
-}
+};
 
 /**
  * Create a sandbox provider instance.

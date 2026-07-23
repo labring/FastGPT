@@ -29,7 +29,7 @@ describe.skipIf(!shouldRun).sequential('OpenSandboxAdapter Integration Tests', (
     requestTimeoutSeconds: 60
   };
   const createConfig: OpenSandboxConfigType = {
-    timeout: 600,
+    timeoutSeconds: 600,
     readyTimeoutSeconds: 60,
     healthCheckPollingInterval: 500,
     image: {
@@ -67,8 +67,10 @@ describe.skipIf(!shouldRun).sequential('OpenSandboxAdapter Integration Tests', (
       await adapter.delete();
     } catch (error) {
       console.error('Error during cleanup', error);
+    } finally {
+      await adapter.close().catch(() => undefined);
     }
-  }, 30_000);
+  }, 130_000);
 
   describe('Basic Tests', () => {
     it('should initialize with the expected OpenSandbox configuration', () => {
@@ -210,7 +212,6 @@ PY`,
   });
 
   describeSandboxContract({
-    getAdapter: () => adapter,
-    supportsStartAfterStop: false
+    getAdapter: () => adapter
   });
 });

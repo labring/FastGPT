@@ -1,4 +1,5 @@
 import type { FileWriteEntry } from '@/types';
+import type { WriteEntry as SdkWriteEntry } from '@alibaba-group/opensandbox';
 import { isReadableStreamData, uint8ArrayToCleanArrayBuffer } from '@/utils/files';
 
 type ReplayableWriteData = Exclude<FileWriteEntry['data'], ReadableStream<Uint8Array>>;
@@ -21,7 +22,9 @@ export type VerifyCommittedUploadParams = CommittedUploadVerificationDeps & {
  * Node Buffers and pooled Uint8Arrays may have a non-zero byteOffset. Passing the backing buffer
  * directly would upload unrelated bytes, so sliced views become standalone ArrayBuffers.
  */
-export const toOpenSandboxWriteData = (data: FileWriteEntry['data']): FileWriteEntry['data'] => {
+export const toOpenSandboxWriteData = (
+  data: FileWriteEntry['data']
+): NonNullable<SdkWriteEntry['data']> => {
   if (!(data instanceof Uint8Array)) return data;
   return uint8ArrayToCleanArrayBuffer(data);
 };
@@ -42,7 +45,7 @@ const toWriteEntryBytes = async (data: ReplayableWriteData): Promise<Uint8Array>
  */
 export const isUploadFalseNegativeCandidate = (error: unknown): boolean => {
   const err = error as { message?: string; statusCode?: number; error?: { message?: string } };
-  const message = err?.message || err?.error?.message || '';
+  const message = err?.message ?? err?.error?.message ?? '';
   if (!message.includes('Upload failed')) return false;
   return typeof err.statusCode === 'number' ? err.statusCode >= 500 : true;
 };

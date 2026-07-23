@@ -30,7 +30,7 @@
     "test": "vitest run --config ./vitest.config.ts"
   },
   "dependencies": {
-    "@alibaba-group/opensandbox": "^0.1.5"
+    "@alibaba-group/opensandbox": "^0.1.10"
   },
   "devDependencies": {
     "@types/node": "catalog:",
