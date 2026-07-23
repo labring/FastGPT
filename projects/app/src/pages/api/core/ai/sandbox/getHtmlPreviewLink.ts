@@ -2,15 +2,15 @@ import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import {
-  authSandboxSession,
-  buildSandboxClientQueryFromChatSource
-} from '@/service/core/sandbox/auth';
+import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import {
   SandboxGetHtmlPreviewLinkBodySchema,
   SandboxGetHtmlPreviewLinkResponseSchema
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import {
+  buildSandboxClientQueryFromChatSource,
+  getSandboxClient
+} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createSandboxPreviewFileUrl,
@@ -31,7 +31,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     uid,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
-  } = await authSandboxSession({
+  } = await authSandboxRuntimeSession({
     req,
     sourceType,
     sourceId,

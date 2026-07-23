@@ -15,7 +15,8 @@ mod preview;
 mod relay;
 
 use auth::{
-    invalidate_cached_sandbox_address, resolve_cached_sandbox_address, resolve_sandbox_address,
+    invalidate_cached_preview_sandbox_address, resolve_cached_preview_sandbox_address,
+    resolve_sandbox_address,
 };
 use preview::{bad_gateway_response, preview_error_response, proxy_preview_file};
 use relay::handle_relay;
@@ -218,7 +219,7 @@ async fn preview_handler(
     }
     let preview_credential = format!("{}:{}", params.sandbox_id, params.session_id);
 
-    let address = match resolve_cached_sandbox_address(&preview_credential).await {
+    let address = match resolve_cached_preview_sandbox_address(&preview_credential).await {
         Ok(address) => address,
         Err(error) => {
             error!("[Preview] Session resolution failed: {}", error);
@@ -233,15 +234,16 @@ async fn preview_handler(
         Ok(response) => response,
         Err(first_error) => {
             error!("[Preview] Cached upstream request failed: {}", first_error);
-            invalidate_cached_sandbox_address(&preview_credential).await;
+            invalidate_cached_preview_sandbox_address(&preview_credential).await;
 
-            let fresh_address = match resolve_cached_sandbox_address(&preview_credential).await {
-                Ok(address) => address,
-                Err(error) => {
-                    error!("[Preview] Upstream re-resolution failed: {}", error);
-                    return bad_gateway_response();
-                }
-            };
+            let fresh_address =
+                match resolve_cached_preview_sandbox_address(&preview_credential).await {
+                    Ok(address) => address,
+                    Err(error) => {
+                        error!("[Preview] Upstream re-resolution failed: {}", error);
+                        return bad_gateway_response();
+                    }
+                };
             proxy_preview_file(&fresh_address, &params.path, &method, &headers)
                 .await
                 .unwrap_or_else(|error| {

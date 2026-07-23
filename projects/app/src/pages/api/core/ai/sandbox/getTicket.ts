@@ -1,10 +1,10 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
-  authSandboxSession,
-  buildSandboxClientQueryFromChatSource
-} from '@/service/core/sandbox/auth';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+  buildSandboxClientQueryFromChatSource,
+  getSandboxClient
+} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';
 import jwt from 'jsonwebtoken';
@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     teamId,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
-  } = await authSandboxSession({
+  } = await authSandboxRuntimeSession({
     req,
     sourceType,
     sourceId,

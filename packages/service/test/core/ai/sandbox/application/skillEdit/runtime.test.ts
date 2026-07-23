@@ -95,18 +95,9 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
   updateSandboxInstanceRecordBySandboxId: mocks.updateSandboxInstanceRecordBySandboxId
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  getLogger: () => mocks.logger,
-  LogCategories: {
-    INFRA: {
-      FILE: 'file'
-    },
-    MODULE: {
-      AI: {
-        AGENT: 'agent'
-      }
-    }
-  }
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/logger')>()),
+  getLogger: () => mocks.logger
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({

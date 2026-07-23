@@ -7,10 +7,8 @@ import type {
   SandboxGetHtmlPreviewLinkBody,
   SandboxGetHtmlPreviewLinkResponse,
   SandboxUploadBody,
-  SandboxUploadResponse,
-  SandboxRuntimeBody
+  SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -30,7 +28,6 @@ type SandboxCheckExistClientBody = SandboxClientBody<SandboxCheckExistBody>;
 type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
 type SandboxGetHtmlPreviewLinkClientBody = SandboxClientBody<SandboxGetHtmlPreviewLinkBody>;
 type SandboxUploadClientBody = SandboxClientBody<SandboxUploadBody>;
-type SandboxRuntimeClientBody = SandboxClientBody<SandboxRuntimeBody>;
 
 /**
  * share 模式下后端 schema 要求只传 outLinkAuthData，真实 appId 由鉴权解析。
@@ -113,20 +110,6 @@ export const readSandboxFile = async (data: SandboxDownloadClientBody) => {
  */
 export const checkSandboxExist = async (data: SandboxCheckExistClientBody) =>
   POST<SandboxCheckExistResponse>('/core/ai/sandbox/checkExist', normalizeSandboxRequest(data));
-
-/** 获取 App 用户级 Sandbox runtime 镜像升级状态。 */
-export const getSandboxRuntimeStatus = (data: SandboxRuntimeClientBody) =>
-  POST<SandboxRuntimeStatusResponse>(
-    '/core/ai/sandbox/runtime/getStatus',
-    normalizeSandboxRequest(data)
-  );
-
-/** 启动 App 用户级 Sandbox runtime 镜像升级归档。 */
-export const upgradeSandboxRuntime = (data: SandboxRuntimeClientBody) =>
-  POST<SandboxRuntimeStatusResponse>(
-    '/core/ai/sandbox/runtime/upgrade',
-    normalizeSandboxRequest(data)
-  );
 
 /**
  * 获取 HTML 预览链接（agent-proxy 直连 sandbox workspace）

@@ -52,7 +52,6 @@ import { useChatResume } from './hooks/useChatResume';
 import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
 import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
-import { useAppSandboxRuntimeUpgrade } from './hooks/useAppSandboxRuntimeUpgrade';
 import ChatBoxModals from './components/ChatBoxModals';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
@@ -192,11 +191,6 @@ const ChatBox = ({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
-  const { handleSandboxRuntimeStatus, RuntimeUpgradeModal } = useAppSandboxRuntimeUpgrade({
-    sourceTarget,
-    chatId,
-    outLinkAuthData
-  });
   const activeSourceKeyRef = useRef<string | undefined>(sourceKey);
   const activeChatIdRef = useRef<string | undefined>(chatId);
   useLayoutEffect(() => {
@@ -367,8 +361,7 @@ const ChatBox = ({
     scrollToBottom,
     generatingScroll,
     notifyChatGenerateStatusChange,
-    finishChatGenerateStatus,
-    onSandboxRuntimeStatus: handleSandboxRuntimeStatus
+    finishChatGenerateStatus
   });
   const sendPromptWithDisabledGuard = useMemoizedFn((input: ChatBoxInputType) => {
     if (disabledSendTip) {
@@ -681,7 +674,6 @@ const ChatBox = ({
       {...props}
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
-      {RuntimeUpgradeModal}
       {/* chat box container */}
       {isHomeRender ? (
         <MyBox

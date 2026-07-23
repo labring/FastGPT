@@ -1,9 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import {
-  authSandboxSession,
-  buildSandboxClientQueryFromChatSource
-} from '@/service/core/sandbox/auth';
+import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -13,7 +10,10 @@ import {
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import {
+  buildSandboxClientQueryFromChatSource,
+  getSandboxClient
+} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { Readable } from 'node:stream';
 
 async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
@@ -49,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
       uid,
       sourceType: resolvedSourceType,
       sourceId: resolvedSourceId
-    } = await authSandboxSession({
+    } = await authSandboxRuntimeSession({
       req,
       sourceType,
       sourceId,
