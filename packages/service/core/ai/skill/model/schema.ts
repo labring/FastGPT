@@ -130,6 +130,8 @@ defineIndex(AgentSkillsSchema, {
 });
 // 分类筛选。
 defineIndex(AgentSkillsSchema, { key: { category: 1 } });
+// 文件夹树查询：findSkillAndAllChildren 按 teamId + parentId + deleteTime 逐层查子节点。
+defineIndex(AgentSkillsSchema, { key: { teamId: 1, parentId: 1, deleteTime: 1 } });
 
 export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,
