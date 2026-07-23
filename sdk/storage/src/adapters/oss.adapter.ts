@@ -99,7 +99,7 @@ export class OssStorageAdapter implements IStorage {
     return {
       key,
       metadata,
-      etag: result.meta?.etag as string,
+      etag: headers['etag'] ? headers['etag'].replace(/"/g, '') : undefined,
       bucket: this.options.bucket,
       contentType: headers['content-type'],
       contentLength: headers['content-length'] ? Number(headers['content-length']) : undefined
