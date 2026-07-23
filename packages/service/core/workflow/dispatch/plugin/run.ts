@@ -1,5 +1,8 @@
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import {
+  filterWorkflowToolInputVariables,
+  getWorkflowToolInputsFromStoreNodes
+} from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -163,6 +166,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           acc[cur.key] = cur.isToolOutput === false ? false : true;
           return acc;
         }, {}) ?? {};
+    const pluginInputs = getWorkflowToolInputsFromStoreNodes(childWorkflowTool.nodes);
+    const workflowToolVariables = filterWorkflowToolInputVariables({
+      inputs: pluginInputs,
+      variables: data
+    });
     const runtimeNodes = storeNodes2RuntimeNodes(
       childWorkflowTool.nodes,
       getWorkflowEntryNodeIds(childWorkflowTool.nodes)
@@ -173,15 +181,22 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           ...node,
           showStatus: false,
           inputs: node.inputs.map((input) => {
-            let val = data[input.key] ?? input.value;
+            const hasExternalValue = Object.prototype.hasOwnProperty.call(
+              workflowToolVariables,
+              input.key
+            );
+            let val = hasExternalValue ? workflowToolVariables[input.key] : input.value;
+            val ??= input.defaultValue;
             if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
               val = anyValueDecrypt(val);
             } else if (
               input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
               Array.isArray(val) &&
-              data[input.key]
+              hasExternalValue
             ) {
-              data[input.key] = val.map((item) => (typeof item === 'string' ? item : item.url));
+              workflowToolVariables[input.key] = val.map((item) =>
+                typeof item === 'string' ? item : item.url
+              );
             }
 
             return {
@@ -216,7 +231,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         node.flowNodeType === FlowNodeTypeEnum.pluginInput
           ? node.inputs.flatMap((input) =>
               input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
-                ? getWorkflowFileInputsFromValue(data[input.key] ?? input.value, input.maxFiles)
+                ? getWorkflowFileInputsFromValue(
+                    workflowToolVariables[input.key] ?? input.value ?? input.defaultValue,
+                    input.maxFiles
+                  )
                 : []
             )
           : []
@@ -287,8 +305,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           variableState: childVariableState,
           histories: childHistories,
           query: serverGetWorkflowToolRunUserQuery({
-            pluginInputs: getWorkflowToolInputsFromStoreNodes(childWorkflowTool.nodes),
-            variables: runtimeVariables,
+            pluginInputs,
+            variables: {
+              ...runtimeVariables,
+              ...workflowToolVariables
+            },
             files: filterFiles(files)
           }).value,
           chatConfig: childWorkflowTool.chatConfig ?? {},
@@ -326,7 +347,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: workflowTool.avatar,
         totalPoints: usagePoints,
-        toolInput: data,
+        toolInput: workflowToolVariables,
         pluginOutput,
         childResponseCount
       },

@@ -639,7 +639,12 @@ export const getAgentRuntimeTools = async ({
         }
 
         const toolType = (() => {
-          if (runtimeSource === AppToolSourceEnum.commercial) {
+          // 工作流系统工具在列表中 source 可能被归一为 system，但 ID 仍保留 commercial 前缀。
+          // 运行时必须按 commercialTool 处理，才能通过 associatedPluginId 找到真实工作流。
+          if (
+            idSource === AppToolSourceEnum.commercial ||
+            runtimeSource === AppToolSourceEnum.commercial
+          ) {
             return 'commercialTool';
           }
           if (toolNode.flowNodeType === FlowNodeTypeEnum.appModule) {

@@ -153,6 +153,21 @@ describe('getClientToolPreviewNode', () => {
               selectedType: 'reference',
               selectedTypeIndex: 0,
               renderTypeList: ['reference']
+            },
+            {
+              key: 'legacyToolParam',
+              label: 'legacyToolParam',
+              valueType: 'string',
+              renderTypeList: ['input', 'reference'],
+              toolDescription: 'Legacy AI parameter'
+            },
+            {
+              key: 'explicitManual',
+              label: 'explicitManual',
+              valueType: 'string',
+              renderTypeList: ['input', 'reference'],
+              toolDescription: 'Parameter description',
+              isToolParam: false
             }
           ],
           outputs: []
@@ -182,5 +197,20 @@ describe('getClientToolPreviewNode', () => {
       selectedTypeIndex: 0,
       renderTypeList: ['agentGenerated', 'reference']
     });
+
+    expect(result.inputs.find((item) => item.key === 'legacyToolParam')).toMatchObject({
+      selectedType: 'agentGenerated',
+      selectedTypeIndex: 0,
+      renderTypeList: ['agentGenerated', 'input', 'reference'],
+      isToolParam: true
+    });
+
+    expect(result.inputs.find((item) => item.key === 'explicitManual')).toMatchObject({
+      renderTypeList: ['input', 'reference'],
+      isToolParam: false
+    });
+    expect(
+      result.inputs.find((item) => item.key === 'explicitManual')?.selectedType
+    ).toBeUndefined();
   });
 });

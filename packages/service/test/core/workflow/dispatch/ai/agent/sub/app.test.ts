@@ -100,6 +100,11 @@ describe('agent sub app dispatchPlugin', () => {
               key: 'query',
               defaultValue: 'default query',
               renderTypeList: []
+            },
+            {
+              key: 'internal',
+              defaultValue: 'internal default',
+              renderTypeList: ['hidden']
             }
           ],
           outputs: []
@@ -144,7 +149,8 @@ describe('agent sub app dispatchPlugin', () => {
         tmbId: 'member'
       },
       customAppVariables: {
-        query: 'hello'
+        query: 'hello',
+        internal: 'external value'
       },
       userChatInput: '',
       timezone: 'Asia/Shanghai',
@@ -165,8 +171,17 @@ describe('agent sub app dispatchPlugin', () => {
         variables: expect.objectContaining({
           counter: 0,
           query: 'hello'
-        })
+        }),
+        pluginInputs: [expect.objectContaining({ key: 'query' })]
       })
+    );
+    expect(mocks.serverGetWorkflowToolRunUserQuery.mock.calls[0][0].pluginInputs).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'internal' })])
+    );
+    expect(mocks.runWorkflow.mock.calls[0][0].runtimeNodes[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'internal', value: 'internal default' })
+      ])
     );
   });
 
@@ -456,5 +471,62 @@ describe('agent sub app dispatchApp', () => {
       }
     ]);
     expect(result.interactive).toBe(nextInteractive);
+  });
+
+  it('does not allow workflow tool arguments to override internal variables', async () => {
+    mocks.getAppVersionById.mockResolvedValue({
+      nodes: [],
+      edges: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'internal',
+            label: 'Internal',
+            type: VariableInputEnum.internal,
+            valueType: WorkflowIOValueTypeEnum.string,
+            defaultValue: 'internal default'
+          }
+        ]
+      }
+    });
+    mocks.runWorkflow.mockResolvedValue({
+      assistantResponses: [],
+      flowUsages: [],
+      runtimeNodeResponseSummary: undefined
+    });
+
+    await dispatchApp({
+      app: {
+        id: 'child-app',
+        name: 'Child App'
+      },
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      customAppVariables: {
+        internal: 'external value'
+      },
+      userChatInput: 'hello',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0
+    } as any);
+
+    expect(mocks.runWorkflow.mock.calls[0][0].variableState.get('internal')).toBe(
+      'internal default'
+    );
   });
 });

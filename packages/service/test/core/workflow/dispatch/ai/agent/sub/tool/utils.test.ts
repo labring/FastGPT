@@ -756,6 +756,106 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(systemToolInputSchema);
   });
 
+  it('keeps commercial workflow tools as commercial runtime tools when list source is system', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            isToolParam: true
+          }
+        },
+        required: ['query']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'commercial-workflow-tool', source: 'system', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].type).toBe('commercialTool');
+    expect(tools[0].id).toBe('workflow-tool');
+  });
+
+  it('keeps workflow internal defaults at runtime but hides them from the model schema', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            isToolParam: true
+          },
+          internal: {
+            type: 'number',
+            default: 7,
+            'x-fastgpt-node-input': {
+              valueType: 'number',
+              defaultValue: 7,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden]
+            }
+          }
+        },
+        required: ['query', 'internal']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'commercial-workflow-tool', source: 'system', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'internal',
+          defaultValue: 7,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        })
+      ])
+    );
+    expect(tools[0].requestSchema.function.parameters).toMatchObject({
+      properties: {
+        query: expect.any(Object)
+      },
+      required: ['query']
+    });
+    expect((tools[0].requestSchema.function.parameters as any).properties.internal).toBeUndefined();
+    expect(tools[0].agentGeneratedInputKeys).not.toContain('internal');
+  });
+
   it('keeps debug source in selected system tool config', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'systemTool-gpjj5s',

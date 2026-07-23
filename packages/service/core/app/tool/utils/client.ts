@@ -12,6 +12,7 @@ import {
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import {
   getToolNameCandidates,
   isDebugToolSource,
@@ -449,9 +450,14 @@ export async function getClientToolPreviewNode({
       // Plugin workflow
       if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
         // plugin app
+        const nodeIOConfig = pluginData2FlowNodeIO({ nodes: app.workflow.nodes });
+
         return {
           flowNodeType: FlowNodeTypeEnum.pluginModule,
-          nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+          nodeIOConfig: {
+            ...nodeIOConfig,
+            inputs: normalizeWorkflowToolInputsDefaultMode(nodeIOConfig.inputs)
+          }
         };
       }
 

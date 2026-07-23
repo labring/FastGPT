@@ -283,6 +283,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
               key: 'internal',
               label: 'Internal',
               valueType: WorkflowIOValueTypeEnum.string,
+              defaultValue: 'internal default',
               renderTypeList: [FlowNodeInputTypeEnum.hidden]
             }
           ],
@@ -324,15 +325,26 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
           title: 'Query',
           description: 'Search query',
           toolDescription: 'Search query',
+          isToolParam: true,
           'x-fastgpt-node-input': {
             valueType: WorkflowIOValueTypeEnum.string,
             renderTypeList: [FlowNodeInputTypeEnum.input]
+          }
+        },
+        internal: {
+          type: 'string',
+          title: 'Internal',
+          description: '',
+          default: 'internal default',
+          'x-fastgpt-node-input': {
+            valueType: WorkflowIOValueTypeEnum.string,
+            defaultValue: 'internal default',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
           }
         }
       },
       required: ['query']
     });
-    expect(tool.inputSchema?.properties?.internal).toBeUndefined();
     expect(tool.outputSchema).toEqual({
       type: 'object',
       properties: {

@@ -1157,6 +1157,41 @@ describe('nodeInputs2JsonSchema', () => {
     });
     expect(jsonSchema.properties?.internal).toBeUndefined();
   });
+
+  it('should preserve hidden input metadata and default values when internal inputs are retained', () => {
+    const jsonSchema = nodeInputs2JsonSchema({
+      inputs: [
+        {
+          key: 'internal',
+          label: 'Internal',
+          valueType: WorkflowIOValueTypeEnum.number,
+          defaultValue: 7,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      includeNodeMetadata: true
+    });
+    const restored = jsonSchema2NodeInput({
+      jsonSchema,
+      schemaType: 'systemTool'
+    });
+
+    expect(jsonSchema.properties?.internal).toMatchObject({
+      type: 'number',
+      default: 7,
+      'x-fastgpt-node-input': {
+        valueType: WorkflowIOValueTypeEnum.number,
+        defaultValue: 7,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden]
+      }
+    });
+    expect(restored[0]).toMatchObject({
+      key: 'internal',
+      valueType: WorkflowIOValueTypeEnum.number,
+      defaultValue: 7,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden]
+    });
+  });
 });
 
 describe('nodeOutputs2JsonSchema', () => {

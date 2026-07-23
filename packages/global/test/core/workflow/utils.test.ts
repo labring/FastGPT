@@ -1258,6 +1258,27 @@ describe('clientGetWorkflowToolRunUserQuery', () => {
     expect(result.obj).toBe('Human');
   });
 
+  it('should not serialize hidden plugin inputs', () => {
+    const result = clientGetWorkflowToolRunUserQuery({
+      pluginInputs: [
+        {
+          key: 'internal',
+          defaultValue: 'internal default',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: 'query',
+          defaultValue: 'default query',
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      variables: { internal: 'external value', query: 'hello' }
+    });
+
+    expect(JSON.stringify(result.value)).not.toContain('internal');
+    expect(JSON.stringify(result.value)).toContain('query');
+  });
+
   it('should handle files parameter', () => {
     const pluginInputs: FlowNodeInputItemType[] = [];
     const files = [{ type: ChatFileTypeEnum.image, url: 'http://example.com/image.png' }];
