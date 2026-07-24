@@ -1,11 +1,12 @@
 import z from 'zod';
 import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
-import { FlowNodeInputItemTypeSchema } from '../../workflow/type/io';
+import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum,
-  AgentSkillCreationStatusEnum
+  AgentSkillCreationStatusEnum,
+  AgentToolInputModeEnum
 } from './constants';
 import { SandboxStatusEnum, SandboxTypeEnum } from '../sandbox/constants';
 import { SandboxImageConfigSchema } from '../sandbox/type';
@@ -175,21 +176,44 @@ export const SandboxInstanceSchema = z.object({
 });
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceSchema>;
 
-export const SkillToolInputConfigSchema = FlowNodeInputItemTypeSchema.pick({
-  key: true,
-  renderTypeList: true,
-  selectedType: true,
-  selectedTypeIndex: true,
-  isToolParam: true,
-  toolDescription: true
+const AgentToolInputConfigValueSchema = z.object({
+  key: z.string(),
+  mode: z.enum(AgentToolInputModeEnum)
 });
-export type SkillToolInputConfigType = z.infer<typeof SkillToolInputConfigSchema>;
+
+/**
+ * Agent 工具只持久化参数输入来源。预处理兼容 selectedType 上线期间产生的临时快照，
+ * 解析结果始终收敛为 key + mode，避免 runtime 继续依赖工作流渲染协议。
+ */
+export const AgentToolInputConfigSchema = z.preprocess((value) => {
+  if (!value || typeof value !== 'object') return value;
+
+  const input = value as Record<string, unknown>;
+  if (input.mode !== undefined) return value;
+  if (typeof input.key !== 'string') return value;
+
+  const renderTypeList = Array.isArray(input.renderTypeList) ? input.renderTypeList : [];
+  const selectedType =
+    input.selectedType ??
+    (typeof input.selectedTypeIndex === 'number'
+      ? renderTypeList[input.selectedTypeIndex]
+      : undefined);
+
+  return {
+    key: input.key,
+    mode:
+      selectedType === FlowNodeInputTypeEnum.agentGenerated
+        ? AgentToolInputModeEnum.agentGenerated
+        : AgentToolInputModeEnum.manual
+  };
+}, AgentToolInputConfigValueSchema);
+export type AgentToolInputConfigType = z.infer<typeof AgentToolInputConfigSchema>;
 
 export const SkillToolSchema = z.object({
   id: z.string(),
   source: z.string().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
-  inputs: z.array(SkillToolInputConfigSchema).optional(),
+  inputs: z.array(AgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.any())
 });
 export type SkillToolType = z.infer<typeof SkillToolSchema>;

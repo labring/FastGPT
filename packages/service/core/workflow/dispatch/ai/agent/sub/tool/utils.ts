@@ -1,6 +1,7 @@
-import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import { AgentToolInputConfigSchema, type SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import {
   getToolNameCandidates,
+  isSystemOrCommercialToolId,
   isDebugToolSource,
   splitCombineToolId,
   splitToolsetToolPluginId
@@ -35,8 +36,8 @@ import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import type { SubAppInitType } from '../type';
 import {
   canInputBeAgentGenerated,
-  getSavedToolInputSelectedType,
   getToolConfigStatus,
+  initAgentToolInputType,
   initToolInputsTypeByDefaultMode,
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -585,43 +586,26 @@ export const getAgentRuntimeTools = async ({
           toolNode.toolConfig = tool.toolConfig;
         }
 
-        const allowLegacyToolDescriptionFallback =
-          toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-          idSource === AppToolSourceEnum.systemTool ||
-          idSource === AppToolSourceEnum.commercial;
-        const savedInputConfigMap = new Map((tool.inputs ?? []).map((input) => [input.key, input]));
-        toolNode.inputs = initToolInputsTypeByDefaultMode(
-          toolNode.inputs.map((input) => {
-            const savedInput = savedInputConfigMap.get(input.key);
-            if (!savedInput) return input;
-            const selectedType = getSavedToolInputSelectedType({
-              savedInput,
-              defaultInput: input,
-              allowUserChatInputAgentGenerated: true,
-              allowLegacyToolDescriptionFallback
-            });
-            const renderTypeList = selectedType
-              ? Array.from(
-                  new Set([selectedType, ...(savedInput.renderTypeList ?? input.renderTypeList)])
-                )
-              : (savedInput.renderTypeList ?? input.renderTypeList);
-            const selectedTypeIndex = selectedType
-              ? renderTypeList.findIndex((item) => item === selectedType)
-              : undefined;
-
-            return {
-              ...input,
-              renderTypeList,
-              selectedType,
-              selectedTypeIndex:
-                selectedTypeIndex !== undefined && selectedTypeIndex >= 0
-                  ? selectedTypeIndex
-                  : undefined,
-              isToolParam: savedInput.isToolParam ?? input.isToolParam,
-              toolDescription: savedInput.toolDescription ?? input.toolDescription
-            };
-          }),
-          { allowUserChatInputAgentGenerated: true }
+        const legacyDefaultMode =
+          tool.inputs === undefined
+            ? isSystemOrCommercialToolId(tool.id)
+              ? ('allAgentGenerated' as const)
+              : toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule
+                ? ('toolDescription' as const)
+                : undefined
+            : undefined;
+        const savedInputConfigMap = new Map(
+          (tool.inputs ?? []).flatMap((input) => {
+            const result = AgentToolInputConfigSchema.safeParse(input);
+            return result.success ? [[result.data.key, result.data] as const] : [];
+          })
+        );
+        toolNode.inputs = toolNode.inputs.map((input) =>
+          initAgentToolInputType({
+            input,
+            mode: savedInputConfigMap.get(input.key)?.mode,
+            legacyDefaultMode
+          })
         );
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {

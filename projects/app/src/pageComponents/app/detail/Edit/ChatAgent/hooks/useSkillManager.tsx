@@ -8,7 +8,6 @@ import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   getToolConfigStatus,
-  initToolInputTypeByDefaultMode,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -39,6 +38,7 @@ import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/P
 import { getSkillList } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
+import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
@@ -375,15 +375,12 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool = {
-        ...toolTemplate,
-        id: toolTemplate.pluginId!,
-        inputs: toolTemplate.inputs.map((input) =>
-          initToolInputTypeByDefaultMode(input, {
-            allowUserChatInputAgentGenerated: true
-          })
-        )
-      };
+      const tool = inheritToolInputConfig({
+        tool: {
+          ...toolTemplate,
+          id: toolTemplate.pluginId!
+        }
+      });
       const configStatus = getToolConfigStatus({ tool }).status;
       const skill = toSkillLabelItem(tool, configStatus);
 

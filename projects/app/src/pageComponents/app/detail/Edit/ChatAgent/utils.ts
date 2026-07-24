@@ -31,9 +31,11 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { getAppChatConfig, getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
+  canInputBeAgentGenerated,
+  getAgentToolInputMode,
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -306,15 +308,10 @@ export function agentForm2AppWorkflow(
                   id: tool.pluginId,
                   source: tool.source,
                   toolConfig: tool.toolConfig,
-                  inputs: tool.inputs
-                    .filter((input) => Array.isArray(input.renderTypeList))
-                    .map((input) => ({
-                      key: input.key,
-                      renderTypeList: input.renderTypeList,
-                      selectedType: getSelectedInputRenderType(input),
-                      selectedTypeIndex: input.selectedTypeIndex,
-                      toolDescription: input.toolDescription
-                    })),
+                  inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
+                    key: input.key,
+                    mode: getAgentToolInputMode(input)
+                  })),
 
                   config: tool.inputs.reduce(
                     (acc, input) => {

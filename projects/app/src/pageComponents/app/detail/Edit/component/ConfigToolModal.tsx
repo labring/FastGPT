@@ -55,6 +55,7 @@ import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
+import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
 const developerInputTypeFormKey = (key: string) => `__developer_input_type__${key}`;
@@ -227,12 +228,17 @@ const mergeConfiguredTool = ({
   prevTool: SelectedToolItemType;
   formValues: Record<string, any>;
 }): SelectedToolItemType => {
+  // 切换版本时，新版本新增的系统工具参数也需要按工具定义恢复默认输入方式。
+  const inheritedNextTool = inheritToolInputConfig({
+    tool: nextTool,
+    sourceTool: prevTool
+  });
   const prevInputMap = new Map(prevTool.inputs.map((input) => [input.key, input]));
 
   const mergedTool = {
-    ...nextTool,
+    ...inheritedNextTool,
     configStatus: prevTool.configStatus,
-    inputs: nextTool.inputs.map((input) => {
+    inputs: inheritedNextTool.inputs.map((input) => {
       const prevInput = prevInputMap.get(input.key);
       if (!prevInput) return normalizeInputSelectedTypeIndex(input);
 

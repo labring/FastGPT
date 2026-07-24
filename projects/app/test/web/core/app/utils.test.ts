@@ -498,10 +498,7 @@ describe('appWorkflow2AgentForm', () => {
     expect(selectedTools[0].inputs).toEqual([
       {
         key: 'query',
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 1,
-        toolDescription: 'Query'
+        mode: 'agentGenerated'
       }
     ]);
   });
