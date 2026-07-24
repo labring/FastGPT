@@ -403,7 +403,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       ? input.systemPrompt || ''
       : getMainAgentSystemPrompt({
           systemPrompt: input.systemPrompt,
-          hasRuntimeTools: runtime.toolCatalog.runtimeTools.length > 0
+          hasRuntimeTools:
+            runtime.toolCatalog.runtimeTools.length > 0 ||
+            runtime.systemTools?.sandbox?.enabled === true ||
+            runtime.systemTools?.readFile?.enabled === true ||
+            runtime.systemTools?.datasetSearch?.enabled === true
         });
   const agent = new Agent({
     initialState: {
