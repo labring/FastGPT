@@ -39,6 +39,7 @@ import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { Types } from '../../../../common/mongo';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 type SystemToolRuntimeType = {
   id: string;
@@ -100,7 +101,12 @@ const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] })
   const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
 
   return {
-    inputSchema: nodeInputs2JsonSchema({ inputs: pluginInput?.inputs ?? [] }),
+    inputSchema: nodeInputs2JsonSchema({
+      inputs: normalizeWorkflowToolInputsDefaultMode(pluginInput?.inputs ?? []),
+      includeNodeMetadata: true,
+      // 保留 hidden 输入的 schema metadata/defaultValue，runtime 会在模型和外部参数边界过滤它们。
+      filterInternalInputs: false
+    }),
     outputSchema: nodeOutputs2JsonSchema({
       outputs:
         pluginOutput?.inputs.map((item) => ({
@@ -110,8 +116,13 @@ const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] })
           valueType: item.valueType,
           label: item.label || item.key,
           description: item.description,
-          required: item.required
-        })) ?? []
+          required: item.required,
+          valueDesc: item.valueDesc,
+          defaultValue: item.defaultValue,
+          customFieldConfig: item.customInputConfig,
+          deprecated: item.deprecated
+        })) ?? [],
+      includeNodeMetadata: true
     })
   };
 };

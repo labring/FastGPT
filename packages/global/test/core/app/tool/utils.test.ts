@@ -6,10 +6,27 @@ import {
   hasDebugToolInSelectedTools,
   parseDebugToolSource,
   parseToolsetToolId,
+  shouldUseLegacyToolDescriptionFallback,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+describe('shouldUseLegacyToolDescriptionFallback', () => {
+  it('only enables fallback for workflow, system and commercial tools', () => {
+    expect(
+      shouldUseLegacyToolDescriptionFallback({
+        toolId: 'personal-tool',
+        flowNodeType: FlowNodeTypeEnum.pluginModule
+      })
+    ).toBe(true);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'systemTool-search' })).toBe(true);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'commercial-search' })).toBe(true);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'mcp-app/search' })).toBe(false);
+    expect(shouldUseLegacyToolDescriptionFallback({ toolId: 'http-app/search' })).toBe(false);
+  });
+});
 
 describe('splitCombineToolId', () => {
   describe('personal tools (pure ObjectId)', () => {

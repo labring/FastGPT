@@ -25,9 +25,14 @@ import {
   DispatchNodeResponseKeyEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { useToolNodeList } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList';
+import { updateAgentLoopCoreWorkflowToolInputValue } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
@@ -944,6 +949,76 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(edges.length).toBe(originalEdgesLen);
   });
 
+  it('should restore legacy workflow tool params before runtime configuration checks', async () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const workflowToolNode = makeNode('workflow-tool', FlowNodeTypeEnum.pluginModule, {
+      pluginId: '507f1f77bcf86cd799439011',
+      name: 'Legacy workflow tool',
+      inputs: [
+        {
+          key: 'text',
+          label: 'text',
+          valueType: 'string',
+          required: true,
+          value: '',
+          selectedTypeIndex: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          toolDescription: 'text'
+        },
+        {
+          key: 'text2',
+          label: 'text2',
+          valueType: 'string',
+          value: '',
+          selectedTypeIndex: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    });
+    const nodes = [toolCallNode, workflowToolNode];
+    const edges = [
+      makeEdge('tool-call', 'workflow-tool', {
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    const tools = useToolNodeList({
+      nodeId: 'tool-call',
+      runtimeNodes: nodes,
+      runtimeEdges: edges
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].toolParams).toEqual([
+      expect.objectContaining({
+        key: 'text',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.reference
+        ]
+      })
+    ]);
+    expect(workflowToolNode.inputs.find((input) => input.key === 'text2')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      selectedTypeIndex: 0
+    });
+
+    const runtimeInputs = updateAgentLoopCoreWorkflowToolInputValue({
+      params: {
+        text: 'generated text',
+        text2: 'ignored model value'
+      },
+      inputs: workflowToolNode.inputs
+    });
+    expect(runtimeInputs.find((input) => input.key === 'text')?.value).toBe('generated text');
+    expect(runtimeInputs.find((input) => input.key === 'text2')?.value).toBe('');
+  });
+
   it('should handle systemTool toolSet nodes', async () => {
     const toolSetNode = makeNode('ts1', FlowNodeTypeEnum.toolSet, {
       toolConfig: { systemToolSet: { toolId: 'sys-tool-1' } }
@@ -1010,7 +1085,10 @@ describe('rewriteRuntimeWorkFlow', () => {
       makeEdge('parent', 'ts20', { sourceHandle: 'selectedTools', targetHandle: 'selectedTools' })
     ];
 
-    const fullSchema = { type: 'object', properties: { city: { type: 'string' } } };
+    const fullSchema = {
+      type: 'object',
+      properties: { city: { type: 'string', isToolParam: false } }
+    };
     mockMongoAppFindOne.mockReturnValue({
       lean: vi.fn().mockResolvedValue({ _id: 'mcp-app-1', name: 'TestApp' })
     });
@@ -1022,6 +1100,16 @@ describe('rewriteRuntimeWorkFlow', () => {
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
     expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
+      key: 'city',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
     expect(filteredEdges).toHaveLength(1);
     expect(filteredEdges[0].target).toBe('ts20');
   });
@@ -1090,14 +1178,23 @@ describe('rewriteRuntimeWorkFlow', () => {
     const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
       toolConfig: {
         mcpTool: { toolId: 'mcp-toolset-1/toolA' }
-      }
+      },
+      inputs: [
+        {
+          key: 'x',
+          valueType: 'string',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0
+        }
+      ]
     } as any);
     const nodes = [mcpToolNode];
     const edges: RuntimeEdgeItemType[] = [];
 
     const toolAInputSchema = {
       type: 'object',
-      properties: { x: { type: 'string' } }
+      properties: { x: { type: 'string', isToolParam: true } }
     };
     setupFindByIdMap({
       'toolset-1': {
@@ -1124,20 +1221,42 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     expect(mcpToolNode.jsonSchema).toEqual(toolAInputSchema);
     expect(mcpToolNode.intro).toBe('tool A description');
+    expect(mcpToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
   });
 
   it('should inject jsonSchema and intro for standalone HTTP tool nodes', async () => {
     const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
       toolConfig: {
         httpTool: { toolId: 'http-toolset-1/toolB' }
-      }
+      },
+      inputs: [
+        {
+          key: 'y',
+          valueType: 'number',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0
+        }
+      ]
     } as any);
     const nodes = [httpToolNode];
     const edges: RuntimeEdgeItemType[] = [];
 
+    const toolBInputSchema = {
+      type: 'object',
+      properties: { y: { type: 'number', isToolParam: true } }
+    };
     const toolBRequestSchema = {
       type: 'object',
-      properties: { y: { type: 'number' } }
+      properties: { y: { type: 'number', isToolParam: true } }
     };
     setupFindByIdMap({
       'toolset-1': {
@@ -1150,6 +1269,7 @@ describe('rewriteRuntimeWorkFlow', () => {
                   {
                     name: 'toolB',
                     description: 'tool B description',
+                    inputSchema: toolBInputSchema,
                     requestSchema: toolBRequestSchema
                   }
                 ]
@@ -1164,6 +1284,53 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     expect(httpToolNode.jsonSchema).toEqual(toolBRequestSchema);
     expect(httpToolNode.intro).toBe('tool B description');
+    expect(httpToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+  });
+
+  it('should fall back to inputSchema for legacy scalar HTTP request schemas', async () => {
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      toolConfig: {
+        httpTool: { toolId: 'http-toolset-1/toolLegacy' }
+      }
+    } as any);
+    const inputSchema = {
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query']
+    };
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolLegacy',
+                    description: 'legacy HTTP tool',
+                    inputSchema,
+                    requestSchema: { type: 'string' }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes: [httpToolNode], edges: [] });
+
+    expect(httpToolNode.jsonSchema).toEqual(inputSchema);
   });
 
   it('should preserve tool names containing slashes when injecting schema', async () => {

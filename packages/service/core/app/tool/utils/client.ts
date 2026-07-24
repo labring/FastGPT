@@ -3,6 +3,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 import {
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
@@ -11,6 +12,7 @@ import {
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import {
   getToolNameCandidates,
   isDebugToolSource,
@@ -102,7 +104,8 @@ const omitRuntimeJsonSchemaField = <T>(value: T): T => {
 
   if (!value || typeof value !== 'object') return value;
 
-  const { jsonSchema, ...rest } = value as Record<string, any>;
+  const rest = { ...(value as Record<string, any>) };
+  delete rest.jsonSchema;
 
   return Object.fromEntries(
     Object.entries(rest).map(([key, item]) => [key, omitRuntimeJsonSchemaField(item)])
@@ -110,7 +113,11 @@ const omitRuntimeJsonSchemaField = <T>(value: T): T => {
 };
 
 const omitClientPreviewSchemaFields = <T extends Record<string, any>>(value: T): T => {
-  const { inputSchema, outputSchema, secretSchema, ...rest } = value;
+  const rest = { ...value };
+  delete rest.inputSchema;
+  delete rest.outputSchema;
+  delete rest.secretSchema;
+
   return omitRuntimeJsonSchemaField(rest) as T;
 };
 
@@ -196,7 +203,8 @@ export async function getClientSystemToolPreviewNode({
     hasSystemSecret: toolDetail.hasSystemSecret,
     isFolder: !isWorkflowTool && toolDetail.isToolSet,
     status: toolDetail.status,
-    inputs,
+    // 工具预览是首次加入工作流/Agent，使用 schema 声明的默认输入方式。
+    inputs: initToolInputsTypeByDefaultMode(inputs, { forceDefaultMode: true }),
 
     outputs: schemaOutputs
       ? schemaOutputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -442,9 +450,14 @@ export async function getClientToolPreviewNode({
       // Plugin workflow
       if (!!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)) {
         // plugin app
+        const nodeIOConfig = pluginData2FlowNodeIO({ nodes: app.workflow.nodes });
+
         return {
           flowNodeType: FlowNodeTypeEnum.pluginModule,
-          nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+          nodeIOConfig: {
+            ...nodeIOConfig,
+            inputs: normalizeWorkflowToolInputsDefaultMode(nodeIOConfig.inputs)
+          }
         };
       }
 
@@ -477,6 +490,11 @@ export async function getClientToolPreviewNode({
       };
     })();
 
+    // 预览节点来自工具定义，输入上的 selectedType 是原始控件类型；首次加入工具时应优先应用 isToolParam 默认值。
+    const normalizedInputs = initToolInputsTypeByDefaultMode(nodeIOConfig.inputs, {
+      forceDefaultMode: true
+    });
+
     return {
       id: getNanoid(),
       pluginId: app.id,
@@ -506,6 +524,7 @@ export async function getClientToolPreviewNode({
       status: app.status,
 
       ...nodeIOConfig,
+      inputs: normalizedInputs,
       outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
         ? nodeIOConfig.outputs
         : [...nodeIOConfig.outputs, Output_Template_Error_Message]

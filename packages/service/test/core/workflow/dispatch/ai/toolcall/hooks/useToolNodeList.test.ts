@@ -53,7 +53,15 @@ describe('useToolNodeList', () => {
               valueType: 'string',
               toolDescription: 'Query',
               required: true,
-              renderTypeList: [FlowNodeInputTypeEnum.input]
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            },
+            {
+              key: 'apiKey',
+              valueType: 'string',
+              toolDescription: 'Developer config',
+              required: true,
+              value: 'secret',
+              renderTypeList: [FlowNodeInputTypeEnum.password]
             },
             {
               key: NodeInputKeyEnum.toolData,
@@ -139,6 +147,106 @@ describe('useToolNodeList', () => {
         name: 'Ready tool'
       })
     ]);
+  });
+
+  it('migrates legacy selectedTypeIndex 0 to the schema default', () => {
+    const result = useToolNodeList({
+      nodeId: 'toolcall',
+      runtimeEdges: [
+        {
+          source: 'toolcall',
+          target: 'tool_1',
+          targetHandle: NodeOutputKeyEnum.selectedTools
+        }
+      ] as any,
+      runtimeNodes: [
+        createToolNode({
+          inputs: [
+            {
+              key: 'query',
+              valueType: 'string',
+              required: true,
+              isToolParam: true,
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+              selectedTypeIndex: 0
+            }
+          ]
+        })
+      ]
+    });
+
+    expect(result[0].toolParams).toEqual([
+      expect.objectContaining({
+        key: 'query',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.reference
+        ]
+      })
+    ]);
+  });
+
+  it('migrates legacy system tool descriptions to agent generated inputs', () => {
+    const runtimeNodes = [
+      createToolNode({
+        nodeId: 'mkJ7eY',
+        toolConfig: {
+          systemTool: {
+            toolId: 'bocha'
+          }
+        },
+        inputs: [
+          {
+            key: 'query',
+            valueType: 'string',
+            required: true,
+            toolDescription: 'Search query',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 0
+          },
+          {
+            key: 'freshness',
+            valueType: 'string',
+            value: 'noLimit',
+            renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 0
+          }
+        ]
+      })
+    ];
+    const result = useToolNodeList({
+      nodeId: 'toolcall',
+      runtimeEdges: [
+        {
+          source: 'toolcall',
+          target: 'mkJ7eY',
+          targetHandle: NodeOutputKeyEnum.selectedTools
+        }
+      ] as any,
+      runtimeNodes
+    });
+
+    expect(result[0].inputs).toEqual([
+      expect.objectContaining({
+        key: 'query',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
+      }),
+      expect.objectContaining({
+        key: 'freshness',
+        value: 'noLimit',
+        selectedType: FlowNodeInputTypeEnum.select
+      })
+    ]);
+    expect(result[0].toolParams).toEqual([
+      expect.objectContaining({
+        key: 'query',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
+      })
+    ]);
+    expect(runtimeNodes[0].inputs).toEqual(result[0].inputs);
   });
 
   it('keeps existing jsonSchema when no toolData schema is provided', () => {

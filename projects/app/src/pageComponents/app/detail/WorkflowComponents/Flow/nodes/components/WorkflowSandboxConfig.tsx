@@ -5,9 +5,10 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import SandboxConfigButton from '@/pageComponents/app/detail/components/SandboxConfigButton';
 import InputLabel from '../render/RenderInput/Label';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 const getRenderType = (input: FlowNodeInputItemType) =>
-  input.renderTypeList?.[input.selectedTypeIndex || 0] || FlowNodeInputTypeEnum.custom;
+  getSelectedInputRenderType(input) || FlowNodeInputTypeEnum.custom;
 
 export const createSandboxEntrypointInput = (value: string): FlowNodeInputItemType => ({
   key: NodeInputKeyEnum.sandboxEntrypoint,

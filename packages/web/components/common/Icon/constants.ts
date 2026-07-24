@@ -258,6 +258,8 @@ export const iconPaths = {
   'core/workflow/edgeArrow': () => import('./icons/core/workflow/edgeArrow.svg'),
   'core/workflow/edgeArrowBold': () => import('./icons/core/workflow/edgeArrowBold.svg'),
   'core/workflow/inputType/array': () => import('./icons/core/workflow/inputType/array.svg'),
+  'core/workflow/inputType/agentGenerated': () =>
+    import('./icons/core/workflow/inputType/agentGenerated.svg'),
   'core/workflow/inputType/conditional': () =>
     import('./icons/core/workflow/inputType/conditional.svg'),
   'core/workflow/inputType/customVariable': () =>

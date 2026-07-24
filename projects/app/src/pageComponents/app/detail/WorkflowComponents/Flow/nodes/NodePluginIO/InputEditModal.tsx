@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, Stack } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
+import { Flex, Stack } from '@chakra-ui/react';
+import { useForm, useWatch } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -19,9 +19,11 @@ import {
   useValidateFieldName,
   useSubmitErrorHandler
 } from '@/components/core/app/utils/formValidation';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/app/formEdit/utils';
 
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here
+  selectedType: FlowNodeInputTypeEnum.reference,
   selectedTypeIndex: 0,
   valueType: WorkflowIOValueTypeEnum.string,
   canEdit: true,
@@ -41,12 +43,14 @@ const FieldEditModal = ({
   defaultValue,
   keys = [],
   hasDynamicInput,
+  showAgentGenerated,
   onClose,
   onSubmit
 }: {
   defaultValue: FlowNodeInputItemType;
   keys: string[];
   hasDynamicInput: boolean;
+  showAgentGenerated: boolean;
   onClose: () => void;
   onSubmit: (data: FlowNodeInputItemType) => void;
 }) => {
@@ -54,26 +58,34 @@ const FieldEditModal = ({
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
   const onSubmitError = useSubmitErrorHandler();
+  const isEdit = !!defaultValue.key;
+  const showJsonEditor =
+    isEdit && defaultValue.renderTypeList.includes(FlowNodeInputTypeEnum.JSONEditor);
 
   // rawInputTypeList: full renderTypeList array, used for onTypeChange
   const rawInputTypeList = useMemo(
-    () => getPluginInputTypeRawList({ hasDynamicInput }),
-    [hasDynamicInput]
+    () => getPluginInputTypeRawList({ hasDynamicInput, showAgentGenerated, showJsonEditor }),
+    [hasDynamicInput, showAgentGenerated, showJsonEditor]
   );
   // inputTypeList: for InputTypeSelector display
   const inputTypeList = useMemo(
-    () => getPluginInputTypeList({ hasDynamicInput }),
-    [hasDynamicInput]
+    () => getPluginInputTypeList({ hasDynamicInput, showAgentGenerated, showJsonEditor }),
+    [hasDynamicInput, showAgentGenerated, showJsonEditor]
   );
 
-  const isEdit = !!defaultValue.key;
   const form = useForm({
     defaultValues: defaultValue
   });
-  const { setValue, watch, reset } = form;
+  const { control, setValue, reset } = form;
 
-  const renderTypeList = watch('renderTypeList');
-  const inputType = renderTypeList[0] || FlowNodeInputTypeEnum.reference;
+  const renderTypeList = useWatch({ control, name: 'renderTypeList' });
+  const selectedType = useWatch({ control, name: 'selectedType' });
+  const selectedTypeIndex = useWatch({ control, name: 'selectedTypeIndex' });
+  const inputType =
+    selectedType ||
+    renderTypeList?.[selectedTypeIndex ?? 0] ||
+    renderTypeList?.[0] ||
+    FlowNodeInputTypeEnum.reference;
 
   const defaultValueType = useMemo(
     () =>
@@ -96,26 +108,30 @@ const FieldEditModal = ({
         return;
       }
 
+      const selectedRenderType = getSelectedInputRenderType(data);
+
       // Auto set valueType
       if (
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.reference &&
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable &&
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.hidden
+        selectedRenderType !== FlowNodeInputTypeEnum.reference &&
+        selectedRenderType !== FlowNodeInputTypeEnum.customVariable &&
+        selectedRenderType !== FlowNodeInputTypeEnum.hidden &&
+        selectedRenderType !== FlowNodeInputTypeEnum.agentGenerated
       ) {
         data.valueType = defaultValueType;
       }
 
       // Remove required
       if (
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.hidden ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.switch
+        selectedRenderType === FlowNodeInputTypeEnum.addInputParam ||
+        selectedRenderType === FlowNodeInputTypeEnum.customVariable ||
+        selectedRenderType === FlowNodeInputTypeEnum.hidden ||
+        selectedRenderType === FlowNodeInputTypeEnum.switch ||
+        selectedRenderType === FlowNodeInputTypeEnum.agentGenerated
       ) {
         data.required = false;
       }
 
-      if (data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam) {
+      if (selectedRenderType === FlowNodeInputTypeEnum.addInputParam) {
         if (
           !data.customInputConfig?.selectValueTypeList ||
           !data.customInputConfig?.selectValueTypeList.length
@@ -129,8 +145,8 @@ const FieldEditModal = ({
       }
 
       // Get toolDescription and removes the types of some unusable tools
-      if (data.toolDescription && data.renderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
-        data.toolDescription = data.description;
+      if (selectedRenderType === FlowNodeInputTypeEnum.agentGenerated) {
+        data.toolDescription = data.toolDescription || data.description || data.label;
       } else {
         data.toolDescription = undefined;
       }
@@ -191,6 +207,8 @@ const FieldEditModal = ({
               const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
               if (targetItem) {
                 setValue('renderTypeList', targetItem.value);
+                setValue('selectedType', type as FlowNodeInputTypeEnum);
+                setValue('selectedTypeIndex', 0);
                 setValue('defaultValue', '');
                 if (
                   (type === FlowNodeInputTypeEnum.select ||

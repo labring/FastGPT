@@ -8,7 +8,10 @@ import {
   agentForm2AppWorkflow,
   appWorkflow2AgentForm
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
@@ -471,7 +474,12 @@ describe('appWorkflow2AgentForm', () => {
           },
           {
             key: 'query',
-            value: 'hello'
+            value: 'hello',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            selectedTypeIndex: 1,
+            isToolParam: true,
+            toolDescription: 'Query'
           }
         ],
         outputs: []
@@ -482,10 +490,16 @@ describe('appWorkflow2AgentForm', () => {
     const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
     const selectedTools = agentNode?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.selectedTools
-    )?.value as Array<{ config: Record<string, any> }>;
+    )?.value as Array<{ config: Record<string, any>; inputs: any[] }>;
 
     expect(selectedTools[0].config).toEqual({
       query: 'hello'
     });
+    expect(selectedTools[0].inputs).toEqual([
+      {
+        key: 'query',
+        mode: 'agentGenerated'
+      }
+    ]);
   });
 });

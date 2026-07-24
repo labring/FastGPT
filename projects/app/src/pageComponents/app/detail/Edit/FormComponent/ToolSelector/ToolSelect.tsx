@@ -80,8 +80,6 @@ const ToolSelect = ({
           // 即将下架/已下架
           const status = item.status || item.pluginData?.status;
 
-          const hasFormInput =
-            item.configStatus === 'configured' || item.configStatus === 'waitingForConfig';
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
 
@@ -146,17 +144,16 @@ const ToolSelect = ({
                     </MyTag>
                   )}
                   {isDebugTool && <DebugToolTag className="unHoverStyle" />}
-                  {/* Edit icon */}
-                  {hasFormInput && !toolError && (
+                  {!toolError && (
                     <MyIconButton
                       className="hoverStyle"
-                      display={['flex', 'none']}
+                      display={'none'}
                       icon="common/setting"
+                      tip={t('app:tool_param_config')}
                       onClick={() => setConfigTool(item)}
                     />
                   )}
-                  {/* Delete icon */}
-                  <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
+                  <Box className="delete" display={['flex', 'none']} ml={0.5}>
                     <MyIconButton
                       icon="delete"
                       hoverBg="red.50"

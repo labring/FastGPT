@@ -8,6 +8,7 @@ import {
   type UpdateWorkflowToolBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { validateSystemToolWorkflowAssociation } from '@fastgpt/service/core/app/tool/workflowTool/service';
 
 export type updateWorkflowToolQuery = Record<string, never>;
 
@@ -20,7 +21,7 @@ const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
     Object.entries(fields).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<updateWorkflowToolBody, updateWorkflowToolQuery>,
   _res: ApiResponseType<any>
 ): Promise<updateWorkflowToolResponse> {
@@ -47,6 +48,9 @@ async function handler(
     userGuide: updateFields.userGuide ?? plugin.customConfig.userGuide,
     author: updateFields.author ?? plugin.customConfig.author
   };
+  if (nextCustomConfig.associatedPluginId !== plugin.customConfig.associatedPluginId) {
+    await validateSystemToolWorkflowAssociation(nextCustomConfig.associatedPluginId);
+  }
   const isUpdateVersion =
     plugin.customConfig.name !== nextCustomConfig.name ||
     plugin.customConfig.avatar !== nextCustomConfig.avatar ||

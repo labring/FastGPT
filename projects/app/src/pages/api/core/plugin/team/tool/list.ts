@@ -14,6 +14,7 @@ import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
 export type listQuery = GetTeamSystemPluginListQueryType;
 
@@ -55,6 +56,7 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
 
   return GetTeamPluginListResponseSchema.parse(
     tools
+      .filter((tool) => tool.status !== PluginStatusEnum.Offline)
       .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
       .filter((tool) => {
         if (hasMatchedUserTag({ userTags, targetTags: tool.hideTags })) return false;

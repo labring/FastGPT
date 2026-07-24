@@ -41,6 +41,210 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
+describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
+  it('回显旧版工作流工具输入的默认 AI 生成配置并保留显式关闭', async () => {
+    const legacyInput = {
+      key: 'legacy',
+      label: 'Legacy',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      toolDescription: 'Legacy AI parameter'
+    };
+    const explicitManualInput = {
+      key: 'manual',
+      label: 'Manual',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      toolDescription: 'Parameter description',
+      isToolParam: false
+    };
+    const nodes = [
+      {
+        nodeId: 'plugin-input',
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        inputs: [legacyInput, explicitManualInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({ isToolParam: true });
+    expect(nodes[0].inputs[1]).toMatchObject({ isToolParam: false });
+  });
+
+  it('将固定版本旧工作流工具中标记为工具参数的必填输入恢复为 AI 生成', async () => {
+    const toolAppId = '507f1f77bcf86cd799439011';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      pluginId: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
+      name: 'Legacy workflow tool',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'legacy-version-id',
+      versionLabel: '2026-07-24 14:16:01',
+      isLatestVersion: false
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'legacy-workflow-tool',
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        pluginId: toolAppId,
+        version: 'legacy-version-id',
+        inputs: [
+          {
+            key: 'text',
+            label: 'text',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            value: '',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            toolDescription: 'text'
+          },
+          {
+            key: 'text2',
+            label: 'text2',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: '',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      key: 'text',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(nodes[0].inputs[1]).toMatchObject({
+      key: 'text2',
+      selectedTypeIndex: 0,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    });
+    expect(nodes[0].inputs[1].selectedType).toBeUndefined();
+  });
+
+  it('保留固定版本旧系统工具的 toolDescription AI 参数兼容', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'systemTool-bocha',
+      pluginId: 'systemTool-bocha',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Legacy system tool',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: '0.1.1',
+      versionLabel: '0.1.1',
+      isLatestVersion: false
+    });
+
+    const nodes = [
+      {
+        nodeId: 'legacy-system-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId: 'systemTool-bocha',
+        version: '0.1.1',
+        inputs: [
+          {
+            key: 'query',
+            label: 'query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            value: '',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            toolDescription: 'Search query'
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      key: 'query',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+  });
+});
+
+describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
+  it('清理工具调用节点用户问题的历史 AI 生成类型', async () => {
+    const userQuestion = {
+      key: NodeInputKeyEnum.userChatInput,
+      label: 'User question',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.textarea
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0
+    };
+    const nodes = [
+      {
+        nodeId: 'tool-call',
+        flowNodeType: FlowNodeTypeEnum.toolCall,
+        inputs: [userQuestion],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea]
+    });
+    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
+  });
+});
+
 describe('rewriteAppWorkflowToDetail - agent skills', () => {
   beforeEach(() => {
     getClientToolPreviewNodeMock.mockReset();
@@ -186,11 +390,140 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(nodes[0].inputs[0]).toMatchObject({
       key: 'size',
       value: ['start', 'amount'],
+      selectedType: FlowNodeInputTypeEnum.reference,
       selectedTypeIndex: 1,
       renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
       list: [
         { label: '1', value: '1' },
         { label: '2', value: '2' }
+      ]
+    });
+  });
+
+  it('刷新最新工具节点时把旧输入协议升级为 selectedType 和 agentGenerated 默认态', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'mcp-app-1/search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'new-avatar',
+      intro: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: true,
+          toolDescription: 'Search query'
+        }
+      ],
+      outputs: [],
+      version: '',
+      versionLabel: 'latest',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId: 'mcp-app-1/search',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: 'legacy value',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      key: 'query',
+      value: 'legacy value',
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      isToolParam: true,
+      toolDescription: 'Search query'
+    });
+  });
+
+  it('刷新最新工具节点时忽略旧协议的默认 selectedTypeIndex 0', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'mcp-app-1/search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'new-avatar',
+      intro: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: true,
+          toolDescription: 'Search query'
+        }
+      ],
+      outputs: [],
+      version: '',
+      versionLabel: 'latest',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId: 'mcp-app-1/search',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: '',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      key: 'query',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
       ]
     });
   });
@@ -278,6 +611,215 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         isRoot: true
       })
     );
+  });
+
+  it('刷新 Agent 工具时保留已保存的 input selectedType 配置', async () => {
+    const toolAppId = '507f1f77bcf86cd799439012';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Personal Tool',
+      avatar: '',
+      intro: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: true,
+          toolDescription: 'Query'
+        }
+      ],
+      outputs: [],
+      version: 'v1'
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const toolInput = {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [
+        {
+          id: toolAppId,
+          inputs: [
+            {
+              key: 'query',
+              mode: 'manual'
+            }
+          ],
+          config: {
+            query: 'manual value'
+          }
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [toolInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(toolInput.value).toMatchObject([
+      {
+        inputs: [
+          {
+            key: 'query',
+            value: 'manual value',
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ],
+            selectedType: FlowNodeInputTypeEnum.input,
+            selectedTypeIndex: 1
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('刷新 Agent 中的旧工作流工具时恢复 toolDescription 对应的 AI 生成类型', async () => {
+    const toolAppId = '507f1f77bcf86cd799439013';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
+      name: 'Legacy workflow tool',
+      avatar: '',
+      intro: '',
+      inputs: [
+        {
+          key: 'text',
+          label: 'text',
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          toolDescription: 'text'
+        }
+      ],
+      outputs: [],
+      version: 'v1'
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const toolInput = {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [
+        {
+          id: toolAppId,
+          config: {}
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [toolInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(toolInput.value).toMatchObject([
+      {
+        inputs: [
+          {
+            key: 'text',
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            selectedTypeIndex: 0,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ]
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('刷新 Agent 中的旧系统工具时保留 toolDescription AI 参数兼容', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'systemTool-bocha',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Legacy system tool',
+      avatar: '',
+      intro: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: false,
+          toolDescription: 'Search query'
+        }
+      ],
+      outputs: [],
+      version: '0.1.1'
+    });
+
+    const toolInput = {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [
+        {
+          id: 'systemTool-bocha',
+          config: {}
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [toolInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(toolInput.value).toMatchObject([
+      {
+        inputs: [
+          {
+            key: 'query',
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            selectedTypeIndex: 0,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ]
+          }
+        ]
+      }
+    ]);
   });
 
   it('按当前语言展示调试工具 metadata 缺失错误', async () => {

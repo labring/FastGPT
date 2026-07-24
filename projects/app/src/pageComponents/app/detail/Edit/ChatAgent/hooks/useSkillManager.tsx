@@ -7,7 +7,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  checkNeedsUserConfiguration,
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -39,6 +38,7 @@ import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/P
 import { getSkillList } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
+import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
@@ -358,7 +358,10 @@ export const useSkillManager = ({
         };
       }
 
-      const toolTemplate = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
+      const toolTemplate = await getClientToolPreviewNode({
+        appId: toolId,
+        getLatestVersion: true
+      });
 
       const toolValid = validateToolConfiguration({
         toolTemplate,
@@ -372,10 +375,12 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool = {
-        ...toolTemplate,
-        id: toolTemplate.pluginId!
-      };
+      const tool = inheritToolInputConfig({
+        tool: {
+          ...toolTemplate,
+          id: toolTemplate.pluginId!
+        }
+      });
       const configStatus = getToolConfigStatus({ tool }).status;
       const skill = toSkillLabelItem(tool, configStatus);
 
@@ -571,11 +576,6 @@ export const useSkillManager = ({
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
-        const hasFormInput = checkNeedsUserConfiguration(tool);
-        if (!hasFormInput) {
-          return;
-        }
-
         setConfigTool(tool);
       }
     },

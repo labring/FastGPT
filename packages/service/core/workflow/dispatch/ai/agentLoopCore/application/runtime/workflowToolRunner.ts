@@ -18,6 +18,7 @@ import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../do
 import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
+import { filterAgentGeneratedToolParams } from '@fastgpt/global/core/app/formEdit/utils';
 
 export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -59,14 +60,23 @@ export const updateAgentLoopCoreWorkflowToolInputValue = ({
   params: Record<string, any>;
   inputs: FlowNodeInputItemType[];
 }) => {
+  const agentGeneratedParams = filterAgentGeneratedToolParams({ params, inputs });
+
   /**
-   * Tool workflow 的输入 schema 来自原始节点；这里只覆盖本次 tool call 传入的参数。
+   * Tool workflow 的输入 schema 来自原始节点；这里只允许覆盖用户最终选择为 Agent 生成的参数。
    * 使用 ?? 保留 0/false/'' 这类有效值，只有 null/undefined 才回退到节点默认值。
    */
-  return inputs.map((input) => ({
-    ...input,
-    value: params[input.key] ?? input.value
-  }));
+  return inputs.map((input) => {
+    const hasAgentGeneratedValue = Object.prototype.hasOwnProperty.call(
+      agentGeneratedParams,
+      input.key
+    );
+
+    return {
+      ...input,
+      value: hasAgentGeneratedValue ? (agentGeneratedParams[input.key] ?? input.value) : input.value
+    };
+  });
 };
 
 export const formatAgentLoopCoreToolResponse = (toolResponses: any) => {
@@ -144,18 +154,25 @@ const toToolRunResult = <TChildrenResponse = unknown>(
 ): {
   result: AgentLoopCoreToolRunResult<TChildrenResponse>;
   flowResponse: AgentLoopCoreToolRunFlowResponse;
-} => ({
-  result: {
-    response: formatAgentLoopCoreToolResponse(toolRunResponse.toolResponses),
-    assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
-    usages: toolRunResponse.flowUsages,
-    interactive: toolRunResponse.workflowInteractiveResponse as TChildrenResponse | undefined,
-    stop:
-      !!toolRunResponse.runtimeNodeResponseSummary?.hasToolStop ||
-      toolRunResponse.flowResponses.some((item) => item.toolStop)
-  },
-  flowResponse: toFlowResponse(toolRunResponse)
-});
+} => {
+  const errorMessage = toolRunResponse.runtimeNodeResponseSummary?.hasError
+    ? toolRunResponse.runtimeNodeResponseSummary.errorText || 'Tool execution failed'
+    : undefined;
+
+  return {
+    result: {
+      response: formatAgentLoopCoreToolResponse(toolRunResponse.toolResponses),
+      ...(errorMessage ? { errorMessage } : {}),
+      assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
+      usages: toolRunResponse.flowUsages,
+      interactive: toolRunResponse.workflowInteractiveResponse as TChildrenResponse | undefined,
+      stop:
+        !!toolRunResponse.runtimeNodeResponseSummary?.hasToolStop ||
+        toolRunResponse.flowResponses.some((item) => item.toolStop)
+    },
+    flowResponse: toFlowResponse(toolRunResponse)
+  };
+};
 
 /** 合并每个知识库节点的独立 toolResponse，避免 workflow 只保留最后一个结果。 */
 const formatDatasetSearchToolResponses = ({
@@ -223,6 +240,19 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
           [NodeInputKeyEnum.datasetSearchInput]: query,
           [NodeInputKeyEnum.userChatInput]: ''
         });
+        const datasetNode = isolatedRuntimeNodes.find((node) => node.nodeId === entryNodeId);
+        if (datasetNode) {
+          // dataset_search 的系统参数由 agent-loop 直接生成，不受工具输入最终类型过滤影响。
+          datasetNode.inputs = datasetNode.inputs.map((input) => {
+            if (input.key === NodeInputKeyEnum.datasetSearchInput) {
+              return { ...input, value: query };
+            }
+            if (input.key === NodeInputKeyEnum.userChatInput) {
+              return { ...input, value: '' };
+            }
+            return input;
+          });
+        }
         initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, [entryNodeId]);
 
         return runWorkflowTool({

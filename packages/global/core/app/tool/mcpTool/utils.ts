@@ -54,6 +54,14 @@ export const getMCPToolRuntimeNode = ({
   toolsetName: string;
   avatar?: string;
 }): RuntimeNodeItemType => {
+  const inputs = jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }).map(
+    (input) => ({
+      ...input,
+      // MCP schema 没有 FastGPT 的手动配置上下文，子工具参数默认交给 Agent 生成。
+      isToolParam: input.isToolParam ?? true
+    })
+  );
+
   return {
     nodeId,
     flowNodeType: FlowNodeTypeEnum.tool,
@@ -65,7 +73,7 @@ export const getMCPToolRuntimeNode = ({
       }
     },
     jsonSchema: tool.inputSchema,
-    inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }),
+    inputs,
     outputs: [
       {
         id: NodeOutputKeyEnum.rawResponse,

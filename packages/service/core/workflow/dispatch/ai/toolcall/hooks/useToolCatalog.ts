@@ -8,14 +8,67 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ToolNodeItemType } from '../type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  canInputBeAgentGenerated,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
   getAgentLoopCoreSystemToolInfo,
   type AgentLoopCoreToolInfo
 } from '../../agentLoopCore/interface';
 
 export type ToolInfo = AgentLoopCoreToolInfo<ToolNodeItemType>;
 
-const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
-  const parameters = item.jsonSchema || nodeInputs2JsonSchema({ inputs: item.toolParams });
+const buildModelVisibleJsonSchema = ({
+  inputs,
+  toolParams,
+  jsonSchema
+}: {
+  inputs?: FlowNodeInputItemType[];
+  toolParams: FlowNodeInputItemType[];
+  jsonSchema?: Record<string, any>;
+}) => {
+  const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
+  const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
+
+  if (jsonSchema) {
+    const inputSchema = nodeInputs2JsonSchema({ inputs: toolParams });
+    const hasSchemaProperties =
+      !!jsonSchema.properties && Object.keys(jsonSchema.properties).length > 0;
+    const properties = hasSchemaProperties ? jsonSchema.properties : inputSchema.properties;
+    const isModelVisibleKey = (key: string) => {
+      if (modelVisibleKeys.has(key)) return true;
+      if (inputKeys.has(key)) return false;
+      return (properties[key] as { isToolParam?: boolean } | undefined)?.isToolParam === true;
+    };
+    const nextSchema: Record<string, any> = {
+      ...jsonSchema,
+      type: 'object',
+      properties: Object.fromEntries(
+        Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
+      )
+    };
+
+    const required = (hasSchemaProperties ? jsonSchema.required : inputSchema.required)?.filter(
+      isModelVisibleKey
+    );
+
+    if (required) {
+      nextSchema.required = required;
+    } else if (hasSchemaProperties && 'required' in jsonSchema) {
+      nextSchema.required = jsonSchema.required;
+    }
+
+    return nextSchema;
+  }
+
+  return nodeInputs2JsonSchema({ inputs: toolParams });
+};
+
+export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
+  const toolParams = item.toolParams.filter(
+    (input) => isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)
+  );
 
   if (item.jsonSchema) {
     return {
@@ -23,7 +76,11 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
       function: {
         name: item.nodeId,
         description: `${item.name}: ${item.toolDescription || item.intro}`,
-        parameters
+        parameters: buildModelVisibleJsonSchema({
+          inputs: item.inputs ?? item.toolParams,
+          toolParams,
+          jsonSchema: item.jsonSchema
+        })
       }
     };
   }
@@ -33,7 +90,7 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
     function: {
       name: item.nodeId,
       description: `${item.name}: ${item.toolDescription || item.intro}`,
-      parameters
+      parameters: buildModelVisibleJsonSchema({ toolParams })
     }
   };
 };

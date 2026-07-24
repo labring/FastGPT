@@ -23,6 +23,13 @@ import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
 import RenderOutput from '../render/RenderOutput';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import {
+  canInputBeAgentGenerated,
+  initToolInputTypeByDefaultMode,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
 
@@ -37,8 +44,17 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs = [], outputs } = data;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
+
+  const isUsedAsTool = useMemo(
+    () =>
+      edges.some(
+        (edge) => edge.target === nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+      ),
+    [edges, nodeId]
+  );
 
   const onSubmit = useCallback(
     (data: FlowNodeInputItemType) => {
@@ -116,19 +132,36 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </HStack>
           <VariableTable
             variables={inputs.map((input) => {
-              const inputType = input.renderTypeList[0];
+              const normalizedInput =
+                isUsedAsTool || input.key === NodeInputKeyEnum.userChatInput
+                  ? initToolInputTypeByDefaultMode(input, {
+                      allowUserChatInputAgentGenerated: isUsedAsTool
+                    })
+                  : input;
+              const inputType = normalizedInput.renderTypeList[0];
               return {
                 icon: FlowNodeInputMap[inputType]?.icon as string,
-                label: t(input.label as any),
-                type: input.valueType ? t(FlowValueTypeMap[input.valueType]?.label as any) : '-',
-                isTool: !!input.toolDescription,
-                key: input.key
+                label: t(normalizedInput.label as any),
+                type: normalizedInput.valueType
+                  ? t(FlowValueTypeMap[normalizedInput.valueType]?.label as any)
+                  : '-',
+                isTool:
+                  isUsedAsTool &&
+                  isAgentGeneratedToolInput(normalizedInput) &&
+                  canInputBeAgentGenerated(normalizedInput),
+                key: normalizedInput.key
               };
             })}
             onEdit={(key) => {
               const input = inputs.find((input) => input.key === key);
               if (!input) return;
-              setEditField(input);
+              setEditField(
+                isUsedAsTool || input.key === NodeInputKeyEnum.userChatInput
+                  ? initToolInputTypeByDefaultMode(input, {
+                      allowUserChatInputAgentGenerated: isUsedAsTool
+                    })
+                  : input
+              );
             }}
             onDelete={(key) => {
               onChangeNode({
@@ -152,7 +185,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         )}
       </NodeCard>
     );
-  }, [data, inputs, nodeId, onChangeNode, outputs, selected, t]);
+  }, [data, inputs, isUsedAsTool, nodeId, onChangeNode, outputs, selected, t]);
 
   return (
     <>
@@ -168,6 +201,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam)
             )
           }
+          showAgentGenerated={isUsedAsTool}
           onClose={() => setEditField(undefined)}
           onSubmit={onSubmit}
         />

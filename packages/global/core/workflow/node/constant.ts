@@ -35,7 +35,9 @@ export enum FlowNodeInputTypeEnum {
   fileSelect = 'fileSelect',
   timePointSelect = 'timePointSelect',
   timeRangeSelect = 'timeRangeSelect',
-  password = 'password'
+  password = 'password',
+
+  agentGenerated = 'agentGenerated'
 }
 export const FlowNodeInputMap: Record<
   FlowNodeInputTypeEnum,
@@ -114,6 +116,9 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.password]: {
     icon: 'core/workflow/inputType/password'
+  },
+  [FlowNodeInputTypeEnum.agentGenerated]: {
+    icon: 'core/workflow/inputType/agentGenerated'
   }
 };
 

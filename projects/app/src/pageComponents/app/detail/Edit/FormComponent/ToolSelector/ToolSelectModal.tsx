@@ -46,6 +46,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { inheritToolInputConfig } from './utils';
 
 type Props = {
   generatedSelectedTools?: SelectedToolItemType[];
@@ -306,7 +307,7 @@ const RenderList = React.memo(function RenderList({
     async (template: NodeTemplateListItemType) => {
       const res = await getClientToolPreviewNode({
         appId: template.id,
-        versionId: '',
+        getLatestVersion: true,
         source: template.source
       });
       const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
@@ -330,21 +331,12 @@ const RenderList = React.memo(function RenderList({
         }
       }
 
-      // 添加与 top 相同工具的配置
+      // 添加与已生成工具相同的配置
       const generatedTool = generatedSelectedTools.find((tool) => tool.pluginId === res.pluginId);
-      if (generatedTool) {
-        res.inputs.forEach((input) => {
-          const generatedInput = generatedTool.inputs.find(
-            (generatedInput) => generatedInput.key === input.key
-          );
-          if (generatedInput) {
-            input.value = generatedInput.value;
-          }
-        });
-      }
+      const tool = inheritToolInputConfig({ tool: res, sourceTool: generatedTool });
       onAddTool({
-        ...res,
-        configStatus: getToolConfigStatus({ tool: res }).status
+        ...tool,
+        configStatus: getToolConfigStatus({ tool }).status
       });
     }
   );

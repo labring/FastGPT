@@ -109,6 +109,16 @@ describe('nodeInputTypeToInputType', () => {
     ).toBe(InputTypeEnum.input);
   });
 
+  it('跳过 agentGenerated，保留真实手动控件类型', () => {
+    expect(
+      nodeInputTypeToInputType([
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput,
+        FlowNodeInputTypeEnum.input
+      ])
+    ).toBe(InputTypeEnum.numberInput);
+  });
+
   it.each([
     [FlowNodeInputTypeEnum.input, InputTypeEnum.input],
     [FlowNodeInputTypeEnum.textarea, InputTypeEnum.textarea],

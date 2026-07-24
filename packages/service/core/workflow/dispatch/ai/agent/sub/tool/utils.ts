@@ -1,6 +1,7 @@
-import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import { AgentToolInputConfigSchema, type SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import {
   getToolNameCandidates,
+  isSystemOrCommercialToolId,
   isDebugToolSource,
   splitCombineToolId,
   splitToolsetToolPluginId
@@ -33,7 +34,13 @@ import type {
 } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { SubAppInitType } from '../type';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  canInputBeAgentGenerated,
+  getToolConfigStatus,
+  initAgentToolInputType,
+  initToolInputsTypeByDefaultMode,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -57,6 +64,52 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
   hasSystemSecret?: boolean;
   hasTokenFee?: boolean;
   systemKeyCost?: number;
+};
+
+const buildModelVisibleJsonSchema = ({
+  inputs,
+  toolParams,
+  jsonSchema
+}: {
+  inputs?: FlowNodeInputItemType[];
+  toolParams: FlowNodeInputItemType[];
+  jsonSchema?: Record<string, any>;
+}) => {
+  const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
+  const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
+
+  if (jsonSchema) {
+    const inputSchema = nodeInputs2JsonSchema({ inputs: toolParams });
+    const hasSchemaProperties =
+      !!jsonSchema.properties && Object.keys(jsonSchema.properties).length > 0;
+    const properties = hasSchemaProperties ? jsonSchema.properties : inputSchema.properties;
+    const isModelVisibleKey = (key: string) => {
+      if (modelVisibleKeys.has(key)) return true;
+      if (inputKeys.has(key)) return false;
+      return (properties[key] as { isToolParam?: boolean } | undefined)?.isToolParam === true;
+    };
+    const nextSchema: Record<string, any> = {
+      ...jsonSchema,
+      type: 'object',
+      properties: Object.fromEntries(
+        Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
+      )
+    };
+
+    const required = (hasSchemaProperties ? jsonSchema.required : inputSchema.required)?.filter(
+      isModelVisibleKey
+    );
+
+    if (required) {
+      nextSchema.required = required;
+    } else if (hasSchemaProperties && 'required' in jsonSchema) {
+      nextSchema.required = jsonSchema.required;
+    }
+
+    return nextSchema;
+  }
+
+  return nodeInputs2JsonSchema({ inputs: toolParams });
 };
 
 /**
@@ -439,7 +492,7 @@ export const getAgentRuntimeTools = async ({
 
   /**
    * 生成 OpenAI-compatible function schema。
-   * schema 优先级：显式 jsonSchema > toolData.inputSchema > 带 toolDescription 的普通 inputs。
+   * schema 优先级：显式 jsonSchema > toolData.inputSchema > Agent 生成 inputs。
    */
   const formatSchema = ({
     toolId,
@@ -460,8 +513,7 @@ export const getAgentRuntimeTools = async ({
     let schema = jsonSchema;
 
     for (const input of inputs) {
-      // 没有 JSON Schema 的普通工具，用 toolDescription 标识哪些 input 可以交给模型填写。
-      if (input.toolDescription) {
+      if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) {
         toolParams.push(input);
       }
 
@@ -480,7 +532,7 @@ export const getAgentRuntimeTools = async ({
         function: {
           name: formatToolId,
           description,
-          parameters: schema
+          parameters: buildModelVisibleJsonSchema({ inputs, toolParams, jsonSchema: schema })
         }
       };
     }
@@ -494,6 +546,11 @@ export const getAgentRuntimeTools = async ({
       }
     };
   };
+
+  const getSchemaParamKeys = (schema: ChatCompletionTool) =>
+    Object.keys(
+      (schema.function.parameters as { properties?: Record<string, unknown> })?.properties ?? {}
+    );
 
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
@@ -529,6 +586,27 @@ export const getAgentRuntimeTools = async ({
           toolNode.toolConfig = tool.toolConfig;
         }
 
+        const legacyDefaultMode =
+          tool.inputs === undefined
+            ? isSystemOrCommercialToolId(tool.id)
+              ? ('allAgentGenerated' as const)
+              : toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule
+                ? ('toolDescription' as const)
+                : undefined
+            : undefined;
+        const savedInputConfigMap = new Map(
+          (tool.inputs ?? []).flatMap((input) => {
+            const result = AgentToolInputConfigSchema.safeParse(input);
+            return result.success ? [[result.data.key, result.data] as const] : [];
+          })
+        );
+        toolNode.inputs = toolNode.inputs.map((input) =>
+          initAgentToolInputType({
+            input,
+            mode: savedInputConfigMap.get(input.key)?.mode,
+            legacyDefaultMode
+          })
+        );
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {
           if (Object.prototype.hasOwnProperty.call(tool.config, input.key)) {
@@ -550,7 +628,12 @@ export const getAgentRuntimeTools = async ({
         }
 
         const toolType = (() => {
-          if (runtimeSource === AppToolSourceEnum.commercial) {
+          // 工作流系统工具在列表中 source 可能被归一为 system，但 ID 仍保留 commercial 前缀。
+          // 运行时必须按 commercialTool 处理，才能通过 associatedPluginId 找到真实工作流。
+          if (
+            idSource === AppToolSourceEnum.commercial ||
+            runtimeSource === AppToolSourceEnum.commercial
+          ) {
             return 'commercialTool';
           }
           if (toolNode.flowNodeType === FlowNodeTypeEnum.appModule) {
@@ -567,24 +650,37 @@ export const getAgentRuntimeTools = async ({
           id: tool.id,
           name: toolNode.name
         };
-        const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => ({
-          type: 'tool',
-          id,
-          name: child.name,
-          avatar: child.avatar,
-          version: child.version,
-          toolConfig: child.toolConfig,
-          promptReference,
-          params: tool.config,
-          requestSchema: formatSchema({
+        const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
+          const inputs = initToolInputsTypeByDefaultMode(
+            child.inputs.map((input) => ({
+              ...input,
+              isToolParam: true
+            })),
+            { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
+          );
+          const requestSchema = formatSchema({
             toolId: id,
-            inputs: child.inputs,
+            inputs,
             name: child.name,
             toolDescription: child.toolDescription,
             intro: child.intro,
             jsonSchema: child.jsonSchema
-          })
-        });
+          });
+
+          return {
+            type: 'tool',
+            id,
+            name: child.name,
+            avatar: child.avatar,
+            version: child.version,
+            toolConfig: child.toolConfig,
+            inputs,
+            agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
+            promptReference,
+            params: tool.config,
+            requestSchema
+          };
+        };
 
         if (toolNode.flowNodeType === FlowNodeTypeEnum.toolSet) {
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
@@ -646,6 +742,17 @@ export const getAgentRuntimeTools = async ({
         } else {
           // OpenAI function name 不能包含斜杠等字符，runtime map 也使用同一份清洗后的 id。
           const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+          const inputs = initToolInputsTypeByDefaultMode(toolNode.inputs, {
+            allowUserChatInputAgentGenerated: true
+          });
+          const requestSchema = formatSchema({
+            toolId: cleanedPluginId,
+            inputs,
+            name: toolNode.name,
+            toolDescription: toolNode.toolDescription,
+            intro: toolNode.intro,
+            jsonSchema: toolNode.jsonSchema
+          });
 
           return [
             {
@@ -655,16 +762,11 @@ export const getAgentRuntimeTools = async ({
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
+              inputs,
+              agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
               promptReference,
               params: tool.config,
-              requestSchema: formatSchema({
-                toolId: cleanedPluginId,
-                inputs: toolNode.inputs,
-                name: toolNode.name,
-                toolDescription: toolNode.toolDescription,
-                intro: toolNode.intro,
-                jsonSchema: toolNode.jsonSchema
-              })
+              requestSchema
             }
           ];
         }

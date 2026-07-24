@@ -18,6 +18,8 @@ import {
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
+  getHTTPToolInputSchema,
+  getHTTPToolRequestSchema,
   getHTTPToolRuntimeNode,
   parseHttpToolConfig
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
@@ -34,6 +36,12 @@ import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../../app/http';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getSavedToolInputSelectedType,
+  initToolInputsTypeByDefaultMode
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -490,6 +498,7 @@ export const formatHttpError = (error: any) => {
  * 重写 runtime workflow 中的工具相关节点配置。
  *
  * 该函数会原地修改 nodes 和 edges：
+ * - 将旧工作流工具的 toolDescription 默认方式升级为运行时 selectedType。
  * - 将 ToolSet 节点展开为具体 Tool 节点，并把原来指向 ToolSet 的边改接到子工具节点。
  * - 为 MCP/HTTP Tool 节点补充原始 jsonSchema 和描述，供模型 tool call 生成参数时使用。
  */
@@ -504,6 +513,85 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
+  // 旧工作流工具通过 toolDescription 标记 AI 参数。运行前统一升级，供配置校验、schema 和执行复用。
+  nodes.forEach((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.pluginModule) return;
+
+    node.inputs = initToolInputsTypeByDefaultMode(
+      normalizeWorkflowToolInputsDefaultMode(node.inputs),
+      { allowUserChatInputAgentGenerated: true }
+    );
+  });
+
+  const mergeToolNodeInputs = ({
+    node,
+    jsonSchema,
+    schemaType
+  }: {
+    node: RuntimeNodeItemType;
+    jsonSchema?: Parameters<typeof jsonSchema2NodeInput>[0]['jsonSchema'];
+    schemaType: 'mcp' | 'http';
+  }) => {
+    const schemaInputs = jsonSchema2NodeInput({ jsonSchema, schemaType });
+    if (!schemaInputs.length) return;
+
+    const savedInputMap = new Map(node.inputs.map((input) => [input.key, input]));
+    node.inputs = initToolInputsTypeByDefaultMode(
+      schemaInputs.map((input) => {
+        const savedInput = savedInputMap.get(input.key);
+        if (!savedInput) return input;
+
+        const selectedType = getSavedToolInputSelectedType({
+          savedInput,
+          defaultInput: input,
+          allowUserChatInputAgentGenerated: true
+        });
+        const renderTypeList = selectedType
+          ? Array.from(
+              new Set([selectedType, ...savedInput.renderTypeList, ...input.renderTypeList])
+            )
+          : (savedInput.renderTypeList ?? input.renderTypeList);
+        const selectedTypeIndex = selectedType
+          ? renderTypeList.findIndex((type) => type === selectedType)
+          : undefined;
+
+        return {
+          ...input,
+          ...(Object.prototype.hasOwnProperty.call(savedInput, 'value')
+            ? { value: savedInput.value }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(savedInput, 'valueDesc')
+            ? { valueDesc: savedInput.valueDesc }
+            : {}),
+          renderTypeList,
+          selectedType,
+          selectedTypeIndex:
+            selectedTypeIndex !== undefined && selectedTypeIndex >= 0
+              ? selectedTypeIndex
+              : undefined,
+          isToolParam: input.isToolParam ?? savedInput.isToolParam,
+          toolDescription: savedInput.toolDescription ?? input.toolDescription
+        };
+      }),
+      { allowUserChatInputAgentGenerated: true }
+    );
+  };
+
+  /**
+   * ToolSet 展开后的子工具统一由 Agent 生成参数。这里仅修改 runtime 临时节点，
+   * 不回写工作流配置，避免把 isToolParam 变成用户配置字段。
+   */
+  const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => ({
+    ...node,
+    inputs: initToolInputsTypeByDefaultMode(
+      node.inputs.map((input) => ({
+        ...input,
+        isToolParam: true
+      })),
+      { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
+    )
+  });
+
   /* ToolSet 展开 */
   // TODO: 待性能优化
   const parseToolset = async () => {
@@ -539,8 +627,9 @@ export const rewriteRuntimeWorkFlow = async ({
             lang
           });
           children.forEach((node) => {
-            nodes.push(node);
-            pushEdges(node.nodeId);
+            const runtimeNode = initToolSetChildNode(node);
+            nodes.push(runtimeNode);
+            pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
           const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
@@ -550,13 +639,15 @@ export const rewriteRuntimeWorkFlow = async ({
           // mcpToolsetVal.toolId: 旧版 MCP
           const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
           toolList.forEach((tool, index) => {
-            const newToolNode = getMCPToolRuntimeNode({
-              nodeId: `${toolSetNode.nodeId}${index}`,
-              toolSetId,
-              toolsetName: toolSetNode.name,
-              avatar: toolSetNode.avatar,
-              tool
-            });
+            const newToolNode = initToolSetChildNode(
+              getMCPToolRuntimeNode({
+                nodeId: `${toolSetNode.nodeId}${index}`,
+                toolSetId,
+                toolsetName: toolSetNode.name,
+                avatar: toolSetNode.avatar,
+                tool
+              })
+            );
             nodes.push(newToolNode);
             pushEdges(newToolNode.nodeId);
           });
@@ -567,13 +658,15 @@ export const rewriteRuntimeWorkFlow = async ({
           const toolList = await getHTTPToolList(app);
 
           toolList.forEach((tool: HttpToolConfigType, index: number) => {
-            const newToolNode = getHTTPToolRuntimeNode({
-              tool,
-              nodeId: `${toolSetNode.nodeId}${index}`,
-              avatar: toolSetNode.avatar,
-              toolSetId: toolSetNode.pluginId!,
-              toolsetName: toolSetNode.name
-            });
+            const newToolNode = initToolSetChildNode(
+              getHTTPToolRuntimeNode({
+                tool,
+                nodeId: `${toolSetNode.nodeId}${index}`,
+                avatar: toolSetNode.avatar,
+                toolSetId: toolSetNode.pluginId!,
+                toolsetName: toolSetNode.name
+              })
+            );
             nodes.push(newToolNode);
             pushEdges(newToolNode.nodeId);
           });
@@ -631,6 +724,7 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolRaw) return;
       node.jsonSchema = toolRaw.inputSchema;
       node.intro = toolRaw.description;
+      mergeToolNodeInputs({ node, jsonSchema: toolRaw.inputSchema, schemaType: 'mcp' });
     });
   };
 
@@ -668,8 +762,13 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolList) return;
       const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;
-      node.jsonSchema = toolRaw.requestSchema;
+      node.jsonSchema = getHTTPToolRequestSchema(toolRaw);
       node.intro = toolRaw.description;
+      mergeToolNodeInputs({
+        node,
+        jsonSchema: getHTTPToolInputSchema(toolRaw),
+        schemaType: 'http'
+      });
     });
   };
 

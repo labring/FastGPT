@@ -16,6 +16,7 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -77,7 +78,10 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     [item, nodeId, onChangeNode, setDefaultModel]
   );
 
-  const inputType = nodeInputTypeToInputType(item.renderTypeList);
+  const selectedRenderType = getSelectedInputRenderType(item);
+  const inputType = nodeInputTypeToInputType(
+    selectedRenderType ? [selectedRenderType] : item.renderTypeList
+  );
 
   // 嵌套容器节点（loop/parallelRun/loopRun）里的 select 下拉向上展开，避免被子节点覆盖。
   const menuPlacement = useMemo(() => {
@@ -91,7 +95,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     if (inputType === InputTypeEnum.selectLLMModel && item.value === undefined && defaultModel) {
       handleChange(defaultModel);
     }
-  }, [inputType, item.value]);
+  }, [defaultModel, handleChange, inputType, item.value]);
 
   const canOptimizePrompt = item.key === NodeInputKeyEnum.aiSystemPrompt;
   const OptimizerPopverComponent = useCallback(

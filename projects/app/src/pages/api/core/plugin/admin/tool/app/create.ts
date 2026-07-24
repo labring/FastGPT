@@ -4,8 +4,13 @@ import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSch
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type { CreateAppToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  CreateAppToolBodySchema,
+  type CreateAppToolBodyType
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { validateSystemToolWorkflowAssociation } from '@fastgpt/service/core/app/tool/workflowTool/service';
 
 export type createPluginQuery = Record<string, never>;
 
@@ -13,11 +18,15 @@ export type createPluginBody = CreateAppToolBodyType;
 
 export type createPluginResponse = Record<string, never>;
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<createPluginBody, createPluginQuery>,
   _res: ApiResponseType<any>
 ): Promise<createPluginResponse> {
   await authSystemAdmin({ req });
+  const { body } = parseApiInput({
+    req,
+    bodySchema: CreateAppToolBodySchema
+  });
   const {
     name,
     avatar,
@@ -32,7 +41,9 @@ async function handler(
     associatedPluginId,
     userGuide,
     author
-  } = req.body;
+  } = body;
+
+  await validateSystemToolWorkflowAssociation(associatedPluginId);
 
   const pluginId = `${AppToolSourceEnum.commercial}-${getNanoid(12)}`;
 

@@ -476,6 +476,108 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result['non-latest']?.map((issue) => issue.code) ?? []).not.toContain('tool_inactive');
   });
 
+  it('does not require a legacy user question when an AI node is used as a tool', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const aiToolNode = makeNode('ai-tool', FlowNodeTypeEnum.chatNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userChatInput,
+          label: '用户问题',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+          selectedTypeIndex: 0,
+          value: undefined
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, aiToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-ai',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'ai-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['ai-tool'] ?? []).toEqual([]);
+  });
+
+  it('does not report an activated tool as inactive when a normal required input is empty', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const activatedToolNode = makeNode('activated-tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: { type: 'system' }
+        },
+        {
+          key: 'query',
+          label: '搜索查询词',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, activatedToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-tool',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'activated-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['activated-tool']?.map((issue) => issue.code)).toEqual(['required_input_empty']);
+  });
+
+  it('reports a tool as inactive when its system input configuration is missing', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const inactiveToolNode = makeNode('inactive-tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: undefined
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, inactiveToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-tool',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'inactive-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['inactive-tool']?.map((issue) => issue.code)).toContain('tool_waiting_config');
+  });
+
   it('reports offline tools', () => {
     const offlineNode = makeNode('offline', FlowNodeTypeEnum.appModule, {
       status: PluginStatusEnum.Offline
@@ -1955,6 +2057,35 @@ describe('storeNode2FlowNode', () => {
 
     expect(result.data.inputs).toHaveLength(3);
     expect(result.data.outputs).toHaveLength(2);
+  });
+
+  it('should not materialize fallback selectedType before tool context normalization', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'chat-node',
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userChatInput,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+          selectedTypeIndex: 0
+        }
+      ],
+      outputs: [],
+      name: 'Chat node',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+    const userQuestion = result.data.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.userChatInput
+    );
+
+    expect(userQuestion?.selectedType).toBeUndefined();
+    expect(userQuestion?.selectedTypeIndex).toBe(0);
   });
 
   // 这两个测试涉及到模拟冲突，请运行单独的测试文件:

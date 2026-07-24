@@ -16,7 +16,11 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { serverGetWorkflowToolRunUserQuery } from '../../../../../../app/tool/workflowTool/utils';
-import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import {
+  filterWorkflowToolInputVariables,
+  getWorkflowToolInputsFromStoreNodes
+} from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import { appData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
 import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import {
@@ -81,6 +85,10 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     appId: app.id,
     app: appData
   });
+  const workflowToolVariables = filterWorkflowToolInputVariables({
+    inputs: appData2FlowNodeIO({ chatConfig }).inputs,
+    variables: customAppVariables
+  });
 
   // Rewrite children app variables
   const { externalProvider } = await getUserChatInfo(appData.tmbId);
@@ -105,7 +113,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   } = await runWithDerivedWorkflowFileContext({
     files: getWorkflowFileVariableInputs({
       variablesConfig: chatConfig.variables ?? [],
-      inputVariables: customAppVariables
+      inputVariables: workflowToolVariables
     }),
     fn: async ({ resolveInputFile }) => {
       const childrenVariableState = await WorkflowVariableState.create({
@@ -116,7 +124,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         histories: [],
         uid: data.uid,
         variablesConfig: chatConfig.variables ?? [],
-        inputVariables: customAppVariables,
+        inputVariables: workflowToolVariables,
         externalVariables: externalProvider?.externalWorkflowVariables,
         sourceVariableState: variableState,
         resolveInputFile
@@ -138,6 +146,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         chatConfig,
         histories: [],
         variableState: childrenVariableState,
+        isToolCall: true,
         query: [
           {
             text: {
@@ -158,6 +167,9 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   return {
     response: text,
+    ...(runtimeSummary.hasError
+      ? { errorMessage: runtimeSummary.errorText || 'Run workflow failed' }
+      : {}),
     assistantMessages: chats2GPTMessages({
       messages: [
         {
@@ -176,7 +188,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       moduleLogo: app.avatar,
       toolInput: {
         userChatInput,
-        ...customAppVariables
+        ...workflowToolVariables
       },
       toolRes: text,
       childResponseCount: runtimeSummary.childResponseCount
@@ -207,6 +219,11 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     appId: app.id,
     app: appData
   });
+  const pluginInputs = getWorkflowToolInputsFromStoreNodes(nodes);
+  const workflowToolVariables = filterWorkflowToolInputVariables({
+    inputs: pluginInputs,
+    variables: customAppVariables
+  });
 
   // Rewrite children app variables
   const { externalProvider } = await getUserChatInfo(appData.tmbId);
@@ -228,7 +245,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         ? node.inputs.flatMap((input) =>
             input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
               ? getWorkflowFileInputsFromValue(
-                  customAppVariables[input.key] ?? input.value,
+                  workflowToolVariables[input.key] ?? input.value ?? input.defaultValue,
                   input.maxFiles
                 )
               : []
@@ -253,7 +270,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   } = await runWithDerivedWorkflowFileContext({
     files: childFileInputs,
     fn: async ({ resolveInputFile, filterFiles }) => {
-      const filteredCustomAppVariables = { ...customAppVariables };
       const childrenVariableState = await WorkflowVariableState.create({
         timezone: data.timezone,
         runningAppInfo: childRunningAppInfo,
@@ -276,7 +292,12 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
               ...node,
               showStatus: false,
               inputs: node.inputs.map((input) => {
-                let val = filteredCustomAppVariables[input.key] ?? input.value;
+                const hasExternalValue = Object.prototype.hasOwnProperty.call(
+                  workflowToolVariables,
+                  input.key
+                );
+                let val = hasExternalValue ? workflowToolVariables[input.key] : input.value;
+                val ??= input.defaultValue;
                 if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
                   val = anyValueDecrypt(val);
                 } else if (
@@ -284,9 +305,11 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
                   Array.isArray(val)
                 ) {
                   val = filterFiles(val);
-                  filteredCustomAppVariables[input.key] = val.map((item: any) =>
-                    typeof item === 'string' ? item : item.url
-                  );
+                  if (hasExternalValue) {
+                    workflowToolVariables[input.key] = val.map((item: any) =>
+                      typeof item === 'string' ? item : item.url
+                    );
+                  }
                 }
 
                 return {
@@ -320,11 +343,12 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         chatConfig,
         histories: [],
         variableState: childrenVariableState,
+        isToolCall: true,
         query: serverGetWorkflowToolRunUserQuery({
-          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
+          pluginInputs,
           variables: {
             ...runtimeVariables,
-            ...filteredCustomAppVariables
+            ...workflowToolVariables
           }
         }).value,
         stream: false,
@@ -353,6 +377,9 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
 
   return {
     response,
+    ...(runtimeSummary.hasError || !pluginOutput
+      ? { errorMessage: runtimeSummary.errorText || 'Run workflow tool failed' }
+      : {}),
     assistantMessages: chats2GPTMessages({
       messages: [
         {
@@ -369,7 +396,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleType: FlowNodeTypeEnum.pluginModule,
       moduleName: app.name,
       moduleLogo: app.avatar,
-      toolInput: customAppVariables,
+      toolInput: workflowToolVariables,
       toolRes: pluginOutput || {},
       childResponseCount: runtimeSummary.childResponseCount
     }

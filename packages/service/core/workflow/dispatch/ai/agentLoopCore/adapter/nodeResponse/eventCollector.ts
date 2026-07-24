@@ -233,6 +233,12 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     if (appendedCallIds.has(event.call.id)) return;
     appendedCallIds.add(event.call.id);
 
+    // 工具错误只参与 agent-loop 控制，不落入 Agent 的可见运行详情。
+    if (event.errorMessage) {
+      pendingToolResultMap.delete(event.call.id);
+      return;
+    }
+
     append(createToolNodeResponse(event));
     pendingToolResultMap.delete(event.call.id);
   };

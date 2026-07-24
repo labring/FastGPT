@@ -9,7 +9,12 @@ import { getLLMModel } from '../../model';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
-const privateToolSchemaKeys = new Set(['toolDescription', 'x-tool-description', 'isSecret']);
+const privateToolSchemaKeys = new Set([
+  'toolDescription',
+  'x-tool-description',
+  'isToolParam',
+  'isSecret'
+]);
 
 /**
  * 清理 FastGPT 内部工具参数扩展字段，避免 OpenAI-compatible SDK 转成 Gemini 等原生

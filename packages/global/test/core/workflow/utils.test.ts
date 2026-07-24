@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   getHandleId,
+  getSelectedInputRenderType,
   nodeInputIsReference,
   getGuideModule,
   splitGuideModule,
@@ -87,6 +88,19 @@ describe('nodeInputIsReference', () => {
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedTypeIndex: 1
     };
+    expect(nodeInputIsReference(input)).toBe(true);
+  });
+
+  it('should prefer selectedType over selectedTypeIndex', () => {
+    const input: FlowNodeInputItemType = {
+      key: 'test',
+      label: 'Test',
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      selectedTypeIndex: 0
+    };
+
+    expect(getSelectedInputRenderType(input)).toBe(FlowNodeInputTypeEnum.reference);
     expect(nodeInputIsReference(input)).toBe(true);
   });
 
@@ -1242,6 +1256,27 @@ describe('clientGetWorkflowToolRunUserQuery', () => {
 
     expect(result.dataId).toBeDefined();
     expect(result.obj).toBe('Human');
+  });
+
+  it('should not serialize hidden plugin inputs', () => {
+    const result = clientGetWorkflowToolRunUserQuery({
+      pluginInputs: [
+        {
+          key: 'internal',
+          defaultValue: 'internal default',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: 'query',
+          defaultValue: 'default query',
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      variables: { internal: 'external value', query: 'hello' }
+    });
+
+    expect(JSON.stringify(result.value)).not.toContain('internal');
+    expect(JSON.stringify(result.value)).toContain('query');
   });
 
   it('should handle files parameter', () => {

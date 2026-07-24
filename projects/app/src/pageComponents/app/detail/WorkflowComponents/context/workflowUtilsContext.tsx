@@ -32,6 +32,11 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppContext } from '../../context';
 import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
+import {
+  canInputBeAgentGenerated,
+  initToolInputTypeByDefaultMode,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -147,12 +152,18 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const toolInputs: FlowNodeInputItemType[] = [];
       const commonInputs: FlowNodeInputItemType[] = [];
       inputs.forEach((item) => {
-        if (isTool && item.toolDescription) {
+        const normalizedInput =
+          isTool || item.key === NodeInputKeyEnum.userChatInput
+            ? initToolInputTypeByDefaultMode(item, {
+                allowUserChatInputAgentGenerated: isTool
+              })
+            : item;
+        const isAgentGeneratedInput =
+          isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
+        if (isTool && isAgentGeneratedInput && item.canEdit) {
           toolInputs.push(item);
         }
-        if (!isTool || !item.toolDescription) {
-          commonInputs.push(item);
-        }
+        commonInputs.push(normalizedInput);
       });
 
       return {

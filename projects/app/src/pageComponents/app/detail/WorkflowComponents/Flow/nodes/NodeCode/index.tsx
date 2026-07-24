@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../components/IOTitle';
-import RenderToolInput from '../render/RenderToolInput';
+import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import RenderOutput from '../render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -189,7 +189,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'400px'} selected={selected} rtDoms={rtDoms} {...data}>
-      {isTool && (
+      {isTool && hasDynamicToolInput(inputs) && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
@@ -200,6 +200,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           nodeId={nodeId}
           flowInputList={commonInputs}
           CustomComponent={CustomComponent}
+          isTool={isTool}
         />
       </Container>
       <Container>
