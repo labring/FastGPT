@@ -26,14 +26,17 @@ import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { drawerActionButtonStyle } from './configDrawerStyles';
 
 const FileSelect = ({
   value = defaultAppSelectFileConfig,
   onChange,
+  drawerMode = false,
   ...labelStyle
 }: Omit<BoxProps, 'onChange'> & {
   value?: AppFileSelectConfigType;
   onChange: (e: AppFileSelectConfigType) => void;
+  drawerMode?: boolean;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -59,7 +62,7 @@ const FileSelect = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'}>
+    <Flex alignItems={'center'} w={'100%'}>
       <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
       <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
       <ChatFunctionTip type={'file'} />
@@ -67,10 +70,11 @@ const FileSelect = ({
       <MyTooltip label={t('app:config_file_upload')}>
         <Button
           variant={'transparentBase'}
-          iconSpacing={1}
+          iconSpacing={drawerMode ? '6px' : 1}
           size={'sm'}
-          mr={'-5px'}
+          mr={drawerMode ? 0 : '-5px'}
           color={'myGray.600'}
+          {...(drawerMode ? drawerActionButtonStyle : {})}
           onClick={() => {
             setLocalValue(value);
             onOpen();

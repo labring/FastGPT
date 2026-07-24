@@ -34,6 +34,7 @@ import {
 import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
 import { WorkflowModalContext } from '../WorkflowComponents/context/workflowModalContext';
 import { WorkflowPersistenceContext } from '../WorkflowComponents/context/workflowPersistenceContext';
+import SystemConfigDrawer from '../WorkflowComponents/Flow/SystemConfigDrawer';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -187,6 +188,7 @@ const Header = () => {
                   }}
                 />
               )}
+              <SystemConfigDrawer />
               <Button
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
                 w={'81px'}

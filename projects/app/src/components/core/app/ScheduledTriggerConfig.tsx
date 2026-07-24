@@ -21,13 +21,16 @@ import ScheduleTimeSelect, {
   defaultCronString
 } from '@fastgpt/web/components/common/MySelect/CronSelector';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { drawerActionButtonStyle } from './configDrawerStyles';
 
 const ScheduledTriggerConfig = ({
   value,
-  onChange
+  onChange,
+  drawerMode = false
 }: {
   value?: AppScheduledTriggerConfigType;
   onChange: (e?: AppScheduledTriggerConfigType) => void;
+  drawerMode?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -35,6 +38,10 @@ const ScheduledTriggerConfig = ({
   const timezone = value?.timezone;
   const defaultPrompt = value?.defaultPrompt;
   const isOpenSchedule = value?.cronString !== '';
+  const formLabel =
+    drawerMode && !isOpenSchedule
+      ? t('common:not_open')
+      : cronString2Label(value?.cronString ?? '', t);
 
   const onUpdate = useCallback(
     ({
@@ -63,7 +70,7 @@ const ScheduledTriggerConfig = ({
 
   return (
     <>
-      <Flex alignItems={'center'}>
+      <Flex alignItems={'center'} w={'100%'}>
         <MyIcon name={'core/app/schedulePlan'} w={'20px'} />
         <HStack ml={2} flex={1} spacing={1}>
           <FormLabel color={'myGray.600'}>{t('common:core.app.Interval timer run')}</FormLabel>
@@ -74,11 +81,12 @@ const ScheduledTriggerConfig = ({
             variant={'transparentBase'}
             iconSpacing={1}
             size={'sm'}
-            mr={'-5px'}
+            mr={drawerMode ? 0 : '-5px'}
             color={'myGray.600'}
+            {...(drawerMode ? drawerActionButtonStyle : {})}
             onClick={onOpen}
           >
-            {cronString2Label(value?.cronString ?? '', t)}
+            {formLabel}
           </Button>
         </MyTooltip>
       </Flex>

@@ -120,9 +120,22 @@ export const AppAutoExecuteConfigTypeSchema = z.object({
 });
 export type AppAutoExecuteConfigType = z.infer<typeof AppAutoExecuteConfigTypeSchema>;
 
+export const AppWelcomeConfigTypeSchema = z.object({
+  welcomeText: z.string().optional().meta({
+    description: '新会话开始时展示给用户的欢迎语'
+  }),
+  welcomeQuestions: z.array(z.string()).optional().meta({
+    description: '开场白下方展示的预设问题列表'
+  })
+});
+export type AppWelcomeConfigType = z.infer<typeof AppWelcomeConfigTypeSchema>;
+
 export const AppChatConfigTypeSchema = z.object({
   welcomeText: z.string().optional().meta({
     description: '新会话开始时展示给用户的欢迎语'
+  }),
+  welcomeConfig: AppWelcomeConfigTypeSchema.optional().meta({
+    description: '开场白配置'
   }),
   variables: z.array(VariableItemTypeSchema).optional().meta({
     description: '应用启动对话前需要用户填写的变量列表'

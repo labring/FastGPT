@@ -120,6 +120,7 @@ export const iconPaths = {
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
   'core/app/aiLight': () => import('./icons/core/app/aiLight.svg'),
   'core/app/aiLightSmall': () => import('./icons/core/app/aiLightSmall.svg'),
+  'core/app/configDrawerSetting': () => import('./icons/core/app/configDrawerSetting.svg'),
   'core/app/create': () => import('./icons/core/app/create.svg'),
   'core/app/customFeedback': () => import('./icons/core/app/customFeedback.svg'),
   'core/app/headphones': () => import('./icons/core/app/headphones.svg'),

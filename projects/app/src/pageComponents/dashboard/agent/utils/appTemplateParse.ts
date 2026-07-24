@@ -6,6 +6,11 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import {
+  filterSystemConfigNodes,
+  getGuideModule,
+  mergeSystemConfigNodeToChatConfig
+} from '@fastgpt/global/core/workflow/utils';
 
 export type JsonImportModalScene = 'agent' | 'tool';
 
@@ -191,7 +196,16 @@ const parseSimpleImportWorkflow = ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
+  const workflow = form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
+
+  return {
+    ...workflow,
+    nodes: filterSystemConfigNodes(workflow.nodes),
+    chatConfig: mergeSystemConfigNodeToChatConfig({
+      chatConfig: workflow.chatConfig,
+      systemConfigNode: getGuideModule(workflow.nodes)
+    })
+  };
 };
 
 const parseWorkflowLikeImportConfig = ({
@@ -220,9 +234,12 @@ const parseWorkflowLikeImportConfig = ({
   }
 
   return {
-    nodes: config.nodes as StoreNodeItemType[],
+    nodes: filterSystemConfigNodes(config.nodes as StoreNodeItemType[]),
     edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
-    chatConfig: (config.chatConfig || {}) as AppChatConfigType
+    chatConfig: mergeSystemConfigNodeToChatConfig({
+      chatConfig: (config.chatConfig || {}) as AppChatConfigType,
+      systemConfigNode: getGuideModule(config.nodes as StoreNodeItemType[])
+    })
   };
 };
 
