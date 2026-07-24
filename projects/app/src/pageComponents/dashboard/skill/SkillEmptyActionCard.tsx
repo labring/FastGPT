@@ -188,17 +188,21 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
 
   return (
     <Flex
-      role={'group'}
+      as={'button'}
+      type={'button'}
+      aria-label={title}
+      className="group"
+      textAlign={'left'}
       position={'relative'}
       cursor={'pointer'}
       onClick={onClick}
       direction={'column'}
       alignItems={'flex-start'}
-      h={'208px'}
+      minH={'208px'}
       w={'full'}
       maxW={['full', '540px']}
       minW={0}
-      p={'32px'}
+      p={['20px', '32px']}
       borderRadius={'12px'}
       overflow={'hidden'}
       bg={
@@ -208,6 +212,17 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
       transition={'box-shadow 0.3s ease-out'}
       _hover={{
         boxShadow: CARD_BOX_SHADOW.hover
+      }}
+      _focusVisible={{
+        outline: '2px solid',
+        outlineColor: 'primary.500',
+        outlineOffset: '2px'
+      }}
+      sx={{
+        WebkitAppearance: 'none',
+        appearance: 'none',
+        border: 0,
+        font: 'inherit'
       }}
     >
       <SkillCardDecoration variant={variant} state={'default'} uid={uid} />
@@ -240,7 +255,7 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
         zIndex={1}
         mt={'16px'}
         py={'16px'}
-        px={'120px'}
+        px={['32px', '120px']}
         justifyContent={'center'}
         alignItems={'center'}
         gap={'10px'}
