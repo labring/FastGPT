@@ -1,5 +1,6 @@
 import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import { filterSystemConfigNodes } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -41,34 +42,36 @@ export const uiWorkflow2StoreWorkflow = ({
     return map;
   }, {});
 
-  const formatNodes: StoreNodeItemType[] = nodes.map((item) => ({
-    nodeId: item.data.nodeId,
-    parentNodeId: item.data.parentNodeId,
-    name: item.data.name,
-    intro: item.data.intro,
-    toolDescription: item.data.toolDescription,
-    avatar: item.data.avatar,
-    flowNodeType: item.data.flowNodeType,
-    showStatus: item.data.showStatus,
-    position: item.position,
-    version: item.data.version,
-    inputs: filterUnselectableReferenceInputs({
-      node: item.data,
-      inputs: item.data.inputs,
-      edges,
-      chatConfig,
-      systemConfigNode,
-      getNodeById,
-      childrenNodeIdListMap
-    }),
-    outputs: item.data.outputs,
-    isFolded: item.data.isFolded,
-    pluginId: item.data.pluginId,
-    toolConfig: item.data.toolConfig,
-    catchError: item.data.catchError
-  }));
+  const formatNodes: StoreNodeItemType[] = filterSystemConfigNodes(
+    nodes.map((item) => ({
+      nodeId: item.data.nodeId,
+      parentNodeId: item.data.parentNodeId,
+      name: item.data.name,
+      intro: item.data.intro,
+      toolDescription: item.data.toolDescription,
+      avatar: item.data.avatar,
+      flowNodeType: item.data.flowNodeType,
+      showStatus: item.data.showStatus,
+      position: item.position,
+      version: item.data.version,
+      inputs: filterUnselectableReferenceInputs({
+        node: item.data,
+        inputs: item.data.inputs,
+        edges,
+        chatConfig,
+        systemConfigNode,
+        getNodeById,
+        childrenNodeIdListMap
+      }),
+      outputs: item.data.outputs,
+      isFolded: item.data.isFolded,
+      pluginId: item.data.pluginId,
+      toolConfig: item.data.toolConfig,
+      catchError: item.data.catchError
+    }))
+  );
 
-  const nodeIdSet = new Set(nodes.map((node) => node.data.nodeId));
+  const nodeIdSet = new Set(formatNodes.map((node) => node.nodeId));
   const formatEdges: StoreEdgeItemType[] = edges
     .map((item) => ({
       source: item.source,

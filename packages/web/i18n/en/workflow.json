@@ -258,6 +258,8 @@
   "user_form_input_description": "describe",
   "user_form_input_name": "Name",
   "user_question": "User Question",
+  "add_welcome_question": "Add preset question",
+  "welcome_question_placeholder": "Enter preset question",
   "var_update_array_append": "Append",
   "var_update_array_clear": "Clear",
   "var_update_array_equal": "Equal",

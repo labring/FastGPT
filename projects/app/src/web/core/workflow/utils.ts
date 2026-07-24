@@ -696,6 +696,7 @@ export const compareSnapshot = (
     !isEqual(
       {
         welcomeText: clone1.chatConfig?.welcomeText || '',
+        welcomeConfig: clone1.chatConfig?.welcomeConfig || undefined,
         variables: clone1.chatConfig?.variables || [],
         questionGuide: clone1.chatConfig?.questionGuide || false,
         ttsConfig: clone1.chatConfig?.ttsConfig || undefined,
@@ -708,6 +709,7 @@ export const compareSnapshot = (
       },
       {
         welcomeText: clone2.chatConfig?.welcomeText || '',
+        welcomeConfig: clone2.chatConfig?.welcomeConfig || undefined,
         variables: clone2.chatConfig?.variables || [],
         questionGuide: clone2.chatConfig?.questionGuide || false,
         ttsConfig: clone2.chatConfig?.ttsConfig || undefined,

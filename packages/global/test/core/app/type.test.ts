@@ -22,6 +22,20 @@ describe('AppChatConfigTypeSchema', () => {
     expect(AppChatConfigTypeSchema.parse({ questionGuide }).questionGuide).toEqual(questionGuide);
   });
 
+  it('should keep welcomeConfig fields', () => {
+    const result = AppChatConfigTypeSchema.parse({
+      welcomeConfig: {
+        welcomeText: 'hello',
+        welcomeQuestions: ['question one']
+      }
+    });
+
+    expect(result.welcomeConfig).toEqual({
+      welcomeText: 'hello',
+      welcomeQuestions: ['question one']
+    });
+  });
+
   it('should fill option label with value when variable option label is missing', () => {
     const result = AppChatConfigTypeSchema.parse({
       variables: [

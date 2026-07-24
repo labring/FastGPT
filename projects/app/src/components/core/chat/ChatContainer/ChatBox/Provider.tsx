@@ -57,6 +57,7 @@ export type ChatProviderProps = {
 
 type useChatStoreType = Omit<ChatProviderProps, 'sourceTarget' | 'chatId' | 'outLinkAuthData'> & {
   welcomeText: string;
+  welcomeQuestions: string[];
   variableList: VariableItemType[];
   questionGuide: AppQGConfigType;
   ttsConfig: AppTTSConfigType;
@@ -88,6 +89,7 @@ type useChatStoreType = Omit<ChatProviderProps, 'sourceTarget' | 'chatId' | 'out
 
 export const ChatBoxContext = createContext<useChatStoreType>({
   welcomeText: '',
+  welcomeQuestions: [],
   variableList: [],
   questionGuide: {
     open: false,
@@ -164,7 +166,14 @@ const Provider = ({
 
   const welcomeText = useContextSelector(
     ChatItemContext,
-    (v) => v.chatBoxData?.app?.chatConfig?.welcomeText ?? ''
+    (v) =>
+      v.chatBoxData?.app?.chatConfig?.welcomeConfig?.welcomeText ??
+      v.chatBoxData?.app?.chatConfig?.welcomeText ??
+      ''
+  );
+  const welcomeQuestions = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.welcomeConfig?.welcomeQuestions ?? []
   );
   const variables = useContextSelector(
     ChatItemContext,
@@ -280,6 +289,7 @@ const Provider = ({
   const value: useChatStoreType = {
     ...props,
     welcomeText,
+    welcomeQuestions,
     variableList: variables,
     questionGuide,
     ttsConfig,

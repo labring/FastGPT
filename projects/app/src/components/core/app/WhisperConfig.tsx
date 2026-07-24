@@ -8,15 +8,18 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { drawerActionButtonStyle } from './configDrawerStyles';
 
 const WhisperConfig = ({
   isOpenAudio,
   value = defaultWhisperConfig,
-  onChange
+  onChange,
+  drawerMode = false
 }: {
   isOpenAudio: boolean;
   value?: AppWhisperConfigType;
   onChange: (e: AppWhisperConfigType) => void;
+  drawerMode?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -29,17 +32,19 @@ const WhisperConfig = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'}>
+    <Flex alignItems={'center'} w={'100%'}>
       <MyIcon name={'core/app/simpleMode/whisper'} mr={2} w={'20px'} />
       <FormLabel>{t('common:core.app.Whisper')}</FormLabel>
+      <QuestionTip label={t('common:core.app.Config whisper')} ml={drawerMode ? '4px' : 1} />
       <Box flex={1} />
       <MyTooltip label={t('common:core.app.Config whisper')}>
         <Button
           variant={'transparentBase'}
           iconSpacing={1}
           size={'sm'}
-          mr={'-5px'}
+          mr={drawerMode ? 0 : '-5px'}
           color={'myGray.600'}
+          {...(drawerMode ? drawerActionButtonStyle : {})}
           onClick={onOpen}
         >
           {formLabel}

@@ -17,6 +17,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
+import { drawerActionButtonStyle } from './configDrawerStyles';
 
 type TTSSelectorItemType = {
   alias: string;
@@ -31,10 +32,12 @@ type TTSSelectorItemType = {
 
 const TTSSelect = ({
   value = defaultTTSConfig,
-  onChange
+  onChange,
+  drawerMode = false
 }: {
   value?: AppTTSConfigType;
   onChange: (e: AppTTSConfigType) => void;
+  drawerMode?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const { ttsModelList, getModelProvider } = useSystemStore();
@@ -155,11 +158,12 @@ const TTSSelect = ({
           variant={'transparentBase'}
           iconSpacing={1}
           size={'sm'}
-          mr={'-5px'}
+          mr={drawerMode ? 0 : '-5px'}
           minW={0}
           maxW={['180px', '260px']}
           onClick={onOpen}
           color={'myGray.600'}
+          {...(drawerMode ? drawerActionButtonStyle : {})}
         >
           {formLabel}
         </Button>
