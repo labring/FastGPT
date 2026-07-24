@@ -69,6 +69,13 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 | `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864` | IDE Agent WebSocket 单消息大小上限，单位字节。                                   |
 | `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216` | IDE Agent WebSocket 单帧大小上限，单位字节。                                     |
 
+### 生命周期变量
+
+| 变量                                  | 默认值 | 说明                                              |
+| ------------------------------------- | ------ | ------------------------------------------------- |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`   | 运行中的 Agent 沙箱持续未活跃多少分钟后自动暂停。 |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`    | 已暂停的 Agent 沙箱持续未活跃多少天后自动归档。   |
+
 ## 常见问题
 
 ### 提示 AGENT_SANDBOX_PROXY_URL is required

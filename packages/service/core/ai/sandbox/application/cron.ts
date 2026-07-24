@@ -3,7 +3,6 @@
  *
  * 只负责 cron 调度和锁控制，具体 stop/archive 流程交给对应业务服务。
  */
-import { SANDBOX_SUSPEND_MINUTES } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { setCron } from '../../../../common/system/cron';
 import { subMinutes } from 'date-fns';
@@ -12,6 +11,7 @@ import { retryStaleStoppingSandboxes, stopSandboxResources } from './resource';
 import { checkTimerLock } from '../../../../common/system/timerLock/utils';
 import { TimerIdEnum } from '../../../../common/system/timerLock/constants';
 import { archiveInactiveSandboxes, retryStaleArchivingSandboxes } from './archive';
+import { getAgentSandboxSuspendMinutes } from '../config';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -29,12 +29,13 @@ export const cronJob = async () => {
     });
     if (!locked) return;
 
+    const suspendMinutes = getAgentSandboxSuspendMinutes();
     const instances = await findInactiveRunningSandboxResources(
-      subMinutes(new Date(), SANDBOX_SUSPEND_MINUTES)
+      subMinutes(new Date(), suspendMinutes)
     );
     if (!instances.length) return;
 
-    logger.info(`Found running sandboxes inactive > ${SANDBOX_SUSPEND_MINUTES} min`, {
+    logger.info(`Found running sandboxes inactive > ${suspendMinutes} min`, {
       count: instances.length
     });
     await stopSandboxResources(instances);

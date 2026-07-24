@@ -42,9 +42,6 @@ export enum SandboxTypeEnum {
   sessionRuntime = 'session-runtime'
 }
 
-// ---- 暂停阈值（分钟） ----
-export const SANDBOX_SUSPEND_MINUTES = 10;
-
 // ---- sandboxId 生成 ----
 /** 为 v2 Sandbox 生成带 sourceType 前缀的稳定物理资源 ID。 */
 export const generateSandboxId = ({

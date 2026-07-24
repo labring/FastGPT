@@ -7,7 +7,8 @@ const cronMocks = vi.hoisted(() => ({
   stopSandboxResources: vi.fn(),
   retryStaleStoppingSandboxes: vi.fn(),
   archiveInactiveSandboxes: vi.fn(),
-  retryStaleArchivingSandboxes: vi.fn()
+  retryStaleArchivingSandboxes: vi.fn(),
+  getAgentSandboxSuspendMinutes: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/system/cron', () => ({
@@ -40,6 +41,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => ({
   retryStaleArchivingSandboxes: cronMocks.retryStaleArchivingSandboxes
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getAgentSandboxSuspendMinutes: cronMocks.getAgentSandboxSuspendMinutes
+}));
+
 import { cronJob } from '@fastgpt/service/core/ai/sandbox/application/cron';
 
 describe('sandbox cron application', () => {
@@ -51,6 +56,7 @@ describe('sandbox cron application', () => {
     cronMocks.archiveInactiveSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleArchivingSandboxes.mockResolvedValue(undefined);
     cronMocks.retryStaleStoppingSandboxes.mockResolvedValue(undefined);
+    cronMocks.getAgentSandboxSuspendMinutes.mockReturnValue(60);
   });
 
   afterEach(() => {
@@ -71,7 +77,7 @@ describe('sandbox cron application', () => {
       lockMinuted: 9
     });
     expect(cronMocks.findInactiveRunningSandboxResources).toHaveBeenCalledWith(
-      new Date('2026-06-24T00:50:00.000Z')
+      new Date('2026-06-24T00:00:00.000Z')
     );
     expect(cronMocks.stopSandboxResources).toHaveBeenCalledWith(resources);
   });
