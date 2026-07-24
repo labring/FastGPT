@@ -1,0 +1,83 @@
+---
+title: 'V4.15.0-beta1 (Environment Changes)'
+description: 'FastGPT V4.15.0-beta1 Release Notes'
+---
+
+## Upgrade Guide
+
+### Image Changes
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta1.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta1.
+- Update the fastgpt-plugin image tag to v0.6.2.
+- Update the AIProxy image tag to v0.5.6.
+
+### Environment Changes
+
+You can add the following file parsing concurrency settings to `fastgpt-app` and `fastgpt-pro`:
+
+```dotenv
+# File parsing worker concurrency (optional)
+PARSE_FILE_WORKERS=10
+# File parsing timeout in seconds (optional)
+PARSE_FILE_TIMEOUT_SECONDS=600
+# HTML-to-Markdown worker concurrency (optional)
+HTML_TO_MARKDOWN_WORKERS=10
+# Text chunking worker concurrency (optional)
+TEXT_TO_CHUNKS_WORKERS=10
+# Automatically synchronize MongoDB indexes. Use a boolean string instead of 0 or 1. (optional)
+SYNC_INDEX=true
+# Enable trusted reverse proxy client IP validation (optional)
+TRUSTED_PROXY_ENABLE=false
+# Comma- or whitespace-separated trusted reverse proxy IP/CIDR list. Used only when TRUSTED_PROXY_ENABLE=true. Only X-Forwarded-For/X-Real-IP values from explicitly trusted proxies are used for client IP resolution. (optional)
+TRUSTED_PROXY_IPS=
+```
+
+### Check Required Environment Variables
+
+This release adds stricter environment variable validation. Verify that `fastgpt-app` and `fastgpt-pro` include:
+
+```dotenv
+# Encryption key. Must match across both services.
+AES256_SECRET_KEY=
+# File token key. Must match across both services.
+FILE_TOKEN_KEY=
+# JWT secret for reverse invocation. Must be at least 32 characters and match across both services.
+INVOKE_TOKEN_SECRET=
+```
+
+## 🚀 New Features
+
+1. Added a Loop node and deprecated the legacy Batch Execution node.
+2. Global variable inputs now support object values.
+3. When the virtual machine feature is enabled in tool-calling mode, files uploaded in the chat input are injected directly into the virtual machine.
+4. Added DingTalk Knowledge Base integration for third-party Knowledge Bases (beta; rich-text retrieval has known issues).
+5. Added worker pools for file parsing, HTML-to-Markdown conversion, and text chunking to prevent excessive concurrency. Pool sizes are configurable through environment variables.
+6. Added model reasoning configuration.
+7. Added S3 CDN support.
+8. Added `defaultConfig` support for rerank models.
+
+## ⚙️ Improvements
+
+1. Made parent and child node selection mutually exclusive to prevent jitter when moving selected parent and child nodes together.
+2. Moved file injection in messages from the system message to the user message to improve cache hits.
+3. Improved insufficient-balance messages for non-admin users and visitors.
+4. Hid templates when the user does not have create permission.
+5. Strengthened SSRF protection for third-party Knowledge Base requests.
+6. Strengthened AST checks in codex-sandbox to prevent bypasses.
+7. Prevented duplicate site synchronization rate-limit messages.
+8. Strengthened IP validation to prevent spoofing bypasses.
+9. Added an option to convert images to base64 before sending them to models.
+
+## 🐛 Fixes
+
+1. Fixed an issue where Agent V2 could repeat a step after a model response error.
+2. Fixed missing charset information when previewing or downloading Knowledge Base source files with text responses.
+
+## 🛠️ Code Improvements
+
+1. Reorganized the codebase, upgraded to the latest Next.js, switched builds to Turbopack, and upgraded the default container Node.js version to 24.
+2. Unified Agent tool declarations and execution.
+3. Moved uploaded file content from the system prompt to the user message to improve cache hits.
+4. Migrated server-side environment loading to `@t3-oss/env-core` for stronger type validation and centralized environment variable access across services.
+5. Upgraded engineering tools including ESLint, Prettier, textlint, and lint-staged.
