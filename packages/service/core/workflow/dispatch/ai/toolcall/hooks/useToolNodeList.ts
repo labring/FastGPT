@@ -18,12 +18,15 @@ type RuntimeNode = DispatchToolModuleProps['runtimeNodes'][number];
  * 旧配置只保存 selectedTypeIndex，索引 0 可能只是旧版默认手动输入；需要结合当前工具
  * 定义的 isToolParam 决定是否迁移为 Agent 生成，同时保留用户已经明确保存的选择。
  */
-const normalizeToolInput = (input: FlowNodeInputItemType) => {
+const normalizeToolInput = (
+  input: FlowNodeInputItemType,
+  allowLegacyToolDescriptionFallback: boolean
+) => {
   const selectedType = getSavedToolInputSelectedType({
     savedInput: input,
     defaultInput: input,
     allowUserChatInputAgentGenerated: true,
-    allowLegacyToolDescriptionFallback: true
+    allowLegacyToolDescriptionFallback
   });
   const hasSavedSelection =
     input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
@@ -49,13 +52,23 @@ const normalizeToolInput = (input: FlowNodeInputItemType) => {
   );
 };
 
+const shouldUseLegacySystemToolInputMode = (tool: RuntimeNode) =>
+  Boolean(
+    tool.toolConfig?.systemTool ||
+      tool.pluginId?.startsWith('systemTool-') ||
+      tool.pluginId?.startsWith('commercial-')
+  );
+
 const isRunnableToolNode = (tool?: RuntimeNode): tool is RuntimeNode => {
   if (!tool) return false;
+  const allowLegacyToolDescriptionFallback = shouldUseLegacySystemToolInputMode(tool);
 
   const configStatus = getToolConfigStatus({
     tool: {
       ...tool,
-      inputs: tool.inputs.map(normalizeToolInput)
+      inputs: tool.inputs.map((input) =>
+        normalizeToolInput(input, allowLegacyToolDescriptionFallback)
+      )
     }
   });
   return configStatus.status !== 'invalid' && configStatus.status !== 'waitingForConfig';
@@ -80,7 +93,12 @@ export const useToolNodeList = ({
     .map((nodeId) => runtimeNodes.find((item) => item.nodeId === nodeId))
     .filter(isRunnableToolNode)
     .map<ToolNodeItemType>((tool) => {
-      const inputs = tool.inputs.map(normalizeToolInput);
+      const allowLegacyToolDescriptionFallback = shouldUseLegacySystemToolInputMode(tool);
+      const inputs = tool.inputs.map((input) =>
+        normalizeToolInput(input, allowLegacyToolDescriptionFallback)
+      );
+      // schema 构建和执行共享同一 runtime node，兼容归一化需要同步到运行态。
+      tool.inputs = inputs;
       const toolParams: FlowNodeInputItemType[] = [];
       let jsonSchema = tool.jsonSchema;
 

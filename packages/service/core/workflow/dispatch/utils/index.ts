@@ -532,8 +532,7 @@ export const rewriteRuntimeWorkFlow = async ({
         const selectedType = getSavedToolInputSelectedType({
           savedInput,
           defaultInput: input,
-          allowUserChatInputAgentGenerated: true,
-          allowLegacyToolDescriptionFallback: true
+          allowUserChatInputAgentGenerated: true
         });
         const renderTypeList = selectedType
           ? Array.from(

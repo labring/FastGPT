@@ -28,8 +28,7 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
       const selectedType = getSavedToolInputSelectedType({
         savedInput: sourceInput,
         defaultInput: input,
-        allowUserChatInputAgentGenerated: true,
-        allowLegacyToolDescriptionFallback: true
+        allowUserChatInputAgentGenerated: true
       });
       const normalizedInput = initToolInputTypeByDefaultMode(input, {
         forceDefaultMode: selectedType === undefined,
