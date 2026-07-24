@@ -103,8 +103,8 @@ catalogs:
       specifier: 3.4.0
       version: 3.4.0
     hono:
-      specifier: 4.12.25
-      version: 4.12.25
+      specifier: 4.12.27
+      version: 4.12.27
     i18next:
       specifier: 23.16.8
       version: 23.16.8
@@ -1185,7 +1185,7 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: ^1.13.7
-        version: 1.19.9(hono@4.12.25)
+        version: 1.19.9(hono@4.12.27)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -1209,7 +1209,7 @@ importers:
         version: 17.4.2
       hono:
         specifier: 'catalog:'
-        version: 4.12.25
+        version: 4.12.27
       moment:
         specifier: ^2.30.1
         version: 2.30.1
@@ -1380,10 +1380,10 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^1.13.7
-        version: 1.19.9(hono@4.12.25)
+        version: 1.19.9(hono@4.12.27)
       hono:
         specifier: 'catalog:'
-        version: 4.12.25
+        version: 4.12.27
       undici:
         specifier: 'catalog:'
         version: 7.28.0
@@ -8805,8 +8805,8 @@ packages:
     resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
-  hono@4.12.25:
-    resolution: {integrity: sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ==}
+  hono@4.12.27:
+    resolution: {integrity: sha512-1yrb/+w6HWQJrUCLkJ2IF5jNIPvvFkblV5RNOYl6bV+OA6p9GLcMpHFFGTosSvHvcAUibuUukRqhlYI4z32C7Q==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -15955,9 +15955,9 @@ snapshots:
     dependencies:
       hono: 4.11.7
 
-  '@hono/node-server@1.19.9(hono@4.12.25)':
+  '@hono/node-server@1.19.9(hono@4.12.27)':
     dependencies:
-      hono: 4.12.25
+      hono: 4.12.27
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -22812,7 +22812,7 @@ snapshots:
 
   hono@4.11.7: {}
 
-  hono@4.12.25: {}
+  hono@4.12.27: {}
 
   hookable@5.5.3: {}
 
