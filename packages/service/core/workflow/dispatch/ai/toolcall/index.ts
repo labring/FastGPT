@@ -18,6 +18,7 @@ import {
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/interface/runtime';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import {
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreToolCallNodeResponse,
@@ -116,6 +117,16 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       runningUserInfo,
       useSandbox
     });
+
+    if (useSandbox) {
+      await ensureWorkflowSandboxReadyForUse({
+        workflowStreamResponse: props.workflowStreamResponse,
+        sourceType: runningAppInfo.sourceType,
+        sourceId: runningAppInfo.sourceId,
+        userId: props.uid,
+        chatId: props.chatId
+      });
+    }
 
     // 初始化沙盒
     const sandboxClient = useSandbox

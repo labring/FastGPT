@@ -19,20 +19,14 @@ import { getLLMModel } from '../../../../ai/model';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
-import {
-  ensureAgentSandboxRuntime,
-  streamAgentSandboxInitStatus,
-  streamAgentSandboxUpgradeStatus,
-  type AgentSandboxPrepareAction
-} from './sub/sandbox';
+import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import {
-  buildSandboxClientQueryFromChatSource,
   assertSandboxAvailable,
-  ensureAppSandboxRuntimeReady,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/interface/runtime';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import {
   buildAgentLoopCoreInput,
@@ -195,28 +189,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     if (effectiveUseAgentSandbox) {
-      if (runningAppInfo.sourceType === ChatSourceTypeEnum.app) {
-        const sandboxQuery = buildSandboxClientQueryFromChatSource({
-          sourceType: runningAppInfo.sourceType,
-          sourceId: runningAppInfo.sourceId,
-          userId: uid,
-          chatId
-        });
-        await ensureAppSandboxRuntimeReady({
-          query: sandboxQuery,
-          onUpgrade: () =>
-            streamAgentSandboxUpgradeStatus({
-              workflowStreamResponse,
-              sandboxId: sandboxQuery.sandboxId
-            })
-        });
-      }
-
-      streamAgentSandboxInitStatus({
+      await ensureWorkflowSandboxReadyForUse({
         workflowStreamResponse,
         sourceType: runningAppInfo.sourceType,
         sourceId: runningAppInfo.sourceId,
-        userId: uid
+        userId: uid,
+        chatId
       });
     }
 
