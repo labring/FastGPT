@@ -1,5 +1,5 @@
 ---
-title: 'V4.15.4 (In Progress)'
+title: 'V4.15.4'
 description: 'FastGPT V4.15.4 Release Notes'
 ---
 
@@ -14,6 +14,7 @@ production; local development can use `http://localhost:3000`.
 ```bash
 FE_DOMAIN=https://fastgpt.example.com
 ```
+
 ### MongoDB Index Synchronization Changes
 
 Starting with V4.15.4, `SYNC_INDEX` is deprecated and replaced by `MONGO_DEPRECATE_INDEX`. The new variable controls whether indexes explicitly marked as deprecated by a schema are removed and defaults to `true`. Setting it to `false` skips only deprecated-index cleanup; missing current schema indexes are still created.
@@ -45,6 +46,7 @@ Setting `MONGO_DEPRECATE_INDEX=false` skips deprecated-index cleanup that may be
 ## ⚙️ Improvements
 
 1. Added Workflow file context management to reduce duplicate URL signing and address potential security issues.
+2. Improved the thinking icon animation.
 
 ## 🐛 Fixes
 
@@ -52,3 +54,6 @@ Setting `MONGO_DEPRECATE_INDEX=false` skips deprecated-index cleanup that may be
 2. Fixed an issue where plain-text tool responses in full run details could be incorrectly parsed as Markdown, causing formatting issues.
 3. Fixed an issue where switching the embedding model triggered training but did not rebuild vectors for existing data.
 4. Fixed MinIO prefix-based bulk deletion failures caused by the XML entity expansion limit and added request timeout protection.
+5. Fixed bank account validation for enterprise verification.
+6. Fixed inconsistencies between the Agent V2 tool list and its prompt.
+7. Fixed syntax errors in deployment script `.yaml` files.
