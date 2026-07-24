@@ -44,7 +44,7 @@ catalog:
   '@xterm/addon-fit': ^0.10.0
   '@xterm/xterm': ^5.5.0
   ahooks: ^3.9.5
-  axios: ^1.16.0
+  axios: ^1.18.0
   chalk: ^5.6.2
   date-fns: ^3.6.0
   dayjs: 1.11.19
