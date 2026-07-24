@@ -30,7 +30,8 @@ export const authMcp = async ({
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
-  if (!permission.hasManagePer && !isRoot && tmbId !== String(mcp.tmbId)) {
+  // MCP 发布项与个人 APIKey 一样只归创建成员管理。
+  if (tmbId !== String(mcp.tmbId)) {
     return Promise.reject(TeamErrEnum.unPermission);
   }
 

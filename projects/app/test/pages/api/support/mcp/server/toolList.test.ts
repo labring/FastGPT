@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import {
   callMcpServerTool,
   pluginNodes2InputSchema,
@@ -17,6 +17,7 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { failChatRound, finalizeChatRound } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -178,9 +179,16 @@ describe('toolList', () => {
 });
 
 describe('callMcpServerTool', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('returns workflowTool pluginOutput using the same value source as main', async () => {
     vi.mocked(MongoMcpKey.findOne).mockReturnValue({
       lean: () => ({
+        teamId: 'team-id',
+        tmbId: 'publisher-tmb-id',
+        authProxy: false,
         apps: [
           {
             appId: 'app-id',
@@ -255,19 +263,72 @@ describe('callMcpServerTool', () => {
       })
     ).resolves.toBe(JSON.stringify({ result: 'plugin output value' }));
 
+    expect(authAppByTmbId).toHaveBeenCalledWith({
+      tmbId: 'publisher-tmb-id',
+      appId: 'app-id',
+      per: expect.any(Number)
+    });
+    expect(getRunningUserInfoByTmbId).toHaveBeenCalledWith('publisher-tmb-id');
+
     expect(dispatchWorkFlow).toHaveBeenCalledWith(
       expect.objectContaining({
         chatId: 'prepared-mcp-chat-id',
-        responseChatItemId: 'prepared-mcp-response-id'
+        responseChatItemId: 'prepared-mcp-response-id',
+        uid: 'publisher-tmb-id'
       })
     );
     expect(finalizeChatRound).toHaveBeenCalledWith(
       expect.objectContaining({
         chatId: 'prepared-mcp-chat-id',
+        tmbId: 'publisher-tmb-id',
         aiContent: expect.objectContaining({
           dataId: 'prepared-mcp-response-id'
         })
       })
     );
+  });
+
+  it('does not dispatch when the effective member has no app read permission', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({
+        teamId: 'team-id',
+        tmbId: 'publisher-tmb-id',
+        authProxy: false,
+        apps: [
+          {
+            appId: 'app-id',
+            toolName: 'private_tool',
+            description: 'private tool'
+          }
+        ]
+      })
+    } as any);
+    vi.mocked(MongoApp.find).mockReturnValue({
+      lean: () => [
+        {
+          _id: 'app-id',
+          name: 'Private App',
+          type: AppTypeEnum.workflow,
+          teamId: 'team-id',
+          tmbId: 'app-owner-tmb-id'
+        }
+      ]
+    } as any);
+    vi.mocked(authAppByTmbId).mockRejectedValue(new Error('unAuthApp'));
+
+    await expect(
+      callMcpServerTool({
+        key: 'mcp-key',
+        toolName: 'private_tool',
+        inputs: {}
+      })
+    ).rejects.toThrow('unAuthApp');
+
+    expect(authAppByTmbId).toHaveBeenCalledWith({
+      tmbId: 'publisher-tmb-id',
+      appId: 'app-id',
+      per: expect.any(Number)
+    });
+    expect(dispatchWorkFlow).not.toHaveBeenCalled();
   });
 });

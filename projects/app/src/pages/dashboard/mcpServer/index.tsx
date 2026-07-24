@@ -136,6 +136,7 @@ const McpServer = () => {
                                 setEditMcp({
                                   id: mcp._id,
                                   name: mcp.name,
+                                  authProxy: mcp.authProxy,
                                   apps: mcp.apps
                                 })
                               }

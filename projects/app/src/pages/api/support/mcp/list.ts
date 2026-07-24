@@ -11,18 +11,13 @@ async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType<any>
 ): Promise<McpListResponseType> {
-  const { teamId, tmbId, permission } = await authUserPer({
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
     authApiKey: true
   });
 
-  const list = await (async () => {
-    if (permission.hasManagePer) {
-      return await MongoMcpKey.find({ teamId }).lean().sort({ _id: -1 });
-    }
-    return await MongoMcpKey.find({ teamId, tmbId }).lean().sort({ _id: -1 });
-  })();
+  const list = await MongoMcpKey.find({ teamId, tmbId }).lean().sort({ _id: -1 });
 
   return McpListResponseSchema.parse(list);
 }
