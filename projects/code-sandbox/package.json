@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@fastgpt-sdk/otel": "workspace:*",
-    "@hono/node-server": "^1.13.7",
+    "@hono/node-server": "^2.0.10",
     "@fastgpt/global": "workspace:*",
     "@t3-oss/env-core": "catalog:",
     "acorn": "^8.15.0",
