@@ -415,7 +415,7 @@ const List = ({
             router.push({ query: { ...router.query, parentId: skill._id } });
           } else {
             if (isSkillReady && guardSkillSandboxOperation && !guardSkillSandboxOperation()) return;
-            router.push(`/dashboard/skill/detail?skillId=${skill._id}`);
+            router.push(`/skill/detail?skillId=${skill._id}`);
           }
         }}
       >

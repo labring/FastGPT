@@ -5,7 +5,7 @@ import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 export type SkillSelectItemType = ListSkillsResponse['list'][number];
-export type SkillSelectNavItemType = { id: string; name: string };
+export type SkillSelectNavItemType = { id: string; name: string; hasWritePer: boolean };
 
 /**
  * 维护 Skill 选择弹窗的数据源。
@@ -17,8 +17,14 @@ export const useSkillSelectData = () => {
   const [searchKey, setSearchKey] = useState('');
   const [navStack, setNavStack] = useState<SkillSelectNavItemType[]>([]);
 
+  // fetchParentId 与 parentId 根目录语义不同，故分别维护：
+  // - fetchParentId（根目录为 ''）是 getSkillList 的入参约定；
+  // - parentId（根目录为 null，ParentIdType）是文件夹模型 / 创建·导入弹窗的入参约定。
   const fetchParentId = navStack.length > 0 ? navStack[navStack.length - 1].id : '';
   const parentId: ParentIdType = fetchParentId || null;
+  // 当前所在文件夹的写权限（根目录为 null，由调用方回退到团队级创建权限）。
+  const currentFolderHasWritePer =
+    navStack.length > 0 ? navStack[navStack.length - 1].hasWritePer : null;
 
   const {
     data: skillList = [],
@@ -42,7 +48,10 @@ export const useSkillSelectData = () => {
   );
 
   const onEnterFolder = useCallback((item: SkillSelectItemType) => {
-    setNavStack((prev) => [...prev, { id: item._id, name: item.name }]);
+    setNavStack((prev) => [
+      ...prev,
+      { id: item._id, name: item.name, hasWritePer: item.permission.hasWritePer }
+    ]);
     setSearchKey('');
   }, []);
 
@@ -70,6 +79,7 @@ export const useSkillSelectData = () => {
     setSearchKey,
     paths,
     parentId,
+    currentFolderHasWritePer,
     refreshSkillList,
     onEnterFolder,
     onUpdateParentId
