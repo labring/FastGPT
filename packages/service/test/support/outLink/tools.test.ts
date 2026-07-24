@@ -1,7 +1,58 @@
 import { describe, expect, it } from 'vitest';
 import { Readable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
-import { createOutLinkFileLimitStream } from '@fastgpt/service/support/outLink/tools';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  citeOutLinkQuery,
+  composeOutLinkQuery,
+  createOutLinkFileLimitStream
+} from '@fastgpt/service/support/outLink/tools';
+
+describe('outLink query composition', () => {
+  const parentFile = {
+    type: ChatFileTypeEnum.image,
+    name: 'parent.png',
+    url: 'https://example.com/parent.png'
+  };
+  const currentFile = {
+    type: ChatFileTypeEnum.file,
+    name: 'current.txt',
+    url: 'https://example.com/current.txt'
+  };
+
+  it('merges cited text and keeps files', () => {
+    expect(
+      citeOutLinkQuery([
+        { text: { content: 'parent line 1' } },
+        { file: parentFile },
+        { text: { content: 'parent line 2' } }
+      ])
+    ).toEqual([
+      { text: { content: '<Cite>parent line 1\nparent line 2</Cite>' } },
+      { file: parentFile }
+    ]);
+  });
+
+  it('composes one text item followed by files in query order', () => {
+    expect(
+      composeOutLinkQuery(
+        citeOutLinkQuery([{ text: { content: 'parent' } }, { file: parentFile }]),
+        [{ text: { content: 'current' } }, { file: currentFile }]
+      )
+    ).toEqual([
+      { text: { content: '<Cite>parent</Cite>\ncurrent' } },
+      { file: parentFile },
+      { file: currentFile }
+    ]);
+  });
+
+  it('omits empty text and keeps a file-only citation', () => {
+    expect(citeOutLinkQuery([{ text: { content: '' } }, { file: parentFile }])).toEqual([
+      { file: parentFile }
+    ]);
+    expect(composeOutLinkQuery([], [{ text: { content: '' } }])).toEqual([]);
+  });
+});
 
 describe('createOutLinkFileLimitStream', () => {
   it('forwards chunks without changing their order or content', async () => {
