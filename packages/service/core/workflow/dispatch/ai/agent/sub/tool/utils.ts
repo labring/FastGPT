@@ -585,6 +585,10 @@ export const getAgentRuntimeTools = async ({
           toolNode.toolConfig = tool.toolConfig;
         }
 
+        const allowLegacyToolDescriptionFallback =
+          toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+          idSource === AppToolSourceEnum.systemTool ||
+          idSource === AppToolSourceEnum.commercial;
         const savedInputConfigMap = new Map((tool.inputs ?? []).map((input) => [input.key, input]));
         toolNode.inputs = initToolInputsTypeByDefaultMode(
           toolNode.inputs.map((input) => {
@@ -594,7 +598,7 @@ export const getAgentRuntimeTools = async ({
               savedInput,
               defaultInput: input,
               allowUserChatInputAgentGenerated: true,
-              allowLegacyToolDescriptionFallback: true
+              allowLegacyToolDescriptionFallback
             });
             const renderTypeList = selectedType
               ? Array.from(
