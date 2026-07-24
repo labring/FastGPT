@@ -31,6 +31,8 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { useToolNodeList } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList';
+import { updateAgentLoopCoreWorkflowToolInputValue } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
@@ -945,6 +947,76 @@ describe('rewriteRuntimeWorkFlow', () => {
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
     expect(nodes.length).toBe(originalNodesLen);
     expect(edges.length).toBe(originalEdgesLen);
+  });
+
+  it('should restore legacy workflow tool params before runtime configuration checks', async () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const workflowToolNode = makeNode('workflow-tool', FlowNodeTypeEnum.pluginModule, {
+      pluginId: '507f1f77bcf86cd799439011',
+      name: 'Legacy workflow tool',
+      inputs: [
+        {
+          key: 'text',
+          label: 'text',
+          valueType: 'string',
+          required: true,
+          value: '',
+          selectedTypeIndex: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          toolDescription: 'text'
+        },
+        {
+          key: 'text2',
+          label: 'text2',
+          valueType: 'string',
+          value: '',
+          selectedTypeIndex: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    });
+    const nodes = [toolCallNode, workflowToolNode];
+    const edges = [
+      makeEdge('tool-call', 'workflow-tool', {
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    const tools = useToolNodeList({
+      nodeId: 'tool-call',
+      runtimeNodes: nodes,
+      runtimeEdges: edges
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].toolParams).toEqual([
+      expect.objectContaining({
+        key: 'text',
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.reference
+        ]
+      })
+    ]);
+    expect(workflowToolNode.inputs.find((input) => input.key === 'text2')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      selectedTypeIndex: 0
+    });
+
+    const runtimeInputs = updateAgentLoopCoreWorkflowToolInputValue({
+      params: {
+        text: 'generated text',
+        text2: 'ignored model value'
+      },
+      inputs: workflowToolNode.inputs
+    });
+    expect(runtimeInputs.find((input) => input.key === 'text')?.value).toBe('generated text');
+    expect(runtimeInputs.find((input) => input.key === 'text2')?.value).toBe('');
   });
 
   it('should handle systemTool toolSet nodes', async () => {

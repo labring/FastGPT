@@ -41,6 +41,7 @@ import {
   initToolInputsTypeByDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -497,6 +498,7 @@ export const formatHttpError = (error: any) => {
  * 重写 runtime workflow 中的工具相关节点配置。
  *
  * 该函数会原地修改 nodes 和 edges：
+ * - 将旧工作流工具的 toolDescription 默认方式升级为运行时 selectedType。
  * - 将 ToolSet 节点展开为具体 Tool 节点，并把原来指向 ToolSet 的边改接到子工具节点。
  * - 为 MCP/HTTP Tool 节点补充原始 jsonSchema 和描述，供模型 tool call 生成参数时使用。
  */
@@ -511,6 +513,16 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
+  // 旧工作流工具通过 toolDescription 标记 AI 参数。运行前统一升级，供配置校验、schema 和执行复用。
+  nodes.forEach((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.pluginModule) return;
+
+    node.inputs = initToolInputsTypeByDefaultMode(
+      normalizeWorkflowToolInputsDefaultMode(node.inputs),
+      { allowUserChatInputAgentGenerated: true }
+    );
+  });
+
   const mergeToolNodeInputs = ({
     node,
     jsonSchema,
