@@ -1871,8 +1871,8 @@ importers:
   sdk/sandbox-adapter:
     dependencies:
       '@alibaba-group/opensandbox':
-        specifier: ^0.1.5
-        version: 0.1.6
+        specifier: ^0.1.10
+        version: 0.1.10
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -1932,8 +1932,8 @@ importers:
 
 packages:
 
-  '@alibaba-group/opensandbox@0.1.6':
-    resolution: {integrity: sha512-mZ2Q2qXNC0dgctoPIlcotnlPSJ1ODMG4DKQ3AA2lTO4ZoC/vWU3CzSL5pNEU7hakfMOotQiZVxunNItVGY4W8w==}
+  '@alibaba-group/opensandbox@0.1.10':
+    resolution: {integrity: sha512-/hH54IZ5xC+gfM0t7+7JGX1gKRe5o/KZrTEK3CbJNlbhI0GntT2DsEVtdcpT0sf9j+/mVm9H5DKtgLMuegd7XQ==}
     engines: {node: '>=20'}
 
   '@alicloud/credentials@2.4.5':
@@ -14004,10 +14004,6 @@ packages:
   undici-types@7.8.0:
     resolution: {integrity: sha512-9UJ2xGDvQ43tYyVMpuHlsgApydB8ZKfVYTsLDhXkFL/6gfkp+U8xTGdh8pMJv1SpZna0zxG1DwsKZsreLbXBxw==}
 
-  undici@7.25.0:
-    resolution: {integrity: sha512-xXnp4kTyor2Zq+J1FfPI6Eq3ew5h6Vl0F/8d9XU5zZQf1tX9s2Su1/3PiMmUANFULpmksxkClamIZcaUqryHsQ==}
-    engines: {node: '>=20.18.1'}
-
   undici@7.28.0:
     resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
     engines: {node: '>=20.18.1'}
@@ -14783,10 +14779,10 @@ packages:
 
 snapshots:
 
-  '@alibaba-group/opensandbox@0.1.6':
+  '@alibaba-group/opensandbox@0.1.10':
     dependencies:
       openapi-fetch: 0.14.1
-      undici: 7.25.0
+      undici: 7.28.0
 
   '@alicloud/credentials@2.4.5':
     dependencies:
@@ -30220,8 +30216,6 @@ snapshots:
 
   undici-types@7.8.0: {}
 
-  undici@7.25.0: {}
-
   undici@7.28.0: {}
 
   unescape@1.0.1:
@@ -30398,7 +30392,7 @@ snapshots:
       mime-types: 2.1.35
       qs: 6.15.2
       type-fest: 4.41.0
-      undici: 7.25.0
+      undici: 7.28.0
       ylru: 2.0.0
 
   use-callback-ref@1.3.3(@types/react@18.3.1)(react@18.3.1):

@@ -92,6 +92,12 @@ export const serviceEnv = createEnv({
       description:
         'Agent sandbox 磁盘大小基准（MB）。冷归档包上限等于该值，Skill 包和 IDE 单文件上限按该值的一半四舍五入计算。'
     }),
+    AGENT_SANDBOX_SUSPEND_MINUTES: IntSchema.min(1).default(60).meta({
+      description: 'Agent sandbox 持续未活跃多少分钟后自动暂停'
+    }),
+    AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: IntSchema.min(1).default(7).meta({
+      description: '已暂停的 Agent sandbox 持续未活跃多少天后自动归档'
+    }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
       description: 'Agent sandbox entrypoint 执行超时时间（秒）'

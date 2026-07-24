@@ -5,6 +5,8 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
   AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
+  AGENT_SANDBOX_SUSPEND_MINUTES: process.env.AGENT_SANDBOX_SUSPEND_MINUTES,
+  AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: process.env.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
@@ -32,6 +34,11 @@ describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
+    vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', originalEnv.AGENT_SANDBOX_SUSPEND_MINUTES);
+    vi.stubEnv(
+      'AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS',
+      originalEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
+    );
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
@@ -208,6 +215,24 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', '333');
     const customEnv = await importServiceEnv();
     expect(customEnv.serviceEnv.AGENT_SANDBOX_DISK_MB).toBe(333);
+  });
+
+  it('validates Agent Sandbox lifecycle thresholds during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', undefined);
+    vi.stubEnv('AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES).toBe(60);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS).toBe(7);
+
+    vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', '90');
+    vi.stubEnv('AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS', '14');
+    const customEnv = await importServiceEnv();
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES).toBe(90);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS).toBe(14);
   });
 
   it('配置 sealosdevbox 后缺少运行镜像会阻止启动', async () => {

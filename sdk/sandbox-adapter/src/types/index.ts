@@ -3,6 +3,7 @@ export type {
   BackgroundExecution,
   ExecuteOptions,
   ExecuteResult,
+  ExecuteStreamOptions,
   OutputMessage,
   StreamHandlers
 } from './execution';
@@ -31,6 +32,7 @@ export type {
   NetworkRule,
   NetworkRuleAction,
   ResourceLimits,
+  SandboxCapabilities,
   SandboxCreateSpec,
   SandboxEndpointSelector,
   SandboxEnsureRunningOptions,

@@ -380,9 +380,7 @@ export class SandboxClient {
     });
   }
 
-  /**
-   * 暂停当前运行态 client 对应的远端资源，并把实例状态标记为 stopped。
-   */
+  /** 按 provider stop 策略停止远端资源，并把本地实例状态标记为 stopped。 */
   async stop() {
     await stopSandboxResource({
       provider: this.providerName,

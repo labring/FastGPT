@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  createSandbox: vi.fn((provider: string, connectionConfig: unknown, createConfig?: unknown) => ({
-    provider,
-    connectionConfig,
-    createConfig
-  }))
+  createSandbox: vi.fn(
+    (config: { provider: string; connectionConfig: unknown; createConfig?: unknown }) => config
+  )
 }));
 
 vi.mock('@fastgpt/service/env', () => ({
@@ -49,11 +47,28 @@ describe('sandbox provider adapter', () => {
           sandboxId: 'unknown-sandbox'
         }
       )
-    ).toThrow('Unsupported sandbox provider: [object Object]');
+    ).toThrow('Unsupported sandbox provider');
+  });
+
+  it('requires an image when opensandbox create config is present', () => {
+    expect(() =>
+      buildSandboxAdapter(
+        {
+          provider: 'opensandbox',
+          baseUrl: 'http://opensandbox.local',
+          apiKey: 'api-key',
+          runtime: 'docker'
+        },
+        {
+          sandboxId: 'opensandbox-session-1',
+          createConfig: { env: { A: 'B' } }
+        }
+      )
+    ).toThrow('OpenSandbox create config requires an image');
   });
 
   it('builds opensandbox adapter with session id and create config', () => {
-    const result = buildSandboxAdapter(
+    buildSandboxAdapter(
       {
         provider: 'opensandbox',
         baseUrl: 'http://opensandbox.local',
@@ -69,24 +84,23 @@ describe('sandbox provider adapter', () => {
       }
     );
 
-    expect(result.provider).toBe('opensandbox');
-    expect(mocks.createSandbox).toHaveBeenCalledWith(
-      'opensandbox',
-      expect.objectContaining({
+    expect(mocks.createSandbox).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      connectionConfig: expect.objectContaining({
         baseUrl: 'http://opensandbox.local',
         apiKey: 'api-key',
         runtime: 'docker',
         sessionId: 'opensandbox-session-1',
         useServerProxy: true
       }),
-      {
+      createConfig: expect.objectContaining({
         image: { repository: 'runtime-image', tag: 'test' }
-      }
-    );
+      })
+    });
   });
 
   it('builds sealos sandbox adapter through the shared factory', () => {
-    const result = buildSandboxAdapter(
+    buildSandboxAdapter(
       {
         provider: 'sealosdevbox',
         baseUrl: 'http://sealos.local',
@@ -98,20 +112,19 @@ describe('sandbox provider adapter', () => {
       }
     );
 
-    expect(result.provider).toBe('sealosdevbox');
-    expect(mocks.createSandbox).toHaveBeenCalledWith(
-      'sealosdevbox',
-      {
+    expect(mocks.createSandbox).toHaveBeenCalledWith({
+      provider: 'sealosdevbox',
+      connectionConfig: {
         baseUrl: 'http://sealos.local',
         token: 'token',
         sandboxId: 'sealos-sandbox-1'
       },
-      { env: { A: 'B' } }
-    );
+      createConfig: expect.objectContaining({ env: { A: 'B' } })
+    });
   });
 
   it('builds runtime adapter with runtime create config', () => {
-    const result = buildRuntimeSandboxAdapter('opensandbox', 'runtime-session-1', {
+    buildRuntimeSandboxAdapter('opensandbox', 'runtime-session-1', {
       resourceLimits: { cpuCount: 1, memoryMiB: 512 },
       vmConfig: {
         volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
@@ -122,33 +135,31 @@ describe('sandbox provider adapter', () => {
       }
     });
 
-    expect(result.provider).toBe('opensandbox');
-    expect(mocks.createSandbox).toHaveBeenCalledWith(
-      'opensandbox',
-      expect.objectContaining({
+    expect(mocks.createSandbox).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      connectionConfig: expect.objectContaining({
         sessionId: 'runtime-session-1'
       }),
-      expect.objectContaining({
+      createConfig: expect.objectContaining({
         image: { repository: 'custom-runtime', tag: 'test' },
         resourceLimits: { cpuCount: 1, memoryMiB: 512 },
         volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }]
       })
-    );
+    });
   });
 
   it('builds resource adapter without runtime create config', () => {
-    const result = buildSandboxResourceAdapter({
+    buildSandboxResourceAdapter({
       provider: 'opensandbox',
       sandboxId: 'resource-session-1'
     });
 
-    expect(result.provider).toBe('opensandbox');
-    expect(mocks.createSandbox).toHaveBeenCalledWith(
-      'opensandbox',
-      expect.objectContaining({
+    expect(mocks.createSandbox).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      connectionConfig: expect.objectContaining({
         sessionId: 'resource-session-1'
       }),
-      undefined
-    );
+      createConfig: undefined
+    });
   });
 });

@@ -20,6 +20,7 @@ import {
 } from '@/web/core/skill/api';
 import { useSkillDebugChatStore } from './useSkillDebugChatStore';
 import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
+import { startRuntimeUpgradePolling } from './runtimeUpgradePolling';
 
 export enum TabEnum {
   config = 'config',
@@ -124,6 +125,7 @@ const SkillDetailContextProviderInner = ({
   const [sandboxError, setSandboxError] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<SandboxRuntimeStatusResponse>();
   const abortCtrlRef = useRef<AbortController | null>(null);
+  const runtimeRequestAbortCtrlRef = useRef<AbortController | null>(null);
   const startedSkillIdRef = useRef('');
   const runtimeRequestVersionRef = useRef(0);
   const saveAllRef = useRef<() => Promise<void>>();
@@ -246,24 +248,34 @@ const SkillDetailContextProviderInner = ({
 
   const requestRuntimeStatus = useMemoizedFn(
     async (
-      request: () => Promise<SandboxRuntimeStatusResponse>,
+      request: (abortCtrl: AbortController) => Promise<SandboxRuntimeStatusResponse>,
       onError: (error: unknown) => void
     ) => {
-      const requestVersion = runtimeRequestVersionRef.current;
+      runtimeRequestAbortCtrlRef.current?.abort();
+      const abortCtrl = new AbortController();
+      runtimeRequestAbortCtrlRef.current = abortCtrl;
+      const requestVersion = ++runtimeRequestVersionRef.current;
+
       try {
-        const status = await request();
-        if (requestVersion === runtimeRequestVersionRef.current) {
+        const status = await request(abortCtrl);
+        if (!abortCtrl.signal.aborted && requestVersion === runtimeRequestVersionRef.current) {
           await applyRuntimeStatus(status);
         }
       } catch (error) {
-        if (requestVersion === runtimeRequestVersionRef.current) onError(error);
+        if (!abortCtrl.signal.aborted && requestVersion === runtimeRequestVersionRef.current) {
+          onError(error);
+        }
+      } finally {
+        if (runtimeRequestAbortCtrlRef.current === abortCtrl) {
+          runtimeRequestAbortCtrlRef.current = null;
+        }
       }
     }
   );
 
   const checkRuntime = useMemoizedFn(() =>
     requestRuntimeStatus(
-      () => getSkillRuntimeStatus({ skillId }),
+      (abortCtrl) => getSkillRuntimeStatus({ skillId }, abortCtrl),
       (error) => {
         setSandboxError(getSandboxErrorMessage(error, t('skill:sandbox_error_title')));
         setSandboxState('failed');
@@ -275,7 +287,7 @@ const SkillDetailContextProviderInner = ({
     if (runtimeStatus?.status !== 'upgradeRequired') return;
     setRuntimeStatus({ status: 'upgrading' });
     void requestRuntimeStatus(
-      () => postUpgradeSkillRuntime({ skillId }),
+      (abortCtrl) => postUpgradeSkillRuntime({ skillId }, abortCtrl),
       (error) =>
         setRuntimeStatus({
           status: 'upgradeRequired',
@@ -287,19 +299,17 @@ const SkillDetailContextProviderInner = ({
   useEffect(() => {
     if (runtimeStatus?.status !== 'upgrading') return;
 
-    const timer = setTimeout(() => {
-      void requestRuntimeStatus(
-        () => getSkillRuntimeStatus({ skillId }),
-        (error) =>
-          setRuntimeStatus({
-            status: 'upgradeRequired',
-            lastError: getSandboxErrorMessage(error, t('skill:sandbox_runtime_upgrade_failed'))
-          })
-      );
-    }, RUNTIME_UPGRADE_POLL_INTERVAL_MS);
-
-    return () => clearTimeout(timer);
-  }, [getSandboxErrorMessage, requestRuntimeStatus, runtimeStatus?.status, skillId, t]);
+    return startRuntimeUpgradePolling({
+      intervalMs: RUNTIME_UPGRADE_POLL_INTERVAL_MS,
+      request: (abortCtrl) => getSkillRuntimeStatus({ skillId }, abortCtrl),
+      onStatus: applyRuntimeStatus,
+      onError: (error) =>
+        setRuntimeStatus({
+          status: 'upgradeRequired',
+          lastError: getSandboxErrorMessage(error, t('skill:sandbox_runtime_upgrade_failed'))
+        })
+    });
+  }, [applyRuntimeStatus, getSandboxErrorMessage, runtimeStatus?.status, skillId, t]);
 
   const startSandbox = useCallback(() => {
     if (!skillId) return;
@@ -406,6 +416,7 @@ const SkillDetailContextProviderInner = ({
   useEffect(() => {
     return () => {
       runtimeRequestVersionRef.current += 1;
+      runtimeRequestAbortCtrlRef.current?.abort();
       abortCtrlRef.current?.abort();
     };
   }, []);
