@@ -68,22 +68,14 @@ async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
     );
 
     const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
-    const [writeResult] = await sandbox.provider.writeFiles([
-      {
-        path: providerPath,
-        data: Readable.toWeb(form.getReadStream()) as ReadableStream<Uint8Array>
-      }
-    ]);
-
-    if (!writeResult || writeResult.error) {
-      return Promise.reject(
-        `Failed to upload file: ${writeResult?.error?.message || 'unknown error'}`
-      );
-    }
+    await sandbox.provider.writeFileStream(
+      providerPath,
+      Readable.toWeb(form.getReadStream()) as ReadableStream<Uint8Array>
+    );
 
     return SandboxUploadResponseSchema.parse({
       path,
-      bytesWritten: writeResult.bytesWritten || form.fileMetadata.size
+      bytesWritten: form.fileMetadata.size
     });
   } finally {
     multer.clearDiskTempFiles(filepaths);

@@ -81,6 +81,7 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
+  getAgentSandboxArchiveInactiveDays: () => 7,
   getAgentSandboxArchiveMaxBytes: () => 1024 * 1024
 }));
 

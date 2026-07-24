@@ -25,17 +25,3 @@ export function base64ToBytes(base64: string): Uint8Array {
   }
   return bytes;
 }
-
-/**
- * Encode a string to base64.
- */
-export function stringToBase64(str: string): string {
-  return btoa(str);
-}
-
-/**
- * Decode a base64 string to utf-8 string.
- */
-export function base64ToString(base64: string): string {
-  return atob(base64.trim());
-}

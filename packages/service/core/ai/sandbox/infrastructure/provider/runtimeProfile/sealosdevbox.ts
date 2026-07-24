@@ -5,7 +5,7 @@
  */
 import { serviceEnv } from '../../../../../../env';
 import type { SandboxRuntimeProfile } from './types';
-import { getSandboxSkillsRootPath, mergeStringRecord, mergeUnknownRecord } from './utils';
+import { getSandboxSkillsRootPath, mergeStringRecord } from './utils';
 import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 
 /**
@@ -32,7 +32,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
       }
 
       const env = mergeStringRecord(createConfig.env, input.env);
-      const metadata = mergeUnknownRecord(createConfig.metadata, input.metadata);
+      const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       // Sealos adapter 会把 workingDir 写入 CODEX_GATEWAY_CWD，让 exec/code-server 落在同一工作区。
       const workingDir = createConfig.workingDir ?? workDirectory;
       // upstreamID 绑定稳定 sessionId，便于 provider 侧复用/追踪同一业务运行态。
