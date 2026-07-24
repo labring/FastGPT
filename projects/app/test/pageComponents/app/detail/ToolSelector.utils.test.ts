@@ -88,5 +88,104 @@ describe('ToolSelector utils', () => {
       });
       expect(result.inputs[0]).not.toHaveProperty('isToolParam');
     });
+
+    it('should use isToolParam instead of toolDescription for a new system tool', () => {
+      const tool = {
+        ...createTool([
+          {
+            key: 'query',
+            label: 'Query',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.input,
+            selectedTypeIndex: 0,
+            isToolParam: false,
+            toolDescription: 'Search query'
+          }
+        ]),
+        pluginId: 'systemTool-search'
+      };
+
+      const result = inheritToolInputConfig({ tool });
+
+      expect(result.inputs[0]).toMatchObject({
+        selectedType: FlowNodeInputTypeEnum.input,
+        selectedTypeIndex: 0,
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+      });
+    });
+
+    it('should restore a new legacy system tool input while keeping saved selections', () => {
+      const tool = {
+        ...createTool([
+          {
+            key: 'query',
+            label: 'Query',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            toolDescription: 'Search query'
+          },
+          {
+            key: 'count',
+            label: 'Count',
+            valueType: 'number',
+            renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+            isToolParam: true,
+            toolDescription: 'Result count'
+          }
+        ]),
+        pluginId: 'systemTool-search'
+      };
+      const sourceTool = {
+        ...createTool([
+          {
+            key: 'query',
+            label: 'Query',
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ],
+            selectedType: FlowNodeInputTypeEnum.input,
+            selectedTypeIndex: 1,
+            toolDescription: 'Search query'
+          }
+        ]),
+        pluginId: 'systemTool-search'
+      };
+
+      const result = inheritToolInputConfig({ tool, sourceTool });
+
+      expect(result.inputs[0]).toMatchObject({
+        selectedType: FlowNodeInputTypeEnum.input,
+        selectedTypeIndex: 0
+      });
+      expect(result.inputs[1]).toMatchObject({
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.numberInput]
+      });
+    });
+
+    it('should not apply toolDescription fallback to MCP tools', () => {
+      const tool = {
+        ...createTool([
+          {
+            key: 'query',
+            label: 'Query',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 0,
+            toolDescription: 'Search query'
+          }
+        ]),
+        pluginId: 'mcp-app/search'
+      };
+
+      const result = inheritToolInputConfig({ tool, sourceTool: tool });
+
+      expect(result.inputs[0]).toMatchObject({
+        selectedType: FlowNodeInputTypeEnum.input,
+        selectedTypeIndex: 0,
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+      });
+    });
   });
 });

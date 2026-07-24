@@ -645,11 +645,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           inputs: [
             {
               key: 'query',
-              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
-              selectedType: FlowNodeInputTypeEnum.input,
-              selectedTypeIndex: 1,
-              isToolParam: true,
-              toolDescription: 'Query'
+              mode: 'manual'
             }
           ],
           config: {
@@ -709,7 +705,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           required: true,
           value: '',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          isToolParam: true,
           toolDescription: 'text'
         }
       ],
@@ -723,15 +718,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       value: [
         {
           id: toolAppId,
-          inputs: [
-            {
-              key: 'text',
-              value: '',
-              selectedTypeIndex: 0,
-              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-              toolDescription: 'text'
-            }
-          ],
           config: {}
         }
       ]
@@ -785,6 +771,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           required: true,
           value: '',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: false,
           toolDescription: 'Search query'
         }
       ],
@@ -797,15 +784,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       value: [
         {
           id: 'systemTool-bocha',
-          inputs: [
-            {
-              key: 'query',
-              value: '',
-              selectedTypeIndex: 0,
-              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-              toolDescription: 'Search query'
-            }
-          ],
           config: {}
         }
       ]
