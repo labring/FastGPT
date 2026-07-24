@@ -1,7 +1,7 @@
 const UnifiedCreditCodeChars = '0123456789ABCDEFGHJKLMNPQRTUWXY';
 const UnifiedCreditCodeWeights = [1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28];
 const UnifiedCreditCodePattern = /^[0-9A-HJ-NP-RTUWXY]{18}$/;
-const BankAccountPattern = /^\d{15,19}$/;
+const BankAccountPattern = /^\d+$/;
 
 export const normalizeUnifiedCreditCode = (code: string) => code.trim().toUpperCase();
 
@@ -29,7 +29,7 @@ export const isUnifiedCreditCode = (code: string) => {
 };
 
 /**
- * 校验企业银行账号：去除空格后需为 15-19 位数字。
+ * 校验企业银行账号：去除空格后需为纯数字，不限制账号长度。
  */
 export const isBankAccount = (account: string) => {
   const normalizedAccount = normalizeBankAccount(account);
