@@ -17,6 +17,7 @@ import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SkillToolSchema } from '@fastgpt/global/core/ai/skill/type';
 import {
@@ -50,6 +51,21 @@ export async function rewriteAppWorkflowToDetail({
   ownerTmbId: string;
   lang?: localeType;
 }) {
+  const allowLegacyToolDescriptionFallback = ({
+    toolId,
+    flowNodeType
+  }: {
+    toolId: string;
+    flowNodeType: FlowNodeTypeEnum;
+  }) => {
+    const { source } = splitCombineToolId(toolId);
+    return (
+      flowNodeType === FlowNodeTypeEnum.pluginModule ||
+      source === AppToolSourceEnum.systemTool ||
+      source === AppToolSourceEnum.commercial
+    );
+  };
+
   type SelectedDatasetSnapshot = Pick<SelectedDatasetType, 'datasetId'> &
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
@@ -226,14 +242,16 @@ export async function rewriteAppWorkflowToDetail({
 
       // Tool node
       if (node.pluginId) {
-        const allowLegacyToolDescriptionFallback =
-          node.flowNodeType === FlowNodeTypeEnum.pluginModule;
+        const allowLegacyFallback = allowLegacyToolDescriptionFallback({
+          toolId: node.pluginId,
+          flowNodeType: node.flowNodeType
+        });
         node.inputs = node.inputs.map((input) => {
           const selectedType = getSavedToolInputSelectedType({
             savedInput: input,
             defaultInput: input,
             allowUserChatInputAgentGenerated: true,
-            allowLegacyToolDescriptionFallback
+            allowLegacyToolDescriptionFallback: allowLegacyFallback
           });
           if (
             input.selectedType !== undefined ||
@@ -297,7 +315,7 @@ export async function rewriteAppWorkflowToDetail({
               mergeToolInputDetail({
                 previewInput: item,
                 savedInput: inputsMap.get(item.key),
-                allowLegacyToolDescriptionFallback
+                allowLegacyToolDescriptionFallback: allowLegacyFallback
               })
             );
             node.outputs = preview.outputs.map((item) => {
@@ -326,8 +344,10 @@ export async function rewriteAppWorkflowToDetail({
               const result = await loadToolNode({ id: tool.id, source: tool.source });
               if (result.success) {
                 const data = result.data!;
-                const allowLegacyToolDescriptionFallback =
-                  data.flowNodeType === FlowNodeTypeEnum.pluginModule;
+                const allowLegacyFallback = allowLegacyToolDescriptionFallback({
+                  toolId: tool.id,
+                  flowNodeType: data.flowNodeType
+                });
                 // Merge saved config back into inputs
                 const toolInputConfigMap = new Map(
                   (tool.inputs ?? []).map((input) => [input.key, input])
@@ -337,7 +357,7 @@ export async function rewriteAppWorkflowToDetail({
                     previewInput: input,
                     savedInput: toolInputConfigMap.get(input.key),
                     allowUserChatInputAgentGenerated: true,
-                    allowLegacyToolDescriptionFallback
+                    allowLegacyToolDescriptionFallback: allowLegacyFallback
                   });
 
                   return {
