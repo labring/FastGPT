@@ -204,6 +204,7 @@ const ChatBox = ({
     [sourceKey, chatId]
   );
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
+  const welcomeQuestions = useContextSelector(ChatBoxContext, (v) => v.welcomeQuestions);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
@@ -703,6 +704,7 @@ const ChatBox = ({
             ScrollData={ScrollData}
             ScrollContainerRef={ScrollContainerRef}
             welcomeText={welcomeText}
+            welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
             chatStarted={chatStarted}
             chatForm={chatForm}
             chatType={chatType}

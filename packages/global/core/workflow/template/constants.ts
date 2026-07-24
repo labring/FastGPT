@@ -7,7 +7,6 @@ import { DatasetSearchModule } from './system/datasetSearch';
 import { EmptyNode } from './system/emptyNode';
 import { HttpNode468 } from './system/http468';
 import { PluginConfigNode } from './system/pluginConfig';
-import { SystemConfigNode } from './system/systemConfig';
 import { WorkflowStart } from './system/workflowStart';
 
 import { StopToolNode } from './system/stopTool';
@@ -65,7 +64,6 @@ const systemNodes: FlowNodeTemplateType[] = [
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
-  SystemConfigNode,
   WorkflowStart,
   ...systemNodes,
   CustomFeedbackNode,

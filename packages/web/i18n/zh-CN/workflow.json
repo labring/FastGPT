@@ -258,6 +258,8 @@
   "user_form_input_description": "描述",
   "user_form_input_name": "标题",
   "user_question": "用户问题",
+  "add_welcome_question": "新增预设问题",
+  "welcome_question_placeholder": "输入预设问题",
   "var_update_array_append": "追加",
   "var_update_array_clear": "清空",
   "var_update_array_equal": "等于",
