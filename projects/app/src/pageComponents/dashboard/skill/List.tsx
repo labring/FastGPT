@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex, VStack } from '@chakra-ui/react';
+import { Box, Grid, IconButton, HStack, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -45,8 +45,8 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
+import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashboardEmptyHero';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
@@ -183,9 +183,11 @@ const RelatedAppsPopover = ({ skillId, count }: { skillId: string; count: number
 
 const List = ({
   onClickCreate,
+  onClickImport,
   guardSkillSandboxOperation
 }: {
   onClickCreate?: () => void;
+  onClickImport?: () => void;
   guardSkillSandboxOperation?: () => boolean;
 }) => {
   const { t } = useTranslation();
@@ -523,8 +525,8 @@ const List = ({
       {skills.length === 0 && !folderDetail ? (
         searchKey ? (
           <EmptyTip />
-        ) : isPc && onClickCreate ? (
-          <CreateButton onClick={onClickCreate} />
+        ) : onClickCreate && onClickImport ? (
+          <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />
         ) : (
           <Grid
             py={4}
@@ -538,7 +540,7 @@ const List = ({
             gridGap={5}
             alignItems={'stretch'}
           >
-            {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
+            <ForbiddenCreateButton />
           </Grid>
         )
       ) : (
@@ -553,7 +555,15 @@ const List = ({
           gridGap={5}
           alignItems={'stretch'}
         >
-          {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
+          {onClickCreate ? (
+            <ListCreateCard
+              onClick={onClickCreate}
+              accentColor={'#86EFAC'}
+              hoverBg={'rgba(134, 239, 172, 0.12)'}
+            />
+          ) : (
+            <ForbiddenCreateButton />
+          )}
           {renderVirtualGridItems(renderSkillCard)}
         </Grid>
       )}
@@ -616,66 +626,6 @@ const List = ({
         />
       )}
     </>
-  );
-};
-
-const CreateButton = ({ onClick }: { onClick: () => void }) => {
-  const { t } = useTranslation();
-  const [isHoverCreateButton, setIsHoverCreateButton] = useState(false);
-
-  return (
-    <Box
-      position="relative"
-      width="100%"
-      minH={'150px'}
-      overflow="hidden"
-      rounded={'sm'}
-      cursor={'pointer'}
-      onClick={onClick}
-      onMouseEnter={() => setIsHoverCreateButton(true)}
-      onMouseLeave={() => setIsHoverCreateButton(false)}
-      boxShadow={'0 4px 27.1px 0 rgba(199, 212, 233, 0.29)'}
-      userSelect={'none'}
-      mt={4}
-    >
-      <Box
-        as="img"
-        src={getWebReqUrl('/imgs/app/createButton.jpg')}
-        alt="create skill"
-        width="100%"
-        maxW="100%"
-        display="block"
-        transition="transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
-        transform={isHoverCreateButton ? 'scale(1.2) translateY(-12px)' : 'scale(1) translateY(0)'}
-      />
-      <VStack
-        position="absolute"
-        top="50%"
-        left="50%"
-        transform="translate(-50%, -50%)"
-        color="#334155"
-        fontSize="32px"
-        fontWeight="medium"
-      >
-        <Flex gap={2.5} alignItems={'center'}>
-          <MyIcon name={'core/skill/default'} w={8} />
-          {t('skill:create_your_first_skill')}
-        </Flex>
-        <Box
-          mt={4}
-          h={14}
-          w={'330px'}
-          display={'flex'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          sx={{
-            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='330' height='56'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='%237895FE' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center`
-          }}
-        >
-          <MyIcon name={'common/addLight'} w={8} color={'#7895FE'} />
-        </Box>
-      </VStack>
-    </Box>
   );
 };
 

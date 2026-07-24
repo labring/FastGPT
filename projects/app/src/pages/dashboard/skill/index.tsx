@@ -81,6 +81,10 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     ? folderDetail.permission.hasWritePer
     : userInfo?.team.permission.hasSkillCreatePer;
 
+  const handleCreateSuccess = async () => {
+    await loadSkills();
+  };
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex gap={5} flex={'1 0 0'} h={0}>
@@ -177,6 +181,15 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     }
                   : undefined
               }
+              onClickImport={
+                hasCreatePer
+                  ? () => {
+                      if (guardSkillSandboxOperation()) {
+                        setShowImportModal(true);
+                      }
+                    }
+                  : undefined
+              }
               guardSkillSandboxOperation={guardSkillSandboxOperation}
             />
           </MyBox>
@@ -193,7 +206,13 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       )}
 
       {showCreateModal && (
-        <CreateSkillModal parentId={parentId} onClose={() => setShowCreateModal(false)} />
+        <CreateSkillModal
+          parentId={parentId}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleCreateSuccess}
+          redirectToDetail
+          openDetailInNewTab
+        />
       )}
 
       {showImportModal && (
