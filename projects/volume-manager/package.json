@@ -14,7 +14,7 @@
     "pnpm": "10.x"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.7",
+    "@hono/node-server": "^2.0.10",
     "hono": "catalog:",
     "undici": "catalog:",
     "zod": "catalog:"

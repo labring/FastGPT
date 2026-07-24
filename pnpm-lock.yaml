@@ -1184,8 +1184,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/global
       '@hono/node-server':
-        specifier: ^1.13.7
-        version: 1.19.9(hono@4.12.25)
+        specifier: ^2.0.10
+        version: 2.0.10(hono@4.12.25)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -1379,8 +1379,8 @@ importers:
   projects/volume-manager:
     dependencies:
       '@hono/node-server':
-        specifier: ^1.13.7
-        version: 1.19.9(hono@4.12.25)
+        specifier: ^2.0.10
+        version: 2.0.10(hono@4.12.25)
       hono:
         specifier: 'catalog:'
         version: 4.12.25
@@ -3201,6 +3201,12 @@ packages:
   '@hono/node-server@1.19.9':
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
     engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
+
+  '@hono/node-server@2.0.10':
+    resolution: {integrity: sha512-ZcnNVhKTmyDJeg0UlnZjvM73JBsTAuhrH/J4fjwGOw59PwOW51r4J+p6CsKZWXdKSme4MFqU62CZMOsdDrU4CA==}
+    engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
 
@@ -15955,7 +15961,7 @@ snapshots:
     dependencies:
       hono: 4.11.7
 
-  '@hono/node-server@1.19.9(hono@4.12.25)':
+  '@hono/node-server@2.0.10(hono@4.12.25)':
     dependencies:
       hono: 4.12.25
 
