@@ -8,7 +8,7 @@ import {
   createS3AccessLinkService,
   encodeExpiresAtMinute,
   type S3DownloadAliasStore
-} from '@fastgpt-sdk/storage/access-link';
+} from '../../src/access-link';
 
 const baseNow = new Date('2026-01-01T00:00:00.000Z');
 const getFutureDate = (minutes: number) => new Date(baseNow.getTime() + minutes * 60_000);

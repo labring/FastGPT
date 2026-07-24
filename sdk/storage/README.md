@@ -148,14 +148,14 @@ const storage = createStorage({
 
 > 重要：当前实现状态（以代码为准）：
 > - `generatePresignedPutUrl`：**AWS S3 / MinIO / COS / OSS 已实现**。
-> - `generatePresignedGetUrl`：目前各 adapter 仍为 **未实现**（会抛 `Error('Method not implemented.')`）。
+> - `generatePresignedGetUrl`：**AWS S3 / MinIO / COS / OSS 已实现**。
 
 ### 预签名 PUT 直传示例（浏览器 / 前端）
 
 `generatePresignedPutUrl` 返回的 `metadata` 字段语义更接近“需要带上的 headers”（不同厂商前缀不同，如 `x-oss-meta-*` / `x-cos-meta-*`）。
 
 ```ts
-const { putUrl, metadata } = await storage.generatePresignedPutUrl({
+const { url: putUrl, metadata } = await storage.generatePresignedPutUrl({
   key: 'demo/hello.txt',
   expiredSeconds: 600,
   metadata: { app: 'fastgpt', purpose: 'direct-upload' }
@@ -179,11 +179,13 @@ await fetch(putUrl, {
 - **`NoSuchBucketError`**: bucket 不存在（部分 adapter 会用它包装底层错误）。
 - **`NoBucketReadPermissionError`**: bucket 无读取权限（部分 adapter 会用它包装底层错误）。
 - **`EmptyObjectError`**: 下载时对象为空（例如底层 SDK 返回 `Body` 为空）。
+- **`InvalidStorageObjectKeyError`**: key/prefix 未通过 SDK 统一预检；`reason`、`field`、`actualBytes` 和 `maxBytes` 可用于结构化处理。
 
 建议你在业务层做分层处理：可恢复错误（重试/提示权限）与不可恢复错误（配置错误/接口未实现）。
 
 ## 注意事项
 
+- **key 使用统一规范**：所有 adapter 都在远端请求前要求 1 - 850 UTF-8 bytes，拒绝前导 `/`、反斜线、连续 `//`、控制字符和 `.`/`..` 路径段；空格及 `+ # & % ?`、中文、emoji 可正常使用。
 - **按前缀删除是高危操作**：`prefix` 必须是非空字符串；强烈建议使用业务隔离前缀（例如 `team/{teamId}/`），避免误删整桶。
 - **metadata 厂商差异**：不同厂商对元数据 key 前缀/大小写/可用字符/大小限制不同，建议使用简单 ASCII key，并控制总体大小。
 - **流式下载/上传**：大文件建议使用 `Readable`，减少内存峰值。
@@ -191,10 +193,29 @@ await fetch(putUrl, {
 ## 开发与构建
 
 ```bash
-pnpm -C FastGPT/packages/storage dev
-pnpm -C FastGPT/packages/storage build
+pnpm --filter @fastgpt-sdk/storage dev
+pnpm --filter @fastgpt-sdk/storage build
+pnpm --filter @fastgpt-sdk/storage test:unit
+pnpm --filter @fastgpt-sdk/storage typecheck:test
 ```
 
+真实对象存储的统一契约测试位于 `sdk/storage/test/integration`。复制
+`sdk/storage/.env.test.example` 为 `sdk/storage/.env.test.local`，填写凭证并将对应
+`STORAGE_TEST_<PROVIDER>_ENABLED` 设置为 `true`，并配置对应的
+`STORAGE_TEST_<PROVIDER>_BUCKET` 后运行。测试桶名必须以 `fastgpt-sdk-` 开头：
+
+```bash
+pnpm --filter @fastgpt-sdk/storage test:integration
+pnpm --filter @fastgpt-sdk/storage test:integration:common
+pnpm --filter @fastgpt-sdk/storage test:integration:minio
+```
+
+集成测试分为两层：
+
+- `test/integration/common`：18 个 `IStorage` 通用契约，每个启用的 provider 都运行完全相同的用例。
+- `test/integration/minio`：11 个 MinIO 专项用例，覆盖中断运行后的桶重建、400/1000 条分页边界、URL 编码、公共策略、真实 HTTP socket 超时，以及等待响应头和读取响应体时的下载取消。
+- `test/integration/transport`：2 个无需云凭证的 OSS/COS 真实 socket 取消用例。
+
+每个 provider 使用配置中的固定专用测试桶。每次 suite 启动时，harness 会先清空并删除可能由上次失败运行遗留的同名桶，再重新创建；结束时也会清理。不要对同一组测试配置并发运行集成测试。未启用的 provider 会被跳过。
+
 发布前会执行 `prepublishOnly` 自动构建产物到 `dist/`。
-
-

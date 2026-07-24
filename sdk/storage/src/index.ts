@@ -1,6 +1,6 @@
 export { createStorage } from './factory';
-export { createVitestStorageMock } from './testing/vitestMock';
-export type { VitestStorageMock, CreateVitestStorageMockParams } from './testing/vitestMock';
+export { createVitestStorageMock } from './helper/mock';
+export type { VitestStorageMock, CreateVitestStorageMockParams } from './helper/mock';
 export type {
   IStorage,
   IStorageOptions,
@@ -35,7 +35,19 @@ export type {
   GetObjectMetadataParams,
   GetObjectMetadataResult
 } from './types';
-export { NoSuchBucketError, NoBucketReadPermissionError, EmptyObjectError } from './errors';
+export {
+  NoSuchBucketError,
+  NoBucketReadPermissionError,
+  EmptyObjectError,
+  InvalidStorageObjectKeyError
+} from './errors';
+export type { InvalidStorageObjectKeyReason } from './errors';
+export {
+  MAX_STORAGE_OBJECT_KEY_UTF8_BYTES,
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertStorageObjectPrefix
+} from './assert';
 export { AwsS3StorageAdapter } from './adapters/aws-s3.adapter';
 export { CosStorageAdapter } from './adapters/cos.adapter';
 export { MinioStorageAdapter } from './adapters/minio.adapter';

@@ -5,9 +5,23 @@ import {
   truncateFilename,
   S3_FILENAME_MAX_LENGTH,
   isS3ObjectKey,
-  getFileS3Key
+  getFileS3Key,
+  uploadImage2S3Bucket
 } from '@fastgpt/service/common/s3/utils';
 import * as stringTools from '@fastgpt/global/common/string/tools';
+
+describe('uploadImage2S3Bucket', () => {
+  it('rejects an invalid key at the FastGPT boundary before uploading', async () => {
+    await expect(
+      uploadImage2S3Bucket('private', {
+        buffer: Buffer.from('image'),
+        filename: 'image.png',
+        mimetype: 'image/png',
+        uploadKey: 'dataset//image.png'
+      })
+    ).rejects.toThrow('consecutive slashes');
+  });
+});
 
 describe('truncateFilename', () => {
   it('should return filename as-is if within max length', () => {

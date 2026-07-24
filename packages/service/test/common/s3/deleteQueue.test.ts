@@ -59,4 +59,21 @@ describe('executeS3DeleteJob', () => {
       })
     ).rejects.toThrow('Failed to delete 1 S3 object');
   });
+
+  it('throws when multi-key deletion reports failed keys so BullMQ can retry', async () => {
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: {
+          deleteObjectsByMultiKeys: vi.fn(async () => ({ keys: ['dataset/team/failed.txt'] }))
+        }
+      }
+    } as any;
+
+    await expect(
+      executeS3DeleteJob({
+        bucketName: 'fastgpt-private',
+        keys: ['dataset/team/deleted.txt', 'dataset/team/failed.txt']
+      })
+    ).rejects.toThrow('Failed to delete 1 S3 object');
+  });
 });

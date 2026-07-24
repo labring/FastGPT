@@ -31,6 +31,17 @@ import type {
 import type { Readable } from 'node:stream';
 import { camelCase, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
+import {
+  bindAbortSignalToReadable,
+  encodeObjectKeyPath,
+  throwIfStorageDownloadAborted
+} from '../utils';
+import {
+  assertStorageObjectKey,
+  assertStorageObjectKeys,
+  assertStorageObjectPrefix,
+  assertRequiredStorageObjectPrefix
+} from '../assert';
 
 export class OssStorageAdapter implements IStorage {
   protected readonly client: OSS;
@@ -61,6 +72,7 @@ export class OssStorageAdapter implements IStorage {
 
   async checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     let exists = false;
     try {
@@ -83,6 +95,7 @@ export class OssStorageAdapter implements IStorage {
 
   async getObjectMetadata(params: GetObjectMetadataParams): Promise<GetObjectMetadataResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     const result = await this.client.head(key);
 
@@ -122,6 +135,7 @@ export class OssStorageAdapter implements IStorage {
 
   async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
+    assertStorageObjectKey(key);
 
     const headers: Record<string, any> = {
       'x-oss-storage-class': 'Standard',
@@ -153,24 +167,12 @@ export class OssStorageAdapter implements IStorage {
 
   async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
     const { key, abortSignal } = params;
-
-    abortSignal?.throwIfAborted();
+    assertStorageObjectKey(key);
+    throwIfStorageDownloadAborted(abortSignal);
 
     const result = await this.client.getStream(key);
     const stream = result.stream as Readable;
-    const abortDownload = () => {
-      stream.destroy();
-    };
-
-    if (abortSignal?.aborted) {
-      abortDownload();
-      abortSignal.throwIfAborted();
-    }
-
-    abortSignal?.addEventListener('abort', abortDownload, { once: true });
-    stream.once('close', () => {
-      abortSignal?.removeEventListener('abort', abortDownload);
-    });
+    bindAbortSignalToReadable({ readable: stream, abortSignal });
 
     return {
       key,
@@ -181,6 +183,7 @@ export class OssStorageAdapter implements IStorage {
 
   async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
     const { key } = params;
+    assertStorageObjectKey(key);
 
     await this.client.delete(key);
 
@@ -192,20 +195,46 @@ export class OssStorageAdapter implements IStorage {
 
   async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
     const { keys } = params;
+    assertStorageObjectKeys(keys);
 
-    const result = await this.client.deleteMulti(keys, { quiet: true });
+    if (keys.length === 0) {
+      return {
+        bucket: this.options.bucket,
+        keys: []
+      };
+    }
+
+    // verbose 模式会返回成功删除的 key；quiet 全成功时响应为空，无法与失败区分。
+    const result = await this.client.deleteMulti(keys, { quiet: false });
+    const deletedKeys = (() => {
+      const deletedItems: unknown = result.deleted;
+      if (!Array.isArray(deletedItems)) return [];
+
+      const normalizedKeys: string[] = [];
+      for (const item of deletedItems) {
+        if (typeof item === 'string') {
+          normalizedKeys.push(item);
+          continue;
+        }
+        // ali-oss 的类型声明是 string[]，但标准 OSS XML 在运行时解析为 { Key }[]。
+        if (item && typeof item === 'object' && 'Key' in item && typeof item.Key === 'string') {
+          normalizedKeys.push(item.Key);
+          continue;
+        }
+        return [];
+      }
+      return normalizedKeys;
+    })();
 
     return {
       bucket: this.options.bucket,
-      keys: difference(keys, result.deleted ?? [])
+      keys: difference(keys, deletedKeys)
     };
   }
 
   async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
     const { prefix } = params;
-    if (!prefix) {
-      throw new Error('Prefix is required');
-    }
+    assertRequiredStorageObjectPrefix(prefix);
 
     const fails: StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
@@ -226,7 +255,7 @@ export class OssStorageAdapter implements IStorage {
       if (!listResponse.objects || listResponse.objects.length === 0) {
         return {
           bucket: this.options.bucket,
-          keys: []
+          keys: fails
         };
       }
 
@@ -247,6 +276,7 @@ export class OssStorageAdapter implements IStorage {
 
   async generatePresignedPutUrl(params: PresignedPutUrlParams): Promise<PresignedPutUrlResult> {
     const { key, expiredSeconds, metadata, contentType } = params;
+    assertStorageObjectKey(key);
 
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
@@ -285,6 +315,7 @@ export class OssStorageAdapter implements IStorage {
 
   async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
     const { key, expiredSeconds, responseContentType } = params;
+    assertStorageObjectKey(key);
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
     const url = this.client.signatureUrl(key, {
@@ -308,6 +339,8 @@ export class OssStorageAdapter implements IStorage {
 
   generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
     const { key } = params;
+    assertStorageObjectKey(key);
+    const encodedKey = encodeObjectKeyPath(key);
 
     let protocol = 'https:';
     if (!this.options.secure) {
@@ -316,9 +349,9 @@ export class OssStorageAdapter implements IStorage {
 
     let url: string;
     if (this.options.cname) {
-      url = `${protocol}//${this.options.endpoint}/${key}`;
+      url = `${protocol}//${this.options.endpoint}/${encodedKey}`;
     } else {
-      url = `${protocol}//${this.options.bucket}.${this.options.region}.aliyuncs.com/${key}`;
+      url = `${protocol}//${this.options.bucket}.${this.options.region}.aliyuncs.com/${encodedKey}`;
     }
 
     return {
@@ -330,6 +363,7 @@ export class OssStorageAdapter implements IStorage {
 
   async listObjects(params: ListObjectsParams): Promise<ListObjectsResult> {
     const { prefix } = params;
+    assertStorageObjectPrefix(prefix);
 
     let keys: StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
@@ -367,6 +401,8 @@ export class OssStorageAdapter implements IStorage {
 
   async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
     const { sourceKey, targetKey } = params;
+    assertStorageObjectKey(sourceKey, 'sourceKey');
+    assertStorageObjectKey(targetKey, 'targetKey');
 
     await this.client.copy(targetKey, sourceKey);
 

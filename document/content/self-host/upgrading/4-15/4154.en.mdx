@@ -26,3 +26,4 @@ FE_DOMAIN=https://fastgpt.example.com
 1. Fixed an issue where Chatbox displayed system tool errors during streaming responses.
 2. Fixed an issue where plain-text tool responses in full run details could be incorrectly parsed as Markdown, causing formatting issues.
 3. Fixed an issue where switching the embedding model triggered training but did not rebuild vectors for existing data.
+4. Fixed MinIO prefix-based bulk deletion failures caused by the XML entity expansion limit and added request timeout protection.

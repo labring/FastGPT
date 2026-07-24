@@ -5,7 +5,11 @@ import type { Readable } from 'node:stream';
 import { MongoS3TTL } from './models/ttl';
 import { S3Buckets } from './config/constants';
 import { S3PrivateBucket } from './buckets/private';
-import { S3Sources, type UploadImage2S3BucketParams } from './contracts/type';
+import {
+  S3Sources,
+  type UploadImage2S3BucketParams,
+  UploadImage2S3BucketParamsSchema
+} from './contracts/type';
 import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
@@ -123,7 +127,14 @@ export async function uploadImage2S3Bucket(
   bucketName: keyof typeof S3Buckets,
   params: UploadImage2S3BucketParams
 ) {
-  const { base64Img, buffer: inputBuffer, filename, mimetype, uploadKey, expiredTime } = params;
+  const {
+    base64Img,
+    buffer: inputBuffer,
+    filename,
+    mimetype,
+    uploadKey,
+    expiredTime
+  } = UploadImage2S3BucketParamsSchema.parse(params);
 
   const bucket = bucketName === 'private' ? new S3PrivateBucket() : new S3PublicBucket();
 

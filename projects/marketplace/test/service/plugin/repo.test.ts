@@ -38,6 +38,11 @@ const sdkMocks = vi.hoisted(() => ({
   parsePkg: vi.fn()
 }));
 
+const loggerMocks = vi.hoisted(() => ({
+  warning: vi.fn(),
+  error: vi.fn()
+}));
+
 vi.mock('../../../src/service/mongo/models/tool', () => ({
   MarketplaceToolIndexZodSchema: {
     parse: (value: any) => ({
@@ -66,10 +71,7 @@ vi.mock('../../../src/service/logger', () => ({
       API: 'api'
     }
   },
-  getLogger: () => ({
-    warning: vi.fn(),
-    error: vi.fn()
-  })
+  getLogger: () => loggerMocks
 }));
 
 const createIndex = ({
@@ -127,6 +129,8 @@ describe('PluginRepo', () => {
       }
     });
     sdkMocks.parsePkg.mockReset();
+    loggerMocks.warning.mockReset();
+    loggerMocks.error.mockReset();
     Reflect.deleteProperty(globalThis, 'marketplacePluginManifestCache');
   });
 
@@ -270,6 +274,29 @@ describe('PluginRepo', () => {
     );
     expect(s3Mocks.deleteObjectsByPrefixFromS3).toHaveBeenCalledWith(
       'assets/tool-a/1.0.0/old-etag/'
+    );
+  });
+
+  it('reports failed asset keys without failing a completed manifest publish', async () => {
+    const existing = createIndex({ pluginId: 'tool-a', version: '1.0.0', etag: 'old-etag' });
+    const record = createManifest(
+      createIndex({ pluginId: 'tool-a', version: '1.0.0', etag: 'new-etag' })
+    );
+    modelMocks.findOne.mockReturnValue(mockLean(existing));
+    modelMocks.updateOne.mockResolvedValue({ acknowledged: true });
+    s3Mocks.uploadJsonToS3.mockResolvedValue(undefined);
+    s3Mocks.deleteObjectsByPrefixFromS3.mockResolvedValue({
+      keys: ['assets/tool-a/1.0.0/old-etag/failed.svg']
+    });
+
+    const { PluginRepo } = await import('../../../src/service/plugin/repo');
+    await expect(new PluginRepo().publishToolManifest(record)).resolves.toBeUndefined();
+
+    expect(loggerMocks.warning).toHaveBeenCalledWith(
+      'Delete old marketplace tool assets partially failed',
+      expect.objectContaining({
+        failedKeys: ['assets/tool-a/1.0.0/old-etag/failed.svg']
+      })
     );
   });
 
