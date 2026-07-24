@@ -401,6 +401,8 @@
   "toolkit_add_resource": "Add resources",
   "toolkit_basic_config": "Basic Configuration",
   "toolkit_basic_info": "Basic Info",
+  "toolkit_batch_install": "Batch Install",
+  "toolkit_batch_install_update": "Batch Install/Update",
   "toolkit_batch_update": "Batch Update",
   "toolkit_call_points_label": "Call Points",
   "toolkit_community": "Community",

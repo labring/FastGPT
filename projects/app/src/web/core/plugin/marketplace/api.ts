@@ -25,7 +25,7 @@ export const getMarketplaceDownloadURL = (toolId: string, version?: string) =>
   });
 
 export const getMarketplaceDownloadURLs = (toolIds: string[]) =>
-  POST<string[]>('/marketplace/api/tool/getDownloadUrl', { toolIds });
+  Promise.all(toolIds.map((toolId) => getMarketplaceDownloadURL(toolId)));
 
 export const getMarketplaceToolVersions = (toolId?: string) =>
   GET<GetMarketplaceToolVersionsResponseType>('/marketplace/api/tool/versions', {

@@ -391,6 +391,8 @@
   "toolkit_add_resource": "添加資源",
   "toolkit_basic_config": "基礎配置",
   "toolkit_basic_info": "基礎資訊",
+  "toolkit_batch_install": "批次安裝",
+  "toolkit_batch_install_update": "批次安裝/更新",
   "toolkit_batch_update": "批次更新",
   "toolkit_call_points_label": "調用積分",
   "toolkit_community": "社區",

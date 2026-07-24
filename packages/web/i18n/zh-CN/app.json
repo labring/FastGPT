@@ -401,6 +401,8 @@
   "toolkit_add_resource": "添加插件",
   "toolkit_basic_config": "基础配置",
   "toolkit_basic_info": "基础信息",
+  "toolkit_batch_install": "批量安装",
+  "toolkit_batch_install_update": "批量安装/更新",
   "toolkit_batch_update": "批量更新",
   "toolkit_call_points_label": "调用积分",
   "toolkit_community": "社区",
