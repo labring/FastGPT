@@ -13,6 +13,11 @@ import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
 } from '@/web/core/workflow/workflowCheck';
+import {
+  filterSystemConfigNodes,
+  getGuideModule,
+  mergeSystemConfigNodeToChatConfig
+} from '@fastgpt/global/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
   FlowNodeOutputTypeEnum,
@@ -285,9 +290,15 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       },
       isInit?: boolean
     ) => {
-      adaptCatchError(e.nodes, e.edges);
+      const nextChatConfig = mergeSystemConfigNodeToChatConfig({
+        chatConfig: e.chatConfig ?? appDetail.chatConfig,
+        systemConfigNode: getGuideModule(e.nodes)
+      });
+      const storeNodes = filterSystemConfigNodes(e.nodes);
 
-      const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
+      adaptCatchError(storeNodes, e.edges);
+
+      const nodes = storeNodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // 有历史记录，直接用历史记录覆盖
@@ -306,7 +317,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             edges: edges,
             title: t('app:app.version_initial'),
             isSaved: true,
-            chatConfig: e.chatConfig || appDetail.chatConfig
+            chatConfig: nextChatConfig
           }
         ]);
       }
@@ -314,9 +325,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // Init memory data
       setNodes(nodes);
       setEdges(edges);
-      if (e.chatConfig) {
-        setAppDetail((state) => ({ ...state, chatConfig: e.chatConfig as AppChatConfigType }));
-      }
+      setAppDetail((state) => ({ ...state, chatConfig: nextChatConfig }));
     },
     [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
   );

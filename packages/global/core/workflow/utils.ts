@@ -29,7 +29,8 @@ import type {
   AppChatConfigType,
   AppAutoExecuteConfigType,
   AppQGConfigType,
-  AppSchemaType
+  AppSchemaType,
+  AppWelcomeConfigType
 } from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -81,47 +82,64 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
 /* node  */
 export const getGuideModule = (nodes: StoreNodeItemType[]) =>
   nodes.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
+
+const isConfigMissing = (value: unknown) => value === undefined || value === null;
+
+const getSystemConfigInputValue = <T>(guideModules: StoreNodeItemType | undefined, key: string) =>
+  guideModules?.inputs?.find((item) => item.key === key)?.value as T | undefined;
+
 export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value ?? '';
+    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.welcomeText) ?? '';
+
+  const welcomeQuestions: string[] =
+    getSystemConfigInputValue<string[]>(guideModules, NodeInputKeyEnum.welcomeQuestions) ?? [];
 
   const variables: VariableItemType[] =
-    guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value ?? [];
+    getSystemConfigInputValue<VariableItemType[]>(guideModules, NodeInputKeyEnum.variables) ?? [];
 
   // Adapt old version
-  const questionGuideVal = guideModules?.inputs?.find(
-    (item) => item.key === NodeInputKeyEnum.questionGuide
-  )?.value;
+  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
+    guideModules,
+    NodeInputKeyEnum.questionGuide
+  );
   const questionGuide: AppQGConfigType =
     typeof questionGuideVal === 'boolean'
       ? { ...defaultQGConfig, open: questionGuideVal }
       : (questionGuideVal ?? defaultQGConfig);
 
   const ttsConfig: AppTTSConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??
+    getSystemConfigInputValue<AppTTSConfigType>(guideModules, NodeInputKeyEnum.tts) ??
     defaultTTSConfig;
 
   const whisperConfig: AppWhisperConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.whisper)?.value ??
+    getSystemConfigInputValue<AppWhisperConfigType>(guideModules, NodeInputKeyEnum.whisper) ??
     defaultWhisperConfig;
 
-  const scheduledTriggerConfig: AppScheduledTriggerConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.scheduleTrigger)?.value ??
-    undefined;
+  const scheduledTriggerConfig: AppScheduledTriggerConfigType | undefined =
+    getSystemConfigInputValue<AppScheduledTriggerConfigType>(
+      guideModules,
+      NodeInputKeyEnum.scheduleTrigger
+    ) ?? undefined;
 
   const chatInputGuide: ChatInputGuideConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ??
-    defaultChatInputGuideConfig;
+    getSystemConfigInputValue<ChatInputGuideConfigType>(
+      guideModules,
+      NodeInputKeyEnum.chatInputGuide
+    ) ?? defaultChatInputGuideConfig;
 
   const instruction: string =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.instruction)?.value ?? '';
+    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.instruction) ?? '';
 
   const autoExecute: AppAutoExecuteConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.autoExecute)?.value ??
-    defaultAutoExecuteConfig;
+    getSystemConfigInputValue<AppAutoExecuteConfigType>(
+      guideModules,
+      NodeInputKeyEnum.autoExecute
+    ) ?? defaultAutoExecuteConfig;
 
   return {
     welcomeText,
+    welcomeQuestions,
     variables,
     questionGuide,
     ttsConfig,
@@ -130,6 +148,178 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     chatInputGuide,
     instruction,
     autoExecute
+  };
+};
+
+/**
+ * 将旧系统配置节点迁入 chatConfig。
+ *
+ * 只在新版字段为 undefined/null 时用旧节点补值，空字符串、空数组、false 都视为用户明确配置。
+ * 这个函数用于编辑态初始化、导入/草稿恢复和后续迁移，避免运行链路继续依赖旧节点兜底。
+ */
+export const mergeSystemConfigNodeToChatConfig = ({
+  chatConfig,
+  systemConfigNode
+}: {
+  chatConfig?: AppChatConfigType;
+  systemConfigNode?: StoreNodeItemType;
+}): AppChatConfigType => {
+  const nextChatConfig: AppChatConfigType = { ...(chatConfig ?? {}) };
+
+  const welcomeConfig: AppWelcomeConfigType = { ...(nextChatConfig.welcomeConfig ?? {}) };
+  const nodeWelcomeText = getSystemConfigInputValue<string>(
+    systemConfigNode,
+    NodeInputKeyEnum.welcomeText
+  );
+  const nodeWelcomeQuestions = getSystemConfigInputValue<string[]>(
+    systemConfigNode,
+    NodeInputKeyEnum.welcomeQuestions
+  );
+
+  if (isConfigMissing(welcomeConfig.welcomeText) && !isConfigMissing(nextChatConfig.welcomeText)) {
+    welcomeConfig.welcomeText = nextChatConfig.welcomeText;
+  }
+  if (isConfigMissing(welcomeConfig.welcomeText) && !isConfigMissing(nodeWelcomeText)) {
+    welcomeConfig.welcomeText = nodeWelcomeText;
+  }
+  if (isConfigMissing(welcomeConfig.welcomeQuestions) && !isConfigMissing(nodeWelcomeQuestions)) {
+    welcomeConfig.welcomeQuestions = nodeWelcomeQuestions;
+  }
+  if (
+    !isConfigMissing(welcomeConfig.welcomeText) ||
+    !isConfigMissing(welcomeConfig.welcomeQuestions)
+  ) {
+    nextChatConfig.welcomeConfig = welcomeConfig;
+    nextChatConfig.welcomeText = welcomeConfig.welcomeText;
+  }
+
+  const variables = getSystemConfigInputValue<VariableItemType[]>(
+    systemConfigNode,
+    NodeInputKeyEnum.variables
+  );
+  if (isConfigMissing(nextChatConfig.variables) && !isConfigMissing(variables)) {
+    nextChatConfig.variables = variables;
+  }
+
+  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
+    systemConfigNode,
+    NodeInputKeyEnum.questionGuide
+  );
+  if (isConfigMissing(nextChatConfig.questionGuide) && !isConfigMissing(questionGuideVal)) {
+    nextChatConfig.questionGuide =
+      typeof questionGuideVal === 'boolean'
+        ? { ...defaultQGConfig, open: questionGuideVal }
+        : questionGuideVal;
+  }
+
+  const ttsConfig = getSystemConfigInputValue<AppTTSConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.tts
+  );
+  if (isConfigMissing(nextChatConfig.ttsConfig) && !isConfigMissing(ttsConfig)) {
+    nextChatConfig.ttsConfig = ttsConfig;
+  }
+
+  const whisperConfig = getSystemConfigInputValue<AppWhisperConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.whisper
+  );
+  if (isConfigMissing(nextChatConfig.whisperConfig) && !isConfigMissing(whisperConfig)) {
+    nextChatConfig.whisperConfig = whisperConfig;
+  }
+
+  const scheduledTriggerConfig = getSystemConfigInputValue<AppScheduledTriggerConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.scheduleTrigger
+  );
+  if (
+    isConfigMissing(nextChatConfig.scheduledTriggerConfig) &&
+    !isConfigMissing(scheduledTriggerConfig)
+  ) {
+    nextChatConfig.scheduledTriggerConfig = scheduledTriggerConfig;
+  }
+
+  const chatInputGuide = getSystemConfigInputValue<ChatInputGuideConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.chatInputGuide
+  );
+  if (isConfigMissing(nextChatConfig.chatInputGuide) && !isConfigMissing(chatInputGuide)) {
+    nextChatConfig.chatInputGuide = chatInputGuide;
+  }
+
+  const autoExecute = getSystemConfigInputValue<AppAutoExecuteConfigType>(
+    systemConfigNode,
+    NodeInputKeyEnum.autoExecute
+  );
+  if (isConfigMissing(nextChatConfig.autoExecute) && !isConfigMissing(autoExecute)) {
+    nextChatConfig.autoExecute = autoExecute;
+  }
+
+  const instruction = getSystemConfigInputValue<string>(
+    systemConfigNode,
+    NodeInputKeyEnum.instruction
+  );
+  if (isConfigMissing(nextChatConfig.instruction) && !isConfigMissing(instruction)) {
+    nextChatConfig.instruction = instruction;
+  }
+
+  return nextChatConfig;
+};
+
+export const filterSystemConfigNodes = (nodes: StoreNodeItemType[]) =>
+  nodes.filter((item) => item.flowNodeType !== FlowNodeTypeEnum.systemConfig);
+
+/**
+ * 导出新版工作流时生成旧环境可识别的系统配置节点副本。
+ *
+ * 这个节点只用于导出文件，不应写回新版保存态；新版再次导入时会通过
+ * mergeSystemConfigNodeToChatConfig 合并回 chatConfig。
+ */
+export const chatConfigToSystemConfigNode = ({
+  chatConfig,
+  name = 'System Config'
+}: {
+  chatConfig?: AppChatConfigType;
+  name?: string;
+}): StoreNodeItemType => {
+  const welcomeConfig = chatConfig?.welcomeConfig;
+  const inputValues: { key: NodeInputKeyEnum; value: unknown }[] = [
+    {
+      key: NodeInputKeyEnum.welcomeText,
+      value: welcomeConfig?.welcomeText ?? chatConfig?.welcomeText
+    },
+    {
+      key: NodeInputKeyEnum.welcomeQuestions,
+      value: welcomeConfig?.welcomeQuestions
+    },
+    { key: NodeInputKeyEnum.variables, value: chatConfig?.variables },
+    { key: NodeInputKeyEnum.questionGuide, value: chatConfig?.questionGuide },
+    { key: NodeInputKeyEnum.tts, value: chatConfig?.ttsConfig },
+    { key: NodeInputKeyEnum.whisper, value: chatConfig?.whisperConfig },
+    { key: NodeInputKeyEnum.scheduleTrigger, value: chatConfig?.scheduledTriggerConfig },
+    { key: NodeInputKeyEnum.chatInputGuide, value: chatConfig?.chatInputGuide },
+    { key: NodeInputKeyEnum.autoExecute, value: chatConfig?.autoExecute },
+    { key: NodeInputKeyEnum.instruction, value: chatConfig?.instruction }
+  ];
+
+  return {
+    nodeId: FlowNodeTypeEnum.systemConfig,
+    name,
+    intro: '',
+    flowNodeType: FlowNodeTypeEnum.systemConfig,
+    position: {
+      x: 0,
+      y: 0
+    },
+    inputs: inputValues
+      .filter((item) => !isConfigMissing(item.value))
+      .map((item) => ({
+        key: item.key,
+        label: item.key,
+        value: item.value,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden]
+      })),
+    outputs: []
   };
 };
 
@@ -149,6 +339,7 @@ export const getAppChatConfig = ({
 }): AppChatConfigType => {
   const {
     welcomeText,
+    welcomeQuestions,
     variables,
     questionGuide,
     ttsConfig,
@@ -158,6 +349,15 @@ export const getAppChatConfig = ({
     instruction,
     autoExecute
   } = splitGuideModule(systemConfigNode);
+
+  const welcomeConfig: AppWelcomeConfigType = {
+    welcomeText:
+      storeWelcomeText ??
+      chatConfig?.welcomeConfig?.welcomeText ??
+      chatConfig?.welcomeText ??
+      welcomeText,
+    welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions ?? welcomeQuestions
+  };
 
   const config: AppChatConfigType = {
     questionGuide,
@@ -169,7 +369,8 @@ export const getAppChatConfig = ({
     autoExecute,
     ...chatConfig,
     variables: storeVariables ?? chatConfig?.variables ?? variables,
-    welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText
+    welcomeConfig,
+    welcomeText: welcomeConfig.welcomeText
   };
 
   if (!isPublicFetch) {

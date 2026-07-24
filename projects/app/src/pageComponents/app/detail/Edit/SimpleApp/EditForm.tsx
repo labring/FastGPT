@@ -11,6 +11,7 @@ import {
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
+import { useLocalStorageState } from 'ahooks';
 
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -43,6 +44,9 @@ const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const WelcomeQuestionsConfig = dynamic(
+  () => import('@/components/core/app/WelcomeQuestionsConfig')
+);
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
@@ -75,6 +79,12 @@ const EditForm = ({
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
   const isAgentSandboxEnabled = !!appForm.aiSettings.useAgentSandbox;
+  const [isWelcomeTextFolded = false, setIsWelcomeTextFolded] = useLocalStorageState<boolean>(
+    'chat-agent-welcome-text-folded',
+    {
+      defaultValue: false
+    }
+  );
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -111,6 +121,44 @@ const EditForm = ({
   const tokenLimit = useMemo(() => {
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
+
+  const welcomeQuestions = useMemo(
+    () => appForm.chatConfig.welcomeConfig?.welcomeQuestions ?? [''],
+    [appForm.chatConfig.welcomeConfig?.welcomeQuestions]
+  );
+
+  const updateWelcomeText = useCallback(
+    (value: string) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeText: value,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeText: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
+
+  const updateWelcomeQuestions = useCallback(
+    (value: string[]) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeQuestions: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
 
   // 简易应用不暴露多模态开关，文件选择能力直接跟随模型能力。
   useEffect(() => {
@@ -436,16 +484,18 @@ const EditForm = ({
         <Box {...BoxStyles}>
           <WelcomeTextConfig
             value={appForm.chatConfig.welcomeText}
+            showFoldButton
+            isFolded={isWelcomeTextFolded}
+            onToggleFold={() => setIsWelcomeTextFolded((state) => !state)}
             onChange={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  welcomeText: e.target.value
-                }
-              }));
+              updateWelcomeText(e.target.value);
             }}
           />
+          {!isWelcomeTextFolded && (
+            <Box mt={3}>
+              <WelcomeQuestionsConfig value={welcomeQuestions} onChange={updateWelcomeQuestions} />
+            </Box>
+          )}
         </Box>
 
         {/* tts */}

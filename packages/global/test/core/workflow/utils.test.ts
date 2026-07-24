@@ -5,6 +5,9 @@ import {
   getGuideModule,
   splitGuideModule,
   getAppChatConfig,
+  mergeSystemConfigNodeToChatConfig,
+  filterSystemConfigNodes,
+  chatConfigToSystemConfigNode,
   getOrInitModuleInputValue,
   getModuleInputUiField,
   pluginData2FlowNodeIO,
@@ -212,6 +215,25 @@ describe('splitGuideModule', () => {
     expect(result.welcomeText).toBe('Hello World');
   });
 
+  it('should extract welcomeQuestions from inputs', () => {
+    const guideModule: StoreNodeItemType = {
+      nodeId: 'guide',
+      flowNodeType: FlowNodeTypeEnum.systemConfig,
+      name: 'Guide',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.welcomeQuestions,
+          label: 'Welcome Questions',
+          value: ['Question 1'],
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      outputs: []
+    };
+    const result = splitGuideModule(guideModule);
+    expect(result.welcomeQuestions).toEqual(['Question 1']);
+  });
+
   it('should extract variables from inputs', () => {
     const variables = [{ key: 'var1', label: 'Variable 1', type: VariableInputEnum.input }];
     const guideModule: StoreNodeItemType = {
@@ -308,6 +330,109 @@ describe('splitGuideModule', () => {
     };
     const result = splitGuideModule(guideModule);
     expect(result.instruction).toBe('Test instruction');
+  });
+});
+
+describe('mergeSystemConfigNodeToChatConfig', () => {
+  it('should merge legacy system config node only when chatConfig field is missing', () => {
+    const guideModule: StoreNodeItemType = {
+      nodeId: 'guide',
+      flowNodeType: FlowNodeTypeEnum.systemConfig,
+      name: 'Guide',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.welcomeText,
+          label: 'Welcome',
+          value: 'Legacy welcome',
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        },
+        {
+          key: NodeInputKeyEnum.welcomeQuestions,
+          label: 'Welcome Questions',
+          value: ['Legacy question'],
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        },
+        {
+          key: NodeInputKeyEnum.variables,
+          label: 'Variables',
+          value: [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }],
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: NodeInputKeyEnum.questionGuide,
+          label: 'Question guide',
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      outputs: []
+    };
+
+    const result = mergeSystemConfigNodeToChatConfig({
+      chatConfig: {
+        welcomeConfig: {
+          welcomeText: '',
+          welcomeQuestions: []
+        },
+        variables: []
+      },
+      systemConfigNode: guideModule
+    });
+
+    expect(result.welcomeConfig).toEqual({
+      welcomeText: '',
+      welcomeQuestions: []
+    });
+    expect(result.variables).toEqual([]);
+    expect(result.questionGuide).toEqual({ ...defaultQGConfig, open: true });
+  });
+
+  it('should filter system config nodes from saved workflow', () => {
+    const nodes: StoreNodeItemType[] = [
+      {
+        nodeId: 'system',
+        flowNodeType: FlowNodeTypeEnum.systemConfig,
+        name: 'System',
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'chat',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [],
+        outputs: []
+      }
+    ];
+
+    expect(filterSystemConfigNodes(nodes)).toEqual([nodes[1]]);
+  });
+
+  it('should create legacy system config node for export from chatConfig', () => {
+    const result = chatConfigToSystemConfigNode({
+      chatConfig: {
+        welcomeConfig: {
+          welcomeText: 'New welcome',
+          welcomeQuestions: ['Question 1']
+        },
+        variables: [],
+        questionGuide: { open: false }
+      }
+    });
+
+    expect(result.flowNodeType).toBe(FlowNodeTypeEnum.systemConfig);
+    expect(result.inputs.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value).toBe(
+      'New welcome'
+    );
+    expect(
+      result.inputs.find((item) => item.key === NodeInputKeyEnum.welcomeQuestions)?.value
+    ).toEqual(['Question 1']);
+    expect(result.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value).toEqual(
+      []
+    );
+    expect(
+      result.inputs.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value
+    ).toEqual({ open: false });
   });
 });
 

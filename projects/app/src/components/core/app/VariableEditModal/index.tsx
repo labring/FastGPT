@@ -20,12 +20,16 @@ const VariableEditModal = ({
   onClose,
   variable,
   variables,
-  onChange
+  onChange,
+  isOpen = true,
+  zIndex
 }: {
   onClose: () => void;
   variable: VariableItemType;
   variables: VariableItemType[];
   onChange: (variables: VariableItemType[]) => void;
+  isOpen?: boolean;
+  zIndex?: number;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -166,11 +170,12 @@ const VariableEditModal = ({
     <MyModal
       iconSrc="core/app/simpleMode/variable"
       title={t('common:core.module.Variable Setting')}
-      isOpen={true}
+      isOpen={isOpen}
       onClose={onClose}
       maxW={['90vw', '1078px']}
       w={'100%'}
       isCentered
+      zIndex={zIndex}
     >
       <Flex h={'560px'}>
         <Stack p={8}>

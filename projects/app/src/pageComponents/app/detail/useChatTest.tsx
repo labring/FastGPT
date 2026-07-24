@@ -186,6 +186,7 @@ export const useChatTest = ({
         isReady={isReady}
         sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
         chatId={chatId}
+        boxBodyProps={{ maxW: '100%', mx: 0 }}
         features={{
           mark: true,
           autoResume: true,

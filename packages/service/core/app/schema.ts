@@ -10,6 +10,7 @@ export const AppCollectionName = 'apps';
 
 export const chatConfigType = {
   welcomeText: String,
+  welcomeConfig: Object,
   variables: Array,
   questionGuide: Object,
   ttsConfig: Object,
