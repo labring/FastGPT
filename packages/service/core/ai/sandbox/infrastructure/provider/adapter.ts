@@ -31,29 +31,66 @@ export function buildSandboxAdapter(
   }
 ): ISandbox {
   switch (providerConfig.provider) {
-    case 'opensandbox':
-      return createSandbox(
-        'opensandbox',
-        {
+    case 'opensandbox': {
+      const createConfig = (() => {
+        const spec = props.createConfig;
+        if (!spec) return undefined;
+        if (!spec.image) {
+          throw new Error('OpenSandbox create config requires an image');
+        }
+
+        return {
+          image: spec.image,
+          entrypoint: spec.entrypoint,
+          timeoutSeconds: spec.timeoutSeconds,
+          resourceLimits: spec.resourceLimits,
+          env: spec.env,
+          metadata: spec.metadata,
+          volumes: spec.volumes,
+          networkPolicy: spec.networkPolicy,
+          extensions: spec.extensions,
+          skipHealthCheck: spec.skipHealthCheck,
+          readyTimeoutSeconds: spec.readyTimeoutSeconds,
+          healthCheckPollingInterval: spec.healthCheckPollingInterval
+        };
+      })();
+
+      return createSandbox({
+        provider: 'opensandbox',
+        connectionConfig: {
           apiKey: providerConfig.apiKey,
           baseUrl: providerConfig.baseUrl,
           runtime: providerConfig.runtime,
           useServerProxy: providerConfig.useServerProxy,
           sessionId: props.sandboxId
         },
-        props.createConfig
-      );
+        createConfig
+      });
+    }
 
-    case 'sealosdevbox':
-      return createSandbox(
-        'sealosdevbox',
-        {
+    case 'sealosdevbox': {
+      const createConfig = props.createConfig
+        ? {
+            image: props.createConfig.image,
+            env: props.createConfig.env,
+            labels: props.createConfig.labels,
+            lifecycle: props.createConfig.lifecycle,
+            kubeAccess: props.createConfig.kubeAccess,
+            workingDir: props.createConfig.workingDir,
+            upstreamID: props.createConfig.upstreamID
+          }
+        : undefined;
+
+      return createSandbox({
+        provider: 'sealosdevbox',
+        connectionConfig: {
           baseUrl: providerConfig.baseUrl,
           token: providerConfig.token,
           sandboxId: props.sandboxId
         },
-        props.createConfig
-      );
+        createConfig
+      });
+    }
 
     default:
       return assertNever(providerConfig);

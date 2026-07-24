@@ -15,6 +15,13 @@ export const getAgentSandboxDiskBytes = () => toRoundedMBBytes(serviceEnv.AGENT_
 /** 获取 sandbox 冷归档包大小上限，等于磁盘基准。 */
 export const getAgentSandboxArchiveMaxBytes = getAgentSandboxDiskBytes;
 
+/** 获取运行中 sandbox 自动暂停前允许的未活跃分钟数。 */
+export const getAgentSandboxSuspendMinutes = () => serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES;
+
+/** 获取已暂停 sandbox 自动归档前允许的未活跃天数。 */
+export const getAgentSandboxArchiveInactiveDays = () =>
+  serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
+
 /** 获取 Skill 包大小上限，按磁盘基准的一半四舍五入。 */
 export const getAgentSandboxSkillMaxBytes = () =>
   toRoundedMBBytes(serviceEnv.AGENT_SANDBOX_DISK_MB * 0.5);

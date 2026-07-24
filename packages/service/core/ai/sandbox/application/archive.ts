@@ -12,7 +12,7 @@ import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import type { RedisLeaseContext } from '../../../../common/redis/lock';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
-import { getAgentSandboxArchiveMaxBytes } from '../config';
+import { getAgentSandboxArchiveInactiveDays, getAgentSandboxArchiveMaxBytes } from '../config';
 import {
   createSandboxResourcesToArchiveCursor,
   findSandboxInstanceBySandboxId,
@@ -41,7 +41,6 @@ import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '.
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
-export const SANDBOX_ARCHIVE_INACTIVE_DAYS = 7;
 const SANDBOX_ARCHIVE_BATCH_SIZE = 5;
 const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 // 单次归档可能包含安装工具、扫描、压缩和上传；隔离窗口必须覆盖整条确定性命令链。
@@ -501,7 +500,7 @@ async function archiveSandboxResources(inactiveBefore: Date) {
 }
 
 export async function archiveInactiveSandboxes(now = new Date()) {
-  await archiveSandboxResources(subDays(now, SANDBOX_ARCHIVE_INACTIVE_DAYS));
+  await archiveSandboxResources(subDays(now, getAgentSandboxArchiveInactiveDays()));
 }
 
 /** 重试超过隔离窗口的 archiving operation。 */
