@@ -2,12 +2,12 @@ import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
 import { getLogger, LogCategories } from '../logger';
 import { marketplaceEnv } from '../../env';
+import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 
 export const MONGO_URL = marketplaceEnv.MONGODB_URI;
 const maxConnecting = Math.max(30, marketplaceEnv.DB_MAX_LINK);
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
-const syncIndex = marketplaceEnv.SYNC_INDEX;
 
 declare global {
   var mongodb: Mongoose | undefined;
@@ -32,16 +32,26 @@ export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (syncIndex && process.env.NODE_ENV !== 'test') {
-    try {
-      model.syncIndexes({ background: true });
-    } catch (error: any) {
-      logger.error('Create index error', { error });
-    }
+  if (process.env.NODE_ENV === 'test' || !marketplaceEnv.SYNC_INDEX || !MONGO_URL) {
+    return;
+  }
+
+  try {
+    await MongoIndexManager.syncModelIndexes({
+      model,
+      logger
+    });
+  } catch (error) {
+    logger.error('Failed to ensure MongoDB indexes', {
+      modelName: model.modelName,
+      collectionName: model.collection.collectionName,
+      error
+    });
   }
 };
 
 export const ReadPreference = connectionMongo.mongo.ReadPreference;
+export { defineIndex } from '@fastgpt/service/common/mongo/schemaIndexes';
 
 export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose> {
   if (db.connection.readyState !== 0) {
@@ -81,6 +91,7 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
       serverSelectionTimeoutMS: 10000, // 服务器选择超时: 10秒,防止副本集故障时长时间阻塞
       heartbeatFrequencyMS: 5000 // 5s 进行一次健康检查
     });
+
     return db;
   } catch (error) {
     logger.error('Mongo connect error', { error });

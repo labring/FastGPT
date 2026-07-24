@@ -14,6 +14,31 @@ production; local development can use `http://localhost:3000`.
 ```bash
 FE_DOMAIN=https://fastgpt.example.com
 ```
+### MongoDB Index Synchronization Changes
+
+Starting with V4.15.4, `SYNC_INDEX` is deprecated and replaced by `MONGO_DEPRECATE_INDEX`. The new variable controls whether indexes explicitly marked as deprecated by a schema are removed and defaults to `true`. Setting it to `false` skips only deprecated-index cleanup; missing current schema indexes are still created.
+
+FastGPT now performs safe index synchronization automatically at startup:
+
+- Creates indexes that are missing from the current FastGPT schemas.
+- Removes only built-in historical FastGPT indexes explicitly marked as deprecated by the corresponding schema and whose name, key, and relevant options match exactly.
+- Preserves custom indexes and any other indexes that are not explicitly declared as deprecated.
+
+This process does not call Mongoose's full `syncIndexes()` operation, so indexes are never removed simply because they are absent from a FastGPT schema.
+
+> **Default and deletion boundary: `MONGO_DEPRECATE_INDEX` defaults to `true`. It removes only built-in indexes that a FastGPT schema explicitly marks as deprecated and whose definitions match exactly; customer-created indexes are not removed. Give every custom index an explicit name instead of relying on MongoDB's key-derived default name to prevent collisions with built-in FastGPT index names.**
+
+> **Legacy index cleanup: V4.15.4 does not mark any existing historical indexes as deprecated, so upgrading to this version does not automatically remove old indexes. Future releases will explicitly mark verified obsolete indexes in their schemas and remove them incrementally.**
+
+To fully remove obsolete indexes before upgrading to V4.15.4:
+
+1. Upgrade to and start V4.15.3 once.
+2. Set `SYNC_INDEX=true`, restart the services, and wait for index synchronization to finish.
+3. After confirming that index synchronization succeeded, upgrade to V4.15.4.
+
+V4.15.3 removes every index that is not declared in its schemas, which may include custom indexes. Back up your database and review the existing indexes before following this procedure. If custom indexes must be preserved, record their definitions and recreate them after synchronization, or do not use V4.15.3 for full cleanup.
+
+Setting `MONGO_DEPRECATE_INDEX=false` skips deprecated-index cleanup that may be introduced in future releases, but does not skip creation of missing indexes.
 
 ## 🚀 New Features
 

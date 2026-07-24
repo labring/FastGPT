@@ -1,6 +1,6 @@
 import { Schema } from 'mongoose';
 import z from 'zod';
-import { getMongoModel } from '..';
+import { defineIndex, getMongoModel } from '..';
 
 export const pluginTypeEnum = z.enum(['tool']);
 
@@ -21,6 +21,9 @@ const downloadCountSchema = new Schema({
 });
 
 // 复合索引：type + toolId + time
-downloadCountSchema.index({ type: 1, toolId: 1, time: 1 }, { unique: true });
+defineIndex(downloadCountSchema, {
+  key: { type: 1, toolId: 1, time: 1 },
+  options: { unique: true }
+});
 
 export const MongoDownloadCount = getMongoModel('plugin_download_counts', downloadCountSchema);

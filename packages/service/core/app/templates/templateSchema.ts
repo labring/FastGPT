@@ -1,5 +1,5 @@
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo/index';
 import { UserTagsSchema } from '@fastgpt/global/support/user/type';
 const { Schema } = connectionMongo;
 
@@ -39,7 +39,7 @@ const AppTemplateSchema = new Schema({
   workflow: Object
 });
 
-AppTemplateSchema.index({ templateId: 1 });
+defineIndex(AppTemplateSchema, { key: { templateId: 1 } });
 
 export const MongoAppTemplate = getMongoModel<AppTemplateSchemaType>(
   collectionName,

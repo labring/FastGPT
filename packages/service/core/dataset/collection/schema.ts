@@ -1,5 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { getLogger, LogCategories } from '../../../common/logger';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -94,43 +93,46 @@ DatasetCollectionSchema.virtual('dataset', {
   justOne: true
 });
 
-try {
-  // auth file
-  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
+// auth file
+defineIndex(DatasetCollectionSchema, { key: { teamId: 1, fileId: 1 } });
 
-  // list collection; deep find collections
-  DatasetCollectionSchema.index({
+// list collection; deep find collections
+defineIndex(DatasetCollectionSchema, {
+  key: {
     teamId: 1,
     datasetId: 1,
     parentId: 1,
     updateTime: -1
-  });
+  }
+});
 
-  // Tag filter
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
-  // create time filter
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
+// Tag filter
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, tags: 1 }
+});
+// create time filter
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, createTime: 1 }
+});
 
-  // Get collection by external file id
-  DatasetCollectionSchema.index(
-    { datasetId: 1, externalFileId: 1 },
-    {
-      unique: true,
-      partialFilterExpression: {
-        externalFileId: { $exists: true }
-      }
+// Get collection by external file id
+defineIndex(DatasetCollectionSchema, {
+  key: { datasetId: 1, externalFileId: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: {
+      externalFileId: { $exists: true }
     }
-  );
+  }
+});
 
-  // Clear invalid image
-  DatasetCollectionSchema.index({
+// Clear invalid image
+defineIndex(DatasetCollectionSchema, {
+  key: {
     teamId: 1,
     'metadata.relatedImgId': 1
-  });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build dataset collection indexes', { error });
-}
+  }
+});
 
 export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(
   DatasetColCollectionName,

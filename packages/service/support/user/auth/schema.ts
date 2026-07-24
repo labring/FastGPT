@@ -1,9 +1,8 @@
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { UserAuthSchemaType } from '@fastgpt/global/support/user/auth/type';
 import { userAuthTypeMap } from '@fastgpt/global/support/user/auth/constants';
 import { addMinutes } from 'date-fns';
-import { getLogger, LogCategories } from '../../../common/logger';
 
 const UserAuthSchema = new Schema({
   key: {
@@ -32,12 +31,10 @@ const UserAuthSchema = new Schema({
   }
 });
 
-try {
-  UserAuthSchema.index({ key: 1, type: 1 });
-  UserAuthSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build user auth indexes', { error });
-}
+defineIndex(UserAuthSchema, { key: { key: 1, type: 1 } });
+defineIndex(UserAuthSchema, {
+  key: { expiredTime: 1 },
+  options: { expireAfterSeconds: 0 }
+});
 
 export const MongoUserAuth = getMongoModel<UserAuthSchemaType>('auth_codes', UserAuthSchema);

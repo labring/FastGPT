@@ -1,6 +1,6 @@
 import { Schema } from 'mongoose';
 import z from 'zod';
-import { getMongoModel } from '..';
+import { defineIndex, getMongoModel } from '..';
 import {
   MarketplaceOfficialSource,
   MarketplacePkgSourceSchema
@@ -47,8 +47,13 @@ const marketplaceToolSchema = new Schema(
   }
 );
 
-marketplaceToolSchema.index({ pluginId: 1, version: 1 }, { unique: true });
-marketplaceToolSchema.index({ pluginId: 1, updateTime: -1 });
-marketplaceToolSchema.index({ source: 1, pluginId: 1, updateTime: -1 });
+defineIndex(marketplaceToolSchema, {
+  key: { pluginId: 1, version: 1 },
+  options: { unique: true }
+});
+defineIndex(marketplaceToolSchema, { key: { pluginId: 1, updateTime: -1 } });
+defineIndex(marketplaceToolSchema, {
+  key: { source: 1, pluginId: 1, updateTime: -1 }
+});
 
 export const MongoMarketplaceTool = getMongoModel('marketplace_tools', marketplaceToolSchema);

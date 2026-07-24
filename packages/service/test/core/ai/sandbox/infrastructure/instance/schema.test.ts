@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { getSchemaDeprecatedMongoIndexes } from '@fastgpt/service/common/mongo';
 
 describe('MongoSandboxInstance schema indexes', () => {
   it('declares provider sandbox uniqueness for remote resource records', () => {
@@ -19,6 +20,10 @@ describe('MongoSandboxInstance schema indexes', () => {
     );
 
     expect(legacyIndex).toBeUndefined();
+  });
+
+  it('does not register historical sandbox indexes for automatic cleanup', () => {
+    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
   });
 
   it('declares source lookup index for migrated sandbox instances', () => {

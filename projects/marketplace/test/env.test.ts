@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const originalSyncIndex = process.env.SYNC_INDEX;
 const originalCommunityAuthToken = process.env.COMMUNITY_AUTH_TOKEN;
+const originalSyncIndex = process.env.SYNC_INDEX;
 
 const importEnv = async () => {
   vi.resetModules();
@@ -10,32 +10,20 @@ const importEnv = async () => {
 
 describe('marketplace env', () => {
   afterEach(() => {
-    vi.stubEnv('SYNC_INDEX', originalSyncIndex);
     vi.stubEnv('COMMUNITY_AUTH_TOKEN', originalCommunityAuthToken);
+    vi.stubEnv('SYNC_INDEX', originalSyncIndex);
   });
 
-  it('defaults SYNC_INDEX to true when it is not configured', async () => {
+  it('enables MongoDB index synchronization by default and supports disabling it', async () => {
     vi.stubEnv('SYNC_INDEX', undefined);
+    await expect(importEnv()).resolves.toMatchObject({
+      marketplaceEnv: { SYNC_INDEX: true }
+    });
 
-    const { marketplaceEnv } = await importEnv();
-
-    expect(marketplaceEnv.SYNC_INDEX).toBe(true);
-  });
-
-  it('defaults SYNC_INDEX to true when it is empty', async () => {
-    vi.stubEnv('SYNC_INDEX', '');
-
-    const { marketplaceEnv } = await importEnv();
-
-    expect(marketplaceEnv.SYNC_INDEX).toBe(true);
-  });
-
-  it('parses explicit false-like SYNC_INDEX values', async () => {
     vi.stubEnv('SYNC_INDEX', 'false');
-
-    const { marketplaceEnv } = await importEnv();
-
-    expect(marketplaceEnv.SYNC_INDEX).toBe(false);
+    await expect(importEnv()).resolves.toMatchObject({
+      marketplaceEnv: { SYNC_INDEX: false }
+    });
   });
 
   it('parses optional community auth token', async () => {

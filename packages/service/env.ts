@@ -29,7 +29,6 @@ export const serviceEnv = createEnv({
   server: {
     // ==================== 基础配置 ====================
     DB_MAX_LINK: IntSchema.min(1).default(5),
-    SYNC_INDEX: BoolSchema.default(true),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z
@@ -152,6 +151,9 @@ export const serviceEnv = createEnv({
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
     MONGODB_LOG_URI: z.string().optional(),
+    SYNC_INDEX: BoolSchema.default(true).meta({
+      description: '是否在启动时创建当前 MongoDB 索引并清理显式声明的废弃索引'
+    }),
 
     // VectorDB
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({

@@ -2,8 +2,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { getLogger, LogCategories } from '../../../common/logger';
+import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
 import type { OpenApiTagType } from '@fastgpt/global/openapi/support/openapi/tag';
 
 const { Schema } = connectionMongo;
@@ -55,13 +54,13 @@ const OpenApiTagSchema = new Schema({
   }
 });
 
-try {
-  OpenApiTagSchema.index({ teamId: 1, tmbId: 1, normalizedName: 1 }, { unique: true });
-  OpenApiTagSchema.index({ teamId: 1, tmbId: 1, type: 1, order: 1 });
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build OpenAPI tag indexes', { error });
-}
+defineIndex(OpenApiTagSchema, {
+  key: { teamId: 1, tmbId: 1, normalizedName: 1 },
+  options: { unique: true }
+});
+defineIndex(OpenApiTagSchema, {
+  key: { teamId: 1, tmbId: 1, type: 1, order: 1 }
+});
 
 export const MongoOpenApiTag = getMongoModel<OpenApiTagSchemaType>(
   OpenApiTagCollectionName,

@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { connectionMongo, defineIndex, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
 import {
@@ -133,120 +133,127 @@ const ChatSchema = new Schema({
   userId: Schema.Types.ObjectId
 });
 
-ChatSchema.index({ chatId: 1 });
+defineIndex(ChatSchema, { key: { chatId: 1 } });
 // Delete by appid; init chat; update chat; auth chat;
-ChatSchema.index({ sourceType: 1, appId: 1, chatId: 1 }, { unique: true });
+defineIndex(ChatSchema, {
+  key: { sourceType: 1, appId: 1, chatId: 1 },
+  options: { unique: true }
+});
 
 // timer, clear history
-ChatSchema.index({ updateTime: -1, teamId: 1 });
-ChatSchema.index({ teamId: 1, updateTime: -1 });
+defineIndex(ChatSchema, { key: { updateTime: -1, teamId: 1 } });
+defineIndex(ChatSchema, { key: { teamId: 1, updateTime: -1 } });
 
 // get user history(Cookie)
-ChatSchema.index({ tmbId: 1, appId: 1, deleteTime: 1, top: -1, updateTime: -1 });
+defineIndex(ChatSchema, {
+  key: { tmbId: 1, appId: 1, deleteTime: 1, top: -1, updateTime: -1 }
+});
 
 /* ===== 条件索引 ===== */
 // Clear history(share),Init 4121
-ChatSchema.index(
-  { appId: 1, outLinkUid: 1, tmbId: 1 },
-  {
+defineIndex(ChatSchema, {
+  key: { appId: 1, outLinkUid: 1, tmbId: 1 },
+  options: {
     partialFilterExpression: {
       outLinkUid: { $exists: true }
     }
   }
-);
+});
 
 // get share chat history
-ChatSchema.index(
-  { shareId: 1, outLinkUid: 1, updateTime: -1 },
-  {
+defineIndex(ChatSchema, {
+  key: { shareId: 1, outLinkUid: 1, updateTime: -1 },
+  options: {
     partialFilterExpression: {
       shareId: { $exists: true }
     }
   }
-);
+});
 
 /* get chat logs */
 // 1. Common get
-ChatSchema.index({ appId: 1, updateTime: -1 });
+defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1 } });
 // Get history(tmbId)
-ChatSchema.index({ appId: 1, tmbId: 1, updateTime: -1 });
+defineIndex(ChatSchema, { key: { appId: 1, tmbId: 1, updateTime: -1 } });
 // clearHistory(API)
-ChatSchema.index({ appId: 1, source: 1, tmbId: 1, updateTime: -1 });
+defineIndex(ChatSchema, {
+  key: { appId: 1, source: 1, tmbId: 1, updateTime: -1 }
+});
 // Periodic cleanup for chats stuck in generating state.
-ChatSchema.index(
-  { chatGenerateStatus: 1, updateTime: 1 },
-  {
+defineIndex(ChatSchema, {
+  key: { chatGenerateStatus: 1, updateTime: 1 },
+  options: {
     partialFilterExpression: {
       chatGenerateStatus: ChatGenerateStatusEnum.generating
     }
   }
-);
+});
 
 /* 反馈过滤的索引 */
 // 2. Has good feedback filter
-ChatSchema.index(
-  {
+defineIndex(ChatSchema, {
+  key: {
     appId: 1,
     hasGoodFeedback: 1,
     updateTime: -1
   },
-  {
+  options: {
     partialFilterExpression: {
       hasGoodFeedback: true
     }
   }
-);
+});
 // Has bad feedback filter
-ChatSchema.index(
-  {
+defineIndex(ChatSchema, {
+  key: {
     appId: 1,
     hasBadFeedback: 1,
     updateTime: -1
   },
-  {
+  options: {
     partialFilterExpression: {
       hasBadFeedback: true
     }
   }
-);
+});
 // 3. Has unread good feedback filter
-ChatSchema.index(
-  {
+defineIndex(ChatSchema, {
+  key: {
     appId: 1,
     hasUnreadGoodFeedback: 1,
     updateTime: -1
   },
-  {
+  options: {
     partialFilterExpression: {
       hasUnreadGoodFeedback: true
     }
   }
-);
+});
 // Has unread bad feedback filter
-ChatSchema.index(
-  {
+defineIndex(ChatSchema, {
+  key: {
     appId: 1,
     hasUnreadBadFeedback: 1,
     updateTime: -1
   },
-  {
+  options: {
     partialFilterExpression: {
       hasUnreadBadFeedback: true
     }
   }
-);
+});
 // Has error filter
-ChatSchema.index(
-  {
+defineIndex(ChatSchema, {
+  key: {
     appId: 1,
     errorCount: 1,
     updateTime: -1
   },
-  {
+  options: {
     partialFilterExpression: {
       errorCount: { $gt: 0 }
     }
   }
-);
+});
 
 export const MongoChat = getMongoModel<ChatSchemaType>(chatCollectionName, ChatSchema);

@@ -1,5 +1,5 @@
 import type { Types } from '../../../common/mongo';
-import { getMongoModel, Schema } from '../../../common/mongo';
+import { defineIndex, getMongoModel, Schema } from '../../../common/mongo';
 
 export const bucketName = 'dataset_image';
 
@@ -16,9 +16,13 @@ const MongoDatasetImage = new Schema({
     expiredTime: { type: Date, required: true }
   }
 });
-MongoDatasetImage.index({ 'metadata.datasetId': 'hashed' });
-MongoDatasetImage.index({ 'metadata.collectionId': 'hashed' });
-MongoDatasetImage.index({ 'metadata.expiredTime': -1 });
+defineIndex(MongoDatasetImage, {
+  key: { 'metadata.datasetId': 'hashed' }
+});
+defineIndex(MongoDatasetImage, {
+  key: { 'metadata.collectionId': 'hashed' }
+});
+defineIndex(MongoDatasetImage, { key: { 'metadata.expiredTime': -1 } });
 
 export const MongoDatasetImageSchema = getMongoModel<{
   _id: Types.ObjectId;

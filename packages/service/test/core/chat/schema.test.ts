@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { getSchemaDeprecatedMongoIndexes } from '@fastgpt/service/common/mongo';
 
 const hasIndex = (
   indexes: ReturnType<typeof MongoChat.schema.indexes>,
@@ -35,6 +36,10 @@ describe('chat schema indexes', () => {
     const sourceAwareIndex = findIndex(indexes, { sourceType: 1, appId: 1, chatId: 1 });
 
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
+  });
+
+  it('does not register historical chat indexes for automatic cleanup', () => {
+    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toEqual([]);
   });
 
   it('keeps legacy chat item read and pagination indexes', () => {

@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel } from '../../../../common/mongo';
+import { connectionMongo, defineIndex, getMongoModel } from '../../../../common/mongo';
 import {
   agentSkillsCollectionName,
   agentSkillsVersionCollectionName,
@@ -121,13 +121,17 @@ const AgentSkillsSchema = new Schema({
 });
 
 // 名称和描述用于列表页搜索。
-AgentSkillsSchema.index({ teamId: 1, name: 'text', description: 'text' });
+defineIndex(AgentSkillsSchema, {
+  key: { teamId: 1, name: 'text', description: 'text' }
+});
 // 列表页按来源、团队、删除状态和创建时间过滤排序。
-AgentSkillsSchema.index({ source: 1, teamId: 1, deleteTime: 1, createTime: -1 });
+defineIndex(AgentSkillsSchema, {
+  key: { source: 1, teamId: 1, deleteTime: 1, createTime: -1 }
+});
 // 分类筛选。
-AgentSkillsSchema.index({ category: 1 });
-// 文件夹树查询。
-AgentSkillsSchema.index({ teamId: 1, parentId: 1, deleteTime: 1 });
+defineIndex(AgentSkillsSchema, { key: { category: 1 } });
+// 文件夹树查询：findSkillAndAllChildren 按 teamId + parentId + deleteTime 逐层查子节点。
+defineIndex(AgentSkillsSchema, { key: { teamId: 1, parentId: 1, deleteTime: 1 } });
 
 export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,

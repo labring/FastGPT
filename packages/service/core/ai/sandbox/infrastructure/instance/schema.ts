@@ -3,7 +3,7 @@
  *
  * 只描述本地实例记录结构，不编排 provider、归档或运行态流程。
  */
-import { connectionMongo, getMongoModel } from '../../../../../common/mongo';
+import { connectionMongo, defineIndex, getMongoModel } from '../../../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from '../../type';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -75,12 +75,25 @@ const SandboxInstanceSchema = new Schema({
   }
 });
 
-SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
-SandboxInstanceSchema.index({ sourceType: 1, sourceId: 1, chatId: 1 });
-SandboxInstanceSchema.index({ sourceType: 1, status: 1, provider: 1, 'metadata.archive.state': 1 });
-SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 });
-SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.startedAt': 1 });
-SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.deleteStartedAt': 1 });
+defineIndex(SandboxInstanceSchema, {
+  key: { provider: 1, sandboxId: 1 },
+  options: { unique: true }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { sourceType: 1, sourceId: 1, chatId: 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { sourceType: 1, status: 1, provider: 1, 'metadata.archive.state': 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { 'metadata.archive.state': 1, 'metadata.archive.startedAt': 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { 'metadata.archive.state': 1, 'metadata.archive.deleteStartedAt': 1 }
+});
 
 /**
  * sandbox 实例 Mongo model。
