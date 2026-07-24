@@ -10,7 +10,7 @@
   "password.confirm": "確認密碼",
   "password.email_phone_error": "電子郵件/手機號碼格式錯誤",
   "password.email_phone_void": "電子郵件/手機號碼不能空白",
-  "password.not_match": "兩次輸入的密碼不相符",
+  "password.not_match": "兩次密碼輸入不一致",
   "password.retrieve": "找回密碼",
   "password.retrieved": "密碼已找回",
   "password.retrieved_account": "找回 {{account}} 帳號",

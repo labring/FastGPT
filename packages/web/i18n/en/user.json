@@ -10,7 +10,7 @@
   "password.confirm": "Confirm Password",
   "password.email_phone_error": "Invalid Email/Phone Number Format",
   "password.email_phone_void": "Email/Phone Number Cannot Be Empty",
-  "password.not_match": "Passwords Do Not Match",
+  "password.not_match": "The Passwords Entered Do Not Match",
   "password.retrieve": "Retrieve Password",
   "password.retrieved": "Password Retrieved",
   "password.retrieved_account": "Retrieve {{account}} Account",

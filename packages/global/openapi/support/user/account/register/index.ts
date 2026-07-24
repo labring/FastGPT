@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import { AccountRegisterBodySchema } from './api';
@@ -21,6 +22,22 @@ export const RegisterPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: {}
+            }
+          }
+        },
+        400: {
+          description: '请求参数或验证码错误',
+          content: {
+            'application/json': {
+              schema: z.null()
+            }
+          }
+        },
+        429: {
+          description: '验证码校验过于频繁',
+          content: {
+            'application/json': {
+              schema: z.null()
             }
           }
         }

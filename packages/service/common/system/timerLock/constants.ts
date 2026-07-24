@@ -17,6 +17,8 @@ export enum TimerIdEnum {
   archiveInactiveSandboxes = 'archiveInactiveSandboxes',
   clearStaleArchivingSandboxes = 'clearStaleArchivingSandboxes',
   enterpriseAuthTaskCleanup = 'enterpriseAuthTaskCleanup',
+  accountCancellationReminder = 'accountCancellationReminder',
+  accountCancellationFinalize = 'accountCancellationFinalize',
   /** 纠正长时间卡在 generating 的会话状态 */
   cleanStaleGeneratingChat = 'cleanStaleGeneratingChat'
 }

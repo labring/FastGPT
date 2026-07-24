@@ -13,6 +13,22 @@ FastGPT 服务启动时会校验 `FE_DOMAIN`。请将它配置为客户端访问
 FE_DOMAIN=https://fastgpt.example.com
 ```
 
+### 新增 JWT 签名密钥
+
+`JWT_SECRET` 已改为生产环境必填项。已有部署在更新镜像前，需要生成一个至少 32 位的随机密钥：
+
+```bash
+openssl rand -hex 32
+```
+
+将生成的值配置到 `fastgpt` 服务：
+
+```dotenv
+JWT_SECRET=<上一步生成的随机密钥>
+```
+
+商业版部署还需将同一个值配置到 `fastgpt-pro` 服务。配置完成后，重新部署或重启对应服务。请勿在生产环境中使用部署模板里的示例值。
+
 ## 🚀 新增内容
 
 ## ⚙️ 优化

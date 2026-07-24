@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { sendAuthCode } from '@/web/support/user/api';
-import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -9,9 +8,10 @@ import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal'
 import { useMemoizedFn } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import type { CodeAccountVerificationScene } from '@fastgpt/global/support/user/account/verification/type';
 let timer: NodeJS.Timeout;
 
-export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
+export const useSendCode = ({ type }: { type: CodeAccountVerificationScene }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();

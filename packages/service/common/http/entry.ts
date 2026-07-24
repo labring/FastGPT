@@ -167,14 +167,17 @@ export const createApiEntry = <
                 });
               }
 
-              span.setAttribute('http.response.status_code', 500);
-              setSpanError(span, error);
-
-              return jsonRes(res, {
+              const response = jsonRes(res, {
                 code: 500,
                 error,
                 url: req.url
               });
+              span.setAttribute('http.response.status_code', res.statusCode);
+              if (res.statusCode >= 500) {
+                setSpanError(span, error);
+              }
+
+              return response;
             }
           }
         )

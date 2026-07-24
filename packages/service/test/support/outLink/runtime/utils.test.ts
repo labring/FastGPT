@@ -74,6 +74,10 @@ vi.mock('@fastgpt/service/support/outLink/tools', () => ({
   addOutLinkUsage: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/support/user/account/cancellation/guard', () => ({
+  assertAccountUsable: vi.fn()
+}));
+
 vi.mock('@fastgpt/global/core/workflow/runtime/utils', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@fastgpt/global/core/workflow/runtime/utils')>();

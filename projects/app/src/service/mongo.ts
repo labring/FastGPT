@@ -8,27 +8,34 @@ import { appEnv } from '@/env';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
+/** 初始化 root 用户，并仅在运维配置密码真实变化时更新密码。 */
 export async function initRootUser(retry = 3): Promise<any> {
   try {
-    const rootUser = await MongoUser.findOne({
-      username: 'root'
-    });
+    const rootUser = await MongoUser.findOne({ username: 'root' }).select('+password');
     const psw = appEnv.DEFAULT_ROOT_PSW;
+    const password = hashStr(psw);
+    const storedPassword = rootUser?.toObject({ getters: false }).password;
+    const passwordChanged = storedPassword !== hashStr(password);
 
     let rootId = rootUser?._id || '';
 
     await mongoSessionRun(async (session) => {
       // init root user
       if (rootUser) {
-        await rootUser.updateOne({
-          password: hashStr(psw)
-        });
+        if (passwordChanged) {
+          await rootUser.updateOne(
+            {
+              password
+            },
+            { session }
+          );
+        }
       } else {
         const [{ _id }] = await MongoUser.create(
           [
             {
               username: 'root',
-              password: hashStr(psw)
+              password
             }
           ],
           { session, ordered: true }

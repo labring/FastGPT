@@ -1,33 +1,30 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { addSeconds } from 'date-fns';
-import { addAuthCode } from '@fastgpt/service/support/user/auth/controller';
 import {
   PreLoginQuerySchema,
   type PreLoginQueryType,
   type PreLoginResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { passwordAccountVerification } from '@fastgpt/service/support/user/account/verification/password/service';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { addMinutes } from 'date-fns';
 
 async function handler(
-  req: ApiRequestProps<Record<string, never>, PreLoginQueryType>,
-  _res: ApiResponseType<any>
+  req: ApiRequestProps<Record<string, never>, PreLoginQueryType>
 ): Promise<PreLoginResponseType> {
-  const { username } = PreLoginQuerySchema.parse(req.query);
-
-  const code = getNanoid(6);
-
-  await addAuthCode({
-    type: UserAuthTypeEnum.login,
-    key: username,
-    code,
-    expiredTime: addSeconds(new Date(), 30)
+  const { username } = parseApiInput({ req, querySchema: PreLoginQuerySchema }).query;
+  await authFrequencyLimit({
+    eventId: `pre-login-username-${hashStr(username)}`,
+    maxAmount: 10,
+    expiredTime: addMinutes(new Date(), 1)
   });
-
-  return {
-    code
-  };
+  return passwordAccountVerification.create({ username });
 }
 
-export default NextAPI(handler);
+export default NextAPI(
+  useIPFrequencyLimit({ id: 'pre-login', seconds: 60, limit: 60, force: true }),
+  handler
+);

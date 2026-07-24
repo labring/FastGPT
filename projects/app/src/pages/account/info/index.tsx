@@ -48,6 +48,10 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getIsMemberSyncMode } from '@/web/common/system/utils';
+import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
+import { AccountCancellationConfirmModal } from '@/pageComponents/account/cancel/AccountCancellationConfirmModal';
+import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
+import { canManagePasswordFromAccountInfo } from '@/pageComponents/account/info/password';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -138,6 +142,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const standardPlan = teamPlanStatus?.standard;
   const { isPc } = useSystem();
   const { toast } = useToast();
+  const canManagePassword = canManagePasswordFromAccountInfo({
+    isPlus: feConfigs?.isPlus,
+    username: userInfo?.username
+  });
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
@@ -151,6 +159,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
+  const passwordChangeAuthorization = usePasswordChangeStore((state) => state.authorization);
   const {
     isOpen: isOpenUpdateContact,
     onClose: onCloseUpdateContact,
@@ -219,6 +228,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       window.removeEventListener('hashchange', triggerEnterpriseAuthFromHash);
     };
   }, [triggerEnterpriseAuthFromHash]);
+
+  useEffect(() => {
+    if (canManagePassword && passwordChangeAuthorization?.required === false) onOpenUpdatePsw();
+  }, [canManagePassword, onOpenUpdatePsw, passwordChangeAuthorization]);
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
     {
@@ -268,12 +281,14 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Box {...labelStyles}>{t('account_info:user_account')}&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs?.isPlus && (
+        {canManagePassword && (
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
-            <Box flex={1}>*****</Box>
+            <Box flex={1}>
+              {userInfo?.hasPassword ? '*****' : t('account_info:password_not_set')}
+            </Box>
             <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('account_info:change')}
+              {userInfo?.hasPassword ? t('account_info:change') : t('account_info:set_password')}
             </Button>
           </Flex>
         )}
@@ -423,7 +438,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       {isOpenConversionModal && (
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
-      {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {canManagePassword && isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
     </Box>
   );
@@ -783,22 +798,33 @@ const PlanUsage = () => {
 
 const ButtonStyles = {
   bg: 'white',
-  py: 3,
   px: 6,
-  border: 'sm',
+  h: '40px',
   borderWidth: '1.5px',
+  borderColor: 'borderColor.low',
   borderRadius: 'md',
   display: 'flex',
   alignItems: 'center',
+  gap: 2,
   cursor: 'pointer',
   userSelect: 'none' as any,
   fontSize: 'sm'
 };
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, userInfo } = useUserStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const router = useRouter();
+  const {
+    isOpen: isCancellationConfirmOpen,
+    onOpen: onOpenCancellationConfirm,
+    onClose: onCloseCancellationConfirm
+  } = useDisclosure();
+  const { data: accountCancellationStatus } = useRequest(getAccountCancellationStatus, {
+    manual: false,
+    refreshDeps: [userInfo?._id]
+  });
 
   const { runAsync: onFeedback } = useRequest(
     async () => {
@@ -826,7 +852,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
   return (
     <Box>
-      <Grid gridGap={4}>
+      <Grid rowGap="16px" columnGap={4}>
         {feConfigs?.docUrl && (
           <Link
             href={getDocPath('/guide/getting-started')}
@@ -834,10 +860,14 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             textDecoration={'none !important'}
             {...ButtonStyles}
           >
-            <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {t('account_info:help_document')}
-            </Box>
+            <MyIcon
+              name={'common/quickActionBook'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('account_info:help_document')}</Box>
           </Link>
         )}
 
@@ -846,29 +876,71 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             ?.filter((item) => item.isActive)
             .map((item) => (
               <Flex key={item.id} {...ButtonStyles} onClick={() => window.open(item.url, '_blank')}>
-                <Avatar src={item.avatar} w={'18px'} />
-                <Box ml={2} flex={1}>
-                  {item.name}
-                </Box>
+                <Avatar src={item.avatar} w={'18px'} h={'18px'} flexShrink={0} />
+                <Box flex={1}>{item.name}</Box>
               </Flex>
             ))}
         {feConfigs?.concatMd && (
           <Flex onClick={onOpenContact} {...ButtonStyles}>
-            <MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {t('account_info:contact_us')}
-            </Box>
+            <MyIcon
+              name={'common/quickActionPhone'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              fill={'none'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('account_info:contact_us')}</Box>
           </Flex>
         )}
         {feConfigs?.show_workorder && (
           <Flex onClick={onFeedback} {...ButtonStyles}>
-            <MyIcon name={'feedback'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {t('common:question_feedback')}
-            </Box>
+            <MyIcon
+              name={'common/quickActionFeedback'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('common:question_feedback')}</Box>
+          </Flex>
+        )}
+        {(accountCancellationStatus?.status === 'pending' ||
+          (accountCancellationStatus?.status === 'none' &&
+            accountCancellationStatus.canRequestCancellation)) && (
+          <Flex
+            {...ButtonStyles}
+            onClick={() => {
+              if (accountCancellationStatus.status === 'pending') {
+                void router.push('/account/cancel');
+                return;
+              }
+              onOpenCancellationConfirm();
+            }}
+          >
+            <MyIcon
+              name={'common/quickActionUserX'}
+              w={'18px'}
+              h={'18px'}
+              color={'myGray.600'}
+              fill={'none'}
+              flexShrink={0}
+            />
+            <Box flex={1}>{t('account_info:account_cancellation', '账号注销')}</Box>
           </Flex>
         )}
       </Grid>
+      {accountCancellationStatus?.status === 'none' &&
+        accountCancellationStatus.canRequestCancellation && (
+          <AccountCancellationConfirmModal
+            isOpen={isCancellationConfirmOpen}
+            onClose={onCloseCancellationConfirm}
+            onConfirm={() => {
+              onCloseCancellationConfirm();
+              void router.push('/account/cancel?confirmed=1');
+            }}
+          />
+        )}
     </Box>
   );
 };

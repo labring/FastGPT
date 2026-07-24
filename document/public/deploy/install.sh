@@ -220,7 +220,7 @@ normalize_bool_env() {
 ROOT_LOGIN_PASSWORD="1234"
 
 randomize_compose_credentials() {
-    local system_key file_token_key aes256_secret_key invoke_token_secret
+    local system_key file_token_key aes256_secret_key invoke_token_secret jwt_secret
     local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token
     local root_password mongo_password redis_password minio_password
     local pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
@@ -229,6 +229,7 @@ randomize_compose_credentials() {
     file_token_key="$(random_hex 32)"
     aes256_secret_key="$(random_hex 32)"
     invoke_token_secret="$(random_hex 32)"
+    jwt_secret="$(random_hex 32)"
     plugin_token="$(random_hex 32)"
     code_sandbox_token="$(random_hex 32)"
     volume_manager_token="$(random_hex 32)"
@@ -263,6 +264,8 @@ randomize_compose_credentials() {
     replace_text 'x-aes256-secret-key: &x-aes256-secret-key "fastgptsecret"' "x-aes256-secret-key: &x-aes256-secret-key \"$aes256_secret_key\""
     replace_text "x-invoke-token-secret: &x-invoke-token-secret 'fastgpt_invoke_token_secret_32_chars_min'" "x-invoke-token-secret: &x-invoke-token-secret '$invoke_token_secret'"
     replace_text 'x-invoke-token-secret: &x-invoke-token-secret "fastgpt_invoke_token_secret_32_chars_min"' "x-invoke-token-secret: &x-invoke-token-secret \"$invoke_token_secret\""
+    replace_text "x-jwt-secret: &x-jwt-secret ''" "x-jwt-secret: &x-jwt-secret '$jwt_secret'"
+    replace_text 'x-jwt-secret: &x-jwt-secret ""' "x-jwt-secret: &x-jwt-secret \"$jwt_secret\""
     replace_text "x-plugin-auth-token: &x-plugin-auth-token 'token'" "x-plugin-auth-token: &x-plugin-auth-token '$plugin_token'"
     replace_text 'x-plugin-auth-token: &x-plugin-auth-token "token"' "x-plugin-auth-token: &x-plugin-auth-token \"$plugin_token\""
     replace_text "x-plugin-auth-token: &x-plugin-auth-token 'fastgpt-plugin-token-please-change'" "x-plugin-auth-token: &x-plugin-auth-token '$plugin_token'"
@@ -280,6 +283,8 @@ randomize_compose_credentials() {
     replace_text "FILE_TOKEN_KEY: filetokenkey" "FILE_TOKEN_KEY: $file_token_key"
     replace_text "AES256_SECRET_KEY: fastgptsecret" "AES256_SECRET_KEY: $aes256_secret_key"
     replace_text "INVOKE_TOKEN_SECRET: fastgpt_invoke_token_secret_32_chars_min" "INVOKE_TOKEN_SECRET: $invoke_token_secret"
+    replace_text "JWT_SECRET: ''" "JWT_SECRET: $jwt_secret"
+    replace_text 'JWT_SECRET: ""' "JWT_SECRET: $jwt_secret"
 
     # MongoDB 主库与 plugin 独立库使用同一个 Mongo root 密码。
     replace_text "mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin" "mongodb://myusername:$mongo_password@fastgpt-mongo:27017/fastgpt?authSource=admin"

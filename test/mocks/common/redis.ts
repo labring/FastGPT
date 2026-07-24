@@ -253,10 +253,11 @@ vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
     newQueueRedisConnection: vi.fn(createSharedMockRedisClient),
     newWorkerRedisConnection: vi.fn(createSharedMockRedisClient),
     getGlobalRedisConnection: vi.fn(() => {
-      if (!global.mockRedisClient) {
-        global.mockRedisClient = createSharedMockRedisClient();
+      if (!global.redisClient) {
+        global.redisClient = createSharedMockRedisClient() as any;
       }
-      return global.mockRedisClient;
+      global.mockRedisClient = global.redisClient;
+      return global.redisClient;
     }),
     initRedisClient: vi.fn().mockResolvedValue(createSharedMockRedisClient())
   };
@@ -267,3 +268,4 @@ vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
 if (!global.redisClient) {
   global.redisClient = createSharedMockRedisClient() as any;
 }
+global.mockRedisClient = global.redisClient;

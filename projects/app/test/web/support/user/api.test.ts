@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, it, vi } from 'vitest';
 import * as api from '@/web/support/user/api';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 
 vi.mock('@/web/common/api/request', () => ({
   GET: vi.fn(),
@@ -64,18 +63,6 @@ describe('user api', () => {
       password: 'newpassword'
     };
     await api.postFindPassword(data);
-  });
-
-  it('should update password by old password', async () => {
-    const data = {
-      oldPsw: 'oldpassword',
-      newPsw: 'newpassword'
-    };
-    await api.updatePasswordByOld(data);
-  });
-
-  it('should reset password', async () => {
-    await api.resetPassword('newpassword');
   });
 
   it('should check password expired', async () => {

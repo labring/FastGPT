@@ -1,6 +1,5 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import type { SearchResult } from '@fastgpt/global/support/user/api';
@@ -8,30 +7,28 @@ import type {
   PreLoginResponseType,
   LoginByPasswordBodyType,
   OauthLoginBodyType,
+  CreateOauthLoginBodyType,
+  CreateOauthLoginResponseType,
   FastLoginBodyType,
   WxLoginBodyType,
   GetWXLoginQRResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
-import type {
-  UpdatePasswordByCodeBodyType,
-  UpdatePasswordByOldBodyType
-} from '@fastgpt/global/openapi/support/user/account/password/api';
+import type { UpdatePasswordByCodeBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
-import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type {
+  GetAccountCaptchaResponse,
+  SendAccountVerificationCodeBody,
+  SendAccountVerificationCodeResponse
+} from '@fastgpt/global/openapi/support/user/account/verification/api';
 
 /* ===== Auth code ===== */
-export const sendAuthCode = (data: {
-  username: string;
-  type: `${UserAuthTypeEnum}`;
-  googleToken: string;
-  captcha: string;
-  lang: `${LangEnum}`;
-}) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
+export const sendAuthCode = (data: SendAccountVerificationCodeBody) =>
+  POST<SendAccountVerificationCodeResponse>(`/proApi/support/user/inform/sendAuthCode`, data);
 export const getCaptchaPic = (username: string) =>
-  GET<{
-    captchaImage: string;
-  }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
+  GET<GetAccountCaptchaResponse>('/proApi/support/user/account/captcha/getImgCaptcha', {
+    username
+  });
 
 /* ===== login ===== */
 export const getPreLogin = (username: string) =>
@@ -41,6 +38,8 @@ export const getTokenLogin = () =>
   GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth', params);
+export const createOauthLogin = (params: CreateOauthLoginBodyType) =>
+  POST<CreateOauthLoginResponseType>('/proApi/support/user/account/login/oauth/create', params);
 export const postFastLogin = (params: FastLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
 export const ssoLogin = (params: any) =>
@@ -92,15 +91,6 @@ export const postFindPassword = ({
     code,
     ...props,
     password: hashStr(password)
-  });
-export const updatePasswordByOld = ({ oldPsw, newPsw }: UpdatePasswordByOldBodyType) =>
-  POST('/support/user/account/updatePasswordByOld', {
-    oldPsw: hashStr(oldPsw),
-    newPsw: hashStr(newPsw)
-  });
-export const resetPassword = (newPsw: string) =>
-  POST('/support/user/account/resetExpiredPsw', {
-    newPsw: hashStr(newPsw)
   });
 // Check the whether password has expired
 export const getCheckPswExpired = () => GET<boolean>('/support/user/account/checkPswExpired');

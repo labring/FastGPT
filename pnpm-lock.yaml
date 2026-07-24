@@ -54,6 +54,9 @@ catalogs:
     '@types/js-yaml':
       specifier: ^4.0.9
       version: 4.0.9
+    '@types/jsdom':
+      specifier: ^21.1.7
+      version: 21.1.7
     '@types/jsonwebtoken':
       specifier: ^9.0.3
       version: 9.0.9
@@ -102,6 +105,9 @@ catalogs:
     file-type:
       specifier: 21.3.0
       version: 21.3.0
+    google-auth-library:
+      specifier: 10.6.2
+      version: 10.6.2
     gpt-tokenizer:
       specifier: 3.4.0
       version: 3.4.0
@@ -117,6 +123,9 @@ catalogs:
     js-yaml:
       specifier: ^4.1.1
       version: 4.1.1
+    jsdom:
+      specifier: 26.1.0
+      version: 26.1.0
     json5:
       specifier: ^2.2.3
       version: 2.2.3
@@ -996,6 +1005,9 @@ importers:
       gcp-metadata:
         specifier: ^5.3.0
         version: 5.3.0(encoding@0.1.13)
+      google-auth-library:
+        specifier: 'catalog:'
+        version: 10.6.2
       i18next:
         specifier: 'catalog:'
         version: 23.16.8
@@ -1261,12 +1273,18 @@ importers:
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.25
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.17.24
       '@types/xml2js':
         specifier: ^0.4.14
         version: 0.4.14
       tsdown:
         specifier: 'catalog:'
         version: 0.21.10(typescript@6.0.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
   projects/app:
     dependencies:
@@ -1532,6 +1550,9 @@ importers:
       '@types/js-yaml':
         specifier: 'catalog:'
         version: 4.0.9
+      '@types/jsdom':
+        specifier: 'catalog:'
+        version: 21.1.7
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
@@ -1562,6 +1583,9 @@ importers:
       eslint-config-next:
         specifier: catalog:lint
         version: 16.2.6(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
+      jsdom:
+        specifier: 'catalog:'
+        version: 26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10)
       tailwindcss:
         specifier: ^3
         version: 3.4.18(tsx@4.20.6)(yaml@2.8.4)
