@@ -165,7 +165,7 @@ describe('parseDashboardImportConfig', () => {
       workflow: {
         nodes: [{ flowNodeType: 'workflowStart' }],
         edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-        chatConfig: { welcomeText: 'hello' }
+        chatConfig: { welcomeText: 'hello', welcomeConfig: { welcomeText: 'hello' } }
       }
     });
   });
@@ -379,7 +379,7 @@ describe('parseWorkflowImportConfig', () => {
     expect(result).toEqual({
       nodes: [{ flowNodeType: 'workflowStart' }],
       edges: [{ source: 'a', sourceHandle: 'a-out', target: 'b', targetHandle: 'b-in' }],
-      chatConfig: { welcomeText: 'hello' }
+      chatConfig: { welcomeText: 'hello', welcomeConfig: { welcomeText: 'hello' } }
     });
   });
 
@@ -400,7 +400,10 @@ describe('parseWorkflowImportConfig', () => {
     expect(result).toEqual({
       nodes: [{ flowNodeType: 'pluginInput' }, { flowNodeType: 'pluginOutput' }],
       edges: [],
-      chatConfig: { welcomeText: 'plugin hello' }
+      chatConfig: {
+        welcomeText: 'plugin hello',
+        welcomeConfig: { welcomeText: 'plugin hello' }
+      }
     });
   });
 

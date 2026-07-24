@@ -114,6 +114,7 @@ export const valueTypeJsonSchemaMap: Record<string, JsonSchemaPropertiesItemType
 export enum NodeInputKeyEnum {
   // old
   welcomeText = 'welcomeText',
+  welcomeQuestions = 'welcomeQuestions',
   switch = 'switch', // a trigger switch
   history = 'history',
   answerText = 'text',
