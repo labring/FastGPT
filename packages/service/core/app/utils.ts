@@ -17,7 +17,6 @@ import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SkillToolSchema } from '@fastgpt/global/core/ai/skill/type';
 import {
@@ -227,10 +226,8 @@ export async function rewriteAppWorkflowToDetail({
 
       // Tool node
       if (node.pluginId) {
-        const { source: toolSource } = splitCombineToolId(node.pluginId);
         const allowLegacyToolDescriptionFallback =
-          toolSource === AppToolSourceEnum.systemTool ||
-          toolSource === AppToolSourceEnum.commercial;
+          node.flowNodeType === FlowNodeTypeEnum.pluginModule;
         node.inputs = node.inputs.map((input) => {
           const selectedType = getSavedToolInputSelectedType({
             savedInput: input,
@@ -329,10 +326,8 @@ export async function rewriteAppWorkflowToDetail({
               const result = await loadToolNode({ id: tool.id, source: tool.source });
               if (result.success) {
                 const data = result.data!;
-                const { source: toolSource } = splitCombineToolId(tool.id);
                 const allowLegacyToolDescriptionFallback =
-                  toolSource === AppToolSourceEnum.systemTool ||
-                  toolSource === AppToolSourceEnum.commercial;
+                  data.flowNodeType === FlowNodeTypeEnum.pluginModule;
                 // Merge saved config back into inputs
                 const toolInputConfigMap = new Map(
                   (tool.inputs ?? []).map((input) => [input.key, input])

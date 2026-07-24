@@ -77,6 +77,78 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
     expect(nodes[0].inputs[0]).toMatchObject({ isToolParam: true });
     expect(nodes[0].inputs[1]).toMatchObject({ isToolParam: false });
   });
+
+  it('将固定版本旧工作流工具中标记为工具参数的必填输入恢复为 AI 生成', async () => {
+    const toolAppId = '507f1f77bcf86cd799439011';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      pluginId: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
+      name: 'Legacy workflow tool',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'legacy-version-id',
+      versionLabel: '2026-07-24 14:16:01',
+      isLatestVersion: false
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'legacy-workflow-tool',
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        pluginId: toolAppId,
+        version: 'legacy-version-id',
+        inputs: [
+          {
+            key: 'text',
+            label: 'text',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            value: '',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            toolDescription: 'text'
+          },
+          {
+            key: 'text2',
+            label: 'text2',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: '',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      key: 'text',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(nodes[0].inputs[1]).toMatchObject({
+      key: 'text2',
+      selectedTypeIndex: 0,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    });
+    expect(nodes[0].inputs[1].selectedType).toBeUndefined();
+  });
 });
 
 describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
@@ -559,6 +631,83 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
             ],
             selectedType: FlowNodeInputTypeEnum.input,
             selectedTypeIndex: 1
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('刷新 Agent 中的旧工作流工具时恢复 toolDescription 对应的 AI 生成类型', async () => {
+    const toolAppId = '507f1f77bcf86cd799439013';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
+      name: 'Legacy workflow tool',
+      avatar: '',
+      intro: '',
+      inputs: [
+        {
+          key: 'text',
+          label: 'text',
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: true,
+          toolDescription: 'text'
+        }
+      ],
+      outputs: [],
+      version: 'v1'
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const toolInput = {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [
+        {
+          id: toolAppId,
+          inputs: [
+            {
+              key: 'text',
+              value: '',
+              selectedTypeIndex: 0,
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+              toolDescription: 'text'
+            }
+          ],
+          config: {}
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [toolInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(toolInput.value).toMatchObject([
+      {
+        inputs: [
+          {
+            key: 'text',
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            selectedTypeIndex: 0,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ]
           }
         ]
       }
