@@ -29,18 +29,6 @@ export const mergeStringRecord = (
   return Object.keys(merged).length > 0 ? merged : undefined;
 };
 
-/** 合并 metadata，保持和 env 相同的“场景入参覆盖 createConfig”优先级。 */
-export const mergeUnknownRecord = (
-  base?: Record<string, unknown>,
-  override?: Record<string, unknown>
-): Record<string, unknown> | undefined => {
-  const merged = {
-    ...(base ?? {}),
-    ...(override ?? {})
-  };
-  return Object.keys(merged).length > 0 ? merged : undefined;
-};
-
 /** 把 FastGPT 内部的字符串入口脚本规整为 SDK create spec 使用的 argv 数组。 */
 export const normalizeEntrypoint = (entrypoint?: string | string[]) => {
   if (!entrypoint) return undefined;

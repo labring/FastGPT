@@ -1,0 +1,224 @@
+import {
+  type DevboxApiConfig,
+  type DevboxApiResponse,
+  type DevboxCreateRequest,
+  type DevboxInfoData,
+  type DevboxMutationData,
+  type DownloadFileParams,
+  type ExecRequest,
+  type ExecResponseData,
+  type UploadFileParams,
+  type UploadResponseData
+} from './types';
+import { isReadableStreamData } from '@/utils/files';
+
+type StreamingRequestInit = RequestInit & {
+  /**
+   * Node fetch requires this extension when the request body is a stream.
+   * Browser typings do not expose it yet, but undici accepts the field.
+   */
+  duplex?: 'half';
+};
+
+export class DevboxClientError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly rawBody: string,
+    public readonly url: string
+  ) {
+    super(message);
+    this.name = 'DevboxClientError';
+    Object.setPrototypeOf(this, DevboxClientError.prototype);
+  }
+}
+
+/**
+ * HTTP client for the Sealos Devbox REST API.
+ *
+ * @see https://devbox-server.staging-usw-1.sealos.io
+ */
+export class DevboxClient {
+  private baseUrl: string;
+  private token: string;
+
+  constructor(config: DevboxApiConfig) {
+    this.baseUrl = config.baseUrl.replace(/\/+$/, '');
+    this.token = config.token;
+  }
+
+  private url(path: string, params?: Record<string, string>): string {
+    const u = new URL(path, this.baseUrl);
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        u.searchParams.set(k, v);
+      }
+    }
+    return u.toString();
+  }
+
+  private async request<T>(input: string, init?: RequestInit): Promise<DevboxApiResponse<T>> {
+    const headers = new Headers(init?.headers);
+    headers.set('Authorization', `Bearer ${this.token}`);
+    if (init?.body !== undefined && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    const res = await fetch(input, { ...init, headers });
+    const rawBody = await res.text();
+    let result: DevboxApiResponse<T>;
+    try {
+      result = JSON.parse(rawBody) as DevboxApiResponse<T>;
+    } catch {
+      throw new DevboxClientError(
+        `Devbox API returned non-JSON response (${res.status}): ${rawBody || res.statusText || res.status}`,
+        res.status,
+        rawBody,
+        input
+      );
+    }
+    return {
+      ...result,
+      code: result.code ?? res.status
+    };
+  }
+
+  /** POST /api/v1/devbox — create a devbox */
+  async create(req: DevboxCreateRequest): Promise<DevboxApiResponse<DevboxMutationData>> {
+    return this.request(this.url('/api/v1/devbox'), {
+      method: 'POST',
+      body: JSON.stringify(req)
+    });
+  }
+
+  /** GET /api/v1/devbox/{name} — query devbox info (state + SSH) */
+  async info(name: string): Promise<DevboxApiResponse<DevboxInfoData>> {
+    return this.request<DevboxInfoData>(this.url(`/api/v1/devbox/${name}`), {
+      method: 'GET'
+    });
+  }
+
+  /** POST /api/v1/devbox/{name}/pause */
+  async pause(name: string): Promise<DevboxApiResponse<DevboxMutationData>> {
+    return this.request(this.url(`/api/v1/devbox/${name}/pause`), {
+      method: 'POST'
+    });
+  }
+
+  /** POST /api/v1/devbox/{name}/resume */
+  async resume(name: string): Promise<DevboxApiResponse<DevboxMutationData>> {
+    return this.request(this.url(`/api/v1/devbox/${name}/resume`), {
+      method: 'POST'
+    });
+  }
+
+  /** DELETE /api/v1/devbox/{name} */
+  async delete(name: string): Promise<DevboxApiResponse<DevboxMutationData>> {
+    return this.request(this.url(`/api/v1/devbox/${name}`), {
+      method: 'DELETE'
+    });
+  }
+
+  /** POST /api/v1/devbox/{name}/exec */
+  async exec(props: {
+    name: string;
+    request: ExecRequest;
+    signal?: AbortSignal;
+  }): Promise<DevboxApiResponse<ExecResponseData>> {
+    return this.request(this.url(`/api/v1/devbox/${props.name}/exec`), {
+      method: 'POST',
+      body: JSON.stringify(props.request),
+      signal: props.signal
+    });
+  }
+
+  /** POST /api/v1/devbox/{name}/files/upload */
+  async uploadFile(props: {
+    name: string;
+    params: UploadFileParams;
+    content: BodyInit;
+  }): Promise<DevboxApiResponse<UploadResponseData>> {
+    const { name, params, content } = props;
+    const queryParams: Record<string, string> = { path: params.path };
+    if (params.mode) queryParams.mode = params.mode;
+    if (params.timeoutSeconds != null) queryParams.timeoutSeconds = String(params.timeoutSeconds);
+    if (params.container) queryParams.container = params.container;
+
+    const requestInit: StreamingRequestInit = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: content
+    };
+    if (isReadableStreamData(content)) {
+      requestInit.duplex = 'half';
+    }
+
+    return this.request(this.url(`/api/v1/devbox/${name}/files/upload`, queryParams), requestInit);
+  }
+
+  private buildDownloadFileUrl(name: string, params: DownloadFileParams): string {
+    const queryParams: Record<string, string> = { path: params.path };
+    if (params.filename) queryParams.filename = params.filename;
+    if (params.timeoutSeconds != null) queryParams.timeoutSeconds = String(params.timeoutSeconds);
+    if (params.container) queryParams.container = params.container;
+
+    return this.url(`/api/v1/devbox/${name}/files/download`, queryParams);
+  }
+
+  private async fetchDownloadFileResponse(
+    name: string,
+    params: DownloadFileParams
+  ): Promise<Response> {
+    const url = this.buildDownloadFileUrl(name, params);
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${this.token}` }
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new DevboxClientError(
+        `Devbox file download failed: HTTP ${res.status}${body ? ` ${body}` : ''}`,
+        res.status,
+        body,
+        url
+      );
+    }
+    return res;
+  }
+
+  /** GET /api/v1/devbox/{name}/files/download */
+  async downloadFile(name: string, params: DownloadFileParams): Promise<ArrayBuffer> {
+    const res = await this.fetchDownloadFileResponse(name, params);
+    return res.arrayBuffer();
+  }
+
+  /**
+   * GET /api/v1/devbox/{name}/files/download as the native HTTP response stream.
+   *
+   * This intentionally bypasses `arrayBuffer()` so callers can pipe large files without buffering
+   * the full payload in Node memory.
+   */
+  downloadFileStream(name: string, params: DownloadFileParams): AsyncIterable<Uint8Array> {
+    return this.readDownloadFileStream(name, params);
+  }
+
+  private async *readDownloadFileStream(
+    name: string,
+    params: DownloadFileParams
+  ): AsyncIterable<Uint8Array> {
+    const res = await this.fetchDownloadFileResponse(name, params);
+    const body = res.body;
+    if (!body) return;
+
+    const reader = body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) return;
+        if (value) {
+          yield value;
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+}

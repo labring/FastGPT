@@ -69,6 +69,13 @@ Configure the following variables in `fastgpt-app` and `fastgpt-pro` when you ne
 | `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864` | Maximum IDE Agent WebSocket message size in bytes.                                                                                |
 | `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216` | Maximum IDE Agent WebSocket frame size in bytes.                                                                                  |
 
+### Lifecycle variables
+
+| Variable                              | Default | Description                                                             |
+| ------------------------------------- | ------- | ----------------------------------------------------------------------- |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`    | Number of inactive minutes before a running Agent Sandbox is suspended. |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`     | Number of inactive days before a suspended Agent Sandbox is archived.   |
+
 ## FAQ
 
 ### AGENT_SANDBOX_PROXY_URL is required
