@@ -6,7 +6,11 @@ export enum UserErrEnum {
   userExist = 'userExist',
   unAuthRole = 'unAuthRole',
   account_psw_error = 'account_psw_error',
-  unAuthSso = 'unAuthSso'
+  unAuthSso = 'unAuthSso',
+  accountCancellationPending = 'accountCancellationPending',
+  invalidVerificationCode = 'invalidVerificationCode',
+  sendVerificationCodeTooFrequently = 'sendVerificationCodeTooFrequently',
+  verifyCodeTooFrequently = 'verifyCodeTooFrequently'
 }
 const errList = [
   {
@@ -24,6 +28,25 @@ const errList = [
   {
     statusText: UserErrEnum.unAuthSso,
     message: i18nT('user:sso_auth_failed')
+  },
+  {
+    statusText: UserErrEnum.accountCancellationPending,
+    message: i18nT('common:code_error.account_cancellation_pending')
+  },
+  {
+    statusText: UserErrEnum.invalidVerificationCode,
+    message: i18nT('common:error.code_error'),
+    httpStatus: 400
+  },
+  {
+    statusText: UserErrEnum.sendVerificationCodeTooFrequently,
+    message: i18nT('common:error.send_auth_code_too_frequently'),
+    httpStatus: 429
+  },
+  {
+    statusText: UserErrEnum.verifyCodeTooFrequently,
+    message: i18nT('common:error.verify_code_too_frequently'),
+    httpStatus: 429
   }
 ];
 export default errList.reduce((acc, cur, index) => {
@@ -33,7 +56,8 @@ export default errList.reduce((acc, cur, index) => {
       code: 503000 + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
     }
   };
 }, {} as ErrType<`${UserErrEnum}`>);

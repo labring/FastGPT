@@ -2,17 +2,16 @@ import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, IconButton, Button } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useRouter } from 'next/router';
-import { type Dispatch, useCallback, useEffect, useMemo, useState } from 'react';
+import { type Dispatch, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
-import { POST } from '@/web/common/api/request';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import type { OAuthAccountVerificationProvider } from '@fastgpt/global/support/user/account/verification/type';
+import { createOauthLogin } from '@/web/support/user/api';
 
 type Props = {
   children: React.ReactNode;
@@ -22,10 +21,9 @@ type Props = {
 
 type OAuthItem = {
   label: string;
-  provider: OAuthEnum | LoginPageTypeEnum;
+  provider: OAuthAccountVerificationProvider | LoginPageTypeEnum;
   icon: any;
   pageType?: LoginPageTypeEnum;
-  redirectUrl?: string;
 };
 
 const FormLayout = ({ children, setPageType, pageType }: Props) => {
@@ -43,20 +41,19 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     return router.pathname === '/chat' ? router.asPath : lastRoute;
   }, [lastRoute, router.pathname, router.asPath]);
 
-  const [oauthState] = useState(() => getNanoid(8));
   const redirectUri = `${location.origin}/login/provider`;
 
   const isWecomWorkTerminal = checkIsWecomTerminal();
   const canWecomTerminalAutoRedirect =
     !isWecomWorkTerminal || feConfigs?.wecomLoginAutoRedirect === true;
 
-  const oAuthList: OAuthItem[] = useMemo(
+  const oAuthList = useMemo<OAuthItem[]>(
     () => [
       ...(feConfigs?.sso?.url
         ? [
             {
               label: feConfigs.sso.title || 'Unknown',
-              provider: OAuthEnum.sso,
+              provider: 'sso' as const,
               icon: feConfigs.sso.icon
             }
           ]
@@ -65,7 +62,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         ? [
             {
               label: t('common:support.user.login.Wechat'),
-              provider: OAuthEnum.wechat,
+              provider: LoginPageTypeEnum.wechat,
               icon: 'common/wechatFill',
               pageType: LoginPageTypeEnum.wechat
             }
@@ -85,9 +82,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         ? [
             {
               label: t('common:support.user.login.Google'),
-              provider: OAuthEnum.google,
-              icon: 'common/googleFill',
-              redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${oauthState}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
+              provider: 'google' as const,
+              icon: 'common/googleFill'
             }
           ]
         : []),
@@ -95,9 +91,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         ? [
             {
               label: t('common:support.user.login.Github'),
-              provider: OAuthEnum.github,
-              icon: 'common/gitFill',
-              redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${oauthState}&scope=user:email%20read:user`
+              provider: 'github' as const,
+              icon: 'common/gitFill'
             }
           ]
         : []),
@@ -107,70 +102,43 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               label:
                 feConfigs?.oauth?.microsoft?.customButton ||
                 t('common:support.user.login.Microsoft'),
-              provider: OAuthEnum.microsoft,
-              icon: 'common/microsoft',
-              redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${oauthState}`
+              provider: 'microsoft' as const,
+              icon: 'common/microsoft'
             }
           ]
         : [])
     ],
-    [feConfigs, oauthState, pageType, redirectUri, t]
+    [feConfigs, pageType, t]
   );
 
-  const show_oauth = !!(feConfigs?.sso?.url || oAuthList.length > 0);
+  const show_oauth = oAuthList.length > 0;
 
   const onClickOauth = useCallback(
     async (item: OAuthItem) => {
-      if (item.provider === OAuthEnum.sso) {
-        const redirectUrl = await POST<string>('/proApi/support/user/account/login/getAuthURL', {
-          redirectUri,
-          isWecomWorkTerminal
-        });
-        setLoginStore({
-          provider: item.provider as OAuthEnum,
-          lastRoute: computedLastRoute,
-          lastTmbId,
-          state: oauthState
-        });
-        router.replace(redirectUrl, '_self');
+      if (item.pageType) {
+        setPageType(item.pageType);
         return;
       }
 
-      if (item.provider === OAuthEnum.wecom) {
-        const redirectUrl = await POST<string>(
-          '/proApi/support/user/account/login/wecom/getRedirectUrl',
-          {
-            redirectUri,
-            isWecomWorkTerminal,
-            state: oauthState
-          }
-        );
-        setLoginStore({
-          provider: item.provider as OAuthEnum,
-          lastRoute: computedLastRoute,
-          lastTmbId,
-          state: oauthState
-        });
-        router.replace(redirectUrl, '_self');
-        return;
-      }
-
-      if (item.redirectUrl) {
-        setLoginStore({
-          provider: item.provider as OAuthEnum,
-          lastRoute: computedLastRoute,
-          lastTmbId,
-          state: oauthState
-        });
-        router.replace(item.redirectUrl, '_self');
-      }
-      item.pageType && setPageType(item.pageType);
+      const provider = item.provider as OAuthAccountVerificationProvider;
+      const { state, url } = await createOauthLogin({
+        provider,
+        callbackUrl: redirectUri,
+        isWecomWorkTerminal
+      });
+      setLoginStore({
+        provider,
+        lastRoute: computedLastRoute,
+        lastTmbId,
+        state,
+        callbackUrl: redirectUri
+      });
+      router.replace(url, '_self');
     },
     [
       computedLastRoute,
       isWecomWorkTerminal,
       lastTmbId,
-      oauthState,
       redirectUri,
       router,
       setLoginStore,
@@ -181,15 +149,18 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   // Auto login
   useEffect(() => {
     if (rootLogin) return;
-    const sso = oAuthList.find((item) => item.provider === OAuthEnum.sso);
+    const sso = oAuthList.find((item) => item.provider === 'sso');
     // sso auto login
     if (sso && canWecomTerminalAutoRedirect && (feConfigs?.sso?.autoLogin || isWecomWorkTerminal)) {
-      onClickOauth(sso);
+      void onClickOauth(sso);
+      return;
     }
     if (feConfigs.oauth?.wecom && isWecomWorkTerminal && canWecomTerminalAutoRedirect) {
-      onClickOauth({
-        provider: OAuthEnum.wecom
-      } as any);
+      void onClickOauth({
+        label: 'Wecom',
+        provider: 'wecom',
+        icon: 'common/wecom'
+      });
     }
   }, [
     rootLogin,

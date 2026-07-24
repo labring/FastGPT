@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
@@ -5,6 +6,8 @@ import {
   PreLoginQuerySchema,
   PreLoginResponseSchema,
   OauthLoginBodySchema,
+  CreateOauthLoginBodySchema,
+  CreateOauthLoginResponseSchema,
   FastLoginBodySchema,
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
@@ -70,6 +73,14 @@ export const LoginPath: OpenAPIPath = {
               schema: LoginSuccessResponseSchema
             }
           }
+        },
+        400: {
+          description: '请求参数或预登录验证码错误',
+          content: {
+            'application/json': {
+              schema: z.null()
+            }
+          }
         }
       }
     }
@@ -92,6 +103,30 @@ export const LoginPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: LoginSuccessResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/login/oauth/create': {
+    post: {
+      summary: '创建 OAuth 登录流程',
+      description: '由服务端创建一次性 state 并返回 Provider 授权地址',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CreateOauthLoginBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'OAuth 登录流程创建成功',
+          content: {
+            'application/json': {
+              schema: CreateOauthLoginResponseSchema
             }
           }
         }

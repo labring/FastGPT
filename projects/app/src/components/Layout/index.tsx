@@ -58,6 +58,7 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/login': true,
   '/login/provider': true,
   '/login/fastlogin': true,
+  '/account/cancel': true,
   '/chat/share': true,
   '/app/edit': true,
   '/chat': true,
@@ -70,6 +71,7 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/login': true,
   '/login/provider': true,
   '/login/fastlogin': true,
+  '/account/cancel': true,
   '/chat': true,
   '/chat/share': true,
   '/tools/price': true,
@@ -163,6 +165,17 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     setLastRoute(router.pathname);
   }, [router.pathname, setLastRoute]);
+
+  useEffect(() => {
+    if (
+      userInfo?.team?.accountCancellation &&
+      router.pathname !== '/account/cancel' &&
+      router.pathname !== '/login' &&
+      router.pathname !== '/login/provider'
+    ) {
+      router.replace('/account/cancel?view=team');
+    }
+  }, [router, router.pathname, userInfo?.team?.accountCancellation]);
 
   return (
     <>

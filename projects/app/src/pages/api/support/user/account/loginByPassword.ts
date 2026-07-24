@@ -1,18 +1,10 @@
-import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { getUserDetail } from '@fastgpt/service/support/user/controller';
-import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { serviceEnv } from '@fastgpt/service/env';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { authCode } from '@fastgpt/service/support/user/auth/controller';
-import { createUserSession } from '@fastgpt/service/support/user/session';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   LoginByPasswordBodySchema,
   type LoginByPasswordBodyType,
@@ -21,10 +13,8 @@ import {
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import {
-  reportCRMVisitorIdentity,
-  resolveCRMVisitorId
-} from '@fastgpt/service/support/marketing/attribution';
+import { passwordAccountVerification } from '@fastgpt/service/support/user/account/verification/password/service';
+import { loginLocalAccount } from '@/service/support/user/login/service';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
@@ -35,81 +25,29 @@ async function handler(
     bodySchema: LoginByPasswordBodySchema
   }).body;
 
-  // Auth prelogin code
-  await authCode({
-    key: username,
-    code,
-    type: UserAuthTypeEnum.login
-  });
-
-  const user = await MongoUser.findOne({
-    username,
-    password
-  });
-
-  if (!user) {
-    return Promise.reject(UserErrEnum.account_psw_error);
-  }
-  if (user.status === UserStatusEnum.forbidden) {
-    return Promise.reject('Invalid account!');
-  }
-
-  if (user) {
-    if (user.username.startsWith('wecom-')) {
-      return Promise.reject(new UserError('Wecom user can not login with password'));
-    }
-  }
-
-  const userDetail = await getUserDetail({
-    tmbId: user?.lastLoginTmbId,
-    userId: user._id,
-    isRoot: username === 'root'
-  });
-
-  user.lastLoginTmbId = userDetail.team.tmbId;
-  user.language = language;
-  const visitorIdentity = resolveCRMVisitorId({
-    storedFastgptSem: user.fastgpt_sem,
-    incomingVisitorId: fastgpt_sem?.visitor_id
-  });
-  if (visitorIdentity.shouldPersist) {
-    user.fastgpt_sem = visitorIdentity.fastgptSem;
-  }
-  await user.save();
-
-  const token = await createUserSession({
-    userId: user._id,
-    teamId: userDetail.team.teamId,
-    tmbId: userDetail.team.tmbId,
-    isRoot: username === 'root',
+  const identity = await passwordAccountVerification.consume({ username, password, code });
+  const { user, token } = await loginLocalAccount({
+    identity,
+    language,
+    fastgpt_sem,
     ip: getClientIpFromRequest(req)
   });
 
   setCookie(res, token);
 
-  void reportCRMVisitorIdentity({
-    visitorId: visitorIdentity.visitorId,
-    userId: String(user._id),
-    username: user.username,
-    contact: user.contact
-  });
-
   pushTrack.login({
     type: 'password',
     uid: user._id,
-    teamId: userDetail.team.teamId,
-    tmbId: userDetail.team.tmbId
+    teamId: user.team.teamId,
+    tmbId: user.team.tmbId
   });
   addAuditLog({
-    tmbId: userDetail.team.tmbId,
-    teamId: userDetail.team.teamId,
+    tmbId: user.team.tmbId,
+    teamId: user.team.teamId,
     event: AuditEventEnum.LOGIN
   });
 
-  return {
-    user: userDetail,
-    token
-  };
+  return { user, token };
 }
 
 const lockTime = serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS;

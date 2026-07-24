@@ -1,4 +1,5 @@
 import type { SubPlanType } from '../../../support/wallet/sub/type';
+import type { AccountVerificationCapabilities } from '../../../support/user/account/verification/type';
 import type {
   LLMModelItemType,
   EmbeddingModelItemType,
@@ -76,6 +77,13 @@ export type FastGPTFeConfigsType = {
   show_enterprise_auth?: boolean;
   showWecomConfig?: boolean;
   wecomLoginAutoRedirect?: boolean;
+  accountCancellation?: {
+    enabled?: boolean;
+  };
+  /** 仅暴露注销验证的布尔能力，不包含任何 Provider 密钥。 */
+  accountVerification?: {
+    accountCancellation?: AccountVerificationCapabilities;
+  };
 
   show_dataset_feishu?: boolean;
   show_dataset_yuque?: boolean;

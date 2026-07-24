@@ -51,6 +51,7 @@ catalog:
   debug: ^4.4.3
   express: ^4
   file-type: 21.3.0
+  google-auth-library: 10.6.2
   gpt-tokenizer: 3.4.0
   hono: 4.12.25
   i18next: 23.16.8
