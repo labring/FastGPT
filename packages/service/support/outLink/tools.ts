@@ -1,11 +1,43 @@
 import { axios } from '../../common/api/axios';
 import { MongoOutLink } from './schema';
 import { FastGPTProUrl } from '../../common/system/constants';
-import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import {
+  type ChatHistoryItemResType,
+  type UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../common/logger';
 import { Readable } from 'node:stream';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.TOOLS);
+
+/**
+ * Combine and clean multiple queries into one.
+ */
+export const composeOutLinkQuery = (
+  ...queries: UserChatItemValueItemType[][]
+): UserChatItemValueItemType[] => {
+  const items = queries.flat();
+  const content = items
+    .flatMap((item) => (item.text?.content ? [item.text.content] : []))
+    .join('\n');
+
+  return [
+    ...(content ? [{ text: { content } }] : []),
+    ...items.flatMap((item) => (item.file ? [{ file: item.file }] : []))
+  ];
+};
+
+/**
+ * Cite the text content of a query and preserve anything else.
+ */
+export const citeOutLinkQuery = (query: UserChatItemValueItemType[]): UserChatItemValueItemType[] =>
+  composeOutLinkQuery(query).map((item) =>
+    item.text?.content
+      ? {
+          text: { content: `<Cite>${item.text.content}</Cite>` }
+        }
+      : item
+  );
 
 /**
  * Indicates an outlink file download stream exceeds the size limit.
