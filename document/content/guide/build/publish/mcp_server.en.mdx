@@ -11,7 +11,7 @@ MCP has two main components: Client and Server. The Client is the AI model consu
 
 FastGPT's MCP Server feature lets you select `multiple` applications built on FastGPT and expose them via MCP protocol for external consumption.
 
-Currently, FastGPT's MCP Server uses the SSE transport protocol, with plans to migrate to `HTTP Streamable` in the future.
+FastGPT supports the `Streamable HTTP` transport. Self-hosted deployments can also expose the compatible `SSE` transport through the standalone MCP Server service.
 
 ## Using MCP Server in FastGPT
 
@@ -35,7 +35,7 @@ After creating an MCP Server, click `Start Using` to get the access URL.
 | -------------------------- | -------------------------- |
 | ![](/imgs/mcp_server4.png) | ![](/imgs/mcp_server5.png) |
 
-#### 3. Use the MCP Server
+### 3. Use the MCP Server
 
 Use the URL in any MCP-compatible client to call your FastGPT applications — for example, `Cursor` or `Cherry Studio`. Here's how to set it up in Cursor.
 
@@ -53,6 +53,72 @@ After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (
 |                            |                             |
 | -------------------------- | --------------------------- |
 | ![](/imgs/mcp_server9.png) | ![](/imgs/mcp_server10.png) |
+
+## Configure Identity Proxy
+
+Identity proxy lets a caller select the team member who executes an MCP tool. FastGPT checks that member's read permission for the target application and attributes chat and runtime records to that member. Use it when a gateway or shared MCP client sends requests on behalf of different team members.
+
+### Prerequisites
+
+- Only a team owner can enable identity proxy for an MCP Server.
+- The proxied user must be an active member of the same team and have read permission for the target application.
+- The key in the published MCP URL is an execution credential. Do not commit it to public code or share it with unrelated users.
+
+### 1. Enable identity proxy
+
+Create or edit an MCP Server, turn on `Auth proxy` in the publishing settings, and save the configuration.
+
+When a request does not include an identity proxy header, the tool continues to run as the MCP Server publisher.
+
+### 2. Configure the proxy identity headers
+
+Pass the identity in the MCP transport headers, not in the tool arguments. FastGPT accepts these headers:
+
+| Header                          | Value                      | Description                                                      |
+| ------------------------------- | -------------------------- | ---------------------------------------------------------------- |
+| `x-fastgpt-auth-proxy-username` | Team member login username | Recommended; this is usually the member's login email address    |
+| `x-fastgpt-auth-proxy-tmb-id`   | FastGPT team member ID     | Use this when your system already stores FastGPT team member IDs |
+
+Either header is sufficient. If you provide both, they must resolve to the same team member.
+
+For MCP clients that support custom headers, add `headers` to the configuration copied in step 2. This example uses a `Streamable HTTP` URL and a login username:
+
+```json
+{
+  "mcpServers": {
+    "fastgpt": {
+      "url": "https://fastgpt.example.com/api/mcp/app/<MCP_KEY>/mcp",
+      "headers": {
+        "x-fastgpt-auth-proxy-username": "member@example.com"
+      }
+    }
+  }
+}
+```
+
+To use a team member ID, replace `headers` with:
+
+```json
+{
+  "x-fastgpt-auth-proxy-tmb-id": "<TEAM_MEMBER_ID>"
+}
+```
+
+SSE URLs use the same headers. The SSE service captures the proxy identity when it establishes the connection, so reconnect after changing a header. `Streamable HTTP` reads the headers for each request.
+
+### 3. Verify the configuration
+
+Call a published tool from the MCP client. A successful call confirms that the proxied user is still an active team member and has read permission for the target application.
+
+If the tool list loads but a tool call returns an authorization error, check the following:
+
+1. Identity proxy is enabled for the MCP Server.
+2. The username or team member ID in the request header is correct.
+3. If both headers are present, they identify the same member.
+4. The member is still active in the team that published the MCP Server.
+5. The member has read permission for the application being called.
+
+The tool list exposes only metadata such as tool names and parameters. FastGPT rechecks team membership and application permission for every tool call.
 
 ## Self-Hosted MCP Server Setup
 
