@@ -2,7 +2,6 @@ import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wall
 import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 
 export const pushGenerateVectorUsage = ({
@@ -194,44 +193,6 @@ export const pushAudioSpeechUsage = ({
         amount: totalPoints,
         model: modelName,
         charsLength
-      }
-    ]
-  });
-};
-
-export const pushWhisperUsage = ({
-  teamId,
-  tmbId,
-  duration
-}: {
-  teamId: string;
-  tmbId: string;
-  duration: number;
-}) => {
-  const whisperModel = getDefaultSTTModel();
-
-  if (!whisperModel) return;
-
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: whisperModel.model,
-    inputTokens: duration,
-    multiple: 60
-  });
-
-  const name = i18nT('common:support.wallet.usage.Whisper');
-
-  createUsage({
-    teamId,
-    tmbId,
-    appName: name,
-    totalPoints,
-    source: UsageSourceEnum.fastgpt,
-    list: [
-      {
-        moduleName: name,
-        amount: totalPoints,
-        model: modelName,
-        duration
       }
     ]
   });
