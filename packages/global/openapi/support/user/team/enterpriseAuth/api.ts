@@ -91,7 +91,7 @@ const BankAccountSchema = EnterpriseAuthRequiredStringSchema.transform((account)
 )
   .pipe(z.string().refine(isBankAccount))
   .meta({
-    description: '企业银行账号，15-19 位数字，可输入空格分隔',
+    description: '企业银行账号，仅支持数字，可输入空格分隔',
     example: '4111111111111111'
   });
 const UnifiedCreditCodeSchema = EnterpriseAuthRequiredStringSchema.transform((code) =>

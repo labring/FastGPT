@@ -8,16 +8,17 @@ import {
 } from '../../../../../src/pageComponents/account/team/EnterpriseAuth/shared';
 
 describe('enterprise auth bank account validation', () => {
-  it('去除空格后校验 15-19 位数字银行账号', () => {
+  it('去除空格后校验纯数字银行账号，不限制长度', () => {
     expect(normalizeBankAccount(' 4111 1111 1111 1111 ')).toBe('4111111111111111');
     expect(fieldRules.bankAccount.validate('4111 1111 1111 1111')).toBe(true);
-    expect(fieldRules.bankAccount.validate('571919104910201')).toBe(true);
+    expect(fieldRules.bankAccount.validate('1')).toBe(true);
+    expect(fieldRules.bankAccount.validate('1'.repeat(32))).toBe(true);
   });
 
-  it('银行账号包含非数字或长度不符时校验失败', () => {
+  it('银行账号为空或包含非数字时校验失败', () => {
+    expect(fieldRules.bankAccount.validate('')).toBe(false);
+    expect(fieldRules.bankAccount.validate('   ')).toBe(false);
     expect(fieldRules.bankAccount.validate('4111-1111-1111-1111')).toBe(false);
-    expect(fieldRules.bankAccount.validate('1'.repeat(14))).toBe(false);
-    expect(fieldRules.bankAccount.validate('1'.repeat(20))).toBe(false);
   });
 
   it('统一社会信用代码按 GB 32100-2015 校验第 18 位', () => {
