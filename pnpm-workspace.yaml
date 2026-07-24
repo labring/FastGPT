@@ -52,7 +52,7 @@ catalog:
   express: ^4
   file-type: 21.3.0
   gpt-tokenizer: 3.4.0
-  hono: 4.12.25
+  hono: 4.12.27
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
