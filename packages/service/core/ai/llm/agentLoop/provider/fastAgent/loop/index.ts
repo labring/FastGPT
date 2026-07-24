@@ -182,7 +182,11 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     toolCatalog: normalized
   };
 
-  const hasRuntimeTools = normalized.runtimeTools.length > 0;
+  const hasRuntimeTools =
+    normalized.runtimeTools.length > 0 ||
+    (normalized.sandboxTools?.length ?? 0) > 0 ||
+    !!normalized.readFileTool ||
+    !!normalized.datasetSearchTool;
 
   let pendingAsk:
     | {

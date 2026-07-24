@@ -165,6 +165,58 @@ describe('runFastAgentMainLoop', () => {
     expect(mainAgentPrompt).toContain('options：2 到 5 个');
   });
 
+  it.each([
+    {
+      name: 'no runtime-capable tools',
+      toolCatalog: { runtimeTools: [] },
+      expectedConstraint: true
+    },
+    {
+      name: 'sandbox tools only',
+      toolCatalog: { runtimeTools: [], sandboxTools: [tool('sandbox_shell')] },
+      expectedConstraint: false
+    },
+    {
+      name: 'read file tool only',
+      toolCatalog: { runtimeTools: [], readFileTool: tool('read_files') },
+      expectedConstraint: false
+    },
+    {
+      name: 'dataset search tool only',
+      toolCatalog: { runtimeTools: [], datasetSearchTool: tool('dataset_search') },
+      expectedConstraint: false
+    }
+  ] satisfies Array<{
+    name: string;
+    toolCatalog: AgentLoopRuntime['toolCatalog'];
+    expectedConstraint: boolean;
+  }>)(
+    'sets the runtime tool constraint correctly with $name',
+    async ({ toolCatalog, expectedConstraint }) => {
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        text({
+          requestId: 'req_runtime_tool_constraint',
+          content: 'direct answer'
+        })
+      ]);
+
+      await runFastAgentMainLoop({
+        runtime: createRuntime({ toolCatalog }),
+        input: {
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: 'hello'
+            }
+          ]
+        }
+      });
+
+      const mainAgentPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[0].content;
+      expect(mainAgentPrompt.includes('<tool_constraint>')).toBe(expectedConstraint);
+    }
+  );
+
   it('creates an active plan through set_plan', async () => {
     const events: any[] = [];
     mockCreateLLMResponseQueue(createLLMResponseMock, [
