@@ -9,7 +9,6 @@ import type {
   OauthLoginBodyType,
   CreateOauthLoginBodyType,
   CreateOauthLoginResponseType,
-  FastLoginBodyType,
   WxLoginBodyType,
   GetWXLoginQRResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -40,8 +39,6 @@ export const oauthLogin = (params: OauthLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth', params);
 export const createOauthLogin = (params: CreateOauthLoginBodyType) =>
   POST<CreateOauthLoginResponseType>('/proApi/support/user/account/login/oauth/create', params);
-export const postFastLogin = (params: FastLoginBodyType) =>
-  POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
 export const ssoLogin = (params: any) =>
   GET<LoginSuccessResponseType>('/proApi/support/user/account/sso', params);
 export const postLogin = ({ password, ...props }: LoginByPasswordBodyType) =>

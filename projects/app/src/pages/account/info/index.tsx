@@ -144,7 +144,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { toast } = useToast();
   const canManagePassword = canManagePasswordFromAccountInfo({
     isPlus: feConfigs?.isPlus,
-    username: userInfo?.username
+    username: userInfo?.username,
+    passwordAvailable: userInfo?.passwordAvailable
   });
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;

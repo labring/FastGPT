@@ -44,7 +44,8 @@ export const UserSchema = z.object({
   permission: z.instanceof(TeamPermission),
   contact: z.string().optional(),
   tags: z.array(UserTagsSchema).optional(),
-  hasPassword: z.boolean()
+  hasPassword: z.boolean(),
+  passwordAvailable: z.boolean().optional()
 });
 export type UserType = z.infer<typeof UserSchema>;
 

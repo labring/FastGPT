@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountVerificationCapabilities } from '@fastgpt/global/support/user/account/verification/type';
-import { resolveAccountVerificationByUsername } from '@fastgpt/global/support/user/account/verification/utils';
+import {
+  resolveAccountKindByUsername,
+  resolveAccountVerificationByUsername
+} from '@fastgpt/global/support/user/account/verification/utils';
 
 const capabilities = {
   emailCode: true,
@@ -33,6 +36,32 @@ const resolve = (username: string, overrides: CapabilityOverrides = {}) =>
     allowPasswordFallback: true,
     oldPasswordAvailable: true
   });
+
+describe('resolveAccountKindByUsername', () => {
+  it.each([
+    ['', true, 'invalid'],
+    ['   ', true, 'invalid'],
+    ['user@example.com', true, 'email'],
+    ['user-name@example-domain.com', true, 'email'],
+    ['13800138000', true, 'phone'],
+    ['wechat-openid', false, 'wechat'],
+    ['git-octocat', false, 'github'],
+    ['google-sub', false, 'google'],
+    ['microsoft-id', false, 'microsoft'],
+    ['wecom-id', false, 'wecom'],
+    ['customer-user', true, 'sso'],
+    ['customer-user-extra', true, 'sso'],
+    ['customer-user', false, 'local'],
+    ['Git-user', true, 'sso'],
+    ['local', true, 'local'],
+    ['-leading', true, 'local'],
+    ['trailing-', true, 'local'],
+    ['git-', true, 'local'],
+    ['  customer-user  ', true, 'sso']
+  ])('classifies %j with ssoConfigured=%s as %s', (username, ssoConfigured, accountKind) => {
+    expect(resolveAccountKindByUsername({ username, ssoConfigured })).toBe(accountKind);
+  });
+});
 
 describe('resolveAccountVerificationByUsername', () => {
   it.each(['', '   '])('rejects an empty username: %j', (username) => {

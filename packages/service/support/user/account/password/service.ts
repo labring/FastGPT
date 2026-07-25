@@ -4,8 +4,31 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { serviceEnv } from '../../../../env';
 import { MongoUser } from '../../schema';
+import { resolveAccountKindByUsername } from '@fastgpt/global/support/user/account/verification/utils';
 
 export const PASSWORD_CHANGE_TOKEN_TTL_SECONDS = 5 * 60;
+
+/** 当前运行时是否开启 SSO 用户禁用密码策略。 */
+export const isSsoPasswordDisabled = () =>
+  Boolean(global.feConfigs?.sso?.url) && global.feConfigs?.sso?.disablePasswordForSsoUsers === true;
+
+/** 使用共享账号分类规则判断持久化 username 是否属于当前 SSO 环境。 */
+export const isSsoUserByUsername = (username: string) =>
+  resolveAccountKindByUsername({
+    username,
+    ssoConfigured: Boolean(global.feConfigs?.sso?.url)
+  }) === 'sso';
+
+/** 返回当前运行时中指定账号是否允许使用或维护平台密码。 */
+export const getUserPasswordAvailability = (username: string) =>
+  !(isSsoPasswordDisabled() && isSsoUserByUsername(username));
+
+/** 在密码比对或最终写入前拒绝受限 SSO 用户。 */
+export const assertUserPasswordAvailable = (username: string) => {
+  if (!getUserPasswordAvailability(username)) {
+    throw new UserError(UserErrEnum.ssoPasswordUnavailable);
+  }
+};
 
 export const PasswordChangeTokenPayloadSchema = z
   .object({

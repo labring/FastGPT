@@ -8,6 +8,7 @@ import type { AccountVerificationPurpose } from '@fastgpt/global/support/user/ac
 import { MongoUser } from '../../../schema';
 import { consumeVerificationMaterial, upsertVerificationMaterial } from '../entity';
 import { AccountVerification, type LocalAccountIdentity } from '../service';
+import { assertUserPasswordAvailable } from '../../password/service';
 
 type PasswordVerificationDependencies = {
   generateCode: () => string;
@@ -108,12 +109,19 @@ export class PasswordAccountVerification extends AccountVerification<
       throw new UserError(UserErrEnum.invalidVerificationCode);
     }
 
-    const user = await MongoUser.findOne({ username, password });
+    const user = await MongoUser.findOne({ username });
     if (!user) {
       return Promise.reject(UserErrEnum.account_psw_error);
     }
     if (user.status === UserStatusEnum.forbidden) {
       return Promise.reject('Invalid account!');
+    }
+
+    assertUserPasswordAvailable(user.username);
+
+    const passwordMatched = await MongoUser.exists({ _id: user._id, password });
+    if (!passwordMatched) {
+      return Promise.reject(UserErrEnum.account_psw_error);
     }
 
     return {

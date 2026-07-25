@@ -1,15 +1,73 @@
 import jwt from 'jsonwebtoken';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import {
   PASSWORD_CHANGE_TOKEN_TTL_SECONDS,
-  PasswordChangeTokenService
+  PasswordChangeTokenService,
+  assertUserPasswordAvailable,
+  getUserPasswordAvailability,
+  isSsoPasswordDisabled,
+  isSsoUserByUsername
 } from '@fastgpt/service/support/user/account/password/service';
 
 const secret = 'password_change_test_secret_32_chars_min';
 const otherSecret = 'password_change_other_secret_32_chars_min';
 const issuedAtMs = Date.UTC(2026, 6, 22, 10, 0, 0);
 const issuedAt = Math.floor(issuedAtMs / 1000);
+const originalFeConfigs = global.feConfigs;
+
+const setSsoPasswordPolicy = (enabled: boolean) => {
+  global.feConfigs = {
+    uploadFileMaxAmount: 10,
+    uploadFileMaxSize: 10,
+    ...global.feConfigs,
+    sso: {
+      url: 'https://sso.example.com',
+      disablePasswordForSsoUsers: enabled
+    }
+  };
+};
+
+describe('SSO password policy', () => {
+  beforeEach(() => setSsoPasswordPolicy(false));
+  afterEach(() => {
+    global.feConfigs = originalFeConfigs;
+  });
+
+  it('only disables password for dynamically classified SSO users when the policy is enabled', () => {
+    setSsoPasswordPolicy(true);
+
+    expect(isSsoPasswordDisabled()).toBe(true);
+    expect(isSsoUserByUsername('tenant-user')).toBe(true);
+    expect(getUserPasswordAvailability('tenant-user')).toBe(false);
+    expect(() => assertUserPasswordAvailable('tenant-user')).toThrow(
+      UserErrEnum.ssoPasswordUnavailable
+    );
+  });
+
+  it.each([
+    'local',
+    'user-name@example-domain.com',
+    'wechat-openid',
+    'git-octocat',
+    'google-sub',
+    'microsoft-id',
+    'wecom-id'
+  ])('keeps password available for non-SSO account %s', (username) => {
+    setSsoPasswordPolicy(true);
+    expect(getUserPasswordAvailability(username)).toBe(true);
+  });
+
+  it('restores password availability when the switch is disabled or SSO is not configured', () => {
+    expect(getUserPasswordAvailability('tenant-user')).toBe(true);
+
+    global.feConfigs.sso = {
+      disablePasswordForSsoUsers: true
+    };
+    expect(isSsoPasswordDisabled()).toBe(false);
+    expect(getUserPasswordAvailability('tenant-user')).toBe(true);
+  });
+});
 
 describe('PasswordChangeTokenService', () => {
   it('signs a five-minute HS256 token and verifies the current user', () => {

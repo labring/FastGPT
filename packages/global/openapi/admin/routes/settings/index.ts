@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
-import { GetConfigResponseSchema, UpdateConfigBodySchema } from './api';
+import { GetConfigResponseSchema, UpdateConfigBodySchema, UpdateConfigResponseSchema } from './api';
 
 export const AdminSettingsPath: OpenAPIPath = {
   '/admin/routes/settings/getConfig': {
@@ -37,7 +37,7 @@ export const AdminSettingsPath: OpenAPIPath = {
           description: '更新成功',
           content: {
             'application/json': {
-              schema: {}
+              schema: UpdateConfigResponseSchema
             }
           }
         }

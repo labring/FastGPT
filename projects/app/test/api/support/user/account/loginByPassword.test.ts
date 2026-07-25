@@ -20,6 +20,7 @@ describe('loginByPassword API', () => {
   let preLoginCode: string;
 
   beforeEach(async () => {
+    global.feConfigs = { ...global.feConfigs, sso: undefined };
     testUser = await MongoUser.create({
       username: 'testuser',
       password: 'testpassword',
@@ -167,6 +168,39 @@ describe('loginByPassword API', () => {
 
     expect(res.code).toBe(500);
     expect(res.error).toBe(UserErrEnum.account_psw_error);
+  });
+
+  it.each([
+    ['the stored password', 'testpassword'],
+    ['an incorrect password', 'wrongpassword']
+  ])('rejects SSO password login with %s before success side effects', async (_case, password) => {
+    await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
+    global.feConfigs = {
+      ...global.feConfigs,
+      sso: {
+        url: 'https://sso.example.com',
+        disablePasswordForSsoUsers: true
+      }
+    };
+    const { code } = await passwordAccountVerification.create({ username: 'tenant-user' });
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'tenant-user',
+        password,
+        code,
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toMatchObject({ message: UserErrEnum.ssoPasswordUnavailable });
+    expect(setCookie).not.toHaveBeenCalled();
+    expect(pushTrack.login).not.toHaveBeenCalled();
+    expect(addAuditLog).not.toHaveBeenCalled();
+    await expect(
+      MongoUser.exists({ _id: testUser._id, password: 'testpassword' })
+    ).resolves.toBeTruthy();
   });
 
   it('should update language on successful login', async () => {

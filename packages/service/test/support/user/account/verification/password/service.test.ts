@@ -7,6 +7,12 @@ import { PasswordAccountVerification } from '@fastgpt/service/support/user/accou
 
 describe('PasswordAccountVerification', () => {
   beforeEach(async () => {
+    global.feConfigs = {
+      uploadFileMaxAmount: 10,
+      uploadFileMaxSize: 10,
+      ...global.feConfigs,
+      sso: undefined
+    };
     await MongoAccountVerificationMaterial.deleteMany({});
   });
 
@@ -94,6 +100,53 @@ describe('PasswordAccountVerification', () => {
 
     await expect(
       verification.consume({ username: 'user', password: 'password', code: 'ABC123' })
+    ).rejects.toBe('Invalid account!');
+  });
+
+  it.each(['password', 'wrong-password'])(
+    'rejects an SSO user before comparing the submitted password: %s',
+    async (submittedPassword) => {
+      global.feConfigs.sso = {
+        url: 'https://sso.example.com',
+        disablePasswordForSsoUsers: true
+      };
+      await MongoUser.create({
+        username: 'tenant-user',
+        password: 'password',
+        status: UserStatusEnum.active
+      });
+      const verification = new PasswordAccountVerification({ generateCode: () => 'ABC123' });
+      await verification.create({ username: 'tenant-user' });
+
+      await expect(
+        verification.consume({
+          username: 'tenant-user',
+          password: submittedPassword,
+          code: 'ABC123'
+        })
+      ).rejects.toThrow(UserErrEnum.ssoPasswordUnavailable);
+    }
+  );
+
+  it('keeps the forbidden-account status ahead of the SSO password policy', async () => {
+    global.feConfigs.sso = {
+      url: 'https://sso.example.com',
+      disablePasswordForSsoUsers: true
+    };
+    await MongoUser.create({
+      username: 'tenant-forbidden',
+      password: 'password',
+      status: UserStatusEnum.forbidden
+    });
+    const verification = new PasswordAccountVerification({ generateCode: () => 'ABC123' });
+    await verification.create({ username: 'tenant-forbidden' });
+
+    await expect(
+      verification.consume({
+        username: 'tenant-forbidden',
+        password: 'password',
+        code: 'ABC123'
+      })
     ).rejects.toBe('Invalid account!');
   });
 });
