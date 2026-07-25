@@ -203,7 +203,9 @@ export async function rewriteAppWorkflowToDetail({
               const selectedRenderType =
                 input?.renderTypeList?.[input?.selectedTypeIndex ?? 0] ?? item.renderTypeList?.[0];
               const selectedTypeIndex = selectedRenderType
-                ? item.renderTypeList.findIndex((renderType) => renderType === selectedRenderType)
+                ? (input?.renderTypeList ?? item.renderTypeList).findIndex(
+                    (renderType) => renderType === selectedRenderType
+                  )
                 : -1;
 
               return {
