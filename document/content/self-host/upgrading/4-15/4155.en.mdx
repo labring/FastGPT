@@ -1,0 +1,26 @@
+---
+title: 'V4.15.5 (In Progress)'
+description: 'FastGPT V4.15.5 Release Notes'
+---
+
+> This document is in progress. The final release may contain additional changes.
+
+## 🚀 New Features
+
+1. Added shared object-storage integration contracts covering uploads, downloads, metadata, ETags, presigned URLs, and deletion behavior for OSS, MinIO, and other S3-compatible providers.
+
+## ⚙️ Improvements
+
+1. Centralized more workspace dependency versions in the pnpm catalog and refreshed the lockfile.
+2. Added Chinese and Latin fonts to the Agent Sandbox image to improve font availability for text and image-related tasks.
+3. Updated the OSS adapter to support string uploads required by the `IStorage` contract and to preserve the stored `Content-Type` when OSS does not support response-header overrides.
+
+## 🐛 Fixes
+
+1. Fixed Alibaba Cloud OSS metadata reads that looked for ETags in the wrong response field, causing missing ETags and downstream metadata validation failures.
+2. Added OSS and MinIO ETag integration coverage to verify that repeated metadata reads return a stable ETag.
+
+## 📦 Upgrade Notes
+
+1. This release includes workspace dependency and lockfile updates. Reinstall dependencies with the pnpm version required by the repository after upgrading.
+2. OSS integration tests require a dedicated test bucket. The suite removes objects from the test bucket and deletes the bucket during cleanup; do not configure a production bucket.

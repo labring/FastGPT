@@ -84,6 +84,21 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         await expect(readBody(download.body)).resolves.toEqual(content);
       });
 
+      it('returns a stable etag when metadata is read repeatedly', async () => {
+        const key = `${context.rootPrefix}object/etag.txt`;
+
+        await context.storage.uploadObject({
+          key,
+          body: 'etag-contract-content'
+        });
+
+        const firstMetadata = await context.storage.getObjectMetadata({ key });
+        const secondMetadata = await context.storage.getObjectMetadata({ key });
+
+        expect(firstMetadata.etag).toEqual(expect.any(String));
+        expect(firstMetadata.etag).toBe(secondMetadata.etag);
+      });
+
       it('accepts Readable and string upload bodies', async () => {
         const streamKey = `${context.rootPrefix}upload/stream.txt`;
         const stringKey = `${context.rootPrefix}upload/string.txt`;

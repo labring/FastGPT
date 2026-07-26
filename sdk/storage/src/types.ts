@@ -244,7 +244,10 @@ export type PresignedGetUrlParams = {
   key: StorageObjectKey;
   /** 过期时间（秒），可选，默认 1800 秒。 */
   expiredSeconds?: number;
-  /** 覆盖下载响应的 Content-Type。 */
+  /**
+   * 请求覆盖下载响应的 Content-Type。
+   * 若底层 provider 不支持响应头覆盖，则沿用对象保存时的 Content-Type。
+   */
   responseContentType?: string;
 };
 
