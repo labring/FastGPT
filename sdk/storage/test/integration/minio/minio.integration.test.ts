@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { MinioStorageAdapter } from '../../../src/adapters/minio.adapter';
 import { InvalidStorageObjectKeyError } from '../../../src/errors';
+import { MAX_STORAGE_OBJECT_KEY_UTF8_BYTES } from '../../../src/assert';
 import { minioIntegrationProvider, type StorageIntegrationContext } from '../providers';
 import { createAsciiKeyAtLength } from '../helpers';
 
@@ -95,15 +96,18 @@ describe.skipIf(!minioIntegrationProvider.enabled).sequential('MinIO-specific in
     });
   });
 
-  it('rejects an object key beyond the portable 850-byte limit without creating an object', async () => {
+  it(`rejects an object key beyond the portable ${MAX_STORAGE_OBJECT_KEY_UTF8_BYTES}-byte limit without creating an object`, async () => {
     const prefix = `${context.rootPrefix}too-long/`;
-    const key = createAsciiKeyAtLength({ prefix, byteLength: 851 });
+    const key = createAsciiKeyAtLength({
+      prefix,
+      byteLength: MAX_STORAGE_OBJECT_KEY_UTF8_BYTES + 1
+    });
 
     await expect(context.storage.uploadObject({ key, body: 'too-long' })).rejects.toMatchObject({
       name: InvalidStorageObjectKeyError.name,
       reason: 'too_long',
-      actualBytes: 851,
-      maxBytes: 850
+      actualBytes: MAX_STORAGE_OBJECT_KEY_UTF8_BYTES + 1,
+      maxBytes: MAX_STORAGE_OBJECT_KEY_UTF8_BYTES
     });
     await expect(context.storage.listObjects({ prefix })).resolves.toEqual({
       bucket: context.bucket,

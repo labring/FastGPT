@@ -29,7 +29,7 @@ import type {
   GeneratePublicGetUrlResult
 } from '../types';
 import { PassThrough } from 'node:stream';
-import { camelCase, isError, isNotNil, kebabCase } from 'es-toolkit';
+import { camelCase, chunk, isError, isNotNil, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
@@ -216,6 +216,22 @@ export class CosStorageAdapter implements IStorage {
     assertStorageObjectKey(params.key);
     throwIfStorageDownloadAborted(params.abortSignal);
 
+    // COS returns the output stream before reporting a missing-object error.
+    // Preflight with HEAD so IStorage rejects missing downloads consistently.
+    await new Promise<void>((resolve, reject) => {
+      this.client.headObject(
+        {
+          Bucket: this.options.bucket,
+          Region: this.options.region,
+          Key: params.key
+        },
+        (err) => {
+          if (err) return reject(this.handleCosError(err));
+          resolve();
+        }
+      );
+    });
+
     const passThrough = new PassThrough();
     bindAbortSignalToReadable({ readable: passThrough, abortSignal: params.abortSignal });
 
@@ -277,24 +293,30 @@ export class CosStorageAdapter implements IStorage {
       };
     }
 
-    const result = await new Promise<COS.DeleteMultipleObjectResult>((resolve, reject) => {
-      this.client.deleteMultipleObject(
-        {
-          Bucket: this.options.bucket,
-          Region: this.options.region,
-          Objects: keys.map((key) => ({ Key: key }))
-        },
-        (err, data) => {
-          if (err) {
-            return reject(this.handleCosError(err));
+    // COS 单次 DeleteMultipleObject 最多接受 1000 个对象。
+    const failedKeys: StorageObjectKey[] = [];
+    for (const keyChunk of chunk(keys, 1000)) {
+      const result = await new Promise<COS.DeleteMultipleObjectResult>((resolve, reject) => {
+        this.client.deleteMultipleObject(
+          {
+            Bucket: this.options.bucket,
+            Region: this.options.region,
+            Objects: keyChunk.map((key) => ({ Key: key }))
+          },
+          (err, data) => {
+            if (err) {
+              return reject(this.handleCosError(err));
+            }
+            resolve(data);
           }
-          resolve(data);
-        }
-      );
-    });
+        );
+      });
+
+      failedKeys.push(...(result.Error?.map((e) => e.Key).filter(isNotNil) ?? []));
+    }
 
     return {
-      keys: result.Error.map((e) => e.Key).filter(isNotNil),
+      keys: failedKeys,
       bucket: this.options.bucket
     };
   }

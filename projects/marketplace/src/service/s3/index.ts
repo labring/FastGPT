@@ -5,11 +5,26 @@ import type { Readable } from 'node:stream';
 type StorageClient = ReturnType<typeof createStorage>;
 
 const getStorageConfig = (endpoint = marketplaceStorageEnv.endpoint): IStorageOptions => {
-  const { vendor, publicBucket, region, accessKeyId, secretAccessKey } = marketplaceStorageEnv;
+  const { vendor, publicBucket, region, accessKeyId, secretAccessKey, publicEndpoint } =
+    marketplaceStorageEnv;
   const credentials = {
     accessKeyId,
     secretAccessKey
   };
+
+  if (vendor === 'r2') {
+    return {
+      vendor,
+      bucket: publicBucket,
+      region,
+      credentials,
+      endpoint,
+      forcePathStyle: false,
+      maxRetries: marketplaceEnv.STORAGE_S3_MAX_RETRIES,
+      publicAccessExtraSubPath: marketplaceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH,
+      publicEndpoint
+    };
+  }
 
   if (vendor === 'minio' || vendor === 'aws-s3') {
     return {

@@ -3,6 +3,7 @@ import { AwsS3StorageAdapter } from '../../src/adapters/aws-s3.adapter';
 import { CosStorageAdapter } from '../../src/adapters/cos.adapter';
 import { MinioStorageAdapter } from '../../src/adapters/minio.adapter';
 import { OssStorageAdapter } from '../../src/adapters/oss.adapter';
+import { R2StorageAdapter } from '../../src/adapters/r2.adapter';
 import { createStorage } from '../../src/factory';
 
 const credentials = {
@@ -30,6 +31,15 @@ describe('createStorage', () => {
         credentials
       })
     ).toBeInstanceOf(MinioStorageAdapter);
+    expect(
+      createStorage({
+        vendor: 'r2',
+        bucket: 'bucket',
+        endpoint: 'https://account.r2.cloudflarestorage.com',
+        region: 'auto',
+        credentials
+      })
+    ).toBeInstanceOf(R2StorageAdapter);
     expect(
       createStorage({
         vendor: 'oss',

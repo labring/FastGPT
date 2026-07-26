@@ -2,6 +2,7 @@ import type {
   IAwsS3CompatibleStorageOptions,
   ICosStorageOptions,
   IOssStorageOptions,
+  IR2StorageOptions,
   IStorageOptions
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
@@ -20,6 +21,7 @@ type BucketStorageOptions = {
   publicBucket: string;
   privateBucket: string;
   externalEndpoint?: string;
+  publicEndpoint?: string;
 };
 
 const storageRegion = serviceEnv.STORAGE_REGION;
@@ -39,7 +41,8 @@ const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_S
 const bucketStorageOptions = {
   publicBucket: S3Buckets.public,
   privateBucket: S3Buckets.private,
-  externalEndpoint: storageExternalEndpoint
+  externalEndpoint: storageExternalEndpoint,
+  publicEndpoint: serviceEnv.STORAGE_R2_PUBLIC_ENDPOINT
 } satisfies BucketStorageOptions;
 
 const awsCompatibleSharedOptions = {
@@ -78,6 +81,22 @@ export function createDefaultStorageOptions() {
         ...bucketStorageOptions,
         ...awsCompatibleSharedOptions
       } satisfies Omit<IAwsS3CompatibleStorageOptions, 'bucket'> & BucketStorageOptions;
+    }
+
+    case 'r2': {
+      return {
+        vendor: 'r2',
+        endpoint: storageS3Endpoint,
+        region: storageRegion,
+        credentials: {
+          accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
+          secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
+        },
+        forcePathStyle: false,
+        ...bucketStorageOptions,
+        maxRetries: serviceEnv.STORAGE_S3_MAX_RETRIES,
+        publicAccessExtraSubPath: storagePublicAccessExtraSubPath
+      } satisfies Omit<IR2StorageOptions, 'bucket'> & BucketStorageOptions;
     }
 
     case 'cos': {
@@ -120,7 +139,7 @@ export function createDefaultStorageOptions() {
 }
 
 export function replaceS3UrlWithCdnEndpoint(url: string) {
-  if (!storageS3CdnEndpoint) {
+  if (!storageS3CdnEndpoint || storageVendor === 'r2') {
     return url;
   }
 

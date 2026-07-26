@@ -8,21 +8,11 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 ## Object Storage Configuration
 
-This guide covers environment variable configuration for object storage providers supported by FastGPT, including self-hosted MinIO, AWS S3, Alibaba Cloud OSS, and Tencent Cloud COS.
+This guide covers environment variable configuration for object storage providers supported by FastGPT, including self-hosted MinIO, AWS S3, Cloudflare R2, Alibaba Cloud OSS, and Tencent Cloud COS.
 
-### Common Required Environment Variables
+FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudflare R2. Except for local MinIO development, create `STORAGE_PUBLIC_BUCKET` and `STORAGE_PRIVATE_BUCKET` ahead of time and grant the FastGPT access key read/write permission on both buckets.
 
-> - Temporary credential authentication (e.g., STS) is not supported. Ensure service security on your own.
-> - Private bucket reuse is not supported. If you set the private and public bucket names to the same value, ensure the bucket policy is at least **public read, private write**.
-
-- `STORAGE_VENDOR` Enum value. Options: `minio`, `aws-s3`, `oss`, `cos`.
-- `STORAGE_REGION` Region where the object storage service is located, e.g., `us-east-1`. Refer to your provider's region list. For self-hosted MinIO, any value works.
-- `STORAGE_ACCESS_KEY_ID` Access Key ID for the service credentials
-- `STORAGE_SECRET_ACCESS_KEY` Secret Access Key for the service credentials
-- `STORAGE_PUBLIC_BUCKET` FastGPT public resource bucket name
-- `STORAGE_PRIVATE_BUCKET` FastGPT private resource bucket name
-
-### Transfer Behavior
+## Access Modes
 
 - Uploads always go through the FastGPT backend proxy.
 - External download URLs are always FastGPT short links. FastGPT no longer returns object storage presigned URLs directly.
@@ -31,10 +21,11 @@ This guide covers environment variable configuration for object storage provider
   - `short-redirect`: FastGPT validates the short link, then redirects to a short-lived object storage or CDN URL. File traffic bypasses FastGPT.
 - Self-hosted MinIO requires `STORAGE_EXTERNAL_ENDPOINT` when using `short-redirect`.
 
-### Self-Hosted MinIO and AWS S3
+## Provider Configuration
 
-> MinIO has strong AWS S3 protocol support, so MinIO and AWS S3 configurations are nearly identical — differences come from provider-specific or self-hosted requirements.
-> In theory, any object storage with S3 protocol support comparable to MinIO will work, such as SeaweedFS, RustFS, etc.
+### MinIO
+
+> MinIO has strong AWS S3 protocol support and is suitable for local development and self-hosted deployments. In theory, any object storage with S3 protocol support comparable to MinIO will work, such as SeaweedFS or RustFS.
 
 - `STORAGE_S3_ENDPOINT` Internal connection address. Can be a container ID, e.g., `http://fastgpt-minio:9000`
 - `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). This variable does not change the download mode automatically.
@@ -53,12 +44,24 @@ STORAGE_ACCESS_KEY_ID=your_access_key
 STORAGE_SECRET_ACCESS_KEY=your_secret_key
 STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
-STORAGE_DOWNLOAD_URL_MODE=short-redirect
-STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS=300
-STORAGE_EXTERNAL_ENDPOINT=https://s3.example.com
-STORAGE_S3_CDN_ENDPOINT=https://cdn.example.com
 STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
 STORAGE_S3_FORCE_PATH_STYLE=true
+STORAGE_S3_MAX_RETRIES=3
+```
+
+### AWS S3
+
+AWS S3 uses the same S3-compatible variables as MinIO. For production, create separate public and private buckets in advance and configure public-read or CloudFront/custom-domain access only for the public bucket.
+
+```dotenv
+STORAGE_VENDOR=aws-s3
+STORAGE_REGION=ap-southeast-1
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_S3_ENDPOINT=https://s3.ap-southeast-1.amazonaws.com
+STORAGE_S3_FORCE_PATH_STYLE=false
 STORAGE_S3_MAX_RETRIES=3
 ```
 
@@ -70,6 +73,8 @@ STORAGE_S3_MAX_RETRIES=3
 - `STORAGE_OSS_CNAME` Whether custom domain is enabled
 - `STORAGE_OSS_SECURE` Whether TLS is enabled. Disable if your domain doesn't have a certificate.
 - `STORAGE_OSS_INTERNAL` [Optional] Whether to use internal network access. Enable if your service is also on Alibaba Cloud to save bandwidth. Default: disabled
+
+Set the OSS public bucket to public-read and keep the private bucket private. The same Access Key can be used for both buckets, but the bucket names must remain distinct.
 
 **Complete Example**
 
@@ -95,6 +100,8 @@ STORAGE_OSS_INTERNAL=false
 - `STORAGE_COS_CNAME_DOMAIN` [Optional] Custom domain, e.g., `your-domain.com`
 - `STORAGE_COS_PROXY` [Optional] Proxy server, e.g., `http://localhost:7897`
 
+COS bucket names must include the account App ID suffix, for example `fastgpt-public-1250000000`. Configure anonymous read only for the public bucket and keep the private bucket private.
+
 **Complete Example**
 
 ```dotenv
@@ -108,4 +115,24 @@ STORAGE_COS_PROTOCOL=http:
 STORAGE_COS_USE_ACCELERATE=false
 STORAGE_COS_CNAME_DOMAIN=
 STORAGE_COS_PROXY=
+```
+
+### Cloudflare R2
+
+R2 uses the S3-compatible API. Set `STORAGE_REGION` to `auto` and use the account-level S3 endpoint from Cloudflare as `STORAGE_S3_ENDPOINT`. FastGPT does not rewrite R2 presigned URLs through `STORAGE_S3_CDN_ENDPOINT`; private objects should normally use the default `short-proxy` download mode.
+
+`STORAGE_R2_PUBLIC_ENDPOINT` is required for public objects. Set it to the HTTPS custom domain (or another public HTTPS domain bound to the bucket). This is separate from the R2 S3 API endpoint and must not contain query parameters.
+
+For production, use a custom domain instead of the rate-limited `r2.dev` development URL. Create both R2 buckets in advance; FastGPT checks that production buckets exist at startup and does not create them automatically.
+
+```dotenv
+STORAGE_VENDOR=r2
+STORAGE_REGION=auto
+STORAGE_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+STORAGE_R2_PUBLIC_ENDPOINT=https://assets.example.com
+STORAGE_ACCESS_KEY_ID=<r2-access-key-id>
+STORAGE_SECRET_ACCESS_KEY=<r2-secret-access-key>
+STORAGE_PUBLIC_BUCKET=<r2-public-bucket>
+STORAGE_PRIVATE_BUCKET=<r2-private-bucket>
+STORAGE_S3_FORCE_PATH_STYLE=false
 ```

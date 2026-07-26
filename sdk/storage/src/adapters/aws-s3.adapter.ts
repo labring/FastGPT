@@ -10,7 +10,7 @@ import {
   PutObjectCommand,
   S3Client
 } from '@aws-sdk/client-s3';
-import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
+import type { IAwsS3CompatibleStorageOptions, IR2StorageOptions, IStorage } from '../interface';
 import type {
   UploadObjectParams,
   UploadObjectResult,
@@ -64,8 +64,8 @@ export class AwsS3StorageAdapter implements IStorage {
     return this.options.bucket;
   }
 
-  constructor(protected readonly options: IAwsS3CompatibleStorageOptions) {
-    if (options.vendor !== 'aws-s3' && options.vendor !== 'minio') {
+  constructor(protected readonly options: IAwsS3CompatibleStorageOptions | IR2StorageOptions) {
+    if (options.vendor !== 'aws-s3' && options.vendor !== 'minio' && options.vendor !== 'r2') {
       throw new Error('Invalid storage vendor');
     }
 
@@ -74,7 +74,13 @@ export class AwsS3StorageAdapter implements IStorage {
       credentials: options.credentials,
       endpoint: options.endpoint,
       forcePathStyle: options.forcePathStyle,
-      maxAttempts: options.maxRetries
+      maxAttempts: options.maxRetries,
+      ...(options.vendor === 'r2'
+        ? {
+            requestChecksumCalculation: 'WHEN_REQUIRED' as const,
+            responseChecksumValidation: 'WHEN_REQUIRED' as const
+          }
+        : {})
     });
   }
 
@@ -389,7 +395,13 @@ export class AwsS3StorageAdapter implements IStorage {
     const encodedKey = encodeObjectKeyPath(key);
 
     let url: string;
-    if (this.options.forcePathStyle) {
+    if (this.options.publicEndpoint) {
+      const endpoint = new URL(this.options.publicEndpoint);
+      if (endpoint.search || endpoint.hash) {
+        throw new Error('publicEndpoint must not contain query or hash');
+      }
+      url = `${endpoint.toString().replace(/\/+$/, '')}/${encodedKey}`;
+    } else if (this.options.forcePathStyle) {
       if (this.options.publicAccessExtraSubPath) {
         url = `${this.options.endpoint}/${trim(this.options.publicAccessExtraSubPath, '/')}/${this.options.bucket}/${encodedKey}`;
       } else {

@@ -2,6 +2,7 @@ import { S3BaseBucket } from './base';
 import { createDefaultStorageOptions } from '../config/constants';
 import {
   type IAwsS3CompatibleStorageOptions,
+  type IR2StorageOptions,
   type ICosStorageOptions,
   type IOssStorageOptions,
   createStorage,
@@ -52,6 +53,24 @@ export class S3PublicBucket extends S3BaseBucket {
             endpoint: externalEndpoint
           }
         };
+      } else if (vendor === 'r2') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          endpoint: storageOptions.endpoint,
+          maxRetries: storageOptions.maxRetries,
+          forcePathStyle: false,
+          publicEndpoint: storageOptions.publicEndpoint,
+          publicAccessExtraSubPath: storageOptions.publicAccessExtraSubPath
+        } as Omit<IR2StorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalEndpoint || storageOptions.endpoint
+          }
+        };
       } else if (vendor === 'cos') {
         return {
           config: {
@@ -86,7 +105,7 @@ export class S3PublicBucket extends S3BaseBucket {
     const client = createStorage({ bucket: publicBucket, ...config });
 
     let externalClient: ReturnType<typeof createStorage> | undefined = undefined;
-    if (externalEndpoint) {
+    if (externalEndpoint || vendor === 'r2') {
       externalClient = createStorage({
         bucket: publicBucket,
         ...externalConfig

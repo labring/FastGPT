@@ -141,4 +141,72 @@ describe('AwsS3StorageAdapter.generatePublicGetUrl', () => {
 
     expect(adapter.generatePublicGetUrl({ key: 'folder name/file #+.txt' }).url).toBe(expectedUrl);
   });
+
+  it('uses the R2 public endpoint without exposing the bucket name', () => {
+    const adapter = new AwsS3StorageAdapter({
+      vendor: 'r2',
+      bucket: 'fastgpt-public',
+      endpoint: 'https://account.r2.cloudflarestorage.com',
+      publicEndpoint: 'https://assets.example.com/files/',
+      region: 'auto',
+      credentials: {
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key'
+      }
+    });
+
+    expect(adapter.generatePublicGetUrl({ key: 'folder name/file.txt' }).url).toBe(
+      'https://assets.example.com/files/folder%20name/file.txt'
+    );
+  });
+
+  it('does not add AWS checksum query parameters to R2 upload signatures', async () => {
+    const adapter = new AwsS3StorageAdapter({
+      vendor: 'r2',
+      bucket: 'fastgpt-private',
+      endpoint: 'https://account.r2.cloudflarestorage.com',
+      region: 'auto',
+      credentials: {
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key'
+      }
+    });
+
+    const result = await adapter.generatePresignedPutUrl({ key: 'file.txt' });
+    expect(result.url).not.toContain('checksum');
+  });
+
+  it('does not add checksum validation parameters to R2 download signatures', async () => {
+    const adapter = new AwsS3StorageAdapter({
+      vendor: 'r2',
+      bucket: 'fastgpt-private',
+      endpoint: 'https://account.r2.cloudflarestorage.com',
+      region: 'auto',
+      credentials: {
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key'
+      }
+    });
+
+    const result = await adapter.generatePresignedGetUrl({ key: 'file.txt' });
+    expect(result.url).not.toContain('checksum');
+  });
+
+  it('rejects a public endpoint containing query or hash components', () => {
+    const adapter = new AwsS3StorageAdapter({
+      vendor: 'r2',
+      bucket: 'fastgpt-public',
+      endpoint: 'https://account.r2.cloudflarestorage.com',
+      publicEndpoint: 'https://assets.example.com/files?download=1',
+      region: 'auto',
+      credentials: {
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key'
+      }
+    });
+
+    expect(() => adapter.generatePublicGetUrl({ key: 'file.txt' })).toThrow(
+      'publicEndpoint must not contain query or hash'
+    );
+  });
 });

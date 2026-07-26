@@ -46,7 +46,7 @@
     "@types/react-dom": "catalog:",
     "eslint": "catalog:lint",
     "eslint-config-next": "catalog:lint",
-    "postcss": "^8",
+    "postcss": "catalog:",
     "tailwindcss": "^3.4.1",
     "typescript": "catalog:"
   }

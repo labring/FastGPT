@@ -36,21 +36,21 @@ describe('storage object key validation', () => {
     expect(() => assertStorageObjectKey(key)).not.toThrow();
   });
 
-  it('accepts exactly 850 UTF-8 bytes, including multibyte characters', () => {
+  it('accepts exactly 800 UTF-8 bytes, including multibyte characters', () => {
     const asciiKey = 'a'.repeat(MAX_STORAGE_OBJECT_KEY_UTF8_BYTES);
-    const unicodeKey = `${'\u4e2d'.repeat(282)}abcd`;
+    const unicodeKey = `${'\u4e2d'.repeat(265)}abcde`;
 
-    expect(Buffer.byteLength(asciiKey)).toBe(850);
-    expect(Buffer.byteLength(unicodeKey)).toBe(850);
+    expect(Buffer.byteLength(asciiKey)).toBe(800);
+    expect(Buffer.byteLength(unicodeKey)).toBe(800);
     expect(() => assertStorageObjectKey(asciiKey)).not.toThrow();
     expect(() => assertStorageObjectKey(unicodeKey)).not.toThrow();
   });
 
-  it('rejects 851 UTF-8 bytes even when the JavaScript string is shorter', () => {
-    const key = `${'\u4e2d'.repeat(283)}ab`;
+  it('rejects 801 UTF-8 bytes even when the JavaScript string is shorter', () => {
+    const key = `${'\u4e2d'.repeat(266)}abc`;
 
-    expect(key.length).toBeLessThan(850);
-    expect(Buffer.byteLength(key)).toBe(851);
+    expect(key.length).toBeLessThan(801);
+    expect(Buffer.byteLength(key)).toBe(801);
     expectInvalidKey({ value: key, reason: 'too_long' });
   });
 

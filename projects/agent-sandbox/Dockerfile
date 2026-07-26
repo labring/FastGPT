@@ -48,11 +48,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV BUN_INSTALL=/usr/local
 ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
-# 安装 sandbox 运行期基础工具链 (Node.js/Python/Bun/git 等)
+# 安装 sandbox 运行期基础工具链和中英文字体
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     ca-certificates \
     curl \
+    fontconfig \
+    fonts-dejavu-core \
+    fonts-noto-cjk \
     git \
     jq \
     python3 \

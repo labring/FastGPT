@@ -5,12 +5,16 @@ import fs from 'node:fs';
  */
 function getEnvFilePath(): URL | undefined {
   const files = ['.env.test.local', '.env.test', '.env.local', '.env'];
+  const packageRoot = new URL('../', import.meta.url);
 
-  return files.map((f) => new URL(f, import.meta.url)).find((p) => fs.existsSync(p));
+  return files.map((f) => new URL(f, packageRoot)).find((p) => fs.existsSync(p));
 }
 
 export function setup() {
-  process.loadEnvFile(getEnvFilePath());
+  const envFilePath = getEnvFilePath();
+  if (envFilePath) {
+    process.loadEnvFile(envFilePath);
+  }
 }
 
 export function teardown() {

@@ -3,7 +3,7 @@ import z from 'zod';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
-const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
+const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'r2', 'cos', 'oss']);
 const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
 
 export const marketplaceEnv = createEnv({
@@ -22,6 +22,7 @@ export const marketplaceEnv = createEnv({
     STORAGE_PUBLIC_BUCKET: z.string().optional(),
     STORAGE_REGION: z.string().default('us-east-1'),
     STORAGE_EXTERNAL_ENDPOINT: z.string().optional(),
+    STORAGE_R2_PUBLIC_ENDPOINT: z.string().optional(),
     STORAGE_S3_ENDPOINT: z.string().optional(),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
     STORAGE_ACCESS_KEY_ID: z.string().optional(),
@@ -73,6 +74,7 @@ export const marketplaceStorageEnv = {
     normalizeStorageEndpoint(marketplaceEnv.STORAGE_S3_ENDPOINT || marketplaceEnv.S3_ENDPOINT) ||
     'http://localhost:9000',
   externalEndpoint: normalizeStorageEndpoint(marketplaceEnv.STORAGE_EXTERNAL_ENDPOINT),
+  publicEndpoint: normalizeStorageEndpoint(marketplaceEnv.STORAGE_R2_PUBLIC_ENDPOINT),
   accessKeyId: marketplaceEnv.STORAGE_ACCESS_KEY_ID || marketplaceEnv.S3_ACCESS_KEY || 'minioadmin',
   secretAccessKey:
     marketplaceEnv.STORAGE_SECRET_ACCESS_KEY || marketplaceEnv.S3_SECRET_KEY || 'minioadmin'

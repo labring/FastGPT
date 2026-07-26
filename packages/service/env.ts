@@ -178,6 +178,7 @@ export const serviceEnv = createEnv({
     STORAGE_PRIVATE_BUCKET: z.string().default('fastgpt-private'),
     STORAGE_REGION: z.string().default('us-east-1'),
     STORAGE_EXTERNAL_ENDPOINT: UrlSchema.optional(),
+    STORAGE_R2_PUBLIC_ENDPOINT: UrlSchema.optional(),
     STORAGE_S3_CDN_ENDPOINT: UrlSchema.optional(),
     STORAGE_DOWNLOAD_URL_MODE: z
       .enum(['short-proxy', 'short-redirect'])

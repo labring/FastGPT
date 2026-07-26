@@ -24,7 +24,7 @@ export type StorageBucketName = string;
  * 说明：
  * - 在同一个 bucket 内唯一标识一个对象。
  * - 通常形如：`a/b/c.txt`（用 `/` 形成“目录”层级，但对象存储并不是真正的目录结构）。
- * - SDK 统一限制为 1 - 850 UTF-8 bytes，并拒绝不可移植的控制字符、反斜线、空路径段和 `.`/`..` 路径段。
+ * - SDK 统一限制为 1 - 800 UTF-8 bytes，并拒绝不可移植的控制字符、反斜线、空路径段和 `.`/`..` 路径段。
  * - 空格、`+`、`#`、`&`、`%`、`?`、中文和 emoji 均为合法字符，由 adapter 在 URL 层编码。
  */
 export type StorageObjectKey = string;
@@ -244,7 +244,10 @@ export type PresignedGetUrlParams = {
   key: StorageObjectKey;
   /** 过期时间（秒），可选，默认 1800 秒。 */
   expiredSeconds?: number;
-  /** 覆盖下载响应的 Content-Type。 */
+  /**
+   * 请求覆盖下载响应的 Content-Type。
+   * 若底层 provider 不支持响应头覆盖，则沿用对象保存时的 Content-Type。
+   */
   responseContentType?: string;
 };
 

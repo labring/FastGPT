@@ -1,0 +1,25 @@
+---
+title: 'V4.15.5 (In Progress)'
+description: 'FastGPT V4.15.5 Release Notes'
+---
+
+> This document is in progress. The final release may contain additional changes.
+
+## 🚀 New Features
+
+1. Added Cloudflare R2 object storage support, including the R2 S3 API, presigned access, and custom domains for public buckets.
+
+## ⚙️ Improvements
+
+1. Centralized more workspace dependency versions in the pnpm catalog and refreshed the lockfile.
+2. Added Chinese and English runtime fonts to the Agent Sandbox image to improve font availability for text and image-related tasks.
+3. Updated the OSS adapter to support string uploads required by the `IStorage` contract and to preserve the stored `Content-Type` when OSS does not support response-header overrides.
+4. Added a missing-object preflight to the COS adapter so downloads follow the shared error contract.
+
+## 🐛 Fixes
+
+1. Fixed Alibaba Cloud OSS metadata reads that looked for ETags in the wrong response field, causing missing ETags and downstream metadata validation failures.
+
+## 🛠️ Code Improvements
+
+1. Added cross-provider S3 SDK integration tests for MinIO, AWS S3, Cloudflare R2, Alibaba Cloud OSS, and Tencent Cloud COS, covering private/public buckets, public URLs, and real presigned URL access.

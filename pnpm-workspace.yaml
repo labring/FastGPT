@@ -44,7 +44,7 @@ catalog:
   '@xterm/addon-fit': ^0.10.0
   '@xterm/xterm': ^5.5.0
   ahooks: ^3.9.5
-  axios: ^1.16.0
+  axios: ^1.18.0
   chalk: ^5.6.2
   date-fns: ^3.6.0
   dayjs: 1.11.19
@@ -52,7 +52,8 @@ catalog:
   express: ^4
   file-type: 21.3.0
   gpt-tokenizer: 3.4.0
-  hono: 4.12.25
+  hono: 4.12.27
+  '@hono/node-server': ^2.0.10
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
@@ -86,6 +87,7 @@ catalog:
   vaul: ^1.1.2
   vitest: ^4.1.5
   zod: ^4
+  postcss: ^8.5.12
 
 catalogMode: prefer
 

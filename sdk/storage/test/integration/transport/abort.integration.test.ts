@@ -29,7 +29,16 @@ const createStalledObjectServer = () => {
   const requestReceived = new Promise<void>((resolve) => {
     notifyRequest = resolve;
   });
-  const server = http.createServer((_request, response) => {
+  const server = http.createServer((request, response) => {
+    if (request.method === 'HEAD') {
+      response.writeHead(200, {
+        'Content-Length': '0',
+        'Content-Type': 'application/octet-stream'
+      });
+      response.end();
+      return;
+    }
+
     response.writeHead(200, {
       'Content-Length': '100',
       'Content-Type': 'application/octet-stream'

@@ -1,0 +1,25 @@
+---
+title: 'V4.15.5（进行中）'
+description: 'FastGPT V4.15.5 更新说明'
+---
+
+> 本文档正在整理中，内容以最终发布版本为准。
+
+## 🚀 新增内容
+
+1. 新增 Cloudflare R2 对象存储支持，兼容 R2 S3 API、预签名访问和公开 bucket 自定义域名。
+
+## ⚙️ 优化
+
+1. 统一工作区依赖版本管理，将更多子项目依赖迁移到 pnpm catalog，并刷新锁定文件。
+2. Agent Sandbox 镜像补充中英文运行时字体，改善文本和图像相关任务的字体可用性。
+3. OSS 适配器支持 `IStorage` 契约中的字符串上传，并在无法覆盖响应 `Content-Type` 的 OSS 场景下沿用对象原始类型。
+4. COS 适配器对缺失对象下载进行预检，确保符合统一下载错误契约。
+
+## 🐛 修复
+
+1. 修复阿里云 OSS `getObjectMetadata` 从错误字段读取 ETag，导致 ETag 缺失并触发下游元数据校验失败的问题。
+
+## 🛠️ 代码优化
+
+1. S3 SDK 增加跨 MinIO、AWS S3、Cloudflare R2、OSS 和 COS 的通用集成测试，覆盖 private/public bucket、公开 URL 和预签名 URL 的真实访问。
