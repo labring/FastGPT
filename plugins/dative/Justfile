@@ -1,0 +1,44 @@
+# 安装项目依赖库
+install:
+    uv sync
+
+U:
+    uv sync --upgrade
+
+up package:
+    uv sync --upgrade-package {{ package }}
+
+# 项目代码风格格式化
+format:
+    uv run ruff format src tests/unit
+
+# 执行项目checklist
+check:
+    uv run ruff check --fix src tests/unit
+
+sqlfmt: install
+    uv run scripts/sqlfmt.py src/dative/core/data_source/metadata_sql
+
+# 项目类型检查
+type:
+    uv run mypy src
+
+# 执行单元测试
+test:
+    uv run pytest tests/unit
+
+# 执行功能测试
+test_function:
+    uv run pytest tests/function
+
+# 执行集成测试
+test_integration:
+    uv run pytest tests/integration
+
+ci: install format check type test
+
+dev: install
+    uv run fastapi dev src/dative/main.py
+
+run: install
+    uv run fastapi run src/dative/main.py

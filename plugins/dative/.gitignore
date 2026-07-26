@@ -1,0 +1,14 @@
+__pycache__
+.benchmarks
+.idea
+.mypy_cache
+.pytest_cache
+.ropeproject
+.ruff_cache
+.venv
+.vscode
+.zed
+
+datasets/bird_minidev
+.coverage
+.DS_Store
