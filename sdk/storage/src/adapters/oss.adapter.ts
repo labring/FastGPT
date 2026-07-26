@@ -136,6 +136,8 @@ export class OssStorageAdapter implements IStorage {
   async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
     assertStorageObjectKey(key);
+    // ali-oss 会把字符串 body 当成本地文件路径，因此先转成字节以满足 IStorage 契约。
+    const uploadBody = typeof body === 'string' ? Buffer.from(body) : body;
 
     const headers: Record<string, any> = {
       'x-oss-storage-class': 'Standard',
@@ -153,7 +155,7 @@ export class OssStorageAdapter implements IStorage {
       }
     }
 
-    await this.client.put(key, body, {
+    await this.client.put(key, uploadBody, {
       headers,
       mime: contentType,
       meta
@@ -314,20 +316,15 @@ export class OssStorageAdapter implements IStorage {
   }
 
   async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
-    const { key, expiredSeconds, responseContentType } = params;
+    const { key, expiredSeconds } = params;
     assertStorageObjectKey(key);
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
 
+    // OSS 不支持 response-content-type 覆盖，会返回 InvalidRequest；
+    // 保持签名 URL 有效并沿用对象保存时的 Content-Type。
     const url = this.client.signatureUrl(key, {
       method: 'GET',
-      expires: expiresIn,
-      ...(responseContentType
-        ? {
-            response: {
-              'content-type': responseContentType
-            }
-          }
-        : {})
+      expires: expiresIn
     });
 
     return {

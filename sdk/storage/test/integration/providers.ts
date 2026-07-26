@@ -40,7 +40,7 @@ const getRequiredEnv = (name: string): string => {
   return value;
 };
 
-export const ValidTestBucketNamePrefixPattern = /^fastgpt-sdk\.integration-/;
+export const ValidTestBucketNamePrefixPattern = /^fastgpt-sdk(?:\.|-)integration-/;
 const getTestBucket = (envName: string): string => {
   const bucket = getRequiredEnv(envName);
   if (ValidTestBucketNamePrefixPattern.test(bucket)) {
