@@ -70,6 +70,9 @@ describe('CosStorageAdapter.downloadObject', () => {
 
   it('destroys the output stream when the caller aborts the download', async () => {
     const adapter = createAdapter();
+    (adapter as any).client.headObject = vi.fn((_params: unknown, callback: Function) => {
+      callback(null, {});
+    });
     (adapter as any).client.getObject = vi.fn();
     const controller = new AbortController();
 

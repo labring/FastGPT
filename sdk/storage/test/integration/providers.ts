@@ -29,6 +29,7 @@ export type StorageIntegrationContext = {
 export type StorageIntegrationProvider = {
   name: StorageIntegrationProviderName;
   enabled: boolean;
+  maxObjectKeyBytes?: number;
   createContext: () => Promise<StorageIntegrationContext>;
 };
 
@@ -269,6 +270,7 @@ const createOssProvider = (): StorageIntegrationProvider => ({
 const createCosProvider = (): StorageIntegrationProvider => ({
   name: 'cos',
   enabled: isEnabled('STORAGE_TEST_COS_ENABLED'),
+  maxObjectKeyBytes: 849,
   createContext: async () => {
     const region = getRequiredEnv('STORAGE_TEST_COS_REGION');
     const appId = getRequiredEnv('STORAGE_TEST_COS_APP_ID');

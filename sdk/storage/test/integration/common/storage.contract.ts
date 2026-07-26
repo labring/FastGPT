@@ -190,10 +190,14 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         expect(contents).toEqual(entries.map(({ content }) => content));
       });
 
-      it('round-trips and deletes an object key at the portable 850-byte limit', async () => {
+      it('round-trips and deletes an object key at the provider limit', async () => {
         const keyPrefix = `${context.rootPrefix}long-key/`;
-        const key = createAsciiKeyAtLength({ prefix: keyPrefix, byteLength: 850 });
-        expect(Buffer.byteLength(key)).toBe(850);
+        const maxObjectKeyBytes = provider.maxObjectKeyBytes ?? 850;
+        const key = createAsciiKeyAtLength({
+          prefix: keyPrefix,
+          byteLength: maxObjectKeyBytes
+        });
+        expect(Buffer.byteLength(key)).toBe(maxObjectKeyBytes);
 
         await context.storage.uploadObject({ key, body: 'long-key-content' });
         await expect(context.storage.checkObjectExists({ key })).resolves.toMatchObject({
