@@ -125,7 +125,7 @@ R2 使用 S3 兼容 API。`STORAGE_REGION` 固定填写 `auto`，`STORAGE_S3_END
 
 R2 生产环境建议使用自定义域名，不建议使用受速率限制的 `r2.dev` 公共开发 URL。R2 public/private bucket 都应提前创建；FastGPT 启动时只检查 bucket 是否存在，不会自动创建生产 bucket。
 
-```env
+```dotenv
 STORAGE_VENDOR=r2
 STORAGE_REGION=auto
 STORAGE_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com

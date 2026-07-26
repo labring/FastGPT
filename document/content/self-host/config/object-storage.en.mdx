@@ -125,7 +125,7 @@ R2 uses the S3-compatible API. Set `STORAGE_REGION` to `auto` and use the accoun
 
 For production, use a custom domain instead of the rate-limited `r2.dev` development URL. Create both R2 buckets in advance; FastGPT checks that production buckets exist at startup and does not create them automatically.
 
-```env
+```dotenv
 STORAGE_VENDOR=r2
 STORAGE_REGION=auto
 STORAGE_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
