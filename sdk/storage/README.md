@@ -212,10 +212,10 @@ pnpm --filter @fastgpt-sdk/storage test:integration:minio
 
 集成测试分为两层：
 
-- `test/integration/common`：18 个 `IStorage` 通用契约，每个启用的 provider 都运行完全相同的用例。
+- `test/integration/common`：26 个 `IStorage` 通用契约，每个启用的 provider 都运行完全相同的用例，包含 ETag、800 字节 Unicode key、预签名 headers、流式取消，以及 1000 条分页/批量删除边界。
 - `test/integration/minio`：11 个 MinIO 专项用例，覆盖中断运行后的桶重建、400/1000 条分页边界、URL 编码、公共策略、真实 HTTP socket 超时，以及等待响应头和读取响应体时的下载取消。
 - `test/integration/transport`：2 个无需云凭证的 OSS/COS 真实 socket 取消用例。
 
-每个 provider 使用配置中的固定专用测试桶。每次 suite 启动时，harness 会先清空并删除可能由上次失败运行遗留的同名桶，再重新创建；结束时也会清理。不要对同一组测试配置并发运行集成测试。未启用的 provider 会被跳过。
+每个 provider 使用配置中的固定专用测试桶。云端 provider 每次 suite 启动和结束时只清理该桶中的对象并保留空桶，避免全局 bucket 名称删除后的最终一致性窗口；MinIO 专项测试仍会删除并重建桶以验证自动创建行为。不要对同一组测试配置并发运行集成测试。未启用的 provider 会被跳过。
 
 发布前会执行 `prepublishOnly` 自动构建产物到 `dist/`。

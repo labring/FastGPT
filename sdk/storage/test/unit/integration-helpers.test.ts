@@ -1,6 +1,38 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createVitestStorageMock } from '../../src/helper/mock';
-import { removeIntegrationBucketIfExists } from '../integration/helpers';
+import {
+  clearIntegrationBucketObjects,
+  removeIntegrationBucketIfExists
+} from '../integration/helpers';
+
+describe('clearIntegrationBucketObjects', () => {
+  it('clears objects while preserving an existing bucket', async () => {
+    const storage = createVitestStorageMock({ vi });
+    storage.__putObject('nested/file.txt', { body: Buffer.from('content') });
+
+    await expect(
+      clearIntegrationBucketObjects({
+        storage,
+        bucketExists: vi.fn().mockResolvedValue(true)
+      })
+    ).resolves.toBe(true);
+
+    expect(storage.__objects.size).toBe(0);
+  });
+
+  it('reports when the bucket is absent without making list calls', async () => {
+    const storage = createVitestStorageMock({ vi });
+
+    await expect(
+      clearIntegrationBucketObjects({
+        storage,
+        bucketExists: vi.fn().mockResolvedValue(false)
+      })
+    ).resolves.toBe(false);
+
+    expect(storage.listObjects).not.toHaveBeenCalled();
+  });
+});
 
 describe('removeIntegrationBucketIfExists', () => {
   it('does nothing when the stable test bucket does not exist', async () => {

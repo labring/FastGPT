@@ -48,6 +48,28 @@ describe('OssStorageAdapter.downloadObject', () => {
   });
 });
 
+describe('OssStorageAdapter.getObjectMetadata', () => {
+  it('reads ETag from response headers returned by ali-oss', async () => {
+    const adapter = createAdapter();
+    (adapter as any).client.head = vi.fn().mockResolvedValue({
+      meta: {},
+      res: {
+        headers: {
+          etag: '"oss-etag"',
+          'content-type': 'text/plain',
+          'content-length': '4'
+        }
+      }
+    });
+
+    await expect(adapter.getObjectMetadata({ key: 'dataset/file.txt' })).resolves.toMatchObject({
+      etag: 'oss-etag',
+      contentType: 'text/plain',
+      contentLength: 4
+    });
+  });
+});
+
 describe('OssStorageAdapter deletion boundaries', () => {
   it('treats an empty key list as a no-op', async () => {
     const adapter = createAdapter();
@@ -73,6 +95,23 @@ describe('OssStorageAdapter deletion boundaries', () => {
       keys: ['second.txt']
     });
     expect(deleteMulti).toHaveBeenCalledWith(['first.txt', 'second.txt'], { quiet: false });
+  });
+
+  it('splits multi-delete requests at the OSS 1000-key limit', async () => {
+    const adapter = createAdapter();
+    const keys = Array.from({ length: 1001 }, (_, index) => `dataset/file-${index}.txt`);
+    const deleteMulti = vi.fn().mockImplementation(async (keyChunk: string[]) => ({
+      deleted: keyChunk
+    }));
+    (adapter as any).client.deleteMulti = deleteMulti;
+
+    await expect(adapter.deleteObjectsByMultiKeys({ keys })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: []
+    });
+    expect(deleteMulti).toHaveBeenCalledTimes(2);
+    expect(deleteMulti).toHaveBeenNthCalledWith(1, keys.slice(0, 1000), { quiet: false });
+    expect(deleteMulti).toHaveBeenNthCalledWith(2, keys.slice(1000), { quiet: false });
   });
 
   it('normalizes the object-shaped Deleted entries produced by ali-oss XML parsing', async () => {

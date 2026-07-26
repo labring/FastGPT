@@ -12,7 +12,7 @@ import * as Minio from 'minio';
 import { createStorage } from '../../src/factory';
 import type { IStorage } from '../../src/interface';
 import type { EnsureBucketResult } from '../../src/types';
-import { removeIntegrationBucketIfExists } from './helpers';
+import { clearIntegrationBucketObjects, removeIntegrationBucketIfExists } from './helpers';
 
 export type StorageIntegrationProviderName = 'aws-s3' | 'minio' | 'oss' | 'cos';
 
@@ -67,6 +67,45 @@ const isBucketNotFoundError = (error: unknown): boolean => {
   );
 };
 
+const isBucketAlreadyExistsError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const value = error as { name?: unknown; code?: unknown };
+  const identifiers = [value.name, value.code].map(String);
+  return identifiers.some((identifier) =>
+    ['BucketAlreadyExists', 'BucketAlreadyOwnedByYou', 'BucketAlreadyExistsError'].includes(
+      identifier
+    )
+  );
+};
+
+/**
+ * 创建云端测试 bucket，并容忍删除后的全局命名空间最终一致性窗口。
+ * 若 bucket 已被其他账号占用，最终会保留原始错误而不会误用该 bucket。
+ */
+const ensureTestBucket = async ({
+  bucketExists,
+  createBucket
+}: {
+  bucketExists: () => Promise<boolean>;
+  createBucket: () => Promise<void>;
+}): Promise<void> => {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (await bucketExists()) return;
+
+    try {
+      await createBucket();
+      return;
+    } catch (error) {
+      if (!isBucketAlreadyExistsError(error)) throw error;
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+
+  throw lastError ?? new Error('Unable to create integration test bucket');
+};
+
 const createContextResult = async ({
   provider,
   storage,
@@ -75,6 +114,7 @@ const createContextResult = async ({
   createStorage,
   bucketExists,
   deleteBucket,
+  preserveBucket,
   destroyProvider
 }: {
   provider: StorageIntegrationProviderName;
@@ -84,6 +124,7 @@ const createContextResult = async ({
   createStorage: () => IStorage;
   bucketExists: () => Promise<boolean>;
   deleteBucket: () => Promise<void>;
+  preserveBucket?: boolean;
   destroyProvider?: () => Promise<void> | void;
 }): Promise<StorageIntegrationContext> => ({
   provider,
@@ -94,7 +135,11 @@ const createContextResult = async ({
   createStorage,
   cleanup: async () => {
     try {
-      await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
+      if (preserveBucket) {
+        await clearIntegrationBucketObjects({ storage, bucketExists });
+      } else {
+        await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
+      }
     } finally {
       try {
         await storage.destroy();
@@ -190,16 +235,22 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
         credentials: { accessKeyId, secretAccessKey }
       });
     const storage = createAwsStorage();
-    await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
-    await adminClient.send(
-      new CreateBucketCommand({
-        Bucket: bucket,
-        CreateBucketConfiguration:
-          region === 'us-east-1'
-            ? undefined
-            : { LocationConstraint: region as BucketLocationConstraint }
-      })
-    );
+    await clearIntegrationBucketObjects({ storage, bucketExists });
+    await ensureTestBucket({
+      bucketExists,
+      createBucket: () =>
+        adminClient
+          .send(
+            new CreateBucketCommand({
+              Bucket: bucket,
+              CreateBucketConfiguration:
+                region === 'us-east-1'
+                  ? undefined
+                  : { LocationConstraint: region as BucketLocationConstraint }
+            })
+          )
+          .then(() => undefined)
+    });
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -210,6 +261,7 @@ const createAwsS3Provider = (): StorageIntegrationProvider => ({
       createStorage: createAwsStorage,
       bucketExists,
       deleteBucket,
+      preserveBucket: true,
       destroyProvider: () => adminClient.destroy()
     });
   }
@@ -250,8 +302,11 @@ const createOssProvider = (): StorageIntegrationProvider => ({
       }
     };
     const deleteBucket = () => adminClient.deleteBucket(bucket).then(() => undefined);
-    await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
-    await adminClient.putBucket(bucket);
+    await clearIntegrationBucketObjects({ storage, bucketExists });
+    await ensureTestBucket({
+      bucketExists,
+      createBucket: () => adminClient.putBucket(bucket).then(() => undefined)
+    });
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -261,7 +316,8 @@ const createOssProvider = (): StorageIntegrationProvider => ({
       initialEnsureResult,
       createStorage: createOssStorage,
       bucketExists,
-      deleteBucket
+      deleteBucket,
+      preserveBucket: true
     });
   }
 });
@@ -299,8 +355,12 @@ const createCosProvider = (): StorageIntegrationProvider => ({
     };
     const deleteBucket = () =>
       adminClient.deleteBucket({ Bucket: bucket, Region: region }).then(() => undefined);
-    await removeIntegrationBucketIfExists({ storage, bucketExists, deleteBucket });
-    await adminClient.putBucket({ Bucket: bucket, Region: region });
+    await clearIntegrationBucketObjects({ storage, bucketExists });
+    await ensureTestBucket({
+      bucketExists,
+      createBucket: () =>
+        adminClient.putBucket({ Bucket: bucket, Region: region }).then(() => undefined)
+    });
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({
@@ -310,7 +370,8 @@ const createCosProvider = (): StorageIntegrationProvider => ({
       initialEnsureResult,
       createStorage: createCosStorage,
       bucketExists,
-      deleteBucket
+      deleteBucket,
+      preserveBucket: true
     });
   }
 });

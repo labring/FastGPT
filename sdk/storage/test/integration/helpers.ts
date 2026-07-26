@@ -29,19 +29,19 @@ export const createAsciiKeyAtLength = ({
 };
 
 /**
- * 删除已存在的固定集成测试桶，供下次运行重新创建干净环境。
- * `DeleteObjectsResult.keys` 是失败项；只要存在失败 key，就保留桶并让测试失败。
+ * 清空已存在的集成测试 bucket，但保留 bucket 本身。
+ *
+ * 云厂商的 bucket 名称通常是全局命名空间，删除后重新创建可能经历较长的最终一致性窗口；
+ * 真实 provider 测试应复用专用空 bucket，避免测试结果受 bucket 回收延迟影响。
  */
-export const removeIntegrationBucketIfExists = async ({
+export const clearIntegrationBucketObjects = async ({
   storage,
-  bucketExists,
-  deleteBucket
+  bucketExists
 }: {
   storage: IStorage;
   bucketExists: () => Promise<boolean>;
-  deleteBucket: () => Promise<void>;
-}): Promise<void> => {
-  if (!(await bucketExists())) return;
+}): Promise<boolean> => {
+  if (!(await bucketExists())) return false;
 
   const { keys } = await storage.listObjects({});
   if (keys.length > 0) {
@@ -51,5 +51,19 @@ export const removeIntegrationBucketIfExists = async ({
     }
   }
 
+  return true;
+};
+
+/** 清空并删除已存在的集成测试 bucket；MinIO 专项测试用此验证自动建桶。 */
+export const removeIntegrationBucketIfExists = async ({
+  storage,
+  bucketExists,
+  deleteBucket
+}: {
+  storage: IStorage;
+  bucketExists: () => Promise<boolean>;
+  deleteBucket: () => Promise<void>;
+}): Promise<void> => {
+  if (!(await clearIntegrationBucketObjects({ storage, bucketExists }))) return;
   await deleteBucket();
 };

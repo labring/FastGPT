@@ -29,7 +29,7 @@ import type {
   GeneratePublicGetUrlResult
 } from '../types';
 import type { Readable } from 'node:stream';
-import { camelCase, difference, kebabCase } from 'es-toolkit';
+import { camelCase, chunk, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
@@ -108,11 +108,15 @@ export class OssStorageAdapter implements IStorage {
     }
 
     const headers = result.res.headers as Record<string, string>;
+    const etag =
+      headers.etag ?? Object.entries(headers).find(([key]) => key.toLowerCase() === 'etag')?.[1];
+
+    const normalizedEtag = etag?.replace(/"/g, '');
 
     return {
       key,
       metadata,
-      etag: headers['etag'] ? headers['etag'].replace(/"/g, '') : undefined,
+      etag: normalizedEtag,
       bucket: this.options.bucket,
       contentType: headers['content-type'],
       contentLength: headers['content-length'] ? Number(headers['content-length']) : undefined
@@ -206,31 +210,36 @@ export class OssStorageAdapter implements IStorage {
       };
     }
 
-    // verbose 模式会返回成功删除的 key；quiet 全成功时响应为空，无法与失败区分。
-    const result = await this.client.deleteMulti(keys, { quiet: false });
-    const deletedKeys = (() => {
-      const deletedItems: unknown = result.deleted;
-      if (!Array.isArray(deletedItems)) return [];
+    // OSS 单次 DeleteMultipleObjects 最多接受 1000 个 key；verbose 模式会返回成功删除的 key。
+    const failedKeys: StorageObjectKey[] = [];
+    for (const keyChunk of chunk(keys, 1000)) {
+      const result = await this.client.deleteMulti(keyChunk, { quiet: false });
+      const deletedKeys = (() => {
+        const deletedItems: unknown = result.deleted;
+        if (!Array.isArray(deletedItems)) return [];
 
-      const normalizedKeys: string[] = [];
-      for (const item of deletedItems) {
-        if (typeof item === 'string') {
-          normalizedKeys.push(item);
-          continue;
+        const normalizedKeys: string[] = [];
+        for (const item of deletedItems) {
+          if (typeof item === 'string') {
+            normalizedKeys.push(item);
+            continue;
+          }
+          // ali-oss 的类型声明是 string[]，但标准 OSS XML 在运行时解析为 { Key }[]。
+          if (item && typeof item === 'object' && 'Key' in item && typeof item.Key === 'string') {
+            normalizedKeys.push(item.Key);
+            continue;
+          }
+          return [];
         }
-        // ali-oss 的类型声明是 string[]，但标准 OSS XML 在运行时解析为 { Key }[]。
-        if (item && typeof item === 'object' && 'Key' in item && typeof item.Key === 'string') {
-          normalizedKeys.push(item.Key);
-          continue;
-        }
-        return [];
-      }
-      return normalizedKeys;
-    })();
+        return normalizedKeys;
+      })();
+
+      failedKeys.push(...difference(keyChunk, deletedKeys));
+    }
 
     return {
       bucket: this.options.bucket,
-      keys: difference(keys, deletedKeys)
+      keys: failedKeys
     };
   }
 

@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { InvalidStorageObjectKeyError } from '../../../src/errors';
 import {
   ValidTestBucketNamePrefixPattern,
   type StorageIntegrationContext,
@@ -14,6 +15,42 @@ const readBody = async (body: Readable): Promise<Buffer> => {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   return Buffer.concat(chunks);
+};
+
+const waitForStreamClose = (stream: Readable): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Download stream did not close')), 5000);
+    stream.once('close', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    stream.once('error', () => {
+      // Abort is expected to surface as a stream error before close.
+    });
+  });
+
+/** 以有限并发写入大量对象，避免集成测试自身制造无限请求并发。 */
+const uploadInBatches = async ({
+  context,
+  keys,
+  batchSize = 25
+}: {
+  context: StorageIntegrationContext;
+  keys: string[];
+  batchSize?: number;
+}) => {
+  for (let index = 0; index < keys.length; index += batchSize) {
+    await Promise.all(
+      keys.slice(index, index + batchSize).map((key) =>
+        context.storage.uploadObject({
+          key,
+          body: 'x',
+          contentType: 'text/plain',
+          contentLength: 1
+        })
+      )
+    );
+  }
 };
 
 /**
@@ -60,7 +97,7 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
             contentType: 'text/plain',
             contentLength: content.length,
             contentDisposition: 'attachment; filename="basic.txt"',
-            metadata: { traceId: 'contract-basic' }
+            metadata: { traceId: 'contract-basic', emptyValue: '' }
           })
         ).resolves.toEqual({ bucket: context.bucket, key });
 
@@ -76,13 +113,18 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
           key,
           contentType: 'text/plain',
           contentLength: content.length,
-          metadata: { traceId: 'contract-basic' }
+          metadata: { traceId: 'contract-basic', emptyValue: '' }
         });
         expect(metadata.etag).toBeTruthy();
 
         const download = await context.storage.downloadObject({ key });
         expect(download).toMatchObject({ bucket: context.bucket, key });
         await expect(readBody(download.body)).resolves.toEqual(content);
+
+        const signedGet = await context.storage.generatePresignedGetUrl({ key });
+        const signedGetResponse = await fetch(signedGet.url);
+        expect(signedGetResponse.ok).toBe(true);
+        expect(signedGetResponse.headers.get('content-disposition')).toContain('basic.txt');
       });
 
       it('returns a stable etag when metadata is read repeatedly', async () => {
@@ -191,6 +233,38 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         expect(contents).toEqual(entries.map(({ content }) => content));
       });
 
+      it('lists and deletes a prefix across more than 1000 objects', async () => {
+        const prefix = `${context.rootPrefix}large-prefix/`;
+        const keys = Array.from({ length: 1001 }, (_, index) => `${prefix}${index}.txt`);
+        await uploadInBatches({ context, keys });
+
+        const listed = await context.storage.listObjects({ prefix });
+        expect(new Set(listed.keys)).toEqual(new Set(keys));
+
+        await expect(context.storage.deleteObjectsByPrefix({ prefix })).resolves.toEqual({
+          bucket: context.bucket,
+          keys: []
+        });
+        await expect(context.storage.listObjects({ prefix })).resolves.toEqual({
+          bucket: context.bucket,
+          keys: []
+        });
+      });
+
+      it('accepts a multi-delete request larger than the provider batch limit', async () => {
+        const prefix = `${context.rootPrefix}large-delete-request/`;
+        const keys = Array.from({ length: 1001 }, (_, index) => `${prefix}${index}.txt`);
+        await context.storage.uploadObject({ key: keys[0], body: 'existing' });
+
+        await expect(context.storage.deleteObjectsByMultiKeys({ keys })).resolves.toEqual({
+          bucket: context.bucket,
+          keys: []
+        });
+        await expect(context.storage.checkObjectExists({ key: keys[0] })).resolves.toMatchObject({
+          exists: false
+        });
+      });
+
       it(`round-trips and deletes an object key at the portable ${MAX_STORAGE_OBJECT_KEY_UTF8_BYTES}-byte limit`, async () => {
         const keyPrefix = `${context.rootPrefix}long-key/`;
         const maxObjectKeyBytes = MAX_STORAGE_OBJECT_KEY_UTF8_BYTES;
@@ -215,10 +289,57 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         });
       });
 
+      it('round-trips a multibyte object key at the portable byte limit', async () => {
+        const keyPrefix = `${context.rootPrefix}unicode-key/`;
+        const asciiKey = createAsciiKeyAtLength({
+          prefix: keyPrefix,
+          byteLength: MAX_STORAGE_OBJECT_KEY_UTF8_BYTES
+        });
+        // Replace three ASCII bytes with one three-byte CJK character without changing total size.
+        const key = `${asciiKey.slice(0, -3)}\u4e2d`;
+        expect(Buffer.byteLength(key)).toBe(MAX_STORAGE_OBJECT_KEY_UTF8_BYTES);
+
+        await context.storage.uploadObject({ key, body: 'unicode-boundary' });
+        const download = await context.storage.downloadObject({ key });
+        await expect(readBody(download.body)).resolves.toEqual(Buffer.from('unicode-boundary'));
+        await expect(context.storage.listObjects({ prefix: keyPrefix })).resolves.toMatchObject({
+          keys: expect.arrayContaining([key])
+        });
+        await expect(context.storage.deleteObject({ key })).resolves.toEqual({
+          bucket: context.bucket,
+          key
+        });
+      });
+
+      it('rejects an object key above the portable byte limit before creating an object', async () => {
+        const prefix = `${context.rootPrefix}too-long/`;
+        const key = createAsciiKeyAtLength({
+          prefix,
+          byteLength: MAX_STORAGE_OBJECT_KEY_UTF8_BYTES + 1
+        });
+
+        await expect(context.storage.uploadObject({ key, body: 'too-long' })).rejects.toMatchObject(
+          {
+            name: InvalidStorageObjectKeyError.name,
+            reason: 'too_long',
+            actualBytes: MAX_STORAGE_OBJECT_KEY_UTF8_BYTES + 1,
+            maxBytes: MAX_STORAGE_OBJECT_KEY_UTF8_BYTES
+          }
+        );
+        await expect(context.storage.listObjects({ prefix })).resolves.toEqual({
+          bucket: context.bucket,
+          keys: []
+        });
+      });
+
       it('lists and copies keys containing path and URL-sensitive characters', async () => {
         const sourceKey = `${context.rootPrefix}special/team # & + % ?/\u6587\u4ef6-\ud83d\ude00.txt`;
         const targetKey = `${context.rootPrefix}special/copied file.txt`;
-        await context.storage.uploadObject({ key: sourceKey, body: 'special-content' });
+        await context.storage.uploadObject({
+          key: sourceKey,
+          body: 'special-content',
+          metadata: { copySource: 'special-contract' }
+        });
 
         const listed = await context.storage.listObjects({
           prefix: `${context.rootPrefix}special/`
@@ -231,10 +352,16 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         ).resolves.toEqual({ bucket: context.bucket, sourceKey, targetKey });
         const copied = await context.storage.downloadObject({ key: targetKey });
         await expect(readBody(copied.body)).resolves.toEqual(Buffer.from('special-content'));
+        await expect(context.storage.getObjectMetadata({ key: targetKey })).resolves.toMatchObject({
+          metadata: { copySource: 'special-contract' }
+        });
+        await expect(context.storage.checkObjectExists({ key: sourceKey })).resolves.toMatchObject({
+          exists: true
+        });
       });
 
       it('uploads and downloads through presigned URLs', async () => {
-        const key = `${context.rootPrefix}presigned/file.txt`;
+        const key = `${context.rootPrefix}presigned/folder name/file #+&%?.txt`;
         const content = 'presigned-content';
         const put = await context.storage.generatePresignedPutUrl({
           key,
@@ -262,6 +389,10 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         expect(getResponse.ok).toBe(true);
         expect(getResponse.headers.get('content-type')).toContain('text/plain');
         await expect(getResponse.text()).resolves.toBe(content);
+        await expect(context.storage.getObjectMetadata({ key })).resolves.toMatchObject({
+          contentType: 'text/plain',
+          metadata: { uploadSource: 'contract' }
+        });
       });
 
       it('generates a public URL that preserves reserved characters inside the key path', () => {
@@ -284,6 +415,35 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         await expect(
           context.storage.downloadObject({ key, abortSignal: controller.signal })
         ).rejects.toMatchObject({ name: 'AbortError' });
+      });
+
+      it('closes an in-flight download when aborted after response begins', async () => {
+        const key = `${context.rootPrefix}abort/in-flight.bin`;
+        await context.storage.uploadObject({
+          key,
+          body: Buffer.alloc(4 * 1024 * 1024, 0x61),
+          contentType: 'application/octet-stream'
+        });
+
+        const controller = new AbortController();
+        const { body } = await context.storage.downloadObject({
+          key,
+          abortSignal: controller.signal
+        });
+        body.on('error', () => {});
+        const firstChunk = new Promise<void>((resolve, reject) => {
+          body.once('data', () => {
+            body.pause();
+            resolve();
+          });
+          body.once('error', reject);
+        });
+        await firstChunk;
+
+        const closePromise = waitForStreamClose(body);
+        controller.abort(new Error('integration test aborted'));
+        await closePromise;
+        expect(body.destroyed).toBe(true);
       });
 
       it('deletes a single object idempotently', async () => {
@@ -387,6 +547,35 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         await expect(
           context.storage.listObjects({ prefix: `${context.rootPrefix}not-present/` })
         ).resolves.toEqual({ bucket: context.bucket, keys: [] });
+      });
+
+      it('accepts omitted and empty list prefixes', async () => {
+        const markerKey = `${context.rootPrefix}list-prefix/marker.txt`;
+        await context.storage.uploadObject({ key: markerKey, body: 'marker' });
+
+        const omittedPrefix = await context.storage.listObjects({});
+        const emptyPrefix = await context.storage.listObjects({ prefix: '' });
+        expect(omittedPrefix).toEqual(emptyPrefix);
+        expect(omittedPrefix.keys).toContain(markerKey);
+      });
+
+      it('round-trips valid path-edge keys without treating them as dot segments', async () => {
+        const keys = [
+          `${context.rootPrefix}path-edge/folder/`,
+          `${context.rootPrefix}path-edge/.hidden`,
+          `${context.rootPrefix}path-edge/..backup`,
+          `${context.rootPrefix}path-edge/trailing-space `
+        ];
+        await uploadInBatches({ context, keys, batchSize: 4 });
+
+        const listed = await context.storage.listObjects({
+          prefix: `${context.rootPrefix}path-edge/`
+        });
+        expect(new Set(listed.keys)).toEqual(new Set(keys));
+        await expect(context.storage.deleteObjectsByMultiKeys({ keys })).resolves.toEqual({
+          bucket: context.bucket,
+          keys: []
+        });
       });
 
       it('allows independently created adapters to be destroyed repeatedly', async () => {

@@ -102,6 +102,34 @@ describe('CosStorageAdapter deletion boundaries', () => {
     expect(deleteMultipleObject).not.toHaveBeenCalled();
   });
 
+  it('splits multi-delete requests at the COS 1000-object limit', async () => {
+    const adapter = createAdapter();
+    const keys = Array.from({ length: 1001 }, (_, index) => `dataset/file-${index}.txt`);
+    const deleteMultipleObject = vi.fn().mockImplementation((params, callback) => {
+      callback(null, {
+        Error: [],
+        Deleted: params.Objects
+      });
+    });
+    (adapter as any).client.deleteMultipleObject = deleteMultipleObject;
+
+    await expect(adapter.deleteObjectsByMultiKeys({ keys })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: []
+    });
+    expect(deleteMultipleObject).toHaveBeenCalledTimes(2);
+    expect(deleteMultipleObject).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ Objects: keys.slice(0, 1000).map((Key) => ({ Key })) }),
+      expect.any(Function)
+    );
+    expect(deleteMultipleObject).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ Objects: keys.slice(1000).map((Key) => ({ Key })) }),
+      expect.any(Function)
+    );
+  });
+
   it('rejects a whitespace-only prefix without listing objects', async () => {
     const adapter = createAdapter();
     const getBucket = vi.fn();
