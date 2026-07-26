@@ -6,6 +6,7 @@ import {
   type StorageIntegrationProvider
 } from '../providers';
 import { createAsciiKeyAtLength } from '../helpers';
+import { MAX_STORAGE_OBJECT_KEY_UTF8_BYTES } from '../../../src/assert';
 
 const readBody = async (body: Readable): Promise<Buffer> => {
   const chunks: Buffer[] = [];
@@ -190,9 +191,9 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         expect(contents).toEqual(entries.map(({ content }) => content));
       });
 
-      it('round-trips and deletes an object key at the provider limit', async () => {
+      it(`round-trips and deletes an object key at the portable ${MAX_STORAGE_OBJECT_KEY_UTF8_BYTES}-byte limit`, async () => {
         const keyPrefix = `${context.rootPrefix}long-key/`;
-        const maxObjectKeyBytes = provider.maxObjectKeyBytes ?? 850;
+        const maxObjectKeyBytes = MAX_STORAGE_OBJECT_KEY_UTF8_BYTES;
         const key = createAsciiKeyAtLength({
           prefix: keyPrefix,
           byteLength: maxObjectKeyBytes

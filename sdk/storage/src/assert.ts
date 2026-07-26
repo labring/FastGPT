@@ -1,7 +1,7 @@
 import { InvalidStorageObjectKeyError, type InvalidStorageObjectKeyReason } from './errors';
 
 /** 四个 adapter 都可移植的对象 key 最大 UTF-8 字节数。 */
-export const MAX_STORAGE_OBJECT_KEY_UTF8_BYTES = 850;
+export const MAX_STORAGE_OBJECT_KEY_UTF8_BYTES = 800;
 
 function throwInvalidStorageObjectKey({
   field,

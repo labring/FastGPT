@@ -20,7 +20,7 @@ description: 'FastGPT V4.15.5 更新说明'
 
 1. 修复阿里云 OSS `getObjectMetadata` 从错误字段读取 ETag，导致 ETag 缺失并触发下游元数据校验失败的问题。
 2. 补充 OSS、COS、MinIO 的 ETag 集成测试，验证同一对象重复读取时 ETag 稳定。
-3. 记录 COS 对象 key 的实际 849 字节上限，避免集成测试使用 COS 不支持的 850 字节边界。
+3. 将对象 key 的统一可移植上限收敛为 800 字节，避免集成测试触达 COS 不稳定的 849/850 字节边界。
 
 ## 📦 升级说明
 
