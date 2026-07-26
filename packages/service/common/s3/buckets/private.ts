@@ -2,6 +2,7 @@ import { S3BaseBucket } from './base';
 import { createDefaultStorageOptions } from '../config/constants';
 import {
   type IAwsS3CompatibleStorageOptions,
+  type IR2StorageOptions,
   createStorage,
   type ICosStorageOptions,
   type IOssStorageOptions,
@@ -49,6 +50,23 @@ export class S3PrivateBucket extends S3BaseBucket {
           externalConfig: {
             ...config,
             endpoint: externalEndpoint
+          }
+        };
+      } else if (vendor === 'r2') {
+        const config = {
+          region,
+          vendor,
+          credentials,
+          endpoint: storageOptions.endpoint,
+          maxRetries: storageOptions.maxRetries,
+          forcePathStyle: false,
+          publicAccessExtraSubPath: storageOptions.publicAccessExtraSubPath
+        } as Omit<IR2StorageOptions, 'bucket'>;
+        return {
+          config,
+          externalConfig: {
+            ...config,
+            endpoint: externalEndpoint || storageOptions.endpoint
           }
         };
       } else if (vendor === 'cos') {

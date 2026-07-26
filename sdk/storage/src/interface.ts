@@ -76,6 +76,11 @@ export interface ICommonStorageOptions {
    * - 用于在公共访问时添加额外的前缀，例如 `/sub-path`。
    */
   publicAccessExtraSubPath?: string;
+
+  /**
+   * 公共对象访问域名，可选。适用于 R2 自定义域名等不应暴露 bucket 名称的场景。
+   */
+  publicEndpoint?: string;
 }
 
 /**
@@ -126,6 +131,13 @@ export interface IAwsS3CompatibleStorageOptions extends ICommonStorageOptions {
    */
   maxRetries?: number;
 }
+
+export type IR2StorageOptions = ICommonStorageOptions & {
+  vendor: 'r2';
+  endpoint: string;
+  forcePathStyle?: false;
+  maxRetries?: number;
+};
 
 /**
  * 阿里云 OSS 存储配置。
@@ -241,6 +253,7 @@ export interface IBosStorageOptions extends ICommonStorageOptions {
  */
 export type IStorageOptions =
   | IAwsS3CompatibleStorageOptions
+  | IR2StorageOptions
   | IOssStorageOptions
   | ICosStorageOptions;
 

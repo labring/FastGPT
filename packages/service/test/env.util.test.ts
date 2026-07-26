@@ -85,6 +85,27 @@ describe('validateS3Env', () => {
       ).not.toThrow();
     }
   );
+
+  it('requires a public endpoint for R2', () => {
+    expect(() =>
+      validateS3Env({
+        ...baseEnv,
+        STORAGE_VENDOR: 'r2'
+      })
+    ).toThrow('STORAGE_R2_PUBLIC_ENDPOINT');
+  });
+
+  it('rejects CDN URL rewriting for R2', () => {
+    expect(() =>
+      validateS3Env({
+        ...baseEnv,
+        STORAGE_VENDOR: 'r2',
+        STORAGE_R2_PUBLIC_ENDPOINT: 'https://assets.example.com',
+        STORAGE_EXTERNAL_ENDPOINT: 'https://account.r2.cloudflarestorage.com',
+        STORAGE_S3_CDN_ENDPOINT: 'https://cdn.example.com'
+      })
+    ).toThrow('STORAGE_S3_CDN_ENDPOINT is not supported');
+  });
 });
 
 describe('env util', () => {

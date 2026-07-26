@@ -5,6 +5,7 @@ export type {
   IStorage,
   IStorageOptions,
   IAwsS3CompatibleStorageOptions,
+  IR2StorageOptions,
   IOssStorageOptions,
   ICosStorageOptions,
   ICommonStorageOptions
@@ -49,6 +50,7 @@ export {
   assertStorageObjectPrefix
 } from './assert';
 export { AwsS3StorageAdapter } from './adapters/aws-s3.adapter';
+export { R2StorageAdapter } from './adapters/r2.adapter';
 export { CosStorageAdapter } from './adapters/cos.adapter';
 export { MinioStorageAdapter } from './adapters/minio.adapter';
 export { OssStorageAdapter } from './adapters/oss.adapter';

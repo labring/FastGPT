@@ -406,6 +406,28 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         expect(url.search).toBe('');
       });
 
+      it('uploads and reads a public object through the generated access URL', async () => {
+        const publicStorage = context.publicStorage;
+        if (!publicStorage) return;
+
+        const key = `${context.rootPrefix}public-access/file.txt`;
+        try {
+          await publicStorage.uploadObject({
+            key,
+            body: 'public-access-content',
+            contentType: 'text/plain',
+            contentLength: 21
+          });
+
+          const publicUrl = publicStorage.generatePublicGetUrl({ key }).url;
+          const response = await fetch(publicUrl);
+          expect(response.ok).toBe(true);
+          await expect(response.text()).resolves.toBe('public-access-content');
+        } finally {
+          await publicStorage.deleteObject({ key }).catch(() => undefined);
+        }
+      });
+
       it('rejects a download that was aborted before dispatch', async () => {
         const key = `${context.rootPrefix}abort/file.txt`;
         await context.storage.uploadObject({ key, body: 'abort-content' });

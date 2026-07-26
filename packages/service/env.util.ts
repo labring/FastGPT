@@ -28,6 +28,7 @@ type S3Env = {
   STORAGE_VENDOR: z.infer<typeof StorageVendorSchema>;
   STORAGE_DOWNLOAD_URL_MODE: StorageDownloadUrlMode;
   STORAGE_EXTERNAL_ENDPOINT?: string;
+  STORAGE_R2_PUBLIC_ENDPOINT?: string;
   STORAGE_S3_CDN_ENDPOINT?: string;
 };
 
@@ -40,6 +41,18 @@ export const validateS3Env = (env: S3Env): void => {
   if (env.STORAGE_S3_CDN_ENDPOINT && !env.STORAGE_EXTERNAL_ENDPOINT) {
     throw new Error(
       'Invalid S3 environment variables: STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_S3_CDN_ENDPOINT is configured.'
+    );
+  }
+
+  if (env.STORAGE_VENDOR === 'r2' && env.STORAGE_S3_CDN_ENDPOINT) {
+    throw new Error(
+      'Invalid S3 environment variables: STORAGE_S3_CDN_ENDPOINT is not supported when STORAGE_VENDOR is r2.'
+    );
+  }
+
+  if (env.STORAGE_VENDOR === 'r2' && !env.STORAGE_R2_PUBLIC_ENDPOINT) {
+    throw new Error(
+      'Invalid S3 environment variables: STORAGE_R2_PUBLIC_ENDPOINT is required when STORAGE_VENDOR is r2.'
     );
   }
 
