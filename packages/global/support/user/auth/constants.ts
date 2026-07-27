@@ -4,7 +4,8 @@ export enum UserAuthTypeEnum {
   wxLogin = 'wxLogin',
   bindNotification = 'bindNotification',
   captcha = 'captcha',
-  login = 'login'
+  login = 'login',
+  oauthLogin = 'oauthLogin'
 }
 
 export const userAuthTypeMap = {
@@ -13,5 +14,6 @@ export const userAuthTypeMap = {
   [UserAuthTypeEnum.wxLogin]: 'wxLogin',
   [UserAuthTypeEnum.bindNotification]: 'bindNotification',
   [UserAuthTypeEnum.captcha]: 'captcha',
-  [UserAuthTypeEnum.login]: 'login'
+  [UserAuthTypeEnum.login]: 'login',
+  [UserAuthTypeEnum.oauthLogin]: 'oauthLogin'
 };

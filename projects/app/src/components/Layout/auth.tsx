@@ -8,7 +8,6 @@ const unAuthPage: { [key: string]: boolean } = {
   '/': true,
   '/login': true,
   '/login/provider': true,
-  '/login/fastlogin': true,
   '/login/sso': true,
   '/appStore': true,
   '/chat': true,
@@ -34,7 +33,7 @@ const Auth = ({ children }: { children: JSX.Element | React.ReactNode }) => {
     },
     {
       refetchInterval: 10 * 60 * 1000,
-      onError(error) {
+      onError() {
         toast({
           status: 'warning',
           title: t('common:support.user.Need to login')

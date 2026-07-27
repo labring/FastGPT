@@ -52,6 +52,7 @@ export type parseHeaderCertRet = {
   apiKeyAuthProxy?: boolean;
   isRoot: boolean;
   sessionId: string;
+  sessionCreatedAt?: number;
 };
 
 export type MockReqType<B = any, Q = any> = {

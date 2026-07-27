@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -20,7 +22,7 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   }
 }));
 
-const { getSseErrorResponse, processError } = await import('../../../common/response');
+const { getSseErrorResponse, jsonRes, processError } = await import('../../../common/response');
 
 function buildZodError() {
   try {
@@ -82,6 +84,69 @@ describe('processError zod logging', () => {
       })
     );
     expect(logger.info).not.toHaveBeenCalled();
+  });
+});
+
+describe('jsonRes business HTTP status', () => {
+  const createResponse = () => {
+    const response: any = {
+      statusCode: 200,
+      status: vi.fn((statusCode: number) => {
+        response.statusCode = statusCode;
+        return response;
+      }),
+      json: vi.fn()
+    };
+    return response;
+  };
+
+  it.each([
+    [UserErrEnum.invalidVerificationCode, 400],
+    [UserErrEnum.sendVerificationCodeTooFrequently, 429],
+    [UserErrEnum.verifyCodeTooFrequently, 429],
+    [UserErrEnum.newPasswordSameAsOld, 400]
+  ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
+    const response = createResponse();
+
+    jsonRes(response, {
+      code: 500,
+      error: new UserError(errorKey),
+      url: '/api/support/user/verification'
+    });
+
+    expect(response.status).toHaveBeenCalledWith(httpStatus);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: ERROR_RESPONSE[errorKey].code,
+        statusText: errorKey,
+        message: ERROR_RESPONSE[errorKey].message,
+        errorType: 'UserError'
+      })
+    );
+  });
+
+  it('keeps an unclassified UserError as an internal server error', () => {
+    const response = createResponse();
+
+    jsonRes(response, {
+      code: 500,
+      error: new UserError('unclassified'),
+      url: '/api/test'
+    });
+
+    expect(response.status).toHaveBeenCalledWith(500);
+  });
+
+  it('prefers an explicit HTTP status over a legacy business-code range fallback', () => {
+    const response = createResponse();
+
+    jsonRes(response, {
+      code: 500,
+      error: new UserError(SandboxErrEnum.agentSandboxInitializing),
+      url: '/api/core/ai/sandbox'
+    });
+
+    expect(response.status).toHaveBeenCalledWith(409);
   });
 });
 

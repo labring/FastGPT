@@ -4,12 +4,14 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
+import { submitAccountCancellation } from '@/web/support/user/account/cancellation/api';
+import { authorizePasswordChange } from '@/web/support/user/account/password/api';
+import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
   getBdVId,
   getFastGPTSem,
@@ -23,6 +25,10 @@ import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import {
+  resolveOAuthLoginCallback,
+  type ResolvedOAuthLoginCallback
+} from '@/web/support/user/account/verification/oauth';
 
 let isOauthLogging = false;
 
@@ -31,7 +37,12 @@ const provider = () => {
   const { initd, loginStore, setLoginStore } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
-  const { state, error, ...props } = router.query as Record<string, string>;
+  const { state, error, code, ...rawProps } = router.query;
+  const callbackProps = Object.fromEntries(
+    Object.entries(rawProps).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string'
+    )
+  );
   const { toast } = useToast();
   const resolveLoginRedirect = useLoginRedirectAfterLogin();
 
@@ -39,7 +50,19 @@ const provider = () => {
     ? validateRedirectUrl(loginStore.lastRoute)
     : '/dashboard/agent';
   const lastTmbId = loginStore?.lastTmbId || '';
-  const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
+  const verificationFailureTitle = (() => {
+    if (loginStore?.flow === 'passwordChange') {
+      return t('common:password_verification_failed');
+    }
+    if (loginStore?.flow === 'accountCancellation') {
+      return t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试');
+    }
+  })();
+  const errorRedirectPage = verificationFailureTitle
+    ? lastRoute
+    : lastRoute.startsWith('/chat')
+      ? lastRoute
+      : '/login';
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -79,13 +102,69 @@ const provider = () => {
     [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo, t, toast]
   );
 
-  const authProps = useCallback(
-    async (props: Record<string, string>) => {
+  const completeOauthLogin = useCallback(
+    async ({
+      callback,
+      props
+    }: {
+      callback: ResolvedOAuthLoginCallback;
+      props: Record<string, string>;
+    }) => {
+      if (!loginStore) return;
       try {
+        if (loginStore.flow === 'accountCancellation') {
+          const result = await submitAccountCancellation({
+            method: `oauth/${callback.provider}` as any,
+            payload: {
+              callbackUrl: loginStore.callbackUrl,
+              code: callback.code,
+              ...(callback.state !== undefined ? { state: callback.state } : {}),
+              props
+            }
+          });
+          if (result.status !== 'pending') {
+            throw new Error('Account cancellation verification is still pending');
+          }
+          toast({
+            status: 'success',
+            title: t('account_info:account_cancellation_submit_success', '注销提交成功')
+          });
+          setUserInfo(null);
+          setLoginStore(undefined);
+          await router.replace('/login?lastRoute=/account/cancel');
+          return;
+        }
+
+        if (loginStore.flow === 'passwordChange') {
+          const result = await authorizePasswordChange({
+            source: 'accountVerification',
+            verification: {
+              method: `oauth/${callback.provider}`,
+              payload: {
+                callbackUrl: loginStore.callbackUrl,
+                code: callback.code,
+                ...(callback.state !== undefined ? { state: callback.state } : {}),
+                props
+              }
+            }
+          });
+          if (result.status !== 'authorized') {
+            throw new Error('Password change verification is still pending');
+          }
+          usePasswordChangeStore.getState().setAuthorization({
+            token: result.token,
+            expiredAt: result.expiredAt,
+            required: loginStore.passwordChangeRequired === true
+          });
+          setLoginStore(undefined);
+          await router.replace(lastRoute);
+          return;
+        }
+
         const res = await oauthLogin({
-          type: loginStore?.provider || OAuthEnum.sso,
+          ...callback,
           props,
-          callbackUrl: `${location.origin}/login/provider`,
+          callbackUrl: loginStore.callbackUrl,
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
@@ -98,69 +177,97 @@ const provider = () => {
             status: 'warning',
             title: t('common:support.user.login.error')
           });
-          return setTimeout(() => {
+          setTimeout(() => {
             router.replace(errorRedirectPage);
           }, 1000);
+          return;
         }
 
         await onFastGPTLoginSuccess(loginSuccess, res);
       } catch (error) {
         toast({
-          status: 'warning',
-          title: getErrText(error, t('common:support.user.login.error'))
+          status: verificationFailureTitle ? 'error' : 'warning',
+          title: verificationFailureTitle ?? getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
           router.replace(errorRedirectPage);
         }, 1000);
+      } finally {
+        setLoginStore(undefined);
       }
-      setLoginStore(undefined);
     },
     [
       errorRedirectPage,
       i18n.language,
-      loginStore?.provider,
+      lastRoute,
+      loginStore,
       loginSuccess,
       router,
       setLoginStore,
+      setUserInfo,
       t,
-      toast
+      toast,
+      verificationFailureTitle
     ]
   );
 
   useEffect(() => {
     if (error) {
       toast({
-        status: 'warning',
-        title: t('common:support.user.login.Provider error')
+        status: verificationFailureTitle ? 'error' : 'warning',
+        title: verificationFailureTitle ?? t('common:support.user.login.Provider error')
       });
       router.replace(errorRedirectPage);
       return;
     }
 
-    if (!props || !initd) return;
+    if (!router.isReady || !initd) return;
 
     if (isOauthLogging) return;
 
     isOauthLogging = true;
 
     (async () => {
-      await retryFn(async () => clearToken());
-      router.prefetch('/dashboard/agent');
-
-      if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
+      const currentCallbackUrl = `${location.origin}/login/provider`;
+      const callback = resolveOAuthLoginCallback({
+        loginStore,
+        code,
+        state,
+        currentCallbackUrl
+      });
+      if (!callback) {
         toast({
-          status: 'warning',
-          title: t('common:support.user.login.security_failed')
+          status: verificationFailureTitle ? 'error' : 'warning',
+          title: verificationFailureTitle ?? t('common:support.user.login.security_failed')
         });
         setTimeout(() => {
           router.replace(errorRedirectPage);
         }, 1000);
+        setLoginStore(undefined);
         return;
-      } else {
-        authProps(props);
       }
+
+      if (!loginStore?.flow || loginStore.flow === 'login') {
+        await retryFn(async () => clearToken());
+      }
+      router.prefetch('/dashboard/agent');
+      await completeOauthLogin({ callback, props: callbackProps });
     })();
-  }, [initd, authProps, error, loginStore, router, state, t, toast, props, errorRedirectPage]);
+  }, [
+    callbackProps,
+    code,
+    completeOauthLogin,
+    error,
+    errorRedirectPage,
+    initd,
+    loginStore,
+    router,
+    setLoginStore,
+    state,
+    t,
+    toast,
+    verificationFailureTitle
+  ]);
 
   return <Loading />;
 };
@@ -170,7 +277,7 @@ export default provider;
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ...(await serviceSideProps(context, ['login']))
+      ...(await serviceSideProps(context, ['login', 'account_info']))
     }
   };
 }

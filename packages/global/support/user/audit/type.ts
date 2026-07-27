@@ -1,19 +1,26 @@
 import type { SourceMemberType } from '../type';
-import type { AuditEventEnum } from './constants';
+import type { AdminAuditEventEnum, AuditEventEnum } from './constants';
 
-export type TeamAuditSchemaType = {
+export type TeamAuditEvent = `${AuditEventEnum}`;
+export type AdminAuditEvent = `${AdminAuditEventEnum}`;
+export type AuditEvent = TeamAuditEvent | AdminAuditEvent;
+
+export type AuditSchemaType<TEvent extends AuditEvent = AuditEvent> = {
   _id: string;
   tmbId: string;
   teamId: string;
   timestamp: Date;
-  event: `${AuditEventEnum}`;
-  metadata?: Record<string, string>;
+  event: TEvent;
+  metadata?: Record<string, any>;
 };
 
-export type TeamAuditListItemType = {
+export type AuditListItemType<TEvent extends AuditEvent = AuditEvent> = {
   _id: string;
   sourceMember: SourceMemberType;
-  event: `${AuditEventEnum}`;
+  event: TEvent;
   timestamp: Date;
-  metadata: Record<string, string>;
+  metadata: Record<string, any>;
 };
+
+export type TeamAuditListItemType = AuditListItemType<TeamAuditEvent>;
+export type AdminAuditListItemType = AuditListItemType<AdminAuditEvent>;

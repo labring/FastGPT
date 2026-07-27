@@ -6,6 +6,7 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { authAppByTmbId } from '../app/auth';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { parseHeaderCert } from '../auth/common';
+import { assertOutLinkTeamUsable } from '../../outLink/runtime/utils';
 
 /* crud outlink permission */
 export async function authOutLinkCrud({
@@ -67,6 +68,11 @@ export async function authOutLinkValid<T extends OutlinkAppType = any>({
   if (!outLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
+
+  await assertOutLinkTeamUsable({
+    teamId: String(outLinkConfig.teamId),
+    tmbId: String(outLinkConfig.tmbId)
+  });
 
   return {
     appId: outLinkConfig.appId,

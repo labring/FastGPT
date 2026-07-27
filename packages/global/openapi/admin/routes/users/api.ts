@@ -5,35 +5,45 @@ import { UserStatusEnum } from '../../../../support/user/constant';
 export const UserItemSchema = z.object({
   _id: z.string().meta({ description: '用户ID' }),
   username: z.string().meta({ description: '用户名' }),
-  avatar: z.string().optional().meta({ description: '用户头像' }),
+  contact: z.string().optional().meta({ description: '用户联系方式' }),
   status: z.enum(UserStatusEnum).meta({ description: '用户状态' }),
-  createTime: z.date().meta({ description: '创建时间' })
+  createTime: z.number().meta({ description: '创建时间戳' }),
+  isSsoUser: z.boolean().meta({ description: '当前运行时是否将该账号识别为 SSO 用户' })
 });
+export type UserItemType = z.infer<typeof UserItemSchema>;
 
 // getUsers
 export const GetUsersBodySchema = PaginationSchema.extend({
-  username: z.string().meta({ description: '搜索用户名（支持模糊匹配）' })
+  username: z.string().optional().default('').meta({ description: '搜索用户名（支持模糊匹配）' })
 });
 export type GetUsersBodyType = z.infer<typeof GetUsersBodySchema>;
 export const GetUsersResponseSchema = PaginationResponseSchema(UserItemSchema);
+export type GetUsersResponseType = z.infer<typeof GetUsersResponseSchema>;
 
 // addUser
-export const AddUserBodySchema = z.object({
-  username: z.string().min(1).meta({ description: '用户名' }),
-  password: z.string().min(1).meta({ description: '密码' })
-});
+export const AddUserBodySchema = z
+  .object({
+    username: z.string().trim().min(1).meta({ description: '用户名' }),
+    password: z.string().min(1).meta({ description: '密码' })
+  })
+  .strict();
+export type AddUserBodyType = z.infer<typeof AddUserBodySchema>;
 export const AddUserResponseSchema = z.object({
   userId: z.string().meta({ description: '新创建的用户ID' }),
   teamId: z.string().meta({ description: '用户的团队ID' })
 });
+export type AddUserResponseType = z.infer<typeof AddUserResponseSchema>;
 
 // updateUser
-export const UpdateUserBodySchema = z.object({
-  _id: z.string().min(1).meta({ description: '用户ID' }),
-  username: z.string().min(1).optional().meta({ description: '新用户名' }),
-  password: z.string().min(1).optional().meta({ description: '新密码' }),
-  status: z.enum(UserStatusEnum).optional().meta({ description: '用户状态' })
-});
+export const UpdateUserBodySchema = z
+  .object({
+    _id: z.string().min(1).meta({ description: '用户ID' }),
+    username: z.string().min(1).optional().meta({ description: '新用户名' }),
+    password: z.string().min(1).optional().meta({ description: '新密码' }),
+    status: z.enum(UserStatusEnum).optional().meta({ description: '用户状态' })
+  })
+  .strict();
+export type UpdateUserBodyType = z.infer<typeof UpdateUserBodySchema>;
 
 // delete
 export const DeleteUserBodySchema = z.object({
