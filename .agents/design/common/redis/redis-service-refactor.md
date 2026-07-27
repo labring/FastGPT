@@ -1,480 +1,517 @@
-# Redis 中间件服务重构讨论稿
+# DAL Redis 重构与迁移设计
 
-> 状态：Phase 1、Phase 2、Phase 3A、Phase 3B1 已完成并通过代码 review；Phase 3B2 尚未开始。
+> 上位设计：[FastGPT Data Access Layer 设计](../dal/data-access-layer.md)
 >
-> 目标：先统一 Redis 的连接、key、原子操作、错误策略和业务能力边界，再决定是否分阶段迁移。本文基于当前仓库代码梳理，不代表已经批准的实现方案。
+> 状态：Phase 1、Phase 2、Phase 3A、Phase 3B1 已提交；Phase 3B2、Phase 2R、DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C 与 DAL-R4D 已实现并通过定向测试，当前等待 DAL-R4D 代码 review。Lease、Stop Signal 和 Stream Repository 尚未迁移。
 
-## 1. 结论先行
+## 1. 目标
 
-当前问题不是“Redis 工具函数太少”，而是四个层次混在一起：
-
-1. ioredis 连接创建、重连、全局缓存和 BullMQ 连接配置混在一个 `index.ts`。
-2. 通用命令封装与业务状态语义混在一起，业务代码可以直接拿到客户端并自行拼 key、选命令、定 TTL、吞错误。
-3. 多个业务重复实现相同能力：固定窗口限流、字符串缓存、token 缓存、停止标记、流式结果缓存。
-4. 重试、离线队列和原子性没有按命令语义治理，网络超时可能重放非幂等写操作。
-
-建议采用“一个运行时、少量原子基础能力、多个业务仓储”的结构：
+将 Redis 从 `@fastgpt/service` 中完整收口到 `@fastgpt/dal`，形成以下稳定依赖：
 
 ```text
-业务 service / API
-        |
-        v
-业务 Redis Store（Session、StreamResume、RateLimit、Lease、各业务专用 Cache ...）
-        |
-        v
-窄接口的 Redis capability（string/hash/stream/scan/script）
-        |
-        v
-Redis Runtime（配置、连接角色、keyspace、重试、超时、健康、关闭）
-        |
-        +--> ioredis command / blocking client
-        +--> BullMQ queue / worker connection
+业务 API / Worker / Service
+          |
+          v
+Redis Repository（key、TTL、codec、缓存和错误合同）
+          |
+          v
+最小 Redis Adapter（命令、physical key、deadline、返回校验）
+          |
+          v
+Redis Runtime（配置、连接角色、健康检查、生命周期）
+          |
+          v
+       ioredis
 ```
 
-业务层不再依赖 `getGlobalRedisConnection()`，也不允许把 ioredis client 作为公共 API 暴露。BullMQ 仍然保留自己的连接对象，但只能通过 Redis Runtime 的 `queue` / `worker` 角色创建。
+最终业务代码只依赖 Repository。BullMQ 等基础设施集成可以依赖 Runtime 的受限连接 factory，但不能把 raw client 传给业务。
 
 ## 2. 范围与非目标
 
-### 2.1 本次重构范围
+本设计覆盖：
 
-- Redis URL 解析、连接选项、重连、健康状态和优雅关闭。
-- 全局 client、队列 client、worker client、阻塞读取 client 的角色边界。
-- key 前缀、命名空间、key 构造、扫描和物理 key 兼容策略。
-- 缓存、hash、计数器、固定窗口限流、租约、Redis Stream、Lua script 的基础能力。
-- 当前所有 Redis 业务调用方的迁移入口和错误/降级策略。
-- 单测 mock、Redis 7.2 集成测试、指标和日志。
+- 创建 `@fastgpt/dal` package 并迁移 Redis kernel。
+- Redis URL、连接角色、runtime context、健康检查和优雅关闭。
+- logical/physical key、legacy `keyPrefix` 和 SCAN 兼容。
+- 最小 adapter、operation policy、错误和返回值校验。
+- shared/pro Redis Repository 的归属和迁移。
+- 全仓 Redis 业务调用方、测试、观测和 legacy 清理。
 
-### 2.2 暂不纳入
+本设计不覆盖：
 
-- Redis Cluster、Sentinel、读写分离和跨 Redis 实例路由；第一阶段按当前 standalone Redis 7.2 部署设计，但保留 Runtime 扩展点。
-- 把 Mongo、S3 或 BullMQ 业务本身重新设计。
-- 通过大规模 key rename 迁移历史数据；推荐保持现有物理 key，减少回滚风险。
-- 让通用 Redis 层自动猜测业务降级策略；降级必须由业务 capability 声明。
+- MongoDB 或 Vector DB 的代码迁移。
+- Redis Cluster、Sentinel、读写分离和跨实例路由。
+- 大规模 key rename 或数据格式升级。
+- BullMQ 业务队列重新设计。
+- 为未来命令预建 capability、Lua registry 或通用 Repository 基类。
 
-## 3. 当前调用面清单
+## 3. 当前问题
 
-| 能力/位置 | 当前方式 | 当前 key/命令 | 主要问题 |
-| --- | --- | --- | --- |
-| `common/redis/index.ts` | `global.redisClient`、new Queue/Worker client | `keyPrefix=fastgpt:`；`SCAN` | 无统一生命周期；解析失败静默回退；日志可能带密码；原始 client 外泄 |
-| `common/redis/cache.ts` | 通用 `get/set/del/append/incr` | `cache:*` | TTL 与序列化不成约定；`APPEND`、`INCRBYFLOAT` 被通用重试；append 与 expire 非原子 |
-| `common/redis/lock.ts` | SET NX PX + Lua 续租/释放 | `lock:*` | 能力相对完整，但依赖全局 client；脚本、超时、连接角色未集中治理 |
-| `common/cache/index.ts` | 版本 key + 进程内对象缓存 | `VERSION_KEY:*` | `GET -> SET` 初始化有竞态；扫描和删除依赖 keyPrefix 细节 |
-| `common/api/frequencyLimit.ts` | 业务 API 内部 `MULTI INCR EXPIRE` | `frequency:*` | 与 enterprise auth 另有一套实现；直接写 HTTP 响应，基础能力不可复用 |
-| `common/system/frequencyLimit/redisFixedWindow.ts` | 独立固定窗口 helper | 调用方传入完整 key | 计数返回信息不足；故障策略未声明 |
-| `support/user/session.ts` | hash + expire + scan | `session:*` | `HMSET` 与 `EXPIRE` 非原子；删除/白名单比较容易混淆逻辑 key 与物理 key |
-| `core/chat/resume.ts` | 直接 `CALL XADD/XRANGE/XREAD`、`duplicate()` | `stream:resume:*` | 手工拼物理前缀；阻塞连接未纳入连接注册；业务承担 Redis 协议解析 |
-| workflow stop / auxiliary stop | 直接 string get/set/del | `agent_runtime_stopping:*` | 两个模块共享隐式协议，错误时静默返回 false |
-| sandbox init | `withRedisLease` | `lock:agent-sandbox:init:*` | 调用方理解 Redis 锁错误类型和映射，边界可保留但应移入 capability |
-| outLink stream | `APPEND` 字符串 + expire | `cache:*` | 非幂等重试可重复片段；重置、结束标记和 TTL 都是隐式协议 |
-| Dingtalk/Wecom/Wechat | 直接 string cache | 多种业务前缀 | token、二维码、订单缓存重复写法；无统一单飞/TTL 约定 |
-| wallet/vector/tracks | 依赖 `cache.ts` | 多种业务 key | 缓存失效、计数、source of truth 和 Redis 故障语义不一致 |
-| BullMQ | 每个 queue/worker 各自创建连接 | BullMQ 自有 key 前缀 | 连接数量与关闭不可观测；与普通 Redis 运行时配置重复 |
+当前 Redis kernel、首批 shared Repository 与 pro Repository 已按所有权完成迁移，但 legacy 调用面尚未完成收口：
 
-测试还维护了一套手写 Redis mock。mock 只覆盖部分命令，不能真实模拟 keyPrefix、Stream、Lua、并发和 TTL 边界，导致“测试通过但生产 Redis 语义不同”的风险。
+- Runtime 与最小 adapter 已位于 `packages/dal/redis`，并通过 package exports 限制为四个公共子路径。
+- service runtime binding 仍负责读取 `serviceEnv`、注入 logger 和接管 `global.redisClient`；DAL 本身已经不依赖 service。
+- shared 业务能力已迁入 `@fastgpt/dal`；pro Wecom Repository 位于 `pro/admin/src/dal` 并直接依赖 shared DAL adapter。
+- legacy cache、lock、scan 和 raw client 仍与新 Repository 并存。
+- 测试已删除 `global.redisRuntime`，但仍依赖迁移期 `global.redisClient` 和手写 ioredis mock。
 
-### 3.1 已确认的具体正确性问题
+已确认不能恢复的旧方向：公共 `string/hash/counter/stream` capability 和没有生产消费者的 script registry。Repository 是稳定业务边界，adapter 只按实际命令增长。
 
-这些不是抽象架构担忧，而是当前代码路径可以直接推导出的行为问题，迁移时应纳入回归测试：
+### 3.1 已知正确性债务
 
-- `support/user/session.ts` 在 Session 解码失败时把已经带 `session:` 前缀的 `formatKey` 再传给 `delSession`，清理目标会变成 `session:session:...`，损坏记录可能残留。
-- 同一文件的 `delSession` 没有 `await` 返回的 `retryFn`，调用方无法知道删除是否完成，重试失败还可能脱离主流程。
-- `common/system/frequencyLimit/redisFixedWindow.ts` 在 `MULTI/EXEC` 返回空或异常结构时把计数当作 0，默认放行；它与 `common/api/frequencyLimit.ts` 的故障行为并不一致。
-- `common/redis/cache.ts` 的 `appendRedisCache` 每个 chunk 都重新设置 TTL；长流只要持续有数据就会持续延长生命周期，而且 append 与 expire 之间存在无 TTL 窗口。
-- `core/chat/resume.ts` 通过 `redis.duplicate()` 为每个阻塞恢复请求创建连接，当前没有并发上限、registry 计数或统一关闭入口。
-- `core/chat/resume.ts`、`common/cache/index.ts` 等路径直接使用 `CALL` 或 pipeline，调用方必须自己知道 ioredis `keyPrefix` 何时生效，极易出现逻辑 key/物理 key 混用。
-- `dailyUserActive` 等业务先 `GET` 再 `SET`，在多实例并发登录时不是一次性去重写入；这会放大统计重复问题。
+以下问题已经从生产路径推导确认，必须进入对应 Repository 的回归测试，不能在目录迁移时遗忘：
 
-## 4. 必须先解决的风险
+- Session 解码失败时可能把已经带 `session:` 的 key 再次格式化，实际删除 `session:session:*`；删除流程还存在未 await 重试结果的问题。
+- 固定窗口限流在 `MULTI/EXEC` 返回空或异常结构时可能把计数解释为 0，不同限流入口的 Redis 故障策略也不一致。
+- outLink 字符串流使用 `APPEND` 后再 `EXPIRE`，中间失败会留下无 TTL key；每个 chunk 刷新 TTL 还可能无限延长生命周期。
+- System version 使用 `GET -> SET` 初始化，多实例可能生成不同版本值；wildcard 删除语义与旧注释不一致。
+- Stream Resume 的 blocking connection 已进入 Runtime registry，但业务协议仍直接承担 raw Redis 返回解析，尚未形成 Repository 边界。
+- legacy cache/lock/scan 仍依赖 ioredis `keyPrefix`，而 Stream、SCAN 和 `CALL` 的前缀行为不同，logical/physical key 混用风险尚未完全清零。
 
-### 4.1 配置与连接风险
+### 3.2 剩余 legacy 调用面
 
-- `REDIS_URL` 解析失败或协议不支持时回退到默认地址，可能连接到错误实例；应在启动阶段 fail-fast。
-- 日志中的 `redisUrl` 可能包含 username/password；必须只记录 host、port、db、tls 和角色，不记录凭据。
-- 当前 global、queue、worker 连接没有统一 registry，无法统计连接数量、关闭连接或判断哪个角色故障。
-- `enableOfflineQueue=true` 与无限重连会让请求在 Redis 故障时长时间悬挂；HTTP 命令、队列生产和阻塞读取需要不同策略。
-- `global.redisClient` 只适合 Next 开发热加载兼容，不应成为业务层契约。
-
-### 4.2 key 与协议风险
-
-- `keyPrefix` 对 `SCAN`、`CALL`、Pipeline 的行为容易被误读；当前代码因此手动拼 `fastgpt:`，形成物理 key 和逻辑 key 双轨。
-- 业务 key 大多是裸字符串，缺少 namespace、版本和 segment 约束，新增调用很容易碰撞。
-- `getAllKeysByPrefix` 只支持固定模式，且调用方需要知道它返回逻辑 key 还是物理 key。
-- 现有 key 已被历史数据和多实例使用，直接改名会导致会话、缓存、流恢复和停止信号失效。
-
-### 4.3 原子性与重试风险
-
-- `retryFn` 包裹 `INCRBYFLOAT`、`APPEND` 等非幂等命令；响应超时但服务端已成功时，重试会重复增加或重复追加。
-- `APPEND` 后再 `EXPIRE` 不是一个原子操作，中途故障会留下无 TTL key。
-- Session 的 `HMSET` 后 `EXPIRE` 不是原子操作。
-- Version key 的首次 `GET` 后 `SET` 存在并发生成不同版本值的竞态。
-- daily active 等“先读后写”的去重逻辑不是 `SET NX`，多实例下会重复记录。
-- 限流实现重复，且 Redis 命令失败时是否放行/拒绝由不同调用方隐式决定。
-
-### 4.4 故障语义风险
-
-Redis 不同用途不能共享一个“全部重试/全部吞错”策略。至少要区分：
-
-| 能力 | 建议默认策略 | 原因 |
+| 调用面 | 当前形式 | 后续归属 |
 | --- | --- | --- |
-| Session/auth | fail-closed | 不能在无法验证会话时放行 |
-| Distributed lease | fail-closed | 不能在拿不到锁时无锁执行 |
-| BullMQ enqueue/worker | fail-closed + 明确错误 | 丢任务比同步报告失败更危险 |
-| 钱包/计费额度缓存 | 优先回源；无回源则 fail-closed | 不能把缓存故障变成超额消费 |
-| QPM/enterprise auth 限流 | 默认 fail-closed，可按业务显式选择 | 防止限流失效导致成本和风控失守 |
-| workflow stop signal | fail-open（继续执行）但记录 degraded 指标 | Redis 故障不能把所有请求永久阻塞 |
-| stream resume mirror / outLink stream | fail-open，主响应继续 | 镜像是增强能力，不是主结果来源 |
-| tracking/daily dedupe | fail-open | 统计重复的代价低于阻塞主业务 |
-| 普通可回源 cache | miss + 回源 | Redis 只承担加速，不承担事实来源 |
+| `common/redis/cache.ts` | 通用 get/set/del/append/incr | 按真实业务拆入 Repository，最终删除 |
+| `common/redis/lock.ts` | SET NX PX + Lua | `LeaseRepository` |
+| `common/cache/index.ts` | version key + scan/delete | `SystemVersionRepository` |
+| 两套 frequency limit | API helper 与 system helper 各自事务 | `FixedWindowRateLimitRepository` |
+| `support/user/session.ts` | hash、expire、scan | `SessionRepository` |
+| `core/chat/resume.ts` | physical client + Stream 命令 | `StreamResumeRepository` |
+| workflow/auxiliary stop | 通用 string cache | `WorkflowStopSignalRepository` |
+| outLink stream/polling | append string、状态计数 | `OutLinkStreamRepository` |
+| wallet/QPM/pending payment | 通用 cache 和直接 client | 各自专用 Repository，先冻结一致性合同 |
+| BullMQ | Runtime queue/worker connection | 保留基础设施 adapter，不进入业务 Repository |
 
-上述是推荐默认值；涉及钱包、限流、认证的最终策略需要产品/运维确认。
+## 4. 目标目录与导出
 
-## 5. 目标设计
-
-### 5.1 Redis Runtime
-
-建议新增 `packages/service/common/redis/runtime/`，职责只包括连接基础设施：
-
-- `config.ts`：解析并校验 standalone Redis URL、Unix socket、`redis`/`rediss` 协议、db、端口和 TLS；query/hash（包括空值）直接拒绝，TLS/family 不允许从 URL query 传入。
-- `connection.ts`：按 `legacy-command`、`command`、`blocking`、`queue`、`worker` 创建连接，维护 registry、状态事件、健康检查和有序限时关闭。
-- `keyspace.ts`：显式构造物理 key，返回带类型的 `RedisKey`；新 segment 使用 RFC3986 编码，SCAN 对历史 key 的 glob 字符额外转义。
-- `errors.ts`：把连接、超时、命令失败、不可用和 lease 错误映射为稳定错误类型。
-- `metrics.ts`：按 role、capability、operation 记录延迟、错误、重试、连接数和降级次数，禁止把完整 key/token 写入指标。
-
-连接角色建议如下：
-
-| role | 用途 | 建议特性 |
-| --- | --- | --- |
-| `legacy-command` | 未迁移业务的逻辑 key 命令 | Phase 1 暂时保留 `keyPrefix=fastgpt:`；禁止物理 key 进入该 client |
-| `command` | physical capability 的普通读写、脚本 | 无 `keyPrefix`；有界 command timeout；只对幂等操作做有限重试 |
-| `blocking` | stream `XREAD BLOCK` | `maxRetriesPerRequest=null`；每个阻塞请求使用受 registry 管理的 duplicate/pool；必须有上限和关闭流程 |
-| `queue` | BullMQ Queue/producer | 复用连接配置但不复用业务 client；队列 namespace 由 BullMQ 管理 |
-| `worker` | BullMQ Worker | 保留 BullMQ 要求的 `maxRetriesPerRequest=null`；worker 重启由 BullMQ adapter 管理 |
-
-Runtime 最终只对外暴露稳定 capability。Phase 1 的公共 Redis 入口只保留 deprecated legacy client 和基础设施 factory；physical command 与 keyspace helper 不从公共入口导出。
-
-### 5.2 Keyspace 与兼容策略
-
-推荐移除业务侧对 ioredis `keyPrefix` 的依赖，由 `keyspace` 显式构造：
+shared：
 
 ```text
-fastgpt:<namespace>:<version?>:<segment>...
+packages/dal/redis/
+├── index.ts
+├── adapter.ts
+├── runtime/
+│   ├── index.ts
+│   ├── config.ts
+│   ├── connection.ts
+│   ├── errors.ts
+│   ├── keyspace.ts
+│   ├── operation.ts
+│   └── validation.ts
+└── repositories/
+    ├── index.ts
+    ├── dingtalkAccessToken.ts
+    ├── teamVectorCount.ts
+    └── wechatQrLogin.ts
 ```
 
-迁移第一阶段保留当前物理 key：
+pro：
 
-- `cache:*`、`session:*`、`VERSION_KEY:*`、`lock:*`、`frequency:*`、`stream:resume:*` 等逻辑前缀不改名。
-- `RedisKey` 统一在 Runtime 里加 `fastgpt:`，扫描返回逻辑 key，删除只能接受 `RedisKey`。
-- Redis Stream 使用 typed `xadd/xrange/xread`，不再由业务自己手工拼 `FASTGPT_REDIS_PREFIX`。
-- BullMQ 不强行套 `fastgpt:`，而是显式设置 BullMQ 自己的 `prefix`/namespace，避免污染业务 key。
-- 新增或需要变更数据格式时使用 `v2` namespace，禁止在同一个 key 上无版本混写。
+```text
+pro/admin/src/dal/redis/repositories/
+├── index.ts
+├── wecomAccessToken.ts
+└── wecomSuiteTicket.ts
+```
 
-这样可以直接回滚代码，不需要双写所有历史 key，也不会因为 keyPrefix 细节不同而误删数据。
+导出规则：
 
-### 5.3 窄接口 capability，而不是万能 RedisService
+- `@fastgpt/dal/redis`：配置入口、health、close 和稳定错误类型。
+- `@fastgpt/dal/redis/repositories`：业务 Repository。
+- `@fastgpt/dal/redis/runtime`：只给 BullMQ、instrumentation 和迁移期基础设施使用。
+- `@fastgpt/dal/redis/adapter`：只给 shared/pro Repository 实现和对应测试使用。
+- physical key/client helper 不从 Redis 根入口导出。
+- `@fastgpt/service/common/redis` 只在迁移期保留 legacy facade，不能新增调用方。
 
-不建议建立一个包含几十个 ioredis 方法的 `RedisService`。建议只提供业务确实需要的 capability：
+## 5. Runtime 设计
 
-- `StringStore`：`get`、`set`、`setIfAbsent`、`delete`、`getTtl`。
-- `HashStore`：批量写字段、读对象、删除对象，写入和 TTL 可通过 transaction/script 一次完成。
-- `CounterStore`：`increment`、`incrementFloat`，明确是否允许重试和是否需要 TTL。
-- `ScanStore`：按 namespace 迭代逻辑 key，内部使用 `SCAN` 和批量 `UNLINK/DEL`。
-- `StreamStore`：`append`、`readRange`、`readBlocking`、`trim/expire`，内部负责 Redis Stream 字段协议。
-- `ScriptRegistry`：只允许登记有测试、有命名、有参数约束的 Lua script；禁止业务随意 `eval`。
+### 5.1 配置与初始化
 
-业务能力再基于这些 capability 组织：
+Runtime factory 接收显式依赖：
 
-| 业务 Store | 负责的语义 |
-| --- | --- |
-| `SessionStore` | Session hash、TTL、用户会话扫描/清理、字段解码 |
-| `SystemVersionStore` | 版本初始化、刷新、按前缀失效，保证首次初始化原子 |
-| `FixedWindowRateLimiter` | 窗口计数、首次设置 TTL、当前值/剩余/重置时间；不写 HTTP response |
-| `LeaseService` | 获取、续租、释放、丢锁错误和故障策略 |
-| `WorkflowStopSignalStore` | workflow 与 auxiliary generation 共享同一停止协议 |
-| `StreamResumeStore` | 聊天恢复镜像、memory pressure 保护、blocking read 生命周期 |
-| `OutLinkStreamStore` | Wechat/Wecom 长轮询结果、reset/end 标记和原子 TTL |
-| `DingtalkAccessTokenStore` | Dingtalk token、动态 TTL、进程内 single-flight 和 Redis fail-open |
-| `TeamVectorCountStore` | 团队向量数量的 read-through、超时回源和 best-effort 失效 |
-| `WechatQrLoginStore` | 二维码登录状态、JSON codec、固定 TTL 和损坏数据处理 |
-| `WecomAccessTokenStore` | provider/suite access token 的动态 TTL 和上游错误传播 |
-| `WecomSuiteTicketStore` | 外部事件被动写入、永久保存、缺失时 fail-closed |
-| `DailyActiveDedupeStore` | 按用户和日期原子去重，Redis 故障不阻断主流程 |
-| `TeamPointCache` | 计费积分读取、增量更新、双 key 一致性和回源策略 |
-| `TeamQpmConfigStore` | 团队 QPM 配置读取，与限流器共享 fail-closed 合同 |
-| `PendingPaymentStore` | 待支付订单协调状态、旧订单取消和并发创建策略 |
+```ts
+type RedisRuntimeOptions = {
+  redisUrl: string;
+  logger?: RedisRuntimeLogger;
+  clientFactory?: RedisClientFactory;
+  existingCommandClient?: RedisClient;
+};
+```
 
-Redis-backed Store 统一存放，但不合并业务抽象：
+`@fastgpt/dal` 不读取 `serviceEnv`。迁移期间由 service facade 绑定 `serviceEnv.REDIS_URL` 和 `LogCategories.INFRA.REDIS`；最终由 app/admin instrumentation 在初始化阶段调用 DAL 配置入口。
 
-- shared Store 放在 `packages/service/common/redis/stores/*.ts`，测试对应放在 `packages/service/test/common/redis/stores/*.test.ts`，业务调用方统一从 `@fastgpt/service/common/redis/stores` 导入。
-- `pro` 专属 Store 保持子模块所有权，放在 `pro/admin/src/service/common/redis/stores/*.ts`，不得为了集中目录把闭源业务实现上移到 shared package。
-- Store 可以负责 key、TTL、codec、Redis deadline、原子操作、错误降级和基于 callback 的 single-flight；不得直接依赖 Axios、Mongo、BullMQ、支付 SDK、业务 controller 或 `core/**`、`support/**` 实现。
-- 上游请求、数据库回源、支付副作用和跨服务协调仍留在所属业务域；集中的是 Redis adapter 的物理位置，不是把不同业务重新合并成泛化 Cache/Store。
-- `stores/index.ts` 是唯一业务导入入口；Store 文件直接依赖 `../capability` 和 `../runtime/keyspace`，不能通过 Redis 根入口反向导入自身形成 barrel cycle。
+logger port 只保留 `info/warn/error(message, metadata?)`。默认 logger 必须无副作用且不得输出敏感配置，测试可以注入 fake。
 
-业务层只依赖对应 Store 的 type，不需要知道 Redis 命令、前缀或 serializer。
+### 5.2 进程级 context
 
-### 5.4 原子操作与重试规则
+DAL 内部维护一个跨 Next.js 热重载复用的 runtime context，不继续扩展零散 `global.redisRuntime` 字段。context 内部可使用 Map：
 
-| 现状 | 目标操作 |
-| --- | --- |
-| hash 写入后单独 expire | `MULTI HSET EXPIRE EXEC` 或命名 Lua script |
-| append 后单独 expire | 一个脚本完成 append + 仅必要时设置/刷新 TTL |
-| version `GET -> SET` | `SET NX`，未成功时读取已有值 |
-| daily dedupe `GET -> SET` | `SET NX EX`，返回是否首次写入 |
-| 固定窗口 `INCR + EXPIRE NX` | capability 内统一实现并返回结构化结果 |
-| 非幂等写操作套通用 retry | 默认不重试；必须提供 operation id/idempotency key 才能安全重试 |
-| GET/SET/DEL 等有限重试 | 由 operation policy 显式声明次数和超时，不能隐式调用全局 `retryFn` |
+```text
+DalRuntimeContext
+└── resources: Map<ResourceId, RuntimeResource>
+    └── redis:default -> RedisRuntime
+```
 
-连接重连是连接层职责，命令重试是 capability 职责，业务不再自行套 `retryFn`。
+要求：
 
-### 5.5 错误和降级协议
+- 同一 resource id 只能有一个 open runtime。
+- 相同配置重复初始化返回同一实例。
+- 不同配置不能静默覆盖，必须先显式 close。
+- close 从 Map 移除的只能是本次关闭的同一实例，防止并发替换误删。
+- legacy `global.redisClient` 仅在迁移 facade 中读取和清理，不进入新公共 API。
 
-每个 Store 的方法要写清楚：返回 miss、抛出哪一类错误、是否允许 degraded。建议错误最少包含 `code`、`operation`、`role` 和 `cause`，不包含完整 token 或敏感 key。
+DAL-R1 已迁移 singleton 行为，并由测试覆盖热重载复用、重复 close 和配置冲突；当前唯一事实来源是 DAL runtime context。
 
-业务 API 负责把 capability 错误映射为自己的业务错误；Redis 层不依赖 HTTP response、全局错误码或 Next.js 类型。
+### 5.3 连接角色
 
-### 5.6 可观测性和生命周期
+| role | 用途 | 约束 |
+| --- | --- | --- |
+| `legacy-command` | 未迁移调用方的 logical key 命令 | 暂时保留 `keyPrefix=fastgpt:`；physical key 禁止进入 |
+| `command` | adapter 普通操作 | 无 keyPrefix；有 deadline；禁止自动重放未完成命令 |
+| `blocking` | `XREAD BLOCK` | 专用连接；必须注册、限时和释放 |
+| `queue` | BullMQ Queue | 连接由 Runtime 创建，对象生命周期由 BullMQ adapter 管理 |
+| `worker` | BullMQ Worker | `maxRetriesPerRequest=null`；shutdown 后禁止重启 |
 
-- 启动时由 instrumentation 显式执行 Redis health check，并根据启动策略决定是否阻断启动。
-- 所有连接进入 registry，记录 role、createdAt、state、lastErrorAt；关闭时先通过 hook 关闭 BullMQ Worker/Queue，再按 blocking -> worker/queue -> command/legacy-command 顺序关闭 Runtime 连接，每一步都有 deadline。
-- blocking client 在 HTTP close/abort、超时、正常结束、异常结束时都释放；连接数有上限告警。
-- 日志采用 `LogCategories.INFRA.REDIS`，稳定消息 + 结构化字段；key 只记录 namespace、hash 或截断值。
-- 指标至少包括：命令耗时/错误、重试次数、连接状态、缓存 hit/miss、限流拒绝、lease contention/lost、stream mirror degraded、blocking client 数。
+关闭顺序固定为：
 
-## 6. 分阶段迁移设计
+1. 执行 before-close hook，先关闭 BullMQ Worker/Queue 对象及其内部 duplicate connection。
+2. 关闭 blocking connection。
+3. 关闭 worker/queue 原始 connection。
+4. 关闭 command/legacy-command connection。
+5. 每一步有 deadline，超时后强制 disconnect。
 
-迁移以“物理 key 不变、每阶段可回滚”为约束。旧函数不作为长期兼容层；每迁移一组调用方就直接修改引用，确认无生产引用后删除旧导出。
+### 5.4 Keyspace
 
-### Phase 0：合同冻结与基线
+新代码显式构造：
 
-- 固定当前 key 清单、TTL、序列化格式、错误/降级行为和 BullMQ namespace。
-- 记录每类能力的调用量、P95、Redis error、连接数量基线。
-- 给所有直接 client 调用建立清单，加入禁止新增 raw client 的检查。
+```text
+fastgpt:<namespace>:<version?>:<encoded-segment>...
+```
+
+规则：
+
+- Repository 使用 logical key；adapter 内部转 physical key。
+- segment 使用 RFC3986 编码，不能让 `* ? [ ] \\` 影响 SCAN glob。
+- 历史 key 通过受限的 `asRedisLogicalKey` 保持格式，不对既有 segment 重新编码。
+- SCAN 只返回 FastGPT keyspace 内的 logical key。
+- 第一轮迁移不修改任何既有物理 key、TTL 和 value 格式。
+
+## 6. Adapter 与错误
+
+当前最小 adapter 仅包含：
+
+- `get`
+- `set`
+- `delete`
+- `iterateByPrefix`
+
+新增命令必须和一个真实 Repository 在同一阶段进入，并补齐：
+
+- logical -> physical key 转换。
+- 输入校验。
+- ioredis 返回值校验。
+- command deadline。
+- 是否可重试和 timeout 后结果是否未知。
+- Repository 级故障合同测试。
+
+不提供 raw `call/eval`，不允许调用方自行声明 operation 可重试。原子脚本紧邻具体 Repository 实现；只有出现真实复用后才抽取。
+
+错误基类使用 `RedisOperationError`，至少包含 `code`、`operation`、`role`、`outcome` 和 `cause`，不包含完整 key/token。Repository 再决定 miss、回源或 fail-open/fail-closed。
+
+## 7. Repository 合同
+
+现有与计划中的 Repository：
+
+| Repository | 物理 key/value | 故障与并发合同 | 状态 |
+| --- | --- | --- | --- |
+| `DingtalkAccessTokenRepository` | `fastgpt:cache:dataset:dingtalk:accessToken:${appKey}:${secretHash}`；token；动态 TTL | Redis fail-open；上游错误传播；进程内 single-flight | DAL-R2 已迁入 shared DAL |
+| `TeamVectorCountRepository` | `fastgpt:cache:team_vector_count:${teamId}`；decimal；1800 秒 | 3 秒后回源；写/失效 best-effort | DAL-R2 已迁入 shared DAL |
+| `WechatQrLoginRepository` | `fastgpt:cache:publish:wechat:qrcode:${outLinkId}:${tmbId}`；QR JSON；480 秒 | miss 返回 expired；错误和损坏数据 fail-closed | DAL-R2 已迁入 shared DAL |
+| `WecomAccessTokenRepository` | provider/suite 两个历史 key；token；`expires_in - 10` 秒 | Redis/上游错误 fail-closed；不新增 single-flight | DAL-R2P 已迁入 pro DAL |
+| `WecomSuiteTicketRepository` | `fastgpt:wecom:suite_ticket`；永久 string | 外部事件覆盖写入；缺失/读写错误 fail-closed | DAL-R2P 已迁入 pro DAL |
+| `DailyActiveDedupeRepository` | `fastgpt:cache:dailyUserActive:${uid}_${date}`；`1`；86400 秒 | `SET NX EX`；Redis 故障 fail-open | DAL-R3C 已迁入 shared DAL |
+| `SystemVersionRepository` | `fastgpt:VERSION_KEY:*`；UUID；永久 | `SET NX GET` 原子初始化；错误 fail-closed；wildcard 只删子 key | DAL-R3D 已迁入 shared DAL |
+| `FixedWindowRateLimitRepository` | 现有 frequency key | 原子计数；按调用方冻结 fail-closed | 待关键能力阶段 |
+| `SessionRepository` | `fastgpt:session:*` hash + TTL | 原子写/过期；损坏记录清理 | 待关键能力阶段 |
+| `LeaseRepository` | `fastgpt:lock:*` | token 校验续租/释放；sandbox fail-closed | 待关键能力阶段 |
+| `WorkflowStopSignalRepository` | 现有 stopping key | workflow/auxiliary 共享协议 | 待关键能力阶段 |
+| `StreamResumeRepository` | `fastgpt:stream:resume:*` | blocking connection 和 memory pressure 合同 | 待流式阶段 |
+| `OutLinkStreamRepository` | 现有 cache string | 原子 append+TTL；保持消费协议 | 待流式阶段 |
+
+Repository 可以拥有 key、TTL、codec、single-flight、read-through callback 和数据访问 deadline。权限、HTTP、Mongo 业务更新、供应商 SDK 和跨 Repository 用例留在 service/project。
+
+## 8. 已完成历史阶段
 
 ### Phase 1：Runtime 与 Keyspace
 
-- 实现 URL/config 校验、role factory、registry、health、close 和脱敏日志。
-- 实现显式 `RedisKey`/namespace/scan，保留旧物理 key。
-- 让 BullMQ 只依赖 `queue`/`worker` factory。
-- 暂时保留旧业务封装，但禁止新代码引用 `getGlobalRedisConnection()`。
+- [x] 严格 Redis URL parser，拒绝 query/hash 和非法端口/db。
+- [x] 拆分 legacy-command 与 physical command，消除双前缀入口。
+- [x] typed keyspace、RFC3986 segment 和 glob-safe scan。
+- [x] BullMQ 使用 queue/worker factory，关闭对象池并增加 shutdown guard。
+- [x] Runtime 有序限时关闭、健康检查 deadline 和 blocking registry。
+- [x] app/admin health check 接入和定向回归测试。
+- [x] 提交：`9a6814a48`。
 
-当前实施状态（2026-07-21）：
+### Phase 2：历史 capability 实现
 
-- [x] Runtime、严格 URL parser、role factory、registry、health、close API 已实现。
-- [x] `legacy-command`（保留 `keyPrefix`）与无前缀 physical `command` 已拆分；公共 Redis 入口不再导出物理 key helper。
-- [x] typed keyspace、RFC3986 segment 编码、glob 安全 SCAN pattern 和兼容 SCAN 已实现，现有物理 key 未变化。
-- [x] BullMQ 已切换到 Runtime 的 queue/worker connection factory，并通过 before-close hook 先关闭 Queue/Worker，禁止 shutdown 期间自动重启。
-- [x] BullMQ Queue/Worker pool、生命周期和 shutdown Promise 已收拢到单一进程级 context，并在 Next.js 热重载时复用。
-- [x] Runtime close 已实现 blocking -> worker/queue -> command 的有序关闭、deadline、重复 close 幂等和遗留 global client 清理。
-- [x] Stream Resume 的 `XADD/XRANGE/XREAD` 已切换到 physical command/blocking port，blocking client 纳入 Runtime registry。
-- [x] app/admin instrumentation 已接入 Redis health check；健康检查具有独立 deadline。
-- [x] 补充 Runtime、keyspace、scan、BullMQ、App health 和 Stream Resume 回归测试。
-- [x] Phase 1 本轮修复已通过代码 review，可以在独立提交后进入 Phase 2。
+- [x] 曾实现 string/hash/counter/scan/stream capability、operation policy 和 script registry。
+- [x] 完成定向测试和 review。
+- [x] 提交：`edc68252d`。
 
-Phase 1 为兼容未迁移的业务调用，legacy command client 仍保留 ioredis `keyPrefix`，但只从 `getGlobalRedisConnection()` 这个 legacy 入口获取。显式物理 key 只能在 Runtime 内部 physical port/capability 中使用，不能从公共 Redis 入口构造或传给 legacy client。后续业务 Store 迁移完成后再移除 legacy client，最终清理发生在 Phase 6。进程级 signal/shutdown hook 尚未接入，保留在 T-22b；显式调用 `closeRedisConnections()` 时的 BullMQ/Runtime 生命周期已经闭环。
+### Phase 3A：Dingtalk 与 Team Vector Count
 
-### Phase 2：基础 capability 与 script registry
+- [x] 保持物理 key、TTL、single-flight、回源和 best-effort 合同。
+- [x] 4 个定向测试文件共 74 项通过。
+- [x] 提交：`7f41c8711`。
 
-- 实现 string/hash/counter/scan/stream 的最小窄接口。
-- 把 append+TTL、session hash+TTL、version init、lease renew/release 实现为命名脚本或 transaction；业务调用方仍按 Phase 3/4 的顺序迁移。
-- 加入 operation policy，删除 Redis capability 内部对非幂等写的通用重试。
+### Phase 3B1：Wechat QR Login
 
-Phase 2 设计复审结论（2026-07-21）：
+- [x] 保持历史 JSON/TTL，增加 typed codec 和损坏数据错误。
+- [x] 3 个定向测试文件共 20 项通过。
+- [x] 提交：`0fcd10e0d`。
 
-- 本阶段只提供 Redis 基础设施能力，不迁移 `SessionStore`、`SystemVersionStore`、`LeaseService` 或现有 cache 调用方，避免跨阶段改变业务错误和降级语义。
-- policy 分为两层：连接 role policy 约束 command timeout、offline queue、请求重试和未完成命令重放；operation policy 只允许显式列入 allowlist 的幂等操作做一次有限重试。
-- timeout 只能限制调用方等待时间，不能证明服务端命令未执行。append、counter、stream append、`SET NX` 和 lease release 等结果敏感操作不自动重试，超时错误必须标记结果可能未知。
-- capability 只接受 branded logical key，在内部转换 physical key；公共入口不导出 physical client、physical key helper 或任意 `eval`。
-- Script Registry 是封闭的 built-in registry，只暴露有固定输入、返回解析和单测的命名方法；业务不能动态注册或执行任意 Lua。
-- blocking stream read 使用 Runtime 管理的专用连接，Redis `BLOCK` deadline 之外再设置客户端 deadline，并在所有结束路径释放连接。
-- Phase 2 使用注入式 unit test 验证参数、返回值、TTL、重试和错误映射；真实 Redis 7.2 的 Lua/Stream/并发语义继续由 T-18 integration test 验证，不用 mock 结果代替服务端原子性证明。
+### Phase 3B2：Wecom Repository 前置迁移
 
-当前实施状态（2026-07-21）：
+- [x] pro Wecom access token 和 suite ticket Store 已实现。
+- [x] provider/suite/event 调用方已迁移，业务接口保持不变。
+- [x] 5 个定向测试文件共 29 项通过，相关实现覆盖率 100%。
+- [x] 前置实现已由 DAL-R2P 迁入 pro DAL 并完成改名。
+- [ ] DAL-R2P 待代码 review 和 pro 独立提交。
 
-- [x] physical command role 已启用有界 command timeout、单次 ioredis request retry，并关闭未完成命令自动重放；operation policy 使用固定 allowlist 区分读、状态幂等写和结果敏感写。
-- [x] string/hash/counter/scan/stream capability 已实现；公共入口只导出 logical-key 构造器和 branded type，不导出 physical key helper 或 physical command client。
-- [x] 内置 Script Registry 已实现 append+TTL、hash+TTL、version initialize、lease renew/release；仅 `NOSCRIPT` 回退 `EVAL`，不暴露动态注册或任意脚本执行。
-- [x] Phase 2 注入式单测和 Phase 1 兼容回归已通过；新增生产模块行覆盖率均不低于 96%，分支覆盖率均不低于 95%。
-- [ ] T-18 真实 Redis 7.2 integration test 尚未实现，Lua 原子性、Stream 服务端语义和租约竞争仍不能由本阶段 mock 单测证明。
-- [x] Phase 2 已通过代码 review；独立提交后再讨论是否进入 Phase 3。
+### Phase 2R：capability 收缩
 
-### Phase 3：低风险业务迁移
+- [x] capability 收缩为 `get/set/delete/iterateByPrefix` 最小 adapter。
+- [x] shared/pro Store 改为注入 adapter。
+- [x] 删除无生产消费者的 hash/counter/stream/atomic/script registry。
+- [x] 错误命名由 capability 收缩为 operation。
+- [x] 167 项唯一定向测试通过；adapter、operation 和 5 个 Store 全维度覆盖率 100%。
+- [ ] 待代码 review；通过前不进入 DAL-R1。
 
-Phase 3 设计复审结论（2026-07-22）：
+## 9. 后续迁移阶段
 
-- 不再实现泛化的 `TokenCache` 或 `TeamCacheStore`。它们会把凭据、结构化登录状态、计费增量、限流配置和普通可回源缓存错误地收敛到同一错误合同。
-- 每个子阶段开始前冻结对应 key、TTL、serializer、调用方和故障语义；未进入本阶段的关键状态不得借迁移顺手改变。
-- 第一轮保持物理 key 和序列化格式不变。使用 typed key builder 时，必须针对历史 key 写兼容断言，不能因 segment 编码改变已有 key。
-- 每个子阶段只运行对应 Store 和调用方的定向测试；完成后停止实现，等待代码 review，通过后再提交和进入下一子阶段。
+每个阶段完成后停止编码，等待代码 review；review 通过后再提交并进入下一阶段。
 
-Phase 3 迁移合同：
+### DAL-R0：review gate
 
-| 子阶段 | Store | 兼容物理 key | value / TTL | 目标故障与并发语义 |
-| --- | --- | --- | --- | --- |
-| 3A | `DingtalkAccessTokenStore` | `fastgpt:cache:dataset:dingtalk:accessToken:${appKey}:${secretHash}` | token string；`max(expireIn - 300, 60)` 秒 | Redis 读写 fail-open，上游鉴权错误继续传播；保留进程内 single-flight；失败后的删除为 best-effort |
-| 3A | `TeamVectorCountStore` | `fastgpt:cache:team_vector_count:${teamId}` | decimal string；1800 秒 | 读失败或 3 秒超时按 miss 回源；写和失效不阻断主结果；移除业务层与旧 helper 的双重重试 |
-| 3B1 | `WechatQrLoginStore` | `fastgpt:cache:publish:wechat:qrcode:${outLinkId}:${tmbId}` | 现有 QR JSON；480 秒 | miss 返回 expired；Redis 读写错误维持 fail-closed；用 typed codec 校验，损坏数据维持显式内部错误，不静默当作登录成功 |
-| 3B2 | `WecomAccessTokenStore` | `fastgpt:wecom:provider_access_token`、`fastgpt:wecom:suite_access_token` | token string；`expires_in - 10` 秒 | Redis 和上游错误维持 fail-closed；纯迁移不新增 single-flight，也不在本阶段实现上游提前失效后的自动刷新 |
-| 3B2 | `WecomSuiteTicketStore` | `fastgpt:wecom:suite_ticket` | ticket string；永久 | 外部事件覆盖写入；缺失、读取失败和写入失败均 fail-closed；不得套用 access token 的 TTL/刷新合同 |
-| 3C | `DailyActiveDedupeStore` | `fastgpt:cache:dailyUserActive:${uid}_${YYYY-MM-DD}` | `1`；86400 秒 | 本修订提议从 `GET -> SET` 改为 `SET NX EX`；Redis 故障 fail-open 并记录日志，不阻断登录或 tracking 主流程 |
-| 3D | `SystemVersionStore` | `fastgpt:VERSION_KEY:${key}`、`fastgpt:VERSION_KEY:${key}:${id}` | UUID string；永久 | Redis 错误维持 fail-closed；首次初始化使用原子脚本；`id='*'` 只删除子 key，保留无 id 的 base key，维持历史扫描语义 |
+- [x] 确认 Phase 2R 的最小 adapter 方向，不恢复 capability 或 script registry。
+- [x] 确认 Phase 3B2 pro Store 的数据合同和 pro 所有权。
+- [ ] Phase 2R、Phase 3B2 尚未分别提交；需与 DAL-R1 review 后的提交边界一并处理。
 
-现有调用边界（首轮迁移不得扩大）：
+### DAL-R1：package 与 Redis kernel
 
-- Dingtalk token 只服务 `useDingtalkDatasetRequest` 内的鉴权请求。
-- vector count 只服务团队向量数量读取，以及向量写入、删除后的失效。
-- Wechat QR 只服务二维码 generate/status 两个 API；确认成功后的 Mongo 更新和 polling 启动仍属于调用方事务边界。
-- Wecom provider/suite token 继续服务现有 pay、license、invoice、auth、corp 调用；suite ticket 写入仍由现有事件处理器触发。
-- daily active dedupe 只包围 `dailyUserActive` tracking，不接管 login 或 tokenLogin 主流程。
-- System version 继续服务 model permission 的读取、按 team 刷新和全量子 key 失效，不在本阶段扩展新的 version namespace。
+- [x] 创建 `packages/dal`、package manifest、tsconfig 和 Vitest 配置。
+- [x] 迁移 runtime/config/keyspace/errors/operation/validation/adapter 及其测试。
+- [x] 注入 redis URL 和 logger，确保 DAL 对 service/project/pro 零依赖。
+- [x] 建立单一进程级 DAL runtime context，兼容 Next.js 热重载。
+- [x] 保留 `@fastgpt/service/common/redis` legacy facade，内部委托 DAL；未增加旧深路径转发文件。
+- [x] BullMQ 统一依赖迁移期 service runtime binding，由该 binding 配置 DAL 并注册 before-close hook。
+- [x] 保持现有连接角色、全局 legacy client 接管、物理 key 和行为不变。
+- [x] 根测试环境通过公开 `configureRedisRuntime` 注入内存 client，不再写入 `global.redisRuntime`。
+- [x] DAL 5 个文件 81 项、service 11 个文件 123 项、pro 5 个文件 29 项、app 5 个文件 34 项定向测试通过。
+- [x] DAL 与 app typecheck 通过；pro 仅剩 3 个与本次 Redis 改动无关的既有类型错误。
 
-实施顺序：
+本阶段已实现并通过 review gate，DAL-R2 已基于该 package 边界完成 shared Repository 搬迁。
 
-1. **Phase 3A**：迁移 Dingtalk access token 和 vector count。二者现有行为测试较完整，是首个实现阶段。
-2. **Phase 3B1**：迁移 Wechat QR，先建立 typed codec 和损坏数据测试。
-3. **Phase 3B2**：迁移 Wecom provider/suite token 与 suite ticket；`pro` 子模块单独提交和 review。
-4. **Phase 3C**：迁移 daily active dedupe，补多实例并发语义测试。
-5. **Phase 3D**：迁移 `SystemVersionStore`，补首次初始化并发和真实 SCAN 定向 integration test。
+### DAL-R2：shared Repository
 
-Phase 3A 当前实施状态（2026-07-22）：
+- [x] 将 3 个 shared Store 迁入 `@fastgpt/dal/redis/repositories`。
+- [x] 改名为 `DingtalkAccessTokenRepository`、`TeamVectorCountRepository`、`WechatQrLoginRepository`。
+- [x] 更新所有生产和测试 import，删除 service stores 目录，不保留转发文件。
+- [x] service logger 改为窄 port 注入，global `withTimeout` 改为 DAL 内部纯实现。
+- [x] DAL 4 个文件 47 项、service 2 个文件 55 项、app 2 个文件 11 项定向测试通过。
+- [x] 三个 Repository 的 statements/lines/functions 覆盖率均为 100%，Repository 分支合计 95%。
+- [x] DAL 与 app typecheck、16 个本阶段文件的精确 ESLint、旧 shared Store 静态扫描通过。
 
-- [x] `DingtalkAccessTokenStore` 已迁移到 Phase 2 string capability，保持历史物理 key、动态 TTL、Redis fail-open 和进程内 single-flight。
-- [x] `TeamVectorCountStore` 已迁移到 `common/redis/stores` 并基于 Phase 2 string capability，保持 1800 秒 TTL、3 秒 deadline、回源和 best-effort 写/失效。
-- [x] `DingtalkAccessTokenStore` 与 `TeamVectorCountStore` 已通过统一 `stores/index.ts` 导出；Store 内部直接依赖 capability/keyspace，不存在 Redis 根 barrel cycle。
-- [x] Dingtalk 和 vector 生产调用方已移除对 legacy `common/redis/cache.ts` 的依赖；vector set 不再叠加业务层通用重试。
-- [x] 4 个 Phase 3A 定向测试文件共 74 项测试通过；两个新增 Store 的行、函数、语句和分支覆盖率均为 100%。
-- [x] Phase 3A 已通过代码 review；独立提交后进入 Phase 3B1。
+本阶段已实现并通过 review gate，DAL-R2P 已基于该 Repository 边界完成 pro 搬迁。
 
-Phase 3B1 当前实施状态（2026-07-22）：
+### DAL-R2P：pro Repository
 
-- [x] `WechatQrLoginStore` 已集中到 `common/redis/stores`，保持历史物理 key、JSON value 和 480 秒 TTL。
-- [x] typed codec 会校验写入数据和 Redis 中的 JSON；只有真实 miss 返回 `undefined`，损坏数据抛出显式 `RedisInvalidResponseError`。
-- [x] generate/status API 已移除 legacy `common/redis/cache.ts` 和业务目录 key helper；权限、Mongo 更新与 polling 仍保留在原调用边界。
-- [x] Redis 读、写、删除错误继续 fail-closed；status API 只把 Store miss 映射为 `expired`。
-- [x] 3 个 Phase 3B1 定向测试文件共 20 项测试通过；Store 和两个 API 的行、函数、语句和分支覆盖率均为 100%。
-- [x] Phase 3B1 已通过代码 review；独立提交后进入 Phase 3B2。
+- [x] 在 pro 内建立 `src/dal/redis/repositories`。
+- [x] 迁移并改名 Wecom Repository，直接依赖 `@fastgpt/dal` adapter。
+- [x] 更新 provider、suite、event 生产调用方和对应测试。
+- [x] 删除 pro service Redis Store 目录，不保留转发文件。
+- [x] 5 个定向测试文件 29 项通过，两个 Repository 全维度覆盖率均为 100%。
+- [x] 11 个本阶段文件精确 ESLint、旧 Store 和反向依赖静态扫描通过。
+- [x] pro typecheck 未新增错误，仍只有 chatHome、chatAgentHelper、evaluation 3 个既有错误。
 
-以下能力移出 Phase 3：
+本阶段已实现并通过 review gate，DAL-R3C 已基于 shared DAL adapter 开始剩余 Repository 迁移。
 
-- wallet points 是主动增量维护的计费状态，不是普通 TeamCache；移入 Phase 4，使用专用 `TeamPointCache`。
-- team QPM 配置直接参与限流；与 Phase 4 的 `FixedWindowRateLimiter` 一起迁移。
-- Wecom pending order 协调外部支付取消/创建副作用；移入 Phase 4，先确定 Redis 故障、数据库回源和并发创建策略。
-- Wechat polling failure counter 属于 outLink 状态机；移入 Phase 5，与 outLink 可靠性语义一起处理。
+### DAL-R3C：Daily Active Dedupe
 
-### Phase 4：关键一致性能力
+- [x] adapter 随 Repository 加入 `setIfAbsent`，不恢复通用 string capability。
+- [x] `string.setIfAbsent` 只执行一次，超时 outcome 为 unknown；严格校验 `OK | null` 返回。
+- [x] 使用 `SET NX EX` 代替 `GET -> SET`，保持 UTC 日期、历史 key、值 `1` 和 86400 秒 TTL。
+- [x] 保持 tracking Redis fail-open，降级时记录 warning；Mongo event 与错误传播合同不变。
+- [x] DAL 3 个单元测试文件 39 项、service 1 个文件 4 项定向测试通过。
+- [x] `DailyActiveDedupeRepository` statements/branches/functions/lines 均为 100%。
+- [x] Redis 7.2.14 integration test 通过，64 个并发请求只有 1 个获得首次声明结果。
+- [x] DAL 与 app typecheck、10 个本阶段文件精确 ESLint、legacy cache 引用扫描通过。
 
-- 合并两套固定窗口限流为 `FixedWindowRateLimiter`，API 层只负责响应头和错误映射。
-- 实现 `TeamQpmConfigStore` 并与限流器统一 fail-closed/fallback 合同，避免配置缓存失败时隐式放行。
-- 实现 `TeamPointCache`；第一轮保持现有两个物理 key，明确双 key 不一致时的回源规则，非幂等增量禁止自动重试。
-- 实现 `PendingPaymentStore`；编码前先确认 Redis 不可用时是否拒绝创建、能否从账单回源，以及 team 级并发/幂等策略。
-- 迁移 `SessionStore`，补充 session hash+TTL、并发创建、扫描清理和损坏数据测试。
-- 迁移 `LeaseService`，保持 sandbox 的 fail-closed 语义和现有业务错误映射。
-- 迁移 workflow/auxiliary 共用的 `WorkflowStopSignalStore`。
+本阶段已实现并通过 review gate，DAL-R3D 已继续迁移 System Version。
 
-### Phase 5：流式能力
+### DAL-R3D：System Version
 
-- 迁移 `StreamResumeStore`，消除手工 raw prefix 和业务层 `CALL`。
-- 将 memory pressure、stale cleanup、blocking connection 的生命周期纳入 Store/Runtime。
-- 迁移 Wechat/Wecom outLink stream；第一阶段保留字符串物理格式，用原子 append+TTL；不要同时改变消费协议。
-- 将 Wechat polling failure counter 收口为专用状态能力，修复 `GET -> SET` 的多 worker 竞态，并明确命令结果未知时的处理策略。
+- [x] adapter 新增 Repository 驱动的 `getOrSet` 与 `deleteMany`，不恢复 capability 层。
+- [x] adapter 数字参数使用 Zod `safeParse` 严格校验，不做 coercion，并统一映射为稳定的 `RedisInvalidArgumentError`。
+- [x] Runtime config 使用 Zod 校验原始 URL 和派生字段，不做 coercion，并保持 `RedisConfigurationError` 合同。
+- [x] `string.getOrSet` 使用单条 `SET NX GET`，只执行一次，超时 outcome 为 unknown。
+- [x] `string.deleteMany` 是无返回值依赖的幂等删除，瞬时错误允许重试一次并严格校验删除数量。
+- [x] 新增 `SystemVersionRepository`，保持历史 base/child key、UUID value 和永久 TTL。
+- [x] `id='*'` 完成全部 SCAN 页后用单条 multi-key `DEL` 删除子 key，base key 与相邻前缀不受影响。
+- [x] service cache facade 不再依赖 raw Redis、legacy scan 或物理 key，API 与进程内缓存行为保持不变。
+- [x] DAL 6 个精确单测文件 108 项、service 1 个文件 16 项通过；`SystemVersionRepository`、numeric validation 与 config 全维度覆盖率 100%。
+- [x] Redis 7.2.14 integration 2 项通过：64 并发初始化只得到一个永久版本，512 个子 key 经多页 SCAN 后全部删除。
+- [x] DAL 与 app typecheck、15 个相关文件精确 ESLint、legacy System Version Redis 引用扫描通过。
 
-### Phase 6：删除旧入口与上线治理
+本阶段已实现，等待代码 review；本轮未运行全量测试，也未开始后续 Repository 子阶段。
 
-- 生产代码中除 Runtime/BullMQ adapter 外不再出现 `getGlobalRedisConnection`、`new Redis`、`redis.call`。
-- 删除 `common/redis/cache.ts` 的泛化导出、全局 `redisClient` 类型和重复 mock；更新所有测试 import。
-- 开启连接/命令/降级指标，完成灰度、故障演练和回滚检查。
+### DAL-R4A：Fixed Window Rate Limit 与 Team QPM
 
-## 7. Tasks（讨论通过后执行）
+- `FixedWindowRateLimitRepository` 使用 `frequency:${type}:${scope}` logical key，保持 `fastgpt:` 物理前缀；窗口首次请求通过 `INCR + EXPIRE NX` 建立，随后由同一事务读取 `TTL`。
+- adapter 对 `MULTI/EXEC` 做完整结构校验：必须有 `INCR`、`EXPIRE`、`TTL` 三个结果，计数和 TTL 必须为非负/有效整数；`null`、空数组、错误 tuple 或非法数字均转换为稳定 Redis 错误，不能 allow。
+- Repository 输出 `allowed/currentCount/remaining/ttlSeconds/resetAt`；`limit` 与 `windowSeconds` 采用正安全整数校验。
+- service 的认证限流和 Team QPM 限流统一 fail-closed；Redis 错误由 service 记录并映射到现有业务拒绝行为。
+- `TeamQpmRepository` 仅迁移 `cache:team_qpm_limit:${teamId}` 的读写删除与 3600 秒 TTL；套餐回源、默认 `CHAT_MAX_QPM` 和 Mongo 查询留在 wallet service。
+- 不在本阶段迁移 Mongo `authFrequencyLimit`、Team Point、Pending Payment；不新增通用 capability 或 raw Redis 公共入口。
 
-以下 tasks 是整体实现清单；已完成项反映当前实施状态，未完成项不是本轮实现承诺。Phase 3 的字母子任务必须按子阶段逐组 review，不能一次性批量实现。
+### DAL-R4：关键一致性 Repository
 
-### 需求与合同
+- Fixed window rate limit 与 team QPM 配置。
+- Team point cache 与双 key 一致性。
+- Pending payment 协调状态，编码前先冻结故障/回源/并发合同。
+- Session、Lease 和 Workflow Stop Signal。
+- 每个能力独立子阶段 review，不批量实现。
 
-- [x] R-01：确认 standalone Redis 7.2 为第一阶段唯一支持拓扑，记录未来 Cluster/Sentinel 扩展边界。
-- [ ] R-02：导出全仓 Redis key/TTL/serializer/调用方清单，建立物理 key 兼容表。
-- [ ] R-03：逐项确认 session、计费缓存、限流、停止信号、stream mirror、tracking 的 fail-open/fail-closed 策略。
-- [x] R-02a：已冻结 Phase 3 范围内的 key、TTL、serializer、调用边界和物理 key 兼容表；全仓 R-02 在后续阶段继续补齐。
-- [x] R-03a：已冻结 Phase 3 范围内的错误、降级和并发语义；wallet、pending payment、QPM 已移出并保留为 Phase 4 决策。
-- [x] R-04：确认迁移期间保留 legacy `keyPrefix`，新增 physical port 隔离；BullMQ namespace 本阶段保持不变。
+### DAL-R4B：Team Point cache 双 key 一致性
 
-### Runtime 与基础能力
+- 保持 `cache:team_point_surplus:${teamId}`、`cache:team_point_total:${teamId}` 和 60 秒 TTL 不变。
+- 成对 GET、成对 SET 和 surplus `INCRBYFLOAT + EXPIRE NX` 都通过 adapter 的事务命令完成；空/畸形事务结果不得被当作成功。
+- partial hit、非法数字和 Redis 读错误回源 Mongo；写、增量、清理错误只记录 warning，钱包主流程继续使用 Mongo 结果。
+- 清除使用单条 multi-key `DEL`；wallet service 删除 `getRedisCache/setRedisCache/incrValueToCache` 和手工 cache key。
 
-- [x] T-01：实现 Redis URL schema/parser，非法协议、非法 db、非法 TLS 参数直接失败，日志脱敏。
-- [x] T-02：实现 legacy-command/command/blocking/queue/worker role factory、连接 registry、状态事件和有序 close API。
-- [x] T-03：实现 command timeout、offline queue、max retries 的 role policy，并定义可重试 operation allowlist。
-- [x] T-04：实现 typed keyspace、namespace、逻辑/物理 key 转换、RFC3986 segment 编码和安全 scan iterator。
-- [x] T-05：实现 string/hash/counter/scan/stream 窄接口；除迁移期 deprecated legacy 入口和基础设施 factory 外，公共入口不暴露 physical ioredis client。
-- [x] T-06：实现 script registry，补充 append+TTL、hash+TTL、version init、lease scripts 的参数和返回值校验。
+本阶段已实现并通过定向验证，等待代码 review；Redis 7.2 integration 已编写但因未配置 `REDIS_INTEGRATION_URL` 跳过。
 
-### 业务迁移
+### DAL-R4C：Pending Payment 协调状态
 
-- [x] T-07a（Phase 3A）：实现 `DingtalkAccessTokenStore`，保持历史 key、动态 TTL、fail-open 和 single-flight。
-- [x] T-07b（Phase 3A）：实现 `TeamVectorCountStore`，保持 1800 秒 TTL、3 秒回源 deadline 和 best-effort 写/失效。
-- [x] T-08a（Phase 3B1）：实现 `WechatQrLoginStore`，保持 QR JSON 物理格式并加入 typed codec。
-- [ ] T-08b（Phase 3B2）：实现 `WecomAccessTokenStore`，分别管理 provider/suite token，不顺带改变刷新行为。
-- [ ] T-08c（Phase 3B2）：实现 `WecomSuiteTicketStore`，保持永久保存和缺失时 fail-closed。
-- [ ] T-08d（Phase 3C）：实现 `DailyActiveDedupeStore`，使用 `SET NX EX` 并保持 tracking fail-open。
-- [ ] T-09（Phase 3D）：实现 `SystemVersionStore`，原子化首次初始化并保持 wildcard 仅删除子 key。
-- [ ] T-10：实现并接入 `TeamQpmConfigStore` 和统一 `FixedWindowRateLimiter`，删除重复限流事务代码。
-- [ ] T-10a：实现 `TeamPointCache`，补双 key 不一致、回源、Redis 故障和非幂等增量结果未知测试。
-- [ ] T-10b：实现 `PendingPaymentStore`，在已批准的故障与并发策略下迁移 Wecom pending order。
-- [ ] T-11：实现 `SessionStore`，保持 hash 字段兼容并修复 hash+TTL 非原子写。
-- [ ] T-12：实现 `LeaseService`，迁移 sandbox 并保持 fail-closed 和错误映射。
-- [ ] T-13：实现 `WorkflowStopSignalStore`，迁移 workflow 与 auxiliary generation。
-- [ ] T-14：实现 `StreamResumeStore`，在 Phase 1 physical port 迁移基础上继续收口业务协议和故障策略。
-- [ ] T-15：实现 `OutLinkStreamStore`，保持 Wechat/Wecom 消费协议兼容并修复 append 重放风险。
-- [ ] T-15a：迁移 Wechat polling failure counter，消除多 worker 的读改写竞态。
-- [x] T-16：改造 BullMQ adapter，只从 Runtime 获取 queue/worker connection，注册 before-close hook，关闭对象池并禁止 shutdown 重启。
+- 当前生产 Redis 状态仅是企业微信每团队一个待支付订单号：`wecom:pending_order:${teamId}`，物理 key 保持 `fastgpt:wecom:pending_order:${teamId}`。
+- value 仍为企微 `orderId` 字符串，TTL 保持 7 天；Repository 通过 shared adapter 显式添加物理前缀，不经过 legacy command client。
+- 创建企微订单前读取并取消旧订单，创建成功后写入新订单号；支付成功回调清理该指针。Mongo 账单和企微回调仍是事实来源。
+- Redis 读取错误按 miss/fail-open，写入和清理错误 best-effort 记录 OTel error；不把普通微信/支付宝定时查单改造成 Redis claim/lease。
+- 本阶段不实现 worker claim、租约续期、回调幂等状态机或支付结果缓存，后续若确有多 worker 协调需求另行冻结合同。
 
-### 测试、观测与清理
+本阶段已实现，等待代码 review；Session、Lease、Stop Signal 和 Stream 仍未开始。
 
-- [x] T-17：为每个 capability 编写注入式 unit test，覆盖返回值、错误类型、TTL 和 operation policy。
-- [x] T-17a（Phase 3A）：只运行 Dingtalk、vector 和新增 Store 定向测试，覆盖物理 key、动态/固定 TTL、single-flight、超时回源和 Redis 读写失败。
-- [x] T-17b1（Phase 3B1）：只运行 Wechat QR 和新增 Store 定向测试，覆盖 codec、480 秒 TTL、miss、损坏数据和 fail-closed。
-- [ ] T-17b2（Phase 3B2）：只运行 Wecom access token/suite ticket 和新增 Store 定向测试，覆盖动态 TTL、永久 key、miss 和 fail-closed。
-- [ ] T-17c（Phase 3C）：只运行 tracking 定向测试，覆盖 `SET NX EX` 的首次/重复返回和 Redis fail-open；并发原子性由真实 Redis 测试证明。
-- [ ] T-18：新增 Redis 7.2 integration test，覆盖真实 keyPrefix 替代、SCAN、Lua、Stream、hash TTL、并发限流和租约竞争。
-- [ ] T-18a（Phase 3C）：运行 daily active 定向 integration test，证明多个并发调用只有一个获得首次写入结果。
-- [ ] T-18b（Phase 3D）：运行 SystemVersion 定向 integration test，覆盖首次初始化并发、真实 SCAN 分页、仅删除子 key 和保留 base key。
-- [ ] T-19：新增连接故障/超时/恢复测试，验证非幂等写不被无条件重试、blocking connection 会释放。
-- [ ] T-20：升级 test mock 或将业务测试改为 capability fake，禁止继续扩大手写 ioredis mock。
-- [ ] T-21：补充 Redis metrics/logging，验证敏感信息不出现在日志和指标。
-- [x] T-22a：接入 app/admin instrumentation 的 Redis health check，并使用独立 timeout。
-- [ ] T-22b：接入进程级 graceful shutdown hook，确保框架退出路径调用 `closeRedisConnections()`。
-- [ ] T-23：全仓静态检查 raw Redis import、`new Redis`、`redis.call`、`getGlobalRedisConnection` 的残留。
-- [ ] T-24：删除旧入口、旧类型声明和无调用的兼容代码，运行 service/app/admin 局部测试后再跑完整测试。
+### DAL-R4D：Session Repository
 
-## 8. 验收标准
+- 保持 `session:${sessionId}` logical key、`fastgpt:session:${sessionId}` 物理 key、`userId/teamId/tmbId/isRoot/createdAt/ip` hash 协议和 7 天 TTL。
+- adapter 新增真实 Repository 驱动的 hash 读写：hash 写入与 `EXPIRE` 在单个 `MULTI/EXEC` 中完成；hash 读取严格校验 Redis 返回结构。
+- `SessionRepository.get` 对 miss、字段缺失、非法布尔/时间值返回 `undefined`；损坏记录尝试删除并记录错误；Redis 读错误向上抛出，认证入口保持 fail-closed。
+- 用户扫描只通过 logical prefix 返回 typed session records；批量注销在 Repository 内构造 key，白名单按 session ID 比较，修复历史 `session:session:*` 删除漏洞。
+- 登录数限制仍由 service 读取 `MAX_LOGIN_SESSION`，Repository 只负责扫描、解码和批量删除；后台清理失败记录 warning，不阻断新 session。
 
-- 非法 `REDIS_URL` 不会静默连接默认实例，日志不含密码/token。
-- 普通业务不能直接获得 ioredis client；只有 Runtime 和 BullMQ adapter 能创建连接。
-- key 构造、扫描、删除、Stream 读写不再依赖隐式 `keyPrefix` 或手工物理前缀。
-- hash+TTL、append+TTL、version init、限流窗口和 lease 脚本在真实 Redis 上具备原子性测试。
-- 非幂等命令不会被通用 retry 重放；幂等重试有明确上限、超时和指标。
-- session、lease、queue、限流的故障策略与文档一致；stream mirror、stop signal、tracking 的降级有指标。
-- blocking Redis 连接有上限、可观测、可关闭；进程退出不遗留连接。
-- 迁移前后的物理 key 和消费协议兼容，回滚不需要批量改 key。
-- `getGlobalRedisConnection`、业务层 `new Redis` 和业务层 `redis.call` 在生产代码中清零。
+本阶段已实现并通过定向验证，当前停在代码 review；Lease、Stop Signal 和 Stream 仍未开始。
 
-## 9. 回滚与数据兼容
+### DAL-R5：流式 Repository
 
-- 第一阶段不改既有物理 key 和 hash/字符串/Stream 数据格式，回滚只需恢复调用方代码。
-- 新数据结构必须使用新 namespace/version，不在旧 key 上混写新格式。
-- 每个 Phase 单独发布，先观察 error rate、P95、连接数和业务拒绝率，再进入下一组。
-- 如果新 capability 失败，允许在发布期间保留旧实现的直接调用作为临时分支，但不能新增依赖；稳定后立即删除，不建立永久转发文件。
+- Stream Resume 的业务协议和 blocking 生命周期。
+- Wechat/Wecom outLink stream 的原子 append+TTL。
+- Wechat polling failure counter 的多 worker 竞态修复。
+- 第一轮保持现有字符串消费协议，不顺带改为 Redis Stream。
 
-## 10. 决策状态
+### DAL-R6：清理与上线治理
 
-已确认：Phase 1 只支持 standalone Redis 7.2；迁移期间保留 legacy `keyPrefix`，physical port 必须隔离；URL query/hash 严格拒绝；启动 instrumentation 执行有 deadline 的 Redis health check；BullMQ namespace 本阶段不变。
+- 删除 service Redis facade、legacy cache/lock/scan 和 `global.redisClient`。
+- 生产代码除 DAL/BullMQ integration 外清零 ioredis、raw call 和 physical key。
+- 补齐 metrics、进程 shutdown hook、故障演练和 Redis 7.2 integration test。
+- 局部测试通过后最后运行全量测试。
 
-本轮 Phase 3 修订已确认：
+## 10. Tasks
 
-1. 接受 3A -> 3B1 -> 3B2 -> 3C -> 3D 的拆分，并将 wallet points、QPM、pending payment 和 Wechat polling failure counter 移出 Phase 3。
-2. 批准 daily active dedupe 从非原子的 `GET -> SET` 改为 `SET NX EX`；这是一项显式行为修复，不是纯等价迁移。
-3. 接受 Wechat QR 损坏数据继续 fail-closed，以及 Wecom access token 在纯迁移阶段不新增 single-flight/提前失效自动刷新。
-4. 确认 SystemVersion 的 `id='*'` 只删除子 key、保留 base key，按实际历史行为而不是旧注释解释“all keys”。
+### 架构与 package
 
-进入相关业务迁移阶段前仍需确认：
+- [x] D-01：确认 package 名为 `@fastgpt/dal`。
+- [x] D-02：确认 DAL 包含数据基础设施和持久化业务 Repository。
+- [x] D-03：确认当前只迁移 Redis，MongoDB/Vector DB 另行设计。
+- [x] D-04：确认 shared/pro 双归属和禁止 DAL 依赖 service。
+- [x] D-05（DAL-R1）：创建 package、配置和受限子路径入口。
+- [x] D-06（DAL-R1）：建立配置/logger 注入和单一 runtime context。
 
-1. session、计费额度和限流在 Redis 故障时是否统一 fail-closed？如果不统一，需要明确到业务能力级别。
-2. Wechat/Wecom outLink stream 第一阶段是否保持现有字符串协议，只修复原子性和重试；Redis Stream 协议迁移放到后续？
-3. CI 是否可以提供 Redis 7.2 服务用于 integration test？如果不能，需要先批准一个可替代的测试运行方式。
+### Runtime 与 adapter
+
+- [x] R-01：严格 URL parser、连接角色、registry、health 和有序 close。
+- [x] R-02：logical/physical key 隔离、RFC3986 编码和安全 SCAN。
+- [x] R-03：BullMQ 对象级关闭与 shutdown guard。
+- [x] R-04（Phase 2R）：最小 adapter 和 operation error。
+- [x] R-05（DAL-R1）：迁移 kernel 到 DAL 并保留 service legacy facade。
+- [ ] R-06：增加真实 Redis 7.2 的 key、SCAN、Lua、Stream 和并发测试。
+- [ ] R-07：接入进程级 shutdown hook 和 metrics。
+
+### Repository
+
+- [x] P-01：Dingtalk、Team Vector Count、Wechat QR Store 前置实现。
+- [x] P-02：pro Wecom Store 前置实现，已由 DAL-R2P 迁移吸收。
+- [x] P-03（DAL-R2）：迁移/改名 shared Repository。
+- [x] P-04（DAL-R2P）：迁移/改名 pro Repository。
+- [x] P-05（DAL-R3C）：Daily Active Dedupe。
+- [x] P-06（DAL-R3D）：System Version。
+- [x] P-07A（DAL-R4A）：Fixed Window Rate Limit 与 Team QPM。
+- [x] P-07B（DAL-R4B）：Team Point cache 与双 key 一致性。
+- [x] P-07C（DAL-R4C）：Pending Payment 协调状态。
+- [ ] P-08：Session、Lease、Stop Signal。
+- [x] P-08A（DAL-R4D）：Session Repository。
+- [ ] P-09：Stream Resume、OutLink Stream、polling counter。
+
+### 测试与清理
+
+- [x] T-01：Phase 1/2/3A/3B1 定向测试。
+- [x] T-02：Phase 2R 共 167 项唯一定向测试和关键模块 100% 覆盖率。
+- [x] T-03：Phase 3B2 共 29 项定向测试和相关实现 100% 覆盖率。
+- [x] T-04（DAL-R1）：DAL kernel/facade/BullMQ/health/resume 定向测试。
+- [x] T-05（DAL-R2）：shared Repository 和调用方定向测试。
+- [x] T-05P（DAL-R2P）：pro Repository 和调用方定向测试。
+- [x] T-05C（DAL-R3C）：Daily Active 单元测试与 Redis 7.2 并发 integration test。
+- [x] T-05D（DAL-R3D）：System Version 单元测试与 Redis 7.2 并发/SCAN integration test。
+- [x] T-05A（DAL-R4A）：限流 adapter/Repository、service 调用方与 Redis 7.2 并发 integration test（integration 因环境变量缺失跳过）。
+- [x] T-05B（DAL-R4B）：Team Point adapter/Repository、wallet 调用方与 Redis 7.2 一致性 integration test（integration 因环境变量缺失跳过）。
+- [x] T-05C（DAL-R4C）：企微 Pending Payment Repository、创建订单/支付回调调用方与 pro 定向测试。
+- [x] T-05E（DAL-R4D）：Session adapter/Repository、认证与注销调用方定向测试。
+- [ ] T-06：静态扫描禁止新增 raw client、service Redis adapter 和旧 Store import。
+- [ ] T-07：最终删除 legacy mock/入口并运行全量测试。
+
+## 11. 每阶段验收模板
+
+每个阶段 review 前必须提供：
+
+1. 本阶段改变的目录和依赖方向。
+2. 明确未改变的物理 key、TTL、value 和错误合同。
+3. 新增/删除的公共入口。
+4. 运行的定向测试、静态检查和结果。
+5. 尚未运行的测试及残余风险。
+6. `git diff --check` 和过期 import/raw Redis 扫描结果。
+
+## 12. 总体验收标准
+
+- `@fastgpt/dal` 不依赖 service/project/pro。
+- shared Redis Runtime、adapter、Repository 全部归属 DAL。
+- pro Repository 保留 pro 所有权并依赖 shared DAL。
+- 业务只依赖 Repository，不拼 key、不选择 Redis 命令、不获得 raw client。
+- 迁移前后物理 key、TTL、value 和已冻结的故障合同兼容。
+- 非幂等操作没有隐式重放，timeout 的 unknown outcome 可识别。
+- BullMQ duplicate、blocking connection 和普通 command 都能有序限时关闭。
+- capability registry、通用 Cache/Repository 基类和无消费者预制能力不再出现。
+- 最终清零 `getGlobalRedisConnection`、业务层 ioredis 和 service Redis facade。
+
+## 13. 回滚策略
+
+- 每个 DAL 阶段独立提交，shared 与 pro 分开提交。
+- DAL-R1 只移动 kernel 并保留 facade；出现问题可回滚 import/package，不涉及数据迁移。
+- DAL-R2/R2P 保持原 key/value/TTL，回滚不需要批量改 key。
+- 行为修复（例如 `SET NX EX`）必须单独列出，不能伪装成纯目录迁移。
+- 不采用长期双写；临时兼容分支必须在对应阶段明确删除时间。
+
+## 14. 待后续阶段确认
+
+1. Session、计费额度和限流分别采用何种 Redis 故障策略，不能用统一默认值代替。
+2. Pending payment 在 Redis 不可用时是否拒绝创建、是否允许从账单回源，以及 team 级并发策略。
+3. CI 是否提供 Redis 7.2 integration service；若不能，需要批准可重复的本地/容器测试方式。

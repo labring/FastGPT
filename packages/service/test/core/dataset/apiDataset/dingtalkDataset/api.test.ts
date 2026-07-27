@@ -23,15 +23,24 @@ vi.mock('../../../../../common/api/axios', () => ({
   }))
 }));
 
-vi.mock('../../../../../common/redis/capability', () => ({
-  redisCapabilities: {
-    string: {
-      get: mockRedisStringGet,
-      set: mockRedisStringSet,
-      delete: mockRedisStringDelete
-    }
-  }
-}));
+vi.mock('@fastgpt/dal/redis/repositories', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/repositories')>();
+
+  return {
+    ...actual,
+    createDingtalkAccessTokenRepository: ({
+      logger
+    }: Parameters<typeof actual.createDingtalkAccessTokenRepository>[0]) =>
+      actual.createDingtalkAccessTokenRepository({
+        logger,
+        redis: {
+          get: mockRedisStringGet,
+          set: mockRedisStringSet,
+          delete: mockRedisStringDelete
+        }
+      })
+  };
+});
 
 vi.mock('../../../../../common/logger', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../../../../common/logger')>();

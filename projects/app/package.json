@@ -41,6 +41,7 @@
     "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
+    "@fastgpt/dal": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "@fastgpt/next": "workspace:*",
     "@fastgpt/service": "workspace:*",

@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { configureRedisRuntime as configureTestRedisRuntime } from '@fastgpt/dal/redis/runtime';
 
 // In-memory storage for mock Redis
 const createRedisStorage = () => {
@@ -88,6 +89,13 @@ const createRedisStorage = () => {
       const next = current + 1;
       storage.set(key, next);
       return next;
+    },
+    incrbyfloat: (key: string, increment: number) => {
+      if (isExpired(key)) storage.delete(key);
+      const current = Number(storage.get(key) ?? 0);
+      const next = current + Number(increment);
+      storage.set(key, next);
+      return String(next);
     },
     pexpire: (key: string, milliseconds: number) => {
       if (isExpired(key) || !storage.has(key)) return 0;
@@ -220,12 +228,28 @@ const createSharedMockRedisClient = () => {
     multi: vi.fn(() => {
       const commands: Array<() => [null, unknown]> = [];
       const pipeline = {
+        get: vi.fn((key: string) => {
+          commands.push(() => [null, globalRedisStorage.get(key)]);
+          return pipeline;
+        }),
+        set: vi.fn((key: string, value: any, ...args: any[]) => {
+          commands.push(() => [null, globalRedisStorage.set(key, value, ...args)]);
+          return pipeline;
+        }),
         incr: vi.fn((key: string) => {
           commands.push(() => [null, globalRedisStorage.incr(key)]);
           return pipeline;
         }),
+        incrbyfloat: vi.fn((key: string, increment: number) => {
+          commands.push(() => [null, globalRedisStorage.incrbyfloat(key, increment)]);
+          return pipeline;
+        }),
         expire: vi.fn((key: string, seconds: number, mode?: string) => {
           commands.push(() => [null, globalRedisStorage.expire(key, seconds, mode)]);
+          return pipeline;
+        }),
+        ttl: vi.fn((key: string) => {
+          commands.push(() => [null, globalRedisStorage.ttl(key)]);
           return pipeline;
         }),
         exec: vi
@@ -258,21 +282,16 @@ vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
   };
 });
 
-// Initialize global.redisClient with mock before any module imports it
-// This prevents getGlobalRedisConnection() from creating a real Redis client
-if (!global.redisClient) {
-  global.redisClient = createSharedMockRedisClient() as any;
-}
-
-// SCAN 等 Runtime 内部能力会绕过公共 legacy mock，提供同一存储上的 physical client。
-if (!global.redisRuntime) {
-  global.redisRuntime = {
+vi.mock('@fastgpt/service/common/redis/runtime', () => {
+  const getClient = () => global.redisClient ?? createSharedMockRedisClient();
+  const runtime = {
     endpoint: { transport: 'tcp', host: 'localhost', port: 6379, tls: false },
-    getLegacyCommandConnection: vi.fn(() => global.redisClient),
-    getCommandConnection: vi.fn(() => global.redisClient),
-    createBlockingConnection: () => (global.redisClient as any).duplicate(),
-    createQueueConnection: () => createSharedMockRedisClient(),
-    createWorkerConnection: () => createSharedMockRedisClient(),
+    getState: () => 'open' as const,
+    getLegacyCommandConnection: vi.fn(getClient),
+    getCommandConnection: vi.fn(getClient),
+    createBlockingConnection: () => (getClient() as any).duplicate(),
+    createQueueConnection: createSharedMockRedisClient,
+    createWorkerConnection: createSharedMockRedisClient,
     registerBeforeCloseHook: vi.fn(() => () => undefined),
     getConnectionSnapshot: () => [],
     checkHealth: async () => ({
@@ -283,5 +302,29 @@ if (!global.redisRuntime) {
       await client.quit().catch(() => client.disconnect());
     },
     close: async () => undefined
-  } as any;
+  };
+
+  return {
+    getRedisRuntime: () => runtime,
+    getGlobalRedisConnection: getClient,
+    getPhysicalRedisConnection: getClient,
+    createBlockingRedisConnection: runtime.createBlockingConnection,
+    createQueueRedisConnection: runtime.createQueueConnection,
+    createWorkerRedisConnection: runtime.createWorkerConnection,
+    getRedisConnectionSnapshot: runtime.getConnectionSnapshot,
+    checkRedisHealth: runtime.checkHealth,
+    closeRedisConnections: runtime.close
+  };
+});
+
+// Initialize global.redisClient with mock before any module imports it
+// This prevents getGlobalRedisConnection() from creating a real Redis client
+if (!global.redisClient) {
+  global.redisClient = createSharedMockRedisClient() as any;
 }
+
+// 通过公开配置入口让预加载的 service adapter 也使用内存 Redis，不依赖模块 mock 顺序。
+configureTestRedisRuntime({
+  redisUrl: 'redis://default:mypassword@localhost:6379',
+  clientFactory: () => global.redisClient as any
+});

@@ -1,8 +1,8 @@
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { getGlobalRedisConnection } from '../../common/redis';
-import { getPhysicalRedisConnection, getRedisRuntime } from '../../common/redis/runtime/connection';
-import { toPhysicalRedisKey } from '../../common/redis/runtime/keyspace';
+import { getPhysicalRedisConnection, getRedisRuntime } from '../../common/redis/runtime';
+import { toPhysicalRedisKey } from '@fastgpt/dal/redis/runtime';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';

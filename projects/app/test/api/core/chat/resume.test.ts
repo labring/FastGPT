@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
-import { FASTGPT_REDIS_PREFIX } from '@fastgpt/service/common/redis/runtime/keyspace';
+import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,

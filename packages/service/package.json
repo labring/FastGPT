@@ -18,6 +18,7 @@
     "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
+    "@fastgpt/dal": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "@llamaindex/liteparse-wasm": "catalog:",
     "@mariozechner/pi-agent-core": "^0.67.3",

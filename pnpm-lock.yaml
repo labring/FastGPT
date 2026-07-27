@@ -419,6 +419,25 @@ importers:
         specifier: ^4.0.5
         version: 4.1.12
 
+  packages/dal:
+    dependencies:
+      ioredis:
+        specifier: ^5.6.0
+        version: 5.6.0
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.17.24
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+
   packages/global:
     dependencies:
       '@apidevtools/swagger-parser':
@@ -515,6 +534,9 @@ importers:
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
+      '@fastgpt/dal':
+        specifier: workspace:*
+        version: link:../dal
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
@@ -925,6 +947,9 @@ importers:
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
+      '@fastgpt/dal':
+        specifier: workspace:*
+        version: link:../../packages/dal
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -1328,6 +1353,9 @@ importers:
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
+      '@fastgpt/dal':
+        specifier: workspace:*
+        version: link:../../packages/dal
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global

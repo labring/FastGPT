@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   authOutLinkCrud: vi.fn(),
   assertWechatOutLink: vi.fn(),
   getQRCode: vi.fn(),
-  storeSet: vi.fn()
+  repositorySet: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -25,10 +25,10 @@ vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/common/redis/stores', () => ({
+vi.mock('@fastgpt/dal/redis/repositories', () => ({
   WECHAT_QR_LOGIN_TTL_SECONDS: 480,
-  wechatQrLoginStore: {
-    set: mocks.storeSet
+  wechatQrLoginRepository: {
+    set: mocks.repositorySet
   }
 }));
 
@@ -47,10 +47,10 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     mocks.authOutLinkCrud.mockResolvedValue({ tmbId: 'tmb-1', outLink });
     mocks.assertWechatOutLink.mockResolvedValue(undefined);
     mocks.getQRCode.mockResolvedValue(qrData);
-    mocks.storeSet.mockResolvedValue(undefined);
+    mocks.repositorySet.mockResolvedValue(undefined);
   });
 
-  it('stores generated QR data and returns the Store TTL', async () => {
+  it('stores generated QR data and returns the Repository TTL', async () => {
     const req = { body: { outLinkId } } as any;
 
     await expect(handler(req)).resolves.toEqual({ ...qrData, expireTime: 480 });
@@ -62,16 +62,16 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
       per: expect.any(Number)
     });
     expect(mocks.assertWechatOutLink).toHaveBeenCalledWith(outLink);
-    expect(mocks.storeSet).toHaveBeenCalledWith({
+    expect(mocks.repositorySet).toHaveBeenCalledWith({
       outLinkId,
       tmbId: 'tmb-1',
       data: qrData
     });
   });
 
-  it('propagates Store write failures instead of returning an unusable QR code', async () => {
+  it('propagates Repository write failures instead of returning an unusable QR code', async () => {
     const error = new Error('redis write failed');
-    mocks.storeSet.mockRejectedValue(error);
+    mocks.repositorySet.mockRejectedValue(error);
 
     await expect(handler({ body: { outLinkId } } as any)).rejects.toBe(error);
   });
@@ -81,6 +81,6 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
 
     expect(mocks.authOutLinkCrud).not.toHaveBeenCalled();
     expect(mocks.getQRCode).not.toHaveBeenCalled();
-    expect(mocks.storeSet).not.toHaveBeenCalled();
+    expect(mocks.repositorySet).not.toHaveBeenCalled();
   });
 });

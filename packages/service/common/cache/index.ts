@@ -1,50 +1,22 @@
 import './init';
-import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../common/redis';
+import { systemVersionRepository } from '@fastgpt/dal/redis/repositories';
 import type { SystemCacheKeyEnum } from './type';
-import { randomUUID } from 'node:crypto';
 import { initCache } from './init';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { serviceEnv } from '../../env';
 
-const cachePrefix = `VERSION_KEY:`;
-
 /**
- *
- * @param key SystemCacheKeyEnum
- * @param id string (teamId, tmbId, etc), if '*' is used, all keys will be refreshed
+ * 刷新系统缓存版本。id 为 '*' 时只失效该类型下的子版本，不修改 base version。
  */
 export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string | '*') => {
-  const redis = getGlobalRedisConnection();
   if (!global.systemCache) initCache();
-
-  const val = randomUUID();
-  const versionKey = id ? `${cachePrefix}${key}:${id}` : `${cachePrefix}${key}`;
-
-  if (id === '*') {
-    const pattern = `${cachePrefix}${key}`;
-    const keys = await getAllKeysByPrefix(pattern);
-    if (keys.length > 0) {
-      const pipeline = redis.pipeline();
-      pipeline.del(keys);
-      await pipeline.exec();
-    }
-  } else {
-    await redis.set(versionKey, val);
-  }
+  await systemVersionRepository.refresh({ key, id });
 };
 
+/** 获取已有系统缓存版本；缺失时由 Repository 原子初始化。 */
 export const getVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string) => {
-  const redis = getGlobalRedisConnection();
   if (!global.systemCache) initCache();
-
-  const versionKey = id ? `${cachePrefix}${key}:${id}` : `${cachePrefix}${key}`;
-  const val = await redis.get(versionKey);
-  if (val) return val;
-
-  // if there is no val set to the key, init a new val.
-  const initVal = randomUUID();
-  await redis.set(versionKey, initVal);
-  return initVal;
+  return systemVersionRepository.getOrInitialize({ key, id });
 };
 
 export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: string) => {

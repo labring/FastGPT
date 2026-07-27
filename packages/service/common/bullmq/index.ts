@@ -8,8 +8,11 @@ import {
   type WorkerOptions
 } from 'bullmq';
 import { getLogger, LogCategories } from '../logger';
-import { createQueueRedisConnection, createWorkerRedisConnection } from '../redis';
-import { getRedisRuntime } from '../redis/runtime/connection';
+import {
+  createQueueRedisConnection,
+  createWorkerRedisConnection,
+  getRedisRuntime
+} from '../redis/runtime';
 import { delay } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);

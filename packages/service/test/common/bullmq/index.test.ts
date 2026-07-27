@@ -9,6 +9,10 @@ const bullMQMocks = vi.hoisted(() => ({
   onWorkerClose: undefined as (() => void) | undefined
 }));
 
+const redisRuntimeMocks = vi.hoisted(() => ({
+  runtime: undefined as ReturnType<typeof createRuntimeMock> | undefined
+}));
+
 vi.unmock('@fastgpt/service/common/bullmq');
 vi.mock('bullmq', async () => {
   const { EventEmitter } = await import('node:events');
@@ -63,6 +67,12 @@ vi.mock('bullmq', async () => {
   };
 });
 
+vi.mock('@fastgpt/service/common/redis/runtime', () => ({
+  getRedisRuntime: () => redisRuntimeMocks.runtime,
+  createQueueRedisConnection: () => redisRuntimeMocks.runtime?.createQueueConnection(),
+  createWorkerRedisConnection: () => redisRuntimeMocks.runtime?.createWorkerConnection()
+}));
+
 const createRuntimeMock = () => ({
   registerBeforeCloseHook: vi.fn(),
   createQueueConnection: vi.fn(() => ({})),
@@ -82,7 +92,7 @@ describe('BullMQ runtime lifecycle', () => {
     bullMQMocks.queueConstructorFailures = 0;
     bullMQMocks.onWorkerClose = undefined;
     global.bullMQRuntimeContext = undefined;
-    global.redisRuntime = createRuntimeMock() as any;
+    redisRuntimeMocks.runtime = createRuntimeMock();
     bullMQ = await import('@fastgpt/service/common/bullmq');
   });
 
@@ -106,7 +116,7 @@ describe('BullMQ runtime lifecycle', () => {
     expect(() => getQueue(QueueNames.appDelete)).toThrow('queue constructor failed');
     await Promise.resolve();
 
-    expect(global.redisRuntime?.releaseConnection).toHaveBeenCalledTimes(1);
+    expect(redisRuntimeMocks.runtime?.releaseConnection).toHaveBeenCalledTimes(1);
     expect(bullMQ.queues.has(QueueNames.appDelete)).toBe(false);
   });
 
@@ -122,7 +132,7 @@ describe('BullMQ runtime lifecycle', () => {
 
     expect(getQueue(QueueNames.datasetSync)).toBe(queue);
     expect(getWorker(QueueNames.datasetSync, processor)).toBe(worker);
-    expect(global.redisRuntime?.registerBeforeCloseHook).toHaveBeenCalledWith({
+    expect(redisRuntimeMocks.runtime?.registerBeforeCloseHook).toHaveBeenCalledWith({
       name: 'bullmq',
       close: closeBullMQConnections
     });
@@ -172,7 +182,7 @@ describe('BullMQ runtime lifecycle', () => {
 
       expect(bullMQMocks.workers).toHaveLength(2);
       expect(bullMQ.workers.get(QueueNames.collectionUpdate)).toBe(bullMQMocks.workers[1]);
-      expect(global.redisRuntime?.releaseConnection).toHaveBeenCalledTimes(1);
+      expect(redisRuntimeMocks.runtime?.releaseConnection).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }

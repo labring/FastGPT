@@ -27,15 +27,24 @@ const mockRedisStringSet = vi.fn();
 const mockRedisStringDelete = vi.fn();
 const mockLoggerWarn = vi.fn();
 
-vi.mock('@fastgpt/service/common/redis/capability', () => ({
-  redisCapabilities: {
-    string: {
-      set: (...args: any[]) => mockRedisStringSet(...args),
-      get: (...args: any[]) => mockRedisStringGet(...args),
-      delete: (...args: any[]) => mockRedisStringDelete(...args)
-    }
-  }
-}));
+vi.mock('@fastgpt/dal/redis/repositories', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/repositories')>();
+
+  return {
+    ...actual,
+    createTeamVectorCountRepository: ({
+      logger
+    }: Parameters<typeof actual.createTeamVectorCountRepository>[0]) =>
+      actual.createTeamVectorCountRepository({
+        logger,
+        redis: {
+          set: (...args: any[]) => mockRedisStringSet(...args),
+          get: (...args: any[]) => mockRedisStringGet(...args),
+          delete: (...args: any[]) => mockRedisStringDelete(...args)
+        }
+      })
+  };
+});
 
 vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/common/logger')>();

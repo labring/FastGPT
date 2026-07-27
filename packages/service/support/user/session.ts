@@ -1,101 +1,22 @@
-import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../common/redis';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
+import { createSessionRepository, type SessionData } from '@fastgpt/dal/redis/repositories';
 
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
+type SessionType = SessionData;
 
-const redisPrefix = 'session:';
-const getSessionKey = (key: string) => `${redisPrefix}${key}`;
+const sessionRepository = createSessionRepository({ logger });
 
-type SessionType = {
-  userId: string;
-  teamId: string;
-  tmbId: string;
-  isRoot?: boolean;
-  createdAt: number;
-  ip?: string | null;
-};
-
-/* Session manager */
-const setSession = async ({
-  key,
-  data,
-  expireSeconds
-}: {
-  key: string;
-  data: SessionType;
-  expireSeconds: number;
-}) => {
-  return await retryFn(async () => {
-    try {
-      const redis = getGlobalRedisConnection();
-      const formatKey = getSessionKey(key);
-
-      // 使用 hmset 存储对象字段
-      await redis.hmset(formatKey, {
-        userId: data.userId,
-        teamId: data.teamId,
-        tmbId: data.tmbId,
-        isRoot: data.isRoot ? '1' : '0',
-        createdAt: data.createdAt.toString(),
-        ip: data.ip
-      });
-
-      // 设置过期时间
-      if (expireSeconds) {
-        await redis.expire(formatKey, expireSeconds);
-      }
-    } catch (error) {
-      logger.error('Failed to set session', { error });
-      return Promise.reject(error);
-    }
-  });
-};
-
-const delSession = (key: string) => {
-  const redis = getGlobalRedisConnection();
-  retryFn(() => redis.del(getSessionKey(key)));
-};
-
-const getSession = async (key: string): Promise<SessionType> => {
-  const formatKey = getSessionKey(key);
-  const redis = getGlobalRedisConnection();
-
-  // 使用 hgetall 获取所有字段
-  const data = await retryFn(() => redis.hgetall(formatKey));
-
-  if (!data || Object.keys(data).length === 0) {
-    return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
-
-  try {
-    return {
-      userId: data.userId,
-      teamId: data.teamId,
-      tmbId: data.tmbId,
-      isRoot: data.isRoot === '1',
-      createdAt: parseInt(data.createdAt),
-      ip: data.ip
-    };
-  } catch (error) {
-    logger.error('Failed to parse session', { error });
-    delSession(formatKey);
-    return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
-};
 export const delUserAllSession = async (userId: string, whiteList?: (string | undefined)[]) => {
-  const formatWhiteList = whiteList?.map((item) => item && getSessionKey(item));
-  const redis = getGlobalRedisConnection();
-  const keys = (await getAllKeysByPrefix(`${redisPrefix}${String(userId)}`)).filter(
-    (item) => !formatWhiteList?.includes(item)
-  );
+  const sessions = await sessionRepository.listByUser(String(userId));
+  const whiteListSet = new Set(whiteList?.filter((item): item is string => Boolean(item)));
+  const sessionIds = sessions
+    .filter(({ sessionId }) => !whiteListSet.has(sessionId))
+    .map(({ sessionId }) => sessionId);
 
-  if (keys.length > 0) {
-    await redis.del(keys);
-  }
+  await sessionRepository.deleteMany(sessionIds);
 };
 
 // 会根据创建时间，删除超出客户端登录限制的 session
@@ -106,42 +27,21 @@ const delRedundantSession = async (userId: string) => {
     maxSession = 1;
   }
 
-  const redis = getGlobalRedisConnection();
-  const keys = await getAllKeysByPrefix(`${redisPrefix}${userId}`);
+  try {
+    const sessions = await sessionRepository.listByUser(String(userId));
+    if (sessions.length <= maxSession) return;
 
-  if (keys.length <= maxSession) {
-    return;
-  }
-
-  // 获取所有会话的创建时间
-  const sessionList = await Promise.all(
-    keys.map(async (key) => {
-      try {
-        const data = await redis.hgetall(key);
-        if (!data || Object.keys(data).length === 0) return null;
-
-        return {
-          key,
-          createdAt: parseInt(data.createdAt)
-        };
-      } catch (error) {
-        return null;
-      }
-    })
-  );
-
-  // 过滤掉无效数据并按创建时间排序
-  const validSessions = sessionList.filter(Boolean) as { key: string; createdAt: number }[];
-
-  validSessions.sort((a, b) => a.createdAt - b.createdAt);
-
-  // 删除最早创建的会话
-  const delKeys = validSessions.slice(0, validSessions.length - maxSession).map((item) => item.key);
-
-  if (delKeys.length > 0) {
-    await redis.del(delKeys);
+    // 删除最早创建的会话；损坏记录已由 Repository 在读取时处理。
+    sessions.sort((a, b) => a.data.createdAt - b.data.createdAt);
+    const redundantSessionIds = sessions
+      .slice(0, sessions.length - maxSession)
+      .map(({ sessionId }) => sessionId);
+    await sessionRepository.deleteMany(redundantSessionIds);
+  } catch (error) {
+    logger.warn('Failed to remove redundant sessions', { userId, error });
   }
 };
+
 export const createUserSession = async ({
   userId,
   teamId,
@@ -157,25 +57,25 @@ export const createUserSession = async ({
 }) => {
   const key = `${String(userId)}:${getNanoid(32)}`;
 
-  await setSession({
-    key,
+  await sessionRepository.set({
+    sessionId: key,
     data: {
       userId: String(userId),
       teamId: String(teamId),
       tmbId: String(tmbId),
-      isRoot,
+      isRoot: isRoot ?? false,
       createdAt: new Date().getTime(),
       ip
-    },
-    expireSeconds: 7 * 24 * 60 * 60
+    }
   });
 
-  delRedundantSession(userId);
+  void delRedundantSession(userId);
 
   return key;
 };
 
 export const authUserSession = async (key: string): Promise<SessionType> => {
-  const data = await getSession(key);
+  const data = await sessionRepository.get(key);
+  if (!data) return Promise.reject(ERROR_ENUM.unAuthorization);
   return data;
 };

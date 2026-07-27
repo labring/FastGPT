@@ -1,0 +1,270 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { asRedisLogicalKey, createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
+import { SESSION_TTL_SECONDS, createSessionRepository } from '@fastgpt/dal/redis/repositories';
+
+const createKeyBatches = async function* (batches: string[][]) {
+  for (const batch of batches) yield batch.map(asRedisLogicalKey);
+};
+
+describe('createSessionRepository', () => {
+  const logger = {
+    error: vi.fn(),
+    warn: vi.fn()
+  };
+  const redis = {
+    delete: vi.fn(),
+    deleteMany: vi.fn(),
+    getHashAll: vi.fn(),
+    iterateByPrefix: vi.fn(),
+    setHashWithTtl: vi.fn()
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    redis.delete.mockResolvedValue(false);
+    redis.deleteMany.mockResolvedValue(undefined);
+    redis.getHashAll.mockResolvedValue({
+      userId: 'user-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      isRoot: '0',
+      createdAt: '1000',
+      ip: '127.0.0.1'
+    });
+    redis.iterateByPrefix.mockReturnValue(createKeyBatches([]));
+    redis.setHashWithTtl.mockResolvedValue(undefined);
+  });
+
+  it('decodes a complete session hash and normalizes isRoot/createdAt', async () => {
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await expect(repository.get('user-1:token-1')).resolves.toEqual({
+      userId: 'user-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      isRoot: false,
+      createdAt: 1000,
+      ip: '127.0.0.1'
+    });
+    expect(redis.getHashAll).toHaveBeenCalledWith('session:user-1:token-1');
+  });
+
+  it('treats an empty hash as a session miss without deletion', async () => {
+    redis.getHashAll.mockResolvedValue({});
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await expect(repository.get('user-1:token-1')).resolves.toBeUndefined();
+    expect(redis.delete).not.toHaveBeenCalled();
+  });
+
+  it('deletes malformed hashes and returns a miss', async () => {
+    redis.getHashAll.mockResolvedValue({
+      userId: 'user-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      isRoot: 'invalid',
+      createdAt: 'not-a-number'
+    });
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await expect(repository.get('user-1:token-1')).resolves.toBeUndefined();
+    expect(redis.delete).toHaveBeenCalledWith('session:user-1:token-1');
+    expect(logger.error).toHaveBeenCalledWith(
+      'Invalid Redis session record',
+      expect.objectContaining({ sessionId: 'user-1:token-1' })
+    );
+  });
+
+  it('keeps malformed-record cleanup best-effort when deletion fails', async () => {
+    redis.getHashAll.mockResolvedValue({ userId: 'user-1' });
+    const deleteError = new Error('delete failed');
+    redis.delete.mockRejectedValue(deleteError);
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await expect(repository.get('user-1:token-1')).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Failed to delete invalid Redis session record',
+      expect.objectContaining({ sessionId: 'user-1:token-1', error: deleteError })
+    );
+  });
+
+  it('propagates Redis read errors to keep authentication fail-closed', async () => {
+    const error = new Error('read failed');
+    redis.getHashAll.mockRejectedValue(error);
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await expect(repository.get('user-1:token-1')).rejects.toBe(error);
+  });
+
+  it('writes the historical hash fields with a seven-day TTL', async () => {
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await repository.set({
+      sessionId: 'user-1:token-1',
+      data: {
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: true,
+        createdAt: 2000,
+        ip: null
+      }
+    });
+
+    expect(redis.setHashWithTtl).toHaveBeenCalledWith({
+      key: 'session:user-1:token-1',
+      fields: {
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: '1',
+        createdAt: '2000'
+      },
+      ttlSeconds: SESSION_TTL_SECONDS
+    });
+  });
+
+  it('rejects invalid session data before touching Redis', async () => {
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await expect(
+      repository.set({
+        sessionId: 'user-1:token-1',
+        data: {
+          userId: '',
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          isRoot: false,
+          createdAt: 2000
+        }
+      })
+    ).rejects.toMatchObject({
+      code: 'REDIS_INVALID_ARGUMENT',
+      operation: 'session.set'
+    });
+    expect(redis.setHashWithTtl).not.toHaveBeenCalled();
+  });
+
+  it('deletes one session and maps batch IDs to logical keys', async () => {
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await repository.delete('user-1:token-1');
+    await repository.deleteMany([]);
+    await repository.deleteMany(['user-1:token-2', 'user-1:token-3']);
+
+    expect(redis.delete).toHaveBeenCalledWith('session:user-1:token-1');
+    expect(redis.deleteMany).toHaveBeenCalledWith([
+      'session:user-1:token-2',
+      'session:user-1:token-3'
+    ]);
+  });
+
+  it('scans all user pages and returns only valid typed sessions', async () => {
+    redis.iterateByPrefix.mockReturnValue(
+      createKeyBatches([
+        ['session:user-1:token-1', 'session:user-1:token-2'],
+        ['session:user-1:token-3']
+      ])
+    );
+    redis.getHashAll
+      .mockResolvedValueOnce({
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: '0',
+        createdAt: '1000'
+      })
+      .mockResolvedValueOnce({ userId: 'user-1' })
+      .mockResolvedValueOnce({
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: '1',
+        createdAt: '3000'
+      });
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await expect(repository.listByUser('user-1')).resolves.toEqual([
+      {
+        sessionId: 'user-1:token-1',
+        data: {
+          userId: 'user-1',
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          isRoot: false,
+          createdAt: 1000
+        }
+      },
+      {
+        sessionId: 'user-1:token-3',
+        data: {
+          userId: 'user-1',
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          isRoot: true,
+          createdAt: 3000
+        }
+      }
+    ]);
+    expect(redis.iterateByPrefix).toHaveBeenCalledWith({ prefix: 'session:user-1' });
+    expect(redis.delete).toHaveBeenCalledWith('session:user-1:token-2');
+  });
+});
+
+describe('SessionRepository adapter integration', () => {
+  it('uses physical keys and one transaction for hash write and expiry', async () => {
+    const commandClient = {
+      del: vi.fn().mockResolvedValue(0),
+      get: vi.fn(),
+      hgetall: vi.fn().mockResolvedValue({
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: '0',
+        createdAt: '1000'
+      }),
+      multi: vi.fn(),
+      scan: vi.fn(),
+      set: vi.fn()
+    };
+    const multi = {
+      hmset: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([
+        [null, 'OK'],
+        [null, 1]
+      ])
+    };
+    commandClient.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
+    const repository = createSessionRepository({
+      redis: adapter,
+      logger: { error: vi.fn(), warn: vi.fn() }
+    });
+
+    await expect(repository.get('user-1:token-1')).resolves.toMatchObject({ userId: 'user-1' });
+    await repository.set({
+      sessionId: 'user-1:token-1',
+      data: {
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: false,
+        createdAt: 1000
+      }
+    });
+
+    expect(commandClient.hgetall).toHaveBeenCalledWith('fastgpt:session:user-1:token-1');
+    expect(multi.hmset).toHaveBeenCalledWith('fastgpt:session:user-1:token-1', {
+      userId: 'user-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      isRoot: '0',
+      createdAt: '1000'
+    });
+    expect(multi.expire).toHaveBeenCalledWith(
+      'fastgpt:session:user-1:token-1',
+      SESSION_TTL_SECONDS
+    );
+  });
+});

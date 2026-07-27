@@ -4,8 +4,8 @@ const mocks = vi.hoisted(() => ({
   authOutLinkCrud: vi.fn(),
   assertWechatOutLink: vi.fn(),
   getQRCodeStatus: vi.fn(),
-  storeGet: vi.fn(),
-  storeDelete: vi.fn(),
+  repositoryGet: vi.fn(),
+  repositoryDelete: vi.fn(),
   updateOne: vi.fn(),
   startWechatPolling: vi.fn()
 }));
@@ -28,10 +28,10 @@ vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/common/redis/stores', () => ({
-  wechatQrLoginStore: {
-    get: mocks.storeGet,
-    delete: mocks.storeDelete
+vi.mock('@fastgpt/dal/redis/repositories', () => ({
+  wechatQrLoginRepository: {
+    get: mocks.repositoryGet,
+    delete: mocks.repositoryDelete
   }
 }));
 
@@ -64,8 +64,8 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
     vi.clearAllMocks();
     mocks.authOutLinkCrud.mockResolvedValue({ tmbId: 'tmb-1', outLink });
     mocks.assertWechatOutLink.mockResolvedValue(undefined);
-    mocks.storeGet.mockResolvedValue(qrData);
-    mocks.storeDelete.mockResolvedValue(true);
+    mocks.repositoryGet.mockResolvedValue(qrData);
+    mocks.repositoryDelete.mockResolvedValue(true);
     mocks.updateOne.mockResolvedValue({ acknowledged: true });
     mocks.startWechatPolling.mockResolvedValue(undefined);
     mocks.getQRCodeStatus.mockResolvedValue({ status: 'wait' });
@@ -76,7 +76,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
   });
 
   it('returns expired only for a missing Redis value', async () => {
-    mocks.storeGet.mockResolvedValue(undefined);
+    mocks.repositoryGet.mockResolvedValue(undefined);
     const res = createRes();
 
     await expect(handler({ query: { outLinkId } } as any, res)).resolves.toEqual({
@@ -84,7 +84,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
     });
 
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
-    expect(mocks.storeGet).toHaveBeenCalledWith({ outLinkId, tmbId: 'tmb-1' });
+    expect(mocks.repositoryGet).toHaveBeenCalledWith({ outLinkId, tmbId: 'tmb-1' });
     expect(mocks.getQRCodeStatus).not.toHaveBeenCalled();
     expect(mocks.updateOne).not.toHaveBeenCalled();
   });
@@ -98,7 +98,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
 
     expect(mocks.getQRCodeStatus).toHaveBeenCalledWith('qr-id');
     expect(mocks.updateOne).not.toHaveBeenCalled();
-    expect(mocks.storeDelete).not.toHaveBeenCalled();
+    expect(mocks.repositoryDelete).not.toHaveBeenCalled();
     expect(mocks.startWechatPolling).not.toHaveBeenCalled();
   });
 
@@ -132,7 +132,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
         }
       }
     );
-    expect(mocks.storeDelete).toHaveBeenCalledWith({ outLinkId, tmbId: 'tmb-1' });
+    expect(mocks.repositoryDelete).toHaveBeenCalledWith({ outLinkId, tmbId: 'tmb-1' });
     expect(mocks.startWechatPolling).toHaveBeenCalledWith('share-1');
   });
 
@@ -167,13 +167,13 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
     });
 
     expect(mocks.updateOne).not.toHaveBeenCalled();
-    expect(mocks.storeDelete).not.toHaveBeenCalled();
+    expect(mocks.repositoryDelete).not.toHaveBeenCalled();
     expect(mocks.startWechatPolling).not.toHaveBeenCalled();
   });
 
-  it('propagates Store read errors instead of treating them as expired', async () => {
+  it('propagates Repository read errors instead of treating them as expired', async () => {
     const error = new Error('redis read failed');
-    mocks.storeGet.mockRejectedValue(error);
+    mocks.repositoryGet.mockRejectedValue(error);
 
     await expect(handler({ query: { outLinkId } } as any, createRes())).rejects.toBe(error);
 
@@ -188,7 +188,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
       bot_token: 'bot-token',
       ilink_bot_id: 'bot-id'
     });
-    mocks.storeDelete.mockRejectedValue(error);
+    mocks.repositoryDelete.mockRejectedValue(error);
 
     await expect(handler({ query: { outLinkId } } as any, createRes())).rejects.toBe(error);
 

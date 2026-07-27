@@ -6,40 +6,29 @@ export {
   createWorkerRedisConnection,
   getGlobalRedisConnection,
   getRedisConnectionSnapshot
-} from './runtime/connection';
+} from './runtime';
 export type {
   RedisClient,
   RedisConnectionRole,
   RedisConnectionSnapshot,
   RedisConnectionState,
   RedisEndpoint
-} from './runtime/connection';
-export { RedisConfigurationError, parseRedisConnectionConfig } from './runtime/config';
-export type { RedisConnectionConfig } from './runtime/config';
-export { redisCapabilities } from './capability';
-export type {
-  RedisCapabilities,
-  RedisCounterCapability,
-  RedisHashCapability,
-  RedisScanCapability,
-  RedisStreamCapability,
-  RedisStreamEntry,
-  RedisStringCapability,
-  RedisTtlState
-} from './capability';
+} from '@fastgpt/dal/redis/runtime';
+export { RedisConfigurationError, parseRedisConnectionConfig } from '@fastgpt/dal/redis';
+export type { RedisConnectionConfig } from '@fastgpt/dal/redis';
 export {
-  isRedisCapabilityError,
-  RedisCapabilityError,
+  isRedisOperationError,
   RedisInvalidArgumentError,
   RedisInvalidResponseError,
+  RedisOperationError,
   RedisOperationExecutionError,
   RedisOperationTimeoutError
-} from './runtime/errors';
+} from '@fastgpt/dal/redis';
 export type {
-  RedisCapabilityErrorCode,
-  RedisCapabilityRole,
+  RedisOperationErrorCode,
+  RedisOperationRole,
   RedisOperationOutcome
-} from './runtime/errors';
-export { asRedisLogicalKey, createRedisLogicalKey } from './runtime/keyspace';
-export type { RedisLogicalKey } from './runtime/keyspace';
+} from '@fastgpt/dal/redis';
+export { asRedisLogicalKey, createRedisLogicalKey } from '@fastgpt/dal/redis';
+export type { RedisLogicalKey } from '@fastgpt/dal/redis';
 export { getAllKeysByPrefix } from './scan';

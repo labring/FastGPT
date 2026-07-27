@@ -6,9 +6,9 @@ import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
-import { getRedisCache, setRedisCache } from '../../redis/cache';
 import { differenceInDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
+import { createDailyActiveDedupeRepository } from '@fastgpt/dal/redis/repositories';
 import type {
   TeamEnterpriseAuthStatusEnum,
   TeamEnterpriseAuthTaskStatusEnum
@@ -16,6 +16,7 @@ import type {
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
+const dailyActiveDedupeRepository = createDailyActiveDedupeRepository({ logger });
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
@@ -86,11 +87,11 @@ export const pushTrack = {
   dailyUserActive: async (data: PushTrackCommonType) => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const key = `dailyUserActive:${data.uid}_${today}`;
-      const cache = await getRedisCache(key);
-      if (cache) return;
-
-      await setRedisCache(key, '1', 24 * 60 * 60);
+      const shouldRecord = await dailyActiveDedupeRepository.shouldRecord({
+        uid: data.uid,
+        date: today
+      });
+      if (!shouldRecord) return;
 
       return createTrack({
         event: TrackEnum.dailyUserActive,
@@ -132,7 +133,7 @@ export const pushTrack = {
           nodeTypeList
         }
       });
-    } catch (error) {}
+    } catch {}
   },
   runSystemTool: (
     data: PushTrackCommonType & { toolId: string; result: 1 | 0; usagePoint?: number; msg?: string }

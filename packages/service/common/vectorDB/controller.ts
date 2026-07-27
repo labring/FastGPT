@@ -1,4 +1,5 @@
 /* vector crud */
+import { createTeamVectorCountRepository } from '@fastgpt/dal/redis/repositories';
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
@@ -16,7 +17,7 @@ import {
 } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { teamVectorCountStore } from '../redis/stores';
+import { getLogger, LogCategories } from '../logger';
 
 const getVectorObj = (): VectorControllerType => {
   if (SEEKDB_ADDRESS) return new SeekVectorCtrl({ type: 'seekdb' });
@@ -29,6 +30,9 @@ const getVectorObj = (): VectorControllerType => {
 };
 
 const Vector = getVectorObj();
+const teamVectorCountRepository = createTeamVectorCountRepository({
+  logger: getLogger(LogCategories.INFRA.REDIS)
+});
 
 export const initVectorStore = Vector.init;
 export const recallFromVectorStore: VectorControllerType['embRecall'] = (props) =>
@@ -78,7 +82,7 @@ export const insertDatasetDataVector = async ({
     })
   );
 
-  await teamVectorCountStore.invalidate(props.teamId);
+  await teamVectorCountRepository.invalidate(props.teamId);
 
   return {
     tokens,
@@ -88,7 +92,7 @@ export const insertDatasetDataVector = async ({
 
 export const deleteDatasetDataVector: VectorControllerType['delete'] = async (props) => {
   const result = await retryFn(() => Vector.delete(props));
-  await teamVectorCountStore.invalidate(props.teamId);
+  await teamVectorCountRepository.invalidate(props.teamId);
   return result;
 };
 
@@ -96,14 +100,14 @@ export const getVectorDataByTime = Vector.getVectorDataByTime;
 
 // Count vector
 export const getVectorCountByTeamId = async (teamId: string) => {
-  const cacheCount = await teamVectorCountStore.get(teamId);
+  const cacheCount = await teamVectorCountRepository.get(teamId);
   if (cacheCount !== undefined) {
     return cacheCount;
   }
 
   const count = await Vector.getVectorCount({ teamId });
 
-  void teamVectorCountStore.set({
+  void teamVectorCountRepository.set({
     teamId,
     count
   });
