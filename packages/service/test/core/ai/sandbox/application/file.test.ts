@@ -4,6 +4,7 @@ import {
   isSandboxPathDirectory,
   getSandboxFileContent,
   addDirectoryToArchive,
+  prepareSandboxFileParentDirectories,
   resolveSandboxWorkspacePath,
   writeUrlFilesToSandbox
 } from '@fastgpt/service/core/ai/sandbox/application/file';
@@ -74,12 +75,14 @@ describe('writeUrlFilesToSandbox', () => {
 
   it('skips entries without a target path', async () => {
     const sandbox = {
+      createDirectories: vi.fn(),
       writeFiles: vi.fn()
     } as unknown as Parameters<typeof writeUrlFilesToSandbox>[0];
 
     await writeUrlFilesToSandbox(sandbox, [{ path: '', url: 'https://example.com/ignored.txt' }]);
 
     expect(axiosMock.get).not.toHaveBeenCalled();
+    expect(sandbox.createDirectories).not.toHaveBeenCalled();
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
   });
 
@@ -90,12 +93,13 @@ describe('writeUrlFilesToSandbox', () => {
       .mockResolvedValueOnce({ data: Readable.from([first]), headers: {} })
       .mockResolvedValueOnce({ data: Readable.from([second]), headers: {} });
     const sandbox = {
+      createDirectories: vi.fn(async () => undefined),
       writeFiles: vi.fn(async () => undefined)
     } as unknown as Parameters<typeof writeUrlFilesToSandbox>[0];
 
     await writeUrlFilesToSandbox(sandbox, [
       { path: '/workspace/a.txt', url: 'https://example.com/a.txt' },
-      { path: '/workspace/b.txt', url: 'https://example.com/b.txt' }
+      { path: '/workspace/reports/b.txt', url: 'https://example.com/b.txt' }
     ]);
 
     expect(axiosMock.get).toHaveBeenCalledWith(
@@ -106,14 +110,21 @@ describe('writeUrlFilesToSandbox', () => {
       'https://example.com/b.txt',
       expect.objectContaining({ responseType: 'stream' })
     );
+    expect(sandbox.createDirectories).toHaveBeenCalledWith(['/workspace', '/workspace/reports']);
     expect(sandbox.writeFiles).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', data: first },
-      { path: '/workspace/b.txt', data: second }
+      { path: '/workspace/reports/b.txt', data: second }
     ]);
+    expect(sandbox.createDirectories.mock.invocationCallOrder[0]).toBeLessThan(
+      sandbox.writeFiles.mock.invocationCallOrder[0]
+    );
   });
 
   it('uses the injected reader for workflow context files', async () => {
-    const sandbox = { writeFiles: vi.fn(async () => undefined) };
+    const sandbox = {
+      createDirectories: vi.fn(async () => undefined),
+      writeFiles: vi.fn(async () => undefined)
+    };
     const readInputFile = vi.fn().mockResolvedValue(Buffer.from('private'));
 
     await writeUrlFilesToSandbox(
@@ -138,6 +149,16 @@ describe('writeUrlFilesToSandbox', () => {
       ])
     ).rejects.toThrow('absolute HTTP(S)');
     expect(axiosMock.get).not.toHaveBeenCalled();
+  });
+});
+
+describe('prepareSandboxFileParentDirectories', () => {
+  it('skips paths without a writable parent directory', async () => {
+    const sandbox = { createDirectories: vi.fn() };
+
+    await prepareSandboxFileParentDirectories(sandbox as any, ['', 'file.txt', '/root.txt']);
+
+    expect(sandbox.createDirectories).not.toHaveBeenCalled();
   });
 });
 

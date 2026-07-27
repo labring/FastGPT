@@ -29,7 +29,6 @@ export type ToolRunResult =
       success: true;
       input: Record<string, unknown>;
       response: string;
-      fileRefs?: SandboxFileRef[];
     };
 
 /**
@@ -56,7 +55,6 @@ export const createToolRunner =
     return {
       success: true,
       input: parsed.data,
-      response: result.response,
-      ...(result.fileRefs?.length ? { fileRefs: result.fileRefs } : {})
+      response: result.response
     };
   };

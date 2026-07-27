@@ -60,6 +60,11 @@ AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 # Persistent volume manager URL and token. The token must match x-volume-manager-auth-token.
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
+# Per-instance OpenSandbox CPU count and memory limit (MiB)
+AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT=1
+AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB=2048
+# OpenSandbox persistent volume size. Effective only when creating new PVCs in Kubernetes mode.
+AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE=1Gi
 ```
 
 If your `docker-compose.yml` already uses `x-agent-sandbox-config` to inject Agent Sandbox variables, fill these values in that anchor so both `fastgpt-app` and `fastgpt-pro` inherit the same configuration.

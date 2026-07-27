@@ -31,7 +31,6 @@ import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
-import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 import { createToolRunner } from './type';
 
 const ToolMap = {

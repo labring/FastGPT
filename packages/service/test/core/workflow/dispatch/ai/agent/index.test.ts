@@ -33,6 +33,7 @@ const {
   runAgentLoopMock,
   serviceEnvMock,
   getSandboxClientMock,
+  sandboxCreateDirectoriesMock,
   sandboxWriteFilesMock,
   sandboxClientExecMock,
   axiosGetMock,
@@ -54,6 +55,7 @@ const {
     AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace'
   },
   getSandboxClientMock: vi.fn(),
+  sandboxCreateDirectoriesMock: vi.fn(),
   sandboxWriteFilesMock: vi.fn(),
   sandboxClientExecMock: vi.fn(),
   axiosGetMock: vi.fn(),
@@ -292,6 +294,7 @@ describe('dispatchRunAgent user context', () => {
     getAgentRuntimeToolsMock.mockResolvedValue([]);
     getSandboxClientMock.mockResolvedValue({
       provider: {
+        createDirectories: sandboxCreateDirectoriesMock,
         writeFiles: sandboxWriteFilesMock,
         readFiles: vi.fn(async () => []),
         execute: sandboxClientExecMock
@@ -487,10 +490,14 @@ describe('dispatchRunAgent user context', () => {
       chatId: 'chat_1'
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
+    expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith(['/workspace/user_files']);
     const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
     expect(writeFiles.map((file: { path: string }) => file.path)).toEqual([
       '/workspace/user_files/current.pdf'
     ]);
+    expect(sandboxCreateDirectoriesMock.mock.invocationCallOrder[0]).toBeLessThan(
+      sandboxWriteFilesMock.mock.invocationCallOrder[0]
+    );
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(

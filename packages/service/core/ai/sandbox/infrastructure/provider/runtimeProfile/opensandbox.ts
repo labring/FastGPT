@@ -52,7 +52,18 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       }
 
       const entrypoint = createConfig.entrypoint ?? normalizeEntrypoint(input.entrypoint);
-      const resourceLimits = input.resourceLimits ?? createConfig.resourceLimits;
+      const diskGiB = input.resourceLimits?.diskGiB ?? createConfig.resourceLimits?.diskGiB;
+      const resourceLimits = {
+        cpuCount:
+          input.resourceLimits?.cpuCount ??
+          createConfig.resourceLimits?.cpuCount ??
+          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT,
+        memoryMiB:
+          input.resourceLimits?.memoryMiB ??
+          createConfig.resourceLimits?.memoryMiB ??
+          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB,
+        ...(diskGiB === undefined ? {} : { diskGiB })
+      };
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       // volume 既可能来自 volume manager，也可能来自调用方透传的 createConfig；运行态 VM 配置优先。
@@ -67,7 +78,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       return {
         ...createConfig,
         image,
-        ...(resourceLimits ? { resourceLimits } : {}),
+        resourceLimits,
         ...(entrypoint ? { entrypoint } : {}),
         ...(env ? { env } : {}),
         ...(metadata ? { metadata } : {}),

@@ -23,13 +23,17 @@ fn get_canonical_workspace_root() -> &'static Path {
 }
 
 pub async fn sanitize_path(input_path: &str) -> Result<PathBuf, String> {
-    let base = get_workspace_root();
-
     if Path::new(input_path).is_absolute() {
         return Err("Absolute workspace paths are not allowed".to_string());
     }
 
-    path_security::validate_path(Path::new(input_path), base).map_err(|e| e.to_string())
+    let input_path = input_path.to_string();
+    let base = get_workspace_root().to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        path_security::validate_path(Path::new(&input_path), &base).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("Path validation task failed: {e}"))?
 }
 
 /**
@@ -73,34 +77,39 @@ pub async fn sanitize_create_path(input_path: &str) -> Result<PathBuf, String> {
         return Err("Workspace target path is required".to_string());
     }
 
-    let canonical_base = get_canonical_workspace_root();
-    let mut current = if get_workspace_root().exists() {
-        canonical_base.to_path_buf()
-    } else {
-        get_workspace_root().to_path_buf()
-    };
-    let mut first_missing_index = parts.len();
+    tokio::task::spawn_blocking(move || {
+        let workspace_root = get_workspace_root().to_path_buf();
+        let canonical_base = get_canonical_workspace_root().to_path_buf();
+        let mut current = if workspace_root.exists() {
+            canonical_base.clone()
+        } else {
+            workspace_root
+        };
+        let mut first_missing_index = parts.len();
 
-    for (index, part) in parts.iter().enumerate() {
-        let candidate = current.join(part);
-        if !candidate.exists() {
-            first_missing_index = index;
-            break;
+        for (index, part) in parts.iter().enumerate() {
+            let candidate = current.join(part);
+            if !candidate.exists() {
+                first_missing_index = index;
+                break;
+            }
+
+            current = candidate
+                .canonicalize()
+                .map_err(|e| format!("Failed to canonicalize existing path: {e}"))?;
+            if !current.starts_with(&canonical_base) {
+                return Err("Path traversal detected".to_string());
+            }
         }
 
-        current = candidate
-            .canonicalize()
-            .map_err(|e| format!("Failed to canonicalize existing path: {e}"))?;
-        if !current.starts_with(canonical_base) {
-            return Err("Path traversal detected".to_string());
+        for part in parts.iter().skip(first_missing_index) {
+            current = current.join(part);
         }
-    }
 
-    for part in parts.iter().skip(first_missing_index) {
-        current = current.join(part);
-    }
-
-    Ok(current)
+        Ok(current)
+    })
+    .await
+    .map_err(|e| format!("Path validation task failed: {e}"))?
 }
 
 /**
