@@ -8,18 +8,7 @@ import {
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
-
-const forbiddenChildTypes = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.workflowStart,
-  FlowNodeTypeEnum.loop,
-  FlowNodeTypeEnum.loopRun,
-  FlowNodeTypeEnum.parallelRun,
-  FlowNodeTypeEnum.pluginInput,
-  FlowNodeTypeEnum.pluginOutput,
-  FlowNodeTypeEnum.pluginConfig,
-  FlowNodeTypeEnum.systemConfig,
-  FlowNodeTypeEnum.globalVariable
-]);
+import { ROOT_ONLY_NODE_TYPES } from '../template/contract';
 
 export const getDocumentNode = (document: WorkflowDocument, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
@@ -79,7 +68,7 @@ export const assertParentAssignment = ({
       }
     ]);
   }
-  if (forbiddenChildTypes.has(node.flowNodeType)) {
+  if (ROOT_ONLY_NODE_TYPES.has(node.flowNodeType)) {
     throw new WorkflowCommandError([
       {
         code: 'WORKFLOW_NODE_NOT_ALLOWED_IN_CONTAINER',

@@ -9,6 +9,7 @@ import type {
   WorkflowInputDefaultPolicy,
   WorkflowResourceKind
 } from './type';
+import { getNodeRuntimeContract, type NodeRuntimeContract } from './contract';
 
 export type NodeParameterInputMode = 'literal' | 'reference' | 'secret';
 
@@ -36,6 +37,7 @@ export type NodeParameterDescriptor = {
 };
 
 export type NodeTemplateDescriptor = {
+  schemaVersion: 'fastgpt-workflow-node-contract/v1';
   template: NodeTemplateRef;
   name: string;
   intro?: string;
@@ -54,11 +56,21 @@ export type NodeTemplateDescriptor = {
     unique: boolean;
     isTool: boolean;
   };
+  execution: NodeRuntimeContract['execution'];
+  dynamicIO: NodeRuntimeContract['dynamicIO'];
+  container: NodeRuntimeContract['container'];
+  effects: NodeRuntimeContract['effects'];
 };
 
 const getInputModes = (renderTypes: FlowNodeInputTypeEnum[]): NodeParameterInputMode[] => {
+  const literalRenderTypes = renderTypes.filter(
+    (type) =>
+      type !== FlowNodeInputTypeEnum.reference &&
+      type !== FlowNodeInputTypeEnum.hidden &&
+      type !== FlowNodeInputTypeEnum.addInputParam
+  );
   const modes = [
-    renderTypes.some((type) => type !== FlowNodeInputTypeEnum.reference) ? 'literal' : undefined,
+    literalRenderTypes.length > 0 ? 'literal' : undefined,
     renderTypes.includes(FlowNodeInputTypeEnum.reference) ? 'reference' : undefined,
     renderTypes.includes(FlowNodeInputTypeEnum.password) ? 'secret' : undefined
   ].filter((item): item is NodeParameterInputMode => item !== undefined);
@@ -76,58 +88,73 @@ export const normalizeNodeTemplateDescriptor = ({
   templateRef: NodeTemplateRef;
   automationMeta?: NodeTemplateAutomationMeta;
   translate?: (value: string) => string;
-}): NodeTemplateDescriptor => ({
-  template: templateRef,
-  name: translate(template.name),
-  intro: template.intro ? translate(template.intro) : undefined,
-  flowNodeType: template.flowNodeType,
-  inputs: template.inputs
-    .filter((input) => input.deprecated !== true)
-    .map((input) => {
-      const meta = automationMeta?.inputs?.[input.key];
-      const constraints = {
-        min: input.min,
-        max: input.max,
-        minLength: input.minLength,
-        maxLength: input.maxLength,
-        valueSchema: meta?.valueSchema
-      };
-      return {
-        key: input.key,
-        label: translate(input.label),
-        description: translate(
-          meta?.agentHint ?? input.toolDescription ?? input.description ?? input.label
-        ),
-        valueType: input.valueType,
-        required: input.required ?? false,
-        defaultValue: input.defaultValue ?? input.value,
-        defaultPolicy: meta?.defaultPolicy ?? 'template',
-        resourceKind: meta?.resourceKind,
-        bindingRequired: meta?.bindingRequired ?? false,
-        configurable: meta?.configurable ?? input.canEdit !== false,
-        inputModes: getInputModes(input.renderTypeList),
-        enum: input.list?.map((item) => ({
-          ...item,
-          label: item.label ? translate(item.label) : undefined,
-          description: item.description ? translate(item.description) : undefined
-        })),
-        constraints,
-        examples: meta?.examples
-      };
-    }),
-  outputs: template.outputs
-    .filter((output) => output.deprecated !== true)
-    .map((output) => ({
-      id: output.id,
-      key: output.key,
-      label: translate(output.label ?? output.key),
-      description: output.description ? translate(output.description) : undefined,
-      valueType: output.valueType,
-      required: output.required ?? false,
-      executable: output.type === FlowNodeOutputTypeEnum.source
-    })),
-  constraints: {
-    unique: template.unique === true,
-    isTool: template.isTool === true
-  }
-});
+}): NodeTemplateDescriptor => {
+  const runtimeContract = getNodeRuntimeContract(template);
+  return {
+    schemaVersion: 'fastgpt-workflow-node-contract/v1',
+    template: templateRef,
+    name: translate(template.name),
+    intro: template.intro ? translate(template.intro) : undefined,
+    flowNodeType: template.flowNodeType,
+    inputs: template.inputs
+      .filter((input) => input.deprecated !== true)
+      .map((input) => {
+        const meta = automationMeta?.inputs?.[input.key];
+        const constraints = {
+          min: input.min,
+          max: input.max,
+          minLength: input.minLength,
+          maxLength: input.maxLength,
+          valueSchema: meta?.valueSchema
+        };
+        return {
+          key: input.key,
+          label: translate(input.label),
+          description: translate(
+            [
+              meta?.agentHint,
+              input.toolDescription,
+              input.description,
+              input.label,
+              input.key
+            ].find((value) => typeof value === 'string' && value.trim().length > 0) as string
+          ),
+          valueType: input.valueType,
+          required: input.required ?? false,
+          defaultValue: input.defaultValue ?? input.value,
+          defaultPolicy: meta?.defaultPolicy ?? 'template',
+          resourceKind: meta?.resourceKind,
+          bindingRequired: meta?.bindingRequired ?? false,
+          configurable:
+            meta?.configurable ??
+            (input.canEdit !== false &&
+              !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden) &&
+              !input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam)),
+          inputModes: meta?.inputModes ?? getInputModes(input.renderTypeList),
+          enum: input.list?.map((item) => ({
+            ...item,
+            label: item.label ? translate(item.label) : undefined,
+            description: item.description ? translate(item.description) : undefined
+          })),
+          constraints,
+          examples: meta?.examples
+        };
+      }),
+    outputs: template.outputs
+      .filter((output) => output.deprecated !== true)
+      .map((output) => ({
+        id: output.id,
+        key: output.key,
+        label: translate(output.label ?? output.key),
+        description: output.description ? translate(output.description) : undefined,
+        valueType: output.valueType,
+        required: output.required ?? false,
+        executable: output.type === FlowNodeOutputTypeEnum.source
+      })),
+    constraints: {
+      unique: template.unique === true,
+      isTool: template.isTool === true
+    },
+    ...runtimeContract
+  };
+};

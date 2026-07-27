@@ -69,6 +69,7 @@ describe('builtinTemplateProvider', () => {
       const templateName = formatNodeTemplateRef(ref);
       const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
       const inputKeys = new Set(resolved.template.inputs.map((input) => input.key));
+      expect(resolved.automationMeta, templateName).toBeDefined();
       for (const [inputKey, meta] of Object.entries(resolved.automationMeta?.inputs ?? {})) {
         expect(inputKeys.has(inputKey), `${templateName}.${inputKey}`).toBe(true);
         if (meta.resourceKind !== undefined) {
@@ -91,6 +92,62 @@ describe('builtinTemplateProvider', () => {
       }
     }
   });
+
+  it('publishes a complete machine contract for every exposed builtin template', async () => {
+    const structuredValueTypes = new Set([
+      WorkflowIOValueTypeEnum.object,
+      WorkflowIOValueTypeEnum.arrayObject,
+      WorkflowIOValueTypeEnum.arrayAny,
+      WorkflowIOValueTypeEnum.selectDataset,
+      WorkflowIOValueTypeEnum.selectApp,
+      WorkflowIOValueTypeEnum.dynamic
+    ]);
+    const systemInputKeys = new Set([
+      'system_addInputParam',
+      'childrenNodeIdList',
+      'nodeWidth',
+      'nodeHeight',
+      'loopNodeInputHeight',
+      'loopCustomOutputs'
+    ]);
+
+    for (const ref of await builtinTemplateProvider.list({ locale: 'en' })) {
+      const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+      const descriptor = normalizeNodeTemplateDescriptor({ ...resolved, templateRef: ref });
+      const templateName = formatNodeTemplateRef(ref);
+
+      expect(descriptor.schemaVersion, templateName).toBe('fastgpt-workflow-node-contract/v1');
+      expect(descriptor.execution.sourceKinds, templateName).toEqual(
+        expect.arrayContaining(
+          descriptor.execution.sourceKinds.filter((kind) =>
+            ['next', 'branch', 'sourceOutput', 'catch', 'selectedTools'].includes(kind)
+          )
+        )
+      );
+      expect(descriptor.execution.terminal, templateName).toBe(
+        descriptor.execution.sourceKinds.length === 0
+      );
+      for (const input of descriptor.inputs) {
+        if (input.configurable) {
+          expect(input.description.trim().length, `${templateName}.${input.key}`).toBeGreaterThan(
+            0
+          );
+          expect(input.inputModes.length, `${templateName}.${input.key}`).toBeGreaterThan(0);
+        }
+        if (
+          input.configurable &&
+          input.inputModes.includes('literal') &&
+          input.valueType &&
+          structuredValueTypes.has(input.valueType as WorkflowIOValueTypeEnum)
+        ) {
+          expect(input.constraints?.valueSchema, `${templateName}.${input.key}`).toBeDefined();
+        }
+        if (systemInputKeys.has(input.key)) {
+          expect(input.configurable, `${templateName}.${input.key}`).toBe(false);
+        }
+      }
+    }
+  });
 });
 
 describe('normalizeNodeTemplateDescriptor', () => {
@@ -107,6 +164,7 @@ describe('normalizeNodeTemplateDescriptor', () => {
     const modelInput = descriptor.inputs.find((input) => input.key === 'model');
 
     expect(descriptor.name).toMatch(/^translated:/);
+    expect(descriptor.schemaVersion).toBe('fastgpt-workflow-node-contract/v1');
     expect(userInput?.inputModes).toEqual(['literal', 'reference']);
     expect(promptInput?.examples).toEqual(['You are a helpful assistant.']);
     expect(modelInput).toMatchObject({
@@ -116,7 +174,63 @@ describe('normalizeNodeTemplateDescriptor', () => {
     });
     expect(modelInput?.examples).toBeUndefined();
     expect(descriptor.constraints.isTool).toBe(true);
+    expect(descriptor.execution).toMatchObject({
+      sourceKinds: expect.arrayContaining(['next']),
+      targetKinds: expect.arrayContaining(['target', 'selectedTools']),
+      terminal: false
+    });
     expect(JSON.stringify(resolved.template)).not.toContain('invalidCondition');
+  });
+
+  it('describes branch, terminal, container and dynamic IO capabilities', async () => {
+    const getDescriptor = async (templateId: string) => {
+      const ref = parseNodeTemplateRef(`builtin:${templateId}`);
+      const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+      return normalizeNodeTemplateDescriptor({ ...resolved, templateRef: ref });
+    };
+
+    await expect(getDescriptor('if-else')).resolves.toMatchObject({
+      execution: {
+        sourceKinds: ['branch'],
+        targetKinds: ['target'],
+        terminal: false,
+        branch: {
+          inputKey: 'ifElseList',
+          keyField: 'branchId',
+          keyFieldRequiredForNewValues: true,
+          fallbackKey: 'ELSE',
+          configureBeforeConnect: true
+        }
+      },
+      effects: expect.arrayContaining(['prune-invalid-branch-edges'])
+    });
+    await expect(getDescriptor('assigned-answer')).resolves.toMatchObject({
+      execution: { sourceKinds: [], terminal: true }
+    });
+    await expect(getDescriptor('loop-run-break')).resolves.toMatchObject({
+      execution: { sourceKinds: [], targetKinds: ['target'], terminal: true },
+      container: { rootAllowed: false, allowedParentTypes: ['loopRun'] }
+    });
+    await expect(getDescriptor('parallel-run')).resolves.toMatchObject({
+      container: { kind: 'parallel', rootAllowed: true, allowedParentTypes: [] },
+      dynamicIO: {
+        inputs: { manual: false, derivedFromInputKeys: [] },
+        outputs: { manual: false, derivedFromInputKeys: [] }
+      }
+    });
+    await expect(getDescriptor('code')).resolves.toMatchObject({
+      dynamicIO: {
+        inputs: { manual: true, derivedFromInputKeys: ['code'] },
+        outputs: { manual: true, derivedFromInputKeys: ['code'] }
+      }
+    });
+    await expect(getDescriptor('form-input')).resolves.toMatchObject({
+      container: { rootAllowed: true, allowedParentTypes: ['loop', 'loopRun'] },
+      dynamicIO: {
+        inputs: { manual: false },
+        outputs: { manual: false, derivedFromInputKeys: ['userInputForms'] }
+      }
+    });
   });
 
   it('exposes explicit binding requirements without storing metadata in nodes', async () => {

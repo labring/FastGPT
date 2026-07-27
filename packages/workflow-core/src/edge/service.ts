@@ -9,36 +9,10 @@ import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/
 import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getDocumentNode } from '../nesting/service';
+import { NODE_TYPES_WITHOUT_NEXT_PORT, TOOL_TARGET_NODE_TYPES } from '../template/contract';
 
 const edgeEquals = (left: WorkflowExecutionEdge, right: WorkflowExecutionEdge) =>
   JSON.stringify(left) === JSON.stringify(right);
-
-const toolTargetTypes = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.tool,
-  FlowNodeTypeEnum.toolSet,
-  FlowNodeTypeEnum.pluginModule,
-  FlowNodeTypeEnum.appModule,
-  FlowNodeTypeEnum.runApp,
-  FlowNodeTypeEnum.chatNode,
-  FlowNodeTypeEnum.answerNode,
-  FlowNodeTypeEnum.datasetSearchNode,
-  FlowNodeTypeEnum.contentExtract,
-  FlowNodeTypeEnum.httpRequest468,
-  FlowNodeTypeEnum.toolParams,
-  FlowNodeTypeEnum.userSelect,
-  FlowNodeTypeEnum.formInput,
-  FlowNodeTypeEnum.variableUpdate
-]);
-
-const nodesWithoutNextPort = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.ifElseNode,
-  FlowNodeTypeEnum.userSelect,
-  FlowNodeTypeEnum.classifyQuestion,
-  FlowNodeTypeEnum.answerNode,
-  FlowNodeTypeEnum.loopRunBreak,
-  FlowNodeTypeEnum.nestedEnd,
-  FlowNodeTypeEnum.pluginOutput
-]);
 
 /** 返回节点在 insert 场景下用于承接旧 target 的默认执行出口。 */
 export const getDefaultExecutionSourcePort = (
@@ -64,7 +38,7 @@ export const getDefaultExecutionSourcePort = (
         : undefined;
     if (branchKey) return { kind: 'branch', nodeId, branchKey };
   }
-  if (nodesWithoutNextPort.has(node.flowNodeType)) {
+  if (NODE_TYPES_WITHOUT_NEXT_PORT.has(node.flowNodeType)) {
     throw new WorkflowCommandError([
       { code: 'WORKFLOW_NODE_HAS_NO_DEFAULT_SOURCE_PORT', severity: 'error', nodeId }
     ]);
@@ -132,7 +106,7 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
   if (sourceIsTool) {
     if (
       sourceNode.flowNodeType !== FlowNodeTypeEnum.toolCall ||
-      !toolTargetTypes.has(targetNode.flowNodeType)
+      !TOOL_TARGET_NODE_TYPES.has(targetNode.flowNodeType)
     ) {
       throw new WorkflowCommandError([
         { code: 'WORKFLOW_TOOL_EDGE_NODE_INVALID', severity: 'error', params: { edge } }
@@ -148,7 +122,7 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
       { code: 'WORKFLOW_CATCH_NOT_ENABLED', severity: 'error', nodeId: sourceNode.nodeId }
     ]);
   }
-  if (edge.source.kind === 'next' && nodesWithoutNextPort.has(sourceNode.flowNodeType)) {
+  if (edge.source.kind === 'next' && NODE_TYPES_WITHOUT_NEXT_PORT.has(sourceNode.flowNodeType)) {
     throw new WorkflowCommandError([
       {
         code: 'WORKFLOW_NEXT_PORT_UNSUPPORTED',
