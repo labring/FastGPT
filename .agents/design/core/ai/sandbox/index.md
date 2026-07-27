@@ -2,7 +2,10 @@
 
 状态：当前实现
 
-最后核对：2026-07-16
+最后核对：2026-07-27
+
+用户级实例、生命周期、Legacy 迁移以及本分支后续变更的最终契约统一见
+[用户级 Sandbox 最终方案](./user-level-sandbox.md)。本文只维护当前代码入口和运行行为索引。
 
 ## 目标与边界
 
@@ -69,6 +72,9 @@ provider: opensandbox | sealosdevbox
 
 当使用 Sandbox 时必须配置 `AGENT_SANDBOX_PROVIDER`；未知或缺失 Provider 显式报错。
 
+公共 `stop()` 执行 Provider 自身的停止策略：OpenSandbox 删除远端计算实例但保留 FastGPT 管理的
+volume、Mongo 记录和 S3 归档，Sealos Devbox 则暂停远端实例。业务级删除始终继续清理全部受管资源。
+
 ## 运行态生命周期
 
 ### 获取实例
@@ -81,7 +87,8 @@ provider: opensandbox | sealosdevbox
 4. 构造 `SandboxClient`，写入或刷新 running 实例记录。
 5. 确保远端 Provider 实例可用。
 
-`prepareAgentSandboxRuntime` 在此之前执行团队 Sandbox 权限检查，并根据标准 chat source 计算 sandboxId。
+上层在调用 `prepareAgentSandboxRuntime` 前完成普通 App 可用性判断或 Skill Edit 强可用性断言；
+runtime preparation 不再接受绕过权限检查的布尔参数。随后根据标准 chat source 计算 sandboxId。
 
 ### 初始化并发
 
@@ -106,6 +113,12 @@ Sandbox 初始化使用 `prepareSandbox(context, ...steps)` 顺序组合步骤�
 - 扫描 `SKILL.md` 和读取当前工作目录。
 
 具体场景只组合需要的 step，不在通用 prepare 层读取业务数据库。
+
+### 运行时配置收敛
+
+App Agent 和 ToolCall 在实际使用 Sandbox 前调用 `ensureAppSandboxRuntimeReady`。Provider 或镜像变化时，
+同一次 Workflow 先通过标准 archive/provider migration 收敛配置，再继续恢复 runtime；前端只消费
+`upgrading -> lazyInit` 粗粒度状态。Skill Edit 保留显式确认和轮询升级。
 
 ## Entrypoint
 
@@ -168,6 +181,21 @@ Skill Edit 复用编辑器 Sandbox 中的当前工作区，不把编辑中的内
 - stopped 实例可进入冷归档；恢复时通过 archive 状态机避免与归档、删除并发。
 - 保活和只读存在性检查不能意外拉起 archived Sandbox。
 
+## 可用性降级
+
+普通 App Chat 在系统关闭、App 未开启或团队套餐不可用时，不注入 Sandbox prompt、tools 和依赖
+Sandbox 的 Skill，也不准备 runtime；其他对话能力继续运行。关闭原因通过
+`systemDisabled/appDisabled/teamPlanUnavailable` 表达。
+
+Skill Edit 和 Skill 调试保持强依赖。文件 API 在服务端重新校验可用性，`checkExist` 只查询本地
+记录并返回可选关闭原因，不创建或恢复实例。
+
+## Workspace 预览
+
+HTML 预览和 `sandbox_get_file_url` 使用 Redis preview session 签发短期只读 URL。公开请求经
+`agent-sandbox-proxy` 回查 FastGPT，再由 Sandbox 内 `fastgpt-ide-agent:1319` 在 Workspace 范围内
+流式返回文件；预览不再上传临时文件到 S3，也不改变 Workspace 冷归档流程。
+
 ## API 与权限
 
 Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/pages/api/core/ai/sandbox`。API 边界负责：
@@ -177,7 +205,8 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 - 校验 App、Skill、outlink 和团队权限。
 - 签发或验证带 source、user、chat 和权限声明的 ticket。
 
-内部 runtime 接口假定调用方已经完成业务权限检查，但仍会检查团队 Sandbox 能力。
+内部 runtime 接口假定调用方已经完成普通 App 可用性判断或 Skill Edit 强可用性断言，不再重复
+查询团队套餐。
 
 ## 主要代码入口
 
@@ -207,49 +236,3 @@ Sandbox 改动应按影响范围覆盖：
 - 初始化 lease、prepare 顺序和 entrypoint 幂等性。
 - 各 Sandbox 工具的参数、输出裁剪和错误路径。
 - Skill 包权限、大小、路径安全、部署、扫描和内置 Skill etag 同步。
-
-## 结构收敛设计
-
-### 目标
-
-Sandbox 模块严格保持 `interface -> application -> infrastructure` 单向依赖：
-
-- 外部生产代码只能从 `interface/*` 引用 Sandbox 能力。
-- `interface` 只做稳定能力导出和调用参数适配，不承载内部共享配置。
-- `application` 只做生命周期和业务编排，不直接访问 Sandbox Mongoose Model。
-- `infrastructure/instance` 集中 v2 与 Legacy Sandbox 的 Mongo 读写。
-- 聚合导出只使用目录 `index.ts`，不保留非 `index.ts` 的兼容转发文件。
-
-### Legacy migration 拆分
-
-原单文件迁移按职责拆为 `application/legacyMigration`：
-
-- `types.ts`：迁移输入、结果和内部共享类型。
-- `workspace.ts`：Archive staging、无覆盖合并和目标 Sandbox 创建。
-- `cleanup.ts`：Legacy 归档前清理与 Source 删除清理。
-- `service.ts`：迁移分组、发布屏障、并发控制和管理员入口。
-- `index.ts`：对 Sandbox 内部及 interface 聚合导出。
-
-Legacy Mongo 查询和阶段提交下沉到 `infrastructure/instance/legacyRepository.ts`。Repository
-只执行数据访问；迁移阶段判断、归档顺序和发布规则仍由 application 决定。
-
-### 公共入口与类型
-
-- 新增 `interface/preview` 和 `interface/migration`，替换 App API 对 application 的直接依赖。
-- `interface/admin`、`interface/config`、`interface/file`、`interface/resource` 使用目录
-  `index.ts` 聚合，不保留同名转发文件。
-- Sandbox 工具 Registry 在定义工具时封装 Zod 校验与类型关联，执行入口不使用 `any`。
-- 增加架构边界测试，阻止 application/infrastructure 反向依赖 interface、外部生产代码绕过
-  interface，以及内部相对导入循环。
-
-### 结构收敛 TODO
-
-- [x] 把 Sandbox 大小配置移出 interface，修正 application/infrastructure 的反向依赖。
-- [x] 新增 Legacy Repository，删除 application 对 `MongoLegacySandboxInstance` 的直接访问。
-- [x] 拆分 Legacy migration 的 workspace、cleanup、service 和 types 职责。
-- [x] 新增 Preview/Migration interface，替换外部 application 直连。
-- [x] 删除非 `index.ts` 的纯转发文件并更新全部导入。
-- [x] 消除 Sandbox 生产代码中的 `any` 强制断言。
-- [x] 增加依赖边界测试，并运行 Sandbox 局部测试和 App 类型检查。
-- [x] 运行最终全量测试；Sandbox 用例通过，仓库全量结果被 3 个无关的既有性能/超时用例阻断。
-

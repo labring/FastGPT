@@ -1,21 +1,46 @@
-# 用户级 Sandbox 需求与技术设计
+# 用户级 Sandbox 最终方案
 
-## 1. 背景
+状态：已实现，作为当前分支唯一技术方案
 
-当前 App Chat 按 `appId + effectiveUid + chatId` 生成 Sandbox ID。同一 App、同一用户的不同 Chat 因此会创建不同物理 Sandbox，Workspace、归档对象和运行时初始化也彼此独立。
+最后核对：2026-07-27
 
-本需求将普通 App Sandbox 的业务隔离边界调整为 `appId + effectiveUid`，并在共享 Workspace 中通过 `sessions/<chatId>` 组织会话文件。Skill Edit 继续使用 Skill 级稳定 Sandbox，不参与 session 目录模型。
+## 1. 目标与范围
 
-Notion 规格：<https://app.notion.com/p/39dded3f8cd8819cba9ff33b6f94fce9>
+普通 App Chat 的 Sandbox 隔离边界由 `appId + effectiveUid + chatId` 收敛为
+`appId + effectiveUid`。同一 App、同一有效用户的多个 Chat 共享一个物理 Sandbox 和
+Workspace，`chatId` 只用于区分 `sessions/<chatId>` 下的默认工作目录。
 
-## 2. 已确认需求
+本方案同时定义用户级 Sandbox 必须依赖的最终契约：
 
-### 2.1 隔离与路径
+- v2 实例身份、数据模型和生命周期状态机。
+- App session、Skill runtime 和 Skill Edit 的路径边界。
+- Legacy Workspace 向用户级 Sandbox 的迁移与发布屏障。
+- Provider 或镜像变化时的运行时收敛。
+- Sandbox 不可用时的 App Chat 降级。
+- Workspace 文件直连预览。
+- OpenSandbox 与 Sealos Devbox 的最终生命周期差异。
 
-- App Sandbox ID 只由 `sourceId + effectiveUid` 生成，不再包含 `chatId`。
-- 不同 App 或不同 effectiveUid 仍使用不同 Sandbox。
-- `chatId` 只保留在运行时上下文中，不持久化到新实例表。
-- App Workspace 路径拆分为：
+Sandbox 不负责 Agent 模型循环、Workflow 调度或 Skill 版本创建。Agent 和 ToolCall 只在确认本轮
+需要且允许使用 Sandbox 后，获取已经准备好的 `SandboxClient`。
+
+## 2. 核心不变量
+
+### 2.1 实例身份
+
+业务归属统一使用 `sourceType/sourceId/userId`，物理资源使用稳定 `sandboxId`：
+
+| 场景 | 逻辑身份 | sandboxId |
+| --- | --- | --- |
+| App Chat | `app + appId + effectiveUid` | `app-<hash(appId-effectiveUid)>` |
+| Skill Edit | `skillEdit + skillId + skillEdit` | `skilledit-<hash(skillId-skillEdit)>` |
+| Chat Agent Helper | 不支持 Sandbox | 调用时显式报错 |
+
+其中 hash 取 16 位小写十六进制。App 和 Skill Edit 都不把 `chatId` 放入实例 ID；不保留旧三参数
+ID、无前缀 ID 或空 `userId` 的运行时兼容分支。
+
+### 2.2 Workspace 路径
+
+App Sandbox 的路径固定拆分为：
 
 ```text
 workspaceRoot        = <provider workDirectory>
@@ -23,58 +48,29 @@ runtimeSkillsRoot    = <workspaceRoot>/projects
 sessionWorkDirectory = <workspaceRoot>/sessions/<chatId>
 ```
 
-- Sandbox 工具和用户文件默认使用 `sessionWorkDirectory`。
-- App entrypoint 在 `workspaceRoot` 启动，并按物理 Sandbox 维度记录执行 hash。
-- Sandbox Editor 固定以 `sessionWorkDirectory` 作为文件树根目录；Workspace 根目录切换不在本次需求范围内。
-- Session 目录只是默认工作目录，不作为硬安全边界。
+- Sandbox 工具、用户输入文件和 Sandbox Editor 默认使用 `sessionWorkDirectory`。
+- 已发布 Skill 版本部署到共享 `runtimeSkillsRoot`。
+- App entrypoint 在 `workspaceRoot` 执行，并按物理 Sandbox 记录执行状态。
+- Skill Edit 使用 Workspace 根目录，不参与 App session 目录模型。
+- Session 目录是默认工作目录，不是同一 Sandbox 内的硬安全边界。
+- Sandbox Editor 本轮只展示当前 session，不提供切回 Workspace 根目录的 UI。
 
-### 2.2 Skill 与初始化并发
+### 2.3 生命周期
 
-- Skill 包始终同步到共享 `runtimeSkillsRoot`。
-- 继续使用 Sandbox ID 级 Redis 初始化锁串行化镜像源、Skill 同步、输入文件注入和 entrypoint 准备。
-- 锁在初始化完成后释放；后续会话初始化可以重新同步和调整共享 `/projects`。
-- 本需求不保证某次会话初始化完成后 `/projects` 在整个 Agent 执行期间保持不变。
-
-### 2.3 实例与生命周期
-
-- 新集合使用 `agent_sandbox_instances_v2`，旧 `agent_sandbox_instances` 只作为迁移数据源。
-- 新实例记录不包含 `chatId`、`appId` 或旧 `type` 字段。
-- 顶层 `status` 是 v2 实例生命周期的唯一权威状态；不再使用
-  `metadata.archive.state` 或 `metadata.lifecycle.state` 表达第二套状态。
-- `metadata.operation` 只记录当前状态迁移的操作令牌、执行阶段和错误上下文，不参与业务状态判断。
-- Legacy Workspace 导入是本分支 migration 模块的核心生命周期流程，正式使用
-  `legacyMigrating` 状态和 `legacyMigration` operation，但不设置 `metadata.migration`。
-- migration 构建目标期间保持 `legacyMigrating`；全部 Workspace 安装完成后才一次性发布为
-  `running`。普通 runtime 不得连接尚处于 `legacyMigrating` 的目标。
-- App/Skill 删除可以在 Source Lease 和 Lifecycle Lease 下 fence 旧 operation，并把任意状态
-  显式抢占为 `deleting`，但不得绕过仍持有有效 lease 的生命周期任务。
-- 单个 Chat 删除不删除共享 Sandbox，也不单独删除对应 session 目录。
-- App 删除继续删除该 App 下全部用户级 Sandbox、Workspace 和归档对象。
-
-### 2.4 历史 Workspace 迁移
-
-- 旧 Workspace 中直接位于 `projects/` 下、名称为 Skill Version ID 的运行时缓存目录不迁移。
-- 其他文件保持原相对路径进入目标 session。
-- `sessions/<chatId>` 不存在时，使用 staging + rename 提交为该目录。
-- `sessions/<chatId>` 已存在时，将 staging 递归合并进 session；同名文件或类型冲突均以
-  session 现有内容为准，旧内容直接舍弃。
-- 单条旧记录安装成功并发布目标后，只删除旧物理 Sandbox 和 OpenSandbox volume；旧 S3
-  归档与旧实例记录作为迁移备份保留，并把迁移阶段提交为 `completed`。
-- `metadata.archive.state=archived` 只表示旧物理资源已经由 S3 归档承接；
-  `metadata.userLevelMigration.phase=completed` 才表示 Workspace 已安装且 v2 目标已发布。
-- 普通 runtime、归档 cron 和恢复流程只使用 v2 表；保留的 Legacy 记录只供迁移预检、重试和
-  Source 最终删除清理读取。
-- Legacy 归档继续使用 `agent-sandbox/<legacySandboxId>/package.zip`；v2 归档使用
-  `sandbox/archive/<sandboxId>/package.zip`。Legacy ZIP 不能改名复用为 v2 归档，v2 必须在自身
-  archive 生命周期中重新打包完整 Workspace。
+- `agent_sandbox_instances_v2` 是新运行时的唯一实例表。
+- 顶层 `status` 是唯一权威生命周期状态。
+- `metadata.operation` 只记录 operation token、持久阶段、心跳和错误，不承担第二套状态判断。
+- 普通 runtime 不得连接 `legacyMigrating` 或其他过渡态实例。
+- 单个 Chat 删除不删除共享 Sandbox，也不单独清理 `sessions/<chatId>`。
+- App 或 Skill 删除负责清理所属 v2 与 Legacy 资源。
 
 ## 3. 数据模型
 
-### 3.1 新实例集合
+### 3.1 v2 实例
 
 ```typescript
 type SandboxInstance = {
-  provider: SandboxProviderType;
+  provider: 'opensandbox' | 'sealosdevbox';
   sandboxId: string;
   sourceType: 'app' | 'skillEdit';
   sourceId: string;
@@ -104,13 +100,7 @@ type SandboxInstance = {
     versionId?: string;
     operation?: {
       id: string;
-      type:
-        | 'provision'
-        | 'legacyMigration'
-        | 'stop'
-        | 'archive'
-        | 'restore'
-        | 'delete';
+      type: 'provision' | 'legacyMigration' | 'stop' | 'archive' | 'restore' | 'delete';
       phase: string;
       previousStatus?: 'running' | 'stopped' | 'archived';
       startedAt: Date;
@@ -124,560 +114,244 @@ type SandboxInstance = {
 
 约束：
 
-- `provider + sandboxId` 唯一，约束单个 provider 的物理记录。
-- App 与 Skill Edit 共用 unique index：`sourceType + sourceId + userId`。
-- App 记录的 `userId` 是有效用户 ID；Skill Edit 记录的 `userId` 固定为
-  `ChatSourceTypeEnum.skillEdit`，不使用发起编辑的真实用户 ID。
-- v2 记录的 `userId` 必填；`chatId` 不写入实例记录。
-- 稳定态候选索引使用 `status + lastActiveAt`；过渡态接管索引使用
-  `status + metadata.operation.heartbeatAt`。不再为 `metadata.archive.*` 建立索引。
+- `(provider, sandboxId)` 唯一，约束 Provider 侧物理资源记录。
+- `(sourceType, sourceId, userId)` 唯一，约束业务逻辑实例。
+- 稳定态只有 `running/stopped/archived`，稳定态不得残留 operation。
+- 每个过渡态必须匹配唯一 operation 类型。
+- 过渡态接管按 `status + metadata.operation.heartbeatAt` 查询，空闲资源按
+  `status + lastActiveAt` 查询。
+- v2 不包含 `chatId`、旧 `appId/type`、`metadata.archive` 或 `metadata.migration`。
 
-### 3.2 旧实例集合
+### 3.2 Legacy 实例
 
-旧集合保留独立 Legacy Schema，只供管理迁移模块使用。运行时 Repository、Skill Edit、归档 cron、资源 API 和清理逻辑不得再导入 Legacy Model；v2 身份寻址不兼容旧 sandboxId。
+旧 `agent_sandbox_instances` 使用独立 Legacy Schema，只允许 migration repository、迁移预检和
+Source 删除清理读取。普通 runtime、归档 cron、资源 API 和 Skill Edit 不得回退查询 Legacy 表。
 
-## 4. 运行时设计
+已确认 Legacy 数据不存在 E2B 记录，因此当前 Provider 和迁移范围仅包含 OpenSandbox 与 Sealos
+Devbox，不保留 E2B adapter 或数据兼容分支。
 
-### 4.1 ID 生成
+## 4. 运行时与文件行为
 
-- v2 统一使用 `generateSandboxId({ sourceType, sourceId, userId })`。
-- 输出格式为 `sourceType.toLowerCase() + "-" + hash(sourceId + "-" + userId)`，hash 保留 16 位小写十六进制。
-- App 使用有效用户 ID；Skill Edit 使用固定值 `ChatSourceTypeEnum.skillEdit`。
-- App 与 Skill Edit 均不把 `chatId` 放入 ID；`chatId` 只映射到 App Sandbox 的 session 目录。
-- 不保留旧三参数 ID 或无前缀 ID 的兼容分支。
+`prepareAgentSandboxRuntime` 根据标准 Chat source 生成稳定 ID，并返回 `sandboxClient`、
+`workspaceRoot` 和当前 `workDirectory`。完整路径只通过 `SandboxClient.getRuntimePaths()` 暴露给
+文件 API、IDE 和 migration，避免调用方自行拼接 Provider 路径。
 
-### 4.2 Runtime Context
+App runtime 遵循以下规则：
 
-`prepareAgentSandboxRuntime` 返回：
+1. shell 和文件工具以 `sessionWorkDirectory` 为默认目录。
+2. 相对路径锚定当前 session；绝对路径必须位于 `workspaceRoot` 内。
+3. 用户输入文件写入 `<sessionWorkDirectory>/user_files`。
+4. 写文件、运行时文件注入和 HTTP 上传在调用 Provider `writeFiles` 前统一创建目标父目录。
+5. Skill 包和 Skill entrypoint 使用共享 `runtimeSkillsRoot`，不进入 session 目录。
+6. 内置 Skill 同步到 Sandbox HOME 下的 `.fastgpt/skills/<name>`，不进入用户 Workspace、编辑树、
+   导出包或发布包。
+7. App entrypoint 在 `workspaceRoot` 执行；同一脚本内容按 hash 幂等执行。
 
-```typescript
-{
-  sandboxClient;
-  workspaceRoot;
-  workDirectory;
-}
-```
+同一 Sandbox 的 prepare 使用 `agent-sandbox:init:<sandboxId>` Redis lease 串行化。锁覆盖 session
+目录准备、输入文件注入、镜像源、Skill 同步、entrypoint 和 Skill 扫描；锁释放后，后续 Chat 可以
+重新调整共享 `projects`，因此 `/projects` 不承诺在一次 Agent 执行期间保持不变。
 
-其中 `workDirectory` 是当前 prepare step 的默认目录：App 使用
-`sessionWorkDirectory`，Skill Edit 使用 `workspaceRoot`。完整的三个运行时路径只由
-`SandboxClient.getRuntimePaths()` 暴露给文件 API、IDE 和迁移逻辑，不重复铺到 prepare context。
+## 5. 生命周期与并发
 
-`SandboxClientQuery` 仍可接收 `chatId`，但仅用于构造运行时路径；`ensureAvailable` 不再将其写入实例记录。
+### 5.1 状态转换
 
-### 4.3 工具和文件路径
-
-- `SandboxClient.exec` 对 App 命令先确保 session 目录存在，再从 session 目录执行。
-- read/write/edit/search/getFileUrl 的相对路径锚定到 session 目录。
-- 绝对路径只允许位于 `workspaceRoot` 内，避免文件 API 越过当前 Sandbox Workspace。
-- 输入文件写入 `<sessionWorkDirectory>/user_files`。
-- Skill 注入和 Skill entrypoint 使用 `runtimeSkillsRoot`，不使用 session 目录。
-- 现有按 `sandboxId` 的 Redis 初始化 lease 覆盖共享 `/projects` 写入；Chat 2 只能在 Chat 1
-  初始化完成后重新同步或调整 Skill。
-- App entrypoint 使用 provider 原生 execute，并在 `workspaceRoot` 执行。
-
-### 4.4 Sandbox Editor
-
-- Ticket 响应增加 `workspaceRoot` 和 `sessionWorkDirectory`。
-- 前端文件树初始目录使用 `sessionWorkDirectory`。
-- 本次不提供返回 `workspaceRoot` 的面包屑或根目录切换状态。
-- 现有 proxy 和 ide-agent 协议不改动。Ticket 返回绝对路径，前端换算为 session
-  相对路径后调用 IDE RPC。
-
-## 5. 生命周期与删除
-
-- 自动 stop/archive cron 可以保留独立 timer lock 避免重复扫描，但 timer lock 不承担资源正确性；
-  每条记录执行前都必须获取 `Sandbox Lifecycle Lease`、重新读取记录并完成状态 CAS。
-- 自动 stop/archive 候选查询只匹配稳定态；`legacyMigrating` 和其他过渡态不会成为候选。
-- stop 只能将 `running` CAS 为 `stopping` 后调用 Provider；完成后再用匹配的
-  `metadata.operation.id` 提交为 `stopped`。
-- archive 将 `running/stopped` CAS 为 `archiving`。归档上传、Sandbox 删除和 volume 删除都以
-  `metadata.operation.phase` 持久记录；全部完成后才能提交为 `archived`。
-- `deleting` 只表示业务资源删除，不再复用为 archive 的内部阶段。归档清理失败时保留
-  `archiving`，由同一操作重试或 stale recovery 接管。
-- restore 只能将 `archived` CAS 为 `restoring`；正在执行 `archiving`、`deleting` 或其他过渡
-  操作时不得恢复。
-- 归档恢复成功并将 Mongo 记录切回运行态后，尽力删除已消费的 S3 归档；删除失败只记录日志，
-  不回滚已经成功恢复的 Workspace。
-- 自动资源删除在 Lifecycle Lease 内重新检查最新 `status` 和 source active 状态。
-- `deleteChatResourcesBySource` 不再调用 Chat 级 Sandbox 删除。
-- 普通资源删除先使用 `Source Mutation Lease` 阻止首次创建和 Legacy 导入，再逐条使用
-  `Sandbox Lifecycle Lease` 将最新记录 CAS 为 `deleting` 并清理 Provider、volume 和 S3。
-- App 和 Skill 删除都在 source 临界区内同时查询并清理 v2 与 Legacy 记录。任何关键清理失败都
-  向上抛出，由删除队列重试；在全部资源完成前不得硬删除 source。
-- Legacy 导入失败时保留目标 `legacyMigrating`、旧 S3 和旧记录，管理员重试根据 migration
-  operation 和 Legacy 阶段继续处理，不能把部分导入的 Workspace 暴露给普通 runtime。
-
-### 5.1 App Provider 切换
-
-1. 真实用户请求在恢复/创建前按 `sourceType=app + sourceId + userId` 查询逻辑记录；keepalive
-   只检查当前 provider，不触发迁移。
-2. 发现旧 provider 记录时获取 provider 无关的 `Sandbox Lifecycle Lease`，并在锁内重新读取
-   `provider + status + metadata.operation`。
-3. `running/stopped` 记录先通过标准 archive 状态机稳定进入 `archived`；任何过渡态必须恢复或
-   接管原操作，不能提前创建新 provider 的空 Workspace。
-4. 在归档旧资源前校验目标 adapter 配置。归档成功后，持有同一个 Lifecycle Lease，通过
-   `_id + oldProvider + status=archived + operation 不存在` CAS 原子更新同一条记录的 provider 和
-   目标 runtime image；Provider 切换本身没有远端副作用，不创建额外过渡态或 operation。
-5. CAS 失败时重新读取：已经由并发请求切到目标 provider 则继续，否则返回状态变化错误。
-6. 标准 restore 状态机在新 provider 恢复 Workspace；恢复成功后删除已消费的 S3 归档。
-7. 部署切换期间必须保留旧 provider 的连接凭据；从 OpenSandbox 迁出时还需保留对应的
-   volume-manager 配置，直到旧记录全部完成归档和远端资源清理。
-
-## 6. 迁移设计
-
-升级到当前版本镜像前，必须先在上一个仍包含 `/api/admin/4150/init4150-beta6` 的版本镜像中，
-以 `dryRun=false` 完成 4.15.0-beta6 Sandbox 字段归一化。确认该任务完成后再升级当前版本镜像，
-并执行 `initUserSandbox`。当前版本不再提供 beta6 入口，两个脚本也不会自动串联；
-`initUserSandbox` 的整表预检会拒绝仍残留 `appId/type/metadata.skillId` 等旧字段的记录，防止跳过
-前置迁移后写入 v2 集合。
-
-已确认 Legacy 集合不存在 E2B 记录，因此当前 migration 只接受 OpenSandbox 和 Sealos Devbox，
-不保留 E2B adapter 或历史 provider 兼容分支。
-
-管理员迁移入口首先读取原始 Legacy 文档并执行整表结构预检。App 必须具备合法的
-`sourceType/sourceId/userId/chatId`，Skill 必须具备合法的 `sourceType/sourceId`，公共字段
-和可选配置必须符合 Legacy Zod Schema，且不得残留 beta6 已清理的 `appId/type/metadata.skillId`。
-任一记录失败时直接拒绝整次任务，错误返回 `_id`、`sandboxId`、字段路径和原因；预检通过前
-不写新表、不连接 Sandbox、不访问 S3，也不产生迁移 Track。
-
-### 6.0 全量预归档屏障
-
-`initUserSandbox` 调整为两个严格分离的阶段。第一阶段只处理 Legacy 资源，不创建、启动或接管
-任何 v2 Sandbox；第二阶段只有在本轮所有待迁移 Legacy 记录都完成第一阶段后才开始：
-
-1. 第一阶段对所有未完成记录生成或复用 Legacy S3 Workspace 归档，确认归档存在后删除旧物理
-   Sandbox 和 OpenSandbox volume，最后把 Legacy 记录提交为 `status=stopped`、
-   `metadata.archive.state=archived` 和 `metadata.userLevelMigration.phase=archiveReady`。
-2. 删除旧物理资源前必须先把已上传归档持久化为可恢复的 `deleting` 状态。进程在删除后、提交
-   `archiveReady` 前退出时，重试必须复用 S3 归档并幂等重试删除，不能重新连接已经删除的实例。
-3. 第一阶段应继续处理本轮其他 Legacy 记录并收集全部失败；只要存在一条归档、归档校验、
-   Sandbox 删除或 volume 删除失败，本轮就不得进入第二阶段，也不得由 migration 创建新的 v2
-   Sandbox。
-4. 第一阶段完成后建立全局屏障检查：全部未完成记录必须至少处于 `archiveReady`；已经进入
-   `installed/cleanupPending` 的历史中断记录也必须确认旧物理资源已删除且 Legacy S3 归档存在。
-5. 第二阶段只从 Legacy S3 下载归档并安装，不再连接、打包、停止或删除旧物理 Sandbox。
-6. `completed` 记录继续作为终态跳过，但整表预检仍校验其 `stopped + archived` 不变量。
-
-上述屏障只约束 `initUserSandbox` 自身，不限制正常用户请求创建 v2 Sandbox。真实用户请求可能在
-某个 source 完成第一阶段并释放 `Source Mutation Lease` 后、全表第一阶段尚未完成前创建 v2
-目标；第二阶段继续接管或复用该目标，并按目标现有内容优先的规则合并 Legacy Workspace。
-
-### 6.1 Skill Edit
-
-1. 使用 `generateSandboxId({ sourceType: skillEdit, sourceId, userId: skillEdit })` 生成新的目标物理
-   ID；不把旧无前缀 `sandboxId` 写入 v2。
-2. 全量预归档屏障通过后，按 Skill 获取 `Source Mutation Lease` 并确认 source active，再按新目标 ID 获取
-   `Sandbox Lifecycle Lease`。先创建 `legacyMigrating` v2 记录作为发布屏障，普通 runtime 不得抢先
-   创建空 Sandbox。
-3. Skill 第二阶段只接受至少为 `archiveReady` 的 Legacy 记录，并从 Legacy S3 下载归档；归档缺失
-   时失败且不创建或发布目标。
-4. Skill 复用 `archiveReady -> installed -> completed` 持久阶段。归档安装到新目标
-   Workspace 根目录；目标已存在时递归合并且始终保留目标现有内容。只有 `installed` 已提交后才把
-   目标发布为 `running`。
-5. 发布成功后只把迁移阶段提交为 `completed`；旧物理资源已在第一阶段删除，旧 S3 和 Legacy
-   记录继续保留。
-6. 如果升级后的 Skill runtime 已先创建稳定 v2 目标，migration 接管该目标并按相同冲突规则补充
-   Legacy 内容；目标已归档时先复用正式 restore 状态机，再进入 migration operation。
-
-### 6.2 App Workspace
-
-1. 按 `sourceId + userId` 聚合 Legacy App 记录。
-2. 全量预归档屏障通过后，每个 source 分组获取 `Source Mutation Lease`，确认 App source active 后再获取目标
-   `Sandbox Lifecycle Lease`，创建或 CAS 确定性的用户级目标记录为 `legacyMigrating`，并写入
-   `type=legacyMigration` 的 operation。普通 runtime 只能返回忙碌，不能接管成空 Workspace；如果
-   升级后的 runtime 已提前发布同一确定性 ID 的 `running/stopped` 目标，migration 允许接管并按
-   目标内容优先的规则合并 Legacy Workspace。目标为 `archived/restoring` 时，migration 先复用正式
-   restore 状态机恢复 v2 自身归档，再接管并合并 Legacy Workspace，禁止只拉起空资源。
-3. migration 模块直接在 `legacyMigration` operation 内按 phase 创建、启动或恢复目标 Sandbox，
-   不通过普通 `getSandboxClient` 暴露未完成的目标。
-4. 第二阶段只接受第一阶段已经提交为 `archiveReady` 的记录，并从 Legacy S3 下载归档。归档缺失
-   时迁移失败，禁止连接已经删除的远端实例或迁移空 Workspace。
-5. 每条 Legacy 记录持久保存 `archiveReady -> installed -> completed` 阶段；`pending` 只属于第一
-   阶段，`cleanupPending` 仅作为旧版本中断状态兼容处理。
-6. 在目标 Sandbox 的 `.migration/<oldSandboxId>` 解压 staging。
-7. 删除 staging 中直接位于 `projects/` 下且名称为 24 位十六进制 ID 的目录。
-8. 目标 session 不存在时 rename staging 到 session；已存在时递归合并 staging，目录同名
-   时继续向下合并，文件同名或文件/目录类型冲突时保留 session 现有内容。
-9. 安装成功后必须先把阶段持久化为 `installed`；目标目录存在本身不能作为安装成功依据。
-10. 同组全部 Legacy 记录至少进入 `installed` 后，才用匹配的 `metadata.operation.id` 把目标从
-    `legacyMigrating` 一次性发布为 `running` 并清除 operation。
-11. 单次任务按 `lastActiveAt` 降序读取全部 Legacy 记录，优先迁移最近活跃的 Workspace；Skill
-    按 source 分组并把 Workspace 搬到新物理 ID，固定并发度为 20；App 固定并发度为 5，按
-    `sourceId + userId` 分组后组间并发、组内按最近活跃时间顺序串行。
-12. 目标发布后把每条 Legacy 记录提交为 `completed`。旧 Sandbox、volume 和归档校验已经由
-    第一阶段完成，第二阶段不得再执行旧物理资源清理。
-
-### 6.3 失败与重试
-
-- 目标 Workspace 安装失败时保留 `status=legacyMigrating`，在 operation 中写入失败步骤、时间和
-  错误，不删除该条旧记录或 S3。
-- 第一阶段任一 Legacy 记录失败时继续收集其他归档结果，但全局阻断第二阶段；重试只处理尚未
-  完成预归档的记录。
-- 目标 Workspace 安装成功但发布失败时保留 `installed`，重试接管 migration operation 后完成
-  发布，不重复推断或安装 Workspace。
-- 重试在 Source Lease 和 Lifecycle Lease 下接管旧 `legacyMigration` operation，生成新的
-  operation ID，只查询仍存在的 Legacy 记录并从其持久阶段继续。
-- `completed` 是 migration 的终态，后续全量任务只预检但不再处理；目标目录存在但阶段仍为
-  `pending/archiveReady` 时不得推断迁移完成。
-- 迁移任务保留 job 级 singleton lease 避免重复调度；每个分组的正确性由 Source Mutation
-  Lease 保证，不能依赖全局 lease 阻塞其他 source 的生命周期。
-- 第一阶段已经统一删除全部旧物理资源，因此第二阶段失败后不再执行批量 stop；修复后只能从
-  Legacy S3 归档重试。
-- 待处理 Legacy 记录为 `installed` 时说明文件安装已经完成；目标为稳定态时只提交 `completed`，
-  目标仍为 `legacyMigrating` 时接管 operation 完成发布。已经 `completed` 的记录不进入迁移分组。
-- 已发布的 App 目标仍有 `pending/archiveReady` 时，允许重新进入 `legacyMigrating` 并合并 Legacy
-  Workspace；已有 session 内容优先。目标为 `archived/restoring` 时先完成 v2 归档恢复；恢复失败
-  保留 Legacy 记录且不进入 migration claim，后续重试仍从 restore 状态机继续。
-
-## 7. 测试范围
-
-- App ID 对相同 App + User 稳定，且不受 Chat ID 影响，并带 `app-` 前缀。
-- 不同 App 或 User 生成不同 ID；Skill Edit 对同一 Skill 稳定并带 `skilledit-` 前缀。
-- 新表 App `userId` 使用有效用户 ID，Skill Edit `userId` 固定为 `skillEdit`。
-- 新实例 Schema、类型、索引和写入均不包含 `chatId`、`metadata.archive` 或
-  `metadata.migration`。
-- App/Skill 共享复合 unique index 正确。
-- Runtime Context 正确拆分 Workspace、Skill 和 Session 路径。
-- shell、文件工具、输入文件、HTTP 上传下载和预览使用正确路径。
-- App entrypoint 使用 Workspace 根目录，Skill 使用 `/projects`。
-- Editor Ticket 返回两个运行时路径，前端固定以 session 为文件树根目录。
-- migration 使用 `legacyMigrating` 发布屏障；普通 runtime 不会连接或改写未完成目标。
-- Legacy 导入失败保留 migration operation 和旧记录阶段，重试更换 operation ID 后继续。
-- source 删除在两层 lease 下把 `legacyMigrating` 抢占为 `deleting`，旧 operation 不能再提交。
-- Chat 删除不删除共享 Sandbox；App 删除仍删除。
-- Skill 迁移使用新的 `skilledit-...` 物理 ID 搬迁 Workspace，并在发布后清理旧资源与 S3。
-- App 迁移覆盖默认目录、新 session 优先的冲突合并、重试、单条清理和最终状态清理。
-
-## 8. TODO
-
-- [x] 更新 Notion 规格与实施状态。
-- [x] 编写仓库内需求和技术设计。
-- [x] 新增 Legacy Model，并将运行时 Model 切换到 `agent_sandbox_instances_v2`。
-- [x] 调整新实例 Zod Schema、Mongo Schema、索引和 Repository。
-- [x] 新增用户级 Sandbox ID 和 Runtime Path helper。
-- [x] 调整 SandboxClient、归档恢复和 Skill Edit 读写，移除实例级 `chatId`。
-- [x] 调整 Agent runtime、Skill 注入、entrypoint 和输入文件路径。
-- [x] 调整 Sandbox 工具的命令与文件路径解析。
-- [x] 调整 upload/download/preview/ticket/checkExist API 和 Editor 初始目录。
-- [x] 调整 Chat 删除、App 删除、自动 stop/archive/delete 生命周期。
-- [x] 串行化真实用户级迁移与自动 stop 的远端副作用。
-- [x] 删除旧归档脚本和 v2 临时归档脚本，v2 闲置归档统一由定时任务执行。
-- [x] 补齐 App Sandbox 跨 provider 归档、CAS 切换和恢复闭环。
-- [x] 增加同步 S3 归档删除与存在性检查。
-- [x] 实现 Skill Edit Legacy 记录迁移。
-- [x] 实现 App Workspace 分组迁移、staging、新 session 优先合并和逐条清理。
-- [x] 编写并运行局部单元测试。
-- [x] 运行相关 TypeScript 检查。
-- [x] 最后运行全量测试。
-- [x] 更新 Notion 实施进度。
-
-### 8.1 全量预归档屏障调整 TODO
-
-- [x] 明确 `initUserSandbox` 两阶段顺序、全局屏障和失败恢复不变量。
-- [x] 确认屏障只约束 migration，不阻止正常 runtime 首次创建 v2 Sandbox。
-- [x] 实现第一阶段全量 Legacy S3 归档、归档校验和旧 Sandbox/volume 删除。
-- [x] 实现第一阶段全成功后才进入 v2 创建、启动和 S3 合并的全局屏障。
-- [x] 移除第二阶段的旧物理资源删除和失败 App 批量 stop。
-- [x] 兼容 `installed/cleanupPending` 等当前分支可能产生的中断阶段。
-- [x] 补充全局屏障、失败重试、归档后恢复和无旧 Provider 访问的单元测试。
-- [x] 运行 migration 局部测试和相关 TypeScript 检查。
-- [x] 最后运行全量测试；`app/admin` 中多个无关用例在全量并发下超时或性能断言失败，
-  Turborepo 随后中断剩余任务；本次迁移相关 27/27 局部用例与 App TypeScript 检查通过。
-
-## 9. 生命周期并发深度重构（已确认）
-
-### 9.1 问题分析
-
-当前实现同时存在三类 Redis lease：
-
-- 用户级 Legacy 迁移使用全局 lease。
-- Provider 切换使用 Sandbox ID 级独立 lease。
-- Skill/Entrypoint 初始化使用 Sandbox ID 级初始化 lease。
-
-其中初始化 lease 只保护 Workspace 文件同步，职责明确，可以继续保留。其余生命周期操作仍存在以下结构性问题：
-
-1. `stop`、普通删除、归档、恢复和 Provider 切换没有统一使用同一个资源互斥域。
-2. 部分流程先执行远端副作用，再尝试 Mongo CAS。CAS 失败只能阻止本地状态写入，不能撤销已经发生的远端 `stop/delete`。
-3. Redis lease 续期失败只会在任务返回后抛错，不能停止正在执行的异步任务。
-4. `Promise.race` 形式的 timeout 不会取消底层归档或删除任务，旧任务可能在调用方已经返回失败后继续运行。
-5. App/Skill 删除与 Legacy 迁移没有完整的持久删除 fence，迁移可能在 source 已删除后重新创建 v2 记录。
-6. Legacy App 迁移以“目标 session 已存在”推断安装成功，无法区分成功重试和新运行时提前创建的同名目录。
-
-因此本轮不再继续给单个调用点补锁，而是统一生命周期状态和资源操作协议。
-
-### 9.2 正确性不变量
-
-重构后的实现必须满足：
-
-1. 同一个稳定 `sandboxId` 在任意时刻最多只有一个远端生命周期操作执行，Provider 切换前后使用同一个互斥 key。
-2. 所有不可逆远端操作必须先完成 Mongo 状态抢占，再调用 Provider。
-3. 每次状态转换携带唯一 `metadata.operation.id`；后续成功、失败和恢复只能更新同一轮操作。
-4. Redis lease 只减少重复执行。即使 lease 丢失、进程退出或请求超时，Mongo 状态和幂等远端操作仍能收敛。
-5. App/Skill 进入删除流程后，运行时、Provider 迁移和 Legacy 迁移都不得重新创建其 Sandbox。
-6. Legacy 记录只有具备持久 `installed` 标记时，才能在旧 S3/远端资源已经不存在的情况下直接进入清理。
-7. cron timer lock 只负责避免重复扫描；每条候选记录在执行前仍需重新读取并抢占生命周期状态。
-
-### 9.3 锁分层
-
-只保留两类资源正确性互斥：
-
-#### Source Mutation Lease
-
-- Key：`agent-sandbox:source:<sourceType>:<sourceId>`。
-- 用于某个 source 的首次 provisioning、Legacy 导入、App 删除和 Skill 删除。
-- 保护“检查 source 可运行 -> 创建第一条 v2 记录”和“标记 source 删除 -> 查询并清理新旧记录”的完整边界。
-- 同一 App 的不同用户只有首次创建 Sandbox 时需要该锁；已有实例的正常运行不获取 source 锁。
-- Legacy 全量任务仍可保留 job 级 singleton lease 防止重复执行，但 job lease 只负责调度，不作为资源正确性依据。
-
-#### Sandbox Lifecycle Lease
-
-- Key：`agent-sandbox:lifecycle:<sandboxId>`，不包含 provider。
-- 用于 provisioning、stop、archive、delete、restore、Provider 切换和 stale retry。
-- 获取后必须重新读取 Mongo 状态，禁止使用获取锁前的资源快照直接执行远端操作。
-- 多资源操作按 `sandboxId` 排序后逐个执行，不同时持有大量资源锁。
-
-统一锁顺序为：`Source Mutation Lease -> Sandbox Lifecycle Lease`。任何路径不得反向获取。
-
-初始化 lease `agent-sandbox:init:<sandboxId>` 继续只保护 `/projects`、输入文件和 entrypoint 准备，不参与生命周期状态转换。
-
-### 9.4 生命周期状态
-
-#### 唯一权威状态
-
-v2 实例统一使用顶层 `status` 表达生命周期。`status` 同时作为业务判断、Mongo 查询、索引和
-CAS 抢占条件，不再引入 `metadata.lifecycle`，也不再通过 `metadata.archive.state` 叠加第二套
-状态：
-
-```typescript
-type SandboxStatus =
-  | 'provisioning'
-  | 'legacyMigrating'
-  | 'running'
-  | 'stopping'
-  | 'stopped'
-  | 'archiving'
-  | 'archived'
-  | 'restoring'
-  | 'deleting';
-```
-
-状态分为两类：
-
-- 稳定态：`running`、`stopped`、`archived`。
-- 过渡态：`provisioning`、`legacyMigrating`、`stopping`、`archiving`、`restoring`、
-  `deleting`。
-
-不设置通用 `failed` 状态。不同操作失败后的资源确定性和恢复方式不同，统一落入 `failed`
-会丢失正在执行的操作语义。远端调用已经开始后发生错误，记录保留在原过渡态，由
-`metadata.operation` 保存错误并供下一执行者接管。
-
-#### 操作上下文
-
-`metadata.operation` 不是状态，只是当前过渡操作的持久 fencing token 和恢复日志：
-
-```typescript
-type SandboxOperation = {
-  id: string;
-  type:
-    | 'provision'
-    | 'legacyMigration'
-    | 'stop'
-    | 'archive'
-    | 'restore'
-    | 'delete';
-  phase: string;
-  previousStatus?: 'running' | 'stopped' | 'archived';
-  startedAt: Date;
-  heartbeatAt: Date;
-  failedAt?: Date;
-  error?: string;
-};
-```
-
-- 所有过渡态必须存在 `metadata.operation`，稳定态不得保留未完成 operation。
-- `operation.id` 每次抢占时重新生成，旧执行者只能用自己的 ID 提交，不能覆盖接管者结果。
-- `phase` 记录已持久完成的幂等步骤，不能通过远端目录或资源“看起来存在”推断步骤完成。
-- `previousStatus` 仅用于明确允许回滚的操作，不作为当前状态来源。
-- Legacy Workspace 导入使用正式的 `legacyMigrating` 状态和 `legacyMigration` operation。
-  migration 模块负责 phase 和重试，不再设置正交的 `metadata.migration` 标记。
-
-`agent_sandbox_instances_v2` 是尚未上线的全新表，直接以本设计作为唯一数据契约：
-
-- 不读取或写入旧 `metadata.archive`。
-- 不读取或写入 `metadata.migration`。
-- 不对 v2 提供旧状态 fallback、双读、schema 回填或兼容迁移。
-- 不为尚未产生的 v2 历史数据保留兼容分支。
-- Legacy 集合继续使用独立 Legacy Schema；migration 模块直接读取旧记录，并且写入 v2 前
-  必须转换为本节定义的新模型。v2 Repository 和 runtime 不读取 Legacy Schema。
-- `initUserSandbox` 的旧表 Workspace 搬迁仍是本分支直接实现的核心业务流程，不属于 v2
-  schema 兼容。
-
-#### 状态转换表
-
-| 操作 | 抢占转换 | 成功转换 | 关键阶段示例 |
+| 操作 | 起始状态 | 过渡态 | 终态 |
 | --- | --- | --- | --- |
-| 首次创建 | 无记录 -> `provisioning` | `provisioning` -> `running` | `claimed`、`providerEnsured` |
-| 启动已停止实例 | `stopped` -> `provisioning` | `provisioning` -> `running` | `claimed`、`providerEnsured` |
-| Legacy Workspace 导入 | 无记录/稳定态 -> `legacyMigrating` | `legacyMigrating` -> `running` | operation 使用 `claimed`、`targetEnsured`；每条 Legacy 记录独立保存安装阶段 |
-| 停止 | `running` -> `stopping` | `stopping` -> `stopped` | `claimed`、`providerStopped` |
-| 归档 | `running/stopped` -> `archiving` | `archiving` -> `archived` | `claimed`、`archiveUploaded`、`providerDeleted` |
-| 恢复 | `archived` -> `restoring` | `restoring` -> `running` | `claimed`、`archiveInstalled` |
-| Provider 切换 | 保持 `archived` | 保持 `archived` | Lifecycle Lease 内预校验目标配置并原子 CAS provider，不创建 operation |
-| source 删除 | 任意状态 -> `deleting` | 删除 Mongo 记录 | `claimed`、`providerDeleted`、`volumeDeleted`、`archiveDeleted` |
+| 首次创建 | 无记录 | `provisioning` | `running` |
+| Legacy 导入 | 无记录或可接管目标 | `legacyMigrating` | `running` |
+| 停止 | `running` | `stopping` | `stopped` |
+| 归档 | `running/stopped` | `archiving` | `archived` |
+| 恢复 | `archived` | `restoring` | `running` |
+| 删除 | 可抢占状态 | `deleting` | 删除记录 |
 
-过渡态不能被普通 runtime、keepalive 或 cron 直接改写成稳定态，只能由持有匹配
-`operation.id` 的当前操作完成或由 stale recovery 接管。
+每次生命周期操作先通过 Mongo CAS 抢占 operation，再执行 Provider、volume 或 S3 副作用；每个
+副作用完成后持久化 phase，最后使用相同 operation ID 提交终态。失败保留过渡态、phase 和错误，
+由原操作重试或满足隔离窗口后的 stale recovery 接管，不能直接把过渡态改回 `running`。
 
-接管同一过渡态时必须生成新的 `operation.id`，但保留已经提交的 `phase`，不能重置为
-`claimed`。各流程从持久阶段继续：
+### 5.2 Lease 分层
 
-| 状态与已提交 phase | 接管后的下一步 |
-| --- | --- |
-| `provisioning.providerEnsured` | 直接提交 `running`，不重复创建 provider |
-| `stopping.providerStopped` | 直接提交 `stopped` |
-| `archiving.archiveUploaded` | 继续删除 provider/volume |
-| `archiving.providerDeleted` | 直接提交 `archived`，禁止重建空 provider 覆盖归档 |
-| `restoring.archiveInstalled` | 直接提交 `running`，不重复下载或解压 |
-| `deleting.providerDeleted/volumeDeleted/archiveDeleted` | 从下一项清理步骤继续 |
-
-旧 provider 上中断的 `restoring` 不能直接开始 provider 切换。超过隔离窗口或明确记录错误后，
-先重新 fencing `restore`，幂等删除旧 provider 的半成品容器和 volume，但保留 S3 归档；提交回
-`archived` 后直接原子切换 provider。
-
-### 9.5 统一资源操作协议
-
-每个生命周期操作统一执行：
-
-1. 获取 `Sandbox Lifecycle Lease`。
-2. 在 lease 内重新读取当前记录；会创建或恢复远端资源的入口还必须重新检查 source active。
-3. 用 `_id + provider + sandboxId + status` CAS 到过渡态，并原子写入完整
-   `metadata.operation`。
-4. 执行有明确 timeout、可重试且幂等的 Provider/volume/S3 操作。
-5. 每个可恢复阶段完成后，用 `_id + status + metadata.operation.id` CAS 更新 `phase` 和
-   `heartbeatAt`。
-6. 最终用 `_id + status + metadata.operation.id` CAS 到稳定态，并删除
-   `metadata.operation`；删除操作最终按相同条件删除 Mongo 记录。
-7. 任意关键步骤失败都保留过渡态、已提交 phase 和 operation 错误，交给同一操作重试或
-   stale recovery 接管；不得用清空状态后继续的策略绕过发布屏障。
-
-运行态活跃时间刷新可以保留无锁 CAS 快路径，但只能匹配 `running`。stop 必须先从 `running` CAS 到 `stopping`：
-
-- keepalive/touch 先成功时，stop 的 `lastActiveAt` CAS 失败，不调用远端 stop。
-- stop 先抢占时，运行态看到 `stopping` 后等待或重试，不把记录直接写回 running。
-
-### 9.6 Source 删除 Fence
-
-App/Skill 删除和首次 provisioning 必须使用同一个 Source Mutation Lease：
-
-1. 首次 provisioning 获取 source 锁后重新确认 source 存在且没有 `deleteTime`，然后先写入 `provisioning` 记录，再调用远端创建。
-2. 已有实例的运行态 touch 只能更新现存 `running` 记录，不允许走 upsert；锁外读到的记录若在等待 Lifecycle Lease 时被删除，本次请求直接失败，后续请求只能持有 Source Lease 后重新进入首次 provisioning。
-3. App/Skill 删除获取 source 锁后重新确认 `deleteTime` 已设置，并在锁内同时查询 v2 和 Legacy 记录；未标记删除时禁止执行任何外部清理。
-4. 删除取得 source 锁后逐条等待 Lifecycle Lease；只有旧生命周期任务释放或确定丢失 lease、
-   且满足无法取消请求的隔离窗口后，才能 fencing 旧 operation，并从任意 status CAS 为
-   `deleting`。
-5. 每条资源在 Lifecycle Lease 内按最新 provider 清理，失败必须抛出以便删除队列重试，不能被 `Promise.allSettled` 静默吞掉。
-6. source 只有在所有关键外部资源清理完成后才能硬删除。硬删除后，“source 不存在”继续作为禁止 provisioning 的持久 fence。
-7. Source active 查询通过 application 层注入的 guard 完成，避免底层 Repository 直接依赖 App/Skill service。
-
-### 9.7 Legacy 迁移阶段
-
-每条 Legacy App/Skill 记录增加持久迁移阶段：
+锁顺序固定为：
 
 ```text
-pending -> archiveReady -> installed -> completed
+Source Mutation Lease -> Sandbox Lifecycle Lease
 ```
 
-- `pending`：旧 Workspace 尚未完成预归档和物理资源删除。
-- `archiveReady`：已获得可校验的 S3 归档，且旧 Sandbox 和 volume 已删除；全表记录全部至少到达
-  该阶段后，migration 才能开始创建或接管 v2 目标。
-- `installed`：Workspace 已成功提交到目标 session 或 Skill Workspace，并已把结果写回 Legacy 记录。
-- `completed`：旧物理资源已删除、旧归档仍存在、v2 目标已经发布；普通迁移不再处理。
-- `cleanupPending` 仅兼容当前分支旧链路产生的中断记录；新的两阶段流程不再写入该阶段。
-- `completed` 必须同时满足 Legacy 顶层 `status=stopped` 和 `metadata.archive.state=archived`。
-- 目标 session/Workspace 存在但 Legacy 仍是 `pending/archiveReady` 时，不得推断迁移完成。
+- Source Mutation Lease 串行化同一 App/Skill 的首次创建、Legacy 导入和业务删除。
+- Sandbox Lifecycle Lease 以稳定 `sandboxId` 为键，跨 Provider 串行化单个物理身份的生命周期。
+- Legacy migration job lease 只防止管理员重复调度，不承担单条资源正确性。
+- prepare 初始化 lease 只保护运行时文件准备，不替代生命周期 lease。
 
-Skill Legacy 迁移和 Skill 删除共用对应 Skill 的 Source Mutation Lease，并在迁移前确认 Skill source 未进入删除状态。
+长任务在每个远端副作用前后调用 lease `assertValid()`。Provider 的 create/start/stop/delete 必须
+基于稳定 ID 保持幂等，重复删除或 404 按成功处理。App/Skill source 在创建、恢复、迁移前必须仍然
+active；删除任务只处理已经持久标记删除的 source。
 
-### 9.8 Lease 丢失和超时
+### 5.3 归档与删除
 
-- `withRedisLease` 需要向任务暴露 `assertValid()` 或 `AbortSignal`，续期确认失败后阻止进入下一步远端副作用。
-- 不再使用无法取消底层任务的 `Promise.race` 作为生命周期操作终止依据。
-- Provider `create/start/stop/delete` 必须以稳定 `sandboxId` 保证幂等；重复删除和 404 视为成功。
-- stale retry 同时检查 `metadata.operation.id`、`heartbeatAt` 和 `status`。归档和恢复采用 45 分钟保守隔离窗口，覆盖安装工具、扫描、压缩、上传和解压命令链；stop 使用 15 分钟窗口。
-- 对无法取消的 Provider 请求，只有确认请求已超时结束或超过保守隔离窗口后，才允许恢复与删除重试竞争。
+- v2 归档使用 `sandbox/archive/<sandboxId>/package.zip`。
+- Legacy 归档继续使用 `agent-sandbox/<legacySandboxId>/package.zip`，不能直接改名为 v2 归档。
+- restore 发布 `running` 后尽力删除已消费的 v2 S3 归档；清理失败不回滚已恢复 Workspace。
+- App 删除清理全部用户级 v2 与 Legacy Provider 资源、volume、S3 和 Mongo 记录。
+- Skill 删除清理 Skill Edit Sandbox；普通编辑 Chat 删除不删除共享 Skill Edit Sandbox。
+- keepalive、存在性检查和历史资源 stop/delete 不得通过运行时 client 意外恢复 archived 实例。
 
-### 9.9 已确认决策
+## 6. Legacy Workspace 迁移
 
-1. `agent_sandbox_instances_v2` 是尚未上线的全新表，以新 schema 作为唯一契约，不增加任何
-   旧状态兼容、双读、回填或 fallback 逻辑。
-2. Source active guard 由 App/Skill application 层注入，复用 source 不存在或
-   `deleteTime` 已设置的语义，不新增 tombstone 集合。
-3. OpenSandbox 和 Sealos Devbox 全部纳入本轮重构；adapter 层统一稳定 ID 幂等语义，
-   删除不存在的资源和 404 统一视为成功。已确认 Legacy 集合不存在 E2B 记录，本轮不提供 E2B
-   数据迁移兼容。
-4. 顶层 `status` 是唯一生命周期状态；`metadata.operation` 仅承担 fencing、阶段恢复和错误
-   诊断职责，不引入 `metadata.lifecycle`。
-5. Legacy Workspace 导入直接重构为正式的 `legacyMigrating` 状态和 `legacyMigration`
-   operation，不增加 `metadata.migration` 或 v2 兼容分支；全部安装完成前不发布目标 Sandbox。
-6. v2 Sandbox ID 使用 `sourceType-<hash(sourceId-userId)>`；Skill Edit 的 `userId` 固定为
-   `ChatSourceTypeEnum.skillEdit`，不保留旧 ID 和空 userId 兼容。
+### 6.1 升级前提与预检
 
-### 9.10 重构 TODO
+升级到当前镜像前，必须先在仍提供 `/api/admin/4150/init4150-beta6` 的上一版本完成 beta6 字段
+归一化，再调用当前版本 `/api/admin/4160/initUserSandbox`。新入口默认 `dryRun=true`，不会自动
+串联旧脚本。
 
-- [x] 确认 v2 全新数据契约、source fence 实现、Provider 幂等约束和唯一状态模型。
-- [x] 定义顶层 status 状态机、operation 上下文和状态转换表。
-- [x] 调整 v2 schema，删除 `metadata.archive/metadata.migration`，增加完整过渡 status 和
-  `metadata.operation`。
-- [x] 定义 Repository 抢占、阶段提交、完成和 stale 接管 CAS API。
-- [x] 新增 Source Mutation Lease、provider 无关的 Sandbox Lifecycle Lease helper 和锁上下文。
-- [x] 重构 runtime provisioning/touch，禁止过渡态被直接写回 running。
-- [x] 重构 stop、archive、restore、delete 和 stale retry，统一为先 CAS 后远端操作。
-- [x] 将 Provider 切换并入同一 Lifecycle Lease 和状态机。
-- [x] 将首次 provisioning、Legacy 导入和 App/Skill 删除纳入 Source Mutation Lease，并增加 source active/deleted guard。
-- [x] 统一 v2 Sandbox ID 的 sourceType 前缀，并让 Skill Edit 使用固定 enum userId。
-- [x] 为 Legacy App 记录增加持久迁移阶段，删除基于目录存在的成功推断。
-- [x] 为 lease 丢失提供主动检查/取消能力，移除非取消式生命周期 timeout。
-- [x] 补充并发抢占、lease 丢失、进程中断、phase 恢复、清理重试和 Provider 幂等测试。
-- [x] 运行 Sandbox 局部测试、Mongo Repository 测试、App 删除测试和相关类型检查。
-- [x] 最后运行全量测试；全量并发下 3 个无关用例出现超时/隔离抖动，单独复跑 27/27
-  通过。
+管理员任务先对原始 Legacy 文档做整表预检。App 必须有合法的
+`sourceType/sourceId/userId/chatId`，Skill 必须有合法的 `sourceType/sourceId`，且不得残留旧
+`appId/type/metadata.skillId`。任一记录不合法时整次拒绝；预检通过前不写 v2、不连接 Provider、
+不访问 S3。
 
-### 9.11 Legacy 迁移备份与 v2 归档路径调整 TODO
+### 6.2 两阶段迁移
 
-- [x] 为 Legacy migration 增加 `completed` 终态，并从后续迁移分组中排除。
-- [x] 发布 v2 后只删除 Legacy Sandbox 和 volume，保留旧 S3 与 Mongo 记录并提交 archived 状态。
-- [x] 拆分 Legacy/v2 S3 key，v2 使用 `sandbox/archive/<sandboxId>/package.zip`。
-- [x] 保持 Source 删除对 v2 与 retained Legacy 备份的最终清理能力。
-- [x] 补充 S3 key、迁移幂等、Legacy 保留和 Source 删除测试。
-- [x] 运行局部测试、类型检查和最终全量测试。
+迁移分为全量预归档和 Workspace 安装两个严格阶段：
 
-### 9.12 测试分层与收敛
+1. 第一阶段为所有未完成 Legacy 记录生成或复用 S3 归档，确认归档后删除旧物理 Sandbox 和
+   OpenSandbox volume，并提交 `archiveReady`。
+2. 第一阶段继续收集全部失败；只要任一记录未完成归档、校验或资源删除，全局屏障就禁止第二
+   阶段创建 migration 目标。
+3. 第二阶段只从 Legacy S3 下载和安装 Workspace，不再连接或打包旧物理实例。
+4. App 按 `sourceId + userId` 聚合到一个用户级目标；Skill Edit 搬到新的稳定 Skill ID。
+5. 目标在安装期间保持 `legacyMigrating + legacyMigration operation`，普通 runtime 只能返回忙碌。
+6. 所有分组文件至少提交 `installed` 后，才一次性发布目标为 `running`。
+7. 发布后把 Legacy 阶段提交为 `completed`，保留旧 S3 和 Legacy Mongo 记录作为迁移备份。
 
-当前分支相对 `upstream/main` 引入了 lifecycle runner、Repository CAS 和各业务 facade 三层测试。
-测试职责按以下边界收敛，避免同一状态机规则在三层重复维护：
+第一阶段释放单个 Source Lease 后，正常用户请求可以先创建确定性的 v2 目标。第二阶段必须接管或
+复用该目标，并按“目标内容优先”规则合并，不能覆盖已经产生的用户文件。
 
-- lifecycle runner 测试负责 step checkpoint、断点续跑、失败持久化和终态提交。
-- Repository 测试负责 operation token、stale/failed 抢占窗口、CAS fencing 和索引查询。
-- archive、resource、runtime client、provider migration 等 facade 测试只保留业务副作用顺序、
-  业务分支、跨模块编排和不允许重放的远端操作。
-- Legacy migration 未使用通用 runner，其分组顺序、lease 中断、持久阶段和备份保留仍由 migration
-  测试直接覆盖。
+### 6.3 Workspace 安装规则
 
-TODO：
+- 每条 App Legacy Workspace 安装到目标 `sessions/<legacyChatId>`。
+- staging 中直接位于 `projects/` 下、名称为 24 位十六进制 Version ID 的运行时缓存目录不迁移。
+- 目标 session 不存在时使用 staging + rename 原子提交。
+- 目标已存在时递归合并；同名文件或文件/目录类型冲突都保留目标现有内容。
+- 目录存在不能推断安装成功，必须以持久化 `installed` 阶段为准。
+- 失败保留目标、Legacy 记录和归档；重试从持久 phase 继续，不重复已经确认的副作用。
+- `completed` 是 Legacy 迁移终态，后续迁移只预检、不重复安装。
 
-- [x] 删除 facade 层重复验证 operation 抢占窗口和通用 fencing 的用例。
-- [x] 合并 Legacy migration 失败后的暂停与数据保留断言。
-- [x] 保留每个远端生命周期的主流程、失败安全边界和断点续跑覆盖。
-- [x] 运行收敛后受影响的 Sandbox 测试和格式检查。
-- [x] 对比 `upstream/main` 复核测试净增量。
+Skill 分组并发度为 20；App 分组并发度为 5，组内按 `lastActiveAt` 从新到旧串行安装。
 
-### 9.13 Provider 迁移链路归一化 TODO
+## 7. 运行时配置收敛
 
-- [x] 确认 Provider 迁移与 Legacy 迁移只共享归档、物理资源清理和 Archive 安装原语；Legacy
-  N:1 合并继续保留独立 `legacyMigrating` 发布屏障。
-- [x] 删除 `providerMigrating` status、`providerMigration` operation 及其专用上下文字段。
-- [x] 把目标 adapter 校验前移到旧 Provider 归档前，配置无效时保持原运行资源可用。
-- [x] 在 `archived` 稳定态和 Lifecycle Lease 内原子 CAS provider 与目标 runtime image。
-- [x] 调整 runtime upgrade 状态解释、Repository 和 Provider migration facade 测试。
-- [x] 运行受影响的 Sandbox 局部测试和类型检查；最终根级 `pnpm test` 因并发覆盖率目录竞争及
-  Admin 用例超时未能一次通过，Service 全量和该 Admin 用例隔离复跑均通过。
+App Chat 和 Workflow 只在 Agent 或 ToolCall 节点确定本轮实际使用 Sandbox 后，比较目标 Provider
+以及目标镜像的 `repository + tag`：
+
+- 配置一致时直接创建、恢复或连接 runtime。
+- 镜像变化时通过标准 archive 状态机保存 Workspace，再使用目标镜像恢复。
+- Provider 变化时先校验目标 adapter，再在同一个 Lifecycle Lease 中归档旧资源，随后对原记录
+  原子切换 Provider 和镜像，最后使用标准 restore 恢复。
+- 活跃 operation 由当前请求等待或接管，不能并发启动第二条迁移链。
+- App 迁移在本次 Workflow 内静默完成，只发送 `upgrading -> lazyInit` 粗粒度状态，不弹窗、
+  不重放用户请求；失败按标准 Workflow 错误终止当前节点。
+- Skill Edit 继续由用户显式确认升级并在页面轮询，不复用 App Chat 的静默交互。
+
+迁移过程不新增数据库状态；它复用 archive、restore 和稳定 `archived` 状态。历史记录缺少
+`metadata.image` 时按镜像不一致处理。
+
+## 8. Sandbox 不可用时的 App Chat 降级
+
+普通 App Chat 使用三种稳定不可用原因：
+
+- `systemDisabled`：系统未配置或已下架 Sandbox。
+- `appDisabled`：当前 App Agent/ToolCall 未开启 Sandbox。
+- `teamPlanUnavailable`：应用团队套餐不提供 Sandbox，套餐查询失败也按该原因降级。
+
+不可用时不注入 Sandbox system prompt、Sandbox tools 或依赖 Sandbox 的 Skill，不准备 runtime、
+不执行 entrypoint，也不把关闭状态写成 Agent/ToolCall 错误；其他模型、工具、知识库和 Workflow
+节点继续运行。Skill Edit 和 Skill 调试仍是 Sandbox 强依赖，保持结构化错误阻断。
+
+`checkExist` 同时返回真实本地实例存在性和可选 `unavailableReason`，查询本身不能创建或恢复实例。
+页面加载与对话期间不主动提示；只有用户点击现有虚拟机入口时刷新状态并显示统一 Toast。Ticket、
+上传、下载和预览 API 仍在服务端重新校验可用性，不能依赖前端守卫。
+
+## 9. Workspace 直连预览
+
+HTML 预览和 `sandbox_get_file_url` 不再把文件上传到 S3，而是签发短期只读 URL：
+
+```text
+<previewProxy>/preview/<sandboxId>/<sessionId>/<workspaceRelativePath>
+```
+
+最终链路为：
+
+```text
+FastGPT 创建 Redis preview session
+  -> agent-sandbox-proxy 校验 session 并向 FastGPT 解析 Provider endpoint
+  -> fastgpt-ide-agent:1319 在 FASTGPT_WORKDIR 内流式读取文件
+```
+
+关键约束：
+
+- `sandboxId` 必须匹配 `app|skilledit-<16 hex>`；随机 `sessionId` 为 24 位字母数字字符串。
+- session TTL 为 2 小时，每个 Sandbox 最多 500 个活动 session。
+- URL 是对应 Sandbox 整个 Workspace 的临时只读 bearer capability，不只授权 URL 中单个文件。
+- session 只保存业务寻址上下文，不保存 Provider endpoint 或 IDE agent 密码。
+- 支持 `GET`、`HEAD`、ETag 和单段 Range；禁止目录列表、路径穿越和逃逸 Workspace 的软链接。
+- 响应使用 `no-referrer`、`nosniff` 和 `private, no-store`；公开预览 origin 必须与 FastGPT App
+  origin 隔离。
+- HTML 资源必须使用 `./assets/...` 等相对路径；`/assets/...` 根路径不保留 preview URL 前缀。
+- preview 与 Workspace 冷归档是独立能力，S3 archive 流程不受影响。
+
+FastGPT、proxy 和包含 1319 preview listener 的 runtime image 必须协调发布，不支持新旧版本混合
+滚动兼容。
+
+## 10. Provider 与模块边界
+
+### 10.1 Provider 最终契约
+
+- OpenSandbox `stop()` 删除远端计算实例，不调用 pause；它不删除 FastGPT 管理的 volume、Mongo
+  记录或 S3 归档。后续使用相同业务 `sandboxId` 创建新远端实例并重新挂载原 volume。
+- Sealos Devbox `stop()` 继续调用 pause，因此公共 `stop()` 只表示“执行 Provider 停止策略”，
+  不承诺复用同一个远端实例。
+- OpenSandbox 已绑定 client 时通过 `Sandbox.kill()` 删除，cron 的未绑定 adapter 通过
+  `SandboxManager.killSandbox()` 删除；两条路径都等待远端消失并保持幂等。
+- `close()` 只释放本地 transport，不改变远端生命周期。
+- Provider 默认镜像、工作目录、HOME、环境变量和创建参数统一由 runtime profile 解析，业务层
+  不按 Provider 名称自行拼配置。
+
+### 10.2 模块边界
+
+Sandbox 模块保持单向依赖：
+
+```text
+interface -> application -> infrastructure -> sandbox-adapter
+```
+
+- 外部生产代码只从 `interface/*` 使用稳定能力。
+- application 负责编排，不直接访问 Mongoose Model。
+- v2 与 Legacy Mongo 读写集中在 `infrastructure/instance` repository。
+- Legacy migration 按 `service/workspace/cleanup/types` 拆分，阶段判断留在 application。
+- 对外聚合只使用目录 `index.ts`，不保留非 `index.ts` 的兼容转发文件。
+- 架构测试阻止反向依赖、外部绕过 interface 和 Sandbox 内部循环导入。
+
+具体入口和当前工具集合见 [Agent Sandbox 当前设计](./index.md)。
+
+## 11. 验证范围
+
+用户级 Sandbox 改动至少覆盖：
+
+- App/Skill ID 稳定性、source 唯一索引和 v2 schema 状态约束。
+- Runtime Context、session/Skill 路径、父目录创建和 Editor 路径换算。
+- Source/Lifecycle/init lease、operation fencing、stale 接管和 Provider 幂等。
+- stop、archive、restore、delete、Provider/镜像迁移的副作用顺序和失败恢复。
+- Legacy 整表预检、全量预归档屏障、目标内容优先合并、发布屏障和幂等重试。
+- App 三种不可用原因的静默降级，以及 Skill Edit 强依赖行为。
+- preview session、鉴权、TTL/限额、HTTP Range、路径穿越和软链接逃逸。
+- App/Chat/Skill 删除边界以及 v2/Legacy S3 key 隔离。
+
+## 12. 收敛 TODO
+
+- [x] 用户级 ID、v2 schema、共享 Workspace 和 session 默认目录落地。
+- [x] 生命周期状态机、operation runner、Lease 分层和 Source fence 落地。
+- [x] Legacy 两阶段迁移、备份保留、v2 归档 key 与管理员入口落地。
+- [x] App Provider/镜像静默迁移和 Skill Edit 显式升级交互落地。
+- [x] App Chat 不可用降级、文件 API 服务端兜底和三语提示落地。
+- [x] Workspace 直连预览、proxy 与 runtime listener 落地。
+- [x] OpenSandbox/Sealos stop 契约和 sandbox-adapter 结构收敛。
+- [x] Sandbox 模块依赖边界、Repository 和公共 interface 收敛。
+- [x] 将阶段性技术方案合并到本文并删除重复文档。
