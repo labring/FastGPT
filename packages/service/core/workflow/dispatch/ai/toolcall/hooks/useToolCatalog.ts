@@ -3,7 +3,7 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { nodeInputs2JsonSchema } from '@fastgpt/global/core/app/jsonschema';
+import { buildModelVisibleToolJsonSchema } from '@fastgpt/global/core/app/jsonschema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ToolNodeItemType } from '../type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -11,59 +11,12 @@ import {
   canInputBeAgentGenerated,
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   getAgentLoopCoreSystemToolInfo,
   type AgentLoopCoreToolInfo
 } from '../../agentLoopCore/interface';
 
 export type ToolInfo = AgentLoopCoreToolInfo<ToolNodeItemType>;
-
-const buildModelVisibleJsonSchema = ({
-  inputs,
-  toolParams,
-  jsonSchema
-}: {
-  inputs?: FlowNodeInputItemType[];
-  toolParams: FlowNodeInputItemType[];
-  jsonSchema?: Record<string, any>;
-}) => {
-  const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
-  const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
-
-  if (jsonSchema) {
-    const inputSchema = nodeInputs2JsonSchema({ inputs: toolParams });
-    const hasSchemaProperties =
-      !!jsonSchema.properties && Object.keys(jsonSchema.properties).length > 0;
-    const properties = hasSchemaProperties ? jsonSchema.properties : inputSchema.properties;
-    const isModelVisibleKey = (key: string) => {
-      if (modelVisibleKeys.has(key)) return true;
-      if (inputKeys.has(key)) return false;
-      return (properties[key] as { isToolParam?: boolean } | undefined)?.isToolParam === true;
-    };
-    const nextSchema: Record<string, any> = {
-      ...jsonSchema,
-      type: 'object',
-      properties: Object.fromEntries(
-        Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
-      )
-    };
-
-    const required = (hasSchemaProperties ? jsonSchema.required : inputSchema.required)?.filter(
-      isModelVisibleKey
-    );
-
-    if (required) {
-      nextSchema.required = required;
-    } else if (hasSchemaProperties && 'required' in jsonSchema) {
-      nextSchema.required = jsonSchema.required;
-    }
-
-    return nextSchema;
-  }
-
-  return nodeInputs2JsonSchema({ inputs: toolParams });
-};
 
 export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
   const toolParams = item.toolParams.filter(
@@ -76,7 +29,7 @@ export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => 
       function: {
         name: item.nodeId,
         description: `${item.name}: ${item.toolDescription || item.intro}`,
-        parameters: buildModelVisibleJsonSchema({
+        parameters: buildModelVisibleToolJsonSchema({
           inputs: item.inputs ?? item.toolParams,
           toolParams,
           jsonSchema: item.jsonSchema
@@ -90,7 +43,7 @@ export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => 
     function: {
       name: item.nodeId,
       description: `${item.name}: ${item.toolDescription || item.intro}`,
-      parameters: buildModelVisibleJsonSchema({ toolParams })
+      parameters: buildModelVisibleToolJsonSchema({ toolParams })
     }
   };
 };

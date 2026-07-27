@@ -4,6 +4,7 @@ import type {
   JSONSchemaOutputType
 } from '@fastgpt/global/core/app/jsonschema';
 import {
+  buildModelVisibleToolJsonSchema,
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
   jsonSchema2SecretInput,
@@ -760,6 +761,45 @@ describe('jsonSchema2NodeOutput', () => {
 });
 
 describe('nodeInputs2JsonSchema', () => {
+  it('should expose only agent generated and schema-only tool parameters to the model', () => {
+    const generatedInput: FlowNodeInputItemType = {
+      key: 'query',
+      label: 'Query',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      required: true
+    };
+    const manualInput: FlowNodeInputItemType = {
+      key: 'apiKey',
+      label: 'API key',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.password],
+      selectedType: FlowNodeInputTypeEnum.password,
+      required: true
+    };
+
+    const result = buildModelVisibleToolJsonSchema({
+      inputs: [generatedInput, manualInput],
+      toolParams: [generatedInput],
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+          apiKey: { type: 'string' },
+          schemaOnly: { type: 'string', isToolParam: true }
+        },
+        required: ['query', 'apiKey', 'schemaOnly']
+      }
+    });
+
+    expect(result.properties).toEqual({
+      query: { type: 'string' },
+      schemaOnly: { type: 'string', isToolParam: true }
+    });
+    expect(result.required).toEqual(['query', 'schemaOnly']);
+  });
+
   it('should preserve a custom property schema and use the input required switch', () => {
     const result = nodeInputs2JsonSchema({
       inputs: [

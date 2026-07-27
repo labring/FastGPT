@@ -895,7 +895,10 @@ describe('getAgentRuntimeTools schema loading', () => {
             { key: 'manual', mode: 'manual' },
             { key: 'generated', mode: 'agentGenerated' }
           ],
-          config: { manual: 'fixed value' }
+          config: {
+            manual: 'fixed value',
+            generated: 'legacy fixed value'
+          }
         }
       ]
     });
@@ -925,7 +928,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       required: ['generated', 'newInput']
     });
     expect(tools[0].requestSchema.function.parameters.properties).not.toHaveProperty('manual');
-    expect(tools[0].params).toMatchObject({ manual: 'fixed value' });
+    expect(tools[0].params).toEqual({ manual: 'fixed value' });
   });
 
   it('keeps commercial workflow tools as commercial runtime tools when list source is system', async () => {

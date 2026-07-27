@@ -811,6 +811,51 @@ export const nodeInputs2JsonSchema = ({
   };
 };
 
+/**
+ * 根据工具输入的最终来源过滤模型可见 JSON Schema。
+ * 已知输入只允许 Agent 生成项进入模型；schema 中没有对应节点输入的扩展字段仍可通过
+ * isToolParam 显式声明，兼容 HTTP 等直接提供 JSON Schema 的工具。
+ */
+export const buildModelVisibleToolJsonSchema = ({
+  inputs,
+  toolParams,
+  jsonSchema
+}: {
+  inputs?: FlowNodeInputItemType[];
+  toolParams: FlowNodeInputItemType[];
+  jsonSchema?: Record<string, any>;
+}) => {
+  if (!jsonSchema) return nodeInputs2JsonSchema({ inputs: toolParams });
+
+  const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
+  const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
+  const inputSchema = nodeInputs2JsonSchema({ inputs: toolParams });
+  const hasSchemaProperties =
+    !!jsonSchema.properties && Object.keys(jsonSchema.properties).length > 0;
+  const properties = hasSchemaProperties ? jsonSchema.properties : inputSchema.properties;
+  const isModelVisibleKey = (key: string) => {
+    if (modelVisibleKeys.has(key)) return true;
+    if (inputKeys.has(key)) return false;
+    return (properties[key] as { isToolParam?: boolean } | undefined)?.isToolParam === true;
+  };
+  const required = (hasSchemaProperties ? jsonSchema.required : inputSchema.required)?.filter(
+    isModelVisibleKey
+  );
+
+  return {
+    ...jsonSchema,
+    type: 'object',
+    properties: Object.fromEntries(
+      Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
+    ),
+    ...(required
+      ? { required }
+      : hasSchemaProperties && 'required' in jsonSchema
+        ? { required: jsonSchema.required }
+        : {})
+  };
+};
+
 export const nodeOutput2JsonSchemaProperty = (
   output: FlowNodeOutputItemType,
   { includeNodeMetadata = false }: { includeNodeMetadata?: boolean } = {}

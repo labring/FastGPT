@@ -33,6 +33,7 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import {
   canInputBeAgentGenerated,
   initToolInputTypeByDefaultMode,
@@ -121,7 +122,7 @@ const isEmptyWorkflowInputValue = (value: unknown) =>
 
 /** hidden / 非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
 const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
-  const renderType = input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+  const renderType = getSelectedInputRenderType(input);
   if (renderType === FlowNodeInputTypeEnum.hidden) return true;
   if (!input.valueType) return true;
   if (input.valueType === WorkflowIOValueTypeEnum.boolean) return true;

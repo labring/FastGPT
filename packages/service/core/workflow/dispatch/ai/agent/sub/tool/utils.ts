@@ -21,6 +21,7 @@ import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/u
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
+  buildModelVisibleToolJsonSchema,
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
   jsonSchema2SecretInput,
@@ -36,6 +37,7 @@ import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import type { SubAppInitType } from '../type';
 import {
   canInputBeAgentGenerated,
+  filterToolConfiguredParams,
   getToolConfigStatus,
   initAgentToolInputType,
   initToolInputsTypeByDefaultMode,
@@ -64,52 +66,6 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
   hasSystemSecret?: boolean;
   hasTokenFee?: boolean;
   systemKeyCost?: number;
-};
-
-const buildModelVisibleJsonSchema = ({
-  inputs,
-  toolParams,
-  jsonSchema
-}: {
-  inputs?: FlowNodeInputItemType[];
-  toolParams: FlowNodeInputItemType[];
-  jsonSchema?: Record<string, any>;
-}) => {
-  const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
-  const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
-
-  if (jsonSchema) {
-    const inputSchema = nodeInputs2JsonSchema({ inputs: toolParams });
-    const hasSchemaProperties =
-      !!jsonSchema.properties && Object.keys(jsonSchema.properties).length > 0;
-    const properties = hasSchemaProperties ? jsonSchema.properties : inputSchema.properties;
-    const isModelVisibleKey = (key: string) => {
-      if (modelVisibleKeys.has(key)) return true;
-      if (inputKeys.has(key)) return false;
-      return (properties[key] as { isToolParam?: boolean } | undefined)?.isToolParam === true;
-    };
-    const nextSchema: Record<string, any> = {
-      ...jsonSchema,
-      type: 'object',
-      properties: Object.fromEntries(
-        Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
-      )
-    };
-
-    const required = (hasSchemaProperties ? jsonSchema.required : inputSchema.required)?.filter(
-      isModelVisibleKey
-    );
-
-    if (required) {
-      nextSchema.required = required;
-    } else if (hasSchemaProperties && 'required' in jsonSchema) {
-      nextSchema.required = jsonSchema.required;
-    }
-
-    return nextSchema;
-  }
-
-  return nodeInputs2JsonSchema({ inputs: toolParams });
 };
 
 /**
@@ -532,7 +488,7 @@ export const getAgentRuntimeTools = async ({
         function: {
           name: formatToolId,
           description,
-          parameters: buildModelVisibleJsonSchema({ inputs, toolParams, jsonSchema: schema })
+          parameters: buildModelVisibleToolJsonSchema({ inputs, toolParams, jsonSchema: schema })
         }
       };
     }
@@ -607,10 +563,14 @@ export const getAgentRuntimeTools = async ({
             legacyDefaultMode
           })
         );
+        const configuredParams = filterToolConfiguredParams({
+          params: tool.config,
+          inputs: toolNode.inputs
+        });
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {
-          if (Object.prototype.hasOwnProperty.call(tool.config, input.key)) {
-            const value = tool.config[input.key];
+          if (Object.prototype.hasOwnProperty.call(configuredParams, input.key)) {
+            const value = configuredParams[input.key];
             input.value = value;
           }
         });
@@ -677,7 +637,7 @@ export const getAgentRuntimeTools = async ({
             inputs,
             agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
             promptReference,
-            params: tool.config,
+            params: filterToolConfiguredParams({ params: configuredParams, inputs }),
             requestSchema
           };
         };
@@ -765,7 +725,7 @@ export const getAgentRuntimeTools = async ({
               inputs,
               agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
               promptReference,
-              params: tool.config,
+              params: filterToolConfiguredParams({ params: configuredParams, inputs }),
               requestSchema
             }
           ];

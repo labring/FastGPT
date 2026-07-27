@@ -905,15 +905,20 @@ const ConfigToolModal = ({
           return stripToolInputDefaultMode(normalizeInputSelectedTypeIndex(input));
         }
 
+        const inputTypeState = buildConfigInputTypeState({
+          selectedInputType: data[inputTypeFormKey(input.key)],
+          developerInputType: data[developerInputTypeFormKey(input.key)],
+          renderTypeList: input.renderTypeList,
+          canAgentGenerated: canInputBeAgentGenerated(input)
+        });
+
         return stripToolInputDefaultMode({
           ...input,
-          ...buildConfigInputTypeState({
-            selectedInputType: data[inputTypeFormKey(input.key)],
-            developerInputType: data[developerInputTypeFormKey(input.key)],
-            renderTypeList: input.renderTypeList,
-            canAgentGenerated: canInputBeAgentGenerated(input)
-          }),
-          value: data[input.key] ?? input.value
+          ...inputTypeState,
+          value:
+            inputTypeState.selectedType === FlowNodeInputTypeEnum.agentGenerated
+              ? undefined
+              : (data[input.key] ?? input.value)
         });
       })
     });

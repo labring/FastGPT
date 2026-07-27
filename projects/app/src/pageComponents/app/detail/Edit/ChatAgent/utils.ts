@@ -35,6 +35,7 @@ import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
   canInputBeAgentGenerated,
+  filterToolConfiguredParams,
   getAgentToolInputMode,
   getToolConfigStatus,
   validateToolConfiguration
@@ -304,6 +305,24 @@ export function agentForm2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
               value: data.selectedTools.map((tool) => {
+                const config = tool.inputs.reduce(
+                  (acc, input) => {
+                    if (input.key === NodeInputKeyEnum.forbidStream) {
+                      return acc;
+                    }
+                    // Special tool
+                    if (
+                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                      input.key === NodeInputKeyEnum.history
+                    ) {
+                      acc[input.key] = data.aiSettings.maxHistories;
+                    }
+                    acc[input.key] = input.value;
+                    return acc;
+                  },
+                  {} as Record<string, any>
+                );
+
                 return {
                   id: tool.pluginId,
                   source: tool.source,
@@ -313,23 +332,7 @@ export function agentForm2AppWorkflow(
                     mode: getAgentToolInputMode(input)
                   })),
 
-                  config: tool.inputs.reduce(
-                    (acc, input) => {
-                      if (input.key === NodeInputKeyEnum.forbidStream) {
-                        return acc;
-                      }
-                      // Special tool
-                      if (
-                        tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                        input.key === NodeInputKeyEnum.history
-                      ) {
-                        acc[input.key] = data.aiSettings.maxHistories;
-                      }
-                      acc[input.key] = input.value;
-                      return acc;
-                    },
-                    {} as Record<string, any>
-                  )
+                  config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
                 };
               })
             },

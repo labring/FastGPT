@@ -5,6 +5,7 @@ import {
   canInputBeManuallyConfigured,
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
+  filterToolConfiguredParams,
   getSavedToolInputSelectedType,
   getToolInputManualRenderType,
   getToolConfigStatus,
@@ -1408,6 +1409,29 @@ describe('agent generated tool input helpers', () => {
       indexOnly: 'model index value',
       schemaOnly: 'schema value'
     });
+  });
+
+  it('should remove agent generated fields from developer configured params', () => {
+    const params = filterToolConfiguredParams({
+      params: {
+        query: 'legacy fixed query',
+        apiKey: 'fixed secret'
+      },
+      inputs: [
+        createMockInput({
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        }),
+        createMockInput({
+          key: 'apiKey',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          selectedType: FlowNodeInputTypeEnum.password
+        })
+      ]
+    });
+
+    expect(params).toEqual({ apiKey: 'fixed secret' });
   });
 
   it('should not initialize file fields as agent generated', () => {

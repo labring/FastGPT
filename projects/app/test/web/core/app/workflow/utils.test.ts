@@ -823,6 +823,25 @@ describe('checkWorkflowNodeIssues', () => {
         'required_input_empty'
       );
     });
+
+    it('uses selectedType before deprecated selectedTypeIndex in required validation', () => {
+      const node = makeNodeWithTemplateInputs('hidden-selected', FlowNodeTypeEnum.userInput, [
+        {
+          key: 'internal',
+          label: 'Internal',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.hidden],
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          selectedTypeIndex: 0,
+          required: true
+        }
+      ]);
+
+      const result = runCheck(node);
+      expect(result['hidden-selected']?.map((issue) => issue.code) ?? []).not.toContain(
+        'required_input_empty'
+      );
+    });
   });
 
   it('does not return invalid reference message for unselectable references', () => {

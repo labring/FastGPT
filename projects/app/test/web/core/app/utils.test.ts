@@ -454,7 +454,7 @@ describe('appWorkflow2AgentForm', () => {
     expect(restored.dataset.authTmbId).toBe(true);
   });
 
-  it('should omit forbid stream from agent selected tool config', () => {
+  it('should omit forbid stream and agent generated values from agent selected tool config', () => {
     const form = getDefaultAppForm();
     form.aiSettings = {
       [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
@@ -492,9 +492,7 @@ describe('appWorkflow2AgentForm', () => {
       (input) => input.key === NodeInputKeyEnum.selectedTools
     )?.value as Array<{ config: Record<string, any>; inputs: any[] }>;
 
-    expect(selectedTools[0].config).toEqual({
-      query: 'hello'
-    });
+    expect(selectedTools[0].config).toEqual({});
     expect(selectedTools[0].inputs).toEqual([
       {
         key: 'query',

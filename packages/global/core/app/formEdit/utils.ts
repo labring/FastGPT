@@ -366,6 +366,26 @@ export const filterAgentGeneratedToolParams = ({
 };
 
 /**
+ * 从开发者配置中移除最终由 Agent 生成的参数。
+ * 该过滤同时用于持久化和运行时，避免存量固定值在模型未返回可选参数时继续进入工具请求。
+ */
+export const filterToolConfiguredParams = ({
+  params = {},
+  inputs
+}: {
+  params?: Record<string, any>;
+  inputs: (Pick<FlowNodeInputItemType, 'key'> & InputRenderTypeState)[];
+}) => {
+  const agentGeneratedKeys = new Set(
+    inputs
+      .filter((input) => isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input))
+      .map((input) => input.key)
+  );
+
+  return Object.fromEntries(Object.entries(params).filter(([key]) => !agentGeneratedKeys.has(key)));
+};
+
+/**
  * 工具首次加入工作流/Agent 时，将默认输入方式固化为 selectedType。
  * isToolParam 是插件/schema 声明的默认输入方式；toolDescription 只作为模型参数描述。
  */
