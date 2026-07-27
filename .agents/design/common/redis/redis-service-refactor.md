@@ -2,7 +2,7 @@
 
 > 上位设计：[FastGPT Data Access Layer 设计](../dal/data-access-layer.md)
 >
-> 状态：Phase 1、Phase 2、Phase 3A、Phase 3B1 已提交；Phase 3B2、Phase 2R、DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C 与 DAL-R4D 已实现并通过定向测试，当前等待 DAL-R4D 代码 review。Lease、Stop Signal 和 Stream Repository 尚未迁移。
+> 状态：Phase 1、Phase 2、Phase 3A、Phase 3B1 已提交；Phase 3B2、Phase 2R、DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C、DAL-R4D 与 DAL-R4E 已实现并通过定向测试，当前等待 DAL-R4E 代码 review。Stop Signal 和 Stream Repository 尚未迁移。
 
 ## 1. 目标
 
@@ -412,6 +412,16 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 
 本阶段已实现并通过定向验证，当前停在代码 review；Lease、Stop Signal 和 Stream 仍未开始。
 
+### DAL-R4E：Lease Repository
+
+- 当前只迁移 Agent Sandbox 初始化锁，Mongo `timerLock` 保持原实现，不混入 Redis Lease。
+- 保持 logical key `lock:${key}`、物理 key `fastgpt:lock:${key}`、随机 token value 和毫秒 TTL；获取使用 `SET NX PX`。
+- 续租和释放由 DAL adapter 内部执行 token 校验脚本并严格校验 `0/1` 返回；service 不再获取 Redis client、调用 `eval` 或拼物理 key。
+- 获取失败、获取异常和租约丢失继续 fail-closed；释放为 best-effort，不能删除 token 不匹配的后续持有者租约。
+- 保留 `RedisLeaseUnavailableError`、`RedisLeaseLostError`、`RedisLeaseAcquireError` 语义及 Agent Sandbox 的初始化错误映射。
+
+本阶段已实现并通过定向验证，当前停在代码 review；Stop Signal 和 Stream 仍未开始。
+
 ### DAL-R5：流式 Repository
 
 - Stream Resume 的业务协议和 blocking 生命周期。
@@ -460,6 +470,7 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 - [x] P-07C（DAL-R4C）：Pending Payment 协调状态。
 - [ ] P-08：Session、Lease、Stop Signal。
 - [x] P-08A（DAL-R4D）：Session Repository。
+- [x] P-08B（DAL-R4E）：Lease Repository 与 Agent Sandbox 初始化锁。
 - [ ] P-09：Stream Resume、OutLink Stream、polling counter。
 
 ### 测试与清理
@@ -476,6 +487,7 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 - [x] T-05B（DAL-R4B）：Team Point adapter/Repository、wallet 调用方与 Redis 7.2 一致性 integration test（integration 因环境变量缺失跳过）。
 - [x] T-05C（DAL-R4C）：企微 Pending Payment Repository、创建订单/支付回调调用方与 pro 定向测试。
 - [x] T-05E（DAL-R4D）：Session adapter/Repository、认证与注销调用方定向测试。
+- [x] T-05F（DAL-R4E）：Lease adapter/Repository 与 Agent Sandbox 调用方定向测试。
 - [ ] T-06：静态扫描禁止新增 raw client、service Redis adapter 和旧 Store import。
 - [ ] T-07：最终删除 legacy mock/入口并运行全量测试。
 

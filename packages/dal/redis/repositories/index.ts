@@ -54,3 +54,16 @@ export type {
   SessionRepositoryDependencies,
   SessionRepositoryLogger
 } from './session';
+export {
+  createLeaseRepository,
+  isRedisLeaseError,
+  RedisLeaseAcquireError,
+  RedisLeaseLostError,
+  RedisLeaseUnavailableError
+} from './lease';
+export type {
+  LeaseRepository,
+  LeaseRepositoryDependencies,
+  LeaseRepositoryLogger,
+  WithLeaseOptions
+} from './lease';

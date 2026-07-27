@@ -12,7 +12,10 @@ import { getRedisRuntime } from './runtime/connection';
 import { FiniteNumberSchema, NonNegativeSafeIntegerSchema } from './runtime/schema';
 import { z } from 'zod';
 
-type RedisStoreClient = Pick<RedisClient, 'del' | 'get' | 'hgetall' | 'multi' | 'scan' | 'set'>;
+type RedisStoreClient = Pick<
+  RedisClient,
+  'del' | 'eval' | 'get' | 'hgetall' | 'multi' | 'scan' | 'set'
+>;
 
 export type RedisStoreAdapterDependencies = {
   getCommandClient: () => RedisStoreClient;
@@ -20,6 +23,20 @@ export type RedisStoreAdapterDependencies = {
 
 const DEFAULT_SCAN_BATCH_SIZE = 1_000;
 const MAX_SCAN_BATCH_SIZE = 10_000;
+
+const RENEW_LEASE_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("pexpire", KEYS[1], ARGV[2])
+end
+return 0
+`;
+
+const RELEASE_LEASE_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+end
+return 0
+`;
 
 /**
  * 创建供 Redis-backed Repository 使用的最小协议 adapter。
@@ -397,6 +414,108 @@ export const createRedisStoreAdapter = ({ getCommandClient }: RedisStoreAdapterD
             operation,
             message: 'Redis SET NX returned an unsupported response'
           });
+        }
+      });
+    },
+
+    /** 原子获取一个带毫秒 TTL 的 token lease；已被其他持有者占用时返回 false。 */
+    acquireLease: ({
+      key,
+      token,
+      ttlMs
+    }: {
+      key: RedisLogicalKey;
+      token: string;
+      ttlMs: number;
+    }) => {
+      const operation = 'lease.acquire' as const;
+      if (typeof token !== 'string' || token.length === 0) {
+        throw new RedisInvalidArgumentError({
+          operation,
+          message: 'token must be a non-empty string'
+        });
+      }
+      const parsedTtlMs = parsePositiveInteger({ value: ttlMs, operation, field: 'ttlMs' });
+
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const result = await getCommandClient().set(
+            toPhysicalRedisKey(key),
+            token,
+            'PX',
+            parsedTtlMs,
+            'NX'
+          );
+          if (result === 'OK') return true;
+          if (result === null) return false;
+
+          throw new RedisInvalidResponseError({
+            operation,
+            message: 'Redis lease acquire returned an unsupported response'
+          });
+        }
+      });
+    },
+
+    /** 只有 token 仍匹配时才续租，返回 Redis PEXPIRE 的 0/1 结果。 */
+    renewLease: ({ key, token, ttlMs }: { key: RedisLogicalKey; token: string; ttlMs: number }) => {
+      const operation = 'lease.renew' as const;
+      if (typeof token !== 'string' || token.length === 0) {
+        throw new RedisInvalidArgumentError({
+          operation,
+          message: 'token must be a non-empty string'
+        });
+      }
+      const parsedTtlMs = parsePositiveInteger({ value: ttlMs, operation, field: 'ttlMs' });
+
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const result = await getCommandClient().eval(
+            RENEW_LEASE_SCRIPT,
+            1,
+            toPhysicalRedisKey(key),
+            token,
+            String(parsedTtlMs)
+          );
+          if (result !== 0 && result !== 1) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis lease renew returned an unsupported response'
+            });
+          }
+          return result === 1;
+        }
+      });
+    },
+
+    /** 只有 token 仍匹配时才释放 lease，避免误删后续持有者。 */
+    releaseLease: ({ key, token }: { key: RedisLogicalKey; token: string }) => {
+      const operation = 'lease.release' as const;
+      if (typeof token !== 'string' || token.length === 0) {
+        throw new RedisInvalidArgumentError({
+          operation,
+          message: 'token must be a non-empty string'
+        });
+      }
+
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const result = await getCommandClient().eval(
+            RELEASE_LEASE_SCRIPT,
+            1,
+            toPhysicalRedisKey(key),
+            token
+          );
+          if (result !== 0 && result !== 1) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis lease release returned an unsupported response'
+            });
+          }
+          return result === 1;
         }
       });
     },

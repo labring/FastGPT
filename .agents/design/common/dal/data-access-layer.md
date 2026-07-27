@@ -1,6 +1,6 @@
 # FastGPT Data Access Layer 设计
 
-> 状态：架构方向与包名已确认；DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C 与 DAL-R4D 已完成实现并通过定向验证，当前等待 DAL-R4D 代码 review。Lease、Stop Signal、Stream 及其他 Repository 仍未开始迁移。
+> 状态：架构方向与包名已确认；DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C、DAL-R4D 与 DAL-R4E 已完成实现并通过定向验证，当前等待 DAL-R4E 代码 review。Stop Signal、Stream 及其他 Repository 仍未开始迁移。
 
 ## 1. 决策
 
@@ -322,6 +322,16 @@ Application Service 负责把 Repository 错误映射成 HTTP、工作流或产�
 - 用户批量注销保留 whitelist 语义；登录数超限清理由 service 传入上限，Repository 提供 typed session records，后台清理失败只记录日志，不阻塞新 session 创建。
 
 本阶段已实现并通过定向验证，当前停在代码 review；Lease、Stop Signal 和 Stream 仍未开始。
+
+### DAL-R4E：Lease Repository
+
+- 仅迁移 Agent Sandbox 初始化锁；Mongo `timerLock` 不属于本阶段。
+- 保持历史 logical key `lock:${key}`、物理 key `fastgpt:lock:${key}`，value 仍为随机 token；获取使用 `SET NX PX`，TTL 和续租间隔必须是正安全整数。
+- 续租和释放使用 token 校验的原子 Redis 脚本；adapter 只暴露 typed lease operations，不向 service 暴露 `eval` 或物理 key。
+- 获取失败、Redis 获取异常和租约丢失均 fail-closed；续租/释放错误只按租约状态记录 warning，不能误删其他持有者的锁。
+- Agent Sandbox 保留现有 `createAgentSandboxInitializingError()` 映射；Stop Signal、Stream 和其他 lock/cache 调用不在本阶段迁移。
+
+本阶段已实现并通过定向验证，当前停在代码 review；Stop Signal 和 Stream 仍未开始。
 
 ### DAL-R4 后续：剩余 Redis Repository
 

@@ -16,6 +16,9 @@ export type RedisOperation =
   | 'string.set'
   | 'string.setPair'
   | 'string.setIfAbsent'
+  | 'lease.acquire'
+  | 'lease.renew'
+  | 'lease.release'
   | 'hash.getAll'
   | 'hash.setWithTtl'
   | 'fixedWindow.consume'
@@ -55,6 +58,9 @@ const operationPolicies: Record<RedisOperation, RedisOperationPolicy> = {
   'string.set': retryablePolicy,
   'string.setPair': singleAttemptWritePolicy,
   'string.setIfAbsent': singleAttemptWritePolicy,
+  'lease.acquire': singleAttemptWritePolicy,
+  'lease.renew': singleAttemptWritePolicy,
+  'lease.release': singleAttemptWritePolicy,
   'hash.getAll': readPolicy,
   'hash.setWithTtl': singleAttemptWritePolicy,
   'fixedWindow.consume': singleAttemptWritePolicy,
