@@ -169,7 +169,7 @@ describe('createWorkflowStreamResponseContext', () => {
       `event: ${SseResponseEventEnum.answer}\ndata: [DONE]\n\n`
     );
     expect(redis.expire).toHaveBeenCalledWith(
-      keys.keyOfStream,
+      `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
       STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
   });

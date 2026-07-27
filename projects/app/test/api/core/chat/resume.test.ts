@@ -789,9 +789,9 @@ describe('stream resume helpers', () => {
       const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId });
       const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
-      expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
-      expect(redis.del).toHaveBeenCalledWith(keys.keyOfStream);
-      expect(redis.del).toHaveBeenCalledWith(keys.keyOfActive);
+      expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfUnavailable}`);
+      expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`);
+      expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`);
       expect(redis.call).toHaveBeenNthCalledWith(
         1,
         'XADD',
@@ -809,13 +809,16 @@ describe('stream resume helpers', () => {
         'data: hello\n\n'
       );
 
-      expect(redis.expire).toHaveBeenCalledWith(keys.keyOfStream, STREAM_RESUME_TTL_SECONDS);
+      expect(redis.expire).toHaveBeenCalledWith(
+        `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
+        STREAM_RESUME_TTL_SECONDS
+      );
       expect(redis.expire).toHaveBeenCalledTimes(1);
       expect(redis.set).toHaveBeenCalledWith(
-        keys.keyOfActive,
+        `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
         expect.stringMatching(/^\{"updatedAt":\d+\}$/),
-        'EX',
-        STREAM_RESUME_TTL_SECONDS
+        'PX',
+        STREAM_RESUME_TTL_SECONDS * 1000
       );
       expect(await getStreamResumeActiveState({ teamId, ...appSource, chatId })).toEqual({
         updatedAt: expect.any(Number)
@@ -841,11 +844,11 @@ describe('stream resume helpers', () => {
     redis.expire.mockClear?.();
     await mirror.shrinkTTLAfterComplete();
     expect(redis.expire).toHaveBeenCalledWith(
-      keys.keyOfStream,
+      `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`,
       STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
     expect(redis.expire).toHaveBeenCalledWith(
-      keys.keyOfActive,
+      `${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`,
       STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
     );
     expect(redis.expire).toHaveBeenCalledTimes(2);
@@ -860,7 +863,7 @@ describe('stream resume helpers', () => {
       chatId
     });
 
-    await redis.set(keyOfStream, 'legacy');
+    await redis.set(`${FASTGPT_REDIS_PREFIX}${keyOfStream}`, 'legacy');
 
     const mirror = mirrorChatStream({
       teamId,
@@ -870,15 +873,17 @@ describe('stream resume helpers', () => {
 
     await mirror.flush();
 
-    expect(redis.del).toHaveBeenCalledWith(keyOfStream);
+    expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keyOfStream}`);
     expect(redis.del).toHaveBeenCalledWith(
-      getStreamResumeRedisKeys({
-        teamId,
-        ...appSource,
-        chatId
-      }).keyOfActive
+      `${FASTGPT_REDIS_PREFIX}${
+        getStreamResumeRedisKeys({
+          teamId,
+          ...appSource,
+          chatId
+        }).keyOfActive
+      }`
     );
-    expect(await redis.get(keyOfStream)).toBeFalsy();
+    expect(await redis.get(`${FASTGPT_REDIS_PREFIX}${keyOfStream}`)).toBeFalsy();
   });
 
   it('should continue mirroring chunks after the original response is already closed', async () => {
@@ -899,9 +904,9 @@ describe('stream resume helpers', () => {
     const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId });
     const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
-    expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
-    expect(redis.del).toHaveBeenCalledWith(keys.keyOfStream);
-    expect(redis.del).toHaveBeenCalledWith(keys.keyOfActive);
+    expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfUnavailable}`);
+    expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`);
+    expect(redis.del).toHaveBeenCalledWith(`${FASTGPT_REDIS_PREFIX}${keys.keyOfActive}`);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
   });
@@ -944,12 +949,12 @@ describe('stream resume helpers', () => {
     expect(mirror).toBeUndefined();
     expect(redis.info).toHaveBeenCalledTimes(1);
     expect(redis.set).toHaveBeenCalledWith(
-      getStreamResumeRedisKeys({ teamId, ...appSource, chatId }).keyOfUnavailable,
+      `${FASTGPT_REDIS_PREFIX}${getStreamResumeRedisKeys({ teamId, ...appSource, chatId }).keyOfUnavailable}`,
       JSON.stringify({
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       }),
-      'EX',
-      STREAM_RESUME_TTL_SECONDS
+      'PX',
+      STREAM_RESUME_TTL_SECONDS * 1000
     );
   });
 

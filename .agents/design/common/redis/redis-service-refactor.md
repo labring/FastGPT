@@ -2,7 +2,7 @@
 
 > 上位设计：[FastGPT Data Access Layer 设计](../dal/data-access-layer.md)
 >
-> 状态：Phase 1、Phase 2、Phase 3A、Phase 3B1 已提交；Phase 3B2、Phase 2R、DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C、DAL-R4D 与 DAL-R4E 已实现并通过定向测试，当前等待 DAL-R4E 代码 review。Stop Signal 和 Stream Repository 尚未迁移。
+> 状态：Phase 1、Phase 2、Phase 3A、Phase 3B1 已提交；Phase 3B2、Phase 2R、DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C、DAL-R4D、DAL-R4F 与 DAL-R5A 已实现并通过定向测试，当前等待 DAL-R5A 代码 review。Stream 以外的 Repository 尚未迁移。
 
 ## 1. 目标
 
@@ -422,12 +422,29 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 
 本阶段已实现并通过定向验证，当前停在代码 review；Stop Signal 和 Stream 仍未开始。
 
+### DAL-R4F：Workflow Stop Signal Repository
+
+- 当前 Redis 停止状态由 workflow status 写入、workflow dispatch 轮询、auxiliary generation 读取，三者迁移到同一个 Repository。
+- 保持 logical key `agent_runtime_stopping:${sourceType}:${sourceId}:${chatId}`、物理 key `fastgpt:agent_runtime_stopping:${sourceType}:${sourceId}:${chatId}`、`1` value 和 60 秒 TTL。
+- 写入 Redis 错误继续 fail-closed 并交给 `/v2/chat/stop`；读取错误按 `false` 降级；清理失败 best-effort 记录日志。等待完成的 timeout/pollInterval 仍由 service 编排。
+- Repository 负责 source 参数校验和 key 构造，业务层不再调用 `getGlobalRedisConnection`、`GET/SET/DEL` 或手工拼 key。
+- 不迁移 Stream Resume、前端 AbortController、Mongo timer lock 或其他通用 cache。
+
+本阶段已实现并通过定向验证，当前停在代码 review；Stream 仍未开始。
+
 ### DAL-R5：流式 Repository
 
 - Stream Resume 的业务协议和 blocking 生命周期。
 - Wechat/Wecom outLink stream 的原子 append+TTL。
 - Wechat polling failure counter 的多 worker 竞态修复。
 - 第一轮保持现有字符串消费协议，不顺带改为 Redis Stream。
+
+#### DAL-R5A：Stream Resume
+
+- 仅迁移 `core/chat/resume.ts` 的 Stream Resume Redis 访问；OutLink Stream 和 polling counter 留在后续子阶段。
+- Repository 保持三个历史 logical key、物理前缀、TTL、JSON state 和 `raw` field 协议，收拢镜像清理、`XADD`、`XRANGE`、`XREAD BLOCK` 及 Stream 返回校验；service binding 只负责注入 command/blocking factory，业务逻辑不再解析 raw Redis 返回。
+- blocking connection 由 DAL Runtime 创建，Repository 在 `finally` 中释放；service 仍负责内存水位、SSE writer、终止事件和 HTTP response 生命周期。
+- 本阶段已完成实现并停在代码 review，不提前进入 R5B/R5C。
 
 ### DAL-R6：清理与上线治理
 
@@ -471,7 +488,9 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 - [ ] P-08：Session、Lease、Stop Signal。
 - [x] P-08A（DAL-R4D）：Session Repository。
 - [x] P-08B（DAL-R4E）：Lease Repository 与 Agent Sandbox 初始化锁。
+- [x] P-08C（DAL-R4F）：Workflow Stop Signal Repository 与 workflow/auxiliary 调用方。
 - [ ] P-09：Stream Resume、OutLink Stream、polling counter。
+- [x] P-09A（DAL-R5A）：Stream Resume Repository 与 service 调用方。
 
 ### 测试与清理
 
@@ -488,6 +507,8 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 - [x] T-05C（DAL-R4C）：企微 Pending Payment Repository、创建订单/支付回调调用方与 pro 定向测试。
 - [x] T-05E（DAL-R4D）：Session adapter/Repository、认证与注销调用方定向测试。
 - [x] T-05F（DAL-R4E）：Lease adapter/Repository 与 Agent Sandbox 调用方定向测试。
+- [x] T-05G（DAL-R4F）：Stop Signal Repository 与 workflow/auxiliary 调用方定向测试。
+- [x] T-05H（DAL-R5A）：Stream Resume adapter/Repository 与 service 调用方定向测试。
 - [ ] T-06：静态扫描禁止新增 raw client、service Redis adapter 和旧 Store import。
 - [ ] T-07：最终删除 legacy mock/入口并运行全量测试。
 

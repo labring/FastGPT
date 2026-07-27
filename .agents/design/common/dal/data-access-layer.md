@@ -1,6 +1,6 @@
 # FastGPT Data Access Layer 设计
 
-> 状态：架构方向与包名已确认；DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C、DAL-R4D 与 DAL-R4E 已完成实现并通过定向验证，当前等待 DAL-R4E 代码 review。Stop Signal、Stream 及其他 Repository 仍未开始迁移。
+> 状态：架构方向与包名已确认；DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C、DAL-R4D、DAL-R4F 与 DAL-R5A 已完成实现并通过定向验证，当前等待 DAL-R5A 代码 review。Stream 以外的 Repository 仍未开始迁移。
 
 ## 1. 决策
 
@@ -332,6 +332,26 @@ Application Service 负责把 Repository 错误映射成 HTTP、工作流或产�
 - Agent Sandbox 保留现有 `createAgentSandboxInitializingError()` 映射；Stop Signal、Stream 和其他 lock/cache 调用不在本阶段迁移。
 
 本阶段已实现并通过定向验证，当前停在代码 review；Stop Signal 和 Stream 仍未开始。
+
+### DAL-R4F：Workflow Stop Signal Repository
+
+- 迁移 workflow 与 auxiliary generation 共用的运行态停止标记，不迁移前端 AbortController 或 Mongo timer lock。
+- 保持 logical key `agent_runtime_stopping:${sourceType}:${sourceId}:${chatId}`、物理 key `fastgpt:agent_runtime_stopping:${sourceType}:${sourceId}:${chatId}`、value `1` 和 60 秒 TTL。
+- `set` 使用单次带 TTL 字符串写入，Redis 错误向上抛出；`isStopping` 读取错误按 false 处理，避免 Redis 故障阻断主工作流；`clear` 删除失败只记录 warning/error，不覆盖工作流结果。
+- Repository 内部负责参数校验和 logical key 构造；service 保留 `waitForWorkflowComplete` 轮询编排，不再获取 Redis client 或拼接 key。
+- workflow 与 auxiliary generation 使用同一数据合同，清理和读取不会产生两套停止状态。
+
+本阶段已实现并通过定向验证，当前停在代码 review；Stream 仍未开始。
+
+### DAL-R5A：Stream Resume Repository
+
+- 仅迁移 `packages/service/core/chat/resume.ts` 的 Redis 持久化协议；OutLink Stream、Wechat polling counter、Mongo timer lock 和前端 AbortController 不属于本阶段。
+- 保持 `stream:resume:data:*`、`stream:resume:unavailable:*`、`stream:resume:active:*` logical key、自动添加 `fastgpt:` 物理前缀、生成中 TTL、完成后短 TTL、active/unavailable JSON 格式和原有 SSE 消费协议。
+- Repository/adapter 收拢 `XADD`、`XRANGE`、`XREAD BLOCK`、镜像清理、TTL touch 和状态读写；service 业务逻辑不再获取 command/physical client、不再解析 Redis Stream 原始返回结构，运行时 factory 仅在 service binding 中注入。
+- blocking reader 由 DAL Runtime 创建并在 Repository 的 `finally` 中释放；Redis 关闭期间不会遗留请求级 blocking connection。
+- 内存水位检查仍由 service 保留，因为它属于请求是否创建镜像的运行策略；HTTP/SSE 编排、终止事件判断和 response 生命周期不进入 DAL。
+
+本阶段已实现并通过定向验证，当前停在代码 review；OutLink Stream 和 polling counter 仍未开始。
 
 ### DAL-R4 后续：剩余 Redis Repository
 

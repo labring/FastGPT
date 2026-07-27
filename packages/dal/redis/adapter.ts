@@ -14,15 +14,78 @@ import { z } from 'zod';
 
 type RedisStoreClient = Pick<
   RedisClient,
-  'del' | 'eval' | 'get' | 'hgetall' | 'multi' | 'scan' | 'set'
+  'call' | 'del' | 'eval' | 'expire' | 'get' | 'hgetall' | 'multi' | 'scan' | 'set'
 >;
+
+export type RedisStreamEntry = {
+  id: string;
+  fields: Record<string, string>;
+};
+
+type RedisStreamClient = Pick<RedisClient, 'call'>;
 
 export type RedisStoreAdapterDependencies = {
   getCommandClient: () => RedisStoreClient;
+  createBlockingConnection?: () => RedisStreamClient;
+  releaseConnection?: (client: RedisStreamClient) => Promise<void> | void;
 };
 
 const DEFAULT_SCAN_BATCH_SIZE = 1_000;
 const MAX_SCAN_BATCH_SIZE = 10_000;
+
+const parseStreamFields = ({
+  operation,
+  rawFields
+}: {
+  operation: 'stream.range' | 'stream.read';
+  rawFields: unknown;
+}): Record<string, string> => {
+  if (
+    !Array.isArray(rawFields) ||
+    rawFields.length % 2 !== 0 ||
+    rawFields.some((field) => typeof field !== 'string')
+  ) {
+    throw new RedisInvalidResponseError({
+      operation,
+      message: 'Redis Stream fields returned an unsupported response'
+    });
+  }
+
+  const fields: Record<string, string> = {};
+  for (let index = 0; index < rawFields.length; index += 2) {
+    fields[rawFields[index] as string] = rawFields[index + 1] as string;
+  }
+  return fields;
+};
+
+const parseStreamEntries = ({
+  operation,
+  rawEntries
+}: {
+  operation: 'stream.range' | 'stream.read';
+  rawEntries: unknown;
+}): RedisStreamEntry[] => {
+  if (!Array.isArray(rawEntries)) {
+    throw new RedisInvalidResponseError({
+      operation,
+      message: 'Redis Stream entries returned an unsupported response'
+    });
+  }
+
+  return rawEntries.map((entry) => {
+    if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string') {
+      throw new RedisInvalidResponseError({
+        operation,
+        message: 'Redis Stream entry returned an unsupported response'
+      });
+    }
+
+    return {
+      id: entry[0],
+      fields: parseStreamFields({ operation, rawFields: entry[1] })
+    };
+  });
+};
 
 const RENEW_LEASE_SCRIPT = `
 if redis.call("get", KEYS[1]) == ARGV[1] then
@@ -44,7 +107,11 @@ return 0
  * Adapter 只接收 logical key，并集中完成 physical key 转换、operation policy 和返回值校验；
  * 构造过程不会创建 Redis 连接。新增命令必须由真实 Repository 迁移驱动，不能提前扩展为通用客户端。
  */
-export const createRedisStoreAdapter = ({ getCommandClient }: RedisStoreAdapterDependencies) => {
+export const createRedisStoreAdapter = ({
+  getCommandClient,
+  createBlockingConnection,
+  releaseConnection
+}: RedisStoreAdapterDependencies) => {
   const iterateByPrefix = async function* ({
     prefix,
     batchSize = DEFAULT_SCAN_BATCH_SIZE
@@ -601,6 +668,187 @@ export const createRedisStoreAdapter = ({ getCommandClient }: RedisStoreAdapterD
       });
     },
 
+    /** 追加一个 Stream entry；写入超时不自动重放，因为 XADD 结果可能已经生效。 */
+    appendStreamEntry: ({
+      key,
+      fields
+    }: {
+      key: RedisLogicalKey;
+      fields: Record<string, string>;
+    }) => {
+      const operation = 'stream.append' as const;
+      if (
+        !fields ||
+        Object.keys(fields).length === 0 ||
+        Object.values(fields).some((value) => typeof value !== 'string')
+      ) {
+        throw new RedisInvalidArgumentError({
+          operation,
+          message: 'stream fields must contain at least one string value'
+        });
+      }
+
+      const commandArguments = Object.entries(fields).flatMap(([field, value]) => [field, value]);
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const streamId = await getCommandClient().call(
+            'XADD',
+            toPhysicalRedisKey(key),
+            '*',
+            ...commandArguments
+          );
+          if (typeof streamId !== 'string' || streamId.length === 0) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis XADD returned an unsupported response'
+            });
+          }
+          return streamId;
+        }
+      });
+    },
+
+    /** 刷新 Stream key 的秒级 TTL，0/1 以外的返回值视为协议错误。 */
+    expireStream: ({ key, ttlSeconds }: { key: RedisLogicalKey; ttlSeconds: number }) => {
+      const operation = 'stream.expire' as const;
+      const parsedTtlSeconds = parsePositiveInteger({
+        value: ttlSeconds,
+        operation,
+        field: 'ttlSeconds'
+      });
+
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const result = await getCommandClient().expire(toPhysicalRedisKey(key), parsedTtlSeconds);
+          if (result !== 0 && result !== 1) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis EXPIRE returned an unsupported response'
+            });
+          }
+        }
+      });
+    },
+
+    /** 分页读取 Stream history，并将 Redis 的交替 field 数组解析为 typed entry。 */
+    rangeStream: ({
+      key,
+      start,
+      end,
+      count
+    }: {
+      key: RedisLogicalKey;
+      start: string;
+      end: string;
+      count: number;
+    }) => {
+      const operation = 'stream.range' as const;
+      if (typeof start !== 'string' || typeof end !== 'string') {
+        throw new RedisInvalidArgumentError({
+          operation,
+          message: 'stream range bounds must be strings'
+        });
+      }
+      const parsedCount = parsePositiveInteger({ value: count, operation, field: 'count' });
+
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const rawEntries = await getCommandClient().call(
+            'XRANGE',
+            toPhysicalRedisKey(key),
+            start,
+            end,
+            'COUNT',
+            parsedCount
+          );
+          return parseStreamEntries({ operation, rawEntries });
+        }
+      });
+    },
+
+    /**
+     * 创建请求级 blocking reader。连接只在 reader 生命周期内存在，close 幂等且由调用方
+     * 的 finally 触发；reader 不向上层暴露 raw ioredis client。
+     */
+    createBlockingStreamReader: ({
+      key,
+      blockMs,
+      count = 1
+    }: {
+      key: RedisLogicalKey;
+      blockMs: number;
+      count?: number;
+    }) => {
+      const operation = 'stream.read' as const;
+      const parsedBlockMs = parsePositiveInteger({ value: blockMs, operation, field: 'blockMs' });
+      const parsedCount = parsePositiveInteger({ value: count, operation, field: 'count' });
+      const createBlockingClient =
+        createBlockingConnection ?? (() => getRedisRuntime().createBlockingConnection());
+      const releaseBlockingClient =
+        releaseConnection ??
+        ((client: RedisStreamClient) => getRedisRuntime().releaseConnection(client as RedisClient));
+      const client = createBlockingClient();
+      const physicalKey = toPhysicalRedisKey(key);
+      let closePromise: Promise<void> | undefined;
+
+      return {
+        read: (cursor: string) => {
+          if (typeof cursor !== 'string' || cursor.length === 0) {
+            throw new RedisInvalidArgumentError({
+              operation,
+              message: 'stream cursor must be a non-empty string'
+            });
+          }
+
+          return executeRedisOperation({
+            operation,
+            timeoutMs: parsedBlockMs + 5_000,
+            execute: async () => {
+              const rawResult = await client.call(
+                'XREAD',
+                'BLOCK',
+                parsedBlockMs,
+                'COUNT',
+                parsedCount,
+                'STREAMS',
+                physicalKey,
+                cursor
+              );
+
+              if (rawResult === null) return [];
+              if (!Array.isArray(rawResult) || rawResult.length !== 1) {
+                throw new RedisInvalidResponseError({
+                  operation,
+                  message: 'Redis XREAD returned an unsupported response'
+                });
+              }
+
+              const streamResult = rawResult[0];
+              if (
+                !Array.isArray(streamResult) ||
+                streamResult.length !== 2 ||
+                streamResult[0] !== physicalKey
+              ) {
+                throw new RedisInvalidResponseError({
+                  operation,
+                  message: 'Redis XREAD stream key returned an unsupported response'
+                });
+              }
+
+              return parseStreamEntries({ operation, rawEntries: streamResult[1] });
+            }
+          });
+        },
+        close: () => {
+          closePromise ??= Promise.resolve(releaseBlockingClient(client));
+          return closePromise;
+        }
+      };
+    },
+
     delete: (key: RedisLogicalKey) =>
       executeRedisOperation({
         operation: 'string.delete',
@@ -643,7 +891,9 @@ export type RedisStoreAdapter = ReturnType<typeof createRedisStoreAdapter>;
 
 /** 默认 Repository adapter；仅在具体操作执行时获取已经由应用配置的 Runtime。 */
 export const redisRepositoryAdapter = createRedisStoreAdapter({
-  getCommandClient: () => getRedisRuntime().getCommandConnection()
+  getCommandClient: () => getRedisRuntime().getCommandConnection(),
+  createBlockingConnection: () => getRedisRuntime().createBlockingConnection(),
+  releaseConnection: (client) => getRedisRuntime().releaseConnection(client as RedisClient)
 });
 
 export {

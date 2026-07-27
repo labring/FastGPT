@@ -67,3 +67,30 @@ export type {
   LeaseRepositoryLogger,
   WithLeaseOptions
 } from './lease';
+export {
+  WORKFLOW_STOP_SIGNAL_TTL_SECONDS,
+  WorkflowStopSignalParamsSchema,
+  createWorkflowStopSignalRepository,
+  getWorkflowStopSignalKey
+} from './workflowStopSignal';
+export type {
+  WorkflowStopSignalParams,
+  WorkflowStopSignalRepository,
+  WorkflowStopSignalRepositoryDependencies,
+  WorkflowStopSignalRepositoryLogger
+} from './workflowStopSignal';
+export {
+  StreamResumeParamsSchema,
+  StreamResumeUnavailableStateSchema,
+  StreamResumeActiveStateSchema,
+  createStreamResumeRepository
+} from './streamResume';
+export type {
+  StreamResumeActiveState,
+  StreamResumeKeys,
+  StreamResumeParams,
+  StreamResumeRepository,
+  StreamResumeRepositoryDependencies,
+  StreamResumeRepositoryLogger,
+  StreamResumeUnavailableState
+} from './streamResume';

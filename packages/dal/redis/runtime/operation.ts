@@ -22,7 +22,11 @@ export type RedisOperation =
   | 'hash.getAll'
   | 'hash.setWithTtl'
   | 'fixedWindow.consume'
-  | 'number.incrementWithTtl';
+  | 'number.incrementWithTtl'
+  | 'stream.append'
+  | 'stream.expire'
+  | 'stream.range'
+  | 'stream.read';
 
 type RedisOperationPolicy = {
   maxAttempts: 1 | 2;
@@ -64,7 +68,11 @@ const operationPolicies: Record<RedisOperation, RedisOperationPolicy> = {
   'hash.getAll': readPolicy,
   'hash.setWithTtl': singleAttemptWritePolicy,
   'fixedWindow.consume': singleAttemptWritePolicy,
-  'number.incrementWithTtl': singleAttemptWritePolicy
+  'number.incrementWithTtl': singleAttemptWritePolicy,
+  'stream.append': singleAttemptWritePolicy,
+  'stream.expire': singleAttemptWritePolicy,
+  'stream.range': readPolicy,
+  'stream.read': readPolicy
 };
 
 const transientErrorMessages = [
