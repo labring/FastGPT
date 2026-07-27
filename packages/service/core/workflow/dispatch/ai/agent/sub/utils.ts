@@ -1,5 +1,5 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getAgentRuntimeTools } from './tool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
@@ -27,7 +27,7 @@ export const getSubapps = async ({
   lang
 }: {
   tmbId: string;
-  tools: SkillToolType[];
+  tools: AgentToolType[];
   lang?: localeType;
 }): Promise<{
   completionTools: ChatCompletionTool[];

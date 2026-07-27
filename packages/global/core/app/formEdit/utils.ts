@@ -4,7 +4,7 @@ import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import { getSelectedInputRenderType } from '../../workflow/utils';
 import type { SelectedToolItemType } from './type';
-import { AgentToolInputModeEnum } from '../../ai/skill/constants';
+import { AgentToolInputModeEnum } from '../tool/constants';
 
 export { getSelectedInputRenderType } from '../../workflow/utils';
 

@@ -28,8 +28,3 @@ export enum AgentSkillTypeEnum {
   folder = 'folder',
   skill = 'skill'
 }
-
-export enum AgentToolInputModeEnum {
-  agentGenerated = 'agentGenerated',
-  manual = 'manual'
-}

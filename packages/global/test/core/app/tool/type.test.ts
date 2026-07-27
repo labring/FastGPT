@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { SkillToolSchema } from '@fastgpt/global/core/ai/skill/type';
-import { AgentToolInputModeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-describe('SkillToolSchema', () => {
+describe('AgentToolSchema', () => {
   it('keeps the dedicated key and mode input snapshot', () => {
-    const result = SkillToolSchema.parse({
+    const result = AgentToolSchema.parse({
       id: 'systemTool-search',
       inputs: [{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }],
       config: {}
@@ -15,7 +15,7 @@ describe('SkillToolSchema', () => {
   });
 
   it('normalizes the transitional workflow input snapshot', () => {
-    const result = SkillToolSchema.parse({
+    const result = AgentToolSchema.parse({
       id: 'systemTool-search',
       inputs: [
         {
@@ -32,7 +32,7 @@ describe('SkillToolSchema', () => {
   });
 
   it('preserves missing inputs as the legacy Agent marker', () => {
-    const result = SkillToolSchema.parse({
+    const result = AgentToolSchema.parse({
       id: 'systemTool-search',
       config: {}
     });

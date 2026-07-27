@@ -1,4 +1,4 @@
-import { AgentToolInputConfigSchema, type SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import {
   getToolNameCandidates,
   isSystemOrCommercialToolId,
@@ -124,7 +124,7 @@ export const getAgentRuntimeTools = async ({
   tmbId,
   lang
 }: {
-  tools: SkillToolType[];
+  tools: AgentToolType[];
   tmbId: string;
   lang?: localeType;
 }): Promise<SubAppInitType[]> => {

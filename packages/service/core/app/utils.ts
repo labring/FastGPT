@@ -23,7 +23,7 @@ import {
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { SkillToolSchema } from '@fastgpt/global/core/ai/skill/type';
+import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
   SelectedAgentSkillItemTypeSchema,
   StoredSelectedAgentSkillItemTypeSchema,
@@ -326,7 +326,7 @@ export async function rewriteAppWorkflowToDetail({
         // Tool load
         const toolInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.selectedTools);
         if (toolInput && !nodeInputIsReference(toolInput)) {
-          const toolsParse = z.array(SkillToolSchema).safeParse(toolInput?.value || []);
+          const toolsParse = z.array(AgentToolSchema).safeParse(toolInput?.value || []);
           const tools = toolsParse.success ? toolsParse.data : [];
           const nodes = await Promise.all(
             tools.map(async (tool) => {
