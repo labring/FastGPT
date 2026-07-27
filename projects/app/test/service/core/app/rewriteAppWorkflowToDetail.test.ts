@@ -123,7 +123,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     ]);
   });
 
-  it('刷新最新工具节点时使用新 renderTypeList，并保留旧节点选中的引用类型', async () => {
+  it('刷新最新工具节点时保留旧节点选中的引用类型', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'mcp-app-1/tool',
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -168,8 +168,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
             label: 'Size',
             valueType: WorkflowIOValueTypeEnum.number,
             value: ['start', 'amount'],
-            selectedTypeIndex: 1,
-            renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference]
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.reference]
           }
         ],
         outputs: []
@@ -186,8 +186,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(nodes[0].inputs[0]).toMatchObject({
       key: 'size',
       value: ['start', 'amount'],
-      selectedTypeIndex: 1,
-      renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
+      selectedTypeIndex: 0,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
       list: [
         { label: '1', value: '1' },
         { label: '2', value: '2' }
