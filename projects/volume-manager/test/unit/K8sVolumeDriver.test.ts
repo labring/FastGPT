@@ -7,8 +7,7 @@ vi.mock('../../src/env', () => ({
   env: {
     VM_K8S_NAMESPACE: 'opensandbox',
     VM_VOLUME_NAME_PREFIX: 'fastgpt-session',
-    VM_K8S_PVC_STORAGE_CLASS: '',
-    VM_K8S_PVC_STORAGE_SIZE: '1Gi'
+    VM_K8S_PVC_STORAGE_CLASS: ''
   }
 }));
 
@@ -46,12 +45,13 @@ describe('K8sVolumeDriver', () => {
       .mockResolvedValueOnce({ ok: true, status: 201 });
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
-    const result = await driver.ensure(VALID_ID);
+    const result = await driver.ensure(VALID_ID, '5Gi');
     const [, createOpts] = fetchMock.mock.calls[1];
     const body = JSON.parse((createOpts as any).body);
 
     expect(result).toEqual({ claimName: VOLUME_NAME, created: true });
     expect(body.spec.storageClassName).toBe('');
+    expect(body.spec.resources.requests.storage).toBe('5Gi');
   });
 
   it('ensure throws on unexpected GET error', async () => {

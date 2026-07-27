@@ -175,7 +175,7 @@ const SkillDetailContextProviderInner = ({
       ) {
         return t('skill:sandbox_runtime_upgrade_failed');
       }
-      return t(message, { defaultValue: message });
+      return message;
     },
     [t]
   );

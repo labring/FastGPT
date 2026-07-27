@@ -31,8 +31,8 @@ describe('VolumeService', () => {
       claimName: 'fastgpt-session-' + VALID_ID,
       created: true
     });
-    const result = await service.ensure(VALID_ID);
-    expect(driver.ensure).toHaveBeenCalledWith(VALID_ID);
+    const result = await service.ensure(VALID_ID, '5Gi');
+    expect(driver.ensure).toHaveBeenCalledWith(VALID_ID, '5Gi');
     expect(result.created).toBe(true);
   });
 

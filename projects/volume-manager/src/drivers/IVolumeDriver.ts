@@ -3,7 +3,7 @@ export type EnsureResult = {
   created: boolean;
 };
 
-export interface IVolumeDriver {
-  ensure(sessionId: string): Promise<EnsureResult>;
+export type IVolumeDriver = {
+  ensure(sessionId: string, storageSize?: string): Promise<EnsureResult>;
   remove(sessionId: string): Promise<void>;
-}
+};

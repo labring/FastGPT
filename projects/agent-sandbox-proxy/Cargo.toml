@@ -17,3 +17,5 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "query", "rustls", "stream"] }
 jsonwebtoken = { version = "10.4.0", default-features = false, features = ["rust_crypto"] }
 sha2 = "0.10.9"
+thiserror = "2.0.18"
+url = "2.5.8"

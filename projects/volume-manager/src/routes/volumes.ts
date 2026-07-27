@@ -3,9 +3,11 @@ import { z } from 'zod';
 import type { VolumeService } from '../services/VolumeService';
 import { logInfo } from '../utils/logger';
 
-const ensureBodySchema = z.object({
-  sessionId: z.string()
+export const EnsureVolumeBodySchema = z.object({
+  sessionId: z.string(),
+  storageSize: z.string().trim().min(1).max(64).optional()
 });
+export type EnsureVolumeBody = z.infer<typeof EnsureVolumeBodySchema>;
 
 export function volumeRoutes(service: VolumeService): Hono {
   const app = new Hono();
@@ -13,14 +15,14 @@ export function volumeRoutes(service: VolumeService): Hono {
   // POST /v1/volumes/ensure
   app.post('/ensure', async (c) => {
     const body = await c.req.json().catch(() => null);
-    const parsed = ensureBodySchema.safeParse(body);
+    const parsed = EnsureVolumeBodySchema.safeParse(body);
     if (!parsed.success) {
       return c.json({ error: 'Invalid request body', details: parsed.error.issues }, 400);
     }
 
-    const { sessionId } = parsed.data;
+    const { sessionId, storageSize } = parsed.data;
     logInfo(`POST /v1/volumes/ensure sessionId=${sessionId}`);
-    const result = await service.ensure(sessionId);
+    const result = await service.ensure(sessionId, storageSize);
     const status = result.created ? 201 : 200;
     logInfo(`ensure done claimName=${result.claimName} created=${result.created} status=${status}`);
     return c.json(result, status);

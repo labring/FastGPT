@@ -8,12 +8,13 @@ import { logDebug } from '../utils/logger';
 const K8S_API = 'https://kubernetes.default.svc';
 const TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
 const CA_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt';
+const DEFAULT_PVC_STORAGE_SIZE = '1Gi';
 
 function readToken(): string {
   return readFileSync(TOKEN_PATH, 'utf-8').trim();
 }
 
-function pvcBody(name: string, sessionId: string): object {
+function pvcBody(name: string, sessionId: string, storageSize: string): object {
   return {
     apiVersion: 'v1',
     kind: 'PersistentVolumeClaim',
@@ -24,7 +25,7 @@ function pvcBody(name: string, sessionId: string): object {
     },
     spec: {
       accessModes: ['ReadWriteOnce'],
-      resources: { requests: { storage: env.VM_K8S_PVC_STORAGE_SIZE } },
+      resources: { requests: { storage: storageSize } },
       storageClassName: env.VM_K8S_PVC_STORAGE_CLASS
     }
   };
@@ -59,7 +60,7 @@ export class K8sVolumeDriver implements IVolumeDriver {
     return name ? `${base}/${name}` : base;
   }
 
-  async ensure(sessionId: string): Promise<EnsureResult> {
+  async ensure(sessionId: string, storageSize = DEFAULT_PVC_STORAGE_SIZE): Promise<EnsureResult> {
     const name = toVolumeName(this.prefix, sessionId);
     const getUrl = this.pvcUrl(name);
 
@@ -83,7 +84,7 @@ export class K8sVolumeDriver implements IVolumeDriver {
       this.fetchOpts({
         method: 'POST',
         headers: this.headers(),
-        body: JSON.stringify(pvcBody(name, sessionId))
+        body: JSON.stringify(pvcBody(name, sessionId, storageSize))
       })
     );
     logDebug(`K8s POST PVC status=${createRes.status}`);
