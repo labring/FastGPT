@@ -14,6 +14,7 @@ import {
   buildSandboxClientQueryFromChatSource,
   getSandboxClient
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/interface/file';
 import { Readable } from 'node:stream';
 
 async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
@@ -68,6 +69,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
     );
 
     const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
+    await prepareSandboxFileParentDirectories(sandbox.provider, [providerPath]);
     await sandbox.provider.writeFileStream(
       providerPath,
       Readable.toWeb(form.getReadStream()) as ReadableStream<Uint8Array>

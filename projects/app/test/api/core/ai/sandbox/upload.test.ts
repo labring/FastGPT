@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   clearDiskTempFiles: vi.fn(),
+  createDirectories: vi.fn(),
   getAgentSandboxMaxFileBytes: vi.fn(),
   getReadStream: vi.fn(),
   getSandboxClient: vi.fn(),
@@ -72,7 +73,10 @@ describe('sandbox upload API', () => {
     mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({ sandboxId: 'sandbox-1' });
     mocks.writeFileStream.mockResolvedValue(undefined);
     mocks.getSandboxClient.mockResolvedValue({
-      provider: { writeFileStream: mocks.writeFileStream },
+      provider: {
+        createDirectories: mocks.createDirectories,
+        writeFileStream: mocks.writeFileStream
+      },
       resolveRuntimePath: (path: string) => `/workspace/sessions/chat-1/${path}`
     });
   });
@@ -103,10 +107,14 @@ describe('sandbox upload API', () => {
       userId: 'user-1',
       chatId: 'chat-1'
     });
+    expect(mocks.createDirectories).toHaveBeenCalledWith(['/workspace/sessions/chat-1/uploads']);
     expect(mocks.writeFileStream).toHaveBeenCalledTimes(1);
     const [[path, stream]] = mocks.writeFileStream.mock.calls;
     expect(path).toBe('/workspace/sessions/chat-1/uploads/a.txt');
     expect(stream).toBeInstanceOf(ReadableStream);
+    expect(mocks.createDirectories.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.writeFileStream.mock.invocationCallOrder[0]
+    );
     expect(mocks.clearDiskTempFiles).toHaveBeenCalledWith(['/tmp/upload-a.txt']);
   });
 });

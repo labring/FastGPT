@@ -20,7 +20,6 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
-import { SandboxFileRefSchema } from '../ai/sandbox/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
