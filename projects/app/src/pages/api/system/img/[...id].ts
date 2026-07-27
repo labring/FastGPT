@@ -22,10 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    // Encode URL to handle special characters (e.g., Chinese characters)
     const publicUrl = getS3AvatarSource().createPublicUrl(joined);
-    const encodedUrl = encodeURI(publicUrl);
-    res.redirect(301, encodedUrl);
+    res.redirect(301, publicUrl);
   } catch (error) {
     jsonRes(res, {
       code: 500,
