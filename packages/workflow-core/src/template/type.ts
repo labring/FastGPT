@@ -52,6 +52,7 @@ export type NodeInputAutomationMeta = {
   defaultPolicy?: WorkflowInputDefaultPolicy;
   resourceKind?: WorkflowResourceKind;
   bindingRequired?: boolean;
+  inputModes?: Array<'literal' | 'reference' | 'secret'>;
 };
 
 export type NodeTemplateAutomationMeta = {

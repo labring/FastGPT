@@ -18,25 +18,14 @@ import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { getDocumentNode } from '../nesting/service';
 import { extractCodeInputDefinitions, extractCodeOutputDefinitions } from '../code/io';
-
-const dynamicOutputNodeTypes = new Set<FlowNodeTypeEnum>([
-  FlowNodeTypeEnum.code,
-  FlowNodeTypeEnum.contentExtract,
-  FlowNodeTypeEnum.httpRequest468,
-  FlowNodeTypeEnum.loopRun
-]);
+import { DYNAMIC_INPUT_MARKER_KEYS, DYNAMIC_OUTPUT_NODE_TYPES } from '../template/contract';
 
 const supportsDynamicOutputs = (node: ReturnType<typeof getDocumentNode>) =>
-  dynamicOutputNodeTypes.has(node.flowNodeType) ||
+  DYNAMIC_OUTPUT_NODE_TYPES.has(node.flowNodeType) ||
   node.outputs.some((item) => item.key === NodeOutputKeyEnum.addOutputParam);
 
-const dynamicInputMarkerKeys = new Set<string>([
-  NodeInputKeyEnum.addInputParam,
-  NodeInputKeyEnum.datasetQuoteList
-]);
-
 const supportsDynamicInputs = (node: ReturnType<typeof getDocumentNode>) =>
-  node.inputs.some((item) => dynamicInputMarkerKeys.has(item.key));
+  node.inputs.some((item) => DYNAMIC_INPUT_MARKER_KEYS.has(item.key));
 
 /** 向带动态输入标记的节点添加一个可编辑输入。 */
 export const addNodeInput = ({
@@ -94,7 +83,7 @@ export const removeNodeInput = ({
   }
   if (
     !supportsDynamicInputs(node) ||
-    dynamicInputMarkerKeys.has(inputKey) ||
+    DYNAMIC_INPUT_MARKER_KEYS.has(inputKey) ||
     node.inputs[inputIndex].canEdit !== true
   ) {
     throw new WorkflowCommandError([
@@ -232,7 +221,7 @@ export const syncCodeNodeIO = ({
       .filter(
         (input) =>
           input.canEdit === true &&
-          !dynamicInputMarkerKeys.has(input.key) &&
+          !DYNAMIC_INPUT_MARKER_KEYS.has(input.key) &&
           !nextInputKeys.has(input.key)
       )
       .forEach((input) => {
