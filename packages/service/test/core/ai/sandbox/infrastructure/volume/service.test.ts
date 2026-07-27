@@ -4,7 +4,8 @@ const volumeConfigMock = vi.hoisted(() => ({
   config: {
     enable: true,
     url: 'http://volume-manager.local',
-    token: 'volume-token'
+    token: 'volume-token',
+    storageSize: '1Gi'
   }
 }));
 
@@ -25,7 +26,8 @@ describe('sandbox volume service', () => {
     volumeConfigMock.config = {
       enable: true,
       url: 'http://volume-manager.local',
-      token: 'volume-token'
+      token: 'volume-token',
+      storageSize: '1Gi'
     };
   });
 
@@ -53,7 +55,7 @@ describe('sandbox volume service', () => {
         'Content-Type': 'application/json',
         Authorization: 'Bearer volume-token'
       },
-      body: JSON.stringify({ sessionId: 'session-1' })
+      body: JSON.stringify({ sessionId: 'session-1', storageSize: '1Gi' })
     });
   });
 
@@ -76,7 +78,8 @@ describe('sandbox volume service', () => {
       expect.objectContaining({
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ sessionId: 'session-1', storageSize: '1Gi' })
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(

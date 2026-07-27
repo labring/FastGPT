@@ -5,11 +5,12 @@
  */
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import mime from 'mime';
+import { posix } from 'node:path';
+import { Readable } from 'node:stream';
 import type { SandboxClient } from './runtime/client';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { readExternalFileBuffer } from '../../../../common/file/read/external';
 import { resolveSandboxRuntimePath } from '../utils';
-import { Readable } from 'node:stream';
 
 export type SandboxUrlFile = {
   path: string;
@@ -43,6 +44,26 @@ export const readSandboxUrlFile = async (url: string) => {
 };
 
 /**
+ * 在写入文件前创建其父目录。
+ *
+ * Sandbox 文件系统运行在 POSIX 环境，createDirectories 会递归创建目录；这里同时去重，
+ * 避免批量文件落在同一目录时重复调用 provider。
+ */
+export async function prepareSandboxFileParentDirectories(sandbox: ISandbox, paths: string[]) {
+  const parentDirectories = [
+    ...new Set(
+      paths
+        .filter(Boolean)
+        .map((path) => posix.dirname(path))
+        .filter((path) => path !== '.' && path !== '/')
+    )
+  ];
+
+  if (parentDirectories.length === 0) return;
+  await sandbox.createDirectories(parentDirectories);
+}
+
+/**
  * 将远程 URL 文件写入已存在的 sandbox 实例。
  *
  * 这里不负责 sandbox 生命周期，只统一处理下载和 writeFiles。
@@ -65,7 +86,12 @@ export async function writeUrlFilesToSandbox(
   }
 
   if (writeFileTasks.length === 0) return;
-  await sandbox.writeFiles(await Promise.all(writeFileTasks));
+  const writeEntries = await Promise.all(writeFileTasks);
+  await prepareSandboxFileParentDirectories(
+    sandbox,
+    writeEntries.map(({ path }) => path)
+  );
+  await sandbox.writeFiles(writeEntries);
 }
 
 /**

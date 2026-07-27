@@ -43,8 +43,10 @@ GET /health
 POST /v1/volumes/ensure
 Content-Type: application/json
 
-{ "sessionId": "<24位十六进制字符串>" }
+{ "sessionId": "<24位十六进制字符串>", "storageSize": "1Gi" }
 ```
+
+`storageSize` 可选，仅 k8s 模式下创建新 PVC 时有效；旧客户端未传入时兼容使用 `1Gi`。
 
 - 卷已存在：返回 `200`，`{ "claimName": "...", "created": false }`
 - 卷新建：返回 `201`，`{ "claimName": "...", "created": true }`
@@ -69,7 +71,6 @@ DELETE /v1/volumes/:sessionId
 | `VM_DOCKER_SOCKET` | | `/var/run/docker.sock` | Docker socket 路径（docker 模式） |
 | `VM_K8S_NAMESPACE` | | `opensandbox` | PVC 所在命名空间（k8s 模式） |
 | `VM_K8S_PVC_STORAGE_CLASS` | | `''` | PVC StorageClass（k8s 模式） |
-| `VM_K8S_PVC_STORAGE_SIZE` | | `1Gi` | PVC 容量（k8s 模式） |
 
 ## Kubernetes 部署要求
 

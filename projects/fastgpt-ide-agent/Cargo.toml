@@ -19,6 +19,7 @@ notify = "9.0.0-rc.4"
 notify-debouncer-full = "0.8.0-rc.2"
 sha2 = "0.10.9"
 mime_guess = "2.0.5"
+thiserror = "2.0.18"
 
 [dev-dependencies]
 tempfile = "3.27.0"

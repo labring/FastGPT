@@ -44,7 +44,7 @@ export const ensureSessionVolume = async (sessionId: string): Promise<string> =>
   const res = await fetch(`${vmConfig.url}/v1/volumes/ensure`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ sessionId })
+    body: JSON.stringify({ sessionId, storageSize: vmConfig.storageSize })
   });
   if (!res.ok) {
     throw new Error(`volume-manager error: ${res.status} ${await res.text()}`);

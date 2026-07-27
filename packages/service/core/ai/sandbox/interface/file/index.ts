@@ -3,6 +3,7 @@ export {
   addDirectoryToArchive,
   getSandboxFileContent,
   isSandboxPathDirectory,
+  prepareSandboxFileParentDirectories,
   readSandboxUrlFile,
   resolveSandboxWorkspacePath,
   writeUrlFilesToSandbox

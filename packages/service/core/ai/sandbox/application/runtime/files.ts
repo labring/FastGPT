@@ -6,7 +6,11 @@
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSafeSandboxInputFilename, joinSandboxPath } from '../../utils';
-import { readSandboxUrlFile, type SandboxInputFileReader } from '../file';
+import {
+  prepareSandboxFileParentDirectories,
+  readSandboxUrlFile,
+  type SandboxInputFileReader
+} from '../file';
 
 export type { SandboxInputFileReader } from '../file';
 
@@ -65,5 +69,10 @@ export const injectInputFilesToSandbox = async (
   }
 
   if (writeFileTasks.length === 0) return;
-  await sandbox.writeFiles(await Promise.all(writeFileTasks));
+  const writeEntries = await Promise.all(writeFileTasks);
+  await prepareSandboxFileParentDirectories(
+    sandbox,
+    writeEntries.map(({ path }) => path)
+  );
+  await sandbox.writeFiles(writeEntries);
 };
