@@ -85,6 +85,7 @@ const RenderList: Record<
     Component: CommonInputForm
   },
 
+  [FlowNodeInputTypeEnum.agentGenerated]: undefined,
   [FlowNodeInputTypeEnum.customVariable]: undefined,
   [FlowNodeInputTypeEnum.hidden]: undefined,
   [FlowNodeInputTypeEnum.custom]: undefined,
