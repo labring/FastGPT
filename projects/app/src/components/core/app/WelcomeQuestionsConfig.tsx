@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import DraggableInputList from './DraggableInputList';
@@ -11,46 +11,77 @@ type WelcomeQuestionsConfigProps = {
   onChange: (value: string[]) => void;
 };
 
+const getInitialDraftValue = (value?: string[]) => (value === undefined ? [''] : value);
+
+const normalizeWelcomeQuestions = (value: string[]) =>
+  value.map((text) => text.trim()).filter(Boolean);
+
+const isSameStringList = (a?: string[], b?: string[]) =>
+  a?.length === b?.length && a?.every((item, index) => item === b?.[index]);
+
 /**
  * 编辑对话开场白下方的预设问题列表。
- * 保持问题顺序、空问题和删除行为都由调用方保存，便于系统配置节点和 Agent 表单复用同一交互。
+ * 组件内部保留空输入草稿用于编辑体验，对外只保存非空问题，避免默认空输入进入 chatConfig。
  */
 const WelcomeQuestionsConfig = ({
-  value = [],
+  value,
   zoom,
   drawerMode = false,
   onChange
 }: WelcomeQuestionsConfigProps) => {
   const { t } = useTranslation();
-  const resolvedValue = useMemo(() => (value.length > 0 ? value : ['']), [value]);
+  const [draftValue, setDraftValue] = useState<string[]>(() => getInitialDraftValue(value));
+  const lastEmittedValueRef = useRef<string[]>();
+
+  useEffect(() => {
+    const nextDraftValue = getInitialDraftValue(value);
+    const nextSavedValue = normalizeWelcomeQuestions(nextDraftValue);
+
+    if (isSameStringList(lastEmittedValueRef.current, nextSavedValue)) {
+      return;
+    }
+
+    setDraftValue(nextDraftValue);
+  }, [value]);
 
   const questionItems = useMemo(
     () =>
-      resolvedValue.map((text, index) => ({
+      draftValue.map((text, index) => ({
         key: `${index}`,
         value: text
       })),
-    [resolvedValue]
+    [draftValue]
+  );
+
+  const updateDraftValue = useCallback(
+    (nextDraftValue: string[]) => {
+      const nextSavedValue = normalizeWelcomeQuestions(nextDraftValue);
+
+      lastEmittedValueRef.current = nextSavedValue;
+      setDraftValue(nextDraftValue);
+      onChange(nextSavedValue);
+    },
+    [onChange]
   );
 
   const handleChange = useCallback(
     (key: string, text: string) => {
       const updateIndex = Number(key);
-      onChange(
-        resolvedValue.map((question, questionIndex) =>
+      updateDraftValue(
+        draftValue.map((question, questionIndex) =>
           questionIndex === updateIndex ? text : question
         )
       );
     },
-    [onChange, resolvedValue]
+    [draftValue, updateDraftValue]
   );
 
   const handleDelete = useCallback(
     (key: string) => {
       const deleteIndex = Number(key);
-      onChange(resolvedValue.filter((_, questionIndex) => questionIndex !== deleteIndex));
+      updateDraftValue(draftValue.filter((_, questionIndex) => questionIndex !== deleteIndex));
     },
-    [onChange, resolvedValue]
+    [draftValue, updateDraftValue]
   );
 
   return (
@@ -63,9 +94,9 @@ const WelcomeQuestionsConfig = ({
         maxLength={100}
         multiline
         getInputProps={drawerMode ? () => drawerInputStyle : undefined}
-        onDragEnd={(list) => onChange(list.map((item) => item.value))}
+        onDragEnd={(list) => updateDraftValue(list.map((item) => item.value))}
         onChange={handleChange}
-        onAdd={() => onChange([...resolvedValue, ''])}
+        onAdd={() => updateDraftValue([...draftValue, ''])}
         onDelete={handleDelete}
       />
     </Box>

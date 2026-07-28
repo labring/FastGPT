@@ -1,11 +1,5 @@
 import type { ButtonProps, InputProps, TextareaProps } from '@chakra-ui/react';
 
-/** Chakra Drawer 默认 z-index，供抽屉容器显式声明 */
-export const drawerZIndex = 1400;
-
-/** 从系统配置抽屉内打开的弹窗需要高于 Drawer，否则会被挡住 */
-export const drawerModalZIndex = 1500;
-
 export const drawerActionButtonStyle: ButtonProps = {
   color: '#485264',
   fontFamily: 'PingFang SC',

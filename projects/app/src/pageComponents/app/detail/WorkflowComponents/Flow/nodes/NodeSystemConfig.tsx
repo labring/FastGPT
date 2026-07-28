@@ -258,7 +258,7 @@ function WelcomeText({
 function WelcomeQuestions({ chatConfig: { welcomeConfig }, setAppDetail, mode }: ComponentProps) {
   const { zoom } = useViewport();
   const welcomeQuestions = useMemo(
-    () => welcomeConfig?.welcomeQuestions ?? [''],
+    () => welcomeConfig?.welcomeQuestions,
     [welcomeConfig?.welcomeQuestions]
   );
 

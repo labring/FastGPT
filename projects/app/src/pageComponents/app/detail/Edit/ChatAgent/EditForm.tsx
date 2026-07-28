@@ -176,7 +176,7 @@ const EditForm = ({
   }, [selectedModel.quoteMaxToken]);
 
   const welcomeQuestions = useMemo(
-    () => appForm.chatConfig.welcomeConfig?.welcomeQuestions ?? [''],
+    () => appForm.chatConfig.welcomeConfig?.welcomeQuestions,
     [appForm.chatConfig.welcomeConfig?.welcomeQuestions]
   );
 

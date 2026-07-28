@@ -14,7 +14,6 @@ import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AppContext } from '../../context';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { drawerZIndex } from '@/components/core/app/configDrawerStyles';
 import { SystemConfigForm } from './nodes/NodeSystemConfig';
 
 const WORKFLOW_NAVIGATION_HEIGHT = '67px';
@@ -61,9 +60,8 @@ const SystemConfigDrawer = () => {
         trapFocus={false}
         blockScrollOnMount={false}
       >
-        <DrawerOverlay bg={'transparent'} zIndex={drawerZIndex} />
+        <DrawerOverlay bg={'transparent'} />
         <DrawerContent
-          zIndex={drawerZIndex}
           display={'flex'}
           w={'400px'}
           maxW={'400px'}
