@@ -12,3 +12,15 @@ export type AgentLoopPendingMainContext = {
   askToolCallId: string;
   activePlan?: AgentPlanType;
 };
+
+/**
+ * 描述一次跨请求恢复动作。
+ *
+ * providerState 只保存暂停上下文；continuation 携带本次恢复的用户决策，
+ * 以及必须在 tool response 之后继续消费的标准消息。
+ */
+export type AgentLoopContinuation = {
+  type: 'ask';
+  answer: string;
+  additionalMessages?: ChatCompletionMessageParam[];
+};

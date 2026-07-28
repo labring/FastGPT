@@ -6,7 +6,7 @@
 
 ## 适用范围
 
-辅助生成用于不经过 Workflow Dispatcher、但需要复用 Chat 身份、SSE、计费、停止和 Agent Loop 的生成场景。目前的核心调用方是 Chat Agent Helper。
+辅助生成用于不经过 Workflow Dispatcher、但需要复用 Chat 身份、SSE、计费、停止和 Agent Loop 的生成场景。目前的核心调用方是 Chat Agent Helper 和 Skill Edit 调试对话。
 
 它不是第二套 Workflow runtime，也不负责：
 
@@ -27,6 +27,10 @@
 | `usage.ts` | 余额检查、usage 记录创建和用量推送 |
 | `stop.ts` | 读取并清理统一停止标记 |
 | `type.ts` | processor、用户上下文和运行结果协议 |
+
+Skill Edit 的鉴权、消息组装、Sandbox 准备、Agent Loop runtime、ChatBox 事件和聊天持久化保留在
+`packages/service/core/ai/skill/debugChat`。该目录调用辅助生成公共生命周期，但不依赖 Workflow Dispatcher
+或 `agentLoopCore`。
 
 ## 执行流程
 
@@ -84,6 +88,41 @@ Chat Agent Helper 读取历史时使用 `reserveTool: true`。除 interactive �
 - `done`、`error` 和 `aborted` 都清除该 memory，避免后续普通消息恢复陈旧暂停点。
 - 通用 `saveChat` 已支持 memories；辅助生成只扩展 processor 返回协议和 Chat Agent Helper 保存调用，不修改通用保存语义。
 
+Skill Edit 不复用 Chat Agent Helper wrapper，而是在自己的 processor 中直接调用 `runAgentLoop`，并通过公共
+`AgentLoopRuntime.systemTools` 显式启用 `plan`、`ask`、`sandbox` 和 `readFile`。Skill Edit 不注册
+runtime tools；Sandbox 和文件读取均使用 Agent Loop 标准 system tool 协议。
+
+## Skill Edit 直连
+
+Skill Edit 调试对话保留原 `/api/core/ai/skill/debugChat` 和 ChatBox SSE 协议，但移除
+`workflowStart -> agent` 临时 Workflow。执行流程如下：
+
+```text
+debugChat API
+  |-- Skill 写权限、频控、运行中 edit sandbox 校验
+  |-- preChatRound 与历史/文件 URL 恢复
+  `-- runAuxiliaryGeneration
+        |-- Skill Edit processor 准备 sandbox 和当前用户上下文
+        |-- runAgentLoop(systemTools: plan/ask/sandbox/readFile)
+        |-- Skill Edit event adapter 生成 SSE、assistantResponses、nodeResponses
+        `-- 写入 chat round、agent providerState 和 node response rows
+```
+
+边界约束：
+
+- Skill Edit 只依赖 Agent Loop 的 `interface` 和 Sandbox 的 `interface`，不调用 Workflow Dispatcher，
+  也不复用 `packages/service/core/workflow/dispatch/ai/agentLoopCore`。
+- Pro 的内置 Skill prepare action 直接从 Sandbox interface 注入；Workflow 侧只保留兼容 re-export，
+  不维护 Skill Edit 专用 adapter。
+- ChatBox 仍消费既有 answer、tool、plan、interactive、flowNodeResponse 和 duration 事件；这是传输兼容，
+  不代表执行经过 Workflow。
+- ask 暂停时只持久化 opaque `providerState`；恢复时由 Agent Loop provider 解释。
+- ask 恢复统一使用 `continuation: { type: 'ask', answer, additionalMessages }`；回答作为对应
+  tool response，同轮新上传的文件作为 `additionalMessages` 追加到暂停上下文，
+  避免把回答文本重复作为 user message。
+- `read_files` 只允许读取当前聊天上下文中已授权的文件 URL，单文件失败转换为模型可见结果。
+- 正常、交互暂停和 Agent Loop error 都先完成聊天与 node response 持久化，再发送 SSE `[DONE]`。
+
 ## SSE 与断流续传
 
 - Stream key 使用 `teamId/sourceType/sourceId/chatId`，与标准 Chat source 隔离规则一致。
@@ -113,7 +152,17 @@ agent_runtime_stopping:<sourceType>:<sourceId>:<chatId>
 
 ## 扩展规则
 
-- 新的辅助生成场景优先复用 `runAuxiliaryGeneration`，只新增 processor。
+- 新的辅助生成场景优先复用 `runAuxiliaryGeneration`，只在所属业务域新增 processor。
 - 业务事件由 processor 显式写入，不扩展通用 stream 层去理解业务配置。
 - 公共生命周期需求放在本模块；单场景数据组装保留在调用方业务目录。
 - source 标识统一使用 `sourceType/sourceId`，不能恢复 App-only 的 `appId` 入口。
+
+## TODO
+
+- [x] 将当前分支线性对齐到最新 `upstream/main`，保留旧分支恢复引用。
+- [x] 在 Agent Loop 公共 Input 和两个 provider 中统一 ask `continuation` 恢复协议。
+- [x] 扩展辅助生成生命周期，支持 usage 复用和 `[DONE]` 前业务持久化。
+- [x] 将 Skill Debug 从临时 Workflow 改为 Skill 域内的直接 Agent Loop processor。
+- [x] 将内置 Skill prepare action 下沉到 Sandbox interface，并更新 Pro Skill Debug 入口。
+- [x] 覆盖消息上下文、ask 恢复、runtime/event adapter、API 收尾和错误路径测试。
+- [x] 运行相关局部测试、lint 和 Pro 定向类型检查（按要求不运行全量测试）。

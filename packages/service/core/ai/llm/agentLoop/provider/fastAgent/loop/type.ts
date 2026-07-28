@@ -12,6 +12,7 @@ import type { AgentLoopToolCatalog } from '../tools';
 import type { AgentLoopDatasetSearchExecutor } from '../../../domain/systemTool/datasetSearch';
 import type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopContinuation,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopPendingMainContext,
@@ -75,7 +76,7 @@ export type FastAgentLoopInput<TChildrenResponse = unknown> = {
   systemPrompt?: string;
   activePlan?: AgentPlanType;
   pendingMainContext?: PendingMainContext;
-  userAnswer?: string;
+  continuation?: AgentLoopContinuation;
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
 };
 

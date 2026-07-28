@@ -11,12 +11,14 @@ type CreateAuxiliaryGenerationUsageParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   usageSource: UsageSourceEnum;
+  usageId?: string;
 };
 
 /**
  * 为辅助生成建立统一的扣费上下文。
  *
- * 余额校验在生成前执行；后续 processor 只需把各模型/工具用量推入 `pushUsage`。
+ * 余额校验在生成前执行；交互续答可以复用已有 usageId，后续 processor 只需把
+ * 各模型/工具用量推入 `pushUsage`。
  */
 export const createAuxiliaryGenerationUsage = async ({
   teamId,
@@ -24,7 +26,8 @@ export const createAuxiliaryGenerationUsage = async ({
   appName,
   sourceType,
   sourceId,
-  usageSource
+  usageSource,
+  usageId: existingUsageId
 }: CreateAuxiliaryGenerationUsageParams) => {
   await checkTeamAIPoints(teamId);
 
@@ -37,14 +40,17 @@ export const createAuxiliaryGenerationUsage = async ({
     if (sourceType === ChatSourceTypeEnum.skillEdit) return sourceId;
   })();
 
-  const usageId = await createChatUsageRecord({
-    appName,
-    appId: usageAppId,
-    skillId: usageSkillId,
-    teamId,
-    tmbId,
-    source: usageSource
-  });
+  // 交互追问的后续轮次沿用原 usage，确保一次逻辑调用只生成一条计费记录。
+  const usageId =
+    existingUsageId ??
+    (await createChatUsageRecord({
+      appName,
+      appId: usageAppId,
+      skillId: usageSkillId,
+      teamId,
+      tmbId,
+      source: usageSource
+    }));
 
   return {
     usageId,

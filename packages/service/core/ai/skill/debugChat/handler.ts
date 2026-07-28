@@ -1,87 +1,73 @@
 import { getModelHandle } from '../../model';
 import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  ChatSourceTypeEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
+import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   ChatWorkflowSseResponseSchema,
   type ChatWorkflowSseResponseType
 } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { sseErrRes } from '../../../../common/response';
 import { authSkill } from '../../../../support/permission/skill/auth';
-import { teamFrequencyLimit, LimitTypeEnum } from '../../../../common/api/frequencyLimit';
 import { getIpFromRequest } from '../../../../common/geo';
 import { getLocale } from '../../../../common/middle/i18n';
+import { teamFrequencyLimit, LimitTypeEnum } from '../../../../common/api/frequencyLimit';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
-import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-
+import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
+import { validateFileUrlDomain } from '../../../../common/security/fileUrlValidator';
 import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
-import { dispatchWorkFlow } from '../../../workflow/dispatch';
-import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { getChatItems } from '../../../chat/controller';
+import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
 import {
   failChatRound,
   finalizeChatRound,
   type Props as SaveChatProps,
   updateInteractiveChat
 } from '../../../chat/saveChat';
-import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
 import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
+import { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import { addPreviewUrlToChatItems } from '../../../chat/utils';
+import { getUserChatInfo } from '../../../../support/user/team/utils';
 import {
-  createWorkflowStreamResponseContext,
-  type WorkflowStreamResponseContext
-} from '../../../workflow/utils/streamResponseContext';
-import { buildDebugRuntimeNodes } from './runtime';
-import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
+  runAuxiliaryGeneration,
+  type AuxiliaryGenerationStreamContext
+} from '../../auxiliaryGeneration';
+import { createSkillDebugProcessor, type SkillDebugProcessorData } from './processor';
+import type { SkillDebugSandboxPrepareAction } from './runtime';
+import { SKILL_DEBUG_MAX_FILES } from './userContext';
+import { summarizeRuntimeNodeResponses } from '../../../workflow/dispatch/utils/summary';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
-const skillDebugFileSelectConfig: AppFileSelectConfigType = {
-  maxFiles: 10,
-  canSelectFile: true,
-  canSelectImg: true,
-  customPdfParse: false,
-  canSelectVideo: true,
-  canSelectAudio: true,
-  canSelectCustomFileExtension: false,
-  customFileExtensionList: []
-};
 
 /**
- * 处理 Skill 调试对话的共享主流程。
+ * 处理 Skill 调试对话。
  *
- * 开源 API 与 Pro API 都调用这里；差异只通过 options 显式传入，避免复制 chat round、
- * workflow 调度和 SSE 收尾逻辑。
+ * API 保留原 ChatBox 协议，但执行层直接调用 Agent Loop；handler 只负责鉴权、chat round、
+ * SSE 生命周期和持久化，不再构造或调度 Workflow。
  */
 export async function handleSkillDebugChat(
   req: NodeApiRequest,
   res: NodeApiResponse,
   body: SkillDebugChatBody,
   options: {
-    agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
+    agentSandboxPrepareActions?: SkillDebugSandboxPrepareAction[];
   } = {}
 ): Promise<ChatWorkflowSseResponseType> {
   let skillId = '';
-  let streamResponseContext: WorkflowStreamResponseContext | undefined;
+  let streamContext: AuxiliaryGenerationStreamContext | undefined;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceType: undefined as ChatSourceTypeEnum | undefined,
@@ -106,13 +92,13 @@ export async function handleSkillDebugChat(
       sourceId: skillId
     };
 
-    if (!Array.isArray(messages) || messages.length === 0) {
+    if (messages.length === 0) {
       throw new UserError('messages is required');
     }
 
     const originIp = getIpFromRequest(req);
-
-    const { teamId, tmbId, skill } = await authSkill({
+    const lang = getLocale(req);
+    const { teamId, tmbId, userId, isRoot, skill } = await authSkill({
       req,
       authToken: true,
       authApiKey: true,
@@ -121,6 +107,7 @@ export async function handleSkillDebugChat(
     });
     const modelHandle = await getModelHandle();
     const modelData = modelHandle.getLLMModelData({ modelId });
+    const { timezone, externalProvider } = await getUserChatInfo(tmbId);
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return ChatWorkflowSseResponseSchema.parse('');
@@ -135,7 +122,7 @@ export async function handleSkillDebugChat(
     logger.debug('Edit debug sandbox found', { skillId, sandboxId: sandboxInstance.sandboxId });
 
     const chatMessages = GPTMessages2Chats({ messages });
-    const userQuestion = chatMessages.pop() as UserChatItemType;
+    const userQuestion = chatMessages.pop() as UserChatItemType | undefined;
     if (!userQuestion) {
       throw new UserError('User question is empty');
     }
@@ -147,35 +134,38 @@ export async function handleSkillDebugChat(
       limit: 20,
       field: 'obj value memories'
     });
+    const historiesWithPreview = await addPreviewUrlToChatItems(
+      concatHistories(histories, chatMessages),
+      'chatFlow'
+    );
+    const interactive = getLastInteractiveValue(historiesWithPreview);
+    const userQuestionValue = removeEmptyUserInput(userQuestion.value);
+    const { text: queryText = '', files: queryFiles = [] } =
+      chatValue2RuntimePrompt(userQuestionValue);
+    if (queryFiles.some((file) => file.url && !validateFileUrlDomain(file.url))) {
+      throw new UserError('Invalid file url');
+    }
 
-    const newHistories = concatHistories(histories, chatMessages);
-    const interactive = getLastInteractiveValue(newHistories);
-    const chatConfig = {
-      fileSelectConfig: skillDebugFileSelectConfig
-    };
-    const {
-      query: workflowQuery,
-      maxFileAmount,
-      maxBytesPerFile
-    } = await prepareWorkflowFileQuery({
-      teamId,
-      chatConfig,
-      query: userQuestion.value
-    });
-    const workflowUserQuestion: UserChatItemType = {
-      ...userQuestion,
-      value: workflowQuery
-    };
     const preparedRound = await preChatRound({
       ...chatSource,
       chatId,
       teamId,
       tmbId,
       source: ChatSourceEnum.test,
-      userContent: workflowUserQuestion,
+      userContent: userQuestion,
       responseChatItemId: responseChatItemIdFromBody,
       interactive
     });
+    const getPreviewUrl = createChatFilePreviewUrlGetter();
+    // preChatRound 会移除待持久化消息中的临时 URL；Agent 运行前按 key 重新签发预览地址。
+    await Promise.all(
+      queryFiles.map(async (file) => {
+        if (!file.key) return;
+        const previewUrl = await getPreviewUrl(file.key);
+        if (previewUrl) file.url = previewUrl;
+      })
+    );
+
     const runningChatId = preparedRound.chatId;
     const finalResponseChatItemId = preparedRound.responseChatItemId;
     roundState.preparedRound = preparedRound;
@@ -184,159 +174,100 @@ export async function handleSkillDebugChat(
     roundState.chatId = runningChatId;
     roundState.responseChatItemId = finalResponseChatItemId;
 
-    const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
-      skillId,
-      modelData.modelId,
-      systemPrompt
-    );
-
-    streamResponseContext = await createWorkflowStreamResponseContext({
+    const result = await runAuxiliaryGeneration({
       req,
       res,
-      stream: true,
-      detail: true,
       teamId,
+      tmbId,
+      userId,
+      isRoot,
+      lang,
+      appName: skill.name,
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       chatId: runningChatId,
-      responseId: runningChatId,
-      showNodeStatus: true
-    });
-
-    logger.debug('Dispatching skill debug workflow', {
-      skillId,
-      chatId,
-      modelId: modelData.modelId
-    });
-
-    const {
-      flatNodeResponses,
-      assistantResponses,
-      system_memories,
-      durationSeconds,
-      customFeedbacks,
-      workflowRuntimeSummary
-    } = await dispatchWorkFlow({
-      apiVersion: 'v2',
-      res,
-      lang: getLocale(req),
-      requestOrigin: req.headers.origin,
-      mode: 'test',
+      query: queryText,
+      files: [],
+      data: {
+        model: modelData,
+        systemPrompt,
+        currentUserValue: userQuestionValue,
+        timezone: timezone ?? 'Asia/Shanghai',
+        userKey: externalProvider.openaiAccount
+      } satisfies SkillDebugProcessorData,
+      histories: historiesWithPreview,
       usageSource: UsageSourceEnum.fastgpt,
-      uid: tmbId,
-      runningAppInfo: {
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: skillId,
-        name: skill.name,
-        teamId,
-        tmbId
+      usageId: interactive?.usageId,
+      maxFiles: SKILL_DEBUG_MAX_FILES,
+      customPdfParse: false,
+      processor: createSkillDebugProcessor({
+        skillId,
+        responseChatItemId: finalResponseChatItemId,
+        isInteractiveResume: interactive?.type === 'agentAsk',
+        prepareActions: options.agentSandboxPrepareActions
+      }),
+      onStreamContextReady: (context) => {
+        streamContext = context;
       },
-      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
-      chatId: runningChatId,
-      responseChatItemId: finalResponseChatItemId,
-      runtimeNodes,
-      runtimeEdges,
-      variables: {},
-      query: removeEmptyUserInput(workflowQuery),
-      maxFileAmount,
-      maxBytesPerFile,
-      lastInteractive: interactive,
-      chatConfig,
-      histories: newHistories,
-      stream: true,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-      workflowStreamResponse: streamResponseContext.responseWrite,
-      responseDetail: true,
-      nodeResponseWriteConfig: {
-        persistToDb: true,
-        retainInMemory: true
-      },
-      // Skill 调试不是 App 运行，不带 Version 快照；静态资源按运行人 tmbId 鉴权。
-      agentSandboxPrepareActions: options.agentSandboxPrepareActions
-    });
+      onBeforeStreamDone: async ({ result, durationSeconds }) => {
+        streamContext?.write(workflowSseEvent.workflowDuration(durationSeconds));
 
-    const computedFlowResponses = (flatNodeResponses || []).map((item) => {
-      if (item.totalPoints && item.totalPoints > 0) return item;
+        const nodeResponseWriter = new WorkflowNodeResponseWriter({
+          ...chatSource,
+          chatId: runningChatId,
+          chatItemDataId: finalResponseChatItemId,
+          teamId,
+          persistToDb: true,
+          retainInMemory: false
+        });
+        await nodeResponseWriter.record(result.nodeResponses);
+        await nodeResponseWriter.close();
 
-      if (item.model && (item.inputTokens !== undefined || item.outputTokens !== undefined)) {
-        try {
-          const usageModel = modelHandle.findModelData({ model: item.model });
-          if (!usageModel) return item;
-          const { totalPoints } = formatModelChars2Points({
-            model: usageModel,
-            inputTokens: item.inputTokens ?? 0,
-            outputTokens: item.outputTokens ?? 0
+        const aiResponse: AIChatItemType & { dataId?: string } = {
+          dataId: finalResponseChatItemId,
+          obj: ChatRoleEnum.AI,
+          value: result.aiResponse,
+          memories: result.memories
+        };
+        const saveParams: SaveChatProps = {
+          ...chatSource,
+          chatId: runningChatId,
+          teamId,
+          tmbId,
+          nodes: [],
+          appChatConfig: {},
+          variables: {},
+          source: ChatSourceEnum.test,
+          userContent: userQuestion,
+          aiContent: aiResponse,
+          durationSeconds,
+          workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, result.nodeResponses),
+          metadata: { originIp }
+        };
+
+        if (interactive) {
+          await updateInteractiveChat({
+            interactive,
+            shouldFinalizePreparedRound: preparedRound.shouldFinalizePreparedRound,
+            ...saveParams
           });
-          if (totalPoints > 0) {
-            return {
-              ...item,
-              totalPoints
-            };
-          }
-        } catch (e) {
-          logger.error('recompute debug points error', { error: e });
+        } else if (preparedRound.shouldFinalizePreparedRound) {
+          await finalizeChatRound(saveParams);
+        }
+        roundState.finalized = true;
+
+        if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
+          await updateChatGenerateStatus({
+            ...chatSource,
+            chatId: runningChatId,
+            status: ChatGenerateStatusEnum.done
+          });
         }
       }
-      return item;
     });
-
-    logger.debug('Skill debug workflow completed', { skillId, chatId, durationSeconds });
-
-    computedFlowResponses.forEach((nodeResponse) => {
-      streamResponseContext?.responseWrite(workflowSseEvent.flowNodeResponse(nodeResponse));
-    });
-    streamResponseContext.responseWrite(workflowSseEvent.workflowDuration(durationSeconds));
-
-    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
-
-    const aiResponse: AIChatItemType & { dataId?: string } = {
-      dataId: finalResponseChatItemId,
-      obj: ChatRoleEnum.AI,
-      value: assistantResponses,
-      memories: system_memories,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: computedFlowResponses,
-      customFeedbacks
-    };
-
-    const saveParams: SaveChatProps = {
-      ...chatSource,
-      chatId: runningChatId,
-      teamId,
-      tmbId,
-      nodes: [],
-      appChatConfig: {},
-      variables: {},
-      source: ChatSourceEnum.test,
-      userContent: workflowUserQuestion,
-      aiContent: aiResponse,
-      durationSeconds,
-      workflowRuntimeSummary,
-      metadata: { originIp }
-    };
-
-    if (interactive) {
-      await updateInteractiveChat({
-        interactive,
-        shouldFinalizePreparedRound: preparedRound.shouldFinalizePreparedRound,
-        ...saveParams
-      });
-    } else if (preparedRound.shouldFinalizePreparedRound) {
-      await finalizeChatRound(saveParams);
-    }
-    roundState.finalized = true;
-
-    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
-      await updateChatGenerateStatus({
-        ...chatSource,
-        chatId: runningChatId,
-        status: ChatGenerateStatusEnum.done
-      });
-    }
-
-    streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
-
-    await streamResponseContext.flushResume();
-  } catch (err: any) {
+    streamContext = result.streamContext;
+    await streamContext.flushResume();
+  } catch (error) {
     const { preparedRound } = roundState;
     if (
       !roundState.finalized &&
@@ -351,7 +282,7 @@ export async function handleSkillDebugChat(
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           responseChatItemId: roundState.responseChatItemId,
-          error: err
+          error
         });
       } else {
         await updateChatGenerateStatus({
@@ -363,12 +294,13 @@ export async function handleSkillDebugChat(
       }
     }
 
-    if (streamResponseContext) {
-      streamResponseContext.writeStreamError(err);
+    logger.error('Skill debug chat error', { error, skillId });
+    if (streamContext) {
+      streamContext.writeError(error);
+      await streamContext.flushResume();
     } else {
-      sseErrRes(res, err);
+      sseErrRes(res, error);
     }
-    await streamResponseContext?.flushResume();
   }
 
   res.end();
