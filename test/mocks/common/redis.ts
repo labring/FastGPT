@@ -232,6 +232,10 @@ const createSharedMockRedisClient = () => {
           commands.push(() => [null, globalRedisStorage.get(key)]);
           return pipeline;
         }),
+        hmset: vi.fn((_key: string, _fields: Record<string, string>) => {
+          commands.push(() => [null, globalRedisStorage.set(_key, _fields)]);
+          return pipeline;
+        }),
         set: vi.fn((key: string, value: any, ...args: any[]) => {
           commands.push(() => [null, globalRedisStorage.set(key, value, ...args)]);
           return pipeline;
