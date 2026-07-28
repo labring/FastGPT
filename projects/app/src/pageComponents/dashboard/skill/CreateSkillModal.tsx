@@ -7,7 +7,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateSkill } from '@/web/core/skill/api';
@@ -25,21 +24,13 @@ type Props = {
   parentId?: string | null;
   onClose: () => void;
   onSuccess?: (skillId: string) => void | Promise<void>;
-  redirectToDetail?: boolean;
-  /** Agent 选择弹窗等场景：创建成功后新开标签页进入 skill 辅助生成页 */
+  /** 创建成功后在新标签页打开详情；默认 false 在当前页跳转。 */
   openDetailInNewTab?: boolean;
 };
 
-const CreateSkillModal = ({
-  parentId,
-  onClose,
-  onSuccess,
-  redirectToDetail = true,
-  openDetailInNewTab = false
-}: Props) => {
+const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = false }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { toast } = useToast();
 
   const { register, setValue, control, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -77,7 +68,7 @@ const CreateSkillModal = ({
     // 避免 await 创建请求之后脱离手势被 Safari / 严格弹窗策略拦截。
     // 注：此处不能用 noopener —— 需保留窗口句柄以便创建成功后设置 location；
     // 目标页为同源可信路由，opener 暴露风险可接受。
-    const popup = openDetailInNewTab && redirectToDetail ? window.open('', '_blank') : null;
+    const popup = openDetailInNewTab ? window.open('', '_blank') : null;
 
     const onValid = async (data: FormType) => {
       let skillId: string;
@@ -92,23 +83,19 @@ const CreateSkillModal = ({
       // 创建成功后立即关闭弹窗：后续回调失败不应让弹窗卡住，也不应掩盖创建已成功。
       onClose();
 
-      // 打开详情与 onSuccess 解耦：详情页自行拉取数据，无需等待关联/刷新完成。
-      if (redirectToDetail) {
-        const detailUrl = `/skill/detail?skillId=${skillId}`;
+      // 打开详情页：新标签页模式下若窗口被拦截则不跳走当前页（如 Agent 编辑器）；
+      // 当前页模式下直接 router.push。
+      const detailUrl = `/skill/detail?skillId=${skillId}`;
+      if (openDetailInNewTab) {
         if (popup && !popup.closed) {
           popup.location.href = detailUrl;
-        } else if (!openDetailInNewTab) {
-          // 仅「同标签页」模式才导航当前页；新标签页模式下弹窗被拦截时不跳走当前页（如 Agent 编辑器）。
-          await router.push(detailUrl);
         }
+      } else {
+        await router.push(detailUrl);
       }
 
-      // 创建后的关联/刷新交给调用方；其异常单独提示，不影响已完成的创建。
-      try {
-        await onSuccess?.(skillId);
-      } catch {
-        toast({ status: 'error', title: t('common:load_failed') });
-      }
+      // 创建后的关联/刷新交给调用方，由调用方自行处理异常。
+      await onSuccess?.(skillId);
     };
 
     const onInvalid = () => {

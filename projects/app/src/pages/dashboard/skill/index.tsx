@@ -81,8 +81,9 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     ? folderDetail.permission.hasWritePer
     : userInfo?.team.permission.hasSkillCreatePer;
 
-  const handleCreateSuccess = async () => {
-    await loadSkills();
+  // 创建成功后刷新列表 best-effort：失败不阻断（详情页已在新标签页打开）。
+  const handleCreateSuccess = () => {
+    loadSkills().catch(() => {});
   };
 
   return (
@@ -210,7 +211,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           parentId={parentId}
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleCreateSuccess}
-          redirectToDetail
           openDetailInNewTab
         />
       )}
@@ -219,7 +219,9 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <ImportSkillModal
           parentId={parentId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={() => loadSkills()}
+          onSuccess={() => {
+            loadSkills().catch(() => {});
+          }}
         />
       )}
 

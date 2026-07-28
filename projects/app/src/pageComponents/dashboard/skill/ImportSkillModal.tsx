@@ -89,14 +89,10 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
       name: data.name.trim(),
       file: data.file
     });
-    // 导入成功后立即关闭弹窗；后续回调失败不应让弹窗卡住。
+    // 导入成功后立即关闭弹窗。
     onClose();
-    // 关联/刷新交给调用方；其异常单独提示，不影响已完成的导入。
-    try {
-      await onSuccess?.(skillId);
-    } catch {
-      toast({ status: 'error', title: t('common:load_failed') });
-    }
+    // 关联/刷新交给调用方，由调用方自行处理异常。
+    await onSuccess?.(skillId);
   };
 
   const handleInvalid = (errors: FieldErrors<ImportSkillFormType>) => {

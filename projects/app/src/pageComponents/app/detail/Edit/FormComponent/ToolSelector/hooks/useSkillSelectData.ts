@@ -17,11 +17,7 @@ export const useSkillSelectData = () => {
   const [searchKey, setSearchKey] = useState('');
   const [navStack, setNavStack] = useState<SkillSelectNavItemType[]>([]);
 
-  // fetchParentId 与 parentId 根目录语义不同，故分别维护：
-  // - fetchParentId（根目录为 ''）是 getSkillList 的入参约定；
-  // - parentId（根目录为 null，ParentIdType）是文件夹模型 / 创建·导入弹窗的入参约定。
-  const fetchParentId = navStack.length > 0 ? navStack[navStack.length - 1].id : '';
-  const parentId: ParentIdType = fetchParentId || null;
+  const parentId: ParentIdType = navStack.length > 0 ? navStack[navStack.length - 1].id : null;
 
   const {
     data: skillList = [],
@@ -31,7 +27,7 @@ export const useSkillSelectData = () => {
     async () => {
       const { list } = await getSkillList({
         source: 'mine',
-        parentId: fetchParentId,
+        parentId,
         searchKey: searchKey || undefined,
         withAppCount: false
       });
@@ -39,7 +35,7 @@ export const useSkillSelectData = () => {
     },
     {
       manual: false,
-      refreshDeps: [fetchParentId, searchKey],
+      refreshDeps: [parentId, searchKey],
       throttleWait: 300
     }
   );
