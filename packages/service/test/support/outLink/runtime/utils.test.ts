@@ -66,7 +66,7 @@ describe('outlinkInvokeChat', () => {
     expect(onReply).toHaveBeenCalledWith('complete answer');
   });
 
-  it('maps chunks to the legacy Redis stream protocol', async () => {
+  it('ignores chunks and writes one terminal Redis payload', async () => {
     mockEvents([
       { type: 'start' },
       { type: 'chunk', content: 'partial ' },
@@ -74,23 +74,18 @@ describe('outlinkInvokeChat', () => {
       { type: 'done', content: 'complete answer' }
     ]);
     const onReply = vi.fn().mockResolvedValue(undefined);
-    const onStreamChunk = vi.fn().mockResolvedValue(undefined);
 
     await outlinkInvokeChat({
       outLinkConfig,
       ...message,
       streamId: 'stream-id',
-      onReply,
-      onStreamChunk
+      onReply
     });
 
     expect(vi.mocked(appendRedisCache).mock.calls).toEqual([
       [`${STREAM_CACHE_KEY_PREFIX}stream-id`, '', 120],
-      [`${STREAM_CACHE_KEY_PREFIX}stream-id`, 'partial ', 60],
-      [`${STREAM_CACHE_KEY_PREFIX}stream-id`, 'answer', 60],
-      [`${STREAM_CACHE_KEY_PREFIX}stream-id`, STREAM_END_FLAG, 60]
+      [`${STREAM_CACHE_KEY_PREFIX}stream-id`, `complete answer${STREAM_END_FLAG}`, 60]
     ]);
-    expect(onStreamChunk.mock.calls).toEqual([['partial '], ['answer']]);
     expect(onReply).not.toHaveBeenCalled();
   });
 });

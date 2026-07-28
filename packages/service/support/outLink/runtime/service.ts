@@ -11,6 +11,7 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   WorkflowResponseItemType,
@@ -35,7 +36,10 @@ import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/
 import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
-import { prepareWorkflowFileQuery } from '../../../core/workflow/utils/fileLimits';
+import {
+  filterWorkflowQueryFiles,
+  getWorkflowFileLimits
+} from '../../../core/workflow/utils/fileLimits';
 import { MongoChat } from '../../../core/chat/chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from '../../../core/chat/source';
 import { MongoChatItem } from '../../../core/chat/chatItemSchema';
@@ -56,6 +60,7 @@ const RESET_CHAT_INPUT: Record<string, boolean> = {
 };
 const RESET_CHAT_REPLY = '对话已重置。\n\nThe chat records have been reset.';
 const DEFAULT_REPLY = 'This is default reply';
+const DEFAULT_RESPONSE_START_TIMEOUT_MS = 30000;
 
 /**
  * Resets an outlink conversation for the specified chat source.
@@ -113,14 +118,67 @@ const createResponseController = (respond: OutlinkResponder) => {
     read() {}
   });
   let terminal = false;
-  const result = Promise.resolve()
-    .then(() => respond(stream as AsyncIterable<OutlinkResponseEvent>))
-    .then<RespondResult>(() => ({ success: true }))
-    .catch<RespondResult>((error) => ({ success: false, error }));
+  let startPushed = false;
+  let startHandled = false;
+  let startTimeout: ReturnType<typeof setTimeout> | undefined;
+  let resolveStartResult!: (result: RespondResult) => void;
+  let resolveResult!: (result: RespondResult) => void;
+  const startResult = new Promise<RespondResult>((resolve) => {
+    resolveStartResult = resolve;
+  });
+  const result = new Promise<RespondResult>((resolve) => {
+    resolveResult = resolve;
+  });
+  let resultHandled = false;
+  const settleResult = (result: RespondResult) => {
+    if (resultHandled) return;
+    resultHandled = true;
+    resolveResult(result);
+  };
+  const settleStart = (result: RespondResult) => {
+    if (startHandled) return;
+    startHandled = true;
+    if (startTimeout) clearTimeout(startTimeout);
+    resolveStartResult(result);
+  };
+  const events = (async function* () {
+    for await (const event of stream as AsyncIterable<OutlinkResponseEvent>) {
+      yield event;
+      // This runs when a sequential consumer finishes handling start and requests the next event.
+      if (event.type === 'start') settleStart({ success: true });
+    }
+  })();
+  const finish = (result: RespondResult) => {
+    if (startPushed && !startHandled) {
+      const startFailure: RespondResult = result.success
+        ? { success: false, error: new Error('Outlink responder ended during start') }
+        : result;
+      settleStart(startFailure);
+      if (!terminal) {
+        terminal = true;
+        stream.destroy();
+      }
+      settleResult(startFailure);
+      return startFailure;
+    }
+
+    settleResult(result);
+    return result;
+  };
+  void Promise.resolve()
+    .then(() => respond(events))
+    .then<RespondResult>(() => finish({ success: true }))
+    .catch<RespondResult>((error) => finish({ success: false, error }));
 
   return {
     push(event: OutlinkResponseEvent) {
       if (terminal) return;
+      if (event.type === 'start') {
+        startPushed = true;
+        startTimeout = setTimeout(() => {
+          finish({ success: false, error: new Error('Outlink responder start timeout') });
+        }, respond.startTimeoutMs ?? DEFAULT_RESPONSE_START_TIMEOUT_MS);
+      }
       stream.push(event);
       if (event.type === 'done' || event.type === 'error') {
         terminal = true;
@@ -130,6 +188,7 @@ const createResponseController = (respond: OutlinkResponder) => {
     get terminal() {
       return terminal;
     },
+    startResult,
     result
   };
 };
@@ -142,7 +201,7 @@ const createResponseController = (respond: OutlinkResponder) => {
  */
 export async function runOutlinkRuntime<T extends OutlinkAppType>({
   outLinkConfig,
-  message: { chatId, query, messageId, chatUserId },
+  message: { chatId, query, messageId, chatUserId, resolveQuery },
   respond
 }: RunOutlinkRuntimeProps<T>) {
   const roundState = {
@@ -215,9 +274,19 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       ip: chatId
     });
 
+    const workflowFileLimits = await getWorkflowFileLimits({
+      teamId: String(outLinkConfig.teamId)
+    });
+    const queryMaxFileAmount = getModuleFileAmountLimit({
+      userMaxFileAmount: workflowFileLimits.maxFileAmount,
+      moduleMaxFileAmount: chatConfig.fileSelectConfig?.maxFiles
+    });
+
     // Start platform output only after idempotency and limit checks pass.
     responseController = createResponseController(respond);
     responseController.push({ type: 'start' });
+    const startResult = await responseController.startResult;
+    if (!startResult.success) throw startResult.error;
 
     // Keep the workflow callback synchronous; the response stream serializes platform I/O.
     const workflowStreamResponse: WorkflowResponseType = (event) => {
@@ -227,14 +296,15 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
 
     // Resume global variables saved by previous chat rounds.
     const variables = chatDetail?.variables ?? {};
-    const {
-      query: workflowQuery,
-      maxFileAmount,
-      maxBytesPerFile
-    } = await prepareWorkflowFileQuery({
-      teamId: String(outLinkConfig.teamId),
-      chatConfig,
-      query
+    const resolvedQuery = resolveQuery
+      ? await resolveQuery({
+          maxFileAmount: queryMaxFileAmount,
+          maxBytesPerFile: workflowFileLimits.maxBytesPerFile
+        })
+      : query;
+    const workflowQuery = filterWorkflowQueryFiles({
+      query: resolvedQuery,
+      maxFileAmount: queryMaxFileAmount
     });
     const userContent: UserChatItemType & { dataId?: string } = {
       dataId: messageId,
@@ -281,8 +351,8 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       variables,
       histories,
       query: workflowQuery,
-      maxFileAmount,
-      maxBytesPerFile,
+      maxFileAmount: workflowFileLimits.maxFileAmount,
+      maxBytesPerFile: workflowFileLimits.maxBytesPerFile,
       chatConfig,
       stream: true,
       workflowStreamResponse,
