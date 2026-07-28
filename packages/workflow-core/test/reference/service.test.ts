@@ -1,10 +1,14 @@
 import {
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
   WorkflowCommandError,
   WorkflowDocumentSchema,
   WorkflowIOValueTypeEnum,
   areWorkflowValueTypesCompatible,
+  getAvailableInputReferences,
   setInputReference,
-  setInputValue
+  setInputValue,
+  validateWorkflow
 } from '../../src';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -59,13 +63,44 @@ describe('input mutation services', () => {
         ref: { nodeId: 'start', outputKey: 'missing' }
       })
     ).toThrow(WorkflowCommandError);
-    expect(() =>
-      setInputReference({
-        document,
-        nodeId: 'ai',
-        inputKey: 'fileUrlList',
-        ref: { nodeId: 'start', outputKey: 'userChatInput' }
+    setInputReference({
+      document,
+      nodeId: 'ai',
+      inputKey: 'fileUrlList',
+      ref: { nodeId: 'start', outputKey: 'userChatInput' }
+    });
+    expect(document.nodes.find((node) => node.nodeId === 'ai')?.inputs).toContainEqual(
+      expect.objectContaining({
+        key: 'fileUrlList',
+        value: ['start', 'userChatInput']
       })
+    );
+    document.chatConfig.variables = [
+      {
+        key: 'fileUrl',
+        label: 'File URL',
+        description: '',
+        type: VariableInputEnum.input,
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+    setInputReference({
+      document,
+      nodeId: 'ai',
+      inputKey: 'fileUrlList',
+      ref: { nodeId: VARIABLE_NODE_ID, outputKey: 'fileUrl' }
+    });
+    expect(document.nodes.find((node) => node.nodeId === 'ai')?.inputs).toContainEqual(
+      expect.objectContaining({
+        key: 'fileUrlList',
+        value: [VARIABLE_NODE_ID, 'fileUrl']
+      })
+    );
+    expect(validateWorkflow(document).map((diagnostic) => diagnostic.code)).not.toContain(
+      'WORKFLOW_REFERENCE_TYPE_MISMATCH'
+    );
+    expect(() =>
+      setInputValue({ document, nodeId: 'ai', inputKey: 'fileUrlList', value: 'not-an-array' })
     ).toThrow(WorkflowCommandError);
     expect(() =>
       setInputReference({
@@ -75,16 +110,34 @@ describe('input mutation services', () => {
         ref: { nodeId: 'ai', outputKey: 'answerText' }
       })
     ).toThrow(WorkflowCommandError);
+
+    expect(
+      getAvailableInputReferences({
+        document,
+        nodeId: 'ai',
+        inputKey: 'fileUrlList'
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ref: { nodeId: 'start', outputKey: 'userChatInput' },
+          valueType: WorkflowIOValueTypeEnum.string
+        }),
+        expect.objectContaining({
+          ref: { nodeId: VARIABLE_NODE_ID, outputKey: 'fileUrl' },
+          valueType: WorkflowIOValueTypeEnum.string
+        })
+      ])
+    );
   });
 });
 
 describe('areWorkflowValueTypesCompatible', () => {
-  it('accepts scalar items only for aggregate references', () => {
+  it('accepts scalar items for array references without widening reverse types', () => {
     expect(
       areWorkflowValueTypesCompatible({
         expected: WorkflowIOValueTypeEnum.arrayString,
-        actual: WorkflowIOValueTypeEnum.string,
-        collection: true
+        actual: WorkflowIOValueTypeEnum.string
       })
     ).toBe(true);
     expect(
@@ -92,13 +145,30 @@ describe('areWorkflowValueTypesCompatible', () => {
         expected: WorkflowIOValueTypeEnum.arrayString,
         actual: WorkflowIOValueTypeEnum.string
       })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       areWorkflowValueTypesCompatible({
         expected: WorkflowIOValueTypeEnum.arrayString,
-        actual: WorkflowIOValueTypeEnum.number,
-        collection: true
+        actual: WorkflowIOValueTypeEnum.arrayString
+      })
+    ).toBe(true);
+    expect(
+      areWorkflowValueTypesCompatible({
+        expected: WorkflowIOValueTypeEnum.arrayString,
+        actual: WorkflowIOValueTypeEnum.number
       })
     ).toBe(false);
+    expect(
+      areWorkflowValueTypesCompatible({
+        expected: WorkflowIOValueTypeEnum.string,
+        actual: WorkflowIOValueTypeEnum.arrayString
+      })
+    ).toBe(false);
+    expect(
+      areWorkflowValueTypesCompatible({
+        expected: WorkflowIOValueTypeEnum.arrayAny,
+        actual: WorkflowIOValueTypeEnum.string
+      })
+    ).toBe(true);
   });
 });

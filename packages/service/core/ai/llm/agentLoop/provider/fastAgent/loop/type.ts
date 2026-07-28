@@ -46,6 +46,7 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   useVideo?: boolean;
   extractFiles?: boolean;
   lang?: localeType;
+  hasExecutableTools: boolean;
   maxRunAgentTimes?: number;
   batchToolSize?: number;
   checkIsStopping?: () => boolean;

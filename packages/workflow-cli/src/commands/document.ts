@@ -44,7 +44,7 @@ export const initDocument = async (
   if (input.dryRun !== true) await writeWorkflowFileAtomic(context.dir, result.document);
   return {
     changed: true,
-    checksum: getWorkflowChecksum(result.document),
+    checksum: await getWorkflowChecksum(result.document),
     changes: result.nodeIds.map((nodeId) => ({ type: 'node.add', nodeId })),
     result: { dryRun: input.dryRun === true },
     warnings: result.warnings
@@ -102,7 +102,7 @@ export const importDocument = async (
   if (input.dryRun !== true) await writeWorkflowFileAtomic(context.dir, document);
   return {
     changed: true,
-    checksum: getWorkflowChecksum(document),
+    checksum: await getWorkflowChecksum(document),
     changes: systemConfigResult.nodeIds.map((nodeId) => ({ type: 'node.add', nodeId })),
     result: { input: inputPath, dryRun: input.dryRun === true, document },
     warnings: systemConfigResult.warnings
@@ -130,6 +130,7 @@ export const inspectDocument = async (
   );
   return {
     changed: false,
+    checksum: await getWorkflowChecksum(document),
     result: {
       app: document.app,
       nodes: document.nodes.map((node) => ({

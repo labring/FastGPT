@@ -1,4 +1,5 @@
 export * from './command/apply';
+export * from './command/applyChangeSet';
 export * from './command/type';
 export * from './code/io';
 export * from './binding/service';
@@ -28,3 +29,7 @@ export * from './template/type';
 export * from './template/valueSchema';
 export * from './validation';
 export * from './public';
+export {
+  areWorkflowValueTypesCompatible,
+  getWorkflowReferenceSourceValueTypes
+} from '@fastgpt/global/core/workflow/utils';

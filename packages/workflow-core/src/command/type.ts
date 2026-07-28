@@ -8,6 +8,7 @@ import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema
 } from '@fastgpt/global/core/workflow/type/io';
+import { WorkflowDiagnosticSchema } from '../domain/diagnostic';
 
 const NodeAddCommandSchema = z.object({
   type: z.literal('node.add'),
@@ -212,11 +213,52 @@ export const WorkflowCommandSchema = z.discriminatedUnion('type', [
 
 export type WorkflowCommand = z.infer<typeof WorkflowCommandSchema>;
 
-export type WorkflowChangeSummary = {
-  type: WorkflowCommand['type'];
-  nodeId?: string;
-  inputKey?: string;
-  path?: string;
-  key?: string;
-  details?: Record<string, unknown>;
-};
+const workflowCommandTypes = new Set<string>(
+  WorkflowCommandSchema.options.map((option) => option.shape.type.value)
+);
+export const WorkflowCommandTypeSchema = z.custom<WorkflowCommand['type']>(
+  (value) => typeof value === 'string' && workflowCommandTypes.has(value)
+);
+
+export const WorkflowChangeSummarySchema = z.object({
+  type: WorkflowCommandTypeSchema,
+  nodeId: z.string().optional(),
+  inputKey: z.string().optional(),
+  path: z.string().optional(),
+  key: z.string().optional(),
+  details: z.record(z.string(), z.unknown()).optional()
+});
+
+export type WorkflowChangeSummary = z.infer<typeof WorkflowChangeSummarySchema>;
+
+export const WORKFLOW_CHANGESET_SCHEMA_VERSION = 'fastgpt-workflow-changeset/v1' as const;
+export const WORKFLOW_PLAN_SCHEMA_VERSION = 'fastgpt-workflow-plan/v1' as const;
+
+const WorkflowChecksumSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+
+export const WorkflowChangeSetSchema = z
+  .object({
+    schemaVersion: z.literal(WORKFLOW_CHANGESET_SCHEMA_VERSION),
+    baseChecksum: WorkflowChecksumSchema,
+    commands: z.array(WorkflowCommandSchema).min(1)
+  })
+  .strict();
+
+export type WorkflowChangeSet = z.infer<typeof WorkflowChangeSetSchema>;
+
+export const WorkflowPlanSchema = z
+  .object({
+    schemaVersion: z.literal(WORKFLOW_PLAN_SCHEMA_VERSION),
+    baseChecksum: WorkflowChecksumSchema,
+    targetChecksum: WorkflowChecksumSchema,
+    changeSet: WorkflowChangeSetSchema,
+    changes: z.array(WorkflowChangeSummarySchema),
+    diagnostics: z.array(WorkflowDiagnosticSchema)
+  })
+  .strict()
+  .refine((plan) => plan.baseChecksum === plan.changeSet.baseChecksum, {
+    message: 'Plan baseChecksum must match ChangeSet baseChecksum',
+    path: ['baseChecksum']
+  });
+
+export type WorkflowPlan = z.infer<typeof WorkflowPlanSchema>;

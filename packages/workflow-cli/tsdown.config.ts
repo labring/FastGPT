@@ -6,7 +6,7 @@ export default defineConfig({
   platform: 'node',
   target: 'node20',
   deps: {
-    alwaysBundle: [/^@fastgpt\/workflow-core/, /^@fastgpt\/global/, /^@fastgpt\/web/],
+    alwaysBundle: [/^@fastgpt\/workflow-core/, /^@fastgpt\/global/, /^@fastgpt\/web/, /^zod/],
     onlyBundle: false
   },
   dts: false,

@@ -80,6 +80,8 @@ export const DevApiTagsMap = {
   commonFile: '文件管理',
   commonSystem: '系统接口',
   commonOther: '基础功能其他',
+  chatAgentHelper: 'Chat Agent 辅助生成',
+  workflowBuilder: 'Workflow Builder',
 
   /* 通用-反向调用 */
   reverseInvokePlugin: '插件',

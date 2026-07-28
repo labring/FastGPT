@@ -1,5 +1,5 @@
 import { Box, HStack, type StackProps } from '@chakra-ui/react';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
@@ -15,10 +15,11 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { getHandleIndex } from '../utils/edge';
+import { registerWorkflowAutoLayout } from '../utils/workflowAutoLayout';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
+  const menu = useContextSelector(WorkflowUIContext, (v) => v.menu);
   const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
   const { setNodes, setEdges, allNodeFolded } = useContextSelector(
     WorkflowBufferDataContext,
@@ -343,6 +344,8 @@ const ContextMenu = () => {
     });
   }, [fitView, getNodes, getParentNodeSizeAndPosition, setEdges, setNodes]);
 
+  useEffect(() => registerWorkflowAutoLayout(onLayout), [onLayout]);
+
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)
     // menu.left = e.clientX - 12, menu.top = e.clientY + 6
@@ -418,6 +421,8 @@ const ContextMenu = () => {
     },
     [setMenu]
   );
+
+  if (!menu) return null;
 
   return (
     <Box>

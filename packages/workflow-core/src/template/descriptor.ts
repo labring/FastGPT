@@ -2,7 +2,9 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { getWorkflowReferenceSourceValueTypes } from '@fastgpt/global/core/workflow/utils';
 import type {
   NodeTemplateAutomationMeta,
   NodeTemplateRef,
@@ -25,6 +27,9 @@ export type NodeParameterDescriptor = {
   bindingRequired: boolean;
   configurable: boolean;
   inputModes: NodeParameterInputMode[];
+  referencePolicy?: {
+    acceptedSourceValueTypes: WorkflowIOValueTypeEnum[];
+  };
   enum?: Array<{ label?: string; value: string; description?: string }>;
   constraints?: {
     min?: number;
@@ -100,6 +105,7 @@ export const normalizeNodeTemplateDescriptor = ({
       .filter((input) => input.deprecated !== true)
       .map((input) => {
         const meta = automationMeta?.inputs?.[input.key];
+        const inputModes = meta?.inputModes ?? getInputModes(input.renderTypeList);
         const constraints = {
           min: input.min,
           max: input.max,
@@ -130,7 +136,12 @@ export const normalizeNodeTemplateDescriptor = ({
             (input.canEdit !== false &&
               !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden) &&
               !input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam)),
-          inputModes: meta?.inputModes ?? getInputModes(input.renderTypeList),
+          inputModes,
+          referencePolicy: inputModes.includes('reference')
+            ? {
+                acceptedSourceValueTypes: getWorkflowReferenceSourceValueTypes(input.valueType)
+              }
+            : undefined,
           enum: input.list?.map((item) => ({
             ...item,
             label: item.label ? translate(item.label) : undefined,

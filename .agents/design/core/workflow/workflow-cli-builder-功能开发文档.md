@@ -2,8 +2,8 @@
 
 ## 0. 文档标识
 
-- 文档状态：方案评审稿
-- 修订日期：2026-07-20
+- 文档状态：开发中
+- 修订日期：2026-07-22
 - 关联需求文档：`workflow-cli-builder-需求设计文档.md`
 - 实施原则：先共享领域核心，再接 Web 和 CLI，最后接远端
 - 文档范围：模块设计、实施任务、测试与发布方案
@@ -979,6 +979,12 @@ serializeWorkflowDocument(document: WorkflowDocument): string;
 
 `serializeWorkflowDocument()` 只负责稳定 JSON 序列化，不执行节点、边、权限或确认规则。
 
+PR4 兼容策略固定为：
+
+- 当前只接受 `fastgpt-workflow/v1`，因为此前没有已发布的历史 WorkflowDocument schema 可迁移。
+- 缺失、旧于或新于当前版本的 `schemaVersion` 都返回 `WORKFLOW_DOCUMENT_VERSION_UNSUPPORTED` 和迁移指引，不猜测格式、不静默升降级。
+- 后续增加 v2 时必须注册显式的逐版本迁移器并保留 v1 fixture；不能通过改写版本字符串冒充迁移。
+
 ### 5.2 Workflow File IO
 
 workflow-cli 负责单文件 IO：
@@ -1016,7 +1022,7 @@ checksum 输入：
 - `workflow.generated.json`
 - plan 的 approvedAt 等审计元数据
 
-推荐流程：稳定 JSON canonicalize 后计算 SHA-256。
+实现使用稳定 JSON canonicalize、UTF-8 编码和 Web Crypto `SHA-256`，返回 `sha256:<64 lowercase hex>`。API 为异步，以保持 workflow-core 在 Node 和 Browser 中使用同一实现，不引入 Node-only `crypto`。
 
 ### 5.4 ChangeSet plan
 
@@ -1033,9 +1039,18 @@ type WorkflowPlan = {
 
 `apply` 时重新执行 ChangeSet 并重新计算 targetChecksum，不直接信任 plan 中的目标文档。
 
-Agent 默认不生成 ChangeSet 或 Plan 文件。`changeset plan --input -` 从 stdin 读取 `WorkflowChangeSetSchema`，JSON 结果通过 stdout 返回；用户确认后，`changeset apply --plan -` 从 stdin 读取原始 WorkflowPlan。Agent 在两次调用之间保留结构化对象，Apply 成功后只持久化 `workflow.json`。
+Agent 默认不生成 ChangeSet 或 Plan 文件。`changeset plan --input -` 从 stdin 读取 `WorkflowChangeSetSchema`，JSON 结果通过 stdout 返回；调用方完成校验后，`changeset apply --plan -` 从 stdin 读取原始 WorkflowPlan。Workflow Builder Gateway 在单次原子工具调用内编排两个阶段，Apply 成功后只持久化 `workflow.json`。
 
 文件只是 Git/CI/跨人审批的可选载体，不是 Agent mutation 的前置条件。stdin 和文件输入必须进入同一个 parser 和 Schema；不得维护两套 ChangeSet 业务逻辑。
+
+### 5.5 ChangeSet Confirm
+
+- `changeset plan --input <path|->` 校验 `baseChecksum` 后在内存执行，允许把存在 error diagnostics 的计划输出给审阅方，但不写 `workflow.json`。
+- `changeset apply --plan <path|->` 不信任 plan 摘要，必须重新执行 ChangeSet、重新计算 targetChecksum 并执行完整工作流校验。
+- `--dry-run` 完成上述全部计算但不要求确认、不写盘。
+- 非 TTY 真实写入必须传 `--confirm <recomputed targetChecksum>`；TTY 无参数时只接受完整 `yes`，提示写入 stderr。
+- base、target、Confirm 任一不匹配都保持原文件字节不变；不提供 `--yes`、`--force` 或跳过校验入口。
+- apply 还必须比较重算后的 changes 和 diagnostics，防止 plan 审阅摘要被篡改后仍执行隐藏命令。
 
 ## 6. workflow-cli 实现
 
@@ -1281,7 +1296,6 @@ PR5 在 Workflow 编辑器内增加独立辅助生成模块。前端可以复用
 projects/app/src/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/
 ├── index.tsx
 ├── ChatPanel.tsx
-├── WorkflowPlanCard.tsx
 └── api.ts
 ```
 
@@ -1290,25 +1304,32 @@ Pro 拥有 Workflow Builder 的产品编排、Sandbox 上下文和内置 Skill�
 ```text
 pro/admin/src/pages/api/core/workflow/builder/chat.ts
 pro/admin/src/service/core/ai/workflowBuilder/
+├── apply.ts
+├── cliGateway.ts
 ├── handler.ts
-├── runtime.ts
+├── runner.ts
 ├── sandbox.ts
 ├── schema.ts
 └── index.ts
 pro/admin/src/service/core/ai/skill/builtin/workflow-builder/SKILL.md
 ```
 
-`handleWorkflowBuilderChat` 是独立 Handler。它只模仿 `handleSkillDebugChat` 的顺序，直接调用已有底层能力，不抽取 Skill 辅助生成的公共业务 Runner：
+`handleWorkflowBuilderChat` 是独立 Handler，`runWorkflowBuilder` 是独立 Runner。二者直接复用已有 Chat、Agent Loop、AgentLoopCore 和 Sandbox 原子能力，不构造只有 `WorkflowStart -> Agent` 的假工作流，不抽取 Skill 辅助生成的公共业务 Runner：
 
 1. 用 `authApp` 验证当前成员对 App 的写权限并执行聊天频控。
-2. 将前端当前轮 `messages` 转换为 ChatItem，通过 `getChatItems` 恢复同 `appId + chatId` 的历史和 memories。
-3. 调用 `preChatRound`，构造 `WorkflowStart -> Agent` 最小 Runtime，并通过 `dispatchWorkFlow` 进入现有 Agent Loop。
-4. 按 `sourceType=app`、`sourceId=appId`、`userId`、`chatId` 创建或恢复 App Sandbox，不使用 `skillEdit` 或 `chatAgentHelper` source。
-5. Sandbox prepare action 每轮写入前端当前 `WorkflowDocument`，注入与服务端版本一致的 `fastgpt-workflow` 构建产物，并同步内置 `workflow-builder` Skill。
-6. Skill 必须要求 Agent 先查询 Descriptor，只使用 `--format json` 的 CLI 命令，不直接编辑 `workflow.json` 或 StoreWorkflow。
-7. Agent 产出 ChangeSet 后，Handler 重新验证 Schema、`baseChecksum`、graph 和 reference，禁止直接信任 Sandbox 输出。
-8. 通过现有 Workflow SSE 输出文本、plan 和 diagnostics，并使用 `finalizeChatRound` / `updateInteractiveChat` 持久化普通聊天历史。
-9. 前端确认时对当前画布重新计算 checksum；匹配后通过 Web Adapter/Core 应用 ChangeSet，不匹配则只作废当前 plan。
+2. 将前端当前轮 `messages` 转换为 ChatItem，通过 `getChatItems` 恢复同 `appId + chatId` 的历史和 memories；只有 ask/interactive continuation 恢复未完成 AgentPlan，普通新请求不继承旧的未完成 AgentPlan。
+3. 调用 `preChatRound`，然后由 `runWorkflowBuilder` 直接调用公共 Agent Loop；AgentLoopCore 继续负责 SSE、AgentPlan、ask、assistantResponses、nodeResponses 和 requestId 转换。
+4. 研究 Sandbox 按 `sourceType=app + sourceId=appId + userId + chatId` 寻址，注入内置 `workflow-builder` Skill、用户文件和普通 Sandbox tools。
+5. 事务 Sandbox 使用由 Builder chatId 稳定派生的 transaction chatId，每轮写入前端当前 `WorkflowDocument`并注入版本一致的 CLI；该 SandboxClient 不注入 Agent Loop system tools。
+6. `workflow_cli_query` 只接收结构化 action 和参数，Gateway 映射为白名单 CLI 查询，所有值使用 `shellQuote`，模型不得传递 Shell 或全局 CLI flags。
+7. `workflow_cli_apply` 直接接收 `WorkflowChangeSet`；Gateway 以 tool call ID 生成临时文件，执行 `changeset plan --input <temp> --format json`，无论成功失败都在 `finally` 删除。
+8. Gateway 解析 CLI JSON envelope，再通过 workflow-core 重算 WorkflowPlan。校验失败时返回结构化 diagnostics 并最多重试三次。
+9. Plan 校验成功后，Gateway 立即调用 Handler 注入的 apply 回调，以本轮 `WorkflowDocument` 为 base 执行 `changeset apply --confirm <targetChecksum> --format json`。
+10. Apply 回调清理临时 plan，读取 CLI 产出的目标 `workflow.json`，重新执行 Schema、appId 和 target checksum 校验；只有成功后工具才返回 `state=applied`。
+11. 工具返回 `stop=true` 只结束变更循环；Runner 紧接着启动一次禁用所有工具的主 Agent 收尾，由 Agent 根据权威 tool result 判断已完成或具体失败问题。
+12. Handler 使用 `finalizeChatRound` / `updateInteractiveChat` 持久化普通聊天历史，并通过 `workflowBuilderApplied` SSE 只返回验证后的目标 WorkflowDocument。
+13. 前端通过 Web Adapter 用目标 Document 覆盖当前内存画布，等待 ReactFlow 完成节点测量后复用现有 dagre 布局和 `fitView`。该操作不自动调用保存、发布或运行 API。
+14. 收尾 Agent 的终态回答同时写入 SSE 和 ChatItem；固定成功/失败摘要只在收尾模型异常或返回空内容时兜底。
 
 请求 Schema 位于共享 OpenAPI 目录，只包含当前轮消息和当前画布事实：
 
@@ -1324,9 +1345,20 @@ type WorkflowBuilderChatBody = {
     checksum: string;
   };
 };
+
+type WorkflowBuilderApplied = {
+  document: WorkflowDocument;
+  checksum: string;
+};
 ```
 
+`AgentPlan` 与 `WorkflowPlan` 是两个独立协议。Agent 只有在网络检索、文档读取或复杂多步分析确有需要时才创建 AgentPlan；SKILL 中列出的 CLI 操作顺序不得机械映射为 AgentPlan 步骤。WorkflowPlan 是 Gateway 的服务端内部校验契约，不形成待确认状态；apply 完成后必须再调用一次无工具主 Agent 生成最终结论。
+
 不向前端开放 `systemPrompt` 和 `mode`；不单独传输完整历史、修改记录或节点选中上下文。PR5 只支持当前 CLI 已暴露的内置节点和本地静态校验，不自动保存、发布、调试或调用 PR6/PR7 远端命令。
+
+Workflow Builder 后端仍使用 `sourceType=app`，以复用普通 Chat round 和 App Sandbox 资源模型；研究 Sandbox 使用 Builder chatId，事务 Sandbox 使用派生 transaction chatId。前端必须使用独立的 Workflow Builder chatId 缓存键，不得复用普通应用对话的 chatId。入口由 `feConfigs.show_workflow_builder` 独立开关控制，关闭后不注册 UI 入口，不影响手工画布编辑。
+
+Workflow Builder 必须隔离“工作流事实”和“辅助对话运行配置”：`WorkflowDocument.chatConfig` 仍作为当前画布事实写入事务 Sandbox，但 Builder 前端 `ChatBox` 和后端 Runner 只能使用共享的最小 Builder ChatConfig，不得继承当前工作流的 `welcomeText`、`variables`、`autoExecute`、`questionGuide`、语音、定时触发或输入引导配置。Builder 保留本次辅助 Agent 的运行详情，并允许通过 `llmRequestIds` 查看本次 LLM 请求体和响应体；该详情不得引用当前工作流的旧运行记录。
 
 ## 8. 远端 API 实现
 
@@ -1538,13 +1570,21 @@ PR1 不接入 Web Adapter，也不要求复刻当前 Web 校验器的短路顺�
 ### 9.6 Workflow 辅助生成测试
 
 - Workflow Builder 前端只发送当前轮 message、model、WorkflowDocument 和 checksum。
-- Handler 按 `appId + chatId` 恢复历史 ChatItem、memories、active plan 和 ask 交互。
-- 显式 model 与默认 model 路径均进入现有 Agent Loop，usage 只计费一次。
-- 不同 `chatId` 使用独立 App Sandbox，同一会话可恢复并继续使用原 Sandbox。
-- prepare action 每轮写入当前 WorkflowDocument，CLI 产物版本与服务端匹配，内置 Skill 不写入用户工作区。
-- Agent 不直接编辑 `workflow.json`，生成的 ChangeSet 必须经 workflow-core 二次校验。
-- base checksum 匹配时可应用到当前画布；人工修改导致不匹配时保留画布并只作废当前 plan。
-- 刷新页面后恢复聊天、生成状态和待确认 plan；Skill 辅助生成现有 API、历史和 Sandbox 测试保持不变。
+- Builder ChatBox 和 Handler 使用同一份最小 ChatConfig，不继承 WorkflowDocument 中的欢迎语、变量、自动执行或语音等运行配置。
+- Builder 展示本次 Agent 运行详情；存在 `llmRequestIds` 时可打开 LLM 请求详情并查看请求体，不读取普通工作流对话的运行详情。
+- Handler 按 `appId + chatId` 恢复历史 ChatItem 和 memories；ask 交互恢复 active plan，普通新请求不恢复未完成 active plan。
+- 显式 model 与默认 model 路径均进入公共 Agent Loop，不调用 `dispatchWorkFlow`，usage 只计费一次。
+- 不同 `chatId` 使用独立研究 Sandbox 和事务 Sandbox，同一会话稳定恢复，两类 Sandbox 物理 ID 不同。
+- prepare action 每轮只向事务 Sandbox 写入当前 WorkflowDocument 和 CLI，内置 Skill 只注入研究 Sandbox，不写入用户工作区。
+- `workflow_cli_query` 拒绝 mutation、artifact、apply、未知 action 和路径/全局 flag 注入。
+- `workflow_cli_apply` 拒绝非法 ChangeSet，每次使用唯一临时文件，无论 CLI 成功或失败都清理；第三次校验失败终止变更阶段。
+- 有效 WorkflowPlan 必须在 Gateway 内立即 apply；tool result 只返回 `applied` 或失败诊断，不交付待确认 metadata。
+- tool 终止后必须出现一次无工具主 Agent 调用；执行详情不得以 `Workflow CLI Apply` 工具作为最后一项。
+- base checksum 匹配时，Gateway 通过 Sandbox CLI Confirm 门禁自动应用，并通过 SSE 返回服务端验证后的目标 Document。
+- 目标 Document 允许覆盖生成期间的人工画布修改；导入后必须复用现有 dagre 布局能力自动对齐并执行 `fitView`。
+- 篡改 plan、target checksum 不一致、CLI 输出非法、同一 Sandbox 并发写入时均不得替换当前画布。
+- 刷新页面后恢复聊天和生成状态；不存在待确认 plan、plan 状态接口或本地 plan 存储。
+- 刷新恢复后仍能看到本轮主 Agent 终态；收尾失败时的兜底摘要包含实际变更或未应用原因。
 
 ### 9.7 远端契约测试
 
@@ -1590,6 +1630,8 @@ type CliAuditEvent = {
 
 FastGPT 服务端已有 audit log 继续作为远端写入审计源；CLI 日志不替代服务端审计。
 
+PR4 的本地 plan/apply 在 JSON success envelope 中增加可选 `audit` 字段，只记录 command、appId、base/target checksum、变更节点 ID、边变更数、耗时和结果；不得把 ChangeSet 的输入值复制到 audit。
+
 ## 11. 质量门禁
 
 每个 PR 至少执行：
@@ -1600,6 +1642,7 @@ pnpm --filter @fastgpt/workflow-core build
 pnpm --filter @fastgpt/workflow-cli test
 pnpm --filter @fastgpt/workflow-cli build
 pnpm --filter @fastgpt/workflow-cli test:bin
+pnpm --filter @fastgpt/workflow-cli test:ci
 ```
 
 涉及 Web adapter 时增加相关 app 单测和类型检查；涉及 API 时增加 OpenAPI、路由和权限测试。最终合并前再执行仓库要求的全量检查。
@@ -1696,26 +1739,42 @@ i18n 要求：
 
 ### PR4：自动化与门禁
 
-- [ ] T27 完善 WorkflowDocument schemaVersion 兼容策略和 `workflow.json` 迁移指引。
-- [ ] T28 实现基于规范化 WorkflowDocument 的 canonical checksum。
-- [ ] T29 实现 stdin ChangeSet plan/apply、单命令/多命令统一编排和 baseChecksum。
-- [ ] T30 实现 TTY/non-TTY Confirm gate。
+- [x] T27 完善 WorkflowDocument schemaVersion 兼容策略和 `workflow.json` 迁移指引。
+- [x] T28 实现基于规范化 WorkflowDocument 的 canonical checksum。
+- [x] T29 实现 stdin ChangeSet plan/apply、单命令/多命令统一编排和 baseChecksum。
+- [x] T30 实现 TTY/non-TTY Confirm gate。
 - [x] T31 固化模板输入值来源优先级、资源安全空值、Start 引用不覆盖、共享引用类型兼容规则、单一结构校验和独立 Binding Collector；CLI validate/build 输出稳定 warning 且不合成资源值。
-- [ ] T32 增加 workflow file/ChangeSet/Confirm/CI、审计字段和失败零写入测试，并补齐本地 CLI Beta 端到端验收。
-- [ ] T33 完成本地 CLI Beta 的安装、升级、回滚和端到端验收。
+- [x] T32 增加 workflow file/ChangeSet/Confirm/CI、审计字段和失败零写入测试，并补齐本地 CLI Beta 端到端验收。
+- [x] T33 完成本地 CLI Beta 的安装、升级、回滚和端到端验收。
 
 ### PR5：Workflow 辅助生成 Demo
 
-- [ ] T34 定义 `WorkflowBuilderChatBodySchema` 和 Workflow Builder SSE/ChangeSet 输出契约，只接收当前轮 messages、model、WorkflowDocument 和 checksum。
-- [ ] T35 在 Pro 中实现独立 `handleWorkflowBuilderChat`、Runtime 构造和 API route，复用底层 Chat/Workflow 能力但不抽取或修改 Skill Handler。
-- [ ] T36 实现 App Sandbox prepare action，每轮写入当前 `workflow.json`，注入版本匹配的 CLI 构建产物，并确保不同 chatId 的 Sandbox 隔离。
-- [ ] T37 实现 Pro 内置 `workflow-builder` Skill，约束 Agent 先查询 Descriptor、只调用 JSON CLI、不直接编辑 Document/StoreWorkflow。
-- [ ] T38 恢复普通 Chat 历史、memories、plan/ask、模型选择、SSE、停止和 usage，并通过现有 Chat round 流程持久化。
-- [ ] T39 在 Handler 中对 Sandbox 输出的 ChangeSet 执行 Schema、base checksum、graph 和 reference 二次校验，禁止未确认的远端保存/发布。
-- [ ] T40 在 Workflow 编辑器接入独立 ChatBox、模型选择、历史恢复和最小 WorkflowPlanCard，不实现节点选中上下文和复杂 diff UI。
-- [ ] T41 用 Web Adapter/Core 将已确认 ChangeSet 应用到当前画布，覆盖 checksum 过期、人工修改保留、刷新恢复、计费单次上报和 Skill 路径零回归。
+- [x] T34 定义 `WorkflowBuilderChatBodySchema` 和 Workflow Builder SSE/ChangeSet 输出契约，只接收当前轮 messages、model、WorkflowDocument 和 checksum。
+- [x] T35 在 Pro 中实现独立 `handleWorkflowBuilderChat`、Runtime 构造和 API route，复用底层 Chat/Workflow 能力但不抽取或修改 Skill Handler。
+- [x] T36 实现 App Sandbox prepare action，每轮写入当前 `workflow.json`，注入版本匹配的 CLI 构建产物，并确保不同 chatId 的 Sandbox 隔离。
+- [x] T37 实现 Pro 内置 `workflow-builder` Skill，约束 Agent 先查询 Descriptor、只调用 JSON CLI、不直接编辑 Document/StoreWorkflow。
+- [x] T38 恢复普通 Chat 历史、memories、plan/ask、模型选择、SSE、停止和 usage，并通过现有 Chat round 流程持久化。
+- [x] T39 在 Handler 中对 Sandbox 输出的 ChangeSet 执行 Schema、base checksum、graph 和 reference 二次校验，禁止未确认的远端保存/发布。
+- [x] T40 在 Workflow 编辑器接入独立 ChatBox、模型选择和历史恢复，不实现节点选中上下文、确认卡片和复杂 diff UI。
+- [x] T41 Handler 在同一轮通过事务 Sandbox 调用 CLI Confirm Apply，再把服务端验证的目标 Document 通过 Web Adapter 映射到当前画布并自动对齐；覆盖目标 checksum、计费单次上报和 Skill 路径零回归。
+- [x] T41.1 隔离 Workflow Builder ChatConfig 与 WorkflowDocument ChatConfig，并展示本次 Builder Agent 的运行详情和 LLM 请求体详情。
+- [x] T41.2 区分可选 AgentPlan 与必选 WorkflowPlan：普通新请求不继承旧 active plan，ask continuation 保持可恢复，WorkflowPlan 成功后不再调用模型并自动 Apply。
+- [x] T41.3 将 `dispatchWorkFlow + WorkflowStart -> Agent` 替换为独立 `WorkflowBuilderRunner`，直接复用 Agent Loop/AgentLoopCore 协议和 Chat round 生命周期。
+- [x] T41.4 实现 `WorkflowCliGateway`：查询白名单、结构化 ChangeSet plan、三次失败门禁、tool metadata plan 交付和 `stop=true`。
+- [x] T41.5 物理隔离研究 Sandbox 与事务 Sandbox，移除固定 `workflow-plan.json` 和模型管理中间文件的协议。
+- [x] T41.6 迁移 Skill、Handler 和自动 Apply，补齐普通问答、ask 恢复、成功 plan 立即停止并应用、三次失败、临时文件清理、Sandbox 隔离和计费/requestId 测试。
 
 ### PR6：远端只读能力
+
+#### Core/CLI 节点运行时契约修复
+
+- [x] T42.1 盘点 `template list` 暴露的全部 22 个内置节点及其输入、输出、执行端口、容器和动态 IO 行为。
+- [x] T42.2 在 workflow-core 建立版本化节点能力定义，并让 Edge、Nesting 与 Descriptor 共用同一事实源。
+- [x] T42.3 补齐所有节点的 Automation Metadata：系统维护字段不可配置，可配置字段有说明，复杂输入有结构化 Schema。
+- [x] T42.4 扩展 JSON Schema 子集校验，支持长度、常量、组合 Schema、tuple 和对象附加属性 Schema。
+- [x] T42.5 让 CLI `template list/show` 原样输出完整节点契约，不在 CLI 复制节点规则。
+- [x] T42.6 增加 22 节点全量质量门禁、复杂输入正反例、执行端口一致性和 CLI JSON 契约测试。
+- [x] T42.7 运行 workflow-core/workflow-cli 单测、typecheck、build 和 package smoke，确认现有合法工作流无行为迁移。
 
 - [ ] T42 设计 profile 和密钥读取，不在配置文件明文保存 key。
 - [ ] T43 为 detail、preview、versions 和 dataset/model/app/tool 资源解析增加 API Key 只读契约与权限测试，所有响应禁止包含 Secret 值。

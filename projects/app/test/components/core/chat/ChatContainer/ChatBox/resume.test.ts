@@ -41,6 +41,7 @@ describe('shouldCreateResumeAiPlaceholder', () => {
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.interactive)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.plan)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.planStatus)).toBe(true);
+    expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.workflowBuilderApplied)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.workflowDuration)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(AuxiliaryGenerationEventEnum.status)).toBe(true);
   });

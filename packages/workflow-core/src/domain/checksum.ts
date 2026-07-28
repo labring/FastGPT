@@ -6,37 +6,37 @@ const sortRecord = (value: unknown): unknown => {
 
   return Object.fromEntries(
     Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([key, item]) => [key, sortRecord(item)])
   );
 };
 
 /** 返回字段和集合顺序稳定的文档副本，供序列化、比较和基础 checksum 使用。 */
 export const normalizeWorkflowDocument = (document: WorkflowDocument): WorkflowDocument => ({
-  ...structuredClone(document),
+  schemaVersion: document.schemaVersion,
   app: sortRecord(document.app) as WorkflowDocument['app'],
   nodes: [...document.nodes]
-    .sort((left, right) => left.nodeId.localeCompare(right.nodeId))
+    .sort((left, right) => (left.nodeId < right.nodeId ? -1 : left.nodeId > right.nodeId ? 1 : 0))
     .map((node) => sortRecord(node) as WorkflowDocument['nodes'][number]),
   executionEdges: [...document.executionEdges]
+    .map((edge) => sortRecord(edge) as WorkflowDocument['executionEdges'][number])
     .sort((left, right) => {
       const leftKey = JSON.stringify(left);
       const rightKey = JSON.stringify(right);
-      return leftKey.localeCompare(rightKey);
-    })
-    .map((edge) => sortRecord(edge) as WorkflowDocument['executionEdges'][number]),
+      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+    }),
   chatConfig: sortRecord(document.chatConfig) as WorkflowDocument['chatConfig']
 });
 
-const fnv1a = (value: string) => {
-  let hash = 0x811c9dc5;
-  for (const character of value) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
+/** 对规范化后的 UTF-8 JSON 计算跨 Node/Browser 一致的 SHA-256。 */
+export const getWorkflowChecksum = async (document: WorkflowDocument) => {
+  const canonicalDocument = JSON.stringify(normalizeWorkflowDocument(document));
+  const digest = await globalThis.crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(canonicalDocument)
+  );
+  const checksum = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0')
+  ).join('');
+  return `sha256:${checksum}`;
 };
-
-/** PR1 的稳定变更标识；PR4 再升级为带并发语义的 canonical SHA-256。 */
-export const getWorkflowChecksum = (document: WorkflowDocument) =>
-  `fnv1a:${fnv1a(JSON.stringify(normalizeWorkflowDocument(document)))}`;

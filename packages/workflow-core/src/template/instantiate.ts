@@ -7,9 +7,9 @@ import {
   StoreNodeItemTypeSchema,
   type StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
+import { areWorkflowValueTypesCompatible } from '@fastgpt/global/core/workflow/utils';
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
-import { areWorkflowValueTypesCompatible } from '../reference/service';
 import { hasConfiguredValue, resolveInitialInputValue } from './defaultValue';
 import type { NodeTemplateRef, WorkflowTemplateProvider } from './type';
 
@@ -117,15 +117,13 @@ export const instantiateNodeFromTemplate = async ({
         if (input.key === NodeInputKeyEnum.userChatInput && userInputOutput) {
           return {
             value: [startNode.nodeId, userInputOutput.key],
-            outputs: [userInputOutput],
-            collection: false
+            outputs: [userInputOutput]
           };
         }
         if (input.key === NodeInputKeyEnum.fileUrlList && userFilesOutput) {
           return {
             value: [[startNode.nodeId, userFilesOutput.key]],
-            outputs: [userFilesOutput],
-            collection: true
+            outputs: [userFilesOutput]
           };
         }
         if (input.key === NodeInputKeyEnum.datasetSearchInput && userInputOutput) {
@@ -134,8 +132,7 @@ export const instantiateNodeFromTemplate = async ({
               [startNode.nodeId, userInputOutput.key],
               ...(userFilesOutput ? [[startNode.nodeId, userFilesOutput.key]] : [])
             ],
-            outputs: [userInputOutput, ...(userFilesOutput ? [userFilesOutput] : [])],
-            collection: true
+            outputs: [userInputOutput, ...(userFilesOutput ? [userFilesOutput] : [])]
           };
         }
       })();
@@ -144,8 +141,7 @@ export const instantiateNodeFromTemplate = async ({
         !referenceDefault.outputs.every((output) =>
           areWorkflowValueTypesCompatible({
             expected: input.valueType,
-            actual: output.valueType,
-            collection: referenceDefault.collection
+            actual: output.valueType
           })
         )
       ) {

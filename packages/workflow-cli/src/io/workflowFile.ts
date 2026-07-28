@@ -1,6 +1,8 @@
 import {
-  WorkflowDocumentSchema,
+  WORKFLOW_DOCUMENT_MIGRATION_GUIDANCE,
+  WorkflowDocumentVersionError,
   normalizeWorkflowDocument,
+  parseCompatibleWorkflowDocument,
   type WorkflowDocument
 } from '@fastgpt/workflow-core';
 import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
@@ -9,11 +11,23 @@ import { CliArgumentError } from '../error';
 
 export const WORKFLOW_FILE_NAME = 'workflow.json';
 
-export const parseWorkflowDocument = (input: unknown): WorkflowDocument =>
-  WorkflowDocumentSchema.parse(input);
+export const parseWorkflowDocument = (input: unknown): WorkflowDocument => {
+  try {
+    return parseCompatibleWorkflowDocument(input);
+  } catch (error) {
+    if (error instanceof WorkflowDocumentVersionError) {
+      throw new CliArgumentError(error.message, {
+        code: error.code,
+        foundVersion: error.foundVersion,
+        guidance: WORKFLOW_DOCUMENT_MIGRATION_GUIDANCE
+      });
+    }
+    throw error;
+  }
+};
 
 export const serializeWorkflowDocument = (document: WorkflowDocument) =>
-  `${JSON.stringify(normalizeWorkflowDocument(WorkflowDocumentSchema.parse(document)), null, 2)}\n`;
+  `${JSON.stringify(normalizeWorkflowDocument(parseCompatibleWorkflowDocument(document)), null, 2)}\n`;
 
 export const getWorkflowFilePath = (dir: string) => join(resolve(dir), WORKFLOW_FILE_NAME);
 

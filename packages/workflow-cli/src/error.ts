@@ -1,9 +1,8 @@
 export class CliArgumentError extends Error {
-  readonly code = 'CLI_ARGUMENT_INVALID';
-
   constructor(
     message: string,
-    readonly params?: Record<string, unknown>
+    readonly params?: Record<string, unknown>,
+    readonly code = 'CLI_ARGUMENT_INVALID'
   ) {
     super(message);
     this.name = 'CliArgumentError';

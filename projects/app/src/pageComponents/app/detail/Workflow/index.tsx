@@ -13,6 +13,7 @@ import { cloneDeep } from 'lodash-es';
 import Flow from '../WorkflowComponents/Flow';
 import { ReactFlowCustomProvider } from '../WorkflowComponents/context/index';
 import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
+import WorkflowBuilder from '../WorkflowComponents/WorkflowBuilder';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -38,7 +39,10 @@ const WorkflowEdit = () => {
       <Header />
 
       {currentTab === TabEnum.appEdit ? (
-        <Flow />
+        <>
+          <Flow />
+          <WorkflowBuilder />
+        </>
       ) : (
         <Flex
           flexDirection={'column'}

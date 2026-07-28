@@ -90,8 +90,9 @@ const automationMetaMap: Record<string, NodeTemplateAutomationMeta> = {
   'builtin:text-editor': {
     inputs: {
       system_textareaInput: {
-        agentHint: 'workflow:cli.input.text_editor',
-        examples: ['Hello {{name}}']
+        agentHint:
+          'workflow:cli.input.text_editor. This is a literal text field. Use {{name}} only for a global variable, and use {{$nodeId.outputKey$}} for a node output embedded in text. Never use {{nodeId.outputKey}} for a node reference.',
+        examples: ['Plain text', 'Hello {{name}}', 'Topic: {{$validateCode.topic$}}']
       }
     }
   },

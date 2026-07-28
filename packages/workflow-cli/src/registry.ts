@@ -30,6 +30,7 @@ import { validateDocument } from './commands/validate';
 import { addOutput, listOutputs, removeOutput } from './commands/output';
 import { attachTool, detachTool, listTools } from './commands/tool';
 import { listChildren } from './commands/container';
+import { applyChangeSetPlan, planChangeSet } from './commands/changeSet';
 import type { CliCommandDefinition, CliOptionDefinition } from './type';
 
 const option = (
@@ -938,6 +939,41 @@ export const cliCommandRegistry: CliCommandDefinition[] = [
     supportsDryRun: false,
     confirm: 'none',
     handler: validateDocument
+  },
+  {
+    path: ['changeset', 'plan'],
+    introducedIn: 'PR4',
+    kind: 'artifact',
+    inputSchema: z
+      .object({ input: z.string().min(1), output: z.string().min(1).optional() })
+      .strict(),
+    options: [
+      option('--input', 'ChangeSet JSON path or - for stdin', { required: true }),
+      option('--output', 'Optional plan output path')
+    ],
+    supportsDryRun: false,
+    confirm: 'none',
+    handler: planChangeSet
+  },
+  {
+    path: ['changeset', 'apply'],
+    introducedIn: 'PR4',
+    kind: 'localMutation',
+    inputSchema: z
+      .object({
+        plan: z.string().min(1),
+        dryRun: z.literal(true).optional(),
+        confirm: z.string().min(1).optional()
+      })
+      .strict(),
+    options: [
+      option('--plan', 'Workflow plan JSON path or - for stdin', { required: true }),
+      option('--dry-run', 'Recompute and validate without writing', { value: false }),
+      option('--confirm', 'Recomputed target checksum')
+    ],
+    supportsDryRun: true,
+    confirm: 'checksum',
+    handler: applyChangeSetPlan
   }
 ];
 

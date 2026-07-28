@@ -57,6 +57,23 @@ describe('builtinTemplateProvider', () => {
     ).toBe(false);
   });
 
+  it('documents distinct text and node-reference formats for text editor inputs', async () => {
+    const ref = parseNodeTemplateRef('builtin:text-editor');
+    const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+    const descriptor = normalizeNodeTemplateDescriptor({
+      ...resolved,
+      templateRef: ref
+    });
+    const input = descriptor.inputs.find((item) => item.key === 'system_textareaInput');
+
+    expect(input?.examples).toEqual([
+      'Plain text',
+      'Hello {{name}}',
+      'Topic: {{$validateCode.topic$}}'
+    ]);
+    expect(input?.description).toContain('Never use {{nodeId.outputKey}} for a node reference.');
+  });
+
   it('keeps automation metadata aligned with template inputs and explicit for resources', async () => {
     const resourceRenderTypes = new Map<FlowNodeInputTypeEnum, string>([
       [FlowNodeInputTypeEnum.selectDataset, 'dataset'],
@@ -134,6 +151,14 @@ describe('builtinTemplateProvider', () => {
           );
           expect(input.inputModes.length, `${templateName}.${input.key}`).toBeGreaterThan(0);
         }
+        if (input.inputModes.includes('reference')) {
+          expect(
+            input.referencePolicy?.acceptedSourceValueTypes.length,
+            `${templateName}.${input.key}`
+          ).toBeGreaterThan(0);
+        } else {
+          expect(input.referencePolicy, `${templateName}.${input.key}`).toBeUndefined();
+        }
         if (
           input.configurable &&
           input.inputModes.includes('literal') &&
@@ -166,6 +191,9 @@ describe('normalizeNodeTemplateDescriptor', () => {
     expect(descriptor.name).toMatch(/^translated:/);
     expect(descriptor.schemaVersion).toBe('fastgpt-workflow-node-contract/v1');
     expect(userInput?.inputModes).toEqual(['literal', 'reference']);
+    expect(userInput?.referencePolicy?.acceptedSourceValueTypes).toEqual(
+      expect.arrayContaining([WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.any])
+    );
     expect(promptInput?.examples).toEqual(['You are a helpful assistant.']);
     expect(modelInput).toMatchObject({
       defaultPolicy: 'remoteValidated',
@@ -180,6 +208,27 @@ describe('normalizeNodeTemplateDescriptor', () => {
       terminal: false
     });
     expect(JSON.stringify(resolved.template)).not.toContain('invalidCondition');
+  });
+
+  it('publishes the same scalar-to-array reference contract used by the editor', async () => {
+    const ref = parseNodeTemplateRef('builtin:dataset-search');
+    const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+    const descriptor = normalizeNodeTemplateDescriptor({ ...resolved, templateRef: ref });
+    const searchInput = descriptor.inputs.find(
+      (input) => input.valueType === WorkflowIOValueTypeEnum.arrayString
+    );
+
+    expect(searchInput).toMatchObject({
+      inputModes: expect.arrayContaining(['reference']),
+      referencePolicy: {
+        acceptedSourceValueTypes: [
+          WorkflowIOValueTypeEnum.string,
+          WorkflowIOValueTypeEnum.arrayString,
+          WorkflowIOValueTypeEnum.arrayAny,
+          WorkflowIOValueTypeEnum.any
+        ]
+      }
+    });
   });
 
   it('describes branch, terminal, container and dynamic IO capabilities', async () => {
@@ -322,7 +371,7 @@ describe('instantiateNodeFromTemplate', () => {
     expect(localModel?.defaultValue).toBeUndefined();
   });
 
-  it('does not create a mismatched Start reference for an array input', async () => {
+  it('keeps the scalar Start reference for an array input', async () => {
     const start = await instantiateNodeFromTemplate({
       document: createWorkflowDocument(),
       templateRef: parseNodeTemplateRef('builtin:workflow-start'),
@@ -349,8 +398,10 @@ describe('instantiateNodeFromTemplate', () => {
       locale: 'en'
     });
     const userInput = ai.node.inputs.find((input) => input.key === 'userChatInput');
-    expect(userInput?.value).toEqual([]);
-    expect(userInput?.selectedTypeIndex).toBeUndefined();
+    expect(userInput?.value).toEqual(['start', 'userChatInput']);
+    expect(userInput?.selectedTypeIndex).toBe(
+      userInput?.renderTypeList.indexOf(FlowNodeInputTypeEnum.reference)
+    );
   });
 
   it('keeps the composite Start reference for the array search input', async () => {

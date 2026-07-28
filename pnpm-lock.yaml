@@ -921,17 +921,13 @@ importers:
         version: 18.3.0
 
   packages/workflow-cli:
-    dependencies:
+    devDependencies:
       '@fastgpt/web':
         specifier: workspace:*
         version: link:../web
       '@fastgpt/workflow-core':
         specifier: workspace:*
         version: link:../workflow-core
-      zod:
-        specifier: 'catalog:'
-        version: 4.1.12
-    devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.24
@@ -947,6 +943,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
 
   packages/workflow-core:
     dependencies:
@@ -1005,6 +1004,9 @@ importers:
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel
+      '@fastgpt-sdk/sandbox-adapter':
+        specifier: workspace:*
+        version: link:../../sdk/sandbox-adapter
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -1023,6 +1025,9 @@ importers:
       '@fastgpt/web':
         specifier: workspace:*
         version: link:../../packages/web
+      '@fastgpt/workflow-core':
+        specifier: workspace:*
+        version: link:../../packages/workflow-core
       '@kubernetes/client-node':
         specifier: ^1.4.0
         version: 1.4.0(bufferutil@4.1.0)(encoding@0.1.13)(utf-8-validate@5.0.10)

@@ -2,7 +2,7 @@ import { cliCommandRegistry, renderHelp } from '../src';
 import { describe, expect, it } from 'vitest';
 
 describe('cliCommandRegistry', () => {
-  it('registers exactly the PR1 through PR3 command surface once', () => {
+  it('registers exactly the PR1 through PR4 command surface once', () => {
     const snapshot = cliCommandRegistry.map((definition) => ({
       path: definition.path.join(' '),
       introducedIn: definition.introducedIn,
@@ -561,6 +561,29 @@ describe('cliCommandRegistry', () => {
           "path": "validate",
           "supportsDryRun": false,
         },
+        {
+          "confirm": "none",
+          "introducedIn": "PR4",
+          "kind": "artifact",
+          "options": [
+            "--input",
+            "--output",
+          ],
+          "path": "changeset plan",
+          "supportsDryRun": false,
+        },
+        {
+          "confirm": "checksum",
+          "introducedIn": "PR4",
+          "kind": "localMutation",
+          "options": [
+            "--plan",
+            "--dry-run",
+            "--confirm",
+          ],
+          "path": "changeset apply",
+          "supportsDryRun": true,
+        },
       ]
     `);
   });
@@ -571,7 +594,8 @@ describe('renderHelp', () => {
     const help = renderHelp();
     expect(help).toContain('template show');
     expect(help).toContain('input ref');
-    expect(help).not.toContain('changeset');
+    expect(help).toContain('changeset plan');
+    expect(help).toContain('changeset apply');
     expect(
       renderHelp(cliCommandRegistry.find((item) => item.path.join(' ') === 'build'))
     ).toContain('--output <value> (required)');

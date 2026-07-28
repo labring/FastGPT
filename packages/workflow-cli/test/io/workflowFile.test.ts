@@ -37,4 +37,21 @@ describe('workflow file codec', () => {
     await writeFile(join(dir, 'workflow.json'), '{', 'utf8');
     await expect(readWorkflowFile(dir)).rejects.toMatchObject({ code: 'CLI_ARGUMENT_INVALID' });
   });
+
+  it('reports unsupported schema versions with migration guidance', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'workflow-version-'));
+    await writeFile(
+      join(dir, 'workflow.json'),
+      JSON.stringify({ ...aiWorkflow, schemaVersion: 'fastgpt-workflow/v2' }),
+      'utf8'
+    );
+    await expect(readWorkflowFile(dir)).rejects.toMatchObject({
+      code: 'CLI_ARGUMENT_INVALID',
+      params: {
+        code: 'WORKFLOW_DOCUMENT_VERSION_UNSUPPORTED',
+        foundVersion: 'fastgpt-workflow/v2',
+        guidance: expect.stringContaining('migrate one version at a time')
+      }
+    });
+  });
 });

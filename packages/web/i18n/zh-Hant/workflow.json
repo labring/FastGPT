@@ -279,5 +279,11 @@
   "workflow_local_draft_auth_expired_title": "已自動儲存",
   "workflow_local_draft_relogin": "重新登入",
   "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。",
+  "workflow_builder_title": "Workflow Builder",
+  "workflow_builder_collapse": "收起",
+  "workflow_builder_clear_history": "清除歷史記錄",
+  "workflow_builder_clear_history_confirm": "確認清除目前的 Workflow Builder 對話？工作流程畫布和模型選擇不會受到影響。",
+  "workflow_builder_apply_failed": "無法套用產生的工作流程",
+  "workflow_builder_applied": "已套用到目前畫布",
   "connection_invalid": "此連線不符合工作流程規則"
 }

@@ -1,5 +1,6 @@
 import { AIPath } from './core/ai';
 import { SkillPath } from './core/ai/skill';
+import { WorkflowBuilderPath } from './core/workflow/builder';
 import { AppPath } from './core/app';
 import { ChatPath } from './core/chat';
 import { DatasetPath } from './core/dataset';
@@ -23,7 +24,8 @@ export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...CommonPath,
   ...InvokePath,
   ...AIPath,
-  ...SkillPath
+  ...SkillPath,
+  ...WorkflowBuilderPath
 };
 
 export const openAPITagGroups = [
@@ -153,6 +155,10 @@ export const openAPITagGroups = [
   {
     name: '管理员-插件管理',
     tags: [DevApiTagsMap.pluginAdmin, DevApiTagsMap.pluginToolAdmin]
+  },
+  {
+    name: '系统接口',
+    tags: [DevApiTagsMap.chatAgentHelper, DevApiTagsMap.workflowBuilder]
   }
 ];
 

@@ -1,10 +1,11 @@
 import { runFastAgentMainLoop } from './loop';
-import type {
-  AgentLoopInput,
-  AgentLoopProvider,
-  AgentLoopResult,
-  AgentLoopRuntime,
-  AgentLoopUsage
+import {
+  hasAgentLoopExecutableTools,
+  type AgentLoopInput,
+  type AgentLoopProvider,
+  type AgentLoopResult,
+  type AgentLoopRuntime,
+  type AgentLoopUsage
 } from '../../domain';
 import type { AgentLoopRuntime as FastAgentInternalRuntime } from './loop/type';
 import { createAskUserAgentTool } from '../../domain/systemTool/ask';
@@ -80,6 +81,7 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     useVideo: runtime.llmParams.useVideo,
     extractFiles: runtime.llmParams.extractFiles,
     lang: runtime.lang,
+    hasExecutableTools: hasAgentLoopExecutableTools(runtime),
     maxRunAgentTimes: runtime.maxRunAgentTimes,
     batchToolSize: runtime.toolCatalog.batchToolSize,
     checkIsStopping: runtime.checkIsStopping,
