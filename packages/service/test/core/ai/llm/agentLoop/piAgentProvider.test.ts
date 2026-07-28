@@ -646,6 +646,44 @@ describe('runPiAgentLoop', () => {
     ]);
   });
 
+  it('does not disable executable tools for a sandbox-only runtime', async () => {
+    await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'inspect workspace' }],
+        systemPrompt: 'Sandbox is available.'
+      },
+      runtime: {
+        teamId: 'team_1',
+        llmParams: {
+          model: 'gpt-5'
+        },
+        systemTools: {
+          sandbox: {
+            enabled: true,
+            client: {} as any
+          }
+        },
+        toolCatalog: {
+          runtimeTools: []
+        },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false)
+      }
+    });
+
+    expect(agentConstructorArgs.at(-1).initialState.systemPrompt).toContain(
+      '<user_background>\nSandbox is available.\n</user_background>'
+    );
+    expect(agentConstructorArgs.at(-1).initialState.systemPrompt).not.toContain(
+      '<tool_constraint>'
+    );
+    expect(
+      agentConstructorArgs
+        .at(-1)
+        .initialState.tools.some((tool: { name: string }) => tool.name === 'sandbox_read_file')
+    ).toBe(true);
+  });
+
   it('emits one successful plan operation with the complete plan', async () => {
     const events: any[] = [];
     agentToolToExecute.value = {

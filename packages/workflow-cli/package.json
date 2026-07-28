@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/workflow-cli",
-  "version": "0.1.0",
+  "version": "0.2.0-beta.2",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -20,14 +20,14 @@
     "build": "tsdown",
     "test": "vitest run --config ./vitest.config.ts",
     "test:bin": "pnpm --filter @fastgpt/workflow-core build && pnpm build && node test/bin-smoke.mjs",
+    "test:package": "pnpm test:bin && node test/package-smoke.mjs",
+    "test:ci": "pnpm typecheck && pnpm test && pnpm test:package",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
+  "devDependencies": {
     "@fastgpt/web": "workspace:*",
     "@fastgpt/workflow-core": "workspace:*",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
+    "zod": "catalog:",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",

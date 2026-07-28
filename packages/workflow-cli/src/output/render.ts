@@ -1,4 +1,4 @@
-import type { CliFormat, CliResult } from '../type';
+import type { CliAuditEvent, CliFormat, CliResult } from '../type';
 
 export const CLI_OUTPUT_SCHEMA_VERSION = 'fastgpt-workflow-cli-result/v1' as const;
 
@@ -11,6 +11,7 @@ export type CliSuccessEnvelope = {
   result?: unknown;
   changes?: unknown[];
   warnings: unknown[];
+  audit?: CliAuditEvent;
 };
 
 export type CliErrorEnvelope = {
@@ -29,7 +30,8 @@ export const createSuccessEnvelope = (command: string, result: CliResult): CliSu
   checksum: result.checksum,
   result: result.result,
   changes: result.changes,
-  warnings: result.warnings ?? []
+  warnings: result.warnings ?? [],
+  audit: result.audit
 });
 
 export const renderSuccess = ({

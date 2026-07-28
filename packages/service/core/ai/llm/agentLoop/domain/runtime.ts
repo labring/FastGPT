@@ -50,3 +50,16 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   usagePush?: (usages: AgentLoopUsage[]) => void;
   emitEvent?: (event: AgentLoopEvent) => void;
 };
+
+/**
+ * 判断 Agent 是否拥有能执行实际业务动作的工具。
+ * ask/plan 只负责交互和状态维护，不应让主提示词误认为可以执行外部任务。
+ */
+export const hasAgentLoopExecutableTools = ({
+  toolCatalog,
+  systemTools
+}: Pick<AgentLoopRuntime, 'toolCatalog' | 'systemTools'>) =>
+  toolCatalog.runtimeTools.length > 0 ||
+  systemTools?.sandbox?.enabled === true ||
+  systemTools?.readFile?.enabled === true ||
+  systemTools?.datasetSearch?.enabled === true;

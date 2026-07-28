@@ -38,4 +38,22 @@ describe('template contract commands', () => {
       }
     });
   });
+
+  it('returns Core reference compatibility through template show', async () => {
+    const result = await showTemplate({ template: 'builtin:dataset-search' }, context);
+    const descriptor = result.result as {
+      inputs: Array<{
+        valueType?: string;
+        referencePolicy?: { acceptedSourceValueTypes: string[] };
+      }>;
+    };
+    const searchInput = descriptor.inputs.find((input) => input.valueType === 'arrayString');
+
+    expect(searchInput?.referencePolicy?.acceptedSourceValueTypes).toEqual([
+      'string',
+      'arrayString',
+      'arrayAny',
+      'any'
+    ]);
+  });
 });

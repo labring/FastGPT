@@ -431,7 +431,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         max_tokens,
         model: modelData,
         messages: requestMessages,
-        tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
+        // tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
+        tool_choice: 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         parallel_tool_calls: body.parallel_tool_calls ?? true
       },

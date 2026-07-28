@@ -448,6 +448,6 @@ export const applyWorkflowCommand = async ({
     document: nextDocument,
     changes,
     warnings,
-    checksum: getWorkflowChecksum(nextDocument)
+    checksum: await getWorkflowChecksum(nextDocument)
   };
 };

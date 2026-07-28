@@ -112,6 +112,8 @@ export const parseCliArgs = ({
       quiet: rawOptions.quiet === true,
       color: rawOptions.noColor !== true,
       env,
+      isTTY: false,
+      requestConfirmation: async () => false,
       readStdin: async () => {
         const chunks: Buffer[] = [];
         for await (const chunk of process.stdin) {

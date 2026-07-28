@@ -11,7 +11,8 @@ describe('CLI output', () => {
       checksum: undefined,
       changes: undefined,
       result: { valid: true },
-      warnings: []
+      warnings: [],
+      audit: undefined
     });
     expect(
       renderSuccess({ command: 'x', result: { changed: false, result: 'value' }, format: 'text' })

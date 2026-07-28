@@ -30,7 +30,7 @@ const createHarness = async () => {
 
 const jsonArgs = (dir: string, args: string[]) => [...args, '--dir', dir, '--format', 'json'];
 
-describe('PR1 through PR3 CLI end to end', () => {
+describe('PR1 through PR4 CLI end to end', () => {
   it('builds basic-ai with pure JSON stdout and deterministic output', async () => {
     const { cwd, invoke } = await createHarness();
     const dir = join(cwd, 'basic-ai');
@@ -620,7 +620,7 @@ describe('PR1 through PR3 CLI end to end', () => {
   it('renders global/command help, version and text output without executing handlers', async () => {
     const { invoke } = await createHarness();
     expect((await invoke(['--help'])).stdout[0]).toContain('Commands:');
-    expect((await invoke(['--version'])).stdout).toEqual(['0.1.0']);
+    expect((await invoke(['--version'])).stdout).toEqual(['0.2.0-beta.2']);
     const commandHelp = await invoke(['node', 'show', '--help']);
     expect(commandHelp.exitCode).toBe(0);
     expect(commandHelp.stdout[0]).toContain('Usage: fastgpt-workflow node show');

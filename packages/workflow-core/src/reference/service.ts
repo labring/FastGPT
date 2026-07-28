@@ -1,43 +1,12 @@
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { areWorkflowValueTypesCompatible } from '@fastgpt/global/core/workflow/utils';
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '../template/automationMeta';
 import { assertValueSchema, inputValueNeedsSchema } from '../template/valueSchema';
-
-const arrayItemTypeMap: Partial<Record<string, string>> = {
-  [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
-  [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
-  [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
-  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object
-};
-
-/** 统一判断普通引用和聚合引用的输入输出类型是否兼容。 */
-export const areWorkflowValueTypesCompatible = ({
-  expected,
-  actual,
-  collection = false
-}: {
-  expected?: string;
-  actual?: string;
-  collection?: boolean;
-}) => {
-  if (
-    expected === undefined ||
-    actual === undefined ||
-    expected === WorkflowIOValueTypeEnum.any ||
-    expected === WorkflowIOValueTypeEnum.dynamic ||
-    actual === WorkflowIOValueTypeEnum.any ||
-    actual === WorkflowIOValueTypeEnum.dynamic
-  ) {
-    return true;
-  }
-  if (!collection) return expected === actual;
-  if (expected === WorkflowIOValueTypeEnum.arrayAny) return true;
-  return expected === actual || arrayItemTypeMap[expected] === actual;
-};
 
 const getInput = ({
   document,
@@ -336,7 +305,10 @@ export const getAvailableInputReferences = ({
             input.valueType === WorkflowIOValueTypeEnum.any ||
             output.valueType === undefined ||
             output.valueType === WorkflowIOValueTypeEnum.any ||
-            output.valueType === input.valueType
+            areWorkflowValueTypesCompatible({
+              expected: input.valueType,
+              actual: output.valueType
+            })
         )
         .map((output) => ({
           ref: { nodeId: node.nodeId, outputKey: output.key },
@@ -352,7 +324,10 @@ export const getAvailableInputReferences = ({
         input.valueType === WorkflowIOValueTypeEnum.any ||
         variable.valueType === undefined ||
         variable.valueType === WorkflowIOValueTypeEnum.any ||
-        variable.valueType === input.valueType
+        areWorkflowValueTypesCompatible({
+          expected: input.valueType,
+          actual: variable.valueType
+        })
     )
     .map((variable) => ({
       ref: { nodeId: VARIABLE_NODE_ID, outputKey: variable.key },

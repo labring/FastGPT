@@ -57,6 +57,22 @@ try {
   assert.equal(JSON.stringify(mutation).includes(prompt), false);
   assert.equal(invoke(['validate', '--dir', workflowDir]).result.valid, true);
 
+  const inspected = invoke(['inspect', '--dir', workflowDir]);
+  const changeSet = {
+    schemaVersion: 'fastgpt-workflow-changeset/v1',
+    baseChecksum: inspected.checksum,
+    commands: [{ type: 'meta.update', name: 'Changed by built bin' }]
+  };
+  const plan = invoke(
+    ['changeset', 'plan', '--dir', workflowDir, '--input', '-'],
+    JSON.stringify(changeSet)
+  ).result;
+  invoke(
+    ['changeset', 'apply', '--dir', workflowDir, '--plan', '-', '--confirm', plan.targetChecksum],
+    JSON.stringify(plan)
+  );
+  assert.equal(invoke(['inspect', '--dir', workflowDir]).result.app.name, 'Changed by built bin');
+
   const outputPath = join(workspace, 'workflow.generated.json');
   invoke(['build', '--dir', workflowDir, '--output', outputPath]);
   const workflow = JSON.parse(await readFile(outputPath, 'utf8'));

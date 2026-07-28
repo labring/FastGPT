@@ -6,13 +6,14 @@ import {
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { areWorkflowValueTypesCompatible } from '@fastgpt/global/core/workflow/utils';
 import { WorkflowDocumentSchema, type WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
 import { assertExecutionEdge } from '../edge/service';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { assertParentAssignment } from '../nesting/service';
-import { areWorkflowValueTypesCompatible, valueMatchesType } from '../reference/service';
+import { valueMatchesType } from '../reference/service';
 import { getInputAutomationMeta } from '../template/automationMeta';
 import { inputValueNeedsSchema, valueMatchesSchema } from '../template/valueSchema';
 
@@ -67,8 +68,6 @@ const validateReference = ({
     });
     return;
   }
-  const collection = !isReferenceValue(input.value);
-
   for (const [sourceNodeId, outputKey] of references) {
     if (sourceNodeId === VARIABLE_NODE_ID) {
       const variable = document.chatConfig.variables?.find((item) => item.key === outputKey);
@@ -83,8 +82,7 @@ const validateReference = ({
       } else if (
         !areWorkflowValueTypesCompatible({
           expected: input.valueType,
-          actual: variable.valueType,
-          collection
+          actual: variable.valueType
         })
       ) {
         diagnostics.push({
@@ -115,8 +113,7 @@ const validateReference = ({
     if (
       !areWorkflowValueTypesCompatible({
         expected: input.valueType,
-        actual: sourceOutput.valueType,
-        collection
+        actual: sourceOutput.valueType
       })
     ) {
       diagnostics.push({

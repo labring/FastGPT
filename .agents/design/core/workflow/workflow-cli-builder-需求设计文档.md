@@ -2,8 +2,8 @@
 
 ## 0. 文档标识
 
-- 文档状态：方案评审稿
-- 修订日期：2026-07-20
+- 文档状态：开发中
+- 修订日期：2026-07-22
 - 目标仓库：FastGPT
 - 目标对象：FastGPT Workflow 的本地构建、自动化修改、Web 辅助生成、远端保存、发布与调试
 - 关联开发文档：`workflow-cli-builder-功能开发文档.md`
@@ -197,9 +197,11 @@ FastGPT API / Service -> Schema、权限、资源、运行和发布校验
 ### 4.4 档位 D：Workflow 辅助生成 Demo
 
 - Workflow 编辑器内的独立聊天入口。
-- 复用普通聊天的历史恢复、模型选择、SSE、停止、计费和 Agent Loop。
-- 使用 App 归属 Sandbox，注入当前 `workflow.json`、固定版本 CLI 和内置 `workflow-builder` Skill。
-- Agent 只生成可预览、可确认的 `WorkflowChangeSet`，由 Web Adapter/Core 应用到当前画布。
+- 建立独立 `WorkflowBuilderRunner`，直接复用公共 Agent Loop 协议，不再构造 `WorkflowStart -> Agent` 假工作流。
+- 使用研究 Sandbox 承载 Skill、文档和通用分析；使用隔离的事务 Sandbox 承载当前 `workflow.json` 和固定版本 CLI。
+- Agent 只通过 `workflow_cli_query` 和 `workflow_cli_apply` 访问事务 Sandbox，不获得该 Sandbox 的 Shell 权限。
+- `workflow_cli_apply` 直接接收 `WorkflowChangeSet`，由 Gateway 完成 CLI plan、Core 二次校验和原子 apply，不产生待确认中间态。
+- 应用成功或失败终止后，Runner 必须进入一次禁用工具的主 Agent 收尾，再由 Web Adapter 覆盖当前画布并自动对齐。
 - PR5 不自动保存、发布或调试，不支持节点选中上下文、文件上传或复杂 diff 编辑。
 
 ### 4.5 档位 E：远端生命周期
@@ -496,22 +498,41 @@ Agent 只能提出和调用结构化动作。checksum、权限、发布校验和
 
 ### 5.12 PR5 Workflow 辅助生成接入
 
-PR5 是独立产品模块，只模仿 Skill 辅助生成的运行顺序，不抽取、改造或共用 `handleSkillDebugChat` 的业务 Handler。它可以直接复用现有底层函数和组件，包括 `ChatBox`、`getChatItems`、`preChatRound`、`dispatchWorkFlow`、Agent Loop、Sandbox tools、usage 和 `finalizeChatRound`。
+PR5 是独立产品模块，不抽取、改造或共用 `handleSkillDebugChat` 的业务 Handler。它复用 `ChatBox`、`getChatItems`、`preChatRound`、公共 Agent Loop、AgentLoopCore 事件适配、Sandbox runtime、usage 和 `finalizeChatRound`，但不再通过 `dispatchWorkFlow` 构造假 Workflow runtime。
 
 ```text
 Workflow ChatBox
   -> independent Workflow Builder API/Handler
   -> restore normal chat histories and Agent memories
-  -> build WorkflowStart -> Agent runtime
-  -> prepare App sandbox
-       -> write current workflow.json
-       -> inject version-matched fastgpt-workflow CLI
-       -> inject builtin workflow-builder Skill
-  -> Agent Loop calls CLI
-  -> server revalidates WorkflowChangeSet
-  -> SSE returns plan/diagnostics
-  -> Web Adapter/Core applies confirmed ChangeSet to current canvas
+       -> only resume unfinished AgentPlan for ask/interactive continuation
+       -> ordinary new requests do not inherit stale unfinished AgentPlan
+  -> WorkflowBuilderRunner
+       -> prepare research sandbox with builtin workflow-builder Skill
+       -> prepare isolated transaction sandbox with current workflow.json and version-matched CLI
+       -> run public Agent Loop with plan/ask/research tools and two Builder runtime tools
+  -> workflow_cli_query
+       -> validate a discriminated read-only query
+       -> execute an allowlisted CLI query in transaction sandbox
+  -> workflow_cli_apply
+       -> validate WorkflowChangeSetSchema
+       -> write a server-owned per-call temporary ChangeSet
+       -> execute CLI changeset plan and parse JSON stdout
+       -> revalidate plan through workflow-core
+       -> execute CLI changeset apply and validate target WorkflowDocument
+       -> delete the temporary file in finally
+       -> return authoritative applied or failed result with stop=true
+  -> WorkflowBuilderRunner starts one tool-free main Agent finalization turn
+  -> SSE returns the validated target WorkflowDocument
+  -> Web Adapter overwrites the current canvas and runs the existing auto-layout
 ```
+
+Workflow Builder 中存在三个不同层次，禁止混为同一个 plan：
+
+- `AgentPlan`：Agent 为完成复杂检索、文档读取或多步分析而自主创建的内部执行计划；简单修改不要求创建。
+- `WorkflowPlan`：每次实际修改画布前必须生成的内部校验契约，由服务端和 CLI 共同验证，不作为待确认 UI 状态。
+- `WorkflowDocument`：CLI Apply 并经服务端校验后得到的唯一工作流状态。
+
+本阶段用于验证 CLI 在 FastGPT 对话流程中的完整可用性，不增加用户确认轮次。服务端以本轮请求携带的画布事实为 base 调用 CLI Confirm 门禁，验证成功后直接把目标文档返回画布；生成期间发生的人工画布修改允许被该目标文档覆盖。
 
 PR5 请求只携带当前轮消息、模型和画布事实；历史对话、Agent memories、计费和生成状态继续按普通 Chat 机制恢复：
 
@@ -527,9 +548,20 @@ type WorkflowBuilderChatBody = {
     checksum: string;
   };
 };
+
+type WorkflowBuilderApplied = {
+  document: WorkflowDocument;
+  checksum: string;
+};
 ```
 
-PR5 不传入 `mode`、不单独建模“修改记录”、不传节点选中上下文。Sandbox 只修改当前 Document 的副本；未经用户确认时不得更新画布或调用保存/发布 API。应用时必须重新比较 `baseChecksum`，用户人工修改导致过期时只作废当前 plan，不限制之后继续使用辅助生成。
+PR5 不传入 `mode`、不单独建模“修改记录”、不传节点选中上下文。事务 Sandbox 只修改本轮请求 Document 的副本；校验成功后允许覆盖内存画布，但不得自动调用保存、发布或运行 API。
+
+Agent 与事务执行层之间的结构化交接仅通过 `workflow_cli_apply`：服务端在事务 Sandbox 中创建每次调用唯一的临时 ChangeSet 文件，Gateway 先生成并重算 WorkflowPlan，再调用注入的 apply 回调完成 CLI 应用和目标文档校验。tool result 只暴露 `applied` 或结构化失败诊断，不暴露待确认 plan 生命周期。模型不得指定输入/输出路径，不得直接访问事务 Sandbox Shell，不存在跨轮固定 WorkflowPlan 文件。
+
+Workflow Builder 专用状态为 `reasoning -> clarification_pending | drafting_changeset -> validating -> applying -> finalizing -> applied | failed`。普通问答可在 `reasoning` 直接结束；AgentPlan 只是当前任务的实时推理进度，只有 ask continuation 可恢复；`workflow_cli_apply` 结束变更阶段后，Runner 立即启动一次无工具主 Agent 收尾。每轮最多三次校验失败，apply 失败则直接进入收尾并报告真实问题。
+
+Workflow Builder 复用 Chat 基础设施不等于继承工作流运行配置。当前 `WorkflowDocument.chatConfig` 仅作为 Agent 可读取和修改的画布事实；Builder ChatBox 与 Builder Handler 必须使用独立最小 ChatConfig，禁止继承原工作流的欢迎语、启动变量、自动执行、问题引导、语音和定时触发等配置。Builder 需要保留本次辅助 Agent 的运行详情；当详情包含 `llmRequestIds` 时，用户可继续查看对应的 LLM 请求体与响应体。
 
 ### 5.13 Workflow Core 抽取与阶段交付
 
@@ -1074,8 +1106,8 @@ CLI 不猜测字符串是否为 JSON、文件或变量引用，也不允许通�
 
 | 命令 | 必填参数 | 可选参数与关键约束 |
 | --- | --- | --- |
-| `changeset plan` | `--file <ChangeSet.json>`、`--output <Plan.json>` | `--dir`；输出 base/target checksum、changes 和 diagnostics |
-| `changeset apply` | `--plan <Plan.json>` | `--dir`、`--dry-run`、`--confirm`；非 TTY 写入必须提供 target checksum |
+| `changeset plan` | `--input <ChangeSet.json\|->` | `--dir`、可选 `--output <Plan.json>`；stdin 和文件共用同一 Schema，输出 base/target checksum、changes 和 diagnostics |
+| `changeset apply` | `--plan <Plan.json\|->` | `--dir`、`--dry-run`、`--confirm`；非 TTY 写入必须提供 target checksum |
 | `profile list` | 无 | 只显示名称、base URL 和 credential 来源，不显示密钥 |
 | `profile show` | `--name` | secret 只显示来源和配置状态 |
 | `profile add` | `--name`、`--base-url` 与 credential 来源 | credential 使用 `--api-key-env`，不接受明文 `--api-key` |
@@ -1314,7 +1346,8 @@ fastgpt-workflow input available --node ai --key userChatInput --dir ./flow
 ### 7.9 FR-09：ChangeSet 与 Confirm
 
 ```bash
-fastgpt-workflow changeset plan --file changeset.json --dir ./flow --output plan.json
+fastgpt-workflow changeset plan --input changeset.json --dir ./flow --output plan.json
+cat changeset.json | fastgpt-workflow changeset plan --input - --dir ./flow --format json
 fastgpt-workflow changeset apply --plan plan.json --dir ./flow --dry-run
 fastgpt-workflow changeset apply --plan plan.json --dir ./flow --confirm TARGET_CHECKSUM
 ```
@@ -1326,6 +1359,18 @@ fastgpt-workflow changeset apply --plan plan.json --dir ./flow --confirm TARGET_
 - 非交互环境 apply 高风险计划时必须传 `--confirm targetChecksum`。
 - plan 或目标文档发生任何变化后，旧 checksum 自动失效。
 - Confirm 是代码校验，不是在 `workflow.json` 中写一个 `confirmed: true`。
+- `--dry-run` 会重新执行、校验 base/target checksum 和完整图，但不要求 Confirm，也不写盘。
+- TTY 仅接受完整单词 `yes`；交互提示写到 stderr，JSON stdout 保持单一结构化结果。
+
+本地 Beta 使用打包后的 tarball 安装，不要求安装 FastGPT monorepo 内部 package：
+
+```bash
+pnpm --filter @fastgpt/workflow-cli test:package
+npm install -g ./fastgpt-workflow-cli-0.2.0-beta.1.tgz
+fastgpt-workflow --version
+```
+
+升级时安装新的明确版本 tarball；回滚时重新安装留存的上一版本 tarball。`workflow.json` 在 Beta 期间仍保持 `fastgpt-workflow/v1`，CLI 不允许静默重写未知 schemaVersion；执行升级或回滚前应由 Git 或文件备份保存工作流。
 
 ### 7.10 FR-10：FastGPT 服务端生命周期
 
@@ -1354,10 +1399,16 @@ fastgpt-workflow run --app APP_ID --input "你好" --profile prod
 ### 7.11 FR-11：Workflow 辅助生成
 
 - Workflow 编辑器提供独立聊天入口，复用普通 Chat 历史、模型选择、SSE、停止、计费和 Agent memories。
-- Workflow Builder 使用独立 Handler，不抽取或修改 Skill 辅助生成的 Handler；仅复用现有底层 Chat、Workflow Dispatch、Agent Loop 和 Sandbox 能力。
+- Workflow Builder 使用独立 Handler 和 Runner，不抽取或修改 Skill 辅助生成的 Handler；仅复用现有底层 Chat、Agent Loop、AgentLoopCore 事件适配和 Sandbox 能力。
 - 每轮以前端当前 `WorkflowDocument + checksum` 为事实输入，历史由后端根据 `appId + chatId` 恢复，不建立独立修改记录模型。
-- Agent 只能通过内置 `workflow-builder` Skill 调用 `fastgpt-workflow` CLI；服务端必须对 ChangeSet 二次校验。
-- 前端只在 checksum 仍匹配时通过 Web Adapter/Core 应用已确认 ChangeSet；过期 plan 不得覆盖人工修改。
+- Agent 只能通过内置 `workflow-builder` Skill 调用 `workflow_cli_query` 和 `workflow_cli_apply`；Gateway 必须执行查询白名单、ChangeSet Schema、CLI JSON envelope、Core 二次校验和原子 apply。
+- 研究 Sandbox 与事务 Sandbox 必须物理寻址隔离，Agent 的通用 Sandbox tools 不得读写事务 Sandbox。
+- `workflow_cli_apply` 必须以 `WorkflowChangeSet` 作为结构化入参；临时文件由服务端生成和清理，模型不得管理文件路径。
+- WorkflowPlan 只作为服务端内部校验对象，不持久化为待确认 Artifact，也不直接返回原始 ChangeSet JSON。
+- Gateway 在同一工具调用中注入 CLI `changeset apply --confirm <targetChecksum>` 能力，不向 Agent 暴露直接 apply 命令。
+- 服务端必须用本轮请求的 WorkflowDocument 覆盖 Sandbox 副本，重新校验 base/target/plan 内容，读取并校验 CLI 产生的目标 WorkflowDocument 后才返回。
+- 前端通过 Web Adapter 覆盖当前内存画布，等待节点尺寸就绪后复用现有 dagre 自动布局和 `fitView`。
+- 服务端必须在工具终态后再调用一次无工具主 Agent，并把其基于真实执行结果生成的终态回答持久化进 ChatItem；固定摘要只作为收尾模型失败时的兜底。
 - PR5 不支持节点选中上下文、自动保存/发布/调试或远端资源模板解析。
 
 ## 8. 共享规则与 UI 边界
@@ -1497,9 +1548,10 @@ PR 是可审核、可回滚的增量开发单元，不等于发布单元。每�
 - 在 Pro 中实现独立 Workflow Builder API、Handler、Runtime 和 Sandbox prepare action；只模仿 Skill 辅助生成顺序，不抽取或修改 Skill Handler。
 - 按 `sourceType=app`、`sourceId=appId`、`userId`、`chatId` 归属 Sandbox，注入当前 `WorkflowDocument`、与服务端匹配的 CLI 产物和内置 `workflow-builder` Skill。
 - 恢复普通 Chat 历史和 Agent memories，不建立独立修改记录模型；前端不传 `mode` 和节点选中上下文。
-- Agent 通过 CLI 生成 ChangeSet，服务端使用 workflow-core 重新校验，前端展示 plan/diagnostics 并在用户确认后通过 Web Adapter/Core 应用。
-- checksum 不匹配时只作废当前 plan，不覆盖人工修改；PR5 不自动保存、发布或运行工作流。
-- 验收结果：用户可在 Workflow 编辑器中通过多轮对话生成可审查 ChangeSet，并安全应用到当前画布。
+- Builder 使用独立最小 ChatConfig，不继承原工作流运行前置配置；保留本次辅助 Agent 的运行详情和 LLM 请求体查看能力。
+- Agent 通过 CLI 生成 ChangeSet，服务端使用 workflow-core 重新校验并自动 Apply，前端通过 Web Adapter 覆盖画布并自动对齐。
+- 允许覆盖生成期间的人工画布修改；PR5 不自动保存、发布或运行工作流。
+- 验收结果：用户可在 Workflow 编辑器中通过多轮对话直接生成并应用工作流，以验证 CLI 在 FastGPT 链路中的完整可用性。
 
 ### PR6：远端只读能力
 
@@ -1569,6 +1621,23 @@ PR1 只验收 `workflow.json` 的确定性 round-trip、失败不覆盖原文件
 5. 动态输入输出、变量引用和 catch edge。
 
 ## 13. 风险与控制
+
+### 12.5 运行时节点契约补全（2026-07-24）
+
+Workflow Builder 的真实调用证明，仅暴露输入参数不足以让 Agent 稳定生成可运行工作流。`ifElse` 分支键、交互节点没有普通 `next` 出口、容器系统字段和动态 IO 都属于节点执行能力，不能只依赖自然语言提示。
+
+所有在 `template list` 中公开的内置节点必须通过同一份版本化 `NodeTemplateDescriptor` 暴露完整机器契约：
+
+1. `schemaVersion` 固定为 `fastgpt-workflow-node-contract/v1`。
+2. `execution` 描述可接受的目标端口、允许的源端口、终止节点和动态分支配置来源。
+3. `container` 描述是否为容器、允许的父容器类型和禁止的子节点类型。
+4. `dynamicIO` 描述输入变更会同步哪些动态输入、输出或执行分支。
+5. `effects` 描述输入更新会清理失效引用、执行边或同步兼容字段等副作用。
+6. 所有 `configurable=true` 的输入必须有非空说明；对象、对象数组和结构化 `any` 必须有 `valueSchema`。
+7. `hidden`、布局尺寸、`childrenNodeIdList` 等系统维护字段默认不可配置；确需由 Agent 设置的隐藏字段必须在 Automation Metadata 中显式开放。
+8. Descriptor 的执行能力必须复用 Core 校验的同一事实源，不允许在模板说明和 `assertExecutionEdge()` 中维护两份节点集合。
+
+本次补全覆盖当前公开的全部 22 个内置节点，不只处理 `ifElse`。CLI 仍只负责透传 `template show` 的 Descriptor 和执行 WorkflowCommand，不复制 Core 业务规则。现有合法 `workflow.json`、StoreWorkflow 和 Web 模板结构不迁移；非法输入会更早在命令边界失败。
 
 | 风险 | 影响 | 控制措施 |
 | --- | --- | --- |

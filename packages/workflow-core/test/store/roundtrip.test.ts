@@ -41,14 +41,14 @@ describe('StoreWorkflow round-trip', () => {
     expect(validateWorkflow(document)).toEqual([]);
   });
 
-  it('computes the same checksum regardless of node and edge order', () => {
+  it('computes the same checksum regardless of node and edge order', async () => {
     const parsedWorkflow = WorkflowDocumentSchema.parse(aiWorkflow);
     const reversed = {
       ...parsedWorkflow,
       nodes: [...parsedWorkflow.nodes].reverse(),
       executionEdges: [...parsedWorkflow.executionEdges].reverse()
     };
-    expect(getWorkflowChecksum(parsedWorkflow)).toBe(getWorkflowChecksum(reversed));
+    expect(await getWorkflowChecksum(parsedWorkflow)).toBe(await getWorkflowChecksum(reversed));
   });
 
   it('compiles semantic output keys to Store output ids and decompiles them back', () => {

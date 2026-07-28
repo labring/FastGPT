@@ -1,4 +1,4 @@
-import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
+import { checkWorkflowNodeAndConnection } from '@/pageComponents/app/detail/WorkflowComponents/adapters/validation';
 import {
   WorkflowDocumentSchema,
   compileStoreWorkflow,

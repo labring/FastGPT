@@ -81,7 +81,7 @@ const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const helperLinesRef = useRef<HelperLinesController>(null);
-  const { reactFlowWrapperCallback, workflowControlMode, menu } = useContextSelector(
+  const { reactFlowWrapperCallback, workflowControlMode } = useContextSelector(
     WorkflowUIContext,
     (v) => v
   );
@@ -219,7 +219,7 @@ const Workflow = () => {
             setMovingCanvas(false);
           }}
         >
-          {!!menu && <ContextMenu />}
+          <ContextMenu />
           <FlowController />
           <HelperLines ref={helperLinesRef} />
         </ReactFlow>

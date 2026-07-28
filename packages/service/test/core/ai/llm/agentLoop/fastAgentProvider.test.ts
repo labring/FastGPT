@@ -207,6 +207,46 @@ describe('runFastAgentLoop', () => {
     expect(toolNames.some((name: string) => name.startsWith('sandbox_'))).toBe(true);
   });
 
+  it('does not disable executable tools for a sandbox-only runtime', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_sandbox_only',
+        content: 'direct answer'
+      })
+    ]);
+
+    await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'inspect workspace'
+          }
+        ],
+        systemPrompt: 'Sandbox is available.'
+      },
+      runtime: createRuntime({
+        toolCatalog: {
+          runtimeTools: []
+        },
+        systemTools: {
+          sandbox: {
+            enabled: true,
+            client: {} as any
+          }
+        }
+      })
+    });
+
+    const systemMessage = createLLMResponseMock.mock.calls[0][0].body.messages.find(
+      (message: { role: string }) => message.role === ChatCompletionRequestMessageRoleEnum.System
+    );
+    expect(systemMessage.content).toContain(
+      '<user_background>\nSandbox is available.\n</user_background>'
+    );
+    expect(systemMessage.content).not.toContain('<tool_constraint>');
+  });
+
   it('initializes runtime plan from history without changing request messages', async () => {
     const activePlan = {
       planId: 'plan_resume',

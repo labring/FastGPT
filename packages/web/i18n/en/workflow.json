@@ -279,5 +279,11 @@
   "workflow_local_draft_auth_expired_title": "Automatically saved",
   "workflow_local_draft_relogin": "Sign in again",
   "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits.",
+  "workflow_builder_title": "Workflow Builder",
+  "workflow_builder_collapse": "Collapse",
+  "workflow_builder_clear_history": "Clear history",
+  "workflow_builder_clear_history_confirm": "Clear this Workflow Builder conversation? The workflow canvas and model selection will not be changed.",
+  "workflow_builder_apply_failed": "The generated workflow could not be applied",
+  "workflow_builder_applied": "Applied to the current canvas",
   "connection_invalid": "This connection violates workflow rules"
 }
