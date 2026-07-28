@@ -10,6 +10,7 @@ import type { LegacySandboxInstanceSchemaType } from '../../infrastructure/insta
 import { SandboxMetadataSchema, type SandboxProviderType } from '../../type';
 import { getSandboxRuntimePaths, getSandboxSessionPathSegment, joinSandboxPath } from '../../utils';
 import { restoreSandboxWorkspaceArchiveForMigration } from '../archive';
+import { resolveSandboxHome } from '../runtime/home';
 import type { LegacyMigrationTarget } from './types';
 import { toV2Metadata } from './utils';
 
@@ -69,10 +70,16 @@ async function mergeLegacyWorkspaceArchive(params: {
   removeAppRuntimeSkillCaches: boolean;
 }) {
   const { target, legacySandboxId, archiveBody, targetDirectory } = params;
-  const { workspaceRoot } = target.getRuntimePaths();
+  const homeDirectory = await resolveSandboxHome(target.provider);
+  if (!homeDirectory) {
+    throw new Error('Failed to resolve sandbox HOME for migration staging directory');
+  }
   const stagingName = createHash('sha256').update(legacySandboxId).digest('hex').slice(0, 40);
   const stagingDirectory = joinSandboxPath(
-    joinSandboxPath(workspaceRoot, '.migration'),
+    homeDirectory,
+    '.fastgpt',
+    'tmp',
+    'migration',
     stagingName
   );
   await restoreSandboxWorkspaceArchiveForMigration({
@@ -142,7 +149,8 @@ export const installLegacyWorkspaceArchive = (params: {
     legacySandboxId: params.legacySandboxId,
     archiveBody: params.archiveBody,
     targetDirectory: joinSandboxPath(
-      joinSandboxPath(workspaceRoot, 'sessions'),
+      workspaceRoot,
+      'sessions',
       getSandboxSessionPathSegment(params.chatId)
     ),
     removeAppRuntimeSkillCaches: true

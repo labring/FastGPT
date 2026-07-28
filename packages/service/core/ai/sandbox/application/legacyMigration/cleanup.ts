@@ -1,8 +1,9 @@
 /** Legacy Sandbox 归档前清理和 Source 删除清理。 */
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { batchRun } from '@fastgpt/global/common/system/utils';
+import { batchRunSettled } from '@fastgpt/global/common/system/utils';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getS3SandboxSource } from '../../../../../common/s3/sources/sandbox';
 import {
   completeLegacySandboxArchive,
@@ -25,6 +26,7 @@ import { getLegacyMigrationPhase, toLegacyResource } from './utils';
 
 const APP_SANDBOX_MIGRATION_CONCURRENCY = 5;
 const SOURCE_DELETE_CONCURRENCY = 10;
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export class LegacySandboxCleanupError extends Error {
   constructor(
@@ -185,6 +187,41 @@ async function cleanupLegacyInstanceForSourceDeletion(params: {
   });
 }
 
+/** 清理同一 Source 的 Legacy 资源；全部任务收敛后记录每个失败实例。 */
+async function cleanupLegacyInstancesForSourceDeletion(params: {
+  legacy: LegacySandboxInstanceSchemaType[];
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  assertLeaseValid: () => void;
+  concurrency: number;
+}) {
+  const { legacy, sourceType, sourceId, assertLeaseValid, concurrency } = params;
+  const results = await batchRunSettled(
+    legacy,
+    (doc) => cleanupLegacyInstanceForSourceDeletion({ doc, assertLeaseValid }),
+    concurrency
+  );
+  const failures = results.flatMap((result, index) => {
+    if (result.success) return [];
+    return [
+      {
+        sandboxId: legacy[index].sandboxId,
+        ...(result.error instanceof LegacySandboxCleanupError ? { step: result.error.step } : {}),
+        error: getErrText(result.error, 'Unknown Legacy Sandbox cleanup error')
+      }
+    ];
+  });
+  if (failures.length === 0) return;
+
+  logger.error('Failed to clean up Legacy Sandbox resources', {
+    sourceType,
+    sourceId,
+    failureCount: failures.length,
+    failures
+  });
+  throw new Error(`Failed to clean up ${failures.length} Legacy Sandbox resources`);
+}
+
 /** App 删除在 Source Lease 内同时清理 v2 和 Legacy 资源。 */
 export async function deleteAppSandboxesForAppDeletion(appId: string): Promise<void> {
   await withSandboxSourceMutationLease({
@@ -202,19 +239,20 @@ export async function deleteAppSandboxesForAppDeletion(appId: string): Promise<v
         sourceType: ChatSourceTypeEnum.app,
         sourceId: appId
       });
-      await batchRun(
+      await cleanupLegacyInstancesForSourceDeletion({
         legacy,
-        (doc) => cleanupLegacyInstanceForSourceDeletion({ doc, assertLeaseValid: assertValid }),
-        APP_SANDBOX_MIGRATION_CONCURRENCY,
-        { waitForAll: true }
-      );
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        assertLeaseValid: assertValid,
+        concurrency: APP_SANDBOX_MIGRATION_CONCURRENCY
+      });
     }
   });
 }
 
 /** Skill 删除按 source 串行清理 v2 和 Legacy 资源。 */
 export async function deleteSkillEditSandboxesForSkillDeletion(skillIds: string[]) {
-  await batchRun(
+  const results = await batchRunSettled(
     skillIds,
     async (skillId) => {
       await withSandboxSourceMutationLease({
@@ -232,16 +270,33 @@ export async function deleteSkillEditSandboxesForSkillDeletion(skillIds: string[
             sourceType: ChatSourceTypeEnum.skillEdit,
             sourceId: skillId
           });
-          await batchRun(
+          await cleanupLegacyInstancesForSourceDeletion({
             legacy,
-            (doc) => cleanupLegacyInstanceForSourceDeletion({ doc, assertLeaseValid: assertValid }),
-            SOURCE_DELETE_CONCURRENCY,
-            { waitForAll: true }
-          );
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId: skillId,
+            assertLeaseValid: assertValid,
+            concurrency: SOURCE_DELETE_CONCURRENCY
+          });
         }
       });
     },
-    SOURCE_DELETE_CONCURRENCY,
-    { waitForAll: true }
+    SOURCE_DELETE_CONCURRENCY
   );
+
+  const failures = results.flatMap((result, index) => {
+    if (result.success) return [];
+    return [
+      {
+        skillId: skillIds[index],
+        error: getErrText(result.error, 'Unknown Skill Sandbox cleanup error')
+      }
+    ];
+  });
+  if (failures.length === 0) return;
+
+  logger.error('Failed to clean up Skill Sandbox sources', {
+    failureCount: failures.length,
+    failures
+  });
+  throw new Error(`Failed to clean up ${failures.length} Skill Sandbox sources`);
 }

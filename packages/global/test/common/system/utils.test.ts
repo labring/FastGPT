@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { delay, retryFn, batchRun, withTimeout } from '@fastgpt/global/common/system/utils';
+import {
+  batchRun,
+  batchRunSettled,
+  delay,
+  retryFn,
+  withTimeout
+} from '@fastgpt/global/common/system/utils';
 
 describe('system utils', () => {
   afterEach(() => {
@@ -321,21 +327,25 @@ describe('system utils', () => {
       expect(fn).toHaveBeenCalledTimes(1);
     });
 
-    it('should wait for every worker before rejecting when waitForAll is enabled', async () => {
-      const completed: number[] = [];
+    it('should return every settled result in input order', async () => {
+      const firstError = new Error('first failed');
+      const thirdError = new Error('third failed');
       const fn = vi.fn(async (item: number) => {
-        if (item === 1) throw new Error('first failed');
-        await delay(item);
-        completed.push(item);
-        return item;
+        await delay((5 - item) * 2);
+        if (item === 1) throw firstError;
+        if (item === 3) throw thirdError;
+        return item * 10;
       });
 
-      await expect(batchRun([1, 2, 3, 4], fn, 2, { waitForAll: true })).rejects.toThrow(
-        'first failed'
-      );
+      const results = await batchRunSettled([1, 2, 3, 4], fn, 2);
 
       expect(fn).toHaveBeenCalledTimes(4);
-      expect(completed.sort((a, b) => a - b)).toEqual([2, 3, 4]);
+      expect(results).toEqual([
+        { success: false, error: firstError },
+        { success: true, data: 20 },
+        { success: false, error: thirdError },
+        { success: true, data: 40 }
+      ]);
     });
   });
 });

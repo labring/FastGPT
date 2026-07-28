@@ -3,7 +3,8 @@
  *
  * 所有远端 stop/delete 都在 provider 无关的 Lifecycle Lease 内先抢占 Mongo operation。
  */
-import { batchRun } from '@fastgpt/global/common/system/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { batchRun, batchRunSettled } from '@fastgpt/global/common/system/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { subMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -197,24 +198,45 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
   await deleteSandboxResource(instance);
 }
 
+/** 删除一批 Sandbox 资源；全部任务收敛后统一记录失败资源并阻止后续清理阶段。 */
+const deleteSandboxResourceBatch = async (instances: SandboxResourceRef[]) => {
+  const results = await batchRunSettled(
+    instances,
+    (instance) => deleteSandboxResource(instance),
+    10
+  );
+  const failures = results.flatMap((result, index) => {
+    if (result.success) return [];
+    return [
+      {
+        sandboxId: instances[index].sandboxId,
+        error: getErrText(result.error, 'Unknown sandbox deletion error')
+      }
+    ];
+  });
+  if (failures.length === 0) return;
+
+  logger.error('Failed to delete sandbox resources', {
+    failureCount: failures.length,
+    failures
+  });
+  throw new Error(`Failed to delete ${failures.length} sandbox resources`);
+};
+
 /** 调用方持有 Source Mutation Lease 时，清理某个 App 的全部 v2 资源。 */
 export const deleteAppSandboxes = async (appId: string) => {
   const instances = await findSandboxResourcesBySource({
     sourceType: ChatSourceTypeEnum.app,
     sourceId: appId
   });
-  await batchRun(instances, (instance) => deleteSandboxResource(instance), 10, {
-    waitForAll: true
-  });
+  await deleteSandboxResourceBatch(instances);
 };
 
 /** 调用方持有各 Skill Source Mutation Lease 时，清理 Skill Edit v2 资源。 */
 export const deleteSkillEditSandboxes = async (skillIds: string[]) => {
   if (skillIds.length === 0) return;
   const instances = await findSkillRelatedSandboxResources(skillIds);
-  await batchRun(instances, (instance) => deleteSandboxResource(instance), 10, {
-    waitForAll: true
-  });
+  await deleteSandboxResourceBatch(instances);
 };
 
 /** cron 批量 stop；单条失败会记录并允许同批其他资源继续。 */
