@@ -5,31 +5,7 @@ description: 'FastGPT V4.16.0-beta1 更新说明'
 
 ## 📦 升级指南
 
-### 1 升级前确认执行 V4.15.0-beta6 归一化脚本
-
-在仍运行 V4.15.x 镜像时，先执行旧版归一化接口。V4.16.0-beta1 已移除该接口，不能升级后再补执行。
-
-先执行 dry-run：
-
-```bash
-curl -X POST 'https://你的域名/api/admin/4150/init4150-beta6' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":true}'
-```
-
-确认返回结果无误后执行正式迁移：
-
-```bash
-curl -X POST 'https://你的域名/api/admin/4150/init4150-beta6' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":false}'
-```
-
-该脚本会补齐旧 Sandbox 的 `sourceType/sourceId`，清理遗留字段和无法归属的孤立资源。详细行为见 [V4.15.0-beta6 升级说明](../4-15/41506)。
-
-### 2. 更新 Agent Sandbox 配置
+### 1. 更新 Agent Sandbox 配置
 
 启用 Agent Sandbox 的环境必须新增浏览器可访问的预览代理地址：
 
@@ -54,11 +30,13 @@ E2B Sandbox Provider 已移除。此前配置过 E2B 的环境需要切换为 `o
 
 > FastGPT、`fastgpt-agent-sandbox-proxy` 和 `fastgpt-agent-sandbox` 的预览协议已同步变更。启用 Agent Sandbox 时必须使用本版本配套镜像，不支持新旧版本混合部署。
 
-### 3. 迁移 Agent Sandbox 数据
+### 2. 迁移 Agent Sandbox 数据
 
 本版本将 App Chat 的 Agent Sandbox 从“每个对话一个实例”调整为“同一 App、同一用户共享一个实例”。不同对话的文件仍分别保存在 `sessions/<chatId>` 目录中，已发布 Skill 则统一保存在共享的 `projects` 目录中。
 
 如果此前启用过 Agent Sandbox，必须按以下顺序完成旧 Workspace 迁移。未启用过 Agent Sandbox 的环境可以跳过本节。
+
+先执行 dry-run，查看 beta6 Sandbox 字段归一化和旧 Skill Debug Chat 清理的待处理数。dry-run 不会创建资源、访问对象存储或修改数据：
 
 ```bash
 curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
@@ -67,7 +45,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":true}'
 ```
 
-确认预检通过后执行正式迁移：
+查看 dry-run 结果后执行正式迁移。正式迁移会先执行 beta6 归一化，并且只在剩余待处理数归零时，才在同一请求中继续 Workspace 归档：
 
 ```bash
 curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
@@ -76,9 +54,9 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":false}'
 ```
 
-迁移分为两个阶段：先归档全部旧 Workspace 并清理旧计算资源，再按 App、用户聚合到用户级 Sandbox。只要第一阶段存在失败，第二阶段就不会开始。脚本可安全重试，已完成的归档和迁移不会重复执行；迁移完成后会保留旧归档和旧 MongoDB 记录作为备份。
+迁移会先执行 V4.15.0-beta6 的完整前置逻辑：补齐旧 Sandbox 的 `sourceType/sourceId`、清理遗留字段、删除无法归属的孤立资源，并清理缺失 `sourceType` 的旧 Skill Debug Chat 三表数据及私有、公开 Bucket 旧前缀。与 App 同 ID 的 Skill 会跳过 Chat 清理。两类数据重新统计后合计为 `normalization.pendingCount`；数量不为 `0` 时不会进入 Workspace 归档。归零后直接归档全部旧 Workspace 并清理旧计算资源，再迁移 Skill，最后按 App、用户聚合到用户级 Sandbox。只要归档阶段存在失败，安装阶段就不会开始。新的 Sandbox 会在 Workspace 安装完成后暂停，首次使用时再按正常流程启动。脚本可安全重试，已完成的归档和迁移不会重复执行；迁移完成后会保留旧归档和旧 MongoDB 记录作为备份。
 
-请检查返回结果中的 `failedCount` 和 `failures`。只有 `failedCount` 为 `0` 时，才表示本次迁移全部完成。
+请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount` 和 `failures`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示本次迁移全部完成。
 
 ## 🚀 新增内容
 

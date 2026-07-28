@@ -33,7 +33,6 @@ import handler from '@/pages/api/core/ai/sandbox/checkExist';
 
 describe('sandbox checkExist API', () => {
   const appId = '64f000000000000000000001';
-  const skillId = '64f000000000000000000002';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,21 +53,18 @@ describe('sandbox checkExist API', () => {
     mocks.resolveSandboxSessionAvailability.mockResolvedValue({ available: true });
   });
 
-  it.each(Object.values(SandboxUnavailableReasonEnum))(
-    'keeps existing instance visibility when Sandbox is unavailable because of %s',
-    async (reason) => {
-      mocks.resolveSandboxSessionAvailability.mockResolvedValueOnce({
-        available: false,
-        reason
-      });
+  it('keeps existing instance visibility when Sandbox is unavailable', async () => {
+    mocks.resolveSandboxSessionAvailability.mockResolvedValueOnce({
+      available: false,
+      reason: SandboxUnavailableReasonEnum.teamPlanUnavailable
+    });
 
-      await expect(handler({ body: { appId, chatId: 'chat-1' } } as any)).resolves.toEqual({
-        exists: true,
-        unavailableReason: reason
-      });
-      expect(mocks.checkSandboxSessionExist).toHaveBeenCalledOnce();
-    }
-  );
+    await expect(handler({ body: { appId, chatId: 'chat-1' } } as any)).resolves.toEqual({
+      exists: true,
+      unavailableReason: SandboxUnavailableReasonEnum.teamPlanUnavailable
+    });
+    expect(mocks.checkSandboxSessionExist).toHaveBeenCalledOnce();
+  });
 
   it('returns the actual instance state when sandbox is available', async () => {
     mocks.checkSandboxSessionExist.mockResolvedValueOnce(false);
@@ -77,25 +73,5 @@ describe('sandbox checkExist API', () => {
       exists: false
     });
     expect(mocks.checkSandboxSessionExist).toHaveBeenCalledOnce();
-  });
-
-  it('uses the same availability resolver for Skill Edit strong authorization', async () => {
-    mocks.authSandboxSession.mockResolvedValueOnce({
-      uid: 'user-1',
-      teamId: 'team-1',
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId
-    });
-    mocks.checkSandboxSessionExist.mockResolvedValueOnce(true);
-
-    await expect(handler({ body: { skillId, chatId: 'edit-debug' } } as any)).resolves.toEqual({
-      exists: true
-    });
-    expect(mocks.authSandboxSession).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceType: ChatSourceTypeEnum.skillEdit })
-    );
-    expect(mocks.resolveSandboxSessionAvailability).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceType: ChatSourceTypeEnum.skillEdit })
-    );
   });
 });

@@ -648,15 +648,6 @@ export async function restoreArchivedSandboxBeforeUse(params: {
           previousStatus: SandboxInstanceStatusEnum.archived,
           claimConflictError: new SandboxLifecycleStateError(current.status)
         });
-
-        await getS3SandboxSource()
-          .deleteWorkspaceArchiveNow({ sandboxId: params.sandboxId })
-          .catch((error) => {
-            logger.warn('Failed to delete consumed sandbox archive', {
-              sandboxId: params.sandboxId,
-              error
-            });
-          });
       } catch (error) {
         if (sandbox) await sandbox.stop().catch(() => undefined);
         throw error;

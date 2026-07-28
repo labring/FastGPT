@@ -189,27 +189,29 @@ active；删除任务只处理已经持久标记删除的 source。
 
 - v2 归档使用 `sandbox/archive/<sandboxId>/package.zip`。
 - Legacy 归档继续使用 `agent-sandbox/<legacySandboxId>/package.zip`，不能直接改名为 v2 归档。
-- restore 发布 `running` 后尽力删除已消费的 v2 S3 归档；清理失败不回滚已恢复 Workspace。
+- restore 发布 `running` 后保留 v2 S3 归档，后续重复恢复仍以该归档作为持久备份；只有业务资源
+  删除流程才清理对应归档。
 - App 删除清理全部用户级 v2 与 Legacy Provider 资源、volume、S3 和 Mongo 记录。
 - Skill 删除清理 Skill Edit Sandbox；普通编辑 Chat 删除不删除共享 Skill Edit Sandbox。
 - keepalive、存在性检查和历史资源 stop/delete 不得通过运行时 client 意外恢复 archived 实例。
 
 ## 6. Legacy Workspace 迁移
 
-### 6.1 升级前提与预检
+### 6.1 beta6 前置阶段
 
-升级到当前镜像前，必须先在仍提供 `/api/admin/4150/init4150-beta6` 的上一版本完成 beta6 字段
-归一化，再调用当前版本 `/api/admin/4160/initUserSandbox`。新入口默认 `dryRun=true`，不会自动
-串联旧脚本。
+`/api/admin/4160/initUserSandbox` 内置 beta6 Sandbox 归属归一化作为第 0 阶段，不再依赖已经删除的
+`/api/admin/4150/init4150-beta6`。该阶段补齐 Legacy `sourceType/sourceId`、清理历史
+`appId/type/metadata.skillId` 字段，并删除无法归属的孤儿 Sandbox 资源。随后按 beta6 原规则
+清理缺失 `sourceType` 的旧 Skill Debug Chat 三表记录和私有、公开 Bucket 旧 S3 前缀；
+与 App 同 ID 的 Skill 跳过清理，防止误删 App Chat。`dryRun=true` 时只统计，不执行写入或删除。
 
-管理员任务先对原始 Legacy 文档做整表预检。App 必须有合法的
-`sourceType/sourceId/userId/chatId`，Skill 必须有合法的 `sourceType/sourceId`，且不得残留旧
-`appId/type/metadata.skillId`。任一记录不合法时整次拒绝；预检通过前不写 v2、不连接 Provider、
-不访问 S3。
+第 0 阶段结束后必须重新统计 Sandbox 待归一化记录和待清理旧 Debug Chat。两者合计为
+`pendingCount`；只要它不为 0，整次任务就停在该阶段，不得归档 Workspace、删除待迁移物理资源
+或创建 v2 目标。该总数归零后直接进入 Workspace 迁移，不再执行重复的 Legacy 整表 Zod 预检。
 
 ### 6.2 两阶段迁移
 
-迁移分为全量预归档和 Workspace 安装两个严格阶段：
+通过归一化屏障后，Workspace 迁移分为全量预归档和安装两个严格阶段：
 
 1. 第一阶段为所有未完成 Legacy 记录生成或复用 S3 归档，确认归档后删除旧物理 Sandbox 和
    OpenSandbox volume，并提交 `archiveReady`。
@@ -218,7 +220,8 @@ active；删除任务只处理已经持久标记删除的 source。
 3. 第二阶段只从 Legacy S3 下载和安装 Workspace，不再连接或打包旧物理实例。
 4. App 按 `sourceId + userId` 聚合到一个用户级目标；Skill Edit 搬到新的稳定 Skill ID。
 5. 目标在安装期间保持 `legacyMigrating + legacyMigration operation`，普通 runtime 只能返回忙碌。
-6. 所有分组文件至少提交 `installed` 后，才一次性发布目标为 `running`。
+6. 所有分组文件至少提交 `installed` 后，先暂停目标物理 Sandbox，再一次性发布目标为
+   `stopped`；暂停失败不得提交迁移完成。
 7. 发布后把 Legacy 阶段提交为 `completed`，保留旧 S3 和 Legacy Mongo 记录作为迁移备份。
 
 第一阶段释放单个 Source Lease 后，正常用户请求可以先创建确定性的 v2 目标。第二阶段必须接管或
@@ -325,7 +328,7 @@ interface -> application -> infrastructure -> sandbox-adapter
 - 外部生产代码只从 `interface/*` 使用稳定能力。
 - application 负责编排，不直接访问 Mongoose Model。
 - v2 与 Legacy Mongo 读写集中在 `infrastructure/instance` repository。
-- Legacy migration 按 `service/workspace/cleanup/types` 拆分，阶段判断留在 application。
+- Legacy migration 按 `service/workspace/cleanup/normalization/debugChatCleanup/types` 拆分，阶段判断留在 application。
 - 对外聚合只使用目录 `index.ts`，不保留非 `index.ts` 的兼容转发文件。
 - 架构测试阻止反向依赖、外部绕过 interface 和 Sandbox 内部循环导入。
 
@@ -339,7 +342,7 @@ interface -> application -> infrastructure -> sandbox-adapter
 - Runtime Context、session/Skill 路径、父目录创建和 Editor 路径换算。
 - Source/Lifecycle/init lease、operation fencing、stale 接管和 Provider 幂等。
 - stop、archive、restore、delete、Provider/镜像迁移的副作用顺序和失败恢复。
-- Legacy 整表预检、全量预归档屏障、目标内容优先合并、发布屏障和幂等重试。
+- beta6 待处理数屏障、全量预归档屏障、目标内容优先合并、发布屏障和幂等重试。
 - App 三种不可用原因的静默降级，以及 Skill Edit 强依赖行为。
 - preview session、鉴权、TTL/限额、HTTP Range、路径穿越和软链接逃逸。
 - App/Chat/Skill 删除边界以及 v2/Legacy S3 key 隔离。
@@ -355,3 +358,5 @@ interface -> application -> infrastructure -> sandbox-adapter
 - [x] OpenSandbox/Sealos stop 契约和 sandbox-adapter 结构收敛。
 - [x] Sandbox 模块依赖边界、Repository 和公共 interface 收敛。
 - [x] 将阶段性技术方案合并到本文并删除重复文档。
+- [x] 将 beta6 Sandbox 归一化移入 `initUserSandbox` 并在剩余待处理数归零前阻断归档。
+- [x] restore 后保留 v2 S3 归档，仅在业务资源删除时清理。

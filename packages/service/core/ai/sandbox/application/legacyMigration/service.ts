@@ -28,6 +28,7 @@ import {
   withSandboxLifecycleLease,
   withSandboxSourceMutationLease
 } from '../lease';
+import { stopSandboxResource } from '../resource';
 import { assertSandboxSourceActive } from '../sourceGuard';
 import { archiveLegacyInstanceBeforeMigration, LegacySandboxCleanupError } from './cleanup';
 import type {
@@ -40,8 +41,7 @@ import type {
 import {
   getLegacyMigrationPhase,
   getLegacyMigrationTargetSandboxId,
-  isStableSandboxStatus,
-  parseLegacySandboxInstances
+  isStableSandboxStatus
 } from './utils';
 import {
   createMigrationTarget,
@@ -49,6 +49,7 @@ import {
   installLegacySkillWorkspaceArchive,
   installLegacyWorkspaceArchive
 } from './workspace';
+import { normalizeLegacySandboxes } from './normalization';
 
 const APP_SANDBOX_MIGRATION_CONCURRENCY = 5;
 const SKILL_SANDBOX_MIGRATION_CONCURRENCY = 20;
@@ -289,11 +290,14 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
               if (!heartbeat) {
                 throw new Error('Skill sandbox migration lost ownership after workspace install');
               }
+              assertLeasesValid();
+              await target.provider.stop();
+              assertLeasesValid();
               const published = await completeSandboxOperation({
                 resource: targetDoc,
                 operationId,
                 fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
-                status: SandboxInstanceStatusEnum.running,
+                status: SandboxInstanceStatusEnum.stopped,
                 touchActive: true,
                 set: {
                   ...(target.storage !== undefined ? { storage: target.storage } : {}),
@@ -313,6 +317,11 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
             }
           }
         });
+      }
+      if (completionOnly && existing?.status === SandboxInstanceStatusEnum.running) {
+        sourceLease.assertValid();
+        await stopSandboxResource({ provider: existing.provider, sandboxId: existing.sandboxId });
+        sourceLease.assertValid();
       }
 
       if (phase !== 'installed' && phase !== 'cleanupPending') {
@@ -487,11 +496,13 @@ const migrateAppGroup = async (params: {
               );
               if (!allInstalled) throw new Error('Not all Legacy workspaces were installed');
               lifecycleLease.assertValid();
+              await target.provider.stop();
+              assertLeasesValid();
               const published = await completeSandboxOperation({
                 resource: targetDoc,
                 operationId,
                 fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
-                status: SandboxInstanceStatusEnum.running,
+                status: SandboxInstanceStatusEnum.stopped,
                 touchActive: true
               });
               if (!published) throw new Error('Migration target lost ownership before publish');
@@ -507,6 +518,11 @@ const migrateAppGroup = async (params: {
             }
           }
         });
+      }
+      if (completionOnly && existing?.status === SandboxInstanceStatusEnum.running) {
+        sourceLease.assertValid();
+        await stopSandboxResource({ provider: existing.provider, sandboxId: existing.sandboxId });
+        sourceLease.assertValid();
       }
 
       for (const item of group) {
@@ -536,11 +552,31 @@ const migrateAppGroup = async (params: {
 /** 执行 Legacy Sandbox 到用户级 Sandbox 的管理员 migration。 */
 const runLegacySandboxMigration = async (
   params: UserSandboxMigrationParams,
-  runId: string
+  runId: string,
+  assertLeaseValid?: () => void
 ): Promise<UserSandboxMigrationResult> => {
   const dryRun = params.dryRun ?? true;
   const startedAt = Date.now();
-  const docs = parseLegacySandboxInstances(await findAllLegacySandboxInstanceRecords());
+  const normalization = await normalizeLegacySandboxes({ dryRun, assertLeaseValid });
+  if (normalization.pendingCount > 0) {
+    return {
+      dryRun,
+      normalization,
+      normalizationBlocked: true,
+      completedLegacyCount: 0,
+      legacySkillCount: 0,
+      migratedSkillCount: 0,
+      legacyAppCount: 0,
+      migratedAppCount: 0,
+      appGroupCount: 0,
+      completedAppGroupCount: 0,
+      failedCount: normalization.failures.length,
+      failures: normalization.failures
+    };
+  }
+
+  assertLeaseValid?.();
+  const docs = await findAllLegacySandboxInstanceRecords();
   const completedLegacyCount = docs.filter(
     (doc) => getLegacyMigrationPhase(doc) === 'completed'
   ).length;
@@ -558,6 +594,8 @@ const runLegacySandboxMigration = async (
   }
   const result: UserSandboxMigrationResult = {
     dryRun,
+    normalization,
+    normalizationBlocked: false,
     completedLegacyCount,
     legacySkillCount: skillItems.length,
     migratedSkillCount: 0,
@@ -637,6 +675,6 @@ export async function migrateLegacySandboxesToUserLevel(
   if (params.dryRun ?? true) return runLegacySandboxMigration(params, runId);
   return withLegacySandboxMigrationJobLease({
     label: 'user-level-sandbox-migration',
-    fn: () => runLegacySandboxMigration(params, runId)
+    fn: ({ assertValid }) => runLegacySandboxMigration(params, runId, assertValid)
   });
 }

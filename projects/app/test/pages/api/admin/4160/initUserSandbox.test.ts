@@ -25,6 +25,33 @@ describe('initUserSandbox API', () => {
     mocks.authCert.mockResolvedValue(undefined);
     mocks.migrateLegacySandboxesToUserLevel.mockResolvedValue({
       dryRun: true,
+      normalization: {
+        skillMatchedCount: 0,
+        skillModifiedCount: 0,
+        appMatchedCount: 0,
+        appModifiedCount: 0,
+        legacyFieldMatchedCount: 0,
+        legacyFieldModifiedCount: 0,
+        orphanMatchedCount: 0,
+        orphanDeletedCount: 0,
+        orphanFailedCount: 0,
+        sandboxPendingCount: 0,
+        scannedSkillCount: 0,
+        legacyDebugChatCleanup: {
+          conflictAppSkillCount: 0,
+          cleanupSkillCount: 0,
+          totalLegacyChats: 0,
+          totalChatItems: 0,
+          totalChatItemResponses: 0,
+          deletedSkillCount: 0,
+          skippedEmptyCount: 0,
+          pendingChatCount: 0,
+          list: []
+        },
+        pendingCount: 0,
+        failures: []
+      },
+      normalizationBlocked: false,
       completedLegacyCount: 0,
       legacySkillCount: 1,
       migratedSkillCount: 0,

@@ -18,7 +18,6 @@ const mocks = vi.hoisted(() => ({
   deleteSessionVolume: vi.fn(),
   uploadWorkspaceArchive: vi.fn(),
   downloadWorkspaceArchive: vi.fn(),
-  deleteWorkspaceArchiveNow: vi.fn(),
   isWorkspaceArchiveExists: vi.fn(),
   uploadLegacyWorkspaceArchive: vi.fn(),
   downloadLegacyWorkspaceArchive: vi.fn(),
@@ -72,7 +71,6 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
   getS3SandboxSource: () => ({
     uploadWorkspaceArchive: mocks.uploadWorkspaceArchive,
     downloadWorkspaceArchive: mocks.downloadWorkspaceArchive,
-    deleteWorkspaceArchiveNow: mocks.deleteWorkspaceArchiveNow,
     isWorkspaceArchiveExists: mocks.isWorkspaceArchiveExists,
     uploadLegacyWorkspaceArchive: mocks.uploadLegacyWorkspaceArchive,
     downloadLegacyWorkspaceArchive: mocks.downloadLegacyWorkspaceArchive,
@@ -161,7 +159,6 @@ describe('sandbox archive lifecycle', () => {
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
     mocks.uploadWorkspaceArchive.mockResolvedValue(undefined);
     mocks.downloadWorkspaceArchive.mockResolvedValue(EMPTY_ZIP_BUFFER);
-    mocks.deleteWorkspaceArchiveNow.mockResolvedValue(undefined);
     mocks.isWorkspaceArchiveExists.mockResolvedValue(false);
     mocks.uploadLegacyWorkspaceArchive.mockResolvedValue(undefined);
     mocks.downloadLegacyWorkspaceArchive.mockResolvedValue(EMPTY_ZIP_BUFFER);

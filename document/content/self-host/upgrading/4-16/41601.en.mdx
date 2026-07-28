@@ -9,35 +9,9 @@ description: 'FastGPT V4.16.0-beta1 Release Notes'
 
 This release changes App Chat Agent Sandboxes from one instance per chat to one shared instance per App and user. Files from different chats remain separated in the `sessions/<chatId>` directory, while published Skills are stored in the shared `projects` directory.
 
-If Agent Sandbox was enabled in your deployment, complete the legacy Workspace migration in the following order. Deployments that never enabled Agent Sandbox can skip this section.
+If Agent Sandbox was enabled in your deployment, complete the legacy Workspace migration after upgrading. Deployments that never enabled Agent Sandbox can skip this section.
 
-#### 1.1 Run the V4.15.0-beta6 Normalization Before Upgrading
-
-Run the legacy normalization endpoint while the deployment is still using a V4.15.x image. V4.16.0-beta1 removes this endpoint, so it cannot be run after the upgrade.
-
-Start with a dry run:
-
-```bash
-curl -X POST 'https://your-domain/api/admin/4150/init4150-beta6' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":true}'
-```
-
-After reviewing the result, run the migration:
-
-```bash
-curl -X POST 'https://your-domain/api/admin/4150/init4150-beta6' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":false}'
-```
-
-This script backfills `sourceType/sourceId` for legacy Sandboxes and removes legacy fields and unowned orphan resources. See the [V4.15.0-beta6 upgrade notes](../4-15/41506) for the complete behavior.
-
-#### 1.2 Migrate to User-level Sandboxes After Upgrading
-
-After updating FastGPT and the supporting Agent Sandbox services, run the new endpoint in dry-run mode. It validates every legacy Sandbox record without creating resources, accessing object storage, or modifying data:
+After updating FastGPT and the supporting Agent Sandbox services, run the new endpoint in dry-run mode. It reports pending beta6 Sandbox field normalization and legacy Skill Debug Chat cleanup without creating resources, accessing object storage, or modifying data:
 
 ```bash
 curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
@@ -46,7 +20,7 @@ curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":true}'
 ```
 
-After the preflight succeeds, run the migration:
+After reviewing the dry-run result, run the migration. The formal run performs beta6 normalization first and continues to Workspace archiving in the same request only when the remaining count reaches `0`:
 
 ```bash
 curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
@@ -55,9 +29,9 @@ curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":false}'
 ```
 
-The migration has two phases. It first archives every legacy Workspace and removes its old compute resource, then groups the data by App and user into user-level Sandboxes. Phase two does not start if any phase-one operation fails. The script is safe to retry: completed archives and migrations are not repeated. Legacy archives and MongoDB records are retained as backups after migration.
+The migration first runs the complete V4.15.0-beta6 prerequisites. It backfills legacy Sandbox `sourceType/sourceId`, removes legacy fields, deletes orphan resources, and cleans legacy Skill Debug Chat rows and old prefixes from both private and public buckets. Skills whose IDs conflict with App IDs are excluded from Chat cleanup. The script then combines the remaining Sandbox and Debug Chat counts into `normalization.pendingCount`; Workspace archiving starts only when that value is `0`. It then archives every legacy Workspace and removes old compute resources, migrates Skills, and finally consolidates App data into user-level Sandboxes by App and user. If any archive operation fails, installation does not start. Each new Sandbox is stopped after its Workspace is installed and starts through the normal lifecycle on first use. The script is safe to retry: completed archive and migration work is not repeated, and legacy archives and MongoDB records remain available as backups after migration.
 
-Check `failedCount` and `failures` in the response. A `failedCount` value of `0` indicates that the migration completed successfully.
+Check `normalization.pendingCount`, `normalizationBlocked`, `failedCount`, and `failures` in the response. The migration is complete only when both `normalization.pendingCount` and `failedCount` are `0`, and `normalizationBlocked` is `false`.
 
 ### 2. Update Agent Sandbox Configuration
 

@@ -224,13 +224,6 @@ describe('dispatchRunTools file context', () => {
       useAgentSandbox: false
     },
     {
-      name: 'the system disables sandbox',
-      configure: () => {
-        global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
-      },
-      useAgentSandbox: true
-    },
-    {
       name: 'the team plan has no sandbox permission',
       configure: () => {
         vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));

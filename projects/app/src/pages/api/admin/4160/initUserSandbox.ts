@@ -12,6 +12,46 @@ const InitUserSandboxBodySchema = z.object({
 
 const InitUserSandboxResponseSchema = z.object({
   dryRun: z.boolean(),
+  normalization: z.object({
+    skillMatchedCount: z.number().int().nonnegative(),
+    skillModifiedCount: z.number().int().nonnegative(),
+    appMatchedCount: z.number().int().nonnegative(),
+    appModifiedCount: z.number().int().nonnegative(),
+    legacyFieldMatchedCount: z.number().int().nonnegative(),
+    legacyFieldModifiedCount: z.number().int().nonnegative(),
+    orphanMatchedCount: z.number().int().nonnegative(),
+    orphanDeletedCount: z.number().int().nonnegative(),
+    orphanFailedCount: z.number().int().nonnegative(),
+    sandboxPendingCount: z.number().int().nonnegative(),
+    scannedSkillCount: z.number().int().nonnegative(),
+    legacyDebugChatCleanup: z.object({
+      conflictAppSkillCount: z.number().int().nonnegative(),
+      cleanupSkillCount: z.number().int().nonnegative(),
+      totalLegacyChats: z.number().int().nonnegative(),
+      totalChatItems: z.number().int().nonnegative(),
+      totalChatItemResponses: z.number().int().nonnegative(),
+      deletedSkillCount: z.number().int().nonnegative(),
+      skippedEmptyCount: z.number().int().nonnegative(),
+      pendingChatCount: z.number().int().nonnegative(),
+      list: z.array(
+        z.object({
+          skillId: z.string(),
+          chatCount: z.number().int().nonnegative(),
+          chatItemCount: z.number().int().nonnegative(),
+          chatItemResponseCount: z.number().int().nonnegative(),
+          deleted: z.boolean()
+        })
+      )
+    }),
+    pendingCount: z.number().int().nonnegative(),
+    failures: z.array(
+      z.object({
+        sandboxId: z.string(),
+        error: z.string()
+      })
+    )
+  }),
+  normalizationBlocked: z.boolean(),
   completedLegacyCount: z.number().int().nonnegative(),
   legacySkillCount: z.number().int().nonnegative(),
   migratedSkillCount: z.number().int().nonnegative(),
@@ -29,7 +69,7 @@ const InitUserSandboxResponseSchema = z.object({
 });
 type InitUserSandboxResponse = z.infer<typeof InitUserSandboxResponseSchema>;
 
-/** 管理员升级入口；默认 dry-run，真实执行时迁移全部 Legacy Sandbox。 */
+/** 管理员升级入口；默认 dry-run，真实执行时先完成 beta6 清理再迁移 Legacy Sandbox。 */
 async function handler(req: ApiRequestProps): Promise<InitUserSandboxResponse> {
   await authCert({ req, authRoot: true });
   const { dryRun } = parseApiInput({

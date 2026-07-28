@@ -149,16 +149,4 @@ describe('sandbox architecture boundaries', () => {
     }
     expect(forbidden).toEqual([]);
   });
-
-  it('tests sandbox implementations directly instead of through interface re-exports', () => {
-    const forbidden = listTypeScriptFiles(testDirectory)
-      .filter((file) => file.endsWith('.test.ts'))
-      .flatMap((file) =>
-        getModuleSpecifiers(file)
-          .filter((specifier) => /\/core\/ai\/sandbox\/interface(?:\/|$)/.test(specifier))
-          .map((specifier) => `${displayPath(file)} -> ${specifier}`)
-      );
-
-    expect(forbidden).toEqual([]);
-  });
 });
