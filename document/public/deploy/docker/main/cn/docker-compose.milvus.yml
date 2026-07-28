@@ -192,7 +192,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.15.2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.15.4
     ports:
       - 3000:3000
     networks:
@@ -219,7 +219,7 @@ services:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config, *x-no-proxy-config]
       HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
-      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
+      # 必填。客户端访问 FastGPT 时使用的地址，由协议、主机和可选端口组成，用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。
       FE_DOMAIN:
       # root key（最高权限）
       ROOT_KEY: *x-system-key
@@ -286,7 +286,7 @@ services:
       TEXTIN_SECRET_CODE:
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.15.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.15.4
     networks:
       - codesandbox
     restart: always
