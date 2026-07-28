@@ -38,7 +38,8 @@ import { getHTTPToolList } from '../../../app/http';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
-  initToolInputsTypeByDefaultMode
+  initToolInputsTypeByDefaultMode,
+  normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
@@ -498,7 +499,7 @@ export const formatHttpError = (error: any) => {
  * 重写 runtime workflow 中的工具相关节点配置。
  *
  * 该函数会原地修改 nodes 和 edges：
- * - 将旧工作流工具的 toolDescription 默认方式升级为运行时 selectedType。
+ * - 在外层兼容旧 selectedTypeIndex，并将工具输入升级为 selectedType 协议。
  * - 将 ToolSet 节点展开为具体 Tool 节点，并把原来指向 ToolSet 的边改接到子工具节点。
  * - 为 MCP/HTTP Tool 节点补充原始 jsonSchema 和描述，供模型 tool call 生成参数时使用。
  */
@@ -513,16 +514,6 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
-  // 旧工作流工具通过 toolDescription 标记 AI 参数。运行前统一升级，供配置校验、schema 和执行复用。
-  nodes.forEach((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.pluginModule) return;
-
-    node.inputs = initToolInputsTypeByDefaultMode(
-      normalizeWorkflowToolInputsDefaultMode(node.inputs),
-      { allowUserChatInputAgentGenerated: true }
-    );
-  });
-
   const mergeToolNodeInputs = ({
     node,
     jsonSchema,
@@ -551,9 +542,6 @@ export const rewriteRuntimeWorkFlow = async ({
               new Set([selectedType, ...savedInput.renderTypeList, ...input.renderTypeList])
             )
           : (savedInput.renderTypeList ?? input.renderTypeList);
-        const selectedTypeIndex = selectedType
-          ? renderTypeList.findIndex((type) => type === selectedType)
-          : undefined;
 
         return {
           ...input,
@@ -565,10 +553,6 @@ export const rewriteRuntimeWorkFlow = async ({
             : {}),
           renderTypeList,
           selectedType,
-          selectedTypeIndex:
-            selectedTypeIndex !== undefined && selectedTypeIndex >= 0
-              ? selectedTypeIndex
-              : undefined,
           isToolParam: input.isToolParam ?? savedInput.isToolParam,
           toolDescription: savedInput.toolDescription ?? input.toolDescription
         };
@@ -773,6 +757,33 @@ export const rewriteRuntimeWorkFlow = async ({
   };
 
   await Promise.all([parseToolset(), parseMcpTool(), parseHttpTool()]);
+
+  const toolNodeIds = new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
+
+  // runtime 内部只消费 selectedType；所有存量协议兼容都在执行入口一次完成。
+  nodes.forEach((node) => {
+    const isTool = toolNodeIds.has(node.nodeId) || node.flowNodeType === FlowNodeTypeEnum.tool;
+    const allowLegacySystemToolInputMode = Boolean(
+      node.toolConfig?.systemTool ||
+      node.pluginId?.startsWith('systemTool-') ||
+      node.pluginId?.startsWith('commercial-')
+    );
+    const inputsWithLegacyDefaults =
+      node.flowNodeType === FlowNodeTypeEnum.pluginModule && isTool
+        ? normalizeWorkflowToolInputsDefaultMode(node.inputs)
+        : node.inputs;
+
+    node.inputs = inputsWithLegacyDefaults.map((input) =>
+      normalizeFlowNodeInputType(input, {
+        isTool,
+        allowLegacyToolDescriptionFallback: isTool && allowLegacySystemToolInputMode
+      })
+    );
+  });
 };
 
 /**

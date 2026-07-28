@@ -995,7 +995,6 @@ describe('rewriteRuntimeWorkFlow', () => {
       expect.objectContaining({
         key: 'text',
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0,
         renderTypeList: [
           FlowNodeInputTypeEnum.agentGenerated,
           FlowNodeInputTypeEnum.input,
@@ -1004,9 +1003,11 @@ describe('rewriteRuntimeWorkFlow', () => {
       })
     ]);
     expect(workflowToolNode.inputs.find((input) => input.key === 'text2')).toMatchObject({
-      selectedType: FlowNodeInputTypeEnum.input,
-      selectedTypeIndex: 0
+      selectedType: FlowNodeInputTypeEnum.input
     });
+    expect(workflowToolNode.inputs.every((input) => input.selectedTypeIndex === undefined)).toBe(
+      true
+    );
 
     const runtimeInputs = updateAgentLoopCoreWorkflowToolInputValue({
       params: {
@@ -1017,6 +1018,43 @@ describe('rewriteRuntimeWorkFlow', () => {
     });
     expect(runtimeInputs.find((input) => input.key === 'text')?.value).toBe('generated text');
     expect(runtimeInputs.find((input) => input.key === 'text2')?.value).toBe('');
+  });
+
+  it('should normalize legacy system tool inputs at the runtime boundary', async () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const systemToolNode = makeNode('system-tool', FlowNodeTypeEnum.tool, {
+      pluginId: 'systemTool-bocha',
+      toolConfig: { systemTool: { toolId: 'bocha' } },
+      inputs: [
+        {
+          key: 'query',
+          valueType: 'string',
+          required: true,
+          toolDescription: 'Search query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0
+        }
+      ]
+    } as any);
+    const nodes = [toolCallNode, systemToolNode];
+    const edges = [
+      makeEdge('tool-call', 'system-tool', {
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(systemToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(systemToolNode.inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('should handle systemTool toolSet nodes', async () => {
@@ -1103,13 +1141,15 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
       key: 'city',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ]
     });
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).not.toHaveProperty(
+      'selectedTypeIndex'
+    );
     expect(filteredEdges).toHaveLength(1);
     expect(filteredEdges[0].target).toBe('ts20');
   });
@@ -1223,13 +1263,13 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(mcpToolNode.intro).toBe('tool A description');
     expect(mcpToolNode.inputs[0]).toMatchObject({
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ]
     });
+    expect(mcpToolNode.inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('should inject jsonSchema and intro for standalone HTTP tool nodes', async () => {
@@ -1286,13 +1326,13 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(httpToolNode.intro).toBe('tool B description');
     expect(httpToolNode.inputs[0]).toMatchObject({
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.numberInput,
         FlowNodeInputTypeEnum.reference
       ]
     });
+    expect(httpToolNode.inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('should fall back to inputSchema for legacy scalar HTTP request schemas', async () => {

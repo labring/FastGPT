@@ -281,6 +281,34 @@ const jsonRenderValueTypes = new Set<WorkflowIOValueTypeEnum>([
   WorkflowIOValueTypeEnum.arrayObject
 ]);
 
+/** 将应用变量类型映射为工作流节点输入控件，供应用节点和工具参数配置共用。 */
+export const getAppVariableRenderTypeList = ({
+  type,
+  valueType
+}: Pick<VariableItemType, 'type' | 'valueType'>): FlowNodeInputTypeEnum[] => {
+  const isJsonValueType = !!valueType && jsonRenderValueTypes.has(valueType);
+  const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
+    [VariableInputEnum.input]: isJsonValueType
+      ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+      : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.textarea]: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
+    [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
+    [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
+    [VariableInputEnum.timePointSelect]: [FlowNodeInputTypeEnum.timePointSelect],
+    [VariableInputEnum.timeRangeSelect]: [FlowNodeInputTypeEnum.timeRangeSelect],
+    [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
+    [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
+    [VariableInputEnum.file]: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
+    [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
+    [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
+    [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.customVariable]
+  };
+
+  return renderTypeMap[type] || [FlowNodeInputTypeEnum.reference];
+};
+
 export const appData2FlowNodeIO = ({
   chatConfig
 }: {
@@ -299,39 +327,15 @@ export const appData2FlowNodeIO = ({
           !textInputVariableValueTypes.includes(item.valueType)
             ? WorkflowIOValueTypeEnum.string
             : item.valueType;
-        const isJsonValueType =
-          !!normalizedValueType && jsonRenderValueTypes.has(normalizedValueType);
-        const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
-          [VariableInputEnum.input]: isJsonValueType
-            ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
-            : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          [VariableInputEnum.textarea]: [
-            FlowNodeInputTypeEnum.textarea,
-            FlowNodeInputTypeEnum.reference
-          ],
-          [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
-          [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
-          [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
-          [VariableInputEnum.timePointSelect]: [FlowNodeInputTypeEnum.timePointSelect],
-          [VariableInputEnum.timeRangeSelect]: [FlowNodeInputTypeEnum.timeRangeSelect],
-          [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
-          [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
-          [VariableInputEnum.file]: [
-            FlowNodeInputTypeEnum.fileSelect,
-            FlowNodeInputTypeEnum.reference
-          ],
-          [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
-          [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
-          [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
-          [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
-        };
-
         return {
           key: item.key,
-          renderTypeList: renderTypeMap[item.type] || [FlowNodeInputTypeEnum.reference],
+          renderTypeList: getAppVariableRenderTypeList({
+            type: item.type,
+            valueType: normalizedValueType
+          }),
           label: item.label,
           debugLabel: item.label,
-          description: '',
+          description: item.description,
           valueType: normalizedValueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
           defaultValue: item.defaultValue,

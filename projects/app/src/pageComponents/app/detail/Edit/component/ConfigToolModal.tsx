@@ -33,6 +33,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import {
   canInputBeAgentGenerated,
+  canInputBeConfiguredAsToolParam,
   canInputBeManuallyConfigured,
   getSelectedInputRenderType,
   getToolInputManualRenderType,
@@ -151,10 +152,7 @@ const normalizeInputSelectedTypeIndex = <T extends FlowNodeTemplateType['inputs'
 
 const shouldShowConfigInput = (input: FlowNodeTemplateType['inputs'][number]) =>
   input.key === NodeInputKeyEnum.systemInputConfig ||
-  (!childAppSystemKey.includes(input.key) &&
-    !input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) &&
-    !input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-    input.renderTypeList[0] !== FlowNodeInputTypeEnum.hidden);
+  (!childAppSystemKey.includes(input.key) && canInputBeConfiguredAsToolParam(input));
 
 const shouldRenderConfigInput = (input: FlowNodeTemplateType['inputs'][number]) =>
   shouldShowConfigInput(input) && input.key !== NodeInputKeyEnum.systemInputConfig;

@@ -53,6 +53,42 @@ describe('WorkflowVariableState', () => {
     expect(state.toStoreRecord()).toEqual({ name: '123' });
   });
 
+  it('should keep internal variable defaults isolated from input and external variables', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'internalToken',
+          type: VariableInputEnum.internal,
+          valueType: WorkflowIOValueTypeEnum.string,
+          defaultValue: 'internal-default'
+        } as any
+      ],
+      inputVariables: { internalToken: 'parent-value' },
+      externalVariables: { internalToken: 'external-value' }
+    });
+
+    expect(state.get('internalToken')).toBe('internal-default');
+    expect(state.toStoreRecord()).toEqual({ internalToken: 'internal-default' });
+  });
+
+  it('should only let the external provider override an external dynamic variable', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'externalToken',
+          type: VariableInputEnum.custom,
+          valueType: WorkflowIOValueTypeEnum.string,
+          defaultValue: 'external-default'
+        } as any
+      ],
+      inputVariables: { externalToken: 'parent-value' },
+      externalVariables: { externalToken: 'provider-value' }
+    });
+
+    expect(state.get('externalToken')).toBe('provider-value');
+    expect(state.toStoreRecord()).toEqual({});
+  });
+
   it('should encrypt password store value while keeping runtime plain text', async () => {
     const state = await createState({
       variablesConfig: [

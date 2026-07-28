@@ -78,7 +78,7 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
     expect(nodes[0].inputs[1]).toMatchObject({ isToolParam: false });
   });
 
-  it('将固定版本旧工作流工具中标记为工具参数的必填输入恢复为 AI 生成', async () => {
+  it('将固定版本旧工作流工具的 AI 生成推荐交给画布决定', async () => {
     const toolAppId = '507f1f77bcf86cd799439011';
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: toolAppId,
@@ -134,20 +134,25 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
 
     expect(nodes[0].inputs[0]).toMatchObject({
       key: 'text',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
+      isToolParam: true,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ]
     });
+    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
     expect(nodes[0].inputs[1]).toMatchObject({
       key: 'text2',
-      selectedTypeIndex: 0,
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+      selectedType: FlowNodeInputTypeEnum.input,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
     });
-    expect(nodes[0].inputs[1].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[1]).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('保留固定版本旧系统工具的 toolDescription AI 参数兼容', async () => {
@@ -196,19 +201,20 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
 
     expect(nodes[0].inputs[0]).toMatchObject({
       key: 'query',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
+      isToolParam: true,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ]
     });
+    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 });
 
 describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
-  it('清理工具调用节点用户问题的历史 AI 生成类型', async () => {
+  it('保留候选类型并由画布按工具上下文处理用户问题', async () => {
     const userQuestion = {
       key: NodeInputKeyEnum.userChatInput,
       label: 'User question',
@@ -238,9 +244,13 @@ describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
     });
 
     expect(nodes[0].inputs[0]).toMatchObject({
-      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea]
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.textarea
+      ]
     });
-    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
     expect(nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
   });
 });
@@ -391,16 +401,20 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       key: 'size',
       value: ['start', 'amount'],
       selectedType: FlowNodeInputTypeEnum.reference,
-      selectedTypeIndex: 1,
-      renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.select,
+        FlowNodeInputTypeEnum.reference
+      ],
       list: [
         { label: '1', value: '1' },
         { label: '2', value: '2' }
       ]
     });
+    expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
-  it('刷新最新工具节点时把旧输入协议升级为 selectedType 和 agentGenerated 默认态', async () => {
+  it('刷新最新工具节点时保留 agentGenerated 推荐但延迟默认选择', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'mcp-app-1/search',
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -458,11 +472,11 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ],
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       isToolParam: true,
       toolDescription: 'Search query'
     });
+    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('刷新最新工具节点时忽略旧协议的默认 selectedTypeIndex 0', async () => {
@@ -518,14 +532,14 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
 
     expect(nodes[0].inputs[0]).toMatchObject({
       key: 'query',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ]
     });
+    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('保留 Agent 工具和 Skill 输入的引用模式值，不按选择列表重写', async () => {
@@ -681,8 +695,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
               FlowNodeInputTypeEnum.input,
               FlowNodeInputTypeEnum.reference
             ],
-            selectedType: FlowNodeInputTypeEnum.input,
-            selectedTypeIndex: 1
+            selectedType: FlowNodeInputTypeEnum.input
           }
         ]
       }
@@ -744,7 +757,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           {
             key: 'text',
             selectedType: FlowNodeInputTypeEnum.agentGenerated,
-            selectedTypeIndex: 0,
             renderTypeList: [
               FlowNodeInputTypeEnum.agentGenerated,
               FlowNodeInputTypeEnum.input,
@@ -810,7 +822,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           {
             key: 'query',
             selectedType: FlowNodeInputTypeEnum.agentGenerated,
-            selectedTypeIndex: 0,
             renderTypeList: [
               FlowNodeInputTypeEnum.agentGenerated,
               FlowNodeInputTypeEnum.input,

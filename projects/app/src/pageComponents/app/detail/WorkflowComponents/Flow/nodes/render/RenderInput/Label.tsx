@@ -14,11 +14,10 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   canInputBeAgentGenerated,
   canInputBeManuallyConfigured,
-  getToolInputManualRenderType
+  getToolInputDisplayRenderTypeList
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
@@ -40,28 +39,14 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
     isTool && canInputBeAgentGenerated(input) && !canManuallyConfigure
       ? FlowNodeInputTypeEnum.agentGenerated
       : (getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input);
-  const manualRenderType = canManuallyConfigure ? getToolInputManualRenderType(input) : undefined;
-  const displayRenderTypeList = useMemo(() => {
-    if (!(isTool && canInputBeAgentGenerated(input))) return renderTypeList;
-    if (!manualRenderType) return [FlowNodeInputTypeEnum.agentGenerated];
-
-    const normalizedRenderTypeList =
-      input.key === NodeInputKeyEnum.userChatInput
-        ? renderTypeList.filter(
-            (type) =>
-              ![FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.textarea].includes(type) ||
-              type === manualRenderType
-          )
-        : renderTypeList;
-
-    return Array.from(
-      new Set([
-        FlowNodeInputTypeEnum.agentGenerated,
-        manualRenderType,
-        ...normalizedRenderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
-      ])
-    );
-  }, [input, isTool, manualRenderType, renderTypeList]);
+  const displayRenderTypeList = useMemo(
+    () =>
+      getToolInputDisplayRenderTypeList({
+        input,
+        showAgentGenerated: !!isTool
+      }),
+    [input, isTool]
+  );
   const displayRenderTypeIndex = displayRenderTypeList.findIndex((item) => item === renderType);
 
   const onChangeRenderType = useCallback(

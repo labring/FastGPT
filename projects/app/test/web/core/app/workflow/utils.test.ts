@@ -369,6 +369,25 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
+  it('stores selectedType without deprecated selectedTypeIndex', () => {
+    const node = makeNode('input-node', FlowNodeTypeEnum.chatNode, {
+      inputs: [
+        {
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 1
+        }
+      ]
+    });
+
+    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [], chatConfig: {} });
+
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference
+    });
+    expect(result.nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
+  });
+
   it('reports generic plugin load errors without telling users to delete the tool', () => {
     const node = makeNode('tool', FlowNodeTypeEnum.appModule, {
       pluginData: {
@@ -2078,7 +2097,7 @@ describe('storeNode2FlowNode', () => {
     expect(result.data.outputs).toHaveLength(2);
   });
 
-  it('should not materialize fallback selectedType before tool context normalization', () => {
+  it('should migrate selectedTypeIndex while restoring canvas nodes', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'chat-node',
       flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -2103,8 +2122,48 @@ describe('storeNode2FlowNode', () => {
       (input) => input.key === NodeInputKeyEnum.userChatInput
     );
 
-    expect(userQuestion?.selectedType).toBeUndefined();
-    expect(userQuestion?.selectedTypeIndex).toBe(0);
+    expect(userQuestion?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.reference,
+      FlowNodeInputTypeEnum.textarea
+    ]);
+    expect(userQuestion?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(userQuestion).not.toHaveProperty('selectedTypeIndex');
+  });
+
+  it('should restore legacy workflow tool defaults in tool context', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'workflow-tool',
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0,
+          toolDescription: 'Search query'
+        }
+      ],
+      outputs: [],
+      name: 'Workflow tool',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      isTool: true,
+      t: ((key: string) => key) as any
+    });
+
+    expect(result.data.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(result.data.inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   // 这两个测试涉及到模拟冲突，请运行单独的测试文件:

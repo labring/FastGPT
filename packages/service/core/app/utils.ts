@@ -1,17 +1,13 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import {
-  getSavedToolInputSelectedType,
   initAgentToolInputType,
-  initToolInputTypeByDefaultMode
+  normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
@@ -140,40 +136,36 @@ export async function rewriteAppWorkflowToDetail({
   const mergeToolInputDetail = ({
     previewInput,
     savedInput,
-    allowUserChatInputAgentGenerated = false,
     allowLegacyToolDescriptionFallback = false
   }: {
     previewInput: FlowNodeInputItemType;
     savedInput?: ToolInputSnapshot;
-    allowUserChatInputAgentGenerated?: boolean;
     allowLegacyToolDescriptionFallback?: boolean;
   }) => {
-    const inputWithDefaultMode = initToolInputTypeByDefaultMode(previewInput, {
-      forceDefaultMode: true,
-      allowUserChatInputAgentGenerated
-    });
-    const savedSelectedType = getSavedToolInputSelectedType({
-      savedInput,
-      defaultInput: previewInput,
-      allowUserChatInputAgentGenerated,
-      allowLegacyToolDescriptionFallback
-    });
-    const selectedType = savedSelectedType ?? inputWithDefaultMode.selectedType;
-    const renderTypeList =
-      selectedType && !inputWithDefaultMode.renderTypeList.includes(selectedType)
-        ? [selectedType, ...inputWithDefaultMode.renderTypeList]
-        : inputWithDefaultMode.renderTypeList;
-    const selectedTypeIndex = selectedType
-      ? renderTypeList.findIndex((renderType) => renderType === selectedType)
-      : -1;
     const hasSavedValue = !!savedInput && Object.prototype.hasOwnProperty.call(savedInput, 'value');
+    const legacyDefaultMode =
+      allowLegacyToolDescriptionFallback &&
+      savedInput?.isToolParam === undefined &&
+      !!savedInput?.toolDescription;
+    const renderTypeList = Array.from(
+      new Set([...(savedInput?.renderTypeList ?? []), ...previewInput.renderTypeList])
+    );
+    const normalizedInput = normalizeFlowNodeInputType(
+      {
+        ...previewInput,
+        renderTypeList,
+        selectedType: savedInput?.selectedType,
+        selectedTypeIndex: savedInput?.selectedTypeIndex,
+        isToolParam:
+          savedInput?.isToolParam ?? (legacyDefaultMode ? true : previewInput.isToolParam),
+        toolDescription: savedInput?.toolDescription ?? previewInput.toolDescription
+      },
+      { deferDefaultSelection: true }
+    );
 
     return {
-      ...inputWithDefaultMode,
-      value: hasSavedValue ? savedInput.value : inputWithDefaultMode.value,
-      renderTypeList,
-      selectedType,
-      selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : undefined
+      ...normalizedInput,
+      value: hasSavedValue ? savedInput.value : normalizedInput.value
     };
   };
   const formatSelectedDatasetValue = async (
@@ -215,52 +207,25 @@ export async function rewriteAppWorkflowToDetail({
 
   await Promise.all(
     nodes.map(async (node) => {
+      const allowLegacyFallback = node.pluginId
+        ? shouldUseLegacyToolDescriptionFallback({
+            toolId: node.pluginId,
+            flowNodeType: node.flowNodeType
+          })
+        : false;
+
       if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
         node.inputs = normalizeWorkflowToolInputsDefaultMode(node.inputs);
       }
-
-      if (node.flowNodeType === FlowNodeTypeEnum.toolCall) {
-        node.inputs = node.inputs.map((input) =>
-          input.key === NodeInputKeyEnum.userChatInput
-            ? initToolInputTypeByDefaultMode(input, {
-                allowUserChatInputAgentGenerated: false
-              })
-            : input
-        );
+      if (allowLegacyFallback) {
+        node.inputs = normalizeWorkflowToolInputsDefaultMode(node.inputs);
       }
+      node.inputs = node.inputs.map((input) =>
+        normalizeFlowNodeInputType(input, { deferDefaultSelection: true })
+      );
 
       // Tool node
       if (node.pluginId) {
-        const allowLegacyFallback = shouldUseLegacyToolDescriptionFallback({
-          toolId: node.pluginId,
-          flowNodeType: node.flowNodeType
-        });
-        node.inputs = node.inputs.map((input) => {
-          const selectedType = getSavedToolInputSelectedType({
-            savedInput: input,
-            defaultInput: input,
-            allowUserChatInputAgentGenerated: true,
-            allowLegacyToolDescriptionFallback: allowLegacyFallback
-          });
-          if (
-            input.selectedType !== undefined ||
-            selectedType !== FlowNodeInputTypeEnum.agentGenerated
-          ) {
-            return input;
-          }
-
-          const renderTypeList = input.renderTypeList.includes(selectedType)
-            ? input.renderTypeList
-            : [selectedType, ...input.renderTypeList];
-
-          return {
-            ...input,
-            renderTypeList,
-            selectedType,
-            selectedTypeIndex: renderTypeList.findIndex((type) => type === selectedType)
-          };
-        });
-
         const result = await loadToolNode({
           id: node.pluginId,
           versionId: node.version ?? '',

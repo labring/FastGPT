@@ -51,7 +51,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
-import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -376,12 +376,13 @@ const NodeTemplateList = ({
               pluginId: templateNode.pluginId
             }),
             intro: t(templateNode.intro as any),
-            inputs: initToolInputsTypeByDefaultMode(inputsWithAutoFill, {
-              // 插件预览中的 selectedType 是定义侧控件，不代表画布上的最终选择。
-              // 首次插入节点时按 isToolParam 应用默认值；userChatInput 仍由工具选择上下文控制。
-              forceDefaultMode: true,
-              allowUserChatInputAgentGenerated: isToolSelector
-            }),
+            inputs: inputsWithAutoFill.map((input) =>
+              normalizeFlowNodeInputType(input, {
+                isTool: isToolSelector,
+                // 插件预览中的 selectedType 是定义侧控件，不代表画布上的最终选择。
+                forceDefaultMode: isToolSelector
+              })
+            ),
             outputs: templateNode.outputs
               .filter((output) => output.deprecated !== true)
               .map((output) => ({

@@ -1,5 +1,5 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
-import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import { getSelectedInputRenderType } from '../../workflow/utils';
@@ -30,6 +30,9 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.customVariable,
   FlowNodeInputTypeEnum.custom,
   FlowNodeInputTypeEnum.addInputParam,
+  FlowNodeInputTypeEnum.selectApp,
+  FlowNodeInputTypeEnum.selectSkill,
+  FlowNodeInputTypeEnum.selectTool,
   FlowNodeInputTypeEnum.selectDataset,
   FlowNodeInputTypeEnum.selectDatasetParamsModal,
   FlowNodeInputTypeEnum.settingDatasetQuotePrompt
@@ -68,6 +71,13 @@ type ToolInputDefaultModeOptions = {
   allowUserChatInputAgentGenerated?: boolean;
 };
 
+export type NormalizeFlowNodeInputTypeOptions = {
+  isTool?: boolean;
+  forceDefaultMode?: boolean;
+  allowLegacyToolDescriptionFallback?: boolean;
+  deferDefaultSelection?: boolean;
+};
+
 const manualInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.input,
   FlowNodeInputTypeEnum.textarea,
@@ -101,12 +111,97 @@ export const canInputBeAgentGenerated = (
 };
 
 /**
+ * 将节点输入升级为 selectedType 协议。
+ *
+ * 显式 selectedType 优先；旧 selectedTypeIndex 仅在没有新字段时用于恢复选择。
+ * 所有支持 AI 生成的输入都会补充 agentGenerated；工具上下文才允许选中该类型，
+ * 并在没有明确选择时按 isToolParam 应用默认值。
+ * 返回值始终移除 deprecated selectedTypeIndex，供画布兼容层和 runtime 边界共用。
+ */
+export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
+  input: T,
+  {
+    isTool = false,
+    forceDefaultMode = false,
+    allowLegacyToolDescriptionFallback = false,
+    deferDefaultSelection = false
+  }: NormalizeFlowNodeInputTypeOptions = {}
+): T => {
+  const legacySelectedType =
+    input.selectedTypeIndex === undefined
+      ? undefined
+      : input.renderTypeList[input.selectedTypeIndex];
+  const hasExplicitSelectedType = input.selectedType !== undefined;
+  const recommendsAgentGenerated =
+    input.isToolParam === true ||
+    (allowLegacyToolDescriptionFallback &&
+      input.isToolParam === undefined &&
+      !!input.toolDescription);
+  const isLegacyDefaultSelection =
+    !hasExplicitSelectedType &&
+    input.selectedTypeIndex === 0 &&
+    (isTool || deferDefaultSelection) &&
+    recommendsAgentGenerated;
+  const supportsAgentGenerated = canInputBeAgentGenerated(input);
+  const canUseAgentGenerated = isTool && supportsAgentGenerated;
+  const renderTypeList = Array.from(
+    new Set([
+      ...(supportsAgentGenerated ? [FlowNodeInputTypeEnum.agentGenerated] : []),
+      ...input.renderTypeList.filter(
+        (type) => supportsAgentGenerated || type !== FlowNodeInputTypeEnum.agentGenerated
+      )
+    ])
+  );
+
+  const savedSelectedType = forceDefaultMode
+    ? undefined
+    : hasExplicitSelectedType
+      ? input.selectedType
+      : isLegacyDefaultSelection
+        ? undefined
+        : legacySelectedType;
+  const mustUseAgentGenerated =
+    canUseAgentGenerated && shouldUseAgentGeneratedOnly({ ...input, renderTypeList });
+  const shouldDefaultToAgentGenerated = canUseAgentGenerated && recommendsAgentGenerated;
+  const defaultManualType = renderTypeList.find(
+    (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+  );
+  const selectedType = mustUseAgentGenerated
+    ? FlowNodeInputTypeEnum.agentGenerated
+    : deferDefaultSelection && recommendsAgentGenerated && !savedSelectedType
+      ? undefined
+      : savedSelectedType &&
+          renderTypeList.includes(savedSelectedType) &&
+          (isTool ||
+            deferDefaultSelection ||
+            savedSelectedType !== FlowNodeInputTypeEnum.agentGenerated)
+        ? savedSelectedType
+        : shouldDefaultToAgentGenerated
+          ? FlowNodeInputTypeEnum.agentGenerated
+          : defaultManualType;
+
+  const normalizedInput = {
+    ...input,
+    renderTypeList,
+    selectedType
+  };
+  delete normalizedInput.selectedTypeIndex;
+
+  return normalizedInput;
+};
+
+/**
  * 判断工具入参是否存在可供开发者配置的手动输入控件。
  * reference 只表示工作流连线方式，不属于 Agent 工具配置里的手动输入。
  */
 export const canInputBeManuallyConfigured = (
   input: Pick<FlowNodeInputItemType, 'renderTypeList'>
 ) => input.renderTypeList.some((type) => manualInputRenderTypes.has(type));
+
+/** 父级工作流或 Agent 只展示能够由 AI 生成或具有通用手动控件的工具参数。 */
+export const canInputBeConfiguredAsToolParam = (
+  input: Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'>
+) => canInputBeAgentGenerated(input) || canInputBeManuallyConfigured(input);
 
 const shouldUseAgentGeneratedOnly = (
   input: Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'>
@@ -188,6 +283,37 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
   return candidates[0];
 };
 
+/**
+ * 构造工作流画布上的输入类型候选。
+ * 工具模式只展示一个与 valueType 匹配的手动控件，避免多个底层控件显示成重复的“手动输入”。
+ */
+export const getToolInputDisplayRenderTypeList = ({
+  input,
+  showAgentGenerated
+}: {
+  input: FlowNodeInputItemType;
+  showAgentGenerated: boolean;
+}) => {
+  if (!(showAgentGenerated && canInputBeAgentGenerated(input))) {
+    return Array.from(
+      new Set(input.renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated))
+    );
+  }
+
+  const manualRenderType = getToolInputManualRenderType(input);
+  if (!manualRenderType) return [FlowNodeInputTypeEnum.agentGenerated];
+
+  return Array.from(
+    new Set([
+      FlowNodeInputTypeEnum.agentGenerated,
+      manualRenderType,
+      ...input.renderTypeList.filter(
+        (type) => type !== FlowNodeInputTypeEnum.agentGenerated && !manualInputRenderTypes.has(type)
+      )
+    ])
+  );
+};
+
 export type AgentToolLegacyInputMode = 'allAgentGenerated' | 'toolDescription';
 
 /**
@@ -225,8 +351,7 @@ export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
     return {
       ...inputWithoutSelection,
       renderTypeList,
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: renderTypeList.indexOf(FlowNodeInputTypeEnum.agentGenerated)
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
     };
   }
 
@@ -247,8 +372,7 @@ export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
       return {
         ...inputWithoutSelection,
         renderTypeList,
-        selectedType: manualType,
-        selectedTypeIndex: renderTypeList.indexOf(manualType)
+        selectedType: manualType
       };
     }
   }
@@ -396,111 +520,9 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
     allowUserChatInputAgentGenerated = false
   }: ToolInputDefaultModeOptions = {}
 ): T => {
-  const selectedTypeBeforeNormalize = getSelectedInputRenderType(input);
-  const shouldRemoveAgentGenerated =
-    !allowUserChatInputAgentGenerated &&
-    input.key === NodeInputKeyEnum.userChatInput &&
-    input.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated);
-  const normalizedInput = shouldRemoveAgentGenerated
-    ? (() => {
-        const renderTypeList = input.renderTypeList.filter(
-          (type) => type !== FlowNodeInputTypeEnum.agentGenerated
-        );
-        const selectedType =
-          selectedTypeBeforeNormalize === FlowNodeInputTypeEnum.agentGenerated
-            ? undefined
-            : selectedTypeBeforeNormalize;
+  const isTool = allowUserChatInputAgentGenerated || input.key !== NodeInputKeyEnum.userChatInput;
 
-        return {
-          ...input,
-          renderTypeList,
-          selectedType,
-          selectedTypeIndex:
-            selectedType === undefined ? undefined : renderTypeList.indexOf(selectedType)
-        };
-      })()
-    : input;
-  const selectedType = getSelectedInputRenderType(normalizedInput);
-  // 旧协议的 index 0 只是默认项；新协议只有 selectedType 能确认用户明确选择过该类型。
-  const isLegacyDefaultSelection =
-    input.selectedType === undefined &&
-    input.selectedTypeIndex === 0 &&
-    (input.isToolParam === true ||
-      (allowUserChatInputAgentGenerated &&
-        input.key === NodeInputKeyEnum.userChatInput &&
-        selectedType === FlowNodeInputTypeEnum.reference));
-  const hasSelectedType =
-    !isLegacyDefaultSelection &&
-    (normalizedInput.selectedType !== undefined || normalizedInput.selectedTypeIndex !== undefined);
-  const inputWithSelectedType = (
-    hasSelectedType && selectedType
-      ? {
-          ...normalizedInput,
-          selectedType,
-          selectedTypeIndex: normalizedInput.renderTypeList.includes(selectedType)
-            ? normalizedInput.renderTypeList.findIndex((type) => type === selectedType)
-            : undefined
-        }
-      : normalizedInput
-  ) as T;
-
-  // reference-only 输入没有开发者可填写的控件，工具上下文中只能交给 Agent 生成。
-  const canUseUserChatInputAgentGenerated =
-    allowUserChatInputAgentGenerated ||
-    inputWithSelectedType.key !== NodeInputKeyEnum.userChatInput;
-  if (canUseUserChatInputAgentGenerated && shouldUseAgentGeneratedOnly(inputWithSelectedType)) {
-    const renderTypeList = input.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
-      ? input.renderTypeList
-      : [
-          FlowNodeInputTypeEnum.agentGenerated,
-          ...input.renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
-        ];
-
-    return {
-      ...inputWithSelectedType,
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: renderTypeList.findIndex(
-        (type) => type === FlowNodeInputTypeEnum.agentGenerated
-      ),
-      renderTypeList
-    };
-  }
-
-  if (hasSelectedType && !forceDefaultMode) return inputWithSelectedType;
-  if (!forceDefaultMode && isAgentGeneratedToolInput(inputWithSelectedType)) {
-    return inputWithSelectedType;
-  }
-
-  if (
-    !(
-      (inputWithSelectedType.isToolParam === true &&
-        (allowUserChatInputAgentGenerated ||
-          inputWithSelectedType.key !== NodeInputKeyEnum.userChatInput)) ||
-      (allowUserChatInputAgentGenerated &&
-        inputWithSelectedType.key === NodeInputKeyEnum.userChatInput &&
-        inputWithSelectedType.isToolParam !== false)
-    ) ||
-    !canInputBeAgentGenerated(inputWithSelectedType)
-  ) {
-    return inputWithSelectedType;
-  }
-
-  const renderTypeList = input.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
-    ? input.renderTypeList
-    : [
-        FlowNodeInputTypeEnum.agentGenerated,
-        ...input.renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
-      ];
-  const selectedTypeIndex = renderTypeList.findIndex(
-    (type) => type === FlowNodeInputTypeEnum.agentGenerated
-  );
-
-  return {
-    ...inputWithSelectedType,
-    selectedType: FlowNodeInputTypeEnum.agentGenerated,
-    selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0,
-    renderTypeList
-  };
+  return normalizeFlowNodeInputType(input, { isTool, forceDefaultMode });
 };
 
 export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>(
@@ -530,11 +552,10 @@ export const isToolInputValueConfigured = ({
   return true;
 };
 
-/* Invalid tool check
-  1. Reference type. but not tool description;
-  2. Has dataset select
-  3. Has dynamic external data
-*/
+/**
+ * 校验工具是否能够加入父级工作流或 Agent。
+ * 普通工作流的特殊输入由子工作流默认值初始化；工作流工具、插件和系统工具仍拒绝不支持的输入。
+ */
 export const validateToolConfiguration = ({
   toolTemplate,
   canUploadFile
@@ -542,6 +563,7 @@ export const validateToolConfiguration = ({
   toolTemplate: FlowNodeTemplateType;
   canUploadFile?: boolean;
 }): boolean => {
+  const isWorkflowApp = toolTemplate.flowNodeType === FlowNodeTypeEnum.appModule;
   // 检查文件上传配置
   const oneFileInput =
     toolTemplate.inputs.filter((input) =>
@@ -566,12 +588,19 @@ export const validateToolConfiguration = ({
     }
 
     // 文件选择但配置无效
-    if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !hasValidFileInput) {
+    if (
+      !isWorkflowApp &&
+      input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+      !hasValidFileInput
+    ) {
       return true;
     }
 
     // 包含特殊输入类型
-    if (input.renderTypeList.some((type) => unsupportedToolInputRenderTypes.has(type))) {
+    if (
+      !isWorkflowApp &&
+      input.renderTypeList.some((type) => unsupportedToolInputRenderTypes.has(type))
+    ) {
       return true;
     }
     return false;
@@ -602,6 +631,7 @@ export const checkNeedsUserConfiguration = (toolTemplate: {
         if (input.key === NodeInputKeyEnum.history) return false;
         // 系统输入配置需要配置
         if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
+        if (!canInputBeConfiguredAsToolParam(normalizedInput)) return false;
 
         // 检查是否包含表单类型的输入
         return input.renderTypeList.some((type) => formRenderTypesMap[type]);
@@ -643,6 +673,7 @@ export const getToolConfigStatus = ({
     if (input.key === NodeInputKeyEnum.forbidStream) return false;
     if (input.key === NodeInputKeyEnum.history) return false;
     if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
+    if (!canInputBeConfiguredAsToolParam(normalizedInput)) return false;
     if (isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput))
       return false;
     if (input.required !== true) return false;

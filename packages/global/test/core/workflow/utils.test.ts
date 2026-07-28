@@ -638,6 +638,71 @@ describe('pluginData2FlowNodeIO', () => {
 });
 
 describe('appData2FlowNodeIO', () => {
+  it('should preserve workflow variable descriptions without adding a tool default mode', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'query',
+            label: 'Query',
+            type: VariableInputEnum.input,
+            description: 'Search query'
+          }
+        ]
+      }
+    });
+
+    const input = result.inputs.find((input) => input.key === 'query');
+    expect(input).toMatchObject({ description: 'Search query' });
+    expect(input).not.toHaveProperty('isToolParam');
+  });
+
+  it('should retain internal variable defaults while keeping the input hidden', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'internalToken',
+            label: 'Internal token',
+            type: VariableInputEnum.internal,
+            valueType: WorkflowIOValueTypeEnum.string,
+            description: 'Internal only',
+            defaultValue: 'default-token'
+          }
+        ]
+      }
+    });
+
+    expect(result.inputs.find((input) => input.key === 'internalToken')).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      defaultValue: 'default-token',
+      value: 'default-token'
+    });
+  });
+
+  it('should keep external variables as non-configurable dynamic inputs', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'externalToken',
+            label: 'External token',
+            type: VariableInputEnum.custom,
+            valueType: WorkflowIOValueTypeEnum.string,
+            description: 'Provided by the external variable provider',
+            defaultValue: 'fallback-token'
+          }
+        ]
+      }
+    });
+
+    expect(result.inputs.find((input) => input.key === 'externalToken')).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+      defaultValue: 'fallback-token',
+      value: 'fallback-token'
+    });
+  });
+
   it('should return basic inputs and outputs when no chatConfig', () => {
     const result = appData2FlowNodeIO({});
     expect(result.inputs.length).toBeGreaterThan(0);

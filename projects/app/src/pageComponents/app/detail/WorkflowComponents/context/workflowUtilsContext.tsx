@@ -18,7 +18,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { WorkflowBufferDataContext } from './workflowInitContext';
@@ -34,8 +34,8 @@ import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import {
   canInputBeAgentGenerated,
-  initToolInputTypeByDefaultMode,
-  isAgentGeneratedToolInput
+  isAgentGeneratedToolInput,
+  normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 
 // 创建 Context
@@ -152,12 +152,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const toolInputs: FlowNodeInputItemType[] = [];
       const commonInputs: FlowNodeInputItemType[] = [];
       inputs.forEach((item) => {
-        const normalizedInput =
-          isTool || item.key === NodeInputKeyEnum.userChatInput
-            ? initToolInputTypeByDefaultMode(item, {
-                allowUserChatInputAgentGenerated: isTool
-              })
-            : item;
+        const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
         const isAgentGeneratedInput =
           isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
         if (isTool && isAgentGeneratedInput && item.canEdit) {
@@ -298,7 +293,15 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     ) => {
       adaptCatchError(e.nodes, e.edges);
 
-      const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
+      const toolNodeIds = new Set(
+        e.edges
+          ?.filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+          .map((edge) => edge.target)
+      );
+      const nodes =
+        e.nodes?.map((item) =>
+          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+        ) || [];
       const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // 有历史记录，直接用历史记录覆盖

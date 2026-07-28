@@ -42,6 +42,8 @@ import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 /* ====== node ======= */
 /**
@@ -162,12 +164,14 @@ export const storeNode2FlowNode = ({
   selected = false,
   zIndex,
   parentNodeId,
+  isTool = false,
   t
 }: {
   item: StoreNodeItemType;
   selected?: boolean;
   zIndex?: number;
   parentNodeId?: string;
+  isTool?: boolean;
   t: TFunction;
 }): Node<FlowNodeItemType> => {
   // init some static data
@@ -258,6 +262,20 @@ export const storeNode2FlowNode = ({
           })
       )
   };
+
+  const inputsWithLegacyDefaults =
+    nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
+      ? normalizeWorkflowToolInputsDefaultMode(nodeItem.inputs)
+      : nodeItem.inputs;
+  const allowLegacyToolDescriptionFallback =
+    isTool &&
+    (nodeItem.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+      !!nodeItem.toolConfig?.systemTool ||
+      !!nodeItem.pluginId?.startsWith('systemTool-') ||
+      !!nodeItem.pluginId?.startsWith('commercial-'));
+  nodeItem.inputs = inputsWithLegacyDefaults.map((input) =>
+    normalizeFlowNodeInputType(input, { isTool, allowLegacyToolDescriptionFallback })
+  );
 
   // Format output invalid
   const llmList = useSystemStore.getState().llmModelList;

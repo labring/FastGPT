@@ -53,6 +53,7 @@ describe('useToolNodeList', () => {
               valueType: 'string',
               toolDescription: 'Query',
               required: true,
+              selectedType: FlowNodeInputTypeEnum.agentGenerated,
               renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
             },
             {
@@ -149,7 +150,7 @@ describe('useToolNodeList', () => {
     ]);
   });
 
-  it('migrates legacy selectedTypeIndex 0 to the schema default', () => {
+  it('uses normalized selectedType from the runtime boundary', () => {
     const result = useToolNodeList({
       nodeId: 'toolcall',
       runtimeEdges: [
@@ -167,8 +168,12 @@ describe('useToolNodeList', () => {
               valueType: 'string',
               required: true,
               isToolParam: true,
-              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-              selectedTypeIndex: 0
+              renderTypeList: [
+                FlowNodeInputTypeEnum.agentGenerated,
+                FlowNodeInputTypeEnum.input,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated
             }
           ]
         })
@@ -179,7 +184,6 @@ describe('useToolNodeList', () => {
       expect.objectContaining({
         key: 'query',
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0,
         renderTypeList: [
           FlowNodeInputTypeEnum.agentGenerated,
           FlowNodeInputTypeEnum.input,
@@ -189,7 +193,7 @@ describe('useToolNodeList', () => {
     ]);
   });
 
-  it('migrates legacy system tool descriptions to agent generated inputs', () => {
+  it('reads normalized system tool input modes', () => {
     const runtimeNodes = [
       createToolNode({
         nodeId: 'mkJ7eY',
@@ -204,15 +208,19 @@ describe('useToolNodeList', () => {
             valueType: 'string',
             required: true,
             toolDescription: 'Search query',
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated
           },
           {
             key: 'freshness',
             valueType: 'string',
             value: 'noLimit',
             renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0
+            selectedType: FlowNodeInputTypeEnum.select
           }
         ]
       })

@@ -16,6 +16,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { canInputBeConfiguredAsToolParam } from '@fastgpt/global/core/app/formEdit/utils';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -166,10 +167,11 @@ const RenderInput = ({
       const isDynamic = !!input.canEdit;
 
       if (renderType === FlowNodeInputTypeEnum.hidden || isDynamic) return false;
+      if (isTool && !canInputBeConfiguredAsToolParam(input)) return false;
 
       return true;
     });
-  }, [filterProInputs]);
+  }, [filterProInputs, isTool]);
 
   return (
     <>
