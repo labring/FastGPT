@@ -68,16 +68,35 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_PROXY_SECRET: z
       .string()
       .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
-      .optional(),
-    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
-    AGENT_SANDBOX_PREVIEW_PROXY_URL: AgentSandboxPreviewProxyUrlSchema.optional(),
+      .optional()
+      .meta({
+        description:
+          'agent-sandbox-proxy 与 FastGPT 主服务共用的 HMAC 密钥；启用 Agent Sandbox 时必填，至少 32 个字符'
+      }),
+    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional().meta({
+      description: '浏览器访问 agent-sandbox-proxy 的 WebSocket 地址，必须以 ws:// 或 wss:// 开头'
+    }),
+    AGENT_SANDBOX_PREVIEW_PROXY_URL: AgentSandboxPreviewProxyUrlSchema.optional().meta({
+      description:
+        '浏览器访问 Agent Sandbox 文件预览代理的 HTTP(S) 地址，必须以 http:// 或 https:// 开头'
+    }),
     // Agent sandbox
-    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional(),
+    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
+      description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
+    }),
     // Sealos配置
-    AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
-    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace'),
-    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional(),
+    AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
+      description: 'Sealos Devbox 服务地址'
+    }),
+    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional().meta({
+      description: 'Sealos Devbox 访问 Token'
+    }),
+    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace').meta({
+      description: 'Sealos Devbox 沙箱内工作目录'
+    }),
+    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional().meta({
+      description: 'Sealos Devbox 使用的运行态镜像；启用 sealosdevbox 时必填'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
