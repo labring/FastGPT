@@ -8,6 +8,7 @@ export default defineConfig({
     }
   },
   test: {
+    globalSetup: resolve(import.meta.dirname, 'test/global-setup.ts'),
     coverage: {
       enabled: true,
       reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],

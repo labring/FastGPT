@@ -1,6 +1,6 @@
 # FastGPT Data Access Layer 设计
 
-> 状态：Redis Repository 与 Runtime 迁移已完成至 DAL-R6D，DAL-R6D review 已通过并已提交；剩余为 Redis 7.2 集成验证、进程级 shutdown/metrics、最终静态治理、health/close 收口和全量测试。
+> 状态：Redis Repository 与 Runtime 迁移已完成至 DAL-R6D，DAL-R6D review 已通过并已提交；Redis 7.2 集成验证已实现并通过定向测试，当前等待本阶段 review。剩余为进程级 shutdown/metrics、最终静态治理、health/close 收口和全量测试。
 
 ## 1. 决策
 
@@ -219,6 +219,8 @@ Application Service 负责把 Repository 错误映射成 HTTP、工作流或产�
 - Repository 测试覆盖 key、TTL、codec、miss、错误和并发合同。
 - Adapter 测试使用窄 client fake，验证命令参数、返回校验、deadline 和重试策略。
 - Redis 原子性、SCAN、Stream 和并发语义必须由指定的 Redis 7.2 integration test 证明。
+- `test/mocks/common/redis.ts` 是 service 层全局测试夹具，只用于 service facade/调用方回归，不作为 DAL integration client 复用；它不实现真实 Redis 的 Lua、SCAN glob、Stream blocking 和事务调度语义。
+- DAL adapter/Repository 的协议和错误分支使用窄 fake client 补齐；只有真实 Redis 7.2 才能作为 integration 证据，不能把 mock client 测试标记为 integration。
 - service/project 测试只验证调用和应用语义，不重复 mock 完整 ioredis。
 - 每个迁移阶段只运行受影响的定向测试；全量测试留到全部迁移完成前运行。
 
@@ -408,6 +410,14 @@ Application Service 负责把 Repository 错误映射成 HTTP、工作流或产�
 - 不改变 Repository 的 logical key、物理 `fastgpt:` 前缀、TTL、value、错误降级、BullMQ 生命周期或 Runtime 有序关闭合同；本阶段不删除应用 health/close binding。
 
 本阶段已完成实现、通过代码 review，并已提交根仓库和 `pro` 子模块；不提前进入后续治理阶段。
+
+### DAL-R6：Redis 7.2 集成验证
+
+- 新增 kernel integration suite，覆盖显式 `fastgpt:` physical key、无 glob 泄漏的分页 SCAN、`SET NX GET` 并发、Lua lease acquire/renew/release token 校验，以及 Stream `XADD`、`XRANGE`、`XREAD BLOCK` 和 blocking connection 释放。
+- Redis integration suite 要求 `REDIS_INTEGRATION_URL` 指向 Redis 7.2；本次使用 Redis 7.2.11 验证，新增 kernel 用例与既有四个 Repository integration 文件共 5 个文件、11 项通过。
+- 未改变任何 Repository logical key、physical key、TTL、value 或错误合同；本阶段只增加真实 Redis 回归证据。
+
+本阶段已完成实现并通过定向验证，当前停在代码 review，不提前进入 shutdown/metrics 或静态治理阶段。
 
 ### DAL-R4 后续：剩余 Redis Repository
 

@@ -124,6 +124,35 @@ describe('createSessionRepository', () => {
     });
   });
 
+  it('preserves a non-null session IP in the hash fields', async () => {
+    const repository = createSessionRepository({ redis: redis as any, logger });
+
+    await repository.set({
+      sessionId: 'user-1:token-1',
+      data: {
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: false,
+        createdAt: 2000,
+        ip: '192.0.2.10'
+      }
+    });
+
+    expect(redis.setHashWithTtl).toHaveBeenCalledWith({
+      key: 'session:user-1:token-1',
+      fields: {
+        userId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: '0',
+        createdAt: '2000',
+        ip: '192.0.2.10'
+      },
+      ttlSeconds: SESSION_TTL_SECONDS
+    });
+  });
+
   it('rejects invalid session data before touching Redis', async () => {
     const repository = createSessionRepository({ redis: redis as any, logger });
 

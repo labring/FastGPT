@@ -1,5 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { asRedisLogicalKey, createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  asRedisLogicalKey,
+  createRedisStoreAdapter,
+  redisRepositoryAdapter
+} from '@fastgpt/dal/redis/adapter';
+import { closeRedisRuntime, configureRedisRuntime } from '@fastgpt/dal/redis/runtime';
 
 const createClient = () => ({
   del: vi.fn(),
@@ -18,6 +23,57 @@ describe('createRedisStoreAdapter', () => {
 
   beforeEach(() => {
     client = createClient();
+  });
+
+  afterEach(async () => {
+    await closeRedisRuntime();
+  });
+
+  it('binds the default repository adapter to command and blocking Runtime connections', async () => {
+    const commandClient = {
+      status: 'ready',
+      get: vi.fn().mockResolvedValue('value'),
+      on: vi.fn(),
+      quit: vi.fn().mockResolvedValue('OK'),
+      disconnect: vi.fn()
+    };
+    const blockingClient = {
+      status: 'ready',
+      call: vi.fn().mockResolvedValue(null),
+      on: vi.fn(),
+      quit: vi.fn().mockResolvedValue('OK'),
+      disconnect: vi.fn()
+    };
+    const clientFactory = vi
+      .fn()
+      .mockReturnValueOnce(commandClient)
+      .mockReturnValueOnce(blockingClient);
+    configureRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: clientFactory as any });
+
+    await expect(redisRepositoryAdapter.get(key)).resolves.toBe('value');
+    const reader = redisRepositoryAdapter.createBlockingStreamReader({ key, blockMs: 10 });
+    await expect(reader.read('$')).resolves.toEqual([]);
+    await reader.close();
+
+    expect(clientFactory).toHaveBeenCalledTimes(2);
+    expect(commandClient.get).toHaveBeenCalledWith('fastgpt:cache:string');
+    expect(blockingClient.call).toHaveBeenCalledWith(
+      'XREAD',
+      'BLOCK',
+      10,
+      'COUNT',
+      1,
+      'STREAMS',
+      'fastgpt:cache:string',
+      '$'
+    );
+
+    const fallbackAdapter = createRedisStoreAdapter({
+      getCommandClient: () => commandClient as any,
+      createBlockingConnection: () => blockingClient
+    });
+    const fallbackReader = fallbackAdapter.createBlockingStreamReader({ key, blockMs: 10 });
+    await fallbackReader.close();
   });
 
   it('does not resolve the command connection until an operation starts', async () => {
@@ -212,6 +268,15 @@ describe('createRedisStoreAdapter', () => {
     expect(client.multi).not.toHaveBeenCalled();
   });
 
+  it('rejects a non-string append value before opening a transaction', () => {
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    expect(() => adapter.appendStringWithTtl({ key, value: 1 as any, ttlSeconds: 60 })).toThrow(
+      'value must be a string'
+    );
+    expect(client.multi).not.toHaveBeenCalled();
+  });
+
   it.each([
     null,
     [],
@@ -256,6 +321,42 @@ describe('createRedisStoreAdapter', () => {
     expect(multi.set).toHaveBeenNthCalledWith(2, 'fastgpt:cache:total', '2', 'PX', 60_000);
   });
 
+  it('rejects non-string pair values before opening a transaction', () => {
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    expect(() =>
+      adapter.setPair({
+        first: { key, value: 1 as any },
+        second: { key: asRedisLogicalKey('cache:total'), value: '2' },
+        ttlMs: 60_000
+      })
+    ).toThrow('pair values must be strings');
+    expect(client.multi).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed pair transaction response', async () => {
+    const multi = {
+      set: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([
+        [null, 'OK'],
+        [null, 'QUEUED']
+      ])
+    };
+    client.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(
+      adapter.setPair({
+        first: { key, value: '1' },
+        second: { key: asRedisLogicalKey('cache:total'), value: '2' },
+        ttlMs: 60_000
+      })
+    ).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'string.setPair'
+    });
+  });
+
   it('atomically increments a float and establishes TTL only when missing', async () => {
     const multi = {
       incrbyfloat: vi.fn().mockReturnThis(),
@@ -273,6 +374,62 @@ describe('createRedisStoreAdapter', () => {
     );
     expect(multi.incrbyfloat).toHaveBeenCalledWith('fastgpt:cache:string', 2.5);
     expect(multi.expire).toHaveBeenCalledWith('fastgpt:cache:string', 60, 'NX');
+  });
+
+  it.each([
+    [
+      [null, 'not-a-number'],
+      [null, 1]
+    ],
+    [
+      [null, ''],
+      [null, 1]
+    ],
+    [
+      [null, '12.5'],
+      [null, 2]
+    ]
+  ])('rejects invalid numeric increment transaction values %#', async (result) => {
+    const multi = {
+      incrbyfloat: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue(result)
+    };
+    client.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(
+      adapter.incrementWithTtl({ key, increment: 2.5, ttlSeconds: 60 })
+    ).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'number.incrementWithTtl'
+    });
+  });
+
+  it('rejects an empty raw increment result and an invalid expiry result', async () => {
+    const multi = {
+      incrbyfloat: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce([
+          [null, ''],
+          [null, 1]
+        ])
+        .mockResolvedValueOnce([
+          [null, '12.5'],
+          [null, 2]
+        ])
+    };
+    client.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(adapter.incrementWithTtl({ key, increment: 2.5, ttlSeconds: 60 })).rejects.toThrow(
+      'Redis increment transaction returned invalid numeric values'
+    );
+    await expect(adapter.incrementWithTtl({ key, increment: 2.5, ttlSeconds: 60 })).rejects.toThrow(
+      'Redis increment transaction returned invalid numeric values'
+    );
   });
 
   it.each([Number.NaN, Number.POSITIVE_INFINITY, '1'])(

@@ -1,5 +1,26 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('ioredis', () => {
+  class DefaultRedisClient {
+    status = 'ready';
+    readonly options: Record<string, unknown>;
+    readonly ping = async () => 'PONG';
+    readonly quit = async () => 'OK';
+    readonly disconnect = () => undefined;
+
+    constructor(options: Record<string, unknown>) {
+      this.options = options;
+    }
+
+    on() {
+      return this;
+    }
+  }
+
+  return { default: DefaultRedisClient };
+});
+
 import {
   closeRedisRuntime,
   configureRedisRuntime,
@@ -39,6 +60,21 @@ afterEach(async () => {
 });
 
 describe('createRedisRuntime', () => {
+  it('uses the default ioredis client factory when none is supplied', async () => {
+    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost' });
+    const client = runtime.getCommandConnection() as unknown as {
+      options: Record<string, unknown>;
+      quit: ReturnType<typeof vi.fn>;
+    };
+
+    expect(client.options).toMatchObject({
+      connectTimeout: 10_000,
+      enableOfflineQueue: true,
+      maxRetriesPerRequest: 1
+    });
+    await runtime.close();
+  });
+
   it('creates role-specific clients with explicit command policies', () => {
     const { clients, factory } = createClientFactory();
     const runtime = createRedisRuntime({
@@ -154,6 +190,33 @@ describe('createRedisRuntime', () => {
     expect(client.disconnect).toHaveBeenCalledTimes(1);
     expect(runtime.getConnectionSnapshot()).toEqual([]);
     expect(() => runtime.getCommandConnection()).toThrow('Redis runtime is closed');
+  });
+
+  it('records forced disconnect failures after a graceful close failure', async () => {
+    const { factory } = createClientFactory();
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+    const runtime = createRedisRuntime({
+      redisUrl: 'redis://localhost',
+      clientFactory: factory,
+      logger
+    });
+    const client = runtime.getCommandConnection() as unknown as FakeRedisClient;
+    const disconnectError = new Error('socket already closed');
+    client.quit.mockRejectedValueOnce(new Error('close failed'));
+    client.disconnect.mockImplementationOnce(() => {
+      throw disconnectError;
+    });
+
+    await runtime.close();
+
+    expect(logger.warn).toHaveBeenCalledWith('Redis forced disconnect failed', {
+      role: 'command',
+      error: disconnectError
+    });
   });
 
   it('runs before-close hooks and closes connections in role order', async () => {

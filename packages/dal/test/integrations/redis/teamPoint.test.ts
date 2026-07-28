@@ -57,7 +57,7 @@ describeWithRedis('TeamPointRepository Redis 7.2 integration', () => {
 
     reads.forEach((value) => {
       if (!value) return;
-      expect(value.surplusPoints).toBe(-value.totalPoints);
+      expect(value.surplusPoints + value.totalPoints).toBe(0);
     });
   });
 

@@ -52,6 +52,20 @@ describe('createTeamVectorCountRepository', () => {
     expect(redis.get).toHaveBeenCalledWith(logicalKey);
   });
 
+  it('clears an absent timer handle after an immediate operation', async () => {
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockReturnValue(undefined as unknown as ReturnType<typeof setTimeout>);
+    try {
+      redis.get.mockResolvedValue('150');
+      const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+
+      await expect(repository.get('team-1')).resolves.toBe(150);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
   it('returns a miss when Redis has no value', async () => {
     const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
 

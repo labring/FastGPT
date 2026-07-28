@@ -70,6 +70,15 @@ describe('StreamResumeRepository', () => {
     await expect(repository.getActive(params)).resolves.toBeUndefined();
     redis.get.mockResolvedValueOnce('{bad');
     await expect(repository.getUnavailable(params)).resolves.toBeUndefined();
+    redis.get.mockResolvedValueOnce('{bad');
+    await expect(repository.getActive(params)).resolves.toBeUndefined();
+
+    await repository.setUnavailable(params, { reason: 'memoryPressure' });
+    expect(redis.set).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:unavailable:team-1:app:app-1:chat-1'),
+      value: JSON.stringify({ reason: 'memoryPressure' }),
+      ttlMs: 300_000
+    });
   });
 
   it('exposes typed Redis memory info without exposing a client', async () => {
@@ -147,6 +156,76 @@ describe('StreamResumeRepository', () => {
       key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1'),
       ttlSeconds: 30
     });
+  });
+
+  it('logs a failed mirror cleanup and continues with the write queue', async () => {
+    const redis = createRedis();
+    const clearError = new Error('cleanup failed');
+    redis.delete.mockRejectedValueOnce(clearError);
+    const repository = createStreamResumeRepository({
+      redis,
+      logger,
+      streamTtlSeconds: 300,
+      postCompleteTtlSeconds: 30,
+      ttlTouchIntervalMs: 1_000
+    });
+    const mirror = repository.createMirror(params);
+
+    await mirror.enqueueRaw('after-cleanup');
+    await mirror.flush();
+
+    expect(redis.appendStreamEntry).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1'),
+      fields: { raw: 'after-cleanup' }
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to clear stream resume redis keys before mirror',
+      expect.objectContaining({ params, error: clearError })
+    );
+  });
+
+  it('logs failed mirror writes and allows later writes to continue', async () => {
+    const redis = createRedis();
+    const writeError = new Error('mirror write failed');
+    redis.appendStreamEntry.mockRejectedValueOnce(writeError);
+    const repository = createStreamResumeRepository({
+      redis,
+      logger,
+      streamTtlSeconds: 300,
+      postCompleteTtlSeconds: 30,
+      ttlTouchIntervalMs: 1_000
+    });
+    const mirror = repository.createMirror(params);
+
+    await mirror.enqueueRaw('failed');
+    await mirror.enqueueRaw('recovered');
+    await mirror.flush();
+
+    expect(redis.appendStreamEntry).toHaveBeenCalledTimes(2);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to mirror stream response to redis',
+      expect.objectContaining({ params, error: writeError })
+    );
+  });
+
+  it('logs TTL shrink failures without rejecting completion', async () => {
+    const redis = createRedis();
+    const ttlError = new Error('ttl update failed');
+    redis.expireStream.mockRejectedValueOnce(ttlError);
+    const repository = createStreamResumeRepository({
+      redis,
+      logger,
+      streamTtlSeconds: 300,
+      postCompleteTtlSeconds: 30,
+      ttlTouchIntervalMs: 1_000
+    });
+    const mirror = repository.createMirror(params);
+
+    await expect(mirror.shrinkTTLAfterComplete()).resolves.toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to shrink stream resume redis ttl',
+      expect.objectContaining({ params, error: ttlError })
+    );
   });
 
   it('delegates history range and blocking reader without exposing a Redis client', async () => {

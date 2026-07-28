@@ -129,4 +129,13 @@ describe('createTeamPointRepository', () => {
     expect(redis.setPair).not.toHaveBeenCalled();
     expect(redis.incrementWithTtl).not.toHaveBeenCalled();
   });
+
+  it('uses the no-op logger when invalid cache input is rejected without a logger', async () => {
+    const repository = createTeamPointRepository({ redis });
+
+    await expect(
+      repository.set({ teamId: 'team-1', totalPoints: Number.NaN, surplusPoints: 1 })
+    ).resolves.toBeUndefined();
+    expect(redis.setPair).not.toHaveBeenCalled();
+  });
 });

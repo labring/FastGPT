@@ -2,7 +2,7 @@
 
 > 上位设计：[FastGPT Data Access Layer 设计](../dal/data-access-layer.md)
 >
-> 状态：Redis Repository 与 Runtime 迁移已完成至 DAL-R6D，DAL-R6D review 已通过并已提交；剩余为 Redis 7.2 集成验证、进程级 shutdown/metrics、最终静态治理、health/close 收口和全量测试。
+> 状态：Redis Repository 与 Runtime 迁移已完成至 DAL-R6D，DAL-R6D review 已通过并已提交；Redis 7.2 集成验证已实现并通过定向测试，当前等待本阶段 review。剩余为进程级 shutdown/metrics、最终静态治理、health/close 收口和全量测试。
 
 ## 1. 目标
 
@@ -210,6 +210,8 @@ fastgpt:<namespace>:<version?>:<encoded-segment>...
 不提供 raw `call/eval`，不允许调用方自行声明 operation 可重试。原子脚本紧邻具体 Repository 实现；只有出现真实复用后才抽取。
 
 错误基类使用 `RedisOperationError`，至少包含 `code`、`operation`、`role`、`outcome` 和 `cause`，不包含完整 key/token。Repository 再决定 miss、回源或 fail-open/fail-closed。
+
+测试边界固定为两层：DAL adapter/Repository 的协议和错误分支使用窄 fake client；真实 Redis 7.2 integration 才用于验证 Lua 执行、SCAN glob、Stream blocking、事务和并发原子性。service 的 `test/mocks/common/redis.ts` 只作为 service 调用方测试夹具，不复用为 DAL integration client。
 
 ## 7. Repository 合同
 
@@ -486,7 +488,7 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 
 ### DAL-R6：清理与上线治理
 
-- 完成 Redis 7.2 key/SCAN/Lua/Stream/并发集成验证。
+- Redis 7.2 key/SCAN/Lua/Stream/并发集成验证已完成：kernel suite 与既有四个 Repository integration 文件共 5 个文件、11 项通过。
 - 接入进程级 shutdown hook 和 Redis metrics。
 - 完成 raw ioredis、旧 Store、service Redis adapter 和手工 physical key 的最终静态清零。
 - 将 health/close 迁移到 DAL，删除剩余 service facade binding。
@@ -511,7 +513,7 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 - [x] R-04（Phase 2R）：最小 adapter 和 operation error。
 - [x] R-05（DAL-R1）：迁移 kernel 到 DAL 并保留 service legacy facade。
 - [x] R-08（DAL-R6D）：删除 legacy command role、global client 和 service raw-client 兼容入口。
-- [ ] R-06：增加真实 Redis 7.2 的 key、SCAN、Lua、Stream 和并发测试。
+- [x] R-06：增加真实 Redis 7.2 的 key、SCAN、Lua、Stream 和并发测试。
 - [ ] R-07：接入进程级 shutdown hook 和 metrics。
 
 ### Repository
@@ -557,6 +559,7 @@ Repository 可以拥有 key、TTL、codec、single-flight、read-through callbac
 - [x] T-05L（DAL-R6B）：memory operation、Stream Resume Repository 与 app/service 定向测试。
 - [x] T-05M（DAL-R6C）：service Redis facade narrowing、BullMQ/health 定向测试与入口扫描。
 - [x] T-05N（DAL-R6D）：legacy global client removal、Runtime role policy、调用方与测试夹具定向测试。
+- [x] T-05O（DAL-R6）：Redis 7.2 kernel 与 Repository integration 定向测试。
 - [ ] T-06：静态扫描 raw ioredis、旧 Store、service Redis adapter 和手工 physical key。
 - [ ] T-07：迁移 health/close 到 DAL、删除剩余 service facade 并运行全量测试。
 

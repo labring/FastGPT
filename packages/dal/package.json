@@ -11,6 +11,7 @@
   "scripts": {
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
+    "test:integration:redis": "vitest run -c vitest.config.ts test/integrations/redis",
     "typecheck": "tsc --noEmit --pretty"
   },
   "engines": {

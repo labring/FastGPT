@@ -95,7 +95,7 @@ describe('LeaseRepository', () => {
     });
 
     await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
-    await vi.advanceTimersByTimeAsync(15);
+    await vi.advanceTimersByTimeAsync(25);
     resolveWork();
 
     await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
@@ -103,6 +103,109 @@ describe('LeaseRepository', () => {
       'Redis lease renew failed because token no longer matches',
       expect.objectContaining({ key, label: 'agent-sandbox-init' })
     );
+  });
+
+  it('marks the lease lost when renewal errors continue past its expiry', async () => {
+    vi.useFakeTimers();
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(0);
+    try {
+      redis.renewLease.mockRejectedValue(new Error('renew unavailable'));
+      let resolveWork!: () => void;
+      const work = new Promise<void>((resolve) => {
+        resolveWork = resolve;
+      });
+      const repository = createLeaseRepository({ redis, logger });
+      const resultPromise = repository.withLease({
+        key: 'agent-sandbox:init:sandbox-1',
+        label: 'agent-sandbox-init',
+        ttlMs: 60,
+        renewIntervalMs: 10,
+        fn: () => work
+      });
+
+      await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
+      nowSpy.mockReturnValue(1_000);
+      await vi.advanceTimersByTimeAsync(10);
+      resolveWork();
+
+      await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Redis lease renew failed',
+        expect.objectContaining({ key, label: 'agent-sandbox-init', error: expect.any(Error) })
+      );
+      expect(redis.releaseLease).toHaveBeenCalledWith({ key, token: expect.any(String) });
+    } finally {
+      nowSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('ignores a renewal that resolves after the critical section has ended', async () => {
+    vi.useFakeTimers();
+    try {
+      let resolveRenew!: (value: boolean) => void;
+      redis.renewLease.mockReturnValueOnce(
+        new Promise<boolean>((resolve) => {
+          resolveRenew = resolve;
+        })
+      );
+      let resolveWork!: () => void;
+      const work = new Promise<string>((resolve) => {
+        resolveWork = () => resolve('ok');
+      });
+      const repository = createLeaseRepository({ redis, logger });
+      const resultPromise = repository.withLease({
+        key: 'agent-sandbox:init:sandbox-1',
+        label: 'agent-sandbox-init',
+        ttlMs: 60,
+        renewIntervalMs: 10,
+        fn: () => work
+      });
+
+      await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
+      await vi.advanceTimersByTimeAsync(10);
+      resolveWork();
+      await expect(resultPromise).resolves.toBe('ok');
+      resolveRenew(true);
+      await vi.runAllTicks();
+
+      expect(redis.releaseLease).toHaveBeenCalledWith({ key, token: expect.any(String) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the lease while a transient renewal error occurs before expiry', async () => {
+    vi.useFakeTimers();
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(0);
+    try {
+      redis.renewLease.mockRejectedValueOnce(new Error('temporary renewal failure'));
+      let resolveWork!: () => void;
+      const work = new Promise<string>((resolve) => {
+        resolveWork = () => resolve('ok');
+      });
+      const repository = createLeaseRepository({ redis, logger });
+      const resultPromise = repository.withLease({
+        key: 'agent-sandbox:init:sandbox-1',
+        label: 'agent-sandbox-init',
+        ttlMs: 60,
+        renewIntervalMs: 10,
+        fn: () => work
+      });
+
+      await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
+      await vi.advanceTimersByTimeAsync(10);
+      resolveWork();
+
+      await expect(resultPromise).resolves.toBe('ok');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Redis lease renew failed',
+        expect.objectContaining({ key, label: 'agent-sandbox-init' })
+      );
+    } finally {
+      nowSpy.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   it('wraps acquire errors and keeps release best-effort', async () => {
@@ -236,6 +339,12 @@ describe('Lease adapter operations', () => {
       code: 'REDIS_INVALID_RESPONSE',
       operation: 'lease.renew'
     });
+
+    client.eval.mockResolvedValue(result);
+    await expect(adapter.releaseLease({ key, token: 'token-1' })).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'lease.release'
+    });
   });
 
   it.each([
@@ -246,5 +355,23 @@ describe('Lease adapter operations', () => {
 
     expect(() => adapter.acquireLease({ key, ...input } as any)).toThrow(message);
     expect(client.set).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty renew token before evaluating the renew script', () => {
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    expect(() => adapter.renewLease({ key, token: '', ttlMs: 60 })).toThrow(
+      'token must be a non-empty string'
+    );
+    expect(client.eval).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty release token before evaluating the release script', () => {
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    expect(() => adapter.releaseLease({ key, token: '' })).toThrow(
+      'token must be a non-empty string'
+    );
+    expect(client.eval).not.toHaveBeenCalled();
   });
 });
