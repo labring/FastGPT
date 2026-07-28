@@ -264,6 +264,33 @@ describe('sandbox resource lifecycle', () => {
     expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(2);
   });
 
+  it('records every failed resource after bulk deletion settles', async () => {
+    const resources = [
+      createResource({ sandboxId: 'sandbox-a' }),
+      createResource({ sandboxId: 'sandbox-b' }),
+      createResource({ sandboxId: 'sandbox-c' })
+    ];
+    mocks.findSandboxResourcesBySource.mockResolvedValueOnce(resources);
+    mocks.withSandboxLifecycleLease.mockImplementation(async ({ sandboxId, fn }: any) => {
+      if (sandboxId === 'sandbox-a') throw new Error('delete a failed');
+      if (sandboxId === 'sandbox-b') throw new Error('delete b failed');
+      return fn({ signal: new AbortController().signal, assertValid });
+    });
+
+    await expect(deleteAppSandboxes('app-1')).rejects.toThrow(
+      'Failed to delete 2 sandbox resources'
+    );
+
+    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(3);
+    expect(mocks.logger.error).toHaveBeenCalledWith('Failed to delete sandbox resources', {
+      failureCount: 2,
+      failures: [
+        { sandboxId: 'sandbox-a', error: 'delete a failed' },
+        { sandboxId: 'sandbox-b', error: 'delete b failed' }
+      ]
+    });
+  });
+
   it('isolates failures while stopping a cron batch', async () => {
     mocks.buildSandboxResourceAdapter.mockReturnValueOnce({
       stop: vi.fn(async () => {

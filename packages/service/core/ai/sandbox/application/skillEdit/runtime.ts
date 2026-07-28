@@ -457,7 +457,7 @@ export async function packageSkillInSandbox(params: {
     if (!homeDirectory) {
       throw new Error('Failed to resolve sandbox HOME for package temp directory');
     }
-    const packageTempDir = joinSandboxPath(joinSandboxPath(homeDirectory, '.fastgpt'), 'tmp');
+    const packageTempDir = joinSandboxPath(homeDirectory, '.fastgpt', 'tmp');
     const packageZipFilename = `skill-package-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}.zip`;

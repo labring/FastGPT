@@ -12,9 +12,12 @@ type HashContent = string | Buffer | Uint8Array;
 export const trimSandboxPathRight = (value: string) =>
   value === '/' ? '' : value.replace(/\/+$/, '');
 
-/** 用 sandbox 语义拼接路径，避免不同 provider 工作目录末尾斜杠导致双斜杠。 */
-export const joinSandboxPath = (basePath: string, path: string) =>
-  `${trimSandboxPathRight(basePath)}/${path}`;
+/** 用 sandbox 语义拼接一段或多段路径，避免不同 provider 工作目录末尾斜杠导致双斜杠。 */
+export const joinSandboxPath = (basePath: string, path: string, ...paths: string[]) =>
+  [path, ...paths].reduce(
+    (currentPath, nextPath) => `${trimSandboxPathRight(currentPath)}/${nextPath}`,
+    basePath
+  );
 
 /** 将 chatId 转成稳定的单个目录名；常规 NanoID 保持原值，异常输入使用 URL 编码。 */
 export const getSandboxSessionPathSegment = (chatId: string) => {
@@ -58,7 +61,8 @@ export const getSandboxRuntimePaths = ({
       workspaceRoot,
       runtimeSkillsRoot,
       sessionWorkDirectory: joinSandboxPath(
-        joinSandboxPath(workspaceRoot, 'sessions'),
+        workspaceRoot,
+        'sessions',
         getSandboxSessionPathSegment(chatId ?? '')
       )
     };

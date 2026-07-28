@@ -40,31 +40,42 @@ export const withTimeout = async <T>(
   }
 };
 
-/** 按固定并发执行任务；waitForAll 仅用于调用方必须等待所有 worker 收敛后再抛错的场景。 */
+/** 按固定并发执行任务；任一任务失败时立即向调用方抛出该错误。 */
 export const batchRun = async <T, R>(
   arr: T[],
   fn: (item: T, index: number) => Promise<R>,
-  batchSize = 10,
-  options: { waitForAll?: boolean } = {}
+  batchSize = 10
 ): Promise<R[]> => {
   const result: R[] = new Array(arr.length);
-  const errors: Array<{ index: number; error: unknown }> = [];
   let nextIndex = 0;
   const batchFn = async () => {
     while (nextIndex < arr.length) {
       const currentIndex = nextIndex++;
-      try {
-        result[currentIndex] = await fn(arr[currentIndex], currentIndex);
-      } catch (error) {
-        if (!options.waitForAll) throw error;
-        errors.push({ index: currentIndex, error });
-      }
+      result[currentIndex] = await fn(arr[currentIndex], currentIndex);
     }
   };
   await Promise.all(Array.from({ length: Math.min(batchSize, arr.length) }, () => batchFn()));
-  if (errors.length > 0) {
-    errors.sort((a, b) => a.index - b.index);
-    throw errors[0].error;
-  }
   return result;
 };
+
+export type BatchRunSettledResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: unknown };
+
+/** 按固定并发执行全部任务，并按输入顺序返回每项成功或失败结果。 */
+export const batchRunSettled = async <T, R>(
+  arr: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  batchSize = 10
+): Promise<BatchRunSettledResult<R>[]> =>
+  batchRun(
+    arr,
+    async (item, index) => {
+      try {
+        return { success: true, data: await fn(item, index) } as const;
+      } catch (error) {
+        return { success: false, error } as const;
+      }
+    },
+    batchSize
+  );
