@@ -32,7 +32,13 @@ Add the following environment variables to both `fastgpt-app` and `fastgpt-pro`:
 AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
 # Browser-accessible WebSocket URL for agent-sandbox-proxy. Use wss:// when proxying through an HTTPS domain.
 AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
+# Browser-accessible HTTP(S) URL for Sandbox file previews
+AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 ```
+
+We strongly recommend hosting the preview proxy on an origin separate from the FastGPT application, with a different scheme, host, or port. HTML files in a Sandbox may contain user-generated scripts. If previews share the FastGPT application origin, those scripts run inside the application's same-origin security boundary and may be able to access application credentials or APIs. FastGPT currently validates only that this variable uses `http://` or `https://`; it does not enforce origin isolation.
+
+Preview URLs are temporary, read-only bearer capabilities. Anyone with a URL can change its path to read other files in the same Sandbox Workspace while the URL remains valid. Do not share a preview URL with anyone who should not have access to that Workspace.
 
 ### 3. Verify startup
 
@@ -81,9 +87,9 @@ Configure the following variables in `fastgpt-app` and `fastgpt-pro` when you ne
 
 ## FAQ
 
-### AGENT_SANDBOX_PROXY_URL is required
+### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-After Agent Sandbox is enabled, `AGENT_SANDBOX_PROXY_URL` is required. This is the browser-accessible WebSocket URL for `fastgpt-agent-sandbox-proxy`, such as `wss://sandbox-proxy.example.com`. It is not the FastGPT main site URL.
+After Agent Sandbox is enabled, both `AGENT_SANDBOX_PROXY_URL` and `AGENT_SANDBOX_PREVIEW_PROXY_URL` are required. The former is the browser-accessible WebSocket URL for `fastgpt-agent-sandbox-proxy`, such as `wss://sandbox-proxy.example.com`. The latter is the HTTP(S) URL used for file previews, such as `https://sandbox-proxy.example.com`.
 
 ### Browser WebSocket connection fails
 

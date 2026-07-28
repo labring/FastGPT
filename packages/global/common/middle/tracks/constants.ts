@@ -19,6 +19,8 @@ export enum TrackEnum {
   freeAccountCleanup = 'freeAccountCleanup',
   auditLogCleanup = 'auditLogCleanup',
   chatHistoryCleanup = 'chatHistoryCleanup',
+  /** @deprecated Legacy Sandbox archive event. Use userSandboxMigration instead. */
+  sandboxArchive = 'sandboxArchive',
   userSandboxMigration = 'userSandboxMigration',
 
   // web tracks

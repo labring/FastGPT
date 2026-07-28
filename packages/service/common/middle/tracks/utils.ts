@@ -243,6 +243,18 @@ export const pushTrack = {
       }
     });
   },
+  /** @deprecated Legacy Sandbox archive event. Use userSandboxMigration instead. */
+  sandboxArchive: (data: {
+    provider: string;
+    sandboxId: string;
+    reason: string;
+    source?: string;
+  }) => {
+    return createTrack({
+      event: TrackEnum.sandboxArchive,
+      data
+    });
+  },
   userSandboxMigration: (
     data: {
       runId: string;

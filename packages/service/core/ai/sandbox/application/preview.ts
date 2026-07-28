@@ -9,7 +9,7 @@ import z from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { serviceEnv } from '../../../../env';
-import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../../../common/redis';
+import { getGlobalRedisConnection } from '../../../../common/redis';
 import { resolveSandboxWorkspacePath } from './file';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { trimSandboxPathRight } from '../utils';
@@ -18,6 +18,16 @@ export const SANDBOX_PREVIEW_SESSION_TTL_SECONDS = 2 * 60 * 60;
 export const SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX = 500;
 export const SANDBOX_PREVIEW_SESSION_ID_LENGTH = 24;
 const SANDBOX_PREVIEW_SESSION_KEY_PREFIX = 'sandbox:preview';
+const CREATE_SANDBOX_PREVIEW_SESSION_SCRIPT = `
+redis.call("zremrangebyscore", KEYS[1], "-inf", ARGV[1])
+if redis.call("zcard", KEYS[1]) >= tonumber(ARGV[2]) then
+  return 0
+end
+redis.call("set", KEYS[2], ARGV[3], "EX", ARGV[4])
+redis.call("zadd", KEYS[1], tonumber(ARGV[1]) + tonumber(ARGV[4]) * 1000, ARGV[5])
+redis.call("expire", KEYS[1], ARGV[4])
+return 1
+`;
 
 const SandboxPreviewSandboxIdSchema = z.string().regex(/^(?:app|skilledit)-[a-f0-9]{16}$/);
 const SandboxPreviewSessionIdSchema = z
@@ -36,6 +46,8 @@ export type SandboxPreviewSession = z.infer<typeof SandboxPreviewSessionSchema>;
 
 const getSandboxPreviewSessionPrefix = (sandboxId: string) =>
   `${SANDBOX_PREVIEW_SESSION_KEY_PREFIX}:${sandboxId}`;
+const getSandboxPreviewSessionIndexKey = (sandboxId: string) =>
+  `${getSandboxPreviewSessionPrefix(sandboxId)}:active`;
 const getPreviewSessionKey = ({ sandboxId, sessionId }: { sandboxId: string; sessionId: string }) =>
   `${getSandboxPreviewSessionPrefix(sandboxId)}:${sessionId}`;
 
@@ -51,26 +63,27 @@ export class SandboxPreviewSessionLimitError extends Error {
 /**
  * 创建短期 Preview session。
  *
- * 创建前按 sandboxId 前缀统计仍存在的 Redis key；达到上限时拒绝创建，不删除旧 session。
- * 每个 session key 独立设置 TTL，过期后由 Redis 自动清理。
+ * Lua 脚本在一次原子操作内清理过期索引、检查限额并写入 session，避免扫描 Redis 全库，
+ * 也防止并发签发突破单 Sandbox 上限。session key 和活动索引均按 TTL 自动清理。
  */
 export async function createSandboxPreviewSession(context: SandboxPreviewSession): Promise<string> {
   const parsedContext = SandboxPreviewSessionSchema.parse(context);
   const redis = getGlobalRedisConnection();
-  const sessionKeys = await getAllKeysByPrefix(
-    getSandboxPreviewSessionPrefix(parsedContext.sandboxId)
+  const sessionId = getNanoid(SANDBOX_PREVIEW_SESSION_ID_LENGTH);
+  const created = await redis.eval(
+    CREATE_SANDBOX_PREVIEW_SESSION_SCRIPT,
+    2,
+    getSandboxPreviewSessionIndexKey(parsedContext.sandboxId),
+    getPreviewSessionKey({ sandboxId: parsedContext.sandboxId, sessionId }),
+    Date.now(),
+    SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
+    JSON.stringify(parsedContext),
+    SANDBOX_PREVIEW_SESSION_TTL_SECONDS,
+    sessionId
   );
-  if (sessionKeys.length >= SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX) {
+  if (Number(created) !== 1) {
     throw new SandboxPreviewSessionLimitError();
   }
-
-  const sessionId = getNanoid(SANDBOX_PREVIEW_SESSION_ID_LENGTH);
-  await redis.set(
-    getPreviewSessionKey({ sandboxId: parsedContext.sandboxId, sessionId }),
-    JSON.stringify(parsedContext),
-    'EX',
-    SANDBOX_PREVIEW_SESSION_TTL_SECONDS
-  );
 
   return sessionId;
 }

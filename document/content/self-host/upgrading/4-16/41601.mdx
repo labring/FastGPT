@@ -16,6 +16,10 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 
 该地址必须以 `http://` 或 `https://` 开头。默认单端口部署时，它可以与 `AGENT_SANDBOX_PROXY_URL` 指向同一域名和端口，但协议分别使用 HTTP(S) 和 WebSocket(S)。
 
+强烈建议预览地址与 FastGPT 主站使用不同的 origin。Sandbox HTML 可能包含用户生成的脚本；同源部署会让这些脚本进入主站的同源安全边界，可能访问主站凭证或接口。系统当前不会强制检查 origin 是否隔离。
+
+预览 URL 是短期只读 bearer capability，不只授权 URL 中的单个文件。获得链接的人可以在有效期内修改 URL 路径，读取同一 Sandbox Workspace 中的其他文件，请勿将链接分享给不应访问该 Workspace 的用户。
+
 本版本还新增以下可选配置：
 
 | 变量                                     | 默认值 | 说明                                              |

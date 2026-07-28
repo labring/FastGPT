@@ -44,6 +44,10 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 
 The URL must use either the `http://` or `https://` prefix. In a default single-port deployment, the `AGENT_SANDBOX_PROXY_URL` host and port can also serve previews, with HTTP(S) used for previews and WebSocket(S) used for the editor connection.
 
+We strongly recommend using an origin separate from the FastGPT application for previews. Sandbox HTML may contain user-generated scripts. A same-origin deployment places those scripts inside the application's same-origin security boundary, where they may be able to access application credentials or APIs. FastGPT does not currently enforce origin isolation.
+
+A preview URL is a temporary, read-only bearer capability and is not limited to the file named in the URL. Anyone with the URL can change its path to read other files in the same Sandbox Workspace while it remains valid. Do not share it with anyone who should not have access to that Workspace.
+
 This release also adds the following optional settings:
 
 | Variable                                 | Default | Description                                                |
