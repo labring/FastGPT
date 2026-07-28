@@ -28,6 +28,7 @@ import {
   withSandboxLifecycleLease,
   withSandboxSourceMutationLease
 } from '../lease';
+import { stopSandboxResource } from '../resource';
 import { assertSandboxSourceActive } from '../sourceGuard';
 import { archiveLegacyInstanceBeforeMigration, LegacySandboxCleanupError } from './cleanup';
 import type {
@@ -289,11 +290,14 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
               if (!heartbeat) {
                 throw new Error('Skill sandbox migration lost ownership after workspace install');
               }
+              assertLeasesValid();
+              await target.provider.stop();
+              assertLeasesValid();
               const published = await completeSandboxOperation({
                 resource: targetDoc,
                 operationId,
                 fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
-                status: SandboxInstanceStatusEnum.running,
+                status: SandboxInstanceStatusEnum.stopped,
                 touchActive: true,
                 set: {
                   ...(target.storage !== undefined ? { storage: target.storage } : {}),
@@ -313,6 +317,11 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
             }
           }
         });
+      }
+      if (completionOnly && existing?.status === SandboxInstanceStatusEnum.running) {
+        sourceLease.assertValid();
+        await stopSandboxResource({ provider: existing.provider, sandboxId: existing.sandboxId });
+        sourceLease.assertValid();
       }
 
       if (phase !== 'installed' && phase !== 'cleanupPending') {
@@ -487,11 +496,13 @@ const migrateAppGroup = async (params: {
               );
               if (!allInstalled) throw new Error('Not all Legacy workspaces were installed');
               lifecycleLease.assertValid();
+              await target.provider.stop();
+              assertLeasesValid();
               const published = await completeSandboxOperation({
                 resource: targetDoc,
                 operationId,
                 fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
-                status: SandboxInstanceStatusEnum.running,
+                status: SandboxInstanceStatusEnum.stopped,
                 touchActive: true
               });
               if (!published) throw new Error('Migration target lost ownership before publish');
@@ -507,6 +518,11 @@ const migrateAppGroup = async (params: {
             }
           }
         });
+      }
+      if (completionOnly && existing?.status === SandboxInstanceStatusEnum.running) {
+        sourceLease.assertValid();
+        await stopSandboxResource({ provider: existing.provider, sandboxId: existing.sandboxId });
+        sourceLease.assertValid();
       }
 
       for (const item of group) {

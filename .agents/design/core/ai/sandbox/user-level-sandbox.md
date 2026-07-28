@@ -220,7 +220,8 @@ active；删除任务只处理已经持久标记删除的 source。
 3. 第二阶段只从 Legacy S3 下载和安装 Workspace，不再连接或打包旧物理实例。
 4. App 按 `sourceId + userId` 聚合到一个用户级目标；Skill Edit 搬到新的稳定 Skill ID。
 5. 目标在安装期间保持 `legacyMigrating + legacyMigration operation`，普通 runtime 只能返回忙碌。
-6. 所有分组文件至少提交 `installed` 后，才一次性发布目标为 `running`。
+6. 所有分组文件至少提交 `installed` 后，先暂停目标物理 Sandbox，再一次性发布目标为
+   `stopped`；暂停失败不得提交迁移完成。
 7. 发布后把 Legacy 阶段提交为 `completed`，保留旧 S3 和 Legacy Mongo 记录作为迁移备份。
 
 第一阶段释放单个 Source Lease 后，正常用户请求可以先创建确定性的 v2 目标。第二阶段必须接管或
