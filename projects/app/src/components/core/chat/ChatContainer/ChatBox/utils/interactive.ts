@@ -4,7 +4,10 @@ import {
   extractDeepestInteractive,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  UserInputInteractive,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
@@ -20,6 +23,33 @@ export const isAgentAskUserInput = (interactive?: WorkflowInteractiveResponseTyp
     finalInteractive.params.renderMode === 'agentAsk' &&
     !finalInteractive.params.submitted
   );
+};
+
+/**
+ * 判断同条 AI 消息中的 userInput 是否已提交。
+ *
+ * 旧聊天记录可能未持久化 `submitted`，但运行结果仍会保留 formInputResult；
+ * 非最后一条消息也必然已完成，避免历史 ask 误显示为等待状态。
+ */
+export const isUserInputInteractiveSubmitted = ({
+  interactive,
+  responseData,
+  isLastChild
+}: {
+  interactive: UserInputInteractive;
+  responseData?: ChatHistoryItemResType[];
+  isLastChild: boolean;
+}) => {
+  if (interactive.params.submitted || !isLastChild) return true;
+
+  return !!responseData?.some((item) => {
+    const formInputResult = item.formInputResult;
+    if (!formInputResult || typeof formInputResult !== 'object' || Array.isArray(formInputResult)) {
+      return false;
+    }
+
+    return interactive.params.inputForm.some((input) => input.key in formInputResult);
+  });
 };
 
 /**

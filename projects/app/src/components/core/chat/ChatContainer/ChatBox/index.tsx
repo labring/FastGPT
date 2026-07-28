@@ -724,9 +724,7 @@ const ChatBox = ({
                   onClick={() => scrollToBottom('smooth')}
                 />
 
-                {isAgentAskPending && activeInteractive?.type === 'userInput' ? (
-                  <AgentAskComposer interactive={activeInteractive} />
-                ) : (
+                <Box display={isAgentAskPending ? 'none' : undefined}>
                   <ChatInput
                     onSendMessage={sendPromptWithDisabledGuard}
                     lastInteractive={lastInteractive}
@@ -739,6 +737,9 @@ const ChatBox = ({
                     resetInputVal={resetInputVal}
                     chatForm={chatForm}
                   />
+                </Box>
+                {isAgentAskPending && activeInteractive?.type === 'userInput' && (
+                  <AgentAskComposer interactive={activeInteractive} />
                 )}
               </Box>
             </Box>

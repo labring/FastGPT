@@ -11,10 +11,16 @@ import type { UserInputInteractive } from '@fastgpt/global/core/workflow/templat
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 
-/** 显示复用 userInput 协议的辅助生成 ask 历史。 */
-const RenderAgentAskInteractive = ({ interactive }: { interactive: UserInputInteractive }) => {
+/** 显示辅助生成 ask 历史。 */
+const RenderAgentAskInteractive = ({
+  interactive,
+  submitted
+}: {
+  interactive: UserInputInteractive;
+  submitted: boolean;
+}) => {
   const { t } = useTranslation();
-  const { inputForm, submitted } = interactive.params;
+  const { inputForm } = interactive.params;
 
   if (!submitted) {
     return <Box color={'myGray.600'}>{t('chat:interactive.agent_ask.waiting')}</Box>;

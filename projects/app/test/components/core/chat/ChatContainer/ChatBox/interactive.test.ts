@@ -7,6 +7,7 @@ import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/Chat
 import {
   getInteractiveByHistories,
   isAgentAskUserInput,
+  isUserInputInteractiveSubmitted,
   persistAgentPlanAskAnswerToHistories,
   resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
@@ -170,6 +171,23 @@ describe('isAgentAskUserInput', () => {
     ).toBe(false);
     expect(isAgentAskUserInput(createUserInputInteractive())).toBe(false);
     expect(isAgentAskUserInput()).toBe(false);
+  });
+});
+
+describe('isUserInputInteractiveSubmitted', () => {
+  it('treats persisted formInputResult as a submitted historical form', () => {
+    const interactive = createUserInputInteractive({ renderMode: 'agentAsk' }) as Extract<
+      WorkflowInteractiveResponseType,
+      { type: 'userInput' }
+    >;
+
+    expect(
+      isUserInputInteractiveSubmitted({
+        interactive,
+        isLastChild: true,
+        responseData: [{ formInputResult: { name: 'FastGPT' } } as any]
+      })
+    ).toBe(true);
   });
 });
 
