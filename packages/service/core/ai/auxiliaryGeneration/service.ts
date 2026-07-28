@@ -27,16 +27,20 @@ export const runAuxiliaryGeneration = async <T>({
   data,
   histories,
   usageSource,
+  usageId,
   processor,
   maxFiles,
   customPdfParse,
-  onStreamContextReady
+  onStreamContextReady,
+  onBeforeStreamDone
 }: AuxiliaryGenerationRunParams<T>): Promise<
   AuxiliaryGenerationRunResult & {
     streamContext: Awaited<ReturnType<typeof createAuxiliaryGenerationStream>>;
   }
 > => {
   let stopping = false;
+  let stopCheckRunning = false;
+  let stopCheckTimer: ReturnType<typeof setInterval> | undefined;
   const startedAt = Date.now();
   const streamContext = await createAuxiliaryGenerationStream({
     req,
@@ -46,28 +50,35 @@ export const runAuxiliaryGeneration = async <T>({
     sourceId,
     chatId
   });
-  onStreamContextReady?.(streamContext);
-
-  const usageContext = await createAuxiliaryGenerationUsage({
-    teamId,
-    tmbId,
-    appName,
-    sourceType,
-    sourceId,
-    usageSource
-  });
-  await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-
-  res.once('close', () => {
-    stopping = true;
-  });
-
-  const stopCheckTimer = setInterval(async () => {
-    if (stopping) return;
-    stopping = await shouldAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-  }, 100);
-
   try {
+    onStreamContextReady?.(streamContext);
+    const usageContext = await createAuxiliaryGenerationUsage({
+      teamId,
+      tmbId,
+      appName,
+      sourceType,
+      sourceId,
+      usageSource,
+      usageId
+    });
+    await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
+
+    res.once('close', () => {
+      stopping = true;
+    });
+
+    stopCheckTimer = setInterval(async () => {
+      if (stopping || stopCheckRunning) return;
+
+      stopCheckRunning = true;
+      try {
+        const shouldStop = await shouldAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
+        stopping = stopping || shouldStop;
+      } finally {
+        stopCheckRunning = false;
+      }
+    }, 100);
+
     const result = await processor({
       query,
       userAnswer,
@@ -78,6 +89,7 @@ export const runAuxiliaryGeneration = async <T>({
       streamWriter: streamContext.write,
       checkIsStopping: () => stopping,
       usageSink: usageContext.pushUsage,
+      usageId: usageContext.usageId,
       maxFiles,
       customPdfParse,
       user: {
@@ -89,15 +101,22 @@ export const runAuxiliaryGeneration = async <T>({
       }
     });
 
+    const durationSeconds = +((Date.now() - startedAt) / 1000).toFixed(2);
+    await onBeforeStreamDone?.({
+      result,
+      durationSeconds
+    });
     streamContext.writeDone();
 
     return {
       ...result,
-      durationSeconds: +((Date.now() - startedAt) / 1000).toFixed(2),
+      durationSeconds,
       streamContext
     };
   } finally {
-    clearInterval(stopCheckTimer);
+    if (stopCheckTimer) {
+      clearInterval(stopCheckTimer);
+    }
     await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
   }
 };
