@@ -1,5 +1,9 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { generateSandboxId, SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  generateSandboxId,
+  SandboxStatusEnum,
+  SandboxTypeEnum
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { execFile } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -36,6 +40,7 @@ const mocks = vi.hoisted(() => ({
   withLegacySandboxMigrationJobLease: vi.fn(),
   assertSandboxSourceActive: vi.fn(),
   assertSandboxSourceDeleted: vi.fn(),
+  cleanupLegacySkillDebugChats: vi.fn(),
   runtimeWorkDirectory: { value: '/workspace' }
 }));
 
@@ -116,6 +121,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', () => ({
   assertSandboxSourceDeleted: mocks.assertSandboxSourceDeleted
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/application/legacyMigration/debugChatCleanup', () => ({
+  cleanupLegacySkillDebugChats: mocks.cleanupLegacySkillDebugChats
+}));
+
 import { deleteAppSandboxesForAppDeletion } from '@fastgpt/service/core/ai/sandbox/application/legacyMigration/cleanup';
 import { migrateLegacySandboxesToUserLevel } from '@fastgpt/service/core/ai/sandbox/application/legacyMigration/service';
 import { installLegacyWorkspaceArchive } from '@fastgpt/service/core/ai/sandbox/application/legacyMigration/workspace';
@@ -124,6 +133,15 @@ import { MongoLegacySandboxInstance } from '@fastgpt/service/core/ai/sandbox/inf
 const createTargetProvider = () => ({
   provider: 'opensandbox',
   execute: vi.fn(async () => ({ stdout: '', stderr: '', exitCode: 0 }))
+});
+
+const createWorkspaceTarget = () => ({
+  provider: createTargetProvider(),
+  getRuntimePaths: () => ({
+    workspaceRoot: '/workspace',
+    runtimeSkillsRoot: '/workspace/projects',
+    sessionWorkDirectory: '/workspace/sessions/chat-1'
+  })
 });
 
 const createMigrationTargetDoc = (sandboxId = 'target-sandbox') =>
@@ -196,6 +214,40 @@ const insertLegacySkill = async (params: { sandboxId: string; sourceId?: string 
   });
 };
 
+const insertPreBeta6Sandbox = async (params: {
+  sandboxId: string;
+  appId?: string | null;
+  type?: SandboxTypeEnum;
+  skillId?: string;
+}) =>
+  MongoLegacySandboxInstance.collection.insertOne({
+    provider: 'opensandbox',
+    sandboxId: params.sandboxId,
+    ...(params.appId !== undefined ? { appId: params.appId } : {}),
+    ...(params.type ? { type: params.type } : {}),
+    userId: 'user-1',
+    chatId: `chat-${params.sandboxId}`,
+    status: SandboxStatusEnum.stopped,
+    lastActiveAt: new Date(),
+    createdAt: new Date(),
+    ...(params.skillId ? { metadata: { skillId: params.skillId } } : {})
+  });
+
+const createDebugChatCleanupResult = (pendingChatCount = 0) => ({
+  scannedSkillCount: 0,
+  cleanup: {
+    conflictAppSkillCount: 0,
+    cleanupSkillCount: 0,
+    totalLegacyChats: pendingChatCount,
+    totalChatItems: 0,
+    totalChatItemResponses: 0,
+    deletedSkillCount: 0,
+    skippedEmptyCount: 0,
+    pendingChatCount,
+    list: []
+  }
+});
+
 describe('legacy sandbox migration', () => {
   const leaseContext = {
     signal: new AbortController().signal,
@@ -224,6 +276,7 @@ describe('legacy sandbox migration', () => {
     mocks.deleteCurrentSkillSandboxes.mockResolvedValue(undefined);
     mocks.assertSandboxSourceActive.mockResolvedValue(undefined);
     mocks.assertSandboxSourceDeleted.mockResolvedValue(undefined);
+    mocks.cleanupLegacySkillDebugChats.mockResolvedValue(createDebugChatCleanupResult());
     mocks.runtimeWorkDirectory.value = '/workspace';
     mocks.buildRuntimeSandboxAdapter.mockReturnValue(createTargetProvider());
     mocks.buildSandboxResourceAdapter.mockReturnValue({
@@ -241,19 +294,14 @@ describe('legacy sandbox migration', () => {
       fn(leaseContext)
     );
     mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }: any) => fn(leaseContext));
-    mocks.withLegacySandboxMigrationJobLease.mockImplementation(async ({ fn }: any) => fn());
+    mocks.withLegacySandboxMigrationJobLease.mockImplementation(async ({ fn }: any) =>
+      fn(leaseContext)
+    );
   });
 
   describe('installLegacyWorkspaceArchive', () => {
-    it('installs a Legacy workspace into the encoded Chat session without overwriting files', async () => {
-      const target = {
-        provider: createTargetProvider(),
-        getRuntimePaths: () => ({
-          workspaceRoot: '/workspace',
-          runtimeSkillsRoot: '/workspace/projects',
-          sessionWorkDirectory: '/workspace/sessions/chat-1'
-        })
-      } as any;
+    it('stages a Legacy workspace outside the runtime workspace and targets the encoded Chat', async () => {
+      const target = createWorkspaceTarget();
 
       await installLegacyWorkspaceArchive({
         target,
@@ -274,19 +322,10 @@ describe('legacy sandbox migration', () => {
       expect(mocks.resolveSandboxHome).toHaveBeenCalledWith(target.provider);
       const commitCommand = target.provider.execute.mock.calls[0][0] as string;
       expect(commitCommand).toContain("target='/workspace/sessions/chat%2F2'");
-      expect(commitCommand).toContain('merge_without_overwrite');
-      expect(commitCommand).toContain('[ ! -e "$target_path" ]');
     });
 
     it('rejects migration before restore when Sandbox HOME cannot be resolved', async () => {
-      const target = {
-        provider: createTargetProvider(),
-        getRuntimePaths: () => ({
-          workspaceRoot: '/workspace',
-          runtimeSkillsRoot: '/workspace/projects',
-          sessionWorkDirectory: '/workspace/sessions/chat-1'
-        })
-      } as any;
+      const target = createWorkspaceTarget();
       mocks.resolveSandboxHome.mockResolvedValueOnce(undefined);
 
       await expect(
@@ -304,7 +343,59 @@ describe('legacy sandbox migration', () => {
   });
 
   describe('migrateLegacySandboxesToUserLevel', () => {
-    it('dry-run validates the entire normalized Legacy table before any side effect', async () => {
+    it('normalizes beta6 fields before archiving and migrating a Skill', async () => {
+      await insertPreBeta6Sandbox({
+        sandboxId: 'migration-test-normalization-before-skill',
+        appId: 'legacy-skill-app-id',
+        type: SandboxTypeEnum.editDebug,
+        skillId: 'skill-normalization'
+      });
+
+      const result = await migrateLegacySandboxesToUserLevel({ dryRun: false });
+
+      expect(result).toMatchObject({
+        normalizationBlocked: false,
+        normalization: {
+          skillMatchedCount: 1,
+          skillModifiedCount: 1,
+          pendingCount: 0
+        },
+        legacySkillCount: 1,
+        migratedSkillCount: 1,
+        failedCount: 0
+      });
+      expect(mocks.getSandboxWorkspaceArchiveForMigration).toHaveBeenCalledWith(
+        expect.objectContaining({ sandboxId: 'migration-test-normalization-before-skill' })
+      );
+      await expect(
+        MongoLegacySandboxInstance.findOne({
+          sandboxId: 'migration-test-normalization-before-skill'
+        }).lean()
+      ).resolves.toMatchObject({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: 'skill-normalization'
+      });
+    });
+
+    it('keeps the archive phase blocked while legacy Skill Debug Chats remain', async () => {
+      mocks.cleanupLegacySkillDebugChats.mockResolvedValueOnce(createDebugChatCleanupResult(1));
+
+      const result = await migrateLegacySandboxesToUserLevel({ dryRun: false });
+
+      expect(result).toMatchObject({
+        normalizationBlocked: true,
+        normalization: {
+          sandboxPendingCount: 0,
+          legacyDebugChatCleanup: { pendingChatCount: 1 },
+          pendingCount: 1
+        },
+        failedCount: 0
+      });
+      expect(mocks.getSandboxWorkspaceArchiveForMigration).not.toHaveBeenCalled();
+      expect(mocks.claimAppSandboxMigrationTarget).not.toHaveBeenCalled();
+    });
+
+    it('dry-run reports the normalized Legacy table without any side effect', async () => {
       await insertLegacyApp({ sandboxId: 'migration-test-app-1' });
 
       const result = await migrateLegacySandboxesToUserLevel({ dryRun: true });
@@ -317,20 +408,6 @@ describe('legacy sandbox migration', () => {
         failures: []
       });
       expect(mocks.withLegacySandboxMigrationJobLease).not.toHaveBeenCalled();
-      expect(mocks.claimAppSandboxMigrationTarget).not.toHaveBeenCalled();
-
-      await MongoLegacySandboxInstance.collection.insertOne({
-        provider: 'opensandbox',
-        sandboxId: 'migration-test-invalid',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-invalid',
-        status: 'stopped',
-        lastActiveAt: new Date()
-      });
-
-      await expect(migrateLegacySandboxesToUserLevel({ dryRun: true })).rejects.toThrow(
-        'Legacy Sandbox preflight validation failed for 1 record(s)'
-      );
       expect(mocks.claimAppSandboxMigrationTarget).not.toHaveBeenCalled();
     });
 
@@ -426,34 +503,6 @@ describe('legacy sandbox migration', () => {
       expect(mocks.claimAppSandboxMigrationTarget).not.toHaveBeenCalled();
       expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
       expect(mocks.isLegacyWorkspaceArchiveExists).not.toHaveBeenCalled();
-    });
-
-    it('rejects an inconsistent completed Legacy backup during preflight', async () => {
-      await MongoLegacySandboxInstance.collection.insertOne({
-        provider: 'opensandbox',
-        sandboxId: 'migration-test-invalid-completed',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-invalid-completed',
-        userId: 'user-invalid-completed',
-        chatId: 'chat-invalid-completed',
-        status: SandboxStatusEnum.running,
-        lastActiveAt: new Date(),
-        metadata: {
-          userLevelMigration: {
-            phase: 'completed',
-            targetSandboxId: 'target-invalid-completed',
-            updatedAt: new Date()
-          }
-        }
-      });
-
-      await expect(migrateLegacySandboxesToUserLevel({ dryRun: true })).rejects.toThrow(
-        'Completed Legacy migration requires stopped status'
-      );
-      await expect(migrateLegacySandboxesToUserLevel({ dryRun: true })).rejects.toThrow(
-        'Completed Legacy migration requires archived state'
-      );
-      expect(mocks.claimAppSandboxMigrationTarget).not.toHaveBeenCalled();
     });
 
     it('retries an interrupted publish after every Legacy workspace is installed', async () => {

@@ -1,46 +1,13 @@
-/** Legacy migration 纯函数：负责 preflight、身份和状态转换，不执行持久化或远端操作。 */
+/** Legacy migration 纯函数：负责身份和状态转换，不执行持久化或远端操作。 */
 import { generateSandboxId, SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  LegacySandboxInstanceZodSchema,
-  type LegacySandboxInstanceSchemaType
-} from '../../infrastructure/instance/legacySchema';
+import type { LegacySandboxInstanceSchemaType } from '../../infrastructure/instance/legacySchema';
 import {
   SandboxInstanceStatusEnum,
   SandboxMetadataSchema,
   SandboxProviderSchema
 } from '../../type';
 import type { LegacyMigrationPhase } from './types';
-
-/** 在产生任何迁移副作用前校验整张 Legacy 表。 */
-export const parseLegacySandboxInstances = (
-  rawDocs: unknown[]
-): LegacySandboxInstanceSchemaType[] => {
-  const parsedDocs: LegacySandboxInstanceSchemaType[] = [];
-  const failures: string[] = [];
-  for (const rawDoc of rawDocs) {
-    const parsed = LegacySandboxInstanceZodSchema.safeParse(rawDoc);
-    if (parsed.success) {
-      parsedDocs.push(parsed.data);
-      continue;
-    }
-    const doc = rawDoc && typeof rawDoc === 'object' ? (rawDoc as Record<string, unknown>) : {};
-    failures.push(
-      `_id=${String(doc._id ?? 'unknown')}, sandboxId=${String(doc.sandboxId ?? 'unknown')} [${parsed.error.issues
-        .map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
-        .join('; ')}]`
-    );
-  }
-  if (failures.length) {
-    throw new Error(
-      [
-        `Legacy Sandbox preflight validation failed for ${failures.length} record(s)`,
-        ...failures
-      ].join('\n')
-    );
-  }
-  return parsedDocs;
-};
 
 export const getLegacyMigrationPhase = (
   doc: LegacySandboxInstanceSchemaType

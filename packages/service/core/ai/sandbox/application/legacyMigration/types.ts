@@ -42,8 +42,47 @@ export type LegacyMigrationTarget = {
 
 export type UserSandboxMigrationFailure = { sandboxId: string; error: string };
 
+export type LegacyDebugChatCleanupItem = {
+  skillId: string;
+  chatCount: number;
+  chatItemCount: number;
+  chatItemResponseCount: number;
+  deleted: boolean;
+};
+
+export type LegacyDebugChatCleanupResult = {
+  conflictAppSkillCount: number;
+  cleanupSkillCount: number;
+  totalLegacyChats: number;
+  totalChatItems: number;
+  totalChatItemResponses: number;
+  deletedSkillCount: number;
+  skippedEmptyCount: number;
+  pendingChatCount: number;
+  list: LegacyDebugChatCleanupItem[];
+};
+
+export type LegacySandboxNormalizationResult = {
+  skillMatchedCount: number;
+  skillModifiedCount: number;
+  appMatchedCount: number;
+  appModifiedCount: number;
+  legacyFieldMatchedCount: number;
+  legacyFieldModifiedCount: number;
+  orphanMatchedCount: number;
+  orphanDeletedCount: number;
+  orphanFailedCount: number;
+  sandboxPendingCount: number;
+  scannedSkillCount: number;
+  legacyDebugChatCleanup: LegacyDebugChatCleanupResult;
+  pendingCount: number;
+  failures: UserSandboxMigrationFailure[];
+};
+
 export type UserSandboxMigrationResult = {
   dryRun: boolean;
+  normalization: LegacySandboxNormalizationResult;
+  normalizationBlocked: boolean;
   completedLegacyCount: number;
   legacySkillCount: number;
   migratedSkillCount: number;

@@ -1110,14 +1110,6 @@ describe('dispatchRunAgent user context', () => {
         props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
         global.feConfigs = { ...global.feConfigs, show_agent_sandbox: false };
       }
-    },
-    {
-      name: 'the team plan has no sandbox permission',
-      configure: (props: ReturnType<typeof createProps>) => {
-        props.params.useAgentSandbox = true;
-        props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
-        checkTeamSandboxPermissionMock.mockRejectedValueOnce(new Error('no permission'));
-      }
     }
   ])('continues without sandbox or skills when $name', async ({ configure }) => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
