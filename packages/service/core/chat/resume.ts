@@ -1,15 +1,11 @@
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
-import { createBlockingRedisConnection, getGlobalRedisConnection } from '../../common/redis';
-import { getPhysicalRedisConnection, getRedisRuntime } from '../../common/redis/runtime';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
 import {
   createStreamResumeRepository,
   type StreamResumeActiveState as DalStreamResumeActiveState,
   type StreamResumeParams,
   type StreamResumeUnavailableState as DalStreamResumeUnavailableState
 } from '@fastgpt/dal/redis/repositories';
-import type { RedisClient } from '@fastgpt/dal/redis/runtime';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -34,14 +30,7 @@ export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
 export const STREAM_RESUME_INACTIVE_MS = 2 * 60 * 1000;
 
-const streamResumeRedisAdapter = createRedisStoreAdapter({
-  getCommandClient: getPhysicalRedisConnection,
-  createBlockingConnection: createBlockingRedisConnection,
-  releaseConnection: (client) => getRedisRuntime().releaseConnection(client as RedisClient)
-});
-
 const streamResumeRepository = createStreamResumeRepository({
-  redis: streamResumeRedisAdapter,
   logger,
   streamTtlSeconds: STREAM_RESUME_TTL_SECONDS,
   postCompleteTtlSeconds: STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
@@ -93,14 +82,6 @@ export const isStreamResumeMirrorRequested = (headerValue?: ResumeRequestHeaderV
   return resumeRequestEnabledValues.has(normalizedHeaderValue);
 };
 
-const parseRedisInfoNumber = (info: string, key: string) => {
-  const match = info.match(new RegExp(`(?:^|\\r?\\n)${key}:(\\d+)`));
-  if (!match) return undefined;
-
-  const value = Number(match[1]);
-  return Number.isFinite(value) ? value : undefined;
-};
-
 const logRedisMemoryPressureState = (cache: RedisMemoryPressureCache) => {
   if (lastLoggedMemoryPressureState === cache.blocked) return;
 
@@ -149,10 +130,7 @@ const isRedisMemoryPressureBlockingStreamResume = async () => {
 
   redisMemoryPressurePromise = (async () => {
     try {
-      const redis = getGlobalRedisConnection();
-      const info = await redis.info('memory');
-      const usedMemory = parseRedisInfoNumber(info, 'used_memory');
-      const maxMemory = parseRedisInfoNumber(info, 'maxmemory');
+      const { usedMemory, maxMemory } = await streamResumeRepository.getMemoryInfo();
       const blocked =
         typeof usedMemory === 'number' &&
         typeof maxMemory === 'number' &&

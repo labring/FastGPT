@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import {
@@ -6,7 +7,6 @@ import {
   getStreamResumeRedisKeys,
   resetStreamResumeMirrorGuardForTest
 } from '@fastgpt/service/core/chat/resume';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
   createWorkflowStreamResponseContext,
@@ -83,7 +83,7 @@ describe('createWorkflowStreamResponseContext', () => {
     vi.clearAllMocks();
     resetStreamResumeMirrorGuardForTest();
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.flushdb();
     redis.call = vi.fn(async () => '1-0');
     redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
@@ -122,7 +122,7 @@ describe('createWorkflowStreamResponseContext', () => {
   });
 
   it('should only create resume mirror when stream request opts in', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     const sourceType = ChatSourceTypeEnum.app;
     const keys = getStreamResumeRedisKeys({ teamId, sourceType, sourceId, chatId });
     const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
@@ -175,7 +175,7 @@ describe('createWorkflowStreamResponseContext', () => {
   });
 
   it('should not create resume mirror when resume is disabled even if request opts in', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
 
     const context = await createWorkflowStreamResponseContext({
       req: createReq({ [STREAM_RESUME_REQUEST_HEADER]: 'true' }),

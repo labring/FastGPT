@@ -94,3 +94,22 @@ export type {
   StreamResumeRepositoryLogger,
   StreamResumeUnavailableState
 } from './streamResume';
+export {
+  OUTLINK_STREAM_CONTENT_TTL_SECONDS,
+  OUTLINK_STREAM_INITIAL_TTL_SECONDS,
+  OUTLINK_STREAM_END_FLAG,
+  createOutLinkStreamRepository,
+  getOutLinkStreamKey,
+  outLinkStreamRepository
+} from './outLinkStream';
+export type { OutLinkStreamRepository, OutLinkStreamRepositoryDependencies } from './outLinkStream';
+export {
+  WECHAT_POLLING_FAILURE_TTL_SECONDS,
+  createWechatPollingFailureRepository,
+  getWechatPollingFailureKey,
+  wechatPollingFailureRepository
+} from './wechatPollingFailure';
+export type {
+  WechatPollingFailureRepository,
+  WechatPollingFailureRepositoryDependencies
+} from './wechatPollingFailure';

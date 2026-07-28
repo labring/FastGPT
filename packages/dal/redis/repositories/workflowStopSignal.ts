@@ -1,4 +1,3 @@
-import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { z } from 'zod';
 import { asRedisLogicalKey, redisRepositoryAdapter, type RedisStoreAdapter } from '../adapter';
 import { RedisInvalidArgumentError } from '../runtime/errors';
@@ -12,9 +11,7 @@ export const WorkflowStopSignalParamsSchema = z.object({
   chatId: z.string().min(1)
 });
 
-export type WorkflowStopSignalParams = z.infer<typeof WorkflowStopSignalParamsSchema> & {
-  sourceType: ChatSourceTypeEnum;
-};
+export type WorkflowStopSignalParams = z.infer<typeof WorkflowStopSignalParamsSchema>;
 
 export type WorkflowStopSignalRepositoryLogger = {
   warn: (message: string, metadata: Record<string, unknown>) => void;

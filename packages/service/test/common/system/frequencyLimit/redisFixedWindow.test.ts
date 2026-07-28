@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
 import {
   checkFixedWindowQpmLimit,
   createFixedWindowQpmLimitChecker
 } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 
 describe('checkFixedWindowQpmLimit', () => {
   beforeEach(async () => {
-    await getGlobalRedisConnection().flushdb();
+    await getRedisRuntime().getCommandConnection().flushdb();
   });
 
   it('同一个 key 在固定窗口内超过限制后返回 false', async () => {

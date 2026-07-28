@@ -1,23 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const legacyClient = { disconnect: vi.fn() };
-const commandClient = {};
-const blockingClient = {};
 const queueClient = {};
 const workerClient = {};
 const runtime = {
-  getLegacyCommandConnection: vi.fn(() => legacyClient),
-  getCommandConnection: vi.fn(() => commandClient),
-  createBlockingConnection: vi.fn(() => blockingClient),
   createQueueConnection: vi.fn(() => queueClient),
   createWorkerConnection: vi.fn(() => workerClient),
-  getConnectionSnapshot: vi.fn(() => []),
   checkHealth: vi.fn(async () => ({ latencyMs: 1 })),
   close: vi.fn(async () => undefined)
 };
 const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
 const configureRedisRuntime = vi.fn(() => runtime);
-const getConfiguredRedisRuntime = vi.fn<() => typeof runtime | undefined>(() => runtime);
 const closeRedisRuntime = vi.fn(async () => undefined);
 
 /**
@@ -29,7 +21,6 @@ const loadRedisRuntimeBinding = async () => {
   vi.doUnmock('@fastgpt/service/common/redis/runtime');
   vi.doMock('@fastgpt/dal/redis/runtime', () => ({
     configureRedisRuntime,
-    getConfiguredRedisRuntime,
     closeRedisRuntime
   }));
   vi.doMock('@fastgpt/service/env', () => ({
@@ -46,63 +37,38 @@ const loadRedisRuntimeBinding = async () => {
 describe('service Redis Runtime binding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getConfiguredRedisRuntime.mockReturnValue(runtime);
-    global.redisClient = null;
   });
 
-  it('injects service configuration and the legacy hot-reload client into DAL', async () => {
-    global.redisClient = legacyClient as any;
+  it('injects service configuration into DAL', async () => {
     const { getRedisRuntime } = await loadRedisRuntimeBinding();
 
     expect(getRedisRuntime()).toBe(runtime);
     expect(configureRedisRuntime).toHaveBeenCalledWith({
       redisUrl: 'redis://service-redis:6379',
-      logger,
-      existingCommandClient: legacyClient
+      logger
     });
   });
 
-  it('delegates connection helpers to the configured DAL Runtime', async () => {
-    const {
-      checkRedisHealth,
-      createBlockingRedisConnection,
-      createQueueRedisConnection,
-      createWorkerRedisConnection,
-      getGlobalRedisConnection,
-      getPhysicalRedisConnection,
-      getRedisConnectionSnapshot
-    } = await loadRedisRuntimeBinding();
+  it('delegates health checks to the configured DAL Runtime', async () => {
+    const { checkRedisHealth } = await loadRedisRuntimeBinding();
 
-    expect(getGlobalRedisConnection()).toBe(legacyClient);
-    expect(global.redisClient).toBe(legacyClient);
-    expect(getPhysicalRedisConnection()).toBe(commandClient);
-    expect(createBlockingRedisConnection()).toBe(blockingClient);
-    expect(createQueueRedisConnection()).toBe(queueClient);
-    expect(createWorkerRedisConnection()).toBe(workerClient);
-    expect(getRedisConnectionSnapshot()).toEqual([]);
     await expect(checkRedisHealth()).resolves.toEqual({ latencyMs: 1 });
   });
 
-  it('closes the configured DAL Runtime and clears the legacy client', async () => {
-    global.redisClient = legacyClient as any;
+  it('closes the configured DAL Runtime', async () => {
     const { closeRedisConnections } = await loadRedisRuntimeBinding();
 
     await closeRedisConnections();
 
     expect(closeRedisRuntime).toHaveBeenCalledTimes(1);
-    expect(global.redisClient).toBeNull();
   });
 
-  it('disconnects an orphaned legacy client without configuring a Runtime', async () => {
-    getConfiguredRedisRuntime.mockReturnValueOnce(undefined);
-    global.redisClient = legacyClient as any;
+  it('keeps close idempotent when the DAL Runtime is not configured', async () => {
     const { closeRedisConnections } = await loadRedisRuntimeBinding();
 
     await closeRedisConnections();
 
-    expect(legacyClient.disconnect).toHaveBeenCalledTimes(1);
     expect(configureRedisRuntime).not.toHaveBeenCalled();
-    expect(closeRedisRuntime).not.toHaveBeenCalled();
-    expect(global.redisClient).toBeNull();
+    expect(closeRedisRuntime).toHaveBeenCalledTimes(1);
   });
 });

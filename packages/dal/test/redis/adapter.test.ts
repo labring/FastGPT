@@ -5,6 +5,7 @@ const createClient = () => ({
   del: vi.fn(),
   get: vi.fn(),
   hgetall: vi.fn(),
+  info: vi.fn(),
   multi: vi.fn(),
   scan: vi.fn(),
   set: vi.fn()
@@ -27,6 +28,27 @@ describe('createRedisStoreAdapter', () => {
     expect(getCommandClient).not.toHaveBeenCalled();
     await expect(adapter.get(key)).resolves.toBe('value');
     expect(getCommandClient).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads and parses Redis memory info through a typed operation', async () => {
+    client.info.mockResolvedValue('used_memory:42\r\nmaxmemory:100\r\n');
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(adapter.getMemoryInfo()).resolves.toEqual({
+      usedMemory: 42,
+      maxMemory: 100
+    });
+    expect(client.info).toHaveBeenCalledWith('memory');
+  });
+
+  it.each([null, 42])('rejects malformed Redis memory info response %#', async (info) => {
+    client.info.mockResolvedValue(info);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(adapter.getMemoryInfo()).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'server.memoryInfo'
+    });
   });
 
   it('atomically consumes a fixed window and returns a validated count and TTL', async () => {
@@ -129,6 +151,67 @@ describe('createRedisStoreAdapter', () => {
     expect(multi.get).toHaveBeenNthCalledWith(2, 'fastgpt:cache:total');
   });
 
+  it('atomically appends a string and refreshes its TTL', async () => {
+    const multi = {
+      append: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([
+        [null, 12],
+        [null, 1]
+      ])
+    };
+    client.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(
+      adapter.appendStringWithTtl({ key, value: 'chunk', ttlSeconds: 60 })
+    ).resolves.toBe(12);
+    expect(multi.append).toHaveBeenCalledWith('fastgpt:cache:string', 'chunk');
+    expect(multi.expire).toHaveBeenCalledWith('fastgpt:cache:string', 60);
+  });
+
+  it.each([
+    null,
+    [],
+    [[null, 12]],
+    [
+      [new Error('append failed'), null],
+      [null, 1]
+    ],
+    [
+      [null, -1],
+      [null, 1]
+    ],
+    [
+      [null, 12],
+      [null, 0]
+    ]
+  ])('rejects malformed append transaction response %#', async (result) => {
+    const multi = {
+      append: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue(result)
+    };
+    client.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(
+      adapter.appendStringWithTtl({ key, value: 'chunk', ttlSeconds: 60 })
+    ).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'string.appendWithTtl'
+    });
+  });
+
+  it.each([0, -1, 1.5, '60'])('rejects invalid append TTL %s', (ttlSeconds) => {
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    expect(() =>
+      adapter.appendStringWithTtl({ key, value: 'chunk', ttlSeconds: ttlSeconds as any })
+    ).toThrow('ttlSeconds must be a positive safe integer');
+    expect(client.multi).not.toHaveBeenCalled();
+  });
+
   it.each([
     null,
     [],
@@ -203,6 +286,67 @@ describe('createRedisStoreAdapter', () => {
       expect(client.multi).not.toHaveBeenCalled();
     }
   );
+
+  it('atomically increments an integer and establishes TTL only when missing', async () => {
+    const multi = {
+      incrby: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([
+        [null, 5],
+        [null, 0]
+      ])
+    };
+    client.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(
+      adapter.incrementIntegerWithTtl({ key, increment: 1, ttlSeconds: 300 })
+    ).resolves.toBe(5);
+    expect(multi.incrby).toHaveBeenCalledWith('fastgpt:cache:string', 1);
+    expect(multi.expire).toHaveBeenCalledWith('fastgpt:cache:string', 300, 'NX');
+  });
+
+  it.each([
+    null,
+    [],
+    [[null, 5]],
+    [
+      [new Error('increment failed'), null],
+      [null, 1]
+    ],
+    [
+      [null, -1],
+      [null, 1]
+    ],
+    [
+      [null, 5],
+      [null, 2]
+    ]
+  ])('rejects malformed integer increment transaction response %#', async (result) => {
+    const multi = {
+      incrby: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue(result)
+    };
+    client.multi.mockReturnValue(multi);
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    await expect(
+      adapter.incrementIntegerWithTtl({ key, increment: 1, ttlSeconds: 300 })
+    ).rejects.toMatchObject({
+      code: 'REDIS_INVALID_RESPONSE',
+      operation: 'number.incrementIntegerWithTtl'
+    });
+  });
+
+  it.each([0, -1, 1.5, '1'])('rejects invalid integer increment %s', (increment) => {
+    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+
+    expect(() =>
+      adapter.incrementIntegerWithTtl({ key, increment: increment as any, ttlSeconds: 300 })
+    ).toThrow('increment must be a positive safe integer');
+    expect(client.multi).not.toHaveBeenCalled();
+  });
 
   it('reads values through physical keys and accepts a missing key', async () => {
     client.get.mockResolvedValueOnce('value').mockResolvedValueOnce(null);

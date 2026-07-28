@@ -1,6 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+
+const streamMocks = vi.hoisted(() => ({
+  append: vi.fn().mockResolvedValue(0)
+}));
+
+vi.mock('@fastgpt/dal/redis/repositories', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/repositories')>();
+  return {
+    ...actual,
+    outLinkStreamRepository: {
+      append: streamMocks.append
+    }
+  };
+});
+
 import { outlinkInvokeChat } from '@fastgpt/service/support/outLink/runtime/utils';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
@@ -110,6 +125,7 @@ describe('outlinkInvokeChat', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    streamMocks.append.mockResolvedValue(0);
 
     vi.mocked(MongoApp.findById).mockReturnValue({
       lean: () => ({
@@ -225,6 +241,28 @@ describe('outlinkInvokeChat', () => {
       chatId: 'prepared-chat-id',
       responseChatItemId: 'message-id',
       error
+    });
+  });
+
+  it('uses the OutLink Stream Repository for initialization and completion markers', async () => {
+    await outlinkInvokeChat({
+      outLinkConfig,
+      chatId: 'chat-id',
+      query,
+      messageId: 'message-id',
+      chatUserId: 'chat-user-id',
+      streamId: 'stream-id'
+    });
+
+    expect(streamMocks.append).toHaveBeenNthCalledWith(1, {
+      streamId: 'stream-id',
+      value: '',
+      ttlSeconds: 120
+    });
+    expect(streamMocks.append).toHaveBeenNthCalledWith(2, {
+      streamId: 'stream-id',
+      value: '[DONE]',
+      ttlSeconds: 60
     });
   });
 });

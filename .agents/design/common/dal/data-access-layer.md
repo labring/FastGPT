@@ -1,6 +1,6 @@
 # FastGPT Data Access Layer 设计
 
-> 状态：架构方向与包名已确认；DAL-R1、DAL-R2、DAL-R2P、DAL-R3C、DAL-R3D、DAL-R4A、DAL-R4B、DAL-R4C、DAL-R4D、DAL-R4F 与 DAL-R5A 已完成实现并通过定向验证，当前等待 DAL-R5A 代码 review。Stream 以外的 Repository 仍未开始迁移。
+> 状态：Redis Repository 与 Runtime 迁移已完成至 DAL-R6D，DAL-R6D review 已通过并已提交；剩余为 Redis 7.2 集成验证、进程级 shutdown/metrics、最终静态治理、health/close 收口和全量测试。
 
 ## 1. 决策
 
@@ -13,7 +13,7 @@ package name: @fastgpt/dal
 
 DAL（Data Access Layer）负责 FastGPT 的数据存储基础设施、持久化模型、持久化规则和 Repository 实现。它允许包含必要的业务数据语义，但不承载权限、API、工作流或外部服务编排。
 
-本次只抽取 Redis。MongoDB 与 Vector DB 是否迁移、何时迁移，必须在 Redis 迁移稳定后分别设计和 review，不能借创建 DAL package 顺带搬迁。
+本路线只处理 Redis。MongoDB 与 Vector DB 不纳入当前项目，也不在 Redis 完成后自动启动迁移。
 
 ## 2. 为什么采用 DAL package
 
@@ -182,7 +182,7 @@ configureRedisRuntime({
 - 测试通过 factory 注入 runtime、adapter 或 Repository，不修改生产全局状态。
 - Next.js 热重载需要复用进程状态时，由 DAL 自己维护单一 runtime context；不得继续增加多个零散 `global.*` 字段。
 - runtime context 可以内部使用 `Map` 按 data source/instance id 管理资源，但 Map 不作为公共业务 API。
-- `global.redisClient` 仅作为迁移期 legacy client 接管入口，最终随 legacy command 删除。
+- Redis Runtime 的热重载状态统一由 DAL context 的 `Map` 持有，不再使用 `global.redisClient` 等散落全局字段。
 
 ## 8. 导出边界
 
@@ -353,6 +353,62 @@ Application Service 负责把 Repository 错误映射成 HTTP、工作流或产�
 
 本阶段已实现并通过定向验证，当前停在代码 review；OutLink Stream 和 polling counter 仍未开始。
 
+### DAL-R5B：OutLink Stream Repository
+
+- 迁移 Wechat/Wecom OutLink 共用的字符串响应缓存，不迁移 Redis Stream Resume、前端轮询或通道加密协议。
+- 保持 logical key `cache:streamResponse:${streamId}`、物理 key `fastgpt:cache:streamResponse:${streamId}`、原始字符串 value、初始化 120 秒 TTL、内容/结束标记 60 秒 TTL 和 `[DONE]` 协议。
+- Repository 收拢 key 构造、原子 `APPEND + EXPIRE`、读取和删除；service/pro 调用方不再使用 legacy cache helper 或拼接 cache key。
+- `APPEND + EXPIRE` 使用同一 Redis 事务，避免追加成功但 TTL 设置失败而留下无期限响应；追加错误继续向上抛出，读取和删除保持原有错误传播语义。
+- 不改变空值、结束标记、响应加密、SSE/Wechat/Wecom 编排；Wechat polling failure counter 留到 DAL-R5C。
+
+本阶段已完成实现并通过定向验证，当前停在代码 review，不提前进入 R5C。
+
+### DAL-R5C：Wechat Polling Failure Counter Repository
+
+- 迁移 Wechat polling worker 的连续失败计数，不迁移 BullMQ job 状态、退避调度或 Mongo OutLink 状态。
+- 保持 logical key `cache:wechat:publish:failures:${shareId}`、物理 key `fastgpt:cache:wechat:publish:failures:${shareId}`、整数 value 和 300 秒 TTL。
+- `increment` 使用单一 `INCRBY + EXPIRE NX` 事务，多个 worker 并发失败时不丢失计数；首次创建 key 建立 TTL，已有 key 只保留原 TTL。
+- 成功轮询仍写入 `0` 并刷新 300 秒 TTL；达到阈值后的清理仍显式删除 key。Redis 错误继续向上抛出，保持 worker 失败/退避语义。
+- Repository 内部负责 shareId 校验和 key 构造；worker 不再读取、解析或拼接 Redis cache key。
+
+本阶段已完成实现并通过定向验证，当前停在代码 review，不提前进入 DAL-R6。
+
+### DAL-R6A：Legacy Cache/Scan Facade Cleanup
+
+- 删除已无生产调用方的 `packages/service/common/redis/cache.ts`、`scan.ts` 及其旧定向测试。
+- 删除仅为 `scan.ts` 提供 Runtime 绑定的 service `adapter.ts`，避免保留无消费者的迁移期入口；DAL 自有 adapter 和 Repository 不受影响。
+- 从 `@fastgpt/service/common/redis` 移除 `getAllKeysByPrefix` 导出；runtime、BullMQ、health、Stream Resume 绑定保持不变。
+- 不改变任何 Redis logical/physical key、TTL、value、错误传播或连接生命周期合同。
+
+本阶段已完成实现并通过定向验证，当前停在代码 review，不提前进入 DAL-R6B。
+
+### DAL-R6B：Stream Resume Binding Cleanup
+
+- `packages/service/core/chat/resume.ts` 只依赖 DAL Stream Resume Repository，不再创建 service-side adapter，也不再读取 `getGlobalRedisConnection`、physical client 或 Runtime factory。
+- Redis `INFO MEMORY` 由 DAL adapter 以 typed `server.memoryInfo` operation 执行，统一返回解析、超时和 operation error；Stream Resume service 继续保留内存压力缓存、阈值和 fail-open 编排。
+- blocking connection 由 DAL 默认 adapter/Runtime 创建并由 Repository 生命周期管理；业务层不接触 raw client，原有 XREAD、SSE 和连接释放合同保持不变。
+- 测试 Redis factory 按 command 与 blocking/worker 角色模拟独立连接，避免测试 mock 掩盖真实连接边界。
+
+本阶段已完成实现并通过定向验证，当前停在代码 review，不提前进入 DAL-R6C。
+
+### DAL-R6C：Service Redis Facade Narrowing
+
+- 从 `@fastgpt/service/common/redis` 删除无生产消费者的 physical client、blocking factory、connection snapshot、DAL error/key 转发和 queue/worker barrel 导出。
+- 从 service runtime binding 删除对应的 physical/blocking/snapshot helper；BullMQ 继续从 `common/redis/runtime` 使用 queue/worker factory，health/close 入口保持不变。
+- 迁移期 `getGlobalRedisConnection` 与 `global.redisClient` 接管继续保留，作为下一阶段 hot-reload/legacy client 清理的独立边界，不在本阶段改变其生命周期。
+- 不改变 Repository、Redis key/TTL/value、BullMQ connection role 或 Runtime close 合同。
+
+本阶段已完成实现并通过定向验证，当前停在代码 review，不提前进入 DAL-R6D。
+
+### DAL-R6D：Legacy Global Client Removal
+
+- 删除 Runtime 的 `legacy-command` role、隐式 `keyPrefix=fastgpt:`、`existingCommandClient` 接管参数和 `getLegacyCommandConnection`，所有 command 连接均只服务 DAL adapter 的显式 physical key 操作。
+- 删除 service `getGlobalRedisConnection`、`global.redisClient` 类型声明及 orphan client 清理；`@fastgpt/service/common/redis` 仅保留 health/close 应用生命周期入口，BullMQ factory 继续从 `common/redis/runtime` 使用。
+- 测试夹具改为持有模块级共享 mock client，测试清理和断言通过 DAL Runtime 的 command connection 完成，不再初始化或依赖全局 Redis client。
+- 不改变 Repository 的 logical key、物理 `fastgpt:` 前缀、TTL、value、错误降级、BullMQ 生命周期或 Runtime 有序关闭合同；本阶段不删除应用 health/close binding。
+
+本阶段已完成实现、通过代码 review，并已提交根仓库和 `pro` 子模块；不提前进入后续治理阶段。
+
 ### DAL-R4 后续：剩余 Redis Repository
 
 - 按风险逐个迁移限流、session、lease、stream 等能力。
@@ -360,11 +416,11 @@ Application Service 负责把 Repository 错误映射成 HTTP、工作流或产�
 
 ### DAL-R4：legacy 清理与治理
 
-- 删除 service Redis facade、legacy command、`global.redisClient` 和重复 mock。
-- 清零业务层 raw ioredis、`getGlobalRedisConnection` 和手工 physical key。
-- 完成集成测试、指标、故障演练和全量测试。
+- 完成 Redis 7.2 集成验证、进程级 shutdown hook 和 Redis metrics。
+- 完成 raw ioredis、旧 Store、service Redis adapter 和手工 physical key 的最终静态清零。
+- 将 health/close 迁移到 DAL，删除剩余 service binding；最后运行全量测试。
 
-MongoDB 和 Vector DB 不属于上述阶段。它们分别新增设计、调用清单和迁移计划后才能开始。
+当前设计在 Redis 治理完成后结束，不继续扩展 MongoDB 或 Vector DB。
 
 ## 12. 验收标准
 
@@ -374,7 +430,7 @@ MongoDB 和 Vector DB 不属于上述阶段。它们分别新增设计、调用�
 - pro 专属 Repository 保留在 pro，但只依赖 shared DAL 基础能力。
 - 数据格式、物理 key、TTL 和故障语义在纯迁移阶段保持兼容。
 - DAL 没有 capability registry、通用 Repository 基类或未使用的预制能力。
-- MongoDB/Vector DB 未经独立设计不会被顺带迁移。
+- 当前验收范围仅包含 Redis DAL，不包含 MongoDB 或 Vector DB。
 
 ## 13. 已确认与待确认
 
@@ -385,8 +441,4 @@ MongoDB 和 Vector DB 不属于上述阶段。它们分别新增设计、调用�
 3. 当前只继续 Redis，不迁移 MongoDB 和 Vector DB。
 4. capability 层收缩为 Repository 驱动的最小 adapter。
 
-后续专项确认：
-
-1. MongoDB Model、entity 与 transaction helper 的最终边界。
-2. Vector driver 与 embedding/application service 的拆分边界。
-3. 是否需要跨 Redis/Mongo/Vector 的统一 observability contract；出现真实重复前不预建。
+后续专项确认：无。当前只继续 Redis 收尾。

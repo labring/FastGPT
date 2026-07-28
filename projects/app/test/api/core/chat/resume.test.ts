@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
 import {
   ChatGenerateStatusEnum,
@@ -90,8 +90,9 @@ const setupRedisStreamMock = ({
   historyItems: StreamEntry[];
   liveResponses?: ([string, StreamEntry[]][] | null)[];
 }) => {
-  const redis = getGlobalRedisConnection() as any;
+  const redis = getRedisRuntime().getCommandConnection() as any;
   const blockingRedis = {
+    on: vi.fn().mockReturnThis(),
     call: vi.fn(async (...args: any[]) => {
       const command = args[0];
 
@@ -226,7 +227,7 @@ describe('stream resume api', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.flushdb();
     delete redis.call;
     delete redis.duplicate;
@@ -348,7 +349,7 @@ describe('stream resume api', () => {
       hasMoreNext: false
     } as any);
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     redis.call = vi.fn();
 
     const result = await Call(handler, {
@@ -417,7 +418,7 @@ describe('stream resume api', () => {
       })
     );
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     redis.call = vi.fn();
     redis.duplicate = vi.fn();
 
@@ -568,7 +569,7 @@ describe('stream resume api', () => {
         hasMoreNext: false
       } as any);
 
-      const redis = getGlobalRedisConnection() as any;
+      const redis = getRedisRuntime().getCommandConnection() as any;
       const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
@@ -661,7 +662,7 @@ describe('stream resume api', () => {
         })
       );
 
-      const redis = getGlobalRedisConnection() as any;
+      const redis = getRedisRuntime().getCommandConnection() as any;
       const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
       redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
@@ -759,7 +760,7 @@ describe('stream resume helpers', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.flushdb();
     redis.call = vi.fn(async () => '1-0');
   });
@@ -772,7 +773,7 @@ describe('stream resume helpers', () => {
   it('should mirror raw response writes to redis stream in order and throttle ttl refreshes', async () => {
     vi.useFakeTimers();
     try {
-      const redis = getGlobalRedisConnection() as any;
+      const redis = getRedisRuntime().getCommandConnection() as any;
       redis.del.mockClear?.();
 
       const mirror = mirrorChatStream({
@@ -836,7 +837,7 @@ describe('stream resume helpers', () => {
   });
 
   it('should set short ttl after shrinkTTLAfterComplete', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId });
     const mirror = mirrorChatStream({ teamId, ...appSource, chatId });
     await mirror.enqueueRaw('data: x\n\n');
@@ -855,7 +856,7 @@ describe('stream resume helpers', () => {
   });
 
   it('should clear old redis mirror when mirror starts (before first chunk)', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     redis.del.mockClear?.();
     const { keyOfStream } = getStreamResumeRedisKeys({
       teamId,
@@ -887,7 +888,7 @@ describe('stream resume helpers', () => {
   });
 
   it('should continue mirroring chunks after the original response is already closed', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     redis.del.mockClear?.();
 
     const mirror = mirrorChatStream({
@@ -912,7 +913,7 @@ describe('stream resume helpers', () => {
   });
 
   it('should require the opt-in header before creating a mirror', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
 
     const withoutHeader = await getStreamResumeMirror({
@@ -934,7 +935,7 @@ describe('stream resume helpers', () => {
   });
 
   it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
     redis.set.mockClear?.();
     redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);

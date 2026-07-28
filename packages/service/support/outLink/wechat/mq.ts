@@ -5,7 +5,7 @@ import type { WechatPollJobData, WechatReplyJobData } from './type';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
-import { delRedisCache, getRedisCache, setRedisCache } from '../../../common/redis/cache';
+import { wechatPollingFailureRepository } from '@fastgpt/dal/redis/repositories';
 import { groupMessagesByUser } from './messageParser';
 import { serviceEnv } from '../../../env';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
@@ -31,7 +31,6 @@ const POLL_HARD_TIMEOUT_MS = 120_000;
 // 续链在 worker 'completed' / 'failed' 事件里发起，此时 job 已从 Redis 删除，add 不会冲突
 const pollJobId = (shareId: string) => `wechat-poll:${shareId}`;
 const replyJobId = (shareId: string, lastMsgId: string) => `wechat-reply:${shareId}:${lastMsgId}`;
-const failKey = (shareId: string) => `wechat:publish:failures:${shareId}`;
 
 /* ============ Poll Worker 处理器 ============ */
 // 设计约定：
@@ -107,8 +106,7 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
       errmsg: resp.errmsg
     });
 
-    const failures = Number((await getRedisCache(failKey(shareId))) ?? '0') + 1;
-    await setRedisCache(failKey(shareId), String(failures), 300);
+    const failures = await wechatPollingFailureRepository.increment(shareId);
 
     if (failures >= MAX_CONSECUTIVE_FAILURES) {
       await MongoOutLink.updateOne(
@@ -116,14 +114,14 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
         { $set: { 'app.status': 'error', 'app.lastError': resp.errmsg || 'Too many failures' } }
       );
       logger.error('Too many failures, stop polling', { shareId, failures });
-      await delRedisCache(failKey(shareId));
+      await wechatPollingFailureRepository.clear(shareId);
     }
 
     // 抛错走 'failed' 事件 → 续链带退避
     throw new Error(`getUpdates API error: ret=${resp.ret} errcode=${resp.errcode}`);
   }
 
-  await setRedisCache(failKey(shareId), '0', 300);
+  await wechatPollingFailureRepository.reset(shareId);
 
   const hadMessages = Boolean(resp.msgs && resp.msgs.length > 0);
 

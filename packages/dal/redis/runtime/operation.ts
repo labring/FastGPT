@@ -13,6 +13,7 @@ export type RedisOperation =
   | 'string.get'
   | 'string.getOrSet'
   | 'string.getPair'
+  | 'string.appendWithTtl'
   | 'string.set'
   | 'string.setPair'
   | 'string.setIfAbsent'
@@ -23,10 +24,12 @@ export type RedisOperation =
   | 'hash.setWithTtl'
   | 'fixedWindow.consume'
   | 'number.incrementWithTtl'
+  | 'number.incrementIntegerWithTtl'
   | 'stream.append'
   | 'stream.expire'
   | 'stream.range'
-  | 'stream.read';
+  | 'stream.read'
+  | 'server.memoryInfo';
 
 type RedisOperationPolicy = {
   maxAttempts: 1 | 2;
@@ -59,6 +62,7 @@ const operationPolicies: Record<RedisOperation, RedisOperationPolicy> = {
   'string.get': readPolicy,
   'string.getOrSet': singleAttemptWritePolicy,
   'string.getPair': readPolicy,
+  'string.appendWithTtl': singleAttemptWritePolicy,
   'string.set': retryablePolicy,
   'string.setPair': singleAttemptWritePolicy,
   'string.setIfAbsent': singleAttemptWritePolicy,
@@ -69,10 +73,12 @@ const operationPolicies: Record<RedisOperation, RedisOperationPolicy> = {
   'hash.setWithTtl': singleAttemptWritePolicy,
   'fixedWindow.consume': singleAttemptWritePolicy,
   'number.incrementWithTtl': singleAttemptWritePolicy,
+  'number.incrementIntegerWithTtl': singleAttemptWritePolicy,
   'stream.append': singleAttemptWritePolicy,
   'stream.expire': singleAttemptWritePolicy,
   'stream.range': readPolicy,
-  'stream.read': readPolicy
+  'stream.read': readPolicy,
+  'server.memoryInfo': readPolicy
 };
 
 const transientErrorMessages = [

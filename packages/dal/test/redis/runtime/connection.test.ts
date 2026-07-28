@@ -34,44 +34,25 @@ const createClientFactory = () => {
   return { clients, factory };
 };
 
-const createCompatibleExistingClient = () => {
-  const client = new FakeRedisClient({
-    host: 'localhost',
-    port: 6379,
-    db: 0,
-    username: null,
-    password: null,
-    keyPrefix: 'fastgpt:'
-  });
-  client.status = 'ready';
-  return client;
-};
-
 afterEach(async () => {
   await closeRedisRuntime();
 });
 
 describe('createRedisRuntime', () => {
-  it('separates legacy logical-key and physical command clients with explicit policies', () => {
+  it('creates role-specific clients with explicit command policies', () => {
     const { clients, factory } = createClientFactory();
     const runtime = createRedisRuntime({
       redisUrl: 'redis://user:password@localhost:6379/3',
       clientFactory: factory
     });
 
-    const legacyCommand = runtime.getLegacyCommandConnection();
-    expect(runtime.getLegacyCommandConnection()).toBe(legacyCommand);
     const command = runtime.getCommandConnection();
     expect(runtime.getCommandConnection()).toBe(command);
     const blocking = runtime.createBlockingConnection();
     const queue = runtime.createQueueConnection();
     const worker = runtime.createWorkerConnection();
 
-    expect(clients).toHaveLength(5);
-    expect((legacyCommand as unknown as FakeRedisClient).options).toMatchObject({
-      keyPrefix: 'fastgpt:',
-      maxRetriesPerRequest: 3
-    });
+    expect(clients).toHaveLength(4);
     expect((command as unknown as FakeRedisClient).options).toMatchObject({
       autoResendUnfulfilledCommands: false,
       commandTimeout: 5_000,
@@ -92,7 +73,6 @@ describe('createRedisRuntime', () => {
     });
     expect((queue as unknown as FakeRedisClient).options.keyPrefix).toBeUndefined();
     expect(runtime.getConnectionSnapshot().map(({ role }) => role)).toEqual([
-      'legacy-command',
       'command',
       'blocking',
       'queue',
@@ -103,7 +83,7 @@ describe('createRedisRuntime', () => {
   it('tracks connection lifecycle and removes ended clients', () => {
     const { clients, factory } = createClientFactory();
     const runtime = createRedisRuntime({ redisUrl: 'localhost:6379', clientFactory: factory });
-    const client = runtime.getLegacyCommandConnection() as unknown as FakeRedisClient;
+    const client = runtime.getCommandConnection() as unknown as FakeRedisClient;
 
     client.emit('connect');
     expect(runtime.getConnectionSnapshot()[0]?.state).toBe('connected');
@@ -120,7 +100,7 @@ describe('createRedisRuntime', () => {
 
     expect(runtime.getConnectionSnapshot()).toEqual([]);
     expect(clients).toHaveLength(1);
-    expect(runtime.getLegacyCommandConnection()).not.toBe(client);
+    expect(runtime.getCommandConnection()).not.toBe(client);
   });
 
   it('supports health checks and rejects unexpected responses', async () => {
@@ -135,63 +115,6 @@ describe('createRedisRuntime', () => {
     await expect(runtime.checkHealth()).rejects.toThrow(
       'Redis health check returned an unexpected response'
     );
-  });
-
-  it('uses an existing command client for hot reload compatibility', () => {
-    const { factory } = createClientFactory();
-    const existingClient = createCompatibleExistingClient();
-    const existing = existingClient as unknown as RedisClient;
-    const runtime = createRedisRuntime({
-      redisUrl: 'redis://localhost',
-      clientFactory: factory,
-      existingCommandClient: existing
-    });
-
-    expect(runtime.getLegacyCommandConnection()).toBe(existing);
-    expect(runtime.getConnectionSnapshot()[0]?.role).toBe('legacy-command');
-    expect(runtime.getConnectionSnapshot()[0]?.state).toBe('ready');
-
-    existingClient.status = 'end';
-    existingClient.emit('end');
-    expect(runtime.getLegacyCommandConnection()).not.toBe(existing);
-  });
-
-  it('disconnects an incompatible hot-reload client instead of taking it over', () => {
-    const { clients, factory } = createClientFactory();
-    const existingClient = new FakeRedisClient({
-      host: 'other-redis',
-      port: 6379,
-      keyPrefix: 'wrong:'
-    });
-    existingClient.status = 'ready';
-    const runtime = createRedisRuntime({
-      redisUrl: 'redis://localhost',
-      clientFactory: factory,
-      existingCommandClient: existingClient as unknown as RedisClient
-    });
-
-    const command = runtime.getLegacyCommandConnection();
-
-    expect(command).not.toBe(existingClient);
-    expect(existingClient.disconnect).toHaveBeenCalledTimes(1);
-    expect(clients).toHaveLength(1);
-  });
-
-  it.each([
-    ['connect', 'connected'],
-    ['reconnecting', 'reconnecting'],
-    ['close', 'closed']
-  ] as const)('maps existing ioredis status %s to %s', (status, expected) => {
-    const existingClient = createCompatibleExistingClient();
-    existingClient.status = status;
-    const runtime = createRedisRuntime({
-      redisUrl: 'redis://localhost',
-      existingCommandClient: existingClient as unknown as RedisClient
-    });
-
-    runtime.getLegacyCommandConnection();
-
-    expect(runtime.getConnectionSnapshot()[0]?.state).toBe(expected);
   });
 
   it('releases tracked connections once under concurrent cleanup and ignores unknown clients', async () => {
@@ -233,32 +156,14 @@ describe('createRedisRuntime', () => {
     expect(() => runtime.getCommandConnection()).toThrow('Redis runtime is closed');
   });
 
-  it('closes an existing hot-reload client even when it was never claimed', async () => {
-    const existingClient = createCompatibleExistingClient();
-    const runtime = createRedisRuntime({
-      redisUrl: 'redis://localhost',
-      existingCommandClient: existingClient as unknown as RedisClient
-    });
-
-    await runtime.close();
-
-    expect(existingClient.quit).toHaveBeenCalledTimes(1);
-    expect(runtime.getConnectionSnapshot()).toEqual([]);
-  });
-
   it('runs before-close hooks and closes connections in role order', async () => {
     const { clients, factory } = createClientFactory();
     const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
     const order: string[] = [];
-    const legacy = runtime.getLegacyCommandConnection() as unknown as FakeRedisClient;
     const command = runtime.getCommandConnection() as unknown as FakeRedisClient;
     const blocking = runtime.createBlockingConnection() as unknown as FakeRedisClient;
     const queue = runtime.createQueueConnection() as unknown as FakeRedisClient;
     const worker = runtime.createWorkerConnection() as unknown as FakeRedisClient;
-    legacy.quit.mockImplementation(async () => {
-      order.push('legacy-command');
-      return 'OK';
-    });
     command.quit.mockImplementation(async () => {
       order.push('command');
       return 'OK';
@@ -288,7 +193,6 @@ describe('createRedisRuntime', () => {
     expect(order.indexOf('blocking')).toBeLessThan(order.indexOf('worker'));
     expect(order.indexOf('blocking')).toBeLessThan(order.indexOf('queue'));
     expect(order.indexOf('worker')).toBeLessThan(order.indexOf('command'));
-    expect(order.indexOf('queue')).toBeLessThan(order.indexOf('legacy-command'));
     expect(clients.every((client) => client.quit.mock.calls.length === 1)).toBe(true);
     expect(clients.every((client) => client.disconnect.mock.calls.length === 0)).toBe(true);
   });
@@ -355,7 +259,7 @@ describe('createRedisRuntime', () => {
   it('exposes reconnect policy without resending unknown command writes', () => {
     const { factory } = createClientFactory();
     const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
-    const client = runtime.getLegacyCommandConnection() as unknown as FakeRedisClient;
+    const client = runtime.getCommandConnection() as unknown as FakeRedisClient;
     const options = client.options as {
       retryStrategy: (attempt: number) => number;
       reconnectOnError: (error: Error) => boolean;

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FASTGPT_REDIS_PREFIX, getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
@@ -9,7 +10,6 @@ import {
   getStreamResumeRedisKeys,
   STREAM_RESUME_INACTIVE_MS
 } from '@fastgpt/service/core/chat/resume';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -40,7 +40,7 @@ describe('cleanStaleGeneratingChats', () => {
     vi.setSystemTime(baseNow);
     vi.clearAllMocks();
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.flushdb();
     redis.get.mockClear?.();
     vi.mocked(MongoChat.updateOne).mockResolvedValue({ modifiedCount: 1 } as any);
@@ -70,15 +70,15 @@ describe('cleanStaleGeneratingChats', () => {
     };
     mockGeneratingChats([activeChat, staleChat, missingChat]);
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     await redis.set(
-      getStreamResumeRedisKeys({ teamId, ...appSource, chatId: activeChat.chatId }).keyOfActive,
+      `${FASTGPT_REDIS_PREFIX}${getStreamResumeRedisKeys({ teamId, ...appSource, chatId: activeChat.chatId }).keyOfActive}`,
       JSON.stringify({ updatedAt: baseNow.getTime() - STREAM_RESUME_INACTIVE_MS + 1000 }),
       'EX',
       1800
     );
     await redis.set(
-      getStreamResumeRedisKeys({ teamId, ...appSource, chatId: staleChat.chatId }).keyOfActive,
+      `${FASTGPT_REDIS_PREFIX}${getStreamResumeRedisKeys({ teamId, ...appSource, chatId: staleChat.chatId }).keyOfActive}`,
       JSON.stringify({ updatedAt: baseNow.getTime() - STREAM_RESUME_INACTIVE_MS - 1000 }),
       'EX',
       1800
@@ -151,7 +151,7 @@ describe('cleanStaleGeneratingChats', () => {
     };
     mockGeneratingChats([inactiveOnlyChat, fallbackChat]);
 
-    const redis = getGlobalRedisConnection() as any;
+    const redis = getRedisRuntime().getCommandConnection() as any;
     redis.get.mockRejectedValueOnce(new Error('redis down'));
 
     const result = await cleanStaleGeneratingChats();

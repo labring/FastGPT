@@ -264,36 +264,17 @@ const createSharedMockRedisClient = () => {
   };
 };
 
-// Mock Redis connections to prevent connection errors in tests
-vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
-
-  return {
-    ...actual,
-    createQueueRedisConnection: vi.fn(createSharedMockRedisClient),
-    createWorkerRedisConnection: vi.fn(createSharedMockRedisClient),
-    getGlobalRedisConnection: vi.fn(() => {
-      if (!global.redisClient) {
-        global.redisClient = createSharedMockRedisClient() as any;
-      }
-      return global.redisClient;
-    }),
-    initRedisClient: vi.fn().mockResolvedValue(createSharedMockRedisClient())
-  };
-});
+const sharedRedisClient = createSharedMockRedisClient();
 
 vi.mock('@fastgpt/service/common/redis/runtime', () => {
-  const getClient = () => global.redisClient ?? createSharedMockRedisClient();
+  const getClient = () => sharedRedisClient;
   const runtime = {
     endpoint: { transport: 'tcp', host: 'localhost', port: 6379, tls: false },
     getState: () => 'open' as const,
-    getLegacyCommandConnection: vi.fn(getClient),
     getCommandConnection: vi.fn(getClient),
-    createBlockingConnection: () => (getClient() as any).duplicate(),
     createQueueConnection: createSharedMockRedisClient,
     createWorkerConnection: createSharedMockRedisClient,
     registerBeforeCloseHook: vi.fn(() => () => undefined),
-    getConnectionSnapshot: () => [],
     checkHealth: async () => ({
       latencyMs: 0,
       endpoint: { transport: 'tcp' as const, host: 'localhost', port: 6379, tls: false }
@@ -306,25 +287,20 @@ vi.mock('@fastgpt/service/common/redis/runtime', () => {
 
   return {
     getRedisRuntime: () => runtime,
-    getGlobalRedisConnection: getClient,
-    getPhysicalRedisConnection: getClient,
-    createBlockingRedisConnection: runtime.createBlockingConnection,
     createQueueRedisConnection: runtime.createQueueConnection,
     createWorkerRedisConnection: runtime.createWorkerConnection,
-    getRedisConnectionSnapshot: runtime.getConnectionSnapshot,
     checkRedisHealth: runtime.checkHealth,
     closeRedisConnections: runtime.close
   };
 });
 
-// Initialize global.redisClient with mock before any module imports it
-// This prevents getGlobalRedisConnection() from creating a real Redis client
-if (!global.redisClient) {
-  global.redisClient = createSharedMockRedisClient() as any;
-}
-
 // 通过公开配置入口让预加载的 service adapter 也使用内存 Redis，不依赖模块 mock 顺序。
 configureTestRedisRuntime({
   redisUrl: 'redis://default:mypassword@localhost:6379',
-  clientFactory: () => global.redisClient as any
+  clientFactory: (options) => {
+    const client = sharedRedisClient as any;
+    // Runtime 的 blocking/worker 角色必须拥有独立连接，测试中按 ioredis 的
+    // maxRetriesPerRequest=null 选项模拟 duplicate 生命周期，避免 XREAD 与 command 共用 mock。
+    return options.maxRetriesPerRequest === null ? (client.duplicate?.() ?? client) : client;
+  }
 });

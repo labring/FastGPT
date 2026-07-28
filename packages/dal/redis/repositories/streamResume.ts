@@ -46,6 +46,7 @@ export type StreamResumeRepositoryDependencies = {
     | 'delete'
     | 'expireStream'
     | 'get'
+    | 'getMemoryInfo'
     | 'rangeStream'
     | 'set'
   >;
@@ -180,6 +181,9 @@ export const createStreamResumeRepository = ({
         return;
       }
     },
+
+    /** 读取 Redis 内存水位；是否阻止创建镜像由 service 的运行策略决定。 */
+    getMemoryInfo: () => redis.getMemoryInfo(),
 
     setUnavailable,
 

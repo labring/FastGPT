@@ -9,13 +9,32 @@ import {
 import { executeRedisOperation } from './runtime/operation';
 import { parseOptionalTtlMs, parsePositiveInteger } from './runtime/validation';
 import { getRedisRuntime } from './runtime/connection';
-import { FiniteNumberSchema, NonNegativeSafeIntegerSchema } from './runtime/schema';
+import {
+  FiniteNumberSchema,
+  NonNegativeSafeIntegerSchema,
+  PositiveSafeIntegerSchema
+} from './runtime/schema';
 import { z } from 'zod';
 
 type RedisStoreClient = Pick<
   RedisClient,
-  'call' | 'del' | 'eval' | 'expire' | 'get' | 'hgetall' | 'multi' | 'scan' | 'set'
+  | 'append'
+  | 'call'
+  | 'del'
+  | 'eval'
+  | 'expire'
+  | 'get'
+  | 'hgetall'
+  | 'info'
+  | 'multi'
+  | 'scan'
+  | 'set'
 >;
+
+export type RedisMemoryInfo = {
+  usedMemory?: number;
+  maxMemory?: number;
+};
 
 export type RedisStreamEntry = {
   id: string;
@@ -32,6 +51,14 @@ export type RedisStoreAdapterDependencies = {
 
 const DEFAULT_SCAN_BATCH_SIZE = 1_000;
 const MAX_SCAN_BATCH_SIZE = 10_000;
+
+const parseRedisInfoNumber = (info: string, key: string) => {
+  const match = info.match(new RegExp(`(?:^|\\r?\\n)${key}:(\\d+)`));
+  if (!match) return undefined;
+
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : undefined;
+};
 
 const parseStreamFields = ({
   operation,
@@ -265,6 +292,65 @@ export const createRedisStoreAdapter = ({
           return [result[0][1] as string | null, result[1][1] as string | null] as const;
         }
       }),
+
+    /** 在同一事务中追加字符串并刷新 TTL，避免追加成功后留下无期限 key。 */
+    appendStringWithTtl: ({
+      key,
+      value,
+      ttlSeconds
+    }: {
+      key: RedisLogicalKey;
+      value: string;
+      ttlSeconds: number;
+    }) => {
+      const operation = 'string.appendWithTtl' as const;
+      if (typeof value !== 'string') {
+        throw new RedisInvalidArgumentError({
+          operation,
+          message: 'value must be a string'
+        });
+      }
+      const parsedTtlSeconds = parsePositiveInteger({
+        value: ttlSeconds,
+        operation,
+        field: 'ttlSeconds'
+      });
+
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const physicalKey = toPhysicalRedisKey(key);
+          const result = await getCommandClient()
+            .multi()
+            .append(physicalKey, value)
+            .expire(physicalKey, parsedTtlSeconds)
+            .exec();
+
+          if (
+            !Array.isArray(result) ||
+            result.length !== 2 ||
+            result.some((entry) => !Array.isArray(entry) || entry.length !== 2 || entry[0] !== null)
+          ) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis APPEND transaction returned an unsupported response'
+            });
+          }
+
+          const appendedLength = NonNegativeSafeIntegerSchema.safeParse(result[0][1]);
+          const expireResult = z.literal(1).safeParse(result[1][1]);
+          if (!appendedLength.success || !expireResult.success) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis APPEND transaction returned invalid values'
+            });
+          }
+
+          return appendedLength.data;
+        }
+      });
+    },
+
     /** 在一个事务中设置两个带相同 TTL 的字符串 key，保证成对刷新。 */
     setPair: ({
       first,
@@ -378,6 +464,66 @@ export const createRedisStoreAdapter = ({
         }
       });
     },
+
+    /** 原子递增整数计数，并只在 key 没有 TTL 时建立 TTL。 */
+    incrementIntegerWithTtl: ({
+      key,
+      increment,
+      ttlSeconds
+    }: {
+      key: RedisLogicalKey;
+      increment: number;
+      ttlSeconds: number;
+    }) => {
+      const operation = 'number.incrementIntegerWithTtl' as const;
+      const parsedIncrement = PositiveSafeIntegerSchema.safeParse(increment);
+      if (!parsedIncrement.success) {
+        throw new RedisInvalidArgumentError({
+          operation,
+          message: 'increment must be a positive safe integer'
+        });
+      }
+      const parsedTtlSeconds = parsePositiveInteger({
+        value: ttlSeconds,
+        operation,
+        field: 'ttlSeconds'
+      });
+
+      return executeRedisOperation({
+        operation,
+        execute: async () => {
+          const physicalKey = toPhysicalRedisKey(key);
+          const result = await getCommandClient()
+            .multi()
+            .incrby(physicalKey, parsedIncrement.data)
+            .expire(physicalKey, parsedTtlSeconds, 'NX')
+            .exec();
+
+          if (
+            !Array.isArray(result) ||
+            result.length !== 2 ||
+            result.some((entry) => !Array.isArray(entry) || entry.length !== 2 || entry[0] !== null)
+          ) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis integer increment transaction returned an unsupported response'
+            });
+          }
+
+          const currentValue = NonNegativeSafeIntegerSchema.safeParse(result[0][1]);
+          const expireResult = z.union([z.literal(0), z.literal(1)]).safeParse(result[1][1]);
+          if (!currentValue.success || !expireResult.success) {
+            throw new RedisInvalidResponseError({
+              operation,
+              message: 'Redis integer increment transaction returned invalid values'
+            });
+          }
+
+          return currentValue.data;
+        }
+      });
+    },
+
     get: (key: RedisLogicalKey) =>
       executeRedisOperation({
         operation: 'string.get',
@@ -390,6 +536,26 @@ export const createRedisStoreAdapter = ({
             });
           }
           return value;
+        }
+      }),
+
+    /** 读取 Redis memory section；缺失字段保留为 undefined，由上层决定 fail-open 策略。 */
+    getMemoryInfo: (): Promise<RedisMemoryInfo> =>
+      executeRedisOperation({
+        operation: 'server.memoryInfo',
+        execute: async () => {
+          const info = await getCommandClient().info('memory');
+          if (typeof info !== 'string') {
+            throw new RedisInvalidResponseError({
+              operation: 'server.memoryInfo',
+              message: 'Redis INFO MEMORY returned an unsupported response'
+            });
+          }
+
+          return {
+            usedMemory: parseRedisInfoNumber(info, 'used_memory'),
+            maxMemory: parseRedisInfoNumber(info, 'maxmemory')
+          };
         }
       }),
 

@@ -18,6 +18,7 @@ const createRedis = () => ({
   delete: vi.fn().mockResolvedValue(false),
   expireStream: vi.fn().mockResolvedValue(undefined),
   get: vi.fn().mockResolvedValue(null),
+  getMemoryInfo: vi.fn().mockResolvedValue({}),
   rangeStream: vi.fn().mockResolvedValue([]),
   set: vi.fn().mockResolvedValue(undefined)
 });
@@ -69,6 +70,21 @@ describe('StreamResumeRepository', () => {
     await expect(repository.getActive(params)).resolves.toBeUndefined();
     redis.get.mockResolvedValueOnce('{bad');
     await expect(repository.getUnavailable(params)).resolves.toBeUndefined();
+  });
+
+  it('exposes typed Redis memory info without exposing a client', async () => {
+    const redis = createRedis();
+    redis.getMemoryInfo.mockResolvedValue({ usedMemory: 42, maxMemory: 100 });
+    const repository = createStreamResumeRepository({
+      redis,
+      logger,
+      streamTtlSeconds: 300,
+      postCompleteTtlSeconds: 30,
+      ttlTouchIntervalMs: 1_000
+    });
+
+    await expect(repository.getMemoryInfo()).resolves.toEqual({ usedMemory: 42, maxMemory: 100 });
+    expect(redis.getMemoryInfo).toHaveBeenCalledTimes(1);
   });
 
   it('clears old state before sequentially appending raw chunks and throttles touches', async () => {

@@ -1,10 +1,9 @@
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { parseRedisConnectionConfig, type RedisEndpoint } from './config';
-import { FASTGPT_REDIS_PREFIX } from './keyspace';
 
 export type RedisClient = Redis;
-export type RedisConnectionRole = 'legacy-command' | 'command' | 'blocking' | 'queue' | 'worker';
+export type RedisConnectionRole = 'command' | 'blocking' | 'queue' | 'worker';
 export type RedisConnectionState =
   | 'connecting'
   | 'connected'
@@ -57,10 +56,6 @@ const roleOptions: Record<
     >
   >
 > = {
-  'legacy-command': {
-    enableOfflineQueue: true,
-    maxRetriesPerRequest: 3
-  },
   command: {
     enableOfflineQueue: true,
     maxRetriesPerRequest: 1,
@@ -122,15 +117,13 @@ const getConnectionOptions = ({
     return shouldReconnect;
   },
   connectTimeout: 10_000,
-  ...roleOptions[role],
-  ...(role === 'legacy-command' ? { keyPrefix: FASTGPT_REDIS_PREFIX } : {})
+  ...roleOptions[role]
 });
 
 export type RedisRuntimeOptions = {
   redisUrl: string;
   logger?: RedisRuntimeLogger;
   clientFactory?: RedisClientFactory;
-  existingCommandClient?: RedisClient;
   healthCheckTimeoutMs?: number;
   closeTimeoutMs?: number;
   beforeCloseTimeoutMs?: number;
@@ -153,43 +146,15 @@ const runWithTimeout = <T>({
 };
 
 /**
- * 判断热重载遗留 client 是否与当前 Runtime 的连接目标及 legacy keyPrefix 完全一致。
- * 不兼容 client 不能被接管，否则配置变更后可能继续访问旧实例或无前缀 keyspace。
- */
-const isCompatibleExistingCommandClient = ({
-  client,
-  endpointOptions
-}: {
-  client: RedisClient;
-  endpointOptions: RedisOptions;
-}) => {
-  const actualOptions = client.options;
-  const isSameEndpoint = endpointOptions.path
-    ? actualOptions.path === endpointOptions.path
-    : actualOptions.host === endpointOptions.host &&
-      actualOptions.port === endpointOptions.port &&
-      Boolean(actualOptions.tls) === Boolean(endpointOptions.tls);
-
-  return (
-    isSameEndpoint &&
-    (actualOptions.db ?? 0) === (endpointOptions.db ?? 0) &&
-    (actualOptions.username ?? undefined) === (endpointOptions.username ?? undefined) &&
-    (actualOptions.password ?? undefined) === (endpointOptions.password ?? undefined) &&
-    actualOptions.keyPrefix === FASTGPT_REDIS_PREFIX
-  );
-};
-
-/**
  * 创建进程级 Redis Runtime。
  *
- * Runtime 统一管理不同角色的连接、状态、健康检查和关闭。业务 command 连接在 Phase 1
- * 继续保留 keyPrefix 兼容；后续业务 Store 迁移完成后再移除隐式前缀。
+ * Runtime 统一管理不同角色的连接、状态、健康检查和关闭。所有 command 操作都经过
+ * DAL adapter 显式转换 physical key，不再创建带隐式 keyPrefix 的 legacy client。
  */
 export const createRedisRuntime = ({
   redisUrl,
   logger = silentLogger,
   clientFactory = (options) => new Redis(options),
-  existingCommandClient,
   healthCheckTimeoutMs = DEFAULT_HEALTH_CHECK_TIMEOUT_MS,
   closeTimeoutMs = DEFAULT_CLOSE_TIMEOUT_MS,
   beforeCloseTimeoutMs = DEFAULT_BEFORE_CLOSE_TIMEOUT_MS
@@ -199,9 +164,7 @@ export const createRedisRuntime = ({
   const connectionClosePromises = new Map<RedisClient, Promise<void>>();
   const beforeCloseHooks = new Map<string, RedisBeforeCloseHook['close']>();
   let nextConnectionId = 1;
-  let legacyCommandClient: RedisClient | undefined;
   let commandClient: RedisClient | undefined;
-  let reusableCommandClient = existingCommandClient;
   let state: 'open' | 'closing' | 'closed' = 'open';
   let closePromise: Promise<void> | undefined;
 
@@ -252,9 +215,6 @@ export const createRedisRuntime = ({
     client.on('end', () => {
       updateConnection(client, 'ended');
       connections.delete(client);
-      if (legacyCommandClient === client) {
-        legacyCommandClient = undefined;
-      }
       if (commandClient === client) {
         commandClient = undefined;
       }
@@ -273,28 +233,6 @@ export const createRedisRuntime = ({
     assertOpen();
     const client = clientFactory(getConnectionOptions({ endpointOptions, role, logger }));
     return defineConnection(client, role);
-  };
-
-  const getLegacyCommandConnection = () => {
-    assertOpen();
-    if (!legacyCommandClient) {
-      const existingClient = reusableCommandClient;
-      reusableCommandClient = undefined;
-      const reusableClient = (() => {
-        if (!existingClient || existingClient.status === 'end') return;
-        if (isCompatibleExistingCommandClient({ client: existingClient, endpointOptions })) {
-          return existingClient;
-        }
-
-        logger.warn('Existing Redis command connection is incompatible, replacing it');
-        existingClient.disconnect();
-      })();
-
-      legacyCommandClient = reusableClient
-        ? defineConnection(reusableClient, 'legacy-command')
-        : createConnection('legacy-command');
-    }
-    return legacyCommandClient;
   };
 
   const getCommandConnection = () => {
@@ -329,9 +267,6 @@ export const createRedisRuntime = ({
       } finally {
         connections.delete(client);
         connectionClosePromises.delete(client);
-        if (legacyCommandClient === client) {
-          legacyCommandClient = undefined;
-        }
         if (commandClient === client) {
           commandClient = undefined;
         }
@@ -356,11 +291,6 @@ export const createRedisRuntime = ({
   const close = () => {
     if (closePromise) return closePromise;
 
-    const unclaimedExistingClient = reusableCommandClient;
-    reusableCommandClient = undefined;
-    if (unclaimedExistingClient && unclaimedExistingClient.status !== 'end') {
-      defineConnection(unclaimedExistingClient, 'legacy-command');
-    }
     state = 'closing';
     closePromise = (async () => {
       const hooks = Array.from(beforeCloseHooks.entries());
@@ -380,7 +310,7 @@ export const createRedisRuntime = ({
       const closeRoleGroups: readonly RedisConnectionRole[][] = [
         ['blocking'],
         ['worker', 'queue'],
-        ['command', 'legacy-command']
+        ['command']
       ];
       for (const roles of closeRoleGroups) {
         const clients = Array.from(connections.entries())
@@ -397,7 +327,6 @@ export const createRedisRuntime = ({
   return {
     endpoint,
     getState: () => state,
-    getLegacyCommandConnection,
     getCommandConnection,
     createBlockingConnection: () => createConnection('blocking'),
     createQueueConnection: () => createConnection('queue'),
