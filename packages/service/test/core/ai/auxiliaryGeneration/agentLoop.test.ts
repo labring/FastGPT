@@ -96,7 +96,10 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
           systemPrompt: 'helper prompt',
           messages: [{ role: 'user', content: '创建客服 Agent' }],
           providerState,
-          userAnswer: JSON.stringify({ answers: ['小范围'] })
+          continuation: {
+            type: 'ask',
+            answer: JSON.stringify({ answers: ['小范围'] })
+          }
         }
       })
     );

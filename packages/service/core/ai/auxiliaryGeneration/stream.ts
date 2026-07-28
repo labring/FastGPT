@@ -9,6 +9,7 @@ import { getStreamResumeMirror } from '../../chat/resume';
 import { createChatCompletionDeltaResponse } from '@fastgpt/global/core/ai/llm/utils';
 
 export type AuxiliaryGenerationStreamWriter = (params: {
+  id?: string;
   event?: `${AuxiliaryGenerationEventEnum}` | string;
   data: string | object;
 }) => void;
@@ -64,8 +65,14 @@ export const createAuxiliaryGenerationStream = async ({
     }
   });
 
-  const write: AuxiliaryGenerationStreamWriter = ({ event, data }) => {
-    const payload = typeof data === 'string' ? data : JSON.stringify(data);
+  const write: AuxiliaryGenerationStreamWriter = ({ id, event, data }) => {
+    const payload =
+      typeof data === 'string'
+        ? data
+        : JSON.stringify({
+            ...data,
+            ...(id ? { responseValueId: id } : {})
+          });
     sseContext.write({ event, data: payload });
   };
 

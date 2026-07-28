@@ -91,7 +91,13 @@ export async function runAuxiliaryGenerationAgentLoop({
       systemPrompt,
       messages,
       providerState,
-      userAnswer
+      continuation:
+        providerState && userAnswer !== undefined
+          ? {
+              type: 'ask',
+              answer: userAnswer
+            }
+          : undefined
     }
   });
 

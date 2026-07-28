@@ -5,5 +5,10 @@
  */
 export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 export { getAgentSkillInfos, injectAgentSkillFilesToSandbox } from './core';
-export { getBuiltinSkillsRootPath, syncBuiltinSkillsToSandbox } from './builtin';
+export {
+  createBuiltinSkillPrepareAction,
+  getBuiltinSkillsRootPath,
+  syncBuiltinSkillsToSandbox
+} from './builtin';
+export type { BuiltinSkillPrepareAction, BuiltinSkillPrepareContext } from './builtin';
 export { runAgentSkillVersionEntrypoints } from './entrypoint';

@@ -646,7 +646,10 @@ describe('runFastAgentMainLoop', () => {
           ],
           askToolCallId: 'call_ask'
         },
-        userAnswer: ''
+        continuation: {
+          type: 'ask',
+          answer: ''
+        }
       }
     });
 
@@ -655,6 +658,69 @@ describe('runFastAgentMainLoop', () => {
       tool_call_id: 'call_ask',
       content: 'none'
     });
+  });
+
+  it('appends new file messages after the ask tool response when resuming', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_after_file_resume',
+        content: 'continued with file'
+      })
+    ]);
+    const resumeMessage = {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: [
+        { type: 'text' as const, text: '<system-reminder>New file</system-reminder>' },
+        {
+          type: 'file_url' as const,
+          name: 'answer.mp4',
+          url: 'https://files.example/answer.mp4',
+          fileType: 'video' as const
+        }
+      ]
+    };
+
+    await runFastAgentMainLoop({
+      runtime: createRuntime(),
+      input: {
+        messages: [],
+        pendingMainContext: {
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              tool_calls: [
+                {
+                  id: 'call_ask_file',
+                  type: 'function',
+                  function: {
+                    name: 'ask_agent',
+                    arguments: '{}'
+                  }
+                }
+              ]
+            }
+          ],
+          askToolCallId: 'call_ask_file'
+        },
+        continuation: {
+          type: 'ask',
+          answer: 'Use this clip',
+          additionalMessages: [resumeMessage]
+        }
+      }
+    });
+
+    const requestMessages = createLLMResponseMock.mock.calls[0][0].body.messages;
+    const toolResponseIndex = requestMessages.findIndex(
+      (message: any) => message.role === 'tool' && message.tool_call_id === 'call_ask_file'
+    );
+    const resumeMessageIndex = requestMessages.findIndex(
+      (message: any) =>
+        message.role === 'user' && JSON.stringify(message.content).includes('answer.mp4')
+    );
+    expect(toolResponseIndex).toBeGreaterThanOrEqual(0);
+    expect(resumeMessageIndex).toBe(toolResponseIndex + 1);
+    expect(requestMessages[resumeMessageIndex]).toEqual(resumeMessage);
   });
 
   it('does not restore active plan state from a compressed context in a new turn', async () => {
@@ -768,7 +834,10 @@ describe('runFastAgentMainLoop', () => {
           askToolCallId: 'call_ask',
           activePlan
         },
-        userAnswer: 'Continue'
+        continuation: {
+          type: 'ask',
+          answer: 'Continue'
+        }
       }
     });
 
