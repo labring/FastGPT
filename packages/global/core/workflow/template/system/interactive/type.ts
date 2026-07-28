@@ -149,6 +149,8 @@ export const UserInputInteractiveSchema = z.object({
   params: z.object({
     description: z.string(),
     inputForm: z.array(UserInputFormItemSchema),
+    // 辅助生成的追问复用 userInput 提交协议，仅使用独立 UI 呈现。
+    renderMode: z.literal('agentAsk').optional(),
     submitted: z.boolean().optional()
   })
 });

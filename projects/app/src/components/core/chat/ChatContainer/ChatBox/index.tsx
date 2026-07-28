@@ -16,13 +16,15 @@ import { postStopV2Chat } from '@/web/core/chat/api';
 import type { ChatBoxInputType, StopChatFnResult, ChatGenerateStatusChangeHandler } from './type';
 import type { StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
+import AgentAskComposer from './Input/AgentAskComposer';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
-import { getInteractiveByHistories } from './utils/interactive';
+import { getInteractiveByHistories, isAgentAskUserInput } from './utils/interactive';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatInputWrapperStyle,
   ChatTypeEnum,
@@ -465,7 +467,12 @@ const ChatBox = ({
     finishChatGenerateStatus
   });
 
-  const canRenderChatInput = onStartChat && chatStarted && active && canSendQuery;
+  const activeInteractive = lastInteractive
+    ? extractDeepestInteractive(lastInteractive)
+    : undefined;
+  const isAgentAskPending = isAgentAskUserInput(lastInteractive);
+  const canRenderChatInput =
+    onStartChat && chatStarted && active && (canSendQuery || isAgentAskPending);
   const canSendPrompt = canRenderChatInput && !isRoundPending;
   const canRenderScrollToBottomButton =
     (chatType === ChatTypeEnum.chat ||
@@ -717,18 +724,22 @@ const ChatBox = ({
                   onClick={() => scrollToBottom('smooth')}
                 />
 
-                <ChatInput
-                  onSendMessage={sendPromptWithDisabledGuard}
-                  lastInteractive={lastInteractive}
-                  onStopChat={requestStopChat}
-                  onStopSettled={handleStopSettled}
-                  enableInputGuide={resolvedFeatures.inputGuide}
-                  enableVoiceInput={resolvedFeatures.voice}
-                  disableSend={isRoundPending}
-                  TextareaDom={TextareaDom}
-                  resetInputVal={resetInputVal}
-                  chatForm={chatForm}
-                />
+                {isAgentAskPending && activeInteractive?.type === 'userInput' ? (
+                  <AgentAskComposer interactive={activeInteractive} />
+                ) : (
+                  <ChatInput
+                    onSendMessage={sendPromptWithDisabledGuard}
+                    lastInteractive={lastInteractive}
+                    onStopChat={requestStopChat}
+                    onStopSettled={handleStopSettled}
+                    enableInputGuide={resolvedFeatures.inputGuide}
+                    enableVoiceInput={resolvedFeatures.voice}
+                    disableSend={isRoundPending}
+                    TextareaDom={TextareaDom}
+                    resetInputVal={resetInputVal}
+                    chatForm={chatForm}
+                  />
+                )}
               </Box>
             </Box>
           )}

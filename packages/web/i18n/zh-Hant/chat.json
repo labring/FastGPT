@@ -288,6 +288,13 @@
   "interactive.user_select.collapse_options": "收起選項",
   "interactive.user_select.expand_options": "展開選項",
   "interactive.user_select.selected": "已選擇：{{answer}}",
+  "interactive.agent_ask.question_progress": "問題 {{current}} / {{total}}",
+  "interactive.agent_ask.custom_answer": "告訴 FastGPT 你的想法",
+  "interactive.agent_ask.skip": "跳過",
+  "interactive.agent_ask.skip_all": "跳過所有題目",
+  "interactive.agent_ask.unanswered": "未回答",
+  "interactive.agent_ask.waiting": "正在詢問",
+  "interactive.agent_ask.asked_questions": "已詢問 {{count}} 個問題",
   "view_all_citations": "查看全部",
   "view_citations": "檢視引用"
 }

@@ -6,6 +6,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   getInteractiveByHistories,
+  isAgentAskUserInput,
   persistAgentPlanAskAnswerToHistories,
   resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
@@ -92,13 +93,20 @@ const createUserSelectInteractive = (userSelectedVal?: string): WorkflowInteract
     }
   }) as WorkflowInteractiveResponseType;
 
-const createUserInputInteractive = (submitted = false): WorkflowInteractiveResponseType =>
+const createUserInputInteractive = ({
+  submitted = false,
+  renderMode
+}: {
+  submitted?: boolean;
+  renderMode?: 'agentAsk';
+} = {}): WorkflowInteractiveResponseType =>
   ({
     ...baseInteractive,
     type: 'userInput',
     params: {
       description: 'fill form',
       submitted,
+      renderMode,
       inputForm: [
         {
           type: FlowNodeInputTypeEnum.input,
@@ -151,6 +159,17 @@ describe('getInteractiveByHistories', () => {
       interactive,
       canSendQuery: true
     });
+  });
+});
+
+describe('isAgentAskUserInput', () => {
+  it('matches only pending userInput records marked for the agent ask renderer', () => {
+    expect(isAgentAskUserInput(createUserInputInteractive({ renderMode: 'agentAsk' }))).toBe(true);
+    expect(
+      isAgentAskUserInput(createUserInputInteractive({ renderMode: 'agentAsk', submitted: true }))
+    ).toBe(false);
+    expect(isAgentAskUserInput(createUserInputInteractive())).toBe(false);
+    expect(isAgentAskUserInput()).toBe(false);
   });
 });
 

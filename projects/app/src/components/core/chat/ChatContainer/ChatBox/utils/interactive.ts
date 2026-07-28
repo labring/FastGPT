@@ -10,6 +10,18 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
 import type { ChatSiteItemType } from '../type';
 
+/** 判断辅助生成是否正在等待带 agentAsk 渲染标识的 userInput 回答。 */
+export const isAgentAskUserInput = (interactive?: WorkflowInteractiveResponseType) => {
+  if (!interactive) return false;
+
+  const finalInteractive = extractDeepestInteractive(interactive);
+  return (
+    finalInteractive.type === 'userInput' &&
+    finalInteractive.params.renderMode === 'agentAsk' &&
+    !finalInteractive.params.submitted
+  );
+};
+
 /**
  * 用户回答 Agent 收集问题后，前端会立即追加 Human/AI 占位消息。
  * 这里把答案乐观写回对应的 agentPlanAskQuery，避免旧消息在失去 isLastChild 后丢失选中态。

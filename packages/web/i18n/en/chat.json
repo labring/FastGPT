@@ -292,6 +292,13 @@
   "interactive.user_select.collapse_options": "Collapse options",
   "interactive.user_select.expand_options": "Expand options",
   "interactive.user_select.selected": "Selected: {{answer}}",
+  "interactive.agent_ask.question_progress": "Question {{current}} of {{total}}",
+  "interactive.agent_ask.custom_answer": "Tell FastGPT what you have in mind",
+  "interactive.agent_ask.skip": "Skip",
+  "interactive.agent_ask.skip_all": "Skip all questions",
+  "interactive.agent_ask.unanswered": "Unanswered",
+  "interactive.agent_ask.waiting": "Asking questions",
+  "interactive.agent_ask.asked_questions": "Asked {{count}} questions",
   "view_all_citations": "View all",
   "view_citations": "View References"
 }

@@ -7,6 +7,7 @@ import React, { useCallback, useMemo } from 'react';
 import { resolveFormInputFileValues } from '../FormInputResult';
 import { FormInputComponent } from '../Interactive/InteractiveComponents';
 import InteractiveCard from './InteractiveCard';
+import RenderAgentAskInteractive from './RenderAgentAskInteractive';
 import { onSendPrompt } from './utils';
 
 /**
@@ -61,6 +62,10 @@ const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive(
   isLastChild: boolean;
 }) {
   const { t } = useTranslation();
+
+  if (interactive.params.renderMode === 'agentAsk') {
+    return <RenderAgentAskInteractive interactive={interactive} />;
+  }
 
   const defaultValues = useMemo(() => {
     return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
