@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   buildRuntimeSandboxAdapter: vi.fn(),
   buildSandboxResourceAdapter: vi.fn(),
   ensureConnectedSandboxRunning: vi.fn(),
+  resolveSandboxHome: vi.fn(),
   deleteSessionVolume: vi.fn(),
   getSessionVolumeConfig: vi.fn(),
   downloadLegacyWorkspaceArchive: vi.fn(),
@@ -74,6 +75,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () =>
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/lifecycle', () => ({
   ensureConnectedSandboxRunning: mocks.ensureConnectedSandboxRunning
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/home', () => ({
+  resolveSandboxHome: mocks.resolveSandboxHome
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
@@ -209,6 +214,7 @@ describe('legacy sandbox migration', () => {
     mocks.completeSandboxOperation.mockResolvedValue({ status: 'running' });
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.ensureConnectedSandboxRunning.mockResolvedValue(undefined);
+    mocks.resolveSandboxHome.mockResolvedValue('/home/sandbox');
     mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
     mocks.downloadLegacyWorkspaceArchive.mockResolvedValue(Buffer.from('zip'));
@@ -259,14 +265,41 @@ describe('legacy sandbox migration', () => {
       expect(mocks.restoreSandboxWorkspaceArchiveForMigration).toHaveBeenCalledWith(
         expect.objectContaining({
           sandbox: target.provider,
-          workDirectory: expect.stringMatching(/^\/workspace\/\.migration\/[0-9a-f]{40}$/),
+          workDirectory: expect.stringMatching(
+            /^\/home\/sandbox\/\.fastgpt\/tmp\/migration\/[0-9a-f]{40}$/
+          ),
           sandboxId: 'migration-test-old-1'
         })
       );
+      expect(mocks.resolveSandboxHome).toHaveBeenCalledWith(target.provider);
       const commitCommand = target.provider.execute.mock.calls[0][0] as string;
       expect(commitCommand).toContain("target='/workspace/sessions/chat%2F2'");
       expect(commitCommand).toContain('merge_without_overwrite');
       expect(commitCommand).toContain('[ ! -e "$target_path" ]');
+    });
+
+    it('rejects migration before restore when Sandbox HOME cannot be resolved', async () => {
+      const target = {
+        provider: createTargetProvider(),
+        getRuntimePaths: () => ({
+          workspaceRoot: '/workspace',
+          runtimeSkillsRoot: '/workspace/projects',
+          sessionWorkDirectory: '/workspace/sessions/chat-1'
+        })
+      } as any;
+      mocks.resolveSandboxHome.mockResolvedValueOnce(undefined);
+
+      await expect(
+        installLegacyWorkspaceArchive({
+          target,
+          legacySandboxId: 'migration-test-home-missing',
+          chatId: 'chat-1',
+          archiveBody: Buffer.from('zip')
+        })
+      ).rejects.toThrow('Failed to resolve sandbox HOME for migration staging directory');
+
+      expect(mocks.restoreSandboxWorkspaceArchiveForMigration).not.toHaveBeenCalled();
+      expect(target.provider.execute).not.toHaveBeenCalled();
     });
   });
 
@@ -621,7 +654,9 @@ describe('legacy sandbox migration', () => {
       );
       expect(mocks.restoreSandboxWorkspaceArchiveForMigration).toHaveBeenCalledWith(
         expect.objectContaining({
-          workDirectory: expect.stringMatching(/^\/workspace\/\.migration\/[0-9a-f]{40}$/),
+          workDirectory: expect.stringMatching(
+            /^\/home\/sandbox\/\.fastgpt\/tmp\/migration\/[0-9a-f]{40}$/
+          ),
           sandboxId: 'migration-test-skill-1'
         })
       );
@@ -652,7 +687,9 @@ describe('legacy sandbox migration', () => {
         userId: ChatSourceTypeEnum.skillEdit
       });
       const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'fastgpt-skill-migration-'));
+      const homeDirectory = await mkdtemp(path.join(tmpdir(), 'fastgpt-skill-migration-home-'));
       mocks.runtimeWorkDirectory.value = workspaceRoot;
+      mocks.resolveSandboxHome.mockResolvedValue(homeDirectory);
       await writeFile(path.join(workspaceRoot, 'shared.txt'), 'current');
       await mkdir(path.join(workspaceRoot, 'nested'), { recursive: true });
       await writeFile(path.join(workspaceRoot, 'nested', 'shared.txt'), 'current-nested');
@@ -704,6 +741,7 @@ describe('legacy sandbox migration', () => {
         );
       } finally {
         await rm(workspaceRoot, { recursive: true, force: true });
+        await rm(homeDirectory, { recursive: true, force: true });
       }
     });
   });
