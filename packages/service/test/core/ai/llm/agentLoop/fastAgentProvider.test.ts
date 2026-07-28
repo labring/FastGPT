@@ -141,6 +141,78 @@ describe('runFastAgentLoop', () => {
     ]);
   });
 
+  it('resumes ask through the unified continuation contract', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_after_ask_continuation',
+        content: 'continued with the uploaded file'
+      })
+    ]);
+    const emitEvent = vi.fn();
+    const additionalMessage = {
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: [
+        { type: 'text' as const, text: '<system-reminder>New file</system-reminder>' },
+        {
+          type: 'file_url' as const,
+          name: 'answer.mp4',
+          url: 'https://files.example/answer.mp4'
+        }
+      ]
+    };
+
+    const result = await runFastAgentLoop({
+      input: {
+        messages: [],
+        providerState: {
+          pendingMainContext: {
+            messages: [
+              {
+                role: ChatCompletionRequestMessageRoleEnum.Assistant,
+                content: null,
+                tool_calls: [
+                  {
+                    id: 'call_ask_continuation',
+                    type: 'function',
+                    function: {
+                      name: 'ask_user',
+                      arguments: '{}'
+                    }
+                  }
+                ]
+              }
+            ],
+            askToolCallId: 'call_ask_continuation'
+          }
+        },
+        continuation: {
+          type: 'ask',
+          answer: 'Use this clip',
+          additionalMessages: [additionalMessage]
+        }
+      },
+      runtime: createRuntime({ emitEvent })
+    });
+
+    expect(result.status).toBe('done');
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages.slice(0, 3)).toEqual([
+      expect.objectContaining({
+        role: 'assistant',
+        tool_calls: [expect.objectContaining({ id: 'call_ask_continuation' })]
+      }),
+      {
+        role: 'tool',
+        tool_call_id: 'call_ask_continuation',
+        content: 'Use this clip'
+      },
+      additionalMessage
+    ]);
+    expect(emitEvent).toHaveBeenCalledWith({
+      type: 'ask_resume',
+      answer: 'Use this clip'
+    });
+  });
+
   it('injects system tools only when runtime systemTools enable them', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       text({

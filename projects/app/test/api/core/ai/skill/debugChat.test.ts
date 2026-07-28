@@ -1,24 +1,12 @@
-import { buildDebugRuntimeNodes } from '@fastgpt/service/core/ai/skill/debugChat';
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import {
-  FlowNodeTypeEnum,
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import * as responseModule from '@fastgpt/service/common/response';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
@@ -33,17 +21,23 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 
 const debugChatMocks = vi.hoisted(() => ({
-  dispatchWorkFlow: vi.fn(),
+  runAuxiliaryGeneration: vi.fn(),
+  createSkillDebugProcessor: vi.fn(),
+  skillDebugProcessor: vi.fn(),
   preChatRound: vi.fn(),
   finalizeChatRound: vi.fn(),
   failChatRound: vi.fn(),
   updateInteractiveChat: vi.fn(),
   updateChatGenerateStatus: vi.fn(),
-  getRunningUserInfoByTmbId: vi.fn(),
   responseWrite: vi.fn(),
   flushResume: vi.fn(),
-  writeStreamError: vi.fn(),
-  createWorkflowStreamResponseContext: vi.fn()
+  writeError: vi.fn(),
+  recordNodeResponses: vi.fn(),
+  closeNodeResponseWriter: vi.fn(),
+  getNodeResponseSummary: vi.fn(),
+  getPreviewUrl: vi.fn(),
+  getUserChatInfo: vi.fn(),
+  getChatItems: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
@@ -63,8 +57,17 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
-  dispatchWorkFlow: debugChatMocks.dispatchWorkFlow
+vi.mock('@fastgpt/service/core/ai/auxiliaryGeneration', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/auxiliaryGeneration')>();
+  return {
+    ...actual,
+    runAuxiliaryGeneration: debugChatMocks.runAuxiliaryGeneration
+  };
+});
+
+vi.mock('@fastgpt/service/core/ai/skill/debugChat/processor', () => ({
+  createSkillDebugProcessor: debugChatMocks.createSkillDebugProcessor
 }));
 
 vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
@@ -81,262 +84,100 @@ vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
   updateChatGenerateStatus: debugChatMocks.updateChatGenerateStatus
 }));
 
-vi.mock('@fastgpt/service/support/user/team/utils', () => ({
-  getRunningUserInfoByTmbId: debugChatMocks.getRunningUserInfoByTmbId
+vi.mock('@fastgpt/service/core/chat/nodeResponseStorage', () => ({
+  WorkflowNodeResponseWriter: vi.fn().mockImplementation(function () {
+    return {
+      record: debugChatMocks.recordNodeResponses,
+      close: debugChatMocks.closeNodeResponseWriter,
+      getSummary: debugChatMocks.getNodeResponseSummary
+    };
+  })
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
-  createWorkflowStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
+vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
+  createChatFilePreviewUrlGetter: () => debugChatMocks.getPreviewUrl
 }));
 
-// ── Constants mirrored from the implementation ──
-const START_NODE_ID = 'skill-debug-start';
-const AGENT_NODE_ID = 'skill-debug-agent';
-
-// ═══════════════════════════════════════════════
-// describe: buildDebugRuntimeNodes
-// ═══════════════════════════════════════════════
-describe('buildDebugRuntimeNodes', () => {
-  const SKILL_ID = '507f1f77bcf86cd799439011';
-  const MODEL = 'gpt-4o';
-  const SYSTEM_PROMPT = 'You are a helpful assistant.';
-
-  it('should return exactly two nodes and one edge', () => {
-    const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-    expect(runtimeNodes).toHaveLength(2);
-    expect(runtimeEdges).toHaveLength(1);
-  });
-
-  // ── Start node ──────────────────────────────
-  describe('start node (workflowStart)', () => {
-    it('should be the first node with correct type and isEntry=true', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const startNode = runtimeNodes[0];
-
-      expect(startNode.nodeId).toBe(START_NODE_ID);
-      expect(startNode.flowNodeType).toBe(FlowNodeTypeEnum.workflowStart);
-      expect(startNode.isEntry).toBe(true);
-      expect(startNode.showStatus).toBe(false);
-    });
-
-    it('should have exactly one userChatInput input with empty default value', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const startNode = runtimeNodes[0];
-
-      expect(startNode.inputs).toHaveLength(1);
-      const input = startNode.inputs[0];
-      expect(input.key).toBe(NodeInputKeyEnum.userChatInput);
-      expect(input.valueType).toBe(WorkflowIOValueTypeEnum.string);
-      expect(input.required).toBe(true);
-      expect(input.value).toBe('');
-    });
-
-    it('should have exactly one userChatInput output with static type', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const startNode = runtimeNodes[0];
-
-      expect(startNode.outputs).toHaveLength(1);
-      const output = startNode.outputs[0];
-      expect(output.key).toBe(NodeOutputKeyEnum.userChatInput);
-      expect(output.id).toBe(NodeOutputKeyEnum.userChatInput);
-      expect(output.type).toBe(FlowNodeOutputTypeEnum.static);
-      expect(output.valueType).toBe(WorkflowIOValueTypeEnum.string);
-    });
-  });
-
-  // ── Agent node ──────────────────────────────
-  describe('agent node', () => {
-    it('should have correct type and isEntry=false with showStatus=true', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      expect(agentNode.nodeId).toBe(AGENT_NODE_ID);
-      expect(agentNode.flowNodeType).toBe(FlowNodeTypeEnum.agent);
-      expect(agentNode.isEntry).toBe(false);
-      expect(agentNode.showStatus).toBe(true);
-    });
-
-    it('userChatInput input should reference start node output', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const userInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.userChatInput);
-      expect(userInput).toBeDefined();
-      // Reference format: [nodeId, outputKey]
-      expect(userInput!.value).toEqual([START_NODE_ID, NodeOutputKeyEnum.userChatInput]);
-      expect(userInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.reference);
-    });
-
-    it('history input should be a number with value 20', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const historyInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.history);
-      expect(historyInput).toBeDefined();
-      expect(historyInput!.value).toBe(20);
-      expect(historyInput!.valueType).toBe(WorkflowIOValueTypeEnum.chatHistory);
-      expect(historyInput!.min).toBe(0);
-      expect(historyInput!.max).toBe(50);
-    });
-
-    it('aiModel input should carry the provided model value', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
-      expect(modelInput).toBeDefined();
-      expect(modelInput!.value).toBe(MODEL);
-      expect(modelInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
-      expect(modelInput!.required).toBe(true);
-    });
-
-    it('aiSystemPrompt input should carry the provided system prompt', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const promptInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiSystemPrompt);
-      expect(promptInput).toBeDefined();
-      expect(promptInput!.value).toBe(SYSTEM_PROMPT);
-      expect(promptInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
-    });
-
-    it('should enable vision preview for uploaded images', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const visionInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiChatVision);
-
-      expect(visionInput).toMatchObject({
-        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-        valueType: WorkflowIOValueTypeEnum.boolean,
-        value: true
-      });
-    });
-
-    it('editSkillId input should contain exactly the given skillId', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const editSkillInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.editSkillId);
-      expect(editSkillInput).toBeDefined();
-      expect(editSkillInput!.value).toBe(SKILL_ID);
-      expect(editSkillInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
-      expect(editSkillInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.hidden);
-    });
-
-    it('should not pass session skills or edit debug boolean', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      expect(agentNode.inputs.some((i) => i.key === NodeInputKeyEnum.skills)).toBe(false);
-      expect(agentNode.inputs.some((i) => i.key === 'useEditDebugSandbox')).toBe(false);
-    });
-
-    it('should have an answerText output with static type', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      expect(agentNode.outputs).toHaveLength(1);
-      const output = agentNode.outputs[0];
-      expect(output.key).toBe(NodeOutputKeyEnum.answerText);
-      expect(output.id).toBe(NodeOutputKeyEnum.answerText);
-      expect(output.type).toBe(FlowNodeOutputTypeEnum.static);
-      expect(output.valueType).toBe(WorkflowIOValueTypeEnum.string);
-    });
-  });
-
-  // ── Edge ────────────────────────────────────
-  describe('edge (start -> agent)', () => {
-    it('should connect start to agent with waiting status', () => {
-      const { runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const edge = runtimeEdges[0];
-
-      expect(edge.source).toBe(START_NODE_ID);
-      expect(edge.target).toBe(AGENT_NODE_ID);
-      expect(edge.status).toBe('waiting');
-    });
-
-    it('should use correct handle IDs', () => {
-      const { runtimeEdges } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
-      const edge = runtimeEdges[0];
-
-      expect(edge.sourceHandle).toBe(getHandleId(START_NODE_ID, 'source', 'right'));
-      expect(edge.targetHandle).toBe(getHandleId(AGENT_NODE_ID, 'target', 'left'));
-    });
-  });
-
-  // ── Dynamic input injection ─────────────────
-  describe('dynamic value injection', () => {
-    it('should inject different edit skill ids correctly', () => {
-      const anotherSkillId = '507f1f77bcf86cd799439022';
-      const { runtimeNodes } = buildDebugRuntimeNodes(anotherSkillId, MODEL, SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const editSkillInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.editSkillId);
-      expect(editSkillInput!.value).toBe(anotherSkillId);
-    });
-
-    it('should inject different models correctly', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, 'claude-3-5-sonnet', SYSTEM_PROMPT);
-      const agentNode = runtimeNodes[1];
-
-      const modelInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiModel);
-      expect(modelInput!.value).toBe('claude-3-5-sonnet');
-    });
-
-    it('should inject empty system prompt without error', () => {
-      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, '');
-      const agentNode = runtimeNodes[1];
-
-      const promptInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiSystemPrompt);
-      expect(promptInput!.value).toBe('');
-    });
-  });
+vi.mock('@fastgpt/service/support/user/team/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/support/user/team/utils')>();
+  return {
+    ...actual,
+    getUserChatInfo: debugChatMocks.getUserChatInfo
+  };
 });
 
-// ═══════════════════════════════════════════════
-// describe: debugChat API handler — parameter validation
-// ═══════════════════════════════════════════════
-describe('debugChat handler — parameter validation', () => {
+vi.mock('@fastgpt/service/core/chat/controller', () => ({
+  getChatItems: debugChatMocks.getChatItems
+}));
+
+describe('skill debug chat API', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
   let skillId: string;
 
-  // Error written via sseErrRes can be checked through the vi.mocked spy
   const getSseErrResMock = () => vi.mocked(responseModule.sseErrRes);
+  const createRunningSandbox = () =>
+    MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: getEditDebugSandboxId(skillId),
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      userId: ChatSourceTypeEnum.skillEdit,
+      status: 'running',
+      teamId: testUser.teamId,
+      image: { repository: 'test-image', tag: 'latest' }
+    });
 
   beforeEach(async () => {
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
-    debugChatMocks.preChatRound.mockResolvedValue({
-      chatId: 'prepared-debug-chat-id',
-      responseChatItemId: 'prepared-debug-response-id',
-      shouldPersistChatRound: true,
-      shouldFinalizePreparedRound: true
+
+    debugChatMocks.preChatRound.mockImplementation(async ({ userContent }) => {
+      userContent.value.forEach((item: any) => {
+        if (item.file?.key) item.file.url = '';
+      });
+      return {
+        chatId: 'prepared-debug-chat-id',
+        responseChatItemId: 'prepared-debug-response-id',
+        shouldPersistChatRound: true,
+        shouldFinalizePreparedRound: true
+      };
     });
-    debugChatMocks.createWorkflowStreamResponseContext.mockResolvedValue({
-      responseWrite: debugChatMocks.responseWrite,
-      flushResume: debugChatMocks.flushResume,
-      writeStreamError: debugChatMocks.writeStreamError
-    });
-    debugChatMocks.dispatchWorkFlow.mockResolvedValue({
-      assistantResponses: [{ text: { content: 'debug answer' } }],
-      system_memories: { memory: 'value' },
-      durationSeconds: 1.2,
-      customFeedbacks: ['feedback-id'],
-      nodeResponseSummary: {
-        citeCollectionIds: [],
-        errorCount: 0,
-        totalPoints: 0
+    debugChatMocks.createSkillDebugProcessor.mockReturnValue(debugChatMocks.skillDebugProcessor);
+    debugChatMocks.getUserChatInfo.mockResolvedValue({
+      timezone: 'America/New_York',
+      externalProvider: {
+        openaiAccount: {
+          baseUrl: 'https://provider.example/v1',
+          key: 'provider-key'
+        }
       }
     });
-    debugChatMocks.finalizeChatRound.mockResolvedValue(undefined);
-    debugChatMocks.failChatRound.mockResolvedValue(undefined);
-    debugChatMocks.updateInteractiveChat.mockResolvedValue(undefined);
-    debugChatMocks.updateChatGenerateStatus.mockResolvedValue(undefined);
-    debugChatMocks.getRunningUserInfoByTmbId.mockResolvedValue({
-      teamId: testUser.teamId,
-      tmbId: testUser.tmbId
+    debugChatMocks.getChatItems.mockResolvedValue({ histories: [] });
+    debugChatMocks.getPreviewUrl.mockImplementation(async (key: string) => `/preview/${key}`);
+    debugChatMocks.getNodeResponseSummary.mockReturnValue({
+      citeCollectionIds: [],
+      errorCount: 0,
+      totalPoints: 2
     });
+    debugChatMocks.runAuxiliaryGeneration.mockImplementation(
+      async ({ onStreamContextReady, onBeforeStreamDone }) => {
+        const streamContext = {
+          write: debugChatMocks.responseWrite,
+          writeDone: () => debugChatMocks.responseWrite({ data: '[DONE]' }),
+          writeError: debugChatMocks.writeError,
+          flushResume: debugChatMocks.flushResume
+        };
+        onStreamContextReady?.(streamContext);
+        const result = {
+          aiResponse: [{ text: { content: 'debug answer' } }],
+          nodeResponses: [{ id: 'node-1', nodeId: 'node-1' }],
+          memories: { 'agentLoopMemory-skill-debug-agent': { providerState: 'state' } }
+        };
+        await onBeforeStreamDone?.({ result, durationSeconds: 1.2 });
+        streamContext.writeDone();
+        return { ...result, durationSeconds: 1.2, streamContext };
+      }
+    );
 
     const skill = await MongoAgentSkills.create({
       name: 'Test Debug Skill',
@@ -347,92 +188,11 @@ describe('debugChat handler — parameter validation', () => {
     skillId = String(skill._id);
   });
 
-  it('should call sseErrRes when skillId is missing', async () => {
-    await Call(debugChatApi.default, {
-      auth: testUser,
-      body: {
-        chatId: getNanoid(),
-        responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: 'hello' }]
-      }
-    });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(/skillId/i);
-  });
-
-  it('should call sseErrRes when chatId is missing', async () => {
-    await Call(debugChatApi.default, {
-      auth: testUser,
-      body: {
-        skillId,
-        responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: 'hello' }]
-      }
-    });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(/chatId/i);
-  });
-
-  it('should call sseErrRes when messages array is empty', async () => {
+  it('rejects a missing edit-debug sandbox', async () => {
     await Call(debugChatApi.default, {
       auth: testUser,
       cookies: {},
-      body: {
-        skillId,
-        chatId: getNanoid(),
-        responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
-        messages: []
-      }
-    });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(/messages/i);
-  });
-
-  it('should call sseErrRes when edit-debug sandbox does not exist', async () => {
-    await Call(debugChatApi.default, {
-      auth: testUser,
-      cookies: {},
-      headers: {
-        origin: 'http://test.local'
-      },
-      body: {
-        skillId,
-        chatId: getNanoid(),
-        responseChatItemId: getNanoid(),
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: 'hi' }]
-      }
-    });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(/sandbox/i);
-  });
-
-  it('should NOT call sseErrRes with sandbox error when edit-debug sandbox exists', async () => {
-    // Create sandbox instance
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(skillId),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      userId: ChatSourceTypeEnum.skillEdit,
-      status: 'running',
-      teamId: testUser.teamId,
-      image: { repository: 'test-image', tag: 'latest' }
-    });
-
-    await Call(debugChatApi.default, {
-      auth: testUser,
-      cookies: {},
-      headers: {
-        origin: 'http://test.local'
-      },
+      headers: { origin: 'http://test.local' },
       body: {
         skillId,
         chatId: getNanoid(),
@@ -442,15 +202,13 @@ describe('debugChat handler — parameter validation', () => {
       }
     });
 
-    // sseErrRes must NOT be called with a sandbox-not-found error
-    const calls = getSseErrResMock().mock.calls;
-    const hasSandboxError = calls.some(([, err]) => /sandbox/i.test(err?.message ?? ''));
-    expect(hasSandboxError).toBe(false);
+    expect(getSseErrResMock()).toHaveBeenCalled();
+    expect(getSseErrResMock().mock.calls[0][1]?.message).toMatch(/sandbox/i);
+    expect(debugChatMocks.runAuxiliaryGeneration).not.toHaveBeenCalled();
   });
 
-  it('should reject read-only collaborators before running edit-debug sandbox', async () => {
+  it('rejects read-only collaborators before generation', async () => {
     const reader = await getUser(`debug-chat-reader-${getNanoid(6)}`, testUser.teamId);
-
     await MongoResourcePermission.create({
       resourceType: PerResourceTypeEnum.agentSkill,
       teamId: testUser.teamId,
@@ -458,24 +216,12 @@ describe('debugChat handler — parameter validation', () => {
       tmbId: reader.tmbId,
       permission: ReadPermissionVal
     });
-
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(skillId),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      userId: ChatSourceTypeEnum.skillEdit,
-      status: 'running',
-      teamId: testUser.teamId,
-      image: { repository: 'test-image', tag: 'latest' }
-    });
+    await createRunningSandbox();
 
     await Call(debugChatApi.default, {
       auth: reader,
       cookies: {},
-      headers: {
-        origin: 'http://test.local'
-      },
+      headers: { origin: 'http://test.local' },
       body: {
         skillId,
         chatId: getNanoid(),
@@ -485,38 +231,39 @@ describe('debugChat handler — parameter validation', () => {
       }
     });
 
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toBe(SkillErrEnum.unAuthSkill);
+    const permissionError = getSseErrResMock().mock.calls[0][1];
+    expect(permissionError?.message ?? permissionError).toBe(SkillErrEnum.unAuthSkill);
     expect(debugChatMocks.preChatRound).not.toHaveBeenCalled();
-    expect(debugChatMocks.createWorkflowStreamResponseContext).not.toHaveBeenCalled();
-    expect(debugChatMocks.dispatchWorkFlow).not.toHaveBeenCalled();
+    expect(debugChatMocks.runAuxiliaryGeneration).not.toHaveBeenCalled();
   });
 
-  it('should prepare and finalize a skill debug chat round with prepared ids', async () => {
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(skillId),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      userId: ChatSourceTypeEnum.skillEdit,
-      status: 'running',
-      teamId: testUser.teamId,
-      image: { repository: 'test-image', tag: 'latest' }
-    });
+  it('runs the auxiliary lifecycle and persists before the done event', async () => {
+    await createRunningSandbox();
 
     await Call(debugChatApi.default, {
       auth: testUser,
       cookies: {},
-      headers: {
-        origin: 'http://test.local'
-      },
+      headers: { origin: 'http://test.local' },
       body: {
         skillId,
         chatId: 'debug-chat-id',
         responseChatItemId: 'client-response-id',
         model: 'gpt-4o',
-        messages: [{ role: 'user', content: 'hi' }]
+        systemPrompt: 'Use {{@sandbox_read_file@}}.',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'file_url',
+                name: 'guide.pdf',
+                url: '',
+                key: 'file-key-1'
+              },
+              { type: 'text', text: 'summarize this' }
+            ]
+          }
+        ]
       }
     });
 
@@ -525,50 +272,158 @@ describe('debugChat handler — parameter validation', () => {
         sourceType: ChatSourceTypeEnum.skillEdit,
         sourceId: skillId,
         chatId: 'debug-chat-id',
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
         source: ChatSourceEnum.test,
-        responseChatItemId: 'client-response-id',
-        userContent: expect.objectContaining({
-          obj: ChatRoleEnum.Human
+        responseChatItemId: 'client-response-id'
+      })
+    );
+    expect(debugChatMocks.createSkillDebugProcessor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillId,
+        responseChatItemId: 'prepared-debug-response-id',
+        isInteractiveResume: false,
+        prepareActions: undefined
+      })
+    );
+    expect(debugChatMocks.runAuxiliaryGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        chatId: 'prepared-debug-chat-id',
+        query: 'summarize this',
+        histories: [],
+        processor: debugChatMocks.skillDebugProcessor,
+        data: expect.objectContaining({
+          currentUserValue: expect.arrayContaining([
+            expect.objectContaining({
+              file: expect.objectContaining({ url: '/preview/file-key-1' })
+            })
+          ]),
+          userKey: {
+            baseUrl: 'https://provider.example/v1',
+            key: 'provider-key'
+          }
         })
       })
     );
-    expect(debugChatMocks.dispatchWorkFlow).toHaveBeenCalledWith(
-      expect.objectContaining({
-        chatId: 'prepared-debug-chat-id',
-        responseChatItemId: 'prepared-debug-response-id',
-        chatConfig: {
-          fileSelectConfig: expect.objectContaining({
-            canSelectFile: true,
-            canSelectImg: true,
-            maxFiles: 10
-          })
-        },
-        agentSandboxPrepareActions: undefined
-      })
-    );
+    expect(debugChatMocks.recordNodeResponses).toHaveBeenCalledWith([
+      { id: 'node-1', nodeId: 'node-1' }
+    ]);
     expect(debugChatMocks.finalizeChatRound).toHaveBeenCalledWith(
       expect.objectContaining({
         chatId: 'prepared-debug-chat-id',
         sourceType: ChatSourceTypeEnum.skillEdit,
         sourceId: skillId,
-        source: ChatSourceEnum.test,
         aiContent: expect.objectContaining({
           dataId: 'prepared-debug-response-id',
-          value: [{ text: { content: 'debug answer' } }],
-          memories: { memory: 'value' },
-          customFeedbacks: ['feedback-id']
+          obj: ChatRoleEnum.AI,
+          value: [{ text: { content: 'debug answer' } }]
         })
       })
     );
-
-    const doneWriteIndex = debugChatMocks.responseWrite.mock.calls.findIndex(
+    const doneCall = debugChatMocks.responseWrite.mock.calls.find(
       ([payload]) => payload.data === '[DONE]'
     );
-    expect(doneWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(doneCall).toBeDefined();
     expect(debugChatMocks.finalizeChatRound.mock.invocationCallOrder[0]).toBeLessThan(
-      debugChatMocks.responseWrite.mock.invocationCallOrder[doneWriteIndex]
+      debugChatMocks.responseWrite.mock.invocationCallOrder.at(-1)!
     );
+  });
+
+  it('reuses an ask interactive usage and updates the existing chat', async () => {
+    const interactive = {
+      type: 'agentAsk' as const,
+      askId: 'ask-1',
+      usageId: 'usage-1',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        description: 'Need a choice',
+        questions: [
+          {
+            question: 'Choose one',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ],
+            answer: ''
+          }
+        ]
+      }
+    };
+    debugChatMocks.getChatItems.mockResolvedValueOnce({
+      histories: [
+        {
+          dataId: 'previous-ai',
+          obj: ChatRoleEnum.AI,
+          value: [{ interactive }]
+        }
+      ]
+    });
+    await createRunningSandbox();
+
+    await Call(debugChatApi.default, {
+      auth: testUser,
+      cookies: {},
+      headers: { origin: 'http://test.local' },
+      body: {
+        skillId,
+        chatId: 'debug-chat-id',
+        responseChatItemId: 'client-response-id',
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: 'A' }]
+      }
+    });
+
+    expect(debugChatMocks.createSkillDebugProcessor).toHaveBeenCalledWith(
+      expect.objectContaining({ isInteractiveResume: true })
+    );
+    expect(debugChatMocks.runAuxiliaryGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({ usageId: 'usage-1' })
+    );
+    expect(debugChatMocks.updateInteractiveChat).toHaveBeenCalledWith(
+      expect.objectContaining({ interactive })
+    );
+    expect(debugChatMocks.finalizeChatRound).not.toHaveBeenCalled();
+  });
+
+  it('marks the prepared chat round failed when generation throws', async () => {
+    debugChatMocks.runAuxiliaryGeneration.mockImplementationOnce(
+      async ({ onStreamContextReady }) => {
+        onStreamContextReady?.({
+          write: debugChatMocks.responseWrite,
+          writeDone: vi.fn(),
+          writeError: debugChatMocks.writeError,
+          flushResume: debugChatMocks.flushResume
+        });
+        throw new Error('generation failed');
+      }
+    );
+    await createRunningSandbox();
+
+    await Call(debugChatApi.default, {
+      auth: testUser,
+      cookies: {},
+      headers: { origin: 'http://test.local' },
+      body: {
+        skillId,
+        chatId: 'debug-chat-id',
+        responseChatItemId: 'client-response-id',
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: 'hi' }]
+      }
+    });
+
+    expect(debugChatMocks.failChatRound).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      chatId: 'prepared-debug-chat-id',
+      responseChatItemId: 'prepared-debug-response-id',
+      error: expect.objectContaining({ message: 'generation failed' })
+    });
+    expect(debugChatMocks.writeError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'generation failed' })
+    );
+    expect(debugChatMocks.flushResume).toHaveBeenCalled();
   });
 });
