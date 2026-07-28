@@ -104,21 +104,18 @@ const SkillSelectModal = ({
     setSearchKey,
     paths,
     parentId,
-    currentFolderHasWritePer,
     refreshSkillList,
     onEnterFolder,
     onUpdateParentId
   } = useSkillSelectData();
   const isAtLimit = selectedSkills.length >= MAX_SKILL_COUNT;
-  // 创建/导入权限取当前文件夹写权限；根目录回退到团队级创建权限（与 Dashboard List 一致）。
-  const canCreateOrImport = currentFolderHasWritePer ?? hasSkillCreatePer;
   const showEmptyActions =
     !isLoadingSkillList &&
     skillList.length === 0 &&
     !searchKey &&
     paths.length === 0 &&
-    canCreateOrImport;
-  const showHeaderCreateImportActions = canCreateOrImport && !searchKey && !showEmptyActions;
+    hasSkillCreatePer;
+  const showHeaderCreateImportActions = hasSkillCreatePer && !searchKey && !showEmptyActions;
   const modalHeight = showEmptyActions
     ? ['min(560px, calc(100vh - 128px))', '560px']
     : ['min(560px, calc(100vh - 64px))', '560px'];

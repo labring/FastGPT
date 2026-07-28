@@ -28,8 +28,6 @@ type Props = {
   redirectToDetail?: boolean;
   /** Agent 选择弹窗等场景：创建成功后新开标签页进入 skill 辅助生成页 */
   openDetailInNewTab?: boolean;
-  /** 创建流程全部结束后的回调，如关闭外层选择弹窗 */
-  onCreateComplete?: () => void;
 };
 
 const CreateSkillModal = ({
@@ -37,8 +35,7 @@ const CreateSkillModal = ({
   onClose,
   onSuccess,
   redirectToDetail = true,
-  openDetailInNewTab = false,
-  onCreateComplete
+  openDetailInNewTab = false
 }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -112,7 +109,6 @@ const CreateSkillModal = ({
       } catch {
         toast({ status: 'error', title: t('common:load_failed') });
       }
-      onCreateComplete?.();
     };
 
     const onInvalid = () => {
