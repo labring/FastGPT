@@ -6,6 +6,14 @@ export type OutlinkMessage = {
   messageId: string;
   chatUserId: string;
   query: UserChatItemValueItemType[];
+  resolveQuery?: (
+    options: OutlinkQueryResolveOptions
+  ) => Promise<UserChatItemValueItemType[]>;
+};
+
+export type OutlinkQueryResolveOptions = {
+  maxFileAmount: number;
+  maxBytesPerFile: number;
 };
 
 export type OutlinkResponseEvent =
@@ -14,7 +22,11 @@ export type OutlinkResponseEvent =
   | { type: 'done'; content: string }
   | { type: 'error'; content: string };
 
-export type OutlinkResponder = (events: AsyncIterable<OutlinkResponseEvent>) => Promise<void>;
+export type OutlinkResponder = {
+  (events: AsyncIterable<OutlinkResponseEvent>): Promise<void>;
+  /** Maximum time allowed for handling the start event. Defaults to 30 seconds. */
+  startTimeoutMs?: number;
+};
 
 export type RunOutlinkRuntimeProps<T extends OutlinkAppType> = {
   outLinkConfig: OutLinkSchemaType<T>;

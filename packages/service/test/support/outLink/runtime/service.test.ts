@@ -3,7 +3,10 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runOutlinkRuntime } from '@fastgpt/service/support/outLink/runtime/service';
-import type { OutlinkResponseEvent } from '@fastgpt/service/support/outLink/runtime/type';
+import type {
+  OutlinkResponder,
+  OutlinkResponseEvent
+} from '@fastgpt/service/support/outLink/runtime/type';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -13,6 +16,7 @@ import { failChatRound, finalizeChatRound } from '@fastgpt/service/core/chat/sav
 import { authOutLinkLimit } from '@fastgpt/service/support/outLink/runtime/auth';
 import { addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import { getWorkflowFileLimits } from '@fastgpt/service/core/workflow/utils/fileLimits';
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: { findById: vi.fn() }
@@ -39,8 +43,11 @@ vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: vi.fn()
 }));
-vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
-  getTeamPlanStatus: vi.fn(async () => ({ standard: { maxUploadFileCount: 20 } }))
+vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@fastgpt/service/core/workflow/utils/fileLimits')
+  >()),
+  getWorkflowFileLimits: vi.fn()
 }));
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: vi.fn()
@@ -122,10 +129,14 @@ describe('runOutlinkRuntime', () => {
     vi.mocked(getAppLatestVersion).mockResolvedValue({
       nodes: [{ nodeId: 'start', inputs: [], outputs: [] }],
       edges: [],
-      chatConfig: { variables: [] }
+      chatConfig: { variables: [], fileSelectConfig: { maxFiles: 2 } }
     } as any);
     vi.mocked(getChatItems).mockResolvedValue({ histories: [] } as any);
     vi.mocked(authOutLinkLimit).mockResolvedValue({ uid: message.chatUserId });
+    vi.mocked(getWorkflowFileLimits).mockResolvedValue({
+      maxFileAmount: 5,
+      maxBytesPerFile: 4 * 1024 * 1024
+    });
     vi.mocked(getRunningUserInfoByTmbId).mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'tmb-id'
@@ -142,20 +153,39 @@ describe('runOutlinkRuntime', () => {
     vi.mocked(addOutLinkUsage).mockResolvedValue(undefined as any);
   });
 
-  it('streams the final answer and persists responder failures', async () => {
+  it('resolves the query after limits and start, then streams the final answer', async () => {
     vi.mocked(dispatchWorkFlow).mockImplementation(async (props) => {
       props.workflowStreamResponse?.(workflowSseEvent.answerDelta('partial '));
       props.workflowStreamResponse?.(workflowSseEvent.fastAnswerDelta('answer'));
       return workflowResult as any;
     });
+    const resolvedQuery = [{ text: { content: 'resolved query' } }];
+    const resolveQuery = vi.fn().mockResolvedValue(resolvedQuery);
+    const startHandled = vi.fn();
     const events: OutlinkResponseEvent[] = [];
     const respond = vi.fn(async (stream: AsyncIterable<OutlinkResponseEvent>) => {
-      for await (const event of stream) events.push(event);
-      throw new Error('delivery failed');
+      for await (const event of stream) {
+        events.push(event);
+        if (event.type === 'start') startHandled();
+      }
     });
 
-    await runOutlinkRuntime({ outLinkConfig, message, respond });
+    await runOutlinkRuntime({
+      outLinkConfig,
+      message: { ...message, resolveQuery },
+      respond
+    });
 
+    expect(resolveQuery).toHaveBeenCalledWith({
+      maxFileAmount: 2,
+      maxBytesPerFile: 4 * 1024 * 1024
+    });
+    expect(vi.mocked(authOutLinkLimit).mock.invocationCallOrder[0]).toBeLessThan(
+      startHandled.mock.invocationCallOrder[0]
+    );
+    expect(startHandled.mock.invocationCallOrder[0]).toBeLessThan(
+      resolveQuery.mock.invocationCallOrder[0]
+    );
     expect(events).toEqual([
       { type: 'start' },
       { type: 'chunk', content: 'partial ' },
@@ -163,7 +193,10 @@ describe('runOutlinkRuntime', () => {
       { type: 'done', content: 'complete answer' }
     ]);
     expect(finalizeChatRound).toHaveBeenCalledWith(
-      expect.objectContaining({ errorMsg: 'delivery failed' })
+      expect.objectContaining({
+        userContent: expect.objectContaining({ value: resolvedQuery }),
+        errorMsg: undefined
+      })
     );
   });
 
@@ -171,12 +204,76 @@ describe('runOutlinkRuntime', () => {
     vi.mocked(getChatItems).mockResolvedValue({
       histories: [{ dataId: message.messageId }]
     } as any);
+    const resolveQuery = vi.fn();
     const { respond } = createResponder();
 
-    await runOutlinkRuntime({ outLinkConfig, message, respond });
+    await runOutlinkRuntime({
+      outLinkConfig,
+      message: { ...message, resolveQuery },
+      respond
+    });
 
     expect(respond).not.toHaveBeenCalled();
+    expect(resolveQuery).not.toHaveBeenCalled();
     expect(authOutLinkLimit).not.toHaveBeenCalled();
+  });
+
+  it('does not resolve media when the usage limit rejects the message', async () => {
+    const error = new Error('usage limit reached');
+    vi.mocked(authOutLinkLimit).mockRejectedValue(error);
+    const resolveQuery = vi.fn();
+    const { events, respond } = createResponder();
+
+    await runOutlinkRuntime({
+      outLinkConfig,
+      message: { ...message, resolveQuery },
+      respond
+    });
+
+    expect(resolveQuery).not.toHaveBeenCalled();
+    expect(events).toEqual([{ type: 'error', content: 'App run error: usage limit reached' }]);
+  });
+
+  it('does not resolve media when the responder fails to handle start', async () => {
+    const resolveQuery = vi.fn();
+    const respond = vi.fn(async (stream: AsyncIterable<OutlinkResponseEvent>) => {
+      for await (const event of stream) {
+        if (event.type === 'start') throw new Error('start failed');
+      }
+    });
+
+    await runOutlinkRuntime({
+      outLinkConfig,
+      message: { ...message, resolveQuery },
+      respond
+    });
+
+    expect(resolveQuery).not.toHaveBeenCalled();
+    expect(preChatRound).not.toHaveBeenCalled();
+    expect(dispatchWorkFlow).not.toHaveBeenCalled();
+  });
+
+  it('stops waiting when the responder exceeds its start timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const resolveQuery = vi.fn();
+      const respond: OutlinkResponder = vi.fn(async () => new Promise(() => {}));
+      respond.startTimeoutMs = 1000;
+
+      const result = runOutlinkRuntime({
+        outLinkConfig,
+        message: { ...message, resolveQuery },
+        respond
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(result).resolves.toBeUndefined();
+      expect(resolveQuery).not.toHaveBeenCalled();
+      expect(preChatRound).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('terminates the stream with one error when workflow dispatch fails', async () => {
