@@ -947,6 +947,9 @@ importers:
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
+      '@fastgpt/dal':
+        specifier: workspace:*
+        version: link:../../packages/dal
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
