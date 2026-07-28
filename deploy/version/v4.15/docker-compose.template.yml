@@ -75,17 +75,12 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
   # 浏览器访问 agent-sandbox-proxy 的地址。启用 Agent/Skill 沙盒时，必须改成单独部署的 proxy 的 ws:// 或 wss:// 地址。
   AGENT_SANDBOX_PROXY_URL:
-  # 浏览器访问 sandbox preview 的 http:// 或 https:// 地址。默认单端口部署时与 WebSocket 使用相同端口。
-  AGENT_SANDBOX_PREVIEW_PROXY_URL:
   AGENT_SANDBOX_OPENSANDBOX_BASEURL:
   AGENT_SANDBOX_OPENSANDBOX_API_KEY:
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO:
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG:
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
-  AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT: 1
-  AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB: 2048
-  AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE: 1Gi # 仅 K8s 模式下创建新 PVC 时有效
   AGENT_SANDBOX_SEALOS_BASEURL:
   AGENT_SANDBOX_SEALOS_TOKEN:
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: /home/devbox/workspace
@@ -170,8 +165,8 @@ x-service-env-config: &x-service-env-config
   WORKFLOW_HTTP_IGNORE_HTTPS_CERT: false
 
 # 向量库相关配置
-x-vec-config: &x-vec-config
-  # ${{vec.config}}
+x-vec-config: &x-vec-config # ${{vec.config}}
+
 
 services:
   # ${{vec.db}}
