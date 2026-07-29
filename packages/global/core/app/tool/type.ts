@@ -60,6 +60,8 @@ export type AgentToolInputConfigType = z.infer<typeof AgentToolInputConfigSchema
 
 export const AgentToolSchema = z.object({
   id: z.string(),
+  // 空字符串表示保持最新版本，不能在序列化时被 truthy 判断过滤。
+  version: z.string().optional(),
   source: z.string().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(AgentToolInputConfigSchema).optional(),

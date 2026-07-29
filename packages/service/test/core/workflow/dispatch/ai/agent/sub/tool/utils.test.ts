@@ -469,6 +469,35 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
   });
 
+  it('uses the configured App version and preserves keep-latest', async () => {
+    const fixedVersionTools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'workflow_app', version: 'fixed-version', config: {} }]
+    });
+
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'workflow_app',
+        versionId: 'fixed-version'
+      })
+    );
+    expect(fixedVersionTools[0]?.version).toBe('fixed-version');
+
+    getAppVersionByIdMock.mockClear();
+    const latestVersionTools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'workflow_app', version: '', config: {} }]
+    });
+
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'workflow_app',
+        versionId: ''
+      })
+    );
+    expect(latestVersionTools[0]?.version).toBe('');
+  });
+
   it('loads MCP toolset children with their input schema', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',

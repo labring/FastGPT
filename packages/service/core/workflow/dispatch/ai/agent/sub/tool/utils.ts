@@ -72,8 +72,8 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
  * 将 Agent 选择的工具配置转换成 LLM function calling 与 runtime 执行共用的工具描述。
  *
  * 这里刻意不调用面向前端预览的 getClientToolPreviewNode：Agent runtime 只关心鉴权后的执行
- * 节点、toolConfig 和 JSON Schema。App 类工具统一读取当前发布版本；MCP 工具会在运行态补齐
- * 旧版子 App 数据或前端预览数据中被裁剪的 schema。
+ * 节点、toolConfig 和 JSON Schema。App 类工具按 Agent 配置读取固定版本或最新版本；MCP 工具会
+ * 在运行态补齐旧版子 App 数据或前端预览数据中被裁剪的 schema。
  */
 export const getAgentRuntimeTools = async ({
   tools,
@@ -118,17 +118,20 @@ export const getAgentRuntimeTools = async ({
     toolId,
     nodeId,
     idSource,
-    runtimeSource
+    runtimeSource,
+    versionId
   }: {
     toolId: string;
     nodeId: string;
     idSource: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial;
     runtimeSource?: string;
+    versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     const systemToolRepo = SystemToolRepo.getInstance();
     const toolConfigSource = isDebugToolSource(runtimeSource) ? runtimeSource : undefined;
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,
+      version: versionId || undefined,
       lang,
       source: toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system')
     });
@@ -166,7 +169,7 @@ export const getAgentRuntimeTools = async ({
       name: toolDetail.name,
       intro: toolDetail.intro,
       toolDescription: toolDetail.toolDescription,
-      version: '',
+      version: versionId ?? '',
       inputs,
       outputs: appendErrorOutput(schemaOutputs),
       jsonSchema: toolDetail.inputSchema,
@@ -202,10 +205,17 @@ export const getAgentRuntimeTools = async ({
     };
   };
 
-  // 当前 Agent 工具始终取 App 的当前发布版本；没有发布版本时由 controller 回落到 app.modules。
-  const getVersionNodes = async ({ app }: { app: AppSchemaType }) => {
+  // 缺失或空版本都表示最新版本；固定版本由 Agent 工具配置显式传入。
+  const getVersionNodes = async ({
+    app,
+    versionId
+  }: {
+    app: AppSchemaType;
+    versionId?: string;
+  }) => {
     const version = await getAppVersionById({
       appId: String(app._id),
+      versionId,
       app
     });
 
@@ -272,15 +282,17 @@ export const getAgentRuntimeTools = async ({
    * - 其他: 子应用 workflow
    */
   const formatPersonalAppNode = async ({
-    app
+    app,
+    versionId
   }: {
     app: AppSchemaType;
+    versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     if (AppFolderTypeList.includes(app.type)) {
       return Promise.reject(PluginErrEnum.unExist);
     }
 
-    const version = await getVersionNodes({ app });
+    const version = await getVersionNodes({ app, versionId });
     const nodes = version.nodes;
     const baseNode = {
       nodeId: String(app._id),
@@ -288,7 +300,7 @@ export const getAgentRuntimeTools = async ({
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),
       intro: parseI18nString(app.intro, lang),
-      version: '',
+      version: versionId ?? '',
       showStatus: true,
       inputs: [],
       outputs: []
@@ -348,13 +360,15 @@ export const getAgentRuntimeTools = async ({
    */
   const formatMcpToolNode = async ({
     app,
-    pluginId
+    pluginId,
+    versionId
   }: {
     app: AppSchemaType;
     pluginId: string;
+    versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     const { toolName } = splitToolsetToolPluginId(pluginId);
-    const version = await getVersionNodes({ app });
+    const version = await getVersionNodes({ app, versionId });
     const mcpToolSet = version.nodes[0]?.toolConfig?.mcpToolSet;
     const toolList = await getMcpToolListWithRuntimeSchema({
       app,
@@ -374,6 +388,7 @@ export const getAgentRuntimeTools = async ({
     // 单独选择子工具时，模型侧展示子工具名即可，不需要带 toolset 前缀。
     return {
       ...node,
+      version: versionId ?? '',
       name: tool.name,
       intro: tool.description
     };
@@ -385,13 +400,15 @@ export const getAgentRuntimeTools = async ({
    */
   const formatHttpToolNode = async ({
     app,
-    pluginId
+    pluginId,
+    versionId
   }: {
     app: AppSchemaType;
     pluginId: string;
+    versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     const { toolName } = splitToolsetToolPluginId(pluginId);
-    const version = await getVersionNodes({ app });
+    const version = await getVersionNodes({ app, versionId });
     const toolList = version.nodes[0]?.toolConfig?.httpToolSet?.toolList ?? [];
     const tool = getToolNameCandidates(toolName)
       .map((name) => toolList.find((item) => item.name === name))
@@ -409,6 +426,7 @@ export const getAgentRuntimeTools = async ({
     // 单独选择子工具时，模型侧展示子工具名即可，不需要带 toolset 前缀。
     return {
       ...node,
+      version: versionId ?? '',
       name: tool.name,
       intro: tool.description
     };
@@ -419,12 +437,14 @@ export const getAgentRuntimeTools = async ({
     runtimeSource,
     pluginId,
     toolId,
+    versionId,
     app
   }: {
     idSource: AppToolSourceEnum | string;
     runtimeSource?: string;
     pluginId: string;
     toolId: string;
+    versionId?: string;
     app?: AppSchemaType;
   }): Promise<AgentRuntimeNode> => {
     // Agent 运行时只需要节点执行和 schema 信息，不能依赖面向前端展示的 preview controller。
@@ -433,17 +453,18 @@ export const getAgentRuntimeTools = async ({
         toolId,
         nodeId: pluginId,
         idSource,
-        runtimeSource
+        runtimeSource,
+        versionId
       });
     }
     if (!app) return Promise.reject(PluginErrEnum.unExist);
     if (idSource === AppToolSourceEnum.mcp) {
-      return formatMcpToolNode({ app, pluginId });
+      return formatMcpToolNode({ app, pluginId, versionId });
     }
     if (idSource === AppToolSourceEnum.http) {
-      return formatHttpToolNode({ app, pluginId });
+      return formatHttpToolNode({ app, pluginId, versionId });
     }
-    return formatPersonalAppNode({ app });
+    return formatPersonalAppNode({ app, versionId });
   };
 
   /**
@@ -533,7 +554,8 @@ export const getAgentRuntimeTools = async ({
               runtimeSource,
               pluginId,
               app: authResult?.app,
-              toolId: tool.id
+              toolId: tool.id,
+              versionId: tool.version
             })
           )
         ]);

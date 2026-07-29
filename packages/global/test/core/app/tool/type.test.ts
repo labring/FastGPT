@@ -39,4 +39,14 @@ describe('AgentToolSchema', () => {
 
     expect(result.inputs).toBeUndefined();
   });
+
+  it('preserves an empty version as keep-latest', () => {
+    const result = AgentToolSchema.parse({
+      id: 'systemTool-search',
+      version: '',
+      config: {}
+    });
+
+    expect(result.version).toBe('');
+  });
 });

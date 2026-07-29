@@ -325,6 +325,7 @@ export function agentForm2AppWorkflow(
 
                 return {
                   id: tool.pluginId,
+                  version: tool.version,
                   source: tool.source,
                   toolConfig: tool.toolConfig,
                   inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
