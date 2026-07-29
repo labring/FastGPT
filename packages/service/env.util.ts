@@ -139,3 +139,22 @@ export const validateAgentSandboxProxyEnv = (): void => {
     )} are required when AGENT_SANDBOX_PROVIDER is ${provider}.`
   );
 };
+
+/**
+ * 校验复用 Sandbox 文件预览能力的服务所需环境变量。
+ * Pro Admin 不提供 sandbox editor/proxy 链路，因此只要求文件预览代理地址。
+ */
+export const validateAgentSandboxPreviewProxyEnv = (): void => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
+    return;
+  }
+
+  if (process.env.AGENT_SANDBOX_PREVIEW_PROXY_URL) {
+    return;
+  }
+
+  throw new Error(
+    `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
+  );
+};
