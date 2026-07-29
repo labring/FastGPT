@@ -12,7 +12,10 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@/service/core/sandbox/auth', () => ({
-  authAgentSandboxProxy: mocks.authAgentSandboxProxy,
+  authAgentSandboxProxy: mocks.authAgentSandboxProxy
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
 }));
 
@@ -28,8 +31,7 @@ const createReq = () =>
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app-1',
       userId: 'user-1',
-      chatId: 'chat-1',
-      teamId: 'team-1'
+      chatId: 'chat-1'
     }
   }) as any;
 

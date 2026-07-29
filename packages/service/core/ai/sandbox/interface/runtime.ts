@@ -6,7 +6,7 @@
  */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '../../skill/edit/config';
-import { getRunningSandboxId } from '../utils/id';
+import { getRunningSandboxId, getSandboxUserId } from '../utils/id';
 import type { SandboxClientQuery } from '../application/runtime/client';
 
 export {
@@ -16,14 +16,18 @@ export {
 } from '../application/runtime/client';
 export {
   createAgentSandboxInitializingError,
-  createAgentSandboxPermissionDeniedError
+  createAgentSandboxPermissionDeniedError,
+  createSandboxRuntimeUpgradeFailedError
 } from '../error';
 export type { SandboxClientQuery } from '../application/runtime/client';
 export { prepareAgentSandboxRuntime } from '../application/runtime';
 export type { AgentSandboxRuntimeContext } from '../application/runtime';
+export { assertSandboxAvailable, resolveAppSandboxAvailability } from '../application/availability';
+export type { AppSandboxAvailability } from '../application/availability';
 export { getRunningSandboxId } from '../utils/id';
 export { getSandboxRuntimeProfile } from '../application/runtime';
 export type { SandboxRuntimeProfile } from '../application/runtime';
+export { ensureAppSandboxRuntimeReady } from '../application/runtime/upgrade';
 export {
   runAgentSandboxEntrypoint,
   runSandboxEntrypoint,
@@ -47,7 +51,7 @@ export {
   syncBuiltinSkillsToSandbox
 } from '../application/runtime/skill';
 
-type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string };
+type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string; chatId: string };
 
 /**
  * 将标准 chat source 映射为 sandbox runtime client 的物理寻址参数。
@@ -65,11 +69,11 @@ export function buildSandboxClientQueryFromChatSource({
   userId: string;
   chatId: string;
 }): SandboxClientQueryWithId {
+  const sandboxUserId = getSandboxUserId({ sourceType, userId });
   const sandboxId = getRunningSandboxId({
     sourceType,
     sourceId,
-    userId,
-    chatId
+    userId: sandboxUserId
   });
 
   if (sourceType === ChatSourceTypeEnum.app) {
@@ -77,7 +81,7 @@ export function buildSandboxClientQueryFromChatSource({
       sandboxId,
       sourceType,
       sourceId,
-      userId,
+      userId: sandboxUserId,
       chatId
     };
   }
@@ -91,7 +95,7 @@ export function buildSandboxClientQueryFromChatSource({
       sandboxId,
       sourceType,
       sourceId,
-      userId: '',
+      userId: sandboxUserId,
       chatId
     };
   }

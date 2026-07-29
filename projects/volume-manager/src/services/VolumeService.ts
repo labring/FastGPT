@@ -4,9 +4,9 @@ import { logDebug } from '../utils/logger';
 export class VolumeService {
   constructor(private readonly driver: IVolumeDriver) {}
 
-  async ensure(sessionId: string): Promise<EnsureResult> {
+  async ensure(sessionId: string, storageSize?: string): Promise<EnsureResult> {
     logDebug(`VolumeService.ensure sessionId=${sessionId}`);
-    const result = await this.driver.ensure(sessionId);
+    const result = await this.driver.ensure(sessionId, storageSize);
     logDebug(`VolumeService.ensure done claimName=${result.claimName} created=${result.created}`);
     return result;
   }

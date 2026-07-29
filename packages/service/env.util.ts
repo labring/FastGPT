@@ -72,6 +72,11 @@ export const validateS3Env = (env: S3Env): void => {
 export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
   message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
 });
+export const AgentSandboxPreviewProxyUrlSchema = z
+  .string()
+  .refine((url) => /^https?:\/\//.test(url), {
+    message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
+  });
 const agentSandboxProviderRequiredEnvKeys = {
   sealosdevbox: [
     'AGENT_SANDBOX_SEALOS_BASEURL',
@@ -83,8 +88,7 @@ const agentSandboxProviderRequiredEnvKeys = {
     'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
-  ],
-  e2b: ['AGENT_SANDBOX_E2B_API_KEY']
+  ]
 } satisfies Record<SandboxProviderType, readonly string[]>;
 
 export const isAgentSandboxProvider = (
@@ -108,7 +112,8 @@ export const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): s
 /* ===== Sandbox proxy ===== */
 const agentSandboxProxyRequiredEnvKeys = [
   'AGENT_SANDBOX_PROXY_SECRET',
-  'AGENT_SANDBOX_PROXY_URL'
+  'AGENT_SANDBOX_PROXY_URL',
+  'AGENT_SANDBOX_PREVIEW_PROXY_URL'
 ] as const;
 /**
  * 校验 FastGPT app 浏览器直连 agent-sandbox-proxy 所需环境变量。
@@ -132,5 +137,24 @@ export const validateAgentSandboxProxyEnv = (): void => {
     `Invalid Agent Sandbox proxy environment variables: ${missingAgentSandboxProxyEnvKeys.join(
       ', '
     )} are required when AGENT_SANDBOX_PROVIDER is ${provider}.`
+  );
+};
+
+/**
+ * 校验复用 Sandbox 文件预览能力的服务所需环境变量。
+ * Pro Admin 不提供 sandbox editor/proxy 链路，因此只要求文件预览代理地址。
+ */
+export const validateAgentSandboxPreviewProxyEnv = (): void => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
+    return;
+  }
+
+  if (process.env.AGENT_SANDBOX_PREVIEW_PROXY_URL) {
+    return;
+  }
+
+  throw new Error(
+    `Invalid Agent Sandbox preview proxy environment variable: AGENT_SANDBOX_PREVIEW_PROXY_URL is required when AGENT_SANDBOX_PROVIDER is ${provider}.`
   );
 };

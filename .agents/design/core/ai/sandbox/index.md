@@ -2,7 +2,10 @@
 
 状态：当前实现
 
-最后核对：2026-07-16
+最后核对：2026-07-27
+
+用户级实例、生命周期、Legacy 迁移以及本分支后续变更的最终契约统一见
+[用户级 Sandbox 最终方案](./user-level-sandbox.md)。本文只维护当前代码入口和运行行为索引。
 
 ## 目标与边界
 
@@ -24,7 +27,7 @@ application
 infrastructure
   instance repository / provider adapter / runtime profile / volume
       |
-provider: opensandbox | sealosdevbox | e2b
+provider: opensandbox | sealosdevbox
 ```
 
 约束：
@@ -40,20 +43,23 @@ provider: opensandbox | sealosdevbox | e2b
 
 - `sourceType`：当前支持 App 和 Skill Edit。
 - `sourceId`：App id 或 Skill id。
-- `userId/chatId`：按场景补充会话维度。
+- `userId`：实例逻辑身份的一部分。App 使用有效用户 ID；Skill Edit 固定使用
+  `ChatSourceTypeEnum.skillEdit`。
+- `chatId`：只用于 App Sandbox 内的 session 目录，不参与实例或 Provider 资源 ID。
 - `sandboxId`：Provider 侧的物理资源标识，不替代业务归属。
 
 当前寻址规则：
 
 | 场景 | sandboxId | 归属 |
 | --- | --- | --- |
-| App chat | `hash(sourceId-userId-chatId)` 的前 16 位 | `sourceType=app`，保留 userId/chatId |
-| Skill Edit | 固定 edit-debug sandbox id | `sourceType=skillEdit`，sourceId 为 skillId |
+| App chat | `app-<hash(sourceId-effectiveUserId)>` | `sourceType=app`，`userId=effectiveUserId` |
+| Skill Edit | `skilledit-<hash(sourceId-skillEdit)>` | `sourceType=skillEdit`，`userId=skillEdit` |
 | Chat Agent Helper | 不支持 Sandbox | 调用时直接报错 |
 
-`agent_sandbox_instances` 使用 `(provider, sandboxId)` 唯一索引，并为 source、状态和归档查询建立索引。
+`agent_sandbox_instances_v2` 使用 `(provider, sandboxId)` 唯一索引，并使用
+`(sourceType, sourceId, userId)` 唯一约束逻辑身份。v2 不保留旧 ID 生成规则的兼容分支。
 
-旧 `appId`、`type` 和 `metadata.skillId` 字段只用于 4.15.0-beta6 迁移脚本及历史数据识别。新运行态写入和业务查询只使用 `sourceType/sourceId`，不能新增旧字段兼容分支。
+旧 `appId`、`type` 和 `metadata.skillId` 字段只用于 Legacy 数据识别与用户级 Sandbox 迁移。新运行态写入和业务查询只使用 `sourceType/sourceId`，不能新增旧字段兼容分支。
 
 ## Provider 与 Runtime Profile
 
@@ -61,11 +67,13 @@ provider: opensandbox | sealosdevbox | e2b
 
 - `opensandbox`
 - `sealosdevbox`
-- `e2b`
 
 `infrastructure/provider/runtimeProfile` 负责把 Provider 映射为默认镜像、工作目录、HOME、环境变量和创建参数。业务层不能根据 Provider 名称自行拼这些值。
 
 当使用 Sandbox 时必须配置 `AGENT_SANDBOX_PROVIDER`；未知或缺失 Provider 显式报错。
+
+公共 `stop()` 执行 Provider 自身的停止策略：OpenSandbox 删除远端计算实例但保留 FastGPT 管理的
+volume、Mongo 记录和 S3 归档，Sealos Devbox 则暂停远端实例。业务级删除始终继续清理全部受管资源。
 
 ## 运行态生命周期
 
@@ -79,7 +87,8 @@ provider: opensandbox | sealosdevbox | e2b
 4. 构造 `SandboxClient`，写入或刷新 running 实例记录。
 5. 确保远端 Provider 实例可用。
 
-`prepareAgentSandboxRuntime` 在此之前执行团队 Sandbox 权限检查，并根据标准 chat source 计算 sandboxId。
+上层在调用 `prepareAgentSandboxRuntime` 前完成普通 App 可用性判断或 Skill Edit 强可用性断言；
+runtime preparation 不再接受绕过权限检查的布尔参数。随后根据标准 chat source 计算 sandboxId。
 
 ### 初始化并发
 
@@ -104,6 +113,12 @@ Sandbox 初始化使用 `prepareSandbox(context, ...steps)` 顺序组合步骤�
 - 扫描 `SKILL.md` 和读取当前工作目录。
 
 具体场景只组合需要的 step，不在通用 prepare 层读取业务数据库。
+
+### 运行时配置收敛
+
+App Agent 和 ToolCall 在实际使用 Sandbox 前调用 `ensureAppSandboxRuntimeReady`。Provider 或镜像变化时，
+同一次 Workflow 先通过标准 archive/provider migration 收敛配置，再继续恢复 runtime；前端只消费
+`upgrading -> lazyInit` 粗粒度状态。Skill Edit 保留显式确认和轮询升级。
 
 ## Entrypoint
 
@@ -160,10 +175,26 @@ Skill Edit 复用编辑器 Sandbox 中的当前工作区，不把编辑中的内
 
 - 不活跃的 running 实例由 cron 停止并标记为 stopped。
 - 删除资源时同步清理 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
-- App chat 删除只清理对应会话 Sandbox；App 删除清理该 source 下所有 Sandbox。
+- App chat 删除只清理聊天记录和 chat S3 文件，不删除共享 Sandbox，也不清理 Sandbox 内的 `sessions/<chatId>` 目录。
+- App 删除清理该 source 下全部用户级 v2 与 Legacy Sandbox，包括 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
 - Skill 删除清理 Skill Edit 相关 Sandbox；普通编辑聊天删除不直接删除共享 edit-debug Sandbox。
 - stopped 实例可进入冷归档；恢复时通过 archive 状态机避免与归档、删除并发。
 - 保活和只读存在性检查不能意外拉起 archived Sandbox。
+
+## 可用性降级
+
+普通 App Chat 在系统关闭、App 未开启或团队套餐不可用时，不注入 Sandbox prompt、tools 和依赖
+Sandbox 的 Skill，也不准备 runtime；其他对话能力继续运行。关闭原因通过
+`systemDisabled/appDisabled/teamPlanUnavailable` 表达。
+
+Skill Edit 和 Skill 调试保持强依赖。文件 API 在服务端重新校验可用性，`checkExist` 只查询本地
+记录并返回可选关闭原因，不创建或恢复实例。
+
+## Workspace 预览
+
+HTML 预览和 `sandbox_get_file_url` 使用 Redis preview session 签发短期只读 URL。公开请求经
+`agent-sandbox-proxy` 回查 FastGPT，再由 Sandbox 内 `fastgpt-ide-agent:1319` 在 Workspace 范围内
+流式返回文件；预览不再上传临时文件到 S3，也不改变 Workspace 冷归档流程。
 
 ## API 与权限
 
@@ -174,7 +205,8 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 - 校验 App、Skill、outlink 和团队权限。
 - 签发或验证带 source、user、chat 和权限声明的 ticket。
 
-内部 runtime 接口假定调用方已经完成业务权限检查，但仍会检查团队 Sandbox 能力。
+内部 runtime 接口假定调用方已经完成普通 App 可用性判断或 Skill Edit 强可用性断言，不再重复
+查询团队套餐。
 
 ## 主要代码入口
 
@@ -182,11 +214,15 @@ Sandbox 文件、ticket、preview、keepalive 等 API 位于 `projects/app/src/p
 | --- | --- |
 | Runtime 接口 | `packages/service/core/ai/sandbox/interface/runtime.ts` |
 | Tool 接口 | `packages/service/core/ai/sandbox/interface/toolCall` |
+| Resource 接口 | `packages/service/core/ai/sandbox/interface/resource` |
+| Preview 接口 | `packages/service/core/ai/sandbox/interface/preview` |
+| Migration 接口 | `packages/service/core/ai/sandbox/interface/migration` |
 | Runtime client | `packages/service/core/ai/sandbox/application/runtime/client.ts` |
 | 初始化 pipeline | `packages/service/core/ai/sandbox/application/runtime/prepare.ts` |
 | Skill runtime | `packages/service/core/ai/sandbox/application/runtime/skill` |
 | 资源服务 | `packages/service/core/ai/sandbox/application/resource.ts` |
 | 归档服务 | `packages/service/core/ai/sandbox/application/archive.ts` |
+| Legacy migration | `packages/service/core/ai/sandbox/application/legacyMigration` |
 | 实例仓储 | `packages/service/core/ai/sandbox/infrastructure/instance` |
 | Provider profile | `packages/service/core/ai/sandbox/infrastructure/provider/runtimeProfile` |
 

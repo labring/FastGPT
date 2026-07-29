@@ -6,12 +6,13 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
   AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
-  AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT,
+  AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
@@ -58,7 +59,6 @@ describe('sandbox provider config', () => {
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
@@ -69,6 +69,14 @@ describe('sandbox provider config', () => {
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
+    );
+    vi.stubEnv(
+      'AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT',
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT
+    );
+    vi.stubEnv(
+      'AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB',
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB
     );
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
@@ -104,18 +112,6 @@ describe('sandbox provider config', () => {
     });
   });
 
-  it('parses e2b config from env', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'e2b');
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', 'e2b-token');
-
-    const { getSandboxProviderConfig } = await loadSandboxConfigModule();
-
-    expect(getSandboxProviderConfig()).toEqual({
-      provider: 'e2b',
-      apiKey: 'e2b-token'
-    });
-  });
-
   it('does not default sandbox provider when env is empty', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
 
@@ -128,30 +124,6 @@ describe('sandbox provider config', () => {
     expect(getSandboxProviderConfig).toThrow(
       'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
     );
-  });
-
-  it('keeps e2b runtime create config when runtime adapter config is requested', async () => {
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', 'e2b-token');
-
-    const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
-
-    expect(
-      getSandboxAdapterConfig({
-        provider: 'e2b',
-        runtime: true,
-        createConfig: {
-          env: { A: 'B' }
-        }
-      })
-    ).toEqual({
-      providerConfig: {
-        provider: 'e2b',
-        apiKey: 'e2b-token'
-      },
-      createConfig: {
-        env: { A: 'B' }
-      }
-    });
   });
 
   it('builds sealosdevbox runtime create config from runtime profile', async () => {
@@ -187,7 +159,6 @@ describe('sandbox provider config', () => {
         FASTGPT_SESSION_ID: 'session-1',
         FASTGPT_WORKDIR: '/home/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
-        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
         FASTGPT_IDE_MAX_FILE_BYTES: '536870912',
         FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: '67108864',
         FASTGPT_IDE_WS_MAX_FRAME_BYTES: '16777216'
@@ -215,7 +186,6 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
         AGENT_SANDBOX_SEALOS_BASEURL: undefined,
         AGENT_SANDBOX_SEALOS_TOKEN: undefined,
-        AGENT_SANDBOX_E2B_API_KEY: undefined,
         AGENT_SANDBOX_DISK_MB: 20
       }
     }));
@@ -229,9 +199,6 @@ describe('sandbox provider config', () => {
       );
       expect(() => getSandboxAdapterConfig({ provider: 'opensandbox' })).toThrow(
         'Sandbox provider base URL is required'
-      );
-      expect(() => getSandboxAdapterConfig({ provider: 'e2b' })).toThrow(
-        'Sandbox provider apiKey is required for e2b'
       );
     } finally {
       vi.doUnmock('@fastgpt/service/env');
@@ -309,6 +276,8 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT', '2');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB', '4096');
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
@@ -317,6 +286,10 @@ describe('sandbox provider config', () => {
       image: {
         repository: 'default-opensandbox-image',
         tag: 'stable'
+      },
+      resourceLimits: {
+        cpuCount: 2,
+        memoryMiB: 4096
       },
       networkPolicy: defaultOpenSandboxDockerNetworkPolicy
     });
@@ -330,8 +303,21 @@ describe('sandbox provider config', () => {
         repository: 'default-opensandbox-image',
         tag: 'stable'
       },
+      resourceLimits: {
+        cpuCount: 2,
+        memoryMiB: 4096
+      },
       entrypoint: ['/home/sandbox/entrypoint.sh'],
       networkPolicy: defaultOpenSandboxDockerNetworkPolicy
+    });
+
+    expect(
+      profile.buildConfig({
+        resourceLimits: { cpuCount: 3 }
+      }).resourceLimits
+    ).toEqual({
+      cpuCount: 3,
+      memoryMiB: 4096
     });
   });
 
@@ -345,17 +331,6 @@ describe('sandbox provider config', () => {
         token: ''
       })
     ).toThrow('Sandbox provider token is required for sealosdevbox');
-  });
-
-  it('validates e2b api key requirement', async () => {
-    const { validateSandboxConfig } = await loadSandboxConfigModule();
-
-    expect(() =>
-      validateSandboxConfig({
-        provider: 'e2b',
-        apiKey: ''
-      })
-    ).toThrow('Sandbox provider apiKey is required for e2b');
   });
 
   it('validates base url, api key and opensandbox runtime requirements', async () => {
@@ -409,6 +384,8 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: '',
         AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: undefined,
         AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true,
+        AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT: 1,
+        AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB: 2048,
         AGENT_SANDBOX_DISK_MB: 20
       }
     }));

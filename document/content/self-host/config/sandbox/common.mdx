@@ -25,14 +25,22 @@ FastGPT 服务里访问沙盒内部文件系统，会通过 proxy 去代理访�
 
 ### 2. 修改 FastGPT 环境变量
 
-在 `fastgpt-app` 和 `fastgpt-pro` 中增加下面环境变量：
+在 `fastgpt-app` 中增加下面三项环境变量：
 
 ```dotenv
 # 对应 fastgpt-agent-sandbox-proxy 的变量 AGENT_SANDBOX_PROXY_SECRET。生产环境请改为 32 位以上随机密钥
 AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
 # 浏览器可访问的 agent-sandbox-proxy WebSocket 地址；如已通过 HTTPS 域名代理，请使用 wss://
 AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
+# 浏览器访问 Sandbox 文件预览的 HTTP(S) 地址
+AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 ```
+
+`fastgpt-pro` 不提供 Sandbox Editor 和 WebSocket proxy 链路，因此不要求 `AGENT_SANDBOX_PROXY_SECRET` 和 `AGENT_SANDBOX_PROXY_URL`，但启用 Agent Sandbox 时必须增加 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。该变量可以与 `fastgpt-app` 使用相同的值。
+
+强烈建议将预览代理部署在与 FastGPT 主站不同的 origin（协议、域名或端口至少一项不同）。Sandbox 中的 HTML 可能包含用户生成的脚本；如果预览地址与 FastGPT 主站同源，这些脚本会处于主站的同源安全边界内，可能访问主站凭证或接口。FastGPT 当前只校验该变量使用 `http://` 或 `https://`，不会强制检查 origin 是否隔离。
+
+预览链接是短期只读 bearer capability。任何获得链接的人都可以在链接有效期内通过修改 URL 路径读取同一 Sandbox Workspace 中的其他文件，因此不要把预览链接分享给不应访问该 Workspace 的用户。
 
 ### 3. 启动验证
 
@@ -63,17 +71,27 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 `fastpgt-app` 和 `fastgpt-pro` 中你可以通过以下变量控制资源限制：
 
-| 变量                                 | 默认值     | 说明                                                                             |
-| ------------------------------------ | ---------- | -------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_DISK_MB`              | `1024`     | Agent 沙盒磁盘大小基准，单位 MB；会影响冷归档包、Skill 包和 IDE 单文件大小限制。 |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864` | IDE Agent WebSocket 单消息大小上限，单位字节。                                   |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216` | IDE Agent WebSocket 单帧大小上限，单位字节。                                     |
+| 变量                                     | 默认值     | 说明                                                                             |
+| ---------------------------------------- | ---------- | -------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT`    | `1`        | OpenSandbox 单实例 CPU 核数上限。                                                |
+| `AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB`   | `2048`     | OpenSandbox 单实例内存上限，单位 MiB。                                           |
+| `AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE` | `1Gi`      | OpenSandbox 持久卷容量，仅 K8s 模式下创建新 PVC 时有效。                         |
+| `AGENT_SANDBOX_DISK_MB`                  | `1024`     | Agent 沙盒磁盘大小基准，单位 MB；会影响冷归档包、Skill 包和 IDE 单文件大小限制。 |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | IDE Agent WebSocket 单消息大小上限，单位字节。                                   |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | IDE Agent WebSocket 单帧大小上限，单位字节。                                     |
+
+### 生命周期变量
+
+| 变量                                  | 默认值 | 说明                                              |
+| ------------------------------------- | ------ | ------------------------------------------------- |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`   | 运行中的 Agent 沙箱持续未活跃多少分钟后自动暂停。 |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`    | 已暂停的 Agent 沙箱持续未活跃多少天后自动归档。   |
 
 ## 常见问题
 
-### 提示 AGENT_SANDBOX_PROXY_URL is required
+### 提示 AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-启用 Agent Sandbox 后，必须配置 `AGENT_SANDBOX_PROXY_URL`。该地址是浏览器访问 `fastgpt-agent-sandbox-proxy` 的 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`，不是 FastGPT 主站地址。
+启用 Agent Sandbox 后，`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`；`fastgpt-pro` 只强制要求 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。两个服务都必须新增预览代理地址，例如 `https://sandbox-proxy.example.com`。
 
 ### 浏览器 WebSocket 连接失败
 

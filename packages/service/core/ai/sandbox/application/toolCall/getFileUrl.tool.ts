@@ -1,15 +1,16 @@
 /**
  * 沙盒业务层：定义 sandbox 文件临时下载链接工具。
  *
- * 只负责把 sandbox 文件流转存到 chat S3 临时对象，不处理运行态生命周期。
+ * 校验 workspace 文件存在后签发短期只读预览链接，不复制文件内容。
  */
 import z from 'zod';
 import path from 'path';
-import { Readable } from 'stream';
-import { addHours } from 'date-fns';
 import { defineTool } from './type';
-import { getS3ChatSource } from '../../../../../common/s3/sources/chat';
-import { SANDBOX_GET_FILE_URL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import {
+  buildSandboxPreviewFileUrl,
+  createSandboxPreviewSession,
+  resolveSandboxPreviewPath
+} from '../preview';
 
 const SandboxGetFileUrlToolSchema = z.object({
   paths: z.array(z.string())
@@ -18,43 +19,52 @@ const SandboxGetFileUrlToolSchema = z.object({
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
   execute: async ({ sandboxInstance, params }) => {
-    const { sourceType, sourceId, userId, chatId } = sandboxInstance.getContext();
-
-    if (!sourceType || !sourceId || !userId || !chatId) {
-      return { response: 'Sandbox file export context is not available.' };
+    if (params.paths.length === 0) {
+      return { response: '[]' };
     }
 
-    const result = await Promise.all(
-      params.paths.map(async (filePath) => {
-        const filename = path.basename(filePath);
-        const stream = sandboxInstance.provider.readFileStream(filePath);
-        const readable = Readable.from(stream);
+    const sandboxId = sandboxInstance.getSandboxId();
+    const { sourceType, sourceId, userId, chatId } = sandboxInstance.getContext();
 
-        const chatBucket = getS3ChatSource();
-        const expiredTime = addHours(new Date(), 2);
-        const { key } = await chatBucket.uploadChatFile({
-          sourceType,
-          sourceId,
-          chatId,
-          uId: userId,
-          filename,
-          body: readable,
-          expiredTime
-        });
-        const { url: fileUrl } = await chatBucket.createGetChatFileURL({
-          key,
-          expiredHours: 2,
-          external: true
-        });
+    if (!sourceId || userId === undefined || !chatId) {
+      return { response: 'Sandbox file preview context is not available.' };
+    }
 
-        return { fileUrl, filename };
-      })
+    const files = params.paths.map((inputPath) => {
+      const filePath = sandboxInstance.resolveRuntimePath(inputPath, {
+        allowAbsolutePath: true
+      });
+      return {
+        filePath,
+        ...resolveSandboxPreviewPath(filePath)
+      };
+    });
+    const fileInfoMap = await sandboxInstance.provider.getFileInfo(
+      files.map(({ providerPath }) => providerPath)
     );
+    for (const { providerPath } of files) {
+      const fileInfo = fileInfoMap.get(providerPath);
+      if (!fileInfo || fileInfo.isDirectory) {
+        throw new Error(`Sandbox preview file not found: ${providerPath}`);
+      }
+    }
+
+    const sessionId = await createSandboxPreviewSession({
+      sandboxId,
+      sourceType,
+      sourceId,
+      userId,
+      chatId
+    });
+    const result = files.map(({ filePath, relativePath }) => ({
+      fileUrl: buildSandboxPreviewFileUrl({
+        sandboxId,
+        sessionId,
+        filePath
+      }),
+      filename: path.posix.basename(relativePath)
+    }));
 
     return { response: JSON.stringify(result) };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_GET_FILE_URL_TOOL_NAME]: sandboxGetFileUrlTool
-};

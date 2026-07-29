@@ -1,12 +1,9 @@
 /**
  * Options for executing commands.
  */
-export interface ExecuteOptions {
+export type ExecuteOptions = {
   /** Working directory for execution */
   workingDirectory?: string;
-
-  /** Run in background (don't wait for completion) */
-  background?: boolean;
 
   /** Timeout in milliseconds */
   timeoutMs?: number;
@@ -27,12 +24,12 @@ export interface ExecuteOptions {
    * output you need, bearing in mind the memory cost.
    */
   maxOutputBytes?: number;
-}
+};
 
 /**
  * Result of command execution.
  */
-export interface ExecuteResult {
+export type ExecuteResult = {
   /** Standard output */
   stdout: string;
 
@@ -47,23 +44,23 @@ export interface ExecuteResult {
 
   /** Execution duration in milliseconds */
   durationMs?: number;
-}
+};
 
 /**
  * Output message from streaming execution.
  */
-export interface OutputMessage {
+export type OutputMessage = {
   /** Message content */
   text: string;
 
   /** Timestamp (Unix milliseconds) */
   timestamp?: number;
-}
+};
 
 /**
  * Handlers for streaming command output.
  */
-export interface StreamHandlers {
+export type StreamHandlers = {
   /** Called for each stdout message */
   onStdout?: (msg: OutputMessage) => void | Promise<void>;
 
@@ -75,15 +72,18 @@ export interface StreamHandlers {
 
   /** Called on error */
   onError?: (error: Error) => void | Promise<void>;
-}
+};
+
+/** Streaming callbacks combined with command execution options. */
+export type ExecuteStreamOptions = ExecuteOptions & StreamHandlers;
 
 /**
  * Background execution handle.
  */
-export interface BackgroundExecution {
+export type BackgroundExecution = {
   /** Session ID for the background execution */
   sessionId: string;
 
   /** Kill the background execution */
   kill(): Promise<void>;
-}
+};

@@ -19,15 +19,15 @@ import { getLLMModel } from '../../../../ai/model';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
-import {
-  ensureAgentSandboxRuntime,
-  streamAgentSandboxInitStatus,
-  type AgentSandboxPrepareAction
-} from './sub/sandbox';
+import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
+import {
+  assertSandboxAvailable,
+  resolveAppSandboxAvailability
+} from '../../../../ai/sandbox/interface/runtime';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import {
   buildAgentLoopCoreInput,
@@ -144,12 +144,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
   const hasSandboxRuntimeDependency = !!editSkillId || skillIds.length > 0;
-  const effectiveUseAgentSandbox =
-    hasSandboxRuntimeDependency || (!!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox);
+  const sandboxRequested = hasSandboxRuntimeDependency || !!useAgentSandbox;
+  const isAppChat = runningAppInfo.sourceType === ChatSourceTypeEnum.app;
+  const appSandboxAvailability = isAppChat
+    ? await resolveAppSandboxAvailability({
+        appEnabled: !!useAgentSandbox,
+        teamId: runningAppInfo.teamId
+      })
+    : undefined;
+  const effectiveUseAgentSandbox = isAppChat
+    ? appSandboxAvailability?.available === true
+    : sandboxRequested;
+  const effectiveSkillIds = effectiveUseAgentSandbox ? skillIds : [];
+  const effectiveSelectedSkills = effectiveUseAgentSandbox ? selectedSkills : [];
   const effectiveSandboxEntrypoint =
-    effectiveUseAgentSandbox && useAgentSandbox && global.feConfigs?.show_agent_sandbox
-      ? sandboxEntrypoint
-      : undefined;
+    effectiveUseAgentSandbox && useAgentSandbox ? sandboxEntrypoint : undefined;
   const skipSandboxInputFiles = runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit;
 
   // 初始化对话框输入的文件
@@ -158,8 +167,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   try {
-    if (hasSandboxRuntimeDependency && !global.feConfigs?.show_agent_sandbox) {
-      throw createAgentSandboxPermissionDeniedError();
+    if (!isAppChat && sandboxRequested) {
+      await assertSandboxAvailable(runningAppInfo.teamId);
     }
 
     const userContext = await useUserContext({
@@ -178,7 +187,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     if (effectiveUseAgentSandbox) {
-      streamAgentSandboxInitStatus({
+      await ensureWorkflowSandboxReadyForUse({
         workflowStreamResponse,
         sourceType: runningAppInfo.sourceType,
         sourceId: runningAppInfo.sourceId,
@@ -197,12 +206,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       tmbId: runningUserInfo.tmbId,
       needSandboxRuntime: effectiveUseAgentSandbox,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
-      skillIds,
-      selectedSkills,
+      skillIds: effectiveSkillIds,
+      selectedSkills: effectiveSelectedSkills,
       editSkillId,
       prepareActions: agentSandboxPrepareActions,
       currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
     });
+
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
     const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({

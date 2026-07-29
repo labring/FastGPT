@@ -9,7 +9,7 @@ import { Alert } from '@/components/docs/Alert';
   注意：OpenSandbox 方案默认未做网络隔离。如需网络隔离，请自行补充对应的网络隔离策略。
 </Alert>
 
-OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。开始前，请先完成[沙盒通用配置](./common)，确保 `fastgpt-agent-sandbox-proxy` 已部署，并且 `fastgpt-app`、`fastgpt-pro` 已配置相同的 `AGENT_SANDBOX_PROXY_SECRET` 和可被浏览器访问的 `AGENT_SANDBOX_PROXY_URL`。
+OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。开始前，请先完成[沙盒通用配置](./common)，确保 `fastgpt-agent-sandbox-proxy` 已部署；`fastgpt-app` 需配置 Proxy Secret、WebSocket URL 和预览 URL，`fastgpt-pro` 必须配置预览 URL。
 
 下面是 OpenSandbox 部署和配置流程。
 
@@ -59,6 +59,11 @@ AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 # 持久卷管理服务地址和 Token，需要与 x-volume-manager-auth-token 一致。
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
+# OpenSandbox 单实例 CPU 核数和内存上限（MiB）
+AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT=1
+AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB=2048
+# OpenSandbox 持久卷容量，仅 K8s 模式下创建新 PVC 时有效
+AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE=1Gi
 ```
 
 如果你的 `docker-compose.yml` 已经使用 `x-agent-sandbox-config` 统一注入 Agent Sandbox 变量，可直接在该 anchor 中填入上述值，确保 `fastgpt-app` 和 `fastgpt-pro` 都继承该配置。

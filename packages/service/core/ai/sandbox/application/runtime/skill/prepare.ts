@@ -7,7 +7,7 @@ import type { SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { SandboxPrepareContext, SandboxPrepareStep } from '../prepare';
 import { joinSandboxPath } from '../../../utils';
-import { getAgentSandboxSkillMaxBytes } from '../../../interface/config';
+import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { DEFAULT_GITIGNORE_CONTENT, downloadSkillPackage } from '../../../../skill/package';
 
 export type SkillPackagePrepareContext = SandboxPrepareContext & {
@@ -32,20 +32,6 @@ export const downloadSkillPackageToContext =
       ...context,
       packageBuffer: await downloadSkillPackage({ storageKey })
     };
-  };
-
-/** 在 prepare 链路中显式上报 skill 部署阶段，保持调用处生命周期可读。 */
-export const reportSkillPrepareProgress =
-  ({
-    phase,
-    onProgress
-  }: {
-    phase: SandboxStatusPhase;
-    onProgress?: (phase: SandboxStatusPhase) => void;
-  }): SkillPackagePrepareStep =>
-  async (context) => {
-    onProgress?.(phase);
-    return context;
   };
 
 /** 将已下载的 skill ZIP 写入 sandbox 并解压到当前工作目录。 */

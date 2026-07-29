@@ -18,6 +18,7 @@ describe('sandbox runtime files', () => {
     const { injectInputFilesToSandbox } =
       await import('@fastgpt/service/core/ai/sandbox/application/runtime/files');
     const sandbox = {
+      createDirectories: vi.fn(),
       writeFiles: vi.fn()
     };
 
@@ -45,6 +46,7 @@ describe('sandbox runtime files', () => {
       }
     ]);
 
+    expect(sandbox.createDirectories).toHaveBeenCalledWith(['user_files']);
     expect(sandbox.writeFiles).toHaveBeenCalledWith([
       {
         path: 'user_files/current.pdf',
@@ -63,12 +65,16 @@ describe('sandbox runtime files', () => {
         data: Buffer.from('a')
       }
     ]);
+    expect(sandbox.createDirectories.mock.invocationCallOrder[0]).toBeLessThan(
+      sandbox.writeFiles.mock.invocationCallOrder[0]
+    );
   });
 
   it('uses an injected file reader without downloading the URL', async () => {
     const { injectInputFilesToSandbox } =
       await import('@fastgpt/service/core/ai/sandbox/application/runtime/files');
     const sandbox = {
+      createDirectories: vi.fn(),
       writeFiles: vi.fn()
     };
     const readInputFile = vi.fn().mockResolvedValue(Buffer.from('private file'));
@@ -82,14 +88,18 @@ describe('sandbox runtime files', () => {
           url: 'https://files.example.com/private.pdf'
         }
       ],
+      '/workspace/sessions/chat-1',
       readInputFile
     );
 
     expect(readInputFile).toHaveBeenCalledWith('https://files.example.com/private.pdf');
     expect(axiosGetMock).not.toHaveBeenCalled();
+    expect(sandbox.createDirectories).toHaveBeenCalledWith([
+      '/workspace/sessions/chat-1/user_files'
+    ]);
     expect(sandbox.writeFiles).toHaveBeenCalledWith([
       {
-        path: 'user_files/private.pdf',
+        path: '/workspace/sessions/chat-1/user_files/private.pdf',
         data: Buffer.from('private file')
       }
     ]);

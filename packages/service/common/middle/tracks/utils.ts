@@ -243,6 +243,7 @@ export const pushTrack = {
       }
     });
   },
+  /** @deprecated Legacy Sandbox archive event. Use userSandboxMigration instead. */
   sandboxArchive: (data: {
     provider: string;
     sandboxId: string;
@@ -251,6 +252,45 @@ export const pushTrack = {
   }) => {
     return createTrack({
       event: TrackEnum.sandboxArchive,
+      data
+    });
+  },
+  userSandboxMigration: (
+    data: {
+      runId: string;
+      dryRun: boolean;
+    } & (
+      | { phase: 'started' }
+      | {
+          phase: 'failure';
+          sandboxId: string;
+          step:
+            | 'prepare_app_target'
+            | 'archive_legacy'
+            | 'archive_workspace'
+            | 'mark_archive_deleting'
+            | 'migrate_skill'
+            | 'migrate_app'
+            | 'delete_sandbox'
+            | 'delete_volume'
+            | 'verify_archive'
+            | 'complete_legacy_record'
+            | 'complete_legacy_archive'
+            | 'delete_archive'
+            | 'delete_legacy_record'
+            | 'stop_failed_legacy';
+          error: string;
+        }
+      | {
+          phase: 'completed';
+          successCount: number;
+          failureCount: number;
+          durationMs: number;
+        }
+    )
+  ) => {
+    return createTrack({
+      event: TrackEnum.userSandboxMigration,
       data
     });
   }

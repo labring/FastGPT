@@ -13,10 +13,6 @@ vi.mock('@/service/support/permission/auth/chat', () => ({
   authChatTargetCrud: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
-  checkTeamSandboxPermission: vi.fn()
-}));
-
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authApp: vi.fn()
 }));

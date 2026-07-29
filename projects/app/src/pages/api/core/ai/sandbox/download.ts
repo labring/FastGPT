@@ -3,11 +3,9 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
+import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import {
-  authSandboxSession,
-  buildSandboxClientQueryFromChatSource
-} from '@/service/core/sandbox/auth';
-import {
+  buildSandboxClientQueryFromChatSource,
   getSandboxClient,
   type SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
@@ -16,7 +14,6 @@ import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandb
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   isSandboxPathDirectory,
-  resolveSandboxWorkspacePath,
   addDirectoryToArchive
 } from '@fastgpt/service/core/ai/sandbox/interface/file';
 
@@ -70,7 +67,7 @@ const writeFileStreamResponse = async ({
   res: NextApiResponse;
   path: string;
 }) => {
-  const providerPath = resolveSandboxWorkspacePath(path);
+  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
   const fileInfoMap = await sandbox.provider.getFileInfo([providerPath]).catch(() => undefined);
   const fileInfo = fileInfoMap?.get(providerPath);
 
@@ -103,7 +100,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     uid,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
-  } = await authSandboxSession({
+  } = await authSandboxRuntimeSession({
     req,
     sourceType,
     sourceId,
@@ -118,10 +115,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       sourceId: resolvedSourceId,
       userId: uid,
       chatId
-    }),
-    {
-      failedArchivePolicy: 'clearAndContinue'
-    }
+    })
   );
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);

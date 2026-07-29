@@ -87,8 +87,7 @@ export async function ensureAgentSandboxRuntime({
     sourceType,
     sourceId,
     userId,
-    chatId,
-    teamId
+    chatId
   });
   const readInputFile = (url: string) => readWorkflowFileBuffer({ url });
   const preparedContext = await withAgentSandboxInitLease({
@@ -198,7 +197,7 @@ const injectSelectedSkillFiles =
       teamId,
       tmbId,
       skillIds,
-      workDirectory: context.workDirectory
+      workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);
 

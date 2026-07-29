@@ -1,0 +1,106 @@
+---
+title: 'V4.16.0-beta1 (Environment Changes, Upgrade Script)'
+description: 'FastGPT V4.16.0-beta1 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### 1. Migrate Agent Sandbox Data
+
+This release changes App Chat Agent Sandboxes from one instance per chat to one shared instance per App and user. Files from different chats remain separated in the `sessions/<chatId>` directory, while published Skills are stored in the shared `projects` directory.
+
+If Agent Sandbox was enabled in your deployment, complete the legacy Workspace migration after upgrading. Deployments that never enabled Agent Sandbox can skip this section.
+
+After updating FastGPT and the supporting Agent Sandbox services, run the new endpoint in dry-run mode. It reports pending beta6 Sandbox field normalization and legacy Skill Debug Chat cleanup without creating resources, accessing object storage, or modifying data:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After reviewing the dry-run result, run the migration. The formal run performs beta6 normalization first and continues to Workspace archiving in the same request only when the remaining count reaches `0`:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+The migration first runs the complete V4.15.0-beta6 prerequisites. It backfills legacy Sandbox `sourceType/sourceId`, removes legacy fields, deletes orphan resources, and cleans legacy Skill Debug Chat rows and old prefixes from both private and public buckets. Skills whose IDs conflict with App IDs are excluded from Chat cleanup. The script then combines the remaining Sandbox and Debug Chat counts into `normalization.pendingCount`; Workspace archiving starts only when that value is `0`. It then archives every legacy Workspace and removes old compute resources, migrates Skills, and finally consolidates App data into user-level Sandboxes by App and user. If any archive operation fails, installation does not start. Each new Sandbox is stopped after its Workspace is installed and starts through the normal lifecycle on first use. The script is safe to retry: completed archive and migration work is not repeated, and legacy archives and MongoDB records remain available as backups after migration.
+
+Check `normalization.pendingCount`, `normalizationBlocked`, `failedCount`, and `failures` in the response. The migration is complete only when both `normalization.pendingCount` and `failedCount` are `0`, and `normalizationBlocked` is `false`.
+
+### 2. Update Agent Sandbox Configuration
+
+Deployments with Agent Sandbox enabled must add a browser-accessible preview proxy URL to both `fastgpt-app` and `fastgpt-pro`:
+
+```dotenv
+# Browser-accessible HTTP(S) URL for Sandbox file previews
+AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+```
+
+The URL must use either the `http://` or `https://` prefix. In a default single-port deployment, the `AGENT_SANDBOX_PROXY_URL` host and port can also serve previews, with HTTP(S) used for previews and WebSocket(S) used for the editor connection.
+
+We strongly recommend using an origin separate from the FastGPT application for previews. Sandbox HTML may contain user-generated scripts. A same-origin deployment places those scripts inside the application's same-origin security boundary, where they may be able to access application credentials or APIs. FastGPT does not currently enforce origin isolation.
+
+A preview URL is a temporary, read-only bearer capability and is not limited to the file named in the URL. Anyone with the URL can change its path to read other files in the same Sandbox Workspace while it remains valid. Do not share it with anyone who should not have access to that Workspace.
+
+This release also adds the following optional settings:
+
+| Variable                                 | Default | Description                                                |
+| ---------------------------------------- | ------- | ---------------------------------------------------------- |
+| `AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT`    | `1`     | CPU core limit for each OpenSandbox instance.              |
+| `AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB`   | `2048`  | Memory limit for each OpenSandbox instance, in MiB.        |
+| `AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE` | `1Gi`   | New OpenSandbox persistent volume size in Kubernetes mode. |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`    | Minutes of inactivity before a running Sandbox is stopped. |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`     | Days of inactivity before a stopped Sandbox is archived.   |
+
+The E2B Sandbox Provider has been removed. Deployments previously using E2B must switch to `opensandbox` or `sealosdevbox` and remove the `AGENT_SANDBOX_E2B_API_KEY` environment variable.
+
+> The preview protocol has changed across FastGPT and the `fastgpt-agent-sandbox-proxy` and `fastgpt-agent-sandbox` services. If Agent Sandbox is enabled, use the matching images for this release. Mixed-version deployments are not supported.
+
+### 3. Configure Cloudflare R2 (Optional)
+
+Object storage now supports Cloudflare R2. For `STORAGE_VENDOR` use the `r2` value, keep the standard S3 endpoint, region, Access Key, and Secret Key settings, and add the public bucket URL:
+
+```dotenv
+STORAGE_VENDOR=r2
+STORAGE_R2_PUBLIC_ENDPOINT=https://your-public-bucket-domain
+```
+
+R2 deployments must configure the `STORAGE_R2_PUBLIC_ENDPOINT` variable without setting `STORAGE_S3_CDN_ENDPOINT` at the same time.
+
+## 🚀 New Features
+
+1. Agent Sandbox now uses App-level, per-user instances. Chats for the same App and user reuse one Sandbox while keeping chat files in separate session directories.
+2. Sandbox HTML and files can now be previewed through short-lived, read-only URLs without uploading a duplicate copy to object storage.
+3. App Workflows now archive and restore their Workspace automatically when the Sandbox Provider or runtime image changes, completing the upgrade within the current run.
+4. Added Cloudflare R2 object storage support, including presigned access and custom domains for public buckets.
+
+## ⚙️ Improvements
+
+1. Reworked Agent Sandbox lifecycle and migration handling so create, stop, archive, restore, delete, and Provider-switch operations have concurrency protection, resumable progress, and idempotent retries.
+2. App Chat now disables Sandbox capabilities gracefully when Sandbox is unavailable or unsupported by the current team plan, while other models, tools, Knowledge Bases, and Workflow nodes continue to run.
+3. OpenSandbox persistent volumes can be preserved after compute resources stop and reused on the next run. Stop and archive thresholds are now configurable.
+4. Unified runtime image upgrade status for Apps and Skills, with continuous upgrade polling in the Skill editor.
+5. Sandbox file writes now create missing parent directories automatically.
+6. Improved enterprise verification form rendering performance.
+7. Centralized additional workspace dependency versions and added Chinese and English runtime fonts to Agent Sandbox.
+8. Improved shared object storage compatibility across OSS, COS, MinIO, AWS S3, and Cloudflare R2.
+
+## 🐛 Fixes
+
+1. Fixed OpenSandbox resources not being released or reused correctly after stopping.
+2. Fixed state races and duplicate operations during Agent Sandbox creation, restore, and runtime upgrades.
+3. Fixed Sandbox writes to nested paths failing when parent directories did not exist.
+4. Fixed already encoded avatar URLs being encoded again, which could prevent images from loading.
+5. Fixed Alibaba Cloud OSS reading ETags from the wrong response field, which caused downstream metadata validation failures.
+
+## 🛠️ Code Improvements
+
+1. Split Sandbox Adapter responsibilities into lifecycle, filesystem, command execution, and Provider contracts, and removed the E2B Adapter.
+2. Added direct Workspace previews, Range requests, path-escape protection, and session authentication to Agent Sandbox Proxy and IDE Agent.
+3. Added shared object storage integration tests across MinIO, AWS S3, Cloudflare R2, Alibaba Cloud OSS, and Tencent Cloud COS.

@@ -101,7 +101,7 @@ export const runSandboxEntrypoint =
     await runAgentSandboxEntrypoint({
       sandbox: context.sandbox,
       sandboxEntrypoint,
-      workDirectory: context.workDirectory
+      workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     return context;
   };

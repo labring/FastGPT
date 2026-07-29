@@ -48,11 +48,19 @@ export const isRedisLeaseError = (error: unknown) =>
   error instanceof RedisLeaseLostError ||
   error instanceof RedisLeaseAcquireError;
 
+export type RedisLeaseContext = {
+  /** lease 丢失后触发，支持传递给可取消的 provider 请求。 */
+  signal: AbortSignal;
+  /** 在进入下一步不可逆副作用前同步确认当前执行者仍持有 lease。 */
+  assertValid: () => void;
+};
+
 /**
  * 基于 Redis SET NX PX 的服务端租约。
  *
  * 获取失败或 Redis 异常会向上抛错，不会无锁执行临界区。执行期间通过 token 校验续期，
  * 释放时同样只删除当前 token 持有的 lease，避免误删后续请求重新获得的 lease。
+ * fn 必须在每个不可逆步骤前调用 assertValid；支持 AbortSignal 的底层请求应直接消费 signal。
  */
 export async function withRedisLease<T>({
   key,
@@ -65,7 +73,7 @@ export async function withRedisLease<T>({
   label: string;
   ttlMs: number;
   renewIntervalMs?: number;
-  fn: () => Promise<T>;
+  fn: (context: RedisLeaseContext) => Promise<T>;
 }): Promise<T> {
   if (!Number.isFinite(ttlMs) || ttlMs <= 0) {
     throw new Error('ttlMs must be a positive number');
@@ -80,6 +88,22 @@ export async function withRedisLease<T>({
   let leaseLostError: RedisLeaseLostError | undefined;
   let leaseExpiresAt = Date.now() + ttlMs;
   let active = true;
+  const abortController = new AbortController();
+
+  const markLeaseLost = () => {
+    leaseLostError ??= new RedisLeaseLostError({ key: leaseKey, label });
+    if (!abortController.signal.aborted) {
+      abortController.abort(leaseLostError);
+    }
+    return leaseLostError;
+  };
+
+  const assertValid = () => {
+    if (!leaseLostError && Date.now() >= leaseExpiresAt) {
+      markLeaseLost();
+    }
+    if (leaseLostError) throw leaseLostError;
+  };
 
   const acquire = async () => redis.set(leaseKey, token, 'PX', ttlMs, 'NX');
   const renew = async () => {
@@ -94,7 +118,7 @@ export async function withRedisLease<T>({
         return;
       }
 
-      leaseLostError = new RedisLeaseLostError({ key: leaseKey, label });
+      markLeaseLost();
       logger.warn('Redis lease renew failed because token no longer matches', {
         key: leaseKey,
         label
@@ -102,7 +126,7 @@ export async function withRedisLease<T>({
     } catch (error) {
       logger.warn('Redis lease renew failed', { key: leaseKey, label, error });
       if (Date.now() >= leaseExpiresAt) {
-        leaseLostError = new RedisLeaseLostError({ key: leaseKey, label });
+        markLeaseLost();
       }
     }
   };
@@ -122,11 +146,12 @@ export async function withRedisLease<T>({
   renewTimer.unref?.();
 
   try {
-    const result = await fn();
-    if (leaseLostError) {
-      throw leaseLostError;
-    }
+    const result = await fn({ signal: abortController.signal, assertValid });
+    assertValid();
     return result;
+  } catch (error) {
+    if (leaseLostError) throw leaseLostError;
+    throw error;
   } finally {
     active = false;
     clearInterval(renewTimer);

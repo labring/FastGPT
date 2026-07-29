@@ -35,9 +35,9 @@ LABEL description="Static runtime image for fastgpt-agent-sandbox-proxy"
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 # Copy compiled executable to standard path. The scratch image runs as root by default,
-# so it can still bind the configured port 1006.
+# so it can still bind the configured WebSocket and Preview ports.
 COPY --chmod=755 --from=builder /usr/src/fastgpt-agent-sandbox-proxy/dist/fastgpt-agent-sandbox-proxy /usr/local/bin/fastgpt-agent-sandbox-proxy
 
-EXPOSE 1006
+EXPOSE 1006 1007
 
 CMD ["/usr/local/bin/fastgpt-agent-sandbox-proxy"]

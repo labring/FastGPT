@@ -41,6 +41,8 @@ import {
   getSandboxParentPath,
   joinSandboxPath,
   applySandboxMoveOperationsToExpandedDirs,
+  getSandboxIdeSessionRoot,
+  scopeSandboxIdeRpcParams,
   type SandboxMoveOperation
 } from './utils';
 
@@ -237,7 +239,11 @@ export const useSandboxStatus = ({
     checkSandboxExist({ ...sandboxTarget, chatId, outLinkAuthData })
       .then((result) => {
         if (!cancelled)
-          setApiSandboxStatus({ targetId: sandboxTargetId, chatId, exists: result.exists });
+          setApiSandboxStatus({
+            targetId: sandboxTargetId,
+            chatId,
+            exists: result.exists
+          });
       })
       .catch((error) => {
         console.error('Failed to check sandbox status:', error);
@@ -259,6 +265,13 @@ export const useSandboxStatus = ({
     apiSandboxStatus.chatId === chatId &&
     apiSandboxStatus.exists;
   const sandboxExists = !!sandboxTarget && (apiSandboxExists || hasSandboxInHistory);
+  const { onOpenSandbox } = useSandboxOpenGuard({
+    appId,
+    chatTarget,
+    chatId,
+    outLinkAuthData,
+    enabled
+  });
 
   const setSandboxExists = useCallback(
     (exists: boolean) => {
@@ -295,21 +308,75 @@ export const useSandboxStatus = ({
                 }}
               />
             }
-            onClick={onOpen}
+            onClick={() => void onOpenSandbox(onOpen)}
             {...props}
             aria-label={t('chat:sandbox_entry_tooltip')}
           />
         </MyTooltip>
       );
     },
-    [sandboxExists, t]
+    [sandboxExists, t, onOpenSandbox]
   );
 
   return {
     sandboxExists,
     setSandboxExists,
+    onOpenSandbox,
     SandboxEntryIcon
   };
+};
+
+/**
+ * 创建统一的 Sandbox 入口点击守卫。
+ *
+ * 该 Hook 不在挂载时请求状态，适合回复气泡等重复入口；仅用户点击时查询并决定 Toast 或打开编辑器。
+ */
+export const useSandboxOpenGuard = ({
+  appId,
+  chatTarget,
+  chatId,
+  outLinkAuthData,
+  enabled = true
+}: {
+  appId?: string;
+  chatTarget?: ChatTargetInputType;
+  chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+  enabled?: boolean;
+}) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const sandboxTarget = useMemo(
+    () => (enabled ? tryResolveSandboxTarget({ appId, chatTarget }) : undefined),
+    [appId, chatTarget, enabled]
+  );
+
+  const onOpenSandbox = useCallback(
+    async (onOpen: () => void) => {
+      if (!sandboxTarget || !chatId) return false;
+
+      try {
+        const status = await checkSandboxExist({ ...sandboxTarget, chatId, outLinkAuthData });
+        if (status.unavailableReason) {
+          toast({
+            status: 'warning',
+            title: t('chat:sandbox_unavailable_toast')
+          });
+          return false;
+        }
+
+        onOpen();
+        return true;
+      } catch (error) {
+        console.error('Failed to check sandbox status:', error);
+        onOpen();
+        return true;
+      }
+    },
+    [sandboxTarget, chatId, outLinkAuthData, t, toast]
+  );
+
+  return { onOpenSandbox };
 };
 
 const getMimeTypeByFileName = (fileName: string): string => {
@@ -412,6 +479,7 @@ export const useSandboxFileStore = ({
   const resolveConnectRef = useRef<(() => void) | null>(null);
   const rejectConnectRef = useRef<((error: Error) => void) | null>(null);
   const stoppedConnectErrorRef = useRef<Error | null>(null);
+  const ideSessionRootRef = useRef('.');
 
   const resetConnectPromise = useCallback(() => {
     const promise = new Promise<void>((resolve, reject) => {
@@ -486,7 +554,7 @@ export const useSandboxFileStore = ({
             jsonrpc: '2.0',
             id,
             method,
-            params
+            params: scopeSandboxIdeRpcParams(method, params, ideSessionRootRef.current)
           })
         );
       } catch (error) {
@@ -768,6 +836,11 @@ export const useSandboxFileStore = ({
           throw new Error('Ticket not found in response: ' + JSON.stringify(res));
         }
         if (isDestroyed) return;
+
+        ideSessionRootRef.current = getSandboxIdeSessionRoot(
+          res.workspaceRoot,
+          res.sessionWorkDirectory
+        );
 
         const wsUrl = getSandboxProxyWsUrl({ channel: 'fs', ticket });
 
