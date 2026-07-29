@@ -1,33 +1,20 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { addSeconds } from 'date-fns';
-import { addAuthCode } from '@fastgpt/service/support/user/auth/controller';
 import {
   PreLoginQuerySchema,
   type PreLoginQueryType,
   type PreLoginResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { passwordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, PreLoginQueryType>,
   _res: ApiResponseType<any>
 ): Promise<PreLoginResponseType> {
-  const { username } = PreLoginQuerySchema.parse(req.query);
+  const { username } = parseApiInput({ req, querySchema: PreLoginQuerySchema }).query;
 
-  const code = getNanoid(6);
-
-  await addAuthCode({
-    type: UserAuthTypeEnum.login,
-    key: username,
-    code,
-    expiredTime: addSeconds(new Date(), 30)
-  });
-
-  return {
-    code
-  };
+  return passwordVerificationService.issuePreLoginCode({ username });
 }
 
 export default NextAPI(handler);
