@@ -167,7 +167,6 @@ export const useChatGenerate = ({
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
   const generatingMessageQueueRef = useRef<QueuedGeneratingMessage[]>([]);
-  const sendPromptRef = useRef<SendPromptFnType>();
 
   const applyGeneratingMessage = useMemoizedFn(
     (
@@ -906,10 +905,6 @@ export const useChatGenerate = ({
       )();
     }
   );
-
-  useEffect(() => {
-    sendPromptRef.current = sendPrompt;
-  }, [sendPrompt]);
 
   return {
     abortRequest,
