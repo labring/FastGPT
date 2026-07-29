@@ -9,6 +9,10 @@ import {
 } from './download';
 import {
   createUploadUrlHandler,
+  markMultipartAbortedHandler,
+  markMultipartCompleteFailedHandler,
+  markMultipartCompletingHandler,
+  markMultipartCompletedHandler,
   revokeUploadTokenHandler,
   verifyUploadTokenHandler
 } from './upload';
@@ -60,6 +64,10 @@ export const createS3AccessLinkService = (
     deleteDownloadAliasByObjects: deleteDownloadAliasByObjectsHandler(deps),
     createUploadUrl: createUploadUrlHandler(deps),
     verifyUploadToken: verifyUploadTokenHandler(deps),
+    markMultipartCompleting: markMultipartCompletingHandler(deps),
+    markMultipartCompleted: markMultipartCompletedHandler(deps),
+    markMultipartCompleteFailed: markMultipartCompleteFailedHandler(deps),
+    markMultipartAborted: markMultipartAbortedHandler(deps),
     revokeUploadToken: revokeUploadTokenHandler(deps)
   };
 };

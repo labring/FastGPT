@@ -8,7 +8,6 @@ import {
 } from '../providers';
 import { createAsciiKeyAtLength } from '../helpers';
 import { MAX_STORAGE_OBJECT_KEY_UTF8_BYTES } from '../../../src/assert';
-
 const readBody = async (body: Readable): Promise<Buffer> => {
   const chunks: Buffer[] = [];
   for await (const chunk of body) {
@@ -55,7 +54,7 @@ const uploadInBatches = async ({
 
 /**
  * 对任意 IStorage 实现执行相同的外部行为契约。
- * Provider 只负责环境和 bucket 生命周期，断言不依赖厂商 SDK。
+ * Provider 只负责测试环境和 bucket 准备，断言不依赖厂商 SDK。
  */
 export const runStorageAdapterContract = (provider: StorageIntegrationProvider) => {
   describe
@@ -125,6 +124,81 @@ export const runStorageAdapterContract = (provider: StorageIntegrationProvider) 
         const signedGetResponse = await fetch(signedGet.url);
         expect(signedGetResponse.ok).toBe(true);
         expect(signedGetResponse.headers.get('content-disposition')).toContain('basic.txt');
+      });
+
+      it('completes and aborts Multipart uploads through the provider contract', async () => {
+        const key = `${context.rootPrefix}multipart/complete.bin`;
+        const partSize = 8 * 1024 * 1024;
+        const firstPart = Buffer.alloc(partSize, 0x11);
+        const lastPart = Buffer.from('last-part');
+        const upload = await context.storage.createMultipartUpload({
+          key,
+          contentType: 'application/octet-stream',
+          metadata: { uploadSource: 'multipart-contract' }
+        });
+
+        const first = await context.storage.uploadMultipartPart({
+          key,
+          uploadId: upload.uploadId,
+          partNumber: 1,
+          body: Readable.from(firstPart),
+          contentLength: firstPart.length
+        });
+        const last = await context.storage.uploadMultipartPart({
+          key,
+          uploadId: upload.uploadId,
+          partNumber: 2,
+          body: Readable.from(lastPart),
+          contentLength: lastPart.length
+        });
+
+        await expect(
+          context.storage.completeMultipartUpload({
+            key,
+            uploadId: upload.uploadId,
+            parts: [
+              { partNumber: 1, etag: first.etag },
+              { partNumber: 2, etag: last.etag }
+            ]
+          })
+        ).resolves.toEqual({ bucket: context.bucket, key });
+
+        await expect(
+          readBody((await context.storage.downloadObject({ key })).body)
+        ).resolves.toEqual(Buffer.concat([firstPart, lastPart]));
+        await expect(context.storage.getObjectMetadata({ key })).resolves.toMatchObject({
+          contentLength: partSize + lastPart.length,
+          metadata: { uploadSource: 'multipart-contract' }
+        });
+
+        const pendingKey = `${context.rootPrefix}multipart/abort.bin`;
+        const pending = await context.storage.createMultipartUpload({ key: pendingKey });
+        await context.storage.uploadMultipartPart({
+          key: pendingKey,
+          uploadId: pending.uploadId,
+          partNumber: 1,
+          body: Readable.from(Buffer.alloc(partSize, 0x22)),
+          contentLength: partSize
+        });
+        await expect(
+          context.storage.abortMultipartUpload({ key: pendingKey, uploadId: pending.uploadId })
+        ).resolves.toEqual({
+          bucket: context.bucket,
+          key: pendingKey,
+          uploadId: pending.uploadId
+        });
+        await expect(
+          context.storage.abortMultipartUpload({ key: pendingKey, uploadId: pending.uploadId })
+        ).resolves.toEqual({
+          bucket: context.bucket,
+          key: pendingKey,
+          uploadId: pending.uploadId
+        });
+        await expect(context.storage.checkObjectExists({ key: pendingKey })).resolves.toMatchObject(
+          {
+            exists: false
+          }
+        );
       });
 
       it('returns a stable etag when metadata is read repeatedly', async () => {

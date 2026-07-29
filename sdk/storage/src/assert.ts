@@ -1,4 +1,5 @@
 import { InvalidStorageObjectKeyError, type InvalidStorageObjectKeyReason } from './errors';
+import type { MultipartUploadPart } from './types';
 
 /** 四个 adapter 都可移植的对象 key 最大 UTF-8 字节数。 */
 export const MAX_STORAGE_OBJECT_KEY_UTF8_BYTES = 800;
@@ -101,4 +102,61 @@ export function assertRequiredStorageObjectPrefix(prefix: unknown): asserts pref
     throw new Error('Prefix is required');
   }
   assertStorageObjectKey(prefix, 'prefix');
+}
+
+/** 校验 Multipart upload id，避免把空标识发送给对象存储。 */
+export function assertMultipartUploadId(value: unknown): asserts value is string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error('Multipart uploadId is required');
+  }
+}
+
+/** 校验对象存储通用的 Multipart 分片编号范围。 */
+export function assertMultipartPartNumber(value: unknown): asserts value is number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 10000) {
+    throw new Error('Multipart partNumber must be an integer between 1 and 10000');
+  }
+}
+
+/** 校验分片长度，确保 adapter 使用明确的 Content-Length。 */
+export function assertMultipartContentLength(value: unknown): asserts value is number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new Error('Multipart contentLength must be a positive integer');
+  }
+}
+
+/**
+ * 校验完成 Multipart 所需的分片回执。
+ *
+ * 这里要求分片号严格递增，避免不同 adapter 对无序列表产生不同的合并结果；
+ * 是否存在缺失分片由上层根据文件大小和上传策略继续校验。
+ */
+export function assertMultipartUploadParts(value: unknown): asserts value is MultipartUploadPart[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error('Multipart parts are required');
+  }
+
+  let previousPartNumber = 0;
+  for (const part of value) {
+    if (!part || typeof part !== 'object') {
+      throw new Error('Multipart part is invalid');
+    }
+
+    const { partNumber, etag } = part as Partial<MultipartUploadPart>;
+    assertMultipartPartNumber(partNumber);
+    if (typeof etag !== 'string' || etag.trim().length === 0) {
+      throw new Error('Multipart part etag is required');
+    }
+    if (partNumber <= previousPartNumber) {
+      throw new Error('Multipart parts must be sorted by partNumber without duplicates');
+    }
+    previousPartNumber = partNumber;
+  }
+}
+
+/** 判断厂商是否返回了“Multipart upload 不存在”，供 abort 做幂等处理。 */
+export function isNoSuchMultipartUploadError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const value = error as { name?: unknown; code?: unknown; Code?: unknown };
+  return [value.name, value.code, value.Code].some((item) => item === 'NoSuchUpload');
 }

@@ -27,8 +27,8 @@ export const getUploadInspectBytes = (
 /**
  * 校验上传文件内容并返回最终写入 metadata 的文件信息。
  *
- * 兼容旧调用方的 `filename + uploadConstraints` 入参；新短上传链路应优先传
- * `fileHint + uploadPolicy`，避免把客户端 hint、服务端策略和内容 evidence 混在一起。
+ * 新短上传链路传入已经固定的 `fileHint + uploadPolicy`；`uploadConstraints` 仅保留给
+ * 旧的直接调用方现场构建策略，不作为 upload session 或 proxy payload 的字段。
  */
 export async function validateUploadFile({
   buffer,
@@ -39,7 +39,7 @@ export async function validateUploadFile({
 }: {
   buffer: Buffer;
   filename?: string;
-  uploadConstraints: UploadConstraints;
+  uploadConstraints?: UploadConstraints;
   uploadPolicy?: UploadPolicy;
   fileHint?: UploadFileHint;
 }) {
@@ -47,7 +47,7 @@ export async function validateUploadFile({
     filename: filename || 'file'
   };
   const policy =
-    uploadPolicy ||
+    uploadPolicy ??
     createUploadPolicy({
       hint,
       uploadConstraints

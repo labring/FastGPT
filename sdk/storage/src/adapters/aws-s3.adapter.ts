@@ -1,50 +1,12 @@
-import {
-  CopyObjectCommand,
-  DeleteObjectCommand,
-  DeleteObjectsCommand,
-  GetObjectCommand,
-  HeadBucketCommand,
-  HeadObjectCommand,
-  ListObjectsV2Command,
-  NotFound,
-  PutObjectCommand,
-  S3Client
-} from '@aws-sdk/client-s3';
-import type { IAwsS3CompatibleStorageOptions, IR2StorageOptions, IStorage } from '../interface';
-import type {
-  UploadObjectParams,
-  UploadObjectResult,
-  DownloadObjectParams,
-  DownloadObjectResult,
-  DeleteObjectParams,
-  DeleteObjectsParams,
-  DeleteObjectsResult,
-  PresignedPutUrlParams,
-  PresignedPutUrlResult,
-  ListObjectsParams,
-  ListObjectsResult,
-  DeleteObjectResult,
-  GetObjectMetadataParams,
-  GetObjectMetadataResult,
-  EnsureBucketResult,
-  DeleteObjectsByPrefixParams,
-  StorageObjectKey,
-  ExistsObjectParams,
-  ExistsObjectResult,
-  StorageObjectMetadata,
-  PresignedGetUrlParams,
-  PresignedGetUrlResult,
-  CopyObjectParams,
-  CopyObjectResult,
-  GeneratePublicGetUrlParams,
-  GeneratePublicGetUrlResult
-} from '../types';
+import AWS from '@aws-sdk/client-s3';
+import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
+import type * as Storage from '../types';
 import { Upload } from '@aws-sdk/lib-storage';
 import { EmptyObjectError } from '../errors';
 import type { Readable } from 'node:stream';
 import { camelCase, chunk, isNotNil, kebabCase, trim } from 'es-toolkit';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
+import { AWS_S3_COMPATIBLE_VENDORS, DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
@@ -54,37 +16,54 @@ import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
-  assertRequiredStorageObjectPrefix
+  assertRequiredStorageObjectPrefix,
+  assertMultipartContentLength,
+  assertMultipartPartNumber,
+  assertMultipartUploadId,
+  assertMultipartUploadParts,
+  isNoSuchMultipartUploadError
 } from '../assert';
 
+function toAwsMetadata(metadata?: Storage.StorageObjectMetadata): Storage.StorageObjectMetadata {
+  const meta: Storage.StorageObjectMetadata = {};
+  if (!metadata) return meta;
+
+  for (const [key, value] of Object.entries(metadata)) {
+    if (!key) continue;
+    meta[kebabCase(key)] = String(value);
+  }
+  return meta;
+}
+
 export class AwsS3StorageAdapter implements IStorage {
-  protected readonly client: S3Client;
+  protected readonly client: AWS.S3Client;
 
   get bucketName(): string {
     return this.options.bucket;
   }
 
-  constructor(protected readonly options: IAwsS3CompatibleStorageOptions | IR2StorageOptions) {
-    if (options.vendor !== 'aws-s3' && options.vendor !== 'minio' && options.vendor !== 'r2') {
-      throw new Error('Invalid storage vendor');
+  constructor(protected readonly options: IAwsS3CompatibleStorageOptions) {
+    if (!AWS_S3_COMPATIBLE_VENDORS.includes(options.vendor)) {
+      throw new Error(`Invalid storage vendor: expected ${AWS_S3_COMPATIBLE_VENDORS.toString()}`);
     }
 
-    this.client = new S3Client({
+    const r2SpecifiedOptions = {
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED'
+    } satisfies ConstructorParameters<typeof AWS.S3Client>[0];
+
+    this.client = new AWS.S3Client({
       region: options.region,
       credentials: options.credentials,
       endpoint: options.endpoint,
       forcePathStyle: options.forcePathStyle,
       maxAttempts: options.maxRetries,
-      ...(options.vendor === 'r2'
-        ? {
-            requestChecksumCalculation: 'WHEN_REQUIRED' as const,
-            responseChecksumValidation: 'WHEN_REQUIRED' as const
-          }
-        : {})
+
+      ...(options.vendor === 'r2' ? r2SpecifiedOptions : undefined)
     });
   }
 
-  async checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult> {
+  async checkObjectExists(params: Storage.ExistsObjectParams): Promise<Storage.ExistsObjectResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
@@ -92,14 +71,14 @@ export class AwsS3StorageAdapter implements IStorage {
 
     try {
       await this.client.send(
-        new HeadObjectCommand({
+        new AWS.HeadObjectCommand({
           Bucket: this.options.bucket,
           Key: key
         })
       );
       exists = true;
     } catch (error) {
-      if (error instanceof NotFound) {
+      if (error instanceof AWS.NotFound) {
         exists = false;
       } else {
         throw error;
@@ -113,18 +92,20 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async getObjectMetadata(params: GetObjectMetadataParams): Promise<GetObjectMetadataResult> {
+  async getObjectMetadata(
+    params: Storage.GetObjectMetadataParams
+  ): Promise<Storage.GetObjectMetadataResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
     const result = await this.client.send(
-      new HeadObjectCommand({
+      new AWS.HeadObjectCommand({
         Bucket: this.options.bucket,
         Key: key
       })
     );
 
-    const metadata: StorageObjectMetadata = {};
+    const metadata: Storage.StorageObjectMetadata = {};
     if (result.Metadata) {
       for (const [k, v] of Object.entries(result.Metadata)) {
         if (!k) continue;
@@ -142,8 +123,8 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async ensureBucket(): Promise<EnsureBucketResult> {
-    await this.client.send(new HeadBucketCommand({ Bucket: this.options.bucket }));
+  async ensureBucket(): Promise<Storage.EnsureBucketResult> {
+    await this.client.send(new AWS.HeadBucketCommand({ Bucket: this.options.bucket }));
 
     return {
       exists: true,
@@ -152,17 +133,11 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
+  async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
     assertStorageObjectKey(key);
 
-    const meta: StorageObjectMetadata = {};
-    if (metadata) {
-      for (const [k, v] of Object.entries(metadata)) {
-        if (!k) continue;
-        meta[kebabCase(k)] = String(v);
-      }
-    }
+    const meta = toAwsMetadata(metadata);
 
     const upload = new Upload({
       client: this.client,
@@ -185,13 +160,129 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
+  async createMultipartUpload(
+    params: Storage.CreateMultipartUploadParams
+  ): Promise<Storage.CreateMultipartUploadResult> {
+    const { key, contentType, contentDisposition, metadata } = params;
+    assertStorageObjectKey(key);
+
+    const result = await this.client.send(
+      new AWS.CreateMultipartUploadCommand({
+        Bucket: this.options.bucket,
+        Key: key,
+        ContentType: contentType,
+        ContentDisposition: contentDisposition,
+        Metadata: toAwsMetadata(metadata)
+      })
+    );
+
+    if (!result.UploadId) {
+      throw new Error('Multipart upload initialization did not return an uploadId');
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId: result.UploadId
+    };
+  }
+
+  async uploadMultipartPart(
+    params: Storage.UploadMultipartPartParams
+  ): Promise<Storage.UploadMultipartPartResult> {
+    const { key, uploadId, partNumber, body, contentLength } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+    assertMultipartPartNumber(partNumber);
+    assertMultipartContentLength(contentLength);
+
+    const result = await this.client.send(
+      new AWS.UploadPartCommand({
+        Bucket: this.options.bucket,
+        Key: key,
+        UploadId: uploadId,
+        PartNumber: partNumber,
+        Body: body,
+        ContentLength: contentLength
+      })
+    );
+
+    if (!result.ETag) {
+      throw new Error('Multipart part upload did not return an ETag');
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId,
+      partNumber,
+      etag: result.ETag
+    };
+  }
+
+  async completeMultipartUpload(
+    params: Storage.CompleteMultipartUploadParams
+  ): Promise<Storage.CompleteMultipartUploadResult> {
+    const { key, uploadId, parts } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+    assertMultipartUploadParts(parts);
+
+    await this.client.send(
+      new AWS.CompleteMultipartUploadCommand({
+        Bucket: this.options.bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: {
+          Parts: parts.map(({ partNumber, etag }) => ({
+            PartNumber: partNumber,
+            ETag: etag
+          }))
+        }
+      })
+    );
+
+    return {
+      bucket: this.options.bucket,
+      key
+    };
+  }
+
+  async abortMultipartUpload(
+    params: Storage.AbortMultipartUploadParams
+  ): Promise<Storage.AbortMultipartUploadResult> {
+    const { key, uploadId } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+
+    try {
+      await this.client.send(
+        new AWS.AbortMultipartUploadCommand({
+          Bucket: this.options.bucket,
+          Key: key,
+          UploadId: uploadId
+        })
+      );
+    } catch (error) {
+      if (!isNoSuchMultipartUploadError(error)) throw error;
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId
+    };
+  }
+
+  async downloadObject(
+    params: Storage.DownloadObjectParams
+  ): Promise<Storage.DownloadObjectResult> {
     const { key, abortSignal } = params;
     assertStorageObjectKey(key);
     throwIfStorageDownloadAborted(abortSignal);
 
     const result = await this.client.send(
-      new GetObjectCommand({
+      new AWS.GetObjectCommand({
         Bucket: this.options.bucket,
         Key: key
       }),
@@ -211,12 +302,12 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
+  async deleteObject(params: Storage.DeleteObjectParams): Promise<Storage.DeleteObjectResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
     await this.client.send(
-      new DeleteObjectCommand({
+      new AWS.DeleteObjectCommand({
         Key: key,
         Bucket: this.options.bucket
       })
@@ -228,7 +319,9 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByMultiKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { keys } = params;
     assertStorageObjectKeys(keys);
 
@@ -240,11 +333,11 @@ export class AwsS3StorageAdapter implements IStorage {
     }
 
     const chunks = chunk(keys, 1000);
-    const fails: StorageObjectKey[] = [];
+    const fails: Storage.StorageObjectKey[] = [];
 
     for (const chunk of chunks) {
       const result = await this.client.send(
-        new DeleteObjectsCommand({
+        new AWS.DeleteObjectsCommand({
           Bucket: this.options.bucket,
           Delete: {
             Objects: chunk.map((key) => ({ Key: key })),
@@ -261,17 +354,19 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByPrefix(
+    params: Storage.DeleteObjectsByPrefixParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { prefix } = params;
     assertRequiredStorageObjectPrefix(prefix);
 
-    const fails: StorageObjectKey[] = [];
+    const fails: Storage.StorageObjectKey[] = [];
     let isTruncated = false;
     let continuationToken: string | undefined = undefined;
 
     do {
       const listResponse = await this.client.send(
-        new ListObjectsV2Command({
+        new AWS.ListObjectsV2Command({
           Bucket: this.options.bucket,
           Prefix: prefix,
           ContinuationToken: continuationToken,
@@ -288,7 +383,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
       const objectsToDelete = listResponse.Contents.map((content) => ({ Key: content.Key }));
       const deleteResponse = await this.client.send(
-        new DeleteObjectsCommand({
+        new AWS.DeleteObjectsCommand({
           Bucket: this.options.bucket,
           Delete: {
             Objects: objectsToDelete,
@@ -309,7 +404,9 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async generatePresignedPutUrl(params: PresignedPutUrlParams): Promise<PresignedPutUrlResult> {
+  async generatePresignedPutUrl(
+    params: Storage.PresignedPutUrlParams
+  ): Promise<Storage.PresignedPutUrlResult> {
     const { key, expiredSeconds, metadata, contentType } = params;
     assertStorageObjectKey(key);
 
@@ -333,7 +430,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
     const url = await getSignedUrl(
       this.client,
-      new PutObjectCommand({
+      new AWS.PutObjectCommand({
         Bucket: this.options.bucket,
         Key: key,
         Metadata: meta,
@@ -364,7 +461,9 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
+  async generatePresignedGetUrl(
+    params: Storage.PresignedGetUrlParams
+  ): Promise<Storage.PresignedGetUrlResult> {
     const { key, expiredSeconds, responseContentType } = params;
     assertStorageObjectKey(key);
 
@@ -372,7 +471,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
     const url = await getSignedUrl(
       this.client,
-      new GetObjectCommand({
+      new AWS.GetObjectCommand({
         Bucket: this.options.bucket,
         Key: key,
         ResponseContentType: responseContentType
@@ -389,7 +488,9 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
+  generatePublicGetUrl(
+    params: Storage.GeneratePublicGetUrlParams
+  ): Storage.GeneratePublicGetUrlResult {
     const { key } = params;
     assertStorageObjectKey(key);
     const encodedKey = encodeObjectKeyPath(key);
@@ -426,17 +527,17 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async listObjects(params: ListObjectsParams): Promise<ListObjectsResult> {
+  async listObjects(params: Storage.ListObjectsParams): Promise<Storage.ListObjectsResult> {
     const { prefix } = params;
     assertStorageObjectPrefix(prefix);
 
-    let keys: StorageObjectKey[] = [];
+    let keys: Storage.StorageObjectKey[] = [];
     let isTruncated = false;
     let continuationToken: string | undefined = undefined;
 
     do {
       const result = await this.client.send(
-        new ListObjectsV2Command({
+        new AWS.ListObjectsV2Command({
           Bucket: this.options.bucket,
           Prefix: prefix,
           ContinuationToken: continuationToken,
@@ -463,7 +564,9 @@ export class AwsS3StorageAdapter implements IStorage {
     };
   }
 
-  async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
+  async copyObjectInSelfBucket(
+    params: Storage.CopyObjectParams
+  ): Promise<Storage.CopyObjectResult> {
     const { sourceKey, targetKey } = params;
     assertStorageObjectKey(sourceKey, 'sourceKey');
     assertStorageObjectKey(targetKey, 'targetKey');
@@ -474,7 +577,7 @@ export class AwsS3StorageAdapter implements IStorage {
       .join('/');
 
     await this.client.send(
-      new CopyObjectCommand({
+      new AWS.CopyObjectCommand({
         Bucket: this.options.bucket,
         CopySource: `${this.options.bucket}/${encodedSourceKey}`,
         Key: targetKey

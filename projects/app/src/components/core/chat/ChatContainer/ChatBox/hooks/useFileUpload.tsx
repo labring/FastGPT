@@ -19,7 +19,7 @@ import {
   getUploadDraftChatFilePresignedUrl
 } from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
 import { getUploadChatFileType } from '../utils/file';
 import { type ChatSourceTarget, useChatAuthApiTarget } from '@/web/core/chat/utils';
 import {
@@ -365,19 +365,20 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           }
 
           // Upload File to S3
-          await putFileToS3({
+          const uploader = new S3FileUploader({
             url,
             file: rawFile,
             headers,
-            onUploadProgress: (e) => {
-              if (!e.total) return;
-              const percent = Math.round((e.loaded / e.total) * 100);
+            onProgress: (loaded, total) => {
+              if (!total) return;
+              const percent = Math.round((loaded / total) * 100);
               updateFileByUploadId(uploadId, { process: percent, status: 1 });
             },
             signal: task.controller.signal,
             t,
             maxSize
           });
+          await uploader.upload();
 
           // Update file url and key
           updateFileByUploadId(uploadId, {

@@ -2,36 +2,12 @@ import type { Readable } from 'node:stream';
 import { Readable as NodeReadable } from 'node:stream';
 import type { Mock } from 'vitest';
 import type { IStorage } from '../interface';
-import type {
-  CopyObjectParams,
-  CopyObjectResult,
-  DeleteObjectParams,
-  DeleteObjectResult,
-  DeleteObjectsByPrefixParams,
-  DeleteObjectsParams,
-  DeleteObjectsResult,
-  DownloadObjectParams,
-  DownloadObjectResult,
-  EnsureBucketResult,
-  ExistsObjectParams,
-  ExistsObjectResult,
-  GeneratePublicGetUrlParams,
-  GeneratePublicGetUrlResult,
-  GetObjectMetadataParams,
-  GetObjectMetadataResult,
-  ListObjectsParams,
-  ListObjectsResult,
-  PresignedGetUrlParams,
-  PresignedGetUrlResult,
-  PresignedPutUrlParams,
-  PresignedPutUrlResult,
-  StorageObjectKey,
-  StorageObjectMetadata,
-  StorageUploadBody,
-  UploadObjectParams,
-  UploadObjectResult
-} from '../types';
+import type * as Storage from '../types';
 import {
+  assertMultipartContentLength,
+  assertMultipartPartNumber,
+  assertMultipartUploadId,
+  assertMultipartUploadParts,
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
@@ -45,20 +21,33 @@ type VitestLike = {
 
 type StoredObject = {
   body: Buffer;
-  metadata: StorageObjectMetadata;
+  metadata: Storage.StorageObjectMetadata;
   contentType?: string;
   contentLength?: number;
   contentDisposition?: string;
   etag?: string;
 };
 
+type StoredMultipartUpload = {
+  key: Storage.StorageObjectKey;
+  contentType?: string;
+  contentDisposition?: string;
+  metadata: Storage.StorageObjectMetadata;
+  parts: Map<number, Buffer>;
+};
+
 export type VitestStorageMock = IStorage & {
   /** 便于在测试中直接读写内存对象（key -> object）。 */
-  __objects: Map<StorageObjectKey, StoredObject>;
+  __objects: Map<Storage.StorageObjectKey, StoredObject>;
+  /** 便于测试 Multipart 的孤儿分片是否已被 complete/abort 清理。 */
+  __multipartUploads: Map<string, StoredMultipartUpload>;
   /** 清空内存对象。 */
   __reset: () => void;
   /** 直接写入一个对象（绕过 uploadObject）。 */
-  __putObject: (key: StorageObjectKey, obj: Partial<StoredObject> & { body: Buffer }) => void;
+  __putObject: (
+    key: Storage.StorageObjectKey,
+    obj: Partial<StoredObject> & { body: Buffer }
+  ) => void;
 };
 
 export type CreateVitestStorageMockParams = {
@@ -71,7 +60,7 @@ export type CreateVitestStorageMockParams = {
   baseUrl?: string;
 };
 
-async function bodyToBuffer(body: StorageUploadBody): Promise<Buffer> {
+async function bodyToBuffer(body: Storage.StorageUploadBody): Promise<Buffer> {
   if (Buffer.isBuffer(body)) return body;
   if (typeof body === 'string') return Buffer.from(body);
   return await readableToBuffer(body);
@@ -97,59 +86,159 @@ function getEtag(buf: Buffer) {
 export function createVitestStorageMock(params: CreateVitestStorageMockParams): VitestStorageMock {
   const { vi, bucketName = 'mock-bucket', baseUrl = 'https://mock-storage.local' } = params;
 
-  const objects = new Map<StorageObjectKey, StoredObject>();
+  const objects = new Map<Storage.StorageObjectKey, StoredObject>();
+  const multipartUploads = new Map<string, StoredMultipartUpload>();
+  let nextMultipartUploadId = 1;
   let bucketEnsured = false;
 
-  const ensureBucket = vi.fn(async (): Promise<EnsureBucketResult> => {
+  const ensureBucket = vi.fn(async (): Promise<Storage.EnsureBucketResult> => {
     const exists = bucketEnsured;
     bucketEnsured = true;
     return { exists, created: !exists, bucket: bucketName };
   });
 
   const checkObjectExists = vi.fn(
-    async ({ key }: ExistsObjectParams): Promise<ExistsObjectResult> => {
+    async ({ key }: Storage.ExistsObjectParams): Promise<Storage.ExistsObjectResult> => {
       assertStorageObjectKey(key);
       return { bucket: bucketName, key, exists: objects.has(key) };
     }
   );
 
-  const uploadObject = vi.fn(async (p: UploadObjectParams): Promise<UploadObjectResult> => {
-    assertStorageObjectKey(p.key);
-    const buf = await bodyToBuffer(p.body);
-    const contentLength = p.contentLength ?? buf.length;
-    objects.set(p.key, {
-      body: buf,
-      metadata: p.metadata ?? {},
-      contentType: p.contentType,
-      contentDisposition: p.contentDisposition,
-      contentLength,
-      etag: getEtag(buf)
-    });
-    return { bucket: bucketName, key: p.key };
-  });
-
-  const downloadObject = vi.fn(async (p: DownloadObjectParams): Promise<DownloadObjectResult> => {
-    assertStorageObjectKey(p.key);
-    throwIfStorageDownloadAborted(p.abortSignal);
-
-    const obj = objects.get(p.key);
-    if (!obj) {
-      throw new Error(`Object not found: ${p.key}`);
+  const uploadObject = vi.fn(
+    async (p: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> => {
+      assertStorageObjectKey(p.key);
+      const buf = await bodyToBuffer(p.body);
+      const contentLength = p.contentLength ?? buf.length;
+      objects.set(p.key, {
+        body: buf,
+        metadata: p.metadata ?? {},
+        contentType: p.contentType,
+        contentDisposition: p.contentDisposition,
+        contentLength,
+        etag: getEtag(buf)
+      });
+      return { bucket: bucketName, key: p.key };
     }
-    const body = bufferToReadable(obj.body);
-    bindAbortSignalToReadable({ readable: body, abortSignal: p.abortSignal });
+  );
 
-    return { bucket: bucketName, key: p.key, body };
-  });
+  const createMultipartUpload = vi.fn(
+    async (
+      p: Storage.CreateMultipartUploadParams
+    ): Promise<Storage.CreateMultipartUploadResult> => {
+      assertStorageObjectKey(p.key);
+      const uploadId = `mock-multipart-${nextMultipartUploadId}`;
+      nextMultipartUploadId += 1;
+      multipartUploads.set(uploadId, {
+        key: p.key,
+        contentType: p.contentType,
+        contentDisposition: p.contentDisposition,
+        metadata: p.metadata ?? {},
+        parts: new Map()
+      });
+      return { bucket: bucketName, key: p.key, uploadId };
+    }
+  );
 
-  const deleteObject = vi.fn(async (p: DeleteObjectParams): Promise<DeleteObjectResult> => {
-    assertStorageObjectKey(p.key);
-    objects.delete(p.key);
-    return { bucket: bucketName, key: p.key };
-  });
+  const uploadMultipartPart = vi.fn(
+    async (p: Storage.UploadMultipartPartParams): Promise<Storage.UploadMultipartPartResult> => {
+      assertStorageObjectKey(p.key);
+      assertMultipartUploadId(p.uploadId);
+      assertMultipartPartNumber(p.partNumber);
+      assertMultipartContentLength(p.contentLength);
+
+      const upload = multipartUploads.get(p.uploadId);
+      if (!upload || upload.key !== p.key) {
+        throw new Error('Multipart upload not found');
+      }
+
+      const body = await bodyToBuffer(p.body);
+      if (body.length !== p.contentLength) {
+        throw new Error('Multipart contentLength does not match body');
+      }
+      upload.parts.set(p.partNumber, body);
+
+      return {
+        bucket: bucketName,
+        key: p.key,
+        uploadId: p.uploadId,
+        partNumber: p.partNumber,
+        etag: getEtag(body)
+      };
+    }
+  );
+
+  const completeMultipartUpload = vi.fn(
+    async (
+      p: Storage.CompleteMultipartUploadParams
+    ): Promise<Storage.CompleteMultipartUploadResult> => {
+      assertStorageObjectKey(p.key);
+      assertMultipartUploadId(p.uploadId);
+      assertMultipartUploadParts(p.parts);
+
+      const upload = multipartUploads.get(p.uploadId);
+      if (!upload || upload.key !== p.key) {
+        throw new Error('Multipart upload not found');
+      }
+
+      const partBodies = p.parts.map(({ partNumber }) => {
+        const body = upload.parts.get(partNumber);
+        if (!body) throw new Error(`Multipart part ${partNumber} not found`);
+        return body;
+      });
+      const body = Buffer.concat(partBodies);
+      objects.set(p.key, {
+        body,
+        metadata: upload.metadata,
+        contentType: upload.contentType,
+        contentDisposition: upload.contentDisposition,
+        contentLength: body.length,
+        etag: getEtag(body)
+      });
+      multipartUploads.delete(p.uploadId);
+
+      return { bucket: bucketName, key: p.key };
+    }
+  );
+
+  const abortMultipartUpload = vi.fn(
+    async (p: Storage.AbortMultipartUploadParams): Promise<Storage.AbortMultipartUploadResult> => {
+      assertStorageObjectKey(p.key);
+      assertMultipartUploadId(p.uploadId);
+      const upload = multipartUploads.get(p.uploadId);
+      if (upload && upload.key !== p.key) {
+        throw new Error('Multipart upload not found');
+      }
+      multipartUploads.delete(p.uploadId);
+      return { bucket: bucketName, key: p.key, uploadId: p.uploadId };
+    }
+  );
+
+  const downloadObject = vi.fn(
+    async (p: Storage.DownloadObjectParams): Promise<Storage.DownloadObjectResult> => {
+      assertStorageObjectKey(p.key);
+      throwIfStorageDownloadAborted(p.abortSignal);
+
+      const obj = objects.get(p.key);
+      if (!obj) {
+        throw new Error(`Object not found: ${p.key}`);
+      }
+      const body = bufferToReadable(obj.body);
+      bindAbortSignalToReadable({ readable: body, abortSignal: p.abortSignal });
+
+      return { bucket: bucketName, key: p.key, body };
+    }
+  );
+
+  const deleteObject = vi.fn(
+    async (p: Storage.DeleteObjectParams): Promise<Storage.DeleteObjectResult> => {
+      assertStorageObjectKey(p.key);
+      objects.delete(p.key);
+      return { bucket: bucketName, key: p.key };
+    }
+  );
 
   const deleteObjectsByMultiKeys = vi.fn(
-    async (p: DeleteObjectsParams): Promise<DeleteObjectsResult> => {
+    async (p: Storage.DeleteObjectsParams): Promise<Storage.DeleteObjectsResult> => {
       assertStorageObjectKeys(p.keys);
       for (const key of p.keys) objects.delete(key);
       return { bucket: bucketName, keys: [] };
@@ -157,7 +246,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   );
 
   const deleteObjectsByPrefix = vi.fn(
-    async (p: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> => {
+    async (p: Storage.DeleteObjectsByPrefixParams): Promise<Storage.DeleteObjectsResult> => {
       assertRequiredStorageObjectPrefix(p.prefix);
       const keys: string[] = [];
       for (const key of objects.keys()) {
@@ -169,7 +258,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   );
 
   const generatePresignedPutUrl = vi.fn(
-    async (p: PresignedPutUrlParams): Promise<PresignedPutUrlResult> => {
+    async (p: Storage.PresignedPutUrlParams): Promise<Storage.PresignedPutUrlResult> => {
       assertStorageObjectKey(p.key);
       const putUrl = `${baseUrl}/put/${encodeURIComponent(bucketName)}/${encodeURIComponent(p.key)}`;
       // mock: 直接透传 metadata 作为“headers”
@@ -179,7 +268,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   );
 
   const generatePresignedGetUrl = vi.fn(
-    async (p: PresignedGetUrlParams): Promise<PresignedGetUrlResult> => {
+    async (p: Storage.PresignedGetUrlParams): Promise<Storage.PresignedGetUrlResult> => {
       assertStorageObjectKey(p.key);
       const query = p.responseContentType
         ? `?response-content-type=${encodeURIComponent(p.responseContentType)}`
@@ -190,35 +279,39 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   );
 
   const generatePublicGetUrl = vi.fn(
-    ({ key }: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult => {
+    ({ key }: Storage.GeneratePublicGetUrlParams): Storage.GeneratePublicGetUrlResult => {
       assertStorageObjectKey(key);
       const publicGetUrl = `${baseUrl}/public/${encodeURIComponent(bucketName)}/${encodeURIComponent(key)}`;
       return { url: publicGetUrl, bucket: bucketName, key };
     }
   );
 
-  const listObjects = vi.fn(async (p: ListObjectsParams): Promise<ListObjectsResult> => {
-    assertStorageObjectPrefix(p.prefix);
-    const keys = Array.from(objects.keys()).filter((k) =>
-      p.prefix ? k.startsWith(p.prefix) : true
-    );
-    keys.sort();
-    return { bucket: bucketName, keys };
-  });
-
-  const copyObjectInSelfBucket = vi.fn(async (p: CopyObjectParams): Promise<CopyObjectResult> => {
-    assertStorageObjectKey(p.sourceKey, 'sourceKey');
-    assertStorageObjectKey(p.targetKey, 'targetKey');
-    const src = objects.get(p.sourceKey);
-    if (!src) {
-      throw new Error(`Source object not found: ${p.sourceKey}`);
+  const listObjects = vi.fn(
+    async (p: Storage.ListObjectsParams): Promise<Storage.ListObjectsResult> => {
+      assertStorageObjectPrefix(p.prefix);
+      const keys = Array.from(objects.keys()).filter((k) =>
+        p.prefix ? k.startsWith(p.prefix) : true
+      );
+      keys.sort();
+      return { bucket: bucketName, keys };
     }
-    objects.set(p.targetKey, { ...src, body: Buffer.from(src.body) });
-    return { bucket: bucketName, sourceKey: p.sourceKey, targetKey: p.targetKey };
-  });
+  );
+
+  const copyObjectInSelfBucket = vi.fn(
+    async (p: Storage.CopyObjectParams): Promise<Storage.CopyObjectResult> => {
+      assertStorageObjectKey(p.sourceKey, 'sourceKey');
+      assertStorageObjectKey(p.targetKey, 'targetKey');
+      const src = objects.get(p.sourceKey);
+      if (!src) {
+        throw new Error(`Source object not found: ${p.sourceKey}`);
+      }
+      objects.set(p.targetKey, { ...src, body: Buffer.from(src.body) });
+      return { bucket: bucketName, sourceKey: p.sourceKey, targetKey: p.targetKey };
+    }
+  );
 
   const getObjectMetadata = vi.fn(
-    async (p: GetObjectMetadataParams): Promise<GetObjectMetadataResult> => {
+    async (p: Storage.GetObjectMetadataParams): Promise<Storage.GetObjectMetadataResult> => {
       assertStorageObjectKey(p.key);
       const obj = objects.get(p.key);
       if (!obj) {
@@ -242,6 +335,10 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
     ensureBucket,
     checkObjectExists,
     uploadObject,
+    createMultipartUpload,
+    uploadMultipartPart,
+    completeMultipartUpload,
+    abortMultipartUpload,
     downloadObject,
     deleteObject,
     deleteObjectsByMultiKeys,
@@ -254,7 +351,12 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
     getObjectMetadata,
     destroy,
     __objects: objects,
-    __reset: () => objects.clear(),
+    __multipartUploads: multipartUploads,
+    __reset: () => {
+      objects.clear();
+      multipartUploads.clear();
+      nextMultipartUploadId = 1;
+    },
     __putObject: (key, obj) => {
       objects.set(key, {
         body: obj.body,

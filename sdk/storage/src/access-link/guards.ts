@@ -8,6 +8,7 @@ import type {
   S3UploadConstraints,
   S3UploadExtensionRule,
   S3UploadFileHint,
+  S3MultipartUploadSession,
   S3UploadPolicy
 } from './types';
 
@@ -46,6 +47,44 @@ const assertNonNegativeNumber = (value: unknown, code: S3AccessLinkErrorCode): n
   }
 
   return value;
+};
+
+const assertPositiveInteger = (value: unknown, code: S3AccessLinkErrorCode): number => {
+  const result = assertPositiveNumber(value, code);
+  if (!Number.isInteger(result)) throw new S3AccessLinkError(code);
+  return result;
+};
+
+const assertMultipartSession = (
+  value: unknown,
+  code: S3AccessLinkErrorCode
+): S3MultipartUploadSession | undefined => {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new S3AccessLinkError(code);
+
+  const status = value.status;
+  if (
+    status !== 'active' &&
+    status !== 'completing' &&
+    status !== 'completed' &&
+    status !== 'aborted'
+  ) {
+    throw new S3AccessLinkError(code);
+  }
+
+  return {
+    uploadId: assertNonEmptyString(value.uploadId, code),
+    partSize: assertPositiveInteger(value.partSize, code),
+    totalSize: assertPositiveInteger(value.totalSize, code),
+    status,
+    ...(value.completingAt !== undefined
+      ? { completingAt: assertDate(value.completingAt, code) }
+      : {}),
+    ...(value.completedAt !== undefined
+      ? { completedAt: assertDate(value.completedAt, code) }
+      : {}),
+    ...(value.abortedAt !== undefined ? { abortedAt: assertDate(value.abortedAt, code) } : {})
+  };
 };
 
 const assertStringRecord = (
@@ -97,11 +136,7 @@ const assertStringArray = (value: unknown, code: S3AccessLinkErrorCode): string[
   return value;
 };
 
-const assertUploadPolicy = (
-  value: unknown,
-  code: S3AccessLinkErrorCode
-): S3UploadPolicy | undefined => {
-  if (value === undefined) return undefined;
+const assertUploadPolicy = (value: unknown, code: S3AccessLinkErrorCode): S3UploadPolicy => {
   if (!isRecord(value)) throw new S3AccessLinkError(code);
 
   const base = assertUploadConstraints(value, code);
@@ -241,21 +276,21 @@ export const assertCreateUploadParams = (
     objectKey: assertNonEmptyString(params.objectKey, S3AccessLinkErrCode.uploadSessionNotFound),
     expiredTime: assertDate(params.expiredTime, S3AccessLinkErrCode.uploadSessionNotFound),
     maxSize: assertPositiveNumber(params.maxSize, S3AccessLinkErrCode.uploadSessionNotFound),
-    uploadConstraints: assertUploadConstraints(
-      params.uploadConstraints,
+    uploadPolicy: assertUploadPolicy(
+      params.uploadPolicy,
       S3AccessLinkErrCode.uploadSessionNotFound
     ),
-    ...(params.uploadPolicy !== undefined
-      ? {
-          uploadPolicy: assertUploadPolicy(
-            params.uploadPolicy,
-            S3AccessLinkErrCode.uploadSessionNotFound
-          )
-        }
-      : {}),
     ...(params.fileHint !== undefined
       ? {
           fileHint: assertUploadFileHint(params.fileHint, S3AccessLinkErrCode.uploadSessionNotFound)
+        }
+      : {}),
+    ...(params.multipart !== undefined
+      ? {
+          multipart: assertMultipartSession(
+            params.multipart,
+            S3AccessLinkErrCode.uploadSessionNotFound
+          )
         }
       : {}),
     ...(params.metadata !== undefined
@@ -279,22 +314,22 @@ export const assertUploadPayload = (payload: S3ProxyUploadPayload): S3ProxyUploa
     bucketName: assertNonEmptyString(payload.bucketName, S3AccessLinkErrCode.uploadSessionNotFound),
     objectKey: assertNonEmptyString(payload.objectKey, S3AccessLinkErrCode.uploadSessionNotFound),
     maxSize: assertPositiveNumber(payload.maxSize, S3AccessLinkErrCode.uploadSessionNotFound),
-    uploadConstraints: assertUploadConstraints(
-      payload.uploadConstraints,
+    uploadPolicy: assertUploadPolicy(
+      payload.uploadPolicy,
       S3AccessLinkErrCode.uploadSessionNotFound
     ),
-    ...(payload.uploadPolicy !== undefined
-      ? {
-          uploadPolicy: assertUploadPolicy(
-            payload.uploadPolicy,
-            S3AccessLinkErrCode.uploadSessionNotFound
-          )
-        }
-      : {}),
     ...(payload.fileHint !== undefined
       ? {
           fileHint: assertUploadFileHint(
             payload.fileHint,
+            S3AccessLinkErrCode.uploadSessionNotFound
+          )
+        }
+      : {}),
+    ...(payload.multipart !== undefined
+      ? {
+          multipart: assertMultipartSession(
+            payload.multipart,
             S3AccessLinkErrCode.uploadSessionNotFound
           )
         }

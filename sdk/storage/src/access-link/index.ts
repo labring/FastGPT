@@ -49,6 +49,7 @@ export type {
   S3ProxyDownloadPayload,
   S3ProxyUploadPayload,
   S3VerifiedDownloadPayload,
+  S3MultipartUploadSession,
   S3UploadConstraints,
   S3UploadSessionRecord,
   UploadSessionUsePolicy

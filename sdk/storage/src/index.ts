@@ -20,6 +20,15 @@ export type {
   ExistsObjectResult,
   UploadObjectParams,
   UploadObjectResult,
+  MultipartUploadPart,
+  CreateMultipartUploadParams,
+  CreateMultipartUploadResult,
+  UploadMultipartPartParams,
+  UploadMultipartPartResult,
+  CompleteMultipartUploadParams,
+  CompleteMultipartUploadResult,
+  AbortMultipartUploadParams,
+  AbortMultipartUploadResult,
   DownloadObjectParams,
   DownloadObjectResult,
   DeleteObjectParams,
@@ -47,7 +56,8 @@ export {
   MAX_STORAGE_OBJECT_KEY_UTF8_BYTES,
   assertStorageObjectKey,
   assertStorageObjectKeys,
-  assertStorageObjectPrefix
+  assertStorageObjectPrefix,
+  isNoSuchMultipartUploadError
 } from './assert';
 export { AwsS3StorageAdapter } from './adapters/aws-s3.adapter';
 export { R2StorageAdapter } from './adapters/r2.adapter';
@@ -99,6 +109,7 @@ export type {
   S3ProxyDownloadPayload,
   S3ProxyUploadPayload,
   S3VerifiedDownloadPayload,
+  S3MultipartUploadSession,
   S3UploadConstraints,
   S3UploadSessionRecord,
   UploadSessionUsePolicy

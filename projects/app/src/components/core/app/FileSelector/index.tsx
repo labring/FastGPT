@@ -39,7 +39,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
 import {
   getFileSelectorDisplayIcon,
   hasFileSelectorError,
@@ -428,13 +428,13 @@ const FileSelector = ({
                   })
                 : await getUploadChatFilePresignedUrl(uploadParams);
 
-            await putFileToS3({
+            const uploader = new S3FileUploader({
               url,
               file: file.rawFile,
               headers,
-              onUploadProgress: (e) => {
-                if (!e.total) return;
-                const percent = Math.round((e.loaded / e.total) * 100);
+              onProgress: (loaded, total) => {
+                if (!total) return;
+                const percent = Math.round((loaded / total) * 100);
                 files.forEach((item) => {
                   if (item.id === file.id) {
                     item.process = percent;
@@ -445,6 +445,7 @@ const FileSelector = ({
               t,
               maxSize
             });
+            await uploader.upload();
 
             // Update file url and key
             markFileSelectorUploadSuccess({

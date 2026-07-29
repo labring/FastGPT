@@ -31,7 +31,7 @@ import FileSelector, {
   type SelectFileItemType
 } from '@/pageComponents/dataset/detail/Import/components/FileSelector';
 import { useRouter } from 'next/router';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 const QuickCreateDatasetModal = ({
@@ -86,13 +86,13 @@ const QuickCreateDatasetModal = ({
               filename: file.name
             });
 
-            await putFileToS3({
+            const uploader = new S3FileUploader({
               url,
               file,
               headers,
-              onUploadProgress: (e) => {
-                if (!e.total) return;
-                const percent = Math.round((e.loaded / e.total) * 100);
+              onProgress: (loaded, total) => {
+                if (!total) return;
+                const percent = Math.round((loaded / total) * 100);
                 setSelectFiles((state) =>
                   state.map((item) =>
                     item.id === fileId
@@ -123,6 +123,7 @@ const QuickCreateDatasetModal = ({
                 );
               }
             });
+            await uploader.upload();
           } catch (error) {
             setSelectFiles((state) =>
               state.map((item) =>

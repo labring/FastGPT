@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable, Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { handleS3ProxyDownload } from '@/service/common/s3/proxy';
+import { handleS3ProxyDownload, handleS3ProxyUploadPart } from '@/service/common/s3/proxy';
 
 const createRequest = (method = 'GET') =>
   Object.assign(new EventEmitter(), {
@@ -178,5 +178,54 @@ describe('handleS3ProxyDownload', () => {
     expect(downloadSignal?.aborted).toBe(true);
     expect(source.destroyed).toBe(true);
     expect(req.listenerCount('aborted')).toBe(0);
+  });
+});
+
+describe('handleS3ProxyUploadPart', () => {
+  it('destroys the storage stream when an incomplete request closes', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': '4' },
+      aborted: false,
+      complete: false
+    });
+
+    let uploadStream: Readable | undefined;
+    const uploadMultipartPart = vi.fn(async ({ body }: { body: Readable }) => {
+      uploadStream = body;
+      return { etag: 'etag-2' };
+    });
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        uploadMultipartPart
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUploadPart({
+      req,
+      token: 'multipart-token',
+      partNumber: 2,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/file.bin',
+        maxSize: 1024,
+        uploadPolicy: {
+          defaultContentType: 'application/octet-stream'
+        },
+        multipart: {
+          uploadId: 'upload-1',
+          partSize: 4,
+          totalSize: 8,
+          status: 'active'
+        }
+      }
+    });
+
+    await vi.waitFor(() => expect(uploadMultipartPart).toHaveBeenCalled());
+    req.emit('close');
+    req.destroy();
+
+    await expect(uploadPromise).rejects.toBeTruthy();
+    expect(uploadStream?.destroyed).toBe(true);
   });
 });

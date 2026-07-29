@@ -177,7 +177,7 @@ describe('s3 access link', () => {
       objectKey: 'chat/app/user/chat/public-prefix.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt']
       }
@@ -277,10 +277,6 @@ describe('s3 access link', () => {
       objectKey: 'chat/app/user/chat/file.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
-        defaultContentType: 'text/plain',
-        allowedExtensions: ['.txt']
-      },
       uploadPolicy: {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt'],
@@ -313,6 +309,7 @@ describe('s3 access link', () => {
     expect(sessions).toHaveLength(1);
     expect(sessions[0]?.tokenHash).toMatch(/^[a-f0-9]{64}$/);
     expect(sessions[0]?.tokenHash).not.toBe(token);
+    expect(sessions[0]).not.toHaveProperty('uploadConstraints');
 
     await expect(verifyS3UploadSessionToken(token)).resolves.toMatchObject({
       bucketName: 'fastgpt-private',
@@ -341,6 +338,86 @@ describe('s3 access link', () => {
     expect(usedSession?.usedAt).toBeInstanceOf(Date);
   });
 
+  it('stores multipart state and prevents complete/abort races from overwriting terminal state', async () => {
+    const {
+      createS3UploadAccessUrl,
+      verifyS3MultipartUploadSessionToken,
+      markS3MultipartUploadCompleting,
+      markS3MultipartUploadCompleted,
+      markS3MultipartUploadAborted,
+      MongoS3UploadSession
+    } = await loadAccessLinkModules();
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/large-file.pdf',
+      expiredTime: getFutureDate(30),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-1',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+    const completedAt = new Date();
+
+    await expect(verifyS3MultipartUploadSessionToken(token)).resolves.toMatchObject({
+      multipart: {
+        uploadId: 'upload-1',
+        status: 'active',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024
+      }
+    });
+    expect(await markS3MultipartUploadCompleting(token)).toBe(true);
+    expect(await markS3MultipartUploadCompleted(token, completedAt)).toBe(true);
+    expect(await markS3MultipartUploadAborted(token)).toBe(false);
+
+    const session = await MongoS3UploadSession.findOne({}).lean();
+    expect(session?.multipart).toMatchObject({
+      uploadId: 'upload-1',
+      status: 'completed',
+      completedAt
+    });
+  });
+
+  it('marks an active multipart session aborted idempotently', async () => {
+    const {
+      createS3UploadAccessUrl,
+      markS3MultipartUploadCompleted,
+      markS3MultipartUploadAborted,
+      MongoS3UploadSession
+    } = await loadAccessLinkModules();
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/aborted-file.pdf',
+      expiredTime: getFutureDate(30),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-2',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+
+    expect(await markS3MultipartUploadAborted(token)).toBe(true);
+    expect(await markS3MultipartUploadAborted(token)).toBe(false);
+    expect(await markS3MultipartUploadCompleted(token)).toBe(false);
+
+    const session = await MongoS3UploadSession.findOne({}).lean();
+    expect(session?.multipart?.status).toBe('aborted');
+    expect(session?.multipart?.abortedAt).toBeInstanceOf(Date);
+  });
+
   it('rejects expired and revoked upload sessions', async () => {
     const { createS3UploadAccessUrl, verifyS3UploadSessionToken, revokeS3UploadSessionToken } =
       await loadAccessLinkModules();
@@ -350,7 +427,7 @@ describe('s3 access link', () => {
         objectKey: 'chat/app/user/chat/expired.txt',
         expiredTime: getFutureDate(-10),
         maxSize: 1024,
-        uploadConstraints: {
+        uploadPolicy: {
           defaultContentType: 'text/plain'
         }
       })
@@ -361,7 +438,7 @@ describe('s3 access link', () => {
         objectKey: 'chat/app/user/chat/revoked.txt',
         expiredTime: getFutureDate(10),
         maxSize: 1024,
-        uploadConstraints: {
+        uploadPolicy: {
           defaultContentType: 'text/plain'
         }
       })

@@ -16,6 +16,24 @@ const createAdapter = () =>
     }
   });
 
+describe('AwsS3StorageAdapter.constructor', () => {
+  it('rejects a non AWS-compatible vendor with the supported vendor list', () => {
+    expect(
+      () =>
+        new AwsS3StorageAdapter({
+          vendor: 'oss',
+          bucket: 'fastgpt-private',
+          endpoint: 'http://localhost:9000',
+          region: 'us-east-1',
+          credentials: {
+            accessKeyId: 'access-key',
+            secretAccessKey: 'secret-key'
+          }
+        } as never)
+    ).toThrow('Invalid storage vendor: expected aws-s3,minio,r2');
+  });
+});
+
 describe('AwsS3StorageAdapter.downloadObject', () => {
   it('rejects a pre-aborted download without dispatching an AWS request', async () => {
     const adapter = createAdapter();
@@ -73,6 +91,251 @@ describe('AwsS3StorageAdapter.downloadObject', () => {
 
     expect(result.body.errored).toBe(abortReason);
     expect(result.body.destroyed).toBe(true);
+  });
+});
+
+describe('AwsS3StorageAdapter.multipartUpload', () => {
+  it('initializes a multipart upload with object metadata', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn().mockResolvedValue({ UploadId: 'upload-1' });
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.createMultipartUpload({
+        key: 'dataset/team/file.txt',
+        contentType: 'text/plain',
+        contentDisposition: 'attachment; filename="file.txt"',
+        metadata: { sourceFile: 'knowledge-base' }
+      })
+    ).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      key: 'dataset/team/file.txt',
+      uploadId: 'upload-1'
+    });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-private',
+          Key: 'dataset/team/file.txt',
+          ContentType: 'text/plain',
+          ContentDisposition: 'attachment; filename="file.txt"',
+          Metadata: { 'source-file': 'knowledge-base' }
+        }
+      })
+    );
+  });
+
+  it('rejects an initialization response without an upload id', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn().mockResolvedValue({});
+    (adapter as any).client.send = send;
+
+    await expect(adapter.createMultipartUpload({ key: 'file.txt' })).rejects.toThrow(
+      'Multipart upload initialization did not return an uploadId'
+    );
+  });
+
+  it('uploads a stream part with its explicit content length and returns the ETag', async () => {
+    const adapter = createAdapter();
+    const body = Readable.from([Buffer.from('part-body')]);
+    const send = vi.fn().mockResolvedValue({ ETag: 'etag-1' });
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.uploadMultipartPart({
+        key: 'dataset/team/file.txt',
+        uploadId: 'upload-1',
+        partNumber: 2,
+        body,
+        contentLength: 9
+      })
+    ).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      key: 'dataset/team/file.txt',
+      uploadId: 'upload-1',
+      partNumber: 2,
+      etag: 'etag-1'
+    });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-private',
+          Key: 'dataset/team/file.txt',
+          UploadId: 'upload-1',
+          PartNumber: 2,
+          Body: body,
+          ContentLength: 9
+        }
+      })
+    );
+  });
+
+  it('rejects invalid part arguments before dispatching an AWS request', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.uploadMultipartPart({
+        key: 'file.txt',
+        uploadId: '',
+        partNumber: 1,
+        body: Buffer.from('part'),
+        contentLength: 4
+      })
+    ).rejects.toThrow('Multipart uploadId is required');
+    await expect(
+      adapter.uploadMultipartPart({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        partNumber: 0,
+        body: Buffer.from('part'),
+        contentLength: 4
+      })
+    ).rejects.toThrow('Multipart partNumber must be an integer between 1 and 10000');
+    await expect(
+      adapter.uploadMultipartPart({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        partNumber: 1,
+        body: Buffer.from('part'),
+        contentLength: 0
+      })
+    ).rejects.toThrow('Multipart contentLength must be a positive integer');
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing part ETag', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn().mockResolvedValue({});
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.uploadMultipartPart({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        partNumber: 1,
+        body: Buffer.from('part'),
+        contentLength: 4
+      })
+    ).rejects.toThrow('Multipart part upload did not return an ETag');
+  });
+
+  it('completes with the validated part order', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn().mockResolvedValue({});
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.completeMultipartUpload({
+        key: 'dataset/team/file.txt',
+        uploadId: 'upload-1',
+        parts: [
+          { partNumber: 1, etag: 'etag-1' },
+          { partNumber: 2, etag: 'etag-2' }
+        ]
+      })
+    ).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      key: 'dataset/team/file.txt'
+    });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-private',
+          Key: 'dataset/team/file.txt',
+          UploadId: 'upload-1',
+          MultipartUpload: {
+            Parts: [
+              { PartNumber: 1, ETag: 'etag-1' },
+              { PartNumber: 2, ETag: 'etag-2' }
+            ]
+          }
+        }
+      })
+    );
+  });
+
+  it('rejects unordered or duplicate parts before complete', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.completeMultipartUpload({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        parts: [
+          { partNumber: 2, etag: 'etag-2' },
+          { partNumber: 1, etag: 'etag-1' }
+        ]
+      })
+    ).rejects.toThrow('Multipart parts must be sorted by partNumber without duplicates');
+    await expect(
+      adapter.completeMultipartUpload({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        parts: [
+          { partNumber: 1, etag: 'etag-1' },
+          { partNumber: 1, etag: 'etag-duplicate' }
+        ]
+      })
+    ).rejects.toThrow('Multipart parts must be sorted by partNumber without duplicates');
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('rejects empty or malformed part receipts before complete', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.completeMultipartUpload({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        parts: []
+      })
+    ).rejects.toThrow('Multipart parts are required');
+    await expect(
+      adapter.completeMultipartUpload({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        parts: [{ partNumber: 1, etag: '' }]
+      })
+    ).rejects.toThrow('Multipart part etag is required');
+    await expect(
+      adapter.completeMultipartUpload({
+        key: 'file.txt',
+        uploadId: 'upload-1',
+        parts: [null]
+      } as never)
+    ).rejects.toThrow('Multipart part is invalid');
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('treats NoSuchUpload abort responses as idempotent success', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn().mockRejectedValue({ Code: 'NoSuchUpload' });
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.abortMultipartUpload({ key: 'file.txt', uploadId: 'upload-1' })
+    ).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      key: 'file.txt',
+      uploadId: 'upload-1'
+    });
+  });
+
+  it('propagates unexpected abort errors', async () => {
+    const adapter = createAdapter();
+    const error = new Error('access denied');
+    const send = vi.fn().mockRejectedValue(error);
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.abortMultipartUpload({ key: 'file.txt', uploadId: 'upload-1' })
+    ).rejects.toBe(error);
   });
 });
 

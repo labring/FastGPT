@@ -8,11 +8,12 @@ import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { isS3AccessLinkError } from '@fastgpt/service/common/s3/accessLink';
+import type { MultipartUploadPart } from '@fastgpt-sdk/storage';
 import type {
   S3ProxyDownloadPayload,
   S3ProxyUploadPayload
 } from '@fastgpt/service/common/s3/accessLink';
-import type { UploadConstraints } from '@fastgpt/service/common/s3/contracts/type';
+import { verifyS3MultipartUploadSessionToken } from '@fastgpt/service/common/s3/accessLink';
 import type { UploadFileHint, UploadPolicy } from '@fastgpt/service/common/s3/uploadPolicy/type';
 import {
   DEFAULT_CONTENT_TYPE,
@@ -32,8 +33,7 @@ const logger = getLogger(LogCategories.INFRA.FILE);
 
 type GuardStreamOptions = {
   maxSize: number;
-  uploadConstraints: UploadConstraints;
-  uploadPolicy?: UploadPolicy;
+  uploadPolicy: UploadPolicy;
   fileHint: UploadFileHint;
 };
 
@@ -108,14 +108,8 @@ export const parseS3ProxyContentLength = (value: string | string[] | undefined) 
   return parsed;
 };
 
-const createUploadGuardStream = ({
-  maxSize,
-  uploadConstraints,
-  uploadPolicy,
-  fileHint
-}: GuardStreamOptions) => {
-  const policy = uploadPolicy || uploadConstraints;
-  const inspectBytes = getUploadInspectBytes({ hint: fileHint, policy });
+const createUploadGuardStream = ({ maxSize, uploadPolicy, fileHint }: GuardStreamOptions) => {
+  const inspectBytes = getUploadInspectBytes({ hint: fileHint, policy: uploadPolicy });
   let uploadedBytes = 0;
   let bufferedBytes = 0;
   const chunks: Buffer[] = [];
@@ -155,8 +149,7 @@ const createUploadGuardStream = ({
     const result = await validateUploadFile({
       buffer,
       filename: fileHint.filename,
-      uploadConstraints,
-      uploadPolicy: policy,
+      uploadPolicy,
       fileHint
     });
 
@@ -421,8 +414,7 @@ export const handleS3ProxyUpload = async ({
   req: NextApiRequest;
   payload: S3ProxyUploadPayload;
 }) => {
-  const { objectKey, bucketName, maxSize, uploadConstraints, uploadPolicy, fileHint, metadata } =
-    payload;
+  const { objectKey, bucketName, maxSize, uploadPolicy, fileHint, metadata } = payload;
   const bucket = global.s3BucketMap[bucketName];
 
   if (!bucket) {
@@ -437,7 +429,6 @@ export const handleS3ProxyUpload = async ({
   const resolvedFileHint = resolveProxyUploadFileHint({ objectKey, metadata, fileHint });
   const { stream: guardStream, validatedUpload } = createUploadGuardStream({
     maxSize,
-    uploadConstraints,
     uploadPolicy,
     fileHint: resolvedFileHint
   });
@@ -457,6 +448,178 @@ export const handleS3ProxyUpload = async ({
   });
 
   return { success: true };
+};
+
+const resolveExpectedMultipartPartLength = ({
+  payload,
+  partNumber
+}: {
+  payload: S3ProxyUploadPayload;
+  partNumber: number;
+}) => {
+  const multipart = payload.multipart;
+  if (!multipart) {
+    throw new Error('Not a multipart upload session');
+  }
+
+  const partCount = Math.ceil(multipart.totalSize / multipart.partSize);
+  if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > partCount) {
+    throw new Error('Multipart part number is out of range');
+  }
+
+  return partNumber === partCount
+    ? multipart.totalSize - multipart.partSize * (partCount - 1)
+    : multipart.partSize;
+};
+
+/**
+ * 限制单个 Multipart 分片的实际字节数，防止客户端伪造 Content-Length 或发送超长 body。
+ * 只有最后一个分片允许小于 partSize，具体期望长度由 session 推导。
+ */
+const createMultipartPartLengthGuard = (expectedLength: number) => {
+  let receivedLength = 0;
+
+  return new Transform({
+    transform(chunk, _encoding, callback) {
+      receivedLength += chunk.length;
+      if (receivedLength > expectedLength) {
+        callback(new Error('Multipart part length does not match session'));
+        return;
+      }
+      callback(null, chunk);
+    },
+    flush(callback) {
+      if (receivedLength !== expectedLength) {
+        callback(new Error('Multipart part length does not match session'));
+        return;
+      }
+      callback();
+    }
+  });
+};
+
+/**
+ * 代理 Multipart 分片上传。请求 body 始终以 stream 传给 storage，part 1 额外复用现有文件
+ * 内容校验；客户端断开时主动销毁中间 stream，使底层 SDK 尽快停止读取该分片。
+ */
+export const handleS3ProxyUploadPart = async ({
+  req,
+  token,
+  payload,
+  partNumber
+}: {
+  req: NextApiRequest;
+  token: string;
+  payload: S3ProxyUploadPayload;
+  partNumber: number;
+}): Promise<{ etag: string }> => {
+  const { objectKey, bucketName, maxSize, uploadPolicy, fileHint, metadata } = payload;
+  const bucket = global.s3BucketMap[bucketName];
+
+  if (!bucket) {
+    throw new Error('S3 bucket not found');
+  }
+
+  const contentLength = parseS3ProxyContentLength(req.headers['content-length']);
+  if (contentLength === undefined) {
+    throw new Error('Multipart part content-length is required');
+  }
+
+  const expectedLength = resolveExpectedMultipartPartLength({ payload, partNumber });
+  if (contentLength !== expectedLength) {
+    throw new Error('Multipart part length does not match session');
+  }
+
+  const lengthGuard = createMultipartPartLengthGuard(expectedLength);
+  const resolvedFileHint = resolveProxyUploadFileHint({ objectKey, metadata, fileHint });
+  const contentGuard =
+    partNumber === 1
+      ? createUploadGuardStream({
+          maxSize,
+          uploadPolicy,
+          fileHint: resolvedFileHint
+        })
+      : undefined;
+  const uploadStream = contentGuard?.stream ?? lengthGuard;
+  const validatedUpload = contentGuard?.validatedUpload;
+
+  const destroyUploadStreams = (error: Error) => {
+    if (!lengthGuard.destroyed) lengthGuard.destroy(error);
+    if (!uploadStream.destroyed) uploadStream.destroy(error);
+  };
+
+  const abortUpload = () => {
+    // 正常请求结束也可能触发 close；只有未完整读取的请求需要销毁上传流。
+    if (req.complete || req.readableEnded) return;
+    destroyUploadStreams(new Error('Multipart upload request aborted'));
+  };
+
+  if (req.aborted) {
+    abortUpload();
+    throw new Error('Multipart upload request aborted');
+  }
+
+  req.once('aborted', abortUpload);
+  req.once('error', abortUpload);
+  req.once('close', abortUpload);
+
+  try {
+    const uploadPromise = bucket.uploadMultipartPart({
+      token,
+      partNumber,
+      body: uploadStream,
+      contentLength
+    });
+
+    const requestPipeline = contentGuard
+      ? pipeline(req, lengthGuard, contentGuard.stream)
+      : pipeline(req, lengthGuard);
+
+    const result = validatedUpload
+      ? await Promise.all([validatedUpload, uploadPromise, requestPipeline]).then(
+          ([, uploadResult]) => uploadResult
+        )
+      : await Promise.all([uploadPromise, requestPipeline]).then(([uploadResult]) => uploadResult);
+
+    return { etag: result.etag };
+  } catch (error) {
+    destroyUploadStreams(error instanceof Error ? error : new Error(String(error)));
+    throw error;
+  } finally {
+    req.off('aborted', abortUpload);
+    req.off('error', abortUpload);
+    req.off('close', abortUpload);
+  }
+};
+
+/** 通过 opaque token 定位 bucket，并完成 Multipart 对象合并。 */
+export const handleS3CompleteMultipartUpload = async ({
+  token,
+  parts
+}: {
+  token: string;
+  parts: MultipartUploadPart[];
+}) => {
+  const payload = await verifyS3MultipartUploadSessionToken(token);
+  const bucket = global.s3BucketMap[payload.bucketName];
+
+  if (!bucket) {
+    throw new Error('S3 bucket not found');
+  }
+
+  return bucket.completeMultipartUpload({ token, parts });
+};
+
+/** 通过 opaque token 定位 bucket，并取消未完成的 Multipart 对象。 */
+export const handleS3AbortMultipartUpload = async (token: string) => {
+  const payload = await verifyS3MultipartUploadSessionToken(token);
+  const bucket = global.s3BucketMap[payload.bucketName];
+
+  if (!bucket) {
+    throw new Error('S3 bucket not found');
+  }
+
+  await bucket.abortMultipartUpload({ token });
 };
 
 const getProxyErrorKey = (error: unknown) => {
@@ -508,6 +671,23 @@ export function resolveS3ProxyErrorResponse(error: unknown): {
   if (errorKey === 'EntityTooLarge') {
     return {
       httpStatus: 413,
+      publicError: error
+    };
+  }
+
+  if (
+    errorKey === 'Not a multipart upload session' ||
+    errorKey === 'Multipart part content-length is required' ||
+    errorKey === 'Multipart part length does not match session' ||
+    errorKey === 'Multipart part number is out of range' ||
+    errorKey === 'Multipart upload request aborted' ||
+    errorKey === 'Multipart upload requires partNumber' ||
+    errorKey === 'Multipart parts count does not match total size' ||
+    errorKey?.startsWith('Multipart parts must be') ||
+    errorKey?.startsWith('Multipart upload session is')
+  ) {
+    return {
+      httpStatus: 400,
       publicError: error
     };
   }

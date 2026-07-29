@@ -7,13 +7,13 @@ import type {
   GetRawTextPreviewChunksBody,
   GetRawTextPreviewChunksResponse,
   PresignDatasetFilePostUrlBody,
+  PresignDatasetFilePostUrlResponse,
   PresignSearchTestImageBody,
   PresignSearchTestImageResponse
 } from '@fastgpt/global/openapi/core/dataset/file/api';
-import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
 export const getUploadDatasetFilePresignedUrl = (params: PresignDatasetFilePostUrlBody) =>
-  POST<CreatePostPresignedUrlResponseType>('/core/dataset/file/presignDatasetFilePostUrl', params);
+  POST<PresignDatasetFilePostUrlResponse>('/core/dataset/file/presignDatasetFilePostUrl', params);
 
 export const getPreviewChunks = (data: GetPreviewChunksBody) =>
   POST<GetPreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data, {

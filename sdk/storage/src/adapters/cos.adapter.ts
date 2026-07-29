@@ -1,33 +1,6 @@
 import COS from 'cos-nodejs-sdk-v5';
 import type { ICosStorageOptions, IStorage } from '../interface';
-import type {
-  UploadObjectParams,
-  UploadObjectResult,
-  DownloadObjectParams,
-  DownloadObjectResult,
-  DeleteObjectParams,
-  DeleteObjectsParams,
-  DeleteObjectsResult,
-  PresignedPutUrlParams,
-  PresignedPutUrlResult,
-  ListObjectsParams,
-  ListObjectsResult,
-  DeleteObjectResult,
-  GetObjectMetadataParams,
-  GetObjectMetadataResult,
-  EnsureBucketResult,
-  DeleteObjectsByPrefixParams,
-  StorageObjectKey,
-  ExistsObjectParams,
-  ExistsObjectResult,
-  StorageObjectMetadata,
-  PresignedGetUrlParams,
-  PresignedGetUrlResult,
-  CopyObjectParams,
-  CopyObjectResult,
-  GeneratePublicGetUrlParams,
-  GeneratePublicGetUrlResult
-} from '../types';
+import type * as Storage from '../types';
 import { PassThrough } from 'node:stream';
 import { camelCase, chunk, isError, isNotNil, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
@@ -40,7 +13,12 @@ import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
-  assertRequiredStorageObjectPrefix
+  assertRequiredStorageObjectPrefix,
+  assertMultipartContentLength,
+  assertMultipartPartNumber,
+  assertMultipartUploadId,
+  assertMultipartUploadParts,
+  isNoSuchMultipartUploadError
 } from '../assert';
 
 export class CosStorageAdapter implements IStorage {
@@ -52,7 +30,7 @@ export class CosStorageAdapter implements IStorage {
 
   constructor(protected readonly options: ICosStorageOptions) {
     if (options.vendor !== 'cos') {
-      throw new Error('Invalid storage vendor');
+      throw new Error('Invalid storage vendor: expected "cos"');
     }
 
     this.client = new COS({
@@ -65,13 +43,13 @@ export class CosStorageAdapter implements IStorage {
     });
   }
 
-  private handleCosError(err: any): Error {
-    const error = new Error(err.message || 'Unknown COS error');
-    Object.assign(error, { ...err });
+  private handleCosError(err: unknown): Error {
+    const error = err instanceof Error ? err : new Error('Unknown COS error');
+    Object.assign(error, typeof err === 'object' ? { ...err } : undefined);
     return error;
   }
 
-  async checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult> {
+  async checkObjectExists(params: Storage.ExistsObjectParams): Promise<Storage.ExistsObjectResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
@@ -106,7 +84,9 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async getObjectMetadata(params: GetObjectMetadataParams): Promise<GetObjectMetadataResult> {
+  async getObjectMetadata(
+    params: Storage.GetObjectMetadataParams
+  ): Promise<Storage.GetObjectMetadataResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
@@ -127,7 +107,7 @@ export class CosStorageAdapter implements IStorage {
       );
     });
 
-    const metadata: StorageObjectMetadata = {};
+    const metadata: Storage.StorageObjectMetadata = {};
     if (result.headers) {
       Object.entries(result.headers).forEach(([key, val]) => {
         if (key.startsWith('x-cos-meta-')) {
@@ -148,7 +128,7 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async ensureBucket(): Promise<EnsureBucketResult> {
+  async ensureBucket(): Promise<Storage.EnsureBucketResult> {
     await new Promise<COS.HeadBucketResult>((resolve, reject) => {
       this.client.headBucket(
         {
@@ -172,7 +152,7 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
+  async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
     assertStorageObjectKey(key);
 
@@ -212,7 +192,156 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
+  async createMultipartUpload(
+    params: Storage.CreateMultipartUploadParams
+  ): Promise<Storage.CreateMultipartUploadResult> {
+    const { key, contentType, contentDisposition, metadata } = params;
+    assertStorageObjectKey(key);
+
+    const headers: Record<string, string> = {};
+    if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
+    for (const [metadataKey, value] of Object.entries(metadata ?? {})) {
+      if (!metadataKey) continue;
+      headers[`x-cos-meta-${kebabCase(metadataKey)}`] = String(value);
+    }
+
+    const result = await new Promise<COS.MultipartInitResult>((resolve, reject) => {
+      this.client.multipartInit(
+        {
+          Bucket: this.options.bucket,
+          Region: this.options.region,
+          Key: key,
+          ContentType: contentType,
+          // COS SDK 的 multipartInit 实现会直接写入 Headers；即使没有自定义 header 也必须传空对象。
+          Headers: headers
+        },
+        (err, data) => {
+          if (err) return reject(this.handleCosError(err));
+          resolve(data);
+        }
+      );
+    });
+
+    if (!result.UploadId) {
+      throw new Error('Multipart upload initialization did not return an uploadId');
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId: result.UploadId
+    };
+  }
+
+  async uploadMultipartPart(
+    params: Storage.UploadMultipartPartParams
+  ): Promise<Storage.UploadMultipartPartResult> {
+    const { key, uploadId, partNumber, body, contentLength } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+    assertMultipartPartNumber(partNumber);
+    assertMultipartContentLength(contentLength);
+
+    const result = await new Promise<COS.MultipartUploadResult>((resolve, reject) => {
+      this.client.multipartUpload(
+        {
+          Bucket: this.options.bucket,
+          Region: this.options.region,
+          Key: key,
+          UploadId: uploadId,
+          PartNumber: partNumber,
+          Body: body,
+          ContentLength: contentLength
+        },
+        (err, data) => {
+          if (err) return reject(this.handleCosError(err));
+          resolve(data);
+        }
+      );
+    });
+
+    if (!result.ETag) {
+      throw new Error('Multipart part upload did not return an ETag');
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId,
+      partNumber,
+      etag: result.ETag
+    };
+  }
+
+  async completeMultipartUpload(
+    params: Storage.CompleteMultipartUploadParams
+  ): Promise<Storage.CompleteMultipartUploadResult> {
+    const { key, uploadId, parts } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+    assertMultipartUploadParts(parts);
+
+    await new Promise<COS.MultipartCompleteResult>((resolve, reject) => {
+      this.client.multipartComplete(
+        {
+          Bucket: this.options.bucket,
+          Region: this.options.region,
+          Key: key,
+          UploadId: uploadId,
+          Parts: parts.map(({ partNumber, etag }) => ({
+            PartNumber: partNumber,
+            ETag: etag
+          }))
+        },
+        (err, data) => {
+          if (err) return reject(this.handleCosError(err));
+          resolve(data);
+        }
+      );
+    });
+
+    return {
+      bucket: this.options.bucket,
+      key
+    };
+  }
+
+  async abortMultipartUpload(
+    params: Storage.AbortMultipartUploadParams
+  ): Promise<Storage.AbortMultipartUploadResult> {
+    const { key, uploadId } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+
+    try {
+      await new Promise<COS.MultipartAbortResult>((resolve, reject) => {
+        this.client.multipartAbort(
+          {
+            Bucket: this.options.bucket,
+            Region: this.options.region,
+            Key: key,
+            UploadId: uploadId
+          },
+          (err, data) => {
+            if (err) return reject(this.handleCosError(err));
+            resolve(data);
+          }
+        );
+      });
+    } catch (error) {
+      if (!isNoSuchMultipartUploadError(error)) throw error;
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId
+    };
+  }
+
+  async downloadObject(
+    params: Storage.DownloadObjectParams
+  ): Promise<Storage.DownloadObjectResult> {
     assertStorageObjectKey(params.key);
     throwIfStorageDownloadAborted(params.abortSignal);
 
@@ -256,7 +385,7 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
+  async deleteObject(params: Storage.DeleteObjectParams): Promise<Storage.DeleteObjectResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
@@ -282,7 +411,9 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByMultiKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { keys } = params;
     assertStorageObjectKeys(keys);
 
@@ -294,7 +425,7 @@ export class CosStorageAdapter implements IStorage {
     }
 
     // COS 单次 DeleteMultipleObject 最多接受 1000 个对象。
-    const failedKeys: StorageObjectKey[] = [];
+    const failedKeys: Storage.StorageObjectKey[] = [];
     for (const keyChunk of chunk(keys, 1000)) {
       const result = await new Promise<COS.DeleteMultipleObjectResult>((resolve, reject) => {
         this.client.deleteMultipleObject(
@@ -321,11 +452,13 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByPrefix(
+    params: Storage.DeleteObjectsByPrefixParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { prefix } = params;
     assertRequiredStorageObjectPrefix(prefix);
 
-    const fails: StorageObjectKey[] = [];
+    const fails: Storage.StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
 
     await new Promise<void>((resolve, reject) => {
@@ -389,7 +522,9 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async generatePresignedPutUrl(params: PresignedPutUrlParams): Promise<PresignedPutUrlResult> {
+  async generatePresignedPutUrl(
+    params: Storage.PresignedPutUrlParams
+  ): Promise<Storage.PresignedPutUrlResult> {
     const { key, expiredSeconds, metadata, contentType } = params;
     assertStorageObjectKey(key);
 
@@ -434,7 +569,9 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
+  async generatePresignedGetUrl(
+    params: Storage.PresignedGetUrlParams
+  ): Promise<Storage.PresignedGetUrlResult> {
     const { key, expiredSeconds, responseContentType } = params;
     assertStorageObjectKey(key);
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
@@ -468,7 +605,9 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
+  generatePublicGetUrl(
+    params: Storage.GeneratePublicGetUrlParams
+  ): Storage.GeneratePublicGetUrlResult {
     const { key } = params;
     assertStorageObjectKey(key);
     const encodedKey = encodeObjectKeyPath(key);
@@ -487,11 +626,11 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async listObjects(params: ListObjectsParams): Promise<ListObjectsResult> {
+  async listObjects(params: Storage.ListObjectsParams): Promise<Storage.ListObjectsResult> {
     const { prefix } = params;
     assertStorageObjectPrefix(prefix);
 
-    let keys: StorageObjectKey[] = [];
+    let keys: Storage.StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
 
     await new Promise<void>((resolve, reject) => {
@@ -530,7 +669,9 @@ export class CosStorageAdapter implements IStorage {
     };
   }
 
-  async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
+  async copyObjectInSelfBucket(
+    params: Storage.CopyObjectParams
+  ): Promise<Storage.CopyObjectResult> {
     const { sourceKey, targetKey } = params;
     assertStorageObjectKey(sourceKey, 'sourceKey');
     assertStorageObjectKey(targetKey, 'targetKey');

@@ -23,7 +23,23 @@ const cloneUploadSession = (record: S3UploadSessionRecord): S3UploadSessionRecor
   createTime: cloneDate(record.createTime),
   expiresAt: cloneDate(record.expiresAt),
   ...(record.usedAt ? { usedAt: cloneDate(record.usedAt) } : {}),
-  ...(record.revokedAt ? { revokedAt: cloneDate(record.revokedAt) } : {})
+  ...(record.revokedAt ? { revokedAt: cloneDate(record.revokedAt) } : {}),
+  ...(record.multipart
+    ? {
+        multipart: {
+          ...record.multipart,
+          ...(record.multipart.completingAt
+            ? { completingAt: cloneDate(record.multipart.completingAt) }
+            : {}),
+          ...(record.multipart.completedAt
+            ? { completedAt: cloneDate(record.multipart.completedAt) }
+            : {}),
+          ...(record.multipart.abortedAt
+            ? { abortedAt: cloneDate(record.multipart.abortedAt) }
+            : {})
+        }
+      }
+    : {})
 });
 
 export type MemoryS3AccessLinkStores = {
@@ -136,6 +152,65 @@ export const createMemoryS3AccessLinkStores = (): MemoryS3AccessLinkStores => {
         ...record,
         usedAt
       });
+    },
+    markMultipartCompleting: async ({ tokenHash, completingAt, reclaimBefore }) => {
+      const record = uploadSessions.get(tokenHash);
+      const multipart = record?.multipart;
+      const canReclaimCompleting =
+        multipart?.status === 'completing' &&
+        !!reclaimBefore &&
+        (!multipart.completingAt || multipart.completingAt.getTime() <= reclaimBefore.getTime());
+      if (!record || !multipart || (multipart.status !== 'active' && !canReclaimCompleting)) {
+        return false;
+      }
+      uploadSessions.set(tokenHash, {
+        ...record,
+        multipart: {
+          ...multipart,
+          status: 'completing',
+          completingAt
+        }
+      });
+      return true;
+    },
+    markMultipartCompleted: async ({ tokenHash, completedAt }) => {
+      const record = uploadSessions.get(tokenHash);
+      if (!record?.multipart || record.multipart.status !== 'completing') return false;
+      uploadSessions.set(tokenHash, {
+        ...record,
+        multipart: {
+          ...record.multipart,
+          status: 'completed',
+          completedAt
+        }
+      });
+      return true;
+    },
+    markMultipartCompleteFailed: async ({ tokenHash, abortedAt }) => {
+      const record = uploadSessions.get(tokenHash);
+      if (!record?.multipart || record.multipart.status !== 'completing') return false;
+      uploadSessions.set(tokenHash, {
+        ...record,
+        multipart: {
+          ...record.multipart,
+          status: 'aborted',
+          abortedAt
+        }
+      });
+      return true;
+    },
+    markMultipartAborted: async ({ tokenHash, abortedAt }) => {
+      const record = uploadSessions.get(tokenHash);
+      if (!record?.multipart || record.multipart.status !== 'active') return false;
+      uploadSessions.set(tokenHash, {
+        ...record,
+        multipart: {
+          ...record.multipart,
+          status: 'aborted',
+          abortedAt
+        }
+      });
+      return true;
     },
     revoke: async ({ tokenHash, revokedAt }) => {
       const record = uploadSessions.get(tokenHash);

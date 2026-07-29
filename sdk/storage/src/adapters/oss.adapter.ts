@@ -1,33 +1,6 @@
 import OSS from 'ali-oss';
 import type { IOssStorageOptions, IStorage } from '../interface';
-import type {
-  UploadObjectParams,
-  UploadObjectResult,
-  DownloadObjectParams,
-  DownloadObjectResult,
-  DeleteObjectParams,
-  DeleteObjectsParams,
-  DeleteObjectsResult,
-  PresignedPutUrlParams,
-  PresignedPutUrlResult,
-  ListObjectsParams,
-  ListObjectsResult,
-  DeleteObjectResult,
-  GetObjectMetadataParams,
-  GetObjectMetadataResult,
-  EnsureBucketResult,
-  DeleteObjectsByPrefixParams,
-  StorageObjectKey,
-  ExistsObjectParams,
-  ExistsObjectResult,
-  StorageObjectMetadata,
-  PresignedGetUrlParams,
-  PresignedGetUrlResult,
-  CopyObjectParams,
-  CopyObjectResult,
-  GeneratePublicGetUrlParams,
-  GeneratePublicGetUrlResult
-} from '../types';
+import type * as Storage from '../types';
 import type { Readable } from 'node:stream';
 import { camelCase, chunk, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
@@ -40,7 +13,12 @@ import {
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
-  assertRequiredStorageObjectPrefix
+  assertRequiredStorageObjectPrefix,
+  assertMultipartContentLength,
+  assertMultipartPartNumber,
+  assertMultipartUploadId,
+  assertMultipartUploadParts,
+  isNoSuchMultipartUploadError
 } from '../assert';
 
 export class OssStorageAdapter implements IStorage {
@@ -48,7 +26,7 @@ export class OssStorageAdapter implements IStorage {
 
   constructor(protected readonly options: IOssStorageOptions) {
     if (options.vendor !== 'oss') {
-      throw new Error('Invalid storage vendor');
+      throw new Error('Invalid storage vendor: expected "oss"');
     }
 
     this.client = new OSS({
@@ -70,7 +48,7 @@ export class OssStorageAdapter implements IStorage {
     return this.options.bucket;
   }
 
-  async checkObjectExists(params: ExistsObjectParams): Promise<ExistsObjectResult> {
+  async checkObjectExists(params: Storage.ExistsObjectParams): Promise<Storage.ExistsObjectResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
@@ -93,13 +71,15 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async getObjectMetadata(params: GetObjectMetadataParams): Promise<GetObjectMetadataResult> {
+  async getObjectMetadata(
+    params: Storage.GetObjectMetadataParams
+  ): Promise<Storage.GetObjectMetadataResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
     const result = await this.client.head(key);
 
-    const metadata: StorageObjectMetadata = {};
+    const metadata: Storage.StorageObjectMetadata = {};
     if (result.meta) {
       for (const [k, v] of Object.entries(result.meta)) {
         if (!k) continue;
@@ -123,7 +103,7 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async ensureBucket(): Promise<EnsureBucketResult> {
+  async ensureBucket(): Promise<Storage.EnsureBucketResult> {
     // Use list() instead of getBucketInfo() to verify bucket access.
     // getBucketInfo() references a variable named `name` internally which conflicts
     // with JavaScript's global `name` property in bundled environments (e.g. Next.js),
@@ -137,7 +117,7 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
+  async uploadObject(params: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> {
     const { key, body, contentType, contentLength, contentDisposition, metadata } = params;
     assertStorageObjectKey(key);
     // ali-oss 会把字符串 body 当成本地文件路径，因此先转成字节以满足 IStorage 契约。
@@ -151,7 +131,7 @@ export class OssStorageAdapter implements IStorage {
     if (contentLength !== undefined) headers['Content-Length'] = String(contentLength);
     if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
 
-    const meta = {} as StorageObjectMetadata & OSS.UserMeta;
+    const meta = {} as Storage.StorageObjectMetadata & OSS.UserMeta;
     if (metadata) {
       for (const [k, v] of Object.entries(metadata)) {
         if (!k) continue;
@@ -171,7 +151,109 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
+  async createMultipartUpload(
+    params: Storage.CreateMultipartUploadParams
+  ): Promise<Storage.CreateMultipartUploadResult> {
+    const { key, contentType, contentDisposition, metadata } = params;
+    assertStorageObjectKey(key);
+
+    const headers: Record<string, string> = {};
+    if (contentDisposition) headers['Content-Disposition'] = contentDisposition;
+
+    for (const [metadataKey, value] of Object.entries(metadata ?? {})) {
+      if (!metadataKey) continue;
+      headers[`x-oss-meta-${kebabCase(metadataKey)}`] = String(value);
+    }
+
+    const result = await this.client.initMultipartUpload(key, {
+      headers,
+      mime: contentType
+    });
+    if (!result?.uploadId) {
+      throw new Error('Multipart upload initialization did not return an uploadId');
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId: result.uploadId
+    };
+  }
+
+  async uploadMultipartPart(
+    params: Storage.UploadMultipartPartParams
+  ): Promise<Storage.UploadMultipartPartResult> {
+    const { key, uploadId, partNumber, body, contentLength } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+    assertMultipartPartNumber(partNumber);
+    assertMultipartContentLength(contentLength);
+
+    const uploadBody = typeof body === 'string' ? Buffer.from(body) : body;
+    const result = await this.client.uploadPart(
+      key,
+      uploadId,
+      partNumber,
+      uploadBody,
+      0,
+      contentLength
+    );
+    if (!result?.etag) {
+      throw new Error('Multipart part upload did not return an ETag');
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId,
+      partNumber,
+      etag: result.etag
+    };
+  }
+
+  async completeMultipartUpload(
+    params: Storage.CompleteMultipartUploadParams
+  ): Promise<Storage.CompleteMultipartUploadResult> {
+    const { key, uploadId, parts } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+    assertMultipartUploadParts(parts);
+
+    await this.client.completeMultipartUpload(
+      key,
+      uploadId,
+      parts.map(({ partNumber, etag }) => ({ number: partNumber, etag }))
+    );
+
+    return {
+      bucket: this.options.bucket,
+      key
+    };
+  }
+
+  async abortMultipartUpload(
+    params: Storage.AbortMultipartUploadParams
+  ): Promise<Storage.AbortMultipartUploadResult> {
+    const { key, uploadId } = params;
+    assertStorageObjectKey(key);
+    assertMultipartUploadId(uploadId);
+
+    try {
+      await this.client.abortMultipartUpload(key, uploadId);
+    } catch (error) {
+      if (!isNoSuchMultipartUploadError(error)) throw error;
+    }
+
+    return {
+      bucket: this.options.bucket,
+      key,
+      uploadId
+    };
+  }
+
+  async downloadObject(
+    params: Storage.DownloadObjectParams
+  ): Promise<Storage.DownloadObjectResult> {
     const { key, abortSignal } = params;
     assertStorageObjectKey(key);
     throwIfStorageDownloadAborted(abortSignal);
@@ -187,7 +269,7 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
+  async deleteObject(params: Storage.DeleteObjectParams): Promise<Storage.DeleteObjectResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
@@ -199,7 +281,9 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByMultiKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { keys } = params;
     assertStorageObjectKeys(keys);
 
@@ -211,7 +295,7 @@ export class OssStorageAdapter implements IStorage {
     }
 
     // OSS 单次 DeleteMultipleObjects 最多接受 1000 个 key；verbose 模式会返回成功删除的 key。
-    const failedKeys: StorageObjectKey[] = [];
+    const failedKeys: Storage.StorageObjectKey[] = [];
     for (const keyChunk of chunk(keys, 1000)) {
       const result = await this.client.deleteMulti(keyChunk, { quiet: false });
       const deletedKeys = (() => {
@@ -243,11 +327,13 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByPrefix(
+    params: Storage.DeleteObjectsByPrefixParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { prefix } = params;
     assertRequiredStorageObjectPrefix(prefix);
 
-    const fails: StorageObjectKey[] = [];
+    const fails: Storage.StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
     let isTruncated = false;
 
@@ -285,7 +371,9 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async generatePresignedPutUrl(params: PresignedPutUrlParams): Promise<PresignedPutUrlResult> {
+  async generatePresignedPutUrl(
+    params: Storage.PresignedPutUrlParams
+  ): Promise<Storage.PresignedPutUrlResult> {
     const { key, expiredSeconds, metadata, contentType } = params;
     assertStorageObjectKey(key);
 
@@ -303,8 +391,6 @@ export class OssStorageAdapter implements IStorage {
       headersToSign['Content-Type'] = contentType;
     }
 
-    // @ts-expect-error ali-oss SDK 类型未定义但存在此方法
-    // @see https://github.com/ali-sdk/ali-oss?tab=readme-ov-file#signatureurlv4method-expires-request-objectname-additionalheaders
     const url = await this.client.signatureUrlV4(
       'PUT',
       expiresIn,
@@ -324,7 +410,9 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async generatePresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
+  async generatePresignedGetUrl(
+    params: Storage.PresignedGetUrlParams
+  ): Promise<Storage.PresignedGetUrlResult> {
     const { key, expiredSeconds } = params;
     assertStorageObjectKey(key);
     const expiresIn = expiredSeconds ? expiredSeconds : DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS;
@@ -343,7 +431,9 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  generatePublicGetUrl(params: GeneratePublicGetUrlParams): GeneratePublicGetUrlResult {
+  generatePublicGetUrl(
+    params: Storage.GeneratePublicGetUrlParams
+  ): Storage.GeneratePublicGetUrlResult {
     const { key } = params;
     assertStorageObjectKey(key);
     const encodedKey = encodeObjectKeyPath(key);
@@ -367,11 +457,11 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async listObjects(params: ListObjectsParams): Promise<ListObjectsResult> {
+  async listObjects(params: Storage.ListObjectsParams): Promise<Storage.ListObjectsResult> {
     const { prefix } = params;
     assertStorageObjectPrefix(prefix);
 
-    let keys: StorageObjectKey[] = [];
+    let keys: Storage.StorageObjectKey[] = [];
     let marker: string | undefined = undefined;
     let isTruncated = false;
 
@@ -405,7 +495,9 @@ export class OssStorageAdapter implements IStorage {
     };
   }
 
-  async copyObjectInSelfBucket(params: CopyObjectParams): Promise<CopyObjectResult> {
+  async copyObjectInSelfBucket(
+    params: Storage.CopyObjectParams
+  ): Promise<Storage.CopyObjectResult> {
     const { sourceKey, targetKey } = params;
     assertStorageObjectKey(sourceKey, 'sourceKey');
     assertStorageObjectKey(targetKey, 'targetKey');

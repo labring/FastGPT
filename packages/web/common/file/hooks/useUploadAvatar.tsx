@@ -1,4 +1,5 @@
-import { base64ToFile, fileToBase64, putFileToS3 } from '../utils';
+import { base64ToFile, fileToBase64 } from '../utils';
+import { S3FileUploader } from '../uploader';
 import { compressBase64Img } from '../img';
 import { useToast } from '../../../hooks/useToast';
 import { useCallback, useRef, useTransition } from 'react';
@@ -50,7 +51,7 @@ export const useUploadAvatar = (
         );
         const { url, key, headers } = await api({ filename: file.name });
 
-        await putFileToS3({
+        const uploader = new S3FileUploader({
           url,
           file: compressed,
           headers,
@@ -59,6 +60,7 @@ export const useUploadAvatar = (
           },
           t
         });
+        await uploader.upload();
       });
     },
     [t, toast, api, onSuccess]

@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { Readable, Writable } from 'node:stream';
+import { PassThrough, Readable, Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -8,6 +8,8 @@ import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 import { jsonRes } from '@fastgpt/service/common/response';
 import downloadAccessHandler from '@/pages/api/system/file/d/[signedAlias]';
 import uploadAccessHandler from '@/pages/api/system/file/u/[token]';
+import completeMultipartUploadHandler from '@/pages/api/system/file/u/[token]/complete';
+import abortMultipartUploadHandler from '@/pages/api/system/file/u/[token]/abort';
 import {
   createS3DownloadAccessUrl,
   createS3UploadAccessUrl,
@@ -84,23 +86,46 @@ const createDownloadReq = (signedAlias: string) => {
 const createUploadReq = ({
   token,
   contentLength,
-  chunks = []
+  chunks = [],
+  partNumber
 }: {
   token: string;
   contentLength?: string;
   chunks?: Buffer[];
-}) =>
-  ({
+  partNumber?: number;
+}) => {
+  const req = new PassThrough();
+  Object.assign(req, {
     method: 'PUT',
     url: `/api/system/file/u/${token}`,
     headers: {
       ...(contentLength ? { 'content-length': contentLength } : {})
     },
+    query: {
+      token,
+      ...(partNumber !== undefined ? { partNumber: String(partNumber) } : {})
+    },
+    aborted: false
+  });
+  req.end(Buffer.concat(chunks));
+  return req as any;
+};
+
+const createMultipartActionReq = ({
+  token,
+  body,
+  parts
+}: {
+  token: string;
+  body?: Record<string, unknown>;
+  parts?: Record<string, unknown>[];
+}) =>
+  Object.assign(new EventEmitter(), {
+    method: 'POST',
+    url: `/api/system/file/u/${token}`,
+    headers: {},
     query: { token },
-    pipe: vi.fn((target) => {
-      Readable.from(chunks).pipe(target);
-      return target;
-    })
+    body: body ?? { parts }
   }) as any;
 
 const getFutureDate = (minutes: number) => new Date(Date.now() + minutes * 60 * 1000);
@@ -396,7 +421,7 @@ describe('s3 short access link api', () => {
       objectKey: 'chat/app/user/chat/expired.txt',
       expiredTime: getFutureDate(-10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain'
       }
     });
@@ -405,7 +430,7 @@ describe('s3 short access link api', () => {
       objectKey: 'chat/app/user/chat/revoked.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain'
       }
     });
@@ -432,7 +457,7 @@ describe('s3 short access link api', () => {
       objectKey: 'chat/app/user/chat/large.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain'
       }
     });
@@ -464,13 +489,262 @@ describe('s3 short access link api', () => {
     ).toContain('common:error:s3_upload_file_too_large');
   });
 
+  it('uploads the final multipart part with the session-derived length', async () => {
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team/large.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-1',
+        partSize: 4,
+        totalSize: 10,
+        status: 'active'
+      }
+    });
+    const uploadMultipartPart = vi.fn(async ({ body }: { body: AsyncIterable<Buffer> }) => {
+      for await (const _chunk of body) {
+        // Consume the stream as the real storage adapter does.
+      }
+      return { etag: '"part-3"' };
+    });
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        uploadMultipartPart
+      }
+    } as any;
+    const res = makeMockRes() as any;
+
+    await uploadAccessHandler(
+      createUploadReq({
+        token: extractLastPathSegment(url),
+        partNumber: 3,
+        contentLength: '2',
+        chunks: [Buffer.from('ok')]
+      }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(uploadMultipartPart).toHaveBeenCalledWith(
+      expect.objectContaining({ partNumber: 3, contentLength: 2 })
+    );
+  });
+
+  it('rejects a multipart part whose declared length does not match the session', async () => {
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team/large.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-2',
+        partSize: 4,
+        totalSize: 10,
+        status: 'active'
+      }
+    });
+    const uploadMultipartPart = vi.fn();
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        uploadMultipartPart
+      }
+    } as any;
+    const res = makeMockRes() as any;
+
+    await uploadAccessHandler(
+      createUploadReq({
+        token: extractLastPathSegment(url),
+        partNumber: 3,
+        contentLength: '1',
+        chunks: [Buffer.from('x')]
+      }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe(400);
+    expect(res.body.statusText).toBe('error');
+    expect(uploadMultipartPart).not.toHaveBeenCalled();
+  });
+
+  it('rejects a multipart part when the actual body length is shorter than Content-Length', async () => {
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team/large.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-3',
+        partSize: 4,
+        totalSize: 10,
+        status: 'active'
+      }
+    });
+    const uploadMultipartPart = vi.fn(async ({ body }: { body: AsyncIterable<Buffer> }) => {
+      for await (const _chunk of body) {
+        // Consume the stream as the real storage adapter does.
+      }
+      return { etag: '"part-3"' };
+    });
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        uploadMultipartPart
+      }
+    } as any;
+    const res = makeMockRes() as any;
+
+    await uploadAccessHandler(
+      createUploadReq({
+        token: extractLastPathSegment(url),
+        partNumber: 3,
+        contentLength: '2',
+        chunks: [Buffer.from('x')]
+      }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe(400);
+    expect(res.body.statusText).toBe('error');
+  });
+
+  it('does not allow a multipart session to fall back to single PUT', async () => {
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team/large.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-4',
+        partSize: 4,
+        totalSize: 10,
+        status: 'active'
+      }
+    });
+    const uploadObject = vi.fn();
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+    const res = makeMockRes() as any;
+
+    await uploadAccessHandler(
+      createUploadReq({
+        token: extractLastPathSegment(url),
+        contentLength: '2',
+        chunks: [Buffer.from('ok')]
+      }),
+      res
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe(400);
+    expect(res.body.statusText).toBe('error');
+    expect(uploadObject).not.toHaveBeenCalled();
+  });
+
+  it('completes and aborts multipart uploads through dedicated routes', async () => {
+    const completeUrl = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team/completed.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-5',
+        partSize: 4,
+        totalSize: 6,
+        status: 'active'
+      }
+    });
+    const completeMultipartUpload = vi.fn().mockResolvedValue({
+      bucket: 'fastgpt-private',
+      key: 'dataset/team/completed.pdf'
+    });
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        completeMultipartUpload
+      }
+    } as any;
+    const completeRes = makeMockRes() as any;
+    const completeToken = extractLastPathSegment(completeUrl);
+
+    await completeMultipartUploadHandler(
+      createMultipartActionReq({
+        token: completeToken,
+        parts: [
+          { partNumber: 1, etag: '"part-1"' },
+          { partNumber: 2, etag: '"part-2"' }
+        ]
+      }),
+      completeRes
+    );
+
+    expect(completeRes.statusCode).toBe(200);
+    expect(completeMultipartUpload).toHaveBeenCalledWith({
+      token: completeToken,
+      parts: [
+        { partNumber: 1, etag: '"part-1"' },
+        { partNumber: 2, etag: '"part-2"' }
+      ]
+    });
+
+    const abortUrl = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team/aborted.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-6',
+        partSize: 4,
+        totalSize: 6,
+        status: 'active'
+      }
+    });
+    const abortMultipartUpload = vi.fn().mockResolvedValue({
+      bucket: 'fastgpt-private',
+      key: 'dataset/team/aborted.pdf'
+    });
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        abortMultipartUpload
+      }
+    } as any;
+    const abortRes = makeMockRes() as any;
+    const abortToken = extractLastPathSegment(abortUrl);
+
+    await abortMultipartUploadHandler(createMultipartActionReq({ token: abortToken }), abortRes);
+
+    expect(abortRes.statusCode).toBe(200);
+    expect(abortMultipartUpload).toHaveBeenCalledWith({ token: abortToken });
+  });
+
   it('returns 400 for upload file type validation errors', async () => {
     const url = await createS3UploadAccessUrl({
       bucketName: 'fastgpt-private',
       objectKey: 'chat/app/user/chat/file.png',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'image/png',
         allowedExtensions: ['.png']
       },
@@ -517,7 +791,7 @@ describe('s3 short access link api', () => {
       objectKey: 'chat/app/user/chat/file.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt']
       },
@@ -565,10 +839,6 @@ describe('s3 short access link api', () => {
       objectKey: 'chat/app/user/chat/image',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
-        defaultContentType: 'application/octet-stream',
-        allowedExtensions: ['.png']
-      },
       uploadPolicy: {
         defaultContentType: 'application/octet-stream',
         allowedExtensions: ['.png'],
@@ -624,10 +894,6 @@ describe('s3 short access link api', () => {
       objectKey: 'chat/app/user/chat/data',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
-        defaultContentType: 'application/octet-stream',
-        allowedExtensions: ['.dat']
-      },
       uploadPolicy: {
         defaultContentType: 'application/octet-stream',
         allowedExtensions: ['.dat'],

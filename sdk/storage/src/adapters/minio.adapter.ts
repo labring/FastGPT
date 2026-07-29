@@ -1,23 +1,10 @@
 import * as Minio from 'minio';
 import * as http from 'node:http';
 import * as https from 'node:https';
-import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
-import type {
-  DeleteObjectParams,
-  DeleteObjectsParams,
-  DeleteObjectsResult,
-  DeleteObjectResult,
-  EnsureBucketResult,
-  DeleteObjectsByPrefixParams
-} from '../types';
+import type { IMinioStorageOptions, IStorage } from '../interface';
+import type * as Storage from '../types';
 import { AwsS3StorageAdapter } from './aws-s3.adapter';
-import {
-  CreateBucketCommand,
-  DeleteBucketLifecycleCommand,
-  ListObjectsV2Command,
-  NotFound,
-  PutBucketPolicyCommand
-} from '@aws-sdk/client-s3';
+import AWS from '@aws-sdk/client-s3';
 import { chunk } from 'es-toolkit';
 import {
   assertStorageObjectKey,
@@ -25,7 +12,7 @@ import {
   assertRequiredStorageObjectPrefix
 } from '../assert';
 
-export { NotFound as MinioS3NotFound };
+export const MinioS3NotFound = AWS.NotFound;
 
 const minioRequestTimeoutMs = 60_000;
 
@@ -108,7 +95,7 @@ const getFailedKeysFromMinioRemove = ({
 export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage {
   protected readonly minioClient: Minio.Client;
 
-  constructor(protected readonly options: IAwsS3CompatibleStorageOptions) {
+  constructor(protected readonly options: IMinioStorageOptions) {
     if (options.vendor !== 'minio') {
       throw new Error('Invalid storage vendor: expected "minio"');
     }
@@ -139,7 +126,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     });
   }
 
-  async deleteObject(params: DeleteObjectParams): Promise<DeleteObjectResult> {
+  async deleteObject(params: Storage.DeleteObjectParams): Promise<Storage.DeleteObjectResult> {
     const { key } = params;
     assertStorageObjectKey(key);
 
@@ -151,7 +138,9 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     };
   }
 
-  async deleteObjectsByMultiKeys(params: DeleteObjectsParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByMultiKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { keys } = params;
     assertStorageObjectKeys(keys);
 
@@ -189,7 +178,9 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
    * 列举和删除按页串行执行，避免对象数量较大时积累无上限的并发删除任务。
    * 每个列举和删除请求最多等待 60 秒，避免异常连接长期占用删除队列 worker。
    */
-  async deleteObjectsByPrefix(params: DeleteObjectsByPrefixParams): Promise<DeleteObjectsResult> {
+  async deleteObjectsByPrefix(
+    params: Storage.DeleteObjectsByPrefixParams
+  ): Promise<Storage.DeleteObjectsResult> {
     const { prefix } = params;
     const listBatchSize = 400;
 
@@ -204,7 +195,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       const listResponse = await this._withListRequestTimeout({
         prefix,
         promise: this.client.send(
-          new ListObjectsV2Command({
+          new AWS.ListObjectsV2Command({
             Bucket: bucket,
             Prefix: prefix,
             ContinuationToken: continuationToken,
@@ -276,15 +267,15 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     }
   }
 
-  async ensureBucket(): Promise<EnsureBucketResult> {
+  async ensureBucket(): Promise<Storage.EnsureBucketResult> {
     try {
       return await super.ensureBucket();
     } catch (error) {
-      if (!(error instanceof NotFound)) {
+      if (!(error instanceof AWS.NotFound)) {
         throw error;
       }
 
-      await this.client.send(new CreateBucketCommand({ Bucket: this.options.bucket }));
+      await this.client.send(new AWS.CreateBucketCommand({ Bucket: this.options.bucket }));
 
       return {
         exists: false,
@@ -308,14 +299,15 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
     };
 
     await this.client.send(
-      new PutBucketPolicyCommand({
+      new AWS.PutBucketPolicyCommand({
         Bucket: this.options.bucket,
         Policy: JSON.stringify(policy)
       })
     );
   }
 
+  /** 仅用于清理历史遗留规则；业务上传流程不会创建或读取 lifecycle rules。 */
   async removeBucketLifecycle(): Promise<void> {
-    await this.client.send(new DeleteBucketLifecycleCommand({ Bucket: this.options.bucket }));
+    await this.client.send(new AWS.DeleteBucketLifecycleCommand({ Bucket: this.options.bucket }));
   }
 }

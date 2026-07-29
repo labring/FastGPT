@@ -17,6 +17,18 @@ export const getSystemMaxFileSize = () => global.feConfigs.uploadFileMaxSize || 
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 
+/** 关闭后知识库大文件回退到既有单 PUT 链路，便于 provider 兼容性故障时快速止损。 */
+export const S3_MULTIPART_UPLOAD_ENABLED = serviceEnv.STORAGE_MULTIPART_UPLOAD_ENABLED;
+/** 大于该大小的知识库文件切换到代理层 Multipart 上传。 */
+export const S3_MULTIPART_UPLOAD_THRESHOLD_BYTES = 32 * 1024 * 1024;
+/** 首期固定分片大小，超过 S3/OSS/COS 常见最小分片限制。 */
+export const S3_MULTIPART_PART_SIZE_BYTES = 8 * 1024 * 1024;
+export const S3_MULTIPART_CONCURRENCY = 3;
+export const S3_MULTIPART_MAX_RETRY = 3;
+export const S3_MULTIPART_SESSION_EXPIRE_HOURS = 3;
+/** provider complete 发生网络超时后，保留完成权的短租约，过期后允许同一 uploadId 重试。 */
+export const S3_MULTIPART_COMPLETING_LEASE_MS = 5 * 60 * 1000;
+
 type BucketStorageOptions = {
   publicBucket: string;
   privateBucket: string;

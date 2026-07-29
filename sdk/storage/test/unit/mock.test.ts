@@ -11,7 +11,7 @@ const readBody = async (body: Readable) => {
 };
 
 describe('createVitestStorageMock', () => {
-  it('implements bucket lifecycle, upload forms, download and metadata', async () => {
+  it('implements bucket access, upload forms, download and metadata', async () => {
     const storage = createVitestStorageMock({ vi, bucketName: 'test-bucket' });
     await expect(storage.ensureBucket()).resolves.toEqual({
       bucket: 'test-bucket',
@@ -42,6 +42,79 @@ describe('createVitestStorageMock', () => {
     await expect(storage.listObjects({})).resolves.toMatchObject({
       keys: ['buffer.bin', 'stream.txt', 'string.txt']
     });
+  });
+
+  it('stores multipart parts and assembles them into the final object', async () => {
+    const storage = createVitestStorageMock({ vi, bucketName: 'test-bucket' });
+    const { uploadId } = await storage.createMultipartUpload({
+      key: 'multipart/file.txt',
+      contentType: 'text/plain',
+      metadata: { source: 'multipart' }
+    });
+
+    await storage.uploadMultipartPart({
+      key: 'multipart/file.txt',
+      uploadId,
+      partNumber: 1,
+      body: Buffer.from('first-'),
+      contentLength: 6
+    });
+    await storage.uploadMultipartPart({
+      key: 'multipart/file.txt',
+      uploadId,
+      partNumber: 2,
+      body: Readable.from(['second']),
+      contentLength: 6
+    });
+    expect(storage.__multipartUploads.get(uploadId)?.parts.size).toBe(2);
+
+    await expect(
+      storage.completeMultipartUpload({
+        key: 'multipart/file.txt',
+        uploadId,
+        parts: [
+          { partNumber: 1, etag: 'ignored-in-memory-etag-1' },
+          { partNumber: 2, etag: 'ignored-in-memory-etag-2' }
+        ]
+      })
+    ).resolves.toEqual({ bucket: 'test-bucket', key: 'multipart/file.txt' });
+    expect(storage.__multipartUploads.has(uploadId)).toBe(false);
+    await expect(storage.getObjectMetadata({ key: 'multipart/file.txt' })).resolves.toMatchObject({
+      contentType: 'text/plain',
+      contentLength: 12,
+      metadata: { source: 'multipart' }
+    });
+    const download = await storage.downloadObject({ key: 'multipart/file.txt' });
+    await expect(readBody(download.body)).resolves.toEqual(Buffer.from('first-second'));
+  });
+
+  it('aborts multipart parts and remains idempotent', async () => {
+    const storage = createVitestStorageMock({ vi });
+    const { uploadId } = await storage.createMultipartUpload({ key: 'multipart/file.txt' });
+    await storage.uploadMultipartPart({
+      key: 'multipart/file.txt',
+      uploadId,
+      partNumber: 1,
+      body: Buffer.from('part'),
+      contentLength: 4
+    });
+
+    await expect(
+      storage.abortMultipartUpload({ key: 'multipart/file.txt', uploadId })
+    ).resolves.toEqual({
+      bucket: 'mock-bucket',
+      key: 'multipart/file.txt',
+      uploadId
+    });
+    expect(storage.__multipartUploads.has(uploadId)).toBe(false);
+    await expect(
+      storage.abortMultipartUpload({ key: 'multipart/file.txt', uploadId })
+    ).resolves.toEqual({
+      bucket: 'mock-bucket',
+      key: 'multipart/file.txt',
+      uploadId
+    });
+    expect(storage.__objects.has('multipart/file.txt')).toBe(false);
   });
 
   it('returns failed keys rather than deleted keys from successful deletion methods', async () => {

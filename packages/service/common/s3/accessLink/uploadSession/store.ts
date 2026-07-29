@@ -29,6 +29,68 @@ export const mongoS3UploadSessionStore: S3UploadSessionStore = {
       }
     );
   },
+  markMultipartCompleting: async ({ tokenHash, completingAt, reclaimBefore }) => {
+    const statusFilter = reclaimBefore
+      ? {
+          $or: [
+            { 'multipart.status': 'active' },
+            {
+              'multipart.status': 'completing',
+              $or: [
+                { 'multipart.completingAt': { $lte: reclaimBefore } },
+                { 'multipart.completingAt': { $exists: false } }
+              ]
+            }
+          ]
+        }
+      : { 'multipart.status': 'active' };
+    const result = await MongoS3UploadSession.updateOne(
+      { tokenHash, ...statusFilter },
+      {
+        $set: {
+          'multipart.status': 'completing',
+          'multipart.completingAt': completingAt
+        }
+      }
+    );
+    return result.modifiedCount === 1;
+  },
+  markMultipartCompleted: async ({ tokenHash, completedAt }) => {
+    const result = await MongoS3UploadSession.updateOne(
+      { tokenHash, 'multipart.status': 'completing' },
+      {
+        $set: {
+          'multipart.status': 'completed',
+          'multipart.completedAt': completedAt
+        }
+      }
+    );
+    return result.modifiedCount === 1;
+  },
+  markMultipartCompleteFailed: async ({ tokenHash, abortedAt }) => {
+    const result = await MongoS3UploadSession.updateOne(
+      { tokenHash, 'multipart.status': 'completing' },
+      {
+        $set: {
+          'multipart.status': 'aborted',
+          'multipart.abortedAt': abortedAt
+        }
+      }
+    );
+    return result.modifiedCount === 1;
+  },
+  markMultipartAborted: async ({ tokenHash, abortedAt }) => {
+    const result = await MongoS3UploadSession.updateOne(
+      { tokenHash, 'multipart.status': 'active' },
+      {
+        $set: {
+          'multipart.status': 'aborted',
+          'multipart.abortedAt': abortedAt
+        }
+      }
+    );
+    return result.modifiedCount === 1;
+  },
   revoke: async ({ tokenHash, revokedAt }) => {
     await MongoS3UploadSession.updateOne(
       { tokenHash },

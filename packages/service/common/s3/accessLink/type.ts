@@ -1,5 +1,5 @@
 import z from 'zod';
-import { StorageObjectKeySchema, UploadConstraintsSchema } from '../contracts/type';
+import { StorageObjectKeySchema } from '../contracts/type';
 import { UploadFileHintSchema, UploadPolicySchema } from '../uploadPolicy/type';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 
@@ -74,19 +74,30 @@ export type VerifiedS3DownloadAccess = z.infer<typeof VerifiedS3DownloadAccessSc
 export const S3UploadTokenSchema = UrlSafeTokenSchema.min(20).max(64);
 export const S3UploadTokenHashSchema = HexSha256Schema;
 
+export const S3MultipartUploadSessionSchema = z.object({
+  uploadId: z.string().min(1),
+  partSize: z.number().int().positive(),
+  totalSize: z.number().int().positive(),
+  status: z.enum(['active', 'completing', 'completed', 'aborted']),
+  completingAt: z.coerce.date().optional(),
+  completedAt: z.coerce.date().optional(),
+  abortedAt: z.coerce.date().optional()
+});
+export type S3MultipartUploadSession = z.infer<typeof S3MultipartUploadSessionSchema>;
+
 export const S3UploadSessionSchema = z.object({
   tokenHash: S3UploadTokenHashSchema,
   bucketName: S3AccessBucketNameSchema,
   objectKey: S3AccessObjectKeySchema,
   maxSize: z.number().positive(),
-  uploadConstraints: UploadConstraintsSchema,
-  uploadPolicy: UploadPolicySchema.optional(),
+  uploadPolicy: UploadPolicySchema,
   fileHint: UploadFileHintSchema.optional(),
   metadata: z.record(z.string(), z.string()).optional(),
   createTime: z.coerce.date(),
   expiresAt: z.coerce.date(),
   usedAt: z.coerce.date().optional(),
-  revokedAt: z.coerce.date().optional()
+  revokedAt: z.coerce.date().optional(),
+  multipart: S3MultipartUploadSessionSchema.optional()
 });
 export type S3UploadSessionType = z.infer<typeof S3UploadSessionSchema>;
 
@@ -95,10 +106,10 @@ export const CreateS3UploadAccessUrlParamsSchema = z.object({
   objectKey: S3AccessObjectKeySchema,
   expiredTime: z.coerce.date(),
   maxSize: z.number().positive(),
-  uploadConstraints: UploadConstraintsSchema,
-  uploadPolicy: UploadPolicySchema.optional(),
+  uploadPolicy: UploadPolicySchema,
   fileHint: UploadFileHintSchema.optional(),
-  metadata: z.record(z.string(), z.string()).optional()
+  metadata: z.record(z.string(), z.string()).optional(),
+  multipart: S3MultipartUploadSessionSchema.optional()
 });
 export type CreateS3UploadAccessUrlParams = z.infer<typeof CreateS3UploadAccessUrlParamsSchema>;
 
@@ -106,10 +117,10 @@ export const S3ProxyUploadPayloadSchema = S3UploadSessionSchema.pick({
   bucketName: true,
   objectKey: true,
   maxSize: true,
-  uploadConstraints: true,
   uploadPolicy: true,
   fileHint: true,
-  metadata: true
+  metadata: true,
+  multipart: true
 });
 export type S3ProxyUploadPayload = z.infer<typeof S3ProxyUploadPayloadSchema>;
 

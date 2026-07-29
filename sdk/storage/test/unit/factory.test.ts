@@ -63,4 +63,10 @@ describe('createStorage', () => {
       'Unsupported storage vendor: unknown'
     );
   });
+
+  it('rejects the reserved BOS vendor until an adapter is implemented', () => {
+    expect(() => createStorage({ vendor: 'bos' } as never)).toThrow(
+      'Unsupported storage vendor: bos'
+    );
+  });
 });

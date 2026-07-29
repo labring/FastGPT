@@ -5,7 +5,7 @@ import { getUploadSearchTestImagePresignedUrl } from '@/web/core/dataset/api/fil
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   IMAGE_EXTENSION_SET,
@@ -90,13 +90,14 @@ export const useSearchTestImages = ({
               datasetId,
               filename: file.name
             });
-          await putFileToS3({
+          const uploader = new S3FileUploader({
             url,
             headers,
             file,
             maxSize,
             t
           });
+          await uploader.upload();
           return { key, previewUrl };
         })
       );

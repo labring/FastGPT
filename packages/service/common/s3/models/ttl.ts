@@ -3,6 +3,17 @@ import { type S3TtlSchemaType } from '@fastgpt/global/common/file/s3TTL/type';
 
 const collectionName = 's3_ttls';
 
+const S3MultipartTTLSchema = new Schema(
+  {
+    uploadId: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  },
+  { _id: false }
+);
+
 const S3TTLSchema = new Schema({
   bucketName: {
     type: String,
@@ -15,6 +26,10 @@ const S3TTLSchema = new Schema({
   expiredTime: {
     type: Date,
     required: true
+  },
+  multipart: {
+    type: S3MultipartTTLSchema,
+    required: false
   }
 });
 
