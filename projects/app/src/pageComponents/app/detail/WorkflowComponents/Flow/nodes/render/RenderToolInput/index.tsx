@@ -52,7 +52,7 @@ const RenderToolInput = ({
   return (
     <>
       <HStack mb={2} justifyContent={'space-between'}>
-        <IOTitle text={t('common:Input')} mb={0} />
+        <IOTitle text={t('workflow:tool_input')} mb={0} />
         <Button
           variant={'whiteBase'}
           leftIcon={<SmallAddIcon />}
