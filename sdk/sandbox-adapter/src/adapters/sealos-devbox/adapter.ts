@@ -136,12 +136,16 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     if (resourceLimits?.memoryMiB !== undefined) {
       assertPositiveResource(resourceLimits.memoryMiB, 'memory');
     }
-    if (resourceLimits?.diskGiB !== undefined) {
-      assertPositiveResource(resourceLimits.diskGiB, 'storage');
-      if (resourceLimits.diskGiB > 20) {
-        throw new RangeError('Devbox storage resource limit must not exceed 20G');
+    const storageLimit = (() => {
+      if (resourceLimits?.storageSize !== undefined) {
+        const value = resourceLimits.storageSize.trim();
+        if (!value) {
+          throw new RangeError('Devbox storage resource limit must not be empty');
+        }
+        return value;
       }
-    }
+      return undefined;
+    })();
 
     return {
       name: this._id,
@@ -150,9 +154,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       ...(resourceLimits?.memoryMiB === undefined
         ? {}
         : { memory: `${resourceLimits.memoryMiB}Mi` }),
-      ...(resourceLimits?.diskGiB === undefined
-        ? {}
-        : { storageLimit: `${resourceLimits.diskGiB}Gi` }),
+      ...(storageLimit === undefined ? {} : { storageLimit }),
       env: Object.keys(env).length > 0 ? env : undefined,
       labels: spec.labels,
       upstreamID: spec.upstreamID,

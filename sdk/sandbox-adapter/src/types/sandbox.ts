@@ -38,7 +38,8 @@ export type SandboxStatus = {
 export type ResourceLimits = {
   cpuCount?: number;
   memoryMiB?: number;
-  diskGiB?: number;
+  /** Kubernetes resource quantity, for example `5G` or `10Gi`. */
+  storageSize?: string;
 };
 
 /**

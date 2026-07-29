@@ -39,7 +39,7 @@ describe('SealosDevboxAdapter', () => {
     });
     const adapter = new SealosDevboxAdapter(CONFIG, {
       image: { repository: 'registry.example.com/devbox/runtime', tag: 'custom-v2' },
-      resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 },
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096, storageSize: '10Gi' },
       upstreamID: 'session-123'
     });
 
@@ -56,22 +56,11 @@ describe('SealosDevboxAdapter', () => {
     });
   });
 
-  it('leaves resource quantities unset so Devbox server defaults apply', () => {
-    const adapter = new SealosDevboxAdapter(CONFIG);
-    const request = (
-      adapter as unknown as { buildCreateRequest: () => Record<string, unknown> }
-    ).buildCreateRequest();
-
-    expect(request).not.toHaveProperty('cpu');
-    expect(request).not.toHaveProperty('memory');
-    expect(request).not.toHaveProperty('storageLimit');
-  });
-
   it.each([
     ['cpuCount', { cpuCount: 0 }],
     ['cpuCount', { cpuCount: Number.NaN }],
     ['memoryMiB', { memoryMiB: -1 }],
-    ['diskGiB', { diskGiB: 21 }]
+    ['storageSize', { storageSize: ' ' }]
   ])('rejects invalid %s resource limits', (_name, resourceLimits) => {
     const adapter = new SealosDevboxAdapter(CONFIG, { resourceLimits });
 

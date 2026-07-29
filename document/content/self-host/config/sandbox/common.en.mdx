@@ -71,14 +71,14 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 Configure the following variables in `fastgpt-app` and `fastgpt-pro` when you need to adjust resource limits:
 
-| Variable                                 | Default    | Description                                                                                                                       |
-| ---------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT`    | `1`        | Maximum CPU count for each OpenSandbox instance.                                                                                  |
-| `AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB`   | `2048`     | Maximum memory for each OpenSandbox instance, in MiB.                                                                             |
-| `AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE` | `1Gi`      | OpenSandbox persistent volume size. Effective only when creating new PVCs in Kubernetes mode.                                     |
-| `AGENT_SANDBOX_DISK_MB`                  | `1024`     | Baseline Agent Sandbox disk size in MB. It affects cold archive package limits, Skill package limits, and IDE single-file limits. |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | Maximum IDE Agent WebSocket message size in bytes.                                                                                |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | Maximum IDE Agent WebSocket frame size in bytes.                                                                                  |
+| Variable                             | Default    | Description                                                                                                                                                   |
+| ------------------------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`            | `1`        | Maximum CPU count for each Agent Sandbox instance.                                                                                                            |
+| `AGENT_SANDBOX_MEMORY_MIB`           | `2048`     | Maximum memory for each Agent Sandbox instance, in MiB.                                                                                                       |
+| `AGENT_SANDBOX_STORAGE_SIZE`         | `1Gi`      | Agent Sandbox storage size, preserving the Kubernetes quantity unit. Used as the Sealos Devbox storage limit and for new OpenSandbox PVCs in Kubernetes mode. |
+| `AGENT_SANDBOX_DISK_MB`              | `1024`     | Baseline Agent Sandbox disk size in MB. It affects cold archive package limits, Skill package limits, and IDE single-file limits.                             |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864` | Maximum IDE Agent WebSocket message size in bytes.                                                                                                            |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216` | Maximum IDE Agent WebSocket frame size in bytes.                                                                                                              |
 
 ### Lifecycle variables
 

@@ -122,7 +122,7 @@ export class OpenSandboxLifecycle {
     return {
       ...(limits.cpuCount === undefined ? {} : { cpu: String(limits.cpuCount) }),
       ...(limits.memoryMiB === undefined ? {} : { memory: `${limits.memoryMiB}Mi` }),
-      ...(limits.diskGiB === undefined ? {} : { disk: `${limits.diskGiB}Gi` })
+      ...(limits.storageSize === undefined ? {} : { disk: limits.storageSize })
     };
   }
 

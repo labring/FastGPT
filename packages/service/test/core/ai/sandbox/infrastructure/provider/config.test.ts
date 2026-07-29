@@ -11,8 +11,9 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
-  AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT,
-  AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB,
+  AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
+  AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
+  AGENT_SANDBOX_STORAGE_SIZE: process.env.AGENT_SANDBOX_STORAGE_SIZE,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
@@ -70,14 +71,9 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB
-    );
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', originalEnv.AGENT_SANDBOX_STORAGE_SIZE);
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL
@@ -131,6 +127,9 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/home/devbox/workspace');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', '5G');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES', '67108864');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', '16777216');
 
@@ -139,8 +138,7 @@ describe('sandbox provider config', () => {
     const result = getSandboxAdapterConfig({
       provider: 'sealosdevbox',
       runtime: true,
-      sessionId: 'session-1',
-      resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 }
+      sessionId: 'session-1'
     });
 
     expect(result.providerConfig).toEqual({
@@ -154,7 +152,7 @@ describe('sandbox provider config', () => {
         repository: 'default-sealos-image',
         tag: 'latest'
       },
-      resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 },
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096, storageSize: '5G' },
       workingDir: '/home/devbox/workspace',
       upstreamID: 'session-1',
       env: {
@@ -278,8 +276,8 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT', '2');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB', '4096');
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
@@ -386,8 +384,8 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: '',
         AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: undefined,
         AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true,
-        AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT: 1,
-        AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB: 2048,
+        AGENT_SANDBOX_CPU_COUNT: 1,
+        AGENT_SANDBOX_MEMORY_MIB: 2048,
         AGENT_SANDBOX_DISK_MB: 20
       }
     }));
