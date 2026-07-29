@@ -108,10 +108,7 @@ describe('sandbox provider adapter', () => {
       },
       {
         sandboxId: 'sealos-sandbox-1',
-        createConfig: {
-          env: { A: 'B' },
-          resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 }
-        }
+        createConfig: { env: { A: 'B' } }
       }
     );
 
@@ -122,10 +119,7 @@ describe('sandbox provider adapter', () => {
         token: 'token',
         sandboxId: 'sealos-sandbox-1'
       },
-      createConfig: expect.objectContaining({
-        env: { A: 'B' },
-        resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 }
-      })
+      createConfig: expect.objectContaining({ env: { A: 'B' } })
     });
   });
 

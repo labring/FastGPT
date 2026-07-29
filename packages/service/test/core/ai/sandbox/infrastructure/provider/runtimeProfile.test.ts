@@ -106,7 +106,6 @@ describe('sandbox runtime profile', () => {
             maxFrameBytes: 16 * 1024 * 1024
           }
         }),
-        resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 },
         metadata: { teamId: 'team-1' }
       })
     ).toMatchObject({
@@ -125,7 +124,6 @@ describe('sandbox runtime profile', () => {
       metadata: {
         teamId: 'team-1'
       },
-      resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 },
       workingDir: '/custom/devbox/workspace',
       upstreamID: 'session-1'
     });

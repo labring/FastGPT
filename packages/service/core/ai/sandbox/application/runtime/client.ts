@@ -142,7 +142,7 @@ export class SandboxClient {
         limit: {
           cpuCount: this.opts.resourceLimits.cpuCount,
           memoryMiB: this.opts.resourceLimits.memoryMiB,
-          diskGiB: this.opts.resourceLimits.diskGiB
+          storageSize: this.opts.resourceLimits.storageSize
         }
       })
     };
@@ -468,7 +468,7 @@ export const getSandboxClient = async (
           ? {
               cpuCount: opts.resourceLimits.cpuCount,
               memoryMiB: opts.resourceLimits.memoryMiB,
-              diskGiB: opts.resourceLimits.diskGiB
+              storageSize: opts.resourceLimits.storageSize
             }
           : undefined,
         vmConfig: vmConfig ?? null,

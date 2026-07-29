@@ -137,7 +137,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
     const resourceLimits = {
       cpuCount: 1,
       memoryMiB: 256,
-      diskGiB: 1
+      storageSize: '1Gi'
     };
     const limitedSandbox = await getSandboxClient(toAppSandboxQuery(params), { resourceLimits });
 
@@ -145,7 +145,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       const doc = await MongoSandboxInstance.findOne({ sandboxId: limitedSandbox.getSandboxId() });
       expect(doc?.limit?.cpuCount).toBe(resourceLimits.cpuCount);
       expect(doc?.limit?.memoryMiB).toBe(resourceLimits.memoryMiB);
-      expect(doc?.limit?.diskGiB).toBe(resourceLimits.diskGiB);
+      expect(doc?.limit?.storageSize).toBe(resourceLimits.storageSize);
     } finally {
       await limitedSandbox.delete();
     }

@@ -122,7 +122,7 @@ describe('OpenSandboxAdapter', () => {
     const adapter = new OpenSandboxAdapter(CONNECTION, {
       image: { repository: 'node', tag: '20' },
       metadata: { teamId: 'team-1' },
-      resourceLimits: { cpuCount: 2, memoryMiB: 512 }
+      resourceLimits: { cpuCount: 2, memoryMiB: 512, storageSize: '5G' }
     });
 
     await adapter.create();
@@ -131,7 +131,7 @@ describe('OpenSandboxAdapter', () => {
       expect.objectContaining({
         image: 'node:20',
         metadata: { teamId: 'team-1', sessionId: 'session-1' },
-        resource: { cpu: '2', memory: '512Mi' }
+        resource: { cpu: '2', memory: '512Mi', disk: '5G' }
       })
     );
     expect(adapter.id).toBe('sandbox-1');

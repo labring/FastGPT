@@ -72,7 +72,7 @@ export type SandboxSourceType = z.infer<typeof SandboxSourceTypeSchema>;
 export const SandboxLimitSchema = z.object({
   cpuCount: z.number(),
   memoryMiB: z.number(),
-  diskGiB: z.number()
+  storageSize: z.string()
 });
 
 export const SandboxVolumeSchema = z.object({

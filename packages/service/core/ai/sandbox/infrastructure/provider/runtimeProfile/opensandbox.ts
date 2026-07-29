@@ -52,17 +52,25 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       }
 
       const entrypoint = createConfig.entrypoint ?? normalizeEntrypoint(input.entrypoint);
-      const diskGiB = input.resourceLimits?.diskGiB ?? createConfig.resourceLimits?.diskGiB;
+      const storageLimit = (() => {
+        if (input.resourceLimits?.storageSize !== undefined) {
+          return { storageSize: input.resourceLimits.storageSize };
+        }
+        if (createConfig.resourceLimits?.storageSize !== undefined) {
+          return { storageSize: createConfig.resourceLimits.storageSize };
+        }
+        return {};
+      })();
       const resourceLimits = {
         cpuCount:
           input.resourceLimits?.cpuCount ??
           createConfig.resourceLimits?.cpuCount ??
-          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT,
+          serviceEnv.AGENT_SANDBOX_CPU_COUNT,
         memoryMiB:
           input.resourceLimits?.memoryMiB ??
           createConfig.resourceLimits?.memoryMiB ??
-          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB,
-        ...(diskGiB === undefined ? {} : { diskGiB })
+          serviceEnv.AGENT_SANDBOX_MEMORY_MIB,
+        ...storageLimit
       };
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeStringRecord(createConfig.metadata, input.metadata);

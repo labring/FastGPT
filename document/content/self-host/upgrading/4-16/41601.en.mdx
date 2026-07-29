@@ -50,13 +50,13 @@ A preview URL is a temporary, read-only bearer capability and is not limited to 
 
 This release also adds the following optional settings:
 
-| Variable                                 | Default | Description                                                |
-| ---------------------------------------- | ------- | ---------------------------------------------------------- |
-| `AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT`    | `1`     | CPU core limit for each OpenSandbox instance.              |
-| `AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB`   | `2048`  | Memory limit for each OpenSandbox instance, in MiB.        |
-| `AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE` | `1Gi`   | New OpenSandbox persistent volume size in Kubernetes mode. |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`    | Minutes of inactivity before a running Sandbox is stopped. |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`     | Days of inactivity before a stopped Sandbox is archived.   |
+| Variable                              | Default | Description                                                                                                          |
+| ------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`             | `1`     | CPU core limit for each Agent Sandbox instance.                                                                      |
+| `AGENT_SANDBOX_MEMORY_MIB`            | `2048`  | Memory limit for each Agent Sandbox instance, in MiB.                                                                |
+| `AGENT_SANDBOX_STORAGE_SIZE`          | `1Gi`   | Agent Sandbox storage size. Used as the Sealos Devbox storage limit and for new OpenSandbox PVCs in Kubernetes mode. |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`    | Minutes of inactivity before a running Sandbox is stopped.                                                           |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`     | Days of inactivity before a stopped Sandbox is archived.                                                             |
 
 The E2B Sandbox Provider has been removed. Deployments previously using E2B must switch to `opensandbox` or `sealosdevbox` and remove the `AGENT_SANDBOX_E2B_API_KEY` environment variable.
 

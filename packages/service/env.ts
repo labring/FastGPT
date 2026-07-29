@@ -97,6 +97,15 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional().meta({
       description: 'Sealos Devbox 使用的运行态镜像；启用 sealosdevbox 时必填'
     }),
+    AGENT_SANDBOX_CPU_COUNT: NumSchema.positive().default(1).meta({
+      description: 'Agent Sandbox 实例的 CPU 核数上限'
+    }),
+    AGENT_SANDBOX_MEMORY_MIB: IntSchema.min(1).default(2048).meta({
+      description: 'Agent Sandbox 实例的内存上限（MiB）'
+    }),
+    AGENT_SANDBOX_STORAGE_SIZE: z.string().trim().min(1).default('1Gi').meta({
+      description: 'Agent Sandbox 存储容量（Kubernetes 资源量格式）'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
@@ -106,15 +115,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_OPENSANDBOX_CPU_COUNT: NumSchema.positive().default(1).meta({
-      description: 'OpenSandbox 实例的 CPU 核数上限'
-    }),
-    AGENT_SANDBOX_OPENSANDBOX_MEMORY_MIB: IntSchema.min(1).default(2048).meta({
-      description: 'OpenSandbox 实例的内存上限（MiB）'
-    }),
-    AGENT_SANDBOX_OPENSANDBOX_STORAGE_SIZE: z.string().trim().min(1).default('1Gi').meta({
-      description: 'OpenSandbox 持久卷容量，仅 Kubernetes 模式下创建新 PVC 时有效'
-    }),
     AGENT_SANDBOX_DISK_MB: NumSchema.min(1).default(1024).meta({
       description:
         'Agent sandbox 磁盘大小基准（MB）。冷归档包上限等于该值，Skill 包和 IDE 单文件上限按该值的一半四舍五入计算。'
