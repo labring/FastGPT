@@ -350,7 +350,7 @@ const ToolHeaderCard = ({
             <Avatar src={tool.avatar} w={'24px'} h={'24px'} borderRadius={'sm'} />
             <Flex alignItems={'center'} gap={2} minW={0}>
               <Box
-                color={'myGray.500'}
+                color={'myGray.900'}
                 fontSize={'14px'}
                 lineHeight={'20px'}
                 className="textEllipsis"
