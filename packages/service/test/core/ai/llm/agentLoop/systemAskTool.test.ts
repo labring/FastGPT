@@ -110,10 +110,7 @@ describe('agent loop system ask tool', () => {
           reason: 'Need a choice',
           blockerType: 'user_choice',
           question: 'Which output should I create?',
-          options: [
-            { summary: 'Document', value: 'Document' },
-            { summary: 'Spreadsheet', value: 'Spreadsheet' }
-          ]
+          options: ['Document', 'Spreadsheet']
         })
       }
     });
@@ -175,6 +172,38 @@ describe('agent loop system ask tool', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('rejects duplicate option summaries and values', () => {
+    const baseQuestion = {
+      question: 'Which output should I create?'
+    };
+    const createCall = (options: Array<{ summary: string; value: string }>) =>
+      parseAgentAskToolCall({
+        id: 'call_ask',
+        type: 'function',
+        function: {
+          name: 'ask_agent',
+          arguments: JSON.stringify({
+            reason: 'Need a choice',
+            blockerType: 'user_choice',
+            questions: [{ ...baseQuestion, options }]
+          })
+        }
+      });
+
+    expect(
+      createCall([
+        { summary: 'Document', value: 'Document' },
+        { summary: 'Document', value: 'Spreadsheet' }
+      ]).success
+    ).toBe(false);
+    expect(
+      createCall([
+        { summary: 'Document', value: 'Document' },
+        { summary: 'Spreadsheet', value: 'Document' }
+      ]).success
+    ).toBe(false);
   });
 
   it('creates internal tool schemas without workflow dependencies', () => {

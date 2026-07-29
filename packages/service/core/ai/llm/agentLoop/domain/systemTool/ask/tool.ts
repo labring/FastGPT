@@ -9,13 +9,17 @@ const AgentAskBaseSchema = z.object({
   reason: z.string(),
   blockerType: AgentAskBlockerTypeSchema
 });
+const LegacyAgentAskQuestionSchema = z.object({
+  question: z.string().trim().min(1),
+  options: z.array(z.string().trim().min(1)).min(2).max(5)
+});
 
 export const AgentAskPayloadSchema = z
   .union([
     AgentAskBaseSchema.extend({
       questions: z.array(AgentAskQuestionSchema).min(1).max(3)
     }),
-    AgentAskBaseSchema.extend(AgentAskQuestionSchema.shape)
+    AgentAskBaseSchema.extend(LegacyAgentAskQuestionSchema.shape)
   ])
   .transform((payload) =>
     'questions' in payload
@@ -27,7 +31,7 @@ export const AgentAskPayloadSchema = z
           questions: [
             {
               question: payload.question,
-              options: payload.options
+              options: payload.options.map((option) => ({ summary: option, value: option }))
             }
           ]
         }

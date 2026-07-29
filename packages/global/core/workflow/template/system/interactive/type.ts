@@ -170,7 +170,7 @@ export const UserInputInteractiveSchema = z.object({
 });
 export type UserInputInteractive = z.infer<typeof UserInputInteractiveSchema>;
 
-export const AgentAskQuestionInteractiveSchema = AgentAskQuestionSchema.extend({
+export const AgentAskQuestionInteractiveSchema = AgentAskQuestionSchema.safeExtend({
   answer: z.string()
 });
 export type AgentAskQuestionInteractive = z.infer<typeof AgentAskQuestionInteractiveSchema>;

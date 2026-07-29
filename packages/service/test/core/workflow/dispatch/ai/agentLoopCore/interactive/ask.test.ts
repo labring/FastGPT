@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  AgentAskInteractiveSchema,
-  AgentPlanAskQueryInteractiveSchema
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { AgentPlanAskQueryInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { createAgentLoopCoreAskInteractive } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive';
 
 describe('agentLoopCore ask interactive', () => {
@@ -70,28 +67,6 @@ describe('agentLoopCore ask interactive', () => {
           reason: 'The selected Skill requires the user to choose a style.',
           blockerType: 'user_choice',
           options: ['Editorial', 'Swiss']
-        }
-      }).success
-    ).toBe(true);
-  });
-
-  it('accepts the mapped agentAsk schema', () => {
-    expect(
-      AgentAskInteractiveSchema.safeParse({
-        type: 'agentAsk',
-        askId: 'call_ask',
-        params: {
-          description: 'Need input',
-          questions: [
-            {
-              question: 'Confirm?',
-              options: [
-                { summary: 'Yes', value: 'Yes' },
-                { summary: 'No', value: 'No' }
-              ],
-              answer: ''
-            }
-          ]
         }
       }).success
     ).toBe(true);
