@@ -4,11 +4,14 @@ import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { authCode } from '@fastgpt/service/support/user/auth/controller';
 import { MongoUserAuth } from '@fastgpt/service/support/user/auth/schema';
 import { PasswordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
-import type { PasswordVerificationDependencies } from '@fastgpt/service/support/user/account/verification/password/type';
+import type {
+  PasswordVerificationDependencies,
+  PasswordVerificationUser
+} from '@fastgpt/service/support/user/account/verification/password/type';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { describe, expect, it, vi } from 'vitest';
 
-const createUser = (): UserModelSchema =>
+const createUser = (): PasswordVerificationUser =>
   ({
     _id: 'user-id',
     username: 'test@example.com',
@@ -19,8 +22,9 @@ const createUser = (): UserModelSchema =>
     timezone: 'Asia/Shanghai',
     language: 'zh-CN',
     status: 'active',
-    tags: []
-  }) as UserModelSchema;
+    tags: [],
+    save: vi.fn(async () => undefined)
+  }) as PasswordVerificationUser;
 
 const createDependencies = (
   overrides: Partial<PasswordVerificationDependencies> = {}

@@ -1,4 +1,7 @@
+import type { HydratedDocument } from 'mongoose';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
+
+export type PasswordVerificationUser = HydratedDocument<UserModelSchema>;
 
 export type IssuePreLoginCodeParams = {
   username: string;
@@ -26,5 +29,5 @@ export type PasswordVerificationDependencies = {
   findUserByCredentials: (params: {
     username: string;
     password: string;
-  }) => Promise<UserModelSchema | null>;
+  }) => Promise<PasswordVerificationUser | null>;
 };
