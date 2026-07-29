@@ -1,12 +1,12 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
-import { multer } from '@fastgpt/service/common/file/multer';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  SandboxUploadBodySchema,
+  SandboxUploadQuerySchema,
   SandboxUploadResponseSchema,
+  type SandboxUploadQuery,
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
@@ -16,72 +16,70 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/interface/file';
 import { Readable } from 'node:stream';
+import { createSizeLimitedStream } from '@fastgpt/service/common/file/stream';
 
-async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
-  const contentType = req.headers['content-type'] ?? '';
-  if (!contentType.includes('multipart/form-data')) {
-    return Promise.reject('Content-Type must be multipart/form-data');
+async function handler(
+  req: ApiRequestProps<unknown, SandboxUploadQuery>
+): Promise<SandboxUploadResponse> {
+  const { sourceType, sourceId, chatId, path, outLinkAuthData } = parseApiInput({
+    req,
+    querySchema: SandboxUploadQuerySchema
+  }).query;
+
+  const maxFileBytes = getAgentSandboxMaxFileBytes();
+  const contentLengthHeader = req.headers['content-length'];
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : undefined;
+  const createFileTooLargeError = (size: number) =>
+    new Error(`File is too large (${size} bytes > ${maxFileBytes} bytes)`);
+
+  if (contentLength !== undefined && contentLength > maxFileBytes) {
+    throw createFileTooLargeError(contentLength);
   }
 
-  const filepaths: string[] = [];
+  const {
+    uid,
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId
+  } = await authSandboxRuntimeSession({
+    req,
+    sourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData,
+    per: WritePermissionVal
+  });
 
-  try {
-    const maxFileBytes = getAgentSandboxMaxFileBytes();
-    const form = await multer.resolveFormData({
-      request: req,
-      maxFileSize: Math.ceil(maxFileBytes / 1024 / 1024)
-    });
-    if (form.fileMetadata.path) {
-      filepaths.push(form.fileMetadata.path);
-    }
-
-    const { sourceType, sourceId, chatId, path, outLinkAuthData } = parseApiInput({
-      req: { body: form.data },
-      bodySchema: SandboxUploadBodySchema
-    }).body;
-
-    if (form.fileMetadata.size > maxFileBytes) {
-      return Promise.reject(
-        `File is too large (${form.fileMetadata.size} bytes > ${maxFileBytes} bytes)`
-      );
-    }
-
-    const {
-      uid,
+  const sandbox = await getSandboxClient(
+    buildSandboxClientQueryFromChatSource({
       sourceType: resolvedSourceType,
-      sourceId: resolvedSourceId
-    } = await authSandboxRuntimeSession({
-      req,
-      sourceType,
-      sourceId,
-      chatId,
-      outLinkAuthData,
-      per: WritePermissionVal
-    });
+      sourceId: resolvedSourceId,
+      userId: uid,
+      chatId
+    })
+  );
 
-    const sandbox = await getSandboxClient(
-      buildSandboxClientQueryFromChatSource({
-        sourceType: resolvedSourceType,
-        sourceId: resolvedSourceId,
-        userId: uid,
-        chatId
-      })
-    );
+  const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
+  await prepareSandboxFileParentDirectories(sandbox.provider, [providerPath]);
 
-    const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
-    await prepareSandboxFileParentDirectories(sandbox.provider, [providerPath]);
-    await sandbox.provider.writeFileStream(
-      providerPath,
-      Readable.toWeb(form.getReadStream()) as ReadableStream<Uint8Array>
-    );
-
-    return SandboxUploadResponseSchema.parse({
-      path,
-      bytesWritten: form.fileMetadata.size
-    });
-  } finally {
-    multer.clearDiskTempFiles(filepaths);
+  const boundedStream = createSizeLimitedStream({
+    stream: req,
+    maxBytes: maxFileBytes,
+    createExceededError: createFileTooLargeError
+  });
+  const [writeResult] = await sandbox.provider.writeFiles([
+    {
+      path: providerPath,
+      data: Readable.toWeb(boundedStream) as ReadableStream<Uint8Array>
+    }
+  ]);
+  if (!writeResult || writeResult.error) {
+    throw writeResult?.error ?? new Error('Sandbox did not return a file write result');
   }
+
+  return SandboxUploadResponseSchema.parse({
+    path,
+    bytesWritten: writeResult.bytesWritten
+  });
 }
 
 export default NextAPI(handler);

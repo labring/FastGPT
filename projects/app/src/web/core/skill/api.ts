@@ -1,4 +1,4 @@
-import { GET, DELETE, POST } from '@/web/common/api/request';
+import { GET, DELETE, POST, POSTRawFile } from '@/web/common/api/request';
 import { streamFetch, type StreamResponseType } from '@/web/common/api/fetch';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -72,22 +72,15 @@ export const deleteSkill = (skillId: string) => DELETE('/core/ai/skill/delete', 
 export const importSkill = ({
   file,
   ...query
-}: Omit<ImportSkillQuery, 'filename'> & { file: File }) => {
-  const searchParams = new URLSearchParams({
-    filename: file.name
-  });
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      searchParams.set(key, value);
+}: Omit<ImportSkillQuery, 'filename'> & { file: File }) =>
+  POSTRawFile<string>({
+    url: '/core/ai/skill/import',
+    file,
+    query: {
+      filename: file.name,
+      ...query
     }
   });
-
-  return POST<string>(`/core/ai/skill/import?${searchParams.toString()}`, file, {
-    headers: {
-      'Content-Type': 'application/octet-stream'
-    }
-  });
-};
 
 /** 从 Sandbox 打包并发布新版本 */
 export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>

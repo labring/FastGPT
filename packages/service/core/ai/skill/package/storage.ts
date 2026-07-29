@@ -10,7 +10,8 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ClientSession } from '../../../../common/mongo';
 import { getAgentSandboxSkillMaxBytes } from '../../sandbox/interface/config';
 import { readStreamToBuffer } from '../../../../common/s3/utils';
-import { Readable } from 'node:stream';
+import type { Readable } from 'node:stream';
+import { createSizeLimitedStream } from '../../../../common/file/stream';
 
 export type SkillStorageInfo = {
   key: string;
@@ -70,19 +71,11 @@ export async function uploadSkillPackageStream(
   const { teamId, skillId, packageObjectId, packageStream, contentLength } = params;
   const maxBytes = getAgentSandboxSkillMaxBytes();
 
-  let uploadedBytes = 0;
-  const boundedStream = Readable.from(
-    (async function* () {
-      for await (const chunk of packageStream) {
-        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        uploadedBytes += buffer.length;
-        if (uploadedBytes > maxBytes) {
-          throw new Error(SkillErrEnum.archiveTooLarge);
-        }
-        yield buffer;
-      }
-    })()
-  );
+  const boundedStream = createSizeLimitedStream({
+    stream: packageStream,
+    maxBytes,
+    createExceededError: () => new Error(SkillErrEnum.archiveTooLarge)
+  });
 
   const bucket = getS3SkillSource();
   const { key } = await bucket.uploadPackage({
@@ -154,21 +147,12 @@ export async function downloadSkillPackageStream(
     throw new Error(`Failed to download skill package: ${storageKey}`);
   }
 
-  let downloadedBytes = 0;
-  return Readable.from(
-    (async function* () {
-      for await (const chunk of response.body) {
-        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        downloadedBytes += buffer.length;
-        if (downloadedBytes > maxBytes) {
-          throw new Error(
-            `Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`
-          );
-        }
-        yield buffer;
-      }
-    })()
-  );
+  return createSizeLimitedStream({
+    stream: response.body,
+    maxBytes,
+    createExceededError: () =>
+      new Error(`Skill package exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`)
+  });
 }
 
 /**

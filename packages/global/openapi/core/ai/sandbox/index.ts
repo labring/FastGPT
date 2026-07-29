@@ -3,7 +3,8 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   SandboxDownloadBodyRawSchema,
   SandboxDownloadResponseSchema,
-  SandboxUploadMultipartSchema,
+  SandboxUploadFileSchema,
+  SandboxUploadQueryRawSchema,
   SandboxUploadResponseSchema,
   SandboxCheckExistBodyRawSchema,
   SandboxCheckExistResponseSchema,
@@ -42,15 +43,15 @@ export const SandboxPath: OpenAPIPath = {
     post: {
       summary: '上传文件到沙盒',
       description:
-        '通过 multipart/form-data 上传文件，并写入当前 Chat Session 路径。`file` 字段为二进制文件，`data` 字段为 JSON 序列化后的上传参数对象',
+        '将原始二进制请求流直接写入当前 Chat Session 路径，不在 FastGPT 节点生成临时文件',
       tags: [DevApiTagsMap.sandbox],
+      requestParams: {
+        query: SandboxUploadQueryRawSchema
+      },
       requestBody: {
         content: {
-          'multipart/form-data': {
-            schema: SandboxUploadMultipartSchema,
-            encoding: {
-              data: { contentType: 'application/json' }
-            }
+          'application/octet-stream': {
+            schema: SandboxUploadFileSchema
           }
         }
       },
