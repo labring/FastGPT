@@ -67,7 +67,8 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
 1. Agent Sandbox 改为 App 用户级实例，同一 App、同一用户的多个对话复用 Sandbox，并通过独立 session 目录隔离各对话文件。
 2. Sandbox HTML 和文件支持通过短期只读链接直接预览，不再为预览重复上传到对象存储。
 3. App Workflow 在 Sandbox Provider 或运行时镜像变化时自动归档并恢复 Workspace，升级过程在当前运行中静默完成。
-4. 新增 Cloudflare R2 对象存储支持，兼容预签名访问和公开 bucket 自定义域名。
+4. 工作流工具节点支持将指定输入参数交由 Agent 自动生成，并保留固定值、引用和用户输入等既有配置。
+5. ChatAgent 选择工具时，支持手动指定是否为 AI 生成参数。
 
 ## ⚙️ 优化
 
@@ -76,20 +77,23 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
 3. OpenSandbox 停止后可保留持久卷并在后续运行时复用；暂停和归档阈值支持通过环境变量配置。
 4. App 与 Skill 统一运行时镜像升级状态，Skill 编辑页可持续轮询升级结果。
 5. Sandbox 文件写入前自动创建父目录，避免写入嵌套路径失败。
-6. 优化企业认证表单渲染性能。
-7. 统一更多 workspace 依赖版本，并补充 Agent Sandbox 中英文运行时字体。
-8. 完善 OSS、COS、MinIO、AWS S3 和 Cloudflare R2 的统一对象存储兼容性。
+6. 优化工作流旧数据、工具参数等兼容问题。
 
 ## 🐛 修复
 
 1. 修复 OpenSandbox 资源停止后未正确释放或复用的问题。
 2. 修复 Agent Sandbox 创建、恢复或运行时升级期间的状态竞争和重复操作问题。
 3. 修复 Sandbox 向嵌套目录写入文件时因父目录不存在而失败的问题。
-4. 修复头像 URL 已编码时被再次编码，导致图片无法加载的问题。
-5. 修复阿里云 OSS 读取 ETag 字段错误，导致下游元数据校验失败的问题。
+4. 修复 number 输入在 Agent 生成和手动输入之间切换后变成普通文本框的问题。
+5. 修复字符串文本输入被错误渲染为下拉选择的问题。
+6. 修复 JSON Editor 被错误加入工作流工具配置的问题。
+7. 修复工具运行错误在 Agent/工作流工具界面中被错误展示的问题。
+8. 修复系统工具列表中已卸载工具的展示问题。
+9. 修复 Agent/Agent V2 默认版本选择逻辑，使其默认选择最新版本。
 
 ## 🛠️ 代码优化
 
 1. Sandbox Adapter 按生命周期、文件系统、命令执行和 Provider 契约重新拆分，并移除 E2B Adapter。
 2. Agent Sandbox Proxy 和 IDE Agent 增加 Workspace 直连预览、Range 请求、路径逃逸防护及会话鉴权。
-3. 对象存储 SDK 增加跨 MinIO、AWS S3、Cloudflare R2、OSS 和 COS 的通用集成测试。
+3. 工作流 schema 优化，统一工具调用和表单渲染。
+4. 扩展工具 JSON Schema，支持更多数据类型。
