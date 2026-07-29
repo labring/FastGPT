@@ -327,6 +327,10 @@ export const appData2FlowNodeIO = ({
           !textInputVariableValueTypes.includes(item.valueType)
             ? WorkflowIOValueTypeEnum.string
             : item.valueType;
+        const supportsOptions = [
+          VariableInputEnum.select,
+          VariableInputEnum.multipleSelect
+        ].includes(item.type);
         return {
           key: item.key,
           renderTypeList: getAppVariableRenderTypeList({
@@ -340,10 +344,16 @@ export const appData2FlowNodeIO = ({
           required: item.required,
           defaultValue: item.defaultValue,
           value: item.defaultValue,
-          list: (item.list || item.enums)?.map((enumItem) => ({
-            label: enumItem.value,
-            value: enumItem.value
-          }))
+          ...(supportsOptions
+            ? {
+                list: (item.list || item.enums)
+                  ?.map((enumItem) => ({
+                    label: enumItem.value,
+                    value: enumItem.value
+                  }))
+                  .filter((enumItem) => String(enumItem.value ?? '').trim().length > 0)
+              }
+            : {})
         };
       });
 
@@ -358,7 +368,11 @@ export const appData2FlowNodeIO = ({
       chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
         ? [Input_Template_File_Link]
         : []),
-      Input_Template_UserChatInput,
+      {
+        ...Input_Template_UserChatInput,
+        // 普通工作流作为工具时，用户问题应默认由调用它的 Agent 生成。
+        isToolParam: true
+      },
       ...variableInput
     ],
     outputs: [

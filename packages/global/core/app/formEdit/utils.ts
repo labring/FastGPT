@@ -213,16 +213,7 @@ const shouldUseAgentGeneratedOnly = (
 const getManualRenderTypeCandidates = (renderTypeList: FlowNodeInputTypeEnum[] = []) =>
   renderTypeList.filter((type) => manualInputRenderTypes.has(type));
 
-const hasSelectOptions = (input: ToolInputTypeState) =>
-  !!input.list?.length || !!input.enums?.length || !!input.enum?.trim();
-
 const getValueTypePreferredManualType = (input: ToolInputTypeState) => {
-  if (hasSelectOptions(input)) {
-    return input.valueType && input.valueType.startsWith('array')
-      ? FlowNodeInputTypeEnum.multipleSelect
-      : FlowNodeInputTypeEnum.select;
-  }
-
   switch (input.valueType) {
     case WorkflowIOValueTypeEnum.number:
       return FlowNodeInputTypeEnum.numberInput;
@@ -244,7 +235,7 @@ const getValueTypePreferredManualType = (input: ToolInputTypeState) => {
 
 /**
  * Agent 生成只是输入来源，切回手动输入时需要恢复真实编辑控件。
- * 旧数据可能只剩 agentGenerated/input，这里按 valueType 和选项信息兜底恢复 number/select 等类型。
+ * JSON Schema 的 list 可能只是候选值；只有没有 valueType 对应主控件时才回退到 select/multipleSelect。
  * 没有手动候选时返回 undefined，调用方不能把它伪造成手动输入。
  */
 export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
@@ -253,11 +244,16 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
   const preferredType = getValueTypePreferredManualType(input);
   const isGenericSelectedType =
     selectedType === FlowNodeInputTypeEnum.input || selectedType === FlowNodeInputTypeEnum.textarea;
+  const isSelectSelectedType =
+    selectedType === FlowNodeInputTypeEnum.select ||
+    selectedType === FlowNodeInputTypeEnum.multipleSelect;
+  const hasPreferredManualType = candidates.includes(preferredType);
 
   if (
     selectedType &&
     candidates.includes(selectedType) &&
-    (!isGenericSelectedType || preferredType === FlowNodeInputTypeEnum.input)
+    (!isGenericSelectedType || preferredType === FlowNodeInputTypeEnum.input) &&
+    (!isSelectSelectedType || !hasPreferredManualType)
   ) {
     return selectedType;
   }
@@ -532,23 +528,30 @@ export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>
 
 /**
  * 判断开发者手动配置的工具入参是否已有有效值。
+ * 节点上未显式覆盖时，工作流/工作流工具会在运行时使用 defaultValue，
+ * 因而默认值同样满足工具配置校验。
  * 这里和 Agent 工具配置弹窗共用同一套判定，避免 required 字段被弹窗放行后又显示为未配置。
  */
 export const isToolInputValueConfigured = ({
   input,
   value = input.value
 }: {
-  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'value'>;
+  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'value' | 'defaultValue'>;
   value?: FlowNodeInputItemType['value'];
 }) => {
-  if (value === undefined || value === null || value === '') return false;
-
-  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.timeRangeSelect)) {
-    return Array.isArray(value) && !!value[0] && !!value[1];
+  const configuredValue = value ?? input.defaultValue;
+  if (configuredValue === undefined || configuredValue === null || configuredValue === '') {
+    return false;
   }
 
-  if (Array.isArray(value) && value.length === 0) return false;
-  if (typeof value === 'object' && Object.keys(value).length === 0) return false;
+  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.timeRangeSelect)) {
+    return Array.isArray(configuredValue) && !!configuredValue[0] && !!configuredValue[1];
+  }
+
+  if (Array.isArray(configuredValue) && configuredValue.length === 0) return false;
+  if (typeof configuredValue === 'object' && Object.keys(configuredValue).length === 0) {
+    return false;
+  }
   return true;
 };
 

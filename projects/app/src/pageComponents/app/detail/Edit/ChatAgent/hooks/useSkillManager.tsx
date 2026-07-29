@@ -309,7 +309,7 @@ export const useSkillManager = ({
       // Check tool exists, if exists, not update/add tool
       const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
       if (existsTool) {
-        const skill = toSkillLabelItem(existsTool, existsTool.configStatus || 'waitingForConfig');
+        const skill = toSkillLabelItem(existsTool, getToolConfigStatus({ tool: existsTool }).status);
 
         return {
           id: skill.id,
@@ -495,7 +495,7 @@ export const useSkillManager = ({
         if (tool.pluginId === SubAppIds.datasetSearch) {
           return hasSelectedDataset ? 'configured' : 'invalid';
         }
-        return tool.configStatus || 'waitingForConfig';
+        return getToolConfigStatus({ tool }).status;
       })();
 
       return {

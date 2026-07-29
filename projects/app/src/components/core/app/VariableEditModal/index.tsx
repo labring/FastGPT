@@ -74,6 +74,11 @@ const VariableEditModal = ({
         !value.list?.length
       ) {
         setValue('list', [{ label: '', value: '' }]);
+      } else if (
+        typeEnum !== VariableInputEnum.select &&
+        typeEnum !== VariableInputEnum.multipleSelect
+      ) {
+        setValue('list', undefined);
       }
       if (typeEnum === VariableInputEnum.datasetSelect && !value.datasetOptions) {
         setValue('datasetOptions', []);

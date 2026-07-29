@@ -492,7 +492,8 @@ export async function getClientToolPreviewNode({
 
     // 预览节点来自工具定义，输入上的 selectedType 是原始控件类型；首次加入工具时应优先应用 isToolParam 默认值。
     const normalizedInputs = initToolInputsTypeByDefaultMode(nodeIOConfig.inputs, {
-      forceDefaultMode: true
+      forceDefaultMode: true,
+      allowUserChatInputAgentGenerated: true
     });
 
     return {

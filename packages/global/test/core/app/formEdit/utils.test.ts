@@ -561,6 +561,24 @@ describe('getToolConfigStatus', () => {
       });
     });
 
+    it('should return configured when required input falls back to defaultValue', () => {
+      const tool = {
+        inputs: [
+          createMockInput({
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            required: true,
+            value: undefined,
+            defaultValue: 'default value'
+          })
+        ]
+      };
+
+      expect(getToolConfigStatus({ tool })).toEqual({
+        needConfig: false,
+        status: 'configured'
+      });
+    });
+
     it('should return configured when all required inputs have values', () => {
       const tool = {
         inputs: [
@@ -1391,6 +1409,54 @@ describe('agent generated tool input helpers', () => {
     );
 
     expect(manualType).toBe(FlowNodeInputTypeEnum.textarea);
+  });
+
+  it('should restore text input when a string input carries a stale select type', () => {
+    const manualType = getToolInputManualRenderType(
+      createMockInput({
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.select,
+          FlowNodeInputTypeEnum.reference
+        ],
+        selectedType: FlowNodeInputTypeEnum.select
+      })
+    );
+
+    expect(manualType).toBe(FlowNodeInputTypeEnum.input);
+  });
+
+  it('should ignore empty option placeholders when resolving the manual input type', () => {
+    const manualType = getToolInputManualRenderType(
+      createMockInput({
+        valueType: WorkflowIOValueTypeEnum.string,
+        list: [{ label: '', value: '' }],
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.select,
+          FlowNodeInputTypeEnum.reference
+        ],
+        selectedType: FlowNodeInputTypeEnum.select
+      })
+    );
+
+    expect(manualType).toBe(FlowNodeInputTypeEnum.input);
+  });
+
+  it('should keep a strict string select when options are available', () => {
+    const manualType = getToolInputManualRenderType(
+      createMockInput({
+        valueType: WorkflowIOValueTypeEnum.string,
+        list: [{ label: 'A', value: 'a' }],
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.select],
+        selectedType: FlowNodeInputTypeEnum.select
+      })
+    );
+
+    expect(manualType).toBe(FlowNodeInputTypeEnum.select);
   });
 
   it('should collapse duplicate manual input options to the preferred string control', () => {

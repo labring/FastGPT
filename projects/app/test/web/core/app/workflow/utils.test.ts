@@ -567,6 +567,47 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result['activated-tool']?.map((issue) => issue.code)).toEqual(['required_input_empty']);
   });
 
+  it('accepts a required tool input with a default value during workflow checks', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const activatedToolNode = makeNode('activated-tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: { type: 'system' }
+        },
+        {
+          key: 'query',
+          label: '搜索查询词',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: undefined,
+          defaultValue: '默认查询词'
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, activatedToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-tool',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'activated-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['activated-tool']?.map((issue) => issue.code) ?? []).not.toContain(
+      'required_input_empty'
+    );
+  });
+
   it('reports a tool as inactive when its system input configuration is missing', () => {
     const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
     const inactiveToolNode = makeNode('inactive-tool', FlowNodeTypeEnum.tool, {

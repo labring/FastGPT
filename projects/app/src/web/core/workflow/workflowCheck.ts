@@ -788,9 +788,11 @@ export const checkWorkflowNodeIssues = ({
 
         const isReferenceInput = nodeInputIsReference(input);
         const isArrayReference = isReferenceInput && !!input.valueType?.startsWith('array');
+        // 节点未显式配置时，runtime 会回退 defaultValue；运行检查应与实际执行一致。
+        const effectiveInputValue = input.value ?? input.defaultValue;
         const inputValueIsEmpty = isReferenceInput
-          ? isEmptyReferenceInputValue(input.value, isArrayReference)
-          : isEmptyWorkflowInputValue(input.value);
+          ? isEmptyReferenceInputValue(effectiveInputValue, isArrayReference)
+          : isEmptyWorkflowInputValue(effectiveInputValue);
 
         if (
           input.required &&

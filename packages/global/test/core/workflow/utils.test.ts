@@ -638,6 +638,17 @@ describe('pluginData2FlowNodeIO', () => {
 });
 
 describe('appData2FlowNodeIO', () => {
+  it('should recommend Agent generation for the workflow user question', () => {
+    const result = appData2FlowNodeIO({});
+
+    expect(
+      result.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
+    ).toMatchObject({
+      required: true,
+      isToolParam: true
+    });
+  });
+
   it('should preserve workflow variable descriptions without adding a tool default mode', () => {
     const result = appData2FlowNodeIO({
       chatConfig: {
@@ -836,6 +847,43 @@ describe('appData2FlowNodeIO', () => {
     expect(fileVar?.renderTypeList).toEqual([
       FlowNodeInputTypeEnum.fileSelect,
       FlowNodeInputTypeEnum.reference
+    ]);
+  });
+
+  it('should not carry stale select options into text variables', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'textVar',
+            label: 'Text',
+            type: VariableInputEnum.input,
+            description: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            list: [{ label: 'A', value: 'a' }]
+          },
+          {
+            key: 'textareaVar',
+            label: 'Textarea',
+            type: VariableInputEnum.textarea,
+            description: '',
+            list: [{ label: 'B', value: 'b' }]
+          },
+          {
+            key: 'selectVar',
+            label: 'Select',
+            type: VariableInputEnum.select,
+            description: '',
+            list: [{ label: 'C', value: 'c' }]
+          }
+        ]
+      }
+    });
+
+    expect(result.inputs.find((input) => input.key === 'textVar')?.list).toBeUndefined();
+    expect(result.inputs.find((input) => input.key === 'textareaVar')?.list).toBeUndefined();
+    expect(result.inputs.find((input) => input.key === 'selectVar')?.list).toEqual([
+      { label: 'c', value: 'c' }
     ]);
   });
 
