@@ -3,6 +3,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus/index';
 import { milvusVersionManager } from '@fastgpt/service/common/vectorDB/milvus/version';
+import { isCollectionNotFoundError } from '@fastgpt/service/common/vectorDB/milvus/config';
 import { DatasetVectorTableName } from '@fastgpt/service/common/vectorDB/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -35,8 +36,6 @@ const parseDryRun = (value?: string): boolean => {
   const normalized = value.toLowerCase();
   return normalized === 'true' || normalized === '1';
 };
-
-const targetCollections = [DatasetVectorTableName];
 
 async function handler(
   req: ApiRequestProps<object, Initv4152Query>,
@@ -101,18 +100,42 @@ async function handler(
 
   // Rebuild collections
   const failedCollections: { collectionName: string; error: string }[] = [];
+  const collectionName = DatasetVectorTableName;
 
-  for (const collectionName of targetCollections) {
-    try {
-      logger.info('[initv4152] Dropping collection', { collectionName });
-      await client.dropCollection({ collection_name: collectionName });
-    } catch (err) {
-      logger.warn('[initv4152] Drop collection skipped or failed', {
+  // Step 1: drop existing collection
+  try {
+    logger.info('[initv4152] Dropping collection', { collectionName });
+    const dropResult = await client.dropCollection({ collection_name: collectionName });
+    // dropCollection resolves (doesn't throw) for server-side errors like
+    // CollectionNotExists — check the returned status, not just the catch block.
+    const dropCode = dropResult?.error_code;
+    if (
+      dropCode !== undefined &&
+      dropCode !== 'Success' &&
+      dropCode !== 0 &&
+      !isCollectionNotFoundError({ error_code: dropCode })
+    ) {
+      const error = `Drop collection failed: ${dropCode} - ${dropResult?.reason || 'unknown'}`;
+      logger.error('[initv4152] Drop collection failed', {
         collectionName,
-        error: err instanceof Error ? err.message : String(err)
+        dropCode,
+        reason: dropResult?.reason
       });
+      failedCollections.push({ collectionName, error });
     }
+  } catch (err) {
+    // Transport-level errors (network, auth) are thrown — only ignore NotFound.
+    if (isCollectionNotFoundError(err)) {
+      logger.info('[initv4152] Collection does not exist, skipping drop', { collectionName });
+    } else {
+      const error = err instanceof Error ? err.message : String(err);
+      logger.error('[initv4152] Drop collection failed', { collectionName, error });
+      failedCollections.push({ collectionName, error });
+    }
+  }
 
+  // Step 2: recreate collection with BM25 schema
+  if (failedCollections.length === 0) {
     try {
       logger.info('[initv4152] Creating collection', { collectionName });
       await milvus.init();
@@ -120,7 +143,33 @@ async function handler(
       const error = err instanceof Error ? err.message : String(err);
       logger.error('[initv4152] Create collection failed', { collectionName, error });
       failedCollections.push({ collectionName, error });
-      continue;
+    }
+  }
+
+  // Step 3: validate the recreated collection has the expected BM25 schema fields.
+  // If dropCollection failed silently (e.g. wrong database) and init reused
+  // an existing non-BM25 collection, catch it here before data migration.
+  if (failedCollections.length === 0) {
+    try {
+      const desc = await client.describeCollection({ collection_name: collectionName });
+      const fieldNames: string[] = (desc?.schema?.fields ?? []).map((f: any) => f?.name);
+      if (!fieldNames.includes('text') || !fieldNames.includes('sparse')) {
+        const missing = [];
+        if (!fieldNames.includes('text')) missing.push('text');
+        if (!fieldNames.includes('sparse')) missing.push('sparse');
+        const msg = `Collection recreated but missing BM25 field(s): ${missing.join(', ')}. Fields: ${fieldNames.join(', ')}`;
+        logger.error('[initv4152] Schema validation failed', {
+          collectionName,
+          fields: fieldNames
+        });
+        failedCollections.push({ collectionName, error: msg });
+      } else {
+        logger.info('[initv4152] Schema validated', { collectionName, fieldNames });
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      logger.error('[initv4152] Schema validation failed', { collectionName, error });
+      failedCollections.push({ collectionName, error });
     }
   }
 
@@ -139,75 +188,56 @@ async function handler(
   await MongoDatasetData.updateMany({}, { $set: { rebuilding: true } });
   logger.info('[initv4152] Marked all data rebuilding');
 
-  // Enqueue historical data for rebuilding
+  // Enqueue initial batch of training tasks. Each task claims one record
+  // atomically via findOneAndUpdate. Workers chain further records by
+  // picking up the next rebuilding:true record on task completion.
+  // (References rebuildEmbedding.ts pattern.)
   const billId = `initv4152-${Date.now()}-${customNanoid('1234567890abcdefghijklmnopqrstuvwxyz', 6)}`;
-  const batchSize = 200;
-  let enqueuedCount = 0;
-  let failedEnqueueCount = 0;
+  const max = global.systemEnv?.vectorMaxProcess || 10;
+  const arr = new Array(max * 2).fill(0);
 
-  while (true) {
-    const dataList = await MongoDatasetData.find(
-      { rebuilding: true },
-      '_id teamId tmbId datasetId collectionId q a imageId indexes chunkIndex'
-    )
-      .sort({ _id: 1 })
-      .limit(batchSize)
-      .lean();
-
-    if (dataList.length === 0) break;
-
-    const batchIds = dataList.map((d) => d._id);
-    const now = new Date();
-
-    const tasks = dataList.map((data) => ({
-      teamId: data.teamId,
-      tmbId: data.tmbId,
-      datasetId: data.datasetId,
-      collectionId: data.collectionId,
-      billId,
-      mode: TrainingModeEnum.chunk,
-      dataId: data._id,
-      q: data.q || '',
-      a: data.a || '',
-      ...(data.imageId && { imageId: data.imageId }),
-      chunkIndex: data.chunkIndex ?? 0,
-      indexes: (data.indexes || []).map((idx) => ({
-        type: idx.type,
-        text: idx.text
-      })),
-      retryCount: 50
-    }));
-
+  for (let i = 0; i < arr.length; i++) {
     try {
-      await mongoSessionRun(async (session) => {
-        // Atomically unset rebuilding + clear stale indexes so
-        // mergeExistingSystemIndexIds cannot match old dataIds.
-        await MongoDatasetData.updateMany(
-          { _id: { $in: batchIds } },
-          { $unset: { rebuilding: null }, $set: { indexes: [], updateTime: now } },
+      const hasNext = await mongoSessionRun(async (session) => {
+        // Atomically claim one record.
+        const data = await MongoDatasetData.findOneAndUpdate(
+          { rebuilding: true },
+          { $unset: { rebuilding: '' }, $set: { updateTime: new Date() } },
           { session }
+        )
+          .select('_id teamId tmbId datasetId collectionId q a imageId chunkIndex')
+          .lean();
+
+        if (!data) return false;
+
+        await MongoDatasetTraining.create(
+          [
+            {
+              teamId: data.teamId,
+              tmbId: data.tmbId,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId,
+              billId,
+              mode: TrainingModeEnum.chunk,
+              dataId: data._id,
+              q: data.q || '',
+              a: data.a || '',
+              ...(data.imageId && { imageId: data.imageId }),
+              chunkIndex: data.chunkIndex ?? 0,
+              retryCount: 50
+            }
+          ],
+          { session, ordered: true }
         );
 
-        await MongoDatasetTraining.insertMany(tasks, {
-          session,
-          ordered: false
-        });
+        return true;
       });
-      enqueuedCount += tasks.length;
-    } catch (err) {
-      failedEnqueueCount += tasks.length;
-      logger.error('[initv4152] Failed to enqueue training tasks', {
-        error: err instanceof Error ? err.message : String(err),
-        batchSize: tasks.length
-      });
-    }
+
+      if (!hasNext) break;
+    } catch {}
   }
 
-  logger.info('[initv4152] Migration triggered', {
-    ...stats,
-    enqueuedCount,
-    failedEnqueueCount
-  });
+  logger.info('[initv4152] Migration triggered', stats);
 
   return {
     success: true,

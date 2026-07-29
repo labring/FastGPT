@@ -231,9 +231,8 @@ const buildResultsFromRecallItems = async ({
     text: [],
     imageCaption: []
   };
-  const seen = new Set<string>();
-
   for (const task of taskItems) {
+    const seen = new Set<string>();
     const list = (
       await Promise.all(
         task.items.map((item, index) => {

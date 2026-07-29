@@ -281,7 +281,8 @@ describe('VectorDB Controller', () => {
         teamId: 'team_123',
         datasetId: 'dataset_456',
         collectionId: 'col_789',
-        vectors: mockVectors
+        vectors: mockVectors,
+        textContents: ['hello world', 'test text']
       });
       expect(result).toEqual({
         tokens: 100,
@@ -326,11 +327,60 @@ describe('VectorDB Controller', () => {
         teamId: 'team_123',
         datasetId: 'dataset_456',
         collectionId: 'col_789',
-        vectors: mockVectors
+        vectors: mockVectors,
+        textContents: ['']
       });
       expect(result).toEqual({
         tokens: 1,
         insertIds: ['image_id']
+      });
+    });
+
+    it('should map text inputs to content and image inputs to empty string in textContents', async () => {
+      const mockVectors = [
+        [0.1, 0.2],
+        [0.3, 0.4],
+        [0.5, 0.6]
+      ];
+      mockGetVectors.mockResolvedValue({
+        tokens: 150,
+        vectors: mockVectors
+      });
+      mockVectorInsert.mockResolvedValue({
+        insertIds: ['text_id_1', 'image_id', 'text_id_2']
+      });
+
+      const result = await insertDatasetDataVector({
+        teamId: 'team_123',
+        datasetId: 'dataset_456',
+        collectionId: 'col_789',
+        inputs: [
+          'first text',
+          { type: 'image', input: 'data:image/png;base64,abc' },
+          { type: 'text', input: 'second text' }
+        ],
+        model: mockModel as any
+      });
+
+      expect(mockGetVectors).toHaveBeenCalledWith({
+        model: mockModel,
+        inputs: [
+          { type: 'text', input: 'first text' },
+          { type: 'image', input: 'data:image/png;base64,abc' },
+          { type: 'text', input: 'second text' }
+        ],
+        type: 'db'
+      });
+      expect(mockVectorInsert).toHaveBeenCalledWith({
+        teamId: 'team_123',
+        datasetId: 'dataset_456',
+        collectionId: 'col_789',
+        vectors: mockVectors,
+        textContents: ['first text', '', 'second text']
+      });
+      expect(result).toEqual({
+        tokens: 150,
+        insertIds: ['text_id_1', 'image_id', 'text_id_2']
       });
     });
 

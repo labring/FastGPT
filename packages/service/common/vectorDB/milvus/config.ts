@@ -76,10 +76,30 @@ export const ANALYZER_ERROR_CODES = [
   'UNSUPPORTED_ANALYZER'
 ];
 
+export const COLLECTION_NOT_FOUND_CODES = [
+  'CollectionNameNotFound',
+  'COLLECTION_NAME_NOT_FOUND',
+  'CollectionNotFound',
+  'COLLECTION_NOT_FOUND',
+  'CollectionNotExists',
+  'COLLECTION_NOT_EXISTS'
+];
+
 export const isAnalyzerError = (err: unknown): boolean => {
   const code = extractErrorCode(err);
   if (code && ANALYZER_ERROR_CODES.includes(code)) return true;
   return false;
+};
+
+export const isCollectionNotFoundError = (err: unknown): boolean => {
+  const code = extractErrorCode(err);
+  if (code && COLLECTION_NOT_FOUND_CODES.includes(code)) return true;
+  // Also check the message as a fallback for gRPC status details
+  const msg = extractErrorMessage(err).toLowerCase();
+  return (
+    msg.includes('collection') &&
+    (msg.includes('not found') || msg.includes("doesn't exist") || msg.includes('does not exist'))
+  );
 };
 
 export const extractErrorCode = (err: unknown): string | undefined => {
