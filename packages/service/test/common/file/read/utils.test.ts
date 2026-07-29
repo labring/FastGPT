@@ -7,6 +7,7 @@ import path from 'path';
 const {
   mockReadRawContentFromBuffer,
   mockAxiosPost,
+  mockSomarkParsePDF,
   mockDoc2xParsePDF,
   mockTextinParsePDF,
   mockUploadImage2S3Bucket,
@@ -25,6 +26,10 @@ const {
     };
   }),
   mockAxiosPost: vi.fn(),
+  mockSomarkParsePDF: vi.fn().mockResolvedValue({
+    pages: 2,
+    text: 'somark-parsed-text'
+  }),
   mockDoc2xParsePDF: vi.fn().mockResolvedValue({
     pages: 1,
     text: 'doc2x-parsed-text'
@@ -54,6 +59,12 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
 vi.mock('@fastgpt/service/thirdProvider/doc2x', () => ({
   useDoc2xServer: vi.fn(() => ({
     parsePDF: mockDoc2xParsePDF
+  }))
+}));
+
+vi.mock('@fastgpt/service/thirdProvider/somark', () => ({
+  useSomarkServer: vi.fn(() => ({
+    parsePDF: mockSomarkParsePDF
   }))
 }));
 
@@ -130,6 +141,7 @@ describe('readRawTextByLocalFile', () => {
 
 describe('readFileContentByBuffer', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     global.systemEnv = {} as any;
   });
 
@@ -335,6 +347,115 @@ describe('readFileContentByBuffer', () => {
     });
 
     expect(result.rawText).toBe('textin-parsed-text');
+  });
+
+  it('should use SoMark service for pdf when somarkApiKey is configured', async () => {
+    global.systemEnv = {
+      customPdfParse: { somarkApiKey: 'sk-test' }
+    } as any;
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(mockSomarkParsePDF).toHaveBeenCalledWith(Buffer.from('pdf content'));
+    expect(result.rawText).toBe('somark-parsed-text');
+  });
+
+  it('should upload SoMark markdown images with the shared image handler', async () => {
+    global.systemEnv = {
+      customPdfParse: { somarkApiKey: 'sk-test' }
+    } as any;
+    mockSomarkParsePDF.mockResolvedValueOnce({
+      pages: 2,
+      text: 'image ![img](https://somark.ai/image.png)'
+    });
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true,
+      imageKeyOptions: {
+        prefix: 'dataset/ds1/file-parsed'
+      }
+    });
+
+    expect(mockGetImageBuffer).toHaveBeenCalledWith('https://somark.ai/image.png');
+    expect(result.rawText).toContain('https://s3.example.com/uploaded-image.png');
+  });
+
+  it('should prefer custom URL, SoMark, Textin, and Doc2x in that order', async () => {
+    global.systemEnv = {
+      customPdfParse: {
+        url: 'http://custom-pdf-service.com/parse',
+        key: 'custom-key',
+        somarkApiKey: 'sk-test',
+        textinAppId: 'app-id',
+        textinSecretCode: 'secret',
+        doc2xKey: 'doc2x-key'
+      }
+    } as any;
+    mockAxiosPost.mockResolvedValueOnce({
+      data: {
+        pages: 1,
+        markdown: 'custom-service-result'
+      }
+    });
+
+    const customResult = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+    expect(customResult.rawText).toBe('custom-service-result');
+    expect(mockSomarkParsePDF).not.toHaveBeenCalled();
+
+    const providerConfig = global.systemEnv.customPdfParse!;
+    providerConfig.url = undefined;
+    const somarkResult = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+    expect(somarkResult.rawText).toBe('somark-parsed-text');
+    expect(mockTextinParsePDF).not.toHaveBeenCalled();
+
+    providerConfig.somarkApiKey = undefined;
+    const textinResult = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+    expect(textinResult.rawText).toBe('textin-parsed-text');
+    expect(mockDoc2xParsePDF).not.toHaveBeenCalled();
+
+    providerConfig.textinAppId = undefined;
+    const doc2xResult = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'pdf',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+    expect(doc2xResult.rawText).toBe('doc2x-parsed-text');
   });
 
   it('should pass Textin image upload handler when imageKeyOptions is provided', async () => {

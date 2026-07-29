@@ -216,6 +216,7 @@ export type customDomainType = {
 export type customPdfParseType = {
   url?: string;
   key?: string;
+  somarkApiKey?: string;
   doc2xKey?: string;
   textinAppId?: string;
   textinSecretCode?: string;

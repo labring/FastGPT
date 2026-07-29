@@ -43,6 +43,14 @@ function resolveHttpStatusForApiError(
     return bc;
   }
 
+  if (
+    typeof processedError.httpStatus === 'number' &&
+    processedError.httpStatus >= 400 &&
+    processedError.httpStatus <= 599
+  ) {
+    return processedError.httpStatus;
+  }
+
   // packages/global/common/error/code/s3.ts：510000 段为上传校验类客户端错误
   if (typeof bc === 'number' && bc >= 510000 && bc < 511000) {
     return 400;

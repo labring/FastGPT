@@ -177,6 +177,7 @@ export async function initSystemConfig() {
         customPdfParse: {
           url: serviceEnv.CUSTOM_PDF_PARSE_URL,
           key: serviceEnv.CUSTOM_PDF_PARSE_KEY,
+          somarkApiKey: serviceEnv.SOMARK_API_KEY,
           doc2xKey: serviceEnv.DOC2X_KEY,
           textinAppId: serviceEnv.TEXTIN_APP_ID,
           textinSecretCode: serviceEnv.TEXTIN_SECRET_CODE

@@ -24,7 +24,8 @@ const datasetErr = [
   },
   {
     statusText: CommonErrEnum.fileNotFound,
-    message: i18nT('common:error.fileNotFound')
+    message: i18nT('common:error.fileNotFound'),
+    httpStatus: 404
   },
   {
     statusText: CommonErrEnum.unAuthFile,
@@ -54,7 +55,8 @@ export default datasetErr.reduce((acc, cur, index) => {
       code: startCode + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
     }
   };
 }, {} as ErrType<`${CommonErrEnum}`>);

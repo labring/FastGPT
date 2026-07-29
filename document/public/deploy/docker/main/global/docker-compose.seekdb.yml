@@ -244,6 +244,8 @@ services:
       # 自定义 PDF 解析服务配置
       CUSTOM_PDF_PARSE_URL:
       CUSTOM_PDF_PARSE_KEY:
+      # SoMark
+      SOMARK_API_KEY:
       # Doc2x
       DOC2X_KEY:
       # 合合信息
