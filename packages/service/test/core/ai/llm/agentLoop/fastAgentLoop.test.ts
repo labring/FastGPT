@@ -162,7 +162,7 @@ describe('runFastAgentMainLoop', () => {
     expect(mainAgentPrompt).toContain('你是 Work Agent');
     expect(mainAgentPrompt).toContain('任务或 Skill 明确需要通过选项向用户收集信息');
     expect(mainAgentPrompt).toContain('Skill 要求向用户收集选项信息时');
-    expect(mainAgentPrompt).toContain('options：2 到 4 个');
+    expect(mainAgentPrompt).toContain('每个问题提供 2 到 4 个候选答案');
   });
 
   it.each([

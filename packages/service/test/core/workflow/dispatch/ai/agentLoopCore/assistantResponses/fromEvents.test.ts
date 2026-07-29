@@ -164,7 +164,8 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
           id: 'call_ask',
           askId: 'call_ask',
           functionName: 'agent_ask_user',
-          params: '{"question":"Need input?"}'
+          params:
+            '{"questions":[{"question":"Need input?","options":[{"summary":"A","value":"A"},{"summary":"B","value":"B"}]}]}'
         }
       }
     ]);
