@@ -8,6 +8,7 @@ description: 'FastGPT V4.15.5 Release Notes'
 ## 🚀 New Features
 
 1. Added Cloudflare R2 object storage support, including the R2 S3 API, presigned access, and custom domains for public buckets.
+2. Added the SoMark PDF enhanced parsing provider. Configure it with `SOMARK_API_KEY`; when multiple PDF providers are configured, FastGPT uses this priority order: custom PDF parsing service, SoMark, TextIn, then Doc2x. See the [environment variable configuration](../../config/env) for details.
 
 ## ⚙️ Improvements
 
@@ -19,6 +20,7 @@ description: 'FastGPT V4.15.5 Release Notes'
 ## 🐛 Fixes
 
 1. Fixed Alibaba Cloud OSS metadata reads that looked for ETags in the wrong response field, causing missing ETags and downstream metadata validation failures.
+2. Fixed missing S3/MinIO source files being surfaced as `Unknown`; they now return a translated file-not-found error with HTTP 404.
 
 ## 🛠️ Code Improvements
 
