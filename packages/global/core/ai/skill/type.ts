@@ -1,5 +1,4 @@
 import z from 'zod';
-import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
@@ -173,11 +172,3 @@ export const SandboxInstanceSchema = z.object({
   detail: SandboxInstanceDetailSchema
 });
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceSchema>;
-
-export const SkillToolSchema = z.object({
-  id: z.string(),
-  source: z.string().optional(),
-  toolConfig: NodeToolConfigTypeSchema.optional(),
-  config: z.record(z.string(), z.any())
-});
-export type SkillToolType = z.infer<typeof SkillToolSchema>;

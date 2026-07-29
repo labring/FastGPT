@@ -81,6 +81,10 @@ const getVariableInputValue = ({
   variables: Record<string, unknown>;
   item: VariableItemType;
 }) => {
+  // 内部变量只读自身默认值；外部动态变量只接受 externalVariables 注入。
+  if (item.type === VariableInputEnum.internal || item.type === VariableInputEnum.custom) {
+    return item.defaultValue;
+  }
   if (item.label && variables[item.label] !== undefined) return variables[item.label];
   if (variables[item.key] !== undefined) return variables[item.key];
   return item.defaultValue;
@@ -197,7 +201,16 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
       await state.initConfiguredVariable(config, value, resolveInputFile);
     }
 
-    state.setRuntimeOnlyVariables(externalVariables);
+    const internalVariableKeys = new Set(
+      variablesConfig
+        .filter((item) => item.type === VariableInputEnum.internal)
+        .map((item) => item.key)
+    );
+    state.setRuntimeOnlyVariables(
+      Object.fromEntries(
+        Object.entries(externalVariables).filter(([key]) => !internalVariableKeys.has(key))
+      )
+    );
     const appId = runningAppInfo.sourceType === 'app' ? String(runningAppInfo.sourceId) : undefined;
 
     state.setRuntimeOnlyVariables({

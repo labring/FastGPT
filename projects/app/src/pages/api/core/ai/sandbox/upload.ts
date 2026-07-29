@@ -1,9 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import {
-  authSandboxSession,
-  buildSandboxClientQueryFromChatSource
-} from '@/service/core/sandbox/auth';
+import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -13,8 +10,11 @@ import {
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { resolveSandboxWorkspacePath } from '@fastgpt/service/core/ai/sandbox/interface/file';
+import {
+  buildSandboxClientQueryFromChatSource,
+  getSandboxClient
+} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/interface/file';
 import { Readable } from 'node:stream';
 
 async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
@@ -50,7 +50,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
       uid,
       sourceType: resolvedSourceType,
       sourceId: resolvedSourceId
-    } = await authSandboxSession({
+    } = await authSandboxRuntimeSession({
       req,
       sourceType,
       sourceId,
@@ -65,29 +65,19 @@ async function handler(req: ApiRequestProps): Promise<SandboxUploadResponse> {
         sourceId: resolvedSourceId,
         userId: uid,
         chatId
-      }),
-      {
-        failedArchivePolicy: 'clearAndContinue'
-      }
+      })
     );
 
-    const providerPath = resolveSandboxWorkspacePath(path);
-    const [writeResult] = await sandbox.provider.writeFiles([
-      {
-        path: providerPath,
-        data: Readable.toWeb(form.getReadStream()) as ReadableStream<Uint8Array>
-      }
-    ]);
-
-    if (!writeResult || writeResult.error) {
-      return Promise.reject(
-        `Failed to upload file: ${writeResult?.error?.message || 'unknown error'}`
-      );
-    }
+    const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
+    await prepareSandboxFileParentDirectories(sandbox.provider, [providerPath]);
+    await sandbox.provider.writeFileStream(
+      providerPath,
+      Readable.toWeb(form.getReadStream()) as ReadableStream<Uint8Array>
+    );
 
     return SandboxUploadResponseSchema.parse({
       path,
-      bytesWritten: writeResult.bytesWritten || form.fileMetadata.size
+      bytesWritten: form.fileMetadata.size
     });
   } finally {
     multer.clearDiskTempFiles(filepaths);

@@ -1,0 +1,99 @@
+---
+title: 'V4.16.0-beta1（环境变量变更、升级脚本）'
+description: 'FastGPT V4.16.0-beta1 更新说明'
+---
+
+## 📦 升级指南
+
+### 1. 更新 Agent Sandbox 配置
+
+启用 Agent Sandbox 的环境必须在 `fastgpt-app` 和 `fastgpt-pro` 中新增浏览器可访问的预览代理地址：
+
+```dotenv
+# 浏览器访问 Sandbox 文件预览的 HTTP(S) 地址
+AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+```
+
+该地址必须以 `http://` 或 `https://` 开头。默认单端口部署时，它可以与 `AGENT_SANDBOX_PROXY_URL` 指向同一域名和端口，但协议分别使用 HTTP(S) 和 WebSocket(S)。
+
+强烈建议预览地址与 FastGPT 主站使用不同的 origin。Sandbox HTML 可能包含用户生成的脚本；同源部署会让这些脚本进入主站的同源安全边界，可能访问主站凭证或接口。系统当前不会强制检查 origin 是否隔离。
+
+预览 URL 是短期只读 bearer capability，不只授权 URL 中的单个文件。获得链接的人可以在有效期内修改 URL 路径，读取同一 Sandbox Workspace 中的其他文件，请勿将链接分享给不应访问该 Workspace 的用户。
+
+本版本还新增以下可选配置：
+
+| 变量                                  | 默认值 | 说明                                                                                                |
+| ------------------------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`             | `1`    | Agent Sandbox 单实例 CPU 核数上限。                                                                 |
+| `AGENT_SANDBOX_MEMORY_MIB`            | `2048` | Agent Sandbox 单实例内存上限，单位 MiB。                                                            |
+| `AGENT_SANDBOX_STORAGE_SIZE`          | `1Gi`  | Agent Sandbox 存储容量；用于 Sealos Devbox 存储上限，以及 OpenSandbox Kubernetes 模式下创建新 PVC。 |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`   | 运行中的 Sandbox 未活跃多久后自动暂停，单位分钟。                                                   |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`    | 已暂停 Sandbox 未活跃多久后自动归档，单位天。                                                       |
+
+E2B Sandbox Provider 已移除。此前配置过 E2B 的环境需要切换为 `opensandbox` 或 `sealosdevbox`，并删除 `AGENT_SANDBOX_E2B_API_KEY`。
+
+> FastGPT、`fastgpt-agent-sandbox-proxy` 和 `fastgpt-agent-sandbox` 的预览协议已同步变更。启用 Agent Sandbox 时必须使用本版本配套镜像，不支持新旧版本混合部署。
+
+### 2. 迁移 Agent Sandbox 数据
+
+本版本将 App Chat 的 Agent Sandbox 从“每个对话一个实例”调整为“同一 App、同一用户共享一个实例”。不同对话的文件仍分别保存在 `sessions/<chatId>` 目录中，已发布 Skill 则统一保存在共享的 `projects` 目录中。
+
+如果此前启用过 Agent Sandbox，必须按以下顺序完成旧 Workspace 迁移。未启用过 Agent Sandbox 的环境可以跳过本节。
+
+先执行 dry-run，查看 beta6 Sandbox 字段归一化和旧 Skill Debug Chat 清理的待处理数。dry-run 不会创建资源、访问对象存储或修改数据：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+查看 dry-run 结果后执行正式迁移。正式迁移会先执行 beta6 归一化，并且只在剩余待处理数归零时，才在同一请求中继续 Workspace 归档：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+迁移会先执行 V4.15.0-beta6 的完整前置逻辑：补齐旧 Sandbox 的 `sourceType/sourceId`、清理遗留字段、删除无法归属的孤立资源，并清理缺失 `sourceType` 的旧 Skill Debug Chat 三表数据及私有、公开 Bucket 旧前缀。与 App 同 ID 的 Skill 会跳过 Chat 清理。两类数据重新统计后合计为 `normalization.pendingCount`；数量不为 `0` 时不会进入 Workspace 归档。归零后直接归档全部旧 Workspace 并清理旧计算资源，再迁移 Skill，最后按 App、用户聚合到用户级 Sandbox。只要归档阶段存在失败，安装阶段就不会开始。新的 Sandbox 会在 Workspace 安装完成后暂停，首次使用时再按正常流程启动。脚本可安全重试，已完成的归档和迁移不会重复执行；迁移完成后会保留旧归档和旧 MongoDB 记录作为备份。
+
+请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount` 和 `failures`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示本次迁移全部完成。
+
+## 🚀 新增内容
+
+1. Agent Sandbox 改为 App 用户级实例，同一 App、同一用户的多个对话复用 Sandbox，并通过独立 session 目录隔离各对话文件。
+2. Sandbox HTML 和文件支持通过短期只读链接直接预览，不再为预览重复上传到对象存储。
+3. App Workflow 在 Sandbox Provider 或运行时镜像变化时自动归档并恢复 Workspace，升级过程在当前运行中静默完成。
+4. 工作流工具节点支持将指定输入参数交由 Agent 自动生成，并保留固定值、引用和用户输入等既有配置。
+5. ChatAgent 选择工具时，支持手动指定是否为 AI 生成参数。
+
+## ⚙️ 优化
+
+1. 重构 Agent Sandbox 生命周期和迁移流程，创建、暂停、归档、恢复、删除及 Provider 切换支持并发保护、断点续跑和幂等重试。
+2. Agent Sandbox 不可用或当前团队套餐不支持时，App Chat 自动禁用 Sandbox 能力，其他模型、工具、知识库和 Workflow 节点仍可继续运行。
+3. OpenSandbox 停止后可保留持久卷并在后续运行时复用；暂停和归档阈值支持通过环境变量配置。
+4. App 与 Skill 统一运行时镜像升级状态，Skill 编辑页可持续轮询升级结果。
+5. Sandbox 文件写入前自动创建父目录，避免写入嵌套路径失败。
+6. 优化工作流旧数据、工具参数等兼容问题。
+
+## 🐛 修复
+
+1. 修复 OpenSandbox 资源停止后未正确释放或复用的问题。
+2. 修复 Agent Sandbox 创建、恢复或运行时升级期间的状态竞争和重复操作问题。
+3. 修复 Sandbox 向嵌套目录写入文件时因父目录不存在而失败的问题。
+4. 修复 number 输入在 Agent 生成和手动输入之间切换后变成普通文本框的问题。
+5. 修复字符串文本输入被错误渲染为下拉选择的问题。
+6. 修复 JSON Editor 被错误加入工作流工具配置的问题。
+7. 修复工具运行错误在 Agent/工作流工具界面中被错误展示的问题。
+8. 修复系统工具列表中已卸载工具的展示问题。
+9. 修复 Agent/Agent V2 默认版本选择逻辑，使其默认选择最新版本。
+
+## 🛠️ 代码优化
+
+1. Sandbox Adapter 按生命周期、文件系统、命令执行和 Provider 契约重新拆分，并移除 E2B Adapter。
+2. Agent Sandbox Proxy 和 IDE Agent 增加 Workspace 直连预览、Range 请求、路径逃逸防护及会话鉴权。
+3. 工作流 schema 优化，统一工具调用和表单渲染。
+4. 扩展工具 JSON Schema，支持更多数据类型。

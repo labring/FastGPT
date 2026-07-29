@@ -278,6 +278,13 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
               toolDescription: 'Search query',
               required: true,
               renderTypeList: [FlowNodeInputTypeEnum.input]
+            },
+            {
+              key: 'internal',
+              label: 'Internal',
+              valueType: WorkflowIOValueTypeEnum.string,
+              defaultValue: 'internal default',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden]
             }
           ],
           outputs: []
@@ -317,7 +324,23 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
           type: 'string',
           title: 'Query',
           description: 'Search query',
-          toolDescription: 'Search query'
+          toolDescription: 'Search query',
+          isToolParam: true,
+          'x-fastgpt-node-input': {
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.input]
+          }
+        },
+        internal: {
+          type: 'string',
+          title: 'Internal',
+          description: '',
+          default: 'internal default',
+          'x-fastgpt-node-input': {
+            valueType: WorkflowIOValueTypeEnum.string,
+            defaultValue: 'internal default',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
         }
       },
       required: ['query']
@@ -328,7 +351,11 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
         result: {
           type: 'string',
           title: 'Result',
-          description: 'Search result'
+          description: 'Search result',
+          'x-fastgpt-node-output': {
+            type: 'static',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
         }
       },
       required: ['result']

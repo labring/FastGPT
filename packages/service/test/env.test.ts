@@ -5,7 +5,12 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
   AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
+  AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
+  AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
+  AGENT_SANDBOX_STORAGE_SIZE: process.env.AGENT_SANDBOX_STORAGE_SIZE,
   FE_DOMAIN: process.env.FE_DOMAIN,
+  AGENT_SANDBOX_SUSPEND_MINUTES: process.env.AGENT_SANDBOX_SUSPEND_MINUTES,
+  AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: process.env.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
@@ -21,7 +26,6 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
   AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
-  AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
 };
@@ -36,7 +40,15 @@ describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', originalEnv.AGENT_SANDBOX_STORAGE_SIZE);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
+    vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', originalEnv.AGENT_SANDBOX_SUSPEND_MINUTES);
+    vi.stubEnv(
+      'AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS',
+      originalEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
+    );
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
@@ -52,7 +64,6 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
-    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
   });
@@ -258,6 +269,46 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', '333');
     const customEnv = await importServiceEnv();
     expect(customEnv.serviceEnv.AGENT_SANDBOX_DISK_MB).toBe(333);
+  });
+
+  it('validates shared Agent Sandbox resource limits during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', undefined);
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', undefined);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(1);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(2048);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE).toBe('1Gi');
+
+    vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2.5');
+    vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', '5G');
+    const customEnv = await importServiceEnv();
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(2.5);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(4096);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE).toBe('5G');
+  });
+
+  it('validates Agent Sandbox lifecycle thresholds during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', undefined);
+    vi.stubEnv('AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES).toBe(60);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS).toBe(7);
+
+    vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', '90');
+    vi.stubEnv('AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS', '14');
+    const customEnv = await importServiceEnv();
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES).toBe(90);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS).toBe(14);
   });
 
   it('配置 sealosdevbox 后缺少运行镜像会阻止启动', async () => {

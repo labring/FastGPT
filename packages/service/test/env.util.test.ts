@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getAgentSandboxMissingRequiredEnvKeys, validateS3Env } from '@fastgpt/service/env.util';
+import {
+  getAgentSandboxMissingRequiredEnvKeys,
+  validateAgentSandboxPreviewProxyEnv,
+  validateAgentSandboxProxyEnv,
+  validateS3Env
+} from '@fastgpt/service/env.util';
 
 describe('validateS3Env', () => {
   const baseEnv = {
@@ -122,12 +127,62 @@ describe('env util', () => {
     ]);
   });
 
-  it('does not require opensandbox volume manager env for other providers', () => {
+  it('does not require sandbox env for an unsupported provider', () => {
     expect(
       getAgentSandboxMissingRequiredEnvKeys({
-        AGENT_SANDBOX_PROVIDER: 'e2b',
-        AGENT_SANDBOX_E2B_API_KEY: 'e2b-key'
+        AGENT_SANDBOX_PROVIDER: 'unsupported'
       } as NodeJS.ProcessEnv)
     ).toEqual([]);
+  });
+});
+
+describe('validateAgentSandboxProxyEnv', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('requires separate WebSocket and Preview proxy URLs', () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'ws://proxy.example.com');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', '');
+
+    expect(() => validateAgentSandboxProxyEnv()).toThrow(
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL are required'
+    );
+
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
+    expect(() => validateAgentSandboxProxyEnv()).not.toThrow();
+  });
+});
+
+describe('validateAgentSandboxPreviewProxyEnv', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('does not require a preview proxy URL when Agent Sandbox is disabled', () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', '');
+
+    expect(() => validateAgentSandboxPreviewProxyEnv()).not.toThrow();
+  });
+
+  it('only requires the preview proxy URL when Agent Sandbox is enabled', () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.example.com');
+
+    expect(() => validateAgentSandboxPreviewProxyEnv()).not.toThrow();
+  });
+
+  it('rejects a missing preview proxy URL when Agent Sandbox is enabled', () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', '');
+
+    expect(() => validateAgentSandboxPreviewProxyEnv()).toThrow(
+      'AGENT_SANDBOX_PREVIEW_PROXY_URL is required'
+    );
   });
 });

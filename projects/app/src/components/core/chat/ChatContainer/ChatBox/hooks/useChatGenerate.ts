@@ -255,7 +255,8 @@ export const useChatGenerate = ({
               downloadingPackage: t('chat:sandbox_status_downloadingPackage'),
               uploadingPackage: t('chat:sandbox_status_uploadingPackage'),
               extractingPackage: t('chat:sandbox_status_extractingPackage'),
-              lazyInit: t('chat:sandbox_status_lazyInit')
+              lazyInit: t('chat:sandbox_status_lazyInit'),
+              upgrading: t('chat:sandbox_status_upgrading')
             };
 
             if (phase === 'ready') {
@@ -787,7 +788,6 @@ export const useChatGenerate = ({
               reserveId: true,
               reserveTool: true
             });
-
             const { responseText } = await onStartChat({
               messages,
               responseChatItemId: responseChatId,

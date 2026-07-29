@@ -1,69 +1,122 @@
-import { Readable } from 'stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const s3Mock = vi.hoisted(() => ({
-  uploadChatFile: vi.fn(),
-  createGetChatFileURL: vi.fn()
+const previewMock = vi.hoisted(() => ({
+  resolveSandboxPreviewPath: vi.fn(),
+  createSandboxPreviewSession: vi.fn(),
+  buildSandboxPreviewFileUrl: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  getS3ChatSource: () => ({
-    uploadChatFile: s3Mock.uploadChatFile,
-    createGetChatFileURL: s3Mock.createGetChatFileURL
-  })
-}));
+vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => previewMock);
 
 import { sandboxGetFileUrlTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/getFileUrl.tool';
 
+const getFileInfo = vi.fn();
+const resolveRuntimePath = vi.fn((filePath: string) =>
+  filePath.startsWith('/') ? filePath : `/workspace/sessions/chat-1/${filePath}`
+);
+const sandboxId = 'app-0123456789abcdef';
 const createSandboxInstance = () =>
   ({
+    getSandboxId: () => sandboxId,
     getContext: () => ({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
       userId: 'user',
       chatId: 'chat'
     }),
+    resolveRuntimePath,
     provider: {
-      readFileStream: vi.fn(() => Readable.from(['file-content']))
+      getFileInfo
     }
   }) as any;
 
 describe('sandboxGetFileUrlTool', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    s3Mock.uploadChatFile.mockResolvedValue({ key: 'chat/file.txt' });
-    s3Mock.createGetChatFileURL.mockResolvedValue({ url: 'signed-url' });
+    previewMock.resolveSandboxPreviewPath.mockImplementation((filePath: string) => {
+      const relativePath = filePath.replace(/^\/workspace\//, '');
+      return {
+        providerPath: `/workspace/${relativePath}`,
+        relativePath
+      };
+    });
+    previewMock.createSandboxPreviewSession.mockResolvedValue('a12345678901234567890123');
+    previewMock.buildSandboxPreviewFileUrl.mockImplementation(
+      ({ filePath }: { filePath: string }) => `preview:${filePath}`
+    );
   });
 
-  it('uploads sandbox files and returns signed urls', async () => {
-    const sandbox = createSandboxInstance();
+  it('returns direct preview urls for existing workspace files', async () => {
+    getFileInfo.mockResolvedValue(
+      new Map([
+        ['/workspace/file.txt', { isDirectory: false }],
+        ['/workspace/sessions/chat-1/report/data.csv', { isDirectory: false }]
+      ])
+    );
 
     const result = await sandboxGetFileUrlTool.execute({
+      sandboxInstance: createSandboxInstance(),
+      params: { paths: ['/workspace/file.txt', 'report/data.csv'] }
+    });
+
+    expect(JSON.parse(result.response)).toEqual([
+      { fileUrl: 'preview:/workspace/file.txt', filename: 'file.txt' },
+      {
+        fileUrl: 'preview:/workspace/sessions/chat-1/report/data.csv',
+        filename: 'data.csv'
+      }
+    ]);
+    expect(resolveRuntimePath).toHaveBeenNthCalledWith(1, '/workspace/file.txt', {
+      allowAbsolutePath: true
+    });
+    expect(resolveRuntimePath).toHaveBeenNthCalledWith(2, 'report/data.csv', {
+      allowAbsolutePath: true
+    });
+    expect(getFileInfo).toHaveBeenCalledWith([
+      '/workspace/file.txt',
+      '/workspace/sessions/chat-1/report/data.csv'
+    ]);
+    expect(previewMock.createSandboxPreviewSession).toHaveBeenCalledWith({
+      sandboxId,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
       userId: 'user',
-      chatId: 'chat',
-      sandboxInstance: sandbox,
-      params: { paths: ['/workspace/file.txt'] }
+      chatId: 'chat'
+    });
+    expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(1, {
+      sandboxId,
+      sessionId: 'a12345678901234567890123',
+      filePath: '/workspace/file.txt'
+    });
+    expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(2, {
+      sandboxId,
+      sessionId: 'a12345678901234567890123',
+      filePath: '/workspace/sessions/chat-1/report/data.csv'
+    });
+  });
+
+  it('returns an empty result without creating a preview session', async () => {
+    const result = await sandboxGetFileUrlTool.execute({
+      sandboxInstance: createSandboxInstance(),
+      params: { paths: [] }
     });
 
-    expect(JSON.parse(result.response)).toEqual([{ fileUrl: 'signed-url', filename: 'file.txt' }]);
-    expect(sandbox.provider.readFileStream).toHaveBeenCalledWith('/workspace/file.txt');
-    expect(s3Mock.uploadChatFile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app',
-        chatId: 'chat',
-        uId: 'user',
-        filename: 'file.txt',
-        expiredTime: expect.any(Date)
+    expect(result.response).toBe('[]');
+    expect(resolveRuntimePath).not.toHaveBeenCalled();
+    expect(getFileInfo).not.toHaveBeenCalled();
+    expect(previewMock.createSandboxPreviewSession).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing files before issuing a preview session', async () => {
+    getFileInfo.mockResolvedValue(new Map());
+
+    await expect(
+      sandboxGetFileUrlTool.execute({
+        sandboxInstance: createSandboxInstance(),
+        params: { paths: ['missing.txt'] }
       })
-    );
-    expect(s3Mock.createGetChatFileURL).toHaveBeenCalledWith({
-      key: 'chat/file.txt',
-      expiredHours: 2,
-      external: true
-    });
+    ).rejects.toThrow('Sandbox preview file not found');
+    expect(previewMock.createSandboxPreviewSession).not.toHaveBeenCalled();
   });
 });

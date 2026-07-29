@@ -4,24 +4,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 
 const mocks = vi.hoisted(() => ({
-  authSandboxSession: vi.fn(),
+  authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   clearDiskTempFiles: vi.fn(),
+  createDirectories: vi.fn(),
   getAgentSandboxMaxFileBytes: vi.fn(),
   getReadStream: vi.fn(),
   getSandboxClient: vi.fn(),
-  getSandboxRuntimeProfile: vi.fn(),
   resolveFormData: vi.fn(),
-  writeFiles: vi.fn()
+  writeFileStream: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
   NextAPI: vi.fn((handler) => handler)
 }));
 
-vi.mock('@/service/core/sandbox/auth', () => ({
-  authSandboxSession: mocks.authSandboxSession,
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+vi.mock('@/service/core/sandbox/access', () => ({
+  authSandboxRuntimeSession: mocks.authSandboxRuntimeSession
 }));
 
 vi.mock('@fastgpt/service/common/file/multer', () => ({
@@ -36,11 +35,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/config', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
   getSandboxClient: mocks.getSandboxClient
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
-  getSandboxRuntimeProfile: mocks.getSandboxRuntimeProfile
 }));
 
 import handler from '@/pages/api/core/ai/sandbox/upload';
@@ -56,7 +52,6 @@ describe('sandbox upload API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getAgentSandboxMaxFileBytes.mockReturnValue(10 * 1024 * 1024);
-    mocks.getSandboxRuntimeProfile.mockReturnValue({ workDirectory: '/workspace' });
     mocks.getReadStream.mockReturnValue(Readable.from([new Uint8Array([1, 2, 3])]));
     mocks.resolveFormData.mockResolvedValue({
       data: {
@@ -70,14 +65,20 @@ describe('sandbox upload API', () => {
       },
       getReadStream: mocks.getReadStream
     });
-    mocks.authSandboxSession.mockResolvedValue({
+    mocks.authSandboxRuntimeSession.mockResolvedValue({
       uid: 'user-1',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011'
     });
     mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({ sandboxId: 'sandbox-1' });
-    mocks.writeFiles.mockResolvedValue([{ bytesWritten: 3, error: null }]);
-    mocks.getSandboxClient.mockResolvedValue({ provider: { writeFiles: mocks.writeFiles } });
+    mocks.writeFileStream.mockResolvedValue(undefined);
+    mocks.getSandboxClient.mockResolvedValue({
+      provider: {
+        createDirectories: mocks.createDirectories,
+        writeFileStream: mocks.writeFileStream
+      },
+      resolveRuntimePath: (path: string) => `/workspace/sessions/chat-1/${path}`
+    });
   });
 
   it('uploads multipart file through sandbox provider after write auth', async () => {
@@ -92,7 +93,7 @@ describe('sandbox upload API', () => {
       request: req,
       maxFileSize: 10
     });
-    expect(mocks.authSandboxSession).toHaveBeenCalledWith({
+    expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledWith({
       req,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011',
@@ -106,14 +107,14 @@ describe('sandbox upload API', () => {
       userId: 'user-1',
       chatId: 'chat-1'
     });
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
-      { sandboxId: 'sandbox-1' },
-      { failedArchivePolicy: 'clearAndContinue' }
+    expect(mocks.createDirectories).toHaveBeenCalledWith(['/workspace/sessions/chat-1/uploads']);
+    expect(mocks.writeFileStream).toHaveBeenCalledTimes(1);
+    const [[path, stream]] = mocks.writeFileStream.mock.calls;
+    expect(path).toBe('/workspace/sessions/chat-1/uploads/a.txt');
+    expect(stream).toBeInstanceOf(ReadableStream);
+    expect(mocks.createDirectories.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.writeFileStream.mock.invocationCallOrder[0]
     );
-    expect(mocks.writeFiles).toHaveBeenCalledTimes(1);
-    const [[writeEntry]] = mocks.writeFiles.mock.calls[0];
-    expect(writeEntry.path).toBe('/workspace/uploads/a.txt');
-    expect(writeEntry.data).toBeInstanceOf(ReadableStream);
     expect(mocks.clearDiskTempFiles).toHaveBeenCalledWith(['/tmp/upload-a.txt']);
   });
 });

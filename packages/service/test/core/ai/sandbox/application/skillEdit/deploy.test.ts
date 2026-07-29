@@ -91,9 +91,7 @@ describe('saveDeploySkillFromSandbox', () => {
     mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValue({
       sandboxId: 'sandbox-1',
       status: SandboxStatusEnum.running,
-      metadata: {
-        teamId: 'team-1'
-      }
+      teamId: 'team-1'
     });
     mocks.packageSkillInSandbox.mockResolvedValue(Buffer.from('mock zip'));
     mocks.validateZipStructure.mockResolvedValue({ valid: true });
@@ -140,7 +138,7 @@ describe('saveDeploySkillFromSandbox', () => {
     expect(mocks.removeSkillPackageTTL).not.toHaveBeenCalled();
   });
 
-  it('touches the sandbox version metadata after deploy only when archive state has not changed', async () => {
+  it('touches the sandbox versionId after deploy only when archive state has not changed', async () => {
     await expect(
       saveDeploySkillFromSandbox({
         skillId: 'skill-1',
@@ -158,10 +156,9 @@ describe('saveDeploySkillFromSandbox', () => {
         sandboxId: 'sandbox-1',
         sourceType: 'skillEdit',
         sourceId: 'skill-1',
+        userId: 'skillEdit',
         touchActive: true,
-        metadata: expect.objectContaining({
-          teamId: 'team-1'
-        })
+        versionId: expect.any(String)
       })
     );
     expect(mocks.updateCurrentVersion).toHaveBeenCalledWith({
@@ -194,9 +191,7 @@ describe('saveDeploySkillFromSandbox', () => {
     mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce({
       sandboxId: 'sandbox-1',
       status: SandboxStatusEnum.running,
-      metadata: {
-        teamId: 'team-other'
-      }
+      teamId: 'team-other'
     });
 
     await expect(

@@ -58,6 +58,8 @@ export type SandboxStatusPhase =
   | 'extractingPackage' // extracting package in sandbox
   // Lazy-init phases
   | 'lazyInit' // LLM first calls sandbox tool, triggers container creation
+  // App runtime silent upgrade phase
+  | 'upgrading'
   // Terminal phases
   | 'ready' // sandbox is ready
   | 'failed'; // initialization failed

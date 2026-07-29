@@ -57,7 +57,7 @@ const ToolMenu = ({
   }, [chatType, variables]);
 
   // Status Hook: 顶层单例，负责网络同步与入口图标显示
-  const { sandboxExists, setSandboxExists, SandboxEntryIcon } = useSandboxStatus({
+  const { sandboxExists, setSandboxExists, onOpenSandbox, SandboxEntryIcon } = useSandboxStatus({
     appId: isShareAuthReady ? currentAppId : '',
     chatId,
     outLinkAuthData,
@@ -111,7 +111,7 @@ const ToolMenu = ({
                     {
                       icon: 'core/chat/monitor' as const,
                       label: t('app:use_agent_sandbox'),
-                      onClick: () => onOpenSandboxModal()
+                      onClick: () => void onOpenSandbox(onOpenSandboxModal)
                     }
                   ]
                 : []),

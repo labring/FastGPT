@@ -369,6 +369,25 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
+  it('stores selectedType without deprecated selectedTypeIndex', () => {
+    const node = makeNode('input-node', FlowNodeTypeEnum.chatNode, {
+      inputs: [
+        {
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 1
+        }
+      ]
+    });
+
+    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [], chatConfig: {} });
+
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference
+    });
+    expect(result.nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
+  });
+
   it('reports generic plugin load errors without telling users to delete the tool', () => {
     const node = makeNode('tool', FlowNodeTypeEnum.appModule, {
       pluginData: {
@@ -474,6 +493,149 @@ describe('checkWorkflowNodeIssues', () => {
     });
 
     expect(result['non-latest']?.map((issue) => issue.code) ?? []).not.toContain('tool_inactive');
+  });
+
+  it('does not require a legacy user question when an AI node is used as a tool', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const aiToolNode = makeNode('ai-tool', FlowNodeTypeEnum.chatNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userChatInput,
+          label: '用户问题',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+          selectedTypeIndex: 0,
+          value: undefined
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, aiToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-ai',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'ai-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['ai-tool'] ?? []).toEqual([]);
+  });
+
+  it('does not report an activated tool as inactive when a normal required input is empty', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const activatedToolNode = makeNode('activated-tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: { type: 'system' }
+        },
+        {
+          key: 'query',
+          label: '搜索查询词',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, activatedToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-tool',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'activated-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['activated-tool']?.map((issue) => issue.code)).toEqual(['required_input_empty']);
+  });
+
+  it('accepts a required tool input with a default value during workflow checks', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const activatedToolNode = makeNode('activated-tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: { type: 'system' }
+        },
+        {
+          key: 'query',
+          label: '搜索查询词',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: undefined,
+          defaultValue: '默认查询词'
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, activatedToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-tool',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'activated-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['activated-tool']?.map((issue) => issue.code) ?? []).not.toContain(
+      'required_input_empty'
+    );
+  });
+
+  it('reports a tool as inactive when its system input configuration is missing', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const inactiveToolNode = makeNode('inactive-tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: undefined
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, inactiveToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-tool',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'inactive-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['inactive-tool']?.map((issue) => issue.code)).toContain('tool_waiting_config');
   });
 
   it('reports offline tools', () => {
@@ -718,6 +880,25 @@ describe('checkWorkflowNodeIssues', () => {
 
       const result = runCheck(node);
       expect(result['loop-start']?.map((issue) => issue.code) ?? []).not.toContain(
+        'required_input_empty'
+      );
+    });
+
+    it('uses selectedType before deprecated selectedTypeIndex in required validation', () => {
+      const node = makeNodeWithTemplateInputs('hidden-selected', FlowNodeTypeEnum.userInput, [
+        {
+          key: 'internal',
+          label: 'Internal',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.hidden],
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          selectedTypeIndex: 0,
+          required: true
+        }
+      ]);
+
+      const result = runCheck(node);
+      expect(result['hidden-selected']?.map((issue) => issue.code) ?? []).not.toContain(
         'required_input_empty'
       );
     });
@@ -1955,6 +2136,75 @@ describe('storeNode2FlowNode', () => {
 
     expect(result.data.inputs).toHaveLength(3);
     expect(result.data.outputs).toHaveLength(2);
+  });
+
+  it('should migrate selectedTypeIndex while restoring canvas nodes', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'chat-node',
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userChatInput,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+          selectedTypeIndex: 0
+        }
+      ],
+      outputs: [],
+      name: 'Chat node',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+    const userQuestion = result.data.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.userChatInput
+    );
+
+    expect(userQuestion?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.reference,
+      FlowNodeInputTypeEnum.textarea
+    ]);
+    expect(userQuestion?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(userQuestion).not.toHaveProperty('selectedTypeIndex');
+  });
+
+  it('should restore legacy workflow tool defaults in tool context', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'workflow-tool',
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0,
+          toolDescription: 'Search query'
+        }
+      ],
+      outputs: [],
+      name: 'Workflow tool',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      isTool: true,
+      t: ((key: string) => key) as any
+    });
+
+    expect(result.data.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(result.data.inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   // 这两个测试涉及到模拟冲突，请运行单独的测试文件:

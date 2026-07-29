@@ -3,10 +3,14 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { nodeInputs2JsonSchema } from '@fastgpt/global/core/app/jsonschema';
+import { buildModelVisibleToolJsonSchema } from '@fastgpt/global/core/app/jsonschema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ToolNodeItemType } from '../type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  canInputBeAgentGenerated,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
 import {
   getAgentLoopCoreSystemToolInfo,
   type AgentLoopCoreToolInfo
@@ -14,8 +18,10 @@ import {
 
 export type ToolInfo = AgentLoopCoreToolInfo<ToolNodeItemType>;
 
-const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
-  const parameters = item.jsonSchema || nodeInputs2JsonSchema({ inputs: item.toolParams });
+export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
+  const toolParams = item.toolParams.filter(
+    (input) => isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)
+  );
 
   if (item.jsonSchema) {
     return {
@@ -23,7 +29,11 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
       function: {
         name: item.nodeId,
         description: `${item.name}: ${item.toolDescription || item.intro}`,
-        parameters
+        parameters: buildModelVisibleToolJsonSchema({
+          inputs: item.inputs ?? item.toolParams,
+          toolParams,
+          jsonSchema: item.jsonSchema
+        })
       }
     };
   }
@@ -33,7 +43,7 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
     function: {
       name: item.nodeId,
       description: `${item.name}: ${item.toolDescription || item.intro}`,
-      parameters
+      parameters: buildModelVisibleToolJsonSchema({ toolParams })
     }
   };
 };
@@ -71,9 +81,7 @@ export const useToolCatalog = async ({
     })
     .filter((tool): tool is ChatCompletionTool => !!tool);
 
-  const sandboxEnabled = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
-
-  if (sandboxEnabled) {
+  if (useAgentSandbox) {
     const systemMessage = messages.find((message) => message.role === 'system');
     if (systemMessage) {
       finalMessages = messages.map((message) =>

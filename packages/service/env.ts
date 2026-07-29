@@ -5,6 +5,7 @@ import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/de
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
+  AgentSandboxPreviewProxyUrlSchema,
   AgentSandboxProxyUrlSchema,
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
@@ -67,18 +68,44 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_PROXY_SECRET: z
       .string()
       .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
-      .optional(),
-    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
+      .optional()
+      .meta({
+        description:
+          'agent-sandbox-proxy 与 FastGPT 主服务共用的 HMAC 密钥；启用 Agent Sandbox 时必填，至少 32 个字符'
+      }),
+    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional().meta({
+      description: '浏览器访问 agent-sandbox-proxy 的 WebSocket 地址，必须以 ws:// 或 wss:// 开头'
+    }),
+    AGENT_SANDBOX_PREVIEW_PROXY_URL: AgentSandboxPreviewProxyUrlSchema.optional().meta({
+      description:
+        '浏览器访问 Agent Sandbox 文件预览代理的 HTTP(S) 地址，必须以 http:// 或 https:// 开头'
+    }),
     // Agent sandbox
-    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional(),
-    IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
-    // E2B配置
-    AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
+    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
+      description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
+    }),
     // Sealos配置
-    AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
-    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace'),
-    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional(),
+    AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
+      description: 'Sealos Devbox 服务地址'
+    }),
+    AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional().meta({
+      description: 'Sealos Devbox 访问 Token'
+    }),
+    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace').meta({
+      description: 'Sealos Devbox 沙箱内工作目录'
+    }),
+    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional().meta({
+      description: 'Sealos Devbox 使用的运行态镜像；启用 sealosdevbox 时必填'
+    }),
+    AGENT_SANDBOX_CPU_COUNT: NumSchema.positive().default(1).meta({
+      description: 'Agent Sandbox 实例的 CPU 核数上限'
+    }),
+    AGENT_SANDBOX_MEMORY_MIB: IntSchema.min(1).default(2048).meta({
+      description: 'Agent Sandbox 实例的内存上限（MiB）'
+    }),
+    AGENT_SANDBOX_STORAGE_SIZE: z.string().trim().min(1).default('1Gi').meta({
+      description: 'Agent Sandbox 存储容量（Kubernetes 资源量格式）'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
@@ -91,6 +118,12 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_DISK_MB: NumSchema.min(1).default(1024).meta({
       description:
         'Agent sandbox 磁盘大小基准（MB）。冷归档包上限等于该值，Skill 包和 IDE 单文件上限按该值的一半四舍五入计算。'
+    }),
+    AGENT_SANDBOX_SUSPEND_MINUTES: IntSchema.min(1).default(60).meta({
+      description: 'Agent sandbox 持续未活跃多少分钟后自动暂停'
+    }),
+    AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: IntSchema.min(1).default(7).meta({
+      description: '已暂停的 Agent sandbox 持续未活跃多少天后自动归档'
     }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({

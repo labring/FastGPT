@@ -1,12 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { SkillRuntimeBodySchema, type SkillRuntimeBody } from '@fastgpt/global/core/ai/skill/api';
 import {
-  SkillRuntimeBodySchema,
-  SkillRuntimeStatusResponseSchema,
-  type SkillRuntimeBody,
-  type SkillRuntimeStatusResponse
-} from '@fastgpt/global/core/ai/skill/api';
+  SandboxRuntimeStatusResponseSchema,
+  type SandboxRuntimeStatusResponse
+} from '@fastgpt/global/core/ai/sandbox/type';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
@@ -19,14 +18,14 @@ import {
 
 async function handler(
   req: ApiRequestProps<SkillRuntimeBody>
-): Promise<SkillRuntimeStatusResponse> {
+): Promise<SandboxRuntimeStatusResponse> {
   const { skillId } = parseApiInput({ req, bodySchema: SkillRuntimeBodySchema }).body;
 
   if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
-  const { teamId, tmbId, skill } = await authSkill({
+  const { teamId, skill } = await authSkill({
     req,
     authToken: true,
     authApiKey: true,
@@ -40,12 +39,11 @@ async function handler(
 
   const context = await getSkillEditRuntimeContext({
     skillId,
-    teamId,
-    tmbId
+    teamId
   });
   const status = await triggerSkillEditRuntimeUpgrade({ context });
 
-  return SkillRuntimeStatusResponseSchema.parse(status);
+  return SandboxRuntimeStatusResponseSchema.parse(status);
 }
 
 export default NextAPI(handler);

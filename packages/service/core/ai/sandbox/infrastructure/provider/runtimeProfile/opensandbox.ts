@@ -5,12 +5,7 @@
  */
 import { serviceEnv } from '../../../../../../env';
 import type { SandboxRuntimeProfile } from './types';
-import {
-  getSandboxSkillsRootPath,
-  mergeStringRecord,
-  mergeUnknownRecord,
-  normalizeEntrypoint
-} from './utils';
+import { getSandboxSkillsRootPath, mergeStringRecord, normalizeEntrypoint } from './utils';
 import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt-sdk/sandbox-adapter';
 
 const OPEN_SANDBOX_ENTRYPOINT = '/home/sandbox/entrypoint.sh';
@@ -57,9 +52,28 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       }
 
       const entrypoint = createConfig.entrypoint ?? normalizeEntrypoint(input.entrypoint);
-      const resourceLimits = input.resourceLimits ?? createConfig.resourceLimits;
+      const storageLimit = (() => {
+        if (input.resourceLimits?.storageSize !== undefined) {
+          return { storageSize: input.resourceLimits.storageSize };
+        }
+        if (createConfig.resourceLimits?.storageSize !== undefined) {
+          return { storageSize: createConfig.resourceLimits.storageSize };
+        }
+        return {};
+      })();
+      const resourceLimits = {
+        cpuCount:
+          input.resourceLimits?.cpuCount ??
+          createConfig.resourceLimits?.cpuCount ??
+          serviceEnv.AGENT_SANDBOX_CPU_COUNT,
+        memoryMiB:
+          input.resourceLimits?.memoryMiB ??
+          createConfig.resourceLimits?.memoryMiB ??
+          serviceEnv.AGENT_SANDBOX_MEMORY_MIB,
+        ...storageLimit
+      };
       const env = mergeStringRecord(createConfig.env, input.env);
-      const metadata = mergeUnknownRecord(createConfig.metadata, input.metadata);
+      const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       // volume 既可能来自 volume manager，也可能来自调用方透传的 createConfig；运行态 VM 配置优先。
       const volumes = input.volumes ?? input.vmConfig?.volumes ?? createConfig.volumes;
       // Docker 模式下默认拒绝常见宿主机别名；公网默认保持放行，私网 CIDR 需依赖部署网络边界。
@@ -72,7 +86,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       return {
         ...createConfig,
         image,
-        ...(resourceLimits ? { resourceLimits } : {}),
+        resourceLimits,
         ...(entrypoint ? { entrypoint } : {}),
         ...(env ? { env } : {}),
         ...(metadata ? { metadata } : {}),

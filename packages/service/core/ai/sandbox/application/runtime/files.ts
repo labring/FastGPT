@@ -5,8 +5,12 @@
  */
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { getSafeSandboxInputFilename } from '../../utils';
-import { readSandboxUrlFile, type SandboxInputFileReader } from '../file';
+import { getSafeSandboxInputFilename, joinSandboxPath } from '../../utils';
+import {
+  prepareSandboxFileParentDirectories,
+  readSandboxUrlFile,
+  type SandboxInputFileReader
+} from '../file';
 
 export type { SandboxInputFileReader } from '../file';
 
@@ -46,6 +50,7 @@ export const readSandboxPwd = async (sandboxClient: SandboxCommandClient) => {
 export const injectInputFilesToSandbox = async (
   sandbox: ISandbox,
   files: SandboxInputFile[],
+  workDirectory = '',
   readInputFile: SandboxInputFileReader = readSandboxUrlFile
 ) => {
   const writeFileTasks: Promise<FileWriteEntry>[] = [];
@@ -53,7 +58,8 @@ export const injectInputFilesToSandbox = async (
 
   for (const [index, file] of files.entries()) {
     const filename = getSafeSandboxInputFilename(file.name, index, usedNames);
-    const path = `${SANDBOX_USER_FILES_PATH}${filename}`;
+    const relativePath = `${SANDBOX_USER_FILES_PATH}${filename}`;
+    const path = workDirectory ? joinSandboxPath(workDirectory, relativePath) : relativePath;
     writeFileTasks.push(
       readInputFile(file.url).then((data) => ({
         path,
@@ -63,5 +69,10 @@ export const injectInputFilesToSandbox = async (
   }
 
   if (writeFileTasks.length === 0) return;
-  await sandbox.writeFiles(await Promise.all(writeFileTasks));
+  const writeEntries = await Promise.all(writeFileTasks);
+  await prepareSandboxFileParentDirectories(
+    sandbox,
+    writeEntries.map(({ path }) => path)
+  );
+  await sandbox.writeFiles(writeEntries);
 };

@@ -3,40 +3,50 @@
  *
  * 负责工具参数校验、运行态 sandbox 准备和工具执行，不直接暴露给外部业务调用。
  */
-import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
+import {
+  SANDBOX_EDIT_FILE_TOOL_NAME,
+  SANDBOX_FIND_TOOL_NAME,
+  SANDBOX_GET_FILE_URL_TOOL_NAME,
+  SANDBOX_GREP_TOOL_NAME,
+  SANDBOX_LS_TOOL_NAME,
+  SANDBOX_READ_FILE_TOOL_NAME,
+  SANDBOX_SHELL_TOOL_NAME,
+  SANDBOX_WRITE_FILE_TOOL_NAME,
+  sandboxToolMap
+} from '@fastgpt/global/core/ai/sandbox/tools';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
-import { toolMap as editFileToolMap } from './editFile.tool';
-import { toolMap as findToolMap } from './find.tool';
-import { toolMap as getFileUrlToolMap } from './getFileUrl.tool';
-import { toolMap as grepToolMap } from './grep.tool';
-import { toolMap as lsToolMap } from './ls.tool';
-import { toolMap as readFileToolMap } from './readFile.tool';
-import { toolMap as shellToolMap } from './shell.tool';
-import { toolMap as writeFileToolMap } from './writeFile.tool';
+import { sandboxEditFileTool } from './editFile.tool';
+import { sandboxFindTool } from './find.tool';
+import { sandboxGetFileUrlTool } from './getFileUrl.tool';
+import { sandboxGrepTool } from './grep.tool';
+import { sandboxLsTool } from './ls.tool';
+import { sandboxReadFileTool } from './readFile.tool';
+import { sandboxShellTool } from './shell.tool';
+import { sandboxWriteFileTool } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../runtime/client';
 import { parseJsonArgs } from '../../../utils';
 import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
-import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getRunningSandboxId } from '../../utils/id';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
+import { createToolRunner } from './type';
 
 const ToolMap = {
-  ...editFileToolMap,
-  ...findToolMap,
-  ...getFileUrlToolMap,
-  ...grepToolMap,
-  ...lsToolMap,
-  ...readFileToolMap,
-  ...writeFileToolMap,
-  ...shellToolMap
+  [SANDBOX_EDIT_FILE_TOOL_NAME]: createToolRunner(sandboxEditFileTool),
+  [SANDBOX_FIND_TOOL_NAME]: createToolRunner(sandboxFindTool),
+  [SANDBOX_GET_FILE_URL_TOOL_NAME]: createToolRunner(sandboxGetFileUrlTool),
+  [SANDBOX_GREP_TOOL_NAME]: createToolRunner(sandboxGrepTool),
+  [SANDBOX_LS_TOOL_NAME]: createToolRunner(sandboxLsTool),
+  [SANDBOX_READ_FILE_TOOL_NAME]: createToolRunner(sandboxReadFileTool),
+  [SANDBOX_SHELL_TOOL_NAME]: createToolRunner(sandboxShellTool),
+  [SANDBOX_WRITE_FILE_TOOL_NAME]: createToolRunner(sandboxWriteFileTool)
 };
 
 export type SandboxToolCallResult = {
   success: boolean;
-  input: Record<string, any>;
+  input: Record<string, unknown>;
   response: string;
   durationSeconds: number;
 };
@@ -70,24 +80,22 @@ export const runSandboxTools = async ({
     };
   }
 
-  const parsedArgs = tool.zodSchema.safeParse(parseJsonArgs(args));
-  if (!parsedArgs.success) {
+  const result = await tool({
+    sandboxInstance: sandboxClient,
+    input: parseJsonArgs<Record<string, unknown>>(args)
+  });
+  if (!result.success) {
     return {
       success: false,
       input: {},
-      response: parsedArgs.error.message,
+      response: result.error,
       durationSeconds: getDuration()
     };
   }
 
-  const result = await tool.execute({
-    sandboxInstance: sandboxClient,
-    params: parsedArgs.data as any
-  });
-
   return {
     success: true,
-    input: parsedArgs.data,
+    input: result.input,
     response: result.response,
     durationSeconds: getDuration()
   };
@@ -114,34 +122,37 @@ export const prepareSandboxToolRuntime = async ({
   files: { path: string; url: string }[];
   readInputFile?: SandboxInputFileReader;
 }) => {
+  const sandboxUserId = getSandboxUserId({ sourceType, userId });
   const sandboxId = getRunningSandboxId({
     sourceType,
     sourceId,
-    userId,
+    userId: sandboxUserId
+  });
+  const instance = await getSandboxClient({
+    sandboxId,
+    sourceType,
+    sourceId,
+    userId: sandboxUserId,
     chatId
   });
-  const instance = await getSandboxClient(
-    {
-      sandboxId,
-      sourceType,
-      sourceId,
-      userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
-      chatId
-    },
-    {
-      failedArchivePolicy: 'clearAndContinue'
-    }
-  );
-  const runtimeProfile = getSandboxRuntimeProfile();
+  const runtimePaths = instance.getRuntimePaths();
   await prepareSandbox(
     {
       sandbox: instance.provider,
       sandboxClient: instance,
-      workDirectory: runtimeProfile.workDirectory
+      workDirectory: runtimePaths.sessionWorkDirectory,
+      workspaceRoot: runtimePaths.workspaceRoot
     },
     preparePackageMirrors()
   );
-  await writeUrlFilesToSandbox(instance.provider, files, readInputFile);
+  await writeUrlFilesToSandbox(
+    instance.provider,
+    files.map((file) => ({
+      ...file,
+      path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
+    })),
+    readInputFile
+  );
   return instance;
 };
 

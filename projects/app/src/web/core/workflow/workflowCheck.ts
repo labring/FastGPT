@@ -33,7 +33,13 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import {
+  canInputBeAgentGenerated,
+  initToolInputTypeByDefaultMode,
+  isToolInputValueConfigured,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -116,7 +122,7 @@ const isEmptyWorkflowInputValue = (value: unknown) =>
 
 /** hidden / 非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
 const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
-  const renderType = input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+  const renderType = getSelectedInputRenderType(input);
   if (renderType === FlowNodeInputTypeEnum.hidden) return true;
   if (!input.valueType) return true;
   if (input.valueType === WorkflowIOValueTypeEnum.boolean) return true;
@@ -511,17 +517,20 @@ export const checkWorkflowNodeIssues = ({
       });
     }
 
-    // 工具调用下游工具：与 NodeSecret / getToolConfigStatus 共用「尚未激活」判定。
-    if (isToolNode) {
-      const configStatus = getToolConfigStatus({ tool: data });
-      if (configStatus.status === 'waitingForConfig') {
-        addIssue({
-          node,
-          code: 'tool_waiting_config',
-          message: getWorkflowCheckIssueMessage('tool_waiting_config', t),
-          inputKey: NodeInputKeyEnum.systemInputConfig
-        });
-      }
+    // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活。
+    // 普通必填参数为空由下面的通用必填校验单独提示，不能复用整体工具配置状态。
+    const systemInputConfig = inputMap.get(NodeInputKeyEnum.systemInputConfig);
+    if (
+      isToolNode &&
+      systemInputConfig &&
+      !isToolInputValueConfigured({ input: systemInputConfig })
+    ) {
+      addIssue({
+        node,
+        code: 'tool_waiting_config',
+        message: getWorkflowCheckIssueMessage('tool_waiting_config', t),
+        inputKey: NodeInputKeyEnum.systemInputConfig
+      });
     }
 
     if (!workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
@@ -762,15 +771,28 @@ export const checkWorkflowNodeIssues = ({
           return;
         }
 
-        if (isToolNode && input.toolDescription) {
+        // Agent 生成字段运行时由模型填写，不需要开发者预填。
+        const normalizedInput =
+          isToolNode || input.key === NodeInputKeyEnum.userChatInput
+            ? initToolInputTypeByDefaultMode(input, {
+                allowUserChatInputAgentGenerated: isToolNode
+              })
+            : input;
+        if (
+          isToolNode &&
+          isAgentGeneratedToolInput(normalizedInput) &&
+          canInputBeAgentGenerated(normalizedInput)
+        ) {
           return;
         }
 
         const isReferenceInput = nodeInputIsReference(input);
         const isArrayReference = isReferenceInput && !!input.valueType?.startsWith('array');
+        // 节点未显式配置时，runtime 会回退 defaultValue；运行检查应与实际执行一致。
+        const effectiveInputValue = input.value ?? input.defaultValue;
         const inputValueIsEmpty = isReferenceInput
-          ? isEmptyReferenceInputValue(input.value, isArrayReference)
-          : isEmptyWorkflowInputValue(input.value);
+          ? isEmptyReferenceInputValue(effectiveInputValue, isArrayReference)
+          : isEmptyWorkflowInputValue(effectiveInputValue);
 
         if (
           input.required &&

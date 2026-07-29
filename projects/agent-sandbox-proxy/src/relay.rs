@@ -1,13 +1,10 @@
 use axum::extract::ws::{Message as AxumMsg, WebSocket as AxumWs};
-use futures_util::{SinkExt, StreamExt, stream::SplitSink};
-use reqwest::Url;
-use std::{env, time::Duration};
+use futures_util::{SinkExt, StreamExt};
+use std::time::Duration;
 use tokio_tungstenite::{
     connect_async_with_config,
     tungstenite::{
-        Error as WsError,
         client::IntoClientRequest,
-        error::CapacityError,
         protocol::{Message as WsMsg, WebSocketConfig},
     },
 };
@@ -15,20 +12,25 @@ use tracing::{debug, error, info};
 
 use crate::auth::{SandboxAddress, WsLimits, get_http_client, get_proxy_secret};
 
+mod error;
+mod message;
+mod url;
+
+use error::{RelayError, RelayResult};
+use message::{
+    UpstreamControl, WS_CLOSE_INTERNAL_ERROR_CODE, axum_to_tungstenite, client_close_message,
+    close_client_ws, is_upstream_closed_error, send_client_close, send_client_close_message,
+    send_upstream_close, send_upstream_flush, tungstenite_to_axum, upstream_close_message,
+    upstream_error_client_close,
+};
+pub(crate) use url::build_http_preview_url;
+use url::{build_ws_upstream_base_url, redact_sensitive_query};
+
 type UpstreamWsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
-type ClientWsSink = SplitSink<AxumWs, AxumMsg>;
-
-enum UpstreamControl {
-    Close(WsMsg),
-    Flush,
-}
 
 const UPSTREAM_CONNECT_MAX_ATTEMPTS: u8 = 10;
 const UPSTREAM_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(300);
-const LOOPBACK_REWRITE_HOST_ENV: &str = "AGENT_SANDBOX_PROXY_REWRITE_HOST";
-const WS_CLOSE_MESSAGE_TOO_BIG_CODE: u16 = 1009;
-const WS_CLOSE_INTERNAL_ERROR_CODE: u16 = 1011;
 
 fn upstream_ws_config(ws_limits: WsLimits) -> WebSocketConfig {
     WebSocketConfig::default()
@@ -36,180 +38,33 @@ fn upstream_ws_config(ws_limits: WsLimits) -> WebSocketConfig {
         .max_frame_size(Some(ws_limits.max_frame_bytes))
 }
 
-fn is_loopback_host(host: &str) -> bool {
-    host.eq_ignore_ascii_case("localhost") || host == "127.0.0.1" || host == "::1"
-}
-
-/// 构建 proxy 连接上游 sandbox endpoint 的 WebSocket base URL。
-/// 如果 endpoint 是回环地址，按 AGENT_SANDBOX_PROXY_REWRITE_HOST 改写 host。
-fn build_ws_upstream_base_url(raw_endpoint: &str) -> Result<String, String> {
-    let rewrite_host = env::var(LOOPBACK_REWRITE_HOST_ENV)
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty());
-
-    build_ws_upstream_base_url_with_rewrite(raw_endpoint, rewrite_host.as_deref())
-}
-
-fn build_ws_upstream_base_url_with_rewrite(
-    raw_endpoint: &str,
-    rewrite_host: Option<&str>,
-) -> Result<String, String> {
-    let mut endpoint = parse_sandbox_endpoint(raw_endpoint)?;
-
-    rewrite_loopback_host(&mut endpoint, rewrite_host)?;
-    use_websocket_scheme(&mut endpoint)?;
-
-    Ok(endpoint.as_str().trim_end_matches('/').to_string())
-}
-
-fn parse_sandbox_endpoint(raw_endpoint: &str) -> Result<Url, String> {
-    let endpoint = raw_endpoint.trim().trim_end_matches('/');
-    if endpoint.is_empty() {
-        return Err("Sandbox endpoint url is empty.".to_string());
-    }
-
-    let endpoint = if endpoint.contains("://") {
-        endpoint.to_string()
-    } else {
-        format!("http://{}", endpoint)
-    };
-
-    Url::parse(&endpoint).map_err(|err| format!("Invalid sandbox endpoint url: {}", err))
-}
-
-fn rewrite_loopback_host(endpoint: &mut Url, rewrite_host: Option<&str>) -> Result<(), String> {
-    let Some(rewrite_host) = rewrite_host else {
-        return Ok(());
-    };
-
-    if !endpoint.host_str().is_some_and(is_loopback_host) {
-        return Ok(());
-    }
-
-    endpoint
-        .set_host(Some(rewrite_host))
-        .map_err(|_| format!("Invalid loopback rewrite host: {}", rewrite_host))?;
-
-    info!(
-        "[WSProxy] Rewrote loopback sandbox endpoint host to {}.",
-        rewrite_host
-    );
-    Ok(())
-}
-
-fn use_websocket_scheme(endpoint: &mut Url) -> Result<(), String> {
-    let ws_scheme = match endpoint.scheme() {
-        "http" | "ws" => "ws",
-        "https" | "wss" => "wss",
-        scheme => return Err(format!("Unsupported sandbox endpoint scheme: {}", scheme)),
-    };
-
-    endpoint
-        .set_scheme(ws_scheme)
-        .map_err(|_| format!("Failed to set sandbox endpoint scheme to {}", ws_scheme))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::build_ws_upstream_base_url_with_rewrite;
-
-    #[test]
-    fn rewrites_scheme_less_loopback_endpoint() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "localhost:8090/sandboxes/demo/proxy/1318",
-            Some("host.docker.internal"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            url,
-            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
-        );
-    }
-
-    #[test]
-    fn rewrites_http_loopback_endpoint() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "http://127.0.0.1:8090/sandboxes/demo/proxy/1318/",
-            Some("host.docker.internal"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            url,
-            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
-        );
-    }
-
-    #[test]
-    fn preserves_non_loopback_host() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "http://opensandbox-server:8090/sandboxes/demo/proxy/1318",
-            Some("host.docker.internal"),
-        )
-        .unwrap();
-
-        assert_eq!(
-            url,
-            "ws://opensandbox-server:8090/sandboxes/demo/proxy/1318"
-        );
-    }
-
-    #[test]
-    fn preserves_secure_websocket_scheme() {
-        let url = build_ws_upstream_base_url_with_rewrite(
-            "https://sandbox.example.com/sandboxes/demo/proxy/1318",
-            None,
-        )
-        .unwrap();
-
-        assert_eq!(url, "wss://sandbox.example.com/sandboxes/demo/proxy/1318");
-    }
-
-    #[test]
-    fn rejects_unsupported_scheme() {
-        let err = build_ws_upstream_base_url_with_rewrite("ftp://localhost/sandboxes/demo", None)
-            .unwrap_err();
-
-        assert!(err.contains("Unsupported sandbox endpoint scheme"));
-    }
-}
-
 /// 连接沙盒内的 IDE Agent，允许 agent 冷启动时出现短暂端口不可用。
 async fn connect_upstream_with_retry(
     target_url: String,
     ws_limits: WsLimits,
-) -> Result<UpstreamWsStream, String> {
+) -> RelayResult<UpstreamWsStream> {
     let mut attempts = 0;
     let safe_target_url = redact_sensitive_query(&target_url);
 
     loop {
         attempts += 1;
 
-        let request = match target_url.clone().into_client_request() {
-            Ok(req) => req,
-            Err(err) => return Err(format!("Failed to build WebSocket request: {}", err)),
-        };
+        let request = target_url
+            .clone()
+            .into_client_request()
+            .map_err(|source| RelayError::WebSocketRequest { source })?;
 
         match connect_async_with_config(request, Some(upstream_ws_config(ws_limits)), false).await {
             Ok((ws, _)) => return Ok(ws),
-            Err(err) => {
-                let err_str = err.to_string();
+            Err(source) => {
+                let error_message = source.to_string();
                 error!(
                     "[WSProxy] Attempt {}/{} to connect upstream failed: {}. (Target: {})",
-                    attempts, UPSTREAM_CONNECT_MAX_ATTEMPTS, err_str, safe_target_url
+                    attempts, UPSTREAM_CONNECT_MAX_ATTEMPTS, error_message, safe_target_url
                 );
 
                 if attempts >= UPSTREAM_CONNECT_MAX_ATTEMPTS {
-                    let friendly_hint = if err_str.contains("sec-websocket-key") {
-                        "Upstream returned a non-101 HTTP error (e.g. 401 Unauthorized or 502 Bad Gateway). \
-                         This typically means the sandboxed agent has not fully started up yet, \
-                         or failed to bind to its port 1318.".to_string()
-                    } else {
-                        err_str
-                    };
-                    return Err(friendly_hint);
+                    return Err(RelayError::upstream_connect(attempts, source));
                 }
 
                 tokio::time::sleep(UPSTREAM_CONNECT_RETRY_DELAY).await;
@@ -327,30 +182,20 @@ pub async fn handle_relay(
     let (mut up_sink, up_stream) = up_ws.split();
 
     for buffered_msg in buffer.drain(..) {
-        match axum_to_tungstenite(buffered_msg) {
-            Ok(ws_msg) => {
-                if let Err(err) = up_sink.send(ws_msg).await {
-                    if is_upstream_closed_error(&err) {
-                        debug!(
-                            "[WSProxy] Upstream closed while flushing buffered message: {}",
-                            err
-                        );
-                    } else {
-                        error!(
-                            "[WSProxy] Error flushing buffered message to upstream: {}",
-                            err
-                        );
-                    }
-                    close_client_ws(&mut client_sink, 1011, "Failed to forward buffered message")
-                        .await;
-                    return;
-                }
-            }
-            Err(_) => {
+        if let Err(err) = up_sink.send(axum_to_tungstenite(buffered_msg)).await {
+            if is_upstream_closed_error(&err) {
+                debug!(
+                    "[WSProxy] Upstream closed while flushing buffered message: {}",
+                    err
+                );
+            } else {
                 error!(
-                    "[WSProxy] Dropping unsupported buffered WebSocket message before upstream flush."
+                    "[WSProxy] Error flushing buffered message to upstream: {}",
+                    err
                 );
             }
+            close_client_ws(&mut client_sink, 1011, "Failed to forward buffered message").await;
+            return;
         }
     }
 
@@ -429,8 +274,9 @@ pub async fn handle_relay(
                             match msg {
                                 AxumMsg::Close(frame) => {
                                     debug!("[WSProxy] Client sent Close frame. Forwarding close upstream and stopping client pipeline.");
-                                    if let Ok(ws_msg) = axum_to_tungstenite(AxumMsg::Close(frame))
-                                        && let Err(err) = up_sink.send(ws_msg).await
+                                    if let Err(err) = up_sink
+                                        .send(axum_to_tungstenite(AxumMsg::Close(frame)))
+                                        .await
                                     {
                                         if is_upstream_closed_error(&err) {
                                             debug!("[WSProxy] Upstream already closed while forwarding client Close frame: {}", err);
@@ -440,8 +286,8 @@ pub async fn handle_relay(
                                     }
                                     break;
                                 }
-                                msg => match axum_to_tungstenite(msg) {
-                                    Ok(ws_msg) => if let Err(err) = up_sink.send(ws_msg).await {
+                                msg => {
+                                    if let Err(err) = up_sink.send(axum_to_tungstenite(msg)).await {
                                         if is_upstream_closed_error(&err) {
                                             debug!("[WSProxy] Upstream closed while forwarding client message: {}", err);
                                         } else {
@@ -450,9 +296,8 @@ pub async fn handle_relay(
                                         let (code, reason) = upstream_error_client_close(&err);
                                         send_client_close(&client_to_upstream_close_tx, code, reason);
                                         break;
-                                    },
-                                    Err(_) => debug!("[WSProxy] Dropping unsupported client WebSocket message."),
-                                },
+                                    }
+                                }
                             }
                         }
                         Some(Err(err)) => {
@@ -482,12 +327,12 @@ pub async fn handle_relay(
                     send_client_close_message(
                         &upstream_to_client_close_tx,
                         tungstenite_to_axum(WsMsg::Close(frame))
-                            .unwrap_or_else(|_| client_close_message(1000, "Sandbox agent closed")),
+                            .unwrap_or_else(|| client_close_message(1000, "Sandbox agent closed")),
                     );
                     break;
                 }
                 Ok(msg) => {
-                    let Ok(client_msg) = tungstenite_to_axum(msg) else {
+                    let Some(client_msg) = tungstenite_to_axum(msg) else {
                         continue;
                     };
                     if upstream_to_client_msg_tx.send(client_msg).await.is_err() {
@@ -654,121 +499,8 @@ pub async fn handle_relay(
     }
     if !client_writer.is_finished() {
         client_writer.abort();
+        let _ = client_writer.await;
     }
 
     info!("[WSProxy] Bidirectional forwarding pipelines successfully closed.");
-}
-
-fn is_upstream_closed_error(err: &WsError) -> bool {
-    matches!(err, WsError::ConnectionClosed | WsError::AlreadyClosed)
-        || matches!(
-            err,
-            WsError::Io(io_err)
-                if matches!(
-                    io_err.kind(),
-                    std::io::ErrorKind::ConnectionReset
-                        | std::io::ErrorKind::BrokenPipe
-                        | std::io::ErrorKind::NotConnected
-                )
-        )
-}
-
-fn is_ws_message_too_big_error(err: &WsError) -> bool {
-    matches!(err, WsError::Capacity(CapacityError::MessageTooLong { .. }))
-}
-
-fn upstream_error_client_close(err: &WsError) -> (u16, &'static str) {
-    if is_ws_message_too_big_error(err) {
-        (WS_CLOSE_MESSAGE_TOO_BIG_CODE, "Sandbox message too large")
-    } else {
-        (
-            WS_CLOSE_INTERNAL_ERROR_CODE,
-            "Sandbox agent connection lost",
-        )
-    }
-}
-
-async fn close_client_ws(client_sink: &mut ClientWsSink, code: u16, reason: &str) {
-    let _ = client_sink.send(client_close_message(code, reason)).await;
-}
-
-fn send_client_close(client_tx: &tokio::sync::mpsc::Sender<AxumMsg>, code: u16, reason: &str) {
-    send_client_close_message(client_tx, client_close_message(code, reason));
-}
-
-fn send_client_close_message(client_tx: &tokio::sync::mpsc::Sender<AxumMsg>, message: AxumMsg) {
-    let _ = client_tx.try_send(message);
-}
-
-fn send_upstream_close(upstream_tx: &tokio::sync::mpsc::Sender<UpstreamControl>, message: WsMsg) {
-    let _ = upstream_tx.try_send(UpstreamControl::Close(message));
-}
-
-fn send_upstream_flush(upstream_tx: &tokio::sync::mpsc::Sender<UpstreamControl>) {
-    let _ = upstream_tx.try_send(UpstreamControl::Flush);
-}
-
-fn client_close_message(code: u16, reason: &str) -> AxumMsg {
-    AxumMsg::Close(Some(axum::extract::ws::CloseFrame {
-        code,
-        reason: reason.into(),
-    }))
-}
-
-fn upstream_close_message(code: u16, reason: &str) -> WsMsg {
-    axum_to_tungstenite(client_close_message(code, reason)).unwrap_or(WsMsg::Close(None))
-}
-
-fn redact_sensitive_query(url: &str) -> String {
-    let Some((base, query)) = url.split_once('?') else {
-        return url.to_string();
-    };
-
-    let redacted_query = query
-        .split('&')
-        .map(|pair| {
-            let key = pair.split_once('=').map(|(key, _)| key).unwrap_or(pair);
-            if key == "token" || key == "access_token" {
-                format!("{}=<redacted>", key)
-            } else {
-                pair.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("&");
-
-    format!("{}?{}", base, redacted_query)
-}
-
-// ==================== 协议格式对齐转换器 ====================
-
-fn axum_to_tungstenite(msg: AxumMsg) -> Result<WsMsg, ()> {
-    match msg {
-        AxumMsg::Text(t) => Ok(WsMsg::Text(t.to_string().into())),
-        AxumMsg::Binary(b) => Ok(WsMsg::Binary(b)),
-        AxumMsg::Ping(p) => Ok(WsMsg::Ping(p)),
-        AxumMsg::Pong(p) => Ok(WsMsg::Pong(p)),
-        AxumMsg::Close(c) => Ok(WsMsg::Close(c.map(|frame| {
-            tokio_tungstenite::tungstenite::protocol::CloseFrame {
-                code: frame.code.into(),
-                reason: frame.reason.to_string().into(),
-            }
-        }))),
-    }
-}
-
-fn tungstenite_to_axum(msg: WsMsg) -> Result<AxumMsg, ()> {
-    match msg {
-        WsMsg::Text(t) => Ok(AxumMsg::Text(t.to_string().into())),
-        WsMsg::Binary(b) => Ok(AxumMsg::Binary(b)),
-        WsMsg::Ping(p) => Ok(AxumMsg::Ping(p)),
-        WsMsg::Pong(p) => Ok(AxumMsg::Pong(p)),
-        WsMsg::Close(c) => Ok(AxumMsg::Close(c.map(|frame| {
-            axum::extract::ws::CloseFrame {
-                code: frame.code.into(),
-                reason: frame.reason.to_string().into(),
-            }
-        }))),
-        _ => Err(()),
-    }
 }

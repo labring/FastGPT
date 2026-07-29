@@ -8,16 +8,18 @@ import { type DispatchToolModuleProps } from './type';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
-import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import {
-  createAgentSandboxPermissionDeniedError,
+  assertSandboxAvailable,
   getRunningSandboxId,
   getSandboxRuntimeProfile,
+  resolveAppSandboxAvailability,
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
 } from '../../../../ai/sandbox/interface/runtime';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import {
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreToolCallNodeResponse,
@@ -40,6 +42,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     chatConfig,
     lastInteractive,
     runningUserInfo,
+    runningAppInfo,
     externalProvider,
     responseChatItemId,
     params: {
@@ -58,15 +61,18 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     }
   } = props;
 
-  if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
-    try {
-      await checkTeamSandboxPermission(runningUserInfo.teamId);
-    } catch {
-      throw createAgentSandboxPermissionDeniedError();
-    }
+  const isAppChat = runningAppInfo.sourceType === ChatSourceTypeEnum.app;
+  const appSandboxAvailability = isAppChat
+    ? await resolveAppSandboxAvailability({
+        appEnabled: !!useAgentSandbox,
+        teamId: runningAppInfo.teamId
+      })
+    : undefined;
+  if (!isAppChat && useAgentSandbox) {
+    await assertSandboxAvailable(runningAppInfo.teamId);
   }
 
-  const useSandbox = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
+  const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
     const toolModel = getLLMModel(model);
@@ -109,14 +115,23 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
+    if (useSandbox) {
+      await ensureWorkflowSandboxReadyForUse({
+        workflowStreamResponse: props.workflowStreamResponse,
+        sourceType: runningAppInfo.sourceType,
+        sourceId: runningAppInfo.sourceId,
+        userId: props.uid,
+        chatId: props.chatId
+      });
+    }
+
     // 初始化沙盒
     const sandboxClient = useSandbox
       ? await withAgentSandboxInitLease({
           sandboxId: getRunningSandboxId({
             sourceType: props.runningAppInfo.sourceType,
             sourceId: props.runningAppInfo.sourceId,
-            userId: props.uid,
-            chatId: props.chatId
+            userId: props.uid
           }),
           fn: async () => {
             const runtime = await prepareSandboxToolRuntime({

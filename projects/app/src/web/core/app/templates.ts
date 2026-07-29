@@ -464,6 +464,7 @@ export const parsePluginFromCurlString = (
 
       return {
         renderTypeList: valueTypeItem.renderTypeList,
+        selectedType: valueTypeItem.renderTypeList[0],
         selectedTypeIndex: 0,
         valueType: valueTypeItem.valueType,
         canEdit: true,

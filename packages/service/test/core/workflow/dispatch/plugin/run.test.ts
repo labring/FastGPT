@@ -82,7 +82,18 @@ describe('dispatchRunPlugin', () => {
           flowNodeType: FlowNodeTypeEnum.pluginInput,
           showStatus: false,
           isEntry: true,
-          inputs: [],
+          inputs: [
+            {
+              key: 'query',
+              defaultValue: 'default query',
+              renderTypeList: ['input']
+            },
+            {
+              key: 'internal',
+              defaultValue: 'internal default',
+              renderTypeList: ['hidden']
+            }
+          ],
           outputs: []
         },
         {
@@ -149,7 +160,7 @@ describe('dispatchRunPlugin', () => {
         tmbId: 'member'
       },
       query: [{ text: { content: '' } }],
-      params: {},
+      params: { internal: 'external value' },
       histories: [],
       timezone: 'Asia/Shanghai',
       uid: 'user',
@@ -166,6 +177,11 @@ describe('dispatchRunPlugin', () => {
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     const childWorkflowProps = runWorkflowMock.mock.calls[0][0];
     expect(childWorkflowProps.nodeResponseSink).toBeUndefined();
+    expect(childWorkflowProps.runtimeNodes[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'internal', value: 'internal default' })
+      ])
+    );
     expect(childWorkflowProps.chatConfig.variables).toHaveLength(1);
     expect(childWorkflowProps.variableState.get('counter')).toBe(0);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({

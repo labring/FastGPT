@@ -34,6 +34,7 @@ import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const Header = ({
   forbiddenSaveSnapshot: forbiddenSaveSnapshotRef,
@@ -284,7 +285,14 @@ const Header = ({
 
                     const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
 
-                    const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
+                    const toolNodeIds = new Set(
+                      storeEdges
+                        .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+                        .map((edge) => edge.target)
+                    );
+                    const nodes = storeNodes.map((item) =>
+                      storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+                    );
                     const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
                     const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });

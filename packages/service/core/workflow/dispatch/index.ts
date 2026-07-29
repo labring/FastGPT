@@ -20,6 +20,7 @@ import type {
 } from '../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { childrenResponseFields } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
@@ -110,6 +111,67 @@ type NodeResponseType = DispatchNodeResultType<{
 type NodeResponseCompleteType = Omit<NodeResponseType, 'responseData'> & {
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
   runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
+};
+
+const hasToolCallError = (response: ChatHistoryItemResType) =>
+  response.error !== undefined || response.errorText !== undefined;
+
+/**
+ * 工具子流程的错误只用于运行控制，不能进入用户可见的节点详情。
+ * 这里同时处理 flat `parentId` 关系和旧数据可能携带的嵌套 childrenResponses。
+ */
+export const filterToolCallNodeResponses = (responses: ChatHistoryItemResType[]) => {
+  const hiddenIds = new Set(
+    responses.flatMap((response) =>
+      hasToolCallError(response) && response.id ? [response.id] : []
+    )
+  );
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    responses.forEach((response) => {
+      if (response.id && response.parentId && hiddenIds.has(response.parentId)) {
+        if (!hiddenIds.has(response.id)) {
+          hiddenIds.add(response.id);
+          changed = true;
+        }
+      }
+    });
+  }
+
+  const filterNestedResponse = (
+    response: ChatHistoryItemResType
+  ): ChatHistoryItemResType | undefined => {
+    if (hasToolCallError(response)) return;
+
+    const filteredResponse = { ...response };
+    childrenResponseFields.forEach((field) => {
+      const children = response[field];
+      if (!children?.length) return;
+
+      const filteredChildren = children
+        .map(filterNestedResponse)
+        .filter((child): child is ChatHistoryItemResType => !!child);
+      if (filteredChildren.length > 0) {
+        filteredResponse[field] = filteredChildren;
+      } else {
+        delete filteredResponse[field];
+      }
+    });
+
+    return filteredResponse;
+  };
+
+  return responses
+    .filter(
+      (response) =>
+        !hasToolCallError(response) &&
+        !(response.id && hiddenIds.has(response.id)) &&
+        !(response.parentId && hiddenIds.has(response.parentId))
+    )
+    .map(filterNestedResponse)
+    .filter((response): response is ChatHistoryItemResType => !!response);
 };
 
 // Run workflow
@@ -953,8 +1015,11 @@ export class WorkflowQueue {
             }))
           : childResponses;
       const nodeResponsesForWrite = [...childResponsesForWrite];
+      const childResponsesForDisplay = this.data.isToolCall
+        ? filterToolCallNodeResponses(childResponsesForWrite)
+        : childResponsesForWrite;
       const currentNodeChildResponseCount =
-        getNodeResponseChildResponseCount(childResponsesForWrite);
+        getNodeResponseChildResponseCount(childResponsesForDisplay);
       // format response data. Add modulename and module type
       const formatCurrentNodeResponse: ChatHistoryItemResType | undefined = (() => {
         if (!nodeResponse) return undefined;
@@ -984,32 +1049,37 @@ export class WorkflowQueue {
           ? formatCurrentNodeResponse
           : undefined;
 
-      // 子节点只产出响应；请求级 sink 统一负责写库、V2 实时发布和 Share 字段裁剪。
-      const persistedNodeResponses = this.data.nodeResponseSink
-        ? await this.data.nodeResponseSink.publish([
-            ...childResponsesForWrite.map((response) => ({ response })),
-            ...(formatCurrentNodeResponse
-              ? [
-                  {
-                    response: formatCurrentNodeResponse,
-                    // 有内部明细时，父节点只作为树结构和统计信息入库，避免重复展示。
-                    emit: !!formatResponseData
-                  }
-                ]
-              : [])
-          ])
+      // 工具错误仍要参与运行控制 summary，但不写入用户可见的详情。
+      const runtimeNodeResponseSummary = summarizeRuntimeNodeResponses(
+        undefined,
+        nodeResponsesForWrite
+      );
+      const nodeResponsesForDisplay = this.data.isToolCall
+        ? filterToolCallNodeResponses(nodeResponsesForWrite)
         : nodeResponsesForWrite;
+
+      // 子节点只产出响应；请求级 sink 统一负责写库、V2 实时发布和 Share 字段裁剪。
+      // 工具调用中的错误响应已经从 nodeResponsesForDisplay 移除，仍由上面的 summary 保留。
+      const persistedNodeResponses = this.data.nodeResponseSink
+        ? await this.data.nodeResponseSink.publish(
+            nodeResponsesForDisplay.map((response) => ({
+              response,
+              // 有内部明细时，父节点只作为树结构和统计信息入库，避免重复展示。
+              emit: response.id === formatCurrentNodeResponse?.id ? !!formatResponseData : true
+            }))
+          )
+        : nodeResponsesForDisplay;
       const formatResponseDataForQueue =
         formatResponseData && this.data.nodeResponseSink
           ? persistedNodeResponses.find((item) => item.id === formatResponseData.id) ||
             formatResponseData
-          : formatResponseData;
+          : nodeResponsesForDisplay.find((item) => item.id === formatResponseData?.id);
       const childResponsesForQueue = this.data.nodeResponseSink
-        ? childResponsesForWrite.map(
+        ? childResponsesForDisplay.flatMap(
             (item) =>
-              persistedNodeResponses.find((persistedItem) => persistedItem.id === item.id) || item
+              persistedNodeResponses.filter((persistedItem) => persistedItem.id === item.id)
           )
-        : childResponses;
+        : childResponsesForDisplay;
       const shouldDropPersistedNodeResponses = !!this.data.nodeResponseSink;
 
       // Add output default value
@@ -1050,7 +1120,7 @@ export class WorkflowQueue {
           ...dispatchRes,
           runtimeNodeResponseSummary: mergeRuntimeNodeResponseSummary(
             dispatchRes.runtimeNodeResponseSummary,
-            summarizeRuntimeNodeResponses(undefined, persistedNodeResponses)
+            runtimeNodeResponseSummary
           ),
           ...(shouldDropPersistedNodeResponses
             ? {

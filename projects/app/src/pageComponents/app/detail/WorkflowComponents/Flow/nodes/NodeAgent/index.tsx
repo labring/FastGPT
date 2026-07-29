@@ -18,7 +18,7 @@ import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
-import RenderToolInput from '../render/RenderToolInput';
+import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
 import InputLabel from '../render/RenderInput/Label';
 import CatchError from '../render/RenderOutput/CatchError';
@@ -51,6 +51,7 @@ import WorkflowSandboxConfig, {
 } from '../components/WorkflowSandboxConfig';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -65,7 +66,7 @@ const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSe
 
 /* ======== Helper: get current renderType of an input ======== */
 const getRenderType = (input: FlowNodeInputItemType) =>
-  input.renderTypeList?.[input.selectedTypeIndex || 0] || FlowNodeInputTypeEnum.custom;
+  getSelectedInputRenderType(input) || FlowNodeInputTypeEnum.custom;
 
 const agentModelSettingProps = {
   showMaxToken: false,
@@ -439,7 +440,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
-      {isTool && (
+      {isTool && hasDynamicToolInput(inputs) && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
@@ -691,7 +692,9 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       borderRadius={'md'}
                       _hover={{
                         borderColor: 'primary.300',
-                        '& .delete-btn': { display: 'flex' }
+                        '& .delete-btn': { display: 'flex' },
+                        '& .tool-status-tag': { display: 'none' },
+                        '& .setting-btn': { display: 'flex' }
                       }}
                     >
                       <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
@@ -705,7 +708,19 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       >
                         {item.name}
                       </Box>
-                      {isDebugToolSource(item.source) && <DebugToolTag />}
+                      {isDebugToolSource(item.source) && (
+                        <DebugToolTag className="tool-status-tag" />
+                      )}
+                      <MyIconButton
+                        className="setting-btn"
+                        display={'none'}
+                        icon="common/setting"
+                        tip={t('app:tool_param_config')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClickSkill(item.pluginId!);
+                        }}
+                      />
                       <Box className="delete-btn" display={'none'}>
                         <MyIconButton
                           icon="delete"
@@ -811,7 +826,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </Box>
         )}
         {datasetOtherInputs.length > 0 && (
-          <RenderInput nodeId={nodeId} flowInputList={datasetOtherInputs} />
+          <RenderInput nodeId={nodeId} flowInputList={datasetOtherInputs} isTool={isTool} />
         )}
       </Container>
 

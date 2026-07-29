@@ -20,7 +20,6 @@ const Content = () => {
     isSkillReady,
     handleSandboxError,
     upgradeSandboxRuntime,
-    canUpgradeSandboxRuntime,
     sandboxError
   } = useContextSelector(SkillDetailContext, (v) => ({
     sandboxState: v.sandboxState,
@@ -28,7 +27,6 @@ const Content = () => {
     isSkillReady: v.isSkillReady,
     handleSandboxError: v.handleSandboxError,
     upgradeSandboxRuntime: v.upgradeSandboxRuntime,
-    canUpgradeSandboxRuntime: v.canUpgradeSandboxRuntime,
     sandboxError: v.sandboxError
   }));
   const isSandboxReady = sandboxState === 'ready';
@@ -73,7 +71,7 @@ const Content = () => {
       <MyModal
         isOpen={isUpgradeModalOpen}
         onClose={() => router.back()}
-        showCloseButton
+        showCloseButton={false}
         isCentered
         size={'sm'}
         borderRadius={'md'}
@@ -104,7 +102,7 @@ const Content = () => {
             fontSize={'sm'}
             lineHeight={'20px'}
             mt={6}
-            whiteSpace="pre-wrap"
+            whiteSpace={'pre-wrap'}
           >
             {t('skill:sandbox_runtime_upgrade_desc')}
           </Box>
@@ -119,7 +117,7 @@ const Content = () => {
               size={'lg'}
               onClick={upgradeSandboxRuntime}
               isLoading={isUpgrading}
-              isDisabled={isUpgrading || !canUpgradeSandboxRuntime}
+              isDisabled={isUpgrading}
               fontSize={'sm'}
             >
               {t('skill:sandbox_runtime_upgrade_confirm')}

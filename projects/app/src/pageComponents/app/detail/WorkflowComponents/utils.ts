@@ -15,9 +15,24 @@ import type {
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
+
+const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
+  const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
+  const normalizedInput = {
+    ...inputWithSelectedType,
+    selectedType: getSelectedInputRenderType(inputWithSelectedType)
+  };
+  delete normalizedInput.selectedTypeIndex;
+
+  return normalizedInput;
+};
 
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
@@ -40,6 +55,11 @@ export const uiWorkflow2StoreWorkflow = ({
     map[parentNodeId] = [...(map[parentNodeId] ?? []), node.data.nodeId];
     return map;
   }, {});
+  const toolNodeIds = new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
 
   const formatNodes: StoreNodeItemType[] = nodes.map((item) => ({
     nodeId: item.data.nodeId,
@@ -54,7 +74,9 @@ export const uiWorkflow2StoreWorkflow = ({
     version: item.data.version,
     inputs: filterUnselectableReferenceInputs({
       node: item.data,
-      inputs: item.data.inputs,
+      inputs: item.data.inputs.map((input) =>
+        normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
+      ),
       edges,
       chatConfig,
       systemConfigNode,

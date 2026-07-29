@@ -218,6 +218,12 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
     if (completedToolCallIds.has(call.id)) return;
     completedToolCallIds.add(call.id);
 
+    // ToolCall 的错误只用于终止/继续 agent-loop，隐藏工具自身及其子流程详情。
+    if (errorMessage) {
+      pendingToolFlowResponseMap.delete(call.id);
+      return;
+    }
+
     const pendingFlowResponse = pendingToolFlowResponseMap.get(call.id);
     const baseFlowResponse =
       pendingFlowResponse ||

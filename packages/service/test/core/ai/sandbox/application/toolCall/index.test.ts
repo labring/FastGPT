@@ -18,11 +18,6 @@ const mirrorMock = vi.hoisted(() => ({
   prepareSandboxRuntimeMirrors: vi.fn()
 }));
 
-const s3Mock = vi.hoisted(() => ({
-  uploadChatFile: vi.fn(),
-  createGetChatFileURL: vi.fn()
-}));
-
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: runtimeMock.getSandboxClient
 }));
@@ -39,13 +34,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile
   getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
 }));
 
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  getS3ChatSource: () => ({
-    uploadChatFile: s3Mock.uploadChatFile,
-    createGetChatFileURL: s3Mock.createGetChatFileURL
-  })
-}));
-
 import {
   getSandboxToolInfo,
   prepareSandboxToolRuntime,
@@ -56,6 +44,14 @@ const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0 })),
+    getRuntimePaths: vi.fn(() => ({
+      workspaceRoot: '/workspace',
+      runtimeSkillsRoot: '/workspace/projects',
+      sessionWorkDirectory: '/workspace/sessions/chat'
+    })),
+    resolveRuntimePath: vi.fn((path: string) =>
+      path.startsWith('/') ? path : `/workspace/sessions/chat/${path}`
+    ),
     provider: {
       readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }]),
       deleteFiles: vi.fn(async () => [])
@@ -71,8 +67,6 @@ describe('sandbox toolCall index', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runtimeMock.getSandboxClient.mockResolvedValue(createSandboxInstance());
-    s3Mock.uploadChatFile.mockResolvedValue({ key: 'chat/file.txt' });
-    s3Mock.createGetChatFileURL.mockResolvedValue({ url: 'signed-url' });
   });
 
   it('executes known tools through a prepared sandbox client', async () => {

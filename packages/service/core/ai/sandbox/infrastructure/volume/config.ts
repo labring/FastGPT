@@ -9,6 +9,7 @@ export type VolumeManagerConfig = {
   enable: boolean;
   url: string;
   token?: string;
+  storageSize: string;
 };
 
 /**
@@ -20,6 +21,7 @@ export function getVolumeManagerEnvConfig(): VolumeManagerConfig {
   return {
     enable: true,
     url: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL!,
-    token: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
+    token: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
+    storageSize: serviceEnv.AGENT_SANDBOX_STORAGE_SIZE
   };
 }

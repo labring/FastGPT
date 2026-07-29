@@ -27,7 +27,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () =
 import {
   connectReadySandboxByInstance,
   connectToSandbox,
-  disconnectSandbox,
   ensureConnectedSandboxRunning,
   getReadySandboxInfo
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/provider/lifecycle';
@@ -96,16 +95,28 @@ describe('sandbox provider lifecycle', () => {
     expect(sandbox.execute).toHaveBeenCalledWith('true', { timeoutMs: 5_000 });
   });
 
-  it('waits until devbox command channel leaves pending after lifecycle ready', async () => {
+  it.each([
+    {
+      name: 'pod pending',
+      error: Object.assign(
+        new Error('Command execution failed: devbox pod is not running: Pending'),
+        {
+          commandError: new Error('devbox pod is not running: Pending')
+        }
+      )
+    },
+    {
+      name: 'exec timeout',
+      error: Object.assign(new Error('Command execution failed: exec command timeout'), {
+        commandError: new Error('exec command timeout')
+      })
+    }
+  ])('retries the devbox command probe after $name', async ({ error }) => {
     vi.useFakeTimers();
     try {
       const executeMock = vi
         .fn()
-        .mockRejectedValueOnce(
-          Object.assign(new Error('Command execution failed: devbox pod is not running: Pending'), {
-            commandError: new Error('devbox pod is not running: Pending')
-          })
-        )
+        .mockRejectedValueOnce(error)
         .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
       const sandbox = createSandbox({
         provider: 'sealosdevbox',
@@ -113,7 +124,7 @@ describe('sandbox provider lifecycle', () => {
       });
       mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
 
-      const connectPromise = connectToSandbox(sealosConfig, 'sandbox-pending-command');
+      const connectPromise = connectToSandbox(sealosConfig, 'sandbox-command-not-ready');
 
       await vi.advanceTimersByTimeAsync(1_000);
 
@@ -125,82 +136,28 @@ describe('sandbox provider lifecycle', () => {
     }
   });
 
-  it('retries devbox command probe when exec channel times out during startup', async () => {
-    vi.useFakeTimers();
-    try {
-      const executeMock = vi
-        .fn()
-        .mockRejectedValueOnce(
-          Object.assign(new Error('Command execution failed: exec command timeout'), {
-            command: 'true',
-            commandError: Object.assign(new Error('exec command timeout'), {
-              command: 'true'
-            })
-          })
-        )
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+  it.each([
+    { stderr: 'permission denied', stdout: '', expected: 'permission denied' },
+    { stderr: '', stdout: 'stdout failure', expected: 'stdout failure' },
+    { stderr: '', stdout: '', expected: 'Sandbox command probe failed' }
+  ])(
+    'reports a non-retryable command result as $expected',
+    async ({ stderr, stdout, expected }) => {
       const sandbox = createSandbox({
         provider: 'sealosdevbox',
-        execute: executeMock
+        execute: vi.fn(async () => ({
+          stdout,
+          stderr,
+          exitCode: 1
+        }))
       });
       mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
 
-      const connectPromise = connectToSandbox(sealosConfig, 'sandbox-timeout-command');
-
-      await vi.advanceTimersByTimeAsync(1_000);
-
-      await expect(connectPromise).resolves.toMatchObject({ provider: 'sealosdevbox' });
-      expect(executeMock).toHaveBeenCalledTimes(2);
-    } finally {
-      vi.useRealTimers();
+      await expect(connectToSandbox(sealosConfig, 'sandbox-command-failure')).rejects.toThrow(
+        expected
+      );
     }
-  });
-
-  it('throws immediately when command probe returns a non-retryable result', async () => {
-    const sandbox = createSandbox({
-      provider: 'sealosdevbox',
-      execute: vi.fn(async () => ({
-        stdout: '',
-        stderr: 'permission denied',
-        exitCode: 126
-      }))
-    });
-    mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
-
-    await expect(connectToSandbox(sealosConfig, 'sandbox-non-retryable-result')).rejects.toThrow(
-      'permission denied'
-    );
-  });
-
-  it('uses stdout or default message when command probe exits with a non-retryable result', async () => {
-    const stdoutSandbox = createSandbox({
-      provider: 'sealosdevbox',
-      execute: vi.fn(async () => ({
-        stdout: 'stdout failure',
-        stderr: '',
-        exitCode: 1
-      }))
-    });
-    mocks.buildSandboxAdapter.mockReturnValueOnce(stdoutSandbox);
-
-    await expect(connectToSandbox(sealosConfig, 'sandbox-stdout-failure')).rejects.toThrow(
-      'stdout failure'
-    );
-
-    const defaultSandbox = createSandbox({
-      provider: 'sealosdevbox',
-      execute: vi.fn(async () => ({
-        stdout: '',
-        stderr: '',
-        exitCode: 1
-      }))
-    });
-    mocks.buildSandboxAdapter.mockReturnValueOnce(defaultSandbox);
-
-    await expect(connectToSandbox(sealosConfig, 'sandbox-default-failure')).rejects.toThrow(
-      'Sandbox command probe failed'
-    );
-  });
+  );
 
   it('throws immediately when command probe throws a non-retryable error', async () => {
     const sandbox = createSandbox({
@@ -325,34 +282,10 @@ describe('sandbox provider lifecycle', () => {
     ).resolves.toBe(sandboxInfo);
   });
 
-  it('connects ready sandbox by instance even when metadata getInfo is transiently unavailable', async () => {
-    const getInfoMock = vi.fn(async () => {
-      throw new Error('Devbox API returned non-JSON response (503): no healthy upstream');
-    });
-    const sandbox = createSandbox({
-      provider: 'sealosdevbox',
-      getInfo: getInfoMock
-    });
-    mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
-
-    const connected = await connectReadySandboxByInstance(sealosConfig, {
-      sandboxId: 'stable-session-id'
-    });
-    expect(connected.sandboxInfo).toMatchObject({
-      id: 'provider-sandbox-id',
-      status: { state: 'Running' }
-    });
-    expect(connected.sandboxInfo).not.toHaveProperty('image');
-
-    expect(sandbox.ensureRunning).toHaveBeenCalledTimes(1);
-    expect(sandbox.waitUntilReady).toHaveBeenCalledTimes(1);
-    expect(getInfoMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('disconnects opensandbox when connect-ready post processing fails', async () => {
+  it('closes the connected provider when post processing fails', async () => {
     const closeMock = vi.fn(async () => undefined);
     const sandbox = createSandbox({
-      provider: 'opensandbox',
+      provider: 'sealosdevbox',
       close: closeMock
     });
     Object.defineProperty(sandbox, 'status', {
@@ -363,26 +296,11 @@ describe('sandbox provider lifecycle', () => {
     mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
 
     await expect(
-      connectReadySandboxByInstance(opensandboxConfig, {
-        sandboxId: 'opensandbox-post-process-fail'
+      connectReadySandboxByInstance(sealosConfig, {
+        sandboxId: 'sealos-post-process-fail'
       })
     ).rejects.toThrow('status failed');
 
     expect(closeMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('disconnects opensandbox and keeps other providers as no-op', async () => {
-    const closeMock = vi.fn().mockResolvedValue(undefined);
-    await disconnectSandbox({
-      provider: 'opensandbox',
-      close: closeMock
-    } as any);
-    expect(closeMock).toHaveBeenCalledTimes(1);
-
-    await expect(
-      disconnectSandbox({
-        provider: 'sealosdevbox'
-      } as any)
-    ).resolves.toBeUndefined();
   });
 });

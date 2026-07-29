@@ -1,8 +1,11 @@
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::env;
 use std::sync::{LazyLock, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 use tracing::{debug, error};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -59,9 +62,20 @@ static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 });
 
 static PROXY_SECRET: OnceLock<String> = OnceLock::new();
+static SANDBOX_ADDRESS_CACHE: LazyLock<RwLock<HashMap<[u8; 32], CachedSandboxAddress>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 const DEFAULT_APP_REQUEST_TIMEOUT_SECS: u64 = 10;
+const DEFAULT_ADDRESS_CACHE_TTL_SECS: u64 = 30;
+const MAX_ADDRESS_CACHE_ENTRIES: usize = 2_000;
 const MIN_PROXY_SECRET_BYTES: usize = 32;
+const SANDBOX_PREVIEW_SESSION_HEADER: &str = "X-Sandbox-Preview-Session";
+
+#[derive(Clone)]
+struct CachedSandboxAddress {
+    address: SandboxAddress,
+    expires_at: Instant,
+}
 
 fn get_app_request_timeout() -> Duration {
     let seconds = env::var("FASTGPT_APP_REQUEST_TIMEOUT_SECS")
@@ -166,6 +180,120 @@ pub async fn resolve_sandbox_address(ticket: &str) -> Result<SandboxAddress, Str
 
     debug!("[Auth] Ticket resolved successfully.");
     Ok(address)
+}
+
+/// 验证有状态 Preview session 并解析只读 HTTP sandbox 地址。
+async fn resolve_preview_sandbox_address(session_id: &str) -> Result<SandboxAddress, String> {
+    let app_url =
+        env::var("FASTGPT_APP_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+    let request_url = format!(
+        "{}/api/core/ai/sandbox/verifyTicket",
+        app_url.trim_end_matches('/')
+    );
+
+    debug!(
+        "[Auth] Back-channel requesting App to resolve preview session. Target: {}",
+        request_url
+    );
+
+    let response = get_http_client()
+        .get(&request_url)
+        .header(SANDBOX_PREVIEW_SESSION_HEADER, session_id)
+        .header("X-Proxy-Token", get_proxy_secret())
+        .send()
+        .await
+        .map_err(|err| format!("HTTP request to App verifyTicket failed: {}", err))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let err_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        error!(
+            "[Auth] Preview session validation rejected by App (Status {}): {}",
+            status, err_text
+        );
+        return Err(format!("Preview session rejected by App: {}", err_text));
+    }
+
+    let app_res = response
+        .json::<AppResponse<SandboxAddress>>()
+        .await
+        .map_err(|err| format!("Failed to parse response JSON from App: {}", err))?;
+
+    if app_res.code != 200 {
+        return Err(format!(
+            "App returned error code {}: {:?}",
+            app_res.code,
+            app_res
+                .status_text
+                .unwrap_or_else(|| "Unknown error".to_string())
+        ));
+    }
+
+    debug!("[Auth] Preview session resolved successfully.");
+    Ok(app_res.data)
+}
+
+fn get_address_cache_ttl() -> Duration {
+    let seconds = env::var("AGENT_SANDBOX_PROXY_ADDRESS_CACHE_TTL_SECS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(DEFAULT_ADDRESS_CACHE_TTL_SECS);
+    Duration::from_secs(seconds)
+}
+
+fn get_preview_session_cache_key(session_id: &str) -> [u8; 32] {
+    Sha256::digest(session_id.as_bytes()).into()
+}
+
+/**
+ * Resolves a preview session with a short address cache.
+ *
+ * Session validity is checked by FastGPT on cache misses. This cache avoids repeating the
+ * back-channel lookup and sandbox password read for each resource in one HTML page.
+ */
+pub async fn resolve_cached_preview_sandbox_address(
+    session_id: &str,
+) -> Result<SandboxAddress, String> {
+    let now = Instant::now();
+    let cache_key = get_preview_session_cache_key(session_id);
+    if let Some(cached) = SANDBOX_ADDRESS_CACHE.read().await.get(&cache_key)
+        && cached.expires_at > now
+    {
+        return Ok(cached.address.clone());
+    }
+
+    let address = resolve_preview_sandbox_address(session_id).await?;
+    let resolved_at = Instant::now();
+    let mut cache = SANDBOX_ADDRESS_CACHE.write().await;
+    cache.retain(|_, cached| cached.expires_at > resolved_at);
+    if cache.len() >= MAX_ADDRESS_CACHE_ENTRIES
+        && let Some(oldest_key) = cache
+            .iter()
+            .min_by_key(|(_, cached)| cached.expires_at)
+            .map(|(key, _)| *key)
+    {
+        cache.remove(&oldest_key);
+    }
+    cache.insert(
+        cache_key,
+        CachedSandboxAddress {
+            address: address.clone(),
+            expires_at: resolved_at + get_address_cache_ttl(),
+        },
+    );
+
+    Ok(address)
+}
+
+pub async fn invalidate_cached_preview_sandbox_address(session_id: &str) {
+    SANDBOX_ADDRESS_CACHE
+        .write()
+        .await
+        .remove(&get_preview_session_cache_key(session_id));
 }
 
 #[cfg(test)]
@@ -284,5 +412,17 @@ mod tests {
         assert!(res.is_err());
         let err = res.unwrap_err();
         assert!(err.contains("ExpiredSignature") || err.contains("validation failed"));
+    }
+
+    #[test]
+    fn test_preview_session_cache_key_is_stable_without_retaining_credential() {
+        assert_eq!(
+            get_preview_session_cache_key("session-a"),
+            get_preview_session_cache_key("session-a")
+        );
+        assert_ne!(
+            get_preview_session_cache_key("session-a"),
+            get_preview_session_cache_key("session-b")
+        );
     }
 }

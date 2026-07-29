@@ -410,8 +410,10 @@ export const dispatchAgentDatasetSearch = async ({
     };
   } catch (error) {
     logger.error('[Agent Dataset Search] Failed', { error });
+    const response = `Failed to search dataset: ${getErrText(error)}`;
     return {
-      response: `Failed to search dataset: ${getErrText(error)}`
+      response,
+      errorMessage: response
     };
   }
 };

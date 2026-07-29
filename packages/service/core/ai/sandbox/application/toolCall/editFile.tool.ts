@@ -5,7 +5,6 @@
  */
 import z from 'zod';
 import { defineTool } from './type';
-import { SANDBOX_EDIT_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 
 export const SandboxEditFileToolSchema = z.object({
   entries: z.array(
@@ -23,7 +22,7 @@ export const sandboxEditFileTool = defineTool({
     await sandboxInstance.ensureAvailable();
     await sandboxInstance.provider.replaceContent(
       params.entries.map((entry) => ({
-        path: entry.path,
+        path: sandboxInstance.resolveRuntimePath(entry.path, { allowAbsolutePath: true }),
         oldContent: entry.oldContent,
         newContent: entry.newContent
       }))
@@ -34,7 +33,3 @@ export const sandboxEditFileTool = defineTool({
     };
   }
 });
-
-export const toolMap = {
-  [SANDBOX_EDIT_FILE_TOOL_NAME]: sandboxEditFileTool
-};
