@@ -20,7 +20,7 @@
     "pnpm": "10.x"
   },
   "dependencies": {
-    "ioredis": "^5.6.0",
+    "ioredis": "^5.11.1",
     "zod": "catalog:"
   },
   "devDependencies": {

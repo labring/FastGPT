@@ -51,7 +51,7 @@
     "@modelcontextprotocol/sdk": "catalog:",
     "@monaco-editor/react": "^4.7.0",
     "@node-rs/jieba": "catalog:",
-    "@scalar/api-reference-react": "^0.8.1",
+    "@scalar/api-reference-react": "^0.9.59",
     "@t3-oss/env-core": "catalog:",
     "@tanstack/react-query": "catalog:",
     "ahooks": "catalog:",
