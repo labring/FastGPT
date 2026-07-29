@@ -253,7 +253,8 @@ export const getExecuteTool = ({
               app: {
                 name: tool.name,
                 avatar: tool.avatar,
-                id: tool.id
+                id: tool.id,
+                version: tool.version
               },
               userChatInput: userChatInput,
               customAppVariables: params,
@@ -294,7 +295,8 @@ export const getExecuteTool = ({
             const systemToolRepo = SystemToolRepo.getInstance();
             const trueId = (
               await systemToolRepo.getSystemToolDetail({
-                pluginId: `commercial-${tool.id}`
+                pluginId: `commercial-${tool.id}`,
+                version: tool.version || undefined
               })
             ).associatedPluginId;
 
@@ -309,7 +311,8 @@ export const getExecuteTool = ({
               app: {
                 name: tool.name,
                 avatar: tool.avatar,
-                id
+                id,
+                version: tool.version
               },
               userChatInput: '',
               customAppVariables,

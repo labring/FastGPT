@@ -501,7 +501,7 @@ describe('getAgentRuntimeTools schema loading', () => {
   it('loads MCP toolset children with their input schema', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
-      tools: [{ id: 'mcp_app', config: {} }]
+      tools: [{ id: 'mcp_app', version: 'fixed-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
@@ -509,6 +509,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].version).toBe('fixed-version');
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
       name: 'mcp_app name'
@@ -699,7 +700,7 @@ describe('getAgentRuntimeTools schema loading', () => {
   it('loads HTTP toolset children with their request schema', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
-      tools: [{ id: 'http_app', config: {} }]
+      tools: [{ id: 'http_app', version: 'fixed-version', config: {} }]
     });
 
     expect(tools).toHaveLength(1);
@@ -708,6 +709,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+    expect(tools[0].version).toBe('fixed-version');
     expect(tools[0].promptReference).toEqual({
       id: 'http_app',
       name: 'http_app name'

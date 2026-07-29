@@ -654,7 +654,8 @@ export const getAgentRuntimeTools = async ({
             id,
             name: child.name,
             avatar: child.avatar,
-            version: child.version,
+            // MCP/HTTP 子工具节点默认 version 为空；固定版本由父工具集决定。
+            version: toolNode.version ?? child.version,
             toolConfig: child.toolConfig,
             inputs,
             agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),

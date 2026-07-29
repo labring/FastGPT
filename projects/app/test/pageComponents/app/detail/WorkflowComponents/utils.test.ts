@@ -524,7 +524,7 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
     });
 
-    it('should not materialize fallback selectedType when saving workflow', () => {
+    it('should migrate legacy selectedTypeIndex to selectedType when saving workflow', () => {
       const nodes = [
         {
           data: {
@@ -549,8 +549,8 @@ describe('WorkflowComponents utils', () => {
 
       const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
 
-      expect(result.nodes[0].inputs[0].selectedType).toBeUndefined();
-      expect(result.nodes[0].inputs[0].selectedTypeIndex).toBe(0);
+      expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
+      expect(result.nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
     });
 
     it('should keep selected dataset snapshot for later server-side save formatting', () => {

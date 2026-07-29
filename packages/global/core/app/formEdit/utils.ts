@@ -127,10 +127,12 @@ export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
     deferDefaultSelection = false
   }: NormalizeFlowNodeInputTypeOptions = {}
 ): T => {
+  // 旧工作流导入数据可能没有 renderTypeList，兼容层不能在 detail/保存阶段中断。
+  const inputRenderTypeList = input.renderTypeList ?? [];
   const legacySelectedType =
     input.selectedTypeIndex === undefined
       ? undefined
-      : input.renderTypeList[input.selectedTypeIndex];
+      : inputRenderTypeList[input.selectedTypeIndex];
   const hasExplicitSelectedType = input.selectedType !== undefined;
   const recommendsAgentGenerated =
     input.isToolParam === true ||
@@ -148,7 +150,7 @@ export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
   const renderTypeList = Array.from(
     new Set([
       ...(supportsAgentGenerated ? [FlowNodeInputTypeEnum.agentGenerated] : []),
-      ...input.renderTypeList.filter(
+      ...inputRenderTypeList.filter(
         (type) => supportsAgentGenerated || type !== FlowNodeInputTypeEnum.agentGenerated
       )
     ])

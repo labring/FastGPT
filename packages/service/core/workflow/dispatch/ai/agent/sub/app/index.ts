@@ -59,6 +59,8 @@ type Props = Pick<
     name: string;
     avatar?: string;
     id: string;
+    // Agent 工具固定版本需要与 schema 加载阶段保持一致。
+    version?: string;
   };
   userChatInput: string;
   customAppVariables: Record<string, any>;
@@ -83,6 +85,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   });
   const { nodes, edges, chatConfig } = await getAppVersionById({
     appId: app.id,
+    versionId: app.version,
     app: appData
   });
   const workflowToolVariables = filterWorkflowToolInputVariables({
@@ -217,6 +220,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   });
   const { nodes, edges, chatConfig } = await getAppVersionById({
     appId: app.id,
+    versionId: app.version,
     app: appData
   });
   const pluginInputs = getWorkflowToolInputsFromStoreNodes(nodes);

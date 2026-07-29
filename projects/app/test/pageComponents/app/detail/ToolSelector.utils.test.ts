@@ -63,7 +63,13 @@ describe('ToolSelector utils', () => {
         required: true
       });
       expect(result.inputs[0]).not.toHaveProperty('isToolParam');
-      expect(result.inputs[1]).toMatchObject(tool.inputs[1]);
+      expect(result.inputs[1]).toMatchObject({
+        key: 'limit',
+        label: 'Limit',
+        value: 10,
+        required: true,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.numberInput]
+      });
       expect(result.inputs[1]).not.toHaveProperty('isToolParam');
       expect(result).not.toBe(tool);
     });
@@ -83,8 +89,7 @@ describe('ToolSelector utils', () => {
       const result = inheritToolInputConfig({ tool });
 
       expect(result.inputs[0]).toMatchObject({
-        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
       });
       expect(result.inputs[0]).not.toHaveProperty('isToolParam');
     });
@@ -109,8 +114,11 @@ describe('ToolSelector utils', () => {
 
       expect(result.inputs[0]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 0,
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.reference
+        ]
       });
     });
 
@@ -156,11 +164,10 @@ describe('ToolSelector utils', () => {
 
       expect(result.inputs[0]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 0
+        selectedTypeIndex: 1
       });
       expect(result.inputs[1]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0,
         renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.numberInput]
       });
     });
@@ -183,8 +190,12 @@ describe('ToolSelector utils', () => {
 
       expect(result.inputs[0]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 0,
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+        selectedTypeIndex: 1,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.input,
+          FlowNodeInputTypeEnum.reference
+        ]
       });
     });
   });

@@ -318,7 +318,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    const rewrittenSkills = skillsInput.value as SelectedAgentSkillItemType[];
+    const rewrittenSkills = nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.skills)
+      ?.value as SelectedAgentSkillItemType[];
 
     expect(rewrittenSkills).toEqual([
       {
@@ -403,8 +404,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       selectedType: FlowNodeInputTypeEnum.reference,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
-        FlowNodeInputTypeEnum.select,
-        FlowNodeInputTypeEnum.reference
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.select
       ],
       list: [
         { label: '1', value: '1' },
@@ -414,7 +415,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
-  it('刷新最新工具节点时保留 agentGenerated 推荐但延迟默认选择', async () => {
+  it('刷新最新工具节点时保留 agentGenerated 推荐并显式保存手动类型', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'mcp-app-1/search',
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -475,11 +476,11 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isToolParam: true,
       toolDescription: 'Search query'
     });
-    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.input);
     expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
-  it('刷新最新工具节点时忽略旧协议的默认 selectedTypeIndex 0', async () => {
+  it('刷新最新工具节点时将旧协议的 selectedTypeIndex 0 转为 selectedType', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'mcp-app-1/search',
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -538,7 +539,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         FlowNodeInputTypeEnum.reference
       ]
     });
-    expect(nodes[0].inputs[0].selectedType).toBeUndefined();
+    expect(nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.input);
     expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
@@ -684,7 +685,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    expect(toolInput.value).toMatchObject([
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value
+    ).toMatchObject([
       {
         inputs: [
           {
@@ -751,7 +754,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    expect(toolInput.value).toMatchObject([
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value
+    ).toMatchObject([
       {
         inputs: [
           {
@@ -816,7 +821,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    expect(toolInput.value).toMatchObject([
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value
+    ).toMatchObject([
       {
         inputs: [
           {
@@ -875,7 +882,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       lang: 'zh-CN'
     });
 
-    expect(toolInput.value).toMatchObject([
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value
+    ).toMatchObject([
       {
         pluginData: {
           error: '调试插件元数据不存在: debug:tmbId:tmb-1'
@@ -985,7 +994,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    const rewrittenDatasetParams = datasetParamsInput.value as AppFormEditFormType['dataset'];
+    const rewrittenDatasetParams = nodes[0].inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetParams
+    )?.value as AppFormEditFormType['dataset'];
 
     expect(rewrittenDatasetParams.datasets).toEqual([
       {
@@ -1029,7 +1040,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    expect(datasetSelectInput.value).toEqual([
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
+    ).toEqual([
       {
         datasetId: String(dataset._id),
         name: 'Legacy Dataset Name',
@@ -1088,7 +1101,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    expect(datasetSelectInput.value).toEqual([
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
+    ).toEqual([
       {
         datasetId: deletedDatasetId,
         name: 'Deleted Dataset Snapshot',
@@ -1139,7 +1154,9 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       isRoot: false
     });
 
-    expect(datasetSelectInput.value).toEqual([
+    expect(
+      nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList)?.value
+    ).toEqual([
       {
         datasetId: missingDatasetId,
         name: 'Missing Dataset Snapshot',

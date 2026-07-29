@@ -75,6 +75,7 @@ describe('getClientSystemToolPreviewNode', () => {
       key: NodeInputKeyEnum.systemInputConfig,
       label: '',
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      selectedType: FlowNodeInputTypeEnum.hidden,
       inputList: [
         {
           key: 'apiKey',
@@ -174,8 +175,11 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.inputs.find((item) => item.key === 'count')).toMatchObject({
       valueType: 'number',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
-      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.numberInput, 'reference'],
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput,
+        'reference'
+      ],
       isToolParam: true
     });
   });
