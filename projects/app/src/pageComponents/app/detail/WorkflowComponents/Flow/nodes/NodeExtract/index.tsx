@@ -173,7 +173,6 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           nodeId={nodeId}
           flowInputList={commonInputs}
           CustomComponent={CustomComponent}
-          isTool={isTool}
         />
       </Container>
       <Container>

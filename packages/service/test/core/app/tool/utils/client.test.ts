@@ -240,4 +240,35 @@ describe('getClientToolPreviewNode', () => {
     });
     expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
   });
+
+  it('defaults an ordinary workflow user question to Agent generation', async () => {
+    const appId = '507f1f77bcf86cd799439021';
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: appId,
+        teamId: '507f1f77bcf86cd799439022',
+        type: AppTypeEnum.workflow,
+        name: 'Workflow',
+        avatar: 'workflow.svg',
+        intro: ''
+      })
+    });
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [],
+      edges: [],
+      chatConfig: {},
+      versionId: 'version-id',
+      versionName: 'Version 1'
+    });
+
+    const result = await getClientToolPreviewNode({ appId, versionId: '' });
+
+    expect(result.flowNodeType).toBe('appModule');
+    expect(result.inputs.find((item) => item.key === 'userChatInput')).toMatchObject({
+      selectedType: 'agentGenerated',
+      renderTypeList: ['agentGenerated', 'reference', 'textarea'],
+      isToolParam: true
+    });
+    expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
+  });
 });
