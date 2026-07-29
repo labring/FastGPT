@@ -64,6 +64,12 @@ export type DevboxMutationData = {
 export type DevboxCreateRequest = {
   name: string;
   image?: string;
+  /** Kubernetes CPU resource quantity, for example `2000m` or `2`. */
+  cpu?: string;
+  /** Kubernetes memory resource quantity, for example `4096Mi` or `4Gi`. */
+  memory?: string;
+  /** Kubernetes storage resource quantity. Devbox accepts at most `20G`. */
+  storageLimit?: string;
   env?: Record<string, string>;
   labels?: Array<{ key: string; value: string }>;
   upstreamID?: string;
