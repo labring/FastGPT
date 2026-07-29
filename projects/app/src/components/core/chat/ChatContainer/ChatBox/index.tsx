@@ -759,16 +759,23 @@ const ChatBox = ({
                 {isAgentAskPending &&
                   (activeInteractive?.type === 'userInput' ||
                     activeInteractive?.type === 'agentAsk') && (
-                    <AgentAskComposer
-                      questions={agentAskQuestions}
-                      onSubmit={(answers) =>
-                        sendPromptWithDisabledGuard({
-                          text: JSON.stringify({ answers }),
-                          interactive: lastInteractive,
-                          ...(activeInteractive.type === 'agentAsk' ? { hideInUI: true } : {})
-                        })
-                      }
-                    />
+                    <Box
+                      w={'100%'}
+                      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                    >
+                      <AgentAskComposer
+                        questions={agentAskQuestions}
+                        onSubmit={(answers) =>
+                          sendPromptWithDisabledGuard({
+                            text: JSON.stringify({ answers }),
+                            interactive: lastInteractive,
+                            ...(activeInteractive.type === 'agentAsk' ? { hideInUI: true } : {})
+                          })
+                        }
+                      />
+                    </Box>
                   )}
               </Box>
             </Box>
