@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { WECHAT_QR_LOGIN_TTL_SECONDS, WechatQrLoginCache } from '@fastgpt/dal/redis/caches';
 
 const key = {
@@ -33,7 +33,7 @@ describe('WechatQrLoginCache', () => {
       set: vi.fn().mockResolvedValue('OK'),
       del: vi.fn().mockResolvedValue(1)
     };
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new WechatQrLoginCache({ redis: adapter });
 
     await cache.set({ ...key, data: qrData });

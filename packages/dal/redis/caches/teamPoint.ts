@@ -14,7 +14,7 @@ const TeamPointCacheValueSchema = z
   .pipe(FiniteNumberSchema);
 
 export type TeamPointCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'deleteMany' | 'getPair' | 'incrementWithTtl' | 'setPair'>;
+  redis?: RedisCacheAdapter;
   logger?: RedisCacheLogger<'warn'>;
 };
 
@@ -34,10 +34,7 @@ const noopLogger: RedisCacheLogger<'warn'> = {
  * 返回 miss 让 wallet service 回源 Mongo。写入、增量和清理失败只记录 warning，不覆盖钱包主流程。
  */
 export class TeamPointCache {
-  private readonly redis: Pick<
-    RedisCacheAdapter,
-    'deleteMany' | 'getPair' | 'incrementWithTtl' | 'setPair'
-  >;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger<'warn'>;
 
   constructor({ redis = redisCacheAdapter, logger = noopLogger }: TeamPointCacheOptions = {}) {

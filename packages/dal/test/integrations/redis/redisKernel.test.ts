@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { asRedisLogicalKey, RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
@@ -45,7 +45,7 @@ describeWithRedis('Redis 7.2 kernel integration', () => {
   });
 
   const createAdapter = () =>
-    createRedisCacheAdapter({
+    new RedisCacheAdapter({
       getCommandClient: () => client,
       createBlockingConnection: () =>
         client.duplicate({ enableOfflineQueue: true, maxRetriesPerRequest: null }),

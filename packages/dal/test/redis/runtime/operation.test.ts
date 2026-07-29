@@ -4,26 +4,35 @@ import {
   RedisOperationExecutionError,
   RedisOperationTimeoutError
 } from '@fastgpt/dal/redis/runtime';
-import { executeRedisOperation } from '@fastgpt/dal/redis/runtime/operation';
+import {
+  executeRedisIdempotentWrite,
+  executeRedisRead,
+  executeRedisUncertainWrite,
+  RedisOperationExecutor
+} from '@fastgpt/dal/redis/runtime/operation';
 
-describe('executeRedisOperation', () => {
+describe('Redis operation execution modes', () => {
+  it('supports direct use of a reusable executor instance', async () => {
+    const executor = new RedisOperationExecutor();
+    const execute = vi.fn().mockResolvedValue('value');
+
+    await expect(executor.read({ operation: 'string.get', execute })).resolves.toBe('value');
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
   it('returns successful results without retrying', async () => {
     const execute = vi.fn().mockResolvedValue('value');
 
-    await expect(executeRedisOperation({ operation: 'string.get', execute })).resolves.toBe(
-      'value'
-    );
+    await expect(executeRedisRead({ operation: 'string.get', execute })).resolves.toBe('value');
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
   it.each([new Error('ECONNRESET'), 'READONLY replica'])(
-    'retries allowlisted idempotent operations after transient error %s',
+    'retries reads after transient error %s',
     async (error) => {
       const execute = vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce('value');
 
-      await expect(executeRedisOperation({ operation: 'string.get', execute })).resolves.toBe(
-        'value'
-      );
+      await expect(executeRedisRead({ operation: 'string.get', execute })).resolves.toBe('value');
       expect(execute).toHaveBeenCalledTimes(2);
     }
   );
@@ -32,7 +41,7 @@ describe('executeRedisOperation', () => {
     const cause = new Error('WRONGTYPE');
     const execute = vi.fn().mockRejectedValue(cause);
 
-    const error = await executeRedisOperation({ operation: 'string.get', execute }).catch(
+    const error = await executeRedisRead({ operation: 'string.get', execute }).catch(
       (error) => error
     );
 
@@ -53,7 +62,9 @@ describe('executeRedisOperation', () => {
     async (operation) => {
       const execute = vi.fn().mockRejectedValue(new Error('ECONNRESET'));
 
-      const error = await executeRedisOperation({ operation, execute }).catch((error) => error);
+      const error = await executeRedisUncertainWrite({ operation, execute }).catch(
+        (error) => error
+      );
 
       expect(error).toMatchObject({
         code: 'REDIS_OPERATION_FAILED',
@@ -68,9 +79,9 @@ describe('executeRedisOperation', () => {
   it('retries idempotent multi-key deletion after a transient error', async () => {
     const execute = vi.fn().mockRejectedValueOnce(new Error('ECONNRESET')).mockResolvedValueOnce(2);
 
-    await expect(executeRedisOperation({ operation: 'string.deleteMany', execute })).resolves.toBe(
-      2
-    );
+    await expect(
+      executeRedisIdempotentWrite({ operation: 'string.deleteMany', execute })
+    ).resolves.toBe(2);
     expect(execute).toHaveBeenCalledTimes(2);
   });
 
@@ -78,7 +89,7 @@ describe('executeRedisOperation', () => {
     const execute = vi.fn().mockRejectedValue(new Error('ECONNRESET'));
 
     await expect(
-      executeRedisOperation({ operation: 'string.getOrSet', execute })
+      executeRedisUncertainWrite({ operation: 'string.getOrSet', execute })
     ).rejects.toMatchObject({
       code: 'REDIS_OPERATION_FAILED',
       operation: 'string.getOrSet',
@@ -92,7 +103,7 @@ describe('executeRedisOperation', () => {
     vi.useFakeTimers();
     try {
       const execute = vi.fn(() => new Promise<string>(() => undefined));
-      const operationPromise = executeRedisOperation({
+      const operationPromise = executeRedisRead({
         operation: 'string.get',
         execute,
         timeoutMs: 10
@@ -115,7 +126,7 @@ describe('executeRedisOperation', () => {
   it('marks a result-sensitive write timeout as outcome unknown', async () => {
     vi.useFakeTimers();
     try {
-      const writePromise = executeRedisOperation({
+      const writePromise = executeRedisUncertainWrite({
         operation: 'string.delete',
         execute: () => new Promise(() => undefined),
         timeoutMs: 10
@@ -139,9 +150,7 @@ describe('executeRedisOperation', () => {
     });
     const execute = vi.fn().mockRejectedValue(expected);
 
-    await expect(executeRedisOperation({ operation: 'string.get', execute })).rejects.toBe(
-      expected
-    );
+    await expect(executeRedisRead({ operation: 'string.get', execute })).rejects.toBe(expected);
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
@@ -151,7 +160,7 @@ describe('executeRedisOperation', () => {
       const execute = vi.fn().mockResolvedValue('value');
 
       await expect(
-        executeRedisOperation({ operation: 'string.get', execute, timeoutMs })
+        executeRedisRead({ operation: 'string.get', execute, timeoutMs })
       ).rejects.toMatchObject({ code: 'REDIS_INVALID_ARGUMENT', outcome: 'not-started' });
       expect(execute).not.toHaveBeenCalled();
     }

@@ -24,9 +24,9 @@ vi.mock('ioredis', () => {
 import {
   closeRedisRuntime,
   configureRedisRuntime,
-  createRedisRuntime,
   getConfiguredRedisRuntime,
   getRedisRuntime,
+  RedisRuntime,
   type RedisClient,
   type RedisClientFactory
 } from '@fastgpt/dal/redis/runtime';
@@ -59,9 +59,9 @@ afterEach(async () => {
   await closeRedisRuntime();
 });
 
-describe('createRedisRuntime', () => {
+describe('RedisRuntime', () => {
   it('uses the default ioredis client factory when none is supplied', async () => {
-    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost' });
+    const runtime = new RedisRuntime({ redisUrl: 'redis://localhost' });
     const client = runtime.getCommandConnection() as unknown as {
       options: Record<string, unknown>;
       quit: ReturnType<typeof vi.fn>;
@@ -77,7 +77,7 @@ describe('createRedisRuntime', () => {
 
   it('creates role-specific clients with explicit command policies', () => {
     const { clients, factory } = createClientFactory();
-    const runtime = createRedisRuntime({
+    const runtime = new RedisRuntime({
       redisUrl: 'redis://user:password@localhost:6379/3',
       clientFactory: factory
     });
@@ -118,7 +118,7 @@ describe('createRedisRuntime', () => {
 
   it('tracks connection lifecycle and removes ended clients', () => {
     const { clients, factory } = createClientFactory();
-    const runtime = createRedisRuntime({ redisUrl: 'localhost:6379', clientFactory: factory });
+    const runtime = new RedisRuntime({ redisUrl: 'localhost:6379', clientFactory: factory });
     const client = runtime.getCommandConnection() as unknown as FakeRedisClient;
 
     client.emit('connect');
@@ -141,7 +141,7 @@ describe('createRedisRuntime', () => {
 
   it('supports health checks and rejects unexpected responses', async () => {
     const { clients, factory } = createClientFactory();
-    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
+    const runtime = new RedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
 
     await expect(runtime.checkHealth()).resolves.toMatchObject({
       endpoint: { host: 'localhost', port: 6379 },
@@ -155,7 +155,7 @@ describe('createRedisRuntime', () => {
 
   it('releases tracked connections once under concurrent cleanup and ignores unknown clients', async () => {
     const { factory } = createClientFactory();
-    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
+    const runtime = new RedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
     const tracked = runtime.createBlockingConnection() as unknown as FakeRedisClient;
     const unknown = new FakeRedisClient({}) as unknown as RedisClient;
     let resolveQuit: ((value: string) => void) | undefined;
@@ -180,7 +180,7 @@ describe('createRedisRuntime', () => {
 
   it('falls back to disconnect when graceful close fails and is idempotent', async () => {
     const { factory } = createClientFactory();
-    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
+    const runtime = new RedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
     const client = runtime.getCommandConnection() as unknown as FakeRedisClient;
     client.quit.mockRejectedValueOnce(new Error('close failed'));
 
@@ -199,7 +199,7 @@ describe('createRedisRuntime', () => {
       warn: vi.fn(),
       error: vi.fn()
     };
-    const runtime = createRedisRuntime({
+    const runtime = new RedisRuntime({
       redisUrl: 'redis://localhost',
       clientFactory: factory,
       logger
@@ -221,7 +221,7 @@ describe('createRedisRuntime', () => {
 
   it('runs before-close hooks and closes connections in role order', async () => {
     const { clients, factory } = createClientFactory();
-    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
+    const runtime = new RedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
     const order: string[] = [];
     const command = runtime.getCommandConnection() as unknown as FakeRedisClient;
     const blocking = runtime.createBlockingConnection() as unknown as FakeRedisClient;
@@ -264,7 +264,7 @@ describe('createRedisRuntime', () => {
     vi.useFakeTimers();
     try {
       const { clients, factory } = createClientFactory();
-      const runtime = createRedisRuntime({
+      const runtime = new RedisRuntime({
         redisUrl: 'redis://localhost',
         clientFactory: factory,
         healthCheckTimeoutMs: 10,
@@ -302,7 +302,7 @@ describe('createRedisRuntime', () => {
 
   it('allows a registered before-close hook to be replaced or removed', async () => {
     const { factory } = createClientFactory();
-    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
+    const runtime = new RedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
     const first = vi.fn();
     const replacement = vi.fn();
     const unregisterFirst = runtime.registerBeforeCloseHook({ name: 'resource', close: first });
@@ -321,7 +321,7 @@ describe('createRedisRuntime', () => {
 
   it('exposes reconnect policy without resending unknown command writes', () => {
     const { factory } = createClientFactory();
-    const runtime = createRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
+    const runtime = new RedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });
     const client = runtime.getCommandConnection() as unknown as FakeRedisClient;
     const options = client.options as {
       retryStrategy: (attempt: number) => number;

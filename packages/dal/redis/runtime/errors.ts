@@ -17,7 +17,7 @@ export class RedisOperationError extends Error {
   override readonly cause?: unknown;
 
   constructor({
-    name,
+    // name,
     message,
     code,
     operation,
@@ -25,7 +25,6 @@ export class RedisOperationError extends Error {
     outcome,
     cause
   }: {
-    name: string;
     message: string;
     code: RedisOperationErrorCode;
     operation: string;
@@ -34,7 +33,7 @@ export class RedisOperationError extends Error {
     cause?: unknown;
   }) {
     super(message);
-    this.name = name;
+    this.name = new.target.name;
     this.code = code;
     this.operation = operation;
     this.role = role;
@@ -46,7 +45,6 @@ export class RedisOperationError extends Error {
 export class RedisInvalidArgumentError extends RedisOperationError {
   constructor({ operation, message }: { operation: string; message: string }) {
     super({
-      name: 'RedisInvalidArgumentError',
       message,
       code: 'REDIS_INVALID_ARGUMENT',
       operation,
@@ -59,7 +57,6 @@ export class RedisInvalidArgumentError extends RedisOperationError {
 export class RedisInvalidResponseError extends RedisOperationError {
   constructor({ operation, message }: { operation: string; message: string }) {
     super({
-      name: 'RedisInvalidResponseError',
       message,
       code: 'REDIS_INVALID_RESPONSE',
       operation,
@@ -84,7 +81,6 @@ export class RedisOperationExecutionError extends RedisOperationError {
     cause: unknown;
   }) {
     super({
-      name: 'RedisOperationExecutionError',
       message: `Redis operation ${operation} failed`,
       code: 'REDIS_OPERATION_FAILED',
       operation,
@@ -112,7 +108,6 @@ export class RedisOperationTimeoutError extends RedisOperationError {
     outcome: Exclude<RedisOperationOutcome, 'not-started'>;
   }) {
     super({
-      name: 'RedisOperationTimeoutError',
       message: `Redis operation ${operation} timed out`,
       code: 'REDIS_OPERATION_TIMEOUT',
       operation,

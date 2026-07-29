@@ -11,7 +11,7 @@ const OUTLINK_STREAM_NAMESPACE = 'cache:streamResponse';
 const StreamIdSchema = z.string().min(1);
 
 export type OutLinkStreamCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'appendStringWithTtl' | 'delete' | 'get'>;
+  redis?: RedisCacheAdapter;
 };
 
 /** 构造 OutLink 字符串响应缓存的逻辑 key，禁止业务层直接拼接 cache 前缀。 */
@@ -25,7 +25,7 @@ export const getOutLinkStreamKey = (streamId: string) =>
  * 读取 miss 返回 undefined，删除结果由 adapter 透传。通道响应和加密编排留在调用方。
  */
 export class OutLinkStreamCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'appendStringWithTtl' | 'delete' | 'get'>;
+  private readonly redis: RedisCacheAdapter;
 
   constructor({ redis = redisCacheAdapter }: OutLinkStreamCacheOptions = {}) {
     this.redis = redis;

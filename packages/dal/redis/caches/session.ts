@@ -28,10 +28,7 @@ const SessionHashSchema = z.object({
 });
 
 export type SessionCacheOptions = {
-  redis?: Pick<
-    RedisCacheAdapter,
-    'delete' | 'deleteMany' | 'getHashAll' | 'iterateByPrefix' | 'setHashWithTtl'
-  >;
+  redis?: RedisCacheAdapter;
   logger: RedisCacheLogger;
 };
 
@@ -47,10 +44,7 @@ export type SessionRecord = {
  * 错误向上抛出保持 fail-closed。损坏 hash 会被记录并尽力删除，避免后续请求重复解析。
  */
 export class SessionCache {
-  private readonly redis: Pick<
-    RedisCacheAdapter,
-    'delete' | 'deleteMany' | 'getHashAll' | 'iterateByPrefix' | 'setHashWithTtl'
-  >;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger;
 
   constructor({ redis = redisCacheAdapter, logger }: SessionCacheOptions) {

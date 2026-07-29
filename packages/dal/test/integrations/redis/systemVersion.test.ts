@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { SystemVersionCache } from '@fastgpt/dal/redis/caches';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
@@ -31,7 +31,7 @@ describeWithRedis('SystemVersionCache Redis 7.2 integration', () => {
   });
 
   it('returns one permanent UUID across concurrent first initialization', async () => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client });
     const cache = new SystemVersionCache({ redis: adapter });
 
     const versions = await Promise.all(
@@ -50,7 +50,7 @@ describeWithRedis('SystemVersionCache Redis 7.2 integration', () => {
     await pipeline.exec();
 
     const scanSpy = vi.spyOn(client, 'scan');
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client });
     const cache = new SystemVersionCache({ redis: adapter });
 
     await cache.refresh({ key, id: '*' });

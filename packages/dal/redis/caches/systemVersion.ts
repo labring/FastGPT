@@ -10,7 +10,7 @@ const SYSTEM_VERSION_PREFIX = 'VERSION_KEY:';
 const SYSTEM_VERSION_SCAN_BATCH_SIZE = 100;
 
 export type SystemVersionCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'deleteMany' | 'getOrSet' | 'iterateByPrefix' | 'set'>;
+  redis?: RedisCacheAdapter;
   createVersion?: () => string;
 };
 
@@ -22,10 +22,7 @@ export type SystemVersionCacheOptions = {
  * Redis 是版本一致性的事实来源，所有错误均向上传播。
  */
 export class SystemVersionCache {
-  private readonly redis: Pick<
-    RedisCacheAdapter,
-    'deleteMany' | 'getOrSet' | 'iterateByPrefix' | 'set'
-  >;
+  private readonly redis: RedisCacheAdapter;
   private readonly createVersion: () => string;
 
   constructor({

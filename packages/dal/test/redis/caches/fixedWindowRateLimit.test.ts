@@ -5,7 +5,7 @@ describe('FixedWindowRateLimitCache', () => {
   const consumeFixedWindow = vi.fn();
   const now = vi.fn(() => 1_000_000);
   const cache = new FixedWindowRateLimitCache({
-    redis: { consumeFixedWindow },
+    redis: { consumeFixedWindow } as any,
     now
   });
 

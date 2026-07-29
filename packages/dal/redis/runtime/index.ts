@@ -1,7 +1,7 @@
 export {
   closeRedisRuntime,
   configureRedisRuntime,
-  createRedisRuntime,
+  RedisRuntime,
   getConfiguredRedisRuntime,
   getRedisRuntime
 } from './connection';
@@ -13,7 +13,6 @@ export type {
   RedisConnectionSnapshot,
   RedisConnectionState,
   RedisEndpoint,
-  RedisRuntime,
   RedisRuntimeLogger,
   RedisRuntimeOptions
 } from './connection';

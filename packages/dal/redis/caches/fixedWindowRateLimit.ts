@@ -15,7 +15,7 @@ export type FixedWindowRateLimitResult = {
 };
 
 export type FixedWindowRateLimitCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'consumeFixedWindow'>;
+  redis?: RedisCacheAdapter;
   now?: () => number;
 };
 
@@ -26,7 +26,7 @@ export type FixedWindowRateLimitCacheOptions = {
  * Redis 执行错误向上抛出，由认证或 API service 统一映射为 fail-closed。
  */
 export class FixedWindowRateLimitCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'consumeFixedWindow'>;
+  private readonly redis: RedisCacheAdapter;
   private readonly now: () => number;
 
   constructor({

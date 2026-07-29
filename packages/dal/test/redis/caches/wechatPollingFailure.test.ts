@@ -4,7 +4,7 @@ import {
   WechatPollingFailureCache,
   getWechatPollingFailureKey
 } from '@fastgpt/dal/redis/caches';
-import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { asRedisLogicalKey, RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 const shareId = 'share-1';
 const logicalKey = 'cache:wechat:publish:failures:share-1';
@@ -15,7 +15,7 @@ describe('WechatPollingFailureCache', () => {
     delete: vi.fn(),
     incrementIntegerWithTtl: vi.fn(),
     set: vi.fn()
-  };
+  } as any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,7 +67,7 @@ describe('WechatPollingFailureCache', () => {
       ])
     };
     commandClient.multi.mockReturnValue(multi);
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new WechatPollingFailureCache({ redis: adapter });
 
     await expect(cache.increment(shareId)).resolves.toBe(3);

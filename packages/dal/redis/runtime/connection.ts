@@ -1,6 +1,8 @@
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { parseRedisConnectionConfig, type RedisEndpoint } from './config';
+import { getConnectionOptions, getInitialConnectionState } from './policy';
+import { runWithTimeout } from './timeout';
 import type { RedisRuntimeLogger } from '../types';
 
 export type { RedisRuntimeLogger } from '../types';
@@ -39,83 +41,6 @@ const silentLogger: RedisRuntimeLogger = {
 const DEFAULT_HEALTH_CHECK_TIMEOUT_MS = 3_000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
 const DEFAULT_BEFORE_CLOSE_TIMEOUT_MS = 15_000;
-const DEFAULT_COMMAND_TIMEOUT_MS = 5_000;
-
-const roleOptions: Record<
-  RedisConnectionRole,
-  Partial<
-    Pick<
-      RedisOptions,
-      | 'autoResendUnfulfilledCommands'
-      | 'commandTimeout'
-      | 'enableOfflineQueue'
-      | 'maxRetriesPerRequest'
-    >
-  >
-> = {
-  command: {
-    enableOfflineQueue: true,
-    maxRetriesPerRequest: 1,
-    commandTimeout: DEFAULT_COMMAND_TIMEOUT_MS,
-    autoResendUnfulfilledCommands: false
-  },
-  blocking: {
-    enableOfflineQueue: true,
-    maxRetriesPerRequest: null,
-    autoResendUnfulfilledCommands: false
-  },
-  queue: {
-    enableOfflineQueue: true,
-    maxRetriesPerRequest: 3
-  },
-  worker: {
-    enableOfflineQueue: true,
-    maxRetriesPerRequest: null
-  }
-};
-
-const reconnectErrorMessages = ['READONLY', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'];
-
-const getErrorMessage = (error: unknown) => {
-  return error instanceof Error ? error.message : String(error ?? 'Unknown Redis error');
-};
-
-const getInitialConnectionState = (client: RedisClient): RedisConnectionState => {
-  if (client.status === 'ready') return 'ready';
-  if (client.status === 'connect') return 'connected';
-  if (client.status === 'reconnecting') return 'reconnecting';
-  if (client.status === 'close') return 'closed';
-  return 'connecting';
-};
-
-const getConnectionOptions = ({
-  endpointOptions,
-  role,
-  logger
-}: {
-  endpointOptions: RedisOptions;
-  role: RedisConnectionRole;
-  logger: RedisRuntimeLogger;
-}): RedisOptions => ({
-  ...endpointOptions,
-  retryStrategy: (times: number) => {
-    const delayMs = Math.min(times * 50, 2000);
-    if (times === 1 || times % 30 === 0) {
-      logger.warn('Redis reconnect scheduled', { role, attempt: times, delayMs });
-    }
-    return delayMs;
-  },
-  reconnectOnError: (error: Error) => {
-    const message = getErrorMessage(error);
-    const shouldReconnect = reconnectErrorMessages.some((errorType) => message.includes(errorType));
-    if (shouldReconnect) {
-      logger.warn('Redis reconnect requested by command error', { role, message });
-    }
-    return shouldReconnect;
-  },
-  connectTimeout: 10_000,
-  ...roleOptions[role]
-});
 
 export type RedisRuntimeOptions = {
   redisUrl: string;
@@ -126,180 +51,232 @@ export type RedisRuntimeOptions = {
   beforeCloseTimeoutMs?: number;
 };
 
-const runWithTimeout = <T>({
-  operation,
-  timeoutMs,
-  timeoutMessage
-}: {
-  operation: Promise<T>;
-  timeoutMs: number;
-  timeoutMessage: string;
-}) => {
-  return new Promise<T>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-
-    operation.then(resolve, reject).finally(() => clearTimeout(timeout));
-  });
-};
-
 /**
- * 创建进程级 Redis Runtime。
+ * 进程级 Redis Runtime。
  *
  * Runtime 统一管理不同角色的连接、状态、健康检查和关闭。所有 command 操作都经过
  * DAL adapter 显式转换 physical key，不再创建带隐式 keyPrefix 的 legacy client。
  */
-export const createRedisRuntime = ({
-  redisUrl,
-  logger = silentLogger,
-  clientFactory = (options) => new Redis(options),
-  healthCheckTimeoutMs = DEFAULT_HEALTH_CHECK_TIMEOUT_MS,
-  closeTimeoutMs = DEFAULT_CLOSE_TIMEOUT_MS,
-  beforeCloseTimeoutMs = DEFAULT_BEFORE_CLOSE_TIMEOUT_MS
-}: RedisRuntimeOptions) => {
-  const { options: endpointOptions, endpoint } = parseRedisConnectionConfig(redisUrl);
-  const connections = new Map<RedisClient, RedisConnectionSnapshot>();
-  const connectionClosePromises = new Map<RedisClient, Promise<void>>();
-  const beforeCloseHooks = new Map<string, RedisBeforeCloseHook['close']>();
-  let nextConnectionId = 1;
-  let commandClient: RedisClient | undefined;
-  let state: 'open' | 'closing' | 'closed' = 'open';
-  let closePromise: Promise<void> | undefined;
+export class RedisRuntime {
+  readonly endpoint: RedisEndpoint;
 
-  const updateConnection = (
+  private readonly endpointOptions: RedisOptions;
+  private readonly logger: RedisRuntimeLogger;
+  private readonly clientFactory: RedisClientFactory;
+  private readonly healthCheckTimeoutMs: number;
+  private readonly closeTimeoutMs: number;
+  private readonly beforeCloseTimeoutMs: number;
+  private readonly connections = new Map<RedisClient, RedisConnectionSnapshot>();
+  private readonly connectionClosePromises = new Map<RedisClient, Promise<void>>();
+  private readonly beforeCloseHooks = new Map<string, RedisBeforeCloseHook['close']>();
+  private nextConnectionId = 1;
+  private commandClient: RedisClient | undefined;
+  private state: 'open' | 'closing' | 'closed' = 'open';
+  private closePromise: Promise<void> | undefined;
+
+  constructor({
+    redisUrl,
+    logger = silentLogger,
+    clientFactory = (options) => new Redis(options),
+    healthCheckTimeoutMs = DEFAULT_HEALTH_CHECK_TIMEOUT_MS,
+    closeTimeoutMs = DEFAULT_CLOSE_TIMEOUT_MS,
+    beforeCloseTimeoutMs = DEFAULT_BEFORE_CLOSE_TIMEOUT_MS
+  }: RedisRuntimeOptions) {
+    const { options: endpointOptions, endpoint } = parseRedisConnectionConfig(redisUrl);
+    this.endpointOptions = endpointOptions;
+    this.endpoint = endpoint;
+    this.logger = logger;
+    this.clientFactory = clientFactory;
+    this.healthCheckTimeoutMs = healthCheckTimeoutMs;
+    this.closeTimeoutMs = closeTimeoutMs;
+    this.beforeCloseTimeoutMs = beforeCloseTimeoutMs;
+
+    // 保留工厂返回对象原有的可解构调用行为，传给回调时也不会丢失 Runtime 上下文。
+    this.getState = this.getState.bind(this);
+    this.getCommandConnection = this.getCommandConnection.bind(this);
+    this.createBlockingConnection = this.createBlockingConnection.bind(this);
+    this.createQueueConnection = this.createQueueConnection.bind(this);
+    this.createWorkerConnection = this.createWorkerConnection.bind(this);
+    this.registerBeforeCloseHook = this.registerBeforeCloseHook.bind(this);
+    this.getConnectionSnapshot = this.getConnectionSnapshot.bind(this);
+    this.checkHealth = this.checkHealth.bind(this);
+    this.releaseConnection = this.releaseConnection.bind(this);
+    this.close = this.close.bind(this);
+  }
+
+  private updateConnection(
     client: RedisClient,
     state: RedisConnectionState,
     extra?: Pick<RedisConnectionSnapshot, 'lastErrorAt'>
-  ) => {
-    const connection = connections.get(client);
+  ) {
+    const connection = this.connections.get(client);
     if (!connection) return;
 
-    connections.set(client, {
+    this.connections.set(client, {
       ...connection,
       ...extra,
       state
     });
-  };
+  }
 
-  const defineConnection = (client: RedisClient, role: RedisConnectionRole) => {
-    connections.set(client, {
-      id: nextConnectionId++,
+  private defineConnection(client: RedisClient, role: RedisConnectionRole) {
+    this.connections.set(client, {
+      id: this.nextConnectionId++,
       role,
       state: getInitialConnectionState(client),
       createdAt: Date.now()
     });
 
     client.on('connect', () => {
-      updateConnection(client, 'connected');
-      logger.info('Redis connection established', { role });
+      this.updateConnection(client, 'connected');
+      this.logger.info('Redis connection established', { role });
     });
     client.on('ready', () => {
-      updateConnection(client, 'ready');
-      logger.info('Redis connection ready', { role });
+      this.updateConnection(client, 'ready');
+      this.logger.info('Redis connection ready', { role });
     });
     client.on('reconnecting', () => {
-      updateConnection(client, 'reconnecting');
+      this.updateConnection(client, 'reconnecting');
     });
     client.on('error', (error: Error) => {
-      updateConnection(client, connections.get(client)?.state ?? 'connecting', {
+      this.updateConnection(client, this.connections.get(client)?.state ?? 'connecting', {
         lastErrorAt: Date.now()
       });
-      logger.error('Redis connection error', { role, error });
+      this.logger.error('Redis connection error', { role, error });
     });
     client.on('close', () => {
-      updateConnection(client, 'closed');
-      logger.warn('Redis connection closed', { role });
+      this.updateConnection(client, 'closed');
+      this.logger.warn('Redis connection closed', { role });
     });
     client.on('end', () => {
-      updateConnection(client, 'ended');
-      connections.delete(client);
-      if (commandClient === client) {
-        commandClient = undefined;
+      this.updateConnection(client, 'ended');
+      this.connections.delete(client);
+      if (this.commandClient === client) {
+        this.commandClient = undefined;
       }
     });
 
     return client;
-  };
+  }
 
-  const assertOpen = () => {
-    if (state !== 'open') {
-      throw new Error(`Redis runtime is ${state}`);
+  private assertOpen() {
+    if (this.state !== 'open') {
+      throw new Error(`Redis runtime is ${this.state}`);
     }
-  };
+  }
 
-  const createConnection = (role: RedisConnectionRole) => {
-    assertOpen();
-    const client = clientFactory(getConnectionOptions({ endpointOptions, role, logger }));
-    return defineConnection(client, role);
-  };
+  private createConnection(role: RedisConnectionRole) {
+    this.assertOpen();
+    const client = this.clientFactory(
+      getConnectionOptions({ endpointOptions: this.endpointOptions, role, logger: this.logger })
+    );
+    return this.defineConnection(client, role);
+  }
 
-  const getCommandConnection = () => {
-    assertOpen();
-    commandClient ??= createConnection('command');
-    return commandClient;
-  };
+  getState() {
+    return this.state;
+  }
 
-  const releaseConnection = (client: RedisClient) => {
-    const activeClose = connectionClosePromises.get(client);
+  getCommandConnection() {
+    this.assertOpen();
+    this.commandClient ??= this.createConnection('command');
+    return this.commandClient;
+  }
+
+  createBlockingConnection() {
+    return this.createConnection('blocking');
+  }
+
+  createQueueConnection() {
+    return this.createConnection('queue');
+  }
+
+  createWorkerConnection() {
+    return this.createConnection('worker');
+  }
+
+  registerBeforeCloseHook({ name, close }: RedisBeforeCloseHook) {
+    this.assertOpen();
+    this.beforeCloseHooks.set(name, close);
+
+    return () => {
+      if (this.beforeCloseHooks.get(name) === close) {
+        this.beforeCloseHooks.delete(name);
+      }
+    };
+  }
+
+  getConnectionSnapshot() {
+    return Array.from(this.connections.values()).map((item) => ({ ...item }));
+  }
+
+  async checkHealth() {
+    const startedAt = Date.now();
+    const response = await runWithTimeout({
+      operation: this.getCommandConnection().ping(),
+      timeoutMs: this.healthCheckTimeoutMs,
+      timeoutMessage: 'Redis health check timed out'
+    });
+    if (response !== 'PONG') {
+      throw new Error('Redis health check returned an unexpected response');
+    }
+    return {
+      latencyMs: Date.now() - startedAt,
+      endpoint: this.endpoint
+    };
+  }
+
+  releaseConnection(client: RedisClient) {
+    const activeClose = this.connectionClosePromises.get(client);
     if (activeClose) return activeClose;
-    if (!connections.has(client)) return Promise.resolve();
+    if (!this.connections.has(client)) return Promise.resolve();
 
-    const role = connections.get(client)?.role;
+    const role = this.connections.get(client)?.role;
     const connectionClosePromise = (async () => {
       try {
         await runWithTimeout({
           operation: client.quit(),
-          timeoutMs: closeTimeoutMs,
+          timeoutMs: this.closeTimeoutMs,
           timeoutMessage: `Redis ${role ?? 'unknown'} connection close timed out`
         });
       } catch (error) {
-        logger.warn('Redis graceful close failed, disconnecting socket', {
+        this.logger.warn('Redis graceful close failed, disconnecting socket', {
           role,
           error
         });
         try {
           client.disconnect();
         } catch (disconnectError) {
-          logger.warn('Redis forced disconnect failed', { role, error: disconnectError });
+          this.logger.warn('Redis forced disconnect failed', { role, error: disconnectError });
         }
       } finally {
-        connections.delete(client);
-        connectionClosePromises.delete(client);
-        if (commandClient === client) {
-          commandClient = undefined;
+        this.connections.delete(client);
+        this.connectionClosePromises.delete(client);
+        if (this.commandClient === client) {
+          this.commandClient = undefined;
         }
       }
     })();
-    connectionClosePromises.set(client, connectionClosePromise);
+    this.connectionClosePromises.set(client, connectionClosePromise);
 
     return connectionClosePromise;
-  };
+  }
 
-  const registerBeforeCloseHook = ({ name, close }: RedisBeforeCloseHook) => {
-    assertOpen();
-    beforeCloseHooks.set(name, close);
+  close() {
+    if (this.closePromise) return this.closePromise;
 
-    return () => {
-      if (beforeCloseHooks.get(name) === close) {
-        beforeCloseHooks.delete(name);
-      }
-    };
-  };
-
-  const close = () => {
-    if (closePromise) return closePromise;
-
-    state = 'closing';
-    closePromise = (async () => {
-      const hooks = Array.from(beforeCloseHooks.entries());
-      beforeCloseHooks.clear();
+    this.state = 'closing';
+    this.closePromise = (async () => {
+      const hooks = Array.from(this.beforeCloseHooks.entries());
+      this.beforeCloseHooks.clear();
 
       for (const [name, closeHook] of hooks) {
         await runWithTimeout({
           operation: Promise.resolve().then(closeHook),
-          timeoutMs: beforeCloseTimeoutMs,
+          timeoutMs: this.beforeCloseTimeoutMs,
           timeoutMessage: `Redis before-close hook ${name} timed out`
         }).catch((error) => {
-          logger.warn('Redis before-close hook failed', { name, error });
+          this.logger.warn('Redis before-close hook failed', { name, error });
         });
       }
 
@@ -310,47 +287,17 @@ export const createRedisRuntime = ({
         ['command']
       ];
       for (const roles of closeRoleGroups) {
-        const clients = Array.from(connections.entries())
+        const clients = Array.from(this.connections.entries())
           .filter(([, connection]) => roles.includes(connection.role))
           .map(([client]) => client);
-        await Promise.all(clients.map(releaseConnection));
+        await Promise.all(clients.map(this.releaseConnection));
       }
-      state = 'closed';
+      this.state = 'closed';
     })();
 
-    return closePromise;
-  };
-
-  return {
-    endpoint,
-    getState: () => state,
-    getCommandConnection,
-    createBlockingConnection: () => createConnection('blocking'),
-    createQueueConnection: () => createConnection('queue'),
-    createWorkerConnection: () => createConnection('worker'),
-    registerBeforeCloseHook,
-    getConnectionSnapshot: () => Array.from(connections.values()).map((item) => ({ ...item })),
-    checkHealth: async () => {
-      const startedAt = Date.now();
-      const response = await runWithTimeout({
-        operation: getCommandConnection().ping(),
-        timeoutMs: healthCheckTimeoutMs,
-        timeoutMessage: 'Redis health check timed out'
-      });
-      if (response !== 'PONG') {
-        throw new Error('Redis health check returned an unexpected response');
-      }
-      return {
-        latencyMs: Date.now() - startedAt,
-        endpoint
-      };
-    },
-    releaseConnection,
-    close
-  };
-};
-
-export type RedisRuntime = ReturnType<typeof createRedisRuntime>;
+    return this.closePromise;
+  }
+}
 
 type RedisRuntimeRegistration = {
   configurationKey: string;
@@ -396,7 +343,7 @@ export const configureRedisRuntime = (options: RedisRuntimeOptions): RedisRuntim
     return existing.runtime;
   }
 
-  const runtime = createRedisRuntime(options);
+  const runtime = new RedisRuntime(options);
   context.resources.set(DEFAULT_REDIS_RESOURCE_ID, { configurationKey, runtime });
   return runtime;
 };

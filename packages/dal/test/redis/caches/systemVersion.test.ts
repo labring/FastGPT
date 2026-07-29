@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { SystemVersionCache } from '@fastgpt/dal/redis/caches';
 
 const createKeyBatches = async function* (batches: string[][]) {
@@ -30,7 +30,7 @@ describe('SystemVersionCache', () => {
     const commandClient = {
       set: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('version-existing')
     };
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new SystemVersionCache({ redis: adapter, createVersion });
 
     await expect(cache.getOrInitialize({ key: 'modelPermission' })).resolves.toBe('version-new');

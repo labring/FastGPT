@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { asRedisLogicalKey, RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { SESSION_TTL_SECONDS, SessionCache } from '@fastgpt/dal/redis/caches';
 
 const createKeyBatches = async function* (batches: string[][]) {
@@ -265,7 +265,7 @@ describe('SessionCache adapter integration', () => {
       ])
     };
     commandClient.multi.mockReturnValue(multi);
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new SessionCache({
       redis: adapter,
       logger: { error: vi.fn(), warn: vi.fn() }

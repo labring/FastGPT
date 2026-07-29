@@ -6,7 +6,7 @@ import {
   OutLinkStreamCache,
   getOutLinkStreamKey
 } from '@fastgpt/dal/redis/caches';
-import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { asRedisLogicalKey, RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 const streamId = 'stream-1';
 const logicalKey = 'cache:streamResponse:stream-1';
@@ -17,7 +17,7 @@ describe('OutLinkStreamCache', () => {
     appendStringWithTtl: vi.fn(),
     delete: vi.fn(),
     get: vi.fn()
-  };
+  } as any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,7 +75,7 @@ describe('OutLinkStreamCache', () => {
       exec: commandClient.exec
     };
     commandClient.multi.mockReturnValue(multi);
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new OutLinkStreamCache({ redis: adapter });
 
     await cache.append({ streamId, value: 'hello', ttlSeconds: 60 });

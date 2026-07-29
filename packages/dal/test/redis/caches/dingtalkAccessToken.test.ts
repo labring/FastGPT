@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { DingtalkAccessTokenCache } from '@fastgpt/dal/redis/caches';
 
 const server = {
@@ -36,7 +36,7 @@ describe('DingtalkAccessTokenCache', () => {
       set: vi.fn().mockResolvedValue('OK'),
       del: vi.fn().mockResolvedValue(0)
     };
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new DingtalkAccessTokenCache({
       redis: adapter,
       logger

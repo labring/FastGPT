@@ -35,17 +35,7 @@ export type StreamResumeKeys = {
 };
 
 export type StreamResumeCacheOptions = {
-  redis?: Pick<
-    RedisCacheAdapter,
-    | 'appendStreamEntry'
-    | 'createBlockingStreamReader'
-    | 'delete'
-    | 'expireStream'
-    | 'get'
-    | 'getMemoryInfo'
-    | 'rangeStream'
-    | 'set'
-  >;
+  redis?: RedisCacheAdapter;
   logger: RedisCacheLogger<'error'>;
   streamTtlSeconds: number;
   postCompleteTtlSeconds: number;
@@ -77,17 +67,7 @@ const parsePositiveConfig = ({
  * blocking reader 生命周期；HTTP/SSE response 和终止事件由 service 层继续编排。
  */
 export class StreamResumeCache {
-  private readonly redis: Pick<
-    RedisCacheAdapter,
-    | 'appendStreamEntry'
-    | 'createBlockingStreamReader'
-    | 'delete'
-    | 'expireStream'
-    | 'get'
-    | 'getMemoryInfo'
-    | 'rangeStream'
-    | 'set'
-  >;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger<'error'>;
   private readonly parsedStreamTtlSeconds: number;
   private readonly parsedPostCompleteTtlSeconds: number;

@@ -10,16 +10,17 @@ const params = {
   chatId: 'chat-1'
 };
 
-const createRedis = () => ({
-  appendStreamEntry: vi.fn().mockResolvedValue('1-0'),
-  createBlockingStreamReader: vi.fn(),
-  delete: vi.fn().mockResolvedValue(false),
-  expireStream: vi.fn().mockResolvedValue(undefined),
-  get: vi.fn().mockResolvedValue(null),
-  getMemoryInfo: vi.fn().mockResolvedValue({}),
-  rangeStream: vi.fn().mockResolvedValue([]),
-  set: vi.fn().mockResolvedValue(undefined)
-});
+const createRedis = () =>
+  ({
+    appendStreamEntry: vi.fn().mockResolvedValue('1-0'),
+    createBlockingStreamReader: vi.fn(),
+    delete: vi.fn().mockResolvedValue(false),
+    expireStream: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+    getMemoryInfo: vi.fn().mockResolvedValue({}),
+    rangeStream: vi.fn().mockResolvedValue([]),
+    set: vi.fn().mockResolvedValue(undefined)
+  }) as any;
 
 const logger: RedisCacheLogger<'error'> = {
   error: vi.fn()

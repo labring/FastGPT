@@ -15,7 +15,7 @@ export const WorkflowStopSignalParamsSchema = z.object({
 export type WorkflowStopSignalParams = z.infer<typeof WorkflowStopSignalParamsSchema>;
 
 export type WorkflowStopSignalCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  redis?: RedisCacheAdapter;
   logger: RedisCacheLogger<'warn'>;
 };
 
@@ -45,7 +45,7 @@ export const getWorkflowStopSignalKey = ({
  * Redis 故障覆盖工作流或辅助生成的最终结果。
  */
 export class WorkflowStopSignalCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger<'warn'>;
 
   constructor({ redis = redisCacheAdapter, logger }: WorkflowStopSignalCacheOptions) {

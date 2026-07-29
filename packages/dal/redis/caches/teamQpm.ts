@@ -16,7 +16,7 @@ const TeamQpmCacheValueSchema = z
   .pipe(PositiveSafeIntegerSchema);
 
 export type TeamQpmCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  redis?: RedisCacheAdapter;
 };
 
 /**
@@ -26,7 +26,7 @@ export type TeamQpmCacheOptions = {
  * 决定。损坏缓存按 miss 处理，避免把 NaN 当成“不限流”。
  */
 export class TeamQpmCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  private readonly redis: RedisCacheAdapter;
 
   constructor({ redis = redisCacheAdapter }: TeamQpmCacheOptions = {}) {
     this.redis = redis;

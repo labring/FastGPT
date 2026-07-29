@@ -15,7 +15,7 @@ type DingtalkAccessTokenServer = {
 };
 
 export type DingtalkAccessTokenCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  redis?: RedisCacheAdapter;
   logger: RedisCacheLogger<'warn'>;
 };
 
@@ -26,7 +26,7 @@ export type DingtalkAccessTokenCacheOptions = {
  * miss 降级，不阻断上游 token 获取；上游错误仍原样抛给调用方。
  */
 export class DingtalkAccessTokenCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger<'warn'>;
   private readonly refreshingTokenMap = new Map<string, Promise<string>>();
 

@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { DailyActiveDedupeCache } from '@fastgpt/dal/redis/caches';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
@@ -28,7 +28,7 @@ describeWithRedis('DailyActiveDedupeCache Redis 7.2 integration', () => {
   });
 
   it('allows exactly one winner across concurrent claims and keeps the historical TTL', async () => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client });
     const cache = new DailyActiveDedupeCache({ redis: adapter, logger });
 
     const results = await Promise.all(

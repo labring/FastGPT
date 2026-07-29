@@ -7,7 +7,7 @@ describe('TeamPointCache', () => {
     getPair: vi.fn(),
     incrementWithTtl: vi.fn(),
     setPair: vi.fn()
-  };
+  } as any;
   const logger = { warn: vi.fn() };
   const cache = new TeamPointCache({ redis, logger });
 

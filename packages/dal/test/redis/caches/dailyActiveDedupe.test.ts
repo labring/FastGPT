@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { DailyActiveDedupeCache } from '@fastgpt/dal/redis/caches';
 
 describe('DailyActiveDedupeCache', () => {
@@ -19,7 +19,7 @@ describe('DailyActiveDedupeCache', () => {
     const commandClient = {
       set: vi.fn().mockResolvedValue('OK')
     };
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new DailyActiveDedupeCache({ redis: adapter, logger });
 
     await expect(cache.shouldRecord({ uid: 'user-1', date: '2026-07-24' })).resolves.toBe(true);

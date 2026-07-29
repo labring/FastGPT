@@ -5,7 +5,7 @@ const TEAM_VECTOR_COUNT_CACHE_TTL_MS = 30 * 60 * 1000;
 const TEAM_VECTOR_CACHE_OPERATION_TIMEOUT_MS = 3000;
 
 export type TeamVectorCountCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  redis?: RedisCacheAdapter;
   logger: RedisCacheLogger<'warn'>;
 };
 
@@ -16,7 +16,7 @@ export type TeamVectorCountCacheOptions = {
  * 日志。Cache 不在业务层叠加 legacy cache helper 的通用重试。
  */
 export class TeamVectorCountCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger<'warn'>;
 
   constructor({ redis = redisCacheAdapter, logger }: TeamVectorCountCacheOptions) {

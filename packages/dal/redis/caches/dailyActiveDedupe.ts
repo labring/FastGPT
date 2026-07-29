@@ -4,7 +4,7 @@ import type { RedisCacheLogger } from '../types';
 const DAILY_ACTIVE_DEDUPE_TTL_SECONDS = 24 * 60 * 60;
 
 export type DailyActiveDedupeCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'setIfAbsent'>;
+  redis?: RedisCacheAdapter;
   logger: RedisCacheLogger<'warn'>;
 };
 
@@ -15,7 +15,7 @@ export type DailyActiveDedupeCacheOptions = {
  * tracking 继续写入事实存储，避免缓存故障造成活跃事件丢失。
  */
 export class DailyActiveDedupeCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'setIfAbsent'>;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger<'warn'>;
 
   constructor({ redis = redisCacheAdapter, logger }: DailyActiveDedupeCacheOptions) {

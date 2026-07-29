@@ -36,7 +36,7 @@ export const isRedisLeaseError = (error: unknown) =>
   error instanceof RedisLeaseAcquireError;
 
 export type LeaseCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'acquireLease' | 'releaseLease' | 'renewLease'>;
+  redis?: RedisCacheAdapter;
   logger: RedisCacheLogger<'warn'>;
 };
 
@@ -55,7 +55,7 @@ export type WithLeaseOptions<T> = {
  * 负责。获取异常和租约丢失会阻断临界区，释放失败只记录 warning，避免误报业务结果。
  */
 export class LeaseCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'acquireLease' | 'releaseLease' | 'renewLease'>;
+  private readonly redis: RedisCacheAdapter;
   private readonly logger: RedisCacheLogger<'warn'>;
 
   constructor({ redis = redisCacheAdapter, logger }: LeaseCacheOptions) {

@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { TeamPointCache } from '@fastgpt/dal/redis/caches';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
@@ -29,7 +29,7 @@ describeWithRedis('TeamPointCache Redis 7.2 integration', () => {
   });
 
   it('reads and refreshes both keys with the same TTL', async () => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client });
     const cache = new TeamPointCache({ redis: adapter });
 
     await cache.set({ teamId, totalPoints: 2_000, surplusPoints: 1_500 });
@@ -42,7 +42,7 @@ describeWithRedis('TeamPointCache Redis 7.2 integration', () => {
   });
 
   it('keeps pair reads coherent while concurrent pair writes occur', async () => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client });
     const cache = new TeamPointCache({ redis: adapter });
     await cache.set({ teamId, totalPoints: 0, surplusPoints: 0 });
 
@@ -62,7 +62,7 @@ describeWithRedis('TeamPointCache Redis 7.2 integration', () => {
   });
 
   it('increments surplus with TTL and clears both keys together', async () => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client });
     const cache = new TeamPointCache({ redis: adapter });
 
     await cache.set({ teamId, totalPoints: 100, surplusPoints: 40 });

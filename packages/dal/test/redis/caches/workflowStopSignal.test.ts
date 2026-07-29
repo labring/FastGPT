@@ -18,7 +18,7 @@ describe('WorkflowStopSignalCache', () => {
     delete: vi.fn(),
     get: vi.fn(),
     set: vi.fn()
-  };
+  } as any;
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -12,7 +12,7 @@ const WechatQrLoginDataSchema = z.looseObject({
 export type WechatQrLoginData = z.infer<typeof WechatQrLoginDataSchema>;
 
 export type WechatQrLoginCacheOptions = {
-  redis?: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  redis?: RedisCacheAdapter;
 };
 
 type WechatQrLoginKey = {
@@ -27,7 +27,7 @@ type WechatQrLoginKey = {
  * Redis 操作错误和损坏的缓存数据均 fail-closed，由应用边界处理。
  */
 export class WechatQrLoginCache {
-  private readonly redis: Pick<RedisCacheAdapter, 'delete' | 'get' | 'set'>;
+  private readonly redis: RedisCacheAdapter;
 
   constructor({ redis = redisCacheAdapter }: WechatQrLoginCacheOptions = {}) {
     this.redis = redis;

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { asRedisLogicalKey, RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import {
   LeaseCache,
   isRedisLeaseError,
@@ -16,7 +16,7 @@ describe('LeaseCache', () => {
     acquireLease: vi.fn(),
     releaseLease: vi.fn(),
     renewLease: vi.fn()
-  };
+  } as any;
 
   beforeEach(() => {
     vi.useRealTimers();
@@ -287,7 +287,7 @@ describe('Lease adapter operations', () => {
   it('uses the physical key for acquire, renew and release', async () => {
     client.set.mockResolvedValue('OK');
     client.eval.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.acquireLease({ key, token: 'token-1', ttlMs: 60_000 })).resolves.toBe(
       true
@@ -321,14 +321,14 @@ describe('Lease adapter operations', () => {
 
   it('accepts a missing lease as a normal acquire miss', async () => {
     client.set.mockResolvedValue(null);
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.acquireLease({ key, token: 'token-1', ttlMs: 60 })).resolves.toBe(false);
   });
 
   it.each(['invalid', 2])('rejects malformed lease command responses %#', async (result) => {
     client.set.mockResolvedValue(result);
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
     await expect(adapter.acquireLease({ key, token: 'token-1', ttlMs: 60 })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
       operation: 'lease.acquire'
@@ -351,14 +351,14 @@ describe('Lease adapter operations', () => {
     [{ token: '', ttlMs: 60 }, 'token must be a non-empty string'],
     [{ token: 'token-1', ttlMs: 0 }, 'ttlMs must be a positive safe integer']
   ])('rejects invalid adapter arguments %#', (input, message) => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.acquireLease({ key, ...input } as any)).toThrow(message);
     expect(client.set).not.toHaveBeenCalled();
   });
 
   it('rejects an empty renew token before evaluating the renew script', () => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.renewLease({ key, token: '', ttlMs: 60 })).toThrow(
       'token must be a non-empty string'
@@ -367,7 +367,7 @@ describe('Lease adapter operations', () => {
   });
 
   it('rejects an empty release token before evaluating the release script', () => {
-    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.releaseLease({ key, token: '' })).toThrow(
       'token must be a non-empty string'

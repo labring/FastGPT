@@ -6,7 +6,7 @@ describe('TeamQpmCache', () => {
     delete: vi.fn(),
     get: vi.fn(),
     set: vi.fn()
-  };
+  } as any;
   const cache = new TeamQpmCache({ redis });
 
   beforeEach(() => {
