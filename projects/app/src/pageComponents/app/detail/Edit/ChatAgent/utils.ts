@@ -34,12 +34,16 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
+  canInputBeAgentGenerated,
+  filterToolConfiguredParams,
+  getAgentToolInputMode,
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -301,28 +305,35 @@ export function agentForm2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
               value: data.selectedTools.map((tool) => {
+                const config = tool.inputs.reduce(
+                  (acc, input) => {
+                    if (input.key === NodeInputKeyEnum.forbidStream) {
+                      return acc;
+                    }
+                    // Special tool
+                    if (
+                      tool.flowNodeType === FlowNodeTypeEnum.appModule &&
+                      input.key === NodeInputKeyEnum.history
+                    ) {
+                      acc[input.key] = data.aiSettings.maxHistories;
+                    }
+                    acc[input.key] = input.value;
+                    return acc;
+                  },
+                  {} as Record<string, any>
+                );
+
                 return {
                   id: tool.pluginId,
+                  version: tool.version,
                   source: tool.source,
                   toolConfig: tool.toolConfig,
+                  inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
+                    key: input.key,
+                    mode: getAgentToolInputMode(input)
+                  })),
 
-                  config: tool.inputs.reduce(
-                    (acc, input) => {
-                      if (input.key === NodeInputKeyEnum.forbidStream) {
-                        return acc;
-                      }
-                      // Special tool
-                      if (
-                        tool.flowNodeType === FlowNodeTypeEnum.appModule &&
-                        input.key === NodeInputKeyEnum.history
-                      ) {
-                        acc[input.key] = data.aiSettings.maxHistories;
-                      }
-                      acc[input.key] = input.value;
-                      return acc;
-                    },
-                    {} as Record<string, any>
-                  )
+                  config: filterToolConfiguredParams({ params: config, inputs: tool.inputs })
                 };
               })
             },
@@ -449,7 +460,10 @@ export const loadGeneratedTools = async ({
         }
 
         // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
+        const tool = await getClientToolPreviewNode({
+          appId: toolId,
+          getLatestVersion: true
+        });
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
@@ -466,19 +480,12 @@ export const loadGeneratedTools = async ({
         }
 
         const generatedTool = generatedSelectedTools.find((item) => item.pluginId === toolId);
-        if (generatedTool) {
-          tool.inputs.forEach((input) => {
-            const generatedInput = generatedTool.inputs.find((topIn) => topIn.key === input.key);
-            if (generatedInput) {
-              input.value = generatedInput.value;
-            }
-          });
-        }
+        const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
 
         return {
-          ...tool,
+          ...inheritedTool,
           id: toolId,
-          configStatus: getToolConfigStatus({ tool }).status
+          configStatus: getToolConfigStatus({ tool: inheritedTool }).status
         };
       })
     )

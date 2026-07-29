@@ -59,8 +59,7 @@ export const defaultVariable: VariableItemType = {
 };
 
 export const addVariable = () => {
-  const newVariable = { ...defaultVariable, list: [{ value: '', label: '' }] };
-  return newVariable;
+  return { ...defaultVariable };
 };
 
 const VariableEdit = ({

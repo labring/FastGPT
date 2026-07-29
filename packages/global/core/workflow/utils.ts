@@ -60,13 +60,32 @@ export const getHandleId = (
   return `${nodeId}-${type}-${key}`;
 };
 
+export const getSelectedInputRenderType = (input: {
+  renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  selectedType?: FlowNodeInputItemType['selectedType'];
+  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
+}) => input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+
+export const getSelectedInputRenderTypeIndex = (input: {
+  renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  selectedType?: FlowNodeInputItemType['selectedType'];
+  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
+}) => {
+  const selectedRenderType = getSelectedInputRenderType(input);
+  const selectedTypeIndex = selectedRenderType
+    ? input.renderTypeList?.findIndex((renderType) => renderType === selectedRenderType)
+    : -1;
+
+  return selectedTypeIndex !== undefined && selectedTypeIndex >= 0 ? selectedTypeIndex : 0;
+};
+
 /**
  * 判断输入值是否应按工作流引用解析。
  * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，
  * 但它的值仍是 [nodeId, outputId]，运行时必须解析成知识库检索结果。
  */
 export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
-  const renderType = input.renderTypeList?.[input?.selectedTypeIndex || 0];
+  const renderType = getSelectedInputRenderType(input);
 
   if (
     renderType === FlowNodeInputTypeEnum.reference ||
@@ -205,6 +224,7 @@ export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
 };
 
 export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
+  void input;
   // if (input.renderTypeList === FlowNodeInputTypeEnum.input || input.type === FlowNodeInputTypeEnum.textarea) {
   //   return {
   //     placeholder: input.placeholder || input.description
@@ -261,6 +281,34 @@ const jsonRenderValueTypes = new Set<WorkflowIOValueTypeEnum>([
   WorkflowIOValueTypeEnum.arrayObject
 ]);
 
+/** 将应用变量类型映射为工作流节点输入控件，供应用节点和工具参数配置共用。 */
+export const getAppVariableRenderTypeList = ({
+  type,
+  valueType
+}: Pick<VariableItemType, 'type' | 'valueType'>): FlowNodeInputTypeEnum[] => {
+  const isJsonValueType = !!valueType && jsonRenderValueTypes.has(valueType);
+  const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
+    [VariableInputEnum.input]: isJsonValueType
+      ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+      : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.textarea]: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
+    [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
+    [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
+    [VariableInputEnum.timePointSelect]: [FlowNodeInputTypeEnum.timePointSelect],
+    [VariableInputEnum.timeRangeSelect]: [FlowNodeInputTypeEnum.timeRangeSelect],
+    [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
+    [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
+    [VariableInputEnum.file]: [FlowNodeInputTypeEnum.fileSelect, FlowNodeInputTypeEnum.reference],
+    [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
+    [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
+    [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
+    [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.customVariable]
+  };
+
+  return renderTypeMap[type] || [FlowNodeInputTypeEnum.reference];
+};
+
 export const appData2FlowNodeIO = ({
   chatConfig
 }: {
@@ -279,47 +327,33 @@ export const appData2FlowNodeIO = ({
           !textInputVariableValueTypes.includes(item.valueType)
             ? WorkflowIOValueTypeEnum.string
             : item.valueType;
-        const isJsonValueType =
-          !!normalizedValueType && jsonRenderValueTypes.has(normalizedValueType);
-        const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
-          [VariableInputEnum.input]: isJsonValueType
-            ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
-            : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          [VariableInputEnum.textarea]: [
-            FlowNodeInputTypeEnum.textarea,
-            FlowNodeInputTypeEnum.reference
-          ],
-          [VariableInputEnum.numberInput]: [FlowNodeInputTypeEnum.numberInput],
-          [VariableInputEnum.select]: [FlowNodeInputTypeEnum.select],
-          [VariableInputEnum.multipleSelect]: [FlowNodeInputTypeEnum.multipleSelect],
-          [VariableInputEnum.timePointSelect]: [FlowNodeInputTypeEnum.timePointSelect],
-          [VariableInputEnum.timeRangeSelect]: [FlowNodeInputTypeEnum.timeRangeSelect],
-          [VariableInputEnum.switch]: [FlowNodeInputTypeEnum.switch],
-          [VariableInputEnum.password]: [FlowNodeInputTypeEnum.password],
-          [VariableInputEnum.file]: [
-            FlowNodeInputTypeEnum.fileSelect,
-            FlowNodeInputTypeEnum.reference
-          ],
-          [VariableInputEnum.llmSelect]: [FlowNodeInputTypeEnum.selectLLMModel],
-          [VariableInputEnum.datasetSelect]: [FlowNodeInputTypeEnum.selectDataset],
-          [VariableInputEnum.internal]: [FlowNodeInputTypeEnum.hidden],
-          [VariableInputEnum.custom]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
-        };
-
+        const supportsOptions = [
+          VariableInputEnum.select,
+          VariableInputEnum.multipleSelect
+        ].includes(item.type);
         return {
           key: item.key,
-          renderTypeList: renderTypeMap[item.type] || [FlowNodeInputTypeEnum.reference],
+          renderTypeList: getAppVariableRenderTypeList({
+            type: item.type,
+            valueType: normalizedValueType
+          }),
           label: item.label,
           debugLabel: item.label,
-          description: '',
+          description: item.description,
           valueType: normalizedValueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
           defaultValue: item.defaultValue,
           value: item.defaultValue,
-          list: (item.list || item.enums)?.map((enumItem) => ({
-            label: enumItem.value,
-            value: enumItem.value
-          }))
+          ...(supportsOptions
+            ? {
+                list: (item.list || item.enums)
+                  ?.map((enumItem) => ({
+                    label: enumItem.value,
+                    value: enumItem.value
+                  }))
+                  .filter((enumItem) => String(enumItem.value ?? '').trim().length > 0)
+              }
+            : {})
         };
       });
 
@@ -334,7 +368,11 @@ export const appData2FlowNodeIO = ({
       chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
         ? [Input_Template_File_Link]
         : []),
-      Input_Template_UserChatInput,
+      {
+        ...Input_Template_UserChatInput,
+        // 普通工作流作为工具时，用户问题应默认由调用它的 Agent 生成。
+        isToolParam: true
+      },
       ...variableInput
     ],
     outputs: [
@@ -380,7 +418,10 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
 
     if (toolSetNode.toolConfig.httpToolSet) {
       const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
-        const { requestSchema, inputSchema, outputSchema, ...restTool } = tool;
+        const restTool = { ...tool };
+        delete restTool.requestSchema;
+        delete restTool.inputSchema;
+        delete restTool.outputSchema;
         return restTool;
       });
       return {
@@ -392,7 +433,8 @@ export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }
     }
     if (toolSetNode.toolConfig.mcpToolSet) {
       const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
-        const { inputSchema, ...restTool } = tool;
+        const restTool = { ...tool };
+        delete restTool.inputSchema;
         return restTool;
       });
       return {
@@ -493,15 +535,17 @@ export const clientGetWorkflowToolRunUserQuery = ({
     pluginInputs: FlowNodeInputItemType[];
     variables: Record<string, any>;
   }) => {
-    const pluginInputsWithValue = pluginInputs.map((input) => {
-      const { key } = input;
-      const value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
+    const pluginInputsWithValue = pluginInputs
+      .filter((input) => !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden))
+      .map((input) => {
+        const { key } = input;
+        const value = variables?.hasOwnProperty(key) ? variables[key] : input.defaultValue;
 
-      return {
-        ...input,
-        value
-      };
-    });
+        return {
+          ...input,
+          value
+        };
+      });
     return JSON.stringify(pluginInputsWithValue);
   };
 
@@ -529,8 +573,11 @@ export const removeUnauthModels = async ({
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
         if (input.key === 'model') {
-          // 如果是引用类型（selectedTypeIndex 不为 0 或 value 是数组），跳过检查
-          if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
+          // 如果是引用类型或历史引用值，跳过静态模型白名单检查。
+          if (
+            getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
+            Array.isArray(input.value)
+          ) {
             return;
           }
           if (!allowedModels.has(input.value)) {

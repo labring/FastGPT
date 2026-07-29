@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
@@ -118,5 +119,125 @@ describe('getClientToolPreviewNode', () => {
     });
     expect(result.inputs[0]?.key).toBe('q');
     expect((result as any).jsonSchema).toBeUndefined();
+  });
+
+  it('applies isToolParam default over a workflow plugin input selection', async () => {
+    const appId = '507f1f77bcf86cd799439011';
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: appId,
+        teamId: '507f1f77bcf86cd799439012',
+        type: AppTypeEnum.workflowTool,
+        name: 'Workflow plugin',
+        avatar: 'plugin.svg',
+        intro: 'Workflow plugin'
+      })
+    });
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [
+        {
+          flowNodeType: 'pluginInput',
+          inputs: [
+            {
+              key: 'test',
+              label: 'test',
+              valueType: 'string',
+              selectedType: 'input',
+              selectedTypeIndex: 0,
+              renderTypeList: ['input', 'reference'],
+              isToolParam: true
+            },
+            {
+              key: 'referenceOnly',
+              label: 'referenceOnly',
+              valueType: 'string',
+              selectedType: 'reference',
+              selectedTypeIndex: 0,
+              renderTypeList: ['reference']
+            },
+            {
+              key: 'legacyToolParam',
+              label: 'legacyToolParam',
+              valueType: 'string',
+              renderTypeList: ['input', 'reference'],
+              toolDescription: 'Legacy AI parameter'
+            },
+            {
+              key: 'explicitManual',
+              label: 'explicitManual',
+              valueType: 'string',
+              renderTypeList: ['input', 'reference'],
+              toolDescription: 'Parameter description',
+              isToolParam: false
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {},
+      versionId: 'version-id',
+      versionName: 'Version 1'
+    });
+
+    const result = await getClientToolPreviewNode({
+      appId,
+      versionId: ''
+    });
+    const input = result.inputs.find((item) => item.key === 'test');
+
+    expect(input).toMatchObject({
+      selectedType: 'agentGenerated',
+      renderTypeList: ['agentGenerated', 'input', 'reference'],
+      isToolParam: true
+    });
+
+    expect(result.inputs.find((item) => item.key === 'referenceOnly')).toMatchObject({
+      selectedType: 'agentGenerated',
+      renderTypeList: ['agentGenerated', 'reference']
+    });
+
+    expect(result.inputs.find((item) => item.key === 'legacyToolParam')).toMatchObject({
+      selectedType: 'agentGenerated',
+      renderTypeList: ['agentGenerated', 'input', 'reference'],
+      isToolParam: true
+    });
+
+    expect(result.inputs.find((item) => item.key === 'explicitManual')).toMatchObject({
+      renderTypeList: ['agentGenerated', 'input', 'reference'],
+      isToolParam: false,
+      selectedType: 'input'
+    });
+  });
+
+  it('defaults an ordinary workflow user question to Agent generation', async () => {
+    const appId = '507f1f77bcf86cd799439021';
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: appId,
+        teamId: '507f1f77bcf86cd799439022',
+        type: AppTypeEnum.workflow,
+        name: 'Workflow',
+        avatar: 'workflow.svg',
+        intro: ''
+      })
+    });
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [],
+      edges: [],
+      chatConfig: {},
+      versionId: 'version-id',
+      versionName: 'Version 1'
+    });
+
+    const result = await getClientToolPreviewNode({ appId, versionId: '' });
+
+    expect(result.flowNodeType).toBe('appModule');
+    expect(result.inputs.find((item) => item.key === 'userChatInput')).toMatchObject({
+      selectedType: 'agentGenerated',
+      renderTypeList: ['agentGenerated', 'reference', 'textarea'],
+      isToolParam: true
+    });
+    expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
   });
 });

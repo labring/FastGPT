@@ -2,10 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useToolCatalog } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
-import { READ_FILES_TOOL_NAME } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
-import { DATASET_SEARCH_TOOL_NAME } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import {
+  createToolSchema,
+  useToolCatalog
+} from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
+import {
+  DATASET_SEARCH_TOOL_NAME,
+  READ_FILES_TOOL_NAME
+} from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 
 const { getSandboxToolInfoMock } = vi.hoisted(() => ({
   getSandboxToolInfoMock: vi.fn()
@@ -60,7 +68,13 @@ describe('useToolCatalog', () => {
       toolNodes: [
         createToolNode({
           nodeId: 'search',
-          jsonSchema: explicitSchema
+          jsonSchema: explicitSchema,
+          toolParams: [
+            {
+              key: 'q',
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            }
+          ]
         }),
         createToolNode({
           nodeId: 'weather',
@@ -76,13 +90,16 @@ describe('useToolCatalog', () => {
                 { label: 'Hangzhou', value: 'Hangzhou' },
                 { label: 'Shanghai', value: 'Shanghai' }
               ],
-              required: true
+              enum: 'Hangzhou\nShanghai\n',
+              required: true,
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
             },
             {
               key: 'days',
               valueType: 'unknown',
               toolDescription: 'Days',
-              required: false
+              required: false,
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
             }
           ]
         })
@@ -149,6 +166,117 @@ describe('useToolCatalog', () => {
       })
     );
     expect(result.getToolInfo('missing')).toBeUndefined();
+  });
+
+  it('exposes only agent-generated params to model schema', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: {
+          type: 'object',
+          properties: {
+            city: { type: 'string' },
+            apiKey: { type: 'string' },
+            files: { type: 'array' }
+          },
+          required: ['city', 'apiKey', 'files']
+        },
+        toolParams: [
+          {
+            key: 'city',
+            valueType: WorkflowIOValueTypeEnum.string,
+            toolDescription: 'City name',
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+            required: true
+          },
+          {
+            key: 'apiKey',
+            valueType: WorkflowIOValueTypeEnum.string,
+            toolDescription: 'Developer configured secret',
+            renderTypeList: [FlowNodeInputTypeEnum.password],
+            required: true
+          },
+          {
+            key: 'files',
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            toolDescription: 'Files',
+            renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+            required: true
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        city: { type: 'string' }
+      },
+      required: ['city']
+    });
+  });
+
+  it('falls back to agent-generated inputs when the raw schema has no properties', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: { type: 'object' },
+        inputs: [
+          {
+            key: 'count',
+            valueType: WorkflowIOValueTypeEnum.number,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ],
+        toolParams: [
+          {
+            key: 'count',
+            valueType: WorkflowIOValueTypeEnum.number,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: {
+        count: {
+          type: 'number'
+        }
+      },
+      required: ['count']
+    });
+  });
+
+  it('normalizes scalar raw schemas before merging agent-generated inputs', () => {
+    const schema = createToolSchema(
+      createToolNode({
+        jsonSchema: { type: 'string' },
+        inputs: [
+          {
+            key: 'query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ],
+        toolParams: [
+          {
+            key: 'query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ]
+      })
+    );
+
+    expect(schema.function.parameters).toMatchObject({
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query']
+    });
   });
 
   it('keeps dataset search nodes out of runtime tools but exposes system tool display info', async () => {

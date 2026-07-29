@@ -311,14 +311,16 @@ const convertV1WorkflowToV2 = ({
       const inputs = (node.inputs || [])
         .map((input) => {
           const inputType = typeof input.type === 'string' ? inputTypeMap[input.type] : undefined;
+          const renderTypeList = !input.type
+            ? [FlowNodeInputTypeEnum.custom]
+            : inputType
+              ? [inputType]
+              : [];
           const newInput: Record<string, unknown> = {
             ...input,
+            selectedType: renderTypeList[0],
             selectedTypeIndex: 0,
-            renderTypeList: !input.type
-              ? [FlowNodeInputTypeEnum.custom]
-              : inputType
-                ? [inputType]
-                : [],
+            renderTypeList,
             key: input.key,
             value: input.value,
             valueType: normalizeWorkflowValueType(input.valueType),
@@ -394,6 +396,7 @@ const convertV1WorkflowToV2 = ({
           inputs.push({
             key: output.key,
             valueType: normalizeWorkflowValueType(output.valueType),
+            selectedType: FlowNodeInputTypeEnum.reference,
             renderTypeList: [FlowNodeInputTypeEnum.reference],
             label: typeof output.key === 'string' ? output.key : '',
             canEdit: true

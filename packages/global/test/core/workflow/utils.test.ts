@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   getHandleId,
+  getSelectedInputRenderType,
   nodeInputIsReference,
   getGuideModule,
   splitGuideModule,
@@ -87,6 +88,19 @@ describe('nodeInputIsReference', () => {
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedTypeIndex: 1
     };
+    expect(nodeInputIsReference(input)).toBe(true);
+  });
+
+  it('should prefer selectedType over selectedTypeIndex', () => {
+    const input: FlowNodeInputItemType = {
+      key: 'test',
+      label: 'Test',
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      selectedTypeIndex: 0
+    };
+
+    expect(getSelectedInputRenderType(input)).toBe(FlowNodeInputTypeEnum.reference);
     expect(nodeInputIsReference(input)).toBe(true);
   });
 
@@ -624,6 +638,82 @@ describe('pluginData2FlowNodeIO', () => {
 });
 
 describe('appData2FlowNodeIO', () => {
+  it('should recommend Agent generation for the workflow user question', () => {
+    const result = appData2FlowNodeIO({});
+
+    expect(
+      result.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
+    ).toMatchObject({
+      required: true,
+      isToolParam: true
+    });
+  });
+
+  it('should preserve workflow variable descriptions without adding a tool default mode', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'query',
+            label: 'Query',
+            type: VariableInputEnum.input,
+            description: 'Search query'
+          }
+        ]
+      }
+    });
+
+    const input = result.inputs.find((input) => input.key === 'query');
+    expect(input).toMatchObject({ description: 'Search query' });
+    expect(input).not.toHaveProperty('isToolParam');
+  });
+
+  it('should retain internal variable defaults while keeping the input hidden', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'internalToken',
+            label: 'Internal token',
+            type: VariableInputEnum.internal,
+            valueType: WorkflowIOValueTypeEnum.string,
+            description: 'Internal only',
+            defaultValue: 'default-token'
+          }
+        ]
+      }
+    });
+
+    expect(result.inputs.find((input) => input.key === 'internalToken')).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      defaultValue: 'default-token',
+      value: 'default-token'
+    });
+  });
+
+  it('should keep external variables as non-configurable dynamic inputs', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'externalToken',
+            label: 'External token',
+            type: VariableInputEnum.custom,
+            valueType: WorkflowIOValueTypeEnum.string,
+            description: 'Provided by the external variable provider',
+            defaultValue: 'fallback-token'
+          }
+        ]
+      }
+    });
+
+    expect(result.inputs.find((input) => input.key === 'externalToken')).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+      defaultValue: 'fallback-token',
+      value: 'fallback-token'
+    });
+  });
+
   it('should return basic inputs and outputs when no chatConfig', () => {
     const result = appData2FlowNodeIO({});
     expect(result.inputs.length).toBeGreaterThan(0);
@@ -757,6 +847,43 @@ describe('appData2FlowNodeIO', () => {
     expect(fileVar?.renderTypeList).toEqual([
       FlowNodeInputTypeEnum.fileSelect,
       FlowNodeInputTypeEnum.reference
+    ]);
+  });
+
+  it('should not carry stale select options into text variables', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'textVar',
+            label: 'Text',
+            type: VariableInputEnum.input,
+            description: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            list: [{ label: 'A', value: 'a' }]
+          },
+          {
+            key: 'textareaVar',
+            label: 'Textarea',
+            type: VariableInputEnum.textarea,
+            description: '',
+            list: [{ label: 'B', value: 'b' }]
+          },
+          {
+            key: 'selectVar',
+            label: 'Select',
+            type: VariableInputEnum.select,
+            description: '',
+            list: [{ label: 'C', value: 'c' }]
+          }
+        ]
+      }
+    });
+
+    expect(result.inputs.find((input) => input.key === 'textVar')?.list).toBeUndefined();
+    expect(result.inputs.find((input) => input.key === 'textareaVar')?.list).toBeUndefined();
+    expect(result.inputs.find((input) => input.key === 'selectVar')?.list).toEqual([
+      { label: 'c', value: 'c' }
     ]);
   });
 
@@ -1242,6 +1369,27 @@ describe('clientGetWorkflowToolRunUserQuery', () => {
 
     expect(result.dataId).toBeDefined();
     expect(result.obj).toBe('Human');
+  });
+
+  it('should not serialize hidden plugin inputs', () => {
+    const result = clientGetWorkflowToolRunUserQuery({
+      pluginInputs: [
+        {
+          key: 'internal',
+          defaultValue: 'internal default',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: 'query',
+          defaultValue: 'default query',
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      variables: { internal: 'external value', query: 'hello' }
+    });
+
+    expect(JSON.stringify(result.value)).not.toContain('internal');
+    expect(JSON.stringify(result.value)).toContain('query');
   });
 
   it('should handle files parameter', () => {

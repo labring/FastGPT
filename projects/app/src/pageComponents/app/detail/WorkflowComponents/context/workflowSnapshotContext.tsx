@@ -15,6 +15,7 @@ import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
   title: string;
@@ -296,7 +297,14 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
       const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
-      const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
+      const toolNodeIds = new Set(
+        appVersion.edges
+          .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+          .map((edge) => edge.target)
+      );
+      const nodes = appVersion.nodes.map((item) =>
+        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+      );
       const chatConfig = appVersion.chatConfig;
 
       resetSnapshot({

@@ -258,8 +258,12 @@ export type InputConfigType = z.infer<typeof InputConfigTypeSchema>;
 
 // Workflow node input
 export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend({
+  selectedType: z.enum(FlowNodeInputTypeEnum).optional().meta({
+    description: '多类型输入当前选中的渲染组件类型'
+  }),
   selectedTypeIndex: IntSchema.optional().meta({
-    description: '多类型输入当前选中的类型索引'
+    description: '已废弃：多类型输入当前选中的类型索引',
+    deprecated: true
   }),
   renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)).meta({
     description: '该输入在编辑器中允许使用的渲染组件类型'
@@ -280,7 +284,10 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
   }), // field desc
   toolDescription: z.string().optional().meta({
     description: '作为工具调用参数时的语义说明'
-  }), // If this field is not empty, it is entered as a tool
+  }),
+  isToolParam: BoolSchema.optional().meta({
+    description: '该输入默认是否作为工具调用参数'
+  }),
   customJsonSchema: z.record(z.string(), z.any()).optional().meta({
     description: '工具参数自定义 JSON Schema 的 property 定义'
   }),

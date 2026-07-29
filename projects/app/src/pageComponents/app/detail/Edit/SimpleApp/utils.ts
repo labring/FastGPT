@@ -41,7 +41,10 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  getToolConfigStatus,
+  stripToolInputDefaultMode
+} from '@fastgpt/global/core/app/formEdit/utils';
 
 /* format app nodes to edit form */
 export const appWorkflow2Form = ({
@@ -643,15 +646,15 @@ export function form2AppWorkflow(
                 tool.flowNodeType === FlowNodeTypeEnum.appModule &&
                 input.key === NodeInputKeyEnum.history
               ) {
-                return {
+                return stripToolInputDefaultMode({
                   ...input,
                   value: formData.aiSettings.maxHistories
-                };
+                });
               }
               if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
                 input.value = [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
               }
-              return input;
+              return stripToolInputDefaultMode(input);
             }),
             outputs: tool.outputs
           }

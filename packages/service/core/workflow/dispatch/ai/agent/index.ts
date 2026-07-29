@@ -8,7 +8,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getAgentDatasetParams, getSubapps } from './sub/utils';
@@ -58,7 +58,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
-  [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
+  [NodeInputKeyEnum.selectedTools]?: AgentToolType[];
   [NodeInputKeyEnum.skills]?: SelectedAgentSkillItemType[];
   [NodeInputKeyEnum.editSkillId]?: string;
 

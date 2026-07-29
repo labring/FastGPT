@@ -172,6 +172,7 @@ describe('llmCompletionsBodyFormat', () => {
                   description: 'Search query',
                   toolDescription: 'Query for model',
                   'x-tool-description': 'HTTP query',
+                  isToolParam: true,
                   isSecret: true
                 },
                 filters: {

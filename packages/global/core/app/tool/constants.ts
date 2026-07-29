@@ -11,3 +11,8 @@ export enum AppToolSourceEnum {
    */
   community = 'community'
 }
+
+export enum AgentToolInputModeEnum {
+  agentGenerated = 'agentGenerated',
+  manual = 'manual'
+}

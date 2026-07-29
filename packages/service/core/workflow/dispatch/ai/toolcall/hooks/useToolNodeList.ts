@@ -1,7 +1,11 @@
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  canInputBeAgentGenerated,
+  getToolConfigStatus,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
 import { filterToolNodeIdByEdges } from '../../../utils';
 import type { DispatchToolModuleProps, ToolNodeItemType } from '../type';
 
@@ -35,11 +39,12 @@ export const useToolNodeList = ({
     .map((nodeId) => runtimeNodes.find((item) => item.nodeId === nodeId))
     .filter(isRunnableToolNode)
     .map<ToolNodeItemType>((tool) => {
+      const inputs = tool.inputs;
       const toolParams: FlowNodeInputItemType[] = [];
       let jsonSchema = tool.jsonSchema;
 
-      tool.inputs.forEach((input) => {
-        if (input.toolDescription) {
+      inputs.forEach((input) => {
+        if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) {
           toolParams.push(input);
         }
 
@@ -60,6 +65,7 @@ export const useToolNodeList = ({
         intro: tool.intro,
         toolDescription: tool.toolDescription,
         jsonSchema,
+        inputs,
         toolParams
       };
     });

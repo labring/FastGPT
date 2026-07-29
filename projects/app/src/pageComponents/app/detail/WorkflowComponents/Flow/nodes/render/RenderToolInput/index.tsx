@@ -25,6 +25,9 @@ import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 const EditFieldModal = dynamic(() => import('./EditFieldModal'));
 
+export const hasDynamicToolInput = (inputs: FlowNodeInputItemType[]) =>
+  inputs.some((item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam);
+
 const RenderToolInput = ({
   nodeId,
   inputs
@@ -40,27 +43,25 @@ const RenderToolInput = ({
     [inputs, nodeId, splitToolInputs]
   );
 
-  const dynamicInput = useMemo(() => {
-    return inputs.find((item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam);
-  }, [inputs]);
+  const dynamicInput = useMemo(() => hasDynamicToolInput(inputs), [inputs]);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
+
+  if (!dynamicInput) return null;
 
   return (
     <>
       <HStack mb={2} justifyContent={'space-between'}>
-        <IOTitle text={t('workflow:tool_input')} mb={0} />
-        {dynamicInput && (
-          <Button
-            variant={'whiteBase'}
-            leftIcon={<SmallAddIcon />}
-            iconSpacing={1}
-            size={'sm'}
-            onClick={() => setEditField(defaultEditFormData)}
-          >
-            {t('common:add_new')}
-          </Button>
-        )}
+        <IOTitle text={t('common:Input')} mb={0} />
+        <Button
+          variant={'whiteBase'}
+          leftIcon={<SmallAddIcon />}
+          iconSpacing={1}
+          size={'sm'}
+          onClick={() => setEditField(defaultEditFormData)}
+        >
+          {t('common:add_new')}
+        </Button>
       </HStack>
 
       <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
@@ -71,7 +72,7 @@ const RenderToolInput = ({
                 <Th>{t('common:item_name')}</Th>
                 <Th>{t('common:item_description')}</Th>
                 <Th>{t('common:required')}</Th>
-                {dynamicInput && <Th></Th>}
+                <Th></Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -85,29 +86,27 @@ const RenderToolInput = ({
                   <Td>{item.key}</Td>
                   <Td>{item.toolDescription}</Td>
                   <Td>{item.required ? '✔' : ''}</Td>
-                  {dynamicInput && (
-                    <Td whiteSpace={'nowrap'}>
-                      <MyIcon
-                        mr={3}
-                        name={'common/settingLight'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => setEditField(item)}
-                      />
-                      <MyIcon
-                        name={'delete'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => {
-                          onChangeNode({
-                            nodeId,
-                            type: 'delInput',
-                            key: item.key
-                          });
-                        }}
-                      />
-                    </Td>
-                  )}
+                  <Td whiteSpace={'nowrap'}>
+                    <MyIcon
+                      mr={3}
+                      name={'common/settingLight'}
+                      w={'16px'}
+                      cursor={'pointer'}
+                      onClick={() => setEditField(item)}
+                    />
+                    <MyIcon
+                      name={'delete'}
+                      w={'16px'}
+                      cursor={'pointer'}
+                      onClick={() => {
+                        onChangeNode({
+                          nodeId,
+                          type: 'delInput',
+                          key: item.key
+                        });
+                      }}
+                    />
+                  </Td>
                 </Tr>
               ))}
             </Tbody>

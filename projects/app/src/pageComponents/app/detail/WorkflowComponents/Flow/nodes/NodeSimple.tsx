@@ -5,7 +5,7 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
-import RenderToolInput from './render/RenderToolInput';
+import RenderToolInput, { hasDynamicToolInput } from './render/RenderToolInput';
 import { useTranslation } from 'next-i18next';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
@@ -34,7 +34,7 @@ const NodeSimple = ({
   const Render = useMemo(() => {
     return (
       <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
-        {isTool && (
+        {isTool && hasDynamicToolInput(inputs) && (
           <>
             <Container>
               <RenderToolInput nodeId={nodeId} inputs={inputs} />
@@ -45,7 +45,7 @@ const NodeSimple = ({
           <>
             <Container>
               <IOTitle text={t('common:Input')} nodeId={nodeId} inputs={inputs} />
-              <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
+              <RenderInput nodeId={nodeId} flowInputList={commonInputs} isTool={isTool} />
             </Container>
           </>
         )}

@@ -100,6 +100,11 @@ describe('agent sub app dispatchPlugin', () => {
               key: 'query',
               defaultValue: 'default query',
               renderTypeList: []
+            },
+            {
+              key: 'internal',
+              defaultValue: 'internal default',
+              renderTypeList: ['hidden']
             }
           ],
           outputs: []
@@ -130,7 +135,8 @@ describe('agent sub app dispatchPlugin', () => {
     await dispatchPlugin({
       app: {
         id: 'child-app',
-        name: 'Child Workflow Tool'
+        name: 'Child Workflow Tool',
+        version: 'plugin-fixed-version'
       },
       runningAppInfo: {
         sourceType: 'app',
@@ -144,7 +150,8 @@ describe('agent sub app dispatchPlugin', () => {
         tmbId: 'member'
       },
       customAppVariables: {
-        query: 'hello'
+        query: 'hello',
+        internal: 'external value'
       },
       userChatInput: '',
       timezone: 'Asia/Shanghai',
@@ -159,14 +166,29 @@ describe('agent sub app dispatchPlugin', () => {
     } as any);
 
     expect(mocks.runWorkflow).toHaveBeenCalledTimes(1);
+    expect(mocks.getAppVersionById).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'child-app',
+        versionId: 'plugin-fixed-version'
+      })
+    );
     expect(mocks.runWorkflow.mock.calls[0][0].variableState.get('counter')).toBe(0);
     expect(mocks.serverGetWorkflowToolRunUserQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: expect.objectContaining({
           counter: 0,
           query: 'hello'
-        })
+        }),
+        pluginInputs: [expect.objectContaining({ key: 'query' })]
       })
+    );
+    expect(mocks.serverGetWorkflowToolRunUserQuery.mock.calls[0][0].pluginInputs).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'internal' })])
+    );
+    expect(mocks.runWorkflow.mock.calls[0][0].runtimeNodes[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'internal', value: 'internal default' })
+      ])
     );
   });
 
@@ -411,7 +433,8 @@ describe('agent sub app dispatchApp', () => {
     const result = await dispatchApp({
       app: {
         id: 'child-app',
-        name: 'Child App'
+        name: 'Child App',
+        version: 'app-fixed-version'
       },
       runningAppInfo: {
         sourceType: 'app',
@@ -442,6 +465,12 @@ describe('agent sub app dispatchApp', () => {
         lastInteractive: previousInteractive
       })
     );
+    expect(mocks.getAppVersionById).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'child-app',
+        versionId: 'app-fixed-version'
+      })
+    );
     expect(result.response).toBe('child answer');
     expect(result.assistantMessages).toEqual([
       expect.objectContaining({
@@ -456,5 +485,62 @@ describe('agent sub app dispatchApp', () => {
       }
     ]);
     expect(result.interactive).toBe(nextInteractive);
+  });
+
+  it('does not allow workflow tool arguments to override internal variables', async () => {
+    mocks.getAppVersionById.mockResolvedValue({
+      nodes: [],
+      edges: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'internal',
+            label: 'Internal',
+            type: VariableInputEnum.internal,
+            valueType: WorkflowIOValueTypeEnum.string,
+            defaultValue: 'internal default'
+          }
+        ]
+      }
+    });
+    mocks.runWorkflow.mockResolvedValue({
+      assistantResponses: [],
+      flowUsages: [],
+      runtimeNodeResponseSummary: undefined
+    });
+
+    await dispatchApp({
+      app: {
+        id: 'child-app',
+        name: 'Child App'
+      },
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      customAppVariables: {
+        internal: 'external value'
+      },
+      userChatInput: 'hello',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0
+    } as any);
+
+    expect(mocks.runWorkflow.mock.calls[0][0].variableState.get('internal')).toBe(
+      'internal default'
+    );
   });
 });

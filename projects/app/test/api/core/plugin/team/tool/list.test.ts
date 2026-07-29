@@ -119,4 +119,54 @@ describe('team system plugin list handler', () => {
       lang: 'zh'
     });
   });
+
+  it('does not return uninstalled tools', async () => {
+    mocks.getSystemToolList.mockResolvedValueOnce([
+      {
+        id: 'system-tool',
+        version: '1.0.0',
+        status: PluginStatusEnum.Normal,
+        source: 'system',
+        isToolSet: false,
+        avatar: '',
+        name: 'System Tool',
+        intro: '',
+        author: '',
+        tags: [],
+        toolDescription: '',
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: false
+      },
+      {
+        id: 'uninstalled-system-tool',
+        version: '1.0.0',
+        status: PluginStatusEnum.Offline,
+        source: 'system',
+        isToolSet: false,
+        avatar: '',
+        name: 'Uninstalled System Tool',
+        intro: '',
+        author: '',
+        tags: [],
+        toolDescription: '',
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: false
+      }
+    ]);
+
+    const res = await Call(handler, {
+      query: {},
+      auth: {
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.map((tool) => tool.id)).toEqual(['system-tool']);
+  });
 });
