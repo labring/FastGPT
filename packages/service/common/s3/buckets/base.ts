@@ -10,6 +10,7 @@ import {
 } from '../contracts/type';
 import { getSystemMaxFileSize } from '../config/constants';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { createUploadConstraints } from '../utils/uploadConstraints';
 import path from 'node:path';
 import { MongoS3TTL } from '../models/ttl';
@@ -30,8 +31,18 @@ const logger = getLogger(LogCategories.INFRA.S3);
 
 type IStorage = ReturnType<typeof createStorage>;
 
-// Check if the error is a "file not found" type error, which should be treated as success
+// Check whether a storage error means that the requested file does not exist.
 export const isFileNotFoundError = (error: any): boolean => {
+  if (
+    error?.statusCode === 404 ||
+    error?.status === 404 ||
+    error?.$metadata?.httpStatusCode === 404 ||
+    error?.code === 'NotFound' ||
+    error?.name === 'NotFound'
+  ) {
+    return true;
+  }
+
   if (error instanceof S3Error) {
     // Handle various "not found" error codes
     return (
@@ -339,7 +350,12 @@ export class S3BaseBucket {
   }
 
   async getFileMetadata(key: string) {
-    const metadataResponse = await this.client.getObjectMetadata({ key });
+    const metadataResponse = await this.client.getObjectMetadata({ key }).catch((error) => {
+      if (isFileNotFoundError(error)) {
+        throw CommonErrEnum.fileNotFound;
+      }
+      throw error;
+    });
     if (!metadataResponse) return;
 
     const contentLength = metadataResponse.contentLength;

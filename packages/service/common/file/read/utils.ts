@@ -6,6 +6,7 @@ import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdow
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
+import { useSomarkServer } from '../../../thirdProvider/somark';
 import { readRawContentFromBuffer } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { getImageBuffer } from '../image/utils';
@@ -161,6 +162,25 @@ export const readFileContentByBuffer = async ({
       formatText: text
     };
   };
+  const parsePdfFromSomark = async (): Promise<ReadFileResponse> => {
+    const apiKey = global.systemEnv.customPdfParse?.somarkApiKey;
+    if (!apiKey) return systemParse();
+
+    const { pages, text: rawText } = await useSomarkServer({ apiKey }).parsePDF(buffer);
+    const text = await parseMarkdownImages(rawText);
+
+    createPdfParseUsage({
+      teamId,
+      tmbId,
+      pages,
+      usageId
+    });
+
+    return {
+      rawText: text,
+      formatText: text
+    };
+  };
   // Textin api
   const parsePdfFromTextin = async (): Promise<ReadFileResponse> => {
     const appId = global.systemEnv.customPdfParse?.textinAppId;
@@ -243,6 +263,7 @@ export const readFileContentByBuffer = async ({
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
     if (global.systemEnv.customPdfParse?.url) return parsePdfFromCustomService();
+    if (global.systemEnv.customPdfParse?.somarkApiKey) return parsePdfFromSomark();
     if (global.systemEnv.customPdfParse?.textinAppId) return parsePdfFromTextin();
     if (global.systemEnv.customPdfParse?.doc2xKey) return parsePdfFromDoc2x();
 

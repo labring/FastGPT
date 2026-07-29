@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -82,6 +83,17 @@ describe('processError zod logging', () => {
       })
     );
     expect(logger.info).not.toHaveBeenCalled();
+  });
+});
+
+describe('processError HTTP status mapping', () => {
+  it('maps a missing file to HTTP 404', () => {
+    const processed = processError({
+      error: CommonErrEnum.fileNotFound
+    });
+
+    expect(processed.code).toBe(507002);
+    expect(processed.httpStatus).toBe(404);
   });
 });
 

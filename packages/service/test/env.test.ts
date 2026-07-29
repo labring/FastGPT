@@ -12,6 +12,7 @@ const originalEnv = {
   SYNC_INDEX: process.env.SYNC_INDEX,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
+  SOMARK_API_KEY: process.env.SOMARK_API_KEY,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
@@ -42,6 +43,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('SYNC_INDEX', originalEnv.SYNC_INDEX);
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
+    vi.stubEnv('SOMARK_API_KEY', originalEnv.SOMARK_API_KEY);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
@@ -68,6 +70,19 @@ describe('serviceEnv', () => {
     vi.stubEnv('SYNC_INDEX', 'false');
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: { SYNC_INDEX: false }
+    });
+  });
+
+  it('reads the optional SoMark API key', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('SOMARK_API_KEY', 'sk-somark-test');
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        SOMARK_API_KEY: 'sk-somark-test'
+      }
     });
   });
 

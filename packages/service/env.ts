@@ -118,6 +118,9 @@ export const serviceEnv = createEnv({
     CUSTOM_PDF_PARSE_KEY: z.string().optional().meta({
       description: '自定义 PDF 解析服务密钥'
     }),
+    SOMARK_API_KEY: z.string().optional().meta({
+      description: 'SoMark PDF 解析服务密钥'
+    }),
     DOC2X_KEY: z.string().optional().meta({
       description: 'Doc2x PDF 解析服务密钥'
     }),

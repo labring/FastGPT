@@ -22,6 +22,7 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   // Special config computed
   config.feConfigs.showCustomPdfParse =
     !!config.systemEnv.customPdfParse?.url ||
+    !!config.systemEnv.customPdfParse?.somarkApiKey ||
     !!config.systemEnv.customPdfParse?.textinAppId ||
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
