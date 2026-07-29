@@ -36,15 +36,13 @@ describe('initUserSandbox API', () => {
         orphanDeletedCount: 0,
         orphanFailedCount: 0,
         sandboxPendingCount: 0,
-        scannedSkillCount: 0,
         legacyDebugChatCleanup: {
           conflictAppSkillCount: 0,
-          cleanupSkillCount: 0,
+          matchedSkillCount: 0,
           totalLegacyChats: 0,
           totalChatItems: 0,
           totalChatItemResponses: 0,
-          deletedSkillCount: 0,
-          skippedEmptyCount: 0,
+          cleanedSkillCount: 0,
           pendingChatCount: 0,
           list: []
         },

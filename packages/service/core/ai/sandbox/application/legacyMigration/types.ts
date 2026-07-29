@@ -47,17 +47,16 @@ export type LegacyDebugChatCleanupItem = {
   chatCount: number;
   chatItemCount: number;
   chatItemResponseCount: number;
-  deleted: boolean;
+  status: 'pending' | 'deleted';
 };
 
 export type LegacyDebugChatCleanupResult = {
   conflictAppSkillCount: number;
-  cleanupSkillCount: number;
+  matchedSkillCount: number;
   totalLegacyChats: number;
   totalChatItems: number;
   totalChatItemResponses: number;
-  deletedSkillCount: number;
-  skippedEmptyCount: number;
+  cleanedSkillCount: number;
   pendingChatCount: number;
   list: LegacyDebugChatCleanupItem[];
 };
@@ -73,7 +72,6 @@ export type LegacySandboxNormalizationResult = {
   orphanDeletedCount: number;
   orphanFailedCount: number;
   sandboxPendingCount: number;
-  scannedSkillCount: number;
   legacyDebugChatCleanup: LegacyDebugChatCleanupResult;
   pendingCount: number;
   failures: UserSandboxMigrationFailure[];

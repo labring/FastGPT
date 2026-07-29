@@ -324,7 +324,7 @@ async function archiveSandboxWithinLease(params: {
     return { status: 'skipped', reason: `Sandbox is ${current.status}` };
   }
   if (current.status === SandboxInstanceStatusEnum.archiving) {
-    const operation = current.metadata?.operation;
+    const operation = current.operation;
     const staleBefore = subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES);
     // Lease 过期不代表旧 Provider 请求已经终止，隔离窗口内禁止新执行者换 token 接管。
     if (!operation?.error && (!operation?.heartbeatAt || operation.heartbeatAt >= staleBefore)) {
@@ -370,7 +370,7 @@ async function archiveSandboxWithinLease(params: {
         status: SandboxInstanceStatusEnum.archived,
         set: ({ resource: claimed }) => {
           const image = getSandboxRuntimeProfile(claimed.provider).defaultImage;
-          return image ? { 'metadata.image': image } : {};
+          return image ? { image } : {};
         }
       }
     };
@@ -589,10 +589,9 @@ export async function restoreArchivedSandboxBeforeUse(params: {
       }
       if (
         current.status === SandboxInstanceStatusEnum.restoring &&
-        !current.metadata?.operation?.error &&
-        current.metadata?.operation?.heartbeatAt &&
-        current.metadata.operation.heartbeatAt >=
-          subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
+        !current.operation?.error &&
+        current.operation?.heartbeatAt &&
+        current.operation.heartbeatAt >= subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
       ) {
         throw new SandboxLifecycleStateError(current.status);
       }
@@ -636,8 +635,7 @@ export async function restoreArchivedSandboxBeforeUse(params: {
               userId: params.userId,
               ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
               ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
-              'metadata.volumeEnabled': Boolean(restoredStorage),
-              ...(runtimeImage ? { 'metadata.image': runtimeImage } : {})
+              ...(runtimeImage ? { image: runtimeImage } : {})
             })
           }
         };

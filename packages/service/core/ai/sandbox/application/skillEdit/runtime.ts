@@ -25,7 +25,6 @@ import {
 } from '../../infrastructure/provider/config';
 import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import type {
-  AgentSkillSchemaType,
   AgentSkillsVersionSchemaType,
   SandboxImageConfigType
 } from '@fastgpt/global/core/ai/skill/type';
@@ -81,12 +80,10 @@ const EDIT_DEBUG_SANDBOX_SCENARIO = 'edit-debug';
 export type SkillEditRuntimeContext = {
   skillId: string;
   teamId: string;
-  tmbId: string;
   providerConfig: ReturnType<typeof getSandboxProviderConfig>;
   runtimeProfile: ReturnType<typeof getSandboxRuntimeProfile>;
   createConfig: SandboxCreateSpec;
   runtimeImage?: SandboxImageConfigType;
-  skill: AgentSkillSchemaType;
   currentVersion: AgentSkillsVersionSchemaType;
   sessionId: string;
   targetVersionId: string;
@@ -107,10 +104,9 @@ export type InitSkillEditRuntimeSandboxParams = {
 export async function getSkillEditRuntimeContext(params: {
   skillId: string;
   teamId: string;
-  tmbId: string;
   entrypoint?: SandboxCreateSpec['entrypoint'];
 }): Promise<SkillEditRuntimeContext> {
-  const { skillId, teamId, tmbId, entrypoint } = params;
+  const { skillId, teamId, entrypoint } = params;
 
   await assertSandboxAvailable(teamId);
 
@@ -172,12 +168,10 @@ export async function getSkillEditRuntimeContext(params: {
   return {
     skillId,
     teamId,
-    tmbId,
     providerConfig,
     runtimeProfile,
     createConfig,
     runtimeImage,
-    skill: skill as AgentSkillSchemaType,
     currentVersion: currentVersion as AgentSkillsVersionSchemaType,
     sessionId,
     targetVersionId: currentVersion._id.toString(),
@@ -199,7 +193,6 @@ export async function getSkillEditRuntimeStatus(
     | {
         skillId: string;
         teamId: string;
-        tmbId: string;
         entrypoint?: SandboxCreateSpec['entrypoint'];
       }
 ): Promise<SandboxRuntimeStatusResponse> {
@@ -218,7 +211,6 @@ export async function triggerSkillEditRuntimeUpgrade(
     | {
         skillId: string;
         teamId: string;
-        tmbId: string;
         entrypoint?: SandboxCreateSpec['entrypoint'];
       }
 ): Promise<SandboxRuntimeStatusResponse> {
@@ -239,12 +231,10 @@ export async function initSkillEditRuntimeSandbox({
   const {
     skillId,
     teamId,
-    tmbId,
     providerConfig,
     runtimeProfile,
     createConfig,
     runtimeImage,
-    skill,
     currentVersion,
     sessionId,
     targetVersionId,
@@ -259,7 +249,7 @@ export async function initSkillEditRuntimeSandbox({
   const runtimeStatusInstance = runtimeUpgradeTarget.statusInstance;
   const existingLifecycleStatus = runtimeStatusInstance?.status;
   const shouldUnzipFromS3 =
-    !runtimeStatusInstance || runtimeStatusInstance.metadata?.versionId !== targetVersionId;
+    !runtimeStatusInstance || runtimeStatusInstance.versionId !== targetVersionId;
   const shouldCleanWorkspaceBeforeDeploy = !!runtimeStatusInstance;
 
   const prepareContext = (sandbox: ISandbox): SkillPackagePrepareContext => ({
@@ -371,14 +361,9 @@ export async function initSkillEditRuntimeSandbox({
       sourceId: skillId,
       userId: ChatSourceTypeEnum.skillEdit,
       touchActive: true,
-      metadata: {
-        teamId,
-        tmbId,
-        sessionId,
-        ...(runtimeImage ? { image: runtimeImage } : {}),
-        skillName: skill.name,
-        versionId: currentVersion._id.toString()
-      }
+      teamId,
+      ...(runtimeImage ? { image: runtimeImage } : {}),
+      versionId: currentVersion._id.toString()
     });
 
     if (!newSandboxDoc) throw new Error('Failed to find sandbox document after creation');
@@ -594,7 +579,7 @@ export async function getRunningSkillEditSandbox(params: { skillId: string; team
   if (
     !sandboxInfo ||
     sandboxInfo.status !== SandboxStatusEnum.running ||
-    sandboxInfo.metadata?.teamId !== params.teamId
+    sandboxInfo.teamId !== params.teamId
   ) {
     return;
   }

@@ -28,8 +28,10 @@ const getConflictAppSkillIds = async (skillIds: string[]) => {
 };
 
 const getLegacyDebugChatStats = async (skillId: string): Promise<LegacyDebugChatCleanupItem> => {
-  const legacyQuery = buildLegacySkillDebugChatQuery(skillId);
-  const legacyChatList = await MongoChat.find(legacyQuery, 'chatId').lean();
+  const legacyChatList = await MongoChat.find(
+    buildLegacySkillDebugChatQuery(skillId),
+    'chatId'
+  ).lean();
   const legacyChatIds = legacyChatList.map((chat) => chat.chatId).filter(Boolean);
   const legacyChatItemQuery = {
     appId: skillId,
@@ -49,7 +51,7 @@ const getLegacyDebugChatStats = async (skillId: string): Promise<LegacyDebugChat
     chatCount: legacyChatIds.length,
     chatItemCount,
     chatItemResponseCount,
-    deleted: false
+    status: 'pending'
   };
 };
 
@@ -83,7 +85,6 @@ const cleanupLegacySkillDebugChatResources = async (skillId: string) => {
  * 与 App 同 ID 的 Skill 按原脚本规则跳过，避免把无 sourceType 的 App Chat 误删。
  */
 export async function cleanupLegacySkillDebugChats(params: { dryRun: boolean }): Promise<{
-  scannedSkillCount: number;
   cleanup: LegacyDebugChatCleanupResult;
 }> {
   const skillIds = await getAllSkillIds();
@@ -97,7 +98,7 @@ export async function cleanupLegacySkillDebugChats(params: { dryRun: boolean }):
       deletableList.map((item) => cleanupLegacySkillDebugChatResources(item.skillId))
     );
     deletableList.forEach((item) => {
-      item.deleted = true;
+      item.status = 'deleted';
     });
   }
 
@@ -108,15 +109,13 @@ export async function cleanupLegacySkillDebugChats(params: { dryRun: boolean }):
   ).then((counts) => counts.reduce((sum, count) => sum + count, 0));
 
   return {
-    scannedSkillCount: skillIds.length,
     cleanup: {
       conflictAppSkillCount: conflictAppSkillIds.size,
-      cleanupSkillCount: cleanupSkillIds.length,
+      matchedSkillCount: list.length,
       totalLegacyChats: list.reduce((sum, item) => sum + item.chatCount, 0),
       totalChatItems: list.reduce((sum, item) => sum + item.chatItemCount, 0),
       totalChatItemResponses: list.reduce((sum, item) => sum + item.chatItemResponseCount, 0),
-      deletedSkillCount: list.filter((item) => item.deleted).length,
-      skippedEmptyCount: list.filter((item) => item.chatCount === 0).length,
+      cleanedSkillCount: list.filter((item) => item.status === 'deleted').length,
       pendingChatCount,
       list
     }

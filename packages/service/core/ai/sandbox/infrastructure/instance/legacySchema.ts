@@ -48,7 +48,10 @@ const LegacySandboxMetadataSchema = z
     skillIds: z.array(z.string()).optional(),
     image: SandboxImageSchema.optional(),
     skillName: z.string().optional(),
-    versionId: z.string().optional()
+    versionId: z.string().optional(),
+    // 旧 Skill 编辑 Sandbox 写入的字段；迁移时保留在 Legacy 记录中，但不映射到 v2。
+    providerCreatedAt: z.unknown().optional(),
+    storage: z.unknown().optional()
   })
   .strip();
 

@@ -157,14 +157,12 @@ const createMigrationTargetDoc = (sandboxId = 'target-sandbox') =>
     userId: 'user-1',
     status: 'legacyMigrating',
     lastActiveAt: new Date(),
-    metadata: {
-      operation: {
-        id: `operation-${sandboxId}`,
-        type: 'legacyMigration',
-        phase: 'claimed',
-        startedAt: new Date(),
-        heartbeatAt: new Date()
-      }
+    operation: {
+      id: `operation-${sandboxId}`,
+      type: 'legacyMigration',
+      phase: 'claimed',
+      startedAt: new Date(),
+      heartbeatAt: new Date()
     }
   }) as any;
 
@@ -204,7 +202,11 @@ const insertLegacyApp = async (params: {
   });
 };
 
-const insertLegacySkill = async (params: { sandboxId: string; sourceId?: string }) => {
+const insertLegacySkill = async (params: {
+  sandboxId: string;
+  sourceId?: string;
+  metadata?: Record<string, unknown>;
+}) => {
   const sourceId = params.sourceId ?? 'skill-1';
   await MongoLegacySandboxInstance.collection.insertOne({
     provider: 'opensandbox',
@@ -213,7 +215,7 @@ const insertLegacySkill = async (params: { sandboxId: string; sourceId?: string 
     sourceId,
     status: SandboxStatusEnum.stopped,
     lastActiveAt: new Date(),
-    metadata: {}
+    metadata: params.metadata ?? {}
   });
 };
 
@@ -237,15 +239,13 @@ const insertPreBeta6Sandbox = async (params: {
   });
 
 const createDebugChatCleanupResult = (pendingChatCount = 0) => ({
-  scannedSkillCount: 0,
   cleanup: {
     conflictAppSkillCount: 0,
-    cleanupSkillCount: 0,
+    matchedSkillCount: 0,
     totalLegacyChats: pendingChatCount,
     totalChatItems: 0,
     totalChatItemResponses: 0,
-    deletedSkillCount: 0,
-    skippedEmptyCount: 0,
+    cleanedSkillCount: 0,
     pendingChatCount,
     list: []
   }
@@ -523,11 +523,11 @@ describe('legacy sandbox migration', () => {
         .mockResolvedValueOnce(migratingTarget);
       mocks.claimAppSandboxMigrationTarget.mockResolvedValue(migratingTarget);
       mocks.advanceSandboxOperation.mockImplementation(async ({ phase }: any) => {
-        migratingTarget.metadata.operation.phase = phase;
+        migratingTarget.operation.phase = phase;
         return migratingTarget;
       });
       mocks.markSandboxOperationFailed.mockImplementation(async ({ error }: any) => {
-        migratingTarget.metadata.operation.error = error;
+        migratingTarget.operation.error = error;
       });
       mocks.completeSandboxOperation
         .mockRejectedValueOnce(new Error('publish interrupted'))
@@ -542,7 +542,7 @@ describe('legacy sandbox migration', () => {
       });
       expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
         expect.objectContaining({
-          operationId: migratingTarget.metadata.operation.id,
+          operationId: migratingTarget.operation.id,
           status: 'legacyMigrating',
           error: 'publish interrupted'
         })
@@ -577,7 +577,7 @@ describe('legacy sandbox migration', () => {
       expect(mocks.completeSandboxOperation).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({
-          operationId: migratingTarget.metadata.operation.id,
+          operationId: migratingTarget.operation.id,
           fromStatus: 'legacyMigrating',
           status: 'stopped',
           touchActive: true
@@ -729,9 +729,7 @@ describe('legacy sandbox migration', () => {
         expect.objectContaining({
           sandboxId: targetSandboxId,
           sourceId,
-          metadata: expect.objectContaining({
-            image: { repository: 'migration-image', tag: 'latest' }
-          })
+          image: { repository: 'migration-image', tag: 'latest' }
         })
       );
       expect(mocks.getSandboxWorkspaceArchiveForMigration).toHaveBeenCalledWith(
@@ -766,6 +764,49 @@ describe('legacy sandbox migration', () => {
           .lean()
           .then((doc) => doc?.metadata?.userLevelMigration?.phase)
       ).resolves.toBe('completed');
+    });
+
+    it('accepts Legacy Skill metadata fields that are not persisted in v2', async () => {
+      const sourceId = 'skill-with-legacy-metadata';
+      await insertLegacySkill({
+        sandboxId: 'migration-test-skill-legacy-metadata',
+        sourceId,
+        metadata: {
+          providerCreatedAt: new Date(),
+          storage: { key: 'skill-package.zip', uploadedAt: new Date() },
+          skillIds: ['legacy-skill-version'],
+          skillName: 'Legacy Skill',
+          versionId: 'legacy-version'
+        }
+      });
+
+      const result = await migrateLegacySandboxesToUserLevel({ dryRun: false });
+
+      expect(result).toMatchObject({ migratedSkillCount: 1, failedCount: 0 });
+      expect(mocks.claimSkillSandboxMigrationTarget).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: { repository: 'migration-image', tag: 'latest' },
+          versionId: 'legacy-version'
+        })
+      );
+    });
+
+    it('preflights Legacy records before creating migration targets', async () => {
+      await MongoLegacySandboxInstance.collection.insertOne({
+        provider: 'opensandbox',
+        sandboxId: 'migration-test-invalid-legacy',
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: 'invalid-legacy-skill',
+        status: 'not-a-sandbox-status',
+        lastActiveAt: new Date(),
+        metadata: {}
+      } as any);
+
+      await expect(migrateLegacySandboxesToUserLevel({ dryRun: false })).rejects.toThrow(
+        'Legacy Sandbox preflight validation failed'
+      );
+      expect(mocks.getSandboxWorkspaceArchiveForMigration).not.toHaveBeenCalled();
+      expect(mocks.claimSkillSandboxMigrationTarget).not.toHaveBeenCalled();
     });
 
     it('merges a Legacy Skill Workspace into an existing target without overwriting new files', async () => {

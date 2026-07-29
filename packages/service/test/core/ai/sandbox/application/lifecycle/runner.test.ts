@@ -29,14 +29,12 @@ const createResource = (overrides: Record<string, unknown> = {}) =>
     userId: 'user-1',
     status: 'stopping',
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
-    metadata: {
-      operation: {
-        id: 'operation-1',
-        type: 'stop',
-        phase: 'claimed',
-        startedAt: new Date(),
-        heartbeatAt: new Date()
-      }
+    operation: {
+      id: 'operation-1',
+      type: 'stop',
+      phase: 'claimed',
+      startedAt: new Date(),
+      heartbeatAt: new Date()
     },
     ...overrides
   }) as any;
@@ -52,14 +50,12 @@ describe('sandbox lifecycle runner', () => {
     mocks.claimSandboxOperation.mockResolvedValue(createResource());
     mocks.advanceSandboxOperation.mockImplementation(async ({ phase }: { phase: string }) =>
       createResource({
-        metadata: {
-          operation: {
-            id: 'operation-1',
-            type: 'stop',
-            phase,
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
+        operation: {
+          id: 'operation-1',
+          type: 'stop',
+          phase,
+          startedAt: new Date(),
+          heartbeatAt: new Date()
         }
       })
     );
@@ -102,14 +98,12 @@ describe('sandbox lifecycle runner', () => {
     const secondStep = vi.fn(async () => undefined);
     mocks.claimSandboxOperation.mockResolvedValue(
       createResource({
-        metadata: {
-          operation: {
-            id: 'operation-2',
-            type: 'stop',
-            phase: 'providerStopped',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
+        operation: {
+          id: 'operation-2',
+          type: 'stop',
+          phase: 'providerStopped',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
         }
       })
     );

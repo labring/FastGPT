@@ -72,16 +72,14 @@ export type RunSandboxLifecycleParams = {
 };
 
 const requireOperationId = (resource: SandboxResourceDoc) => {
-  const operationId = resource.metadata?.operation?.id;
+  const operationId = resource.operation?.id;
   if (!operationId) {
-    throw new Error(
-      `Sandbox ${resource.sandboxId} has no ${resource.metadata?.operation?.type} operation`
-    );
+    throw new Error(`Sandbox ${resource.sandboxId} has no ${resource.operation?.type} operation`);
   }
   return operationId;
 };
 
-const getPhase = (resource: SandboxResourceDoc) => resource.metadata?.operation?.phase ?? 'claimed';
+const getPhase = (resource: SandboxResourceDoc) => resource.operation?.phase ?? 'claimed';
 
 /**
  * 执行一条已由调用方重新读取的 Sandbox 生命周期 operation。
@@ -95,8 +93,7 @@ export async function runSandboxLifecycleOperation(
   const { resource, lease, definition } = params;
   if (
     params.alreadyClaimed &&
-    (resource.status !== definition.status ||
-      resource.metadata?.operation?.type !== definition.operationType)
+    (resource.status !== definition.status || resource.operation?.type !== definition.operationType)
   ) {
     throw new Error(
       `Sandbox ${resource.sandboxId} does not own the expected ${definition.operationType} operation`

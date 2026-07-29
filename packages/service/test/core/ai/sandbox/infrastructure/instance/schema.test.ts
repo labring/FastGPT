@@ -30,13 +30,19 @@ describe('MongoSandboxInstance schema indexes', () => {
     expect(logicalIndex?.[0]).toEqual({ sourceType: 1, sourceId: 1, userId: 1 });
 
     expect(indexes.some(([keys]) => keys.status === 1 && keys.lastActiveAt === 1)).toBe(true);
-    expect(
-      indexes.some(([keys]) => keys.status === 1 && keys['metadata.operation.heartbeatAt'] === 1)
-    ).toBe(true);
+    expect(indexes.some(([keys]) => keys.status === 1 && keys['operation.heartbeatAt'] === 1)).toBe(
+      true
+    );
   });
 
-  it('does not register historical sandbox indexes for automatic cleanup', () => {
-    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
+  it('registers the nested operation index for automatic cleanup', () => {
+    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([
+      {
+        indexName: 'status_1_metadata.operation.heartbeatAt_1',
+        key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
+        options: undefined
+      }
+    ]);
   });
 
   it('accepts stable states without operation and matching transition operations', async () => {
@@ -48,14 +54,12 @@ describe('MongoSandboxInstance schema indexes', () => {
       new MongoSandboxInstance({
         ...baseInstance,
         status: 'archiving',
-        metadata: {
-          operation: {
-            id: 'archive-operation',
-            type: 'archive',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
+        operation: {
+          id: 'archive-operation',
+          type: 'archive',
+          phase: 'claimed',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
         }
       }).validate()
     ).resolves.toBeUndefined();
@@ -70,14 +74,12 @@ describe('MongoSandboxInstance schema indexes', () => {
       new MongoSandboxInstance({
         ...baseInstance,
         status: 'archiving',
-        metadata: {
-          operation: {
-            id: 'wrong-operation',
-            type: 'stop',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
+        operation: {
+          id: 'wrong-operation',
+          type: 'stop',
+          phase: 'claimed',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
         }
       }).validate()
     ).rejects.toThrow('Status archiving requires archive operation');
@@ -86,14 +88,12 @@ describe('MongoSandboxInstance schema indexes', () => {
       new MongoSandboxInstance({
         ...baseInstance,
         status: 'running',
-        metadata: {
-          operation: {
-            id: 'stale-operation',
-            type: 'stop',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
+        operation: {
+          id: 'stale-operation',
+          type: 'stop',
+          phase: 'claimed',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
         }
       }).validate()
     ).rejects.toThrow('Stable status running must not keep an operation');
@@ -108,34 +108,18 @@ describe('MongoSandboxInstance schema indexes', () => {
       new MongoSandboxInstance({
         ...baseInstance,
         status: 'archiving',
-        metadata: {
-          operation: {
-            id: 'provider-migration-operation',
-            type: 'providerMigration',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
+        operation: {
+          id: 'provider-migration-operation',
+          type: 'providerMigration',
+          phase: 'claimed',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
         }
       }).validate()
     ).rejects.toThrow();
   });
 
-  it('rejects legacy archive and migration metadata in the v2 model', async () => {
-    await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'running',
-        metadata: { archive: { state: 'archived' } }
-      }).validate()
-    ).rejects.toThrow();
-
-    await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'running',
-        metadata: { migration: 'migrating' }
-      }).validate()
-    ).rejects.toThrow();
+  it('does not define a metadata container in the v2 model', () => {
+    expect(MongoSandboxInstance.schema.path('metadata')).toBeUndefined();
   });
 });

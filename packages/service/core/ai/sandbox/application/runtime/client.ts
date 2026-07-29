@@ -144,10 +144,7 @@ export class SandboxClient {
           memoryMiB: this.opts.resourceLimits.memoryMiB,
           diskGiB: this.opts.resourceLimits.diskGiB
         }
-      }),
-      metadata: {
-        volumeEnabled: !!this.opts?.vmConfig
-      }
+      })
     };
     const touched = await touchRunningSandboxInstance(instanceParams);
     let repairMissingProvider = false;
@@ -184,10 +181,7 @@ export class SandboxClient {
         }
         const created = await createSandboxProvisioningInstance({
           ...instanceParams,
-          metadata: {
-            ...instanceParams.metadata,
-            ...(runtimeImage ? { image: runtimeImage } : {})
-          }
+          ...(runtimeImage ? { image: runtimeImage } : {})
         });
         current = created.instance;
         createdHere = created.created;
@@ -205,7 +199,7 @@ export class SandboxClient {
       }
 
       if (current.status === SandboxInstanceStatusEnum.provisioning) {
-        const operation = current.metadata?.operation;
+        const operation = current.operation;
         const stale =
           operation?.heartbeatAt &&
           operation.heartbeatAt.getTime() < Date.now() - SANDBOX_PROVISIONING_STALE_MS;
@@ -234,7 +228,7 @@ export class SandboxClient {
           type: 'complete',
           status: SandboxInstanceStatusEnum.running,
           touchActive: true,
-          set: runtimeImage ? { 'metadata.image': runtimeImage } : undefined
+          set: runtimeImage ? { image: runtimeImage } : undefined
         }
       };
       await runSandboxLifecycleOperation({
@@ -244,7 +238,7 @@ export class SandboxClient {
         previousStatus:
           current.status === SandboxInstanceStatusEnum.stopped
             ? SandboxInstanceStatusEnum.stopped
-            : current.metadata?.operation?.previousStatus,
+            : current.operation?.previousStatus,
         alreadyClaimed: createdHere
       });
     };

@@ -18,7 +18,7 @@ export type LegacySandboxNormalizationDoc = SandboxResourceRef & {
   type?: string | null;
   sourceType?: string | null;
   sourceId?: string | null;
-  metadata?: SandboxResourceRef['metadata'] & {
+  metadata?: {
     skillId?: string | null;
   };
 };
@@ -117,9 +117,7 @@ export const countLegacySandboxFieldCleanups = () =>
 
 /** beta6 阶段归零后，按稳定顺序读取完整 Legacy 集合。 */
 export const findAllLegacySandboxInstanceRecords = () =>
-  MongoLegacySandboxInstance.find({})
-    .sort({ lastActiveAt: -1, _id: 1 })
-    .lean<LegacySandboxInstanceSchemaType[]>();
+  MongoLegacySandboxInstance.collection.find({}).sort({ lastActiveAt: -1, _id: 1 }).toArray();
 
 /** 按 source 查询 Source 删除流程需要清理的 Legacy 实例。 */
 export const findLegacySandboxInstancesBySource = (params: {

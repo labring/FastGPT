@@ -62,7 +62,7 @@ const assertDeleteCanFenceCurrentOperation = (resource: SandboxResourceDoc) => {
   const isolationMinutes = deleteIsolationMinutesByStatus[resource.status];
   if (!isolationMinutes) return;
 
-  const operation = resource.metadata?.operation;
+  const operation = resource.operation;
   if (operation?.error) return;
   const staleBefore = subMinutes(new Date(), isolationMinutes);
   if (!operation?.heartbeatAt || operation.heartbeatAt >= staleBefore) {

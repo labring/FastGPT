@@ -1,7 +1,7 @@
 /**
  * 沙盒模块共享类型。
  *
- * 只定义 sandbox 实例、provider、生命周期 operation 和 metadata schema，不访问服务端资源。
+ * 只定义 sandbox 实例、provider 和生命周期 operation，不访问服务端资源。
  */
 import z from 'zod';
 import {
@@ -107,21 +107,6 @@ export const SandboxOperationSchema = z
   .strict();
 export type SandboxOperationTypeSchemaType = z.infer<typeof SandboxOperationSchema>;
 
-export const SandboxMetadataSchema = z
-  .object({
-    teamId: z.string().optional(),
-    tmbId: z.string().optional(),
-    volumeEnabled: z.boolean().optional(),
-    sessionId: z.string().optional(),
-    skillIds: z.array(z.string()).optional(),
-    image: SandboxImageSchema.optional(),
-    skillName: z.string().optional(),
-    versionId: z.string().optional(),
-    operation: SandboxOperationSchema.optional()
-  })
-  .strict();
-export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
-
 const expectedOperationByStatus: Partial<Record<SandboxInstanceStatusType, SandboxOperationType>> =
   {
     provisioning: 'provision',
@@ -145,16 +130,19 @@ export const SandboxInstanceZodSchema = z
     limit: SandboxLimitSchema.nullish(),
     provider: SandboxProviderSchema,
     storage: SandboxStorageSchema.nullish(),
-    metadata: SandboxMetadataSchema.nullish()
+    teamId: z.string().optional(),
+    image: SandboxImageSchema.optional(),
+    versionId: z.string().optional(),
+    operation: SandboxOperationSchema.optional()
   })
   .superRefine((instance, ctx) => {
     const expectedOperation = expectedOperationByStatus[instance.status];
-    const operation = instance.metadata?.operation;
+    const operation = instance.operation;
 
     if (!expectedOperation && operation) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['metadata', 'operation'],
+        path: ['operation'],
         message: `Stable status ${instance.status} must not keep an operation`
       });
       return;
@@ -162,7 +150,7 @@ export const SandboxInstanceZodSchema = z
     if (expectedOperation && operation?.type !== expectedOperation) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['metadata', 'operation'],
+        path: ['operation'],
         message: `Status ${instance.status} requires ${expectedOperation} operation`
       });
     }

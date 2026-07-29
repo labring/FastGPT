@@ -25,7 +25,7 @@ async function handler(
     return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
-  const { teamId, tmbId, skill } = await authSkill({
+  const { teamId, skill } = await authSkill({
     req,
     authToken: true,
     authApiKey: true,
@@ -39,8 +39,7 @@ async function handler(
 
   const context = await getSkillEditRuntimeContext({
     skillId,
-    teamId,
-    tmbId
+    teamId
   });
   const status = await getSkillEditRuntimeStatus({ context });
 

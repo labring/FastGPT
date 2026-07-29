@@ -424,11 +424,8 @@ describe('debugChat handler — parameter validation', () => {
       sourceId: skillId,
       userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
-      metadata: {
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        image: { repository: 'test-image', tag: 'latest' }
-      }
+      teamId: testUser.teamId,
+      image: { repository: 'test-image', tag: 'latest' }
     });
 
     await Call(debugChatApi.default, {
@@ -470,11 +467,8 @@ describe('debugChat handler — parameter validation', () => {
       sourceId: skillId,
       userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
-      metadata: {
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        image: { repository: 'test-image', tag: 'latest' }
-      }
+      teamId: testUser.teamId,
+      image: { repository: 'test-image', tag: 'latest' }
     });
 
     await Call(debugChatApi.default, {
@@ -508,11 +502,8 @@ describe('debugChat handler — parameter validation', () => {
       sourceId: skillId,
       userId: ChatSourceTypeEnum.skillEdit,
       status: 'running',
-      metadata: {
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        image: { repository: 'test-image', tag: 'latest' }
-      }
+      teamId: testUser.teamId,
+      image: { repository: 'test-image', tag: 'latest' }
     });
 
     await Call(debugChatApi.default, {

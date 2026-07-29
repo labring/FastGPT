@@ -58,7 +58,7 @@ describe('sandbox instance lifecycle repository', () => {
       provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
       ...identity,
-      metadata: { teamId: 'team-1' }
+      teamId: 'team-1'
     });
     const duplicate = await createSandboxProvisioningInstance({
       provider: 'opensandbox',
@@ -69,7 +69,7 @@ describe('sandbox instance lifecycle repository', () => {
     expect(first.created).toBe(true);
     expect(first.instance).toMatchObject({
       status: SandboxInstanceStatusEnum.provisioning,
-      metadata: { operation: { type: SandboxOperationTypeEnum.provision, phase: 'claimed' } }
+      operation: { type: SandboxOperationTypeEnum.provision, phase: 'claimed' }
     });
     expect(duplicate.created).toBe(false);
     expect(duplicate.instance?._id.toString()).toBe(first.instance?._id.toString());
@@ -90,7 +90,7 @@ describe('sandbox instance lifecycle repository', () => {
       sourceType: ChatSourceTypeEnum.app,
       ...identity
     });
-    const operationId = instance!.metadata!.operation!.id;
+    const operationId = instance!.operation!.id;
 
     await expect(
       completeSandboxOperation({
@@ -114,20 +114,20 @@ describe('sandbox instance lifecycle repository', () => {
 
     await expect(
       MongoSandboxInstance.findOne({ sandboxId: identity.sandboxId }).lean()
-    ).resolves.not.toHaveProperty('metadata.operation');
+    ).resolves.not.toHaveProperty('operation');
   });
 
-  it('touches only the matching published identity and preserves metadata', async () => {
+  it('touches only the matching published identity and preserves stable fields', async () => {
     const identity = createAppIdentity();
     const { instance } = await createSandboxProvisioningInstance({
       provider: 'opensandbox',
       sourceType: ChatSourceTypeEnum.app,
       ...identity,
-      metadata: { teamId: 'team-1' }
+      teamId: 'team-1'
     });
     await completeSandboxOperation({
       resource: instance!,
-      operationId: instance!.metadata!.operation!.id,
+      operationId: instance!.operation!.id,
       fromStatus: SandboxInstanceStatusEnum.provisioning,
       status: SandboxInstanceStatusEnum.running
     });
@@ -136,12 +136,11 @@ describe('sandbox instance lifecycle repository', () => {
       touchRunningSandboxInstance({
         provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
-        ...identity,
-        metadata: { volumeEnabled: true }
+        ...identity
       })
     ).resolves.toMatchObject({
       status: SandboxInstanceStatusEnum.running,
-      metadata: { teamId: 'team-1', volumeEnabled: true }
+      teamId: 'team-1'
     });
 
     await expect(
@@ -170,7 +169,7 @@ describe('sandbox instance lifecycle repository', () => {
       type: SandboxOperationTypeEnum.stop,
       matchLastActiveAt: true
     });
-    const operationId = claimed!.metadata!.operation!.id;
+    const operationId = claimed!.operation!.id;
 
     await expect(
       advanceSandboxOperation({
@@ -179,7 +178,7 @@ describe('sandbox instance lifecycle repository', () => {
         status: SandboxInstanceStatusEnum.stopping,
         phase: 'providerStopped'
       })
-    ).resolves.toMatchObject({ metadata: { operation: { phase: 'providerStopped' } } });
+    ).resolves.toMatchObject({ operation: { phase: 'providerStopped' } });
     await markSandboxOperationFailed({
       resource: claimed!,
       operationId,
@@ -188,7 +187,7 @@ describe('sandbox instance lifecycle repository', () => {
     });
     await expect(MongoSandboxInstance.findById(claimed!._id).lean()).resolves.toMatchObject({
       status: SandboxInstanceStatusEnum.stopping,
-      metadata: { operation: { error: 'provider timeout' } }
+      operation: { error: 'provider timeout' }
     });
     const failed = await MongoSandboxInstance.findById(claimed!._id).lean<SandboxResourceDoc>();
     const retried = await claimSandboxOperation({
@@ -196,12 +195,12 @@ describe('sandbox instance lifecycle repository', () => {
       status: SandboxInstanceStatusEnum.stopping,
       type: SandboxOperationTypeEnum.stop
     });
-    expect(retried?.metadata?.operation).toMatchObject({
+    expect(retried?.operation).toMatchObject({
       phase: 'providerStopped',
       type: SandboxOperationTypeEnum.stop,
       previousStatus: SandboxInstanceStatusEnum.running
     });
-    expect(retried?.metadata?.operation?.id).not.toBe(operationId);
+    expect(retried?.operation?.id).not.toBe(operationId);
     await expect(
       completeSandboxOperation({
         resource: claimed!,
@@ -213,7 +212,7 @@ describe('sandbox instance lifecycle repository', () => {
     await expect(
       completeSandboxOperation({
         resource: retried!,
-        operationId: retried!.metadata!.operation!.id,
+        operationId: retried!.operation!.id,
         fromStatus: SandboxInstanceStatusEnum.stopping,
         status: SandboxInstanceStatusEnum.stopped
       })
@@ -225,7 +224,7 @@ describe('sandbox instance lifecycle repository', () => {
     const first = await claimAppSandboxMigrationTarget({
       provider: 'opensandbox',
       ...identity,
-      metadata: { teamId: 'team-1' }
+      teamId: 'team-1'
     });
     const second = await claimAppSandboxMigrationTarget({
       provider: 'opensandbox',
@@ -233,12 +232,12 @@ describe('sandbox instance lifecycle repository', () => {
     });
 
     expect(first).toMatchObject({ status: SandboxInstanceStatusEnum.legacyMigrating });
-    expect(second?.metadata?.operation?.id).not.toBe(first?.metadata?.operation?.id);
+    expect(second?.operation?.id).not.toBe(first?.operation?.id);
 
     await expect(
       completeSandboxOperation({
         resource: second!,
-        operationId: first!.metadata!.operation!.id,
+        operationId: first!.operation!.id,
         fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
         status: SandboxInstanceStatusEnum.running
       })
@@ -246,7 +245,7 @@ describe('sandbox instance lifecycle repository', () => {
     await expect(
       completeSandboxOperation({
         resource: second!,
-        operationId: second!.metadata!.operation!.id,
+        operationId: second!.operation!.id,
         fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
         status: SandboxInstanceStatusEnum.running
       })
@@ -274,9 +273,7 @@ describe('sandbox instance lifecycle repository', () => {
     ).resolves.toMatchObject({
       provider: 'sealosdevbox',
       status: SandboxInstanceStatusEnum.archived,
-      metadata: {
-        image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
-      }
+      image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
     });
     await expect(
       switchArchivedSandboxProvider({
@@ -318,13 +315,13 @@ describe('sandbox instance lifecycle repository', () => {
     await expect(
       deleteClaimedSandboxRecord({
         resource: deleting!,
-        operationId: migrating!.metadata!.operation!.id
+        operationId: migrating!.operation!.id
       })
     ).resolves.toMatchObject({ deletedCount: 0 });
     await expect(
       deleteClaimedSandboxRecord({
         resource: deleting!,
-        operationId: deleting!.metadata!.operation!.id
+        operationId: deleting!.operation!.id
       })
     ).resolves.toMatchObject({ deletedCount: 1 });
   });
@@ -371,7 +368,7 @@ describe('sandbox instance lifecycle repository', () => {
       provider: 'opensandbox',
       sandboxId,
       sourceId,
-      metadata: { teamId: 'team-1' }
+      teamId: 'team-1'
     });
 
     expect(claimed).toMatchObject({
@@ -383,7 +380,7 @@ describe('sandbox instance lifecycle repository', () => {
     });
     await completeSandboxOperation({
       resource: claimed!,
-      operationId: claimed!.metadata!.operation!.id,
+      operationId: claimed!.operation!.id,
       fromStatus: SandboxInstanceStatusEnum.legacyMigrating,
       status: SandboxInstanceStatusEnum.running
     });

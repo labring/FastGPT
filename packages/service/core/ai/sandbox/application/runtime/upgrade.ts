@@ -79,10 +79,9 @@ export function resolveSandboxRuntimeUpgradeTarget({
     instance.status === SandboxInstanceStatusEnum.running ||
     instance.status === SandboxInstanceStatusEnum.stopped;
   const isOutdatedStableInstance = (instance: SandboxResourceDoc) =>
-    isStableInstance(instance) &&
-    !isSandboxRuntimeImageMatched(targetImage, instance.metadata?.image);
+    isStableInstance(instance) && !isSandboxRuntimeImageMatched(targetImage, instance.image);
   const isFailedArchivePrerequisite = (instance: SandboxResourceDoc) =>
-    Boolean(instance.metadata?.operation?.error) &&
+    Boolean(instance.operation?.error) &&
     (instance.status === SandboxInstanceStatusEnum.stopping ||
       instance.status === SandboxInstanceStatusEnum.archiving);
   const canStartRuntimeUpgradeArchive = (instance: SandboxResourceDoc) =>
@@ -90,7 +89,7 @@ export function resolveSandboxRuntimeUpgradeTarget({
   const statusInstance =
     currentInstance ??
     staleInstances.find((instance) => isSandboxRuntimeUpgradeBusyState(instance.status)) ??
-    staleInstances.find((instance) => Boolean(instance.metadata?.operation?.error)) ??
+    staleInstances.find((instance) => Boolean(instance.operation?.error)) ??
     staleInstances.find((instance) => instance.status === SandboxInstanceStatusEnum.archived) ??
     staleInstances.find(isStableInstance);
   const upgradeInstance =
@@ -122,12 +121,11 @@ export function getSandboxRuntimeUpgradeStatus(
 ): SandboxRuntimeStatusResponse {
   const { targetProvider, targetImage, statusInstance } = context;
   const lifecycleStatus = statusInstance?.status;
-  const operationError = statusInstance?.metadata?.operation?.error;
-  const operationHeartbeatAt = statusInstance?.metadata?.operation?.heartbeatAt;
+  const operationError = statusInstance?.operation?.error;
+  const operationHeartbeatAt = statusInstance?.operation?.heartbeatAt;
   const isCurrentProviderInstance = statusInstance?.provider === targetProvider;
   const isRuntimeImageOutdated =
-    !!statusInstance &&
-    !isSandboxRuntimeImageMatched(targetImage, statusInstance.metadata?.image ?? null);
+    !!statusInstance && !isSandboxRuntimeImageMatched(targetImage, statusInstance.image ?? null);
   const canRetryArchiveIsolationOperation =
     Boolean(operationError) ||
     !operationHeartbeatAt ||
@@ -218,7 +216,7 @@ const isRuntimeConfigurationChanged = (context: SandboxRuntimeUpgradeTarget) => 
   return (
     !!instance &&
     (instance.provider !== context.targetProvider ||
-      !isSandboxRuntimeImageMatched(context.targetImage, instance.metadata?.image ?? null))
+      !isSandboxRuntimeImageMatched(context.targetImage, instance.image ?? null))
   );
 };
 

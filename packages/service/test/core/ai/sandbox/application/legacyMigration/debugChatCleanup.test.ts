@@ -71,7 +71,7 @@ describe('cleanupLegacySkillDebugChats', () => {
       lean: vi.fn().mockResolvedValue([{ _id: conflictSkillId }])
     });
     mocks.findChats.mockReturnValue({
-      lean: vi.fn().mockResolvedValue([{ chatId: 'legacy-debug-chat' }])
+      lean: vi.fn().mockResolvedValue([{ appId: cleanSkillId, chatId: 'legacy-debug-chat' }])
     });
     mocks.countChats.mockResolvedValue(0);
     mocks.countChatItems.mockResolvedValue(1);
@@ -87,16 +87,15 @@ describe('cleanupLegacySkillDebugChats', () => {
     const result = await cleanupLegacySkillDebugChats({ dryRun: false });
 
     expect(result).toMatchObject({
-      scannedSkillCount: 2,
       cleanup: {
         conflictAppSkillCount: 1,
-        cleanupSkillCount: 1,
+        matchedSkillCount: 1,
         totalLegacyChats: 1,
         totalChatItems: 1,
         totalChatItemResponses: 1,
-        deletedSkillCount: 1,
+        cleanedSkillCount: 1,
         pendingChatCount: 0,
-        list: [{ skillId: cleanSkillId, deleted: true }]
+        list: [{ skillId: cleanSkillId, status: 'deleted' }]
       }
     });
     expect(mocks.deleteChatItemResponses).toHaveBeenCalledOnce();
@@ -107,6 +106,70 @@ describe('cleanupLegacySkillDebugChats', () => {
     });
     expect(mocks.addPublicDeleteJob).toHaveBeenCalledWith({
       prefix: `chat/${cleanSkillId}`
+    });
+  });
+
+  it('reports matched legacy chats without deleting them during dry-run', async () => {
+    mocks.countChats.mockResolvedValue(1);
+
+    const result = await cleanupLegacySkillDebugChats({ dryRun: true });
+
+    expect(result).toMatchObject({
+      cleanup: {
+        conflictAppSkillCount: 1,
+        matchedSkillCount: 1,
+        totalLegacyChats: 1,
+        cleanedSkillCount: 0,
+        pendingChatCount: 1,
+        list: [{ skillId: cleanSkillId, status: 'pending' }]
+      }
+    });
+    expect(mocks.deleteChats).not.toHaveBeenCalled();
+    expect(mocks.addPrivateDeleteJob).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty cleanup list when no legacy debug chat exists', async () => {
+    mocks.findSkills.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
+
+    const result = await cleanupLegacySkillDebugChats({ dryRun: false });
+
+    expect(result).toEqual({
+      cleanup: {
+        conflictAppSkillCount: 0,
+        matchedSkillCount: 0,
+        totalLegacyChats: 0,
+        totalChatItems: 0,
+        totalChatItemResponses: 0,
+        cleanedSkillCount: 0,
+        pendingChatCount: 0,
+        list: []
+      }
+    });
+    expect(mocks.findApps).not.toHaveBeenCalled();
+  });
+
+  it('reports empty Skills while keeping the upstream scan semantics', async () => {
+    const emptySkillId = '65f000000000000000000033';
+    mocks.findSkills.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([{ _id: cleanSkillId }, { _id: emptySkillId }])
+    });
+    mocks.findChats.mockImplementation((query: { appId: string }) => ({
+      lean: vi
+        .fn()
+        .mockResolvedValue(query.appId === cleanSkillId ? [{ chatId: 'legacy-debug-chat' }] : [])
+    }));
+
+    const result = await cleanupLegacySkillDebugChats({ dryRun: true });
+
+    expect(result.cleanup).toMatchObject({
+      conflictAppSkillCount: 1,
+      matchedSkillCount: 2,
+      totalLegacyChats: 1,
+      pendingChatCount: 0,
+      list: [
+        { skillId: cleanSkillId, chatCount: 1, status: 'pending' },
+        { skillId: emptySkillId, chatCount: 0, status: 'pending' }
+      ]
     });
   });
 });
