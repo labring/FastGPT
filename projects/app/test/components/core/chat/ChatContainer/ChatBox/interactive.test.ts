@@ -240,6 +240,47 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
     expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toBe('FastGPT');
   });
 
+  it('maps auxiliary agentAsk answers into the submitted form', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'userInput',
+      params: {
+        description: 'Collect requirements',
+        renderMode: 'agentAsk',
+        submitted: false,
+        inputForm: [
+          {
+            type: FlowNodeInputTypeEnum.input,
+            key: 'audience',
+            label: 'Audience',
+            value: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: false
+          },
+          {
+            type: FlowNodeInputTypeEnum.input,
+            key: 'format',
+            label: 'Format',
+            value: '',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: false
+          }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+    const result = rewriteHistoriesByInteractiveResponse({
+      histories: [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()],
+      interactive,
+      interactiveVal: JSON.stringify({ answers: ['Developers', 'Workshop'] })
+    });
+
+    const submittedInteractive = (result[0].value[0] as any).interactive;
+    expect(submittedInteractive.params.inputForm.map((input: any) => input.value)).toEqual([
+      'Developers',
+      'Workshop'
+    ]);
+  });
+
   it('marks paymentPause as continued and removes temporary round records', () => {
     const interactive = {
       ...baseInteractive,

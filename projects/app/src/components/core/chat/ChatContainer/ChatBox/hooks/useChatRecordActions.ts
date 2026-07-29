@@ -74,7 +74,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    *
    * 如果没有传入 `dataId`，返回 undefined，让调用方不渲染无效动作。
    */
-  const retryInput = useMemoizedFn((dataId?: string) => {
+  const retryInput = useMemoizedFn((dataId?: string, hideInUI = false) => {
     if (!dataId) return;
 
     return async () => {
@@ -88,6 +88,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
 
         sendPrompt({
           ...formatChatValue2InputType(delHistory[0].value),
+          hideInUI: hideInUI || delHistory[0].hideInUI,
           history: chatRecords.slice(0, index)
         });
       } catch (error) {

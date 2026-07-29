@@ -396,6 +396,16 @@ export const rewriteHistoriesByInteractiveResponse = ({
 
       if (finalInteractive.type === 'userInput') {
         const submittedData: Record<string, any> = (() => {
+          if (finalInteractive.params.renderMode === 'agentAsk') {
+            const answers = parseAgentAskAnswers(interactiveVal);
+            return Object.fromEntries(
+              finalInteractive.params.inputForm.map((input, index) => [
+                input.key,
+                answers[index] ?? ''
+              ])
+            );
+          }
+
           try {
             return JSON.parse(interactiveVal);
           } catch {
