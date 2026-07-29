@@ -8,7 +8,6 @@ import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
 import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import runtimeUpgradeModalBg from '@/assets/skill/runtimeUpgradeModalBg.jpg';
 
 const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
@@ -89,7 +88,7 @@ const Content = () => {
           <Box
             aspectRatio={384 / 223}
             borderRadius={'xs'}
-            bgImage={`url(${runtimeUpgradeModalBg.src})`}
+            bgImage={'url(/imgs/skill/runtimeUpgradeModalBg.jpg)'}
             bgSize={'cover'}
             bgPosition={'center'}
             bgRepeat={'no-repeat'}
@@ -110,13 +109,7 @@ const Content = () => {
             {t('skill:sandbox_runtime_upgrade_desc')}
           </Box>
           {sandboxError && (
-            <Box
-              color={'red.600'}
-              fontSize={'sm'}
-              lineHeight={'20px'}
-              mt={3}
-              whiteSpace="pre-wrap"
-            >
+            <Box color={'red.600'} fontSize={'sm'} lineHeight={'20px'} mt={3} whiteSpace="pre-wrap">
               {sandboxError}
             </Box>
           )}
