@@ -33,9 +33,9 @@ AGENT_SANDBOX_SEALOS_IMAGE=hub.hzh.sealos.run/labring/devbox-sandbox:v0.2.0
 
 ## 常见问题
 
-### 提示 AGENT_SANDBOX_PROXY_URL is required
+### 提示 AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-启用 `AGENT_SANDBOX_PROVIDER=sealosdevbox` 后，必须配置 `AGENT_SANDBOX_PROXY_URL`。该地址是浏览器访问代理服务的 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`，不是 FastGPT 主站地址。
+启用 `AGENT_SANDBOX_PROVIDER=sealosdevbox` 后，`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`，`fastgpt-pro` 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。具体要求见[沙盒通用配置](./common)。
 
 ### 提示 AGENT_SANDBOX_SEALOS_IMAGE is required
 

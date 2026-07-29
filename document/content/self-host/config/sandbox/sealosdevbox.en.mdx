@@ -34,9 +34,9 @@ AGENT_SANDBOX_SEALOS_IMAGE=hub.hzh.sealos.run/labring/devbox-sandbox:v0.2.0
 
 ## FAQ
 
-### AGENT_SANDBOX_PROXY_URL is required
+### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `AGENT_SANDBOX_PROXY_URL` is required. This is the browser-accessible WebSocket URL for the proxy service, such as `wss://sandbox-proxy.example.com` . It is not the FastGPT main site URL.
+After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `fastgpt-app` requires both `AGENT_SANDBOX_PROXY_URL` and `AGENT_SANDBOX_PREVIEW_PROXY_URL`, while `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`. See [General Sandbox Configuration](./common) for details.
 
 ### AGENT_SANDBOX_SEALOS_IMAGE is required
 

@@ -25,7 +25,7 @@ FastGPT 服务里访问沙盒内部文件系统，会通过 proxy 去代理访�
 
 ### 2. 修改 FastGPT 环境变量
 
-在 `fastgpt-app` 和 `fastgpt-pro` 中增加下面环境变量：
+在 `fastgpt-app` 中增加下面三项环境变量：
 
 ```dotenv
 # 对应 fastgpt-agent-sandbox-proxy 的变量 AGENT_SANDBOX_PROXY_SECRET。生产环境请改为 32 位以上随机密钥
@@ -35,6 +35,8 @@ AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
 # 浏览器访问 Sandbox 文件预览的 HTTP(S) 地址
 AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 ```
+
+`fastgpt-pro` 不提供 Sandbox Editor 和 WebSocket proxy 链路，因此不要求 `AGENT_SANDBOX_PROXY_SECRET` 和 `AGENT_SANDBOX_PROXY_URL`，但启用 Agent Sandbox 时必须增加 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。该变量可以与 `fastgpt-app` 使用相同的值。
 
 强烈建议将预览代理部署在与 FastGPT 主站不同的 origin（协议、域名或端口至少一项不同）。Sandbox 中的 HTML 可能包含用户生成的脚本；如果预览地址与 FastGPT 主站同源，这些脚本会处于主站的同源安全边界内，可能访问主站凭证或接口。FastGPT 当前只校验该变量使用 `http://` 或 `https://`，不会强制检查 origin 是否隔离。
 
@@ -89,7 +91,7 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 ### 提示 AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-启用 Agent Sandbox 后，必须同时配置 `AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。前者是浏览器访问 `fastgpt-agent-sandbox-proxy` 的 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；后者是文件预览使用的 HTTP(S) 地址，例如 `https://sandbox-proxy.example.com`。
+启用 Agent Sandbox 后，`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`；`fastgpt-pro` 只强制要求 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。两个服务都必须新增预览代理地址，例如 `https://sandbox-proxy.example.com`。
 
 ### 浏览器 WebSocket 连接失败
 

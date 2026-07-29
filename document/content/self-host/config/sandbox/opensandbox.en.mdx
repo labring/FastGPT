@@ -10,7 +10,7 @@ import { Alert } from '@/components/docs/Alert';
   isolation policy if your deployment requires it.
 </Alert>
 
-OpenSandbox is suitable when you want to self-host the Agent/Skill sandbox runtime. Before starting, complete [General Sandbox Configuration](./common), make sure `fastgpt-agent-sandbox-proxy` is deployed, and configure the same `AGENT_SANDBOX_PROXY_SECRET` and browser-accessible `AGENT_SANDBOX_PROXY_URL` in both `fastgpt-app` and `fastgpt-pro`.
+OpenSandbox is suitable when you want to self-host the Agent/Skill sandbox runtime. Before starting, complete [General Sandbox Configuration](./common) and make sure `fastgpt-agent-sandbox-proxy` is deployed. Configure the proxy secret, WebSocket URL, and preview URL in `fastgpt-app`; you must configure the preview URL in `fastgpt-pro`.
 
 The OpenSandbox setup flow is below.
 
