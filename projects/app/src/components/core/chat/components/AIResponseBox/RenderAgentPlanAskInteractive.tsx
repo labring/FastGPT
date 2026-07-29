@@ -11,6 +11,11 @@ import {
   useInteractiveChoiceCollapse
 } from '../Interactive/InteractiveChoiceCollapse';
 
+/**
+ * Legacy ask_user chat history item.
+ *
+ * @deprecated Head to `RenderAgentAskInteractive` for the new chat history component.
+ */
 const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInteractive({
   interactive,
   isLastChild

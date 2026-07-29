@@ -17,7 +17,7 @@ export type AgentAskOption = z.infer<typeof AgentAskOptionSchema>;
 
 export const AgentAskQuestionSchema = z.object({
   question: z.string().trim().min(1),
-  options: z.array(AgentAskOptionSchema).min(2).max(5)
+  options: z.array(AgentAskOptionSchema).min(2).max(4)
 });
 export type AgentAskQuestion = z.infer<typeof AgentAskQuestionSchema>;
 

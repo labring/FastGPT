@@ -1,22 +1,20 @@
 import { Box, Button, Flex, IconButton, Textarea } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'next-i18next';
 import { useEffect, useRef, useState } from 'react';
-import { onSendPrompt } from '../../../components/AIResponseBox/utils';
 
 type Answers = Record<string, string>;
 
-/** 渲染辅助生成的多题选择，并通过既有 userInput 协议提交答案。 */
+/** 渲染统一的 Agent Ask 问题，并按题目顺序提交回答值。 */
 const AgentAskComposer = ({
-  interactive,
+  questions,
   onSubmit
 }: {
-  interactive: UserInputInteractive;
-  onSubmit?: (text: string) => void;
+  questions: AgentAskQuestionInteractive[];
+  onSubmit: (answers: string[]) => void;
 }) => {
   const { t } = useTranslation();
-  const questions = interactive.params.inputForm.filter((item) => item.list?.length);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [customValues, setCustomValues] = useState<Answers>({});
@@ -37,9 +35,10 @@ const AgentAskComposer = ({
   const question = questions[questionIndex];
   if (!question) return null;
 
-  const answer = answers[question.key] ?? '';
-  const customValue = customValues[question.key] ?? '';
-  const isCustom = !!answer && !question.list?.some((item) => item.value === answer);
+  const questionKey = String(questionIndex);
+  const answer = answers[questionKey] ?? '';
+  const customValue = customValues[questionKey] ?? '';
+  const isCustom = !!answer && !question.options.some((item) => item.value === answer);
   const isEditingCustom = editingQuestionIndex === questionIndex;
   const isAnswerValid = !!answer;
   const isLastQuestion = questionIndex === questions.length - 1;
@@ -48,13 +47,10 @@ const AgentAskComposer = ({
     if (isSubmitting) return;
 
     setIsSubmitting(true);
-    const text = JSON.stringify(
-      Object.fromEntries(questions.map((item) => [item.key, nextAnswers[item.key] ?? '']))
-    );
-    (onSubmit ?? onSendPrompt)(text);
+    onSubmit(questions.map((_, index) => nextAnswers[String(index)] ?? ''));
   };
   const goNext = (nextAnswer: string) => {
-    const nextAnswers = { ...answers, [question.key]: nextAnswer };
+    const nextAnswers = { ...answers, [questionKey]: nextAnswer };
     setAnswers(nextAnswers);
     setEditingQuestionIndex(undefined);
 
@@ -68,7 +64,7 @@ const AgentAskComposer = ({
   const skipAll = () => submit({});
   const selectCustom = () => {
     setEditingQuestionIndex(questionIndex);
-    setAnswers((answers) => ({ ...answers, [question.key]: customValue }));
+    setAnswers((answers) => ({ ...answers, [questionKey]: customValue }));
   };
   const resizeCustomTextarea = (textarea: HTMLTextAreaElement | null) => {
     if (!textarea) return;
@@ -116,7 +112,7 @@ const AgentAskComposer = ({
     >
       <Flex alignItems={'center'} justifyContent={'space-between'} gap={4} px={1} mb={4}>
         <Box minW={0} color={'myGray.900'} fontSize={'md'} fontWeight={500} lineHeight={6}>
-          {question.label}
+          {question.question}
         </Box>
         <Flex flexShrink={0} alignItems={'center'} gap={3}>
           <Flex alignItems={'center'} gap={2}>
@@ -209,10 +205,10 @@ const AgentAskComposer = ({
       </Flex>
 
       <Flex direction={'column'} gap={1}>
-        {question.list?.map((option, index) => {
+        {question.options.map((option, index) => {
           const isSelected = answer === option.value && !isCustom;
           const isDefaultHover = !hasHoveredOption && index === 0;
-          const optionFocusKey = `${question.key}:${index}`;
+          const optionFocusKey = `${questionKey}:${index}`;
           const isKeyboardFocused = keyboardFocusedOptionKey === optionFocusKey;
 
           return (
@@ -263,7 +259,7 @@ const AgentAskComposer = ({
                   setKeyboardFocusedOptionKey(optionFocusKey);
                 }}
                 onKeyDown={(event) => {
-                  const lastOptionIndex = (question.list?.length ?? 1) - 1;
+                  const lastOptionIndex = question.options.length - 1;
                   const nextIndex = (() => {
                     if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
                       return Math.min(index + 1, lastOptionIndex);
@@ -277,7 +273,7 @@ const AgentAskComposer = ({
                   if (nextIndex === undefined || nextIndex === index) return;
 
                   event.preventDefault();
-                  setKeyboardFocusedOptionKey(`${question.key}:${nextIndex}`);
+                  setKeyboardFocusedOptionKey(`${questionKey}:${nextIndex}`);
                   optionRefs.current[nextIndex]?.focus();
                 }}
                 onClick={() => goNext(option.value)}
@@ -306,9 +302,9 @@ const AgentAskComposer = ({
                   </Flex>
                   <Box minW={0} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
                     <Box as={'span'} fontWeight={500} color={'myGray.900'}>
-                      {option.label}
+                      {option.summary}
                     </Box>
-                    {option.label !== option.value && (
+                    {option.summary !== option.value && (
                       <Box as={'span'} color={'myGray.600'}>
                         {` ${option.value}`}
                       </Box>
@@ -373,8 +369,8 @@ const AgentAskComposer = ({
               onChange={(event) => {
                 resizeCustomTextarea(event.currentTarget);
                 const value = event.currentTarget.value;
-                setCustomValues((values) => ({ ...values, [question.key]: value }));
-                setAnswers((answers) => ({ ...answers, [question.key]: value }));
+                setCustomValues((values) => ({ ...values, [questionKey]: value }));
+                setAnswers((answers) => ({ ...answers, [questionKey]: value }));
               }}
             />
             {renderStepButton()}

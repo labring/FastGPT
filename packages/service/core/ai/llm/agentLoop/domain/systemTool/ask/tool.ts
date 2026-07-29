@@ -72,9 +72,9 @@ export const createAskAgentTool = (name = 'ask_agent'): ChatCompletionTool => ({
               options: {
                 type: 'array',
                 minItems: 2,
-                maxItems: 5,
+                maxItems: 4,
                 description:
-                  'Two to five choices. summary is concise UI text; value is the complete answer returned after selection.',
+                  'Two to four choices. summary is concise UI text; value is the complete answer returned after selection.',
                 items: {
                   type: 'object',
                   properties: {

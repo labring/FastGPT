@@ -8,16 +8,20 @@ import type {
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
 import type { ChatSiteItemType } from '../type';
 
-/** 判断辅助生成是否正在等待带 agentAsk 渲染标识的 userInput 回答。 */
-export const isAgentAskUserInput = (interactive?: WorkflowInteractiveResponseType) => {
+/** 判断辅助生成或 Agent Loop 是否正在等待多题选择回答。 */
+export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType) => {
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
+  if (finalInteractive.type === 'agentAsk') return !finalInteractive.params.submitted;
+
+  // ? Aux gen.
   return (
     finalInteractive.type === 'userInput' &&
     finalInteractive.params.renderMode === 'agentAsk' &&
@@ -54,7 +58,7 @@ export const isUserInputInteractiveSubmitted = ({
 
 /**
  * 用户回答 Agent 收集问题后，前端会立即追加 Human/AI 占位消息。
- * 这里把答案乐观写回对应的 agentPlanAskQuery，避免旧消息在失去 isLastChild 后丢失选中态。
+ * 这里把答案乐观写回对应的 Agent Ask，避免旧消息在失去 isLastChild 后丢失选中态。
  */
 export const persistAgentPlanAskAnswerToHistories = ({
   histories,
@@ -66,11 +70,13 @@ export const persistAgentPlanAskAnswerToHistories = ({
   answer: string;
 }): ChatSiteItemType[] => {
   const sourceInteractive = extractDeepestInteractive(interactive);
-  if (sourceInteractive.type !== 'agentPlanAskQuery') {
+  const isNewAgentAsk = sourceInteractive.type === 'agentAsk';
+  if (sourceInteractive.type !== 'agentPlanAskQuery' && !isNewAgentAsk) {
     return histories;
   }
 
   const targetAskId = sourceInteractive.askId;
+  const submittedAnswers = isNewAgentAsk ? parseAgentAskAnswers(answer) : [];
   let hasUpdated = false;
 
   const nextHistories = histories.map((item) => {
@@ -81,15 +87,44 @@ export const persistAgentPlanAskAnswerToHistories = ({
       if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
-      if (finalInteractive.type !== 'agentPlanAskQuery') return val;
-      if (finalInteractive.params.answer) return val;
 
-      if (finalInteractive.askId !== targetAskId) {
+      if (
+        // ? Legacy
+        (finalInteractive.type !== 'agentPlanAskQuery' && finalInteractive.type !== 'agentAsk') ||
+        // New
+        finalInteractive.askId !== targetAskId
+      ) {
+        return val;
+      }
+      if (
+        // ? Legacy
+        (finalInteractive.type === 'agentPlanAskQuery' && finalInteractive.params.answer) ||
+        // New
+        (finalInteractive.type === 'agentAsk' && finalInteractive.params.submitted)
+      ) {
         return val;
       }
 
       itemUpdated = true;
       hasUpdated = true;
+      if (finalInteractive.type === 'agentAsk') {
+        return {
+          ...val,
+          interactive: {
+            ...finalInteractive,
+            params: {
+              ...finalInteractive.params,
+              questions: finalInteractive.params.questions.map((question, index) => ({
+                ...question,
+                answer: submittedAnswers[index] ?? question.answer
+              })),
+              submitted: true
+            }
+          }
+        };
+      }
+
+      // ? Legacy single question
       return {
         ...val,
         interactive: {
@@ -248,6 +283,13 @@ export const getInteractiveByHistories = (
       canSendQuery: false
     };
   } else if (finalInteractive.type === 'agentPlanAskQuery') {
+    // ? Legacy
+    return {
+      interactive: finalInteractive,
+      canSendQuery: true
+    };
+  } else if (finalInteractive.type === 'agentAsk') {
+    // New
     return {
       interactive: finalInteractive,
       canSendQuery: true

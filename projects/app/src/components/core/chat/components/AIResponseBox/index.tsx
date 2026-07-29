@@ -11,6 +11,7 @@ import {
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
 import RenderAgentPlanAskInteractive from './RenderAgentPlanAskInteractive';
+import RenderAgentAskInteractive from './RenderAgentAskInteractive';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
 import RenderPlanStatus from './RenderPlanStatus';
@@ -171,6 +172,17 @@ const AIResponseBox = ({
         />
       );
     }
+    if (interactive.type === 'agentAsk') {
+      responseBlocks.push(
+        <RenderAgentAskInteractive
+          key="interactive"
+          interactive={interactive}
+          submitted={interactive.params.submitted || !isLastChild}
+        />
+      );
+    }
+
+    // Legacy agent_ask
     if (interactive.type === 'agentPlanAskQuery') {
       responseBlocks.push(
         <RenderAgentPlanAskInteractive

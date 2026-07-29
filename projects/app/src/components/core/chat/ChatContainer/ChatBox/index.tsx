@@ -23,8 +23,9 @@ import {
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
-import { getInteractiveByHistories, isAgentAskUserInput } from './utils/interactive';
+import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
   ChatInputWrapperStyle,
   ChatTypeEnum,
@@ -470,7 +471,24 @@ const ChatBox = ({
   const activeInteractive = lastInteractive
     ? extractDeepestInteractive(lastInteractive)
     : undefined;
-  const isAgentAskPending = isAgentAskUserInput(lastInteractive);
+  const agentAskQuestions: AgentAskQuestionInteractive[] = (() => {
+    if (activeInteractive?.type === 'agentAsk') return activeInteractive.params.questions;
+    if (activeInteractive?.type !== 'userInput') return [];
+
+    // ? Aux gen collection phase
+    return activeInteractive.params.inputForm
+      .filter((input) => input.list?.length)
+      .map((input) => ({
+        question: input.label,
+        options:
+          input.list?.map((option) => ({
+            summary: option.label,
+            value: option.value
+          })) ?? [],
+        answer: typeof input.value === 'string' ? input.value : ''
+      }));
+  })();
+  const isAgentAskPending = isPendingAgentAsk(lastInteractive);
   const canRenderChatInput =
     onStartChat && chatStarted && active && (canSendQuery || isAgentAskPending);
   const canSendPrompt = canRenderChatInput && !isRoundPending;
@@ -738,9 +756,20 @@ const ChatBox = ({
                     chatForm={chatForm}
                   />
                 </Box>
-                {isAgentAskPending && activeInteractive?.type === 'userInput' && (
-                  <AgentAskComposer interactive={activeInteractive} />
-                )}
+                {isAgentAskPending &&
+                  (activeInteractive?.type === 'userInput' ||
+                    activeInteractive?.type === 'agentAsk') && (
+                    <AgentAskComposer
+                      questions={agentAskQuestions}
+                      onSubmit={(answers) =>
+                        sendPromptWithDisabledGuard({
+                          text: JSON.stringify({ answers }),
+                          interactive: lastInteractive,
+                          ...(activeInteractive.type === 'agentAsk' ? { hideInUI: true } : {})
+                        })
+                      }
+                    />
+                  )}
               </Box>
             </Box>
           )}
