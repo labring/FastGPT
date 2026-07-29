@@ -26,7 +26,8 @@ import type {
   ListSkillVersionsResponse,
   SkillRuntimeBody,
   SwitchSkillVersionBody,
-  UpdateSkillVersionBody
+  UpdateSkillVersionBody,
+  ImportSkillQuery
 } from '@fastgpt/global/core/ai/skill/api';
 import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
@@ -67,8 +68,26 @@ export const postCopySkill = (data: CopySkillBody) =>
 /** 删除 Skill */
 export const deleteSkill = (skillId: string) => DELETE('/core/ai/skill/delete', { skillId });
 
-/** 导入 Skill 压缩包 */
-export const importSkill = (formData: FormData) => POST<string>('/core/ai/skill/import', formData);
+/** 以原始请求体导入 Skill，文件流不落 FastGPT 本地临时目录。 */
+export const importSkill = ({
+  file,
+  ...query
+}: Omit<ImportSkillQuery, 'filename'> & { file: File }) => {
+  const searchParams = new URLSearchParams({
+    filename: file.name
+  });
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, value);
+    }
+  });
+
+  return POST<string>(`/core/ai/skill/import?${searchParams.toString()}`, file, {
+    headers: {
+      'Content-Type': 'application/octet-stream'
+    }
+  });
+};
 
 /** 从 Sandbox 打包并发布新版本 */
 export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>

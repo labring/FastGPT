@@ -7,7 +7,7 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { MongoAgentSkills } from '../../../../skill/model/schema';
 import { MongoAgentSkillsVersion } from '../../../../skill/version/schema';
-import { downloadSkillPackage } from '../../../../skill/package';
+import { downloadSkillPackageStream } from '../../../../skill/package';
 import { parseSkillMarkdown } from '../../../../skill/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
@@ -16,6 +16,7 @@ import { joinSandboxPath } from '../../../utils';
 import { authSkillByTmbId } from '../../../../../../support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { Readable } from 'node:stream';
 
 export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 
@@ -269,54 +270,42 @@ export const injectAgentSkillFilesToSandbox = async ({
   );
 
   const maxPackageBytes = getAgentSandboxSkillMaxBytes();
-  const results = await Promise.all(
-    missingSkills.map(async ({ skill, version, versionId, targetDir }) => {
-      try {
-        const rawPackageBuffer = await downloadSkillPackage({ storageKey: version.storageKey });
-        const tempDir = joinSandboxPath(
-          skillsRootPath,
-          `.tmp-${getSafeRuntimePathSegment(versionId)}-${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}`
-        );
-        const zipPath = joinSandboxPath(tempDir, 'package.zip');
-        const quotedTempDir = shellQuote(tempDir);
-        const quotedTargetDir = shellQuote(targetDir);
-        const unzipCommand = `(${[
-          `cd ${quotedTempDir}`,
-          `unzip -Z -t package.zip | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
-          `unzip -Z1 package.zip | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
-          `unzip -o -q package.zip`,
-          `rm -f package.zip`,
-          `rm -rf ${quotedTargetDir}`,
-          `mv ${quotedTempDir} ${quotedTargetDir}`
-        ].join(' && ')})`;
+  const results = missingSkills.map(({ version, versionId, targetDir }) => {
+    const tempDir = joinSandboxPath(
+      skillsRootPath,
+      `.tmp-${getSafeRuntimePathSegment(versionId)}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`
+    );
+    const zipPath = joinSandboxPath(tempDir, 'package.zip');
+    const quotedTempDir = shellQuote(tempDir);
+    const quotedTargetDir = shellQuote(targetDir);
+    const unzipCommand = `(${[
+      `cd ${quotedTempDir}`,
+      `unzip -Z -t package.zip | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
+      `unzip -Z1 package.zip | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
+      `unzip -o -q package.zip`,
+      `rm -f package.zip`,
+      `rm -rf ${quotedTargetDir}`,
+      `mv ${quotedTempDir} ${quotedTargetDir}`
+    ].join(' && ')})`;
 
-        return {
-          targetDir,
-          tempDir,
-          writeEntry: {
-            path: zipPath,
-            data: rawPackageBuffer
-          },
-          unzipCommand
-        };
-      } catch (error) {
-        logger.error('[Agent Skills] Failed to prepare skill package', {
-          skillName: skill.name,
-          error
-        });
-        throw error;
-      }
-    })
-  );
+    return {
+      storageKey: version.storageKey,
+      targetDir,
+      tempDir,
+      zipPath,
+      unzipCommand
+    };
+  });
 
-  const writeEntries = results.map((r) => r.writeEntry);
-  const unzipCommands = results.map((r) => r.unzipCommand);
-
-  // 1. Batch write all ZIP packages directly to their respective folders in a single call
-  if (writeEntries.length > 0) {
+  // 1. Stream each ZIP package directly to its temporary directory.
+  if (results.length > 0) {
     const tempDirs = results.map(({ tempDir }) => tempDir);
+    const cleanupTempDirs = () =>
+      Promise.all(
+        tempDirs.map((tempDir) => sandbox.execute(`rm -rf ${shellQuote(tempDir)}`).catch(() => {}))
+      );
     const mkdirTempResult = await sandbox.execute(
       `mkdir -p ${tempDirs.map((dir) => shellQuote(dir)).join(' ')}`
     );
@@ -326,26 +315,33 @@ export const injectAgentSkillFilesToSandbox = async ({
       );
     }
 
-    const writeResults = await sandbox.writeFiles(writeEntries);
-    const failedWrite = writeResults.find((result) => result.error);
-    if (failedWrite) {
-      await Promise.all(
-        results.map(({ tempDir }) =>
-          sandbox.execute(`rm -rf ${shellQuote(tempDir)}`).catch(() => {})
-        )
-      );
-      throw new Error(`Failed to write skill ZIP packages: ${failedWrite.error?.message}`);
+    try {
+      for (const { storageKey, zipPath } of results) {
+        const packageStream = await downloadSkillPackageStream({ storageKey });
+        try {
+          const [writeResult] = await sandbox.writeFiles([
+            {
+              path: zipPath,
+              data: Readable.toWeb(packageStream) as ReadableStream<Uint8Array>
+            }
+          ]);
+          if (writeResult?.error) {
+            throw new Error(`Failed to write skill ZIP package: ${writeResult.error.message}`);
+          }
+        } finally {
+          if (!packageStream.destroyed) packageStream.destroy();
+        }
+      }
+    } catch (error) {
+      await cleanupTempDirs();
+      throw error;
     }
 
     // 2. Execute a single unified decompression command inside the sandbox container
-    const finalUnzipCmd = unzipCommands.join(' && ');
+    const finalUnzipCmd = results.map(({ unzipCommand }) => unzipCommand).join(' && ');
     const extractResult = await sandbox.execute(finalUnzipCmd);
     if (extractResult.exitCode !== 0) {
-      await Promise.all(
-        results.map(({ tempDir }) =>
-          sandbox.execute(`rm -rf ${shellQuote(tempDir)}`).catch(() => {})
-        )
-      );
+      await cleanupTempDirs();
       throw new Error(
         `Failed to decompress skill packages inside sandbox: ${extractResult.stderr}`
       );

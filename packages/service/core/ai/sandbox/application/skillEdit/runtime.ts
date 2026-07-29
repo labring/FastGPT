@@ -57,11 +57,7 @@ import {
   prepareWorkDirectory,
   prepareSandbox
 } from '../runtime/prepare';
-import {
-  deployDownloadedSkillPackage,
-  downloadSkillPackageToContext,
-  type SkillPackagePrepareContext
-} from '../runtime/skill/prepare';
+import { deploySkillPackage, type SkillPackagePrepareContext } from '../runtime/skill/prepare';
 import { normalizeSandboxImage } from '../runtime/image';
 import {
   getSandboxRuntimeUpgradeStatus,
@@ -328,12 +324,9 @@ export async function initSkillEditRuntimeSandbox({
       const prepareSteps = [
         preparePackageMirrors(),
         prepareWorkDirectory(),
-        downloadSkillPackageToContext({
-          storageKey: currentVersion.storageKey,
-          onProgress: reportProgress(sessionId)
-        }),
         ...(shouldCleanWorkspaceBeforeDeploy ? [emptyWorkDirectory()] : []),
-        deployDownloadedSkillPackage({
+        deploySkillPackage({
+          storageKey: currentVersion.storageKey,
           skillsRootPath: runtimeProfile.skillsRootPath,
           onProgress: reportProgress(sessionId)
         })

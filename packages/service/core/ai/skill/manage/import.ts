@@ -1,38 +1,46 @@
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
+import type {
+  RuntimeSkillMetadataType,
+  SkillPackageType
+} from '@fastgpt/global/core/ai/skill/type';
 import { Types } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import {
-  extractRuntimeSkillsFromPackage,
-  removeSkillPackageTTL,
-  uploadSkillPackage
-} from '../package';
+import { removeSkillPackageTTL, uploadSkillPackageStream } from '../package';
 import { MongoAgentSkills } from '../model/schema';
 import { createVersion } from '../version';
 import { updateCurrentVersion } from './update';
+import type { Readable } from 'node:stream';
+
+type ImportSkillParams = {
+  skill: SkillPackageType['skill'];
+  teamId: string;
+  tmbId: string;
+  packageStream: Readable;
+  contentLength?: number;
+  parentId?: string | null;
+};
 
 /**
- * Import skill from a validated package.
+ * Import an opaque package stream as the initial Skill version.
  *
- * Caller owns archive parsing. This function uploads the package before opening the Mongo
- * transaction, then binds currentVersionId and removes the temporary S3 TTL inside the
- * transaction. If Mongo fails, the uploaded package keeps its TTL and is cleaned by the shared S3
- * cleanup flow.
- * The package is stored as the initial version and linked as currentVersionId.
+ * Import intentionally does not parse or validate package contents. This function uploads the
+ * package before opening the Mongo transaction, then binds currentVersionId and removes the
+ * temporary S3 TTL inside the transaction. If Mongo fails, the uploaded package keeps its TTL and
+ * is cleaned by the shared S3 cleanup flow.
+ * Runtime metadata remains empty until the workspace is saved and deployed from the edit sandbox.
  */
-export async function importSkill(
-  packageData: SkillPackageType,
-  teamId: string,
-  tmbId: string,
-  zipBuffer: Buffer,
-  parentId?: string | null
-): Promise<string> {
-  const { skill } = packageData;
-  const runtimeSkills = await extractRuntimeSkillsFromPackage(zipBuffer);
+export async function importSkill({
+  skill,
+  teamId,
+  tmbId,
+  packageStream,
+  contentLength,
+  parentId
+}: ImportSkillParams): Promise<string> {
+  const runtimeSkills: RuntimeSkillMetadataType[] = [];
 
   const newSkill = new MongoAgentSkills({
-    parentId: parentId || null,
+    parentId: parentId ?? null,
     type: AgentSkillTypeEnum.skill,
     source: AgentSkillSourceEnum.personal,
     name: skill.name,
@@ -48,11 +56,12 @@ export async function importSkill(
   const newSkillId = newSkill._id.toString();
   const versionId = new Types.ObjectId().toString();
 
-  const storageInfo = await uploadSkillPackage({
+  const storageInfo = await uploadSkillPackageStream({
     teamId,
     skillId: newSkillId,
     packageObjectId: versionId,
-    zipBuffer
+    packageStream,
+    contentLength
   });
 
   return mongoSessionRun(async (session) => {

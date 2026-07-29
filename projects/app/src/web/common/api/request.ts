@@ -241,13 +241,16 @@ function request(
   { cancelToken, maxQuantity, withCredentials, dataAsBody, deduplicate, ...config }: ConfigType,
   method: Method
 ): any {
-  /* 去空 */
-  for (const key in data) {
-    const val = data[key];
-    if (data[key] === undefined) {
-      delete data[key];
-    } else if (val instanceof Date) {
-      data[key] = dayjs(val).format();
+  // 只归一化普通参数对象和数组，避免改写 File、Blob 等原始请求体的只读属性。
+  const dataPrototype = data && typeof data === 'object' ? Object.getPrototypeOf(data) : undefined;
+  if (Array.isArray(data) || dataPrototype === Object.prototype || dataPrototype === null) {
+    for (const key in data) {
+      const val = data[key];
+      if (data[key] === undefined) {
+        delete data[key];
+      } else if (val instanceof Date) {
+        data[key] = dayjs(val).format();
+      }
     }
   }
 

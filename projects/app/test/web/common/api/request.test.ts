@@ -8,6 +8,7 @@ import {
   responseError,
   AUTH_ERROR_EVENT_NAME,
   GET,
+  POST,
   instance
 } from '../../../../src/web/common/api/request';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -123,6 +124,28 @@ describe('request utils', () => {
       await Promise.all([GET('/test'), GET('/test')]);
 
       expect(requestSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('raw request body', () => {
+    it('should send File without mutating its readonly properties', async () => {
+      const file = new File(['skill package'], 'skill.zip', { type: 'application/octet-stream' });
+      const requestSpy = vi.spyOn(instance, 'request').mockResolvedValue({
+        data: { code: 200, data: 'skill-id', message: 'success' }
+      });
+
+      await expect(
+        POST('/core/ai/skill/import?filename=skill.zip', file, {
+          headers: { 'Content-Type': 'application/octet-stream' }
+        })
+      ).resolves.toBe('skill-id');
+
+      expect(requestSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: file,
+          method: 'POST'
+        })
+      );
     });
   });
 

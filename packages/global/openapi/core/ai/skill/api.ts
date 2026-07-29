@@ -138,13 +138,14 @@ export const GetSkillDetailResponseSchema = z.object({
 });
 export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema>;
 
-export const ImportSkillBodySchema = z.object({
+export const ImportSkillQuerySchema = z.object({
+  filename: z.string().min(1).describe('上传的 .zip 文件原始文件名'),
   parentId: z.string().nullable().optional().describe('导入的目标目录 ID'),
   name: z.string().optional().describe('导入后的技能名称'),
   description: z.string().optional().describe('导入后的技能描述'),
   avatar: z.string().optional().describe('导入后的技能头像')
 });
-export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
+export type ImportSkillQuery = z.infer<typeof ImportSkillQuerySchema>;
 
 export const ImportSkillResponseSchema = IdSchema;
 export type ImportSkillResponse = z.infer<typeof ImportSkillResponseSchema>;
@@ -321,28 +322,3 @@ export type SwitchSkillVersionBody = z.infer<typeof SwitchSkillVersionBodySchema
 
 export const SwitchSkillVersionResponseSchema = z.void();
 export type SwitchSkillVersionResponse = z.infer<typeof SwitchSkillVersionResponseSchema>;
-
-export const ImportSkillMultipartRequestSchema = {
-  type: 'object' as const,
-  properties: {
-    file: {
-      type: 'string' as const,
-      format: 'binary' as const,
-      description:
-        '技能压缩包文件，支持 workspace 包（根目录包含非空 skills/）或单 skill 包（根目录或一级目录包含 SKILL.md），支持 ZIP / TAR / TAR.GZ'
-    },
-    name: {
-      type: 'string' as const,
-      description: '导入后的技能名称，可选'
-    },
-    description: {
-      type: 'string' as const,
-      description: '导入后的技能描述，可选'
-    },
-    avatar: {
-      type: 'string' as const,
-      description: '导入后的技能头像，可选'
-    }
-  },
-  required: ['file'] as string[]
-};

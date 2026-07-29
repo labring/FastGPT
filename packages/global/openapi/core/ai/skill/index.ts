@@ -12,7 +12,7 @@ import {
   GetSkillDetailResponseSchema,
   GetSkillFolderPathQuerySchema,
   GetSkillFolderPathResponseSchema,
-  ImportSkillMultipartRequestSchema,
+  ImportSkillQuerySchema,
   ImportSkillResponseSchema,
   ListAppsBySkillIdQuerySchema,
   ListSkillVersionsBodySchema,
@@ -136,12 +136,19 @@ export const SkillPath: OpenAPIPath = {
   '/core/ai/skill/import': {
     post: {
       summary: '导入技能',
-      description: '上传 ZIP / TAR / TAR.GZ 技能压缩包并导入为技能',
+      description: '以原始请求体上传 .zip 技能包并导入为技能',
       tags: [DevApiTagsMap.aiSkill],
+      requestParams: {
+        query: ImportSkillQuerySchema
+      },
       requestBody: {
         content: {
-          'multipart/form-data': {
-            schema: ImportSkillMultipartRequestSchema
+          'application/octet-stream': {
+            schema: {
+              type: 'string',
+              format: 'binary',
+              description: '技能包原始二进制内容'
+            }
           }
         }
       },
