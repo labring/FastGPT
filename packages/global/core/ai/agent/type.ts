@@ -1,6 +1,31 @@
 import { getNanoid } from '../../../common/string/tools';
 import z from 'zod';
 
+export const AgentAskBlockerTypeSchema = z.enum([
+  'missing_required_input',
+  'tool_unavailable',
+  'ambiguous_goal',
+  'user_choice'
+]);
+export type AgentAskBlockerType = z.infer<typeof AgentAskBlockerTypeSchema>;
+
+export const AgentAskOptionSchema = z.object({
+  summary: z.string().trim().min(1),
+  value: z.string().trim().min(1)
+});
+export type AgentAskOption = z.infer<typeof AgentAskOptionSchema>;
+
+export const AgentAskQuestionSchema = z.object({
+  question: z.string().trim().min(1),
+  options: z.array(AgentAskOptionSchema).min(2).max(5)
+});
+export type AgentAskQuestion = z.infer<typeof AgentAskQuestionSchema>;
+
+export const AgentAskAnswerPayloadSchema = z.object({
+  answers: z.array(z.string())
+});
+export type AgentAskAnswerPayload = z.infer<typeof AgentAskAnswerPayloadSchema>;
+
 export const AgentPlanStatusSchema = z.object({
   status: z.enum(['generating', 'updating']).meta({
     description: '计划状态：generating 生成计划中，updating 更新计划中'

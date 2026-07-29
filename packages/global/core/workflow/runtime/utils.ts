@@ -188,11 +188,15 @@ export const getLastInteractiveValue = (
       return lastValue.interactive;
     }
 
+    if (lastValue.interactive.type === 'agentAsk' && !lastValue.interactive.params.submitted) {
+      return lastValue.interactive;
+    }
+
     if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
       return lastValue.interactive;
     }
 
-    // Agent plan ask query
+    // Legacy agent plan ask query (ask_user)
     if (
       lastValue.interactive.type === 'agentPlanAskQuery' &&
       !lastValue.interactive.params.answer

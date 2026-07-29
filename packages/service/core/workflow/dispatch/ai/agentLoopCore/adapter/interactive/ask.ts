@@ -11,12 +11,14 @@ export const createAgentLoopCoreAskInteractive = ({
   askId: string;
   ask: AgentAskPayload;
 }): InteractiveNodeResponseType => ({
-  type: 'agentPlanAskQuery',
+  type: 'agentAsk',
   askId,
   params: {
-    content: ask.question,
-    reason: ask.reason,
-    blockerType: ask.blockerType,
-    options: ask.options
+    description: ask.reason,
+    questions: ask.questions.map((question) => ({
+      ...question,
+      // Initialize the initial state
+      answer: ''
+    }))
   }
 });

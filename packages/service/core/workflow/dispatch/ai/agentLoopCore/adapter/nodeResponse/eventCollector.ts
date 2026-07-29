@@ -154,7 +154,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
         moduleType: node.flowNodeType,
         moduleLogo: AgentNodeResponseDisplay.ask.moduleLogo,
         runningTime: event.seconds,
-        textOutput: event.ask.question
+        textOutput: event.ask.questions.map((question) => question.question).join('\n')
       })
     );
   };

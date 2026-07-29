@@ -383,12 +383,24 @@ export const chats2GPTMessages = ({
         const finalInteractive = value.interactive
           ? extractDeepestInteractive(value.interactive)
           : undefined;
+
+        // Legacy ask
         if (
           finalInteractive?.type === 'agentPlanAskQuery' &&
           finalInteractive.askId &&
           typeof finalInteractive.params.answer === 'string'
         ) {
           agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer);
+        }
+
+        // New ask_user
+        if (finalInteractive?.type === 'agentAsk' && finalInteractive.params.submitted) {
+          agentAskAnswerMap.set(
+            finalInteractive.askId,
+            JSON.stringify({
+              answers: finalInteractive.params.questions.map((question) => question.answer)
+            })
+          );
         }
       });
 
