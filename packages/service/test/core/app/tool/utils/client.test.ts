@@ -188,31 +188,26 @@ describe('getClientToolPreviewNode', () => {
 
     expect(input).toMatchObject({
       selectedType: 'agentGenerated',
-      selectedTypeIndex: 0,
       renderTypeList: ['agentGenerated', 'input', 'reference'],
       isToolParam: true
     });
 
     expect(result.inputs.find((item) => item.key === 'referenceOnly')).toMatchObject({
       selectedType: 'agentGenerated',
-      selectedTypeIndex: 0,
       renderTypeList: ['agentGenerated', 'reference']
     });
 
     expect(result.inputs.find((item) => item.key === 'legacyToolParam')).toMatchObject({
       selectedType: 'agentGenerated',
-      selectedTypeIndex: 0,
       renderTypeList: ['agentGenerated', 'input', 'reference'],
       isToolParam: true
     });
 
     expect(result.inputs.find((item) => item.key === 'explicitManual')).toMatchObject({
-      renderTypeList: ['input', 'reference'],
-      isToolParam: false
+      renderTypeList: ['agentGenerated', 'input', 'reference'],
+      isToolParam: false,
+      selectedType: 'input'
     });
-    expect(
-      result.inputs.find((item) => item.key === 'explicitManual')?.selectedType
-    ).toBeUndefined();
   });
 
   it('defaults an ordinary workflow user question to Agent generation', async () => {

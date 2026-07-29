@@ -134,6 +134,7 @@ export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
   const hasExplicitSelectedType = input.selectedType !== undefined;
   const recommendsAgentGenerated =
     input.isToolParam === true ||
+    (input.isToolParam !== false && isTool && input.key === NodeInputKeyEnum.userChatInput) ||
     (allowLegacyToolDescriptionFallback &&
       input.isToolParam === undefined &&
       !!input.toolDescription);
@@ -265,6 +266,13 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
 
   if (candidates.includes(preferredType)) {
     return preferredType;
+  }
+
+  if (
+    input.valueType?.startsWith('array') &&
+    candidates.includes(FlowNodeInputTypeEnum.multipleSelect)
+  ) {
+    return FlowNodeInputTypeEnum.multipleSelect;
   }
 
   if (hasGenericManualInput) {

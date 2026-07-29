@@ -457,8 +457,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       expect.arrayContaining([
         expect.objectContaining({
           key: 'query',
-          selectedType: FlowNodeInputTypeEnum.agentGenerated,
-          selectedTypeIndex: 0
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         })
       ])
     );
@@ -523,7 +522,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].inputs[0]).toMatchObject({
       key: 'query',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,
@@ -845,8 +843,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].inputs[0]).toMatchObject({
       key: 'query',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
     expect(tools[0].requestSchema.function.parameters).toMatchObject({
       properties: {

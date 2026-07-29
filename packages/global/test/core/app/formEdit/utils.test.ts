@@ -210,6 +210,7 @@ describe('checkNeedsUserConfiguration', () => {
         inputs: [
           createMockInput({
             renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
             toolDescription: 'Tool description'
           })
         ]
@@ -459,6 +460,7 @@ describe('checkNeedsUserConfiguration', () => {
           createMockInput({
             key: 'input3',
             renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
             toolDescription: 'Has description'
           })
         ]
@@ -485,6 +487,7 @@ describe('getToolConfigStatus', () => {
         inputs: [
           createMockInput({
             renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
             toolDescription: 'Tool description'
           })
         ]
@@ -849,6 +852,7 @@ describe('getToolConfigStatus', () => {
         inputs: [
           createMockInput({
             renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
             required: true,
             toolDescription: 'Has description',
             value: ''
@@ -1242,7 +1246,7 @@ describe('agent generated tool input helpers', () => {
     expect(selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
   });
 
-  it('should not materialize selectedType for inputs without a final type selection', () => {
+  it('should materialize selectedType for inputs without a final type selection', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         key: NodeInputKeyEnum.systemInputConfig,
@@ -1253,7 +1257,8 @@ describe('agent generated tool input helpers', () => {
     expect(input).toEqual(
       createMockInput({
         key: NodeInputKeyEnum.systemInputConfig,
-        renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        selectedType: FlowNodeInputTypeEnum.hidden
       })
     );
   });
