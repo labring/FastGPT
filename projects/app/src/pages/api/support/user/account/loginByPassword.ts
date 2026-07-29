@@ -1,15 +1,12 @@
-import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { serviceEnv } from '@fastgpt/service/env';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { authCode } from '@fastgpt/service/support/user/auth/controller';
+import { passwordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
 import { createUserSession } from '@fastgpt/service/support/user/session';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -35,21 +32,12 @@ async function handler(
     bodySchema: LoginByPasswordBodySchema
   }).body;
 
-  // Auth prelogin code
-  await authCode({
-    key: username,
-    code,
-    type: UserAuthTypeEnum.login
-  });
-
-  const user = await MongoUser.findOne({
+  const user = await passwordVerificationService.verifyCredentials({
     username,
-    password
+    password,
+    code
   });
 
-  if (!user) {
-    return Promise.reject(UserErrEnum.account_psw_error);
-  }
   if (user.status === UserStatusEnum.forbidden) {
     return Promise.reject('Invalid account!');
   }
