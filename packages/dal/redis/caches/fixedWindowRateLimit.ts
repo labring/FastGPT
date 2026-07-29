@@ -1,8 +1,8 @@
 import {
   asRedisLogicalKey,
-  redisRepositoryAdapter,
+  redisCacheAdapter,
   RedisInvalidArgumentError,
-  type RedisStoreAdapter
+  type RedisCacheAdapter
 } from '../adapter';
 import { PositiveSafeIntegerSchema } from '../runtime/schema';
 
@@ -14,22 +14,30 @@ export type FixedWindowRateLimitResult = {
   resetAt: number;
 };
 
-export type FixedWindowRateLimitRepositoryDependencies = {
-  redis?: Pick<RedisStoreAdapter, 'consumeFixedWindow'>;
+export type FixedWindowRateLimitCacheOptions = {
+  redis?: Pick<RedisCacheAdapter, 'consumeFixedWindow'>;
   now?: () => number;
 };
 
 /**
- * 创建固定窗口限流 Repository。
+ * 固定窗口限流 Cache。
  *
- * 计数与 TTL 的原子性由 adapter 保证；Repository 只负责限制值校验和业务决策结果。
+ * 计数与 TTL 的原子性由 adapter 保证；Cache 只负责限制值校验和业务决策结果。
  * Redis 执行错误向上抛出，由认证或 API service 统一映射为 fail-closed。
  */
-export const createFixedWindowRateLimitRepository = ({
-  redis = redisRepositoryAdapter,
-  now = Date.now
-}: FixedWindowRateLimitRepositoryDependencies = {}) => ({
-  consume: async ({
+export class FixedWindowRateLimitCache {
+  private readonly redis: Pick<RedisCacheAdapter, 'consumeFixedWindow'>;
+  private readonly now: () => number;
+
+  constructor({
+    redis = redisCacheAdapter,
+    now = Date.now
+  }: FixedWindowRateLimitCacheOptions = {}) {
+    this.redis = redis;
+    this.now = now;
+  }
+
+  async consume({
     key,
     limit,
     windowSeconds = 60
@@ -37,7 +45,7 @@ export const createFixedWindowRateLimitRepository = ({
     key: string;
     limit: number;
     windowSeconds?: number;
-  }): Promise<FixedWindowRateLimitResult> => {
+  }): Promise<FixedWindowRateLimitResult> {
     const parsedLimit = PositiveSafeIntegerSchema.safeParse(limit);
     if (!parsedLimit.success) {
       throw new RedisInvalidArgumentError({
@@ -46,7 +54,7 @@ export const createFixedWindowRateLimitRepository = ({
       });
     }
 
-    const { currentCount, ttlSeconds } = await redis.consumeFixedWindow({
+    const { currentCount, ttlSeconds } = await this.redis.consumeFixedWindow({
       key: asRedisLogicalKey(key),
       windowSeconds
     });
@@ -56,13 +64,9 @@ export const createFixedWindowRateLimitRepository = ({
       currentCount,
       remaining: Math.max(0, parsedLimit.data - currentCount),
       ttlSeconds,
-      resetAt: now() + ttlSeconds * 1000
+      resetAt: this.now() + ttlSeconds * 1000
     };
   }
-});
+}
 
-export const fixedWindowRateLimitRepository = createFixedWindowRateLimitRepository();
-
-export type FixedWindowRateLimitRepository = ReturnType<
-  typeof createFixedWindowRateLimitRepository
->;
+export const fixedWindowRateLimitCache = new FixedWindowRateLimitCache();

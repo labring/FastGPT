@@ -10,10 +10,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.unmock('@fastgpt/service/common/middle/tracks/utils');
 
-vi.mock('@fastgpt/dal/redis/repositories', () => ({
-  createDailyActiveDedupeRepository: () => ({
-    shouldRecord: mocks.shouldRecord
-  })
+vi.mock('@fastgpt/dal/redis/caches', () => ({
+  DailyActiveDedupeCache: class MockDailyActiveDedupeCache {
+    shouldRecord = mocks.shouldRecord;
+  }
 }));
 
 vi.mock('@fastgpt/service/common/middle/tracks/schema', () => ({

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Redis 参数和 Repository 配置共用的正安全整数 schema。 */
+/** Redis 参数和 Cache 配置共用的正安全整数 schema。 */
 export const PositiveSafeIntegerSchema = z.int().positive();
 
 /** Redis 返回值和计数器共用的非负安全整数 schema。 */

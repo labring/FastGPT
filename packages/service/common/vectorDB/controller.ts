@@ -1,5 +1,5 @@
 /* vector crud */
-import { createTeamVectorCountRepository } from '@fastgpt/dal/redis/repositories';
+import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches';
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
@@ -30,7 +30,7 @@ const getVectorObj = (): VectorControllerType => {
 };
 
 const Vector = getVectorObj();
-const teamVectorCountRepository = createTeamVectorCountRepository({
+const teamVectorCountCache = new TeamVectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
 
@@ -82,7 +82,7 @@ export const insertDatasetDataVector = async ({
     })
   );
 
-  await teamVectorCountRepository.invalidate(props.teamId);
+  await teamVectorCountCache.invalidate(props.teamId);
 
   return {
     tokens,
@@ -92,7 +92,7 @@ export const insertDatasetDataVector = async ({
 
 export const deleteDatasetDataVector: VectorControllerType['delete'] = async (props) => {
   const result = await retryFn(() => Vector.delete(props));
-  await teamVectorCountRepository.invalidate(props.teamId);
+  await teamVectorCountCache.invalidate(props.teamId);
   return result;
 };
 
@@ -100,14 +100,14 @@ export const getVectorDataByTime = Vector.getVectorDataByTime;
 
 // Count vector
 export const getVectorCountByTeamId = async (teamId: string) => {
-  const cacheCount = await teamVectorCountRepository.get(teamId);
+  const cacheCount = await teamVectorCountCache.get(teamId);
   if (cacheCount !== undefined) {
     return cacheCount;
   }
 
   const count = await Vector.getVectorCount({ teamId });
 
-  void teamVectorCountRepository.set({
+  void teamVectorCountCache.set({
     teamId,
     count
   });

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { createSystemVersionRepository } from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { SystemVersionCache } from '@fastgpt/dal/redis/caches';
 
 const createKeyBatches = async function* (batches: string[][]) {
   for (const batch of batches) {
@@ -8,7 +8,7 @@ const createKeyBatches = async function* (batches: string[][]) {
   }
 };
 
-describe('createSystemVersionRepository', () => {
+describe('SystemVersionCache', () => {
   const redis = {
     deleteMany: vi.fn(),
     getOrSet: vi.fn(),
@@ -30,15 +30,13 @@ describe('createSystemVersionRepository', () => {
     const commandClient = {
       set: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('version-existing')
     };
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createSystemVersionRepository({ redis: adapter, createVersion });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new SystemVersionCache({ redis: adapter, createVersion });
 
-    await expect(repository.getOrInitialize({ key: 'modelPermission' })).resolves.toBe(
-      'version-new'
+    await expect(cache.getOrInitialize({ key: 'modelPermission' })).resolves.toBe('version-new');
+    await expect(cache.getOrInitialize({ key: 'modelPermission', id: 'team-1' })).resolves.toBe(
+      'version-existing'
     );
-    await expect(
-      repository.getOrInitialize({ key: 'modelPermission', id: 'team-1' })
-    ).resolves.toBe('version-existing');
 
     expect(commandClient.set.mock.calls).toEqual([
       ['fastgpt:VERSION_KEY:modelPermission', 'version-new', 'NX', 'GET'],
@@ -48,10 +46,10 @@ describe('createSystemVersionRepository', () => {
 
   it('refreshes permanent base and child keys with new versions', async () => {
     createVersion.mockReturnValueOnce('base-version').mockReturnValueOnce('child-version');
-    const repository = createSystemVersionRepository({ redis: redis as any, createVersion });
+    const cache = new SystemVersionCache({ redis: redis as any, createVersion });
 
-    await repository.refresh({ key: 'modelPermission' });
-    await repository.refresh({ key: 'modelPermission', id: 'team-1' });
+    await cache.refresh({ key: 'modelPermission' });
+    await cache.refresh({ key: 'modelPermission', id: 'team-1' });
 
     expect(redis.set.mock.calls).toEqual([
       [{ key: 'VERSION_KEY:modelPermission', value: 'base-version' }],
@@ -66,9 +64,9 @@ describe('createSystemVersionRepository', () => {
         ['VERSION_KEY:modelPermission:team-3']
       ])
     );
-    const repository = createSystemVersionRepository({ redis: redis as any, createVersion });
+    const cache = new SystemVersionCache({ redis: redis as any, createVersion });
 
-    await repository.refresh({ key: 'modelPermission', id: '*' });
+    await cache.refresh({ key: 'modelPermission', id: '*' });
 
     expect(redis.iterateByPrefix).toHaveBeenCalledWith({
       prefix: 'VERSION_KEY:modelPermission',
@@ -84,9 +82,9 @@ describe('createSystemVersionRepository', () => {
   });
 
   it('does not issue a delete when wildcard scan has no child keys', async () => {
-    const repository = createSystemVersionRepository({ redis: redis as any, createVersion });
+    const cache = new SystemVersionCache({ redis: redis as any, createVersion });
 
-    await repository.refresh({ key: 'modelPermission', id: '*' });
+    await cache.refresh({ key: 'modelPermission', id: '*' });
 
     expect(redis.deleteMany).not.toHaveBeenCalled();
   });
@@ -96,10 +94,10 @@ describe('createSystemVersionRepository', () => {
     const writeError = new Error('write failed');
     redis.getOrSet.mockRejectedValueOnce(readError);
     redis.set.mockRejectedValueOnce(writeError);
-    const repository = createSystemVersionRepository({ redis: redis as any, createVersion });
+    const cache = new SystemVersionCache({ redis: redis as any, createVersion });
 
-    await expect(repository.getOrInitialize({ key: 'modelPermission' })).rejects.toBe(readError);
-    await expect(repository.refresh({ key: 'modelPermission' })).rejects.toBe(writeError);
+    await expect(cache.getOrInitialize({ key: 'modelPermission' })).rejects.toBe(readError);
+    await expect(cache.refresh({ key: 'modelPermission' })).rejects.toBe(writeError);
   });
 
   it('propagates wildcard deletion failures', async () => {
@@ -111,9 +109,9 @@ describe('createSystemVersionRepository', () => {
       ])
     );
     redis.deleteMany.mockRejectedValueOnce(error);
-    const repository = createSystemVersionRepository({ redis: redis as any, createVersion });
+    const cache = new SystemVersionCache({ redis: redis as any, createVersion });
 
-    await expect(repository.refresh({ key: 'modelPermission', id: '*' })).rejects.toBe(error);
+    await expect(cache.refresh({ key: 'modelPermission', id: '*' })).rejects.toBe(error);
     expect(redis.deleteMany).toHaveBeenCalledTimes(1);
   });
 });

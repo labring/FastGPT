@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTeamPointRepository } from '@fastgpt/dal/redis/repositories';
+import { TeamPointCache } from '@fastgpt/dal/redis/caches';
 
-describe('createTeamPointRepository', () => {
+describe('TeamPointCache', () => {
   const redis = {
     deleteMany: vi.fn(),
     getPair: vi.fn(),
@@ -9,7 +9,7 @@ describe('createTeamPointRepository', () => {
     setPair: vi.fn()
   };
   const logger = { warn: vi.fn() };
-  const repository = createTeamPointRepository({ redis, logger });
+  const cache = new TeamPointCache({ redis, logger });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -20,7 +20,7 @@ describe('createTeamPointRepository', () => {
   });
 
   it('only returns a pair when both historical keys are valid', async () => {
-    await expect(repository.get('team-1')).resolves.toEqual({
+    await expect(cache.get('team-1')).resolves.toEqual({
       totalPoints: 2000,
       surplusPoints: 1500
     });
@@ -39,7 +39,7 @@ describe('createTeamPointRepository', () => {
   ])('treats partial or malformed pair %s as a cache miss', async (surplus, total) => {
     redis.getPair.mockResolvedValue([surplus, total]);
 
-    await expect(repository.get('team-1')).resolves.toBeUndefined();
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
@@ -47,7 +47,7 @@ describe('createTeamPointRepository', () => {
     const error = new Error('redis down');
     redis.getPair.mockRejectedValue(error);
 
-    await expect(repository.get('team-1')).resolves.toBeUndefined();
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith('Failed to get team point cache', {
       teamId: 'team-1',
       error
@@ -56,7 +56,7 @@ describe('createTeamPointRepository', () => {
 
   it('refreshes both keys atomically with the same 60-second TTL', async () => {
     await expect(
-      repository.set({ teamId: 'team-1', totalPoints: 2000, surplusPoints: 1500 })
+      cache.set({ teamId: 'team-1', totalPoints: 2000, surplusPoints: 1500 })
     ).resolves.toBeUndefined();
     expect(redis.setPair).toHaveBeenCalledWith({
       first: { key: 'cache:team_point_surplus:team-1', value: '1500' },
@@ -70,7 +70,7 @@ describe('createTeamPointRepository', () => {
     redis.setPair.mockRejectedValue(error);
 
     await expect(
-      repository.set({ teamId: 'team-1', totalPoints: 2000, surplusPoints: 1500 })
+      cache.set({ teamId: 'team-1', totalPoints: 2000, surplusPoints: 1500 })
     ).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith('Failed to set team point cache', {
       teamId: 'team-1',
@@ -80,7 +80,7 @@ describe('createTeamPointRepository', () => {
 
   it('increments surplus with TTL and skips zero increments', async () => {
     await expect(
-      repository.incrementSurplus({ teamId: 'team-1', value: -100 })
+      cache.incrementSurplus({ teamId: 'team-1', value: -100 })
     ).resolves.toBeUndefined();
     expect(redis.incrementWithTtl).toHaveBeenCalledWith({
       key: 'cache:team_point_surplus:team-1',
@@ -88,9 +88,7 @@ describe('createTeamPointRepository', () => {
       ttlSeconds: 60
     });
 
-    await expect(
-      repository.incrementSurplus({ teamId: 'team-1', value: 0 })
-    ).resolves.toBeUndefined();
+    await expect(cache.incrementSurplus({ teamId: 'team-1', value: 0 })).resolves.toBeUndefined();
     expect(redis.incrementWithTtl).toHaveBeenCalledTimes(1);
   });
 
@@ -100,10 +98,8 @@ describe('createTeamPointRepository', () => {
     redis.incrementWithTtl.mockRejectedValue(incrementError);
     redis.deleteMany.mockRejectedValue(clearError);
 
-    await expect(
-      repository.incrementSurplus({ teamId: 'team-1', value: 1 })
-    ).resolves.toBeUndefined();
-    await expect(repository.clear('team-1')).resolves.toBeUndefined();
+    await expect(cache.incrementSurplus({ teamId: 'team-1', value: 1 })).resolves.toBeUndefined();
+    await expect(cache.clear('team-1')).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenNthCalledWith(1, 'Failed to increment team point cache', {
       teamId: 'team-1',
       value: 1,
@@ -123,7 +119,7 @@ describe('createTeamPointRepository', () => {
     ],
     ['value', { teamId: 'team-1', value: Number.NaN }]
   ])('skips invalid numeric input for %s', async (_field, input) => {
-    const action = 'value' in input ? repository.incrementSurplus(input) : repository.set(input);
+    const action = 'value' in input ? cache.incrementSurplus(input) : cache.set(input);
 
     await expect(action).resolves.toBeUndefined();
     expect(redis.setPair).not.toHaveBeenCalled();
@@ -131,10 +127,10 @@ describe('createTeamPointRepository', () => {
   });
 
   it('uses the no-op logger when invalid cache input is rejected without a logger', async () => {
-    const repository = createTeamPointRepository({ redis });
+    const cache = new TeamPointCache({ redis });
 
     await expect(
-      repository.set({ teamId: 'team-1', totalPoints: Number.NaN, surplusPoints: 1 })
+      cache.set({ teamId: 'team-1', totalPoints: Number.NaN, surplusPoints: 1 })
     ).resolves.toBeUndefined();
     expect(redis.setPair).not.toHaveBeenCalled();
   });

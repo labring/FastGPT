@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createFixedWindowRateLimitRepository } from '@fastgpt/dal/redis/repositories';
+import { FixedWindowRateLimitCache } from '@fastgpt/dal/redis/caches';
 
-describe('createFixedWindowRateLimitRepository', () => {
+describe('FixedWindowRateLimitCache', () => {
   const consumeFixedWindow = vi.fn();
   const now = vi.fn(() => 1_000_000);
-  const repository = createFixedWindowRateLimitRepository({
+  const cache = new FixedWindowRateLimitCache({
     redis: { consumeFixedWindow },
     now
   });
@@ -16,7 +16,7 @@ describe('createFixedWindowRateLimitRepository', () => {
 
   it('returns an allow decision, remaining quota and reset timestamp', async () => {
     await expect(
-      repository.consume({
+      cache.consume({
         key: 'frequency:chat:team-1',
         limit: 5,
         windowSeconds: 60
@@ -37,9 +37,7 @@ describe('createFixedWindowRateLimitRepository', () => {
   it('blocks after the limit and clamps remaining quota to zero', async () => {
     consumeFixedWindow.mockResolvedValue({ currentCount: 6, ttlSeconds: 4 });
 
-    await expect(
-      repository.consume({ key: 'frequency:chat:team-1', limit: 5 })
-    ).resolves.toMatchObject({
+    await expect(cache.consume({ key: 'frequency:chat:team-1', limit: 5 })).resolves.toMatchObject({
       allowed: false,
       currentCount: 6,
       remaining: 0,
@@ -56,7 +54,7 @@ describe('createFixedWindowRateLimitRepository', () => {
     'rejects invalid rate limit %s before Redis access',
     async (limit) => {
       await expect(
-        repository.consume({ key: 'frequency:chat:team-1', limit: limit as any })
+        cache.consume({ key: 'frequency:chat:team-1', limit: limit as any })
       ).rejects.toMatchObject({
         code: 'REDIS_INVALID_ARGUMENT',
         operation: 'fixedWindow.consume'
@@ -69,8 +67,6 @@ describe('createFixedWindowRateLimitRepository', () => {
     const error = new Error('redis down');
     consumeFixedWindow.mockRejectedValue(error);
 
-    await expect(repository.consume({ key: 'frequency:chat:team-1', limit: 5 })).rejects.toBe(
-      error
-    );
+    await expect(cache.consume({ key: 'frequency:chat:team-1', limit: 5 })).rejects.toBe(error);
   });
 });

@@ -25,9 +25,9 @@ vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
   }
 }));
 
-vi.mock('@fastgpt/dal/redis/repositories', () => ({
+vi.mock('@fastgpt/dal/redis/caches', () => ({
   WECHAT_QR_LOGIN_TTL_SECONDS: 480,
-  wechatQrLoginRepository: {
+  wechatQrLoginCache: {
     set: mocks.repositorySet
   }
 }));
@@ -50,7 +50,7 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     mocks.repositorySet.mockResolvedValue(undefined);
   });
 
-  it('stores generated QR data and returns the Repository TTL', async () => {
+  it('stores generated QR data and returns the Cache TTL', async () => {
     const req = { body: { outLinkId } } as any;
 
     await expect(handler(req)).resolves.toEqual({ ...qrData, expireTime: 480 });
@@ -69,7 +69,7 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     });
   });
 
-  it('propagates Repository write failures instead of returning an unusable QR code', async () => {
+  it('propagates Cache write failures instead of returning an unusable QR code', async () => {
     const error = new Error('redis write failed');
     mocks.repositorySet.mockRejectedValue(error);
 

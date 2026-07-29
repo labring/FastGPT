@@ -5,7 +5,8 @@
   "exports": {
     "./redis": "./redis/index.ts",
     "./redis/adapter": "./redis/adapter.ts",
-    "./redis/repositories": "./redis/repositories/index.ts",
+    "./redis/caches": "./redis/caches/index.ts",
+    "./redis/types": "./redis/types.ts",
     "./redis/runtime": "./redis/runtime/index.ts"
   },
   "scripts": {

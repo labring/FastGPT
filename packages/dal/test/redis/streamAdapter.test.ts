@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { asRedisLogicalKey, createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
+import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 const key = asRedisLogicalKey('stream:resume:data:team:app:source:chat');
 const physicalKey = 'fastgpt:stream:resume:data:team:app:source:chat';
@@ -13,7 +13,7 @@ describe('Redis Stream adapter operations', () => {
       get: vi.fn(),
       set: vi.fn()
     } as any;
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
     await expect(adapter.rangeStream({ key, start: '-', end: '+', count: 50 })).resolves.toEqual([
       { id: '1-0', fields: { raw: 'hello' } }
@@ -31,7 +31,7 @@ describe('Redis Stream adapter operations', () => {
         get: vi.fn(),
         set: vi.fn()
       } as any;
-      const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+      const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
       await expect(
         adapter.rangeStream({ key, start: '-', end: '+', count: 10 })
@@ -50,7 +50,7 @@ describe('Redis Stream adapter operations', () => {
       get: vi.fn(),
       set: vi.fn()
     } as any;
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
     await expect(adapter.appendStreamEntry({ key, fields: { raw: 'hello' } })).resolves.toBe('2-0');
     expect(client.call).toHaveBeenCalledWith('XADD', physicalKey, '*', 'raw', 'hello');
@@ -64,7 +64,7 @@ describe('Redis Stream adapter operations', () => {
       get: vi.fn(),
       set: vi.fn()
     } as any;
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
     await expect(
       adapter.appendStreamEntry({ key, fields: { raw: 'hello' } })
@@ -79,14 +79,14 @@ describe('Redis Stream adapter operations', () => {
     [{}, 'stream fields must contain at least one string value'],
     [{ raw: 1 }, 'stream fields must contain at least one string value']
   ])('rejects invalid XADD fields %#', (fields, message) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => ({}) as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => ({}) as any });
 
     expect(() => adapter.appendStreamEntry({ key, fields: fields as any })).toThrow(message);
   });
 
   it('rejects a non-string XADD value before opening a connection', () => {
     const getCommandClient = vi.fn(() => ({}) as any);
-    const adapter = createRedisStoreAdapter({ getCommandClient });
+    const adapter = createRedisCacheAdapter({ getCommandClient });
 
     expect(() => adapter.appendStreamEntry({ key, fields: { raw: 1 as any } })).toThrow(
       'stream fields must contain at least one string value'
@@ -102,7 +102,7 @@ describe('Redis Stream adapter operations', () => {
       get: vi.fn(),
       set: vi.fn()
     } as any;
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
     await expect(
       adapter.appendStreamEntry({ key, fields: { raw: 'hello' } })
@@ -122,7 +122,7 @@ describe('Redis Stream adapter operations', () => {
       get: vi.fn(),
       set: vi.fn()
     } as any;
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
     await expect(adapter.expireStream({ key, ttlSeconds: 30 })).resolves.toBeUndefined();
     await expect(adapter.expireStream({ key, ttlSeconds: 30 })).resolves.toBeUndefined();
@@ -138,7 +138,7 @@ describe('Redis Stream adapter operations', () => {
       get: vi.fn(),
       set: vi.fn()
     } as any;
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
     await expect(adapter.expireStream({ key, ttlSeconds: 30 })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -148,7 +148,7 @@ describe('Redis Stream adapter operations', () => {
 
   it.each([0, 1.5, '30'])('rejects invalid Stream TTL %s', (ttlSeconds) => {
     const client = { expire: vi.fn() };
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.expireStream({ key, ttlSeconds: ttlSeconds as any })).toThrow(
       'ttlSeconds must be a positive safe integer'
@@ -164,7 +164,7 @@ describe('Redis Stream adapter operations', () => {
       get: vi.fn(),
       set: vi.fn()
     } as any;
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
 
     await expect(
       adapter.rangeStream({ key, start: '-', end: '+', count: 10 })
@@ -189,7 +189,7 @@ describe('Redis Stream adapter operations', () => {
       call: vi.fn().mockResolvedValue(response)
     };
     const releaseConnection = vi.fn().mockResolvedValue(undefined);
-    const adapter = createRedisStoreAdapter({
+    const adapter = createRedisCacheAdapter({
       getCommandClient: () => ({}) as any,
       createBlockingConnection: () => blockingClient,
       releaseConnection
@@ -208,7 +208,7 @@ describe('Redis Stream adapter operations', () => {
       call: vi.fn().mockResolvedValue([['other:stream', []]])
     };
     const releaseConnection = vi.fn().mockResolvedValue(undefined);
-    const adapter = createRedisStoreAdapter({
+    const adapter = createRedisCacheAdapter({
       getCommandClient: () => ({}) as any,
       createBlockingConnection: () => blockingClient,
       releaseConnection
@@ -227,7 +227,7 @@ describe('Redis Stream adapter operations', () => {
       call: vi.fn().mockResolvedValue([[physicalKey, [['2-0', ['raw', 'hello', 'kind', 'delta']]]]])
     };
     const releaseConnection = vi.fn().mockResolvedValue(undefined);
-    const adapter = createRedisStoreAdapter({
+    const adapter = createRedisCacheAdapter({
       getCommandClient: () => ({}) as any,
       createBlockingConnection: () => blockingClient,
       releaseConnection
@@ -254,7 +254,7 @@ describe('Redis Stream adapter operations', () => {
   it('validates reader arguments and keeps a failed close promise idempotent', async () => {
     const blockingClient = { call: vi.fn() };
     const releaseConnection = vi.fn().mockRejectedValue(new Error('release failed'));
-    const adapter = createRedisStoreAdapter({
+    const adapter = createRedisCacheAdapter({
       getCommandClient: () => ({}) as any,
       createBlockingConnection: () => blockingClient,
       releaseConnection
@@ -275,7 +275,7 @@ describe('Redis Stream adapter operations', () => {
       call: vi.fn().mockResolvedValue(null)
     };
     const releaseConnection = vi.fn().mockResolvedValue(undefined);
-    const adapter = createRedisStoreAdapter({
+    const adapter = createRedisCacheAdapter({
       getCommandClient: () => ({}) as any,
       createBlockingConnection: () => blockingClient,
       releaseConnection

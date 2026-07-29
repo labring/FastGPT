@@ -1,6 +1,9 @@
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
 import { parseRedisConnectionConfig, type RedisEndpoint } from './config';
+import type { RedisRuntimeLogger } from '../types';
+
+export type { RedisRuntimeLogger } from '../types';
 
 export type RedisClient = Redis;
 export type RedisConnectionRole = 'command' | 'blocking' | 'queue' | 'worker';
@@ -25,12 +28,6 @@ export type RedisClientFactory = (options: RedisOptions) => RedisClient;
 export type RedisBeforeCloseHook = {
   name: string;
   close: () => Promise<void> | void;
-};
-
-export type RedisRuntimeLogger = {
-  info: (message: string, metadata?: Record<string, unknown>) => void;
-  warn: (message: string, metadata?: Record<string, unknown>) => void;
-  error: (message: string, metadata?: Record<string, unknown>) => void;
 };
 
 const silentLogger: RedisRuntimeLogger = {

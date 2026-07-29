@@ -3,16 +3,16 @@ import {
   OUTLINK_STREAM_CONTENT_TTL_SECONDS,
   OUTLINK_STREAM_END_FLAG,
   OUTLINK_STREAM_INITIAL_TTL_SECONDS,
-  createOutLinkStreamRepository,
+  OutLinkStreamCache,
   getOutLinkStreamKey
-} from '@fastgpt/dal/redis/repositories';
-import { asRedisLogicalKey, createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
+} from '@fastgpt/dal/redis/caches';
+import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 const streamId = 'stream-1';
 const logicalKey = 'cache:streamResponse:stream-1';
 const physicalKey = `fastgpt:${logicalKey}`;
 
-describe('OutLinkStreamRepository', () => {
+describe('OutLinkStreamCache', () => {
   const redis = {
     appendStringWithTtl: vi.fn(),
     delete: vi.fn(),
@@ -34,10 +34,10 @@ describe('OutLinkStreamRepository', () => {
   });
 
   it('appends through one typed operation with the requested TTL', async () => {
-    const repository = createOutLinkStreamRepository({ redis });
+    const cache = new OutLinkStreamCache({ redis });
 
     await expect(
-      repository.append({
+      cache.append({
         streamId,
         value: 'hello',
         ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
@@ -51,10 +51,10 @@ describe('OutLinkStreamRepository', () => {
   });
 
   it('maps a Redis miss to undefined and deletes through the logical key', async () => {
-    const repository = createOutLinkStreamRepository({ redis });
+    const cache = new OutLinkStreamCache({ redis });
 
-    await expect(repository.get(streamId)).resolves.toBeUndefined();
-    await expect(repository.delete(streamId)).resolves.toBe(true);
+    await expect(cache.get(streamId)).resolves.toBeUndefined();
+    await expect(cache.delete(streamId)).resolves.toBe(true);
     expect(redis.get).toHaveBeenCalledWith(asRedisLogicalKey(logicalKey));
     expect(redis.delete).toHaveBeenCalledWith(asRedisLogicalKey(logicalKey));
   });
@@ -75,19 +75,19 @@ describe('OutLinkStreamRepository', () => {
       exec: commandClient.exec
     };
     commandClient.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createOutLinkStreamRepository({ redis: adapter });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new OutLinkStreamCache({ redis: adapter });
 
-    await repository.append({ streamId, value: 'hello', ttlSeconds: 60 });
+    await cache.append({ streamId, value: 'hello', ttlSeconds: 60 });
 
     expect(multi.append).toHaveBeenCalledWith(physicalKey, 'hello');
     expect(multi.expire).toHaveBeenCalledWith(physicalKey, 60);
   });
 
   it('rejects an empty stream id before Redis access', () => {
-    const repository = createOutLinkStreamRepository({ redis });
+    const cache = new OutLinkStreamCache({ redis });
 
-    expect(() => repository.getKey('')).toThrow();
+    expect(() => cache.getKey('')).toThrow();
     expect(redis.get).not.toHaveBeenCalled();
   });
 });

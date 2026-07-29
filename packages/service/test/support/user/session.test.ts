@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
-  const repository = {
+  const cache = {
     delete: vi.fn(),
     deleteMany: vi.fn(),
     get: vi.fn(),
@@ -9,13 +9,17 @@ const mocks = vi.hoisted(() => {
     set: vi.fn()
   };
   return {
-    repository,
-    createSessionRepository: vi.fn(() => repository)
+    cache,
+    SessionCache: class MockSessionCache {
+      constructor() {
+        return cache;
+      }
+    }
   };
 });
 
-vi.mock('@fastgpt/dal/redis/repositories', () => ({
-  createSessionRepository: mocks.createSessionRepository
+vi.mock('@fastgpt/dal/redis/caches', () => ({
+  SessionCache: mocks.SessionCache
 }));
 
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -41,18 +45,17 @@ beforeAll(async () => {
 describe('user session service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createSessionRepository.mockReturnValue(mocks.repository);
-    mocks.repository.delete.mockResolvedValue(undefined);
-    mocks.repository.deleteMany.mockResolvedValue(undefined);
-    mocks.repository.get.mockResolvedValue({
+    mocks.cache.delete.mockResolvedValue(undefined);
+    mocks.cache.deleteMany.mockResolvedValue(undefined);
+    mocks.cache.get.mockResolvedValue({
       userId: 'user-1',
       teamId: 'team-1',
       tmbId: 'tmb-1',
       isRoot: false,
       createdAt: 1000
     });
-    mocks.repository.listByUser.mockResolvedValue([]);
-    mocks.repository.set.mockResolvedValue(undefined);
+    mocks.cache.listByUser.mockResolvedValue([]);
+    mocks.cache.set.mockResolvedValue(undefined);
     serviceEnv.MAX_LOGIN_SESSION = originalMaxLoginSession;
   });
 
@@ -61,7 +64,7 @@ describe('user session service', () => {
       expect.objectContaining({ userId: 'user-1' })
     );
 
-    mocks.repository.get.mockResolvedValueOnce(undefined);
+    mocks.cache.get.mockResolvedValueOnce(undefined);
     await expect(authUserSession('user-1:missing')).rejects.toBe(ERROR_ENUM.unAuthorization);
   });
 
@@ -76,7 +79,7 @@ describe('user session service', () => {
     });
 
     expect(sessionId).toMatch(/^user-1:/);
-    expect(mocks.repository.set).toHaveBeenCalledWith({
+    expect(mocks.cache.set).toHaveBeenCalledWith({
       sessionId,
       data: {
         userId: 'user-1',
@@ -87,23 +90,23 @@ describe('user session service', () => {
         ip: null
       }
     });
-    await vi.waitFor(() => expect(mocks.repository.listByUser).toHaveBeenCalledWith('user-1'));
+    await vi.waitFor(() => expect(mocks.cache.listByUser).toHaveBeenCalledWith('user-1'));
   });
 
   it('deletes all sessions except explicitly whitelisted session IDs', async () => {
-    mocks.repository.listByUser.mockResolvedValue([
+    mocks.cache.listByUser.mockResolvedValue([
       { sessionId: 'user-1:keep', data: {} },
       { sessionId: 'user-1:remove', data: {} }
     ]);
 
     await delUserAllSession('user-1', ['user-1:keep', undefined]);
 
-    expect(mocks.repository.deleteMany).toHaveBeenCalledWith(['user-1:remove']);
+    expect(mocks.cache.deleteMany).toHaveBeenCalledWith(['user-1:remove']);
   });
 
   it('removes the oldest sessions in background when the login limit is exceeded', async () => {
     serviceEnv.MAX_LOGIN_SESSION = 2;
-    mocks.repository.listByUser.mockResolvedValue([
+    mocks.cache.listByUser.mockResolvedValue([
       { sessionId: 'user-1:old', data: { createdAt: 1000 } },
       { sessionId: 'user-1:new', data: { createdAt: 3000 } },
       { sessionId: 'user-1:middle', data: { createdAt: 2000 } }
@@ -111,14 +114,12 @@ describe('user session service', () => {
 
     await createUserSession({ userId: 'user-1', teamId: 'team-1', tmbId: 'tmb-1' });
 
-    await vi.waitFor(() =>
-      expect(mocks.repository.deleteMany).toHaveBeenCalledWith(['user-1:old'])
-    );
+    await vi.waitFor(() => expect(mocks.cache.deleteMany).toHaveBeenCalledWith(['user-1:old']));
   });
 
   it('propagates session write errors so login fails closed', async () => {
     const error = new Error('session write failed');
-    mocks.repository.set.mockRejectedValue(error);
+    mocks.cache.set.mockRejectedValue(error);
 
     await expect(
       createUserSession({ userId: 'user-1', teamId: 'team-1', tmbId: 'tmb-1' })

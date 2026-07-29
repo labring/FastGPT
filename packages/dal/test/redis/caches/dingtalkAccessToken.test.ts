@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { createDingtalkAccessTokenRepository } from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { DingtalkAccessTokenCache } from '@fastgpt/dal/redis/caches';
 
 const server = {
   appKey: 'ding-app',
@@ -13,7 +13,7 @@ const secretHash = createHash('sha256').update(server.appSecret).digest('hex').s
 const logicalKey = `cache:dataset:dingtalk:accessToken:${server.appKey}:${secretHash}`;
 const physicalKey = `fastgpt:${logicalKey}`;
 
-describe('createDingtalkAccessTokenRepository', () => {
+describe('DingtalkAccessTokenCache', () => {
   const redis = {
     get: vi.fn(),
     set: vi.fn(),
@@ -36,14 +36,14 @@ describe('createDingtalkAccessTokenRepository', () => {
       set: vi.fn().mockResolvedValue('OK'),
       del: vi.fn().mockResolvedValue(0)
     };
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createDingtalkAccessTokenRepository({
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new DingtalkAccessTokenCache({
       redis: adapter,
       logger
     });
 
     await expect(
-      repository.getOrRefresh({
+      cache.getOrRefresh({
         server,
         fetchToken: async () => ({ accessToken: 'new-token', expireIn: 7200 })
       })
@@ -56,9 +56,9 @@ describe('createDingtalkAccessTokenRepository', () => {
   it('returns a cached token without calling the upstream fetcher', async () => {
     redis.get.mockResolvedValue('cached-token');
     const fetchToken = vi.fn();
-    const repository = createDingtalkAccessTokenRepository({ redis: redis as any, logger });
+    const cache = new DingtalkAccessTokenCache({ redis: redis as any, logger });
 
-    await expect(repository.getOrRefresh({ server, fetchToken })).resolves.toBe('cached-token');
+    await expect(cache.getOrRefresh({ server, fetchToken })).resolves.toBe('cached-token');
 
     expect(fetchToken).not.toHaveBeenCalled();
     expect(redis.set).not.toHaveBeenCalled();
@@ -67,9 +67,9 @@ describe('createDingtalkAccessTokenRepository', () => {
   it('preserves the historical empty-secret hash when appSecret is missing', async () => {
     redis.get.mockResolvedValue('cached-token');
     const emptySecretHash = createHash('sha256').update('').digest('hex').slice(0, 12);
-    const repository = createDingtalkAccessTokenRepository({ redis: redis as any, logger });
+    const cache = new DingtalkAccessTokenCache({ redis: redis as any, logger });
 
-    await repository.getOrRefresh({
+    await cache.getOrRefresh({
       server: { ...server, appSecret: undefined } as any,
       fetchToken: vi.fn()
     });
@@ -80,9 +80,9 @@ describe('createDingtalkAccessTokenRepository', () => {
   });
 
   it('uses the minimum TTL when the upstream expiry is inside the safety window', async () => {
-    const repository = createDingtalkAccessTokenRepository({ redis: redis as any, logger });
+    const cache = new DingtalkAccessTokenCache({ redis: redis as any, logger });
 
-    await repository.getOrRefresh({
+    await cache.getOrRefresh({
       server,
       fetchToken: async () => ({ accessToken: 'short-token', expireIn: 120 })
     });
@@ -99,10 +99,10 @@ describe('createDingtalkAccessTokenRepository', () => {
     const writeError = new Error('write failed');
     redis.get.mockRejectedValue(readError);
     redis.set.mockRejectedValue(writeError);
-    const repository = createDingtalkAccessTokenRepository({ redis: redis as any, logger });
+    const cache = new DingtalkAccessTokenCache({ redis: redis as any, logger });
 
     await expect(
-      repository.getOrRefresh({
+      cache.getOrRefresh({
         server,
         fetchToken: async () => ({ accessToken: 'new-token', expireIn: 7200 })
       })
@@ -127,10 +127,10 @@ describe('createDingtalkAccessTokenRepository', () => {
       resolveFetch = resolve;
     });
     const fetchToken = vi.fn(() => fetchPromise);
-    const repository = createDingtalkAccessTokenRepository({ redis: redis as any, logger });
+    const cache = new DingtalkAccessTokenCache({ redis: redis as any, logger });
 
-    const first = repository.getOrRefresh({ server, fetchToken });
-    const second = repository.getOrRefresh({ server, fetchToken });
+    const first = cache.getOrRefresh({ server, fetchToken });
+    const second = cache.getOrRefresh({ server, fetchToken });
     resolveFetch({ accessToken: 'shared-token', expireIn: 7200 });
 
     await expect(Promise.all([first, second])).resolves.toEqual(['shared-token', 'shared-token']);
@@ -140,10 +140,10 @@ describe('createDingtalkAccessTokenRepository', () => {
 
   it('deletes a stale token best-effort and preserves the upstream error', async () => {
     const upstreamError = new Error('upstream failed');
-    const repository = createDingtalkAccessTokenRepository({ redis: redis as any, logger });
+    const cache = new DingtalkAccessTokenCache({ redis: redis as any, logger });
 
     await expect(
-      repository.getOrRefresh({
+      cache.getOrRefresh({
         server,
         fetchToken: async () => Promise.reject(upstreamError)
       })
@@ -154,10 +154,10 @@ describe('createDingtalkAccessTokenRepository', () => {
   it('preserves the upstream error when best-effort deletion also fails', async () => {
     const upstreamError = new Error('upstream failed');
     redis.delete.mockRejectedValue(new Error('delete failed'));
-    const repository = createDingtalkAccessTokenRepository({ redis: redis as any, logger });
+    const cache = new DingtalkAccessTokenCache({ redis: redis as any, logger });
 
     await expect(
-      repository.getOrRefresh({
+      cache.getOrRefresh({
         server,
         fetchToken: async () => Promise.reject(upstreamError)
       })

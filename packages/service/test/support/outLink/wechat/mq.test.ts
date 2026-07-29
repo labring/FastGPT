@@ -78,11 +78,11 @@ vi.mock('../../../../support/outLink/runtime/utils', () => ({
   outlinkInvokeChat: vi.fn()
 }));
 
-vi.mock('@fastgpt/dal/redis/repositories', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/repositories')>();
+vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
   return {
     ...actual,
-    wechatPollingFailureRepository: {
+    wechatPollingFailureCache: {
       increment: mocks.increment,
       reset: mocks.reset,
       clear: mocks.clear
@@ -145,7 +145,7 @@ describe('Wechat polling failure counter integration', () => {
     return workers[0]?.processor;
   };
 
-  it('uses the atomic repository increment for API failures', async () => {
+  it('uses the atomic cache increment for API failures', async () => {
     mocks.getUpdates.mockResolvedValue({ ret: 500, errmsg: 'upstream failed' });
     mocks.increment.mockResolvedValue(2);
     const processor = await getPollProcessor();

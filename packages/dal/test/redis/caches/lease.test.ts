@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { asRedisLogicalKey, createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
+import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import {
-  createLeaseRepository,
+  LeaseCache,
   isRedisLeaseError,
   RedisLeaseAcquireError,
   RedisLeaseLostError,
   RedisLeaseUnavailableError
-} from '@fastgpt/dal/redis/repositories';
+} from '@fastgpt/dal/redis/caches';
 
 const key = asRedisLogicalKey('lock:agent-sandbox:init:sandbox-1');
 
-describe('LeaseRepository', () => {
+describe('LeaseCache', () => {
   const logger = { warn: vi.fn() };
   const redis = {
     acquireLease: vi.fn(),
@@ -32,9 +32,9 @@ describe('LeaseRepository', () => {
     const work = new Promise<string>((resolve) => {
       resolveWork = () => resolve('ok');
     });
-    const repository = createLeaseRepository({ redis, logger });
+    const cache = new LeaseCache({ redis, logger });
 
-    const resultPromise = repository.withLease({
+    const resultPromise = cache.withLease({
       key: 'agent-sandbox:init:sandbox-1',
       label: 'agent-sandbox-init',
       ttlMs: 60,
@@ -64,10 +64,10 @@ describe('LeaseRepository', () => {
   it('does not run when another holder owns the lease', async () => {
     redis.acquireLease.mockResolvedValue(false);
     const work = vi.fn();
-    const repository = createLeaseRepository({ redis, logger });
+    const cache = new LeaseCache({ redis, logger });
 
     await expect(
-      repository.withLease({
+      cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
         ttlMs: 60_000,
@@ -85,8 +85,8 @@ describe('LeaseRepository', () => {
     const work = new Promise<void>((resolve) => {
       resolveWork = resolve;
     });
-    const repository = createLeaseRepository({ redis, logger });
-    const resultPromise = repository.withLease({
+    const cache = new LeaseCache({ redis, logger });
+    const resultPromise = cache.withLease({
       key: 'agent-sandbox:init:sandbox-1',
       label: 'agent-sandbox-init',
       ttlMs: 60,
@@ -114,8 +114,8 @@ describe('LeaseRepository', () => {
       const work = new Promise<void>((resolve) => {
         resolveWork = resolve;
       });
-      const repository = createLeaseRepository({ redis, logger });
-      const resultPromise = repository.withLease({
+      const cache = new LeaseCache({ redis, logger });
+      const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
         ttlMs: 60,
@@ -153,8 +153,8 @@ describe('LeaseRepository', () => {
       const work = new Promise<string>((resolve) => {
         resolveWork = () => resolve('ok');
       });
-      const repository = createLeaseRepository({ redis, logger });
-      const resultPromise = repository.withLease({
+      const cache = new LeaseCache({ redis, logger });
+      const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
         ttlMs: 60,
@@ -184,8 +184,8 @@ describe('LeaseRepository', () => {
       const work = new Promise<string>((resolve) => {
         resolveWork = () => resolve('ok');
       });
-      const repository = createLeaseRepository({ redis, logger });
-      const resultPromise = repository.withLease({
+      const cache = new LeaseCache({ redis, logger });
+      const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
         ttlMs: 60,
@@ -211,10 +211,10 @@ describe('LeaseRepository', () => {
   it('wraps acquire errors and keeps release best-effort', async () => {
     const acquireError = new Error('redis unavailable');
     redis.acquireLease.mockRejectedValue(acquireError);
-    const repository = createLeaseRepository({ redis, logger });
+    const cache = new LeaseCache({ redis, logger });
 
     await expect(
-      repository.withLease({
+      cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
         ttlMs: 60_000,
@@ -229,7 +229,7 @@ describe('LeaseRepository', () => {
     redis.acquireLease.mockResolvedValue(true);
     redis.releaseLease.mockRejectedValue(new Error('release failed'));
     await expect(
-      repository.withLease({
+      cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
         ttlMs: 60_000,
@@ -247,10 +247,10 @@ describe('LeaseRepository', () => {
     [{ key: 'lease', ttlMs: 0 }, 'ttlMs must be a positive safe integer'],
     [{ key: 'lease', ttlMs: 60, renewIntervalMs: 60 }, 'renewIntervalMs must be smaller than ttlMs']
   ])('rejects invalid lease options %#', async (input, message) => {
-    const repository = createLeaseRepository({ redis, logger });
+    const cache = new LeaseCache({ redis, logger });
 
     await expect(
-      repository.withLease({
+      cache.withLease({
         ...input,
         label: 'lease',
         fn: async () => undefined
@@ -287,7 +287,7 @@ describe('Lease adapter operations', () => {
   it('uses the physical key for acquire, renew and release', async () => {
     client.set.mockResolvedValue('OK');
     client.eval.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.acquireLease({ key, token: 'token-1', ttlMs: 60_000 })).resolves.toBe(
       true
@@ -321,14 +321,14 @@ describe('Lease adapter operations', () => {
 
   it('accepts a missing lease as a normal acquire miss', async () => {
     client.set.mockResolvedValue(null);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.acquireLease({ key, token: 'token-1', ttlMs: 60 })).resolves.toBe(false);
   });
 
   it.each(['invalid', 2])('rejects malformed lease command responses %#', async (result) => {
     client.set.mockResolvedValue(result);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
     await expect(adapter.acquireLease({ key, token: 'token-1', ttlMs: 60 })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
       operation: 'lease.acquire'
@@ -351,14 +351,14 @@ describe('Lease adapter operations', () => {
     [{ token: '', ttlMs: 60 }, 'token must be a non-empty string'],
     [{ token: 'token-1', ttlMs: 0 }, 'ttlMs must be a positive safe integer']
   ])('rejects invalid adapter arguments %#', (input, message) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.acquireLease({ key, ...input } as any)).toThrow(message);
     expect(client.set).not.toHaveBeenCalled();
   });
 
   it('rejects an empty renew token before evaluating the renew script', () => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.renewLease({ key, token: '', ttlMs: 60 })).toThrow(
       'token must be a non-empty string'
@@ -367,7 +367,7 @@ describe('Lease adapter operations', () => {
   });
 
   it('rejects an empty release token before evaluating the release script', () => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.releaseLease({ key, token: '' })).toThrow(
       'token must be a non-empty string'

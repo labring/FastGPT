@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import {
-  WECHAT_QR_LOGIN_TTL_SECONDS,
-  createWechatQrLoginRepository
-} from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { WECHAT_QR_LOGIN_TTL_SECONDS, WechatQrLoginCache } from '@fastgpt/dal/redis/caches';
 
 const key = {
   outLinkId: 'out-link-1',
@@ -16,7 +13,7 @@ const qrData = {
   qrcode_img_content: 'qr-content'
 };
 
-describe('createWechatQrLoginRepository', () => {
+describe('WechatQrLoginCache', () => {
   const redis = {
     get: vi.fn(),
     set: vi.fn(),
@@ -36,12 +33,12 @@ describe('createWechatQrLoginRepository', () => {
       set: vi.fn().mockResolvedValue('OK'),
       del: vi.fn().mockResolvedValue(1)
     };
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createWechatQrLoginRepository({ redis: adapter });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new WechatQrLoginCache({ redis: adapter });
 
-    await repository.set({ ...key, data: qrData });
-    await expect(repository.get(key)).resolves.toEqual(qrData);
-    await expect(repository.delete(key)).resolves.toBe(true);
+    await cache.set({ ...key, data: qrData });
+    await expect(cache.get(key)).resolves.toEqual(qrData);
+    await expect(cache.delete(key)).resolves.toBe(true);
 
     expect(WECHAT_QR_LOGIN_TTL_SECONDS).toBe(480);
     expect(commandClient.set).toHaveBeenCalledWith(
@@ -55,27 +52,27 @@ describe('createWechatQrLoginRepository', () => {
   });
 
   it('returns undefined only when Redis reports a missing key', async () => {
-    const repository = createWechatQrLoginRepository({ redis: redis as any });
+    const cache = new WechatQrLoginCache({ redis: redis as any });
 
-    await expect(repository.get(key)).resolves.toBeUndefined();
+    await expect(cache.get(key)).resolves.toBeUndefined();
     expect(redis.get).toHaveBeenCalledWith(logicalKey);
   });
 
   it('decodes valid data and preserves additional upstream fields', async () => {
     redis.get.mockResolvedValue(JSON.stringify({ ...qrData, upstream_trace_id: 'trace-1' }));
-    const repository = createWechatQrLoginRepository({ redis: redis as any });
+    const cache = new WechatQrLoginCache({ redis: redis as any });
 
-    await expect(repository.get(key)).resolves.toEqual({
+    await expect(cache.get(key)).resolves.toEqual({
       ...qrData,
       upstream_trace_id: 'trace-1'
     });
   });
 
   it('rejects invalid data before writing it to Redis', async () => {
-    const repository = createWechatQrLoginRepository({ redis: redis as any });
+    const cache = new WechatQrLoginCache({ redis: redis as any });
 
     await expect(
-      repository.set({
+      cache.set({
         ...key,
         data: { qrcode: '', qrcode_img_content: 'qr-content' }
       })
@@ -89,9 +86,9 @@ describe('createWechatQrLoginRepository', () => {
 
   it('rejects malformed JSON as an invalid Redis response', async () => {
     redis.get.mockResolvedValue('{not-json');
-    const repository = createWechatQrLoginRepository({ redis: redis as any });
+    const cache = new WechatQrLoginCache({ redis: redis as any });
 
-    await expect(repository.get(key)).rejects.toMatchObject({
+    await expect(cache.get(key)).rejects.toMatchObject({
       name: 'RedisInvalidResponseError',
       code: 'REDIS_INVALID_RESPONSE',
       operation: 'wechatQrLogin.get'
@@ -100,9 +97,9 @@ describe('createWechatQrLoginRepository', () => {
 
   it('rejects JSON with missing QR fields as an invalid Redis response', async () => {
     redis.get.mockResolvedValue(JSON.stringify({ qrcode: 'qr-id' }));
-    const repository = createWechatQrLoginRepository({ redis: redis as any });
+    const cache = new WechatQrLoginCache({ redis: redis as any });
 
-    await expect(repository.get(key)).rejects.toMatchObject({
+    await expect(cache.get(key)).rejects.toMatchObject({
       name: 'RedisInvalidResponseError',
       code: 'REDIS_INVALID_RESPONSE',
       operation: 'wechatQrLogin.get'
@@ -110,12 +107,9 @@ describe('createWechatQrLoginRepository', () => {
   });
 
   it.each([
-    ['read', () => createWechatQrLoginRepository({ redis: redis as any }).get(key)],
-    [
-      'write',
-      () => createWechatQrLoginRepository({ redis: redis as any }).set({ ...key, data: qrData })
-    ],
-    ['delete', () => createWechatQrLoginRepository({ redis: redis as any }).delete(key)]
+    ['read', () => new WechatQrLoginCache({ redis: redis as any }).get(key)],
+    ['write', () => new WechatQrLoginCache({ redis: redis as any }).set({ ...key, data: qrData })],
+    ['delete', () => new WechatQrLoginCache({ redis: redis as any }).delete(key)]
   ])('propagates Redis %s errors', async (operation, action) => {
     const error = new Error(`${operation} failed`);
     redis.get.mockRejectedValue(error);

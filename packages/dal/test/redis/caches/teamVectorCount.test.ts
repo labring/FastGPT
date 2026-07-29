@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { createTeamVectorCountRepository } from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches';
 
 const logicalKey = 'cache:team_vector_count:team-1';
 const physicalKey = `fastgpt:${logicalKey}`;
 
-describe('createTeamVectorCountRepository', () => {
+describe('TeamVectorCountCache', () => {
   const redis = {
     get: vi.fn(),
     set: vi.fn(),
@@ -32,12 +32,12 @@ describe('createTeamVectorCountRepository', () => {
       set: vi.fn().mockResolvedValue('OK'),
       del: vi.fn().mockResolvedValue(0)
     };
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createTeamVectorCountRepository({ redis: adapter, logger });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new TeamVectorCountCache({ redis: adapter, logger });
 
-    await expect(repository.get('team-1')).resolves.toBeUndefined();
-    await repository.set({ teamId: 'team-1', count: 42 });
-    await repository.invalidate('team-1');
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
+    await cache.set({ teamId: 'team-1', count: 42 });
+    await cache.invalidate('team-1');
 
     expect(commandClient.get).toHaveBeenCalledWith(physicalKey);
     expect(commandClient.set).toHaveBeenCalledWith(physicalKey, '42', 'PX', 1_800_000);
@@ -46,9 +46,9 @@ describe('createTeamVectorCountRepository', () => {
 
   it('returns a cached decimal string as a number', async () => {
     redis.get.mockResolvedValue('150');
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    await expect(repository.get('team-1')).resolves.toBe(150);
+    await expect(cache.get('team-1')).resolves.toBe(150);
     expect(redis.get).toHaveBeenCalledWith(logicalKey);
   });
 
@@ -58,27 +58,27 @@ describe('createTeamVectorCountRepository', () => {
       .mockReturnValue(undefined as unknown as ReturnType<typeof setTimeout>);
     try {
       redis.get.mockResolvedValue('150');
-      const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+      const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-      await expect(repository.get('team-1')).resolves.toBe(150);
+      await expect(cache.get('team-1')).resolves.toBe(150);
     } finally {
       setTimeoutSpy.mockRestore();
     }
   });
 
   it('returns a miss when Redis has no value', async () => {
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    await expect(repository.get('team-1')).resolves.toBeUndefined();
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it('returns a miss and logs when a read fails', async () => {
     const error = new Error('read failed');
     redis.get.mockRejectedValue(error);
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    await expect(repository.get('team-1')).resolves.toBeUndefined();
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith('Failed to get team vector count cache', {
       teamId: 'team-1',
       error
@@ -88,9 +88,9 @@ describe('createTeamVectorCountRepository', () => {
   it('returns a miss after the independent read deadline', async () => {
     vi.useFakeTimers();
     redis.get.mockReturnValue(new Promise(() => undefined));
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    const result = repository.get('team-1');
+    const result = cache.get('team-1');
     await vi.advanceTimersByTimeAsync(3000);
 
     await expect(result).resolves.toBeUndefined();
@@ -101,9 +101,9 @@ describe('createTeamVectorCountRepository', () => {
   });
 
   it('writes a decimal string with the fixed TTL', async () => {
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    await repository.set({ teamId: 'team-1', count: 42 });
+    await cache.set({ teamId: 'team-1', count: 42 });
 
     expect(redis.set).toHaveBeenCalledWith({
       key: logicalKey,
@@ -115,9 +115,9 @@ describe('createTeamVectorCountRepository', () => {
   it('logs write failures without rejecting', async () => {
     const error = new Error('write failed');
     redis.set.mockRejectedValue(error);
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    await expect(repository.set({ teamId: 'team-1', count: 42 })).resolves.toBeUndefined();
+    await expect(cache.set({ teamId: 'team-1', count: 42 })).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith('Failed to set team vector count cache', {
       teamId: 'team-1',
       error
@@ -127,9 +127,9 @@ describe('createTeamVectorCountRepository', () => {
   it('logs write timeouts without rejecting', async () => {
     vi.useFakeTimers();
     redis.set.mockReturnValue(new Promise(() => undefined));
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    const result = repository.set({ teamId: 'team-1', count: 42 });
+    const result = cache.set({ teamId: 'team-1', count: 42 });
     await vi.advanceTimersByTimeAsync(3000);
 
     await expect(result).resolves.toBeUndefined();
@@ -140,9 +140,9 @@ describe('createTeamVectorCountRepository', () => {
   });
 
   it('invalidates the cache key', async () => {
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    await repository.invalidate('team-1');
+    await cache.invalidate('team-1');
 
     expect(redis.delete).toHaveBeenCalledWith(logicalKey);
   });
@@ -150,9 +150,9 @@ describe('createTeamVectorCountRepository', () => {
   it('logs invalidate failures without rejecting', async () => {
     const error = new Error('delete failed');
     redis.delete.mockRejectedValue(error);
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    await expect(repository.invalidate('team-1')).resolves.toBeUndefined();
+    await expect(cache.invalidate('team-1')).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
       teamId: 'team-1',
       error
@@ -162,9 +162,9 @@ describe('createTeamVectorCountRepository', () => {
   it('logs invalidate timeouts without rejecting', async () => {
     vi.useFakeTimers();
     redis.delete.mockReturnValue(new Promise(() => undefined));
-    const repository = createTeamVectorCountRepository({ redis: redis as any, logger });
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    const result = repository.invalidate('team-1');
+    const result = cache.invalidate('team-1');
     await vi.advanceTimersByTimeAsync(3000);
 
     await expect(result).resolves.toBeUndefined();

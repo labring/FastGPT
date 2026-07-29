@@ -2,10 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
-import {
-  WECHAT_QR_LOGIN_TTL_SECONDS,
-  wechatQrLoginRepository
-} from '@fastgpt/dal/redis/repositories';
+import { WECHAT_QR_LOGIN_TTL_SECONDS, wechatQrLoginCache } from '@fastgpt/dal/redis/caches';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   WechatQrcodeGenerateBodySchema,
@@ -35,7 +32,7 @@ async function handler(
   const client = new ILinkClient();
   const qrData = await client.getQRCode();
 
-  await wechatQrLoginRepository.set({ outLinkId, tmbId, data: qrData });
+  await wechatQrLoginCache.set({ outLinkId, tmbId, data: qrData });
 
   return WechatQrcodeGenerateResponseSchema.parse({
     qrcode: qrData.qrcode,

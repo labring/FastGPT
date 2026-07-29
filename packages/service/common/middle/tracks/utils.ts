@@ -8,7 +8,7 @@ import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { differenceInDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
-import { createDailyActiveDedupeRepository } from '@fastgpt/dal/redis/repositories';
+import { DailyActiveDedupeCache } from '@fastgpt/dal/redis/caches';
 import type {
   TeamEnterpriseAuthStatusEnum,
   TeamEnterpriseAuthTaskStatusEnum
@@ -16,7 +16,7 @@ import type {
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
-const dailyActiveDedupeRepository = createDailyActiveDedupeRepository({ logger });
+const dailyActiveDedupeCache = new DailyActiveDedupeCache({ logger });
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
@@ -87,7 +87,7 @@ export const pushTrack = {
   dailyUserActive: async (data: PushTrackCommonType) => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const shouldRecord = await dailyActiveDedupeRepository.shouldRecord({
+      const shouldRecord = await dailyActiveDedupeCache.shouldRecord({
         uid: data.uid,
         date: today
       });

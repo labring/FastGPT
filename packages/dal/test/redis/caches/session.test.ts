@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { asRedisLogicalKey, createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { SESSION_TTL_SECONDS, createSessionRepository } from '@fastgpt/dal/redis/repositories';
+import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { SESSION_TTL_SECONDS, SessionCache } from '@fastgpt/dal/redis/caches';
 
 const createKeyBatches = async function* (batches: string[][]) {
   for (const batch of batches) yield batch.map(asRedisLogicalKey);
 };
 
-describe('createSessionRepository', () => {
+describe('SessionCache', () => {
   const logger = {
     error: vi.fn(),
     warn: vi.fn()
@@ -36,9 +36,9 @@ describe('createSessionRepository', () => {
   });
 
   it('decodes a complete session hash and normalizes isRoot/createdAt', async () => {
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await expect(repository.get('user-1:token-1')).resolves.toEqual({
+    await expect(cache.get('user-1:token-1')).resolves.toEqual({
       userId: 'user-1',
       teamId: 'team-1',
       tmbId: 'tmb-1',
@@ -51,9 +51,9 @@ describe('createSessionRepository', () => {
 
   it('treats an empty hash as a session miss without deletion', async () => {
     redis.getHashAll.mockResolvedValue({});
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await expect(repository.get('user-1:token-1')).resolves.toBeUndefined();
+    await expect(cache.get('user-1:token-1')).resolves.toBeUndefined();
     expect(redis.delete).not.toHaveBeenCalled();
   });
 
@@ -65,9 +65,9 @@ describe('createSessionRepository', () => {
       isRoot: 'invalid',
       createdAt: 'not-a-number'
     });
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await expect(repository.get('user-1:token-1')).resolves.toBeUndefined();
+    await expect(cache.get('user-1:token-1')).resolves.toBeUndefined();
     expect(redis.delete).toHaveBeenCalledWith('session:user-1:token-1');
     expect(logger.error).toHaveBeenCalledWith(
       'Invalid Redis session record',
@@ -79,9 +79,9 @@ describe('createSessionRepository', () => {
     redis.getHashAll.mockResolvedValue({ userId: 'user-1' });
     const deleteError = new Error('delete failed');
     redis.delete.mockRejectedValue(deleteError);
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await expect(repository.get('user-1:token-1')).resolves.toBeUndefined();
+    await expect(cache.get('user-1:token-1')).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(
       'Failed to delete invalid Redis session record',
       expect.objectContaining({ sessionId: 'user-1:token-1', error: deleteError })
@@ -91,15 +91,15 @@ describe('createSessionRepository', () => {
   it('propagates Redis read errors to keep authentication fail-closed', async () => {
     const error = new Error('read failed');
     redis.getHashAll.mockRejectedValue(error);
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await expect(repository.get('user-1:token-1')).rejects.toBe(error);
+    await expect(cache.get('user-1:token-1')).rejects.toBe(error);
   });
 
   it('writes the historical hash fields with a seven-day TTL', async () => {
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await repository.set({
+    await cache.set({
       sessionId: 'user-1:token-1',
       data: {
         userId: 'user-1',
@@ -125,9 +125,9 @@ describe('createSessionRepository', () => {
   });
 
   it('preserves a non-null session IP in the hash fields', async () => {
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await repository.set({
+    await cache.set({
       sessionId: 'user-1:token-1',
       data: {
         userId: 'user-1',
@@ -154,10 +154,10 @@ describe('createSessionRepository', () => {
   });
 
   it('rejects invalid session data before touching Redis', async () => {
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
     await expect(
-      repository.set({
+      cache.set({
         sessionId: 'user-1:token-1',
         data: {
           userId: '',
@@ -175,11 +175,11 @@ describe('createSessionRepository', () => {
   });
 
   it('deletes one session and maps batch IDs to logical keys', async () => {
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await repository.delete('user-1:token-1');
-    await repository.deleteMany([]);
-    await repository.deleteMany(['user-1:token-2', 'user-1:token-3']);
+    await cache.delete('user-1:token-1');
+    await cache.deleteMany([]);
+    await cache.deleteMany(['user-1:token-2', 'user-1:token-3']);
 
     expect(redis.delete).toHaveBeenCalledWith('session:user-1:token-1');
     expect(redis.deleteMany).toHaveBeenCalledWith([
@@ -211,9 +211,9 @@ describe('createSessionRepository', () => {
         isRoot: '1',
         createdAt: '3000'
       });
-    const repository = createSessionRepository({ redis: redis as any, logger });
+    const cache = new SessionCache({ redis: redis as any, logger });
 
-    await expect(repository.listByUser('user-1')).resolves.toEqual([
+    await expect(cache.listByUser('user-1')).resolves.toEqual([
       {
         sessionId: 'user-1:token-1',
         data: {
@@ -240,7 +240,7 @@ describe('createSessionRepository', () => {
   });
 });
 
-describe('SessionRepository adapter integration', () => {
+describe('SessionCache adapter integration', () => {
   it('uses physical keys and one transaction for hash write and expiry', async () => {
     const commandClient = {
       del: vi.fn().mockResolvedValue(0),
@@ -265,14 +265,14 @@ describe('SessionRepository adapter integration', () => {
       ])
     };
     commandClient.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createSessionRepository({
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new SessionCache({
       redis: adapter,
       logger: { error: vi.fn(), warn: vi.fn() }
     });
 
-    await expect(repository.get('user-1:token-1')).resolves.toMatchObject({ userId: 'user-1' });
-    await repository.set({
+    await expect(cache.get('user-1:token-1')).resolves.toMatchObject({ userId: 'user-1' });
+    await cache.set({
       sessionId: 'user-1:token-1',
       data: {
         userId: 'user-1',

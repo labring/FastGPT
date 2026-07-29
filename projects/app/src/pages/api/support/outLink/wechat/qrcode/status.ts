@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { wechatQrLoginRepository } from '@fastgpt/dal/redis/repositories';
+import { wechatQrLoginCache } from '@fastgpt/dal/redis/caches';
 import { NextAPI } from '@/service/middleware/entry';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
@@ -34,7 +34,7 @@ async function handler(
   });
   await assertWechatOutLink(outLink);
 
-  const qrData = await wechatQrLoginRepository.get({ outLinkId, tmbId });
+  const qrData = await wechatQrLoginCache.get({ outLinkId, tmbId });
   if (!qrData) {
     return WechatQrcodeStatusResponseSchema.parse({ status: 'expired' });
   }
@@ -59,7 +59,7 @@ async function handler(
       }
     );
 
-    await wechatQrLoginRepository.delete({ outLinkId, tmbId });
+    await wechatQrLoginCache.delete({ outLinkId, tmbId });
     await startWechatPolling(outLink.shareId);
   }
 

@@ -15,12 +15,12 @@ import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
 import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import { createTeamPointRepository, teamQpmRepository } from '@fastgpt/dal/redis/repositories';
+import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
-const teamPointRepository = createTeamPointRepository({ logger });
+const teamPointCache = new TeamPointCache({ logger });
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
@@ -268,7 +268,7 @@ export const getTeamPlanStatus = async ({
 /* ===== Buffer controller ===== */
 export const teamPoint = {
   getTeamPoints: async ({ teamId }: { teamId: string }) => {
-    const cached = await teamPointRepository.get(teamId);
+    const cached = await teamPointCache.get(teamId);
 
     if (cached) {
       const { totalPoints, surplusPoints } = cached;
@@ -287,7 +287,7 @@ export const teamPoint = {
     };
   },
   incrTeamPointsCache: async ({ teamId, value }: { teamId: string; value: number }) => {
-    await teamPointRepository.incrementSurplus({ teamId, value });
+    await teamPointCache.incrementSurplus({ teamId, value });
   },
   updateTeamPointsCache: async ({
     teamId,
@@ -298,16 +298,16 @@ export const teamPoint = {
     totalPoints: number;
     surplusPoints: number;
   }) => {
-    await teamPointRepository.set({ teamId, totalPoints, surplusPoints });
+    await teamPointCache.set({ teamId, totalPoints, surplusPoints });
   },
   clearTeamPointsCache: async (teamId: string) => {
-    await teamPointRepository.clear(teamId);
+    await teamPointCache.clear(teamId);
   }
 };
 export const teamQPM = {
   getTeamQPMLimit: async (teamId: string): Promise<number | undefined> => {
     // 1. 尝试从缓存中获取
-    const cached = await teamQpmRepository.getCachedLimit(teamId);
+    const cached = await teamQpmCache.getCachedLimit(teamId);
 
     if (cached !== null) {
       return cached;
@@ -327,10 +327,10 @@ export const teamQPM = {
     return limit;
   },
   setCachedTeamQPMLimit: async (teamId: string, limit: number): Promise<void> => {
-    await teamQpmRepository.setCachedLimit({ teamId, limit });
+    await teamQpmCache.setCachedLimit({ teamId, limit });
   },
   clearTeamQPMLimitCache: async (teamId: string): Promise<void> => {
-    await teamQpmRepository.clearCachedLimit(teamId);
+    await teamQpmCache.clearCachedLimit(teamId);
   }
 };
 

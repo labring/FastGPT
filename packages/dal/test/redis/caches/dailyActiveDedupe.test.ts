@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { createDailyActiveDedupeRepository } from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { DailyActiveDedupeCache } from '@fastgpt/dal/redis/caches';
 
-describe('createDailyActiveDedupeRepository', () => {
+describe('DailyActiveDedupeCache', () => {
   const redis = {
     setIfAbsent: vi.fn()
   };
@@ -19,12 +19,10 @@ describe('createDailyActiveDedupeRepository', () => {
     const commandClient = {
       set: vi.fn().mockResolvedValue('OK')
     };
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createDailyActiveDedupeRepository({ redis: adapter, logger });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new DailyActiveDedupeCache({ redis: adapter, logger });
 
-    await expect(repository.shouldRecord({ uid: 'user-1', date: '2026-07-24' })).resolves.toBe(
-      true
-    );
+    await expect(cache.shouldRecord({ uid: 'user-1', date: '2026-07-24' })).resolves.toBe(true);
 
     expect(commandClient.set).toHaveBeenCalledWith(
       'fastgpt:cache:dailyUserActive:user-1_2026-07-24',
@@ -38,11 +36,9 @@ describe('createDailyActiveDedupeRepository', () => {
 
   it('returns false when the daily key was already claimed', async () => {
     redis.setIfAbsent.mockResolvedValue(false);
-    const repository = createDailyActiveDedupeRepository({ redis: redis as any, logger });
+    const cache = new DailyActiveDedupeCache({ redis: redis as any, logger });
 
-    await expect(repository.shouldRecord({ uid: 'user-1', date: '2026-07-24' })).resolves.toBe(
-      false
-    );
+    await expect(cache.shouldRecord({ uid: 'user-1', date: '2026-07-24' })).resolves.toBe(false);
     expect(redis.setIfAbsent).toHaveBeenCalledWith({
       key: 'cache:dailyUserActive:user-1_2026-07-24',
       value: '1',
@@ -53,11 +49,9 @@ describe('createDailyActiveDedupeRepository', () => {
   it('fails open and logs when Redis cannot claim the key', async () => {
     const error = new Error('redis unavailable');
     redis.setIfAbsent.mockRejectedValue(error);
-    const repository = createDailyActiveDedupeRepository({ redis: redis as any, logger });
+    const cache = new DailyActiveDedupeCache({ redis: redis as any, logger });
 
-    await expect(repository.shouldRecord({ uid: 'user-1', date: '2026-07-24' })).resolves.toBe(
-      true
-    );
+    await expect(cache.shouldRecord({ uid: 'user-1', date: '2026-07-24' })).resolves.toBe(true);
     expect(logger.warn).toHaveBeenCalledWith('Daily active dedupe failed open', { error });
   });
 });

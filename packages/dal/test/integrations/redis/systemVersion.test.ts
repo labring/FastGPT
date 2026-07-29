@@ -1,12 +1,12 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { createSystemVersionRepository } from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { SystemVersionCache } from '@fastgpt/dal/redis/caches';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
 
-describeWithRedis('SystemVersionRepository Redis 7.2 integration', () => {
+describeWithRedis('SystemVersionCache Redis 7.2 integration', () => {
   const key = `integration-system-version-${process.pid}-${Date.now()}`;
   const basePhysicalKey = `fastgpt:VERSION_KEY:${key}`;
   const childPhysicalKeys = Array.from(
@@ -31,11 +31,11 @@ describeWithRedis('SystemVersionRepository Redis 7.2 integration', () => {
   });
 
   it('returns one permanent UUID across concurrent first initialization', async () => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
-    const repository = createSystemVersionRepository({ redis: adapter });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const cache = new SystemVersionCache({ redis: adapter });
 
     const versions = await Promise.all(
-      Array.from({ length: 64 }, () => repository.getOrInitialize({ key }))
+      Array.from({ length: 64 }, () => cache.getOrInitialize({ key }))
     );
 
     expect(new Set(versions)).toHaveLength(1);
@@ -50,10 +50,10 @@ describeWithRedis('SystemVersionRepository Redis 7.2 integration', () => {
     await pipeline.exec();
 
     const scanSpy = vi.spyOn(client, 'scan');
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
-    const repository = createSystemVersionRepository({ redis: adapter });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const cache = new SystemVersionCache({ redis: adapter });
 
-    await repository.refresh({ key, id: '*' });
+    await cache.refresh({ key, id: '*' });
 
     expect(scanSpy.mock.calls.length).toBeGreaterThan(1);
     expect(await client.get(basePhysicalKey)).toBeTruthy();

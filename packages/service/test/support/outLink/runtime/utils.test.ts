@@ -6,11 +6,11 @@ const streamMocks = vi.hoisted(() => ({
   append: vi.fn().mockResolvedValue(0)
 }));
 
-vi.mock('@fastgpt/dal/redis/repositories', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/repositories')>();
+vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
   return {
     ...actual,
-    outLinkStreamRepository: {
+    outLinkStreamCache: {
       append: streamMocks.append
     }
   };
@@ -244,7 +244,7 @@ describe('outlinkInvokeChat', () => {
     });
   });
 
-  it('uses the OutLink Stream Repository for initialization and completion markers', async () => {
+  it('uses the OutLink Stream Cache for initialization and completion markers', async () => {
     await outlinkInvokeChat({
       outLinkConfig,
       chatId: 'chat-id',

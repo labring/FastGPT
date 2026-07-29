@@ -1,12 +1,12 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { createFixedWindowRateLimitRepository } from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { FixedWindowRateLimitCache } from '@fastgpt/dal/redis/caches';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
 
-describeWithRedis('FixedWindowRateLimitRepository Redis 7.2 integration', () => {
+describeWithRedis('FixedWindowRateLimitCache Redis 7.2 integration', () => {
   const key = `integration-fixed-window-${process.pid}-${Date.now()}`;
   const physicalKey = `fastgpt:${key}`;
   let client: Redis;
@@ -26,11 +26,11 @@ describeWithRedis('FixedWindowRateLimitRepository Redis 7.2 integration', () => 
   });
 
   it('assigns unique counts under concurrency and keeps one fixed TTL', async () => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
-    const repository = createFixedWindowRateLimitRepository({ redis: adapter });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const cache = new FixedWindowRateLimitCache({ redis: adapter });
 
     const results = await Promise.all(
-      Array.from({ length: 64 }, () => repository.consume({ key, limit: 32, windowSeconds: 60 }))
+      Array.from({ length: 64 }, () => cache.consume({ key, limit: 32, windowSeconds: 60 }))
     );
 
     expect(new Set(results.map((result) => result.currentCount))).toHaveLength(64);

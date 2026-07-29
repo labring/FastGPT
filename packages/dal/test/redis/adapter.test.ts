@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   asRedisLogicalKey,
-  createRedisStoreAdapter,
-  redisRepositoryAdapter
+  createRedisCacheAdapter,
+  redisCacheAdapter
 } from '@fastgpt/dal/redis/adapter';
 import { closeRedisRuntime, configureRedisRuntime } from '@fastgpt/dal/redis/runtime';
 
@@ -16,7 +16,7 @@ const createClient = () => ({
   set: vi.fn()
 });
 
-describe('createRedisStoreAdapter', () => {
+describe('createRedisCacheAdapter', () => {
   const key = asRedisLogicalKey('cache:string');
   const prefix = asRedisLogicalKey('session:user');
   let client: ReturnType<typeof createClient>;
@@ -29,7 +29,7 @@ describe('createRedisStoreAdapter', () => {
     await closeRedisRuntime();
   });
 
-  it('binds the default repository adapter to command and blocking Runtime connections', async () => {
+  it('binds the default cache adapter to command and blocking Runtime connections', async () => {
     const commandClient = {
       status: 'ready',
       get: vi.fn().mockResolvedValue('value'),
@@ -50,8 +50,8 @@ describe('createRedisStoreAdapter', () => {
       .mockReturnValueOnce(blockingClient);
     configureRedisRuntime({ redisUrl: 'redis://localhost', clientFactory: clientFactory as any });
 
-    await expect(redisRepositoryAdapter.get(key)).resolves.toBe('value');
-    const reader = redisRepositoryAdapter.createBlockingStreamReader({ key, blockMs: 10 });
+    await expect(redisCacheAdapter.get(key)).resolves.toBe('value');
+    const reader = redisCacheAdapter.createBlockingStreamReader({ key, blockMs: 10 });
     await expect(reader.read('$')).resolves.toEqual([]);
     await reader.close();
 
@@ -68,7 +68,7 @@ describe('createRedisStoreAdapter', () => {
       '$'
     );
 
-    const fallbackAdapter = createRedisStoreAdapter({
+    const fallbackAdapter = createRedisCacheAdapter({
       getCommandClient: () => commandClient as any,
       createBlockingConnection: () => blockingClient
     });
@@ -79,7 +79,7 @@ describe('createRedisStoreAdapter', () => {
   it('does not resolve the command connection until an operation starts', async () => {
     client.get.mockResolvedValue('value');
     const getCommandClient = vi.fn(() => client as any);
-    const adapter = createRedisStoreAdapter({ getCommandClient });
+    const adapter = createRedisCacheAdapter({ getCommandClient });
 
     expect(getCommandClient).not.toHaveBeenCalled();
     await expect(adapter.get(key)).resolves.toBe('value');
@@ -88,7 +88,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('reads and parses Redis memory info through a typed operation', async () => {
     client.info.mockResolvedValue('used_memory:42\r\nmaxmemory:100\r\n');
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.getMemoryInfo()).resolves.toEqual({
       usedMemory: 42,
@@ -99,7 +99,7 @@ describe('createRedisStoreAdapter', () => {
 
   it.each([null, 42])('rejects malformed Redis memory info response %#', async (info) => {
     client.info.mockResolvedValue(info);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.getMemoryInfo()).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -120,7 +120,7 @@ describe('createRedisStoreAdapter', () => {
       exec
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.consumeFixedWindow({ key, windowSeconds: 60 })).resolves.toEqual({
       currentCount: 2,
@@ -171,7 +171,7 @@ describe('createRedisStoreAdapter', () => {
       exec
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.consumeFixedWindow({ key, windowSeconds: 60 })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -180,7 +180,7 @@ describe('createRedisStoreAdapter', () => {
   });
 
   it.each([0, -1, 1.5, '60'])('rejects invalid fixed window TTL %s', (windowSeconds) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.consumeFixedWindow({ key, windowSeconds: windowSeconds as any })).toThrow(
       'windowSeconds must be a positive safe integer'
@@ -198,7 +198,7 @@ describe('createRedisStoreAdapter', () => {
       exec
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.getPair({ first: key, second: asRedisLogicalKey('cache:total') })
@@ -217,7 +217,7 @@ describe('createRedisStoreAdapter', () => {
       ])
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.appendStringWithTtl({ key, value: 'chunk', ttlSeconds: 60 })
@@ -249,7 +249,7 @@ describe('createRedisStoreAdapter', () => {
       exec: vi.fn().mockResolvedValue(result)
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.appendStringWithTtl({ key, value: 'chunk', ttlSeconds: 60 })
@@ -260,7 +260,7 @@ describe('createRedisStoreAdapter', () => {
   });
 
   it.each([0, -1, 1.5, '60'])('rejects invalid append TTL %s', (ttlSeconds) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() =>
       adapter.appendStringWithTtl({ key, value: 'chunk', ttlSeconds: ttlSeconds as any })
@@ -269,7 +269,7 @@ describe('createRedisStoreAdapter', () => {
   });
 
   it('rejects a non-string append value before opening a transaction', () => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.appendStringWithTtl({ key, value: 1 as any, ttlSeconds: 60 })).toThrow(
       'value must be a string'
@@ -291,7 +291,7 @@ describe('createRedisStoreAdapter', () => {
       exec: vi.fn().mockResolvedValue(result)
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.getPair({ first: key, second: asRedisLogicalKey('cache:total') })
@@ -307,7 +307,7 @@ describe('createRedisStoreAdapter', () => {
       ])
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
     const total = asRedisLogicalKey('cache:total');
 
     await expect(
@@ -322,7 +322,7 @@ describe('createRedisStoreAdapter', () => {
   });
 
   it('rejects non-string pair values before opening a transaction', () => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() =>
       adapter.setPair({
@@ -343,7 +343,7 @@ describe('createRedisStoreAdapter', () => {
       ])
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.setPair({
@@ -367,7 +367,7 @@ describe('createRedisStoreAdapter', () => {
       ])
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.incrementWithTtl({ key, increment: 2.5, ttlSeconds: 60 })).resolves.toBe(
       12.5
@@ -396,7 +396,7 @@ describe('createRedisStoreAdapter', () => {
       exec: vi.fn().mockResolvedValue(result)
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.incrementWithTtl({ key, increment: 2.5, ttlSeconds: 60 })
@@ -422,7 +422,7 @@ describe('createRedisStoreAdapter', () => {
         ])
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.incrementWithTtl({ key, increment: 2.5, ttlSeconds: 60 })).rejects.toThrow(
       'Redis increment transaction returned invalid numeric values'
@@ -435,7 +435,7 @@ describe('createRedisStoreAdapter', () => {
   it.each([Number.NaN, Number.POSITIVE_INFINITY, '1'])(
     'rejects invalid increment input %s before Redis access',
     (increment) => {
-      const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+      const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
       expect(() =>
         adapter.incrementWithTtl({ key, increment: increment as any, ttlSeconds: 60 })
@@ -454,7 +454,7 @@ describe('createRedisStoreAdapter', () => {
       ])
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.incrementIntegerWithTtl({ key, increment: 1, ttlSeconds: 300 })
@@ -486,7 +486,7 @@ describe('createRedisStoreAdapter', () => {
       exec: vi.fn().mockResolvedValue(result)
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.incrementIntegerWithTtl({ key, increment: 1, ttlSeconds: 300 })
@@ -497,7 +497,7 @@ describe('createRedisStoreAdapter', () => {
   });
 
   it.each([0, -1, 1.5, '1'])('rejects invalid integer increment %s', (increment) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() =>
       adapter.incrementIntegerWithTtl({ key, increment: increment as any, ttlSeconds: 300 })
@@ -507,7 +507,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('reads values through physical keys and accepts a missing key', async () => {
     client.get.mockResolvedValueOnce('value').mockResolvedValueOnce(null);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.get(key)).resolves.toBe('value');
     await expect(adapter.get(key)).resolves.toBeNull();
@@ -516,7 +516,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('rejects an unsupported GET response', async () => {
     client.get.mockResolvedValue(1);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.get(key)).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -526,7 +526,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('reads a hash through the physical key and validates string fields', async () => {
     client.hgetall.mockResolvedValue({ userId: 'user-1', createdAt: '123' });
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.getHashAll(asRedisLogicalKey('session:user-1'))).resolves.toEqual({
       userId: 'user-1',
@@ -537,7 +537,7 @@ describe('createRedisStoreAdapter', () => {
 
   it.each([null, [], { userId: 1 }])('rejects malformed HGETALL responses %#', async (value) => {
     client.hgetall.mockResolvedValue(value);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.getHashAll(asRedisLogicalKey('session:user-1'))).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -555,7 +555,7 @@ describe('createRedisStoreAdapter', () => {
       ])
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.setHashWithTtl({
@@ -579,7 +579,7 @@ describe('createRedisStoreAdapter', () => {
     ],
     [{ fields: { userId: 'user-1' }, ttlSeconds: 0 }, 'ttlSeconds must be a positive safe integer']
   ])('rejects invalid hash SET input %#', (input, message) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() =>
       adapter.setHashWithTtl({
@@ -613,7 +613,7 @@ describe('createRedisStoreAdapter', () => {
       exec: vi.fn().mockResolvedValue(result)
     };
     client.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.setHashWithTtl({
@@ -626,7 +626,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('atomically returns either the initialized value or the existing value', async () => {
     client.set.mockResolvedValueOnce(null).mockResolvedValueOnce('existing-value');
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.getOrSet({ key, value: 'candidate-1' })).resolves.toBe('candidate-1');
     await expect(adapter.getOrSet({ key, value: 'candidate-2' })).resolves.toBe('existing-value');
@@ -638,7 +638,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('rejects invalid input and unsupported SET NX GET responses', async () => {
     client.set.mockResolvedValue(1);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.getOrSet({ key, value: 1 as any })).toThrow('value must be a string');
     await expect(adapter.getOrSet({ key, value: 'candidate' })).rejects.toMatchObject({
@@ -650,7 +650,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('sets persistent and expiring values with strict OK responses', async () => {
     client.set.mockResolvedValue('OK');
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.set({ key, value: '' })).resolves.toBeUndefined();
     await expect(adapter.set({ key, value: 'value', ttlMs: 500 })).resolves.toBeUndefined();
@@ -664,7 +664,7 @@ describe('createRedisStoreAdapter', () => {
     [{ key, value: 1 as any }, 'value must be a string'],
     [{ key, value: 'value', ttlMs: 0 }, 'ttlMs must be a positive safe integer']
   ])('rejects invalid SET input %#', (input, message) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.set(input)).toThrow(message);
     expect(client.set).not.toHaveBeenCalled();
@@ -672,7 +672,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('rejects an unsupported SET response without retrying', async () => {
     client.set.mockResolvedValue(null);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.set({ key, value: 'value' })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -683,7 +683,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('atomically sets an expiring key only when it does not exist', async () => {
     client.set.mockResolvedValueOnce('OK').mockResolvedValueOnce(null);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.setIfAbsent({ key, value: '1', ttlSeconds: 86_400 })).resolves.toBe(true);
     await expect(adapter.setIfAbsent({ key, value: '1', ttlSeconds: 86_400 })).resolves.toBe(false);
@@ -697,7 +697,7 @@ describe('createRedisStoreAdapter', () => {
     [{ key, value: 1 as any, ttlSeconds: 60 }, 'value must be a string'],
     [{ key, value: '1', ttlSeconds: 0 }, 'ttlSeconds must be a positive safe integer']
   ])('rejects invalid SET NX input %#', (input, message) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     expect(() => adapter.setIfAbsent(input)).toThrow(message);
     expect(client.set).not.toHaveBeenCalled();
@@ -705,7 +705,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('rejects an unsupported SET NX response', async () => {
     client.set.mockResolvedValue('QUEUED');
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.setIfAbsent({ key, value: '1', ttlSeconds: 60 })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -719,7 +719,7 @@ describe('createRedisStoreAdapter', () => {
     [0, false]
   ])('maps DEL count %s to %s', async (deleted, expected) => {
     client.del.mockResolvedValue(deleted);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.delete(key)).resolves.toBe(expected);
     expect(client.del).toHaveBeenCalledWith('fastgpt:cache:string');
@@ -727,7 +727,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('rejects an unsupported DEL response', async () => {
     client.del.mockResolvedValue(2);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(adapter.delete(key)).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
@@ -737,7 +737,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('deletes a logical key batch with one physical DEL command', async () => {
     client.del.mockResolvedValue(1);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.deleteMany([
@@ -753,7 +753,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('skips empty delete batches without resolving a connection', async () => {
     const getCommandClient = vi.fn(() => client as any);
-    const adapter = createRedisStoreAdapter({ getCommandClient });
+    const adapter = createRedisCacheAdapter({ getCommandClient });
 
     await expect(adapter.deleteMany([])).resolves.toBeUndefined();
     expect(getCommandClient).not.toHaveBeenCalled();
@@ -761,7 +761,7 @@ describe('createRedisStoreAdapter', () => {
 
   it.each([-1, 3, 1.5])('rejects unsupported multi-key DEL count %s', async (deleted) => {
     client.del.mockResolvedValue(deleted);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     await expect(
       adapter.deleteMany([
@@ -778,7 +778,7 @@ describe('createRedisStoreAdapter', () => {
     client.scan
       .mockResolvedValueOnce(['7', ['fastgpt:session:user:a', 'fastgpt:session:user:b']])
       .mockResolvedValueOnce(['0', []]);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
     const batches: string[][] = [];
 
     for await (const batch of adapter.iterateByPrefix({ prefix, batchSize: 25 })) {
@@ -793,7 +793,7 @@ describe('createRedisStoreAdapter', () => {
   });
 
   it.each([0, 10_001, 1.5])('rejects invalid scan batch size %s', async (batchSize) => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     const consume = async () => {
       for await (const _batch of adapter.iterateByPrefix({ prefix, batchSize })) {
@@ -809,7 +809,7 @@ describe('createRedisStoreAdapter', () => {
     'rejects malformed SCAN response %#',
     async (result) => {
       client.scan.mockResolvedValue(result);
-      const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+      const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
       const consume = async () => {
         for await (const _batch of adapter.iterateByPrefix({ prefix })) {
@@ -826,7 +826,7 @@ describe('createRedisStoreAdapter', () => {
 
   it('rejects scanned keys outside the FastGPT keyspace', async () => {
     client.scan.mockResolvedValue(['0', ['other:session:user:a']]);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client as any });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client as any });
 
     const consume = async () => {
       for await (const _batch of adapter.iterateByPrefix({ prefix })) {

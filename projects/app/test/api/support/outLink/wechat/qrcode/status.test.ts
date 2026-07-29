@@ -28,8 +28,8 @@ vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
   }
 }));
 
-vi.mock('@fastgpt/dal/redis/repositories', () => ({
-  wechatQrLoginRepository: {
+vi.mock('@fastgpt/dal/redis/caches', () => ({
+  wechatQrLoginCache: {
     get: mocks.repositoryGet,
     delete: mocks.repositoryDelete
   }
@@ -171,7 +171,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
     expect(mocks.startWechatPolling).not.toHaveBeenCalled();
   });
 
-  it('propagates Repository read errors instead of treating them as expired', async () => {
+  it('propagates Cache read errors instead of treating them as expired', async () => {
     const error = new Error('redis read failed');
     mocks.repositoryGet.mockRejectedValue(error);
 

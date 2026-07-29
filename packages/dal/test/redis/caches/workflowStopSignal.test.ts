@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  createWorkflowStopSignalRepository,
+  WorkflowStopSignalCache,
   getWorkflowStopSignalKey,
   WORKFLOW_STOP_SIGNAL_TTL_SECONDS
-} from '@fastgpt/dal/redis/repositories';
+} from '@fastgpt/dal/redis/caches';
 
 const params = {
   sourceType: ChatSourceTypeEnum.app,
@@ -12,7 +12,7 @@ const params = {
   chatId: 'chat-1'
 };
 
-describe('WorkflowStopSignalRepository', () => {
+describe('WorkflowStopSignalCache', () => {
   const logger = { warn: vi.fn() };
   const redis = {
     delete: vi.fn(),
@@ -35,9 +35,9 @@ describe('WorkflowStopSignalRepository', () => {
   });
 
   it('writes the historical value with a one-minute TTL', async () => {
-    const repository = createWorkflowStopSignalRepository({ redis, logger });
+    const cache = new WorkflowStopSignalCache({ redis, logger });
 
-    await repository.set(params);
+    await cache.set(params);
 
     expect(redis.set).toHaveBeenCalledWith({
       key: 'agent_runtime_stopping:app:app-1:chat-1',
@@ -47,11 +47,11 @@ describe('WorkflowStopSignalRepository', () => {
   });
 
   it('reads present and missing stop signals', async () => {
-    const repository = createWorkflowStopSignalRepository({ redis, logger });
+    const cache = new WorkflowStopSignalCache({ redis, logger });
 
     redis.get.mockResolvedValueOnce('1').mockResolvedValueOnce(null);
-    await expect(repository.isStopping(params)).resolves.toBe(true);
-    await expect(repository.isStopping(params)).resolves.toBe(false);
+    await expect(cache.isStopping(params)).resolves.toBe(true);
+    await expect(cache.isStopping(params)).resolves.toBe(false);
     expect(redis.get).toHaveBeenNthCalledWith(1, 'agent_runtime_stopping:app:app-1:chat-1');
   });
 
@@ -60,10 +60,10 @@ describe('WorkflowStopSignalRepository', () => {
     const clearError = new Error('clear failed');
     redis.get.mockRejectedValue(readError);
     redis.delete.mockRejectedValue(clearError);
-    const repository = createWorkflowStopSignalRepository({ redis, logger });
+    const cache = new WorkflowStopSignalCache({ redis, logger });
 
-    await expect(repository.isStopping(params)).resolves.toBe(false);
-    await expect(repository.clear(params)).resolves.toBeUndefined();
+    await expect(cache.isStopping(params)).resolves.toBe(false);
+    await expect(cache.clear(params)).resolves.toBeUndefined();
     expect(logger.warn).toHaveBeenNthCalledWith(
       1,
       'Workflow stop signal read failed open',
@@ -79,9 +79,9 @@ describe('WorkflowStopSignalRepository', () => {
   it('propagates write errors so stop requests fail closed', async () => {
     const error = new Error('write failed');
     redis.set.mockRejectedValue(error);
-    const repository = createWorkflowStopSignalRepository({ redis, logger });
+    const cache = new WorkflowStopSignalCache({ redis, logger });
 
-    await expect(repository.set(params)).rejects.toBe(error);
+    await expect(cache.set(params)).rejects.toBe(error);
   });
 
   it.each([

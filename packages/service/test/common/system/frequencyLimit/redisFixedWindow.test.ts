@@ -40,7 +40,7 @@ describe('checkFixedWindowQpmLimit', () => {
 
   it('Redis execution failure is mapped to fail-closed', async () => {
     const consume = vi.fn().mockRejectedValue(new Error('redis down'));
-    const check = createFixedWindowQpmLimitChecker({ repository: { consume } });
+    const check = createFixedWindowQpmLimitChecker({ cache: { consume } });
 
     await expect(check({ key: 'frequency:test:team-1', limit: 1 })).resolves.toBe(false);
   });
@@ -51,7 +51,7 @@ describe('checkFixedWindowQpmLimit', () => {
       message: 'limit must be a positive safe integer'
     });
     const consume = vi.fn().mockRejectedValue(error);
-    const check = createFixedWindowQpmLimitChecker({ repository: { consume } });
+    const check = createFixedWindowQpmLimitChecker({ cache: { consume } });
 
     await expect(check({ key: 'frequency:test:team-1', limit: 0 })).rejects.toBe(error);
   });

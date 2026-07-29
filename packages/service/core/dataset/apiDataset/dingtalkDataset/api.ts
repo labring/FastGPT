@@ -5,7 +5,7 @@ import type {
   DingtalkServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { createDingtalkAccessTokenRepository } from '@fastgpt/dal/redis/repositories';
+import { DingtalkAccessTokenCache } from '@fastgpt/dal/redis/caches';
 import type { Method } from 'axios';
 import { axios, createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -90,7 +90,7 @@ const dingtalkBaseUrl = serviceEnv.DINGTALK_BASE_URL;
 const dingtalkOapiBaseUrl = serviceEnv.DINGTALK_OAPI_BASE_URL;
 const dingtalkListPageSize = 100;
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
-const dingtalkAccessTokenRepository = createDingtalkAccessTokenRepository({ logger });
+const dingtalkAccessTokenCache = new DingtalkAccessTokenCache({ logger });
 
 const instance = createProxyAxios({
   baseURL: dingtalkBaseUrl,
@@ -168,7 +168,7 @@ const requestDingtalkAccessToken = async ({
 };
 
 const getDingtalkAccessToken = async (server: DingtalkServerType) => {
-  return dingtalkAccessTokenRepository.getOrRefresh({
+  return dingtalkAccessTokenCache.getOrRefresh({
     server,
     fetchToken: () => requestDingtalkAccessToken(server)
   });

@@ -5,7 +5,7 @@ import type { WechatPollJobData, WechatReplyJobData } from './type';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
-import { wechatPollingFailureRepository } from '@fastgpt/dal/redis/repositories';
+import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
 import { groupMessagesByUser } from './messageParser';
 import { serviceEnv } from '../../../env';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
@@ -106,7 +106,7 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
       errmsg: resp.errmsg
     });
 
-    const failures = await wechatPollingFailureRepository.increment(shareId);
+    const failures = await wechatPollingFailureCache.increment(shareId);
 
     if (failures >= MAX_CONSECUTIVE_FAILURES) {
       await MongoOutLink.updateOne(
@@ -114,14 +114,14 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
         { $set: { 'app.status': 'error', 'app.lastError': resp.errmsg || 'Too many failures' } }
       );
       logger.error('Too many failures, stop polling', { shareId, failures });
-      await wechatPollingFailureRepository.clear(shareId);
+      await wechatPollingFailureCache.clear(shareId);
     }
 
     // 抛错走 'failed' 事件 → 续链带退避
     throw new Error(`getUpdates API error: ret=${resp.ret} errcode=${resp.errcode}`);
   }
 
-  await wechatPollingFailureRepository.reset(shareId);
+  await wechatPollingFailureCache.reset(shareId);
 
   const hadMessages = Boolean(resp.msgs && resp.msgs.length > 0);
 

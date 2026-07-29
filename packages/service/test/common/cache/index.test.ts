@@ -4,15 +4,15 @@ import { initCache } from '@fastgpt/service/common/cache/init';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { serviceEnv } from '@fastgpt/service/env';
 
-const { mockSystemVersionRepository } = vi.hoisted(() => ({
-  mockSystemVersionRepository: {
+const { mockSystemVersionCache } = vi.hoisted(() => ({
+  mockSystemVersionCache: {
     getOrInitialize: vi.fn(),
     refresh: vi.fn()
   }
 }));
 
-vi.mock('@fastgpt/dal/redis/repositories', () => ({
-  systemVersionRepository: mockSystemVersionRepository
+vi.mock('@fastgpt/dal/redis/caches', () => ({
+  systemVersionCache: mockSystemVersionCache
 }));
 
 const originalDisableCache = serviceEnv.DISABLE_CACHE;
@@ -20,8 +20,8 @@ const originalDisableCache = serviceEnv.DISABLE_CACHE;
 beforeEach(() => {
   delete (global as any).systemCache;
   vi.clearAllMocks();
-  mockSystemVersionRepository.getOrInitialize.mockResolvedValue('version-1');
-  mockSystemVersionRepository.refresh.mockResolvedValue(undefined);
+  mockSystemVersionCache.getOrInitialize.mockResolvedValue('version-1');
+  mockSystemVersionCache.refresh.mockResolvedValue(undefined);
 });
 
 describe('refreshVersionKey', () => {
@@ -29,10 +29,10 @@ describe('refreshVersionKey', () => {
     [undefined, { key: SystemCacheKeyEnum.modelPermission, id: undefined }],
     ['team123', { key: SystemCacheKeyEnum.modelPermission, id: 'team123' }],
     ['*', { key: SystemCacheKeyEnum.modelPermission, id: '*' }]
-  ] as const)('delegates id %s to the System Version Repository', async (id, expected) => {
+  ] as const)('delegates id %s to the System Version Cache', async (id, expected) => {
     await refreshVersionKey(SystemCacheKeyEnum.modelPermission, id);
 
-    expect(mockSystemVersionRepository.refresh).toHaveBeenCalledWith(expected);
+    expect(mockSystemVersionCache.refresh).toHaveBeenCalledWith(expected);
   });
 
   it('initializes systemCache before refreshing', async () => {
@@ -43,9 +43,9 @@ describe('refreshVersionKey', () => {
     expect(global.systemCache).toBeDefined();
   });
 
-  it('propagates Repository failures', async () => {
+  it('propagates Cache failures', async () => {
     const error = new Error('redis unavailable');
-    mockSystemVersionRepository.refresh.mockRejectedValue(error);
+    mockSystemVersionCache.refresh.mockRejectedValue(error);
 
     await expect(refreshVersionKey(SystemCacheKeyEnum.modelPermission)).rejects.toBe(error);
   });
@@ -55,13 +55,13 @@ describe('getVersionKey', () => {
   it.each([
     [undefined, { key: SystemCacheKeyEnum.modelPermission, id: undefined }],
     ['team-1', { key: SystemCacheKeyEnum.modelPermission, id: 'team-1' }]
-  ] as const)('returns the Repository value for id %s', async (id, expected) => {
-    mockSystemVersionRepository.getOrInitialize.mockResolvedValue('stored-version');
+  ] as const)('returns the Cache value for id %s', async (id, expected) => {
+    mockSystemVersionCache.getOrInitialize.mockResolvedValue('stored-version');
 
     await expect(getVersionKey(SystemCacheKeyEnum.modelPermission, id)).resolves.toBe(
       'stored-version'
     );
-    expect(mockSystemVersionRepository.getOrInitialize).toHaveBeenCalledWith(expected);
+    expect(mockSystemVersionCache.getOrInitialize).toHaveBeenCalledWith(expected);
   });
 
   it('initializes systemCache before reading', async () => {
@@ -72,9 +72,9 @@ describe('getVersionKey', () => {
     expect(global.systemCache).toBeDefined();
   });
 
-  it('propagates Repository failures', async () => {
+  it('propagates Cache failures', async () => {
     const error = new Error('redis unavailable');
-    mockSystemVersionRepository.getOrInitialize.mockRejectedValue(error);
+    mockSystemVersionCache.getOrInitialize.mockRejectedValue(error);
 
     await expect(getVersionKey(SystemCacheKeyEnum.modelPermission)).rejects.toBe(error);
   });
@@ -167,7 +167,7 @@ describe('getCachedData', () => {
     expect(global.systemCache[SystemCacheKeyEnum.modelPermission].versionKey).toBe('version-1');
   });
 
-  it('passes id to the version Repository', async () => {
+  it('passes id to the version Cache', async () => {
     const mockPermRefresh = vi.fn().mockResolvedValue({ perm: 'team1' });
     initCache();
     global.systemCache[SystemCacheKeyEnum.modelPermission].refreshFunc = mockPermRefresh;
@@ -175,7 +175,7 @@ describe('getCachedData', () => {
     const result = await getCachedData(SystemCacheKeyEnum.modelPermission, 'team1');
 
     expect(result).toEqual({ perm: 'team1' });
-    expect(mockSystemVersionRepository.getOrInitialize).toHaveBeenCalledWith({
+    expect(mockSystemVersionCache.getOrInitialize).toHaveBeenCalledWith({
       key: SystemCacheKeyEnum.modelPermission,
       id: 'team1'
     });

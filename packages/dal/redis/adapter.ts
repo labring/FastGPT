@@ -15,8 +15,11 @@ import {
   PositiveSafeIntegerSchema
 } from './runtime/schema';
 import { z } from 'zod';
+import type { RedisMemoryInfo, RedisStreamEntry } from './types';
 
-type RedisStoreClient = Pick<
+export type { RedisMemoryInfo, RedisStreamEntry } from './types';
+
+type RedisCacheClient = Pick<
   RedisClient,
   | 'append'
   | 'call'
@@ -31,20 +34,10 @@ type RedisStoreClient = Pick<
   | 'set'
 >;
 
-export type RedisMemoryInfo = {
-  usedMemory?: number;
-  maxMemory?: number;
-};
-
-export type RedisStreamEntry = {
-  id: string;
-  fields: Record<string, string>;
-};
-
 type RedisStreamClient = Pick<RedisClient, 'call'>;
 
-export type RedisStoreAdapterDependencies = {
-  getCommandClient: () => RedisStoreClient;
+export type RedisCacheAdapterDependencies = {
+  getCommandClient: () => RedisCacheClient;
   createBlockingConnection?: () => RedisStreamClient;
   releaseConnection?: (client: RedisStreamClient) => Promise<void> | void;
 };
@@ -129,16 +122,16 @@ return 0
 `;
 
 /**
- * 创建供 Redis-backed Repository 使用的最小协议 adapter。
+ * 创建供 Redis-backed Cache 使用的最小协议 adapter。
  *
  * Adapter 只接收 logical key，并集中完成 physical key 转换、operation policy 和返回值校验；
- * 构造过程不会创建 Redis 连接。新增命令必须由真实 Repository 迁移驱动，不能提前扩展为通用客户端。
+ * 构造过程不会创建 Redis 连接。新增命令必须由真实 Cache 迁移驱动，不能提前扩展为通用客户端。
  */
-export const createRedisStoreAdapter = ({
+export const createRedisCacheAdapter = ({
   getCommandClient,
   createBlockingConnection,
   releaseConnection
-}: RedisStoreAdapterDependencies) => {
+}: RedisCacheAdapterDependencies) => {
   const iterateByPrefix = async function* ({
     prefix,
     batchSize = DEFAULT_SCAN_BATCH_SIZE
@@ -1053,10 +1046,10 @@ export const createRedisStoreAdapter = ({
   };
 };
 
-export type RedisStoreAdapter = ReturnType<typeof createRedisStoreAdapter>;
+export type RedisCacheAdapter = ReturnType<typeof createRedisCacheAdapter>;
 
-/** 默认 Repository adapter；仅在具体操作执行时获取已经由应用配置的 Runtime。 */
-export const redisRepositoryAdapter = createRedisStoreAdapter({
+/** 默认 Cache adapter；仅在具体操作执行时获取已经由应用配置的 Runtime。 */
+export const redisCacheAdapter = createRedisCacheAdapter({
   getCommandClient: () => getRedisRuntime().getCommandConnection(),
   createBlockingConnection: () => getRedisRuntime().createBlockingConnection(),
   releaseConnection: (client) => getRedisRuntime().releaseConnection(client as RedisClient)

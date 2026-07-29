@@ -1,12 +1,12 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
-import { createDailyActiveDedupeRepository } from '@fastgpt/dal/redis/repositories';
+import { createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { DailyActiveDedupeCache } from '@fastgpt/dal/redis/caches';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
 
-describeWithRedis('DailyActiveDedupeRepository Redis 7.2 integration', () => {
+describeWithRedis('DailyActiveDedupeCache Redis 7.2 integration', () => {
   const uid = `integration-${process.pid}-${Date.now()}`;
   const date = '2026-07-24';
   const physicalKey = `fastgpt:cache:dailyUserActive:${uid}_${date}`;
@@ -28,11 +28,11 @@ describeWithRedis('DailyActiveDedupeRepository Redis 7.2 integration', () => {
   });
 
   it('allows exactly one winner across concurrent claims and keeps the historical TTL', async () => {
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => client });
-    const repository = createDailyActiveDedupeRepository({ redis: adapter, logger });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => client });
+    const cache = new DailyActiveDedupeCache({ redis: adapter, logger });
 
     const results = await Promise.all(
-      Array.from({ length: 64 }, () => repository.shouldRecord({ uid, date }))
+      Array.from({ length: 64 }, () => cache.shouldRecord({ uid, date }))
     );
 
     expect(results.filter(Boolean)).toHaveLength(1);

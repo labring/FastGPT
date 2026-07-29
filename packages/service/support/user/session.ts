@@ -2,21 +2,21 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
-import { createSessionRepository, type SessionData } from '@fastgpt/dal/redis/repositories';
+import { SessionCache, type SessionData } from '@fastgpt/dal/redis/caches';
 
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
 type SessionType = SessionData;
 
-const sessionRepository = createSessionRepository({ logger });
+const sessionCache = new SessionCache({ logger });
 
 export const delUserAllSession = async (userId: string, whiteList?: (string | undefined)[]) => {
-  const sessions = await sessionRepository.listByUser(String(userId));
+  const sessions = await sessionCache.listByUser(String(userId));
   const whiteListSet = new Set(whiteList?.filter((item): item is string => Boolean(item)));
   const sessionIds = sessions
     .filter(({ sessionId }) => !whiteListSet.has(sessionId))
     .map(({ sessionId }) => sessionId);
 
-  await sessionRepository.deleteMany(sessionIds);
+  await sessionCache.deleteMany(sessionIds);
 };
 
 // 会根据创建时间，删除超出客户端登录限制的 session
@@ -28,15 +28,15 @@ const delRedundantSession = async (userId: string) => {
   }
 
   try {
-    const sessions = await sessionRepository.listByUser(String(userId));
+    const sessions = await sessionCache.listByUser(String(userId));
     if (sessions.length <= maxSession) return;
 
-    // 删除最早创建的会话；损坏记录已由 Repository 在读取时处理。
+    // 删除最早创建的会话；损坏记录已由 Cache 在读取时处理。
     sessions.sort((a, b) => a.data.createdAt - b.data.createdAt);
     const redundantSessionIds = sessions
       .slice(0, sessions.length - maxSession)
       .map(({ sessionId }) => sessionId);
-    await sessionRepository.deleteMany(redundantSessionIds);
+    await sessionCache.deleteMany(redundantSessionIds);
   } catch (error) {
     logger.warn('Failed to remove redundant sessions', { userId, error });
   }
@@ -57,7 +57,7 @@ export const createUserSession = async ({
 }) => {
   const key = `${String(userId)}:${getNanoid(32)}`;
 
-  await sessionRepository.set({
+  await sessionCache.set({
     sessionId: key,
     data: {
       userId: String(userId),
@@ -75,7 +75,7 @@ export const createUserSession = async ({
 };
 
 export const authUserSession = async (key: string): Promise<SessionType> => {
-  const data = await sessionRepository.get(key);
+  const data = await sessionCache.get(key);
   if (!data) return Promise.reject(ERROR_ENUM.unAuthorization);
   return data;
 };

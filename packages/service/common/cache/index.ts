@@ -1,5 +1,5 @@
 import './init';
-import { systemVersionRepository } from '@fastgpt/dal/redis/repositories';
+import { systemVersionCache } from '@fastgpt/dal/redis/caches';
 import type { SystemCacheKeyEnum } from './type';
 import { initCache } from './init';
 import { isProduction } from '@fastgpt/global/common/system/constants';
@@ -10,13 +10,13 @@ import { serviceEnv } from '../../env';
  */
 export const refreshVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string | '*') => {
   if (!global.systemCache) initCache();
-  await systemVersionRepository.refresh({ key, id });
+  await systemVersionCache.refresh({ key, id });
 };
 
-/** 获取已有系统缓存版本；缺失时由 Repository 原子初始化。 */
+/** 获取已有系统缓存版本；缺失时由 Cache 原子初始化。 */
 export const getVersionKey = async (key: `${SystemCacheKeyEnum}`, id?: string) => {
   if (!global.systemCache) initCache();
-  return systemVersionRepository.getOrInitialize({ key, id });
+  return systemVersionCache.getOrInitialize({ key, id });
 };
 
 export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: string) => {

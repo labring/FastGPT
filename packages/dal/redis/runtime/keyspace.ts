@@ -1,10 +1,8 @@
+import type { RedisLogicalKey, RedisPhysicalKey } from '../types';
+
 export const FASTGPT_REDIS_PREFIX = 'fastgpt:';
 
-declare const redisLogicalKeyBrand: unique symbol;
-declare const redisPhysicalKeyBrand: unique symbol;
-
-export type RedisLogicalKey = string & { readonly [redisLogicalKeyBrand]: true };
-export type RedisPhysicalKey = string & { readonly [redisPhysicalKeyBrand]: true };
+export type { RedisLogicalKey, RedisPhysicalKey } from '../types';
 
 type RedisKeySegment = string | number;
 

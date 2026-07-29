@@ -5,7 +5,7 @@
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import { createLeaseRepository, isRedisLeaseError } from '@fastgpt/dal/redis/repositories';
+import { LeaseCache, isRedisLeaseError } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { createAgentSandboxInitializingError } from '../../error';
@@ -25,7 +25,7 @@ const MAX_LOG_OUTPUT_LENGTH = 4000;
 export const MAX_ENTRYPOINT_OUTPUT_BYTES = 8 * 1024;
 const SANDBOX_INIT_LEASE_TTL_MS = 3 * 60 * 1000;
 const SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS = SANDBOX_INIT_LEASE_TTL_MS / 6;
-const leaseRepository = createLeaseRepository({ logger });
+const leaseCache = new LeaseCache({ logger });
 
 /**
  * 保护同一个 sandbox 的运行态初始化流程。
@@ -40,7 +40,7 @@ export const withAgentSandboxInitLease = async <T>({
   sandboxId: string;
   fn: () => Promise<T>;
 }): Promise<T> => {
-  return leaseRepository
+  return leaseCache
     .withLease({
       key: `agent-sandbox:init:${sandboxId}`,
       label: 'agent-sandbox-init',

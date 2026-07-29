@@ -1,7 +1,7 @@
 import {
-  fixedWindowRateLimitRepository,
-  type FixedWindowRateLimitRepository
-} from '@fastgpt/dal/redis/repositories';
+  fixedWindowRateLimitCache,
+  type FixedWindowRateLimitCache
+} from '@fastgpt/dal/redis/caches';
 import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
 import { getLogger, LogCategories } from '../../logger';
 
@@ -15,14 +15,14 @@ const logger = getLogger(LogCategories.INFRA.REDIS);
  */
 export const createFixedWindowQpmLimitChecker =
   ({
-    repository = fixedWindowRateLimitRepository
+    cache = fixedWindowRateLimitCache
   }: {
-    repository?: Pick<FixedWindowRateLimitRepository, 'consume'>;
+    cache?: Pick<FixedWindowRateLimitCache, 'consume'>;
   } = {}) =>
   async ({ key, limit, seconds = 60 }: { key: string; limit: number; seconds?: number }) => {
     try {
       return (
-        await repository.consume({
+        await cache.consume({
           key,
           limit,
           windowSeconds: seconds

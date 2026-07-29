@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   WECHAT_POLLING_FAILURE_TTL_SECONDS,
-  createWechatPollingFailureRepository,
+  WechatPollingFailureCache,
   getWechatPollingFailureKey
-} from '@fastgpt/dal/redis/repositories';
-import { asRedisLogicalKey, createRedisStoreAdapter } from '@fastgpt/dal/redis/adapter';
+} from '@fastgpt/dal/redis/caches';
+import { asRedisLogicalKey, createRedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 const shareId = 'share-1';
 const logicalKey = 'cache:wechat:publish:failures:share-1';
 const physicalKey = `fastgpt:${logicalKey}`;
 
-describe('WechatPollingFailureRepository', () => {
+describe('WechatPollingFailureCache', () => {
   const redis = {
     delete: vi.fn(),
     incrementIntegerWithTtl: vi.fn(),
@@ -30,9 +30,9 @@ describe('WechatPollingFailureRepository', () => {
   });
 
   it('increments atomically through the integer adapter', async () => {
-    const repository = createWechatPollingFailureRepository({ redis });
+    const cache = new WechatPollingFailureCache({ redis });
 
-    await expect(repository.increment(shareId)).resolves.toBe(1);
+    await expect(cache.increment(shareId)).resolves.toBe(1);
     expect(redis.incrementIntegerWithTtl).toHaveBeenCalledWith({
       key: asRedisLogicalKey(logicalKey),
       increment: 1,
@@ -41,10 +41,10 @@ describe('WechatPollingFailureRepository', () => {
   });
 
   it('resets to zero with the historical TTL and clears after threshold', async () => {
-    const repository = createWechatPollingFailureRepository({ redis });
+    const cache = new WechatPollingFailureCache({ redis });
 
-    await repository.reset(shareId);
-    await expect(repository.clear(shareId)).resolves.toBe(true);
+    await cache.reset(shareId);
+    await expect(cache.clear(shareId)).resolves.toBe(true);
 
     expect(redis.set).toHaveBeenCalledWith({
       key: asRedisLogicalKey(logicalKey),
@@ -67,19 +67,19 @@ describe('WechatPollingFailureRepository', () => {
       ])
     };
     commandClient.multi.mockReturnValue(multi);
-    const adapter = createRedisStoreAdapter({ getCommandClient: () => commandClient as any });
-    const repository = createWechatPollingFailureRepository({ redis: adapter });
+    const adapter = createRedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new WechatPollingFailureCache({ redis: adapter });
 
-    await expect(repository.increment(shareId)).resolves.toBe(3);
+    await expect(cache.increment(shareId)).resolves.toBe(3);
 
     expect(multi.incrby).toHaveBeenCalledWith(physicalKey, 1);
     expect(multi.expire).toHaveBeenCalledWith(physicalKey, 300, 'NX');
   });
 
   it('rejects an empty share id before Redis access', () => {
-    const repository = createWechatPollingFailureRepository({ redis });
+    const cache = new WechatPollingFailureCache({ redis });
 
-    expect(() => repository.increment('')).toThrow();
+    expect(() => cache.increment('')).toThrow();
     expect(redis.incrementIntegerWithTtl).not.toHaveBeenCalled();
   });
 });

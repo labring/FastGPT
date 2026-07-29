@@ -1,8 +1,8 @@
 /* 基于 Team 的限流 */
 import {
-  fixedWindowRateLimitRepository,
-  type FixedWindowRateLimitRepository
-} from '@fastgpt/dal/redis/repositories';
+  fixedWindowRateLimitCache,
+  type FixedWindowRateLimitCache
+} from '@fastgpt/dal/redis/caches';
 import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
 import { jsonRes } from '../../common/response';
 import type { NodeApiResponse } from '../../types/http';
@@ -48,10 +48,10 @@ export const teamFrequencyLimit = async ({
   teamId,
   type,
   res,
-  repository = fixedWindowRateLimitRepository
+  cache = fixedWindowRateLimitCache
 }: FrequencyLimitOption & {
   res: NodeApiResponse;
-  repository?: Pick<FixedWindowRateLimitRepository, 'consume'>;
+  cache?: Pick<FixedWindowRateLimitCache, 'consume'>;
 }) => {
   let data: Awaited<ReturnType<typeof getLimitData>>;
   try {
@@ -68,9 +68,9 @@ export const teamFrequencyLimit = async ({
 
   const { limit, seconds } = data;
 
-  let result: Awaited<ReturnType<FixedWindowRateLimitRepository['consume']>>;
+  let result: Awaited<ReturnType<FixedWindowRateLimitCache['consume']>>;
   try {
-    result = await repository.consume({
+    result = await cache.consume({
       key: `frequency:${type}:${teamId}`,
       limit,
       windowSeconds: seconds

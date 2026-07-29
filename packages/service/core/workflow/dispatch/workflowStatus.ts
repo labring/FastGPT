@@ -1,13 +1,10 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  createWorkflowStopSignalRepository,
-  getWorkflowStopSignalKey
-} from '@fastgpt/dal/redis/repositories';
+import { WorkflowStopSignalCache, getWorkflowStopSignalKey } from '@fastgpt/dal/redis/caches';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.STATUS);
-const stopSignalRepository = createWorkflowStopSignalRepository({ logger });
+const stopSignalCache = new WorkflowStopSignalCache({ logger });
 
 export const StopStatus = 'STOPPING';
 
@@ -24,17 +21,17 @@ export const getRuntimeStatusKey = (params: WorkflowStatusParams): string => {
 
 // 暂停任务
 export const setAgentRuntimeStop = async (params: WorkflowStatusParams): Promise<void> => {
-  await stopSignalRepository.set(params);
+  await stopSignalCache.set(params);
 };
 
 // 删除任务状态
 export const delAgentRuntimeStopSign = async (params: WorkflowStatusParams): Promise<void> => {
-  await stopSignalRepository.clear(params);
+  await stopSignalCache.clear(params);
 };
 
 // 检查工作流是否应该停止
 export const shouldWorkflowStop = (params: WorkflowStatusParams): Promise<boolean> => {
-  return stopSignalRepository.isStopping(params);
+  return stopSignalCache.isStopping(params);
 };
 
 /**

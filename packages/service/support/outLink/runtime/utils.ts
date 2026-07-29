@@ -32,8 +32,8 @@ import {
   OUTLINK_STREAM_CONTENT_TTL_SECONDS,
   OUTLINK_STREAM_END_FLAG,
   OUTLINK_STREAM_INITIAL_TTL_SECONDS,
-  outLinkStreamRepository
-} from '@fastgpt/dal/redis/repositories';
+  outLinkStreamCache
+} from '@fastgpt/dal/redis/caches';
 import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { getUsageSourceByPublishChannel } from '@fastgpt/global/support/wallet/usage/tools';
 import {
@@ -158,12 +158,12 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       });
       await onReply?.(RESET_CHAT_REPLY);
       if (streamId) {
-        await outLinkStreamRepository.append({
+        await outLinkStreamCache.append({
           streamId,
           value: RESET_CHAT_REPLY,
           ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
         });
-        await outLinkStreamRepository.append({
+        await outLinkStreamCache.append({
           streamId,
           value: STREAM_END_FLAG,
           ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
@@ -217,7 +217,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
               const text = data.choices?.[0]?.delta?.content;
               if (text) {
                 if (streamId) {
-                  await outLinkStreamRepository.append({
+                  await outLinkStreamCache.append({
                     streamId,
                     value: text,
                     ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
@@ -240,7 +240,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     // Initialize Redis key only when needed
     if (streamId) {
-      await outLinkStreamRepository.append({
+      await outLinkStreamCache.append({
         streamId,
         value: '',
         ttlSeconds: OUTLINK_STREAM_INITIAL_TTL_SECONDS
@@ -383,7 +383,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     });
 
     if (streamId) {
-      await outLinkStreamRepository.append({
+      await outLinkStreamCache.append({
         streamId,
         value: STREAM_END_FLAG,
         ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
@@ -434,7 +434,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     try {
       if (streamId) {
-        await outLinkStreamRepository.append({
+        await outLinkStreamCache.append({
           streamId,
           value: STREAM_END_FLAG,
           ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS

@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  createStreamResumeRepository,
-  type StreamResumeRepositoryLogger
-} from '@fastgpt/dal/redis/repositories';
+import { StreamResumeCache } from '@fastgpt/dal/redis/caches';
 import { asRedisLogicalKey } from '@fastgpt/dal/redis/adapter';
+import type { RedisCacheLogger } from '@fastgpt/dal/redis/types';
 
 const params = {
   teamId: 'team-1',
@@ -23,17 +21,17 @@ const createRedis = () => ({
   set: vi.fn().mockResolvedValue(undefined)
 });
 
-const logger: StreamResumeRepositoryLogger = {
+const logger: RedisCacheLogger<'error'> = {
   error: vi.fn()
 };
 
-describe('StreamResumeRepository', () => {
+describe('StreamResumeCache', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  const createRepository = () =>
-    createStreamResumeRepository({
+  const createCache = () =>
+    new StreamResumeCache({
       redis: createRedis(),
       logger,
       streamTtlSeconds: 300,
@@ -42,9 +40,9 @@ describe('StreamResumeRepository', () => {
     });
 
   it('keeps the historical logical key contract', () => {
-    const repository = createRepository();
+    const cache = createCache();
 
-    expect(repository.getKeys(params)).toEqual({
+    expect(cache.getKeys(params)).toEqual({
       keyOfStream: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1'),
       keyOfUnavailable: asRedisLogicalKey('stream:resume:unavailable:team-1:app:app-1:chat-1'),
       keyOfActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1')
@@ -53,7 +51,7 @@ describe('StreamResumeRepository', () => {
 
   it('parses valid state and treats malformed state as a miss', async () => {
     const redis = createRedis();
-    const repository = createStreamResumeRepository({
+    const cache = new StreamResumeCache({
       redis,
       logger,
       streamTtlSeconds: 300,
@@ -62,18 +60,18 @@ describe('StreamResumeRepository', () => {
     });
 
     redis.get.mockResolvedValueOnce('{"reason":"memoryPressure"}');
-    await expect(repository.getUnavailable(params)).resolves.toEqual({
+    await expect(cache.getUnavailable(params)).resolves.toEqual({
       reason: 'memoryPressure'
     });
 
     redis.get.mockResolvedValueOnce('{"updatedAt":0}');
-    await expect(repository.getActive(params)).resolves.toBeUndefined();
+    await expect(cache.getActive(params)).resolves.toBeUndefined();
     redis.get.mockResolvedValueOnce('{bad');
-    await expect(repository.getUnavailable(params)).resolves.toBeUndefined();
+    await expect(cache.getUnavailable(params)).resolves.toBeUndefined();
     redis.get.mockResolvedValueOnce('{bad');
-    await expect(repository.getActive(params)).resolves.toBeUndefined();
+    await expect(cache.getActive(params)).resolves.toBeUndefined();
 
-    await repository.setUnavailable(params, { reason: 'memoryPressure' });
+    await cache.setUnavailable(params, { reason: 'memoryPressure' });
     expect(redis.set).toHaveBeenCalledWith({
       key: asRedisLogicalKey('stream:resume:unavailable:team-1:app:app-1:chat-1'),
       value: JSON.stringify({ reason: 'memoryPressure' }),
@@ -84,7 +82,7 @@ describe('StreamResumeRepository', () => {
   it('exposes typed Redis memory info without exposing a client', async () => {
     const redis = createRedis();
     redis.getMemoryInfo.mockResolvedValue({ usedMemory: 42, maxMemory: 100 });
-    const repository = createStreamResumeRepository({
+    const cache = new StreamResumeCache({
       redis,
       logger,
       streamTtlSeconds: 300,
@@ -92,7 +90,7 @@ describe('StreamResumeRepository', () => {
       ttlTouchIntervalMs: 1_000
     });
 
-    await expect(repository.getMemoryInfo()).resolves.toEqual({ usedMemory: 42, maxMemory: 100 });
+    await expect(cache.getMemoryInfo()).resolves.toEqual({ usedMemory: 42, maxMemory: 100 });
     expect(redis.getMemoryInfo).toHaveBeenCalledTimes(1);
   });
 
@@ -100,14 +98,14 @@ describe('StreamResumeRepository', () => {
     vi.useFakeTimers();
     try {
       const redis = createRedis();
-      const repository = createStreamResumeRepository({
+      const cache = new StreamResumeCache({
         redis,
         logger,
         streamTtlSeconds: 300,
         postCompleteTtlSeconds: 30,
         ttlTouchIntervalMs: 1_000
       });
-      const mirror = repository.createMirror(params);
+      const mirror = cache.createMirror(params);
 
       await mirror.enqueueRaw('first');
       await mirror.enqueueRaw('second');
@@ -137,14 +135,14 @@ describe('StreamResumeRepository', () => {
 
   it('shrinks stream and active state TTL after completion', async () => {
     const redis = createRedis();
-    const repository = createStreamResumeRepository({
+    const cache = new StreamResumeCache({
       redis,
       logger,
       streamTtlSeconds: 300,
       postCompleteTtlSeconds: 30,
       ttlTouchIntervalMs: 1_000
     });
-    const mirror = repository.createMirror(params);
+    const mirror = cache.createMirror(params);
 
     await mirror.shrinkTTLAfterComplete();
 
@@ -162,14 +160,14 @@ describe('StreamResumeRepository', () => {
     const redis = createRedis();
     const clearError = new Error('cleanup failed');
     redis.delete.mockRejectedValueOnce(clearError);
-    const repository = createStreamResumeRepository({
+    const cache = new StreamResumeCache({
       redis,
       logger,
       streamTtlSeconds: 300,
       postCompleteTtlSeconds: 30,
       ttlTouchIntervalMs: 1_000
     });
-    const mirror = repository.createMirror(params);
+    const mirror = cache.createMirror(params);
 
     await mirror.enqueueRaw('after-cleanup');
     await mirror.flush();
@@ -188,14 +186,14 @@ describe('StreamResumeRepository', () => {
     const redis = createRedis();
     const writeError = new Error('mirror write failed');
     redis.appendStreamEntry.mockRejectedValueOnce(writeError);
-    const repository = createStreamResumeRepository({
+    const cache = new StreamResumeCache({
       redis,
       logger,
       streamTtlSeconds: 300,
       postCompleteTtlSeconds: 30,
       ttlTouchIntervalMs: 1_000
     });
-    const mirror = repository.createMirror(params);
+    const mirror = cache.createMirror(params);
 
     await mirror.enqueueRaw('failed');
     await mirror.enqueueRaw('recovered');
@@ -212,14 +210,14 @@ describe('StreamResumeRepository', () => {
     const redis = createRedis();
     const ttlError = new Error('ttl update failed');
     redis.expireStream.mockRejectedValueOnce(ttlError);
-    const repository = createStreamResumeRepository({
+    const cache = new StreamResumeCache({
       redis,
       logger,
       streamTtlSeconds: 300,
       postCompleteTtlSeconds: 30,
       ttlTouchIntervalMs: 1_000
     });
-    const mirror = repository.createMirror(params);
+    const mirror = cache.createMirror(params);
 
     await expect(mirror.shrinkTTLAfterComplete()).resolves.toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith(
@@ -236,7 +234,7 @@ describe('StreamResumeRepository', () => {
     };
     redis.createBlockingStreamReader.mockReturnValue(reader);
     redis.rangeStream.mockResolvedValue([{ id: '1-0', fields: { raw: 'history' } }]);
-    const repository = createStreamResumeRepository({
+    const cache = new StreamResumeCache({
       redis,
       logger,
       streamTtlSeconds: 300,
@@ -244,11 +242,11 @@ describe('StreamResumeRepository', () => {
       ttlTouchIntervalMs: 1_000
     });
 
-    await expect(repository.range({ params, start: '-', end: '+', count: 50 })).resolves.toEqual([
+    await expect(cache.range({ params, start: '-', end: '+', count: 50 })).resolves.toEqual([
       { id: '1-0', fields: { raw: 'history' } }
     ]);
     await expect(
-      repository.withBlockingReader({
+      cache.withBlockingReader({
         params,
         blockMs: 30_000,
         count: 1,
@@ -257,7 +255,7 @@ describe('StreamResumeRepository', () => {
     ).resolves.toEqual([{ id: '2-0', fields: { raw: 'data' } }]);
 
     await expect(
-      repository.withBlockingReader({
+      cache.withBlockingReader({
         params,
         blockMs: 30_000,
         callback: () => {
@@ -285,13 +283,14 @@ describe('StreamResumeRepository', () => {
     ['postCompleteTtlSeconds', -1],
     ['ttlTouchIntervalMs', 1.5]
   ])('rejects invalid %s configuration', (field, value) => {
-    expect(() =>
-      createStreamResumeRepository({
-        logger,
-        streamTtlSeconds: field === 'streamTtlSeconds' ? value : 300,
-        postCompleteTtlSeconds: field === 'postCompleteTtlSeconds' ? value : 30,
-        ttlTouchIntervalMs: field === 'ttlTouchIntervalMs' ? value : 1_000
-      })
+    expect(
+      () =>
+        new StreamResumeCache({
+          logger,
+          streamTtlSeconds: field === 'streamTtlSeconds' ? value : 300,
+          postCompleteTtlSeconds: field === 'postCompleteTtlSeconds' ? value : 30,
+          ttlTouchIntervalMs: field === 'ttlTouchIntervalMs' ? value : 1_000
+        })
     ).toThrow(`streamResume.${field} must be a positive safe integer`);
   });
 });

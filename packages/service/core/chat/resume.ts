@@ -1,11 +1,11 @@
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import {
-  createStreamResumeRepository,
+  StreamResumeCache,
   type StreamResumeActiveState as DalStreamResumeActiveState,
   type StreamResumeParams,
   type StreamResumeUnavailableState as DalStreamResumeUnavailableState
-} from '@fastgpt/dal/redis/repositories';
+} from '@fastgpt/dal/redis/caches';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -30,7 +30,7 @@ export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
 export const STREAM_RESUME_INACTIVE_MS = 2 * 60 * 1000;
 
-const streamResumeRepository = createStreamResumeRepository({
+const streamResumeCache = new StreamResumeCache({
   logger,
   streamTtlSeconds: STREAM_RESUME_TTL_SECONDS,
   postCompleteTtlSeconds: STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
@@ -59,7 +59,7 @@ export const getStreamResumeRedisKeys = ({
   sourceId,
   chatId
 }: StreamResumeRedisKeysParams) =>
-  streamResumeRepository.getKeys({ teamId, sourceType, sourceId, chatId });
+  streamResumeCache.getKeys({ teamId, sourceType, sourceId, chatId });
 
 export type StreamResumeUnavailableState = DalStreamResumeUnavailableState & {
   reason: `${StreamResumeUnavailableReasonEnum}`;
@@ -130,7 +130,7 @@ const isRedisMemoryPressureBlockingStreamResume = async () => {
 
   redisMemoryPressurePromise = (async () => {
     try {
-      const { usedMemory, maxMemory } = await streamResumeRepository.getMemoryInfo();
+      const { usedMemory, maxMemory } = await streamResumeCache.getMemoryInfo();
       const blocked =
         typeof usedMemory === 'number' &&
         typeof maxMemory === 'number' &&
@@ -172,11 +172,11 @@ const isResponseClosed = (res: NodeHttpResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
 export const getStreamResumeUnavailableState = async (params: StreamResumeRedisKeysParams) => {
-  return streamResumeRepository.getUnavailable(params);
+  return streamResumeCache.getUnavailable(params);
 };
 
 export const getStreamResumeActiveState = async (params: StreamResumeRedisKeysParams) => {
-  return streamResumeRepository.getActive(params);
+  return streamResumeCache.getActive(params);
 };
 
 export const isStreamResumeActiveStale = (
@@ -191,7 +191,7 @@ const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEnc
 };
 
 export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
-  const mirror = streamResumeRepository.createMirror(params);
+  const mirror = streamResumeCache.createMirror(params);
 
   return {
     ...getStreamResumeRedisKeys(params),
@@ -209,7 +209,7 @@ export const getStreamResumeMirror = async ({
   if (!isStreamResumeMirrorRequested(resumeRequestHeaderValue)) return;
 
   if (await isRedisMemoryPressureBlockingStreamResume()) {
-    await streamResumeRepository
+    await streamResumeCache
       .setUnavailable(params, {
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       })
@@ -272,7 +272,7 @@ export const catchUpAllHistoryItems = async ({
   while (!isResponseClosed(res)) {
     const rangeStart = lastStreamId ? `(${lastStreamId}` : '-';
 
-    const historyItems = await streamResumeRepository.range({
+    const historyItems = await streamResumeCache.range({
       params,
       start: rangeStart,
       end: '+',
@@ -313,7 +313,7 @@ export const _resume = async ({
   let cursor = initialCursor ?? '';
 
   if (cursor) {
-    const currentItems = await streamResumeRepository.range({
+    const currentItems = await streamResumeCache.range({
       params,
       start: cursor,
       end: cursor,
@@ -325,7 +325,7 @@ export const _resume = async ({
     }
   }
 
-  return streamResumeRepository.withBlockingReader({
+  return streamResumeCache.withBlockingReader({
     params,
     blockMs: STREAM_RESUME_BLOCK_MS,
     count: 1,
