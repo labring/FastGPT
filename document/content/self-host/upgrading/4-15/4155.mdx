@@ -21,6 +21,8 @@ description: 'FastGPT V4.15.5 更新说明'
 
 1. 修复阿里云 OSS `getObjectMetadata` 从错误字段读取 ETag，导致 ETag 缺失并触发下游元数据校验失败的问题。
 2. 修复 S3/MinIO 源文件不存在时 API 返回 `Unknown` 的问题，改为返回文件找不到并使用 HTTP 404。
+3. 修复旧插件节点升级后输入框消失的问题。
+4. 修复头像 URL 被重复编码的问题。
 
 ## 🛠️ 代码优化
 
