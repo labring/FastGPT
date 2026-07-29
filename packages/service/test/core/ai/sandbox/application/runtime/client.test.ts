@@ -131,17 +131,15 @@ const createInstance = (status: string, operationId?: string) =>
     userId: query.userId,
     status,
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
-    metadata: operationId
+    operation: operationId
       ? {
-          operation: {
-            id: operationId,
-            type: 'provision',
-            phase: 'claimed',
-            startedAt: new Date(),
-            heartbeatAt: new Date()
-          }
+          id: operationId,
+          type: 'provision',
+          phase: 'claimed',
+          startedAt: new Date(),
+          heartbeatAt: new Date()
         }
-      : {}
+      : undefined
   }) as any;
 
 describe('sandbox runtime client lifecycle', () => {
@@ -181,7 +179,7 @@ describe('sandbox runtime client lifecycle', () => {
 
     expect(client.getSandboxId()).toBe(query.sandboxId);
     expect(mocks.touchRunningSandboxInstance).toHaveBeenCalledWith(
-      expect.objectContaining({ sandboxId: query.sandboxId, metadata: { volumeEnabled: false } })
+      expect.objectContaining({ sandboxId: query.sandboxId })
     );
     expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledWith(expect.anything(), {
       allowCreate: false
@@ -245,10 +243,7 @@ describe('sandbox runtime client lifecycle', () => {
     );
     expect(mocks.createSandboxProvisioningInstance).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: {
-          volumeEnabled: false,
-          image: { repository: 'fastgpt/sandbox', tag: 'v2' }
-        }
+        image: { repository: 'fastgpt/sandbox', tag: 'v2' }
       })
     );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
@@ -299,11 +294,11 @@ describe('sandbox runtime client lifecycle', () => {
 
   it('publishes a stale providerEnsured phase without reconnecting the provider', async () => {
     const provisioning = createInstance('provisioning', 'old-provision');
-    provisioning.metadata.operation.phase = 'providerEnsured';
-    provisioning.metadata.operation.heartbeatAt = new Date(0);
+    provisioning.operation.phase = 'providerEnsured';
+    provisioning.operation.heartbeatAt = new Date(0);
     const reclaimed = createInstance('provisioning', 'resumed-provision');
-    reclaimed.metadata.operation.phase = 'providerEnsured';
-    reclaimed.metadata.operation.heartbeatAt = new Date(0);
+    reclaimed.operation.phase = 'providerEnsured';
+    reclaimed.operation.heartbeatAt = new Date(0);
     mocks.touchRunningSandboxInstance.mockResolvedValue(null);
     mocks.findSandboxInstanceBySource.mockResolvedValue(provisioning);
     mocks.claimSandboxOperation.mockResolvedValueOnce(reclaimed);
@@ -327,7 +322,7 @@ describe('sandbox runtime client lifecycle', () => {
       .mockResolvedValueOnce(failedProvisioning)
       .mockResolvedValueOnce(retriedProvisioning);
     mocks.markSandboxOperationFailed.mockImplementationOnce(async ({ error }: any) => {
-      failedProvisioning.metadata.operation.error = error;
+      failedProvisioning.operation.error = error;
     });
     mocks.ensureConnectedSandboxRunning.mockRejectedValueOnce(new Error('provider failed'));
 
@@ -353,7 +348,7 @@ describe('sandbox runtime client lifecycle', () => {
       expect.objectContaining({
         operationId: 'retried-provision',
         status: 'running',
-        set: { 'metadata.image': { repository: 'fastgpt/sandbox', tag: 'v2' } }
+        set: { image: { repository: 'fastgpt/sandbox', tag: 'v2' } }
       })
     );
   });

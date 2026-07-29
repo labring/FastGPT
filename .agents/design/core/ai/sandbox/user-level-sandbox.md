@@ -59,7 +59,7 @@ sessionWorkDirectory = <workspaceRoot>/sessions/<chatId>
 
 - `agent_sandbox_instances_v2` 是新运行时的唯一实例表。
 - 顶层 `status` 是唯一权威生命周期状态。
-- `metadata.operation` 只记录 operation token、持久阶段、心跳和错误，不承担第二套状态判断。
+- `operation` 只记录 operation token、持久阶段、心跳和错误，不承担第二套状态判断。
 - 普通 runtime 不得连接 `legacyMigrating` 或其他过渡态实例。
 - 单个 Chat 删除不删除共享 Sandbox，也不单独清理 `sessions/<chatId>`。
 - App 或 Skill 删除负责清理所属 v2 与 Legacy 资源。
@@ -89,25 +89,18 @@ type SandboxInstance = {
   createdAt: Date;
   limit?: SandboxLimit;
   storage?: SandboxStorage;
-  metadata?: {
-    teamId?: string;
-    tmbId?: string;
-    volumeEnabled?: boolean;
-    image?: SandboxImage;
-    sessionId?: string;
-    skillIds?: string[];
-    skillName?: string;
-    versionId?: string;
-    operation?: {
-      id: string;
-      type: 'provision' | 'legacyMigration' | 'stop' | 'archive' | 'restore' | 'delete';
-      phase: string;
-      previousStatus?: 'running' | 'stopped' | 'archived';
-      startedAt: Date;
-      heartbeatAt: Date;
-      failedAt?: Date;
-      error?: string;
-    };
+  teamId?: string;
+  image?: SandboxImage;
+  versionId?: string;
+  operation?: {
+    id: string;
+    type: 'provision' | 'legacyMigration' | 'stop' | 'archive' | 'restore' | 'delete';
+    phase: string;
+    previousStatus?: 'running' | 'stopped' | 'archived';
+    startedAt: Date;
+    heartbeatAt: Date;
+    failedAt?: Date;
+    error?: string;
   };
 };
 ```
@@ -118,9 +111,9 @@ type SandboxInstance = {
 - `(sourceType, sourceId, userId)` 唯一，约束业务逻辑实例。
 - 稳定态只有 `running/stopped/archived`，稳定态不得残留 operation。
 - 每个过渡态必须匹配唯一 operation 类型。
-- 过渡态接管按 `status + metadata.operation.heartbeatAt` 查询，空闲资源按
+- 过渡态接管按 `status + operation.heartbeatAt` 查询，空闲资源按
   `status + lastActiveAt` 查询。
-- v2 不包含 `chatId`、旧 `appId/type`、`metadata.archive` 或 `metadata.migration`。
+- v2 不包含通用 `metadata` 容器，也不包含 `chatId` 或旧 `appId/type`。
 
 ### 3.2 Legacy 实例
 
@@ -207,7 +200,13 @@ active；删除任务只处理已经持久标记删除的 source。
 
 第 0 阶段结束后必须重新统计 Sandbox 待归一化记录和待清理旧 Debug Chat。两者合计为
 `pendingCount`；只要它不为 0，整次任务就停在该阶段，不得归档 Workspace、删除待迁移物理资源
-或创建 v2 目标。该总数归零后直接进入 Workspace 迁移，不再执行重复的 Legacy 整表 Zod 预检。
+或创建 v2 目标。该总数归零后，先执行一次 Legacy 专属整表预检，再进入 Workspace 迁移；该预检
+不复用 v2 instance schema。
+
+Legacy 预检使用独立的 `LegacySandboxInstanceZodSchema`，不得使用 v2 实例 schema 校验 Legacy
+输入。Legacy metadata 可以包含 `providerCreatedAt`、旧 `storage` 等 Skill 编辑历史字段；这些字段
+由 Legacy schema 读取，在映射到 v2 时显式丢弃。`toV2SandboxFields` 只能按 v2 稳定根字段白名单
+构造结果，避免新的 Legacy 字段通过对象展开泄漏到 v2。
 
 ### 6.2 两阶段迁移
 
@@ -237,6 +236,11 @@ active；删除任务只处理已经持久标记删除的 source。
 - 失败保留目标、Legacy 记录和归档；重试从持久 phase 继续，不重复已经确认的副作用。
 - `completed` 是 Legacy 迁移终态，后续迁移只预检、不重复安装。
 
+旧 Skill Debug Chat 清理沿用 beta6 初始化脚本：扫描当前全部 Skill，排除同 ID 的 App 后逐个
+统计 Legacy Chat；列表包含空 Skill 的检查结果，但正式执行只删除 `chatCount > 0` 的 Skill。
+`matchedSkillCount` 表示排除冲突后的扫描数量，`cleanedSkillCount` 表示实际提交删除的 Skill
+数量，`pendingChatCount` 用于迁移阻塞判断。
+
 Skill 分组并发度为 20；App 分组并发度为 5，组内按 `lastActiveAt` 从新到旧串行安装。
 
 ## 7. 运行时配置收敛
@@ -254,7 +258,7 @@ App Chat 和 Workflow 只在 Agent 或 ToolCall 节点确定本轮实际使用 S
 - Skill Edit 继续由用户显式确认升级并在页面轮询，不复用 App Chat 的静默交互。
 
 迁移过程不新增数据库状态；它复用 archive、restore 和稳定 `archived` 状态。历史记录缺少
-`metadata.image` 时按镜像不一致处理。
+`image` 时按镜像不一致处理。
 
 ## 8. Sandbox 不可用时的 App Chat 降级
 

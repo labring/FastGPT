@@ -23,15 +23,13 @@ const InitUserSandboxResponseSchema = z.object({
     orphanDeletedCount: z.number().int().nonnegative(),
     orphanFailedCount: z.number().int().nonnegative(),
     sandboxPendingCount: z.number().int().nonnegative(),
-    scannedSkillCount: z.number().int().nonnegative(),
     legacyDebugChatCleanup: z.object({
       conflictAppSkillCount: z.number().int().nonnegative(),
-      cleanupSkillCount: z.number().int().nonnegative(),
+      matchedSkillCount: z.number().int().nonnegative(),
       totalLegacyChats: z.number().int().nonnegative(),
       totalChatItems: z.number().int().nonnegative(),
       totalChatItemResponses: z.number().int().nonnegative(),
-      deletedSkillCount: z.number().int().nonnegative(),
-      skippedEmptyCount: z.number().int().nonnegative(),
+      cleanedSkillCount: z.number().int().nonnegative(),
       pendingChatCount: z.number().int().nonnegative(),
       list: z.array(
         z.object({
@@ -39,7 +37,7 @@ const InitUserSandboxResponseSchema = z.object({
           chatCount: z.number().int().nonnegative(),
           chatItemCount: z.number().int().nonnegative(),
           chatItemResponseCount: z.number().int().nonnegative(),
-          deleted: z.boolean()
+          status: z.enum(['pending', 'deleted'])
         })
       )
     }),

@@ -79,16 +79,14 @@ export async function migrateSandboxProviderBeforeUse(params: {
         resource: SandboxResourceDoc
       ): Promise<SandboxResourceDoc> => {
         if (resource.status !== SandboxInstanceStatusEnum.restoring) return resource;
-        const operation = resource.metadata?.operation;
+        const operation = resource.operation;
         const staleBefore = subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES);
         if (!operation?.error && operation?.heartbeatAt && operation.heartbeatAt >= staleBefore) {
           throw new SandboxLifecycleStateError(resource.status);
         }
 
         const rollbackFromPhase =
-          resource.metadata?.operation?.phase === 'archiveInstalled'
-            ? 'archiveInstalled'
-            : 'claimed';
+          resource.operation?.phase === 'archiveInstalled' ? 'archiveInstalled' : 'claimed';
         const definition: SandboxLifecycleDefinition = {
           operationType: SandboxOperationTypeEnum.restore,
           status: SandboxInstanceStatusEnum.restoring,

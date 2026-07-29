@@ -142,10 +142,8 @@ const createResource = (status = 'running', overrides: Record<string, unknown> =
     sourceId: 'skill-1',
     status,
     lastActiveAt: new Date(),
-    metadata: {
-      image: { repository: 'runtime-image', tag: 'v2' },
-      versionId: 'version-1'
-    },
+    image: { repository: 'runtime-image', tag: 'v2' },
+    versionId: 'version-1',
     ...overrides
   }) as any;
 
@@ -158,7 +156,6 @@ const createContext = (
   return {
     skillId: 'skill-1',
     teamId: 'team-1',
-    tmbId: 'tmb-1',
     providerConfig: { provider: 'opensandbox' },
     runtimeProfile: {
       provider: 'opensandbox',
@@ -167,7 +164,6 @@ const createContext = (
     },
     createConfig: { image: { repository: 'runtime-image', tag: 'v2' } },
     runtimeImage: { repository: 'runtime-image', tag: 'v2' },
-    skill: { _id: 'skill-1', name: 'Test skill', currentVersionId: 'version-1' },
     currentVersion: { _id: 'version-1', skillId: 'skill-1', storageKey: 'storage-key' },
     sessionId: 'edit-debug-skill-1',
     targetVersionId: 'version-1',
@@ -268,10 +264,8 @@ describe('skill edit runtime status', () => {
     ).resolves.toEqual({ status: 'readyToInit' });
 
     const outdated = createResource('running', {
-      metadata: {
-        image: { repository: 'old-image', tag: 'v1' },
-        versionId: 'version-1'
-      }
+      image: { repository: 'old-image', tag: 'v1' },
+      versionId: 'version-1'
     });
     await expect(
       getSkillEditRuntimeStatus({
@@ -343,7 +337,8 @@ describe('skill edit runtime initialization', () => {
 
   it('deploys the target package after runtime client restores an outdated record', async () => {
     const archived = createResource('archived', {
-      metadata: { image: { repository: 'old-image', tag: 'v1' }, versionId: 'old-version' }
+      image: { repository: 'old-image', tag: 'v1' },
+      versionId: 'old-version'
     });
 
     await initSkillEditRuntimeSandbox({
@@ -352,7 +347,8 @@ describe('skill edit runtime initialization', () => {
 
     expect(mocks.updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: expect.objectContaining({ versionId: 'version-1', teamId: 'team-1' })
+        versionId: 'version-1',
+        teamId: 'team-1'
       })
     );
   });
@@ -408,14 +404,14 @@ describe('skill edit runtime context and read-only query', () => {
     mocks.checkTeamSandboxPermission.mockRejectedValueOnce(new Error('denied'));
 
     await expect(
-      getSkillEditRuntimeContext({ skillId: 'skill-1', teamId: 'team-1', tmbId: 'tmb-1' })
+      getSkillEditRuntimeContext({ skillId: 'skill-1', teamId: 'team-1' })
     ).rejects.toThrow();
     expect(mocks.mongoSkillFindOne).not.toHaveBeenCalled();
   });
 
   it('returns only a running sandbox owned by the requested team', async () => {
     mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(
-      createResource('running', { metadata: { teamId: 'team-1' } })
+      createResource('running', { teamId: 'team-1' })
     );
 
     await expect(
@@ -423,7 +419,7 @@ describe('skill edit runtime context and read-only query', () => {
     ).resolves.toMatchObject({ sandboxId: 'edit-debug-skill-1' });
 
     mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce(
-      createResource('running', { metadata: { teamId: 'other-team' } })
+      createResource('running', { teamId: 'other-team' })
     );
     await expect(
       getRunningSkillEditSandbox({ skillId: 'skill-1', teamId: 'team-1' })

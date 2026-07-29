@@ -23,7 +23,7 @@ import type { LegacySandboxNormalizationResult } from './types';
 const LEGACY_SANDBOX_NORMALIZATION_CONCURRENCY = 10;
 type LegacySandboxFieldNormalizationResult = Omit<
   LegacySandboxNormalizationResult,
-  'sandboxPendingCount' | 'scannedSkillCount' | 'legacyDebugChatCleanup'
+  'sandboxPendingCount' | 'legacyDebugChatCleanup'
 >;
 
 /** 按 beta6 兼容规则解析缺失 source 的旧记录；无法解析的记录视为孤儿资源。 */
@@ -168,7 +168,6 @@ export async function normalizeLegacySandboxes(params: {
   return {
     ...sandboxNormalization,
     sandboxPendingCount: sandboxNormalization.pendingCount,
-    scannedSkillCount: debugChatCleanup.scannedSkillCount,
     legacyDebugChatCleanup: debugChatCleanup.cleanup,
     pendingCount: sandboxNormalization.pendingCount + debugChatCleanup.cleanup.pendingChatCount
   };

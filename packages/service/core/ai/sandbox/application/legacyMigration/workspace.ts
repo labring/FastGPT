@@ -7,27 +7,27 @@ import { ensureConnectedSandboxRunning } from '../../infrastructure/provider/lif
 import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import { getSessionVolumeConfig } from '../../infrastructure/volume/service';
 import type { LegacySandboxInstanceSchemaType } from '../../infrastructure/instance/legacySchema';
-import { SandboxMetadataSchema, type SandboxProviderType } from '../../type';
+import type { SandboxProviderType } from '../../type';
 import { getSandboxRuntimePaths, getSandboxSessionPathSegment, joinSandboxPath } from '../../utils';
 import { restoreSandboxWorkspaceArchiveForMigration } from '../archive';
 import { resolveSandboxHome } from '../runtime/home';
 import type { LegacyMigrationTarget } from './types';
-import { toV2Metadata } from './utils';
+import { toV2SandboxFields } from './utils';
 
 const LEGACY_SKILL_VERSION_DIRECTORY_NAME_LENGTH = 24;
 const MIGRATION_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 
-/** migration 创建新物理资源时，把当前 Provider runtime image 写入 v2 metadata。 */
-export const getMigrationTargetMetadata = (
+/** migration 创建新物理资源时，把稳定归属字段和当前 runtime image 写入 v2 根字段。 */
+export const getMigrationTargetFields = (
   metadata: LegacySandboxInstanceSchemaType['metadata'],
   provider: SandboxProviderType
 ) => {
-  const stableMetadata = toV2Metadata(metadata);
+  const stableFields = toV2SandboxFields(metadata);
   const image = getSandboxRuntimeProfile(provider).defaultImage;
-  return SandboxMetadataSchema.parse({
-    ...stableMetadata,
+  return {
+    ...stableFields,
     ...(image ? { image } : {})
-  });
+  };
 };
 
 /** 创建 migration 专用 target，不经过可能触发其他业务恢复分支的普通 runtime client。 */

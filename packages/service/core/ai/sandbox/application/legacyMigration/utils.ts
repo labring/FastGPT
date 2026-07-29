@@ -2,11 +2,7 @@
 import { generateSandboxId, SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { LegacySandboxInstanceSchemaType } from '../../infrastructure/instance/legacySchema';
-import {
-  SandboxInstanceStatusEnum,
-  SandboxMetadataSchema,
-  SandboxProviderSchema
-} from '../../type';
+import { SandboxInstanceStatusEnum, SandboxProviderSchema } from '../../type';
 import type { LegacyMigrationPhase } from './types';
 
 export const getLegacyMigrationPhase = (
@@ -22,18 +18,11 @@ export const getLegacyMigrationTargetSandboxId = (doc: LegacySandboxInstanceSche
       doc.sourceType === ChatSourceTypeEnum.skillEdit ? ChatSourceTypeEnum.skillEdit : doc.userId
   });
 
-/** 删除 Legacy 专用 metadata，只保留 v2 schema 接受的稳定字段。 */
-export const toV2Metadata = (metadata?: LegacySandboxInstanceSchemaType['metadata']) => {
-  const {
-    archive: _archive,
-    migration: _migration,
-    provider: _provider,
-    skillId: _skillId,
-    userLevelMigration: _userLevelMigration,
-    ...stableMetadata
-  } = metadata ?? {};
-  return SandboxMetadataSchema.parse(stableMetadata);
-};
+/** 只把 v2 支持的稳定根字段映射到目标实例，Legacy metadata 不会随 rest 泄漏。 */
+export const toV2SandboxFields = (metadata?: LegacySandboxInstanceSchemaType['metadata']) => ({
+  ...(metadata?.teamId !== undefined ? { teamId: metadata.teamId } : {}),
+  ...(metadata?.versionId !== undefined ? { versionId: metadata.versionId } : {})
+});
 
 /** 把 Legacy 记录转换成 Provider archive/delete 接受的物理资源。 */
 export const toLegacyResource = (doc: LegacySandboxInstanceSchemaType) => ({

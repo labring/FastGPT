@@ -77,7 +77,8 @@ export function buildSandboxAdapter(
             lifecycle: props.createConfig.lifecycle,
             kubeAccess: props.createConfig.kubeAccess,
             workingDir: props.createConfig.workingDir,
-            upstreamID: props.createConfig.upstreamID
+            upstreamID: props.createConfig.upstreamID,
+            resourceLimits: props.createConfig.resourceLimits
           }
         : undefined;
 

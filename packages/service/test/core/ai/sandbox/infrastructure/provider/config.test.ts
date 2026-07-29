@@ -139,7 +139,8 @@ describe('sandbox provider config', () => {
     const result = getSandboxAdapterConfig({
       provider: 'sealosdevbox',
       runtime: true,
-      sessionId: 'session-1'
+      sessionId: 'session-1',
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 }
     });
 
     expect(result.providerConfig).toEqual({
@@ -153,6 +154,7 @@ describe('sandbox provider config', () => {
         repository: 'default-sealos-image',
         tag: 'latest'
       },
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 },
       workingDir: '/home/devbox/workspace',
       upstreamID: 'session-1',
       env: {

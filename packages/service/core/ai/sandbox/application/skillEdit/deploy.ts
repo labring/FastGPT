@@ -2,7 +2,7 @@
  * 沙盒业务层：从 Skill Edit sandbox 保存并发布新的技能版本。
  *
  * API 层负责鉴权和请求校验；本文件负责定位运行态 edit-debug sandbox、打包工作区、
- * 上传版本包、创建版本记录，并同步运行实例的版本元数据。
+ * 上传版本包、创建版本记录，并同步运行实例的 versionId 字段。
  */
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { Types } from '../../../../../common/mongo';
@@ -63,7 +63,7 @@ export async function saveDeploySkillFromSandbox({
   if (
     !sandboxInfo ||
     sandboxInfo.status !== SandboxStatusEnum.running ||
-    sandboxInfo.metadata?.teamId !== teamId
+    sandboxInfo.teamId !== teamId
   ) {
     return Promise.reject(new UserError('Edit sandbox not found or not running'));
   }
@@ -150,10 +150,7 @@ export async function saveDeploySkillFromSandbox({
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: skillId,
     userId: ChatSourceTypeEnum.skillEdit,
-    metadata: {
-      ...(sandboxInfo.metadata || {}),
-      versionId
-    },
+    versionId,
     touchActive: true
   }).catch((err) => {
     logger.error('[Sandbox] Failed to update sandbox versionId after deploy', {

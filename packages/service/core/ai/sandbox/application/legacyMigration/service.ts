@@ -7,7 +7,10 @@ import { subMinutes } from 'date-fns';
 import { pushTrack } from '../../../../../common/middle/tracks/utils';
 import { getS3SandboxSource } from '../../../../../common/s3/sources/sandbox';
 import { getAgentSandboxArchiveMaxBytes } from '../../config';
-import type { LegacySandboxInstanceSchemaType } from '../../infrastructure/instance/legacySchema';
+import {
+  LegacySandboxInstanceZodSchema,
+  type LegacySandboxInstanceSchemaType
+} from '../../infrastructure/instance/legacySchema';
 import {
   findAllLegacySandboxInstanceRecords,
   updateLegacySandboxMigrationState
@@ -45,7 +48,7 @@ import {
 } from './utils';
 import {
   createMigrationTarget,
-  getMigrationTargetMetadata,
+  getMigrationTargetFields,
   installLegacySkillWorkspaceArchive,
   installLegacyWorkspaceArchive
 } from './workspace';
@@ -223,15 +226,15 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
               provider,
               sandboxId: targetSandboxId,
               sourceId: item.sourceId,
-              metadata: getMigrationTargetMetadata(item.doc.metadata, provider),
+              ...getMigrationTargetFields(item.doc.metadata, provider),
               reclaimHeartbeatBefore: subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
             });
-            if (!targetDoc?.metadata?.operation?.id) {
+            if (!targetDoc?.operation?.id) {
               throw new Error('Skill sandbox migration target is unavailable or busy');
             }
 
-            const operationId = targetDoc.metadata.operation.id;
-            let operationPhase = targetDoc.metadata.operation.phase;
+            const operationId = targetDoc.operation.id;
+            let operationPhase = targetDoc.operation.phase;
             try {
               assertLeasesValid();
               const target = await createMigrationTarget({
@@ -421,14 +424,14 @@ const migrateAppGroup = async (params: {
               sandboxId: targetSandboxId,
               sourceId: first.sourceId,
               userId: first.userId,
-              metadata: getMigrationTargetMetadata(first.doc.metadata, provider),
+              ...getMigrationTargetFields(first.doc.metadata, provider),
               reclaimHeartbeatBefore: subMinutes(new Date(), SANDBOX_STALE_ARCHIVING_MINUTES)
             });
-            if (!targetDoc?.metadata?.operation?.id) {
+            if (!targetDoc?.operation?.id) {
               throw new Error('App sandbox migration target is unavailable or busy');
             }
-            const operationId = targetDoc.metadata.operation.id;
-            let operationPhase = targetDoc.metadata.operation.phase;
+            const operationId = targetDoc.operation.id;
+            let operationPhase = targetDoc.operation.phase;
 
             try {
               assertLeasesValid();
@@ -576,7 +579,35 @@ const runLegacySandboxMigration = async (
   }
 
   assertLeaseValid?.();
-  const docs = await findAllLegacySandboxInstanceRecords();
+  // 归一化只处理旧归属字段；进入归档前仍需用 Legacy schema 校验完整记录，避免把
+  // 不兼容数据带入远端副作用。Legacy schema 不复用 v2 instance schema。
+  const parseLegacySandboxInstances = (rawDocs: unknown[]): LegacySandboxInstanceSchemaType[] => {
+    const parsedDocs: LegacySandboxInstanceSchemaType[] = [];
+    const failures: string[] = [];
+    for (const rawDoc of rawDocs) {
+      const parsed = LegacySandboxInstanceZodSchema.safeParse(rawDoc);
+      if (parsed.success) {
+        parsedDocs.push(parsed.data);
+        continue;
+      }
+      const doc = rawDoc && typeof rawDoc === 'object' ? (rawDoc as Record<string, unknown>) : {};
+      failures.push(
+        `_id=${String(doc._id ?? 'unknown')}, sandboxId=${String(doc.sandboxId ?? 'unknown')} [${parsed.error.issues
+          .map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+          .join('; ')}]`
+      );
+    }
+    if (failures.length > 0) {
+      throw new Error(
+        [
+          `Legacy Sandbox preflight validation failed for ${failures.length} record(s)`,
+          ...failures
+        ].join('\n')
+      );
+    }
+    return parsedDocs;
+  };
+  const docs = parseLegacySandboxInstances(await findAllLegacySandboxInstanceRecords());
   const completedLegacyCount = docs.filter(
     (doc) => getLegacyMigrationPhase(doc) === 'completed'
   ).length;

@@ -103,20 +103,17 @@ const createResource = (status = 'stopped', overrides: Record<string, unknown> =
     userId: 'user-1',
     status,
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
-    metadata: {},
     ...overrides
   }) as any;
 
 const createClaimed = (status: 'archiving' | 'restoring') =>
   createResource(status, {
-    metadata: {
-      operation: {
-        id: `${status}-operation`,
-        type: status === 'archiving' ? 'archive' : 'restore',
-        phase: 'claimed',
-        startedAt: new Date(),
-        heartbeatAt: new Date()
-      }
+    operation: {
+      id: `${status}-operation`,
+      type: status === 'archiving' ? 'archive' : 'restore',
+      phase: 'claimed',
+      startedAt: new Date(),
+      heartbeatAt: new Date()
     }
   });
 
@@ -196,7 +193,7 @@ describe('sandbox archive lifecycle', () => {
         operationId: 'archiving-operation',
         fromStatus: 'archiving',
         status: 'archived',
-        set: { 'metadata.image': 'sandbox-image' }
+        set: { image: 'sandbox-image' }
       })
     );
   });
@@ -255,21 +252,17 @@ describe('sandbox archive lifecycle', () => {
 
   it('commits providerDeleted archive phase without recreating an empty sandbox', async () => {
     const providerDeleted = createResource('archiving', {
-      metadata: {
-        operation: {
-          id: 'old-archive',
-          type: 'archive',
-          phase: 'providerDeleted',
-          startedAt: new Date(0),
-          heartbeatAt: new Date(0)
-        }
+      operation: {
+        id: 'old-archive',
+        type: 'archive',
+        phase: 'providerDeleted',
+        startedAt: new Date(0),
+        heartbeatAt: new Date(0)
       }
     });
     const reclaimed = {
       ...providerDeleted,
-      metadata: {
-        operation: { ...providerDeleted.metadata.operation, id: 'resumed-archive' }
-      }
+      operation: { ...providerDeleted.operation, id: 'resumed-archive' }
     };
     mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(providerDeleted);
     mocks.claimSandboxOperation.mockResolvedValueOnce(reclaimed);
@@ -372,7 +365,7 @@ describe('sandbox archive lifecycle', () => {
         status: 'running',
         touchActive: true,
         set: expect.objectContaining({
-          'metadata.image': { repository: 'fastgpt/sandbox', tag: 'v2' }
+          image: { repository: 'fastgpt/sandbox', tag: 'v2' }
         })
       })
     );
@@ -380,21 +373,19 @@ describe('sandbox archive lifecycle', () => {
 
   it('publishes an already installed restore phase without downloading again', async () => {
     const installed = createResource('restoring', {
-      metadata: {
-        operation: {
-          id: 'old-restore',
-          type: 'restore',
-          phase: 'archiveInstalled',
-          previousStatus: 'archived',
-          startedAt: new Date(0),
-          heartbeatAt: new Date(0),
-          error: 'commit interrupted'
-        }
+      operation: {
+        id: 'old-restore',
+        type: 'restore',
+        phase: 'archiveInstalled',
+        previousStatus: 'archived',
+        startedAt: new Date(0),
+        heartbeatAt: new Date(0),
+        error: 'commit interrupted'
       }
     });
     const reclaimed = {
       ...installed,
-      metadata: { operation: { ...installed.metadata.operation, id: 'resumed-restore' } }
+      operation: { ...installed.operation, id: 'resumed-restore' }
     };
     mocks.findSandboxInstanceBySandboxId.mockResolvedValue(installed);
     mocks.claimSandboxOperation.mockResolvedValueOnce(reclaimed);
@@ -436,14 +427,12 @@ describe('sandbox archive lifecycle', () => {
   it('retries only stale archiving records through lifecycle leases', async () => {
     mocks.findStaleSandboxOperations.mockResolvedValueOnce([
       createResource('archiving', {
-        metadata: {
-          operation: {
-            id: 'stale-archive',
-            type: 'archive',
-            phase: 'archiveUploaded',
-            startedAt: new Date('2026-07-01T00:00:00.000Z'),
-            heartbeatAt: new Date('2026-07-01T00:00:00.000Z')
-          }
+        operation: {
+          id: 'stale-archive',
+          type: 'archive',
+          phase: 'archiveUploaded',
+          startedAt: new Date('2026-07-01T00:00:00.000Z'),
+          heartbeatAt: new Date('2026-07-01T00:00:00.000Z')
         }
       })
     ]);

@@ -8,8 +8,8 @@ const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from '../../type';
 import {
   SandboxInstanceStatusSchema,
+  SandboxImageSchema,
   SandboxLimitSchema,
-  SandboxMetadataSchema,
   SandboxOperationTypeSchema,
   SandboxProviderSchema,
   SandboxSourceTypeSchema
@@ -36,25 +36,10 @@ const SandboxOperationMongoSchema = new Schema(
   { _id: false, strict: 'throw' }
 );
 
-const SandboxMetadataMongoSchema = new Schema(
+const SandboxImageMongoSchema = new Schema(
   {
-    teamId: String,
-    tmbId: String,
-    volumeEnabled: Boolean,
-    sessionId: String,
-    skillIds: [String],
-    image: {
-      type: new Schema(
-        {
-          repository: { type: String, required: true },
-          tag: String
-        },
-        { _id: false, strict: 'throw' }
-      )
-    },
-    skillName: String,
-    versionId: String,
-    operation: SandboxOperationMongoSchema
+    repository: { type: String, required: true },
+    tag: String
   },
   { _id: false, strict: 'throw' }
 );
@@ -106,10 +91,13 @@ const SandboxInstanceSchema = new Schema(
     storage: {
       type: Schema.Types.Mixed
     },
-    metadata: {
-      type: SandboxMetadataMongoSchema,
-      set: (value: unknown) => SandboxMetadataSchema.parse(value)
-    }
+    teamId: String,
+    image: {
+      type: SandboxImageMongoSchema,
+      set: (value: unknown) => SandboxImageSchema.parse(value)
+    },
+    versionId: String,
+    operation: SandboxOperationMongoSchema
   },
   {
     strict: 'throw'
@@ -130,7 +118,7 @@ const expectedOperationByStatus: Record<string, string | undefined> = {
 
 SandboxInstanceSchema.pre('validate', function validateLifecycleState() {
   const status = this.get('status') as string;
-  const operationType = this.get('metadata.operation.type') as string | undefined;
+  const operationType = this.get('operation.type') as string | undefined;
   const expectedOperation = expectedOperationByStatus[status];
 
   if (!expectedOperation && operationType) {
@@ -156,7 +144,11 @@ defineIndex(SandboxInstanceSchema, {
   key: { status: 1, lastActiveAt: 1 }
 });
 defineIndex(SandboxInstanceSchema, {
-  key: { status: 1, 'metadata.operation.heartbeatAt': 1 }
+  key: { status: 1, 'operation.heartbeatAt': 1 }
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
+  deprecated: true
 });
 
 /**

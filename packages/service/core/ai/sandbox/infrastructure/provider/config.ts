@@ -158,6 +158,7 @@ export function getSandboxAdapterConfig({
           ? profile.buildConfig({
               createConfig,
               sessionId,
+              resourceLimits,
               env: {
                 ...createConfig?.env,
                 ...baseEnv

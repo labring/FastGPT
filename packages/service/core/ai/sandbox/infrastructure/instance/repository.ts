@@ -1,14 +1,13 @@
 /**
  * Sandbox 实例原子层。
  *
- * Repository 只负责 v2 记录查询和 `status + metadata.operation.id` CAS，不执行任何远端副作用。
+ * Repository 只负责 v2 记录查询和 `status + operation.id` CAS，不执行任何远端副作用。
  */
 import { randomUUID } from 'node:crypto';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSandboxInstance } from './schema';
 import {
   SandboxInstanceStatusEnum,
-  SandboxMetadataSchema,
   SandboxOperationTypeEnum,
   type SandboxInstanceSchemaType,
   type SandboxInstanceStatusType,
@@ -36,7 +35,10 @@ export type SandboxResourceDoc = Pick<
   | 'lastActiveAt'
   | 'limit'
   | 'storage'
-  | 'metadata'
+  | 'teamId'
+  | 'image'
+  | 'versionId'
+  | 'operation'
 > & {
   _id: unknown;
 };
@@ -44,7 +46,15 @@ export type SandboxResourceDoc = Pick<
 export type SandboxResourceRef = Partial<
   Pick<
     SandboxResourceDoc,
-    'status' | 'lastActiveAt' | 'sourceType' | 'sourceId' | 'userId' | 'metadata'
+    | 'status'
+    | 'lastActiveAt'
+    | 'sourceType'
+    | 'sourceId'
+    | 'userId'
+    | 'teamId'
+    | 'image'
+    | 'versionId'
+    | 'operation'
   >
 > & {
   provider: SandboxProviderType;
@@ -79,10 +89,8 @@ const buildSandboxResourceRecordFilter = (resource: SandboxResourceRef) =>
     : { provider: resource.provider, sandboxId: resource.sandboxId };
 
 const buildCurrentOperationFilter = (resource: SandboxResourceRef) => {
-  const operationId = resource.metadata?.operation?.id;
-  return operationId
-    ? { 'metadata.operation.id': operationId }
-    : { 'metadata.operation': { $exists: false } };
+  const operationId = resource.operation?.id;
+  return operationId ? { 'operation.id': operationId } : { operation: { $exists: false } };
 };
 
 const buildSandboxResourceSourceQuery = ({ sourceType, sourceId, userId }: SandboxSourceParams) => {
@@ -97,14 +105,13 @@ const buildSandboxResourceSourceQuery = ({ sourceType, sourceId, userId }: Sandb
   throw new Error(`Unsupported sandbox source type: ${exhaustiveCheck}`);
 };
 
-const buildMetadataSet = (metadata?: Record<string, unknown>) => {
-  if (!metadata) return {};
-  const parsed = SandboxMetadataSchema.parse(metadata);
-  const { operation: _operation, ...stableMetadata } = parsed;
-  return Object.fromEntries(
-    Object.entries(stableMetadata).map(([key, value]) => [`metadata.${key}`, value])
-  );
-};
+type SandboxStableFields = Pick<SandboxInstanceSchemaType, 'teamId' | 'image' | 'versionId'>;
+
+const buildSandboxStableFieldsSet = (fields: SandboxStableFields) => ({
+  ...(fields.teamId !== undefined ? { teamId: fields.teamId } : {}),
+  ...(fields.image !== undefined ? { image: fields.image } : {}),
+  ...(fields.versionId !== undefined ? { versionId: fields.versionId } : {})
+});
 
 const expectedOperationByStatus: Record<
   Exclude<SandboxInstanceStatusType, SandboxStableStatusType>,
@@ -137,11 +144,11 @@ export async function claimSandboxOperation(params: ClaimSandboxOperationParams)
     previousStatus ??
     (resource.status && stableStatuses.has(resource.status)
       ? (resource.status as SandboxStableStatusType)
-      : resource.metadata?.operation?.previousStatus);
+      : resource.operation?.previousStatus);
   const nextPhase =
     phase ??
-    (resource.status === status && resource.metadata?.operation?.type === type
-      ? resource.metadata.operation.phase
+    (resource.status === status && resource.operation?.type === type
+      ? resource.operation.phase
       : 'claimed');
 
   return MongoSandboxInstance.findOneAndUpdate(
@@ -154,7 +161,7 @@ export async function claimSandboxOperation(params: ClaimSandboxOperationParams)
     {
       $set: {
         status,
-        'metadata.operation': {
+        operation: {
           id: operationId,
           type,
           phase: nextPhase,
@@ -179,16 +186,16 @@ export async function advanceSandboxOperation(params: {
     {
       ...buildSandboxResourceRecordFilter(params.resource),
       status: params.status,
-      'metadata.operation.id': params.operationId
+      'operation.id': params.operationId
     },
     {
       $set: {
-        'metadata.operation.phase': params.phase,
-        'metadata.operation.heartbeatAt': new Date()
+        'operation.phase': params.phase,
+        'operation.heartbeatAt': new Date()
       },
       $unset: {
-        'metadata.operation.failedAt': '',
-        'metadata.operation.error': ''
+        'operation.failedAt': '',
+        'operation.error': ''
       }
     },
     { new: true }
@@ -206,13 +213,13 @@ export async function markSandboxOperationFailed(params: {
     {
       ...buildSandboxResourceRecordFilter(params.resource),
       status: params.status,
-      'metadata.operation.id': params.operationId
+      'operation.id': params.operationId
     },
     {
       $set: {
-        'metadata.operation.failedAt': new Date(),
-        'metadata.operation.error': params.error,
-        'metadata.operation.heartbeatAt': new Date()
+        'operation.failedAt': new Date(),
+        'operation.error': params.error,
+        'operation.heartbeatAt': new Date()
       }
     }
   );
@@ -235,7 +242,7 @@ export async function completeSandboxOperation(params: {
     {
       ...buildSandboxResourceRecordFilter(params.resource),
       status: params.fromStatus,
-      'metadata.operation.id': params.operationId
+      'operation.id': params.operationId
     },
     {
       $set: {
@@ -243,7 +250,7 @@ export async function completeSandboxOperation(params: {
         ...(params.touchActive ? { lastActiveAt: new Date() } : {}),
         ...(params.set ?? {})
       },
-      $unset: { 'metadata.operation': '' }
+      $unset: { operation: '' }
     },
     { new: true }
   ).lean<SandboxResourceDoc | null>();
@@ -257,33 +264,24 @@ export async function deleteClaimedSandboxRecord(params: {
   return MongoSandboxInstance.deleteOne({
     ...buildSandboxResourceRecordFilter(params.resource),
     status: SandboxInstanceStatusEnum.deleting,
-    'metadata.operation.id': params.operationId
+    'operation.id': params.operationId
   });
 }
 
 /** 创建首次 provisioning 占位；唯一键冲突时返回已经存在的逻辑记录。 */
-export async function createSandboxProvisioningInstance(params: {
-  provider: SandboxProviderType;
-  sandboxId: string;
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
-  storage?: SandboxInstanceSchemaType['storage'];
-  limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
-  metadata?: Record<string, unknown>;
-}) {
+export async function createSandboxProvisioningInstance(
+  params: {
+    provider: SandboxProviderType;
+    sandboxId: string;
+    sourceType: ChatSourceTypeEnum;
+    sourceId: string;
+    userId: string;
+    storage?: SandboxInstanceSchemaType['storage'];
+    limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
+  } & SandboxStableFields
+) {
   const now = new Date();
   const operationId = randomUUID();
-  const metadata = SandboxMetadataSchema.parse({
-    ...(params.metadata ?? {}),
-    operation: {
-      id: operationId,
-      type: SandboxOperationTypeEnum.provision,
-      phase: 'claimed',
-      startedAt: now,
-      heartbeatAt: now
-    }
-  });
 
   try {
     const created = await MongoSandboxInstance.create({
@@ -297,7 +295,14 @@ export async function createSandboxProvisioningInstance(params: {
       createdAt: now,
       storage: params.storage,
       limit: params.limit,
-      metadata
+      ...buildSandboxStableFieldsSet(params),
+      operation: {
+        id: operationId,
+        type: SandboxOperationTypeEnum.provision,
+        phase: 'claimed',
+        startedAt: now,
+        heartbeatAt: now
+      }
     });
     return { instance: created.toObject() as SandboxResourceDoc, created: true };
   } catch (error) {
@@ -320,7 +325,6 @@ export async function touchRunningSandboxInstance(params: {
   userId: string;
   storage?: SandboxInstanceSchemaType['storage'];
   limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
-  metadata?: Record<string, unknown>;
 }) {
   return MongoSandboxInstance.findOneAndUpdate(
     {
@@ -330,14 +334,13 @@ export async function touchRunningSandboxInstance(params: {
       sourceId: params.sourceId,
       userId: params.userId,
       status: SandboxInstanceStatusEnum.running,
-      'metadata.operation': { $exists: false }
+      operation: { $exists: false }
     },
     {
       $set: {
         lastActiveAt: new Date(),
         ...(params.storage !== undefined ? { storage: params.storage } : {}),
-        ...(params.limit ? { limit: params.limit } : {}),
-        ...buildMetadataSet(params.metadata)
+        ...(params.limit ? { limit: params.limit } : {})
       }
     },
     { new: true }
@@ -349,7 +352,7 @@ export async function findInactiveRunningSandboxResources(inactiveBefore: Date) 
   return MongoSandboxInstance.find({
     status: SandboxInstanceStatusEnum.running,
     lastActiveAt: { $lt: inactiveBefore },
-    'metadata.operation': { $exists: false }
+    operation: { $exists: false }
   }).lean<SandboxResourceDoc[]>();
 }
 
@@ -359,7 +362,7 @@ export function createSandboxResourcesToArchiveCursor(inactiveBefore: Date) {
     provider: { $in: ['opensandbox', 'sealosdevbox'] },
     status: SandboxInstanceStatusEnum.stopped,
     lastActiveAt: { $lt: inactiveBefore },
-    'metadata.operation': { $exists: false }
+    operation: { $exists: false }
   })
     .sort({ lastActiveAt: -1 })
     .lean<SandboxResourceDoc>()
@@ -373,7 +376,7 @@ export async function findStaleSandboxOperations(params: {
 }) {
   return MongoSandboxInstance.find({
     status: { $in: params.statuses },
-    'metadata.operation.heartbeatAt': { $lt: params.heartbeatBefore }
+    'operation.heartbeatAt': { $lt: params.heartbeatBefore }
   }).lean<SandboxResourceDoc[]>();
 }
 
@@ -442,7 +445,7 @@ export async function countRunningSandboxInstancesBySourceType(
     ...(provider ? { provider } : {}),
     sourceType,
     status: SandboxInstanceStatusEnum.running,
-    'metadata.operation': { $exists: false }
+    operation: { $exists: false }
   });
 }
 
@@ -452,9 +455,8 @@ type ClaimSandboxMigrationTargetParams = {
   sourceType: SandboxSourceType;
   sourceId: string;
   userId: string;
-  metadata?: Record<string, unknown>;
   reclaimHeartbeatBefore?: Date;
-};
+} & SandboxStableFields;
 
 /** 创建或接管 Legacy migration 目标；调用方必须已经持有 Source 与 Lifecycle lease。 */
 async function claimSandboxMigrationTarget(params: ClaimSandboxMigrationTargetParams) {
@@ -466,16 +468,6 @@ async function claimSandboxMigrationTarget(params: ClaimSandboxMigrationTargetPa
 
   if (!existing) {
     const now = new Date();
-    const metadata = SandboxMetadataSchema.parse({
-      ...(params.metadata ?? {}),
-      operation: {
-        id: randomUUID(),
-        type: SandboxOperationTypeEnum.legacyMigration,
-        phase: 'claimed',
-        startedAt: now,
-        heartbeatAt: now
-      }
-    });
     try {
       const created = await MongoSandboxInstance.create({
         provider: params.provider,
@@ -486,7 +478,14 @@ async function claimSandboxMigrationTarget(params: ClaimSandboxMigrationTargetPa
         status: SandboxInstanceStatusEnum.legacyMigrating,
         lastActiveAt: now,
         createdAt: now,
-        metadata
+        ...buildSandboxStableFieldsSet(params),
+        operation: {
+          id: randomUUID(),
+          type: SandboxOperationTypeEnum.legacyMigration,
+          phase: 'claimed',
+          startedAt: now,
+          heartbeatAt: now
+        }
       });
       return created.toObject() as SandboxResourceDoc;
     } catch (error) {
@@ -507,7 +506,7 @@ async function claimSandboxMigrationTarget(params: ClaimSandboxMigrationTargetPa
     existing.status === SandboxInstanceStatusEnum.legacyMigrating &&
     params.reclaimHeartbeatBefore
   ) {
-    const operation = existing.metadata?.operation;
+    const operation = existing.operation;
     if (
       !operation?.error &&
       (!operation?.heartbeatAt || operation.heartbeatAt >= params.reclaimHeartbeatBefore)
@@ -522,17 +521,17 @@ async function claimSandboxMigrationTarget(params: ClaimSandboxMigrationTargetPa
     type: SandboxOperationTypeEnum.legacyMigration,
     previousStatus: stableStatuses.has(existing.status)
       ? (existing.status as SandboxStableStatusType)
-      : existing.metadata?.operation?.previousStatus
+      : existing.operation?.previousStatus
   });
-  if (!claimed || !params.metadata) return claimed;
+  if (!claimed) return claimed;
 
   return MongoSandboxInstance.findOneAndUpdate(
     {
       _id: claimed._id,
       status: SandboxInstanceStatusEnum.legacyMigrating,
-      'metadata.operation.id': claimed.metadata?.operation?.id
+      'operation.id': claimed.operation?.id
     },
-    { $set: buildMetadataSet(params.metadata) },
+    { $set: buildSandboxStableFieldsSet(params) },
     { new: true }
   ).lean<SandboxResourceDoc | null>();
 }
@@ -560,7 +559,7 @@ export const claimSkillSandboxMigrationTarget = (
 export async function switchArchivedSandboxProvider(params: {
   resource: SandboxResourceRef;
   provider: SandboxProviderType;
-  image?: NonNullable<SandboxInstanceSchemaType['metadata']>['image'];
+  image?: SandboxInstanceSchemaType['image'];
 }) {
   return MongoSandboxInstance.findOneAndUpdate(
     {
@@ -568,29 +567,30 @@ export async function switchArchivedSandboxProvider(params: {
       provider: params.resource.provider,
       sandboxId: params.resource.sandboxId,
       status: SandboxInstanceStatusEnum.archived,
-      'metadata.operation': { $exists: false }
+      operation: { $exists: false }
     },
     {
       $set: {
         provider: params.provider,
         lastActiveAt: new Date(),
-        ...(params.image ? { 'metadata.image': params.image } : {})
+        ...(params.image ? { image: params.image } : {})
       }
     },
     { new: true }
   ).lean<SandboxResourceDoc | null>();
 }
 
-/** 在 running 稳定态更新业务归属或 metadata，不允许唤醒过渡态。 */
-export async function updateSandboxInstanceRecordBySandboxId(params: {
-  provider?: SandboxProviderType;
-  sandboxId: string;
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
-  metadata?: Record<string, unknown>;
-  touchActive?: boolean;
-}): Promise<SandboxInstanceSchemaType | null> {
+/** 在 running 稳定态更新业务归属或稳定字段，不允许唤醒过渡态。 */
+export async function updateSandboxInstanceRecordBySandboxId(
+  params: {
+    provider?: SandboxProviderType;
+    sandboxId: string;
+    sourceType: ChatSourceTypeEnum;
+    sourceId: string;
+    userId: string;
+    touchActive?: boolean;
+  } & SandboxStableFields
+): Promise<SandboxInstanceSchemaType | null> {
   return MongoSandboxInstance.findOneAndUpdate(
     {
       sandboxId: params.sandboxId,
@@ -598,7 +598,7 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
       ...(params.touchActive
         ? {
             status: SandboxInstanceStatusEnum.running,
-            'metadata.operation': { $exists: false }
+            operation: { $exists: false }
           }
         : {})
     },
@@ -607,7 +607,7 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
         sourceType: params.sourceType,
         sourceId: params.sourceId,
         userId: params.userId,
-        ...buildMetadataSet(params.metadata),
+        ...buildSandboxStableFieldsSet(params),
         ...(params.touchActive ? { lastActiveAt: new Date() } : {})
       }
     },
@@ -623,7 +623,7 @@ export async function findSandboxInstanceBySandboxIdAndTeam(params: {
   return MongoSandboxInstance.findOne({
     sandboxId: params.sandboxId,
     ...(params.provider ? { provider: params.provider } : {}),
-    'metadata.teamId': params.teamId
+    teamId: params.teamId
   });
 }
 
@@ -635,7 +635,7 @@ export async function findSandboxResourceBySandboxIdAndTeam(params: {
   return MongoSandboxInstance.findOne({
     sandboxId: params.sandboxId,
     ...(params.provider ? { provider: params.provider } : {}),
-    'metadata.teamId': params.teamId
+    teamId: params.teamId
   }).lean<SandboxResourceDoc | null>();
 }
 

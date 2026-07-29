@@ -21,6 +21,67 @@ describe('SealosDevboxAdapter', () => {
     expect(adapter.rootPath).toBe('/workspace');
   });
 
+  it('maps resource limits to Kubernetes quantities when creating a devbox', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).endsWith('/api/v1/devbox/sandbox-1')) {
+        return jsonResponse({
+          code: 200,
+          message: 'running',
+          data: {
+            name: 'sandbox-1',
+            image: 'registry.example.com/devbox/runtime:custom-v2',
+            state: { phase: 'Running' },
+            ssh: {}
+          }
+        });
+      }
+      return jsonResponse({ code: 201, message: 'created', data: { name: 'sandbox-1' } });
+    });
+    const adapter = new SealosDevboxAdapter(CONFIG, {
+      image: { repository: 'registry.example.com/devbox/runtime', tag: 'custom-v2' },
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096, diskGiB: 10 },
+      upstreamID: 'session-123'
+    });
+
+    await adapter.create();
+
+    const request = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body));
+    expect(request).toMatchObject({
+      name: 'sandbox-1',
+      image: 'registry.example.com/devbox/runtime:custom-v2',
+      cpu: '2',
+      memory: '4096Mi',
+      storageLimit: '10Gi',
+      upstreamID: 'session-123'
+    });
+  });
+
+  it('leaves resource quantities unset so Devbox server defaults apply', () => {
+    const adapter = new SealosDevboxAdapter(CONFIG);
+    const request = (
+      adapter as unknown as { buildCreateRequest: () => Record<string, unknown> }
+    ).buildCreateRequest();
+
+    expect(request).not.toHaveProperty('cpu');
+    expect(request).not.toHaveProperty('memory');
+    expect(request).not.toHaveProperty('storageLimit');
+  });
+
+  it.each([
+    ['cpuCount', { cpuCount: 0 }],
+    ['cpuCount', { cpuCount: Number.NaN }],
+    ['memoryMiB', { memoryMiB: -1 }],
+    ['diskGiB', { diskGiB: 21 }]
+  ])('rejects invalid %s resource limits', (_name, resourceLimits) => {
+    const adapter = new SealosDevboxAdapter(CONFIG, { resourceLimits });
+
+    expect(() =>
+      (
+        adapter as unknown as { buildCreateRequest: () => Record<string, unknown> }
+      ).buildCreateRequest()
+    ).toThrow('Devbox');
+  });
+
   it('maps stop to the reversible pause endpoint', async () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')

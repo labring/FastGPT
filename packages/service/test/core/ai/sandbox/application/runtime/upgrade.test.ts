@@ -57,10 +57,8 @@ const createResource = (
     userId: 'user-1',
     status,
     lastActiveAt: new Date(),
-    metadata: {
-      image: params.image ?? targetImage,
-      ...(params.operation ? { operation: params.operation } : {})
-    }
+    image: params.image ?? targetImage,
+    ...(params.operation ? { operation: params.operation } : {})
   }) as any;
 
 const getStatus = (statusInstance?: any) =>
@@ -140,7 +138,7 @@ describe('getSandboxRuntimeUpgradeStatus', () => {
 
   it('requires an upgrade when repository/tag is missing or changed', () => {
     const missingImage = createResource('running');
-    missingImage.metadata = {};
+    delete missingImage.image;
     expect(getStatus(missingImage)).toEqual({ status: 'upgradeRequired' });
     expect(
       getStatus(createResource('stopped', { image: { repository: 'runtime-image', tag: 'v1' } }))
@@ -242,7 +240,7 @@ describe('App sandbox runtime upgrade service', () => {
     });
     mocks.findSandboxResourcesBySource
       .mockResolvedValueOnce([instance])
-      .mockResolvedValueOnce([createResource('archived', { image: instance.metadata.image })]);
+      .mockResolvedValueOnce([createResource('archived', { image: instance.image })]);
     const onUpgrade = vi.fn();
 
     await expect(ensureAppSandboxRuntimeReady({ query, onUpgrade })).resolves.toBe(true);
@@ -275,11 +273,11 @@ describe('App sandbox runtime upgrade service', () => {
       image: { repository: 'runtime-image', tag: 'v1' },
       operation: { error: 'stop failed' }
     });
-    const stoppedInstance = createResource('stopped', { image: instance.metadata.image });
+    const stoppedInstance = createResource('stopped', { image: instance.image });
     mocks.findSandboxResourcesBySource
       .mockResolvedValueOnce([instance])
       .mockResolvedValueOnce([stoppedInstance])
-      .mockResolvedValueOnce([createResource('archived', { image: instance.metadata.image })]);
+      .mockResolvedValueOnce([createResource('archived', { image: instance.image })]);
 
     await expect(ensureAppSandboxRuntimeReady({ query })).resolves.toBe(true);
     expect(mocks.stopSandboxResource).toHaveBeenCalledWith(instance);

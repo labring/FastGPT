@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    const { teamId, tmbId, skill } = await authSkill({
+    const { teamId, skill } = await authSkill({
       req,
       authToken: true,
       authApiKey: true,
@@ -73,8 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const context = await getSkillEditRuntimeContext({
       skillId,
-      teamId,
-      tmbId
+      teamId
     });
     const status = await getSkillEditRuntimeStatus({ context });
 

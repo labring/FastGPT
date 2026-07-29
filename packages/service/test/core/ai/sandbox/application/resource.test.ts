@@ -70,21 +70,18 @@ const createResource = (overrides: Record<string, unknown> = {}) =>
     userId: 'user-1',
     status: 'running',
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
-    metadata: {},
     ...overrides
   }) as any;
 
 const createClaimed = (status: string, type: string) =>
   createResource({
     status,
-    metadata: {
-      operation: {
-        id: 'operation-1',
-        type,
-        phase: 'claimed',
-        startedAt: new Date(),
-        heartbeatAt: new Date()
-      }
+    operation: {
+      id: 'operation-1',
+      type,
+      phase: 'claimed',
+      startedAt: new Date(),
+      heartbeatAt: new Date()
     }
   });
 
@@ -224,10 +221,10 @@ describe('sandbox resource lifecycle', () => {
 
   it('finishes archiveDeleted delete phase without replaying remote side effects', async () => {
     const deleting = createClaimed('deleting', 'delete');
-    deleting.metadata.operation.phase = 'archiveDeleted';
+    deleting.operation.phase = 'archiveDeleted';
     const reclaimed = createClaimed('deleting', 'delete');
-    reclaimed.metadata.operation.id = 'resumed-delete';
-    reclaimed.metadata.operation.phase = 'archiveDeleted';
+    reclaimed.operation.id = 'resumed-delete';
+    reclaimed.operation.phase = 'archiveDeleted';
     mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(deleting);
     mocks.claimSandboxOperation.mockResolvedValueOnce(reclaimed);
 

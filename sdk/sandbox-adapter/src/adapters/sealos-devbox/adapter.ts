@@ -52,7 +52,14 @@ export type SealosDevboxConfig = {
 /** Creation fields implemented by the Sealos Devbox API adapter. */
 export type SealosDevboxCreateConfig = Pick<
   SandboxCreateSpec,
-  'image' | 'env' | 'labels' | 'lifecycle' | 'kubeAccess' | 'workingDir' | 'upstreamID'
+  | 'image'
+  | 'env'
+  | 'labels'
+  | 'lifecycle'
+  | 'kubeAccess'
+  | 'workingDir'
+  | 'upstreamID'
+  | 'resourceLimits'
 >;
 
 export class SealosDevboxAdapter extends BaseSandboxAdapter {
@@ -116,9 +123,36 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       env.CODEX_GATEWAY_CWD = spec.workingDir;
     }
 
+    const resourceLimits = spec.resourceLimits;
+    const assertPositiveResource = (value: number, name: string): void => {
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new RangeError(`Devbox ${name} resource limit must be greater than 0`);
+      }
+    };
+
+    if (resourceLimits?.cpuCount !== undefined) {
+      assertPositiveResource(resourceLimits.cpuCount, 'cpu');
+    }
+    if (resourceLimits?.memoryMiB !== undefined) {
+      assertPositiveResource(resourceLimits.memoryMiB, 'memory');
+    }
+    if (resourceLimits?.diskGiB !== undefined) {
+      assertPositiveResource(resourceLimits.diskGiB, 'storage');
+      if (resourceLimits.diskGiB > 20) {
+        throw new RangeError('Devbox storage resource limit must not exceed 20G');
+      }
+    }
+
     return {
       name: this._id,
       image: spec.image?.repository ? formatImageSpec(spec.image) : undefined,
+      ...(resourceLimits?.cpuCount === undefined ? {} : { cpu: String(resourceLimits.cpuCount) }),
+      ...(resourceLimits?.memoryMiB === undefined
+        ? {}
+        : { memory: `${resourceLimits.memoryMiB}Mi` }),
+      ...(resourceLimits?.diskGiB === undefined
+        ? {}
+        : { storageLimit: `${resourceLimits.diskGiB}Gi` }),
       env: Object.keys(env).length > 0 ? env : undefined,
       labels: spec.labels,
       upstreamID: spec.upstreamID,

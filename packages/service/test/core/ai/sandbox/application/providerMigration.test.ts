@@ -86,7 +86,6 @@ const createInstance = (overrides: Record<string, unknown> = {}) =>
     userId: params.userId,
     status: 'running',
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
-    metadata: {},
     ...overrides
   }) as any;
 
@@ -178,26 +177,22 @@ describe('sandbox provider migration lifecycle', () => {
   it('rolls an archiveInstalled old-provider restore back to archived without deleting S3', async () => {
     const restoring = createInstance({
       status: 'restoring',
-      metadata: {
-        operation: {
-          id: 'old-restore',
-          type: 'restore',
-          phase: 'archiveInstalled',
-          previousStatus: 'archived',
-          startedAt: new Date(0),
-          heartbeatAt: new Date(0),
-          error: 'worker stopped'
-        }
+      operation: {
+        id: 'old-restore',
+        type: 'restore',
+        phase: 'archiveInstalled',
+        previousStatus: 'archived',
+        startedAt: new Date(0),
+        heartbeatAt: new Date(0),
+        error: 'worker stopped'
       }
     });
     const archived = createInstance({ status: 'archived' });
     const restoreClaim = {
       ...restoring,
-      metadata: {
-        operation: {
-          ...restoring.metadata.operation,
-          id: 'rollback-restore'
-        }
+      operation: {
+        ...restoring.operation,
+        id: 'rollback-restore'
       }
     };
     mocks.findSandboxInstanceBySource
