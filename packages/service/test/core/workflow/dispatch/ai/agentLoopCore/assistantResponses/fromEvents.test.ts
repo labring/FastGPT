@@ -136,12 +136,20 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
       event: {
         type: 'ask_start',
         id: 'call_ask',
-        params: '{"question":"Need input?"}',
+        params:
+          '{"questions":[{"question":"Need input?","options":[{"summary":"A","value":"A"},{"summary":"B","value":"B"}]}]}',
         ask: {
           reason: 'Need confirmation',
           blockerType: 'ambiguous_goal',
-          question: 'Need input?',
-          options: ['A', 'B']
+          questions: [
+            {
+              question: 'Need input?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
         }
       },
       names: {

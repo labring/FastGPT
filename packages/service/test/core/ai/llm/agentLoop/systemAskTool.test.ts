@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/plan/updateTool';
 
 describe('agent loop system ask tool', () => {
-  it('parses ask_agent tool call arguments', () => {
+  it('parses up to three ask_agent questions', () => {
     const result = parseAgentAskToolCall({
       id: 'call_ask',
       type: 'function',
@@ -21,11 +21,29 @@ describe('agent loop system ask tool', () => {
         arguments: JSON.stringify({
           reason: 'Need repository path',
           blockerType: 'missing_required_input',
-          question: 'Which repository should I inspect?',
-          options: [
-            '/Volumes/code/FastGPT',
-            'Use the current workspace',
-            'I will provide another repository path'
+          questions: [
+            {
+              question: 'Which repository should I inspect?',
+              options: [
+                { summary: 'FastGPT repository', value: '/Volumes/code/FastGPT' },
+                { summary: 'Current workspace', value: 'Use the current workspace' },
+                { summary: 'Another repository', value: 'I will provide another repository path' }
+              ]
+            },
+            {
+              question: 'Which output should I create?',
+              options: [
+                { summary: 'Document', value: 'Document' },
+                { summary: 'Spreadsheet', value: 'Spreadsheet' }
+              ]
+            },
+            {
+              question: 'Should I include examples?',
+              options: [
+                { summary: 'Include examples', value: 'Include examples' },
+                { summary: 'Skip examples', value: 'Skip examples' }
+              ]
+            }
           ]
         })
       }
@@ -36,11 +54,29 @@ describe('agent loop system ask tool', () => {
       ask: {
         reason: 'Need repository path',
         blockerType: 'missing_required_input',
-        question: 'Which repository should I inspect?',
-        options: [
-          '/Volumes/code/FastGPT',
-          'Use the current workspace',
-          'I will provide another repository path'
+        questions: [
+          {
+            question: 'Which repository should I inspect?',
+            options: [
+              { summary: 'FastGPT repository', value: '/Volumes/code/FastGPT' },
+              { summary: 'Current workspace', value: 'Use the current workspace' },
+              { summary: 'Another repository', value: 'I will provide another repository path' }
+            ]
+          },
+          {
+            question: 'Which output should I create?',
+            options: [
+              { summary: 'Document', value: 'Document' },
+              { summary: 'Spreadsheet', value: 'Spreadsheet' }
+            ]
+          },
+          {
+            question: 'Should I include examples?',
+            options: [
+              { summary: 'Include examples', value: 'Include examples' },
+              { summary: 'Skip examples', value: 'Skip examples' }
+            ]
+          }
         ]
       }
     });
@@ -64,7 +100,7 @@ describe('agent loop system ask tool', () => {
     expect(result.error).toContain('options');
   });
 
-  it('supports a two-option user choice', () => {
+  it('normalizes the legacy single-question format', () => {
     const result = parseAgentAskToolCall({
       id: 'call_ask',
       type: 'function',
@@ -74,7 +110,10 @@ describe('agent loop system ask tool', () => {
           reason: 'Need a choice',
           blockerType: 'user_choice',
           question: 'Which output should I create?',
-          options: ['Document', 'Spreadsheet']
+          options: [
+            { summary: 'Document', value: 'Document' },
+            { summary: 'Spreadsheet', value: 'Spreadsheet' }
+          ]
         })
       }
     });
@@ -84,18 +123,58 @@ describe('agent loop system ask tool', () => {
       ask: {
         reason: 'Need a choice',
         blockerType: 'user_choice',
-        question: 'Which output should I create?',
-        options: ['Document', 'Spreadsheet']
+        questions: [
+          {
+            question: 'Which output should I create?',
+            options: [
+              { summary: 'Document', value: 'Document' },
+              { summary: 'Spreadsheet', value: 'Spreadsheet' }
+            ]
+          }
+        ]
       }
     });
 
     const parameters = createAskAgentTool().function.parameters as any;
-    expect(parameters.properties.options).toMatchObject({
-      minItems: 2,
-      maxItems: 5
+    expect(parameters.properties.questions).toMatchObject({
+      minItems: 1,
+      maxItems: 3
     });
+    expect(parameters.properties.questions.items.properties.options).toMatchObject({
+      minItems: 2,
+      maxItems: 4
+    });
+    expect(parameters.properties.questions.items.properties.options.items.required).toEqual([
+      'summary',
+      'value'
+    ]);
     expect(parameters.properties.blockerType.enum).toContain('user_choice');
     expect(createAskAgentTool().function.description).toContain('task or a Skill');
+  });
+
+  it('rejects questions with more than four options', () => {
+    const result = parseAgentAskToolCall({
+      id: 'call_ask',
+      type: 'function',
+      function: {
+        name: 'ask_agent',
+        arguments: JSON.stringify({
+          reason: 'Need a choice',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Which output should I create?',
+              options: Array.from({ length: 5 }, (_, index) => ({
+                summary: `Option ${index + 1}`,
+                value: `Option ${index + 1}`
+              }))
+            }
+          ]
+        })
+      }
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it('creates internal tool schemas without workflow dependencies', () => {

@@ -195,8 +195,22 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
       ask: {
         reason: 'Need input',
         blockerType: 'missing_required_input',
-        question: 'Confirm?',
-        options: ['Yes']
+        questions: [
+          {
+            question: 'Confirm?',
+            options: [
+              { summary: 'Yes', value: 'Yes' },
+              { summary: 'No', value: 'No' }
+            ]
+          },
+          {
+            question: 'Include examples?',
+            options: [
+              { summary: 'Yes', value: 'Yes' },
+              { summary: 'No', value: 'No' }
+            ]
+          }
+        ]
       }
     });
 
@@ -210,7 +224,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
       expect.objectContaining({
         id: 'agent_node-ask-call_ask',
         moduleName: 'chat:collect_questions',
-        textOutput: 'Confirm?'
+        textOutput: 'Confirm?\nInclude examples?'
       })
     ]);
     expect(nodeResponses[0].textOutput).toBeUndefined();

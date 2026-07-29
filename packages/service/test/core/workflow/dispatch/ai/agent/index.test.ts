@@ -912,6 +912,74 @@ describe('dispatchRunAgent user context', () => {
     expect(result.data.answerText).toBe('continued answer');
   });
 
+  it('resumes a multi-question agentAsk with answers in form order', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.lastInteractive = {
+      type: 'agentAsk',
+      askId: 'call_ask',
+      params: {
+        description: 'Need confirmation',
+        questions: [
+          {
+            question: 'First?',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ],
+            answer: ''
+          },
+          {
+            question: 'Second?',
+            options: [
+              { summary: 'C', value: 'C' },
+              { summary: 'D', value: 'D' }
+            ],
+            answer: ''
+          }
+        ]
+      }
+    };
+    props.query = runtimePrompt2ChatsValue({
+      text: JSON.stringify({ answers: ['A', ''] })
+    });
+    props.histories[props.histories.length - 1].memories = {
+      'agentLoopMemory-agent_node': {
+        providerState: {
+          pendingMainContext: {
+            askToolCallId: 'call_ask',
+            messages: []
+          }
+        }
+      }
+    };
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'done',
+      completeMessages: [],
+      assistantMessages: [{ role: 'assistant', content: 'continued answer' }],
+      requestIds: []
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          userAnswer: '{"answers":["A",""]}'
+        })
+      })
+    );
+  });
+
   it('restores pi providerState from unified memory and resumes ask with user answer', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
@@ -959,8 +1027,15 @@ describe('dispatchRunAgent user context', () => {
         ask: {
           reason: 'Need another confirmation',
           blockerType: 'missing_required_input',
-          question: 'Confirm again?',
-          options: ['Yes', 'No']
+          questions: [
+            {
+              question: 'Confirm again?',
+              options: [
+                { summary: 'Yes', value: 'Yes' },
+                { summary: 'No', value: 'No' }
+              ]
+            }
+          ]
         }
       },
       providerState: {

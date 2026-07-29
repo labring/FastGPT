@@ -598,6 +598,47 @@ describe('checkInteractiveResponseStatus', () => {
     expect(result).toBe('query');
   });
 
+  it('should return query for agentAsk', () => {
+    const result = checkInteractiveResponseStatus({
+      interactive: {
+        type: 'agentAsk',
+        askId: 'call_ask',
+        params: {
+          description: 'Need input',
+          questions: [
+            {
+              question: 'Need input?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ],
+              answer: ''
+            }
+          ]
+        }
+      },
+      input: '{"answers":["A"]}'
+    });
+
+    expect(result).toBe('query');
+  });
+
+  it('should keep an auxiliary generation agentAsk userInput as submit', () => {
+    const result = checkInteractiveResponseStatus({
+      interactive: {
+        type: 'userInput',
+        params: {
+          description: 'Need input',
+          renderMode: 'agentAsk',
+          inputForm: []
+        }
+      } as any,
+      input: '{"question_1":"A"}'
+    });
+
+    expect(result).toBe('submit');
+  });
+
   it('should return query for an agent ask nested inside child interactive wrappers', () => {
     const result = checkInteractiveResponseStatus({
       interactive: {

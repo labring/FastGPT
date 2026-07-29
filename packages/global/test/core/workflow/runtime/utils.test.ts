@@ -760,6 +760,39 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
+  it('should return pending agentAsk and skip submitted agentAsk', () => {
+    const interactive = {
+      type: 'agentAsk',
+      askId: 'call_ask',
+      entryNodeIds: ['node1'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        description: 'Choose one',
+        questions: [
+          {
+            question: 'Choose one?',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ],
+            answer: ''
+          }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'response' }, interactive }]
+      }
+    ];
+
+    expect(getLastInteractiveValue(histories)).toBe(interactive);
+    (interactive.params as { submitted?: boolean }).submitted = true;
+    expect(getLastInteractiveValue(histories)).toBeUndefined();
+  });
+
   it('should return interactive for paymentPause without continue', () => {
     const interactive = {
       type: 'paymentPause',
