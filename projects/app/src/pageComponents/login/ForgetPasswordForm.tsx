@@ -41,7 +41,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   });
   const username = watch('username');
 
-  const { SendCodeBox } = useSendCode({ type: 'findPassword' });
+  const { SendCodeBox } = useSendCode({
+    type: 'findPassword',
+    purpose: 'forgetPassword'
+  });
 
   const placeholder = feConfigs?.find_password_method
     ?.map((item) => {

@@ -54,7 +54,6 @@ export type FastGPTFeConfigsType = {
   login_method?: FastGPTRegisterMethodType[]; // Attention: login method is different with oauth
   find_password_method?: FastGPTRegisterMethodType[];
   bind_notification_method?: FastGPTRegisterMethodType[];
-  googleClientVerKey?: string;
   /**
    * @deprecated MCP SSE 代理地址已迁移到环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT。
    * 运行时配置以环境变量为准，admin 不再支持写入该字段。

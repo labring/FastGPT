@@ -1,14 +1,13 @@
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import { authCode } from '@fastgpt/service/support/user/auth/controller';
-import { MongoUserAuth } from '@fastgpt/service/support/user/auth/schema';
 import { PasswordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
 import type {
   PasswordVerificationDependencies,
   PasswordVerificationUser
 } from '@fastgpt/service/support/user/account/verification/password/type';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
+import { getDataId } from '@fastgpt/service/support/tmpData/verification';
 import { describe, expect, it, vi } from 'vitest';
 
 const createUser = (): PasswordVerificationUser =>
@@ -31,6 +30,7 @@ const createDependencies = (
 ): PasswordVerificationDependencies => ({
   generateCode: vi.fn(() => 'ABC123'),
   now: vi.fn(() => new Date('2026-07-28T00:00:00.000Z')),
+  assertConsumeFrequency: vi.fn(async () => undefined),
   savePreLoginCode: vi.fn(async () => undefined),
   verifyPreLoginCode: vi.fn(async () => undefined),
   findUserByCredentials: vi.fn(async () => createUser()),
@@ -42,13 +42,14 @@ describe('PasswordVerificationService.issuePreLoginCode', () => {
     const dependencies = createDependencies();
     const service = new PasswordVerificationService(dependencies);
 
-    await expect(service.issuePreLoginCode({ username: 'test@example.com' })).resolves.toEqual({
-      code: 'ABC123'
-    });
+    await expect(
+      service.issuePreLoginCode({ username: 'test@example.com', purpose: 'login' })
+    ).resolves.toEqual({ code: 'ABC123' });
     expect(dependencies.generateCode).toHaveBeenCalledWith(6);
     expect(dependencies.savePreLoginCode).toHaveBeenCalledWith({
       username: 'test@example.com',
       code: 'ABC123',
+      purpose: 'login',
       expiredTime: new Date('2026-07-28T00:00:30.000Z')
     });
   });
@@ -62,6 +63,9 @@ describe('PasswordVerificationService.verifyCredentials', () => {
       verifyPreLoginCode: vi.fn(async () => {
         calls.push('verify-code');
       }),
+      assertConsumeFrequency: vi.fn(async () => {
+        calls.push('consume-frequency');
+      }),
       findUserByCredentials: vi.fn(async () => {
         calls.push('find-user');
         return user;
@@ -73,10 +77,11 @@ describe('PasswordVerificationService.verifyCredentials', () => {
       service.verifyCredentials({
         username: 'test@example.com',
         password: 'hashed-password',
-        code: 'ABC123'
+        code: 'ABC123',
+        purpose: 'login'
       })
     ).resolves.toBe(user);
-    expect(calls).toEqual(['verify-code', 'find-user']);
+    expect(calls).toEqual(['consume-frequency', 'verify-code', 'find-user']);
     expect(dependencies.findUserByCredentials).toHaveBeenCalledWith({
       username: 'test@example.com',
       password: 'hashed-password'
@@ -93,7 +98,8 @@ describe('PasswordVerificationService.verifyCredentials', () => {
       service.verifyCredentials({
         username: 'missing@example.com',
         password: 'wrong-password',
-        code: 'ABC123'
+        code: 'ABC123',
+        purpose: 'login'
       })
     ).rejects.toBe(UserErrEnum.account_psw_error);
   });
@@ -113,7 +119,8 @@ describe('PasswordVerificationService.verifyCredentials', () => {
       service.verifyCredentials({
         username: 'wecom-openid',
         password: 'hashed-password',
-        code: 'ABC123'
+        code: 'ABC123',
+        purpose: 'login'
       })
     ).resolves.toBe(user);
   });
@@ -129,45 +136,59 @@ describe('PasswordVerificationService.verifyCredentials', () => {
       service.verifyCredentials({
         username: 'test@example.com',
         password: 'hashed-password',
-        code: 'invalid'
+        code: 'invalid',
+        purpose: 'login'
       })
     ).rejects.toBe(error);
     expect(dependencies.findUserByCredentials).not.toHaveBeenCalled();
   });
+
+  it('does not consume the pre-login material when frequency is exceeded', async () => {
+    const error = new Error('too frequent');
+    const dependencies = createDependencies({
+      assertConsumeFrequency: vi.fn(async () => Promise.reject(error))
+    });
+    const service = new PasswordVerificationService(dependencies);
+
+    await expect(
+      service.verifyCredentials({
+        username: 'test@example.com',
+        password: 'hashed-password',
+        code: 'ABC123',
+        purpose: 'login'
+      })
+    ).rejects.toBe(error);
+    expect(dependencies.verifyPreLoginCode).not.toHaveBeenCalled();
+  });
 });
 
 describe('PasswordVerificationService default adapters', () => {
-  it('keeps the existing auth-code storage and credential query behavior', async () => {
+  it('stores and consumes password material in tmp_datas', async () => {
     const username = 'default-adapters@example.com';
     const password = 'hashed-password';
     const beforeIssue = Date.now();
     const service = new PasswordVerificationService();
-    vi.mocked(authCode).mockClear();
 
-    const { code } = await service.issuePreLoginCode({ username });
+    const { code } = await service.issuePreLoginCode({ username, purpose: 'login' });
     const afterIssue = Date.now();
-    const authMaterial = await MongoUserAuth.findOne({
-      key: username,
-      type: UserAuthTypeEnum.login
+    const authMaterial = await MongoTmpData.findOne({
+      dataId: getDataId('login', 'password', username)
     }).lean();
 
     expect(code).toMatch(/^[a-z][a-zA-Z0-9]{5}$/);
     expect(authMaterial).toMatchObject({
-      key: username,
-      type: UserAuthTypeEnum.login,
-      code
+      dataId: getDataId('login', 'password', username),
+      data: { preLoginCode: code }
     });
-    expect(authMaterial?.expiredTime.getTime()).toBeGreaterThanOrEqual(beforeIssue + 30_000);
-    expect(authMaterial?.expiredTime.getTime()).toBeLessThanOrEqual(afterIssue + 30_000);
+    expect(authMaterial?.expireAt.getTime()).toBeGreaterThanOrEqual(beforeIssue + 30_000);
+    expect(authMaterial?.expireAt.getTime()).toBeLessThanOrEqual(afterIssue + 30_000);
 
     const storedUser = await MongoUser.create({ username, password });
-    const result = await service.verifyCredentials({ username, password, code });
+    const result = await service.verifyCredentials({ username, password, code, purpose: 'login' });
 
-    expect(authCode).toHaveBeenCalledWith({
-      key: username,
-      code,
-      type: UserAuthTypeEnum.login
-    });
+    await expect(
+      MongoTmpData.findOne({ dataId: getDataId('login', 'password', username) })
+    ).resolves.toBeNull();
     expect(String(result._id)).toBe(String(storedUser._id));
   });
 });

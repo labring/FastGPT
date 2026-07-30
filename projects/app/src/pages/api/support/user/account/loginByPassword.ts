@@ -35,7 +35,8 @@ async function handler(
   const user = await passwordVerificationService.verifyCredentials({
     username,
     password,
-    code
+    code,
+    purpose: 'login'
   });
 
   if (user.status === UserStatusEnum.forbidden) {

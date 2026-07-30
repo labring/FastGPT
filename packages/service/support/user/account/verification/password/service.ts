@@ -1,9 +1,10 @@
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { addSeconds } from 'date-fns';
-import { addAuthCode, authCode } from '../../../auth/controller';
+import { verification } from '../../../../tmpData/verification';
 import { MongoUser } from '../../../schema';
+import { assertCodeVerificationConsumeFrequency } from '../utils';
 import type {
   IssuePreLoginCodeParams,
   IssuePreLoginCodeResult,
@@ -14,19 +15,20 @@ import type {
 const defaultDependencies: PasswordVerificationDependencies = {
   generateCode: getNanoid,
   now: () => new Date(),
-  savePreLoginCode: ({ username, code, expiredTime }) =>
-    addAuthCode({
-      type: UserAuthTypeEnum.login,
-      key: username,
-      code,
-      expiredTime
-    }),
-  verifyPreLoginCode: ({ username, code }) =>
-    authCode({
-      key: username,
-      code,
-      type: UserAuthTypeEnum.login
-    }),
+  assertConsumeFrequency: assertCodeVerificationConsumeFrequency,
+  savePreLoginCode: ({ purpose, username, code, expiredTime }) =>
+    verification.upsert(purpose, 'password', username, { preLoginCode: code }, expiredTime),
+  verifyPreLoginCode: async ({ purpose, username, code }) => {
+    const material = await verification.consume(purpose, 'password', username, {
+      preLoginCode: code
+    });
+
+    if (!material) {
+      return Promise.reject(new UserError(UserErrEnum.invalidVerificationCode));
+    }
+
+    return 'SUCCESS';
+  },
   findUserByCredentials: ({ username, password }) => MongoUser.findOne({ username, password })
 };
 
@@ -45,20 +47,25 @@ export class PasswordVerificationService {
     };
   }
 
-  async issuePreLoginCode({ username }: IssuePreLoginCodeParams): Promise<IssuePreLoginCodeResult> {
+  async issuePreLoginCode({
+    username,
+    purpose
+  }: IssuePreLoginCodeParams): Promise<IssuePreLoginCodeResult> {
     const code = this.dependencies.generateCode(6);
 
     await this.dependencies.savePreLoginCode({
       username,
       code,
+      purpose,
       expiredTime: addSeconds(this.dependencies.now(), 30)
     });
 
     return { code };
   }
 
-  async verifyCredentials({ username, password, code }: VerifyPasswordCredentialsParams) {
-    await this.dependencies.verifyPreLoginCode({ username, code });
+  async verifyCredentials({ username, password, code, purpose }: VerifyPasswordCredentialsParams) {
+    await this.dependencies.assertConsumeFrequency({ account: username, scene: purpose });
+    await this.dependencies.verifyPreLoginCode({ username, code, purpose });
 
     const user = await this.dependencies.findUserByCredentials({ username, password });
     if (!user) {

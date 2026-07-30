@@ -45,11 +45,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const response = await fetch(request);
 
+    const setCookies = response.headers.getSetCookie();
+
     response.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
       if (lowerKey === 'content-encoding' || lowerKey === 'transfer-encoding') return;
+      if (lowerKey === 'set-cookie') return;
       res.setHeader(key, value);
     });
+
+    // Set-Cookie 不能逐条调用 setHeader，否则后一个 Cookie 会覆盖前一个。
+    if (setCookies.length > 0) {
+      res.setHeader('Set-Cookie', setCookies);
+    }
 
     res.status(response.status);
 

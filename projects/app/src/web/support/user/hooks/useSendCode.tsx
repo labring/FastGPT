@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
-import { sendAuthCode } from '@/web/support/user/api';
+import { sendAuthCode, type UserVerificationPurpose } from '@/web/support/user/api';
 import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { Box, type BoxProps, useDisclosure } from '@chakra-ui/react';
 import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
@@ -11,17 +10,27 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 let timer: NodeJS.Timeout;
 
-export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
+export const useSendCode = ({
+  type,
+  purpose
+}: {
+  type: `${UserAuthTypeEnum}`;
+  purpose: UserVerificationPurpose;
+}) => {
   const { t, i18n } = useTranslation();
-  const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const [codeCountDown, setCodeCountDown] = useState(0);
 
   const { runAsync: sendCode, loading: codeSending } = useRequest(
     async ({ username, captcha }: { username: string; captcha: string }) => {
       if (codeCountDown > 0) return;
-      const googleToken = await getClientToken(feConfigs.googleClientVerKey);
-      await sendAuthCode({ username, type, googleToken, captcha, lang: i18n.language as LangEnum });
+      await sendAuthCode({
+        username,
+        type,
+        purpose,
+        captcha,
+        lang: i18n.language as LangEnum
+      });
 
       setCodeCountDown(60);
 
@@ -37,7 +46,7 @@ export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
     {
       successToast: t('user:password.code_sended'),
       errorToast: t('user:password.code_send_error'),
-      refreshDeps: [codeCountDown, type, feConfigs?.googleClientVerKey]
+      refreshDeps: [codeCountDown, type, purpose]
     }
   );
 
@@ -93,6 +102,7 @@ export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
           <SendCodeAuthModal
             onClose={onCloseCodeAuthModal}
             username={username}
+            purpose={purpose}
             onSending={codeSending}
             onSendCode={sendCode}
           />
@@ -110,20 +120,3 @@ export const useSendCode = ({ type }: { type: `${UserAuthTypeEnum}` }) => {
     openCodeAuthModal
   };
 };
-
-export function getClientToken(googleClientVerKey?: string) {
-  if (!googleClientVerKey || typeof window.grecaptcha === 'undefined' || !window.grecaptcha?.ready)
-    return '';
-  return new Promise<string>((resolve, reject) => {
-    window.grecaptcha.ready(async () => {
-      try {
-        const token = await window.grecaptcha.execute(googleClientVerKey, {
-          action: 'submit'
-        });
-        resolve(token);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  });
-}

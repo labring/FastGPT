@@ -4,15 +4,16 @@ import { Box, Flex, IconButton, Button } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useRouter } from 'next/router';
-import { type Dispatch, useCallback, useEffect, useMemo, useState } from 'react';
+import { type Dispatch, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
 import { POST } from '@/web/common/api/request';
+import { oauthStart } from '@/web/support/user/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import type { OauthStartBodyType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 type Props = {
   children: React.ReactNode;
@@ -25,7 +26,6 @@ type OAuthItem = {
   provider: OAuthEnum | LoginPageTypeEnum;
   icon: any;
   pageType?: LoginPageTypeEnum;
-  redirectUrl?: string;
 };
 
 const FormLayout = ({ children, setPageType, pageType }: Props) => {
@@ -43,7 +43,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     return router.pathname === '/chat' ? router.asPath : lastRoute;
   }, [lastRoute, router.pathname, router.asPath]);
 
-  const [oauthState] = useState(() => getNanoid(8));
   const redirectUri = `${location.origin}/login/provider`;
 
   const isWecomWorkTerminal = checkIsWecomTerminal();
@@ -86,8 +85,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             {
               label: t('common:support.user.login.Google'),
               provider: OAuthEnum.google,
-              icon: 'common/googleFill',
-              redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${oauthState}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
+              icon: 'common/googleFill'
             }
           ]
         : []),
@@ -96,8 +94,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             {
               label: t('common:support.user.login.Github'),
               provider: OAuthEnum.github,
-              icon: 'common/gitFill',
-              redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${oauthState}&scope=user:email%20read:user`
+              icon: 'common/gitFill'
             }
           ]
         : []),
@@ -108,69 +105,72 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                 feConfigs?.oauth?.microsoft?.customButton ||
                 t('common:support.user.login.Microsoft'),
               provider: OAuthEnum.microsoft,
-              icon: 'common/microsoft',
-              redirectUrl: `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${oauthState}`
+              icon: 'common/microsoft'
             }
           ]
         : [])
     ],
-    [feConfigs, oauthState, pageType, redirectUri, t]
+    [feConfigs, pageType, t]
   );
 
   const show_oauth = !!(feConfigs?.sso?.url || oAuthList.length > 0);
 
   const onClickOauth = useCallback(
     async (item: OAuthItem) => {
-      if (item.provider === OAuthEnum.sso) {
-        const redirectUrl = await POST<string>('/proApi/support/user/account/login/getAuthURL', {
-          redirectUri,
-          isWecomWorkTerminal
-        });
-        setLoginStore({
-          provider: item.provider as OAuthEnum,
-          lastRoute: computedLastRoute,
-          lastTmbId,
-          state: oauthState
-        });
-        router.replace(redirectUrl, '_self');
+      if (item.pageType) {
+        setPageType(item.pageType);
         return;
       }
 
-      if (item.provider === OAuthEnum.wecom) {
-        const redirectUrl = await POST<string>(
-          '/proApi/support/user/account/login/wecom/getRedirectUrl',
-          {
+      const { state } = await oauthStart({
+        provider: item.provider as OauthStartBodyType['provider'],
+        redirectUri,
+        isWecomWorkTerminal
+      });
+
+      const redirectUrl = await (async () => {
+        if (item.provider === OAuthEnum.sso) {
+          return POST<string>('/proApi/support/user/account/login/getAuthURL', {
+            redirectUri,
+            isWecomWorkTerminal
+          });
+        }
+
+        if (item.provider === OAuthEnum.wecom) {
+          return POST<string>('/proApi/support/user/account/login/wecom/getRedirectUrl', {
             redirectUri,
             isWecomWorkTerminal,
-            state: oauthState
-          }
-        );
-        setLoginStore({
-          provider: item.provider as OAuthEnum,
-          lastRoute: computedLastRoute,
-          lastTmbId,
-          state: oauthState
-        });
-        router.replace(redirectUrl, '_self');
-        return;
-      }
+            state: state ?? ''
+          });
+        }
 
-      if (item.redirectUrl) {
-        setLoginStore({
-          provider: item.provider as OAuthEnum,
-          lastRoute: computedLastRoute,
-          lastTmbId,
-          state: oauthState
-        });
-        router.replace(item.redirectUrl, '_self');
-      }
-      item.pageType && setPageType(item.pageType);
+        return (() => {
+          if (item.provider === OAuthEnum.google) {
+            return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`;
+          }
+          if (item.provider === OAuthEnum.github) {
+            return `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state}&scope=user:email%20read:user`;
+          }
+          if (item.provider === OAuthEnum.microsoft) {
+            return `https://login.microsoftonline.com/${feConfigs?.oauth?.microsoft?.tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${feConfigs?.oauth?.microsoft?.clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=https%3A%2F%2Fgraph.microsoft.com%2Fuser.read&state=${state}`;
+          }
+          return '';
+        })();
+      })();
+
+      setLoginStore({
+        provider: item.provider as OAuthEnum,
+        lastRoute: computedLastRoute,
+        lastTmbId,
+        state: state ?? ''
+      });
+      router.replace(redirectUrl, '_self');
     },
     [
       computedLastRoute,
+      feConfigs,
       isWecomWorkTerminal,
       lastTmbId,
-      oauthState,
       redirectUri,
       router,
       setLoginStore,

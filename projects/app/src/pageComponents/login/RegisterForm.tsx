@@ -50,7 +50,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   });
   const username = watch('username');
 
-  const { SendCodeBox, openCodeAuthModal } = useSendCode({ type: 'register' });
+  const { SendCodeBox, openCodeAuthModal } = useSendCode({
+    type: 'register',
+    purpose: 'register'
+  });
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest(
     async ({ username, password, code }: RegisterType) => {

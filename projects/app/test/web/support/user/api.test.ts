@@ -14,23 +14,15 @@ describe('user api', () => {
     const data = {
       username: 'test@test.com',
       type: UserAuthTypeEnum.register,
-      googleToken: 'token123',
-      captcha: 'captcha123'
+      purpose: 'register',
+      captcha: 'captcha123',
+      lang: 'zh-CN'
     };
     await api.sendAuthCode(data);
   });
 
   it('should get token login', async () => {
     await api.getTokenLogin();
-  });
-
-  it('should oauth login', async () => {
-    const params = {
-      platform: 'github',
-      code: 'code123',
-      state: 'state123'
-    };
-    await api.oauthLogin(params);
   });
 
   it('should fast login', async () => {
@@ -130,7 +122,7 @@ describe('user api', () => {
   });
 
   it('should get captcha pic', async () => {
-    await api.getCaptchaPic('test@test.com');
+    await api.getCaptchaPic('test@test.com', 'register');
   });
 
   it('should get pre login info', async () => {

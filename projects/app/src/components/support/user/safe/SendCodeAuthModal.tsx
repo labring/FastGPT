@@ -1,4 +1,4 @@
-import { getCaptchaPic } from '@/web/support/user/api';
+import { getCaptchaPic, type UserVerificationPurpose } from '@/web/support/user/api';
 import { Button, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -8,11 +8,13 @@ import { useForm } from 'react-hook-form';
 
 const SendCodeAuthModal = ({
   username,
+  purpose,
   onClose,
   onSending,
   onSendCode
 }: {
   username: string;
+  purpose: UserVerificationPurpose;
   onClose: () => void;
 
   onSending: boolean;
@@ -30,7 +32,7 @@ const SendCodeAuthModal = ({
     data,
     loading,
     runAsync: getCaptcha
-  } = useRequest(() => getCaptchaPic(username), { manual: false });
+  } = useRequest(() => getCaptchaPic(username, purpose), { manual: false });
 
   const onSubmit = async ({ code }: { code: string }) => {
     await onSendCode({ username, captcha: code });
@@ -43,7 +45,7 @@ const SendCodeAuthModal = ({
 
   const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    if (e.key.toLowerCase() !== 'enter') return;
+    if (e.nativeEvent.isComposing || e.keyCode === 229 || e.key.toLowerCase() !== 'enter') return;
     handleSubmit(onSubmit, onError)();
   };
 

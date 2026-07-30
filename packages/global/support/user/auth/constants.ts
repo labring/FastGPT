@@ -6,12 +6,3 @@ export enum UserAuthTypeEnum {
   captcha = 'captcha',
   login = 'login'
 }
-
-export const userAuthTypeMap = {
-  [UserAuthTypeEnum.register]: 'register',
-  [UserAuthTypeEnum.findPassword]: 'findPassword',
-  [UserAuthTypeEnum.wxLogin]: 'wxLogin',
-  [UserAuthTypeEnum.bindNotification]: 'bindNotification',
-  [UserAuthTypeEnum.captcha]: 'captcha',
-  [UserAuthTypeEnum.login]: 'login'
-};

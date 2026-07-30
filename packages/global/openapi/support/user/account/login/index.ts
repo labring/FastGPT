@@ -5,9 +5,12 @@ import {
   PreLoginQuerySchema,
   PreLoginResponseSchema,
   OauthLoginBodySchema,
+  OauthStartBodySchema,
+  OauthStartResponseSchema,
   FastLoginBodySchema,
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
+  WxLoginResultResponseSchema,
   LoginSuccessResponseSchema,
   OpenAPIUserSchema
 } from './api';
@@ -74,10 +77,34 @@ export const LoginPath: OpenAPIPath = {
       }
     }
   },
-  '/proApi/support/user/account/login/oauth': {
+  '/proApi/support/user/account/login/oauth/start': {
     post: {
-      summary: 'OAuth 登录',
-      description: '使用第三方 OAuth 授权登录',
+      summary: '开始 OAuth 登录',
+      description: '由服务端生成 OAuth state 并保存 OAuth 登录验证材料',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: OauthStartBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '返回服务端生成的 OAuth state',
+          content: {
+            'application/json': {
+              schema: OauthStartResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/login/oauth/callback': {
+    post: {
+      summary: 'OAuth 登录回调',
+      description: '接收前端转发的 OAuth code/state，校验服务端验证材料并完成登录',
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: {
@@ -156,7 +183,7 @@ export const LoginPath: OpenAPIPath = {
           description: '登录成功',
           content: {
             'application/json': {
-              schema: LoginSuccessResponseSchema
+              schema: WxLoginResultResponseSchema
             }
           }
         }
