@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   getHTTPToolSetRuntimeNode,
   getHTTPToolRuntimeNode,
+  isLegacyManualHttpToolArrayType,
+  jsonSchemaProperty2ManualHttpToolValueType,
+  manualHttpToolValueType2JsonSchema,
   parseHttpToolConfig,
   pathData2ToolList
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
@@ -17,6 +20,45 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { HttpToolConfigType, PathDataType } from '@fastgpt/global/core/app/tool/httpTool/type';
 
 describe('httpTool utils', () => {
+  describe('manual HTTP tool schema conversion', () => {
+    it.each([
+      [
+        WorkflowIOValueTypeEnum.arrayString,
+        {
+          type: 'array',
+          items: { type: 'string' }
+        }
+      ],
+      [
+        WorkflowIOValueTypeEnum.arrayNumber,
+        {
+          type: 'array',
+          items: { type: 'number' }
+        }
+      ],
+      [
+        WorkflowIOValueTypeEnum.arrayBoolean,
+        {
+          type: 'array',
+          items: { type: 'boolean' }
+        }
+      ]
+    ] as const)('converts %s to a standard JSON Schema array', (valueType, expectedSchema) => {
+      expect(manualHttpToolValueType2JsonSchema(valueType)).toEqual(expectedSchema);
+      expect(jsonSchemaProperty2ManualHttpToolValueType(expectedSchema)).toBe(valueType);
+    });
+
+    it('keeps legacy array value types available for editing before migration', () => {
+      expect(isLegacyManualHttpToolArrayType('arrayString')).toBe(true);
+      expect(isLegacyManualHttpToolArrayType('array')).toBe(false);
+      expect(
+        jsonSchemaProperty2ManualHttpToolValueType({
+          type: WorkflowIOValueTypeEnum.arrayString
+        })
+      ).toBe(WorkflowIOValueTypeEnum.arrayString);
+    });
+  });
+
   describe('getHTTPToolSetRuntimeNode', () => {
     it('should create runtime node with minimal params', () => {
       const result = getHTTPToolSetRuntimeNode({});

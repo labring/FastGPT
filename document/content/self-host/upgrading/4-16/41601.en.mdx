@@ -62,6 +62,30 @@ The E2B Sandbox Provider has been removed. Deployments previously using E2B must
 
 > The preview protocol has changed across FastGPT and the `fastgpt-agent-sandbox-proxy` and `fastgpt-agent-sandbox` services. If Agent Sandbox is enabled, use the matching images for this release. Mixed-version deployments are not supported.
 
+### 3. Migrate Manual HTTP Tool Schemas
+
+This release converts array parameters in manually configured HTTP tools to standard JSON Schema. Deployments with manual HTTP tools created before this upgrade must run this migration. OpenAPI-based HTTP tools do not require migration and are skipped automatically.
+
+First, run a dry run to inspect pending data in current Apps and historical versions. A dry run does not modify data:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4160/initHttpToolSchema' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After reviewing the result, run the migration:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4160/initHttpToolSchema' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+The script first selects HTTP tool Apps by type, then migrates historical versions matching those App IDs. It only processes manual configurations where `apiSchemaStr` is absent; other Apps and OpenAPI-based tools remain unchanged. The migration runs in batches and is safe to retry. `total.changedDocumentCount` reports the number of documents requiring migration. After the formal run, run another dry run and confirm that this value is `0`.
+
 ## 🚀 New Features
 
 1. Agent Sandbox now uses App-level, per-user instances. Chats for the same App and user reuse one Sandbox while keeping chat files in separate session directories.

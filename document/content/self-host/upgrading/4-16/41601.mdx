@@ -62,6 +62,30 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
 
 请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount` 和 `failures`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示本次迁移全部完成。
 
+### 3. 迁移手动 HTTP 工具 Schema
+
+本版本将手动模式 HTTP 工具的数组参数改为标准 JSON Schema。升级前创建过手动 HTTP 工具的环境需要执行此迁移；OpenAPI 模式的 HTTP 工具无需迁移，脚本会自动跳过。
+
+先执行 dry-run，查看当前应用及历史版本中的待处理数据。dry-run 不会修改数据：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+确认结果后执行正式迁移：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+脚本会先按 HTTP 工具类型筛选应用，再根据这些应用的 `appId` 迁移对应的历史版本。仅 `apiSchemaStr` 不存在的手动模式会被处理，其他应用及 OpenAPI 模式不会修改。迁移按批次执行且可安全重试；返回结果中 `total.changedDocumentCount` 表示发现的待处理文档数，正式执行后可再次 dry-run，确认该值为 `0`。
+
 ## 🚀 新增内容
 
 1. Agent Sandbox 改为 App 用户级实例，同一 App、同一用户的多个对话复用 Sandbox，并通过独立 session 目录隔离各对话文件。
