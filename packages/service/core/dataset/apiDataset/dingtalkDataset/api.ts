@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type {
   APIFileItemType,
   ApiDatasetDetailResponse,
@@ -8,14 +7,9 @@ import type {
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { Method } from 'axios';
 import { axios, createProxyAxios } from '../../../../common/api/axios';
-import { delRedisCache, getRedisCache, setRedisCache } from '../../../../common/redis/cache';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
-
-type DingtalkAccessTokenResponse = {
-  accessToken: string;
-  expireIn: number;
-};
+import { getDingtalkAppAccessToken } from '../../../../common/dingtalk/accessToken';
 
 type DingtalkUserResponse = {
   errcode?: number;
@@ -89,9 +83,7 @@ type ListAllByNextTokenProps<T> = {
 
 const dingtalkBaseUrl = serviceEnv.DINGTALK_BASE_URL;
 const dingtalkOapiBaseUrl = serviceEnv.DINGTALK_OAPI_BASE_URL;
-const tokenSafeWindowSeconds = 5 * 60;
 const dingtalkListPageSize = 100;
-const refreshingTokenMap = new Map<string, Promise<string>>();
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 const instance = createProxyAxios({
@@ -109,11 +101,6 @@ const cleanParams = <T extends Record<string, any>>(data: T): T => {
   });
   return data;
 };
-
-const hashSecret = (secret = '') => createHash('sha256').update(secret).digest('hex').slice(0, 12);
-
-const getDingtalkAccessTokenCacheKey = ({ appKey, appSecret }: DingtalkServerType) =>
-  `dataset:dingtalk:accessToken:${appKey}:${hashSecret(appSecret)}`;
 
 const isRateLimitError = (error: any) => {
   const status = error?.response?.status;
@@ -137,87 +124,6 @@ const toSafeError = (error: any) => {
   if (error?.data) return error.data;
   if (error?.message) return { message: error.message };
   return error;
-};
-
-const requestDingtalkAccessToken = async ({
-  appKey,
-  appSecret
-}: DingtalkServerType): Promise<DingtalkAccessTokenResponse> => {
-  if (!appKey || !appSecret) {
-    return Promise.reject('钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限');
-  }
-
-  try {
-    const { data } = await axios.post<DingtalkAccessTokenResponse>(
-      `${dingtalkBaseUrl}/v1.0/oauth2/accessToken`,
-      {
-        appKey,
-        appSecret
-      }
-    );
-
-    if (!data?.accessToken) {
-      return Promise.reject('钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限');
-    }
-
-    return data;
-  } catch (error) {
-    logger.warn('DingTalk accessToken request failed', {
-      provider: 'dingtalk',
-      error: toSafeError(error)
-    });
-
-    if (isRateLimitError(error)) {
-      return Promise.reject('钉钉鉴权接口请求过快，请稍后重试');
-    }
-    return Promise.reject('钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限');
-  }
-};
-
-const getDingtalkAccessToken = async (server: DingtalkServerType) => {
-  const cacheKey = getDingtalkAccessTokenCacheKey(server);
-
-  try {
-    const cachedToken = await getRedisCache(cacheKey);
-    if (cachedToken) return cachedToken;
-  } catch (error) {
-    logger.warn('DingTalk accessToken cache read failed', {
-      provider: 'dingtalk',
-      appKey: server.appKey,
-      error
-    });
-  }
-
-  const refreshing = refreshingTokenMap.get(cacheKey);
-  if (refreshing) return refreshing;
-
-  const promise = (async () => {
-    try {
-      const { accessToken, expireIn } = await requestDingtalkAccessToken(server);
-      const ttl = Math.max(expireIn - tokenSafeWindowSeconds, 60);
-
-      try {
-        await setRedisCache(cacheKey, accessToken, ttl);
-      } catch (error) {
-        logger.warn('DingTalk accessToken cache write failed', {
-          provider: 'dingtalk',
-          appKey: server.appKey,
-          ttl,
-          error
-        });
-      }
-
-      return accessToken;
-    } catch (error) {
-      await delRedisCache(cacheKey).catch(() => undefined);
-      return Promise.reject(error);
-    } finally {
-      refreshingTokenMap.delete(cacheKey);
-    }
-  })();
-
-  refreshingTokenMap.set(cacheKey, promise);
-  return promise;
 };
 
 const request = async <T>({
@@ -616,7 +522,7 @@ export const useDingtalkDatasetRequest = ({
   dingtalkServer: DingtalkServerType;
 }) => {
   const getTokenAndOperatorId = async () => {
-    const accessToken = await getDingtalkAccessToken(dingtalkServer);
+    const accessToken = await getDingtalkAppAccessToken(dingtalkServer);
     const operatorId = await getDingtalkOperatorId({ dingtalkServer, accessToken });
 
     return {

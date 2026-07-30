@@ -14,10 +14,16 @@ export const FeishuAppSchema = z.object({
  */
 export type FeishuAppType = z.infer<typeof FeishuAppSchema>;
 
-export interface DingtalkAppType {
-  clientId: string;
-  clientSecret: string;
-}
+export const DingtalkAppSchema = z.object({
+  clientId: z.string().trim().min(1),
+  clientSecret: z.string().trim().min(1)
+});
+
+/**
+ * Dingtalk app config.
+ * @see https://open.dingtalk.com/document/dingstart/create-application
+ */
+export type DingtalkAppType = z.infer<typeof DingtalkAppSchema>;
 
 export interface WecomAppType {
   CallbackToken: string;

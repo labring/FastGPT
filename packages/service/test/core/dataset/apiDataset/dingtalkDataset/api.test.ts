@@ -33,6 +33,9 @@ vi.mock('../../../../../common/logger', () => ({
     MODULE: {
       DATASET: {
         API_DATASET: 'dataset.apiDataset'
+      },
+      OUTLINK: {
+        DINGTALK: 'outlink.dingtalk'
       }
     }
   }
@@ -127,7 +130,7 @@ describe('useDingtalkDatasetRequest', () => {
       })
     ]);
     expect(mockSetRedisCache).toHaveBeenCalledWith(
-      expect.stringContaining('dataset:dingtalk:accessToken:ding-app:'),
+      expect.stringContaining('dingtalk:accessToken:ding-app:'),
       'access-token',
       6900
     );
