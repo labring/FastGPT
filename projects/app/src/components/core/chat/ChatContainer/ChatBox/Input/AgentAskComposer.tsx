@@ -155,13 +155,9 @@ type AgentAskOptionButtonProps = {
   option: AgentAskOption;
   index: number;
   isSelected: boolean;
-  isHighlighted: boolean;
   isDisabled: boolean;
   optionRef: (element: HTMLButtonElement | null) => void;
   onSelect: () => void;
-  onHover: () => void;
-  onMouseDown: () => void;
-  onFocus: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
 };
 
@@ -169,16 +165,12 @@ const AgentAskOptionButton = ({
   option,
   index,
   isSelected,
-  isHighlighted,
   isDisabled,
   optionRef,
   onSelect,
-  onHover,
-  onMouseDown,
-  onFocus,
   onKeyDown
 }: AgentAskOptionButtonProps) => (
-  <Box key={option.value} role={'group'}>
+  <Box role={'group'}>
     <Button
       ref={optionRef}
       variant={'unstyled'}
@@ -195,18 +187,22 @@ const AgentAskOptionButton = ({
       border={'1px solid'}
       borderColor={isSelected ? 'primary.300' : 'transparent'}
       borderRadius={'21px'}
-      bg={isSelected ? 'primary.50' : isHighlighted ? 'blackAlpha.50' : 'transparent'}
+      bg={isSelected ? 'primary.50' : 'transparent'}
       textAlign={'left'}
       _hover={
         isSelected ? { bg: 'primary.50', borderColor: 'primary.300' } : { bg: 'blackAlpha.50' }
       }
-      _focusVisible={{ boxShadow: 'none', outline: 'none' }}
+      _focusVisible={{
+        ...(isSelected
+          ? { bg: 'primary.50', borderColor: 'primary.300' }
+          : { bg: 'blackAlpha.50' }),
+        boxShadow: 'none',
+        outline: 'none',
+        '& > svg': { opacity: 1 }
+      }}
       _active={{ transform: 'none' }}
       isDisabled={isDisabled}
       _disabled={isSelected ? { opacity: 1 } : undefined}
-      onMouseEnter={onHover}
-      onMouseDown={onMouseDown}
-      onFocus={onFocus}
       onKeyDown={onKeyDown}
       onClick={onSelect}
       aria-pressed={isSelected}
@@ -219,7 +215,7 @@ const AgentAskOptionButton = ({
           w={6}
           h={6}
           borderRadius={'full'}
-          bg={isSelected ? 'primary.600' : isHighlighted ? 'myGray.200' : 'myGray.50'}
+          bg={isSelected ? 'primary.600' : 'myGray.50'}
           color={isSelected ? 'myGray.100' : 'myGray.600'}
           fontSize={'sm'}
           fontWeight={500}
@@ -244,7 +240,7 @@ const AgentAskOptionButton = ({
         w={4}
         h={4}
         color={'myGray.400'}
-        opacity={isSelected || isHighlighted ? 1 : 0}
+        opacity={isSelected ? 1 : 0}
         _groupHover={{ opacity: 1 }}
       />
     </Button>
@@ -262,19 +258,16 @@ const AgentAskComposer = ({
   const { t } = useTranslation();
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
+  const [selectedOptionIndexes, setSelectedOptionIndexes] = useState<Record<string, number>>({});
   const [customValues, setCustomValues] = useState<Answers>({});
   const [editingQuestionIndex, setEditingQuestionIndex] = useState<number>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
   const [isQuestionVisible, setIsQuestionVisible] = useState(true);
   const [isQuestionTransitioning, setIsQuestionTransitioning] = useState(false);
   const [contentHeight, setContentHeight] = useState<number>();
-  const [keyboardFocusedOptionKey, setKeyboardFocusedOptionKey] = useState<string>();
   const contentRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const questionTransitionTimer = useRef<ReturnType<typeof setTimeout>>();
-  const isProgrammaticFocus = useRef(false);
-  const isPointerFocus = useRef(false);
   const updateContentHeight = useCallback(() => {
     const content = contentRef.current;
     if (!content) return;
@@ -289,7 +282,6 @@ const AgentAskComposer = ({
 
   // Ask 覆盖普通输入区时，焦点始终从当前题的第一个选项开始。
   useEffect(() => {
-    isProgrammaticFocus.current = true;
     optionRefs.current[0]?.focus();
   }, [questionIndex]);
 
@@ -308,8 +300,9 @@ const AgentAskComposer = ({
 
   const questionKey = String(questionIndex);
   const answer = answers[questionKey] ?? '';
+  const selectedOptionIndex = selectedOptionIndexes[questionKey];
   const customValue = customValues[questionKey] ?? '';
-  const isCustom = !!answer && !question.options.some((item) => item.value === answer);
+  const isCustom = !!answer && selectedOptionIndex === undefined;
   const isEditingCustom = editingQuestionIndex === questionIndex;
   const isAnswerValid = !!answer;
   const isLastQuestion = questionIndex === questions.length - 1;
@@ -317,7 +310,6 @@ const AgentAskComposer = ({
   const changeQuestion = (nextQuestionIndex: number, delay = false) => {
     if (isQuestionTransitioning || nextQuestionIndex === questionIndex) return;
 
-    setKeyboardFocusedOptionKey(undefined);
     setIsQuestionTransitioning(true);
     const startTransition = () => {
       setIsQuestionVisible(false);
@@ -341,9 +333,22 @@ const AgentAskComposer = ({
     setIsSubmitting(true);
     onSubmit(questions.map((_, index) => nextAnswers[String(index)] ?? ''));
   };
-  const goNext = (nextAnswer: string, delayTransition = false) => {
+  const goNext = (
+    nextAnswer: string,
+    delayTransition = false,
+    nextSelectedOptionIndex?: number
+  ) => {
     const nextAnswers = { ...answers, [questionKey]: nextAnswer };
     setAnswers(nextAnswers);
+    setSelectedOptionIndexes((indexes) => {
+      const nextIndexes = { ...indexes };
+      if (nextSelectedOptionIndex === undefined) {
+        delete nextIndexes[questionKey];
+      } else {
+        nextIndexes[questionKey] = nextSelectedOptionIndex;
+      }
+      return nextIndexes;
+    });
     setEditingQuestionIndex(undefined);
 
     if (isLastQuestion) {
@@ -357,6 +362,11 @@ const AgentAskComposer = ({
   const selectCustom = () => {
     setEditingQuestionIndex(questionIndex);
     setAnswers((answers) => ({ ...answers, [questionKey]: customValue }));
+    setSelectedOptionIndexes((indexes) => {
+      const nextIndexes = { ...indexes };
+      delete nextIndexes[questionKey];
+      return nextIndexes;
+    });
   };
   const resizeCustomTextarea = (textarea: HTMLTextAreaElement | null) => {
     if (!textarea) return;
@@ -369,7 +379,9 @@ const AgentAskComposer = ({
   };
   const actionLabel =
     isCustom && customValue.trim()
-      ? t(isLastQuestion ? 'common:Submit' : 'common:next_step')
+      ? isLastQuestion
+        ? t('common:Submit')
+        : t('common:next_step')
       : t('chat:interactive.agent_ask.skip');
   const isInputDisabled = isSubmitting || isQuestionTransitioning;
   const advanceButton = (
@@ -399,8 +411,6 @@ const AgentAskComposer = ({
       h={contentHeight ? `${contentHeight}px` : undefined}
       overflow={'hidden'}
       transition={'height 0.2s ease'}
-      onPointerDownCapture={() => setHasInteracted(true)}
-      onKeyDownCapture={() => setHasInteracted(true)}
     >
       <Flex alignItems={'center'} justifyContent={'space-between'} gap={4} px={1} mb={4}>
         <Box
@@ -443,35 +453,19 @@ const AgentAskComposer = ({
         transition={'opacity 0.2s ease'}
       >
         {question.options.map((option, index) => {
-          const isSelected = answer === option.value && !isCustom;
-          const isDefaultHover = !hasInteracted && index === 0;
-          const optionFocusKey = `${questionKey}:${index}`;
-          const isKeyboardFocused = keyboardFocusedOptionKey === optionFocusKey;
+          const isSelected = selectedOptionIndex === index;
 
           return (
             <AgentAskOptionButton
-              key={option.value}
+              key={index}
               option={option}
               index={index}
               isSelected={isSelected}
-              isHighlighted={isDefaultHover || isKeyboardFocused}
               isDisabled={isInputDisabled}
               optionRef={(element) => {
                 optionRefs.current[index] = element;
               }}
-              onSelect={() => goNext(option.value, true)}
-              onHover={() => setHasInteracted(true)}
-              onMouseDown={() => {
-                isPointerFocus.current = true;
-              }}
-              onFocus={() => {
-                if (isProgrammaticFocus.current || isPointerFocus.current) {
-                  isProgrammaticFocus.current = false;
-                  isPointerFocus.current = false;
-                  return;
-                }
-                setKeyboardFocusedOptionKey(optionFocusKey);
-              }}
+              onSelect={() => goNext(option.value, true, index)}
               onKeyDown={(event) => {
                 const lastOptionIndex = question.options.length - 1;
                 const nextIndex = (() => {
@@ -487,7 +481,6 @@ const AgentAskComposer = ({
                 if (nextIndex === undefined || nextIndex === index) return;
 
                 event.preventDefault();
-                setKeyboardFocusedOptionKey(`${questionKey}:${nextIndex}`);
                 optionRefs.current[nextIndex]?.focus();
               }}
             />
@@ -539,6 +532,11 @@ const AgentAskComposer = ({
                 const value = event.currentTarget.value;
                 setCustomValues((values) => ({ ...values, [questionKey]: value }));
                 setAnswers((answers) => ({ ...answers, [questionKey]: value }));
+                setSelectedOptionIndexes((indexes) => {
+                  const nextIndexes = { ...indexes };
+                  delete nextIndexes[questionKey];
+                  return nextIndexes;
+                });
               }}
             />
             {advanceButton}
@@ -576,7 +574,6 @@ const AgentAskComposer = ({
               }}
               _active={{ transform: 'none' }}
               isDisabled={isSubmitting || isQuestionTransitioning}
-              onMouseEnter={() => setHasInteracted(true)}
               onClick={selectCustom}
             >
               <Flex
