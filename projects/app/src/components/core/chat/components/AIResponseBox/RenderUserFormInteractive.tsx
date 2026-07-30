@@ -7,9 +7,7 @@ import React, { useCallback, useMemo } from 'react';
 import { resolveFormInputFileValues } from '../FormInputResult';
 import { FormInputComponent } from '../Interactive/InteractiveComponents';
 import InteractiveCard from './InteractiveCard';
-import RenderAgentAskInteractive from './RenderAgentAskInteractive';
 import { onSendPrompt } from './utils';
-import { isUserInputInteractiveSubmitted } from '../../ChatContainer/ChatBox/utils/interactive';
 
 /**
  * 从同条 AI 消息的 `responseData` 中查找某字段的 `formInputResult` 值（渲染层兜底）。
@@ -131,21 +129,12 @@ const RenderStandardUserFormInteractive = ({
   );
 };
 
-/** 渲染不同展示模式的 `userInput` interactive。 */
+/** 渲染标准 `userInput` 工作流交互表单。 */
 const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive({
   interactive,
   responseData,
   isLastChild
 }: RenderUserFormInteractiveProps) {
-  if (interactive.params.renderMode === 'agentAsk') {
-    return (
-      <RenderAgentAskInteractive
-        interactive={interactive}
-        submitted={isUserInputInteractiveSubmitted({ interactive, responseData, isLastChild })}
-      />
-    );
-  }
-
   return (
     <RenderStandardUserFormInteractive
       interactive={interactive}

@@ -26,7 +26,7 @@ export const extractDeepestInteractive = (
   let current = interactive;
   let depth = 0;
 
-  while (depth < MAX_DEPTH && 'childrenResponse' in current.params) {
+  while (depth < MAX_DEPTH && current?.params && 'childrenResponse' in current.params) {
     current = current.params.childrenResponse;
     depth++;
   }
@@ -171,6 +171,11 @@ export const getLastInteractiveValue = (
       return;
     }
 
+    const finalInteractive = extractDeepestInteractive(lastValue.interactive);
+    if (finalInteractive?.type === 'agentPlanAskQuery') {
+      return;
+    }
+
     if (isChildInteractive(lastValue.interactive.type)) {
       return lastValue.interactive;
     }
@@ -193,14 +198,6 @@ export const getLastInteractiveValue = (
     }
 
     if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
-      return lastValue.interactive;
-    }
-
-    // Legacy agent plan ask query (ask_user)
-    if (
-      lastValue.interactive.type === 'agentPlanAskQuery' &&
-      !lastValue.interactive.params.answer
-    ) {
       return lastValue.interactive;
     }
   }

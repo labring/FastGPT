@@ -6,7 +6,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import ChatBoxDivider from '../../../Divider';
 import DeletedItemsCollapse from '../../DeletedItemsCollapse';
 import { formatChatValue2InputType } from '../utils/chatValue';
@@ -114,22 +113,6 @@ const ChatRecordsList = ({
     return item.value.some((value) => hasAiAnswerContent(value as AIChatItemValueItemType));
   }, []);
 
-  const isAgentAskRecord = useCallback(
-    (item: ChatSiteItemType) =>
-      item.obj === ChatRoleEnum.AI &&
-      (item.value as AIChatItemValueItemType[]).some(({ interactive }) => {
-        if (!interactive) return false;
-
-        const finalInteractive = extractDeepestInteractive(interactive);
-        return (
-          finalInteractive.type === 'agentAsk' ||
-          (finalInteractive.type === 'userInput' &&
-            finalInteractive.params.renderMode === 'agentAsk')
-        );
-      }),
-    []
-  );
-
   const renderRecords = useMemo(() => {
     const result: Array<{ item: ChatSiteItemType; sourceIndex: number; lastSourceIndex: number }> =
       [];
@@ -188,9 +171,7 @@ const ChatRecordsList = ({
         const shouldRender = !item.deleteTime || expandedDeletedGroups.has(item.dataId);
         const previousRecord = records[sourceIndex - 1];
         const retryPreviousHuman =
-          previousRecord?.obj === ChatRoleEnum.Human
-            ? onRetry(previousRecord.dataId, isAgentAskRecord(item))
-            : undefined;
+          previousRecord?.obj === ChatRoleEnum.Human ? onRetry(previousRecord.dataId) : undefined;
 
         return (
           <Box key={getChatItemRenderKey(item)}>

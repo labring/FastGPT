@@ -290,6 +290,63 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(1);
   });
 
+  it('should reuse the original AI dataId for submit agentAsk', async () => {
+    const params = createPreChatRoundParams(
+      { responseChatItemId: 'client-new-data-id' },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    await MongoChat.create({
+      appId: testAppId,
+      chatId: params.chatId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: params.sourceType,
+      source: params.source
+    });
+    await MongoChatItem.create({
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: params.sourceType,
+      appId: testAppId,
+      chatId: params.chatId,
+      dataId: 'previous-helper-ai-data-id',
+      obj: ChatRoleEnum.AI,
+      value: []
+    });
+
+    const result = await preChatRound({
+      ...params,
+      interactive: {
+        type: 'agentAsk',
+        askId: 'chat-agent-helper-ask',
+        responseMode: 'submit',
+        params: {
+          description: 'Collect requirements',
+          questions: [
+            {
+              question: 'Audience?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ],
+              answer: ''
+            }
+          ]
+        }
+      } as any
+    });
+
+    expect(result.responseChatItemId).toBe('previous-helper-ai-data-id');
+    expect(result.shouldFinalizePreparedRound).toBe(false);
+    expect(
+      await MongoChatItem.countDocuments({
+        appId: testAppId,
+        chatId: params.chatId,
+        sourceType: params.sourceType
+      })
+    ).toBe(1);
+  });
+
   it('should mark chat as error when interactive continue has no previous AI item', async () => {
     const params = createPreChatRoundParams(
       {

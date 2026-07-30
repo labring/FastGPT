@@ -15,29 +15,10 @@ export const AgentAskOptionSchema = z.object({
 });
 export type AgentAskOption = z.infer<typeof AgentAskOptionSchema>;
 
-export const AgentAskQuestionSchema = z
-  .object({
-    question: z.string().trim().min(1),
-    options: z.array(AgentAskOptionSchema).min(2).max(4)
-  })
-  .superRefine(({ options }, ctx) => {
-    options.forEach((option, index) => {
-      if (options.findIndex(({ summary }) => summary === option.summary) !== index) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Ask option summaries must be unique.',
-          path: ['options', index, 'summary']
-        });
-      }
-      if (options.findIndex(({ value }) => value === option.value) !== index) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Ask option values must be unique.',
-          path: ['options', index, 'value']
-        });
-      }
-    });
-  });
+export const AgentAskQuestionSchema = z.object({
+  question: z.string().trim().min(1),
+  options: z.array(AgentAskOptionSchema).min(2).max(4)
+});
 export type AgentAskQuestion = z.infer<typeof AgentAskQuestionSchema>;
 
 export const AgentAskAnswerPayloadSchema = z.object({

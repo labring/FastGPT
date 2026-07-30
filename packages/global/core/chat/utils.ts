@@ -311,7 +311,10 @@ export const checkInteractiveResponseStatus = ({
   input: string;
 }): 'submit' | 'query' => {
   const finalInteractive = extractDeepestInteractive(interactive);
-  if (finalInteractive.type === 'agentPlanAskQuery' || finalInteractive.type === 'agentAsk') {
+  if (
+    finalInteractive.type === 'agentPlanAskQuery' ||
+    (finalInteractive.type === 'agentAsk' && finalInteractive.responseMode !== 'submit')
+  ) {
     return 'query';
   }
   return 'submit';

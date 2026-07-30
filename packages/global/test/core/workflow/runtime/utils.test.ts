@@ -834,7 +834,7 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should return interactive for agentPlanAskQuery', () => {
+  it('should ignore legacy agentPlanAskQuery', () => {
     const interactive = {
       type: 'agentPlanAskQuery',
       askId: 'call_ask',
@@ -853,7 +853,7 @@ describe('getLastInteractiveValue', () => {
         value: [{ text: { content: 'response' }, interactive }]
       }
     ];
-    expect(getLastInteractiveValue(histories)).toBe(interactive);
+    expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
   it('should return undefined for answered agentPlanAskQuery', () => {

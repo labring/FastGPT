@@ -10,7 +10,6 @@ import {
   ChatItemContext,
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
-import RenderAgentPlanAskInteractive from './RenderAgentPlanAskInteractive';
 import RenderAgentAskInteractive from './RenderAgentAskInteractive';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
@@ -182,16 +181,6 @@ const AIResponseBox = ({
       );
     }
 
-    // Legacy agent_ask
-    if (interactive.type === 'agentPlanAskQuery') {
-      responseBlocks.push(
-        <RenderAgentPlanAskInteractive
-          key="interactive"
-          interactive={interactive}
-          isLastChild={isLastChild}
-        />
-      );
-    }
     if (interactive.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />

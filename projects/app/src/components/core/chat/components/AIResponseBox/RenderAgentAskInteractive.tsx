@@ -7,35 +7,24 @@ import {
   Box,
   Flex
 } from '@chakra-ui/react';
-import type {
-  AgentAskInteractive,
-  UserInputInteractive
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentAskInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 
-/** 显示辅助生成或 Agent Loop ask 历史。 */
+/** 显示 Agent Ask 的只读历史。 */
 const RenderAgentAskInteractive = ({
   interactive,
   submitted
 }: {
-  interactive: UserInputInteractive | AgentAskInteractive;
+  interactive: AgentAskInteractive;
   submitted: boolean;
 }) => {
   const { t } = useTranslation();
-  const questions =
-    interactive.type === 'agentAsk'
-      ? interactive.params.questions.map((question) => ({
-          question: question.question,
-          options: question.options,
-          answer: question.answer
-        }))
-      : // ? form values from aux gen
-        interactive.params.inputForm.map((input) => ({
-          question: input.label,
-          options: input.list?.map((item) => ({ summary: item.label, value: item.value })) || [],
-          answer: input.value as string
-        }));
+  const questions = interactive.params.questions.map((question) => ({
+    question: question.question,
+    options: question.options,
+    answer: question.answer
+  }));
 
   if (!submitted) {
     return <Box color={'myGray.600'}>{t('chat:interactive.agent_ask.waiting')}</Box>;

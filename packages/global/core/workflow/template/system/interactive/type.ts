@@ -163,8 +163,6 @@ export const UserInputInteractiveSchema = z.object({
   params: z.object({
     description: z.string(),
     inputForm: z.array(UserInputFormItemSchema),
-    // 辅助生成的追问复用 userInput 提交。
-    renderMode: z.literal('agentAsk').optional(),
     submitted: z.boolean().optional()
   })
 });
@@ -178,6 +176,8 @@ export type AgentAskQuestionInteractive = z.infer<typeof AgentAskQuestionInterac
 export const AgentAskInteractiveSchema = z.object({
   type: z.literal('agentAsk'),
   askId: z.string().min(1),
+  // Only `submit` is used to provide compatibility with aux gen.
+  responseMode: z.enum(['query', 'submit']).optional(),
   params: z.object({
     description: z.string(),
     questions: z.array(AgentAskQuestionInteractiveSchema).min(1).max(3),
