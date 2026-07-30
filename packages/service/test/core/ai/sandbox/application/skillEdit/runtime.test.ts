@@ -116,7 +116,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/skill/prepare', ()
 
 vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
-    AGENT_SANDBOX_STORAGE_SIZE_GB: 1,
+    AGENT_SANDBOX_STORAGE_SIZE_GI: 1,
     AGENT_SANDBOX_MAX_EDIT_DEBUG: undefined
   }
 }));

@@ -103,8 +103,8 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_MEMORY_MIB: IntSchema.min(1).default(2048).meta({
       description: 'Agent Sandbox 实例的内存上限（MiB）'
     }),
-    AGENT_SANDBOX_STORAGE_SIZE_GB: NumSchema.min(1).default(1).meta({
-      description: 'Agent Sandbox 存储容量，单位 GB'
+    AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
+      description: 'Agent Sandbox 存储容量，单位 Gi'
     }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),

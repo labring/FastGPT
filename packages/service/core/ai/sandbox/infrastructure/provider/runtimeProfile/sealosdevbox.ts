@@ -43,7 +43,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
         if (createConfig.resourceLimits?.storageSize !== undefined) {
           return { storageSize: createConfig.resourceLimits.storageSize };
         }
-        return { storageSize: `${serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB}Gi` };
+        return { storageSize: `${serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI}Gi` };
       })();
       const resourceLimits = {
         cpuCount:

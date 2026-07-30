@@ -98,8 +98,8 @@ describe('storage', () => {
     });
 
     it('should reject zip buffers larger than the upload limit before uploading to S3', async () => {
-      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB;
-      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB = 0.296875;
+      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
 
       try {
         const tooLargeBuffer = Buffer.alloc(2 * 1024 * 1024 + 1);
@@ -116,7 +116,7 @@ describe('storage', () => {
         expect(getS3SkillSource).not.toHaveBeenCalled();
         expect(s3SkillSourceMocks.uploadPackageMock).not.toHaveBeenCalled();
       } finally {
-        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB = originalAgentSandboxStorageSize;
+        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
       }
     });
   });
@@ -152,8 +152,8 @@ describe('storage', () => {
     });
 
     it('aborts a stream whose actual bytes exceed the package limit', async () => {
-      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB;
-      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB = 0.296875;
+      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
       s3SkillSourceMocks.uploadPackageMock.mockImplementationOnce(async (params) => {
         await consumeStream(params.body);
         return { key: 'should-not-complete' };
@@ -169,7 +169,7 @@ describe('storage', () => {
           })
         ).rejects.toThrow(SkillErrEnum.archiveTooLarge);
       } finally {
-        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB = originalAgentSandboxStorageSize;
+        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
       }
     });
   });
@@ -209,8 +209,8 @@ describe('storage', () => {
     });
 
     it('fails while consuming an object larger than the package limit', async () => {
-      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB;
-      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB = 0.296875;
+      const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI;
+      serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = 0.296875;
       s3SkillSourceMocks.downloadObjectMock.mockResolvedValueOnce({
         body: Readable.from([Buffer.alloc(2 * 1024 * 1024), Buffer.from('x')])
       });
@@ -221,7 +221,7 @@ describe('storage', () => {
           'Skill package exceeds maximum allowed size'
         );
       } finally {
-        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB = originalAgentSandboxStorageSize;
+        serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI = originalAgentSandboxStorageSize;
       }
     });
   });

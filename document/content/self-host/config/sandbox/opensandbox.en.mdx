@@ -64,7 +64,7 @@ AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 # OpenSandbox persistent volume size. Effective only when creating new PVCs in Kubernetes mode.
-AGENT_SANDBOX_STORAGE_SIZE_GB=1
+AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
 
 If your `docker-compose.yml` already uses `x-agent-sandbox-config` to inject Agent Sandbox variables, fill these values in that anchor so both `fastgpt-app` and `fastgpt-pro` inherit the same configuration.

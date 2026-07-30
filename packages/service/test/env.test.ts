@@ -6,7 +6,7 @@ const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
   AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
   AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
-  AGENT_SANDBOX_STORAGE_SIZE_GB: process.env.AGENT_SANDBOX_STORAGE_SIZE_GB,
+  AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
   FE_DOMAIN: process.env.FE_DOMAIN,
   AGENT_SANDBOX_SUSPEND_MINUTES: process.env.AGENT_SANDBOX_SUSPEND_MINUTES,
   AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: process.env.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS,
@@ -40,7 +40,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GB', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GB);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', originalEnv.AGENT_SANDBOX_SUSPEND_MINUTES);
     vi.stubEnv(
@@ -262,19 +262,19 @@ describe('serviceEnv', () => {
 
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', undefined);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', undefined);
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GB', undefined);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', undefined);
     const defaultEnv = await importServiceEnv();
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(1);
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(2048);
-    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB).toBe(1);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(1);
 
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2.5');
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GB', '5');
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', '5');
     const customEnv = await importServiceEnv();
     expect(customEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(2.5);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(4096);
-    expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB).toBe(5);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(5);
   });
 
   it('validates Agent Sandbox lifecycle thresholds during service env init', async () => {
