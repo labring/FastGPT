@@ -69,9 +69,20 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":false}'
 ```
 
+如果 `failures` 中仅包含 `Sandbox source is missing or deleted`，并且已确认对应 App 或 Skill 确实不再存在，可以显式跳过这些残留 Sandbox：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false,"skipError":true}'
+```
+
+`skipError` 默认为 `false`，省略时保持严格迁移。该开关只跳过 source 已缺失或已软删除的整个分组，不会归档、删除或迁移其中的 Sandbox；跳过明细通过 `skippedCount` 和 `skipped` 返回。归档、对象存储、Provider 和并发控制等其他错误仍会阻断迁移。
+
 迁移会先执行 V4.15.0-beta6 的完整前置逻辑：补齐旧 Sandbox 的 `sourceType/sourceId`、清理遗留字段、删除无法归属的孤立资源，并清理缺失 `sourceType` 的旧 Skill Debug Chat 三表数据及私有、公开 Bucket 旧前缀。与 App 同 ID 的 Skill 会跳过 Chat 清理。两类数据重新统计后合计为 `normalization.pendingCount`；数量不为 `0` 时不会进入 Workspace 归档。归零后直接归档全部旧 Workspace 并清理旧计算资源，再迁移 Skill，最后按 App、用户聚合到用户级 Sandbox。只要归档阶段存在失败，安装阶段就不会开始。新的 Sandbox 会在 Workspace 安装完成后暂停，首次使用时再按正常流程启动。脚本可安全重试，已完成的归档和迁移不会重复执行；迁移完成后会保留旧归档和旧 MongoDB 记录作为备份。
 
-请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount` 和 `failures`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示本次迁移全部完成。
+请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount`、`failures`、`skippedCount` 和 `skipped`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示所有未跳过的 Sandbox 迁移完成；`skipped` 中的 Legacy 记录会保留且不会迁移。
 
 ### 4. 迁移手动 HTTP 工具数据
 

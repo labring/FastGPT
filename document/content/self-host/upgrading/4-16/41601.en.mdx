@@ -69,9 +69,20 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":false}'
 ```
 
+If every item in `failures` reports `Sandbox source is missing or deleted`, and you have confirmed that the corresponding Apps or Skills no longer exist, you can explicitly skip those stale Sandboxes:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false,"skipError":true}'
+```
+
+`skipError` defaults to `false`, so omitting it preserves strict migration behavior. The switch only skips an entire source group when that source is missing or soft-deleted. Sandboxes in the group are not archived, deleted, or migrated, and are reported through `skippedCount` and `skipped`. Archive, object storage, provider, concurrency-control, and all other errors remain blocking.
+
 The migration first runs all V4.15.0-beta6 normalization steps. It fills in `sourceType/sourceId` for legacy Sandboxes, removes obsolete fields, deletes orphaned resources that cannot be associated, and cleans up the three legacy Skill Debug Chat collections and old private/public Bucket prefixes when `sourceType` is missing. After recounting, the two categories are combined into `normalization.pendingCount`; Workspace archiving does not begin while the count is non-zero. Once normalization is complete, all legacy Workspaces are archived, old compute resources are cleaned up, Skills are migrated, and records are aggregated into user-level Sandboxes by App and user. Installation does not start if any archive operation fails. New Sandboxes are suspended after Workspace installation and start normally on first use. The script is safe to retry: completed archive and migration operations are not repeated. Old archives and MongoDB records are retained as backups after migration.
 
-Check `normalization.pendingCount`, `normalizationBlocked`, `failedCount`, and `failures` in the response. The migration is complete only when `normalization.pendingCount` and `failedCount` are both `0` and `normalizationBlocked` is `false`.
+Check `normalization.pendingCount`, `normalizationBlocked`, `failedCount`, `failures`, `skippedCount`, and `skipped` in the response. When both `normalization.pendingCount` and `failedCount` are `0` and `normalizationBlocked` is `false`, every non-skipped Sandbox has been migrated. Legacy records listed in `skipped` remain in place and are not migrated.
 
 ### 4. Migrate manual HTTP tool data
 
