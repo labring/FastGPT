@@ -29,7 +29,12 @@ export const mongoS3UploadSessionStore: S3UploadSessionStore = {
       }
     );
   },
-  markMultipartCompleting: async ({ tokenHash, completingAt, reclaimBefore }) => {
+  markMultipartCompleting: async ({
+    tokenHash,
+    completionAttemptId,
+    completingAt,
+    reclaimBefore
+  }) => {
     const statusFilter = reclaimBefore
       ? {
           $or: [
@@ -49,15 +54,20 @@ export const mongoS3UploadSessionStore: S3UploadSessionStore = {
       {
         $set: {
           'multipart.status': 'completing',
+          'multipart.completionAttemptId': completionAttemptId,
           'multipart.completingAt': completingAt
         }
       }
     );
-    return result.modifiedCount === 1;
+    return result.modifiedCount === 1 ? completionAttemptId : null;
   },
-  markMultipartCompleted: async ({ tokenHash, completedAt }) => {
+  markMultipartCompleted: async ({ tokenHash, completionAttemptId, completedAt }) => {
     const result = await MongoS3UploadSession.updateOne(
-      { tokenHash, 'multipart.status': 'completing' },
+      {
+        tokenHash,
+        'multipart.status': 'completing',
+        'multipart.completionAttemptId': completionAttemptId
+      },
       {
         $set: {
           'multipart.status': 'completed',
@@ -67,9 +77,13 @@ export const mongoS3UploadSessionStore: S3UploadSessionStore = {
     );
     return result.modifiedCount === 1;
   },
-  markMultipartCompleteFailed: async ({ tokenHash, abortedAt }) => {
+  markMultipartCompleteFailed: async ({ tokenHash, completionAttemptId, abortedAt }) => {
     const result = await MongoS3UploadSession.updateOne(
-      { tokenHash, 'multipart.status': 'completing' },
+      {
+        tokenHash,
+        'multipart.status': 'completing',
+        'multipart.completionAttemptId': completionAttemptId
+      },
       {
         $set: {
           'multipart.status': 'aborted',

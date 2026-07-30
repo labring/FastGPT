@@ -150,6 +150,42 @@ describe('S3FileUploader', () => {
     ]);
   });
 
+  it('preserves relative, protocol-relative, and fragment URL forms', async () => {
+    const put = vi.spyOn(axios, 'put').mockImplementation(
+      async (url) =>
+        ({
+          status: 200,
+          data: { data: { etag: `etag-${String(url)}` } }
+        }) as any
+    );
+    vi.spyOn(axios, 'post').mockResolvedValue({ status: 200, data: {} } as any);
+
+    const relativeUploader = new S3FileUploader({
+      ...createUploadParams({
+        file: new File(['a'], 'small.txt'),
+        partSize: 1,
+        concurrency: 1,
+        url: 'uploads/token?session=abc#signature'
+      }),
+      maxRetry: 0
+    });
+    await relativeUploader.upload();
+
+    const protocolRelativeUploader = new S3FileUploader({
+      ...createUploadParams({
+        file: new File(['a'], 'small.txt'),
+        partSize: 1,
+        concurrency: 1,
+        url: '//cdn.example.com/token?session=abc'
+      }),
+      maxRetry: 0
+    });
+    await protocolRelativeUploader.upload();
+
+    expect(String(put.mock.calls[0]?.[0])).toBe('uploads/token?session=abc&partNumber=1#signature');
+    expect(String(put.mock.calls[1]?.[0])).toBe('//cdn.example.com/token?session=abc&partNumber=1');
+  });
+
   it('retries only the failed part and resets its progress before retrying', async () => {
     const attempts = new Map<number, number>();
     const progress: number[] = [];
@@ -268,6 +304,25 @@ describe('S3FileUploader', () => {
     expect(post.mock.calls[0]?.[2]).not.toHaveProperty('signal');
   });
 
+  it('exposes an independent best-effort abort for a presigned multipart session', async () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({ status: 200, data: {} } as any);
+    const controller = new AbortController();
+    controller.abort();
+    const uploader = new S3FileUploader({
+      ...createUploadParams(),
+      signal: controller.signal
+    });
+
+    await uploader.abort();
+
+    expect(post).toHaveBeenCalledWith(
+      '/api/system/file/u/token/abort',
+      undefined,
+      expect.objectContaining({ timeout: expect.any(Number) })
+    );
+    expect(post.mock.calls[0]?.[2]).not.toHaveProperty('signal');
+  });
+
   it('maps non-cancel part failures after abort cleanup', async () => {
     const put = vi.spyOn(axios, 'put').mockRejectedValue(new Error('network failure'));
     const post = vi.spyOn(axios, 'post').mockResolvedValue({ status: 200, data: {} } as any);
@@ -300,6 +355,16 @@ describe('S3FileUploader', () => {
     });
     await expect(emptyFileUploader.upload()).rejects.toThrow(
       'Multipart file size must be a positive integer'
+    );
+
+    const tooManyPartsUploader = new S3FileUploader({
+      ...createUploadParams({
+        file: new File(['a'.repeat(10001)], 'too-many-parts.txt'),
+        partSize: 1
+      })
+    });
+    await expect(tooManyPartsUploader.upload()).rejects.toThrow(
+      'Multipart upload cannot exceed 10000 parts'
     );
     expect(put).not.toHaveBeenCalled();
   });

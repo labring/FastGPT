@@ -9,6 +9,16 @@ const S3MultipartTTLSchema = new Schema(
       type: String,
       required: true,
       trim: true
+    },
+    objectMarker: {
+      type: String,
+      required: false,
+      trim: true
+    },
+    totalSize: {
+      type: Number,
+      required: false,
+      min: 1
     }
   },
   { _id: false }

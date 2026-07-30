@@ -1184,6 +1184,7 @@
   "upgrade": "upgrade",
   "upload_file": "Upload File",
   "upload_file_error": "File Upload Failed",
+  "empty_file": "Empty files cannot be uploaded",
   "usage_records": "Usage records",
   "user.Account": "Account",
   "user.No_right_to_reset_password": "You do not have the right to reset the password",

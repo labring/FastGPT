@@ -92,7 +92,7 @@ describe('readFileRawTextByUrl', () => {
     vi.useRealTimers();
   });
 
-  it('保留 30 秒建连 timeout，并在流结束后解析文件内容', async () => {
+  it('在统一下载 deadline 内保留 30 秒建连 timeout，并在流结束后解析文件内容', async () => {
     mocks.axios.mockResolvedValue({
       data: Readable.from([Buffer.from('pdf-content')])
     });
@@ -115,7 +115,7 @@ describe('readFileRawTextByUrl', () => {
     );
   });
 
-  it('流读取超过后端有效 timeout 时终止下载并返回对应秒数', async () => {
+  it('流读取超过后端有效 timeout 时终止下载并抛出 Error', async () => {
     const stream = new PassThrough();
     mocks.axios.mockResolvedValue({ data: stream });
 
@@ -126,7 +126,7 @@ describe('readFileRawTextByUrl', () => {
       relatedId: 'external-file-a',
       datasetId: 'dataset-a'
     });
-    const resultAssertion = expect(resultPromise).rejects.toBe(
+    const resultAssertion = expect(resultPromise).rejects.toThrow(
       'File download timeout after 600 seconds'
     );
 

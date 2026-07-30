@@ -1173,6 +1173,7 @@
   "upgrade": "升級",
   "upload_file": "上傳檔案",
   "upload_file_error": "上傳檔案失敗",
+  "empty_file": "不能上傳空檔案",
   "user.Account": "帳戶",
   "user.No_right_to_reset_password": "沒有重置密碼的權限",
   "user.Old password is error": "舊密碼錯誤",

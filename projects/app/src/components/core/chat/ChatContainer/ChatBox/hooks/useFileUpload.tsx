@@ -355,17 +355,6 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           const { key, previewUrl } = uploadResult;
 
           task.key = key;
-          if (
-            !canApplyUploadResult({
-              files: fileListRef.current,
-              uploadId,
-              canceled: task.canceled
-            })
-          ) {
-            return;
-          }
-
-          // Upload File to S3
           const uploader = new S3FileUploader({
             ...uploadResult,
             file: rawFile,
@@ -377,6 +366,18 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
             signal: task.controller.signal,
             t
           });
+          if (
+            !canApplyUploadResult({
+              files: fileListRef.current,
+              uploadId,
+              canceled: task.canceled
+            })
+          ) {
+            await uploader.abort();
+            return;
+          }
+
+          // Upload File to S3
           await uploader.upload();
 
           // Update file url and key

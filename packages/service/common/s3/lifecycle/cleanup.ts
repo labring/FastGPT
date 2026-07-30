@@ -40,7 +40,9 @@ export async function clearExpiredMinioFiles() {
             // Multipart TTL 只代表未完成的远端分片，不应提交最终对象删除任务。
             await bucket.abortMultipartUploadByUploadId({
               key: file.minioKey,
-              uploadId: multipartUploadId
+              uploadId: multipartUploadId,
+              objectMarker: file.multipart?.objectMarker,
+              totalSize: file.multipart?.totalSize
             });
           } else {
             await bucket.addDeleteJob({ key: file.minioKey });

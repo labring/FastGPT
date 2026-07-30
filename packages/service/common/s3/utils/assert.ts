@@ -59,6 +59,28 @@ export const getExpectedMultipartPartLength = ({
 
 /** 将对象存储返回的常见“对象不存在”错误转换为可幂等处理的判断结果。 */
 export const isFileNotFoundError = (error: unknown): boolean => {
+  if (error && typeof error === 'object') {
+    const value = error as {
+      code?: unknown;
+      name?: unknown;
+      status?: unknown;
+      statusCode?: unknown;
+      $metadata?: { httpStatusCode?: unknown };
+    };
+    const statusCodes = [value.status, value.statusCode, value.$metadata?.httpStatusCode].map(
+      (status) => Number(status)
+    );
+    if (statusCodes.includes(404)) return true;
+
+    if (
+      [value.code, value.name].some((item) =>
+        ['NotFound', 'NoSuchKey', 'NoSuchObject'].includes(String(item))
+      )
+    ) {
+      return true;
+    }
+  }
+
   if (error instanceof S3Error) {
     return (
       error.code === 'NoSuchKey' ||

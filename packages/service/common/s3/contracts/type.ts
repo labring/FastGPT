@@ -97,7 +97,11 @@ export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrl
 
 export const CreateMultipartUploadAccessUrlParamsSchema = CreatePostPresignedUrlParamsSchema.extend(
   {
-    size: z.number().int().positive()
+    size: z
+      .number()
+      .int()
+      .positive()
+      .refine(Number.isSafeInteger, 'Multipart size must be a safe integer')
   }
 );
 export type CreateMultipartUploadAccessUrlParams = z.infer<
@@ -106,7 +110,12 @@ export type CreateMultipartUploadAccessUrlParams = z.infer<
 
 export const CreateMultipartUploadAccessUrlOptionsSchema =
   CreatePostPresignedUrlOptionsSchema.extend({
-    partSize: z.number().int().positive().optional(),
+    partSize: z
+      .number()
+      .int()
+      .positive()
+      .refine(Number.isSafeInteger, 'Multipart part size must be a safe integer')
+      .optional(),
     concurrency: z.number().int().positive().optional(),
     maxRetry: z.number().int().nonnegative().optional()
   });

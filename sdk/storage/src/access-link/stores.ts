@@ -21,11 +21,20 @@ export type S3UploadSessionStore = {
   markUsed: (params: { tokenHash: string; usedAt: Date }) => Promise<void>;
   markMultipartCompleting: (params: {
     tokenHash: string;
+    completionAttemptId: string;
     completingAt: Date;
     reclaimBefore?: Date;
+  }) => Promise<string | null>;
+  markMultipartCompleted: (params: {
+    tokenHash: string;
+    completionAttemptId: string;
+    completedAt: Date;
   }) => Promise<boolean>;
-  markMultipartCompleted: (params: { tokenHash: string; completedAt: Date }) => Promise<boolean>;
-  markMultipartCompleteFailed: (params: { tokenHash: string; abortedAt: Date }) => Promise<boolean>;
+  markMultipartCompleteFailed: (params: {
+    tokenHash: string;
+    completionAttemptId: string;
+    abortedAt: Date;
+  }) => Promise<boolean>;
   markMultipartAborted: (params: { tokenHash: string; abortedAt: Date }) => Promise<boolean>;
   revoke: (params: { tokenHash: string; revokedAt: Date }) => Promise<void>;
 };

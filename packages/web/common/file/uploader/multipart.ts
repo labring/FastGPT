@@ -80,6 +80,11 @@ const postMultipartAbort = (abortUrl: string) =>
     timeout: MULTIPART_REQUEST_TIMEOUT
   });
 
+/** 使用独立请求清理 Multipart session；调用方可在 presign 返回后但上传尚未开始时使用。 */
+export const abortMultipartFile = async (abortUrl: string) => {
+  await postMultipartAbort(abortUrl);
+};
+
 /** 执行 Multipart 分片调度、完成和失败后的远端清理。 */
 export const uploadMultipartFile = async (params: S3FileUploaderMultipartParams): Promise<void> => {
   const partCount = getMultipartPartCount(params.file.size, params.partSize);
@@ -167,7 +172,7 @@ export const uploadMultipartFile = async (params: S3FileUploaderMultipartParams)
   } catch (error) {
     const uploadError = firstUploadError ?? error;
 
-    await postMultipartAbort(params.abortUrl).catch(() => undefined);
+    await abortMultipartFile(params.abortUrl).catch(() => undefined);
     if (isUploadAbortError(uploadError, params.signal)) {
       throw uploadError;
     }

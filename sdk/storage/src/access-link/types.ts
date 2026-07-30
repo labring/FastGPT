@@ -5,6 +5,7 @@ export type S3AccessLinkClock = () => Date;
 export type S3AccessLinkIdGenerator = {
   aliasId: () => string;
   uploadToken: () => string;
+  multipartCompletionAttemptId: () => string;
 };
 
 export type S3AccessLinkRoutes = {
@@ -50,6 +51,8 @@ export type S3MultipartUploadSession = {
   partSize: number;
   totalSize: number;
   status: 'active' | 'completing' | 'completed' | 'aborted';
+  /** 当前 completion owner 的 fencing token；旧 worker 不能使用新 token 写终态。 */
+  completionAttemptId?: string;
   completingAt?: Date;
   completedAt?: Date;
   abortedAt?: Date;
@@ -197,9 +200,17 @@ export type S3AccessLinkService = {
     token: string;
     completingAt?: Date;
     reclaimBefore?: Date;
+  }) => Promise<string | null>;
+  markMultipartCompleted: (params: {
+    token: string;
+    completionAttemptId: string;
+    completedAt?: Date;
   }) => Promise<boolean>;
-  markMultipartCompleted: (params: { token: string; completedAt?: Date }) => Promise<boolean>;
-  markMultipartCompleteFailed: (params: { token: string; abortedAt?: Date }) => Promise<boolean>;
+  markMultipartCompleteFailed: (params: {
+    token: string;
+    completionAttemptId: string;
+    abortedAt?: Date;
+  }) => Promise<boolean>;
   markMultipartAborted: (params: { token: string; abortedAt?: Date }) => Promise<boolean>;
   revokeUploadToken: (token: string) => Promise<void>;
 };

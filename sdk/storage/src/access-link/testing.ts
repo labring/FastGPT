@@ -28,6 +28,9 @@ const cloneUploadSession = (record: S3UploadSessionRecord): S3UploadSessionRecor
     ? {
         multipart: {
           ...record.multipart,
+          ...(record.multipart.completionAttemptId
+            ? { completionAttemptId: record.multipart.completionAttemptId }
+            : {}),
           ...(record.multipart.completingAt
             ? { completingAt: cloneDate(record.multipart.completingAt) }
             : {}),
@@ -153,7 +156,12 @@ export const createMemoryS3AccessLinkStores = (): MemoryS3AccessLinkStores => {
         usedAt
       });
     },
-    markMultipartCompleting: async ({ tokenHash, completingAt, reclaimBefore }) => {
+    markMultipartCompleting: async ({
+      tokenHash,
+      completionAttemptId,
+      completingAt,
+      reclaimBefore
+    }) => {
       const record = uploadSessions.get(tokenHash);
       const multipart = record?.multipart;
       const canReclaimCompleting =
@@ -161,21 +169,28 @@ export const createMemoryS3AccessLinkStores = (): MemoryS3AccessLinkStores => {
         !!reclaimBefore &&
         (!multipart.completingAt || multipart.completingAt.getTime() <= reclaimBefore.getTime());
       if (!record || !multipart || (multipart.status !== 'active' && !canReclaimCompleting)) {
-        return false;
+        return null;
       }
       uploadSessions.set(tokenHash, {
         ...record,
         multipart: {
           ...multipart,
           status: 'completing',
+          completionAttemptId,
           completingAt
         }
       });
-      return true;
+      return completionAttemptId;
     },
-    markMultipartCompleted: async ({ tokenHash, completedAt }) => {
+    markMultipartCompleted: async ({ tokenHash, completionAttemptId, completedAt }) => {
       const record = uploadSessions.get(tokenHash);
-      if (!record?.multipart || record.multipart.status !== 'completing') return false;
+      if (
+        !record?.multipart ||
+        record.multipart.status !== 'completing' ||
+        record.multipart.completionAttemptId !== completionAttemptId
+      ) {
+        return false;
+      }
       uploadSessions.set(tokenHash, {
         ...record,
         multipart: {
@@ -186,9 +201,15 @@ export const createMemoryS3AccessLinkStores = (): MemoryS3AccessLinkStores => {
       });
       return true;
     },
-    markMultipartCompleteFailed: async ({ tokenHash, abortedAt }) => {
+    markMultipartCompleteFailed: async ({ tokenHash, completionAttemptId, abortedAt }) => {
       const record = uploadSessions.get(tokenHash);
-      if (!record?.multipart || record.multipart.status !== 'completing') return false;
+      if (
+        !record?.multipart ||
+        record.multipart.status !== 'completing' ||
+        record.multipart.completionAttemptId !== completionAttemptId
+      ) {
+        return false;
+      }
       uploadSessions.set(tokenHash, {
         ...record,
         multipart: {

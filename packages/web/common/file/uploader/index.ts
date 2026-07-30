@@ -1,4 +1,4 @@
-import { uploadMultipartFile } from './multipart';
+import { abortMultipartFile, uploadMultipartFile } from './multipart';
 import { uploadSingleFile } from './single';
 import type { S3FileUploaderParams } from './types';
 
@@ -17,6 +17,12 @@ export class S3FileUploader {
     }
 
     return uploadSingleFile(this.params);
+  }
+
+  /** 最佳努力清理已签发但尚未开始或已中断的 Multipart session。 */
+  async abort(): Promise<void> {
+    if (this.params.uploadMode !== 'multipart') return;
+    await abortMultipartFile(this.params.abortUrl).catch(() => undefined);
   }
 }
 

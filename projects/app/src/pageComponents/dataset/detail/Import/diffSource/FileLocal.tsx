@@ -78,18 +78,28 @@ const SelectFile = React.memo(function SelectFile() {
             uploadControllers.current.set(fileId, controller);
 
             try {
-              const uploadResult = await getUploadDatasetFilePresignedUrl({
-                filename: file.name,
-                datasetId,
-                size: file.size
-              });
+              const uploadResult = await getUploadDatasetFilePresignedUrl(
+                {
+                  filename: file.name,
+                  datasetId,
+                  size: file.size
+                },
+                {
+                  cancelToken: controller
+                }
+              );
 
               const updateProgress = (loaded: number, total: number) => {
                 if (!total) return;
                 const percent = Math.min(100, Math.round((loaded / total) * 100));
                 setSelectFiles((state) =>
                   state.map((item) =>
-                    item.id === fileId ? { ...item, uploadedFileRate: percent } : item
+                    item.id === fileId
+                      ? {
+                          ...item,
+                          uploadedFileRate: Math.max(item.uploadedFileRate ?? 0, percent)
+                        }
+                      : item
                   )
                 );
               };
@@ -101,6 +111,10 @@ const SelectFile = React.memo(function SelectFile() {
                 onProgress: updateProgress,
                 t
               });
+              if (controller.signal.aborted) {
+                await uploader.abort();
+                return;
+              }
               await uploader.upload();
 
               setSelectFiles((state) =>

@@ -5,5 +5,7 @@ export type S3TtlSchemaType = {
   expiredTime: Date;
   multipart?: {
     uploadId: string;
+    objectMarker?: string;
+    totalSize?: number;
   };
 };

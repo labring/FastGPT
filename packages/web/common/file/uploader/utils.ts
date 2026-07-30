@@ -1,7 +1,5 @@
 import axios from 'axios';
-
-const URL_PARSER_BASE = 'http://fastgpt-keep-pathname.dev';
-const URL_PROTOCOL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
+import { MAX_MULTIPART_PART_COUNT } from '@fastgpt/global/common/file/constants';
 
 /** 创建统一的上传取消错误，兼容没有 DOMException 的运行环境。 */
 export const createMultipartAbortError = () => {
@@ -43,7 +41,16 @@ export const getMultipartPartCount = (fileSize: number, partSize: number) => {
     throw new Error('Multipart part size must be a positive integer');
   }
 
-  return Math.ceil(fileSize / partSize);
+  if (!Number.isSafeInteger(fileSize) || !Number.isSafeInteger(partSize)) {
+    throw new Error('Multipart file size and part size must be safe integers');
+  }
+
+  const partCount = Math.ceil(fileSize / partSize);
+  if (partCount > MAX_MULTIPART_PART_COUNT) {
+    throw new Error(`Multipart upload cannot exceed ${MAX_MULTIPART_PART_COUNT} parts`);
+  }
+
+  return partCount;
 };
 
 /** 根据 part number 计算 File.slice 的边界，只有最后一个分片可以小于 partSize。 */
@@ -76,14 +83,16 @@ export const appendUrlSearchParam = ({
   key: string;
   value: string;
 }) => {
-  const parsedUrl = new URL(url, URL_PARSER_BASE);
-  parsedUrl.searchParams.set(key, value);
+  const hashIndex = url.indexOf('#');
+  const hash = hashIndex === -1 ? '' : url.slice(hashIndex);
+  const urlWithoutHash = hashIndex === -1 ? url : url.slice(0, hashIndex);
+  const queryIndex = urlWithoutHash.indexOf('?');
+  const pathname = queryIndex === -1 ? urlWithoutHash : urlWithoutHash.slice(0, queryIndex);
+  const query = queryIndex === -1 ? '' : urlWithoutHash.slice(queryIndex + 1);
+  const searchParams = new URLSearchParams(query);
+  searchParams.set(key, value);
 
-  if (URL_PROTOCOL_PATTERN.test(url) || url.startsWith('//')) {
-    return parsedUrl.toString();
-  }
-
-  return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+  return `${pathname}?${searchParams.toString()}${hash}`;
 };
 
 /** 等待当前分片的指数退避时间，并允许取消立即结束等待。 */

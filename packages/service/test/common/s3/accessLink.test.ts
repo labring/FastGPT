@@ -373,8 +373,11 @@ describe('s3 access link', () => {
         totalSize: 50 * 1024 * 1024
       }
     });
-    expect(await markS3MultipartUploadCompleting(token)).toBe(true);
-    expect(await markS3MultipartUploadCompleted(token, completedAt)).toBe(true);
+    const completionAttemptId = await markS3MultipartUploadCompleting(token);
+    expect(completionAttemptId).toEqual(expect.any(String));
+    expect(await markS3MultipartUploadCompleted(token, completionAttemptId!, completedAt)).toBe(
+      true
+    );
     expect(await markS3MultipartUploadAborted(token)).toBe(false);
 
     const session = await MongoS3UploadSession.findOne({}).lean();
@@ -383,6 +386,61 @@ describe('s3 access link', () => {
       status: 'completed',
       completedAt
     });
+  });
+
+  it('restricts Multipart create payloads to active sessions within size and part limits', async () => {
+    const { CreateS3UploadAccessUrlParamsSchema } = await loadAccessLinkModules();
+    const baseParams = {
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/large-file.pdf',
+      expiredTime: getFutureDate(30),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-1',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active' as const
+      }
+    };
+
+    expect(
+      CreateS3UploadAccessUrlParamsSchema.safeParse({
+        ...baseParams,
+        multipart: { ...baseParams.multipart, status: 'completed' }
+      }).success
+    ).toBe(false);
+    expect(
+      CreateS3UploadAccessUrlParamsSchema.safeParse({
+        ...baseParams,
+        multipart: {
+          ...baseParams.multipart,
+          totalSize: baseParams.maxSize + 1
+        }
+      }).success
+    ).toBe(false);
+    expect(
+      CreateS3UploadAccessUrlParamsSchema.safeParse({
+        ...baseParams,
+        maxSize: 10001,
+        multipart: {
+          ...baseParams.multipart,
+          partSize: 1,
+          totalSize: 10001
+        }
+      }).success
+    ).toBe(false);
+    expect(
+      CreateS3UploadAccessUrlParamsSchema.safeParse({
+        ...baseParams,
+        multipart: {
+          ...baseParams.multipart,
+          completedAt: new Date()
+        }
+      }).success
+    ).toBe(false);
   });
 
   it('marks an active multipart session aborted idempotently', async () => {
@@ -411,7 +469,7 @@ describe('s3 access link', () => {
 
     expect(await markS3MultipartUploadAborted(token)).toBe(true);
     expect(await markS3MultipartUploadAborted(token)).toBe(false);
-    expect(await markS3MultipartUploadCompleted(token)).toBe(false);
+    expect(await markS3MultipartUploadCompleted(token, 'stale-attempt')).toBe(false);
 
     const session = await MongoS3UploadSession.findOne({}).lean();
     expect(session?.multipart?.status).toBe('aborted');

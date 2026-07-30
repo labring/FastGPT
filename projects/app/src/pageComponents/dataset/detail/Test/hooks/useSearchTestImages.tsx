@@ -57,8 +57,16 @@ export const useSearchTestImages = ({
         .catch(() => undefined));
     const maxImageSize =
       (planStatus?.standard?.maxUploadFileSize ?? uploadFileMaxSize ?? 500) * 1024 * 1024;
-    const validImageFiles = imageFiles.filter((file) => file.size <= maxImageSize);
-    if (validImageFiles.length < imageFiles.length) {
+    const nonEmptyImageFiles = imageFiles.filter((file) => file.size > 0);
+    if (nonEmptyImageFiles.length < imageFiles.length) {
+      toast({
+        status: 'warning',
+        title: t('file:empty_file')
+      });
+    }
+
+    const validImageFiles = nonEmptyImageFiles.filter((file) => file.size <= maxImageSize);
+    if (validImageFiles.length < nonEmptyImageFiles.length) {
       toast({
         status: 'warning',
         title: t('file:some_file_size_exceeds_limit', {

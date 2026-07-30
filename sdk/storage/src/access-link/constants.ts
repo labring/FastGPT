@@ -2,6 +2,7 @@ export const S3_DOWNLOAD_ALIAS_SIGN_VERSION = 'v1';
 export const S3_DOWNLOAD_ALIAS_ID_LENGTH = 16;
 export const S3_DOWNLOAD_SIGNATURE_LENGTH = 22;
 export const S3_UPLOAD_TOKEN_LENGTH = 22;
+export const S3_MULTIPART_MAX_PART_COUNT = 10_000;
 export const S3_DOWNLOAD_URL_BATCH_MAX_SIZE = 500;
 export const S3_ACCESS_LINK_PURGE_GRACE_HOURS = 24;
 // 在 alias 距离新链接过期时间只剩 1 小时时续租，避免每次签发都写 store。

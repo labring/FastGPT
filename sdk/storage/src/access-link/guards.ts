@@ -1,4 +1,8 @@
-import { S3_SIGNED_DOWNLOAD_ALIAS_PATTERN, S3_UPLOAD_TOKEN_PATTERN } from './constants';
+import {
+  S3_MULTIPART_MAX_PART_COUNT,
+  S3_SIGNED_DOWNLOAD_ALIAS_PATTERN,
+  S3_UPLOAD_TOKEN_PATTERN
+} from './constants';
 import { S3AccessLinkErrCode, S3AccessLinkError, type S3AccessLinkErrorCode } from './errors';
 import type {
   CreateS3DownloadAccessUrlParams,
@@ -51,18 +55,22 @@ const assertNonNegativeNumber = (value: unknown, code: S3AccessLinkErrorCode): n
 
 const assertPositiveInteger = (value: unknown, code: S3AccessLinkErrorCode): number => {
   const result = assertPositiveNumber(value, code);
-  if (!Number.isInteger(result)) throw new S3AccessLinkError(code);
+  if (!Number.isSafeInteger(result)) throw new S3AccessLinkError(code);
   return result;
 };
 
 const assertMultipartSession = (
   value: unknown,
-  code: S3AccessLinkErrorCode
+  code: S3AccessLinkErrorCode,
+  mode: 'create' | 'read' = 'read'
 ): S3MultipartUploadSession | undefined => {
   if (value === undefined) return undefined;
   if (!isRecord(value)) throw new S3AccessLinkError(code);
 
   const status = value.status;
+  if (mode === 'create' && status !== 'active') {
+    throw new S3AccessLinkError(code);
+  }
   if (
     status !== 'active' &&
     status !== 'completing' &&
@@ -72,11 +80,26 @@ const assertMultipartSession = (
     throw new S3AccessLinkError(code);
   }
 
+  const totalSize = assertPositiveInteger(value.totalSize, code);
+  const partSize = assertPositiveInteger(value.partSize, code);
+  if (Math.ceil(totalSize / partSize) > S3_MULTIPART_MAX_PART_COUNT) {
+    throw new S3AccessLinkError(code);
+  }
+  if (
+    mode === 'create' &&
+    ['completionAttemptId', 'completingAt', 'completedAt', 'abortedAt'].some((key) => key in value)
+  ) {
+    throw new S3AccessLinkError(code);
+  }
+
   return {
     uploadId: assertNonEmptyString(value.uploadId, code),
-    partSize: assertPositiveInteger(value.partSize, code),
-    totalSize: assertPositiveInteger(value.totalSize, code),
+    partSize,
+    totalSize,
     status,
+    ...(value.completionAttemptId !== undefined
+      ? { completionAttemptId: assertNonEmptyString(value.completionAttemptId, code) }
+      : {}),
     ...(value.completingAt !== undefined
       ? { completingAt: assertDate(value.completingAt, code) }
       : {}),
@@ -271,11 +294,24 @@ export const assertCreateUploadParams = (
 ): CreateS3UploadAccessUrlParams => {
   if (!isRecord(params)) throw new S3AccessLinkError(S3AccessLinkErrCode.uploadSessionNotFound);
 
+  const maxSize = assertPositiveInteger(params.maxSize, S3AccessLinkErrCode.uploadSessionNotFound);
+  const multipart =
+    params.multipart === undefined
+      ? undefined
+      : assertMultipartSession(
+          params.multipart,
+          S3AccessLinkErrCode.uploadSessionNotFound,
+          'create'
+        );
+  if (multipart && multipart.totalSize > maxSize) {
+    throw new S3AccessLinkError(S3AccessLinkErrCode.uploadSessionNotFound);
+  }
+
   return {
     bucketName: assertNonEmptyString(params.bucketName, S3AccessLinkErrCode.uploadSessionNotFound),
     objectKey: assertNonEmptyString(params.objectKey, S3AccessLinkErrCode.uploadSessionNotFound),
     expiredTime: assertDate(params.expiredTime, S3AccessLinkErrCode.uploadSessionNotFound),
-    maxSize: assertPositiveNumber(params.maxSize, S3AccessLinkErrCode.uploadSessionNotFound),
+    maxSize,
     uploadPolicy: assertUploadPolicy(
       params.uploadPolicy,
       S3AccessLinkErrCode.uploadSessionNotFound
@@ -285,14 +321,7 @@ export const assertCreateUploadParams = (
           fileHint: assertUploadFileHint(params.fileHint, S3AccessLinkErrCode.uploadSessionNotFound)
         }
       : {}),
-    ...(params.multipart !== undefined
-      ? {
-          multipart: assertMultipartSession(
-            params.multipart,
-            S3AccessLinkErrCode.uploadSessionNotFound
-          )
-        }
-      : {}),
+    ...(multipart !== undefined ? { multipart } : {}),
     ...(params.metadata !== undefined
       ? {
           metadata: assertStringRecord(params.metadata, S3AccessLinkErrCode.uploadSessionNotFound)
@@ -310,10 +339,19 @@ export const assertUploadTokenFormat = (token: string) => {
 export const assertUploadPayload = (payload: S3ProxyUploadPayload): S3ProxyUploadPayload => {
   if (!isRecord(payload)) throw new S3AccessLinkError(S3AccessLinkErrCode.uploadSessionNotFound);
 
+  const maxSize = assertPositiveInteger(payload.maxSize, S3AccessLinkErrCode.uploadSessionNotFound);
+  const multipart =
+    payload.multipart === undefined
+      ? undefined
+      : assertMultipartSession(payload.multipart, S3AccessLinkErrCode.uploadSessionNotFound);
+  if (multipart && multipart.totalSize > maxSize) {
+    throw new S3AccessLinkError(S3AccessLinkErrCode.uploadSessionNotFound);
+  }
+
   return {
     bucketName: assertNonEmptyString(payload.bucketName, S3AccessLinkErrCode.uploadSessionNotFound),
     objectKey: assertNonEmptyString(payload.objectKey, S3AccessLinkErrCode.uploadSessionNotFound),
-    maxSize: assertPositiveNumber(payload.maxSize, S3AccessLinkErrCode.uploadSessionNotFound),
+    maxSize,
     uploadPolicy: assertUploadPolicy(
       payload.uploadPolicy,
       S3AccessLinkErrCode.uploadSessionNotFound
@@ -326,14 +364,7 @@ export const assertUploadPayload = (payload: S3ProxyUploadPayload): S3ProxyUploa
           )
         }
       : {}),
-    ...(payload.multipart !== undefined
-      ? {
-          multipart: assertMultipartSession(
-            payload.multipart,
-            S3AccessLinkErrCode.uploadSessionNotFound
-          )
-        }
-      : {}),
+    ...(multipart !== undefined ? { multipart } : {}),
     ...(payload.metadata !== undefined
       ? {
           metadata: assertStringRecord(payload.metadata, S3AccessLinkErrCode.uploadSessionNotFound)

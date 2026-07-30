@@ -87,6 +87,7 @@ export const markMultipartCompletingHandler =
   ({
     clock,
     crypto,
+    idGenerator,
     stores
   }: ResolvedS3AccessLinkServiceOptions & { crypto: S3AccessLinkCrypto }) =>
   async ({
@@ -99,8 +100,10 @@ export const markMultipartCompletingHandler =
     reclaimBefore?: Date;
   }) => {
     assertUploadTokenFormat(token);
+    const completionAttemptId = idGenerator.multipartCompletionAttemptId();
     return stores.uploadSession.markMultipartCompleting({
       tokenHash: crypto.hashUploadToken(token),
+      completionAttemptId,
       completingAt: completingAt ?? clock(),
       reclaimBefore
     });
@@ -112,10 +115,19 @@ export const markMultipartCompletedHandler =
     crypto,
     stores
   }: ResolvedS3AccessLinkServiceOptions & { crypto: S3AccessLinkCrypto }) =>
-  async ({ token, completedAt }: { token: string; completedAt?: Date }) => {
+  async ({
+    token,
+    completionAttemptId,
+    completedAt
+  }: {
+    token: string;
+    completionAttemptId: string;
+    completedAt?: Date;
+  }) => {
     assertUploadTokenFormat(token);
     return stores.uploadSession.markMultipartCompleted({
       tokenHash: crypto.hashUploadToken(token),
+      completionAttemptId,
       completedAt: completedAt ?? clock()
     });
   };
@@ -126,10 +138,19 @@ export const markMultipartCompleteFailedHandler =
     crypto,
     stores
   }: ResolvedS3AccessLinkServiceOptions & { crypto: S3AccessLinkCrypto }) =>
-  async ({ token, abortedAt }: { token: string; abortedAt?: Date }) => {
+  async ({
+    token,
+    completionAttemptId,
+    abortedAt
+  }: {
+    token: string;
+    completionAttemptId: string;
+    abortedAt?: Date;
+  }) => {
     assertUploadTokenFormat(token);
     return stores.uploadSession.markMultipartCompleteFailed({
       tokenHash: crypto.hashUploadToken(token),
+      completionAttemptId,
       abortedAt: abortedAt ?? clock()
     });
   };

@@ -412,6 +412,43 @@ describe('S3 access link SDK core', () => {
     expect(stores.uploadSessions.get(tokenHash!)?.usedAt).toEqual(baseNow);
   });
 
+  it('rejects invalid Multipart create state, size, and part count', async () => {
+    const createParams = {
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/large-file.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-1',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active' as const
+      }
+    };
+
+    for (const multipart of [
+      { ...createParams.multipart, status: 'completed' as const },
+      { ...createParams.multipart, totalSize: createParams.maxSize + 1 },
+      { ...createParams.multipart, partSize: 1, totalSize: 10001 }
+    ]) {
+      const { service } = createDeterministicService();
+      await expect(service.createUploadUrl({ ...createParams, multipart })).rejects.toMatchObject({
+        code: S3AccessLinkErrCode.uploadSessionNotFound
+      });
+    }
+
+    const { service } = createDeterministicService();
+    await expect(
+      service.createUploadUrl({
+        ...createParams,
+        maxSize: Number.MAX_SAFE_INTEGER + 1
+      })
+    ).rejects.toMatchObject({ code: S3AccessLinkErrCode.uploadSessionNotFound });
+  });
+
   it('reuses multipart tokens and atomically transitions active sessions', async () => {
     const { service, stores } = createDeterministicService();
     const url = await service.createUploadUrl({
@@ -440,7 +477,8 @@ describe('S3 access link SDK core', () => {
       }
     });
 
-    expect(await service.markMultipartCompleting({ token })).toBe(true);
+    const completionAttemptId = await service.markMultipartCompleting({ token });
+    expect(completionAttemptId).toEqual(expect.any(String));
     await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
       multipart: {
         status: 'completing'
@@ -449,6 +487,7 @@ describe('S3 access link SDK core', () => {
     expect(
       await service.markMultipartCompleted({
         token,
+        completionAttemptId: completionAttemptId!,
         completedAt
       })
     ).toBe(true);
@@ -483,25 +522,79 @@ describe('S3 access link SDK core', () => {
     });
     const token = extractLastPathSegment(url);
 
-    expect(await service.markMultipartCompleting({ token, completingAt: baseNow })).toBe(true);
+    const firstAttemptId = await service.markMultipartCompleting({
+      token,
+      completingAt: baseNow
+    });
+    expect(firstAttemptId).toEqual(expect.any(String));
     expect(
       await service.markMultipartCompleting({
         token,
         reclaimBefore: new Date(baseNow.getTime() - 1)
       })
-    ).toBe(false);
-    expect(
-      await service.markMultipartCompleting({
-        token,
-        reclaimBefore: new Date(baseNow.getTime() + 1)
-      })
-    ).toBe(true);
+    ).toBeNull();
+    const reclaimedAttemptId = await service.markMultipartCompleting({
+      token,
+      reclaimBefore: new Date(baseNow.getTime() + 1)
+    });
+    expect(reclaimedAttemptId).toEqual(expect.any(String));
+    expect(reclaimedAttemptId).not.toBe(firstAttemptId);
 
     const storedSession = Array.from(stores.uploadSessions.values())[0];
     expect(storedSession?.multipart).toMatchObject({
       uploadId: 'upload-retry',
       status: 'completing',
       completingAt: baseNow
+    });
+  });
+
+  it('fences stale completion updates after a lease is reclaimed', async () => {
+    const { service } = createDeterministicService();
+    const url = await service.createUploadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/stale-attempt.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-stale-attempt',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+    const firstAttemptId = await service.markMultipartCompleting({
+      token,
+      completingAt: baseNow
+    });
+    const secondAttemptId = await service.markMultipartCompleting({
+      token,
+      reclaimBefore: new Date(baseNow.getTime() + 1)
+    });
+
+    expect(firstAttemptId).toEqual(expect.any(String));
+    expect(secondAttemptId).toEqual(expect.any(String));
+    expect(secondAttemptId).not.toBe(firstAttemptId);
+    expect(
+      await service.markMultipartCompleted({
+        token,
+        completionAttemptId: firstAttemptId!
+      })
+    ).toBe(false);
+    expect(
+      await service.markMultipartCompleteFailed({
+        token,
+        completionAttemptId: firstAttemptId!
+      })
+    ).toBe(false);
+    await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
+      multipart: {
+        status: 'completing',
+        completionAttemptId: secondAttemptId
+      }
     });
   });
 
@@ -524,10 +617,21 @@ describe('S3 access link SDK core', () => {
     });
     const token = extractLastPathSegment(url);
 
-    expect(await service.markMultipartCompleting({ token })).toBe(true);
+    const completionAttemptId = await service.markMultipartCompleting({ token });
+    expect(completionAttemptId).toEqual(expect.any(String));
     expect(await service.markMultipartAborted({ token })).toBe(false);
-    expect(await service.markMultipartCompleteFailed({ token })).toBe(true);
-    expect(await service.markMultipartCompleted({ token })).toBe(false);
+    expect(
+      await service.markMultipartCompleteFailed({
+        token,
+        completionAttemptId: completionAttemptId!
+      })
+    ).toBe(true);
+    expect(
+      await service.markMultipartCompleted({
+        token,
+        completionAttemptId: completionAttemptId!
+      })
+    ).toBe(false);
   });
 
   it('marks an active multipart session aborted and makes the transition idempotent', async () => {
@@ -551,7 +655,12 @@ describe('S3 access link SDK core', () => {
 
     expect(await service.markMultipartAborted({ token })).toBe(true);
     expect(await service.markMultipartAborted({ token })).toBe(false);
-    expect(await service.markMultipartCompleted({ token })).toBe(false);
+    expect(
+      await service.markMultipartCompleted({
+        token,
+        completionAttemptId: 'stale-attempt'
+      })
+    ).toBe(false);
     await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
       multipart: {
         uploadId: 'upload-2',

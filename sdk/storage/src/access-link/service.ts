@@ -36,7 +36,10 @@ const resolveOptions = (
     clock: options.clock ?? (() => new Date()),
     idGenerator: {
       aliasId: options.idGenerator?.aliasId ?? defaultIdGenerator.aliasId,
-      uploadToken: options.idGenerator?.uploadToken ?? defaultIdGenerator.uploadToken
+      uploadToken: options.idGenerator?.uploadToken ?? defaultIdGenerator.uploadToken,
+      multipartCompletionAttemptId:
+        options.idGenerator?.multipartCompletionAttemptId ??
+        defaultIdGenerator.multipartCompletionAttemptId
     },
     uploadSessionUsePolicy: options.uploadSessionUsePolicy ?? 'mark-used'
   };

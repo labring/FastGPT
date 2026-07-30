@@ -30,8 +30,12 @@ export const verifyS3MultipartUploadSessionToken = async (token: string) => {
 };
 
 /** 将已占用完成权的 Multipart session 从 completing 原子地标记为 completed。 */
-export const markS3MultipartUploadCompleted = (token: string, completedAt?: Date) => {
-  return s3AccessLinkService.markMultipartCompleted({ token, completedAt });
+export const markS3MultipartUploadCompleted = (
+  token: string,
+  completionAttemptId: string,
+  completedAt?: Date
+) => {
+  return s3AccessLinkService.markMultipartCompleted({ token, completionAttemptId, completedAt });
 };
 
 /** 原子地占用 Multipart 完成权，防止 complete 与 abort 并发操作同一个 provider upload。 */
@@ -45,8 +49,12 @@ export const retryS3MultipartUploadCompleting = (token: string, reclaimBefore: D
 };
 
 /** 将已占用完成权但 provider complete 失败的 session 标记为 aborted。 */
-export const markS3MultipartUploadCompleteFailed = (token: string, abortedAt?: Date) => {
-  return s3AccessLinkService.markMultipartCompleteFailed({ token, abortedAt });
+export const markS3MultipartUploadCompleteFailed = (
+  token: string,
+  completionAttemptId: string,
+  abortedAt?: Date
+) => {
+  return s3AccessLinkService.markMultipartCompleteFailed({ token, completionAttemptId, abortedAt });
 };
 
 /** 将 Multipart session 从 active 原子地标记为 aborted。 */

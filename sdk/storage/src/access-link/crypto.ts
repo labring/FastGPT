@@ -15,7 +15,8 @@ const randomUrlSafeToken = (length: number) => {
 
 export const createDefaultIdGenerator = () => ({
   aliasId: () => randomUrlSafeToken(S3_DOWNLOAD_ALIAS_ID_LENGTH),
-  uploadToken: () => randomUrlSafeToken(S3_UPLOAD_TOKEN_LENGTH)
+  uploadToken: () => randomUrlSafeToken(S3_UPLOAD_TOKEN_LENGTH),
+  multipartCompletionAttemptId: () => randomUrlSafeToken(32)
 });
 
 export const createS3AccessLinkCrypto = ({

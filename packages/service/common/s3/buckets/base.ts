@@ -18,6 +18,7 @@ import {
 } from '../contracts/type';
 import {
   getSystemMaxFileSize,
+  MAX_MULTIPART_PART_COUNT,
   S3_MULTIPART_CONCURRENCY,
   S3_MULTIPART_COMPLETING_LEASE_MS,
   S3_MULTIPART_UPLOAD_ENABLED,
@@ -61,6 +62,8 @@ import {
   verifyS3MultipartUploadSessionToken
 } from '../accessLink';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
+import { randomUUID } from 'node:crypto';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -173,6 +176,86 @@ export class S3BaseBucket {
 
   addDeleteJob(params: Omit<Parameters<typeof addS3DelJob>[0], 'bucketName'>) {
     return addS3DelJob({ ...params, bucketName: this.bucketName });
+  }
+
+  /** 通过 session marker 和 Content-Length 判断对象是否属于当前 Multipart session。 */
+  private async isOwnedMultipartObject({
+    key,
+    objectMarker,
+    totalSize
+  }: {
+    key: string;
+    objectMarker: string;
+    totalSize: number;
+  }) {
+    const metadata = await this.client.getObjectMetadata({ key });
+    return (
+      metadata.metadata[MULTIPART_OBJECT_MARKER_METADATA_KEY] === objectMarker &&
+      metadata.contentLength === totalSize
+    );
+  }
+
+  /** 仅删除能通过当前 Multipart marker 归属校验的最终对象，避免误删旧对象。 */
+  private async scheduleOwnedMultipartObjectCleanup({
+    key,
+    objectMarker,
+    totalSize
+  }: {
+    key: string;
+    objectMarker: string;
+    totalSize: number;
+  }) {
+    let ownedObject = false;
+    try {
+      ownedObject = await this.isOwnedMultipartObject({
+        key,
+        objectMarker,
+        totalSize
+      });
+    } catch (error) {
+      if (!isFileNotFoundError(error)) throw error;
+    }
+
+    if (ownedObject) {
+      await this.addDeleteJob({ key });
+    }
+  }
+
+  /** 将已完成的 Multipart TTL 转为普通对象 TTL；失败必须向上抛出以便后续重试。 */
+  private async finalizeMultipartTtl({ key, uploadId }: { key: string; uploadId: string }) {
+    const result = await MongoS3TTL.updateOne(
+      {
+        minioKey: key,
+        bucketName: this.bucketName,
+        'multipart.uploadId': uploadId
+      },
+      {
+        $unset: {
+          multipart: 1
+        }
+      }
+    );
+
+    if (result.matchedCount === 1) return;
+
+    // completion 可以重复调用；如果 TTL 已经被成功转换，直接视为幂等成功。
+    const pendingMultipartTtl = await MongoS3TTL.exists({
+      minioKey: key,
+      bucketName: this.bucketName,
+      'multipart.uploadId': uploadId
+    });
+    if (pendingMultipartTtl) {
+      throw new Error('Multipart TTL finalization did not remove the Multipart marker');
+    }
+
+    const finalizedTtl = await MongoS3TTL.exists({
+      minioKey: key,
+      bucketName: this.bucketName,
+      multipart: { $exists: false }
+    });
+    if (!finalizedTtl) {
+      throw new Error('Multipart TTL record not found during finalization');
+    }
   }
 
   async isObjectExists(key: string) {
@@ -339,6 +422,10 @@ export class S3BaseBucket {
         throw new Error('EntityTooLarge');
       }
 
+      if (Math.ceil(parsedParams.size / partSize) > MAX_MULTIPART_PART_COUNT) {
+        throw new Error(`Multipart upload cannot exceed ${MAX_MULTIPART_PART_COUNT} parts`);
+      }
+
       const resolvedFilename = parsedParams.declaredFilename || parsedParams.filename;
       const fileHint = {
         filename: parsedParams.filename,
@@ -353,6 +440,7 @@ export class S3BaseBucket {
         size: parsedParams.size
       };
       const resolvedUploadPolicy = uploadPolicy ?? createUploadPolicy({ hint: fileHint });
+      const multipartObjectMarker = randomUUID();
       const metadata = {
         contentDisposition: getContentDisposition({
           filename: resolvedFilename,
@@ -360,7 +448,8 @@ export class S3BaseBucket {
         }),
         originFilename: encodeURIComponent(resolvedFilename),
         uploadTime: new Date().toISOString(),
-        ...parsedParams.metadata
+        ...parsedParams.metadata,
+        [MULTIPART_OBJECT_MARKER_METADATA_KEY]: multipartObjectMarker
       };
 
       multipartUpload = await this.client.createMultipartUpload({
@@ -376,7 +465,9 @@ export class S3BaseBucket {
         bucketName: this.bucketName,
         expiredTime: addHours(new Date(), expiredHours),
         multipart: {
-          uploadId: multipartUpload.uploadId
+          uploadId: multipartUpload.uploadId,
+          objectMarker: multipartObjectMarker,
+          totalSize: parsedParams.size
         }
       });
       multipartTtlCreated = true;
@@ -527,6 +618,10 @@ export class S3BaseBucket {
     }
 
     if (multipart.status === 'completed') {
+      await this.finalizeMultipartTtl({
+        key: payload.objectKey,
+        uploadId: multipart.uploadId
+      });
       return {
         bucket: payload.bucketName,
         key: payload.objectKey
@@ -539,40 +634,50 @@ export class S3BaseBucket {
       partSize: multipart.partSize
     });
 
+    let completionAttemptId: string | null = null;
+
     /** provider complete 成功或可确认最终对象已存在后，统一收敛 session 和 TTL 状态。 */
     const finalizeCompletedUpload = async (result: CompleteMultipartUploadResult) => {
-      const markedCompleted = await markS3MultipartUploadCompleted(params.token);
+      if (!completionAttemptId) {
+        throw new Error('Multipart completion attempt is missing');
+      }
+
+      const markedCompleted = await markS3MultipartUploadCompleted(
+        params.token,
+        completionAttemptId
+      );
       if (!markedCompleted) {
         throw new Error('Multipart upload session state changed during complete');
       }
 
-      // 最终对象已经存在时不能再 abort。TTL 更新失败保留 multipart 标记，交给清理任务
-      // 通过 uploadId 幂等收尾，避免在状态不完整时提交最终对象删除任务。
-      await MongoS3TTL.updateOne(
-        {
-          minioKey: payload.objectKey,
-          bucketName: payload.bucketName,
-          'multipart.uploadId': multipart.uploadId
-        },
-        {
-          $unset: {
-            multipart: 1
-          }
-        }
-      ).catch((ttlError) => {
+      try {
+        await this.finalizeMultipartTtl({
+          key: payload.objectKey,
+          uploadId: multipart.uploadId
+        });
+      } catch (ttlError) {
         logger.error('Failed to finalize Multipart TTL after provider complete', {
           key: payload.objectKey,
           error: ttlError
         });
-      });
+        throw ttlError;
+      }
       return result;
     };
 
-    let markedCompleting = await markS3MultipartUploadCompleting(params.token);
-    if (!markedCompleting) {
+    completionAttemptId = await markS3MultipartUploadCompleting(params.token);
+    if (!completionAttemptId) {
       const currentPayload = await verifyS3MultipartUploadSessionToken(params.token);
-      const currentStatus = currentPayload.multipart?.status;
+      const currentMultipart = currentPayload.multipart;
+      if (!currentMultipart) {
+        throw new Error('Multipart upload session is invalid');
+      }
+      const currentStatus = currentMultipart.status;
       if (currentStatus === 'completed') {
+        await this.finalizeMultipartTtl({
+          key: currentPayload.objectKey,
+          uploadId: currentMultipart.uploadId
+        });
         return {
           bucket: payload.bucketName,
           key: payload.objectKey
@@ -581,16 +686,20 @@ export class S3BaseBucket {
 
       if (currentStatus === 'completing') {
         const reclaimBefore = new Date(Date.now() - S3_MULTIPART_COMPLETING_LEASE_MS);
-        const completingAt = currentPayload.multipart?.completingAt;
+        const completingAt = currentMultipart.completingAt;
         const leaseExpired = !completingAt || completingAt <= reclaimBefore;
         if (leaseExpired) {
-          markedCompleting = await retryS3MultipartUploadCompleting(params.token, reclaimBefore);
+          completionAttemptId = await retryS3MultipartUploadCompleting(params.token, reclaimBefore);
         }
       }
 
-      if (!markedCompleting) {
+      if (!completionAttemptId) {
         const latestPayload = await verifyS3MultipartUploadSessionToken(params.token);
         if (latestPayload.multipart?.status === 'completed') {
+          await this.finalizeMultipartTtl({
+            key: latestPayload.objectKey,
+            uploadId: latestPayload.multipart.uploadId
+          });
           return {
             bucket: payload.bucketName,
             key: payload.objectKey
@@ -601,6 +710,11 @@ export class S3BaseBucket {
         );
       }
     }
+
+    if (!completionAttemptId) {
+      throw new Error('Multipart completion attempt is missing');
+    }
+    const activeCompletionAttemptId = completionAttemptId;
 
     let providerCompleted = false;
     try {
@@ -614,9 +728,18 @@ export class S3BaseBucket {
     } catch (error) {
       const reconcileFinalObject = async () => {
         try {
-          const { exists } = await this.client.checkObjectExists({ key: payload.objectKey });
-          return exists ? ('exists' as const) : ('missing' as const);
+          const objectMarker = payload.metadata?.[MULTIPART_OBJECT_MARKER_METADATA_KEY];
+          if (!objectMarker) return 'unmatched' as const;
+
+          const owned = await this.isOwnedMultipartObject({
+            key: payload.objectKey,
+            objectMarker,
+            totalSize: multipart.totalSize
+          });
+          return owned ? ('exists' as const) : ('unmatched' as const);
         } catch (reconcileError) {
+          if (isFileNotFoundError(reconcileError)) return 'missing' as const;
+
           logger.warn('Failed to reconcile final object after Multipart complete failure', {
             key: payload.objectKey,
             error: reconcileError
@@ -624,22 +747,6 @@ export class S3BaseBucket {
           return 'unknown' as const;
         }
       };
-
-      if (!providerCompleted && isNoSuchMultipartUploadError(error)) {
-        const finalObjectState = await reconcileFinalObject();
-        if (finalObjectState === 'exists') {
-          providerCompleted = true;
-          return await finalizeCompletedUpload({
-            bucket: payload.bucketName,
-            key: payload.objectKey
-          });
-        }
-        if (finalObjectState === 'unknown') {
-          // NoSuchUpload 只说明 uploadId 不可用；最终对象查询失败时仍无法判断 complete 是否成功。
-          // 保留 completing/TTL，等待后续 complete 重试或过期清理，不能先标记 aborted。
-          throw error;
-        }
-      }
 
       if (providerCompleted) {
         logger.error('Multipart session state update failed after provider complete', {
@@ -649,8 +756,35 @@ export class S3BaseBucket {
         throw error;
       }
 
+      const finalObjectState = await reconcileFinalObject();
+      if (finalObjectState === 'exists') {
+        providerCompleted = true;
+        return await finalizeCompletedUpload({
+          bucket: payload.bucketName,
+          key: payload.objectKey
+        });
+      }
+      if (finalObjectState === 'unknown') {
+        // provider 状态不明确时不能 Abort，也不能让当前 attempt 覆盖后续恢复任务。
+        throw error;
+      }
+
+      // 先用 attempt CAS 结束当前 completion 权，再执行 provider Abort。
+      // 如果 worker 已被 reclaim，CAS 失败时必须直接退出，禁止 stale worker Abort 共享 uploadId。
+      const markedAborted = await markS3MultipartUploadCompleteFailed(
+        params.token,
+        activeCompletionAttemptId
+      );
+      if (!markedAborted) {
+        logger.warn('Multipart completion lease lost before abort', {
+          key: payload.objectKey,
+          completionAttemptId: activeCompletionAttemptId
+        });
+        throw error;
+      }
+
       let providerAbortConfirmed = false;
-      let abortReturnedNoSuchUpload = false;
+      let providerUploadWasMissing = false;
       try {
         await this.client.abortMultipartUpload({
           key: payload.objectKey,
@@ -659,9 +793,8 @@ export class S3BaseBucket {
         providerAbortConfirmed = true;
       } catch (abortError) {
         if (isNoSuchMultipartUploadError(abortError)) {
-          // 对 complete 失败来说，Abort 的 NoSuchUpload 也可能是 complete 已经成功后的结果，
-          // 必须先核对最终对象，不能直接把 session 收敛成 aborted。
-          abortReturnedNoSuchUpload = true;
+          providerAbortConfirmed = true;
+          providerUploadWasMissing = true;
           logger.warn('Multipart upload disappeared while handling complete failure', {
             key: payload.objectKey,
             error: abortError
@@ -674,31 +807,20 @@ export class S3BaseBucket {
         }
       }
 
-      if (abortReturnedNoSuchUpload) {
-        const finalObjectState = await reconcileFinalObject();
-        if (finalObjectState === 'exists') {
-          providerCompleted = true;
-          return await finalizeCompletedUpload({
-            bucket: payload.bucketName,
-            key: payload.objectKey
-          });
-        }
-        if (finalObjectState === 'unknown') {
-          // provider 状态不明确，保留 completing 和 TTL 让后续任务继续收敛。
-          throw error;
-        }
-        providerAbortConfirmed = true;
-      }
-
       if (providerAbortConfirmed) {
-        const markedAborted = await markS3MultipartUploadCompleteFailed(params.token);
-        if (markedAborted) {
-          await MongoS3TTL.deleteOne({
-            minioKey: payload.objectKey,
-            bucketName: payload.bucketName,
-            'multipart.uploadId': multipart.uploadId
+        const objectMarker = payload.metadata?.[MULTIPART_OBJECT_MARKER_METADATA_KEY];
+        if (providerUploadWasMissing && objectMarker) {
+          await this.scheduleOwnedMultipartObjectCleanup({
+            key: payload.objectKey,
+            objectMarker,
+            totalSize: multipart.totalSize
           });
         }
+        await MongoS3TTL.deleteOne({
+          minioKey: payload.objectKey,
+          bucketName: payload.bucketName,
+          'multipart.uploadId': multipart.uploadId
+        });
       }
       throw error;
     }
@@ -776,25 +898,46 @@ export class S3BaseBucket {
    */
   async abortMultipartUploadByUploadId({
     key,
-    uploadId
+    uploadId,
+    objectMarker,
+    totalSize
   }: {
     key: string;
     uploadId: string;
+    objectMarker?: string;
+    totalSize?: number;
   }): Promise<void> {
-    return this.abortMultipartUploadByUploadIdInternal({ key, uploadId });
+    return this.abortMultipartUploadByUploadIdInternal({
+      key,
+      uploadId,
+      objectMarker,
+      totalSize
+    });
   }
 
   private async abortMultipartUploadByUploadIdInternal({
     key,
-    uploadId
+    uploadId,
+    objectMarker,
+    totalSize
   }: {
     key: string;
     uploadId: string;
+    objectMarker?: string;
+    totalSize?: number;
   }): Promise<void> {
     try {
       await this.client.abortMultipartUpload({ key, uploadId });
     } catch (error) {
       if (!isNoSuchMultipartUploadError(error)) throw error;
+    }
+
+    if (objectMarker && totalSize !== undefined) {
+      await this.scheduleOwnedMultipartObjectCleanup({
+        key,
+        objectMarker,
+        totalSize
+      });
     }
   }
 

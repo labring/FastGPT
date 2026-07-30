@@ -4,6 +4,7 @@ import { createVitestStorageMock } from '@fastgpt-sdk/storage';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { MongoS3UploadSession } from '@fastgpt/service/common/s3/accessLink/uploadSession/schema';
 import { S3_MULTIPART_COMPLETING_LEASE_MS } from '@fastgpt/service/common/s3/config/constants';
+import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
 import type { UploadPolicy } from '@fastgpt/service/common/s3/uploadPolicy/type';
 
 const { S3BaseBucket } = await vi.importActual<
@@ -164,6 +165,7 @@ describe('S3BaseBucket Multipart helpers', () => {
     vi.spyOn(storage, 'completeMultipartUpload').mockRejectedValueOnce(
       new Error('complete failed')
     );
+    vi.spyOn(storage, 'getObjectMetadata').mockRejectedValueOnce({ statusCode: 404 });
 
     await expect(
       bucket.completeMultipartUpload({
@@ -195,6 +197,7 @@ describe('S3BaseBucket Multipart helpers', () => {
     const token = result.url.split('/').at(-1) || '';
     vi.spyOn(storage, 'completeMultipartUpload').mockRejectedValueOnce({ Code: 'NoSuchUpload' });
     vi.spyOn(storage, 'abortMultipartUpload').mockRejectedValueOnce({ Code: 'NoSuchUpload' });
+    vi.spyOn(storage, 'getObjectMetadata').mockRejectedValue({ statusCode: 404 });
 
     await expect(
       bucket.completeMultipartUpload({
@@ -467,23 +470,35 @@ describe('S3BaseBucket Multipart helpers', () => {
       .spyOn(MongoS3TTL, 'updateOne')
       .mockRejectedValueOnce(new Error('ttl update failed'));
 
-    try {
-      await expect(
-        bucket.completeMultipartUpload({
-          token,
-          parts: [{ partNumber: 1, etag: 'etag-1' }]
-        })
-      ).resolves.toMatchObject({ key: fileKey });
-    } finally {
-      ttlUpdateSpy.mockRestore();
-    }
+    await expect(
+      bucket.completeMultipartUpload({
+        token,
+        parts: [{ partNumber: 1, etag: 'etag-1' }]
+      })
+    ).rejects.toThrow('ttl update failed');
+    ttlUpdateSpy.mockRestore();
 
     expect(storage.abortMultipartUpload).not.toHaveBeenCalled();
     expect(storage.__objects.get(fileKey)?.body).toEqual(Buffer.alloc(4));
     expect(
       (await MongoS3TTL.findOne({ bucketName: 'fastgpt-private', minioKey: fileKey }).lean())
         ?.multipart
-    ).toEqual({ uploadId: expect.any(String) });
+    ).toMatchObject({
+      uploadId: expect.any(String),
+      objectMarker: expect.any(String),
+      totalSize: 4
+    });
+
+    await expect(
+      bucket.completeMultipartUpload({
+        token,
+        parts: [{ partNumber: 1, etag: 'etag-1' }]
+      })
+    ).resolves.toMatchObject({ key: fileKey });
+    expect(
+      (await MongoS3TTL.findOne({ bucketName: 'fastgpt-private', minioKey: fileKey }).lean())
+        ?.multipart
+    ).toBeUndefined();
   });
 
   it('reconciles a NoSuchUpload response when the final object already exists', async () => {
@@ -500,7 +515,11 @@ describe('S3BaseBucket Multipart helpers', () => {
       }
     );
     const token = result.url.split('/').at(-1) || '';
-    storage.__putObject(fileKey, { body: Buffer.alloc(4) });
+    const multipartUpload = [...storage.__multipartUploads.values()][0];
+    storage.__putObject(fileKey, {
+      body: Buffer.alloc(4),
+      metadata: multipartUpload?.metadata
+    });
     vi.spyOn(storage, 'completeMultipartUpload').mockRejectedValueOnce({ Code: 'NoSuchUpload' });
 
     await expect(
@@ -510,7 +529,7 @@ describe('S3BaseBucket Multipart helpers', () => {
       })
     ).resolves.toMatchObject({ key: fileKey });
 
-    expect(storage.checkObjectExists).toHaveBeenCalledWith({ key: fileKey });
+    expect(storage.getObjectMetadata).toHaveBeenCalledWith({ key: fileKey });
     expect(storage.abortMultipartUpload).not.toHaveBeenCalled();
     expect((await MongoS3UploadSession.findOne({ objectKey: fileKey }))?.multipart?.status).toBe(
       'completed'
@@ -518,6 +537,104 @@ describe('S3BaseBucket Multipart helpers', () => {
     expect(
       (await MongoS3TTL.findOne({ bucketName: 'fastgpt-private', minioKey: fileKey }))?.multipart
     ).toBeUndefined();
+  });
+
+  it('does not reconcile a same-sized object with a different Multipart marker', async () => {
+    const { storage, bucket } = createBucket();
+    const result = await bucket.createMultipartUploadAccessUrl(
+      {
+        rawKey: fileKey,
+        filename: 'multipart-file.bin',
+        size: 4
+      },
+      {
+        partSize: 4,
+        uploadPolicy: multipartUploadPolicy
+      }
+    );
+    const token = result.url.split('/').at(-1) || '';
+    storage.__putObject(fileKey, {
+      body: Buffer.alloc(4),
+      metadata: {
+        [MULTIPART_OBJECT_MARKER_METADATA_KEY]: 'previous-session-marker'
+      }
+    });
+    vi.spyOn(storage, 'completeMultipartUpload').mockRejectedValueOnce({ Code: 'NoSuchUpload' });
+
+    await expect(
+      bucket.completeMultipartUpload({
+        token,
+        parts: [{ partNumber: 1, etag: 'etag-1' }]
+      })
+    ).rejects.toMatchObject({ Code: 'NoSuchUpload' });
+
+    expect(storage.abortMultipartUpload).toHaveBeenCalledTimes(1);
+    expect((await MongoS3UploadSession.findOne({ objectKey: fileKey }))?.multipart).toMatchObject({
+      status: 'aborted'
+    });
+    expect(
+      await MongoS3TTL.findOne({ bucketName: 'fastgpt-private', minioKey: fileKey })
+    ).toBeNull();
+    expect(storage.__objects.get(fileKey)?.metadata).toMatchObject({
+      [MULTIPART_OBJECT_MARKER_METADATA_KEY]: 'previous-session-marker'
+    });
+  });
+
+  it('cleans a final object that appears while abort handles NoSuchUpload', async () => {
+    const { storage, bucket } = createBucket();
+    const result = await bucket.createMultipartUploadAccessUrl(
+      {
+        rawKey: fileKey,
+        filename: 'multipart-file.bin',
+        size: 4
+      },
+      {
+        partSize: 4,
+        uploadPolicy: multipartUploadPolicy
+      }
+    );
+    const token = result.url.split('/').at(-1) || '';
+    const multipartUpload = [...storage.__multipartUploads.values()][0];
+    let metadataCalls = 0;
+    vi.spyOn(storage, 'completeMultipartUpload').mockRejectedValueOnce({ Code: 'NoSuchUpload' });
+    vi.spyOn(storage, 'getObjectMetadata').mockImplementation(async ({ key }) => {
+      metadataCalls += 1;
+      if (metadataCalls === 1) {
+        throw { statusCode: 404 };
+      }
+      const object = storage.__objects.get(key);
+      if (!object) {
+        throw { statusCode: 404 };
+      }
+      return {
+        bucket: storage.bucketName,
+        key,
+        metadata: object.metadata,
+        contentLength: object.contentLength,
+        contentType: object.contentType,
+        etag: object.etag
+      };
+    });
+    vi.spyOn(storage, 'abortMultipartUpload').mockImplementation(async ({ key }) => {
+      storage.__putObject(key, {
+        body: Buffer.alloc(4),
+        metadata: multipartUpload?.metadata
+      });
+      throw { Code: 'NoSuchUpload' };
+    });
+    const addDeleteJob = vi.spyOn(bucket, 'addDeleteJob').mockResolvedValue(undefined);
+
+    await expect(
+      bucket.completeMultipartUpload({
+        token,
+        parts: [{ partNumber: 1, etag: 'etag-1' }]
+      })
+    ).rejects.toMatchObject({ Code: 'NoSuchUpload' });
+
+    expect(addDeleteJob).toHaveBeenCalledWith({ key: fileKey });
+    expect(
+      await MongoS3TTL.findOne({ bucketName: 'fastgpt-private', minioKey: fileKey })
+    ).toBeNull();
   });
 
   it('aborts the provider upload when the upload session cannot be created', async () => {
@@ -582,7 +699,11 @@ describe('S3BaseBucket Multipart helpers', () => {
     expect(
       (await MongoS3TTL.findOne({ bucketName: 'fastgpt-private', minioKey: fileKey }).lean())
         ?.multipart
-    ).toEqual({ uploadId: expect.any(String) });
+    ).toMatchObject({
+      uploadId: expect.any(String),
+      objectMarker: expect.any(String),
+      totalSize: 4
+    });
   });
 
   it('removes the TTL when initialization cleanup returns NoSuchUpload', async () => {
