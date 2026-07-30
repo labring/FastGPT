@@ -24,6 +24,7 @@ import handler, {
 const teamId = '65f000000000000000000061';
 const tmbId = '65f000000000000000000062';
 const appId = '65f000000000000000000063';
+const workflowAppId = '65f000000000000000000064';
 
 const createHttpToolSetNode = ({
   apiSchemaStr,
@@ -179,37 +180,68 @@ describe('initHttpToolSchema migration', () => {
   });
 
   it('writes current and version schemas and is idempotent', async () => {
-    await MongoApp.create({
-      _id: appId,
-      teamId,
-      tmbId,
-      name: 'HTTP tools',
-      type: AppTypeEnum.httpToolSet,
-      version: 'v2',
-      modules: [
-        createHttpToolSetNode({
-          propertyType: WorkflowIOValueTypeEnum.arrayNumber
-        }),
-        createHttpToolSetNode({
-          apiSchemaStr: '{"openapi":"3.0.0"}',
-          propertyType: WorkflowIOValueTypeEnum.arrayBoolean
-        })
-      ],
-      edges: [],
-      chatConfig: {}
-    });
-    await MongoAppVersion.create({
-      appId,
-      tmbId,
-      versionName: 'v1',
-      nodes: [
-        createHttpToolSetNode({
-          propertyType: WorkflowIOValueTypeEnum.arrayString
-        })
-      ],
-      edges: [],
-      chatConfig: {}
-    });
+    await MongoApp.create([
+      {
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'HTTP tools',
+        type: AppTypeEnum.httpToolSet,
+        version: 'v2',
+        modules: [
+          createHttpToolSetNode({
+            propertyType: WorkflowIOValueTypeEnum.arrayNumber
+          }),
+          createHttpToolSetNode({
+            apiSchemaStr: '{"openapi":"3.0.0"}',
+            propertyType: WorkflowIOValueTypeEnum.arrayBoolean
+          })
+        ],
+        edges: [],
+        chatConfig: {}
+      },
+      {
+        _id: workflowAppId,
+        teamId,
+        tmbId,
+        name: 'Workflow app',
+        type: AppTypeEnum.workflow,
+        version: 'v2',
+        modules: [
+          createHttpToolSetNode({
+            propertyType: WorkflowIOValueTypeEnum.arrayBoolean
+          })
+        ],
+        edges: [],
+        chatConfig: {}
+      }
+    ]);
+    await MongoAppVersion.create([
+      {
+        appId,
+        tmbId,
+        versionName: 'v1',
+        nodes: [
+          createHttpToolSetNode({
+            propertyType: WorkflowIOValueTypeEnum.arrayString
+          })
+        ],
+        edges: [],
+        chatConfig: {}
+      },
+      {
+        appId: workflowAppId,
+        tmbId,
+        versionName: 'workflow-v1',
+        nodes: [
+          createHttpToolSetNode({
+            propertyType: WorkflowIOValueTypeEnum.arrayBoolean
+          })
+        ],
+        edges: [],
+        chatConfig: {}
+      }
+    ]);
 
     const firstResult = await runInitHttpToolSchemaMigration({
       dryRun: false,
@@ -217,6 +249,7 @@ describe('initHttpToolSchema migration', () => {
     });
 
     expect(firstResult.total).toMatchObject({
+      scannedDocumentCount: 2,
       changedDocumentCount: 2,
       modifiedDocumentCount: 2,
       convertedPropertyCount: 2
@@ -268,6 +301,44 @@ describe('initHttpToolSchema migration', () => {
                         type: 'array',
                         items: { type: 'string' }
                       }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    });
+    await expect(MongoApp.findById(workflowAppId).lean()).resolves.toMatchObject({
+      modules: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              toolList: [
+                {
+                  inputSchema: {
+                    properties: {
+                      values: { type: WorkflowIOValueTypeEnum.arrayBoolean }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    });
+    await expect(MongoAppVersion.findOne({ appId: workflowAppId }).lean()).resolves.toMatchObject({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              toolList: [
+                {
+                  inputSchema: {
+                    properties: {
+                      values: { type: WorkflowIOValueTypeEnum.arrayBoolean }
                     }
                   }
                 }

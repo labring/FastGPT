@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   isLegacyManualHttpToolArrayType,
   manualHttpToolValueType2JsonSchema
@@ -15,6 +16,7 @@ import z from 'zod';
 type UnknownRecord = Record<string, any>;
 type WorkflowDocument = {
   _id: unknown;
+  appId?: unknown;
   modules?: unknown;
   nodes?: unknown;
 };
@@ -137,36 +139,24 @@ export function formatManualHttpToolSchemas(nodes: unknown): {
   };
 }
 
-/** 按 `_id` 游标扫描单个工作流集合，并在非 dry-run 时批量写回已转换文档。 */
+/** 按筛选条件流式扫描单个工作流集合，并在非 dry-run 时批量写回已转换文档。 */
 async function migrateCollection({
   model,
   fieldName,
+  baseQuery,
+  onDocuments,
   options
 }: {
   model: Model<any>;
   fieldName: WorkflowFieldName;
+  baseQuery: Record<string, unknown>;
+  onDocuments?: (documents: WorkflowDocument[]) => void;
   options: InitHttpToolSchemaBodyType;
 }): Promise<HttpToolSchemaMigrationStatsType> {
   const stats = createStats();
-  const baseQuery = {
-    [`${fieldName}.toolConfig.httpToolSet`]: { $exists: true }
-  };
-  let lastId: unknown;
 
-  while (true) {
-    const query = lastId
-      ? {
-          $and: [baseQuery, { _id: { $gt: lastId } }]
-        }
-      : baseQuery;
-    const documents = await model
-      .find(query, { _id: 1, [fieldName]: 1 })
-      .sort({ _id: 1 })
-      .limit(options.batchSize)
-      .lean<WorkflowDocument[]>();
-
-    if (documents.length === 0) break;
-
+  const migrateBatch = async (documents: WorkflowDocument[]) => {
+    onDocuments?.(documents);
     const operations: AnyBulkWriteOperation<any>[] = [];
     stats.scannedDocumentCount += documents.length;
 
@@ -188,9 +178,22 @@ async function migrateCollection({
       const result = await model.bulkWrite(operations, { ordered: false });
       stats.modifiedDocumentCount += result.modifiedCount;
     }
+  };
 
-    lastId = documents[documents.length - 1]._id;
+  const cursor = model
+    .find(baseQuery, { _id: 1, appId: 1, [fieldName]: 1 })
+    .lean()
+    .cursor({ batchSize: options.batchSize });
+  let documents: WorkflowDocument[] = [];
+
+  for await (const document of cursor) {
+    documents.push(document as WorkflowDocument);
+    if (documents.length < options.batchSize) continue;
+
+    await migrateBatch(documents);
+    documents = [];
   }
+  if (documents.length > 0) await migrateBatch(documents);
 
   return stats;
 }
@@ -212,16 +215,29 @@ const mergeStats = (
 export async function runInitHttpToolSchemaMigration(
   options: InitHttpToolSchemaBodyType
 ): Promise<InitHttpToolSchemaResponseType> {
+  const httpToolAppIds: unknown[] = [];
   const apps = await migrateCollection({
     model: MongoApp,
     fieldName: 'modules',
+    baseQuery: {
+      type: AppTypeEnum.httpToolSet
+    },
+    onDocuments: (documents) => {
+      httpToolAppIds.push(...documents.map((document) => document._id));
+    },
     options
   });
-  const appVersions = await migrateCollection({
-    model: MongoAppVersion,
-    fieldName: 'nodes',
-    options
-  });
+  const appVersions =
+    httpToolAppIds.length > 0
+      ? await migrateCollection({
+          model: MongoAppVersion,
+          fieldName: 'nodes',
+          baseQuery: {
+            appId: { $in: httpToolAppIds }
+          },
+          options
+        })
+      : createStats();
 
   return InitHttpToolSchemaResponseSchema.parse({
     dryRun: options.dryRun,
