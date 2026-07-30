@@ -336,8 +336,12 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
       interactiveVal: 'B'
     });
 
-    expect(result).toHaveLength(1);
+    expect(result).toHaveLength(3);
     expect((result[0].value[0] as any).interactive.params.answer).toBeUndefined();
+    expect(result[2]).toEqual({
+      ...histories[2],
+      status: ChatStatusEnum.loading
+    });
   });
 
   it('persists multi-question agentAsk values for query responses', () => {
@@ -389,20 +393,38 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
   it('only persists an agent ask answer to the matching askId', () => {
     const firstAsk = {
       ...baseInteractive,
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'ask-1',
       params: {
-        content: 'First question',
-        options: ['A', 'B', 'C']
+        description: 'Need input',
+        questions: [
+          {
+            question: 'First question',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ],
+            answer: ''
+          }
+        ]
       }
     } as WorkflowInteractiveResponseType;
     const secondAsk = {
       ...baseInteractive,
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'ask-2',
       params: {
-        content: 'Second question',
-        options: ['A', 'B', 'C']
+        description: 'Need input',
+        questions: [
+          {
+            question: 'Second question',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ],
+            answer: ''
+          }
+        ]
       }
     } as WorkflowInteractiveResponseType;
     const unrelatedInteractive = {
@@ -417,11 +439,11 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
         createAiRecord(unrelatedInteractive, { id: 'ai-3' })
       ],
       interactive: secondAsk,
-      answer: 'B'
+      answer: JSON.stringify({ answers: ['B'] })
     });
 
-    expect((result[0].value[0] as any).interactive.params.answer).toBeUndefined();
-    expect((result[1].value[0] as any).interactive.params.answer).toBe('B');
+    expect((result[0].value[0] as any).interactive.params.questions[0].answer).toBe('');
+    expect((result[1].value[0] as any).interactive.params.questions[0].answer).toBe('B');
     expect((result[2].value[0] as any).interactive.params.answer).toBeUndefined();
   });
 });

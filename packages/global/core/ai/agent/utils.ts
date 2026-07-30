@@ -34,6 +34,6 @@ export const formatAgentAskAnswers = ({
           : `${option.summary} - ${option.value}`;
       })();
 
-      return `## 问题 ${index + 1}\n${question}\n\n回答：${renderedAnswer}`;
+      return `## ${question}\n\n回答：${renderedAnswer}`;
     })
     .join('\n\n');

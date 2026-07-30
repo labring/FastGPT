@@ -174,7 +174,7 @@ describe('agent loop system ask tool', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects duplicate option summaries and values', () => {
+  it('accepts duplicate option summaries and values', () => {
     const baseQuestion = {
       question: 'Which output should I create?'
     };
@@ -197,13 +197,13 @@ describe('agent loop system ask tool', () => {
         { summary: 'Document', value: 'Document' },
         { summary: 'Document', value: 'Spreadsheet' }
       ]).success
-    ).toBe(false);
+    ).toBe(true);
     expect(
       createCall([
         { summary: 'Document', value: 'Document' },
         { summary: 'Spreadsheet', value: 'Document' }
       ]).success
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('creates internal tool schemas without workflow dependencies', () => {

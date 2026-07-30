@@ -225,7 +225,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
               formatAgentAskToolResponse({
                 messages: pendingMainContext!.messages,
                 askToolCallId: askResumeId,
-                answer: input.userAnswer
+                answer: input.userAnswer ?? ''
               })
             )
           } as ChatCompletionMessageParam

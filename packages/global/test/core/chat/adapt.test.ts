@@ -1870,18 +1870,15 @@ describe('chats2GPTMessages', () => {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_ask',
-        content: `## 问题 1
-First?
+        content: `## First?
 
 回答：A - Answer A
 
-## 问题 2
-Second?
+## Second?
 
 回答：Custom answer
 
-## 问题 3
-Third?
+## Third?
 
 回答：未回答`
       }
