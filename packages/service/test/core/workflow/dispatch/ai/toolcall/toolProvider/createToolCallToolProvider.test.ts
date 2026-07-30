@@ -1,6 +1,9 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolProvider';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,7 +24,13 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     flowNodeType: FlowNodeTypeEnum.tool,
     intro: 'Search intro',
     toolDescription: 'Search data',
-    toolParams: [],
+    inputs: [
+      {
+        key: 'q',
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
+      }
+    ],
     ...overrides
   }) as any;
 
@@ -63,7 +72,9 @@ const createProvider = (overrides: Record<string, any> = {}) =>
             inputs: [
               {
                 key: 'q',
-                value: ''
+                value: '',
+                renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+                selectedType: FlowNodeInputTypeEnum.agentGenerated
               }
             ]
           }

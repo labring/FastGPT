@@ -6,8 +6,13 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
-import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type {
+  McpToolConfigType,
+  McpToolDataType
+} from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import { getHTTPToolRequestSchema } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
@@ -116,6 +121,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       toolInput = Object.fromEntries(
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
+      const toolDetail = await systemToolRepo.getSystemToolDetail({
+        pluginId: toolConfig.systemTool.toolId,
+        source: toolSource,
+        version: tool.version ?? version,
+        fallbackLatestVersion: true
+      });
+      assertToolRuntimeParams({ jsonSchema: toolDetail.inputSchema, params: toolInput });
 
       const invokeToken = appId
         ? new InvokeProcessor({
@@ -246,8 +258,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         versionId: version
       });
 
-      const { headerSecret, url } =
-        tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
+      const mcpToolSet = tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
+      const { headerSecret, url, toolList } = mcpToolSet;
+      const mcpTool = getToolNameCandidates(toolName)
+        .map((name) => toolList?.find((tool: McpToolConfigType) => tool.name === name))
+        .find(Boolean);
 
       await assertMCPUrlNotInternal(url);
 
@@ -264,6 +279,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       context.mcpClientMemory[url] = mcpClient;
 
       toolInput = params;
+      assertToolRuntimeParams({ jsonSchema: mcpTool?.inputSchema, params });
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
@@ -300,6 +316,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       toolInput = params;
+      assertToolRuntimeParams({
+        jsonSchema: getHTTPToolRequestSchema(httpTool),
+        params
+      });
       const { data, errorMsg } = await runHTTPTool({
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,
@@ -350,6 +370,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
+      assertToolRuntimeParams({ jsonSchema: toolData?.inputSchema, params: restParams });
       const result = await mcpClient.toolCall({ toolName, params: restParams });
 
       return {

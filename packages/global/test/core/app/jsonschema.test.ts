@@ -91,6 +91,135 @@ describe('parseToolParamJsonSchema', () => {
 });
 
 describe('jsonSchema2NodeInput', () => {
+  const omitPreservedSchema = (inputs: FlowNodeInputItemType[]) =>
+    inputs.map(({ customJsonSchema: _customJsonSchema, ...input }) => input);
+
+  it('preserves the complete property schema for manual validation', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            pattern: '^[a-z]+$',
+            minLength: 3,
+            maxLength: 20
+          }
+        }
+      }
+    });
+
+    expect(result[0].customJsonSchema).toEqual({
+      type: 'string',
+      pattern: '^[a-z]+$',
+      minLength: 3,
+      maxLength: 20
+    });
+  });
+
+  it.each([
+    {
+      name: 'mixed union',
+      schema: { oneOf: [{ type: 'string' }, { type: 'number' }] }
+    },
+    {
+      name: 'union with an unresolved branch',
+      schema: {
+        anyOf: [{ type: 'string' }, { $ref: '#/$defs/customInput' }],
+        $defs: { customInput: { type: 'string' } }
+      }
+    },
+    {
+      name: 'tuple array',
+      schema: { type: 'array', items: [{ type: 'string' }, { type: 'number' }] }
+    }
+  ])('locks $name parameters to agent generated mode', ({ schema }) => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: { value: schema }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      key: 'value',
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      isToolParam: true,
+      customJsonSchema: schema
+    });
+  });
+
+  it('projects nullable unions with one non-null base type', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            anyOf: [{ type: 'string' }, { type: 'null' }]
+          }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    });
+  });
+
+  it('projects nullable type arrays with the non-null value type', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: ['string', 'null']
+          }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    });
+  });
+
+  it('keeps non-string enum values in typed manual controls', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          count: { type: 'number', enum: [1, 2] },
+          enabled: { type: 'boolean', enum: [true, false] },
+          levels: { type: 'array', items: { type: 'number', enum: [1, 2] } }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      value: 1,
+      valueType: WorkflowIOValueTypeEnum.number,
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference]
+    });
+    expect(result[1]).toMatchObject({
+      value: true,
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      renderTypeList: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference]
+    });
+    expect(result[2]).toMatchObject({
+      value: [],
+      valueType: WorkflowIOValueTypeEnum.arrayNumber,
+      renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+    });
+  });
+
   it('should preserve isToolParam from input schema properties', () => {
     const result = jsonSchema2NodeInput({
       schemaType: 'systemTool',
@@ -249,13 +378,15 @@ describe('jsonSchema2NodeInput', () => {
         label: 'anyArr',
         valueType: 'arrayAny',
         toolDescription: undefined,
+        isToolParam: true,
         required: false,
-        renderTypeList: ['JSONEditor', 'reference']
+        renderTypeList: ['agentGenerated'],
+        selectedType: 'agentGenerated'
       }
     ];
     const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'http' });
 
-    expect(result).toEqual(expectResponse);
+    expect(omitPreservedSchema(result)).toEqual(expectResponse);
   });
 
   it('should return correct node input for mcp schema', () => {
@@ -299,7 +430,7 @@ describe('jsonSchema2NodeInput', () => {
     ];
     const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
 
-    expect(result).toEqual(expectResponse);
+    expect(omitPreservedSchema(result)).toEqual(expectResponse);
   });
 
   it('should return multiple select node input for array enum items', () => {
@@ -321,7 +452,7 @@ describe('jsonSchema2NodeInput', () => {
 
     const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
 
-    expect(result).toEqual([
+    expect(omitPreservedSchema(result)).toEqual([
       {
         key: 'sources',
         label: '热榜来源',
@@ -361,7 +492,7 @@ describe('jsonSchema2NodeInput', () => {
 
     const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'systemTool' });
 
-    expect(result).toEqual([
+    expect(omitPreservedSchema(result)).toEqual([
       {
         key: 'sources',
         label: '热榜来源',
@@ -430,7 +561,7 @@ describe('jsonSchema2NodeInput', () => {
     });
   });
 
-  it('should stringify enum options to match node input schema', () => {
+  it('should keep non-string enums compatible with typed node inputs', () => {
     const jsonSchema: JSONSchemaInputType = {
       type: 'object',
       properties: {
@@ -455,9 +586,9 @@ describe('jsonSchema2NodeInput', () => {
     expect(result).toMatchObject([
       {
         key: 'count',
-        value: '1',
+        value: 1,
         valueType: WorkflowIOValueTypeEnum.number,
-        renderTypeList: ['select', 'reference'],
+        renderTypeList: ['numberInput', 'reference'],
         list: [
           { label: '1', value: '1' },
           { label: '2', value: '2' }
@@ -466,11 +597,7 @@ describe('jsonSchema2NodeInput', () => {
       {
         key: 'flags',
         valueType: WorkflowIOValueTypeEnum.arrayBoolean,
-        renderTypeList: ['multipleSelect', 'reference'],
-        list: [
-          { label: 'true', value: 'true' },
-          { label: 'false', value: 'false' }
-        ]
+        renderTypeList: ['JSONEditor', 'reference']
       }
     ]);
   });
@@ -565,7 +692,7 @@ describe('getNodeInputTypeFromSchemaInputType', () => {
 });
 
 describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
-  it('should handle Optional[str] with anyOf as any type', () => {
+  it('should project Optional[str] with anyOf as string type', () => {
     const jsonSchema: JSONSchemaInputType = {
       type: 'object',
       properties: {
@@ -581,12 +708,12 @@ describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].key).toBe('optional_field');
-    expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.any);
+    expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.string);
     expect(result[0].required).toBe(false);
     expect(result[0].description).toBe('An optional string field');
   });
 
-  it('should handle oneOf with null as any type', () => {
+  it('should project oneOf with null as its non-null type', () => {
     const jsonSchema: JSONSchemaInputType = {
       type: 'object',
       properties: {
@@ -598,7 +725,7 @@ describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
 
     const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
 
-    expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.any);
+    expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.number);
   });
 
   it('should handle mixed schema with anyOf and regular types', () => {
@@ -629,7 +756,7 @@ describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
     expect(requiredField?.required).toBe(true);
 
     const optionalField = result.find((i) => i.key === 'optional_field');
-    expect(optionalField?.valueType).toBe(WorkflowIOValueTypeEnum.any);
+    expect(optionalField?.valueType).toBe(WorkflowIOValueTypeEnum.string);
     expect(optionalField?.required).toBe(false);
 
     const numberField = result.find((i) => i.key === 'number_field');
@@ -665,7 +792,7 @@ describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
     expect(location?.required).toBe(true);
 
     const date = result.find((i) => i.key === 'date');
-    expect(date?.valueType).toBe(WorkflowIOValueTypeEnum.any);
+    expect(date?.valueType).toBe(WorkflowIOValueTypeEnum.string);
     expect(date?.required).toBe(false);
 
     const forecastType = result.find((i) => i.key === 'forecast_type');

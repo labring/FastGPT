@@ -36,7 +36,7 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     avatar: 'tool-avatar',
     intro: 'Search intro',
     toolDescription: 'Search data',
-    toolParams: [],
+    inputs: [],
     ...overrides
   }) as any;
 
@@ -69,7 +69,7 @@ describe('useToolCatalog', () => {
         createToolNode({
           nodeId: 'search',
           jsonSchema: explicitSchema,
-          toolParams: [
+          inputs: [
             {
               key: 'q',
               renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
@@ -81,7 +81,7 @@ describe('useToolCatalog', () => {
           name: 'Weather',
           toolDescription: '',
           intro: 'Weather intro',
-          toolParams: [
+          inputs: [
             {
               key: 'city',
               valueType: WorkflowIOValueTypeEnum.string,
@@ -180,7 +180,7 @@ describe('useToolCatalog', () => {
           },
           required: ['city', 'apiKey', 'files']
         },
-        toolParams: [
+        inputs: [
           {
             key: 'city',
             valueType: WorkflowIOValueTypeEnum.string,
@@ -226,14 +226,6 @@ describe('useToolCatalog', () => {
             required: true,
             renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
           }
-        ],
-        toolParams: [
-          {
-            key: 'count',
-            valueType: WorkflowIOValueTypeEnum.number,
-            required: true,
-            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
-          }
         ]
       })
     );
@@ -254,14 +246,6 @@ describe('useToolCatalog', () => {
       createToolNode({
         jsonSchema: { type: 'string' },
         inputs: [
-          {
-            key: 'query',
-            valueType: WorkflowIOValueTypeEnum.string,
-            required: true,
-            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
-          }
-        ],
-        toolParams: [
           {
             key: 'query',
             valueType: WorkflowIOValueTypeEnum.string,

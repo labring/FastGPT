@@ -16,6 +16,7 @@ import type { OpenApiJsonSchema } from './tool/httpTool/type';
 import { i18nT } from '../../common/i18n/utils';
 import z from 'zod';
 import { parseOpenAPISchemaString } from '../../common/string/swagger';
+import { cloneDeep } from 'lodash-es';
 
 const JsonSchemaNodeInputMetadataKey = 'x-fastgpt-node-input' as const;
 const JsonSchemaNodeOutputMetadataKey = 'x-fastgpt-node-output' as const;
@@ -267,6 +268,12 @@ const getJsonSchemaPrimitiveType = (value: unknown) => {
 const getJsonSchemaType = (schema: unknown): string | undefined => {
   if (!isJsonSchemaValue(schema)) return undefined;
   if (typeof schema.type === 'string') return schema.type;
+  if (Array.isArray(schema.type)) {
+    const nonNullTypes = new Set(
+      schema.type.filter((type): type is string => typeof type === 'string' && type !== 'null')
+    );
+    if (nonNullTypes.size === 1) return [...nonNullTypes][0];
+  }
   if (Object.prototype.hasOwnProperty.call(schema, 'const')) {
     return getJsonSchemaPrimitiveType(schema.const);
   }
@@ -276,11 +283,38 @@ const getJsonSchemaType = (schema: unknown): string | undefined => {
     : new Set<string>();
   if (enumTypes.size === 1) return [...enumTypes][0];
 
-  const unionTypes = getJsonSchemaUnionBranches(schema)
-    .map(getJsonSchemaType)
-    .filter((type): type is string => Boolean(type));
-  const uniqueUnionTypes = new Set(unionTypes);
+  const unionBranches = getJsonSchemaUnionBranches(schema);
+  if (unionBranches.length === 0) return undefined;
+
+  const unionTypes = unionBranches.map(getJsonSchemaType);
+  if (unionTypes.some((type) => !type)) return undefined;
+
+  const uniqueUnionTypes = new Set(unionTypes.filter((type) => type !== 'null'));
   return uniqueUnionTypes.size === 1 ? [...uniqueUnionTypes][0] : undefined;
+};
+
+/** 判断 JSON Schema property 是否能稳定投影为现有 NodeIO 手工控件。 */
+const canProjectJsonSchemaToNodeInput = (schema: JsonSchemaPropertiesItemType): boolean => {
+  const type = getJsonSchemaType(schema);
+  if (!type || !['string', 'number', 'integer', 'boolean', 'object', 'array'].includes(type)) {
+    return false;
+  }
+
+  const unionBranches = getJsonSchemaUnionBranches(schema);
+  if (unionBranches.length > 0) {
+    const branchTypes = unionBranches.map(getJsonSchemaType);
+    if (branchTypes.some((item) => !item)) return false;
+
+    const nonNullTypes = new Set(branchTypes.filter((item) => item !== 'null'));
+    if (nonNullTypes.size !== 1) return false;
+  }
+
+  if (type !== 'array') return true;
+  if (Array.isArray(schema.items)) return false;
+  if (!schema.items) return true;
+
+  const itemType = getJsonSchemaType(schema.items);
+  return !!itemType && ['string', 'number', 'integer', 'boolean', 'object'].includes(itemType);
 };
 
 const getJsonSchemaEnumValues = (schema: unknown): unknown[] | undefined => {
@@ -382,6 +416,13 @@ const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesI
   const candidateOptions = enumList?.length ? { list: enumList } : {};
 
   if (type === 'array' && isStrictEnum && enumList?.length) {
+    const itemType = getJsonSchemaType(schema.items);
+    if (itemType !== 'string') {
+      return {
+        value: [],
+        renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+      };
+    }
     return {
       value: [],
       renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference],
@@ -389,9 +430,9 @@ const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesI
     };
   }
 
-  if (isStrictEnum && enumList?.length) {
+  if (type === 'string' && isStrictEnum && enumList?.length) {
     return {
-      value: String(enumValues?.[0]),
+      value: enumValues?.[0],
       renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
       list: enumList
     };
@@ -410,6 +451,7 @@ const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesI
   if (type === 'number' || type === 'integer') {
     return {
       ...candidateOptions,
+      ...(isStrictEnum ? { value: enumValues?.[0] } : {}),
       renderTypeList: [
         FlowNodeInputTypeEnum.numberInput,
         ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.select] : []),
@@ -422,6 +464,7 @@ const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesI
   if (type === 'boolean') {
     return {
       ...candidateOptions,
+      ...(isStrictEnum ? { value: enumValues?.[0] } : {}),
       renderTypeList: [
         FlowNodeInputTypeEnum.switch,
         ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.select] : []),
@@ -460,8 +503,9 @@ export const jsonSchema2NodeInput = ({
 }): FlowNodeInputItemType[] => {
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
+    const canProjectToNodeInput = canProjectJsonSchemaToNodeInput(value);
     const valueType = getNodeInputTypeFromSchemaInputType({
-      type: value.type,
+      type: getJsonSchemaType(value),
       arrayItems: value.items,
       schema: value
     });
@@ -469,14 +513,20 @@ export const jsonSchema2NodeInput = ({
       schemaType === 'systemTool' ? value[JsonSchemaNodeInputMetadataKey] : undefined;
 
     return {
-      ...getNodeInputRenderTypeFromSchemaInputType(value),
+      ...(canProjectToNodeInput
+        ? getNodeInputRenderTypeFromSchemaInputType(value)
+        : {
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated
+          }),
       ...(value.default !== undefined ? { defaultValue: value.default } : {}),
       ...(nodeMetadata ?? {}),
       key,
       label: value.title || key,
       valueType: nodeMetadata?.valueType ?? valueType,
       description: nodeMetadata?.description ?? value.description,
-      isToolParam: value.isToolParam,
+      isToolParam: canProjectToNodeInput ? value.isToolParam : true,
+      customJsonSchema: cloneJsonSchemaProperty(value),
       toolDescription:
         schemaType === 'http'
           ? value['x-tool-description']
@@ -666,10 +716,7 @@ const cloneJsonSchemaProperty = (
   schema?: JsonSchemaPropertiesItemType
 ): JsonSchemaPropertiesItemType => {
   if (!schema) return { ...toolValueTypeList[0].jsonSchema };
-  return {
-    ...schema,
-    items: schema.items && typeof schema.items === 'object' ? { ...schema.items } : schema.items
-  };
+  return cloneDeep(schema);
 };
 
 const getJsonSchemaPropertyFromValueType = (

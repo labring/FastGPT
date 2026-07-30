@@ -250,7 +250,7 @@ describe('runToolCall compression node responses', () => {
             flowNodeType: FlowNodeTypeEnum.tool,
             avatar: 'tool-avatar',
             toolDescription: 'Search data',
-            toolParams: []
+            inputs: []
           }
         ]
       })
@@ -481,7 +481,7 @@ describe('runToolCall compression node responses', () => {
             flowNodeType: FlowNodeTypeEnum.tool,
             avatar: 'tool-avatar',
             toolDescription: 'Search data',
-            toolParams: []
+            inputs: []
           }
         ]
       })
@@ -744,7 +744,7 @@ describe('runToolCall compression node responses', () => {
             flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
             avatar: 'dataset-avatar',
             toolDescription: 'Search dataset',
-            toolParams: []
+            inputs: []
           }
         ]
       })
@@ -821,7 +821,7 @@ describe('runToolCall compression node responses', () => {
             flowNodeType: FlowNodeTypeEnum.tool,
             avatar: 'tool-avatar',
             toolDescription: 'Search data',
-            toolParams: []
+            inputs: []
           }
         ]
       })

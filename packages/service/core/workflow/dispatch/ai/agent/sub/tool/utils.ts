@@ -18,14 +18,11 @@ import {
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../../../../../workflow/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
-  buildModelVisibleToolJsonSchema,
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
   jsonSchema2SecretInput,
-  nodeInputs2JsonSchema,
   type JSONSchemaInputType
 } from '@fastgpt/global/core/app/jsonschema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -36,13 +33,12 @@ import type {
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { SubAppInitType } from '../type';
 import {
-  canInputBeAgentGenerated,
   filterToolConfiguredParams,
   getToolConfigStatus,
   initAgentToolInputType,
-  initToolInputsTypeByDefaultMode,
-  isAgentGeneratedToolInput
+  initToolInputsTypeByDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -467,17 +463,15 @@ export const getAgentRuntimeTools = async ({
     return formatPersonalAppNode({ app, versionId });
   };
 
-  /**
-   * 生成 OpenAI-compatible function schema。
-   * schema 优先级：显式 jsonSchema > toolData.inputSchema > Agent 生成 inputs。
-   */
-  const formatSchema = ({
+  /** schema 优先级：显式 jsonSchema > toolData.inputSchema > NodeIO。 */
+  const compileRuntimeTool = ({
     toolId,
     inputs,
     name,
     toolDescription,
     intro,
-    jsonSchema
+    jsonSchema,
+    fixedInputBindings
   }: {
     toolId: string;
     inputs: FlowNodeInputItemType[];
@@ -485,15 +479,11 @@ export const getAgentRuntimeTools = async ({
     toolDescription?: string;
     intro?: string;
     jsonSchema?: JSONSchemaInputType;
-  }): ChatCompletionTool => {
-    const toolParams: FlowNodeInputItemType[] = [];
+    fixedInputBindings?: Record<string, unknown>;
+  }) => {
     let schema = jsonSchema;
 
     for (const input of inputs) {
-      if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) {
-        toolParams.push(input);
-      }
-
       if (!schema && input.key === NodeInputKeyEnum.toolData) {
         schema = (input.value as McpToolDataType)?.inputSchema;
       }
@@ -503,31 +493,14 @@ export const getAgentRuntimeTools = async ({
     // 仅数字开头的工具名需要补前缀，避免破坏 runtime 使用原始 tool id 反查工具。
     const formatToolId = /^\d/.test(toolId) ? `t${toolId}` : toolId;
 
-    if (schema) {
-      return {
-        type: 'function',
-        function: {
-          name: formatToolId,
-          description,
-          parameters: buildModelVisibleToolJsonSchema({ inputs, toolParams, jsonSchema: schema })
-        }
-      };
-    }
-
-    return {
-      type: 'function',
-      function: {
-        name: formatToolId,
-        description,
-        parameters: nodeInputs2JsonSchema({ inputs: toolParams })
-      }
-    };
+    return compileToolRuntime({
+      toolId: formatToolId,
+      name: description,
+      inputs,
+      jsonSchema: schema,
+      fixedInputBindings
+    });
   };
-
-  const getSchemaParamKeys = (schema: ChatCompletionTool) =>
-    Object.keys(
-      (schema.function.parameters as { properties?: Record<string, unknown> })?.properties ?? {}
-    );
 
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
@@ -640,13 +613,14 @@ export const getAgentRuntimeTools = async ({
             })),
             { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
           );
-          const requestSchema = formatSchema({
+          const compiledRuntime = compileRuntimeTool({
             toolId: id,
             inputs,
             name: child.name,
             toolDescription: child.toolDescription,
             intro: child.intro,
-            jsonSchema: child.jsonSchema
+            jsonSchema: child.jsonSchema,
+            fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
           });
 
           return {
@@ -658,10 +632,10 @@ export const getAgentRuntimeTools = async ({
             version: toolNode.version ?? child.version,
             toolConfig: child.toolConfig,
             inputs,
-            agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
+            agentGeneratedInputKeys: compiledRuntime.agentGeneratedKeys,
             promptReference,
-            params: filterToolConfiguredParams({ params: configuredParams, inputs }),
-            requestSchema
+            params: compiledRuntime.fixedInputBindings,
+            requestSchema: compiledRuntime.modelTool
           };
         };
 
@@ -728,13 +702,14 @@ export const getAgentRuntimeTools = async ({
           const inputs = initToolInputsTypeByDefaultMode(toolNode.inputs, {
             allowUserChatInputAgentGenerated: true
           });
-          const requestSchema = formatSchema({
+          const compiledRuntime = compileRuntimeTool({
             toolId: cleanedPluginId,
             inputs,
             name: toolNode.name,
             toolDescription: toolNode.toolDescription,
             intro: toolNode.intro,
-            jsonSchema: toolNode.jsonSchema
+            jsonSchema: toolNode.jsonSchema,
+            fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
           });
 
           return [
@@ -746,10 +721,10 @@ export const getAgentRuntimeTools = async ({
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
               inputs,
-              agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
+              agentGeneratedInputKeys: compiledRuntime.agentGeneratedKeys,
               promptReference,
-              params: filterToolConfiguredParams({ params: configuredParams, inputs }),
-              requestSchema
+              params: compiledRuntime.fixedInputBindings,
+              requestSchema: compiledRuntime.modelTool
             }
           ];
         }

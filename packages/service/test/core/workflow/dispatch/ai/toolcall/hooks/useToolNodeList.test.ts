@@ -85,12 +85,12 @@ describe('useToolNodeList', () => {
         intro: 'Search intro',
         toolDescription: 'Search data',
         jsonSchema: inputSchema,
-        toolParams: [
+        inputs: expect.arrayContaining([
           expect.objectContaining({
             key: 'q',
             toolDescription: 'Query'
           })
-        ]
+        ])
       })
     ]);
   });
@@ -180,7 +180,7 @@ describe('useToolNodeList', () => {
       ]
     });
 
-    expect(result[0].toolParams).toEqual([
+    expect(result[0].inputs).toEqual([
       expect.objectContaining({
         key: 'query',
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
@@ -248,12 +248,6 @@ describe('useToolNodeList', () => {
         selectedType: FlowNodeInputTypeEnum.select
       })
     ]);
-    expect(result[0].toolParams).toEqual([
-      expect.objectContaining({
-        key: 'query',
-        selectedType: FlowNodeInputTypeEnum.agentGenerated
-      })
-    ]);
     expect(runtimeNodes[0].inputs).toEqual(result[0].inputs);
   });
 
@@ -288,6 +282,5 @@ describe('useToolNodeList', () => {
     });
 
     expect(result[0].jsonSchema).toBe(jsonSchema);
-    expect(result[0].toolParams).toEqual([]);
   });
 });

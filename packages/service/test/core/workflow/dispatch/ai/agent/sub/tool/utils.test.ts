@@ -1057,6 +1057,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
     expect((tools[0].requestSchema.function.parameters as any).properties.internal).toBeUndefined();
     expect(tools[0].agentGeneratedInputKeys).not.toContain('internal');
+    expect(tools[0].params).toMatchObject({ internal: 7 });
   });
 
   it('keeps debug source in selected system tool config', async () => {
