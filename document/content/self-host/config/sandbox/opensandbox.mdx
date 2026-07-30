@@ -63,7 +63,7 @@ AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 # OpenSandbox 持久卷容量，仅 K8s 模式下创建新 PVC 时有效
-AGENT_SANDBOX_STORAGE_SIZE=1Gi
+AGENT_SANDBOX_STORAGE_SIZE=1
 ```
 
 如果你的 `docker-compose.yml` 已经使用 `x-agent-sandbox-config` 统一注入 Agent Sandbox 变量，可直接在该 anchor 中填入上述值，确保 `fastgpt-app` 和 `fastgpt-pro` 都继承该配置。

@@ -3,7 +3,7 @@ import { SandboxNotFoundError } from '@fastgpt-sdk/sandbox-adapter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: { AGENT_SANDBOX_PROVIDER: 'sealosdevbox', AGENT_SANDBOX_DISK_MB: 20 }
+  serviceEnv: { AGENT_SANDBOX_PROVIDER: 'sealosdevbox', AGENT_SANDBOX_STORAGE_SIZE: 1 }
 }));
 
 const mocks = vi.hoisted(() => ({

@@ -3,32 +3,37 @@ import { serviceEnv } from '@fastgpt/service/env';
 import {
   getAgentSandboxArchiveInactiveDays,
   getAgentSandboxArchiveMaxBytes,
+  getAgentSandboxDiskBytes,
   getAgentSandboxMaxFileBytes,
   getAgentSandboxSkillMaxBytes,
   getAgentSandboxSuspendMinutes
 } from '@fastgpt/service/core/ai/sandbox/config';
 
 describe('agent sandbox config', () => {
-  const originalAgentSandboxDiskMB = serviceEnv.AGENT_SANDBOX_DISK_MB;
+  const originalAgentSandboxStorageSize = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE;
   const originalAgentSandboxSuspendMinutes = serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES;
   const originalAgentSandboxArchiveInactiveDays = serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
 
   afterEach(() => {
-    serviceEnv.AGENT_SANDBOX_DISK_MB = originalAgentSandboxDiskMB;
+    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE = originalAgentSandboxStorageSize;
     serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES = originalAgentSandboxSuspendMinutes;
     serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS = originalAgentSandboxArchiveInactiveDays;
   });
 
-  it('derives size limits from AGENT_SANDBOX_DISK_MB', () => {
-    serviceEnv.AGENT_SANDBOX_DISK_MB = 1024;
-    expect(getAgentSandboxArchiveMaxBytes()).toBe(1024 * 1024 * 1024);
-    expect(getAgentSandboxSkillMaxBytes()).toBe(512 * 1024 * 1024);
-    expect(getAgentSandboxMaxFileBytes()).toBe(512 * 1024 * 1024);
+  it('derives all size limits from AGENT_SANDBOX_STORAGE_SIZE', () => {
+    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE = 1;
+    expect(getAgentSandboxArchiveMaxBytes()).toBe(362 * 1024 * 1024);
+    expect(getAgentSandboxDiskBytes()).toBe(362 * 1024 * 1024);
+    expect(getAgentSandboxSkillMaxBytes()).toBe(362 * 1024 * 1024);
+    expect(getAgentSandboxMaxFileBytes()).toBe(362 * 1024 * 1024);
 
-    serviceEnv.AGENT_SANDBOX_DISK_MB = 333;
-    expect(getAgentSandboxArchiveMaxBytes()).toBe(333 * 1024 * 1024);
-    expect(getAgentSandboxSkillMaxBytes()).toBe(167 * 1024 * 1024);
-    expect(getAgentSandboxMaxFileBytes()).toBe(167 * 1024 * 1024);
+    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE = 2;
+    expect(getAgentSandboxDiskBytes()).toBe(874 * 1024 * 1024);
+  });
+
+  it('rejects storage sizes without enough space for the reserved system capacity', () => {
+    serviceEnv.AGENT_SANDBOX_STORAGE_SIZE = 0.29;
+    expect(() => getAgentSandboxDiskBytes()).toThrow('AGENT_SANDBOX_STORAGE_SIZE');
   });
 
   it('reads lifecycle thresholds from service env', () => {

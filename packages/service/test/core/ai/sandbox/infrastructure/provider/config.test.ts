@@ -18,7 +18,6 @@ const originalEnv = {
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
-  AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET,
   AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL,
   AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: process.env.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
@@ -82,7 +81,6 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
     );
-    vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
     vi.stubEnv(
       'AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES',
       originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES
@@ -129,7 +127,7 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', '5G');
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', '5');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES', '67108864');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', '16777216');
 
@@ -152,14 +150,15 @@ describe('sandbox provider config', () => {
         repository: 'default-sealos-image',
         tag: 'latest'
       },
-      resourceLimits: { cpuCount: 2, memoryMiB: 4096, storageSize: '5G' },
+      resourceLimits: { cpuCount: 2, memoryMiB: 4096, storageSize: '5Gi' },
       workingDir: '/home/devbox/workspace',
       upstreamID: 'session-1',
       env: {
         FASTGPT_SESSION_ID: 'session-1',
         FASTGPT_WORKDIR: '/home/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
-        FASTGPT_IDE_MAX_FILE_BYTES: '536870912',
+        DEVBOX_SDK_MAX_FILE_SIZE: '2527068160',
+        FASTGPT_IDE_MAX_FILE_BYTES: '2527068160',
         FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: '67108864',
         FASTGPT_IDE_WS_MAX_FRAME_BYTES: '16777216'
       }
@@ -186,7 +185,7 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
         AGENT_SANDBOX_SEALOS_BASEURL: undefined,
         AGENT_SANDBOX_SEALOS_TOKEN: undefined,
-        AGENT_SANDBOX_DISK_MB: 20
+        AGENT_SANDBOX_STORAGE_SIZE: 1
       }
     }));
 
@@ -386,7 +385,7 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true,
         AGENT_SANDBOX_CPU_COUNT: 1,
         AGENT_SANDBOX_MEMORY_MIB: 2048,
-        AGENT_SANDBOX_DISK_MB: 20
+        AGENT_SANDBOX_STORAGE_SIZE: 1
       }
     }));
 
