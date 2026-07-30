@@ -241,13 +241,16 @@ function request(
   { cancelToken, maxQuantity, withCredentials, dataAsBody, deduplicate, ...config }: ConfigType,
   method: Method
 ): any {
-  /* 去空 */
-  for (const key in data) {
-    const val = data[key];
-    if (data[key] === undefined) {
-      delete data[key];
-    } else if (val instanceof Date) {
-      data[key] = dayjs(val).format();
+  // 只归一化普通参数对象和数组，避免改写 File、Blob 等原始请求体的只读属性。
+  const dataPrototype = data && typeof data === 'object' ? Object.getPrototypeOf(data) : undefined;
+  if (Array.isArray(data) || dataPrototype === Object.prototype || dataPrototype === null) {
+    for (const key in data) {
+      const val = data[key];
+      if (data[key] === undefined) {
+        delete data[key];
+      } else if (val instanceof Date) {
+        data[key] = dayjs(val).format();
+      }
     }
   }
 
@@ -314,6 +317,34 @@ export function GET<T = undefined>(url: string, params = {}, config: ConfigType 
 
 export function POST<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'POST');
+}
+
+/** 将 File 作为原始请求体上传，对象类型 query 参数按 JSON 序列化。 */
+export function POSTRawFile<T = undefined>({
+  url,
+  file,
+  query,
+  config = {}
+}: {
+  url: string;
+  file: File;
+  query: Record<string, unknown>;
+  config?: ConfigType;
+}): Promise<T> {
+  const searchParams = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
+  });
+
+  return POST<T>(`${url}?${searchParams.toString()}`, file, {
+    ...config,
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      ...config.headers
+    }
+  });
 }
 
 export function PUT<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {

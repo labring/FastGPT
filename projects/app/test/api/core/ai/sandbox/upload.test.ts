@@ -6,13 +6,10 @@ import { Readable } from 'node:stream';
 const mocks = vi.hoisted(() => ({
   authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
-  clearDiskTempFiles: vi.fn(),
   createDirectories: vi.fn(),
   getAgentSandboxMaxFileBytes: vi.fn(),
-  getReadStream: vi.fn(),
   getSandboxClient: vi.fn(),
-  resolveFormData: vi.fn(),
-  writeFileStream: vi.fn()
+  writeFiles: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -21,13 +18,6 @@ vi.mock('@/service/middleware/entry', () => ({
 
 vi.mock('@/service/core/sandbox/access', () => ({
   authSandboxRuntimeSession: mocks.authSandboxRuntimeSession
-}));
-
-vi.mock('@fastgpt/service/common/file/multer', () => ({
-  multer: {
-    resolveFormData: mocks.resolveFormData,
-    clearDiskTempFiles: mocks.clearDiskTempFiles
-  }
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/config', () => ({
@@ -41,58 +31,67 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
 
 import handler from '@/pages/api/core/ai/sandbox/upload';
 
-const createReq = () =>
-  ({
+const createReq = (headers: Record<string, string> = {}) =>
+  Object.assign(Readable.from([new Uint8Array([1, 2]), new Uint8Array([3, 4])]), {
+    body: undefined,
+    query: {
+      appId: '507f1f77bcf86cd799439011',
+      chatId: 'chat-1',
+      path: 'uploads/a.txt'
+    },
     headers: {
-      'content-type': 'multipart/form-data; boundary=test'
+      'content-type': 'application/octet-stream',
+      'content-length': '4',
+      ...headers
     }
   }) as any;
 
+/** 消费 provider 收到的 Web Stream，验证路由传递的是实际文件字节。 */
+const readWebStream = async (stream: ReadableStream<Uint8Array>) => {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+};
+
 describe('sandbox upload API', () => {
+  let uploadedContent: Buffer;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    uploadedContent = Buffer.alloc(0);
     mocks.getAgentSandboxMaxFileBytes.mockReturnValue(10 * 1024 * 1024);
-    mocks.getReadStream.mockReturnValue(Readable.from([new Uint8Array([1, 2, 3])]));
-    mocks.resolveFormData.mockResolvedValue({
-      data: {
-        appId: '507f1f77bcf86cd799439011',
-        chatId: 'chat-1',
-        path: 'uploads/a.txt'
-      },
-      fileMetadata: {
-        path: '/tmp/upload-a.txt',
-        size: 3
-      },
-      getReadStream: mocks.getReadStream
-    });
     mocks.authSandboxRuntimeSession.mockResolvedValue({
       uid: 'user-1',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '507f1f77bcf86cd799439011'
     });
     mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({ sandboxId: 'sandbox-1' });
-    mocks.writeFileStream.mockResolvedValue(undefined);
+    mocks.writeFiles.mockImplementation(async ([entry]) => {
+      uploadedContent = await readWebStream(entry.data);
+      return [{ path: entry.path, bytesWritten: uploadedContent.length, error: null }];
+    });
     mocks.getSandboxClient.mockResolvedValue({
       provider: {
         createDirectories: mocks.createDirectories,
-        writeFileStream: mocks.writeFileStream
+        writeFiles: mocks.writeFiles
       },
       resolveRuntimePath: (path: string) => `/workspace/sessions/chat-1/${path}`
     });
   });
 
-  it('uploads multipart file through sandbox provider after write auth', async () => {
+  it('streams the raw request body to the sandbox after write auth', async () => {
     const req = createReq();
 
     await expect(handler(req)).resolves.toEqual({
       path: 'uploads/a.txt',
-      bytesWritten: 3
+      bytesWritten: 4
     });
 
-    expect(mocks.resolveFormData).toHaveBeenCalledWith({
-      request: req,
-      maxFileSize: 10
-    });
     expect(mocks.authSandboxRuntimeSession).toHaveBeenCalledWith({
       req,
       sourceType: ChatSourceTypeEnum.app,
@@ -108,13 +107,28 @@ describe('sandbox upload API', () => {
       chatId: 'chat-1'
     });
     expect(mocks.createDirectories).toHaveBeenCalledWith(['/workspace/sessions/chat-1/uploads']);
-    expect(mocks.writeFileStream).toHaveBeenCalledTimes(1);
-    const [[path, stream]] = mocks.writeFileStream.mock.calls;
-    expect(path).toBe('/workspace/sessions/chat-1/uploads/a.txt');
-    expect(stream).toBeInstanceOf(ReadableStream);
-    expect(mocks.createDirectories.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.writeFileStream.mock.invocationCallOrder[0]
+    expect(mocks.writeFiles).toHaveBeenCalledWith([
+      {
+        path: '/workspace/sessions/chat-1/uploads/a.txt',
+        data: expect.any(ReadableStream)
+      }
+    ]);
+    expect(uploadedContent).toEqual(Buffer.from([1, 2, 3, 4]));
+    expect(mocks.authSandboxRuntimeSession.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.writeFiles.mock.invocationCallOrder[0]
     );
-    expect(mocks.clearDiskTempFiles).toHaveBeenCalledWith(['/tmp/upload-a.txt']);
+    expect(mocks.createDirectories.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.writeFiles.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('rejects an oversized Content-Length before auth', async () => {
+    mocks.getAgentSandboxMaxFileBytes.mockReturnValue(3);
+    const req = createReq();
+
+    await expect(handler(req)).rejects.toThrow('File is too large (4 bytes > 3 bytes)');
+
+    expect(mocks.authSandboxRuntimeSession).not.toHaveBeenCalled();
+    expect(mocks.writeFiles).not.toHaveBeenCalled();
   });
 });

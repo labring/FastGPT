@@ -5,7 +5,8 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
-  AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE
+  AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
+  AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI
 };
 
 const loadSandboxRuntimeProfileModule = async () => {
@@ -29,6 +30,7 @@ describe('sandbox runtime profile', () => {
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
   });
 
   it('uses fixed /workspace as opensandbox work directory', async () => {
@@ -74,6 +76,7 @@ describe('sandbox runtime profile', () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', '1');
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
 
@@ -117,6 +120,7 @@ describe('sandbox runtime profile', () => {
         FASTGPT_SESSION_ID: 'session-1',
         FASTGPT_WORKDIR: '/custom/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
+        DEVBOX_SDK_MAX_FILE_SIZE: '379584512',
         FASTGPT_IDE_MAX_FILE_BYTES: '10485760',
         FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: '67108864',
         FASTGPT_IDE_WS_MAX_FRAME_BYTES: '16777216'

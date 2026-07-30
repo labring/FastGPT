@@ -103,8 +103,8 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_MEMORY_MIB: IntSchema.min(1).default(2048).meta({
       description: 'Agent Sandbox 实例的内存上限（MiB）'
     }),
-    AGENT_SANDBOX_STORAGE_SIZE: z.string().trim().min(1).default('1Gi').meta({
-      description: 'Agent Sandbox 存储容量（Kubernetes 资源量格式）'
+    AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
+      description: 'Agent Sandbox 存储容量，单位 Gi'
     }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
@@ -120,10 +120,6 @@ export const serviceEnv = createEnv({
         'Disable the default outbound network policy for OpenSandbox Docker runtime. ' +
         'Set to true when the OpenSandbox server uses a user-defined Docker network (not bridge), ' +
         'as networkPolicy is only supported with network_mode=bridge.'
-    }),
-    AGENT_SANDBOX_DISK_MB: NumSchema.min(1).default(1024).meta({
-      description:
-        'Agent sandbox 磁盘大小基准（MB）。冷归档包上限等于该值，Skill 包和 IDE 单文件上限按该值的一半四舍五入计算。'
     }),
     AGENT_SANDBOX_SUSPEND_MINUTES: IntSchema.min(1).default(60).meta({
       description: 'Agent sandbox 持续未活跃多少分钟后自动暂停'

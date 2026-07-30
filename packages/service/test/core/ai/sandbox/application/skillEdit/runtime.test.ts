@@ -21,8 +21,7 @@ const mocks = vi.hoisted(() => ({
   preparePackageMirrors: vi.fn(),
   prepareWorkDirectory: vi.fn(),
   emptyWorkDirectory: vi.fn(),
-  downloadSkillPackageToContext: vi.fn(),
-  deployDownloadedSkillPackage: vi.fn()
+  deploySkillPackage: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/model/schema', () => ({
@@ -112,13 +111,12 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/prepare', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/skill/prepare', () => ({
-  downloadSkillPackageToContext: mocks.downloadSkillPackageToContext,
-  deployDownloadedSkillPackage: mocks.deployDownloadedSkillPackage
+  deploySkillPackage: mocks.deploySkillPackage
 }));
 
 vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
-    AGENT_SANDBOX_DISK_MB: 2,
+    AGENT_SANDBOX_STORAGE_SIZE_GI: 1,
     AGENT_SANDBOX_MAX_EDIT_DEBUG: undefined
   }
 }));
@@ -298,8 +296,7 @@ describe('skill edit runtime initialization', () => {
     mocks.preparePackageMirrors.mockReturnValue({ step: 'mirrors' });
     mocks.prepareWorkDirectory.mockReturnValue({ step: 'workdir' });
     mocks.emptyWorkDirectory.mockReturnValue({ step: 'empty' });
-    mocks.downloadSkillPackageToContext.mockReturnValue({ step: 'download' });
-    mocks.deployDownloadedSkillPackage.mockReturnValue({ step: 'deploy' });
+    mocks.deploySkillPackage.mockReturnValue({ step: 'deploy' });
     mocks.updateSandboxInstanceRecordBySandboxId.mockResolvedValue(createResource());
     mocks.countRunningSandboxInstancesBySourceType.mockResolvedValue(0);
     mocks.disconnectSandbox.mockResolvedValue(undefined);

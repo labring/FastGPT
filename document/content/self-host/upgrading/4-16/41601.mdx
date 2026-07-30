@@ -22,13 +22,13 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 
 本版本还新增以下可选配置：
 
-| 变量                                  | 默认值 | 说明                                                                                                |
-| ------------------------------------- | ------ | --------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_CPU_COUNT`             | `1`    | Agent Sandbox 单实例 CPU 核数上限。                                                                 |
-| `AGENT_SANDBOX_MEMORY_MIB`            | `2048` | Agent Sandbox 单实例内存上限，单位 MiB。                                                            |
-| `AGENT_SANDBOX_STORAGE_SIZE`          | `1Gi`  | Agent Sandbox 存储容量；用于 Sealos Devbox 存储上限，以及 OpenSandbox Kubernetes 模式下创建新 PVC。 |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`   | 运行中的 Sandbox 未活跃多久后自动暂停，单位分钟。                                                   |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`    | 已暂停 Sandbox 未活跃多久后自动归档，单位天。                                                       |
+| 变量                                  | 默认值 | 说明                                                                                                         |
+| ------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| `AGENT_SANDBOX_CPU_COUNT`             | `1`    | Agent Sandbox 单实例 CPU 核数上限。                                                                          |
+| `AGENT_SANDBOX_MEMORY_MIB`            | `2048` | Agent Sandbox 单实例内存上限，单位 MiB。                                                                     |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`       | `1`    | Agent Sandbox 存储容量，单位 Gi；用于 Sealos Devbox 存储上限，以及 OpenSandbox Kubernetes 模式下创建新 PVC。 |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`   | 运行中的 Sandbox 未活跃多久后自动暂停，单位分钟。                                                            |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`    | 已暂停 Sandbox 未活跃多久后自动归档，单位天。                                                                |
 
 E2B Sandbox Provider 已移除。此前配置过 E2B 的环境需要切换为 `opensandbox` 或 `sealosdevbox`，并删除 `AGENT_SANDBOX_E2B_API_KEY`。
 

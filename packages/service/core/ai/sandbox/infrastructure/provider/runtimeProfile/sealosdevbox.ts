@@ -7,6 +7,7 @@ import { serviceEnv } from '../../../../../../env';
 import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord } from './utils';
 import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
+import { getAgentSandboxDiskBytes } from '../../../config';
 
 /**
  * 构建 Sealos Devbox 的 FastGPT 运行态 profile。
@@ -31,7 +32,9 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
         throw new Error('AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider');
       }
 
-      const env = mergeStringRecord(createConfig.env, input.env);
+      const env = mergeStringRecord(mergeStringRecord(createConfig.env, input.env), {
+        DEVBOX_SDK_MAX_FILE_SIZE: String(getAgentSandboxDiskBytes())
+      });
       const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       const storageLimit = (() => {
         if (input.resourceLimits?.storageSize !== undefined) {
@@ -40,7 +43,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
         if (createConfig.resourceLimits?.storageSize !== undefined) {
           return { storageSize: createConfig.resourceLimits.storageSize };
         }
-        return { storageSize: serviceEnv.AGENT_SANDBOX_STORAGE_SIZE };
+        return { storageSize: `${serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI}Gi` };
       })();
       const resourceLimits = {
         cpuCount:

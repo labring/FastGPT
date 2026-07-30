@@ -7,10 +7,19 @@
 import { serviceEnv } from '../../../env';
 
 const MB_BYTES = 1024 * 1024;
-const toRoundedMBBytes = (mb: number) => Math.round(mb) * MB_BYTES;
+const RESERVED_DISK_MB = 150;
 
-/** 获取 Agent sandbox 磁盘基准字节数，按 MB 四舍五入。 */
-export const getAgentSandboxDiskBytes = () => toRoundedMBBytes(serviceEnv.AGENT_SANDBOX_DISK_MB);
+/** 获取 Agent sandbox 磁盘基准字节数，按存储容量换算并预留 150MB。 */
+export const getAgentSandboxDiskBytes = () => {
+  const storageMB = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI * 1024;
+  const diskMB = Math.round(storageMB / 2 - RESERVED_DISK_MB);
+  if (diskMB <= 0) {
+    throw new Error(
+      `AGENT_SANDBOX_STORAGE_SIZE_GI must be greater than ${RESERVED_DISK_MB * 2}MiB`
+    );
+  }
+  return diskMB * MB_BYTES;
+};
 
 /** 获取 sandbox 冷归档包大小上限，等于磁盘基准。 */
 export const getAgentSandboxArchiveMaxBytes = getAgentSandboxDiskBytes;
@@ -22,9 +31,8 @@ export const getAgentSandboxSuspendMinutes = () => serviceEnv.AGENT_SANDBOX_SUSP
 export const getAgentSandboxArchiveInactiveDays = () =>
   serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS;
 
-/** 获取 Skill 包大小上限，按磁盘基准的一半四舍五入。 */
-export const getAgentSandboxSkillMaxBytes = () =>
-  toRoundedMBBytes(serviceEnv.AGENT_SANDBOX_DISK_MB * 0.5);
+/** 获取 Skill 包大小上限，等于磁盘基准。 */
+export const getAgentSandboxSkillMaxBytes = getAgentSandboxDiskBytes;
 
-/** 获取 IDE 单文件大小上限，复用 Skill 包大小上限。 */
-export const getAgentSandboxMaxFileBytes = getAgentSandboxSkillMaxBytes;
+/** 获取 IDE 单文件大小上限，等于磁盘基准。 */
+export const getAgentSandboxMaxFileBytes = getAgentSandboxDiskBytes;

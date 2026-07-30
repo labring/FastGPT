@@ -1,4 +1,5 @@
 import type { ClientSession } from 'mongoose';
+import type { Readable } from 'node:stream';
 import { S3PrivateBucket } from '../../buckets/private';
 import { removeS3TTL } from '../../utils';
 
@@ -42,18 +43,20 @@ export class S3SkillSource extends S3PrivateBucket {
     teamId: string;
     skillId: string;
     packageObjectId: string;
-    body: Buffer;
+    body: Buffer | Readable;
+    contentLength?: number;
     expiredTime?: Date;
   }) {
-    const { teamId, skillId, packageObjectId, body, expiredTime } = params;
+    const { teamId, skillId, packageObjectId, body, contentLength, expiredTime } = params;
     const key = getSkillPackageKey({ teamId, skillId, packageObjectId });
 
     return this.uploadFileByBody({
       key,
       body,
+      contentLength,
       contentType: 'application/zip',
       filename: 'package.zip',
-      ...(expiredTime && { expiredTime })
+      expiredTime
     });
   }
 

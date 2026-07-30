@@ -1,5 +1,5 @@
 /**
- * 沙盒业务层：定义 Skill 版本包下载和部署的 prepare step。
+ * 沙盒业务层：定义 Skill 版本包的 prepare step。
  *
  * 只服务 sandbox runtime 初始化链路，不负责 Skill 版本创建或权限校验。
  */
@@ -8,47 +8,25 @@ import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { SandboxPrepareContext, SandboxPrepareStep } from '../prepare';
 import { joinSandboxPath } from '../../../utils';
 import { getAgentSandboxSkillMaxBytes } from '../../../config';
-import { DEFAULT_GITIGNORE_CONTENT, downloadSkillPackage } from '../../../../skill/package';
+import { DEFAULT_GITIGNORE_CONTENT, downloadSkillPackageStream } from '../../../../skill/package';
+import { Readable } from 'node:stream';
 
 export type SkillPackagePrepareContext = SandboxPrepareContext & {
-  packageBuffer?: Buffer;
   workspaceHasContent?: boolean;
 };
 
-export type SkillPackagePrepareStep = SandboxPrepareStep<SkillPackagePrepareContext>;
-
-/** 下载指定 skill 版本包，并挂到 prepare context，供后续部署 step 使用。 */
-export const downloadSkillPackageToContext =
+/** 将对象存储中的 skill 包流式写入 sandbox，并解压到当前工作目录。 */
+export const deploySkillPackage =
   ({
     storageKey,
-    onProgress
-  }: {
-    storageKey: string;
-    onProgress?: (phase: SandboxStatusPhase) => void;
-  }): SkillPackagePrepareStep =>
-  async (context) => {
-    onProgress?.('downloadingPackage');
-    return {
-      ...context,
-      packageBuffer: await downloadSkillPackage({ storageKey })
-    };
-  };
-
-/** 将已下载的 skill ZIP 写入 sandbox 并解压到当前工作目录。 */
-export const deployDownloadedSkillPackage =
-  ({
     skillsRootPath,
     onProgress
   }: {
+    storageKey: string;
     skillsRootPath: string;
     onProgress?: (phase: SandboxStatusPhase) => void;
-  }): SkillPackagePrepareStep =>
+  }): SandboxPrepareStep<SkillPackagePrepareContext> =>
   async (context) => {
-    if (!context.packageBuffer) {
-      throw new Error('Skill package buffer is required before deployment');
-    }
-
-    onProgress?.('uploadingPackage');
     const prepareSkillsRootResult = await context.sandbox.execute(
       `mkdir -p ${shellQuote(skillsRootPath)}`
     );
@@ -59,12 +37,21 @@ export const deployDownloadedSkillPackage =
     const zipPath = joinSandboxPath(skillsRootPath, 'package.zip');
     const maxPackageBytes = getAgentSandboxSkillMaxBytes();
 
-    const writeResults = await context.sandbox.writeFiles([
-      {
-        path: zipPath,
-        data: context.packageBuffer
-      }
-    ]);
+    onProgress?.('downloadingPackage');
+    const packageStream = await downloadSkillPackageStream({ storageKey });
+    onProgress?.('uploadingPackage');
+    const writeResults = await context.sandbox
+      .writeFiles([
+        {
+          path: zipPath,
+          data: Readable.toWeb(packageStream) as ReadableStream<Uint8Array>
+        }
+      ])
+      .finally(() => {
+        if (!packageStream.destroyed) {
+          packageStream.destroy();
+        }
+      });
     const failedWrite = writeResults.find((result) => result.error);
     if (failedWrite) {
       throw new Error(`Failed to write skill package ZIP: ${failedWrite.error?.message}`);

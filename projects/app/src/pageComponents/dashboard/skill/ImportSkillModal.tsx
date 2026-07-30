@@ -16,7 +16,7 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { type FieldErrors, useForm, useWatch } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
-const ACCEPT_TYPES = '.zip';
+const ACCEPT_TYPE = '.zip';
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
 
 type ImportSkillFormType = {
@@ -33,11 +33,6 @@ type Props = {
   parentId?: string | null;
   onClose: () => void;
   onSuccess?: () => void;
-};
-
-const isValidFile = (file: File) => {
-  const name = file.name.toLowerCase();
-  return name.endsWith('.zip');
 };
 
 const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
@@ -67,21 +62,19 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     });
 
   const { File: FileInput, onOpen } = useSelectFile({
-    fileType: ACCEPT_TYPES,
+    fileType: ACCEPT_TYPE,
     multiple: false,
     maxCount: 1
   });
 
   const { runAsync: onImport, loading: isImporting } = useRequest(
     ({ name, avatar, file }: ValidImportSkillFormType) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (name.trim()) {
-        formData.append('name', name.trim());
-      }
-      formData.append('avatar', avatar);
-      if (parentId) formData.append('parentId', parentId);
-      return importSkill(formData);
+      return importSkill({
+        file,
+        name: name.trim() || undefined,
+        avatar,
+        parentId: parentId ?? undefined
+      });
     },
     {
       onSuccess() {
@@ -115,11 +108,12 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
 
   const handleFile = useCallback(
     (file: File) => {
-      if (!isValidFile(file)) {
-        const ext = file.name.slice(file.name.lastIndexOf('.'));
+      if (!file.name.toLowerCase().endsWith(ACCEPT_TYPE)) {
         toast({
           status: 'warning',
-          title: t('skill:unsupported_file_format', { ext })
+          title: t('skill:unsupported_file_format', {
+            ext: file.name.slice(file.name.lastIndexOf('.'))
+          })
         });
         return;
       }
@@ -249,9 +243,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
                     : t('file:select_and_drag_file_tip')}
                 </Box>
                 <Box color={'myGray.500'} fontSize={'xs'} mt={1}>
-                  {t('skill:import_skill_file_type_tip', {
-                    ext: ACCEPT_TYPES.split(',').join(' ')
-                  })}
+                  {t('skill:import_skill_file_type_tip', { ext: ACCEPT_TYPE })}
                 </Box>
                 {typeof maxUploadBytes === 'number' && (
                   <Box color={'myGray.500'} fontSize={'xs'}>

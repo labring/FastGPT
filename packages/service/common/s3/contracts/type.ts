@@ -100,9 +100,9 @@ export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketPara
 export const UploadFileByBodySchema = z.object({
   body: z.union([z.instanceof(Buffer), z.string(), z.instanceof(Readable)]),
   contentType: z.string().optional(),
+  contentLength: z.number().int().nonnegative().optional(),
   key: StorageObjectKeySchema,
   filename: z.string().nonempty(),
   expiredTime: z.coerce.date().optional()
 });
 export type UploadFileByBodyParams = z.infer<typeof UploadFileByBodySchema>;
-export type UploadFileByBufferParams = UploadFileByBodyParams;

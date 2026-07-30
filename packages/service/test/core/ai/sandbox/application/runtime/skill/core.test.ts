@@ -232,11 +232,13 @@ description: Zeta skill
       skillDirectories: deployedSkillVersions.map(({ targetDir }) => targetDir)
     });
 
-    expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
+    expect(sandbox.writeFiles).toHaveBeenCalledTimes(2);
     expect(skill1TargetDir).not.toBe(skill2TargetDir);
-    const writtenFilePaths = sandbox.writeFiles.mock.calls[0][0].map(
-      (entry: { path: string }) => entry.path
-    );
+    const writeEntries = sandbox.writeFiles.mock.calls.flatMap(([entries]) => entries);
+    const writtenFilePaths = writeEntries.map((entry: { path: string }) => entry.path);
+    expect(
+      writeEntries.every((entry: { data: unknown }) => entry.data instanceof ReadableStream)
+    ).toBe(true);
     expect(writtenFilePaths).toEqual(
       expect.arrayContaining([
         expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
@@ -431,10 +433,10 @@ description: Missing skill
       skillDirectories: deployedSkillVersions.map(({ targetDir }) => targetDir)
     });
 
-    expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
-    const writtenFilePaths = sandbox.writeFiles.mock.calls[0][0].map(
-      (entry: { path: string }) => entry.path
-    );
+    expect(sandbox.writeFiles).toHaveBeenCalledTimes(2);
+    const writtenFilePaths = sandbox.writeFiles.mock.calls
+      .flatMap(([entries]) => entries)
+      .map((entry: { path: string }) => entry.path);
     expect(writtenFilePaths).toEqual(
       expect.arrayContaining([
         expect.stringContaining(`/workspace/projects/.tmp-${String(existingSkillVersionId)}`),
@@ -889,7 +891,7 @@ description: Latest current skill
         tmbId,
         workDirectory: '/workspace'
       })
-    ).rejects.toThrow('Failed to write skill ZIP packages: write failed');
+    ).rejects.toThrow('Failed to write skill ZIP package: write failed');
     expect(sandbox.execute).not.toHaveBeenCalledWith(`rm -rf '${skillTargetDir}'`);
     expect(sandbox.readFiles).not.toHaveBeenCalled();
   });
