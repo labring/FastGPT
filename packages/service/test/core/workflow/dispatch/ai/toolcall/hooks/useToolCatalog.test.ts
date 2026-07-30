@@ -133,7 +133,6 @@ describe('useToolCatalog', () => {
             properties: {
               city: {
                 type: 'string',
-                title: 'city',
                 description: 'City name',
                 toolDescription: 'City name',
                 enum: ['Hangzhou', 'Shanghai']
@@ -141,7 +140,6 @@ describe('useToolCatalog', () => {
               days: {
                 type: 'string',
                 description: 'Days',
-                title: 'days',
                 toolDescription: 'Days'
               }
             },
