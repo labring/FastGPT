@@ -17,6 +17,7 @@ const originalEnv = {
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   SOMARK_API_KEY: process.env.SOMARK_API_KEY,
+  HOME_CHAT_CUSTOM_PDF_PARSE: process.env.HOME_CHAT_CUSTOM_PDF_PARSE,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
@@ -54,6 +55,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('SOMARK_API_KEY', originalEnv.SOMARK_API_KEY);
+    vi.stubEnv('HOME_CHAT_CUSTOM_PDF_PARSE', originalEnv.HOME_CHAT_CUSTOM_PDF_PARSE);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
@@ -93,6 +95,20 @@ describe('serviceEnv', () => {
         SOMARK_API_KEY: 'sk-somark-test'
       }
     });
+  });
+
+  it('disables home chat custom PDF parsing by default and supports enabling it', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('HOME_CHAT_CUSTOM_PDF_PARSE', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.HOME_CHAT_CUSTOM_PDF_PARSE).toBe(false);
+
+    vi.stubEnv('HOME_CHAT_CUSTOM_PDF_PARSE', 'true');
+    const enabledEnv = await importServiceEnv();
+    expect(enabledEnv.serviceEnv.HOME_CHAT_CUSTOM_PDF_PARSE).toBe(true);
   });
 
   it('validates SYSTEM_MAX_STRING_LENGTH_M during service env init', async () => {
