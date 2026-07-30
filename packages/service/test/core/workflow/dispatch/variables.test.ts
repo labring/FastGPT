@@ -71,7 +71,24 @@ describe('WorkflowVariableState', () => {
     expect(state.toStoreRecord()).toEqual({ internalToken: 'internal-default' });
   });
 
-  it('should only let the external provider override an external dynamic variable', async () => {
+  it('should initialize an external dynamic variable from input variables', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'externalToken',
+          type: VariableInputEnum.custom,
+          valueType: WorkflowIOValueTypeEnum.string,
+          defaultValue: 'external-default'
+        } as any
+      ],
+      inputVariables: { externalToken: 'input-value' }
+    });
+
+    expect(state.get('externalToken')).toBe('input-value');
+    expect(state.toStoreRecord()).toEqual({ externalToken: 'input-value' });
+  });
+
+  it('should let the external provider override an input external dynamic variable', async () => {
     const state = await createState({
       variablesConfig: [
         {

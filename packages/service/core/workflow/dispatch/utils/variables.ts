@@ -81,8 +81,8 @@ const getVariableInputValue = ({
   variables: Record<string, unknown>;
   item: VariableItemType;
 }) => {
-  // 内部变量只读自身默认值；外部动态变量只接受 externalVariables 注入。
-  if (item.type === VariableInputEnum.internal || item.type === VariableInputEnum.custom) {
+  // 内部变量只读自身默认值，不能被客户端输入或外部变量覆盖。
+  if (item.type === VariableInputEnum.internal) {
     return item.defaultValue;
   }
   if (item.label && variables[item.label] !== undefined) return variables[item.label];
