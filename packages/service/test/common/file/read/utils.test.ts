@@ -11,7 +11,8 @@ const {
   mockDoc2xParsePDF,
   mockTextinParsePDF,
   mockUploadImage2S3Bucket,
-  mockGetImageBuffer
+  mockGetImageBuffer,
+  mockEnv
 } = vi.hoisted(() => ({
   mockReadRawContentFromBuffer: vi.fn(async ({ extension, buffer, encoding }: any) => {
     if (extension === 'txt') {
@@ -42,7 +43,10 @@ const {
   mockGetImageBuffer: vi.fn().mockResolvedValue({
     buffer: Buffer.from('image-bytes'),
     mime: 'image/png'
-  })
+  }),
+  mockEnv: {
+    PARSE_FILE_TIMEOUT_SECONDS: 600
+  }
 }));
 
 vi.mock('@fastgpt/service/worker/function', () => ({
@@ -88,6 +92,10 @@ vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBuffer: mockGetImageBuffer
+}));
+
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: mockEnv
 }));
 
 import {
@@ -143,6 +151,7 @@ describe('readFileContentByBuffer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.systemEnv = {} as any;
+    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
   });
 
   it('should parse a txt buffer', async () => {
@@ -247,6 +256,7 @@ describe('readFileContentByBuffer', () => {
   });
 
   it('should use custom URL service for pdf when configured', async () => {
+    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 1200;
     global.systemEnv = {
       customPdfParse: { url: 'http://custom-pdf-service.com/parse', key: 'test-key' }
     } as any;
@@ -270,6 +280,11 @@ describe('readFileContentByBuffer', () => {
     });
 
     expect(result.rawText).toBe('custom-service-parsed-text');
+    expect(mockAxiosPost).toHaveBeenCalledWith(
+      'http://custom-pdf-service.com/parse',
+      expect.anything(),
+      expect.objectContaining({ timeout: 1200000 })
+    );
   });
 
   it('should upload custom URL service base64 and http markdown images with shared handler', async () => {

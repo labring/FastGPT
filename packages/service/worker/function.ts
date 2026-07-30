@@ -37,7 +37,7 @@ const getReadFileWorker = () =>
   getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
     name: WorkerNameEnum.readFile,
     maxReservedThreads: serviceEnv.PARSE_FILE_WORKERS,
-    // 单任务超时：默认 300s（5min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
+    // 单任务超时：默认 600s（10min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
     taskTimeoutMs: serviceEnv.PARSE_FILE_TIMEOUT_SECONDS * 1000,
     // mammoth/xlsx/pdf-parse 历史上有 module 级缓存与潜在内存泄漏，定期回收 worker
     maxTasksPerWorker: 100

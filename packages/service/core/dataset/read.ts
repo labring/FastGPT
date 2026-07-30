@@ -20,6 +20,7 @@ import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 import { isAuthorizedDatasetFileS3Key } from '../../common/s3/sources/dataset/key';
 import { getLogger, LogCategories } from '../../common/logger';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -85,10 +86,11 @@ export const readFileRawTextByUrl = async ({
     };
 
     // Stream timeout
+    const streamTimeoutMs = getBackendFileOperationTimeoutMs();
     const timeoutId = setTimeout(() => {
       cleanup();
-      reject('File download timeout after 30 seconds');
-    }, 600000);
+      reject(`File download timeout after ${streamTimeoutMs / 1000} seconds`);
+    }, streamTimeoutMs);
 
     response.data.on('data', (chunk: Buffer) => {
       if (isAborted) return;

@@ -11,6 +11,7 @@ import { readRawContentFromBuffer } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { getImageBuffer } from '../image/utils';
 import { uploadParsedPdfImage } from './image';
+import { getBackendFileOperationTimeoutMs } from '../parseTimeout';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -132,7 +133,7 @@ export const readFileContentByBuffer = async ({
       markdown: string;
       error?: object | string;
     }>(url, data, {
-      timeout: 600000,
+      timeout: getBackendFileOperationTimeoutMs(),
       headers: {
         ...data.getHeaders(),
         Authorization: token ? `Bearer ${token}` : undefined

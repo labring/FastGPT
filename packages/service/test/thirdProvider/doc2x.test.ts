@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { requestMock, axiosPutMock, getImageBufferMock } = vi.hoisted(() => ({
+const { requestMock, axiosPutMock, getImageBufferMock, mockEnv } = vi.hoisted(() => ({
   requestMock: vi.fn(),
   axiosPutMock: vi.fn(),
-  getImageBufferMock: vi.fn()
+  getImageBufferMock: vi.fn(),
+  mockEnv: {
+    PARSE_FILE_TIMEOUT_SECONDS: 600
+  }
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -17,6 +20,10 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBuffer: getImageBufferMock
+}));
+
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: mockEnv
 }));
 
 const { useDoc2xServer } = await import('@fastgpt/service/thirdProvider/doc2x');
@@ -52,6 +59,8 @@ const mockDoc2xSuccess = (md: string) => {
 describe('useDoc2xServer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requestMock.mockReset();
+    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
     vi.useFakeTimers();
     axiosPutMock.mockResolvedValue({
       status: 200,
@@ -152,5 +161,97 @@ describe('useDoc2xServer', () => {
 
     expect(getImageBufferMock).not.toHaveBeenCalled();
     expect(result.text).toBe('hello ![](https://img.example.com/a.png)');
+  });
+
+  it('轮询总时长跟随后端有效 timeout，不受固定 120 次限制', async () => {
+    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 1200;
+    requestMock.mockReset();
+    let statusCalls = 0;
+    requestMock.mockImplementation(({ url }: { url: string }) => {
+      if (url === '/v2/parse/preupload') {
+        return Promise.resolve({
+          data: {
+            code: 'ok',
+            data: {
+              uid: 'uid-long-running',
+              url: 'https://upload.example.com/file'
+            }
+          }
+        });
+      }
+
+      statusCalls += 1;
+      return Promise.resolve({
+        data: {
+          code: 'ok',
+          data:
+            statusCalls === 121
+              ? {
+                  status: 'success',
+                  result: {
+                    pages: [{ md: 'long-running result' }]
+                  }
+                }
+              : {
+                  status: 'processing',
+                  progress: statusCalls,
+                  result: {
+                    pages: []
+                  }
+                }
+        }
+      });
+    });
+
+    const resultPromise = useDoc2xServer({ apiKey: 'api-key' }).parsePDF(Buffer.from('pdf'));
+    await vi.runAllTimersAsync();
+    const result = await resultPromise;
+
+    expect(statusCalls).toBe(121);
+    expect(result).toEqual({
+      pages: 1,
+      text: 'long-running result'
+    });
+  });
+
+  it('达到整体 deadline 后停止状态轮询', async () => {
+    requestMock.mockReset();
+    let statusCalls = 0;
+    requestMock.mockImplementation(({ url }: { url: string }) => {
+      if (url === '/v2/parse/preupload') {
+        return Promise.resolve({
+          data: {
+            code: 'ok',
+            data: {
+              uid: 'uid-timeout',
+              url: 'https://upload.example.com/file'
+            }
+          }
+        });
+      }
+
+      statusCalls += 1;
+      return Promise.resolve({
+        data: {
+          code: 'ok',
+          data: {
+            status: 'processing',
+            progress: statusCalls,
+            result: {
+              pages: []
+            }
+          }
+        }
+      });
+    });
+
+    const resultPromise = useDoc2xServer({ apiKey: 'api-key' }).parsePDF(Buffer.from('pdf'));
+    const resultAssertion = expect(resultPromise).rejects.toBe(
+      '[Doc2x] Failed to get result (uid: uid-timeout): Process timeout'
+    );
+    await vi.runAllTimersAsync();
+
+    await resultAssertion;
+    expect(statusCalls).toBe(119);
   });
 });
