@@ -196,6 +196,43 @@ describe('form2AppWorkflow', () => {
     expect(restored.dataset.authTmbId).toBe(true);
   });
 
+  it('should mark dataset search input as agent-generated when used with tools', () => {
+    const form = getDefaultAppForm();
+    form.dataset.datasets = [
+      {
+        datasetId: 'dataset1',
+        avatar: '',
+        name: 'Test Dataset',
+        vectorModel: { model: 'text-embedding-ada-002' } as any
+      }
+    ];
+    form.selectedTools = [
+      {
+        id: 'tool-node-1',
+        pluginId: 'systemTool-weather',
+        source: 'system',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: 'other',
+        name: 'Weather Tool',
+        avatar: '',
+        intro: '',
+        inputs: [],
+        outputs: [],
+        showStatus: true
+      } as any
+    ];
+
+    const workflow = form2AppWorkflow(form, mockT);
+    const datasetSearchInput = workflow.nodes
+      .find((node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSearchInput);
+
+    expect(datasetSearchInput).toMatchObject({
+      value: '',
+      isToolParam: true
+    });
+  });
+
   it('should preserve debug tool source when roundtripping simple app tools', () => {
     const form = getDefaultAppForm();
     form.aiSettings = {
