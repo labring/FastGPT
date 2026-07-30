@@ -850,6 +850,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           nodeId={nodeId}
           flowInputList={commonInputs}
           CustomComponent={CustomComponents}
+          isTool={isTool}
         />
       </Container>
       <Container>

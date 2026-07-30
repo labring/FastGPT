@@ -438,7 +438,11 @@ export function form2AppWorkflow(
       outputs: AiChatModule.outputs
     };
   }
-  function datasetNodeTemplate(formData: AppFormEditFormType, question: any): StoreNodeItemType {
+  function datasetNodeTemplate(
+    formData: AppFormEditFormType,
+    question: any,
+    isTool = false
+  ): StoreNodeItemType {
     return {
       nodeId: datasetNodeId,
       name: t(DatasetSearchModule.name),
@@ -543,6 +547,7 @@ export function form2AppWorkflow(
           key: NodeInputKeyEnum.datasetSearchInput,
           valueType: WorkflowIOValueTypeEnum.arrayString,
           toolDescription: i18nT('workflow:content_to_search'),
+          isToolParam: isTool,
           value: question
         }
       ],
@@ -599,7 +604,7 @@ export function form2AppWorkflow(
     const datasetTool: WorkflowType | null =
       selectedDatasets.length > 0
         ? {
-            nodes: [datasetNodeTemplate(formData, '')],
+            nodes: [datasetNodeTemplate(formData, '', true)],
             edges: [
               {
                 source: toolNodeId,

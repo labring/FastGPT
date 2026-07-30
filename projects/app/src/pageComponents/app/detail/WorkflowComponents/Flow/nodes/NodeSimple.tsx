@@ -12,7 +12,6 @@ import { useContextSelector } from 'use-context-selector';
 import CatchError from './render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
-import { AppNodeFlowNodeTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 
 const NodeSimple = ({
   data,
@@ -31,9 +30,6 @@ const NodeSimple = ({
     () => splitOutput(outputs),
     [splitOutput, outputs]
   );
-  // 内置节点作为 ToolCall 工具时，保留模型、知识库等节点本地运行配置。
-  const shouldFilterToolParams = isTool && !!AppNodeFlowNodeTypeMap[data.flowNodeType];
-
   const Render = useMemo(() => {
     return (
       <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
@@ -48,11 +44,7 @@ const NodeSimple = ({
           <>
             <Container>
               <IOTitle text={t('common:Input')} nodeId={nodeId} inputs={inputs} />
-              <RenderInput
-                nodeId={nodeId}
-                flowInputList={commonInputs}
-                isTool={shouldFilterToolParams}
-              />
+              <RenderInput nodeId={nodeId} flowInputList={commonInputs} isTool={isTool} />
             </Container>
           </>
         )}
@@ -73,7 +65,6 @@ const NodeSimple = ({
     selected,
     data,
     isTool,
-    shouldFilterToolParams,
     nodeId,
     inputs,
     commonInputs,
