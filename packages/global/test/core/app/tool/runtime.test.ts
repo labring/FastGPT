@@ -90,6 +90,84 @@ describe('compileToolRuntime', () => {
     expect(compiled.agentGeneratedKeys).toEqual(['mixedUnion']);
     expect(compiled.fixedInputBindings).toEqual({ dataset: ['dataset-id'] });
   });
+
+  it('removes title and default annotations from JSON Schema model parameters recursively', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      inputs: [
+        {
+          key: 'filter',
+          valueType: WorkflowIOValueTypeEnum.object,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        }
+      ],
+      jsonSchema: {
+        type: 'object',
+        title: 'Search parameters',
+        default: { filter: { query: 'fastgpt' } },
+        properties: {
+          filter: {
+            type: 'object',
+            title: 'Filter',
+            default: { query: 'fastgpt' },
+            properties: {
+              query: {
+                type: 'string',
+                title: 'Query',
+                default: 'fastgpt'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        filter: {
+          type: 'object',
+          properties: {
+            query: { type: 'string' }
+          }
+        }
+      }
+    });
+  });
+
+  it('removes NodeIO titles and defaults from model parameters without changing manual bindings', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          defaultValue: 'fallback'
+        },
+        {
+          key: 'limit',
+          valueType: WorkflowIOValueTypeEnum.number,
+          renderTypeList: [FlowNodeInputTypeEnum.numberInput],
+          selectedType: FlowNodeInputTypeEnum.numberInput,
+          defaultValue: 5
+        }
+      ]
+    });
+
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '' }
+      }
+    });
+    expect(compiled.fixedInputBindings).toEqual({ limit: 5 });
+  });
 });
 
 describe('mergeToolRuntimeParams', () => {

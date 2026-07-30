@@ -858,6 +858,23 @@ export const nodeInputs2JsonSchema = ({
   };
 };
 
+const modelSchemaIgnoredKeys = new Set(['title', 'default']);
+const schemaDataKeywords = new Set(['const', 'enum', 'examples']);
+
+/** 生成模型 schema 副本时移除不会参与工具调用协议的展示与默认值 annotation。 */
+const stripModelSchemaAnnotations = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(stripModelSchemaAnnotations);
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, child]) => {
+      if (modelSchemaIgnoredKeys.has(key)) return [];
+      // enum/const/examples 是数据本身，其中可能合法包含名为 title/default 的业务字段。
+      return [[key, schemaDataKeywords.has(key) ? child : stripModelSchemaAnnotations(child)]];
+    })
+  );
+};
+
 /**
  * 根据工具输入的最终来源过滤模型可见 JSON Schema。
  * 已知输入只允许 Agent 生成项进入模型；schema 中没有对应节点输入的扩展字段仍可通过
@@ -872,7 +889,9 @@ export const buildModelVisibleToolJsonSchema = ({
   toolParams: FlowNodeInputItemType[];
   jsonSchema?: Record<string, any>;
 }) => {
-  if (!jsonSchema) return nodeInputs2JsonSchema({ inputs: toolParams });
+  if (!jsonSchema) {
+    return stripModelSchemaAnnotations(nodeInputs2JsonSchema({ inputs: toolParams }));
+  }
 
   const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
   const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
@@ -889,7 +908,7 @@ export const buildModelVisibleToolJsonSchema = ({
     isModelVisibleKey
   );
 
-  return {
+  return stripModelSchemaAnnotations({
     ...jsonSchema,
     type: 'object',
     properties: Object.fromEntries(
@@ -900,7 +919,7 @@ export const buildModelVisibleToolJsonSchema = ({
       : hasSchemaProperties && 'required' in jsonSchema
         ? { required: jsonSchema.required }
         : {})
-  };
+  });
 };
 
 export const nodeOutput2JsonSchemaProperty = (
