@@ -237,6 +237,7 @@ export const dispatchAgentDatasetSearch = async ({
       datasetSearchUsingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
       datasetSearchExtensionModel: datasetParams.datasetSearchExtensionModel,
       datasetSearchExtensionBg: datasetParams.datasetSearchExtensionBg,
+      collectionFilterMatch: datasetParams.collectionFilterMatch,
       userKey
     };
     const {

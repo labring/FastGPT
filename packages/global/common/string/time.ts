@@ -7,6 +7,24 @@ import { i18nT } from '../i18n/utils';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+/**
+ * 本地时间转 UTC 毫秒时间戳
+ * @param date 本地 Date 对象
+ * @returns UTC 毫秒时间戳（number）
+ */
+export const toUTCSeconds = (date: Date): number => {
+  return dayjs(date).utc().valueOf();
+};
+
+/**
+ * UTC 毫秒时间戳转 Date 对象
+ * @param ms UTC 毫秒时间戳
+ * @returns Date 对象
+ */
+export const fromUTCSeconds = (ms: number): Date => {
+  return dayjs(ms).utc().toDate();
+};
+
 export const formatTime2YMDHMW = (time?: Date | number) =>
   dayjs(time).format('YYYY-MM-DD HH:mm:ss dddd');
 export const formatTime2YMDHMS = (time?: Date | number) =>
