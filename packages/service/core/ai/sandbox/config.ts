@@ -11,10 +11,12 @@ const RESERVED_DISK_MB = 150;
 
 /** 获取 Agent sandbox 磁盘基准字节数，按存储容量换算并预留 150MB。 */
 export const getAgentSandboxDiskBytes = () => {
-  const storageMB = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE * 1024;
+  const storageMB = serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GB * 1024;
   const diskMB = Math.round(storageMB / 2 - RESERVED_DISK_MB);
   if (diskMB <= 0) {
-    throw new Error(`AGENT_SANDBOX_STORAGE_SIZE must be greater than ${RESERVED_DISK_MB * 2}MiB`);
+    throw new Error(
+      `AGENT_SANDBOX_STORAGE_SIZE_GB must be greater than ${RESERVED_DISK_MB * 2}MiB`
+    );
   }
   return diskMB * MB_BYTES;
 };

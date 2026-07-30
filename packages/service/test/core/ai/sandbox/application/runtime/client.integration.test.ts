@@ -43,7 +43,7 @@ const runFullIntegration = process.env.SANDBOX_INTEGRATION_FULL === 'true';
 vi.mock('@fastgpt/service/env', () => ({
   ...(() => {
     const envBool = (value: string | undefined) => value === 'true';
-    const agentSandboxStorageSize = Number(process.env.AGENT_SANDBOX_STORAGE_SIZE ?? 1);
+    const agentSandboxStorageSize = Number(process.env.AGENT_SANDBOX_STORAGE_SIZE_GB ?? 1);
 
     return {
       serviceEnv: {
@@ -64,7 +64,7 @@ vi.mock('@fastgpt/service/env', () => ({
           process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
         AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
           process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
-        AGENT_SANDBOX_STORAGE_SIZE: agentSandboxStorageSize
+        AGENT_SANDBOX_STORAGE_SIZE_GB: agentSandboxStorageSize
       }
     };
   })()

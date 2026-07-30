@@ -13,7 +13,7 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
   AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
   AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
-  AGENT_SANDBOX_STORAGE_SIZE: process.env.AGENT_SANDBOX_STORAGE_SIZE,
+  AGENT_SANDBOX_STORAGE_SIZE_GB: process.env.AGENT_SANDBOX_STORAGE_SIZE_GB,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
@@ -72,7 +72,7 @@ describe('sandbox provider config', () => {
     );
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', originalEnv.AGENT_SANDBOX_STORAGE_SIZE);
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GB', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GB);
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL
@@ -127,7 +127,7 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
-    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE', '5');
+    vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GB', '5');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES', '67108864');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', '16777216');
 
@@ -185,7 +185,7 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
         AGENT_SANDBOX_SEALOS_BASEURL: undefined,
         AGENT_SANDBOX_SEALOS_TOKEN: undefined,
-        AGENT_SANDBOX_STORAGE_SIZE: 1
+        AGENT_SANDBOX_STORAGE_SIZE_GB: 1
       }
     }));
 
@@ -385,7 +385,7 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true,
         AGENT_SANDBOX_CPU_COUNT: 1,
         AGENT_SANDBOX_MEMORY_MIB: 2048,
-        AGENT_SANDBOX_STORAGE_SIZE: 1
+        AGENT_SANDBOX_STORAGE_SIZE_GB: 1
       }
     }));
 
