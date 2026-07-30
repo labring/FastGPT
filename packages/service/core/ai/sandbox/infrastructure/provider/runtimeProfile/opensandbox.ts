@@ -79,7 +79,8 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       // Docker 模式下默认拒绝常见宿主机别名；公网默认保持放行，私网 CIDR 需依赖部署网络边界。
       const networkPolicy =
         createConfig.networkPolicy ??
-        (serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'docker'
+        (!serviceEnv.AGENT_SANDBOX_OPENSANDBOX_DISABLE_NETWORK_POLICY &&
+        serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'docker'
           ? OPEN_SANDBOX_DOCKER_LOCAL_NETWORK_POLICY
           : undefined);
 

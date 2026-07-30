@@ -115,6 +115,12 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_DISABLE_NETWORK_POLICY: BoolSchema.default(false).meta({
+      description:
+        'Disable the default outbound network policy for OpenSandbox Docker runtime. ' +
+        'Set to true when the OpenSandbox server uses a user-defined Docker network (not bridge), ' +
+        'as networkPolicy is only supported with network_mode=bridge.'
+    }),
     AGENT_SANDBOX_DISK_MB: NumSchema.min(1).default(1024).meta({
       description:
         'Agent sandbox 磁盘大小基准（MB）。冷归档包上限等于该值，Skill 包和 IDE 单文件上限按该值的一半四舍五入计算。'
