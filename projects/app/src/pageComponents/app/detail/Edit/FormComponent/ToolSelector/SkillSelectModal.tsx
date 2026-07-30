@@ -272,7 +272,11 @@ const SkillSelectModal = ({
                     ))}
                   </Grid>
                 ) : (
-                  <EmptyTip text={t('skill:no_skills')} />
+                  <EmptyTip
+                    text={
+                      hasSkillCreatePer ? t('skill:no_skills') : t('skill:no_skills_no_permission')
+                    }
+                  />
                 )}
               </Box>
             </MyBox>

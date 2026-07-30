@@ -7,6 +7,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateSkill } from '@/web/core/skill/api';
@@ -30,6 +31,7 @@ type Props = {
 
 const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = false }: Props) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const router = useRouter();
 
   const { register, setValue, control, handleSubmit } = useForm<FormType>({
@@ -64,13 +66,13 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
   );
 
   const handleConfirm = () => {
-    // 需要新标签页时，在「确认」点击的同步用户手势内先预建空白窗口，
-    // 避免 await 创建请求之后脱离手势被 Safari / 严格弹窗策略拦截。
-    // 注：此处不能用 noopener —— 需保留窗口句柄以便创建成功后设置 location；
-    // 目标页为同源可信路由，opener 暴露风险可接受。
-    const popup = openDetailInNewTab ? window.open('', '_blank') : null;
-
     const onValid = async (data: FormType) => {
+      // 校验通过后再于同步用户手势内预建空白窗口：handleSubmit 同步校验通过后会立即调用 onValid，
+      // 仍在 click 手势调用栈内，不会被 Safari / 严格弹窗策略拦截。
+      // 关键：放在这里（而非校验前）可避免名称为空时「先开空白标签页、onInvalid 又关掉」造成的闪退。
+      // 注：不能用 noopener —— 需保留窗口句柄以便创建成功后设置 location；目标页为同源可信路由。
+      const popup = openDetailInNewTab ? window.open('', '_blank') : null;
+
       let skillId: string;
       try {
         skillId = await createSkill(data);
@@ -99,8 +101,8 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
     };
 
     const onInvalid = () => {
-      // 校验未通过（如名称为空）：关掉预建窗口，不留空白标签页。
-      popup?.close();
+      // 校验未通过（名称为空 / 纯空格）：稳定提示错误，弹窗保持打开，不再开/关空白标签页。
+      toast({ status: 'warning', title: t('common:name_is_empty') });
     };
 
     handleSubmit(onValid, onInvalid)();
@@ -153,7 +155,10 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
                 flex={1}
                 size={'sm'}
                 placeholder={t('skill:skill_name_placeholder')}
-                {...register('name', { required: true })}
+                {...register('name', {
+                  required: true,
+                  setValueAs: (value: string) => value.trim()
+                })}
               />
             </Flex>
           </Box>

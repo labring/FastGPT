@@ -35,6 +35,7 @@
   "move_skill_hint": "After moving, the selected skill/folder will inherit the permission settings of the new folder.",
   "no_current_version": "No available Skill version yet. Recreate or import the Skill before editing.",
   "no_skills": "You don't have any skills yet",
+  "no_skills_no_permission": "You don't have any skills yet, and your account doesn't have permission to create skills. Please contact your administrator.",
   "permission.des.manage": "Can manage Agent Skill and collaborators",
   "permission.des.read": "Can view Agent Skill",
   "permission.des.write": "Can edit Agent Skill",

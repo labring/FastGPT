@@ -140,6 +140,7 @@
   "dataset_create_failed": "Knowledge base creation failed",
   "dataset_create_success": "The knowledge base was created successfully and files are being indexed in the background.",
   "dataset_empty_tips": "You don’t have a knowledge base yet, create one first.",
+  "dataset_empty_tips_no_permission": "You don't have a knowledge base yet, and your account doesn't have permission to create one. Please contact your administrator.",
   "dataset_select": "Optional knowledge base",
   "delete_all_input_guide_confirm": "Are you sure you want to clear the input guide lexicon?",
   "document_quote": "Document Reference",

@@ -400,6 +400,7 @@
   "core.dataset.Dataset ID": "Dataset ID",
   "core.dataset.Delete Confirm": "Confirm to Delete This Dataset? Data Cannot Be Recovered After Deletion, Please Confirm!",
   "core.dataset.Empty Dataset Tips": "No Dataset Yet, Create One Now!",
+  "core.dataset.Empty Dataset Tips No Permission": "No knowledge base yet. Your account doesn't have permission to create one. Please contact your administrator.",
   "core.dataset.Folder placeholder": "This is a Directory",
   "core.dataset.Intro Placeholder": "This Dataset Has No Introduction Yet",
   "core.dataset.My Dataset": "My Dataset",
