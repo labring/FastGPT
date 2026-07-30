@@ -21,6 +21,7 @@ import RenderText from './RenderText';
 import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
+import { adaptLegacyAgentPlanAskToReadonlyAgentAsk } from './utils';
 
 const AIResponseBox = ({
   chatItemDataId,
@@ -177,6 +178,16 @@ const AIResponseBox = ({
           key="interactive"
           interactive={interactive}
           submitted={interactive.params.submitted || !isLastChild}
+        />
+      );
+    }
+    if (interactive.type === 'agentPlanAskQuery') {
+      // 旧 ask_user 仅适配展示，不能恢复为当前轮可提交的交互。
+      responseBlocks.push(
+        <RenderAgentAskInteractive
+          key="interactive"
+          interactive={adaptLegacyAgentPlanAskToReadonlyAgentAsk(interactive)}
+          submitted={true}
         />
       );
     }
