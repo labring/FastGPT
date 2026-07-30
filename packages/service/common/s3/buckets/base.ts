@@ -4,6 +4,8 @@ import {
   type CreateMultipartUploadAccessUrlOptions,
   type CreateMultipartUploadAccessUrlParams,
   type CreateMultipartUploadAccessUrlResult,
+  type CreatePostPresignedUrlResult,
+  type CreatePresignedPutUrlResult,
   type AbortMultipartUploadAccessParams,
   type CompleteMultipartUploadAccessParams,
   CreateMultipartUploadAccessUrlOptionsSchema,
@@ -12,13 +14,14 @@ import {
   type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema,
   CreatePostPresignedUrlOptionsSchema,
-  CreatePostPresignedUrlParamsSchema,
-  type CreatePostPresignedUrlResult
+  CreatePostPresignedUrlParamsSchema
 } from '../contracts/type';
 import {
   getSystemMaxFileSize,
   S3_MULTIPART_CONCURRENCY,
   S3_MULTIPART_COMPLETING_LEASE_MS,
+  S3_MULTIPART_UPLOAD_ENABLED,
+  S3_MULTIPART_UPLOAD_THRESHOLD_BYTES,
   S3_MULTIPART_MAX_RETRY,
   S3_MULTIPART_PART_SIZE_BYTES,
   S3_MULTIPART_SESSION_EXPIRE_HOURS
@@ -178,10 +181,38 @@ export class S3BaseBucket {
     return exists ?? false;
   }
 
-  async createPresignedPutUrl(
+  /**
+   * 根据文件大小统一选择单 PUT 或 S3 Multipart 上传。
+   * 未提供文件大小、未开启开关或文件小于阈值时返回 single；大文件才创建 Multipart session。
+   */
+  async createUploadAccessUrl(
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
   ): Promise<CreatePostPresignedUrlResult> {
+    const parsedParams = CreatePostPresignedUrlParamsSchema.parse(params);
+    const { size } = parsedParams;
+
+    if (
+      S3_MULTIPART_UPLOAD_ENABLED &&
+      size !== undefined &&
+      size >= S3_MULTIPART_UPLOAD_THRESHOLD_BYTES
+    ) {
+      return this.createMultipartUploadAccessUrl(
+        {
+          ...parsedParams,
+          size
+        },
+        options
+      );
+    }
+
+    return this.createPresignedPutUrl(parsedParams, options);
+  }
+
+  async createPresignedPutUrl(
+    params: CreatePostPresignedUrlParams,
+    options: CreatePostPresignedUrlOptions = {}
+  ): Promise<CreatePresignedPutUrlResult> {
     try {
       const {
         expiredHours,
@@ -244,7 +275,8 @@ export class S3BaseBucket {
           'content-type': resolvedUploadPolicy.defaultContentType
         },
         previewUrl,
-        maxSize: formatMaxFileSize
+        maxSize: formatMaxFileSize,
+        uploadMode: 'single'
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

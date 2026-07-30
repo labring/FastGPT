@@ -85,16 +85,15 @@ export const useSearchTestImages = ({
     try {
       const uploadedImages = await Promise.all(
         uploadFiles.map(async (file) => {
-          const { url, key, headers, maxSize, previewUrl } =
-            await getUploadSearchTestImagePresignedUrl({
-              datasetId,
-              filename: file.name
-            });
+          const uploadResult = await getUploadSearchTestImagePresignedUrl({
+            datasetId,
+            filename: file.name,
+            size: file.size
+          });
+          const { key, previewUrl } = uploadResult;
           const uploader = new S3FileUploader({
-            url,
-            headers,
+            ...uploadResult,
             file,
-            maxSize,
             t
           });
           await uploader.upload();

@@ -1,6 +1,10 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
+import {
+  PresignFileUploadParamsSchema,
+  type CreatePostPresignedUrlResponseType,
+  type PresignFileUploadParams
+} from '@fastgpt/global/common/file/s3/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
@@ -8,15 +12,17 @@ import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type PresignTempFilePostUrlParams = {
-  filename: string;
-};
+export type PresignTempFilePostUrlParams = PresignFileUploadParams;
 
 async function handler(
   req: ApiRequestProps<PresignTempFilePostUrlParams>
 ): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename } = req.body;
+  const { filename, size } = parseApiInput({
+    req,
+    bodySchema: PresignFileUploadParamsSchema
+  }).body;
 
   const { teamId, tmbId } = await authUserPer({
     req,
@@ -35,8 +41,8 @@ async function handler(
   const bucket = new S3PrivateBucket();
   const { fileKey } = getFileS3Key.temp({ teamId, filename });
 
-  return await bucket.createPresignedPutUrl(
-    { rawKey: fileKey, filename },
+  return await bucket.createUploadAccessUrl(
+    { rawKey: fileKey, filename, ...(size !== undefined ? { size } : {}) },
     {
       expiredHours: 1,
       maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize

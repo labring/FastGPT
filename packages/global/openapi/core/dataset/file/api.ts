@@ -144,33 +144,9 @@ export const PresignDatasetFilePostUrlBodySchema = z.object({
 });
 export type PresignDatasetFilePostUrlBody = z.infer<typeof PresignDatasetFilePostUrlBodySchema>;
 
-const DatasetFileSingleUploadResponseSchema = CreatePostPresignedUrlResponseSchema.extend({
-  uploadMode: z.literal('single').meta({ description: '单请求 PUT 上传' })
+export const PresignDatasetFilePostUrlResponseSchema = CreatePostPresignedUrlResponseSchema.meta({
+  description: 'S3 单 PUT 或 Multipart 上传参数'
 });
-
-export const DatasetFileMultipartUploadResponseSchema = CreatePostPresignedUrlResponseSchema.extend(
-  {
-    uploadMode: z.literal('multipart').meta({ description: 'Multipart 分片上传' }),
-    completeUrl: z.string().min(1).meta({ description: '完成 Multipart 上传的接口地址' }),
-    abortUrl: z.string().min(1).meta({ description: '取消 Multipart 上传的接口地址' }),
-    partSize: IntSchema.positive().meta({
-      example: 8388608,
-      description: '单个分片大小，单位 byte'
-    }),
-    concurrency: IntSchema.positive().meta({
-      example: 3,
-      description: '建议的并发分片数'
-    }),
-    maxRetry: IntSchema.meta({ example: 3, description: '单个分片最大重试次数' })
-  }
-);
-
-export const PresignDatasetFilePostUrlResponseSchema = z
-  .discriminatedUnion('uploadMode', [
-    DatasetFileSingleUploadResponseSchema,
-    DatasetFileMultipartUploadResponseSchema
-  ])
-  .meta({ description: 'S3 单 PUT 或 Multipart 上传参数' });
 export type PresignDatasetFilePostUrlResponse = z.infer<
   typeof PresignDatasetFilePostUrlResponseSchema
 >;
@@ -253,6 +229,10 @@ export const PresignSearchTestImageBodySchema = z.object({
   filename: z.string().min(1).meta({
     example: 'demo.png',
     description: '待上传图片文件名'
+  }),
+  size: IntSchema.positive().optional().meta({
+    example: 1048576,
+    description: '文件大小，单位 byte；用于自动选择单 PUT 或 Multipart'
   })
 });
 export type PresignSearchTestImageBody = z.infer<typeof PresignSearchTestImageBodySchema>;

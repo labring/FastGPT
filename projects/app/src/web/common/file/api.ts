@@ -4,12 +4,16 @@ import type {
   PresignChatFilePostUrlParams,
   PresignDraftChatFilePostUrlParams
 } from '@fastgpt/global/openapi/core/chat/file/api';
-import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
+import type {
+  CreatePostPresignedUrlResponseType,
+  PresignFileUploadParams
+} from '@fastgpt/global/common/file/s3/type';
 
-export const getUploadAvatarPresignedUrl = (params: {
-  filename: string;
-  autoExpired?: boolean;
-}) => {
+export const getUploadAvatarPresignedUrl = (
+  params: PresignFileUploadParams & {
+    autoExpired?: boolean;
+  }
+) => {
   return POST<CreatePostPresignedUrlResponseType>('/common/file/presignAvatarPostUrl', params);
 };
 
@@ -39,6 +43,6 @@ export const getPresignedChatFileGetUrl = (params: PresignChatFileGetUrlParams) 
   return POST<string>('/core/chat/file/presignChatFileGetUrl', params);
 };
 
-export const getUploadTempFilePresignedUrl = (params: { filename: string }) => {
+export const getUploadTempFilePresignedUrl = (params: PresignFileUploadParams) => {
   return POST<CreatePostPresignedUrlResponseType>('/common/file/presignTempFilePostUrl', params);
 };

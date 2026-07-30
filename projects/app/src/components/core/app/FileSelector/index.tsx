@@ -420,18 +420,18 @@ const FileSelector = ({
               ...chatAuthTarget,
               chatId
             };
-            const { url, key, headers, previewUrl } =
+            const uploadResult =
               fileUploadMode === 'draft'
                 ? await getUploadDraftChatFilePresignedUrl({
                     ...uploadParams,
                     fileSelectConfig
                   })
                 : await getUploadChatFilePresignedUrl(uploadParams);
+            const { key, previewUrl } = uploadResult;
 
             const uploader = new S3FileUploader({
-              url,
+              ...uploadResult,
               file: file.rawFile,
-              headers,
               onProgress: (loaded, total) => {
                 if (!total) return;
                 const percent = Math.round((loaded / total) * 100);

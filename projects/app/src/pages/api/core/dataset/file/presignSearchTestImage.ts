@@ -21,7 +21,7 @@ import {
 async function handler(
   req: ApiRequestProps<PresignSearchTestImageBody>
 ): Promise<PresignSearchTestImageResponse> {
-  const { datasetId, filename } = parseApiInput({
+  const { datasetId, filename, size } = parseApiInput({
     req,
     bodySchema: PresignSearchTestImageBodySchema
   }).body;
@@ -49,8 +49,8 @@ async function handler(
       allowedExtensions: parseAllowedExtensions(imageFileType)
     }
   });
-  const result = await bucket.createPresignedPutUrl(
-    { rawKey: fileKey, filename },
+  const result = await bucket.createUploadAccessUrl(
+    { rawKey: fileKey, filename, ...(size !== undefined ? { size } : {}) },
     {
       expiredHours: 3,
       maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize,

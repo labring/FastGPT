@@ -110,7 +110,7 @@ export class S3ChatSource extends S3PrivateBucket {
         extensionRules
       }
     });
-    return await this.createPresignedPutUrl(
+    return await this.createUploadAccessUrl(
       {
         rawKey: fileKey,
         filename,

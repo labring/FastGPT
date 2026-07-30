@@ -82,14 +82,15 @@ const QuickCreateDatasetModal = ({
       await Promise.all(
         files.map(async ({ fileId, file }) => {
           try {
-            const { url, key, headers, maxSize } = await getUploadTempFilePresignedUrl({
-              filename: file.name
+            const uploadResult = await getUploadTempFilePresignedUrl({
+              filename: file.name,
+              size: file.size
             });
+            const { key } = uploadResult;
 
             const uploader = new S3FileUploader({
-              url,
+              ...uploadResult,
               file,
-              headers,
               onProgress: (loaded, total) => {
                 if (!total) return;
                 const percent = Math.round((loaded / total) * 100);
@@ -107,7 +108,6 @@ const QuickCreateDatasetModal = ({
                 );
               },
               t,
-              maxSize,
               onSuccess: () => {
                 setSelectFiles((state) =>
                   state.map((item) =>

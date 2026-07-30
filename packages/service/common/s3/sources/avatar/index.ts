@@ -17,10 +17,12 @@ class S3AvatarSource extends S3PublicBucket {
   async createUploadAvatarURL({
     filename,
     teamId,
+    size,
     autoExpired = true
   }: {
     filename: string;
     teamId: string;
+    size?: number;
     autoExpired?: boolean;
   }) {
     const { fileKey } = getFileS3Key.avatar({ teamId, filename });
@@ -31,8 +33,8 @@ class S3AvatarSource extends S3PublicBucket {
       }
     });
 
-    return this.createPresignedPutUrl(
-      { filename, rawKey: fileKey },
+    return this.createUploadAccessUrl(
+      { filename, rawKey: fileKey, ...(size !== undefined ? { size } : {}) },
       {
         expiredHours: autoExpired ? 1 : undefined, // 1 Hours
         maxFileSize: 5, // 5MB

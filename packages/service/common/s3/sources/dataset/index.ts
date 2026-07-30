@@ -24,10 +24,6 @@ import { getFileS3Key, truncateFilename } from '../../utils';
 import { isAuthorizedDatasetFileS3Key } from './key';
 import type { S3RawTextSource } from '../rawText';
 import { getS3RawTextSource } from '../rawText';
-import {
-  S3_MULTIPART_UPLOAD_ENABLED,
-  S3_MULTIPART_UPLOAD_THRESHOLD_BYTES
-} from '../../config/constants';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -57,12 +53,6 @@ export class S3DatasetSource extends S3PrivateBucket {
     return await this.createPreviewUrl({ key, expiredHours, responseContentType });
   }
 
-  /**
-   * 按文件大小选择单 PUT 或 Multipart 上传。
-   *
-   * size 缺失时保持旧单 PUT 行为，兼容尚未升级的调用方；超过阈值时由 bucket helper
-   * 初始化 Multipart，并把同一 object key、3 小时 TTL 和知识库上传策略传入 session。
-   */
   async createUploadDatasetFileURL(params: CreateUploadDatasetFileParams) {
     const { filename, datasetId, maxFileSize, size } =
       CreateUploadDatasetFileParamsSchema.parse(params);
@@ -76,31 +66,12 @@ export class S3DatasetSource extends S3PrivateBucket {
       }
     });
 
-    if (
-      S3_MULTIPART_UPLOAD_ENABLED &&
-      size !== undefined &&
-      size >= S3_MULTIPART_UPLOAD_THRESHOLD_BYTES
-    ) {
-      return await this.createMultipartUploadAccessUrl(
-        {
-          rawKey: fileKey,
-          filename,
-          size,
-          source: 'local-file'
-        },
-        {
-          expiredHours: 3,
-          maxFileSize,
-          uploadPolicy
-        }
-      );
-    }
-
-    const result = await this.createPresignedPutUrl(
+    return await this.createUploadAccessUrl(
       {
         rawKey: fileKey,
         filename,
-        ...(size !== undefined ? { size, source: 'local-file' } : {})
+        source: 'local-file',
+        ...(size !== undefined ? { size } : {})
       },
       {
         expiredHours: 3,
@@ -108,11 +79,6 @@ export class S3DatasetSource extends S3PrivateBucket {
         uploadPolicy
       }
     );
-
-    return {
-      ...result,
-      uploadMode: 'single' as const
-    };
   }
 
   // 单个键删除

@@ -69,13 +69,30 @@ export const CreatePostPresignedUrlOptionsSchema = z.object({
 });
 export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUrlOptionsSchema>;
 
-export const CreatePostPresignedUrlResultSchema = z.object({
+const CreatePostPresignedUrlBaseResultSchema = z.object({
   url: z.string().nonempty(),
   key: z.string().nonempty(),
   headers: z.record(z.string(), z.string()),
   previewUrl: z.string().nonempty(),
   maxSize: z.number().positive().optional()
 });
+
+export const CreatePresignedPutUrlResultSchema = CreatePostPresignedUrlBaseResultSchema.extend({
+  uploadMode: z.literal('single')
+});
+export type CreatePresignedPutUrlResult = z.infer<typeof CreatePresignedPutUrlResultSchema>;
+
+export const CreatePostPresignedUrlResultSchema = z.discriminatedUnion('uploadMode', [
+  CreatePresignedPutUrlResultSchema,
+  CreatePostPresignedUrlBaseResultSchema.extend({
+    uploadMode: z.literal('multipart'),
+    completeUrl: z.string().nonempty(),
+    abortUrl: z.string().nonempty(),
+    partSize: z.number().int().positive(),
+    concurrency: z.number().int().positive(),
+    maxRetry: z.number().int().nonnegative()
+  })
+]);
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
 
 export const CreateMultipartUploadAccessUrlParamsSchema = CreatePostPresignedUrlParamsSchema.extend(
@@ -97,16 +114,15 @@ export type CreateMultipartUploadAccessUrlOptions = z.infer<
   typeof CreateMultipartUploadAccessUrlOptionsSchema
 >;
 
-export const CreateMultipartUploadAccessUrlResultSchema = CreatePostPresignedUrlResultSchema.extend(
-  {
+export const CreateMultipartUploadAccessUrlResultSchema =
+  CreatePostPresignedUrlBaseResultSchema.extend({
     uploadMode: z.literal('multipart'),
     completeUrl: z.string().nonempty(),
     abortUrl: z.string().nonempty(),
     partSize: z.number().int().positive(),
     concurrency: z.number().int().positive(),
     maxRetry: z.number().int().nonnegative()
-  }
-);
+  });
 export type CreateMultipartUploadAccessUrlResult = z.infer<
   typeof CreateMultipartUploadAccessUrlResultSchema
 >;

@@ -340,7 +340,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
             ...chatAuthTarget,
             chatId
           };
-          const { url, key, headers, maxSize, previewUrl } =
+          const uploadResult =
             fileUploadMode === 'draft'
               ? await getUploadDraftChatFilePresignedUrl(
                   {
@@ -352,6 +352,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
               : await getUploadChatFilePresignedUrl(uploadParams, {
                   cancelToken: task.controller
                 });
+          const { key, previewUrl } = uploadResult;
 
           task.key = key;
           if (
@@ -366,17 +367,15 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
           // Upload File to S3
           const uploader = new S3FileUploader({
-            url,
+            ...uploadResult,
             file: rawFile,
-            headers,
             onProgress: (loaded, total) => {
               if (!total) return;
               const percent = Math.round((loaded / total) * 100);
               updateFileByUploadId(uploadId, { process: percent, status: 1 });
             },
             signal: task.controller.signal,
-            t,
-            maxSize
+            t
           });
           await uploader.upload();
 
