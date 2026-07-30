@@ -2,7 +2,14 @@ import { getRedisRuntime } from './runtime/connection';
 
 export { closeRedisRuntime, configureRedisRuntime } from './runtime/connection';
 export type { RedisRuntimeLogger, RedisRuntimeOptions } from './runtime/connection';
-export type { RedisCacheLogger, RedisLogMetadata, RedisLogMethod } from './types';
+export type {
+  RedisCacheLogger,
+  RedisLogMetadata,
+  RedisLogMethod,
+  RedisRuntimeHealthMetric,
+  RedisRuntimeMetrics,
+  RedisRuntimeShutdownMetric
+} from './types';
 export { RedisConfigurationError, parseRedisConnectionConfig } from './runtime/config';
 export type { RedisConnectionConfig } from './runtime/config';
 export {

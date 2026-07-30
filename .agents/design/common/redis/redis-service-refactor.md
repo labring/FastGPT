@@ -2,7 +2,7 @@
 
 > 上位设计：[FastGPT Data Access Layer 设计](../dal/data-access-layer.md)
 >
-> 状态：Redis Cache 与 Runtime 迁移已完成至 DAL-R6D，DAL-R6D review 已通过并已提交；本阶段已完成 Redis Cache 命名与 class 收拢，并通过定向验证，当前等待 review。剩余为进程级 shutdown/metrics、最终静态治理、health/close 收口和全量测试。
+> 状态：Redis Cache、Runtime、BullMQ 基础设施和 BullMQ 业务队列 services 已完成当前一版重构；当前等待 DAL-R6H review。全量测试按约定暂不执行。
 
 ## 1. 目标
 
@@ -24,7 +24,7 @@ Redis Runtime（配置、连接角色、健康检查、生命周期）
        ioredis
 ```
 
-最终业务代码只依赖 Cache。BullMQ 等基础设施集成可以依赖 Runtime 的受限连接 factory，但不能把 raw client 传给业务。
+最终业务代码只依赖 Cache。BullMQ 等基础设施集成通过 `redis/bullmq` 使用 DAL Runtime 的受限连接 factory，但不能把 raw client 传给业务。
 
 ## 2. 范围与非目标
 
@@ -42,40 +42,40 @@ Redis Runtime（配置、连接角色、健康检查、生命周期）
 - MongoDB 或 Vector DB 的代码迁移。
 - Redis Cluster、Sentinel、读写分离和跨实例路由。
 - 大规模 key rename 或数据格式升级。
-- BullMQ 业务队列重新设计。
+- BullMQ 业务队列合同与 Redis Queue/Worker 生命周期统一归属 DAL；由 `packages/dal/redis/bullmq/services` 维护。应用侧只保留 processor 编排和 worker 初始化。
 - 为未来命令预建 capability、Lua registry 或通用 Cache 基类。
 
 ## 3. 当前问题
 
-当前 Redis kernel、shared/pro Cache 与业务调用方已完成迁移，剩余是 Runtime 治理和 service facade 最终收口：
+当前 Redis kernel、shared/pro Cache、BullMQ adapter、BullMQ 业务 services、Runtime 治理和 service facade 收口均已完成，剩余工作只包括本阶段 review 以及按约定暂缓的全量测试：
 
-- Runtime 与最小 adapter 已位于 `packages/dal/redis`，并通过 package exports 限制为四个公共子路径。
-- service runtime binding 仍负责读取 `serviceEnv` 和注入 logger；DAL 本身已经不依赖 service。
+- Runtime、adapter、BullMQ adapter、BullMQ services 和 Cache 已位于 `packages/dal/redis`，package exports 额外开放 `redis/bullmq/services/*` 子路径。
+- app/admin instrumentation 负责读取 `serviceEnv` 并向 DAL 注入 logger/metrics；DAL 本身不依赖 service。
 - shared 业务能力已迁入 `@fastgpt/dal`；pro Wecom Cache 位于 `pro/admin/src/dal` 并直接依赖 shared DAL adapter。
-- 业务层已不再持有 raw Redis client；service facade 仅剩 health/close 应用生命周期入口。
+- 业务层已不再持有 raw Redis client；health、close 和进程 shutdown 均由 DAL 提供，队列合同集中在 `redis/bullmq/services`，service 只保留领域 processor 和应用级 worker 初始化。
 - 测试已删除 `global.redisRuntime` 和 `global.redisClient`，只保留显式注入的共享 mock client。
 
 已确认不能恢复的旧方向：公共 `string/hash/counter/stream` capability 和没有生产消费者的 script registry。Cache 是稳定业务边界，adapter 只按实际命令增长。
 
 ### 3.1 已知正确性债务
 
-以下是迁移前确认的正确性债务，已由 DAL-R4 至 DAL-R6 的对应 Cache 和定向测试处理，作为兼容性回归记录保留：
+以下是迁移前确认的正确性债务，已由对应 Cache、Runtime 和定向测试处理，作为兼容性回归记录保留：
 
-- Session 解码失败时可能把已经带 `session:` 的 key 再次格式化，实际删除 `session:session:*`；删除流程还存在未 await 重试结果的问题。
-- 固定窗口限流在 `MULTI/EXEC` 返回空或异常结构时可能把计数解释为 0，不同限流入口的 Redis 故障策略也不一致。
-- outLink 字符串流使用 `APPEND` 后再 `EXPIRE`，中间失败会留下无 TTL key；每个 chunk 刷新 TTL 还可能无限延长生命周期。
-- System version 使用 `GET -> SET` 初始化，多实例可能生成不同版本值；wildcard 删除语义与旧注释不一致。
-- Stream Resume 的 blocking connection 已进入 Runtime registry，但业务协议仍直接承担 raw Redis 返回解析，尚未形成 Cache 边界。
-- legacy cache/lock/scan 仍依赖 ioredis `keyPrefix`，而 Stream、SCAN 和 `CALL` 的前缀行为不同，logical/physical key 混用风险尚未完全清零。
+- Session 使用 typed codec 和 logical key 删除，不再产生 `session:session:*`。
+- 固定窗口、Team Point 和 polling counter 对事务返回做完整校验，Redis 结果异常不会被解释为成功。
+- OutLink 字符串流的 `APPEND + EXPIRE` 在同一事务中执行，避免追加后遗留无 TTL key。
+- System version 使用 `SET NX GET` 原子初始化，wildcard 删除只作用于分页 SCAN 得到的子 key。
+- Stream Resume 的 XREAD/XRANGE、blocking connection 和返回解析均收拢到 DAL Cache。
+- 所有新代码使用显式 physical key；Runtime 不设置 `keyPrefix`，业务层不再混用 logical/physical key。
 
 ### 3.2 剩余 Redis 治理面
 
 | 治理项 | 当前形式 | 后续动作 |
 | --- | --- | --- |
-| Redis 7.2 integration | 部分阶段 integration 已覆盖 | 补齐 key/SCAN/Lua/Stream/并发总体验证 |
-| 进程生命周期 | Runtime hook 已存在 | 接入进程级 shutdown hook 和 metrics |
-| service facade | health/close binding 仍在 service | 迁移到 DAL 后删除剩余 facade |
-| BullMQ | Runtime queue/worker connection | 保留基础设施 adapter，补齐关闭演练 |
+| Redis 7.2 integration | kernel 与 Cache integration suite | 已覆盖 Redis 7.2+ 的 key、SCAN、Lua、Stream、事务和并发；未配置环境时按测试策略跳过 |
+| 进程生命周期 | DAL Runtime + app/admin instrumentation | 已接入 SIGTERM/SIGINT shutdown hook、close deadline 和 metrics |
+| service facade | health/close 已迁移到 DAL | service Redis facade、legacy client 和旧 adapter 已删除 |
+| BullMQ | DAL `redis/bullmq` runtime、binding 和业务 queue services；应用只保留 processor 编排 | Queue/Worker registry、duplicate 生命周期、Worker -> Queue 关闭顺序、超时、shutdown guard 和队列合同已收拢 |
 
 ## 4. 目标目录与导出
 
@@ -93,12 +93,52 @@ packages/dal/redis/
 │   ├── errors.ts
 │   ├── keyspace.ts
 │   ├── operation.ts
+│   ├── parse.ts
+│   ├── policy.ts
+│   ├── schema.ts
+│   ├── shutdown.ts
+│   ├── timeout.ts
 │   └── validation.ts
+├── bullmq/
+│   ├── index.ts
+│   ├── binding.ts
+│   ├── names.ts
+│   ├── types.ts
+│   ├── constants.ts
+│   ├── context.ts
+│   ├── close.ts
+│   ├── listeners.ts
+│   ├── queue-manager.ts
+│   ├── worker-manager.ts
+│   ├── runtime.ts
+│   └── services/
+│       ├── index.ts
+│       ├── appDelete.ts
+│       ├── collectionUpdate.ts
+│       ├── datasetDelete.ts
+│       ├── datasetSync.ts
+│       ├── evaluation.ts
+│       ├── s3FileDelete.ts
+│       ├── skillCreate.ts
+│       ├── skillDelete.ts
+│       ├── teamDelete.ts
+│       └── wechat.ts
 └── caches/
     ├── index.ts
+    ├── dailyActiveDedupe.ts
     ├── dingtalkAccessToken.ts
+    ├── fixedWindowRateLimit.ts
+    ├── lease.ts
+    ├── outLinkStream.ts
+    ├── session.ts
+    ├── streamResume.ts
+    ├── systemVersion.ts
+    ├── teamPoint.ts
+    ├── teamQpm.ts
     ├── teamVectorCount.ts
-    └── wechatQrLogin.ts
+    ├── wechatPollingFailure.ts
+    ├── wechatQrLogin.ts
+    └── workflowStopSignal.ts
 ```
 
 pro：
@@ -107,6 +147,7 @@ pro：
 pro/admin/src/dal/redis/caches/
 ├── index.ts
 ├── wecomAccessToken.ts
+├── wecomPendingOrder.ts
 └── wecomSuiteTicket.ts
 ```
 
@@ -116,15 +157,18 @@ pro/admin/src/dal/redis/caches/
 - `@fastgpt/dal/redis/caches`：业务 Cache。
 - `@fastgpt/dal/redis/types`：跨 Cache/Runtime 共享的 logger、key brand 和协议结果类型。
 - `@fastgpt/dal/redis/runtime`：只给 BullMQ、instrumentation 和迁移期基础设施使用。
+- `@fastgpt/dal/redis/bullmq`：BullMQ Queue/Worker runtime、队列名、业务队列 services 和必要类型；只接收 DAL Redis Runtime 与 logger，不暴露 raw connection factory。
+- `@fastgpt/dal/redis/bullmq/services/*`：可单独引用某个 `XxxMQService` 及其 job data type；主入口仍是默认消费方式。
+- BullMQ DAL 内部按 context、runtime、Queue manager、Worker manager、listener ownership、close helper 和 services 拆分；`index.ts` 只做稳定公共导出，避免生命周期实现与公共类型互相耦合。
 - `@fastgpt/dal/redis/adapter`：只给 shared/pro Cache 实现和对应测试使用。
 - physical key/client helper 不从 Redis 根入口导出。
-- `@fastgpt/service/common/redis` 只在迁移期保留 legacy facade，不能新增调用方。
+- `@fastgpt/service/common/redis` 已删除；应用通过 `@fastgpt/dal/redis` 和 `@fastgpt/dal/redis/runtime` 使用 health/configuration/shutdown 入口。
 
 ## 5. Runtime 设计
 
 ### 5.1 配置与初始化
 
-Runtime factory 接收显式依赖：
+`RedisRuntime` class 接收显式依赖：
 
 ```ts
 type RedisRuntimeOptions = {
@@ -134,7 +178,7 @@ type RedisRuntimeOptions = {
 };
 ```
 
-`@fastgpt/dal` 不读取 `serviceEnv`。迁移期间由 service facade 绑定 `serviceEnv.REDIS_URL` 和 `LogCategories.INFRA.REDIS`；最终由 app/admin instrumentation 在初始化阶段调用 DAL 配置入口。
+`@fastgpt/dal` 不读取 `serviceEnv`。app/admin instrumentation 在初始化阶段绑定 `serviceEnv.REDIS_URL`、logger 和 metrics，再调用 DAL 配置入口；service BullMQ 只读取已经配置的 Runtime。
 
 logger port 只保留 `info/warn/error(message, metadata?)`。默认 logger 必须无副作用且不得输出敏感配置，测试可以注入 fake。
 
@@ -193,12 +237,7 @@ fastgpt:<namespace>:<version?>:<encoded-segment>...
 
 ## 6. Adapter 与错误
 
-当前最小 adapter 仅包含：
-
-- `get`
-- `set`
-- `delete`
-- `iterateByPrefix`
+Adapter 不提供 ioredis 镜像或 raw client。它只按真实 Cache 的需求提供显式操作（字符串、事务、hash、Lua、Stream、SCAN 和 memory info），统一完成 logical -> physical key、deadline、返回校验和错误映射；不存在独立 capability registry。
 
 新增命令必须和一个真实 Cache 在同一阶段进入，并补齐：
 
@@ -228,12 +267,12 @@ fastgpt:<namespace>:<version?>:<encoded-segment>...
 | `WecomSuiteTicketCache` | `fastgpt:wecom:suite_ticket`；永久 string | 外部事件覆盖写入；缺失/读写错误 fail-closed | DAL-R2P 已迁入 pro DAL |
 | `DailyActiveDedupeCache` | `fastgpt:cache:dailyUserActive:${uid}_${date}`；`1`；86400 秒 | `SET NX EX`；Redis 故障 fail-open | DAL-R3C 已迁入 shared DAL |
 | `SystemVersionCache` | `fastgpt:VERSION_KEY:*`；UUID；永久 | `SET NX GET` 原子初始化；错误 fail-closed；wildcard 只删子 key | DAL-R3D 已迁入 shared DAL |
-| `FixedWindowRateLimitCache` | 现有 frequency key | 原子计数；按调用方冻结 fail-closed | 待关键能力阶段 |
-| `SessionCache` | `fastgpt:session:*` hash + TTL | 原子写/过期；损坏记录清理 | 待关键能力阶段 |
-| `LeaseCache` | `fastgpt:lock:*` | token 校验续租/释放；sandbox fail-closed | 待关键能力阶段 |
-| `WorkflowStopSignalCache` | 现有 stopping key | workflow/auxiliary 共享协议 | 待关键能力阶段 |
-| `StreamResumeCache` | `fastgpt:stream:resume:*` | blocking connection 和 memory pressure 合同 | 待流式阶段 |
-| `OutLinkStreamCache` | 现有 cache string | 原子 append+TTL；保持消费协议 | 待流式阶段 |
+| `FixedWindowRateLimitCache` | 现有 frequency key | 原子计数；按调用方冻结 fail-closed | 已迁入 DAL |
+| `SessionCache` | `fastgpt:session:*` hash + TTL | 原子写/过期；损坏记录清理 | 已迁入 DAL |
+| `LeaseCache` | `fastgpt:lock:*` | token 校验续租/释放；sandbox fail-closed | 已迁入 DAL |
+| `WorkflowStopSignalCache` | 现有 stopping key | workflow/auxiliary 共享协议 | 已迁入 DAL |
+| `StreamResumeCache` | `fastgpt:stream:resume:*` | blocking connection 和 memory pressure 合同 | 已迁入 DAL |
+| `OutLinkStreamCache` | 现有 cache string | 原子 append+TTL；保持消费协议 | 已迁入 DAL |
 
 Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和数据访问 deadline。权限、HTTP、Mongo 业务更新、供应商 SDK 和跨 Cache 用例留在 service/project。
 
@@ -269,20 +308,20 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 
 ### Phase 3B2：Wecom Cache 前置迁移
 
-- [x] pro Wecom access token 和 suite ticket Store 已实现。
+- [x] pro Wecom access token、pending order 和 suite ticket Cache 已实现。
 - [x] provider/suite/event 调用方已迁移，业务接口保持不变。
 - [x] 5 个定向测试文件共 29 项通过，相关实现覆盖率 100%。
 - [x] 前置实现已由 DAL-R2P 迁入 pro DAL 并完成改名。
-- [ ] DAL-R2P 待代码 review 和 pro 独立提交。
+- [x] DAL-R2P 已通过 review 并完成 pro 独立提交。
 
 ### Phase 2R：capability 收缩
 
-- [x] capability 收缩为 `get/set/delete/iterateByPrefix` 最小 adapter。
+- [x] capability 收缩为按真实 Cache 驱动的最小 adapter，不提供预制 capability registry。
 - [x] shared/pro Store 改为注入 adapter。
 - [x] 删除无生产消费者的 hash/counter/stream/atomic/script registry。
 - [x] 错误命名由 capability 收缩为 operation。
 - [x] 167 项唯一定向测试通过；adapter、operation 和 5 个 Store 全维度覆盖率 100%。
-- [ ] 待代码 review；通过前不进入 DAL-R1。
+- [x] 已通过 review，并作为后续 DAL-R1 的基础。
 
 ## 9. 后续迁移阶段
 
@@ -292,7 +331,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 
 - [x] 确认 Phase 2R 的最小 adapter 方向，不恢复 capability 或 script registry。
 - [x] 确认 Phase 3B2 pro Store 的数据合同和 pro 所有权。
-- [ ] Phase 2R、Phase 3B2 尚未分别提交；需与 DAL-R1 review 后的提交边界一并处理。
+- [x] Phase 2R、Phase 3B2 已纳入后续 DAL 阶段提交边界。
 
 ### DAL-R1：package 与 Redis kernel
 
@@ -300,9 +339,9 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - [x] 迁移 runtime/config/keyspace/errors/operation/validation/adapter 及其测试。
 - [x] 注入 redis URL 和 logger，确保 DAL 对 service/project/pro 零依赖。
 - [x] 建立单一进程级 DAL runtime context，兼容 Next.js 热重载。
-- [x] 保留 `@fastgpt/service/common/redis` legacy facade，内部委托 DAL；未增加旧深路径转发文件。
-- [x] BullMQ 统一依赖迁移期 service runtime binding，由该 binding 配置 DAL 并注册 before-close hook。
-- [x] 保持现有连接角色、全局 legacy client 接管、物理 key 和行为不变。
+- [x] 初期保留 `@fastgpt/service/common/redis` legacy facade，后续 DAL-R6F 已删除该 facade；未增加旧深路径转发文件。
+- [x] 初期由 service runtime binding 连接 BullMQ，后续 DAL-R6E 已将 Queue/Worker 生命周期收拢到 DAL。
+- [x] 迁移期间保持连接角色、物理 key 和行为兼容；DAL-R6D 已删除 global legacy client。
 - [x] 根测试环境通过公开 `configureRedisRuntime` 注入内存 client，不再写入 `global.redisRuntime`。
 - [x] DAL 5 个文件 81 项、service 11 个文件 123 项、pro 5 个文件 29 项、app 5 个文件 34 项定向测试通过。
 - [x] DAL 与 app typecheck 通过；pro 仅剩 3 个与本次 Redis 改动无关的既有类型错误。
@@ -360,7 +399,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - [x] Redis 7.2.14 integration 2 项通过：64 并发初始化只得到一个永久版本，512 个子 key 经多页 SCAN 后全部删除。
 - [x] DAL 与 app typecheck、15 个相关文件精确 ESLint、legacy System Version Redis 引用扫描通过。
 
-本阶段已实现，等待代码 review；本轮未运行全量测试，也未开始后续 Cache 子阶段。
+本阶段已实现并通过 review；本轮未运行全量测试。
 
 ### DAL-R4A：Fixed Window Rate Limit 与 Team QPM
 
@@ -369,7 +408,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - Cache 输出 `allowed/currentCount/remaining/ttlSeconds/resetAt`；`limit` 与 `windowSeconds` 采用正安全整数校验。
 - service 的认证限流和 Team QPM 限流统一 fail-closed；Redis 错误由 service 记录并映射到现有业务拒绝行为。
 - `TeamQpmCache` 仅迁移 `cache:team_qpm_limit:${teamId}` 的读写删除与 3600 秒 TTL；套餐回源、默认 `CHAT_MAX_QPM` 和 Mongo 查询留在 wallet service。
-- 不在本阶段迁移 Mongo `authFrequencyLimit`、Team Point、Pending Payment；不新增通用 capability 或 raw Redis 公共入口。
+- 不迁移 Mongo `authFrequencyLimit`；Team Point、Pending Payment 已在各自 Cache 阶段完成；不新增通用 capability 或 raw Redis 公共入口。
 
 ### DAL-R4：关键一致性 Cache
 
@@ -386,7 +425,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - partial hit、非法数字和 Redis 读错误回源 Mongo；写、增量、清理错误只记录 warning，钱包主流程继续使用 Mongo 结果。
 - 清除使用单条 multi-key `DEL`；wallet service 删除 `getRedisCache/setRedisCache/incrValueToCache` 和手工 cache key。
 
-本阶段已实现并通过定向验证，等待代码 review；Redis 7.2 integration 已编写但因未配置 `REDIS_INTEGRATION_URL` 跳过。
+本阶段已实现并通过定向验证与 review；Redis 7.2 integration 在未配置 `REDIS_INTEGRATION_URL` 时按测试策略跳过。
 
 ### DAL-R4C：Pending Payment 协调状态
 
@@ -396,7 +435,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - Redis 读取错误按 miss/fail-open，写入和清理错误 best-effort 记录 OTel error；不把普通微信/支付宝定时查单改造成 Redis claim/lease。
 - 本阶段不实现 worker claim、租约续期、回调幂等状态机或支付结果缓存，后续若确有多 worker 协调需求另行冻结合同。
 
-本阶段已实现，等待代码 review；Session、Lease、Stop Signal 和 Stream 仍未开始。
+本阶段已实现并通过定向验证与 review。
 
 ### DAL-R4D：Session Cache
 
@@ -406,7 +445,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - 用户扫描只通过 logical prefix 返回 typed session records；批量注销在 Cache 内构造 key，白名单按 session ID 比较，修复历史 `session:session:*` 删除漏洞。
 - 登录数限制仍由 service 读取 `MAX_LOGIN_SESSION`，Cache 只负责扫描、解码和批量删除；后台清理失败记录 warning，不阻断新 session。
 
-本阶段已实现并通过定向验证，当前停在代码 review；Lease、Stop Signal 和 Stream 仍未开始。
+本阶段已实现并通过定向验证与 review。
 
 ### DAL-R4E：Lease Cache
 
@@ -416,7 +455,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - 获取失败、获取异常和租约丢失继续 fail-closed；释放为 best-effort，不能删除 token 不匹配的后续持有者租约。
 - 保留 `RedisLeaseUnavailableError`、`RedisLeaseLostError`、`RedisLeaseAcquireError` 语义及 Agent Sandbox 的初始化错误映射。
 
-本阶段已实现并通过定向验证，当前停在代码 review；Stop Signal 和 Stream 仍未开始。
+本阶段已实现并通过定向验证与 review。
 
 ### DAL-R4F：Workflow Stop Signal Cache
 
@@ -426,7 +465,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - Cache 负责 source 参数校验和 key 构造，业务层不再调用 `getGlobalRedisConnection`、`GET/SET/DEL` 或手工拼 key。
 - 不迁移 Stream Resume、前端 AbortController、Mongo timer lock 或其他通用 cache。
 
-本阶段已实现并通过定向验证，当前停在代码 review；Stream 仍未开始。
+本阶段已实现并通过定向验证与 review。
 
 ### DAL-R5：流式 Cache
 
@@ -440,7 +479,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - 仅迁移 `core/chat/resume.ts` 的 Stream Resume Redis 访问；OutLink Stream 和 polling counter 留在后续子阶段。
 - Cache 保持三个历史 logical key、物理前缀、TTL、JSON state 和 `raw` field 协议，收拢镜像清理、`XADD`、`XRANGE`、`XREAD BLOCK` 及 Stream 返回校验；service binding 只负责注入 command/blocking factory，业务逻辑不再解析 raw Redis 返回。
 - blocking connection 由 DAL Runtime 创建，Cache 在 `finally` 中释放；service 仍负责内存水位、SSE writer、终止事件和 HTTP response 生命周期。
-- 本阶段已完成实现并停在代码 review，不提前进入 R5B/R5C。
+- 本阶段已完成实现并通过 review，随后继续完成 R5B/R5C。
 
 #### DAL-R5B：OutLink Stream
 
@@ -448,7 +487,7 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - 逻辑 key 固定为 `cache:streamResponse:${streamId}`，物理 key 固定为 `fastgpt:cache:streamResponse:${streamId}`；保持空值 120 秒、追加内容和 `[DONE]` 60 秒 TTL。
 - Cache 负责 key 构造和 `APPEND + EXPIRE` 事务；调用方只接触 `streamId`、字符串 value 和 typed miss，不再导入 `getRedisCache`、`appendRedisCache`、`delRedisCache`。
 - 仍保持字符串拼接协议，不把该缓存改造成 Redis Stream；Wechat polling failure counter 单独进入 R5C。
-- 本阶段已完成实现并停在代码 review，不提前开始 R5C。
+- 本阶段已完成实现并通过 review。
 
 #### DAL-R5C：Wechat Polling Failure Counter
 
@@ -456,41 +495,84 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - 逻辑 key 固定为 `cache:wechat:publish:failures:${shareId}`，物理 key 固定为 `fastgpt:cache:wechat:publish:failures:${shareId}`，TTL 固定 300 秒。
 - Cache 使用 `INCRBY + EXPIRE NX` 事务保证多 worker 递增不丢失；成功重置仍是带 TTL 的字符串 `0`，阈值后删除继续由 worker 编排。
 - 不改变 API 错误判断、Mongo 状态更新、BullMQ 失败退避和续链逻辑；Redis 错误继续进入现有 worker failed 路径。
-- 本阶段完成后停在代码 review，不提前进入 DAL-R6。
+- 本阶段已完成并通过 review。
 
 #### DAL-R6A：Legacy Cache/Scan Facade Cleanup
 
 - 删除无生产调用方的 `common/redis/cache.ts`、`common/redis/scan.ts` 及旧 scan 定向测试。
 - 删除仅供 scan facade 使用的 `common/redis/adapter.ts`，并移除 `getAllKeysByPrefix` 公共导出。
-- 保留 `runtime.ts`、BullMQ connection factory、health binding 和 Stream Resume 使用的 DAL adapter binding；不改变运行时连接、key、TTL 或错误合同。
-- 本阶段已完成实现并停在代码 review，不提前进入 DAL-R6B。
+- runtime、health 和 Stream Resume 均改为直接使用 DAL 入口；BullMQ connection factory 随后由 DAL-R6E 接管，不改变运行时连接、key、TTL 或错误合同。
+- 本阶段已完成并通过 review。
 
 #### DAL-R6B：Stream Resume Binding Cleanup
 
 - `core/chat/resume.ts` 改为直接使用 DAL Stream Resume Cache，移除 service-side adapter、`getGlobalRedisConnection`、`getPhysicalRedisConnection`、blocking factory 和 Runtime release 绑定。
 - DAL adapter 新增 typed `server.memoryInfo` operation，负责 `INFO MEMORY` 解析和 operation timeout；service 只保留内存压力阈值、缓存和 fail-open 策略。
 - blocking connection 继续由 DAL Runtime 创建，并由 Stream Resume Cache 在 `finally` 中释放；不改变 Stream key、TTL、XREAD、SSE 或错误合同。
-- 本阶段已完成实现并停在代码 review，不提前进入 DAL-R6C。
+- 本阶段已完成并通过 review。
 
 #### DAL-R6C：Service Redis Facade Narrowing
 
-- `common/redis/index.ts` 仅保留 health、close 和迁移期 legacy client 兼容入口，移除无生产消费者的 raw-client、blocking、snapshot、DAL error/key 转发及 queue/worker barrel 导出。
-- `common/redis/runtime.ts` 保留 BullMQ 所需 queue/worker factory 和 health/close binding，删除 physical/blocking/snapshot helper。
-- `global.redisClient` 接管与 legacy command 生命周期不在本阶段改变，后续 R6D 单独处理 hot-reload、测试 mock 和最终删除。
-- 本阶段已完成实现并停在代码 review，不提前进入 DAL-R6D。
+- `common/redis/index.ts` 在本阶段收窄，随后由 DAL-R6F 删除；移除无生产消费者的 raw-client、blocking、snapshot、DAL error/key 转发及 queue/worker barrel 导出。
+- `common/redis/runtime.ts` 的 health/close binding 随后迁移到 DAL；BullMQ queue/worker factory 已由 DAL-R6E 接管。
+- `global.redisClient` 与 legacy command 生命周期在 DAL-R6D 已清理，测试 mock 改为显式注入。
+- 本阶段已完成并通过 review。
 
 #### DAL-R6D：Legacy Global Client Removal
 
 - 删除 Runtime 的 `legacy-command` role、隐式 `keyPrefix=fastgpt:`、`existingCommandClient` 接管参数和 `getLegacyCommandConnection`，所有 command 连接均只服务 DAL adapter 的显式 physical key 操作。
-- 删除 service `getGlobalRedisConnection`、`global.redisClient` 类型声明及 orphan client 清理；service Redis facade 仅保留 health/close 应用生命周期入口，BullMQ factory 继续从 `common/redis/runtime` 使用。
+- 删除 service `getGlobalRedisConnection`、`global.redisClient` 类型声明及 orphan client 清理；service Redis facade 随后已删除，health/close 和 BullMQ 生命周期均由 DAL 管理。
 - 测试夹具改为模块级共享 mock client，测试清理和断言通过 DAL Runtime 的 command connection 完成，不再初始化或依赖全局 Redis client。
-- 不改变 Cache 的 logical key、物理 `fastgpt:` 前缀、TTL、value、错误降级、BullMQ 生命周期或 Runtime 有序关闭合同；本阶段不删除应用 health/close binding。
+- 不改变 Cache 的 logical key、物理 `fastgpt:` 前缀、TTL、value、错误降级、BullMQ 生命周期或 Runtime 有序关闭合同；app/admin health/shutdown 已直接调用 DAL。
 
-本阶段已完成实现、通过代码 review，并已提交根仓库和 `pro` 子模块；不提前进入后续治理阶段。
+本阶段已完成实现、通过代码 review，并已提交根仓库和 `pro` 子模块。
+
+#### DAL-R6E：BullMQ DAL adapter
+
+- 将 Queue/Worker registry、创建和生命周期迁移到 `@fastgpt/dal/redis/bullmq` 的 `RedisBullMQRuntime` class。
+- 进程级 BullMQ context 只通过 DAL 私有 symbol 复用，并以 `Map<ResourceId, Runtime>` 管理资源；不新增 `global.bullMQRuntimeState` 等散落字段。
+- DAL 使用 Runtime 的 queue/worker connection factory；BullMQ Worker 内部 duplicate connection 由 Worker/Queue close 在 Redis Runtime before-close hook 中先释放。
+- 关闭时先清空 registry，再按 Worker -> Queue 顺序限时关闭；Worker 的 closed/paused 自动恢复策略受运行状态和显式 lifecycle options 约束，shutdown 后禁止重启。
+- graceful close 超时或失败时调用 BullMQ 对象级 `disconnect()`，只移除 Queue/Worker 的 adapter-owned listener，避免 blocking duplicate connection 残留；Worker 异常重启会快照并恢复业务方的 `completed/failed/ready` 等 listener（保留 `once` 语义）。
+- service 保留 `QueueNames`、processor 类型入口、业务 worker 默认项和 `BullMQBinding` facade；service 不再直接依赖 `bullmq` 或暴露 Redis connection factory。
+- service facade 只保留 `BullMQBinding`/`bullMQ`、`QueueNames`、必要类型和 `UnrecoverableError`；生命周期状态/关闭兼容入口与通用 `delay` 已移除。
+- 不改变队列名、job data、processor、重试/保留策略和业务调用方；不迁移队列业务编排。
+- DAL BullMQ runtime 13 项、service facade 4 项定向测试通过；DAL typecheck、`git diff --check` 和 service raw BullMQ import 扫描通过。
+
+本阶段已实现并通过 review。
+
+#### DAL-R6G：BullMQ 业务合同收拢
+
+- `packages/dal/redis/bullmq/binding.ts` 改为 `BullMQBinding` class，并导出进程级 `bullMQ` 实例；binding 不缓存 DAL Runtime，避免 Redis Runtime 重配后复用旧实例。
+- 新增 `packages/dal/redis/bullmq/services/`，集中维护队列 data type、queue/worker binding、enqueue、scheduler 和 job 状态操作；删除 `packages/service/common/bullmq`。
+- 队列业务合同按 `AppDeleteMQService`、`DatasetSyncMQService` 等独立 class 组织，并导出默认 singleton；Queue/Worker 通过方法懒加载，class 构造函数可注入 `BullMQBinding`，不在模块加载阶段创建连接。
+- app、dataset、skill、team、S3、evaluation、collection 和 Wechat 的领域 processor/数据库/对象存储逻辑仍留在原领域目录；原入口只保留薄调用包装或 processor 注入，降低迁移面。
+- 不改变队列名、job data、jobId、重试/保留策略、Redis key 或业务错误合同；DAL 不新增任何 service 业务依赖。
+
+本阶段已实现，等待 review。
+
+#### DAL-R6H：BullMQ 目录归属统一
+
+- `@fastgpt/dal/redis/bullmq` 作为 BullMQ 唯一公共入口，导出 `BullMQBinding`、`QueueNames`、`XxxMQService`、job data type 和 BullMQ 类型；需要时可通过 `redis/bullmq/services/*` 单独引用。
+- service package 删除 BullMQ 直接依赖和旧 facade；`packages/service` 只依赖 DAL 的 BullMQ 合同，领域 processor 仍由 service/project 实现。
+- `projects/app/src/service/common/bullmq` 和 `pro/admin/src/service/common/bullmq` 仅承担应用启动时的 worker 注册，不属于 DAL 可复用数据合同，继续保留在各应用边界。
+- DAL 增加 `@fastgpt/global` workspace 依赖，确保 `DatasetStatusEnum` 等稳定业务常量由底层 package 直接解析，仍不反向依赖 service。
+
+本阶段已实现，等待 review。
+
+#### DAL-R6F：Shutdown、Metrics 与 facade 收口
+
+- `RedisRuntime` 接收可选 metrics port，记录连接创建/关闭/错误、health 结果和 shutdown 耗时；metrics recorder 异常只记录 warning，不影响 Redis 生命周期。
+- `registerRedisRuntimeShutdown` 由 app/admin instrumentation 显式注册 SIGTERM/SIGINT listener，保证幂等 close、关闭失败使用非零 exit code，library import 不产生进程副作用。
+- app/admin 在初始化早期直接配置 DAL Runtime；service BullMQ 直接读取已配置的 DAL Runtime，不再依赖 service Redis runtime binding。
+- health 入口改为 `@fastgpt/dal/redis`，删除 `packages/service/common/redis` 及其 facade 测试和旧 mock；Cache、队列名、job 配置、physical key、TTL、value 和错误合同不变。
+- 已完成 raw ioredis/bullmq、旧 service Redis facade、service adapter 和手工 physical Redis key 的生产代码扫描；仅 DAL Runtime/integration test 保留底层依赖。
+
+本阶段已实现并通过限定验证；全量测试按用户约定暂未运行。
 
 ### DAL-R6：清理与上线治理
 
-- Redis 7.2 key/SCAN/Lua/Stream/并发集成验证已完成：kernel suite 与既有四个 Cache integration 文件共 5 个文件、11 项通过。
+- Redis 7.2+ key/SCAN/Lua/Stream/并发集成验证已完成：kernel suite 与既有四个 Cache integration 文件共 5 个文件、11 项通过。
 - 接入进程级 shutdown hook 和 Redis metrics。
 - 完成 raw ioredis、旧 Store、service Redis adapter 和手工 physical key 的最终静态清零。
 - 将 health/close 迁移到 DAL，删除剩余 service facade binding。
@@ -516,7 +598,10 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - [x] R-05（DAL-R1）：迁移 kernel 到 DAL 并保留 service legacy facade。
 - [x] R-08（DAL-R6D）：删除 legacy command role、global client 和 service raw-client 兼容入口。
 - [x] R-06：增加真实 Redis 7.2 的 key、SCAN、Lua、Stream 和并发测试。
-- [ ] R-07：接入进程级 shutdown hook 和 metrics。
+- [x] R-09（DAL-R6E）：将 BullMQ adapter、对象级 close、生命周期 guard 和 service 类型边界收拢到 DAL。
+- [x] R-10（DAL-R6G）：BullMQ binding class 化并将队列业务合同集中到 DAL。
+- [x] R-11（DAL-R6H）：删除 service BullMQ facade，将 `XxxMQService`、job data 和 QueueNames 收拢到 `packages/dal/redis/bullmq`。
+- [x] R-07：接入进程级 shutdown hook 和 metrics，并在 app/admin instrumentation 早期配置 Runtime。
 
 ### Cache
 
@@ -529,11 +614,11 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - [x] P-07A（DAL-R4A）：Fixed Window Rate Limit 与 Team QPM。
 - [x] P-07B（DAL-R4B）：Team Point cache 与双 key 一致性。
 - [x] P-07C（DAL-R4C）：Pending Payment 协调状态。
-- [ ] P-08：Session、Lease、Stop Signal。
+- [x] P-08：Session、Lease、Stop Signal。
 - [x] P-08A（DAL-R4D）：Session Cache。
 - [x] P-08B（DAL-R4E）：Lease Cache 与 Agent Sandbox 初始化锁。
 - [x] P-08C（DAL-R4F）：Workflow Stop Signal Cache 与 workflow/auxiliary 调用方。
-- [ ] P-09：Stream Resume、OutLink Stream、polling counter。
+- [x] P-09：Stream Resume、OutLink Stream、polling counter。
 - [x] P-09A（DAL-R5A）：Stream Resume Cache 与 service 调用方。
 - [x] P-09B（DAL-R5B）：OutLink Stream Cache 与 Wechat/Wecom 调用方。
 - [x] P-09C（DAL-R5C）：Wechat polling failure counter Cache 与 worker 调用方。
@@ -562,8 +647,12 @@ Cache 可以拥有 key、TTL、codec、single-flight、read-through callback 和
 - [x] T-05M（DAL-R6C）：service Redis facade narrowing、BullMQ/health 定向测试与入口扫描。
 - [x] T-05N（DAL-R6D）：legacy global client removal、Runtime role policy、调用方与测试夹具定向测试。
 - [x] T-05O（DAL-R6）：Redis 7.2 kernel 与 Cache integration 定向测试。
-- [ ] T-06：静态扫描 raw ioredis、旧 Store、service Redis adapter 和手工 physical key。
-- [ ] T-07：迁移 health/close 到 DAL、删除剩余 service facade 并运行全量测试。
+- [x] T-05Q（DAL-R6E）：DAL BullMQ lifecycle 13 项、service BullMQ facade 4 项定向测试。
+- [x] T-05R（DAL-R6G）：BullMQ services、Wechat worker、App delete queue 定向测试。
+- [x] T-05S（DAL-R6H）：DAL BullMQ binding/services、service/app/pro 调用方和旧路径静态扫描定向验证。
+- [x] T-06：静态扫描 raw ioredis、旧 Store、service Redis adapter 和手工 physical key；生产业务代码无残留。
+- [x] T-07A：迁移 health/close 到 DAL、删除 service Redis facade、更新 app/admin instrumentation 和测试夹具。
+- [ ] T-07B：运行全量测试（按用户约定暂不执行）。
 
 ## 11. 每阶段验收模板
 

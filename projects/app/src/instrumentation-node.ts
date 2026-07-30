@@ -31,8 +31,10 @@ export async function registerNodeInstrumentation() {
       { instrumentationCheck },
       { getErrText },
       { configureLogger, getLogger, LogCategories },
-      { configureMetrics },
+      { configureMetrics, createRedisRuntimeMetrics },
       { configureTracing },
+      { configureRedisRuntime, registerRedisRuntimeShutdown },
+      { serviceEnv },
       { InitialErrorEnum },
       { validateAgentSandboxProxyEnv }
     ] = await Promise.all([
@@ -56,6 +58,8 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/logger'),
       import('@fastgpt/service/common/metrics'),
       import('@fastgpt/service/common/tracing'),
+      import('@fastgpt/dal/redis/runtime'),
+      import('@fastgpt/service/env'),
       import('@fastgpt/service/common/system/constants'),
       import('@fastgpt/service/env.util')
     ]);
@@ -67,6 +71,25 @@ export async function registerNodeInstrumentation() {
     ]);
     const logger = getLogger(LogCategories.SYSTEM);
     logger.info('Starting system initialization...');
+
+    await runInitializationStep({
+      step: 'configure-redis-runtime',
+      action: () =>
+        configureRedisRuntime({
+          redisUrl: serviceEnv.REDIS_URL,
+          logger,
+          metrics: createRedisRuntimeMetrics()
+        }),
+      logger,
+      getErrText
+    });
+
+    await runInitializationStep({
+      step: 'register-redis-shutdown',
+      action: () => registerRedisRuntimeShutdown({ logger }),
+      logger,
+      getErrText
+    });
 
     await runInitializationStep({
       step: 'system-start-callback',

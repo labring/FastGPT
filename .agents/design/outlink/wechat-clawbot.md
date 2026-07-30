@@ -85,7 +85,7 @@ export type WechatAppType = z.infer<typeof WechatAppSchema>;
 ### 3.2 BullMQ Job 数据
 
 ```typescript
-// packages/service/support/outLink/wechat/type.ts
+// packages/dal/redis/bullmq/services/wechat.ts
 export type WechatPollJobData = { shareId: string };
 ```
 
@@ -159,7 +159,7 @@ OutLinkSchemaType.index(
 | `packages/web/i18n/zh-CN/publish.json` | wechat 相关 i18n |
 | `packages/web/i18n/en/publish.json` | wechat 相关 i18n |
 | `packages/web/i18n/zh-Hant/publish.json` | wechat 相关 i18n |
-| `packages/service/common/bullmq/index.ts` | `QueueNames` 新增 `wechatPoll` |
+| `packages/dal/redis/bullmq/names.ts` | `QueueNames` 新增 `wechatPoll` |
 | `packages/service/support/outLink/schema.ts` | 新增条件索引 |
 | `projects/app/src/pageComponents/app/detail/Publish/index.tsx` | 注册 wechat 渠道入口 |
 | `projects/app/src/service/common/bullmq/index.ts` | 注册 `initWechatPollWorker` + `resumeAllWechatPolling` |
@@ -172,7 +172,7 @@ OutLinkSchemaType.index(
 | `projects/app/src/pageComponents/app/detail/Publish/Wechat/WechatEditModal.tsx` | 创建/编辑弹窗（name + maxUsagePoints） |
 | `projects/app/src/pageComponents/app/detail/Publish/Wechat/QRLoginModal.tsx` | 扫码登录弹窗（二维码展示 + 状态轮询） |
 | `packages/service/support/outLink/wechat/ilinkClient.ts` | ilink API 客户端（QR 登录 + 消息收发） |
-| `packages/service/support/outLink/wechat/type.ts` | `WechatPollJobData` 类型 |
+| `packages/dal/redis/bullmq/services/wechat.ts` | `WechatPollJobData` 类型 |
 | `packages/service/support/outLink/wechat/messageParser.ts` | 消息解析纯函数（extractTextFromItem + groupMessagesByUser） |
 | `packages/service/support/outLink/wechat/mq.ts` | BullMQ Worker + 轮询调度 |
 | `projects/app/src/pages/api/support/outLink/wechat/qrcode/generate.ts` | 二维码生成 API |

@@ -16,6 +16,13 @@ export type {
   RedisRuntimeLogger,
   RedisRuntimeOptions
 } from './connection';
+export type {
+  RedisRuntimeHealthMetric,
+  RedisRuntimeMetrics,
+  RedisRuntimeShutdownMetric
+} from '../types';
+export { registerRedisRuntimeShutdown } from './shutdown';
+export type { RedisRuntimeShutdownOptions } from './shutdown';
 export { RedisConfigurationError, parseRedisConnectionConfig } from './config';
 export type { RedisConnectionConfig } from './config';
 export {

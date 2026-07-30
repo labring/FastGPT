@@ -3,7 +3,7 @@ import type { RedisOptions } from 'ioredis';
 import { parseRedisConnectionConfig, type RedisEndpoint } from './config';
 import { getConnectionOptions, getInitialConnectionState } from './policy';
 import { runWithTimeout } from './timeout';
-import type { RedisRuntimeLogger } from '../types';
+import type { RedisRuntimeLogger, RedisRuntimeMetrics } from '../types';
 
 export type { RedisRuntimeLogger } from '../types';
 
@@ -45,6 +45,7 @@ const DEFAULT_BEFORE_CLOSE_TIMEOUT_MS = 15_000;
 export type RedisRuntimeOptions = {
   redisUrl: string;
   logger?: RedisRuntimeLogger;
+  metrics?: RedisRuntimeMetrics;
   clientFactory?: RedisClientFactory;
   healthCheckTimeoutMs?: number;
   closeTimeoutMs?: number;
@@ -62,6 +63,7 @@ export class RedisRuntime {
 
   private readonly endpointOptions: RedisOptions;
   private readonly logger: RedisRuntimeLogger;
+  private readonly metrics: RedisRuntimeMetrics;
   private readonly clientFactory: RedisClientFactory;
   private readonly healthCheckTimeoutMs: number;
   private readonly closeTimeoutMs: number;
@@ -77,6 +79,7 @@ export class RedisRuntime {
   constructor({
     redisUrl,
     logger = silentLogger,
+    metrics = {},
     clientFactory = (options) => new Redis(options),
     healthCheckTimeoutMs = DEFAULT_HEALTH_CHECK_TIMEOUT_MS,
     closeTimeoutMs = DEFAULT_CLOSE_TIMEOUT_MS,
@@ -86,6 +89,7 @@ export class RedisRuntime {
     this.endpointOptions = endpointOptions;
     this.endpoint = endpoint;
     this.logger = logger;
+    this.metrics = metrics;
     this.clientFactory = clientFactory;
     this.healthCheckTimeoutMs = healthCheckTimeoutMs;
     this.closeTimeoutMs = closeTimeoutMs;
@@ -119,6 +123,15 @@ export class RedisRuntime {
     });
   }
 
+  /** metrics 属于可选观测能力，第三方 recorder 失败不能影响 Redis 生命周期。 */
+  private recordMetric(name: string, callback: () => void) {
+    try {
+      callback();
+    } catch (error) {
+      this.logger.warn('Redis metrics callback failed', { name, error });
+    }
+  }
+
   private defineConnection(client: RedisClient, role: RedisConnectionRole) {
     this.connections.set(client, {
       id: this.nextConnectionId++,
@@ -143,6 +156,7 @@ export class RedisRuntime {
         lastErrorAt: Date.now()
       });
       this.logger.error('Redis connection error', { role, error });
+      this.recordMetric('connection.error', () => this.metrics.connectionError?.(role));
     });
     client.on('close', () => {
       this.updateConnection(client, 'closed');
@@ -150,11 +164,16 @@ export class RedisRuntime {
     });
     client.on('end', () => {
       this.updateConnection(client, 'ended');
-      this.connections.delete(client);
+      const removed = this.connections.delete(client);
+      if (removed) {
+        this.recordMetric('connection.closed', () => this.metrics.connectionClosed?.(role));
+      }
       if (this.commandClient === client) {
         this.commandClient = undefined;
       }
     });
+
+    this.recordMetric('connection.created', () => this.metrics.connectionCreated?.(role));
 
     return client;
   }
@@ -175,6 +194,11 @@ export class RedisRuntime {
 
   getState() {
     return this.state;
+  }
+
+  /** 返回 Runtime 配置时绑定的通用日志 port，供 DAL 内部 adapter 复用。 */
+  getLogger() {
+    return this.logger;
   }
 
   getCommandConnection() {
@@ -212,18 +236,29 @@ export class RedisRuntime {
 
   async checkHealth() {
     const startedAt = Date.now();
-    const response = await runWithTimeout({
-      operation: this.getCommandConnection().ping(),
-      timeoutMs: this.healthCheckTimeoutMs,
-      timeoutMessage: 'Redis health check timed out'
-    });
-    if (response !== 'PONG') {
-      throw new Error('Redis health check returned an unexpected response');
+    try {
+      const response = await runWithTimeout({
+        operation: this.getCommandConnection().ping(),
+        timeoutMs: this.healthCheckTimeoutMs,
+        timeoutMessage: 'Redis health check timed out'
+      });
+      if (response !== 'PONG') {
+        throw new Error('Redis health check returned an unexpected response');
+      }
+      const result = {
+        latencyMs: Date.now() - startedAt,
+        endpoint: this.endpoint
+      };
+      this.recordMetric('health.check', () =>
+        this.metrics.healthCheck?.({ success: true, latencyMs: result.latencyMs })
+      );
+      return result;
+    } catch (error) {
+      this.recordMetric('health.check', () =>
+        this.metrics.healthCheck?.({ success: false, latencyMs: Date.now() - startedAt })
+      );
+      throw error;
     }
-    return {
-      latencyMs: Date.now() - startedAt,
-      endpoint: this.endpoint
-    };
   }
 
   releaseConnection(client: RedisClient) {
@@ -250,7 +285,12 @@ export class RedisRuntime {
           this.logger.warn('Redis forced disconnect failed', { role, error: disconnectError });
         }
       } finally {
-        this.connections.delete(client);
+        const removed = this.connections.delete(client);
+        if (removed) {
+          this.recordMetric('connection.closed', () =>
+            this.metrics.connectionClosed?.(role ?? 'unknown')
+          );
+        }
         this.connectionClosePromises.delete(client);
         if (this.commandClient === client) {
           this.commandClient = undefined;
@@ -266,6 +306,7 @@ export class RedisRuntime {
     if (this.closePromise) return this.closePromise;
 
     this.state = 'closing';
+    const startedAt = Date.now();
     this.closePromise = (async () => {
       const hooks = Array.from(this.beforeCloseHooks.entries());
       this.beforeCloseHooks.clear();
@@ -293,7 +334,11 @@ export class RedisRuntime {
         await Promise.all(clients.map(this.releaseConnection));
       }
       this.state = 'closed';
-    })();
+    })().finally(() => {
+      this.recordMetric('shutdown.completed', () =>
+        this.metrics.shutdownCompleted?.({ durationMs: Date.now() - startedAt })
+      );
+    });
 
     return this.closePromise;
   }

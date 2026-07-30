@@ -270,34 +270,6 @@ const createSharedMockRedisClient = () => {
 
 const sharedRedisClient = createSharedMockRedisClient();
 
-vi.mock('@fastgpt/service/common/redis/runtime', () => {
-  const getClient = () => sharedRedisClient;
-  const runtime = {
-    endpoint: { transport: 'tcp', host: 'localhost', port: 6379, tls: false },
-    getState: () => 'open' as const,
-    getCommandConnection: vi.fn(getClient),
-    createQueueConnection: createSharedMockRedisClient,
-    createWorkerConnection: createSharedMockRedisClient,
-    registerBeforeCloseHook: vi.fn(() => () => undefined),
-    checkHealth: async () => ({
-      latencyMs: 0,
-      endpoint: { transport: 'tcp' as const, host: 'localhost', port: 6379, tls: false }
-    }),
-    releaseConnection: async (client: any) => {
-      await client.quit().catch(() => client.disconnect());
-    },
-    close: async () => undefined
-  };
-
-  return {
-    getRedisRuntime: () => runtime,
-    createQueueRedisConnection: runtime.createQueueConnection,
-    createWorkerRedisConnection: runtime.createWorkerConnection,
-    checkRedisHealth: runtime.checkHealth,
-    closeRedisConnections: runtime.close
-  };
-});
-
 // 通过公开配置入口让预加载的 service adapter 也使用内存 Redis，不依赖模块 mock 顺序。
 configureTestRedisRuntime({
   redisUrl: 'redis://default:mypassword@localhost:6379',

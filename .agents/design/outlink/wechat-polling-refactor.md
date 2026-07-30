@@ -65,14 +65,14 @@ Reply Queue (wechatReply)        concurrency=30, lockDuration=30min
 
 ## 改动文件清单
 
-1. `packages/service/common/bullmq/index.ts` — 新增 `QueueNames.wechatReply`
-2. `packages/service/support/outLink/wechat/type.ts` — 新增 `WechatReplyJobData`
+1. `packages/dal/redis/bullmq/names.ts` — 新增 `QueueNames.wechatReply`
+2. `packages/dal/redis/bullmq/services/wechat.ts` — 新增 `WechatReplyJobData`
 3. `packages/service/support/outLink/wechat/messageParser.ts` — `msgIds[]` → `lastMsgId`
 4. `packages/service/support/outLink/wechat/mq.ts` — 拆分 poll / reply worker
 
 ---
 
-## 一、`packages/service/common/bullmq/index.ts`
+## 一、`packages/dal/redis/bullmq/names.ts`
 
 ```ts
 export enum QueueNames {
@@ -82,7 +82,7 @@ export enum QueueNames {
 }
 ```
 
-## 二、`packages/service/support/outLink/wechat/type.ts`
+## 二、`packages/dal/redis/bullmq/services/wechat.ts`
 
 ```ts
 export type WechatPollJobData = {
@@ -171,10 +171,13 @@ export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[]
 ## 四、`packages/service/support/outLink/wechat/mq.ts`
 
 ```ts
-import { getWorker, getQueue, QueueNames, type Job } from '../../../common/bullmq';
+import { getWorker, getQueue, QueueNames, type Job } from '@fastgpt/dal/redis/bullmq';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { ILinkClient } from './ilinkClient';
-import type { WechatPollJobData, WechatReplyJobData } from './type';
+import type {
+  WechatPollJobData,
+  WechatReplyJobData
+} from '@fastgpt/dal/redis/bullmq/services/wechat';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
@@ -478,8 +481,8 @@ export const stopWechatPolling = async (shareId: string): Promise<void> => {
 
 ## 落地 TODO
 
-- [ ] 1. `bullmq/index.ts` 加 `QueueNames.wechatReply`
-- [ ] 2. `wechat/type.ts` 加 `WechatReplyJobData`
+- [ ] 1. `packages/dal/redis/bullmq/names.ts` 加 `QueueNames.wechatReply`
+- [ ] 2. `packages/dal/redis/bullmq/services/wechat.ts` 加 `WechatReplyJobData`
 - [ ] 3. `wechat/messageParser.ts` 把 `msgIds[]` 改 `lastMsgId`
 - [ ] 4. `wechat/mq.ts` 按上文全量替换
 - [ ] 5. `pnpm lint` 过

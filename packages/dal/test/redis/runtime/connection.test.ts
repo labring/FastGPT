@@ -139,6 +139,65 @@ describe('RedisRuntime', () => {
     expect(runtime.getCommandConnection()).not.toBe(client);
   });
 
+  it('records connection, health, and shutdown metrics without changing Runtime behavior', async () => {
+    const { factory } = createClientFactory();
+    const metrics = {
+      connectionCreated: vi.fn(),
+      connectionClosed: vi.fn(),
+      connectionError: vi.fn(),
+      healthCheck: vi.fn(),
+      shutdownCompleted: vi.fn()
+    };
+    const runtime = new RedisRuntime({
+      redisUrl: 'redis://localhost',
+      clientFactory: factory,
+      metrics
+    });
+    const client = runtime.getCommandConnection() as unknown as FakeRedisClient;
+
+    client.emit('error', new Error('transient'));
+    await runtime.checkHealth();
+    await runtime.close();
+
+    expect(metrics.connectionCreated).toHaveBeenCalledWith('command');
+    expect(metrics.connectionError).toHaveBeenCalledWith('command');
+    expect(metrics.healthCheck).toHaveBeenCalledWith({
+      success: true,
+      latencyMs: expect.any(Number)
+    });
+    expect(metrics.connectionClosed).toHaveBeenCalledWith('command');
+    expect(metrics.shutdownCompleted).toHaveBeenCalledWith({
+      durationMs: expect.any(Number)
+    });
+  });
+
+  it('contains metrics callback failures to the Runtime logger', async () => {
+    const { factory } = createClientFactory();
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+    const runtime = new RedisRuntime({
+      redisUrl: 'redis://localhost',
+      clientFactory: factory,
+      logger,
+      metrics: {
+        connectionCreated: () => {
+          throw new Error('metrics unavailable');
+        }
+      }
+    });
+
+    expect(() => runtime.getCommandConnection()).not.toThrow();
+    await runtime.close();
+
+    expect(logger.warn).toHaveBeenCalledWith('Redis metrics callback failed', {
+      name: 'connection.created',
+      error: expect.any(Error)
+    });
+  });
+
   it('supports health checks and rejects unexpected responses', async () => {
     const { clients, factory } = createClientFactory();
     const runtime = new RedisRuntime({ redisUrl: 'redis://localhost', clientFactory: factory });

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 // Mock BullMQ to prevent queue connection errors
-vi.mock('@fastgpt/service/common/bullmq', async (importOriginal) => {
+vi.mock('@fastgpt/dal/redis/bullmq', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
 
   const mockQueue = {
@@ -17,7 +17,10 @@ vi.mock('@fastgpt/service/common/bullmq', async (importOriginal) => {
 
   return {
     ...actual,
-    getQueue: vi.fn(() => mockQueue),
-    getWorker: vi.fn(() => mockWorker)
+    bullMQ: {
+      ...actual.bullMQ,
+      getQueue: vi.fn(() => mockQueue),
+      getWorker: vi.fn(() => mockWorker)
+    }
   };
 });

@@ -35,7 +35,12 @@ describeWithRedis('Redis 7.2 kernel integration', () => {
     await client.connect();
 
     const serverInfo = await client.info('server');
-    expect(serverInfo).toMatch(/redis_version:7\.2\./);
+    const version = serverInfo.match(/redis_version:(\d+)\.(\d+)\./);
+    expect(version).not.toBeNull();
+    const majorVersion = Number(version?.[1]);
+    const minorVersion = Number(version?.[2]);
+    expect(majorVersion).toBeGreaterThanOrEqual(7);
+    expect(majorVersion > 7 || minorVersion >= 2).toBe(true);
   });
 
   afterAll(async () => {

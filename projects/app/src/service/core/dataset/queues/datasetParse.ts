@@ -16,7 +16,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { addMinutes } from 'date-fns';
 import { checkTeamAiPointsAndLock } from './utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { delay } from '@fastgpt/service/common/bullmq';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';

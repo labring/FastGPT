@@ -12,18 +12,21 @@ const mocks = vi.hoisted(() => ({
   clear: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/bullmq', () => ({
-  getWorker: mocks.getWorker,
-  getQueue: mocks.getQueue,
-  QueueNames: {
-    wechatPoll: 'wechatPoll',
-    wechatReply: 'wechatReply'
-  }
-}));
-
-vi.mock('../../../../common/bullmq', () => ({
-  getWorker: mocks.getWorker,
-  getQueue: mocks.getQueue,
+vi.mock('@fastgpt/dal/redis/bullmq', () => ({
+  bullMQ: {
+    getWorker: mocks.getWorker,
+    getQueue: mocks.getQueue
+  },
+  wechatMQService: {
+    getPollWorker: (processor: unknown, opts: unknown) =>
+      mocks.getWorker('wechatPoll', processor, opts),
+    getReplyWorker: (processor: unknown, opts: unknown) =>
+      mocks.getWorker('wechatReply', processor, opts),
+    addPollJob: (...args: unknown[]) => mocks.getQueue('wechatPoll')?.add?.(...args),
+    addReplyJob: (...args: unknown[]) => mocks.getQueue('wechatReply')?.add?.(...args),
+    removePollJob: (jobId: string) => mocks.getQueue('wechatPoll')?.remove?.(jobId)
+  },
+  WECHAT_POLL_JOB_NAME: 'wechatPublishPoll',
   QueueNames: {
     wechatPoll: 'wechatPoll',
     wechatReply: 'wechatReply'

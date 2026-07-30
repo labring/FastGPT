@@ -1,4 +1,4 @@
-import type { Processor } from 'bullmq';
+import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import { addDatasetDeleteJob, type DatasetDeleteJobData } from './index';
 import { delDatasetRelevantData, findDatasetAndAllChildren } from '../controller';
 import { MongoDatasetCollectionTags } from '../tag/schema';

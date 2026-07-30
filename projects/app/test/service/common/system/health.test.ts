@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
   post: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/redis', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/common/redis')>()),
+vi.mock('@fastgpt/dal/redis', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/dal/redis')>()),
   checkRedisHealth: mocks.checkRedisHealth
 }));
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin/model', () => ({

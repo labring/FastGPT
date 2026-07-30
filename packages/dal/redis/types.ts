@@ -11,6 +11,26 @@ export type RedisRuntimeLogger = {
   error: RedisLogMethod;
 };
 
+/** Redis Runtime 健康检查的 metrics 结果。metrics 不参与业务错误处理。 */
+export type RedisRuntimeHealthMetric = {
+  success: boolean;
+  latencyMs: number;
+};
+
+/** Redis Runtime 关闭耗时的 metrics 结果。 */
+export type RedisRuntimeShutdownMetric = {
+  durationMs: number;
+};
+
+/** Redis Runtime 的可选观测 port；实现方可以接入 OpenTelemetry 或测试 recorder。 */
+export type RedisRuntimeMetrics = {
+  connectionCreated?: (role: string) => void;
+  connectionClosed?: (role: string) => void;
+  connectionError?: (role: string) => void;
+  healthCheck?: (result: RedisRuntimeHealthMetric) => void;
+  shutdownCompleted?: (result: RedisRuntimeShutdownMetric) => void;
+};
+
 export type RedisCacheLoggerLevel = 'warn' | 'error';
 
 export type RedisCacheLogger<Level extends RedisCacheLoggerLevel = RedisCacheLoggerLevel> = Pick<

@@ -5,6 +5,8 @@
   "exports": {
     "./redis": "./redis/index.ts",
     "./redis/adapter": "./redis/adapter.ts",
+    "./redis/bullmq": "./redis/bullmq/index.ts",
+    "./redis/bullmq/services/*": "./redis/bullmq/services/*.ts",
     "./redis/caches": "./redis/caches/index.ts",
     "./redis/types": "./redis/types.ts",
     "./redis/runtime": "./redis/runtime/index.ts"
@@ -20,6 +22,8 @@
     "pnpm": "10.x"
   },
   "dependencies": {
+    "@fastgpt/global": "workspace:*",
+    "bullmq": "^5.81.2",
     "ioredis": "^5.11.1",
     "zod": "catalog:"
   },

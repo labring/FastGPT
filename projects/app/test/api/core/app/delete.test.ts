@@ -25,13 +25,38 @@ import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/co
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 
 // Mock dependencies for queue functionality
-vi.mock('@fastgpt/service/common/bullmq', () => ({
-  getQueue: vi.fn(),
-  getWorker: vi.fn(),
-  QueueNames: {
-    appDelete: 'app-delete'
-  }
-}));
+vi.mock('@fastgpt/dal/redis/bullmq', () => {
+  const bullMQ = {
+    getQueue: vi.fn(),
+    getWorker: vi.fn()
+  };
+
+  return {
+    bullMQ,
+    appDeleteMQService: {
+      addJob: (data: AppDeleteJobData) =>
+        bullMQ
+          .getQueue('appDelete', {
+            defaultJobOptions: {
+              attempts: 10,
+              backoff: {
+                type: 'exponential',
+                delay: 5000
+              },
+              removeOnComplete: true,
+              removeOnFail: { age: 30 * 24 * 60 * 60 }
+            }
+          })
+          .add('delete_app', data, {
+            jobId: `${data.teamId}-${data.appId}`,
+            delay: 1000
+          })
+    },
+    QueueNames: {
+      appDelete: 'appDelete'
+    }
+  };
+});
 
 // Mock S3 and image removal functions
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
@@ -45,9 +70,9 @@ vi.mock('@fastgpt/service/common/file/image/controller', () => ({
 }));
 
 // Import mocked modules for type access
-import { getQueue, QueueNames } from '@fastgpt/service/common/bullmq';
+import { bullMQ, QueueNames } from '@fastgpt/dal/redis/bullmq';
 
-const mockGetQueue = vi.mocked(getQueue);
+const mockGetQueue = vi.mocked(bullMQ.getQueue);
 
 describe('App Delete Queue', () => {
   beforeEach(() => {
