@@ -19,6 +19,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
+import { formatAgentAskAnswers } from '../ai/agent/utils';
 import { normalizeToolResponseContent } from '../ai/llm/utils';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 
@@ -397,7 +398,8 @@ export const chats2GPTMessages = ({
         if (finalInteractive?.type === 'agentAsk' && finalInteractive.params.submitted) {
           agentAskAnswerMap.set(
             finalInteractive.askId,
-            JSON.stringify({
+            formatAgentAskAnswers({
+              questions: finalInteractive.params.questions,
               answers: finalInteractive.params.questions.map((question) => question.answer)
             })
           );

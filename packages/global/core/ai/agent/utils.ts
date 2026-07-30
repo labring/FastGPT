@@ -1,4 +1,4 @@
-import { AgentAskAnswerPayloadSchema, type AgentPlanType } from './type';
+import { AgentAskAnswerPayloadSchema, type AgentAskQuestion, type AgentPlanType } from './type';
 
 /** 判断 plan 是否仍包含需要跨轮继续处理的步骤。 */
 export const hasUnfinishedAgentPlan = (plan: AgentPlanType) =>
@@ -13,3 +13,27 @@ export const parseAgentAskAnswers = (value: string) => {
     return [];
   }
 };
+
+/** 将多题追问的结构化回答渲染为仅供模型消费的 Markdown tool response。 */
+export const formatAgentAskAnswers = ({
+  questions,
+  answers
+}: {
+  questions: AgentAskQuestion[];
+  answers: string[];
+}) =>
+  questions
+    .map(({ question, options }, index) => {
+      const answer = answers[index] ?? '';
+      const option = options.find(({ value }) => value === answer);
+      const renderedAnswer = (() => {
+        if (!answer) return '未回答';
+        if (!option) return answer;
+        return option.summary === option.value
+          ? option.value
+          : `${option.summary} - ${option.value}`;
+      })();
+
+      return `## 问题 ${index + 1}\n${question}\n\n回答：${renderedAnswer}`;
+    })
+    .join('\n\n');

@@ -8,7 +8,11 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
 import { getMainAgentSystemPrompt } from '../../../domain/mainPrompt';
-import { parseAgentAskToolCall, type AgentAskPayload } from '../../../domain/systemTool/ask';
+import {
+  formatAgentAskToolResponse,
+  parseAgentAskToolCall,
+  type AgentAskPayload
+} from '../../../domain/systemTool/ask';
 import { applyPlanUpdate, applySetPlan } from '../../../domain/systemTool/plan';
 import type { AgentLoopEvent } from './type';
 import { normalizeAgentLoopUsages, type AgentLoopUsage } from '../../../domain';
@@ -205,7 +209,13 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           {
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: input.pendingMainContext.askToolCallId,
-            content: normalizeToolResponseContent(input.userAnswer)
+            content: normalizeToolResponseContent(
+              formatAgentAskToolResponse({
+                messages: input.pendingMainContext.messages,
+                askToolCallId: input.pendingMainContext.askToolCallId,
+                answer: input.userAnswer
+              })
+            )
           } as ChatCompletionMessageParam
         ]
       : buildInitialMessages({ input, hasRuntimeTools, promptMode: runtime.promptMode });

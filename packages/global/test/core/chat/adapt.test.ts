@@ -1822,16 +1822,24 @@ describe('chats2GPTMessages', () => {
                   {
                     question: 'First?',
                     options: [
-                      { summary: 'A', value: 'A' },
+                      { summary: 'A', value: 'Answer A' },
                       { summary: 'B', value: 'B' }
                     ],
-                    answer: 'A'
+                    answer: 'Answer A'
                   },
                   {
                     question: 'Second?',
                     options: [
                       { summary: 'C', value: 'C' },
                       { summary: 'D', value: 'D' }
+                    ],
+                    answer: 'Custom answer'
+                  },
+                  {
+                    question: 'Third?',
+                    options: [
+                      { summary: 'E', value: 'E' },
+                      { summary: 'F', value: 'F' }
                     ],
                     answer: ''
                   }
@@ -1862,7 +1870,20 @@ describe('chats2GPTMessages', () => {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_ask',
-        content: '{"answers":["A",""]}'
+        content: `## 问题 1
+First?
+
+回答：A - Answer A
+
+## 问题 2
+Second?
+
+回答：Custom answer
+
+## 问题 3
+Third?
+
+回答：未回答`
       }
     ]);
   });
