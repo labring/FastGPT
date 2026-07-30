@@ -35,6 +35,7 @@
   "move_skill_hint": "移动后，所选技能/文件夹将继承新文件夹的权限设置。",
   "no_current_version": "技能暂无可用版本，请重新创建或导入后再编辑。",
   "no_skills": "您还没有技能",
+  "no_skills_no_permission": "您还没有技能，且当前账号没有创建技能的权限，请联系管理员。",
   "permission.des.manage": "可管理 Agent 技能和协作者",
   "permission.des.read": "可查看 Agent 技能",
   "permission.des.write": "可编辑 Agent 技能",

@@ -10,6 +10,27 @@ export const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+/**
+ * 导入技能压缩包的有效字节上限：取「通用上传上限」与「沙盒可加载包上限」的较小值。
+ *
+ * - uploadFileMaxSizeMB：运营侧通用上传上限（MB），与所有上传入口一致（如测试环境 10MB）。
+ *   导入技能必须遵守它，否则会绕过运营配置的尺寸策略（关联 bug：29.29MB 仍可导入）。
+ * - skillSandboxMaxBytes：沙盒运行时实际能加载/解压的包上限（字节）。导入不得超过它，
+ *   否则包能上传却在运行时加载失败。
+ *
+ * 前后端共用此函数，确保判定一致。返回 undefined 表示两端均未知（实际不会发生，
+ * 调用方应回退到沙盒上限）。
+ */
+export const getSkillImportMaxBytes = (
+  uploadFileMaxSizeMB: number | undefined,
+  skillSandboxMaxBytes: number | undefined
+): number | undefined => {
+  const candidates: number[] = [];
+  if (typeof uploadFileMaxSizeMB === 'number') candidates.push(uploadFileMaxSizeMB * 1024 * 1024);
+  if (typeof skillSandboxMaxBytes === 'number') candidates.push(skillSandboxMaxBytes);
+  return candidates.length > 0 ? Math.min(...candidates) : undefined;
+};
+
 // 判断 buffer 是否包含非 ASCII 字节
 export const hasNonAsciiByte = (buffer: Buffer) => {
   for (let i = 0; i < buffer.length; i++) {
