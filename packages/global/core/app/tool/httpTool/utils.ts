@@ -3,12 +3,63 @@ import type { PathDataType, HttpToolConfigType } from './type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { AppToolSourceEnum } from '../constants';
-import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '../../jsonschema';
+import {
+  getNodeInputTypeFromSchemaInputType,
+  jsonSchema2NodeInput,
+  jsonSchema2NodeOutput
+} from '../../jsonschema';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
-import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum,
+  valueTypeJsonSchemaMap
+} from '../../../workflow/constants';
 import { i18nT } from '../../../../common/i18n/utils';
 import type { NodeToolConfigType } from '../../../workflow/type/node';
+
+const legacyManualHttpToolArrayTypes = new Set<string>([
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean
+]);
+
+/** 判断 JSON Schema type 是否为手工 HTTP 工具历史上写入的数组值类型。 */
+export const isLegacyManualHttpToolArrayType = (
+  value: unknown
+): value is
+  | WorkflowIOValueTypeEnum.arrayString
+  | WorkflowIOValueTypeEnum.arrayNumber
+  | WorkflowIOValueTypeEnum.arrayBoolean =>
+  typeof value === 'string' && legacyManualHttpToolArrayTypes.has(value);
+
+/** 将手工 HTTP 工具编辑器的工作流值类型转换为标准 JSON Schema property。 */
+export const manualHttpToolValueType2JsonSchema = (
+  valueType: WorkflowIOValueTypeEnum
+): JsonSchemaPropertiesItemType => {
+  const schema =
+    valueTypeJsonSchemaMap[valueType] ?? valueTypeJsonSchemaMap[WorkflowIOValueTypeEnum.string];
+
+  return {
+    ...schema,
+    ...(schema.items && typeof schema.items === 'object' ? { items: { ...schema.items } } : {})
+  };
+};
+
+/** 将标准或历史 HTTP 工具 property Schema 还原为手工编辑器使用的工作流值类型。 */
+export const jsonSchemaProperty2ManualHttpToolValueType = (
+  schema: JsonSchemaPropertiesItemType
+): WorkflowIOValueTypeEnum => {
+  if (isLegacyManualHttpToolArrayType(schema.type)) {
+    return schema.type;
+  }
+
+  return getNodeInputTypeFromSchemaInputType({
+    type: typeof schema.type === 'string' ? schema.type : undefined,
+    arrayItems: schema.items,
+    schema
+  });
+};
 
 export const getHTTPToolSetRuntimeNode = ({
   name,

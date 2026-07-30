@@ -36,7 +36,8 @@ import {
   type HttpMethod,
   toolValueTypeList,
   ContentTypes,
-  VARIABLE_NODE_ID
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
   headerValue2StoreHeader,
@@ -53,6 +54,10 @@ import CurlImportModal from './CurlImportModal';
 import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import {
+  jsonSchemaProperty2ManualHttpToolValueType,
+  manualHttpToolValueType2JsonSchema
+} from '@fastgpt/global/core/app/tool/httpTool/utils';
 
 type ManualToolFormType = {
   name: string;
@@ -71,7 +76,7 @@ type ManualToolFormType = {
 type CustomParamItemType = {
   key: string;
   description: string;
-  type: string;
+  type: WorkflowIOValueTypeEnum;
   required: boolean;
   isTool: boolean;
 };
@@ -107,7 +112,7 @@ const ManualToolModal = ({
             ([key, value]: [string, any]) => ({
               key,
               description: value.description || '',
-              type: value.type || 'string',
+              type: jsonSchemaProperty2ManualHttpToolValueType(value),
               required: editingTool.inputSchema?.required?.includes(key) || false,
               isTool: !!value['x-tool-description']
             })
@@ -152,7 +157,7 @@ const ManualToolModal = ({
       const inputRequired: string[] = [];
       customParams.forEach((param) => {
         inputProperties[param.key] = {
-          type: param.type,
+          ...manualHttpToolValueType2JsonSchema(param.type),
           description: param.description || '',
           'x-tool-description': param.isTool ? param.description : ''
         };
@@ -281,7 +286,7 @@ const ManualToolModal = ({
                   setEditingParam({
                     key: '',
                     description: '',
-                    type: 'string',
+                    type: WorkflowIOValueTypeEnum.string,
                     required: false,
                     isTool: true
                   });
