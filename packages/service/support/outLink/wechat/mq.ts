@@ -142,7 +142,7 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
           {
             shareId,
             userId: g.userId,
-            text: g.text,
+            items: g.items,
             contextToken: g.contextToken,
             lastMsgId: g.lastMsgId
           },
