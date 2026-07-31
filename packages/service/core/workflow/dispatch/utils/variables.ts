@@ -95,13 +95,13 @@ export const getWorkflowFileInputsFromValue = (
 ) =>
   Array.isArray(value)
     ? assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
-      0,
-      getModuleFileAmountLimit({
-        userMaxFileAmount,
-        moduleMaxFileAmount,
-        defaultModuleMaxFileAmount: DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
-      })
-    )
+        0,
+        getModuleFileAmountLimit({
+          userMaxFileAmount,
+          moduleMaxFileAmount,
+          defaultModuleMaxFileAmount: DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
+        })
+      )
     : [];
 
 /** 收集 Child 全局文件变量的实际输入，只用于派生请求级文件 Context。 */
@@ -163,7 +163,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     private readonly state: Map<string, WorkflowVariableStateItem>,
     private readonly fileMetaMap: Map<string, ChatFileStoreValue>,
     private readonly sourceVariableState?: WorkflowVariableStateLike
-  ) { }
+  ) {}
 
   /** 创建完整变量状态，包含用户全局变量、系统变量和运行时临时变量。 */
   static async create({
@@ -179,7 +179,7 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     runtimeOnlyVariables = {},
     sourceVariableState,
     maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount ??
-    DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES,
+      DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES,
     resolveInputFile
   }: WorkflowVariableStateCreateProps) {
     const state = new WorkflowVariableState(new Map(), new Map(), sourceVariableState);
@@ -348,11 +348,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     if (config.type === VariableInputEnum.file) {
       const storeValue = Array.isArray(value)
         ? this.runtimeFileValueToStoreValue(
-          assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
-            0,
-            config.maxFiles
+            assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
+              0,
+              config.maxFiles
+            )
           )
-        )
         : [];
       const runtimeValue = await fileStoreValuesToRuntimeUrls({
         files: storeValue,
@@ -373,9 +373,9 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
       const storeValue =
         typeof runtimeValue === 'string'
           ? {
-            value: '',
-            secret: encryptSecret(runtimeValue)
-          }
+              value: '',
+              secret: encryptSecret(runtimeValue)
+            }
           : value;
 
       this.state.set(config.key, {

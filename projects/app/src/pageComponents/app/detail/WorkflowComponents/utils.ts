@@ -74,9 +74,12 @@ export const uiWorkflow2StoreWorkflow = ({
     version: item.data.version,
     inputs: filterUnselectableReferenceInputs({
       node: item.data,
-      inputs: item.data.inputs.map((input) =>
-        normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
-      ),
+      inputs:
+        item.data.flowNodeType === FlowNodeTypeEnum.pluginInput
+          ? item.data.inputs
+          : item.data.inputs.map((input) =>
+              normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
+            ),
       edges,
       chatConfig,
       systemConfigNode,
