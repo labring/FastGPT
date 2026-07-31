@@ -10,9 +10,7 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
   SandboxNotFoundError,
   type ExecuteResult,
-  type ISandbox,
-  type ResourceLimits,
-  type SandboxCreateSpec
+  type ISandbox
 } from '@fastgpt-sdk/sandbox-adapter';
 import type { RedisLeaseContext } from '../../../../../common/redis/lock';
 import {
@@ -20,7 +18,11 @@ import {
   type VolumeManagerResult
 } from '../../infrastructure/volume/service';
 import { buildRuntimeSandboxAdapter } from '../../infrastructure/provider/adapter';
-import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
+import {
+  getConfiguredSandboxProvider,
+  type SandboxCreateConfig,
+  type SandboxResourceLimits
+} from '../../infrastructure/provider/config';
 import { ensureConnectedSandboxRunning } from '../../infrastructure/provider/lifecycle';
 import { deleteSandboxResource, stopSandboxResource } from '../resource';
 import {
@@ -74,9 +76,9 @@ type SandboxClientProps = {
 
 type SandboxClientOptions = {
   providerName?: SandboxProviderType;
-  resourceLimits?: ResourceLimits;
+  resourceLimits?: SandboxResourceLimits;
   vmConfig?: VolumeManagerResult | undefined;
-  createConfig?: SandboxCreateSpec;
+  createConfig?: SandboxCreateConfig;
   restoreArchived?: boolean;
   allowCreate?: boolean;
   sourceGuard?: typeof assertSandboxSourceActive;

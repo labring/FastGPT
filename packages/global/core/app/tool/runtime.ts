@@ -114,7 +114,7 @@ export const compileToolRuntime = ({
     inputs,
     toolParams: agentGeneratedInputs,
     jsonSchema
-  });
+  }) as JSONSchemaInputType;
   const agentGeneratedKeys = Object.keys(parameters.properties ?? {});
   const generatedKeySet = new Set(agentGeneratedKeys);
   const fixedInputBindings = {

@@ -56,12 +56,7 @@ import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
-import {
-  getToolVersionDisplayLabel,
-  inheritToolInputConfig,
-  preserveConfiguredToolIdentity,
-  shouldLoadToolVersions
-} from '../FormComponent/ToolSelector/utils';
+import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
 
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
