@@ -140,6 +140,7 @@
   "dataset_create_failed": "知识库创建失败",
   "dataset_create_success": "知识库创建成功，正在后台索引文件",
   "dataset_empty_tips": "你还没有知识库，先创建一个吧",
+  "dataset_empty_tips_no_permission": "您还没有知识库，且当前账号没有创建知识库的权限，请联系管理员。",
   "dataset_select": "可选知识库",
   "delete_all_input_guide_confirm": "确定要清空输入引导词库吗？",
   "document_quote": "文档引用",
