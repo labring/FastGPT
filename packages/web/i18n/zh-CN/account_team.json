@@ -319,7 +319,7 @@
   "enterprise_auth_success_grant_tip": "企业认证通过，已发放高级版权益",
   "enterprise_auth_transfer_sent_tip": "已成功打款，请确认打款金额",
   "enterprise_auth_invalid_amount_tip": "请输入正确的到账金额",
-  "enterprise_auth_modal_desc": "通过小额打款进行企业认证，认证成功后将为您发放15天的高级版套餐",
+  "enterprise_auth_modal_desc": "通过向您的企业发起小额打款进行企业认证，认证成功后将为您发放15天的高级版套餐",
   "enterprise_auth_enterprise_info": "企业信息",
   "enterprise_auth_enterprise_name": "企业名称",
   "enterprise_auth_enterprise_name_placeholder": "请填写企业名称",
