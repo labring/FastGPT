@@ -470,6 +470,7 @@ const OutLink = (props: Props) => {
             <ChatQuoteList
               rawSearch={datasetCiteData.rawSearch}
               metadata={datasetCiteData.metadata}
+              singleQuote={datasetCiteData.singleQuote}
               onClose={() => setCiteModalData(undefined)}
             />
           </PageContainer>
@@ -484,7 +485,14 @@ const Render = (props: Props) => {
   const { toast } = useToast();
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
-  const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
+  const {
+    source,
+    chatId,
+    setSource,
+    setAppId,
+    setOutLinkAuthData,
+    loaded: chatStoreLoaded
+  } = useChatStore();
 
   const outLinkUid = authToken || customUid || localUId || '';
   const chatHistoryProviderParams = useMemoEnhance<GetHistoriesBodyType>(() => {
@@ -509,9 +517,11 @@ const Render = (props: Props) => {
     };
   }, [outLinkAuthData, chatId]);
 
-  useMount(() => {
+  useEffect(() => {
+    if (!chatStoreLoaded) return;
+
     setSource('share');
-  });
+  }, [chatStoreLoaded, setSource]);
 
   // Set default localUId
   useEffect(() => {
@@ -524,18 +534,20 @@ const Render = (props: Props) => {
 
   // Init outLinkAuthData
   useEffect(() => {
-    if (outLinkAuthData.outLinkUid) {
-      setOutLinkAuthData(outLinkAuthData);
-    }
+    if (!chatStoreLoaded || !outLinkAuthData.outLinkUid) return;
+
+    setOutLinkAuthData(outLinkAuthData);
     return () => {
       setOutLinkAuthData({});
     };
-  }, [outLinkAuthData, setOutLinkAuthData]);
+  }, [chatStoreLoaded, outLinkAuthData, setOutLinkAuthData]);
 
   // Watch appId
   useEffect(() => {
+    if (!chatStoreLoaded) return;
+
     setAppId(appId);
-  }, [appId, setAppId]);
+  }, [appId, chatStoreLoaded, setAppId]);
   useMount(() => {
     if (!appId) {
       toast({
@@ -545,7 +557,7 @@ const Render = (props: Props) => {
     }
   });
 
-  return source === ChatSourceEnum.share && outLinkAuthData.outLinkUid ? (
+  return chatStoreLoaded && source === ChatSourceEnum.share && outLinkAuthData.outLinkUid ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={false}

@@ -23,11 +23,13 @@ type MobileQuoteTab = 'detail' | 'source';
 const QuoteReader = ({
   rawSearch,
   metadata,
+  singleQuote = false,
   onClose,
   onOpenCollectionQuote
 }: {
   rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetAllQuoteDataProps;
+  singleQuote?: boolean;
   onClose: () => void;
   onOpenCollectionQuote: (metadata: GetCollectionQuoteDataProps) => void;
 }) => {
@@ -132,7 +134,13 @@ const QuoteReader = ({
   };
 
   const quoteDetailList = (
-    <MyBox flex={'1 0 0'} p={'12px'} overflow={'auto'} isLoading={loading}>
+    <MyBox
+      flex={'1 0 0'}
+      p={'12px'}
+      pt={singleQuote ? '48px' : '12px'}
+      overflow={'auto'}
+      isLoading={loading}
+    >
       {!loading && (
         <Flex flexDir={'column'} gap={'12px'}>
           {formatedDataList?.map((item) => (
@@ -142,7 +150,8 @@ const QuoteReader = ({
               sourceName={item.sourceName}
               q={item.q}
               a={item.a}
-              onClick={item.sourceId ? () => openCollectionQuote(item) : undefined}
+              alwaysShowCopy={singleQuote}
+              onClick={singleQuote || !item.sourceId ? undefined : () => openCollectionQuote(item)}
             />
           ))}
         </Flex>
@@ -189,25 +198,73 @@ const QuoteReader = ({
   );
 
   return (
-    <Flex flexDirection={'column'} minH={'full'} h={'full'}>
-      {/* title */}
-      <Flex
-        w={'full'}
-        alignItems={'center'}
-        justifyContent={'center'}
-        px={6}
-        py={'16px'}
-        borderBottom={'1px solid'}
-        borderColor={'myGray.150'}
-        position={'relative'}
-      >
-        <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'16px'}>
-          {isPc ? t('common:chat.quote_detail_title') : t('common:core.chat.Quote')}
-        </Box>
+    <Flex flexDirection={'column'} minH={'full'} h={'full'} position={'relative'}>
+      {!singleQuote && (
+        <>
+          {/* title */}
+          <Flex
+            w={'full'}
+            alignItems={'center'}
+            justifyContent={'center'}
+            px={6}
+            py={'16px'}
+            borderBottom={'1px solid'}
+            borderColor={'myGray.150'}
+            position={'relative'}
+          >
+            <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'16px'}>
+              {isPc ? t('common:chat.quote_detail_title') : t('common:core.chat.Quote')}
+            </Box>
 
+            <Flex
+              position={'absolute'}
+              right={4}
+              justifyContent={'center'}
+              alignItems={'center'}
+              cursor={'pointer'}
+              borderRadius={'sm'}
+              _hover={{
+                bg: 'myGray.100'
+              }}
+              p={2}
+              onClick={onClose}
+            >
+              <MyIcon name="common/closeLight" color={'myGray.900'} w={4} />
+            </Flex>
+          </Flex>
+
+          {!isPc && (
+            <Box px={'12px'} py={'10px'} borderBottom={'1px solid'} borderColor={'myGray.150'}>
+              <FillRowTabs<MobileQuoteTab>
+                w={'full'}
+                outerPadding="4px"
+                outerHeight="40px"
+                itemHeight="32px"
+                labelSize="16px"
+                list={[
+                  {
+                    label: t('common:chat.quote_detail_title'),
+                    value: 'detail'
+                  },
+                  {
+                    label: t('chat:quote_source_title'),
+                    value: 'source'
+                  }
+                ]}
+                value={mobileTab}
+                onChange={setMobileTab}
+              />
+            </Box>
+          )}
+        </>
+      )}
+
+      {singleQuote && (
         <Flex
           position={'absolute'}
+          top={2}
           right={4}
+          zIndex={1}
           justifyContent={'center'}
           alignItems={'center'}
           cursor={'pointer'}
@@ -220,40 +277,18 @@ const QuoteReader = ({
         >
           <MyIcon name="common/closeLight" color={'myGray.900'} w={4} />
         </Flex>
-      </Flex>
-
-      {!isPc && (
-        <Box px={'12px'} py={'10px'} borderBottom={'1px solid'} borderColor={'myGray.150'}>
-          <FillRowTabs<MobileQuoteTab>
-            w={'full'}
-            outerPadding="4px"
-            outerHeight="40px"
-            itemHeight="32px"
-            labelSize="16px"
-            list={[
-              {
-                label: t('common:chat.quote_detail_title'),
-                value: 'detail'
-              },
-              {
-                label: t('chat:quote_source_title'),
-                value: 'source'
-              }
-            ]}
-            value={mobileTab}
-            onChange={setMobileTab}
-          />
-        </Box>
       )}
 
       {/* quote list */}
       {isPc || mobileTab === 'detail' ? quoteDetailList : quoteSourceList}
 
-      <Box px={5} py={3}>
-        <Flex fontSize={'mini'} color={'myGray.500'} justifyContent={'center'}>
-          {t('chat:quote_result_notice')}
-        </Flex>
-      </Box>
+      {!singleQuote && (
+        <Box px={5} py={3}>
+          <Flex fontSize={'mini'} color={'myGray.500'} justifyContent={'center'}>
+            {t('chat:quote_result_notice')}
+          </Flex>
+        </Box>
+      )}
     </Flex>
   );
 };

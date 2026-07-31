@@ -10,6 +10,7 @@ export enum AgentChatTestTabEnum {
 }
 
 type State = {
+  loaded: boolean;
   source?: `${ChatSourceEnum}`;
   setSource: (e: `${ChatSourceEnum}`) => any;
 
@@ -116,6 +117,7 @@ export const useChatStore = create<State>()(
   devtools(
     persist(
       immer((set) => ({
+        loaded: false,
         source: undefined,
         setSource(e) {
           set((state) => {
@@ -283,6 +285,11 @@ export const useChatStore = create<State>()(
       {
         name: 'chatStore',
         storage: createJSONStorage(createCustomStorage),
+        onRehydrateStorage: () => (state) => {
+          if (state) {
+            state.loaded = true;
+          }
+        },
         partialize: (state) => ({
           source: state.source,
           chatId: state.chatId,

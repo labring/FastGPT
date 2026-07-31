@@ -166,6 +166,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
               <ChatQuoteList
                 rawSearch={datasetCiteData.rawSearch}
                 metadata={datasetCiteData.metadata}
+                singleQuote={datasetCiteData.singleQuote}
                 onClose={() => setCiteModalData(undefined)}
               />
             </Box>

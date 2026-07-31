@@ -329,6 +329,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           <ChatQuoteList
             rawSearch={datasetCiteData.rawSearch}
             metadata={datasetCiteData.metadata}
+            singleQuote={datasetCiteData.singleQuote}
             onClose={() => setCiteModalData(undefined)}
           />
         </Box>
