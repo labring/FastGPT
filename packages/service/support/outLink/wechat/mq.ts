@@ -4,11 +4,11 @@ import { ILinkClient } from './ilinkClient';
 import type { WechatPollJobData, WechatReplyJobData } from './type';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
-import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
 import { delRedisCache, getRedisCache, setRedisCache } from '../../../common/redis/cache';
 import { groupMessagesByUser } from './messageParser';
 import { serviceEnv } from '../../../env';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
+import { wechatOutlinkProvider } from './provider';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 
@@ -168,40 +168,13 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
 
 /* ============ Reply Worker ============ */
 async function processWechatReplyJob(job: Job<WechatReplyJobData>): Promise<void> {
-  const { shareId, userId, text, contextToken, lastMsgId } = job.data;
-
-  const outLink = (await MongoOutLink.findOne({
-    shareId
-  }).lean()) as unknown as OutLinkSchemaType<WechatAppType> | null;
-  if (!outLink || !outLink.app || outLink.app.status !== 'online' || !outLink.app.token) {
-    logger.warn('Channel not available, drop reply', { shareId, lastMsgId });
-    return;
-  }
-
-  const app = outLink.app;
-  const client = new ILinkClient(app.baseUrl, app.token);
-  const chatId = `wechat_${shareId}_${userId}`;
-
   try {
-    await outlinkInvokeChat({
-      outLinkConfig: outLink,
-      chatId,
-      query: [{ text: { content: text } }],
-      messageId: lastMsgId,
-      chatUserId: userId,
-      onReply: async (replyContent: string) => {
-        await client.sendMessage({
-          to_user_id: userId,
-          text: replyContent,
-          context_token: contextToken
-        });
-      }
-    });
+    await wechatOutlinkProvider(job.data);
   } catch (error) {
     logger.error('Reply job failed', {
-      shareId,
-      userId,
-      lastMsgId,
+      shareId: job.data.shareId,
+      userId: job.data.userId,
+      lastMsgId: job.data.lastMsgId,
       error: String(error)
     });
     throw error;
