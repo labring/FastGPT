@@ -991,17 +991,14 @@ describe('rewriteRuntimeWorkFlow', () => {
     });
 
     expect(tools).toHaveLength(1);
-    expect(tools[0].toolParams).toEqual([
-      expect.objectContaining({
-        key: 'text',
-        selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        renderTypeList: [
-          FlowNodeInputTypeEnum.agentGenerated,
-          FlowNodeInputTypeEnum.input,
-          FlowNodeInputTypeEnum.reference
-        ]
-      })
-    ]);
+    expect(tools[0].inputs.find((input) => input.key === 'text')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
     expect(workflowToolNode.inputs.find((input) => input.key === 'text2')).toMatchObject({
       selectedType: FlowNodeInputTypeEnum.input
     });

@@ -53,7 +53,7 @@ describe('WorkflowVariableState', () => {
     expect(state.toStoreRecord()).toEqual({ name: '123' });
   });
 
-  it('should keep internal variable defaults isolated from input and external variables', async () => {
+  it('should allow parent input to override internal variable defaults', async () => {
     const state = await createState({
       variablesConfig: [
         {
@@ -67,8 +67,8 @@ describe('WorkflowVariableState', () => {
       externalVariables: { internalToken: 'external-value' }
     });
 
-    expect(state.get('internalToken')).toBe('internal-default');
-    expect(state.toStoreRecord()).toEqual({ internalToken: 'internal-default' });
+    expect(state.get('internalToken')).toBe('parent-value');
+    expect(state.toStoreRecord()).toEqual({ internalToken: 'parent-value' });
   });
 
   it('should initialize an external dynamic variable from input variables', async () => {
