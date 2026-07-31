@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const VALID_ID = 'a1b2c3d4e5f6a1b2c3d4e5f6';
-const VOLUME_NAME = `fastgpt-session-${VALID_ID}`;
+const VOLUME_NAME = 'fastgpt-session-a1b2c3d4e5f6a1b2c3d4e5f6-generation';
 
 vi.mock('../../src/env', () => ({
   env: {
     VM_K8S_NAMESPACE: 'opensandbox',
-    VM_VOLUME_NAME_PREFIX: 'fastgpt-session',
     VM_K8S_PVC_STORAGE_CLASS: ''
   }
 }));
@@ -52,7 +50,7 @@ describe('K8sVolumeDriver', () => {
     fetchMock.mockResolvedValueOnce(pvcResponse('uid-1'));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
-    const result = await driver.ensure(VALID_ID);
+    const result = await driver.ensure({ claimName: VOLUME_NAME });
     expect(result).toEqual({ claimName: VOLUME_NAME, created: false });
   });
 
@@ -62,7 +60,7 @@ describe('K8sVolumeDriver', () => {
       .mockResolvedValueOnce({ ok: true, status: 201 });
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
-    const result = await driver.ensure(VALID_ID, '5Gi');
+    const result = await driver.ensure({ claimName: VOLUME_NAME, storageSize: '5Gi' });
     const [, createOpts] = fetchMock.mock.calls[1];
     const body = JSON.parse((createOpts as any).body);
 
@@ -82,7 +80,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.ensure(VALID_ID)).resolves.toEqual({
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).resolves.toEqual({
       claimName: VOLUME_NAME,
       created: true
     });
@@ -97,7 +95,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.ensure(VALID_ID)).resolves.toEqual({
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).resolves.toEqual({
       claimName: VOLUME_NAME,
       created: false
     });
@@ -112,7 +110,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.ensure(VALID_ID)).resolves.toEqual({
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).resolves.toEqual({
       claimName: VOLUME_NAME,
       created: false
     });
@@ -126,7 +124,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
 
-    await expect(driver.ensure(VALID_ID)).rejects.toThrow('500');
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).rejects.toThrow('500');
   });
 
   it('ensure times out while concurrent create conflicts never settle', async () => {
@@ -138,14 +136,14 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 1, pollIntervalMs: 1 });
 
-    await expect(driver.ensure(VALID_ID)).rejects.toThrow('Timed out ensuring');
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).rejects.toThrow('Timed out ensuring');
   });
 
   it('ensure throws on unexpected GET error', async () => {
     fetchMock.mockResolvedValueOnce(errorResponse(403, 'forbidden'));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
-    await expect(driver.ensure(VALID_ID)).rejects.toThrow('403');
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).rejects.toThrow('403');
   });
 
   it('ensure throws when an existing PVC response has no UID', async () => {
@@ -156,7 +154,7 @@ describe('K8sVolumeDriver', () => {
     });
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
-    await expect(driver.ensure(VALID_ID)).rejects.toThrow('invalid metadata');
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).rejects.toThrow('invalid metadata');
   });
 
   it('fetch calls use an Undici dispatcher with ca.crt loaded', async () => {
@@ -164,7 +162,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const { readFileSync } = await import('fs');
     const driver = new K8sVolumeDriver();
-    await driver.ensure(VALID_ID);
+    await driver.ensure({ claimName: VOLUME_NAME });
     const [, opts] = fetchMock.mock.calls[0];
     expect((opts as any).dispatcher).toBeTruthy();
     expect(readFileSync).toHaveBeenCalledWith(
@@ -177,7 +175,7 @@ describe('K8sVolumeDriver', () => {
     fetchMock.mockResolvedValueOnce(notFoundResponse());
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
-    await expect(driver.remove(VALID_ID)).resolves.toBeUndefined();
+    await expect(driver.remove(VOLUME_NAME)).resolves.toBeUndefined();
   });
 
   it('remove waits for the target UID to disappear after DELETE 202', async () => {
@@ -189,7 +187,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.remove(VALID_ID)).resolves.toBeUndefined();
+    await expect(driver.remove(VOLUME_NAME)).resolves.toBeUndefined();
     const [, deleteOptions] = fetchMock.mock.calls[1];
     expect(JSON.parse((deleteOptions as any).body)).toEqual({
       apiVersion: 'v1',
@@ -203,7 +201,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
 
-    await expect(driver.remove(VALID_ID)).resolves.toBeUndefined();
+    await expect(driver.remove(VOLUME_NAME)).resolves.toBeUndefined();
   });
 
   it('remove stops when the target UID was replaced', async () => {
@@ -214,7 +212,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.remove(VALID_ID)).resolves.toBeUndefined();
+    await expect(driver.remove(VOLUME_NAME)).resolves.toBeUndefined();
   });
 
   it('remove waits for an already deleting PVC', async () => {
@@ -224,7 +222,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.remove(VALID_ID)).resolves.toBeUndefined();
+    await expect(driver.remove(VOLUME_NAME)).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -236,7 +234,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.remove(VALID_ID)).resolves.toBeUndefined();
+    await expect(driver.remove(VOLUME_NAME)).resolves.toBeUndefined();
   });
 
   it('remove throws when a DELETE conflict still references the target UID', async () => {
@@ -247,7 +245,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
-    await expect(driver.remove(VALID_ID)).rejects.toThrow('409');
+    await expect(driver.remove(VOLUME_NAME)).rejects.toThrow('409');
   });
 
   it('remove throws on unexpected DELETE error', async () => {
@@ -256,12 +254,12 @@ describe('K8sVolumeDriver', () => {
       .mockResolvedValueOnce(errorResponse(500, 'error'));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
-    await expect(driver.remove(VALID_ID)).rejects.toThrow('500');
+    await expect(driver.remove(VOLUME_NAME)).rejects.toThrow('500');
   });
 
   it('ensure times out while a PVC generation remains deleting', async () => {
     fetchMock.mockImplementation(async (url: string) => {
-      if (url.endsWith('/persistentvolumeclaims/fastgpt-session-' + VALID_ID)) {
+      if (url.endsWith(`/persistentvolumeclaims/${VOLUME_NAME}`)) {
         return pvcResponse('uid-1', '2026-07-30T00:00:00Z');
       }
       return errorResponse(500, 'unexpected create');
@@ -269,7 +267,7 @@ describe('K8sVolumeDriver', () => {
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 2, pollIntervalMs: 1 });
 
-    await expect(driver.ensure(VALID_ID)).rejects.toThrow('Timed out waiting');
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).rejects.toThrow('Timed out waiting');
   });
 
   it('rejects invalid wait options', async () => {

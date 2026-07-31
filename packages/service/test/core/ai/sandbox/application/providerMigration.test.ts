@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   archiveSandboxResourceWithinLease: vi.fn(),
   buildSandboxResourceAdapter: vi.fn(),
   deleteSessionVolume: vi.fn(),
+  getSessionVolumeClaimName: vi.fn(),
   resolveSandboxRuntimeImage: vi.fn()
 }));
 
@@ -46,7 +47,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () =
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => ({
-  deleteSessionVolume: mocks.deleteSessionVolume
+  deleteSessionVolume: mocks.deleteSessionVolume,
+  getSessionVolumeClaimName: mocks.getSessionVolumeClaimName
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/archive', () => {
@@ -86,6 +88,16 @@ const createInstance = (overrides: Record<string, unknown> = {}) =>
     userId: params.userId,
     status: 'running',
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
+    storage: {
+      volumes: [
+        {
+          name: 'workspace',
+          claimName: 'fastgpt-session-app-sandbox-current',
+          mountPath: '/workspace'
+        }
+      ],
+      mountPath: '/workspace'
+    },
     ...overrides
   }) as any;
 
@@ -111,6 +123,10 @@ describe('sandbox provider migration lifecycle', () => {
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.buildSandboxResourceAdapter.mockReturnValue({ delete: vi.fn(async () => undefined) });
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
+    mocks.getSessionVolumeClaimName.mockImplementation(
+      (storage: any) =>
+        storage?.volumes?.find((volume: any) => volume.name === 'workspace')?.claimName
+    );
     mocks.resolveSandboxRuntimeImage.mockReturnValue({
       repository: 'registry.example.com/sandbox',
       tag: 'v2'
@@ -174,45 +190,48 @@ describe('sandbox provider migration lifecycle', () => {
     });
   });
 
-  it('rolls an archiveInstalled old-provider restore back to archived without deleting S3', async () => {
-    const restoring = createInstance({
-      status: 'restoring',
-      operation: {
-        id: 'old-restore',
-        type: 'restore',
-        phase: 'archiveInstalled',
-        previousStatus: 'archived',
-        startedAt: new Date(0),
-        heartbeatAt: new Date(0),
-        error: 'worker stopped'
-      }
-    });
-    const archived = createInstance({ status: 'archived' });
-    const restoreClaim = {
-      ...restoring,
-      operation: {
-        ...restoring.operation,
-        id: 'rollback-restore'
-      }
-    };
-    mocks.findSandboxInstanceBySource
-      .mockResolvedValueOnce(restoring)
-      .mockResolvedValueOnce(restoring);
-    mocks.claimSandboxOperation.mockResolvedValueOnce(restoreClaim);
-    mocks.completeSandboxOperation.mockResolvedValueOnce(archived);
+  it.each(['volumeAssigned', 'archiveInstalled'])(
+    'rolls a %s old-provider restore back to archived without deleting S3',
+    async (phase) => {
+      const restoring = createInstance({
+        status: 'restoring',
+        operation: {
+          id: 'old-restore',
+          type: 'restore',
+          phase,
+          previousStatus: 'archived',
+          startedAt: new Date(0),
+          heartbeatAt: new Date(0),
+          error: 'worker stopped'
+        }
+      });
+      const archived = createInstance({ status: 'archived' });
+      const restoreClaim = {
+        ...restoring,
+        operation: {
+          ...restoring.operation,
+          id: 'rollback-restore'
+        }
+      };
+      mocks.findSandboxInstanceBySource
+        .mockResolvedValueOnce(restoring)
+        .mockResolvedValueOnce(restoring);
+      mocks.claimSandboxOperation.mockResolvedValueOnce(restoreClaim);
+      mocks.completeSandboxOperation.mockResolvedValueOnce(archived);
 
-    await migrateSandboxProviderBeforeUse(params);
+      await migrateSandboxProviderBeforeUse(params);
 
-    const rollbackAdapter = mocks.buildSandboxResourceAdapter.mock.results[1].value;
-    expect(rollbackAdapter.delete).toHaveBeenCalledTimes(1);
-    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('app-sandbox');
-    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ fromStatus: 'restoring', status: 'archived' })
-    );
-    expect(mocks.switchArchivedSandboxProvider).toHaveBeenCalledWith({
-      resource: archived,
-      provider: 'sealosdevbox',
-      image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
-    });
-  });
+      const rollbackAdapter = mocks.buildSandboxResourceAdapter.mock.results[1].value;
+      expect(rollbackAdapter.delete).toHaveBeenCalledTimes(1);
+      expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-app-sandbox-current');
+      expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+        expect.objectContaining({ fromStatus: 'restoring', status: 'archived' })
+      );
+      expect(mocks.switchArchivedSandboxProvider).toHaveBeenCalledWith({
+        resource: archived,
+        provider: 'sealosdevbox',
+        image: { repository: 'registry.example.com/sandbox', tag: 'v2' }
+      });
+    }
+  );
 });

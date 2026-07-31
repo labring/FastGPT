@@ -25,7 +25,10 @@ import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter'
 import { connectToSandbox, disconnectSandbox } from '../infrastructure/provider/lifecycle';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import {
+  buildVolumeConfig,
+  createSessionVolumeClaimName,
   deleteSessionVolume,
+  getSessionVolumeClaimName,
   getSessionVolumeConfig,
   type VolumeManagerResult
 } from '../infrastructure/volume/service';
@@ -53,7 +56,7 @@ const ARCHIVE_TEMP_FILE_NAMES = [TEMP_ARCHIVE_FILE, RESTORE_ARCHIVE_FILE];
 
 type SandboxPhysicalResource = Pick<
   SandboxResourceDoc,
-  'provider' | 'sandboxId' | 'status' | 'lastActiveAt'
+  'provider' | 'sandboxId' | 'status' | 'lastActiveAt' | 'storage'
 > & {
   metadata?: unknown;
 };
@@ -129,10 +132,14 @@ const ensureUnzipAvailableInSandbox = async (sandbox: ISandbox) => {
 
 async function buildArchiveRuntimeConfig(resource: SandboxPhysicalResource) {
   const profile = getSandboxRuntimeProfile(resource.provider);
-  const vmConfig =
-    resource.provider === 'opensandbox'
-      ? await getSessionVolumeConfig(resource.sandboxId)
-      : undefined;
+  const vmConfig = await (async () => {
+    if (resource.provider !== 'opensandbox') return;
+    const claimName = getSessionVolumeClaimName(resource.storage);
+    if (!claimName) {
+      throw new Error(`OpenSandbox ${resource.sandboxId} has no persisted workspace claimName`);
+    }
+    return getSessionVolumeConfig(claimName);
+  })();
   const { providerConfig, createConfig } = getSandboxAdapterConfig({
     provider: resource.provider,
     runtime: true,
@@ -160,7 +167,11 @@ async function deleteArchivedProviderResource(resource: SandboxResourceDoc) {
 /** 等 Provider 删除 checkpoint 持久化后，再删除并等待 OpenSandbox volume 完成。 */
 async function deleteArchivedVolumeResource(resource: SandboxResourceDoc) {
   if (resource.provider === 'opensandbox') {
-    await deleteSessionVolume(resource.sandboxId);
+    const claimName = getSessionVolumeClaimName(resource.storage);
+    if (!claimName) {
+      throw new Error(`OpenSandbox ${resource.sandboxId} has no persisted workspace claimName`);
+    }
+    await deleteSessionVolume(claimName);
   }
 }
 
@@ -532,10 +543,16 @@ export async function retryStaleArchivingSandboxes(now = new Date()) {
 async function createRestoreSandbox(params: {
   provider: SandboxProviderType;
   sandboxId: string;
+  claimName?: string;
   createConfig?: SandboxCreateSpec;
 }) {
-  const vmConfig =
-    params.provider === 'opensandbox' ? await getSessionVolumeConfig(params.sandboxId) : undefined;
+  const vmConfig = await (async () => {
+    if (params.provider !== 'opensandbox') return;
+    if (!params.claimName) {
+      throw new Error(`OpenSandbox ${params.sandboxId} has no assigned workspace claimName`);
+    }
+    return getSessionVolumeConfig(params.claimName);
+  })();
   const profile = getSandboxRuntimeProfile(params.provider);
   const { providerConfig, createConfig } = getSandboxAdapterConfig({
     provider: params.provider,
@@ -604,6 +621,7 @@ export async function restoreArchivedSandboxBeforeUse(params: {
       let sandbox: ISandbox | undefined;
       let restoredVmConfig: VolumeManagerResult | undefined;
       let restoredStorage = current.storage;
+      let assignedClaimName = getSessionVolumeClaimName(current.storage);
 
       try {
         const definition: SandboxLifecycleDefinition = {
@@ -612,9 +630,25 @@ export async function restoreArchivedSandboxBeforeUse(params: {
           steps: [
             {
               fromPhase: 'claimed',
+              toPhase: 'volumeAssigned',
+              run: async ({ resource: claimed }) => {
+                if (claimed.provider !== 'opensandbox') return;
+                assignedClaimName = createSessionVolumeClaimName({
+                  sandboxId: claimed.sandboxId
+                });
+                restoredStorage = buildVolumeConfig(assignedClaimName).storage;
+              },
+              set: () => (restoredStorage !== undefined ? { storage: restoredStorage } : {})
+            },
+            {
+              fromPhase: 'volumeAssigned',
               toPhase: 'archiveInstalled',
               run: async () => {
-                const target = await createRestoreSandbox(params);
+                assignedClaimName ??= getSessionVolumeClaimName(restoredStorage);
+                const target = await createRestoreSandbox({
+                  ...params,
+                  claimName: assignedClaimName
+                });
                 sandbox = target.sandbox;
                 restoredVmConfig = target.vmConfig;
                 restoredStorage = target.vmConfig?.storage ?? restoredStorage;

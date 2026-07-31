@@ -32,6 +32,10 @@ export type SandboxLifecycleStep = {
   fromPhase: string;
   toPhase: string;
   run: (context: SandboxLifecycleStepContext) => Promise<void>;
+  /** 与 phase checkpoint 原子提交的 Mongo 字段，供后续远端副作用复用。 */
+  set?:
+    | Record<string, unknown>
+    | ((context: SandboxLifecycleStepContext) => Record<string, unknown>);
 };
 
 type SandboxLifecycleFinish =
@@ -151,11 +155,13 @@ export async function runSandboxLifecycleOperation(
       context.assertValid();
       await step.run(context);
       context.assertValid();
+      const set = typeof step.set === 'function' ? step.set(context) : step.set;
       const advanced = await advanceSandboxOperation({
         resource: claimed,
         operationId,
         status: definition.status,
-        phase: step.toPhase
+        phase: step.toPhase,
+        set
       });
       if (!advanced) {
         throw new Error(

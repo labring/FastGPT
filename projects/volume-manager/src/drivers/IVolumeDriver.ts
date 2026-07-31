@@ -3,7 +3,12 @@ export type EnsureResult = {
   created: boolean;
 };
 
+export type EnsureVolumeParams = {
+  claimName: string;
+  storageSize?: string;
+};
+
 export type IVolumeDriver = {
-  ensure(sessionId: string, storageSize?: string): Promise<EnsureResult>;
-  remove(sessionId: string): Promise<void>;
+  ensure(params: EnsureVolumeParams): Promise<EnsureResult>;
+  remove(claimName: string): Promise<void>;
 };

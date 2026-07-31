@@ -21,9 +21,15 @@ import {
   claimSkillSandboxMigrationTarget,
   completeSandboxOperation,
   findSandboxInstanceBySource,
-  markSandboxOperationFailed
+  markSandboxOperationFailed,
+  type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
 import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
+import {
+  buildVolumeConfig,
+  createSessionVolumeClaimName,
+  getSessionVolumeClaimName
+} from '../../infrastructure/volume/service';
 import { SandboxInstanceStatusEnum } from '../../type';
 import { SANDBOX_STALE_ARCHIVING_MINUTES, restoreArchivedSandboxBeforeUse } from '../archive';
 import {
@@ -58,6 +64,40 @@ const APP_SANDBOX_MIGRATION_CONCURRENCY = 5;
 const SKILL_SANDBOX_MIGRATION_CONCURRENCY = 20;
 
 type UserSandboxMigrationTrackData = Parameters<typeof pushTrack.userSandboxMigration>[0];
+
+/**
+ * OpenSandbox migration target 必须先提交 volume generation，再创建远端资源。
+ * 非 OpenSandbox 或已越过 claimed 的 operation 只返回当前 checkpoint。
+ */
+const assignMigrationTargetVolume = async (params: {
+  target: SandboxResourceDoc;
+  operationId: string;
+  operationPhase: string;
+}) => {
+  let storage = params.target.storage;
+  if (params.target.provider !== 'opensandbox' || params.operationPhase !== 'claimed') {
+    return { operationPhase: params.operationPhase, storage };
+  }
+
+  const claimName =
+    getSessionVolumeClaimName(storage) ??
+    createSessionVolumeClaimName({
+      sandboxId: params.target.sandboxId,
+      generationId: '0'
+    });
+  storage = buildVolumeConfig(claimName).storage;
+  const assigned = await advanceSandboxOperation({
+    resource: params.target,
+    operationId: params.operationId,
+    status: SandboxInstanceStatusEnum.legacyMigrating,
+    phase: 'volumeAssigned',
+    set: { storage }
+  });
+  if (!assigned) {
+    throw new Error('Sandbox migration lost ownership after volume assignment');
+  }
+  return { operationPhase: 'volumeAssigned', storage };
+};
 
 const recordMigrationTrack = async (data: UserSandboxMigrationTrackData) => {
   await Promise.resolve(pushTrack.userSandboxMigration(data)).catch(() => undefined);
@@ -237,14 +277,25 @@ const migrateLegacySkill = async (item: ResolvedLegacySkill) => {
             let operationPhase = targetDoc.operation.phase;
             try {
               assertLeasesValid();
+              const volumeAssignment = await assignMigrationTargetVolume({
+                target: targetDoc,
+                operationId,
+                operationPhase
+              });
+              operationPhase = volumeAssignment.operationPhase;
+              const claimName =
+                targetDoc.provider === 'opensandbox'
+                  ? getSessionVolumeClaimName(volumeAssignment.storage)
+                  : undefined;
               const target = await createMigrationTarget({
                 provider: targetDoc.provider,
                 sandboxId: targetDoc.sandboxId,
                 sourceType: ChatSourceTypeEnum.skillEdit,
-                limit: item.doc.limit
+                limit: item.doc.limit,
+                claimName
               });
               assertLeasesValid();
-              if (operationPhase === 'claimed') {
+              if (operationPhase === 'claimed' || operationPhase === 'volumeAssigned') {
                 const ensured = await advanceSandboxOperation({
                   resource: targetDoc,
                   operationId,
@@ -435,15 +486,26 @@ const migrateAppGroup = async (params: {
 
             try {
               assertLeasesValid();
+              const volumeAssignment = await assignMigrationTargetVolume({
+                target: targetDoc,
+                operationId,
+                operationPhase
+              });
+              operationPhase = volumeAssignment.operationPhase;
+              const claimName =
+                targetDoc.provider === 'opensandbox'
+                  ? getSessionVolumeClaimName(volumeAssignment.storage)
+                  : undefined;
               const target = await createMigrationTarget({
                 provider: targetDoc.provider,
                 sandboxId: targetDoc.sandboxId,
                 sourceType: ChatSourceTypeEnum.app,
                 chatId: first.chatId,
-                limit: first.doc.limit
+                limit: first.doc.limit,
+                claimName
               });
               assertLeasesValid();
-              if (operationPhase === 'claimed') {
+              if (operationPhase === 'claimed' || operationPhase === 'volumeAssigned') {
                 const ensured = await advanceSandboxOperation({
                   resource: targetDoc,
                   operationId,

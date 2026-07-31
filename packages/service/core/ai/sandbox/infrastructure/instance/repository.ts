@@ -54,6 +54,7 @@ export type SandboxResourceRef = Partial<
     | 'teamId'
     | 'image'
     | 'versionId'
+    | 'storage'
     | 'operation'
   >
 > & {
@@ -181,6 +182,7 @@ export async function advanceSandboxOperation(params: {
   operationId: string;
   status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
   phase: string;
+  set?: Record<string, unknown>;
 }) {
   return MongoSandboxInstance.findOneAndUpdate(
     {
@@ -190,6 +192,7 @@ export async function advanceSandboxOperation(params: {
     },
     {
       $set: {
+        ...(params.set ?? {}),
         'operation.phase': params.phase,
         'operation.heartbeatAt': new Date()
       },

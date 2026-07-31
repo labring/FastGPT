@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs';
 import { Agent } from 'undici';
 import { z } from 'zod';
-import type { IVolumeDriver, EnsureResult } from './IVolumeDriver';
-import { toVolumeName } from '../utils/naming';
+import type { EnsureResult, EnsureVolumeParams, IVolumeDriver } from './IVolumeDriver';
+import { validateVolumeName } from '../utils/naming';
 import { env } from '../env';
 import { logDebug } from '../utils/logger';
 
@@ -27,7 +27,6 @@ type K8sPvcState =
 
 export type K8sVolumeDriverOptions = {
   namespace?: string;
-  prefix?: string;
   waitTimeoutMs?: number;
   pollIntervalMs?: number;
 };
@@ -36,19 +35,14 @@ function readToken(): string {
   return readFileSync(TOKEN_PATH, 'utf-8').trim();
 }
 
-function pvcBody(params: {
-  name: string;
-  sessionId: string;
-  storageSize: string;
-  namespace: string;
-}): object {
+function pvcBody(params: { name: string; storageSize: string; namespace: string }): object {
   return {
     apiVersion: 'v1',
     kind: 'PersistentVolumeClaim',
     metadata: {
       name: params.name,
       namespace: params.namespace,
-      labels: { 'fastgpt/session-id': params.sessionId }
+      labels: { 'app.kubernetes.io/managed-by': 'fastgpt-volume-manager' }
     },
     spec: {
       accessModes: ['ReadWriteOnce'],
@@ -60,14 +54,12 @@ function pvcBody(params: {
 
 export class K8sVolumeDriver implements IVolumeDriver {
   private readonly namespace: string;
-  private readonly prefix: string;
   private readonly waitTimeoutMs: number;
   private readonly pollIntervalMs: number;
   private dispatcher?: Agent;
 
   constructor(options: K8sVolumeDriverOptions = {}) {
     this.namespace = options.namespace ?? env.VM_K8S_NAMESPACE;
-    this.prefix = options.prefix ?? env.VM_VOLUME_NAME_PREFIX;
     this.waitTimeoutMs = options.waitTimeoutMs ?? DEFAULT_PVC_WAIT_TIMEOUT_MS;
     this.pollIntervalMs = options.pollIntervalMs ?? DEFAULT_PVC_POLL_INTERVAL_MS;
 
@@ -146,8 +138,9 @@ export class K8sVolumeDriver implements IVolumeDriver {
     await new Promise((resolve) => setTimeout(resolve, Math.min(this.pollIntervalMs, remainingMs)));
   }
 
-  async ensure(sessionId: string, storageSize = DEFAULT_PVC_STORAGE_SIZE): Promise<EnsureResult> {
-    const name = toVolumeName(this.prefix, sessionId);
+  async ensure(params: EnsureVolumeParams): Promise<EnsureResult> {
+    const name = validateVolumeName(params.claimName);
+    const storageSize = params.storageSize ?? DEFAULT_PVC_STORAGE_SIZE;
     const deadline = Date.now() + this.waitTimeoutMs;
 
     while (true) {
@@ -170,7 +163,6 @@ export class K8sVolumeDriver implements IVolumeDriver {
           body: JSON.stringify(
             pvcBody({
               name,
-              sessionId,
               storageSize,
               namespace: this.namespace
             })
@@ -192,8 +184,8 @@ export class K8sVolumeDriver implements IVolumeDriver {
     }
   }
 
-  async remove(sessionId: string): Promise<void> {
-    const name = toVolumeName(this.prefix, sessionId);
+  async remove(claimName: string): Promise<void> {
+    const name = validateVolumeName(claimName);
     const current = await this.readPvc(name);
     if (current.state === 'absent') return;
 

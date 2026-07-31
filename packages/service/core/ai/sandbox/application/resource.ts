@@ -21,7 +21,7 @@ import {
 } from '../infrastructure/instance/repository';
 import { getSandboxProviderConfig } from '../infrastructure/provider/config';
 import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
-import { deleteSessionVolume } from '../infrastructure/volume/service';
+import { deleteSessionVolume, getSessionVolumeClaimName } from '../infrastructure/volume/service';
 import {
   SandboxInstanceStatusEnum,
   SandboxOperationTypeEnum,
@@ -147,7 +147,13 @@ export async function deleteSandboxResource(resource: SandboxResourceRef): Promi
             toPhase: 'volumeDeleted',
             run: async ({ resource: claimed }) => {
               if (claimed.provider === 'opensandbox') {
-                await deleteSessionVolume(claimed.sandboxId);
+                const claimName = getSessionVolumeClaimName(claimed.storage);
+                if (!claimName) {
+                  throw new Error(
+                    `OpenSandbox ${claimed.sandboxId} has no persisted workspace claimName`
+                  );
+                }
+                await deleteSessionVolume(claimName);
               }
             }
           },

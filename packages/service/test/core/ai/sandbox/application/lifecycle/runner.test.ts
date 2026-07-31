@@ -75,7 +75,12 @@ describe('sandbox lifecycle runner', () => {
         operationType: 'stop',
         status: 'stopping',
         steps: [
-          { fromPhase: 'claimed', toPhase: 'providerStopped', run: firstStep },
+          {
+            fromPhase: 'claimed',
+            toPhase: 'providerStopped',
+            run: firstStep,
+            set: { storage: { volumes: [] } }
+          },
           { fromPhase: 'providerStopped', toPhase: 'volumeStopped', run: secondStep }
         ],
         finish: { type: 'complete', status: 'stopped' }
@@ -88,6 +93,13 @@ describe('sandbox lifecycle runner', () => {
       'providerStopped',
       'volumeStopped'
     ]);
+    expect(mocks.advanceSandboxOperation).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        phase: 'providerStopped',
+        set: { storage: { volumes: [] } }
+      })
+    );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ fromStatus: 'stopping', status: 'stopped' })
     );

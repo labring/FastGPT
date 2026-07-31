@@ -16,7 +16,10 @@ import {
 } from '@fastgpt-sdk/sandbox-adapter';
 import type { RedisLeaseContext } from '../../../../../common/redis/lock';
 import {
+  buildVolumeConfig,
+  createSessionVolumeClaimName,
   getSessionVolumeConfig,
+  getSessionVolumeClaimName,
   type VolumeManagerResult
 } from '../../infrastructure/volume/service';
 import { buildRuntimeSandboxAdapter } from '../../infrastructure/provider/adapter';
@@ -167,6 +170,15 @@ export class SandboxClient {
     }
 
     const runProvisioning = async (lease: RedisLeaseContext, allowRecordCreate: boolean) => {
+      const ensureRuntimeVolume = async () => {
+        if (this.providerName !== 'opensandbox') return;
+        const claimName = getSessionVolumeClaimName(this.opts.vmConfig?.storage);
+        if (!claimName) {
+          throw new Error(`OpenSandbox ${this.sandboxId} has no persisted workspace claimName`);
+        }
+        await getSessionVolumeConfig(claimName);
+      };
+
       await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
       lease.assertValid();
       let current = await findSandboxInstanceBySource({
@@ -220,6 +232,7 @@ export class SandboxClient {
             toPhase: 'providerEnsured',
             run: async () => {
               await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+              await ensureRuntimeVolume();
               await ensureConnectedSandboxRunning(this.provider);
             }
           }
@@ -472,8 +485,20 @@ export const getSandboxClient = async (
         createConfig: opts.createConfig
       });
     }
-    vmConfig ??=
-      providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+    if (!vmConfig && providerName === 'opensandbox') {
+      const instance = await findSandboxInstanceBySource({
+        sourceType: sandboxClientProps.sourceType,
+        sourceId: sandboxClientProps.sourceId,
+        userId
+      });
+      const persistedClaimName = getSessionVolumeClaimName(instance?.storage);
+      if (instance && !persistedClaimName) {
+        throw new Error(`OpenSandbox ${sandboxId} has no persisted workspace claimName`);
+      }
+      const claimName =
+        persistedClaimName ?? createSessionVolumeClaimName({ sandboxId, generationId: '0' });
+      vmConfig = buildVolumeConfig(claimName);
+    }
     const sandbox = new SandboxClient(sandboxClientProps, {
       ...opts,
       providerName,
