@@ -14,6 +14,7 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import { getQuoteData } from '@/web/core/dataset/api/data';
@@ -38,6 +39,7 @@ export type AProps = {
     sourceName?: string;
     datasetId?: string;
     quoteId?: string;
+    singleQuote?: boolean;
   }) => void;
 };
 
@@ -77,6 +79,7 @@ const CiteLink = React.memo(function CiteLink({
   showAnimation
 }: { id: string; showAnimation?: boolean } & AProps) {
   const { t } = useTranslation();
+  const { isPc } = useSystem();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -95,8 +98,51 @@ const CiteLink = React.memo(function CiteLink({
     [sourceData]
   );
 
+  const handleOpenMobileQuote = () => {
+    onOpenCiteModal?.({
+      quoteId: id,
+      singleQuote: true
+    });
+  };
+
   if (!isObjectId(id)) {
     return <></>;
+  }
+
+  const citeButton = (
+    <Button
+      variant={'unstyled'}
+      display={'inline-flex'}
+      minH={0}
+      minW={0}
+      ml={'4px'}
+      boxSize={'20px'}
+      p={'4px'}
+      borderRadius={'full'}
+      bg={'myGray.150'}
+      alignItems={'center'}
+      justifyContent={'center'}
+      cursor={'pointer'}
+      aria-label={t('common:chat.quote_detail_title')}
+      onClick={!isPc ? handleOpenMobileQuote : undefined}
+      _hover={{
+        '.cite-link-icon': {
+          color: 'primary.600'
+        }
+      }}
+    >
+      <MyIcon
+        className="cite-link-icon"
+        name={'common/link'}
+        w={'12px'}
+        h={'12px'}
+        color={'myGray.400'}
+      />
+    </Button>
+  );
+
+  if (!isPc) {
+    return onOpenCiteModal ? citeButton : null;
   }
 
   return (
@@ -115,35 +161,7 @@ const CiteLink = React.memo(function CiteLink({
       trigger={'hover'}
       gutter={4}
     >
-      <PopoverTrigger>
-        <Button
-          variant={'unstyled'}
-          display={['none', 'inline-flex']}
-          minH={0}
-          minW={0}
-          ml={'4px'}
-          boxSize={'20px'}
-          p={'4px'}
-          borderRadius={'full'}
-          bg={'myGray.150'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          cursor={'pointer'}
-          _hover={{
-            '.cite-link-icon': {
-              color: 'primary.600'
-            }
-          }}
-        >
-          <MyIcon
-            className="cite-link-icon"
-            name={'common/link'}
-            w={'12px'}
-            h={'12px'}
-            color={'myGray.400'}
-          />
-        </Button>
-      </PopoverTrigger>
+      <PopoverTrigger>{citeButton}</PopoverTrigger>
       <PopoverContent boxShadow={'lg'} w={'500px'} maxW={'90vw'} py={4}>
         <MyBox isLoading={loading || showAnimation}>
           <PopoverArrow />
