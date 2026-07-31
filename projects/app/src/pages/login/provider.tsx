@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
-import { oauthCallback } from '@/web/support/user/api';
+import { oauthLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -82,10 +82,9 @@ const provider = () => {
   const authProps = useCallback(
     async (props: Record<string, string>) => {
       try {
-        const res = await oauthCallback({
+        const res = await oauthLogin({
           type: loginStore?.provider || OAuthEnum.sso,
           props,
-          state,
           callbackUrl: `${location.origin}/login/provider`,
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
@@ -123,7 +122,6 @@ const provider = () => {
       loginSuccess,
       router,
       setLoginStore,
-      state,
       t,
       toast
     ]
@@ -148,7 +146,18 @@ const provider = () => {
     (async () => {
       await retryFn(async () => clearToken());
       router.prefetch('/dashboard/agent');
-      authProps(props);
+      if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
+        toast({
+          status: 'warning',
+          title: t('common:support.user.login.security_failed')
+        });
+        setTimeout(() => {
+          router.replace(errorRedirectPage);
+        }, 1000);
+        return;
+      } else {
+        authProps(props);
+      }
     })();
   }, [initd, authProps, error, loginStore, router, state, t, toast, props, errorRedirectPage]);
 

@@ -39,7 +39,7 @@ function resolveHttpStatusForApiError(
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
 
-  const explicitErrorStatus = error?.httpStatus ?? error?.statusCode;
+  const explicitErrorStatus = error?.httpStatus;
   if (
     typeof explicitErrorStatus === 'number' &&
     explicitErrorStatus >= 400 &&

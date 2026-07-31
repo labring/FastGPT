@@ -95,31 +95,11 @@ export const WecomGetRedirectURLResponseSchema = z.string();
 export type WecomGetRedirectURLBodyType = z.infer<typeof WecomGetRedirectURLBodySchema>;
 export type WecomGetRedirectURLResponseType = z.infer<typeof WecomGetRedirectURLResponseSchema>;
 
-/* ===== OAuth authorization start ===== */
-export const OauthStartProviderSchema = z
-  .enum([OAuthEnum.github, OAuthEnum.google, OAuthEnum.microsoft, OAuthEnum.wecom, OAuthEnum.sso])
-  .meta({ description: 'OAuth 登录类型' });
-
-export const OauthStartBodySchema = z.object({
-  provider: OauthStartProviderSchema,
-  redirectUri: z.string().meta({ description: 'OAuth 回调地址' }),
-  isWecomWorkTerminal: z.boolean().optional().meta({ description: '是否为企业微信工作台终端' })
-});
-export type OauthStartBodyType = z.infer<typeof OauthStartBodySchema>;
-
-export const OauthStartResponseSchema = z.object({
-  state: z.string().optional().meta({ description: '服务端生成的 OAuth state' })
-});
-export type OauthStartResponseType = z.infer<typeof OauthStartResponseSchema>;
-
 // ===== OAuth Login =====
 export const OauthLoginBodySchema = TrackRegisterParamsSchema.extend({
   type: z.enum(OAuthEnum).meta({ description: 'OAuth 登录类型' }),
   callbackUrl: z.string().meta({ description: '回调 URL' }),
-  props: z
-    .record(z.string().regex(/^[A-Za-z0-9_.-]+$/), z.string())
-    .meta({ description: '附加属性' }),
-  state: z.string().optional().meta({ description: 'OAuth state' }),
+  props: z.record(z.string(), z.string()).meta({ description: '附加属性' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 export type OauthLoginBodyType = z.infer<typeof OauthLoginBodySchema>;
@@ -138,13 +118,6 @@ export const WxLoginBodySchema = TrackRegisterParamsSchema.extend({
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 export type WxLoginBodyType = z.infer<typeof WxLoginBodySchema>;
-export const WxLoginResultResponseSchema = z.union([
-  LoginSuccessResponseSchema,
-  z.object({
-    expired: z.literal(true).meta({ description: '二维码是否已过期' })
-  })
-]);
-export type WxLoginResultResponseType = z.infer<typeof WxLoginResultResponseSchema>;
 export const GetWXLoginQRResponseSchema = z.object({
   code: z.string().meta({ description: '微信登录 Code' }),
   codeUrl: z.string().meta({ description: '微信登录二维码 URL' })

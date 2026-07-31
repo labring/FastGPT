@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '@/web/support/user/api';
+import { POST } from '@/web/common/api/request';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
@@ -9,20 +10,54 @@ vi.mock('@/web/common/api/request', () => ({
   PUT: vi.fn()
 }));
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 describe('user api', () => {
-  it('should send auth code', async () => {
+  it('should send register auth code', async () => {
     const data = {
       username: 'test@test.com',
       type: UserAuthTypeEnum.register,
-      purpose: 'register',
       captcha: 'captcha123',
       lang: 'zh-CN'
     };
-    await api.sendAuthCode(data);
+    await api.sendRegisterAuthCode(data);
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/account/register/sendAuthCode', data);
+  });
+
+  it('should send forget password auth code', async () => {
+    const data = {
+      username: 'test@test.com',
+      type: UserAuthTypeEnum.findPassword,
+      captcha: 'captcha123',
+      lang: 'zh-CN'
+    };
+    await api.sendForgetPasswordAuthCode(data);
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/account/password/sendAuthCode', data);
+  });
+
+  it('should send bind notification auth code', async () => {
+    const data = {
+      username: 'test@test.com',
+      type: UserAuthTypeEnum.bindNotification,
+      captcha: 'captcha123',
+      lang: 'zh-CN'
+    };
+    await api.sendBindNotificationAuthCode(data);
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/inform/sendAuthCode', data);
   });
 
   it('should get token login', async () => {
     await api.getTokenLogin();
+  });
+
+  it('should oauth login', async () => {
+    await api.oauthLogin({
+      type: 'github',
+      callbackUrl: 'https://fastgpt.example.com/login/provider',
+      props: { code: 'code123' }
+    });
   });
 
   it('should fast login', async () => {

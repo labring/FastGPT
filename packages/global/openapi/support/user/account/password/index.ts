@@ -8,8 +8,33 @@ import {
   ResetExpiredPswResponseSchema,
   UpdatePasswordByCodeBodySchema
 } from './api';
+import { SendAuthCodeResponseSchema, SendForgetPasswordAuthCodeBodySchema } from '../../inform/api';
 
 export const PasswordPath: OpenAPIPath = {
+  '/proApi/support/user/account/password/sendAuthCode': {
+    post: {
+      summary: '发送找回密码验证码',
+      description: '发送找回密码使用的邮箱或手机号验证码',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SendForgetPasswordAuthCodeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '验证码发送成功',
+          content: {
+            'application/json': {
+              schema: SendAuthCodeResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/support/user/account/updatePasswordByOld': {
     post: {
       summary: '通过旧密码修改密码',

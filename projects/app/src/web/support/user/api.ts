@@ -1,6 +1,5 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import type { SearchResult } from '@fastgpt/global/support/user/api';
@@ -8,20 +7,20 @@ import type {
   PreLoginResponseType,
   LoginByPasswordBodyType,
   OauthLoginBodyType,
-  OauthStartBodyType,
-  OauthStartResponseType,
   FastLoginBodyType,
   WxLoginBodyType,
   GetWXLoginQRResponseType,
-  WxLoginResultResponseType
+  LoginSuccessResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type {
+  SendAuthCodeBodyType,
+  SendAuthCodeResponseType
+} from '@fastgpt/global/openapi/support/user/inform/api';
 import type {
   UpdatePasswordByCodeBodyType,
   UpdatePasswordByOldBodyType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
-import type { LangEnum } from '@fastgpt/global/common/i18n/type';
-import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 export type UserVerificationPurpose =
   | 'login'
@@ -32,13 +31,12 @@ export type UserVerificationPurpose =
   | 'bindNotification';
 
 /* ===== Auth code ===== */
-export const sendAuthCode = (data: {
-  username: string;
-  type: `${UserAuthTypeEnum}`;
-  purpose: UserVerificationPurpose;
-  captcha: string;
-  lang: `${LangEnum}`;
-}) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
+export const sendRegisterAuthCode = (data: SendAuthCodeBodyType) =>
+  POST<SendAuthCodeResponseType>('/proApi/support/user/account/register/sendAuthCode', data);
+export const sendForgetPasswordAuthCode = (data: SendAuthCodeBodyType) =>
+  POST<SendAuthCodeResponseType>('/proApi/support/user/account/password/sendAuthCode', data);
+export const sendBindNotificationAuthCode = (data: SendAuthCodeBodyType) =>
+  POST<SendAuthCodeResponseType>('/proApi/support/user/inform/sendAuthCode', data);
 export const getCaptchaPic = (username: string, purpose: UserVerificationPurpose) =>
   GET<{
     captchaImage: string;
@@ -50,14 +48,8 @@ export const getPreLogin = (username: string) =>
 
 export const getTokenLogin = () =>
   GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
-export const oauthStart = (params: OauthStartBodyType) =>
-  POST<OauthStartResponseType>('/proApi/support/user/account/login/oauth/start', params, {
-    withCredentials: true
-  });
-export const oauthCallback = (params: OauthLoginBodyType) =>
-  POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth/callback', params, {
-    withCredentials: true
-  });
+export const oauthLogin = (params: OauthLoginBodyType) =>
+  POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth', params);
 export const postFastLogin = (params: FastLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
 export const ssoLogin = (params: any) =>
@@ -72,7 +64,7 @@ export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponseType>('/proApi/support/user/account/login/wx/getQR');
 
 export const getWXLoginResult = (params: WxLoginBodyType) =>
-  POST<WxLoginResultResponseType>(`/proApi/support/user/account/login/wx/getResult`, params);
+  POST<LoginSuccessResponseType>(`/proApi/support/user/account/login/wx/getResult`, params);
 export const loginOut = () => GET('/support/user/account/loginout');
 
 /* ===== register ===== */

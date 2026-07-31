@@ -1,5 +1,10 @@
 import { useState, useMemo } from 'react';
-import { sendAuthCode, type UserVerificationPurpose } from '@/web/support/user/api';
+import {
+  sendBindNotificationAuthCode,
+  sendForgetPasswordAuthCode,
+  sendRegisterAuthCode,
+  type UserVerificationPurpose
+} from '@/web/support/user/api';
 import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -14,7 +19,7 @@ export const useSendCode = ({
   type,
   purpose
 }: {
-  type: `${UserAuthTypeEnum}`;
+  type: UserAuthTypeEnum;
   purpose: UserVerificationPurpose;
 }) => {
   const { t, i18n } = useTranslation();
@@ -24,10 +29,14 @@ export const useSendCode = ({
   const { runAsync: sendCode, loading: codeSending } = useRequest(
     async ({ username, captcha }: { username: string; captcha: string }) => {
       if (codeCountDown > 0) return;
+      const sendAuthCode = (() => {
+        if (purpose === 'register') return sendRegisterAuthCode;
+        if (purpose === 'forgetPassword') return sendForgetPasswordAuthCode;
+        return sendBindNotificationAuthCode;
+      })();
       await sendAuthCode({
         username,
         type,
-        purpose,
         captcha,
         lang: i18n.language as LangEnum
       });

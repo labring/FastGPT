@@ -41,6 +41,29 @@ export const verification = {
     );
   },
 
+  /** 只更新仍在有效期内的已有材料，避免回调重新创建或刷新过期材料。 */
+  updateIfActive: <T>(
+    scene: Scene,
+    type: Type,
+    key: string,
+    data: T,
+    expiredAt: Date,
+    session?: ClientSession
+  ) =>
+    MongoTmpData.updateOne(
+      {
+        dataId: getDataId(scene, type, key),
+        expireAt: { $gt: new Date() }
+      },
+      {
+        $set: {
+          data,
+          expireAt: expiredAt
+        }
+      },
+      { ...(session ? { session } : {}) }
+    ),
+
   /** 只删除仍匹配当前材料内容的记录，避免清理并发请求新写入的验证码。 */
   deleteIfMatch: async (
     scene: Scene,
@@ -60,6 +83,16 @@ export const verification = {
       },
       { ...(session ? { session } : {}) }
     );
+  },
+
+  /** 读取仍在有效期内的材料，不主动改变材料生命周期。 */
+  get: async <T>(scene: Scene, type: Type, key: string): Promise<T | null> => {
+    const result = await MongoTmpData.findOne({
+      dataId: getDataId(scene, type, key),
+      expireAt: { $gt: new Date() }
+    }).lean();
+
+    return result ? (result.data as T | null) : null;
   },
 
   /** 原子消费仍在有效期内的材料，并返回材料内容。 */

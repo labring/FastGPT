@@ -21,7 +21,7 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   }
 }));
 
-const { getSseErrorResponse, processError } = await import('../../../common/response');
+const { getSseErrorResponse, jsonRes, processError } = await import('../../../common/response');
 
 function buildZodError() {
   try {
@@ -94,6 +94,33 @@ describe('processError HTTP status mapping', () => {
 
     expect(processed.code).toBe(507002);
     expect(processed.httpStatus).toBe(404);
+  });
+});
+
+describe('jsonRes HTTP status mapping', () => {
+  it('does not trust a third-party statusCode field', () => {
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    } as unknown as Parameters<typeof jsonRes>[0];
+    const error = Object.assign(new Error('Upstream failure'), { statusCode: 404 });
+
+    jsonRes(res, { code: 500, error });
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 500 }));
+  });
+
+  it('uses an explicitly provided httpStatus', () => {
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    } as unknown as Parameters<typeof jsonRes>[0];
+    const error = Object.assign(new Error('OAuth failure'), { httpStatus: 401 });
+
+    jsonRes(res, { error });
+
+    expect(res.status).toHaveBeenCalledWith(401);
   });
 });
 

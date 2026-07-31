@@ -42,6 +42,62 @@ describe('tmp data verification wrapper', () => {
     ]);
   });
 
+  it('updates only an existing material that is still active', async () => {
+    const originalExpiredAt = addMinutes(new Date(), 1);
+    const updatedExpiredAt = addMinutes(new Date(), 2);
+    const key = 'active-qr';
+
+    await verification.upsert('login', 'wechat', key, null, originalExpiredAt);
+    await verification.updateIfActive(
+      'login',
+      'wechat',
+      key,
+      { openId: 'openid-1' },
+      updatedExpiredAt
+    );
+
+    await expect(MongoTmpData.find({}).lean()).resolves.toMatchObject([
+      {
+        dataId: getDataId('login', 'wechat', key),
+        data: { openId: 'openid-1' },
+        expireAt: updatedExpiredAt
+      }
+    ]);
+  });
+
+  it('does not create or refresh missing and expired material', async () => {
+    const key = 'inactive-qr';
+    const expiredAt = new Date(Date.now() - 1000);
+    const refreshedExpiredAt = addMinutes(new Date(), 1);
+
+    await verification.updateIfActive(
+      'login',
+      'wechat',
+      key,
+      { openId: 'missing-openid' },
+      refreshedExpiredAt
+    );
+    await expect(
+      MongoTmpData.countDocuments({ dataId: getDataId('login', 'wechat', key) })
+    ).resolves.toBe(0);
+
+    await verification.upsert('login', 'wechat', key, null, expiredAt);
+    await verification.updateIfActive(
+      'login',
+      'wechat',
+      key,
+      { openId: 'expired-openid' },
+      refreshedExpiredAt
+    );
+
+    await expect(
+      MongoTmpData.findOne({ dataId: getDataId('login', 'wechat', key) }).lean()
+    ).resolves.toMatchObject({
+      data: null,
+      expireAt: expiredAt
+    });
+  });
+
   it('consumes valid material once and ignores expired material', async () => {
     await verification.upsert(
       'login',
@@ -69,6 +125,25 @@ describe('tmp data verification wrapper', () => {
     await expect(verification.consume('login', 'password', 'expired-key')).resolves.toBeNull();
     await expect(
       MongoTmpData.countDocuments({ dataId: getDataId('login', 'password', 'expired-key') })
+    ).resolves.toBe(1);
+  });
+
+  it('reads valid material without deleting it', async () => {
+    const key = 'read-only-key';
+
+    await verification.upsert(
+      'login',
+      'wechat',
+      key,
+      { openId: 'openid-1' },
+      addMinutes(new Date(), 1)
+    );
+
+    await expect(verification.get<{ openId: string }>('login', 'wechat', key)).resolves.toEqual({
+      openId: 'openid-1'
+    });
+    await expect(
+      MongoTmpData.countDocuments({ dataId: getDataId('login', 'wechat', key) })
     ).resolves.toBe(1);
   });
 

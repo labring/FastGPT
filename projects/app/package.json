@@ -16,6 +16,7 @@
     "build:webpack": "pnpm run build:workers && next build --webpack --debug",
     "analyze": "next experimental-analyze",
     "start": "next start",
+    "migrate:auth-code": "tsx scripts/migration/authCodeToTmpData.ts",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
     "build:workers": "tsx scripts/build-workers.ts",
