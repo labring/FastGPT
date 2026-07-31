@@ -234,6 +234,7 @@ const DetailLogsModal = ({
                 <ChatQuoteList
                   rawSearch={datasetCiteData.rawSearch}
                   metadata={datasetCiteData.metadata}
+                  singleQuote={datasetCiteData.singleQuote}
                   onClose={() => setCiteModalData(undefined)}
                 />
               </Box>

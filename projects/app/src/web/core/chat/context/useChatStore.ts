@@ -10,6 +10,7 @@ export enum AgentChatTestTabEnum {
 }
 
 type State = {
+  loaded: boolean;
   source?: `${ChatSourceEnum}`;
   setSource: (e: `${ChatSourceEnum}`) => any;
 
@@ -65,6 +66,21 @@ const getAppChatIdCacheKey = ({
   return `${source}:${appId}`;
 };
 
+// persist 失败时没有可供回调修改的 hydrated state，因此提前注册 setter 来结束加载状态。
+let markChatStoreLoaded: (() => void) | undefined;
+
+/**
+ * 在 Zustand store 创建期间保存一个可通知订阅者的 loaded setter，供 hydration 失败回调使用。
+ */
+const registerChatStoreLoadedSetter = (set: any) => {
+  markChatStoreLoaded = () => {
+    set((state: State) => {
+      state.loaded = true;
+    });
+  };
+  return false;
+};
+
 const createCustomStorage = () => {
   // source/chatId/appId 跟当前 tab 绑定，放 sessionStorage；其余跨 tab 共享字段放 localStorage
   const sessionKeys = ['source', 'chatId', 'appId', 'agentChatTestTab'];
@@ -116,6 +132,7 @@ export const useChatStore = create<State>()(
   devtools(
     persist(
       immer((set) => ({
+        loaded: registerChatStoreLoadedSetter(set),
         source: undefined,
         setSource(e) {
           set((state) => {
@@ -283,6 +300,16 @@ export const useChatStore = create<State>()(
       {
         name: 'chatStore',
         storage: createJSONStorage(createCustomStorage),
+        onRehydrateStorage: () => (state, error) => {
+          if (error) {
+            markChatStoreLoaded?.();
+            return;
+          }
+
+          if (state) {
+            state.loaded = true;
+          }
+        },
         partialize: (state) => ({
           source: state.source,
           chatId: state.chatId,
