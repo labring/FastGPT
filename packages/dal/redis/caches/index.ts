@@ -39,7 +39,7 @@ export {
   RedisLeaseLostError,
   RedisLeaseUnavailableError
 } from './lease';
-export type { LeaseCacheOptions, WithLeaseOptions } from './lease';
+export type { LeaseCacheOptions, RedisLeaseContext, WithLeaseOptions } from './lease';
 
 export {
   WORKFLOW_STOP_SIGNAL_TTL_SECONDS,

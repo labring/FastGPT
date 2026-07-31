@@ -9,7 +9,7 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { subDays, subMinutes } from 'date-fns';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
-import type { RedisLeaseContext } from '../../../../common/redis/lock';
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import { getAgentSandboxArchiveInactiveDays, getAgentSandboxArchiveMaxBytes } from '../config';

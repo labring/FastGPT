@@ -579,6 +579,48 @@ export class RedisCacheAdapter {
     });
   };
 
+  /** 执行一次由具体 Cache 负责定义的 Lua 脚本，并统一转换 logical key。 */
+  evalScript = ({
+    script,
+    keys,
+    args = []
+  }: {
+    script: string;
+    keys: readonly RedisLogicalKey[];
+    args?: readonly (string | number)[];
+  }) => {
+    const operation = 'script.eval';
+    if (typeof script !== 'string' || script.length === 0) {
+      throw new RedisInvalidArgumentError({
+        operation,
+        message: 'script must be a non-empty string'
+      });
+    }
+    if (
+      args.some(
+        (arg) =>
+          (typeof arg !== 'string' && typeof arg !== 'number') ||
+          (typeof arg === 'number' && !Number.isFinite(arg))
+      )
+    ) {
+      throw new RedisInvalidArgumentError({
+        operation,
+        message: 'script arguments must be strings or finite numbers'
+      });
+    }
+
+    return this.operationExecutor.uncertainWrite({
+      operation,
+      execute: () =>
+        this.getCommandClient().eval(
+          script,
+          keys.length,
+          ...keys.map(toPhysicalRedisKey),
+          ...args.map(String)
+        )
+    });
+  };
+
   /** 原子获取一个带毫秒 TTL 的 token lease；已被其他持有者占用时返回 false。 */
   acquireLease = ({
     key,

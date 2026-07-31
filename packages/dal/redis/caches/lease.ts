@@ -5,6 +5,7 @@ import { parsePositiveInteger } from '../runtime/validation';
 import type { RedisCacheLogger } from '../types';
 
 const LEASE_KEY_PREFIX = 'lock:';
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
 
 export class RedisLeaseUnavailableError extends Error {
   constructor({ key, label }: { key: string; label: string }) {
@@ -40,12 +41,19 @@ export type LeaseCacheOptions = {
   logger: RedisCacheLogger<'warn'>;
 };
 
+export type RedisLeaseContext = {
+  /** lease 丢失后触发，支持传递给可取消的 provider 请求。 */
+  signal: AbortSignal;
+  /** 在进入下一步不可逆副作用前确认当前执行者仍持有 lease。 */
+  assertValid: () => void;
+};
+
 export type WithLeaseOptions<T> = {
   key: string;
   label: string;
   ttlMs: number;
   renewIntervalMs?: number;
-  fn: () => Promise<T>;
+  fn: (context: RedisLeaseContext) => Promise<T>;
 };
 
 /**
@@ -83,7 +91,7 @@ export class LeaseCache {
       field: 'ttlMs'
     });
     const parsedRenewIntervalMs = parsePositiveInteger({
-      value: renewIntervalMs ?? Math.floor(parsedTtlMs / 6),
+      value: renewIntervalMs ?? Math.max(1, Math.floor(parsedTtlMs / 6)),
       operation: 'lease.with',
       field: 'renewIntervalMs'
     });
@@ -107,9 +115,71 @@ export class LeaseCache {
     let leaseLostError: RedisLeaseLostError | undefined;
     let leaseExpiresAt = Date.now() + parsedTtlMs;
     let active = true;
+    let renewalInFlight = false;
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+    let renewTimer: ReturnType<typeof setTimeout> | undefined;
+    const abortController = new AbortController();
+
+    const clearExpiryTimer = () => {
+      if (expiryTimer !== undefined) {
+        clearTimeout(expiryTimer);
+        expiryTimer = undefined;
+      }
+    };
+
+    const clearRenewTimer = () => {
+      if (renewTimer !== undefined) {
+        clearTimeout(renewTimer);
+        renewTimer = undefined;
+      }
+    };
+
+    const markLeaseLost = () => {
+      leaseLostError ??= new RedisLeaseLostError({ key: leaseKey, label });
+      clearExpiryTimer();
+      if (!abortController.signal.aborted) {
+        abortController.abort(leaseLostError);
+      }
+      return leaseLostError;
+    };
+
+    const assertValid = () => {
+      if (!leaseLostError && Date.now() >= leaseExpiresAt) {
+        markLeaseLost();
+      }
+      if (leaseLostError) throw leaseLostError;
+    };
+
+    const scheduleExpiryCheck = () => {
+      clearExpiryTimer();
+      if (!active || leaseLostError) return;
+
+      const remainingMs = leaseExpiresAt - Date.now();
+      if (remainingMs <= 0) {
+        markLeaseLost();
+        return;
+      }
+
+      expiryTimer = setTimeout(
+        () => {
+          expiryTimer = undefined;
+          if (!active || leaseLostError) return;
+          if (Date.now() >= leaseExpiresAt) {
+            markLeaseLost();
+          } else {
+            scheduleExpiryCheck();
+          }
+        },
+        Math.max(0, Math.min(remainingMs, MAX_TIMER_DELAY_MS))
+      );
+      expiryTimer.unref?.();
+    };
 
     const renew = async () => {
-      if (!active || leaseLostError) return;
+      if (!active || leaseLostError || renewalInFlight) return;
+
+      renewalInFlight = true;
+      const renewStartedAt = Date.now();
 
       try {
         const renewed = await this.redis.renewLease({
@@ -117,14 +187,15 @@ export class LeaseCache {
           token,
           ttlMs: parsedTtlMs
         });
-        if (!active) return;
+        if (!active || leaseLostError) return;
 
         if (renewed) {
-          leaseExpiresAt = Date.now() + parsedTtlMs;
+          leaseExpiresAt = renewStartedAt + parsedTtlMs;
+          scheduleExpiryCheck();
           return;
         }
 
-        leaseLostError = new RedisLeaseLostError({ key: leaseKey, label });
+        markLeaseLost();
         this.logger.warn('Redis lease renew failed because token no longer matches', {
           key: leaseKey,
           label
@@ -132,12 +203,42 @@ export class LeaseCache {
       } catch (error) {
         this.logger.warn('Redis lease renew failed', { key: leaseKey, label, error });
         if (Date.now() >= leaseExpiresAt) {
-          leaseLostError = new RedisLeaseLostError({ key: leaseKey, label });
+          markLeaseLost();
         }
+      } finally {
+        renewalInFlight = false;
       }
     };
 
+    const scheduleRenewal = (remainingMs = parsedRenewIntervalMs) => {
+      clearRenewTimer();
+      if (!active || leaseLostError) return;
+
+      // Node 会截断超长 timer；分段等待避免大 TTL 被误调度成高频续租。
+      const delayMs = Math.min(remainingMs, MAX_TIMER_DELAY_MS);
+      renewTimer = setTimeout(() => {
+        renewTimer = undefined;
+        if (!active || leaseLostError) return;
+        if (remainingMs > MAX_TIMER_DELAY_MS) {
+          scheduleRenewal(remainingMs - MAX_TIMER_DELAY_MS);
+          return;
+        }
+
+        void renew()
+          .finally(() => scheduleRenewal())
+          .catch((error) => {
+            this.logger.warn('Redis lease renewal scheduler failed', {
+              key: leaseKey,
+              label,
+              error
+            });
+          });
+      }, delayMs);
+      renewTimer.unref?.();
+    };
+
     let acquired: boolean;
+    const acquireStartedAt = Date.now();
     try {
       acquired = await this.redis.acquireLease({
         key: leaseKey,
@@ -153,18 +254,23 @@ export class LeaseCache {
       throw new RedisLeaseUnavailableError({ key: leaseKey, label });
     }
 
-    const renewTimer = setInterval(() => {
-      void renew();
-    }, parsedRenewIntervalMs);
-    renewTimer.unref?.();
+    leaseExpiresAt = acquireStartedAt + parsedTtlMs;
+    scheduleExpiryCheck();
+
+    scheduleRenewal();
 
     try {
-      const result = await fn();
-      if (leaseLostError) throw leaseLostError;
+      assertValid();
+      const result = await fn({ signal: abortController.signal, assertValid });
+      assertValid();
       return result;
+    } catch (error) {
+      assertValid();
+      throw error;
     } finally {
       active = false;
-      clearInterval(renewTimer);
+      clearRenewTimer();
+      clearExpiryTimer();
       try {
         await this.redis.releaseLease({ key: leaseKey, token });
       } catch (error) {

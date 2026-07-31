@@ -4,11 +4,14 @@
  * 统一锁顺序为 Source Mutation Lease -> Sandbox Lifecycle Lease；调用方不得反向嵌套。
  */
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { withRedisLease, type RedisLeaseContext } from '../../../../common/redis/lock';
+import { LeaseCache } from '@fastgpt/dal/redis/caches';
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
+import { getLogger, LogCategories } from '../../../../common/logger';
 
 const SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS = 11 * 60 * 1000;
 const SANDBOX_LIFECYCLE_LEASE_TTL_MS = 11 * 60 * 1000;
 const LEGACY_MIGRATION_JOB_LEASE_TTL_MS = 3 * 60 * 1000;
+const leaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
 
 type LeaseTask<T> = (context: RedisLeaseContext) => Promise<T>;
 
@@ -19,7 +22,7 @@ export const withSandboxSourceMutationLease = <T>(params: {
   label: string;
   fn: LeaseTask<T>;
 }) =>
-  withRedisLease({
+  leaseCache.withLease({
     key: `agent-sandbox:source:${params.sourceType}:${params.sourceId}`,
     label: params.label,
     ttlMs: SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS,
@@ -32,7 +35,7 @@ export const withSandboxLifecycleLease = <T>(params: {
   label: string;
   fn: LeaseTask<T>;
 }) =>
-  withRedisLease({
+  leaseCache.withLease({
     key: `agent-sandbox:lifecycle:${params.sandboxId}`,
     label: params.label,
     ttlMs: SANDBOX_LIFECYCLE_LEASE_TTL_MS,
@@ -44,7 +47,7 @@ export const withLegacySandboxMigrationJobLease = <T>(params: {
   label: string;
   fn: LeaseTask<T>;
 }) =>
-  withRedisLease({
+  leaseCache.withLease({
     key: 'agent-sandbox:legacy-migration-job',
     label: params.label,
     ttlMs: LEGACY_MIGRATION_JOB_LEASE_TTL_MS,

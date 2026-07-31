@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   resolveSandboxRuntimeImage: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/redis/lock', () => ({
+vi.mock('@fastgpt/dal/redis/caches', () => ({
   isRedisLeaseError: () => false
 }));
 

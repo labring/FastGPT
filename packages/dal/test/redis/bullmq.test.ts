@@ -220,6 +220,20 @@ describe('RedisBullMQRuntime', () => {
     expect(bullMQMocks.closeOrder).toEqual(['worker:nested-close:true']);
   });
 
+  it('still closes queues when worker manager shutdown reports an error', async () => {
+    const { runtime } = createBullMQRuntime();
+    runtime.getQueue('worker-close-error');
+    const workerError = new Error('worker manager close failed');
+    const workerManager = (runtime as unknown as { workerManager: { close: () => Promise<void> } })
+      .workerManager;
+    vi.spyOn(workerManager, 'close').mockRejectedValue(workerError);
+
+    await expect(runtime.close()).rejects.toBe(workerError);
+
+    expect(bullMQMocks.closeOrder).toEqual(['queue:worker-close-error']);
+    expect(runtime.getState()).toBe('closed');
+  });
+
   it('retries an unexpected worker close while the lifecycle policy is enabled', async () => {
     vi.useFakeTimers();
     try {
@@ -231,6 +245,9 @@ describe('RedisBullMQRuntime', () => {
       await Promise.resolve();
       expect(bullMQMocks.workers).toHaveLength(1);
       expect(worker.listenerCount('closed')).toBe(0);
+      expect(() => runtime.getWorker('restart', vi.fn())).toThrow(
+        'BullMQ worker restart is restarting'
+      );
 
       await vi.advanceTimersByTimeAsync(1_000);
 

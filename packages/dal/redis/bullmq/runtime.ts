@@ -90,8 +90,27 @@ export class RedisBullMQRuntime {
     this.closePromise = Promise.resolve()
       .then(async () => {
         // Worker 内部拥有 blocking duplicate，必须先于 Queue 和 Redis Runtime 连接关闭。
-        await this.workerManager.close();
-        await this.queueManager.close();
+        let firstError: unknown;
+        let hasError = false;
+
+        try {
+          await this.workerManager.close();
+        } catch (error) {
+          firstError = error;
+          hasError = true;
+        }
+
+        // Worker 关闭失败也不能跳过 Queue，否则队列连接会被 Redis Runtime 强制回收。
+        try {
+          await this.queueManager.close();
+        } catch (error) {
+          if (!hasError) {
+            firstError = error;
+            hasError = true;
+          }
+        }
+
+        if (hasError) throw firstError;
       })
       .finally(() => {
         this.state = 'closed';

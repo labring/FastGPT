@@ -52,6 +52,18 @@ describe('TeamVectorCountCache', () => {
     expect(redis.get).toHaveBeenCalledWith(logicalKey);
   });
 
+  it('preserves zero and treats invalid numeric cache values as misses', async () => {
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    redis.get.mockResolvedValueOnce('0');
+    await expect(cache.get('team-1')).resolves.toBe(0);
+
+    for (const value of ['NaN', 'Infinity', '-1', '1.5', '0x10', '0b10', '1e3', '']) {
+      redis.get.mockResolvedValueOnce(value);
+      await expect(cache.get('team-1')).resolves.toBeUndefined();
+    }
+  });
+
   it('clears an absent timer handle after an immediate operation', async () => {
     const setTimeoutSpy = vi
       .spyOn(globalThis, 'setTimeout')

@@ -22,6 +22,8 @@ const s3DeleteJobOptions = {
   }
 };
 
+const encodeJobIdPart = (value: string) => encodeURIComponent(value);
+
 /** S3 文件删除队列的业务合同和生命周期入口。 */
 export class S3FileDeleteMQService {
   constructor(private readonly binding: BullMQBinding = bullMQ) {}
@@ -41,9 +43,13 @@ export class S3FileDeleteMQService {
   /** 根据对象 key/prefix 生成幂等任务并投递到 S3 删除队列。 */
   async addJob(data: S3MQJobData): Promise<void> {
     const jobId = (() => {
-      if (data.key) return data.key;
+      if (data.key) {
+        return `s3-key-${encodeJobIdPart(data.bucketName)}|${encodeJobIdPart(data.key)}`;
+      }
       if (data.keys) return undefined;
-      if (data.prefix) return `${data.bucketName}:${data.prefix}`;
+      if (data.prefix) {
+        return `s3-prefix-${encodeJobIdPart(data.bucketName)}|${encodeJobIdPart(data.prefix)}`;
+      }
       throw new Error('Invalid s3 delete job data');
     })();
 

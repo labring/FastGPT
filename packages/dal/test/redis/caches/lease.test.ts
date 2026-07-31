@@ -42,13 +42,12 @@ describe('LeaseCache', () => {
       fn: () => work
     });
 
-    await vi.waitFor(() =>
-      expect(redis.acquireLease).toHaveBeenCalledWith({
-        key,
-        token: expect.any(String),
-        ttlMs: 60
-      })
-    );
+    await Promise.resolve();
+    expect(redis.acquireLease).toHaveBeenCalledWith({
+      key,
+      token: expect.any(String),
+      ttlMs: 60
+    });
     await vi.advanceTimersByTimeAsync(25);
     expect(redis.renewLease).toHaveBeenCalledWith({
       key,
@@ -94,7 +93,8 @@ describe('LeaseCache', () => {
       fn: () => work
     });
 
-    await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(redis.acquireLease).toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(25);
     resolveWork();
 
@@ -123,7 +123,8 @@ describe('LeaseCache', () => {
         fn: () => work
       });
 
-      await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
+      await Promise.resolve();
+      expect(redis.acquireLease).toHaveBeenCalled();
       nowSpy.mockReturnValue(1_000);
       await vi.advanceTimersByTimeAsync(10);
       resolveWork();
@@ -162,7 +163,8 @@ describe('LeaseCache', () => {
         fn: () => work
       });
 
-      await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
+      await Promise.resolve();
+      expect(redis.acquireLease).toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(10);
       resolveWork();
       await expect(resultPromise).resolves.toBe('ok');
@@ -170,6 +172,141 @@ describe('LeaseCache', () => {
       await vi.runAllTicks();
 
       expect(redis.releaseLease).toHaveBeenCalledWith({ key, token: expect.any(String) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not overlap renewal requests when Redis is slower than the interval', async () => {
+    vi.useFakeTimers();
+    try {
+      let resolveRenew!: (value: boolean) => void;
+      redis.renewLease.mockReturnValueOnce(
+        new Promise<boolean>((resolve) => {
+          resolveRenew = resolve;
+        })
+      );
+      let resolveWork!: () => void;
+      const work = new Promise<string>((resolve) => {
+        resolveWork = () => resolve('ok');
+      });
+      const cache = new LeaseCache({ redis, logger });
+      const resultPromise = cache.withLease({
+        key: 'agent-sandbox:init:sandbox-1',
+        label: 'agent-sandbox-init',
+        ttlMs: 60,
+        renewIntervalMs: 10,
+        fn: () => work
+      });
+
+      await Promise.resolve();
+      expect(redis.acquireLease).toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(35);
+      expect(redis.renewLease).toHaveBeenCalledTimes(1);
+
+      resolveRenew(true);
+      await vi.runAllTicks();
+      resolveWork();
+      await expect(resultPromise).resolves.toBe('ok');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('marks the lease lost when a renewal hangs past expiry', async () => {
+    vi.useFakeTimers();
+    try {
+      let resolveRenew!: (value: boolean) => void;
+      redis.renewLease.mockReturnValueOnce(
+        new Promise<boolean>((resolve) => {
+          resolveRenew = resolve;
+        })
+      );
+      let resolveWork!: () => void;
+      let leaseSignal!: AbortSignal;
+      const work = new Promise<void>((resolve) => {
+        resolveWork = resolve;
+      });
+      const cache = new LeaseCache({ redis, logger });
+      const resultPromise = cache.withLease({
+        key: 'agent-sandbox:init:sandbox-1',
+        label: 'agent-sandbox-init',
+        ttlMs: 20,
+        renewIntervalMs: 5,
+        fn: ({ signal }) => {
+          leaseSignal = signal;
+          return work;
+        }
+      });
+
+      await Promise.resolve();
+      expect(redis.acquireLease).toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(5);
+      await vi.advanceTimersByTimeAsync(15);
+
+      expect(leaseSignal.aborted).toBe(true);
+      resolveRenew(true);
+      await vi.runAllTicks();
+      resolveWork();
+      await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not enter the critical section after a slow acquisition expires locally', async () => {
+    vi.useFakeTimers();
+    try {
+      let resolveAcquire!: (value: boolean) => void;
+      redis.acquireLease.mockReturnValueOnce(
+        new Promise<boolean>((resolve) => {
+          resolveAcquire = resolve;
+        })
+      );
+      const work = vi.fn(async () => undefined);
+      const cache = new LeaseCache({ redis, logger });
+      const resultPromise = cache.withLease({
+        key: 'agent-sandbox:init:sandbox-1',
+        label: 'agent-sandbox-init',
+        ttlMs: 20,
+        renewIntervalMs: 5,
+        fn: work
+      });
+
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(25);
+      resolveAcquire(true);
+
+      await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
+      expect(work).not.toHaveBeenCalled();
+      expect(redis.releaseLease).toHaveBeenCalledWith({ key, token: expect.any(String) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('uses a one millisecond default renewal interval for short leases', async () => {
+    vi.useFakeTimers();
+    try {
+      let resolveWork!: () => void;
+      const work = new Promise<void>((resolve) => {
+        resolveWork = resolve;
+      });
+      const cache = new LeaseCache({ redis, logger });
+      const resultPromise = cache.withLease({
+        key: 'agent-sandbox:init:sandbox-1',
+        label: 'agent-sandbox-init',
+        ttlMs: 5,
+        fn: () => work
+      });
+
+      await Promise.resolve();
+      expect(redis.acquireLease).toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(redis.renewLease).toHaveBeenCalledTimes(1);
+
+      resolveWork();
+      await expect(resultPromise).resolves.toBeUndefined();
     } finally {
       vi.useRealTimers();
     }
@@ -193,7 +330,8 @@ describe('LeaseCache', () => {
         fn: () => work
       });
 
-      await vi.waitFor(() => expect(redis.acquireLease).toHaveBeenCalled());
+      await Promise.resolve();
+      expect(redis.acquireLease).toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(10);
       resolveWork();
 
@@ -373,5 +511,27 @@ describe('Lease adapter operations', () => {
       'token must be a non-empty string'
     );
     expect(client.eval).not.toHaveBeenCalled();
+  });
+
+  it('maps logical keys and rejects non-finite script arguments', async () => {
+    client.eval.mockResolvedValue('ok');
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
+
+    await expect(
+      adapter.evalScript({ script: 'return ARGV[1]', keys: [key], args: ['value', 42] })
+    ).resolves.toBe('ok');
+    expect(client.eval).toHaveBeenCalledWith(
+      'return ARGV[1]',
+      1,
+      'fastgpt:lock:agent-sandbox:init:sandbox-1',
+      'value',
+      '42'
+    );
+
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(() => adapter.evalScript({ script: 'return 1', keys: [key], args: [value] })).toThrow(
+        'script arguments must be strings or finite numbers'
+      );
+    }
   });
 });

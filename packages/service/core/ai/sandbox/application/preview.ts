@@ -8,8 +8,8 @@
 import z from 'zod';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { serviceEnv } from '../../../../env';
-import { getGlobalRedisConnection } from '../../../../common/redis';
 import { resolveSandboxWorkspacePath } from './file';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import { trimSandboxPathRight } from '../utils';
@@ -47,9 +47,9 @@ export type SandboxPreviewSession = z.infer<typeof SandboxPreviewSessionSchema>;
 const getSandboxPreviewSessionPrefix = (sandboxId: string) =>
   `${SANDBOX_PREVIEW_SESSION_KEY_PREFIX}:${sandboxId}`;
 const getSandboxPreviewSessionIndexKey = (sandboxId: string) =>
-  `${getSandboxPreviewSessionPrefix(sandboxId)}:active`;
+  asRedisLogicalKey(`${getSandboxPreviewSessionPrefix(sandboxId)}:active`);
 const getPreviewSessionKey = ({ sandboxId, sessionId }: { sandboxId: string; sessionId: string }) =>
-  `${getSandboxPreviewSessionPrefix(sandboxId)}:${sessionId}`;
+  asRedisLogicalKey(`${getSandboxPreviewSessionPrefix(sandboxId)}:${sessionId}`);
 
 export class SandboxPreviewSessionLimitError extends Error {
   constructor() {
@@ -68,19 +68,21 @@ export class SandboxPreviewSessionLimitError extends Error {
  */
 export async function createSandboxPreviewSession(context: SandboxPreviewSession): Promise<string> {
   const parsedContext = SandboxPreviewSessionSchema.parse(context);
-  const redis = getGlobalRedisConnection();
   const sessionId = getNanoid(SANDBOX_PREVIEW_SESSION_ID_LENGTH);
-  const created = await redis.eval(
-    CREATE_SANDBOX_PREVIEW_SESSION_SCRIPT,
-    2,
-    getSandboxPreviewSessionIndexKey(parsedContext.sandboxId),
-    getPreviewSessionKey({ sandboxId: parsedContext.sandboxId, sessionId }),
-    Date.now(),
-    SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
-    JSON.stringify(parsedContext),
-    SANDBOX_PREVIEW_SESSION_TTL_SECONDS,
-    sessionId
-  );
+  const created = await redisCacheAdapter.evalScript({
+    script: CREATE_SANDBOX_PREVIEW_SESSION_SCRIPT,
+    keys: [
+      getSandboxPreviewSessionIndexKey(parsedContext.sandboxId),
+      getPreviewSessionKey({ sandboxId: parsedContext.sandboxId, sessionId })
+    ],
+    args: [
+      Date.now(),
+      SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX,
+      JSON.stringify(parsedContext),
+      SANDBOX_PREVIEW_SESSION_TTL_SECONDS,
+      sessionId
+    ]
+  });
   if (Number(created) !== 1) {
     throw new SandboxPreviewSessionLimitError();
   }
@@ -102,8 +104,9 @@ export async function resolveSandboxPreviewSession(
   }
   const sandboxId = SandboxPreviewSandboxIdSchema.parse(rawSandboxId);
   const sessionId = SandboxPreviewSessionIdSchema.parse(rawSessionId);
-  const redis = getGlobalRedisConnection();
-  const serializedContext = await redis.get(getPreviewSessionKey({ sandboxId, sessionId }));
+  const serializedContext = await redisCacheAdapter.get(
+    getPreviewSessionKey({ sandboxId, sessionId })
+  );
 
   if (!serializedContext) {
     throw new Error('Invalid or expired sandbox preview session');

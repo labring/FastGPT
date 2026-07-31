@@ -8,6 +8,8 @@ import {
   DatasetSyncMQService,
   datasetSyncMQService
 } from '@fastgpt/dal/redis/bullmq/services/datasetSync';
+import { CollectionUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/collectionUpdate';
+import { S3FileDeleteMQService } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
 
 describe('BullMQ business services', () => {
   beforeEach(() => {
@@ -25,7 +27,8 @@ describe('BullMQ business services', () => {
     };
     const binding = {
       getQueue: vi.fn(() => queue),
-      getWorker: vi.fn()
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
     } as unknown as BullMQBinding;
     const service = new AppDeleteMQService(binding);
     const data = { teamId: 'team-1', appId: 'app-1' };
@@ -46,5 +49,157 @@ describe('BullMQ business services', () => {
       jobId: 'team-1-app-1',
       delay: 1000
     });
+  });
+
+  it('configures collection update retries and removes terminal jobs before requeueing', async () => {
+    const terminalJob = {
+      getState: vi.fn().mockResolvedValue('failed'),
+      remove: vi.fn().mockResolvedValue(undefined)
+    };
+    const queue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-2' }),
+      getJob: vi.fn().mockResolvedValue(terminalJob)
+    };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+    } as unknown as BullMQBinding;
+    const service = new CollectionUpdateMQService(binding);
+    const data = { teamId: 'team-1', datasetId: 'dataset-1', collectionId: 'collection-1' };
+
+    await expect(service.pushJob(data)).resolves.toBeUndefined();
+
+    expect(binding.getQueue).toHaveBeenCalledWith('collectionUpdate', {
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnFail: true
+      }
+    });
+    expect(queue.getJob).toHaveBeenCalledWith('collection-update-collection-1');
+    expect(terminalJob.remove).toHaveBeenCalledTimes(1);
+    expect(queue.add).toHaveBeenCalledWith('updateCollection', data, {
+      jobId: 'collection-update-collection-1',
+      delay: 5000
+    });
+  });
+
+  it('forces terminal failure cleanup on the collection update worker', () => {
+    const worker = { name: 'collectionUpdate' };
+    const binding = {
+      getQueue: vi.fn(),
+      getWorker: vi.fn(() => worker),
+      getLogger: vi.fn()
+    } as unknown as BullMQBinding;
+    const service = new CollectionUpdateMQService(binding);
+    const processor = vi.fn();
+
+    expect(service.getWorker(processor)).toBe(worker);
+    expect(binding.getWorker).toHaveBeenCalledWith('collectionUpdate', processor, {
+      concurrency: 3,
+      removeOnComplete: { count: 0 },
+      removeOnFail: { count: 0 }
+    });
+  });
+
+  it('rethrows collection update enqueue failures after logging', async () => {
+    const error = new Error('queue unavailable');
+    const queue = {
+      add: vi.fn().mockRejectedValue(error),
+      getJob: vi.fn().mockResolvedValue(null)
+    };
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => logger)
+    } as unknown as BullMQBinding;
+    const service = new CollectionUpdateMQService(binding);
+
+    await expect(
+      service.pushJob({ teamId: 'team-1', datasetId: 'dataset-1', collectionId: 'collection-1' })
+    ).rejects.toBe(error);
+    expect(logger.error).toHaveBeenCalledWith('Failed to push collection update job', {
+      collectionId: 'collection-1',
+      error
+    });
+  });
+
+  it('treats a concurrent active duplicate as an idempotent enqueue success', async () => {
+    const terminalJob = {
+      getState: vi.fn().mockResolvedValue('failed'),
+      remove: vi.fn().mockResolvedValue(undefined)
+    };
+    const activeJob = {
+      getState: vi.fn().mockResolvedValue('delayed'),
+      remove: vi.fn()
+    };
+    const queue = {
+      add: vi.fn().mockRejectedValue(new Error('Job already exists')),
+      getJob: vi.fn().mockResolvedValueOnce(terminalJob).mockResolvedValueOnce(activeJob)
+    };
+    const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn() };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => logger)
+    } as unknown as BullMQBinding;
+    const service = new CollectionUpdateMQService(binding);
+
+    await expect(
+      service.pushJob({ teamId: 'team-1', datasetId: 'dataset-1', collectionId: 'collection-1' })
+    ).resolves.toBeUndefined();
+    expect(activeJob.remove).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith('Collection update job already queued', {
+      collectionId: 'collection-1',
+      state: 'delayed'
+    });
+  });
+
+  it('uses bucket-qualified encoded job IDs for S3 object and prefix deletions', async () => {
+    const queue = { add: vi.fn().mockResolvedValue({ id: 'job-3' }) };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn()
+    } as unknown as BullMQBinding;
+    const service = new S3FileDeleteMQService(binding);
+
+    await service.addJob({ bucketName: 'bucket-a', key: 'folder/a:b.txt' });
+    await service.addJob({ bucketName: 'bucket-b', key: 'folder/a:b.txt' });
+    await service.addJob({ bucketName: 'bucket-a', prefix: 'folder/a:b/' });
+    await service.addJob({ bucketName: 'a-b', key: 'c' });
+    await service.addJob({ bucketName: 'a', key: 'b-c' });
+
+    expect(queue.add).toHaveBeenNthCalledWith(
+      1,
+      'delete-s3-files',
+      { bucketName: 'bucket-a', key: 'folder/a:b.txt' },
+      expect.objectContaining({ jobId: 's3-key-bucket-a|folder%2Fa%3Ab.txt' })
+    );
+    expect(queue.add).toHaveBeenNthCalledWith(
+      2,
+      'delete-s3-files',
+      { bucketName: 'bucket-b', key: 'folder/a:b.txt' },
+      expect.objectContaining({ jobId: 's3-key-bucket-b|folder%2Fa%3Ab.txt' })
+    );
+    expect(queue.add).toHaveBeenNthCalledWith(
+      3,
+      'delete-s3-files',
+      { bucketName: 'bucket-a', prefix: 'folder/a:b/' },
+      expect.objectContaining({ jobId: 's3-prefix-bucket-a|folder%2Fa%3Ab%2F' })
+    );
+    expect(queue.add).toHaveBeenNthCalledWith(
+      4,
+      'delete-s3-files',
+      { bucketName: 'a-b', key: 'c' },
+      expect.objectContaining({ jobId: 's3-key-a-b|c' })
+    );
+    expect(queue.add).toHaveBeenNthCalledWith(
+      5,
+      'delete-s3-files',
+      { bucketName: 'a', key: 'b-c' },
+      expect.objectContaining({ jobId: 's3-key-a|b-c' })
+    );
   });
 });

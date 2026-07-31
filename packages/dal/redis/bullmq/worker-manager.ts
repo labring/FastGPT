@@ -15,6 +15,7 @@ import type {
 /** 管理 Worker 的创建、异常恢复、业务 listener 迁移和有序关闭。 */
 export class BullMQWorkerManager {
   private readonly workers = new Map<string, Worker>();
+  private readonly restartingWorkers = new Set<string>();
   private readonly listeners = new BullMQLifecycleListeners();
   private readonly lifecycle: Required<BullMQWorkerLifecycleOptions>;
 
@@ -37,6 +38,9 @@ export class BullMQWorkerManager {
   ): Worker<DataType, ReturnType> {
     const existing = this.workers.get(name);
     if (existing) return existing as Worker<DataType, ReturnType>;
+    if (this.restartingWorkers.has(name)) {
+      throw new Error(`BullMQ worker ${name} is restarting`);
+    }
 
     const worker = this.createWorker({ name, processor, opts });
     this.workers.set(name, worker);
@@ -46,6 +50,7 @@ export class BullMQWorkerManager {
   async close() {
     const activeWorkers = Array.from(this.workers.entries());
     this.workers.clear();
+    this.restartingWorkers.clear();
     await Promise.all(activeWorkers.map(([name, worker]) => this.closeWorker({ name, worker })));
   }
 
@@ -87,8 +92,13 @@ export class BullMQWorkerManager {
 
         if (!shouldRestart) return;
 
+        this.restartingWorkers.add(name);
         this.options.logger.warn('BullMQ worker closed, attempting restart', { name });
-        void this.restartWorker({ name, processor, opts, listeners: businessListeners });
+        void this.restartWorker({ name, processor, opts, listeners: businessListeners }).finally(
+          () => {
+            this.restartingWorkers.delete(name);
+          }
+        );
       };
       const pausedHandler: BullMQEventListener = () => {
         if (

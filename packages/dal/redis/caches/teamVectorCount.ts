@@ -80,7 +80,11 @@ export class TeamVectorCountCache {
       warnMessage: 'Failed to get team vector count cache',
       action: () => this.redis.get(this.getKey(teamId))
     });
-    return count ? Number(count) : undefined;
+    if (count === null || count === undefined || count.trim().length === 0) return undefined;
+    if (!/^\d+$/.test(count)) return undefined;
+
+    const parsedCount = Number(count);
+    return Number.isSafeInteger(parsedCount) && parsedCount >= 0 ? parsedCount : undefined;
   }
 
   /** best-effort 写入缓存；调用方无需等待该结果才能返回 VectorDB 主结果。 */
