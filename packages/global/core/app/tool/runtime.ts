@@ -1,4 +1,6 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
+import Ajv2019 from 'ajv/dist/2019';
+import Ajv2020 from 'ajv/dist/2020';
 import type { ChatCompletionTool } from '../../ai/llm/type';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import { AgentToolInputModeEnum } from './constants';
@@ -176,15 +178,27 @@ export type ToolSchemaValidationResult = {
   errors: string[];
 };
 
-const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
+const ajvOptions = { allErrors: true, strict: false, validateFormats: false } as const;
+const ajvDraft7 = new Ajv(ajvOptions);
+const ajvDraft2019 = new Ajv2019(ajvOptions);
+const ajvDraft2020 = new Ajv2020(ajvOptions);
 const validatorCache = new Map<string, ValidateFunction>();
+
+const getAjv = (schema: object) => {
+  const dialect = (schema as { $schema?: unknown }).$schema;
+  if (typeof dialect === 'string') {
+    if (dialect.includes('/draft/2020-12/')) return ajvDraft2020;
+    if (dialect.includes('/draft/2019-09/')) return ajvDraft2019;
+  }
+  return ajvDraft7;
+};
 
 const getValidator = (schema: object) => {
   const cacheKey = JSON.stringify(schema);
   const cached = validatorCache.get(cacheKey);
   if (cached) return cached;
 
-  const validator = ajv.compile(schema);
+  const validator = getAjv(schema).compile(schema);
   validatorCache.set(cacheKey, validator);
   return validator;
 };

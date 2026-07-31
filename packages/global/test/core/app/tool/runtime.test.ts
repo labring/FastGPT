@@ -296,4 +296,30 @@ describe('JSON Schema runtime validation', () => {
         .success
     ).toBe(false);
   });
+
+  it('validates draft 2020-12 schemas with the matching AJV dialect', () => {
+    const jsonSchema = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        query: { type: 'string', minLength: 3 }
+      },
+      required: ['query'],
+      additionalProperties: false
+    };
+
+    expect(
+      validateToolRuntimeParams({
+        jsonSchema,
+        params: { query: 'fastgpt' }
+      })
+    ).toEqual({ success: true, errors: [] });
+
+    const invalid = validateToolRuntimeParams({
+      jsonSchema,
+      params: { query: 'x' }
+    });
+    expect(invalid.success).toBe(false);
+    expect(invalid.errors.length).toBeGreaterThan(0);
+  });
 });
