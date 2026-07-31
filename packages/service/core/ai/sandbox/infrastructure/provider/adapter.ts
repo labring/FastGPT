@@ -6,10 +6,11 @@
 import {
   createSandbox,
   type ISandbox,
+  type ResourceLimits,
+  type SandboxCreateSpec,
   type SandboxProviderType
 } from '@fastgpt-sdk/sandbox-adapter';
 import { getSandboxAdapterConfig, type SandboxProviderConfig } from './config';
-import type { SandboxCreateConfig, SandboxResourceLimits } from './config';
 import type { VolumeManagerResult } from '../volume/service';
 
 function assertNever(value: never): never {
@@ -26,7 +27,7 @@ export function buildSandboxAdapter(
   providerConfig: SandboxProviderConfig,
   props: {
     sandboxId: string;
-    createConfig?: SandboxCreateConfig;
+    createConfig?: SandboxCreateSpec;
   }
 ): ISandbox {
   switch (providerConfig.provider) {
@@ -107,9 +108,9 @@ export function buildRuntimeSandboxAdapter(
   providerName: SandboxProviderType,
   sandboxId: string,
   opts: {
-    resourceLimits?: SandboxResourceLimits;
+    resourceLimits?: ResourceLimits;
     vmConfig?: VolumeManagerResult | undefined;
-    createConfig?: SandboxCreateConfig;
+    createConfig?: SandboxCreateSpec;
   } = {}
 ): ISandbox {
   const config = getSandboxAdapterConfig({

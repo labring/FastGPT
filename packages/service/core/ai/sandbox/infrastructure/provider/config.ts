@@ -8,7 +8,6 @@ import { getAgentSandboxMaxFileBytes } from '../../config';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
 import { getSandboxRuntimeProfile, buildBaseSandboxRuntimeEnv } from './runtimeProfile';
-import type { SandboxLimitType } from '../../type';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -28,10 +27,7 @@ export type SealosDevboxProviderConfig = {
 
 export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProviderConfig;
 
-export type SandboxResourceLimits = Partial<SandboxLimitType>;
-export type SandboxCreateConfig = Omit<SandboxCreateSpec, 'resourceLimits'> & {
-  resourceLimits?: SandboxResourceLimits;
-};
+export type SandboxCreateConfig = SandboxCreateSpec;
 
 export type SandboxAdapterConfig = {
   providerConfig: SandboxProviderConfig;
@@ -101,7 +97,7 @@ export function getSandboxAdapterConfig({
 }: {
   provider?: SandboxProviderType;
   runtime?: boolean;
-  resourceLimits?: SandboxResourceLimits;
+  resourceLimits?: SandboxCreateSpec['resourceLimits'];
   vmConfig?: VolumeManagerResult | undefined;
   createConfig?: SandboxCreateConfig;
   sessionId?: string;

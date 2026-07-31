@@ -74,7 +74,6 @@ export const SandboxLimitSchema = z.object({
   memoryMiB: z.number(),
   storageSize: z.string()
 });
-export type SandboxLimitType = z.infer<typeof SandboxLimitSchema>;
 
 export const SandboxVolumeSchema = z.object({
   name: z.string(),

@@ -4,9 +4,8 @@
  * 只定义类型，不执行环境读取、远端调用或业务状态判断。
  */
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/sandbox/type';
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../../volume/service';
-import type { SandboxCreateConfig, SandboxResourceLimits } from '../config';
 
 export type SandboxRuntimeScenario = 'runtime' | 'session-runtime' | 'edit-debug';
 
@@ -23,9 +22,9 @@ export type SandboxRuntimeCreateConfigInput = {
   entrypoint?: string | string[];
   env?: Record<string, string>;
   metadata?: Record<string, string>;
-  createConfig?: SandboxCreateConfig;
-  resourceLimits?: SandboxResourceLimits;
-  volumes?: SandboxCreateConfig['volumes'];
+  createConfig?: SandboxCreateSpec;
+  resourceLimits?: SandboxCreateSpec['resourceLimits'];
+  volumes?: SandboxCreateSpec['volumes'];
   vmConfig?: Pick<VolumeManagerResult, 'volumes'> | undefined;
 };
 
@@ -41,5 +40,5 @@ export type SandboxRuntimeProfile = {
   workDirectory: string;
   entrypoint: string;
   skillsRootPath: string;
-  buildConfig: (input?: SandboxRuntimeCreateConfigInput) => SandboxCreateConfig | undefined;
+  buildConfig: (input?: SandboxRuntimeCreateConfigInput) => SandboxCreateSpec | undefined;
 };
