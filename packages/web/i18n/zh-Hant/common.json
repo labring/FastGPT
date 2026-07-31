@@ -395,6 +395,7 @@
   "core.dataset.Dataset ID": "知識庫 ID",
   "core.dataset.Delete Confirm": "確認刪除此知識庫？刪除後資料無法復原，請確認！",
   "core.dataset.Empty Dataset Tips": "還沒有知識庫，快來建立一個吧！",
+  "core.dataset.Empty Dataset Tips No Permission": "還沒有知識庫，且當前帳號沒有建立知識庫的權限，請聯繫管理員取得權限。",
   "core.dataset.Folder placeholder": "這是一個目錄",
   "core.dataset.Intro Placeholder": "這個知識庫還沒有介紹",
   "core.dataset.My Dataset": "我的知識庫",

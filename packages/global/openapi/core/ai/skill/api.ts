@@ -59,7 +59,7 @@ export type ListSkillsResponse = z.infer<typeof ListSkillsResponseSchema>;
 
 export const CreateSkillBodySchema = z.object({
   parentId: NullableParentIdSchema,
-  name: z.string().describe('技能名称'),
+  name: z.string().trim().min(1).describe('技能名称'),
   description: z.string().optional().describe('技能描述'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
   avatar: z.string().optional().describe('技能头像')
