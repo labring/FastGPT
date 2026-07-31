@@ -1074,6 +1074,49 @@ describe('nodeInputs2JsonSchema', () => {
     });
   });
 
+  it('should preserve strict select options when the tool input is agent generated', () => {
+    const result = nodeInputs2JsonSchema({
+      inputs: [
+        {
+          key: 'singleSelection',
+          label: 'Single selection',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: ['agentGenerated', 'select', 'reference'],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          list: [
+            { label: 'Option A', value: 'A' },
+            { label: 'Option B', value: 'B' }
+          ]
+        },
+        {
+          key: 'multipleSelection',
+          label: 'Multiple selection',
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          renderTypeList: ['agentGenerated', 'multipleSelect', 'reference'],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          list: [
+            { label: 'Option A', value: 'A' },
+            { label: 'Option B', value: 'B' }
+          ]
+        }
+      ]
+    });
+
+    expect(result.properties).toMatchObject({
+      singleSelection: {
+        type: 'string',
+        enum: ['A', 'B']
+      },
+      multipleSelection: {
+        type: 'array',
+        items: {
+          type: 'string',
+          enum: ['A', 'B']
+        }
+      }
+    });
+  });
+
   it('should not narrow open input candidates to a strict enum schema', () => {
     const result = nodeInputs2JsonSchema({
       inputs: [
@@ -1081,7 +1124,8 @@ describe('nodeInputs2JsonSchema', () => {
           key: 'source',
           label: 'Source',
           valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: ['input', 'select', 'reference'],
+          renderTypeList: ['agentGenerated', 'input', 'select', 'reference'],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
           list: [
             { label: 'Option A', value: 'a' },
             { label: 'Option B', value: 'b' }

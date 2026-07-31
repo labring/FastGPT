@@ -17,6 +17,7 @@ import { i18nT } from '../../common/i18n/utils';
 import z from 'zod';
 import { parseOpenAPISchemaString } from '../../common/string/swagger';
 import { cloneDeep } from 'lodash-es';
+import { getToolInputManualRenderType } from './formEdit/utils';
 
 const JsonSchemaNodeInputMetadataKey = 'x-fastgpt-node-input' as const;
 const JsonSchemaNodeOutputMetadataKey = 'x-fastgpt-node-output' as const;
@@ -760,13 +761,11 @@ const getJsonSchemaPropertyFromValueType = (
 };
 
 const getEnumValuesFromNodeInput = (input: FlowNodeInputItemType) => {
-  const selectedRenderType =
-    input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+  // Agent 生成只改变输入来源，枚举约束仍由原始手工控件决定。
+  const manualRenderType = getToolInputManualRenderType(input);
   const hasStrictEnumRenderType =
-    selectedRenderType !== undefined &&
-    [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(
-      selectedRenderType
-    );
+    manualRenderType !== undefined &&
+    [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(manualRenderType);
 
   return [
     hasStrictEnumRenderType ? input.list?.map((item) => item.value).filter(Boolean) : undefined,

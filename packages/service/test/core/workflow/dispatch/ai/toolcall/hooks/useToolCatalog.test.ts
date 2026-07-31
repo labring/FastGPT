@@ -90,9 +90,9 @@ describe('useToolCatalog', () => {
                 { label: 'Hangzhou', value: 'Hangzhou' },
                 { label: 'Shanghai', value: 'Shanghai' }
               ],
-              enum: 'Hangzhou\nShanghai\n',
               required: true,
-              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.select],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated
             },
             {
               key: 'days',
