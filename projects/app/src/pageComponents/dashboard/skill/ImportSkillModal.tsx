@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
-import { formatFileSize, getSkillImportMaxBytes } from '@fastgpt/global/common/file/tools';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { importSkill } from '@/web/core/skill/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
@@ -40,12 +40,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const [isDragging, setIsDragging] = useState(false);
-  // 导入上限 = min(通用上传上限 uploadFileMaxSize, 沙盒可加载包上限 skillSandboxMaxBytes)，
-  // 与后端 import 接口共用 getSkillImportMaxBytes，确保前后端判定一致。
-  const maxUploadBytes = getSkillImportMaxBytes(
-    feConfigs?.uploadFileMaxSize,
-    feConfigs?.limit?.skillSandboxMaxBytes
-  );
+  const maxUploadBytes = feConfigs?.limit?.skillSandboxMaxBytes;
   const { register, handleSubmit, setValue, control } = useForm<ImportSkillFormType>({
     defaultValues: {
       name: '',

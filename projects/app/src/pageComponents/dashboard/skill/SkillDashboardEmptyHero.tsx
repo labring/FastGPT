@@ -8,10 +8,6 @@ type Props = {
   onClickCreate: () => void;
 };
 
-/**
- * Skill Dashboard 根目录空态：
- * 容器四边 padding 32px；标题与双卡间距 32px；双卡之间间距 24px。
- */
 const SkillDashboardEmptyHero = ({ onClickImport, onClickCreate }: Props) => {
   const { t } = useTranslation();
 
@@ -22,20 +18,20 @@ const SkillDashboardEmptyHero = ({ onClickImport, onClickCreate }: Props) => {
       alignSelf={'stretch'}
       flexShrink={0}
       w={'full'}
-      p={'32px'}
-      gap={'32px'}
+      p={8}
+      gap={8}
     >
       <Flex w={'full'} justifyContent={'center'} flexShrink={0}>
-        <Flex alignItems={'center'} gap={'10px'} flexShrink={0}>
+        <Flex alignItems={'center'} gap={2.5} flexShrink={0}>
           <Image
             src={'/imgs/skill/createFirstSkillIcon.svg'}
             alt={''}
-            w={'32px'}
-            h={'32px'}
+            w={8}
+            h={8}
             flexShrink={0}
             display={'block'}
           />
-          <Box color={'myGray.700'} fontSize={'32px'} fontWeight={500} lineHeight={'40px'}>
+          <Box color={'myGray.700'} fontSize={'3xl'} fontWeight={'medium'} lineHeight={'40px'}>
             {t('skill:create_your_first_skill')}
           </Box>
         </Flex>
@@ -46,7 +42,7 @@ const SkillDashboardEmptyHero = ({ onClickImport, onClickCreate }: Props) => {
         justifyContent={'center'}
         alignItems={'stretch'}
         direction={['column', 'row']}
-        gap={'24px'}
+        gap={6}
       >
         <SkillEmptyActionCard
           onClick={onClickImport}

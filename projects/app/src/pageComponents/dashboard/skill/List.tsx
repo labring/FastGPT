@@ -188,17 +188,17 @@ const List = ({
 }: {
   onClickCreate?: () => void;
   onClickImport?: () => void;
-  guardSkillSandboxOperation?: () => boolean;
+  guardSkillSandboxOperation: () => boolean;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { skills, loadSkills, isFetchingSkills, searchKey, folderDetail } = useContextSelector(
+  const { skills, refreshSkills, isFetchingSkills, searchKey, folderDetail } = useContextSelector(
     SkillListContext,
     (v) => ({
       skills: v.skills,
-      loadSkills: v.loadSkills,
+      refreshSkills: v.refreshSkills,
       isFetchingSkills: v.isFetchingSkills,
       searchKey: v.searchKey,
       folderDetail: v.folderDetail
@@ -234,7 +234,7 @@ const List = ({
 
   const { runAsync: onClickDeleteSkill } = useRequest(deleteSkill, {
     onSuccess() {
-      loadSkills();
+      refreshSkills();
     },
     successToast: t('skill:delete_success'),
     errorToast: t('skill:delete_failed')
@@ -244,7 +244,7 @@ const List = ({
     (skillId: string) => postCopySkill({ skillId }),
     {
       onSuccess() {
-        loadSkills();
+        refreshSkills();
       },
       successToast: t('skill:copy_success'),
       errorToast: t('skill:copy_failed')
@@ -261,7 +261,7 @@ const List = ({
       }),
     {
       onSuccess() {
-        loadSkills();
+        refreshSkills();
         setEditedSkill(undefined);
       },
       successToast: t('skill:edit_success'),
@@ -279,7 +279,7 @@ const List = ({
     },
     {
       onSuccess() {
-        loadSkills();
+        refreshSkills();
         setMoveSkillId(undefined);
       },
       errorToast: t('skill:move_failed')
@@ -293,9 +293,6 @@ const List = ({
         getSkillFolderList({ parentId }),
     []
   );
-
-  // guard 可选：未传入时视为放行；传入时由其内部决定是否弹提示，并返回是否允许操作。
-  const passesSandboxGuard = () => !guardSkillSandboxOperation || guardSkillSandboxOperation();
 
   const renderSkillCard = (skill: (typeof skills)[number]) => {
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
@@ -316,7 +313,7 @@ const List = ({
                   type: 'grayBg' as const,
                   label: t('common:dataset.Edit Info'),
                   onClick: () => {
-                    if (!isFolder && !passesSandboxGuard()) {
+                    if (!isFolder && !guardSkillSandboxOperation()) {
                       return;
                     }
                     setEditedSkill({
@@ -417,7 +414,7 @@ const List = ({
           if (isFolder) {
             router.push({ query: { ...router.query, parentId: skill._id } });
           } else {
-            if (isSkillReady && !passesSandboxGuard()) return;
+            if (isSkillReady && !guardSkillSandboxOperation()) return;
             router.push(`/skill/detail?skillId=${skill._id}`);
           }
         }}
@@ -558,15 +555,7 @@ const List = ({
           gridGap={5}
           alignItems={'stretch'}
         >
-          {onClickCreate ? (
-            <ListCreateCard
-              onClick={onClickCreate}
-              accentColor={'#86EFAC'}
-              hoverBg={'rgba(134, 239, 172, 0.12)'}
-            />
-          ) : (
-            <ForbiddenCreateButton />
-          )}
+          {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
           {renderVirtualGridItems(renderSkillCard)}
         </Grid>
       )}
@@ -598,13 +587,13 @@ const List = ({
             postChangeSkillOwner({
               skillId: selectedSkill._id,
               ownerId: tmbId
-            }).then(() => loadSkills())
+            }).then(() => refreshSkills())
           }
           hasParent={!!selectedSkill.parentId}
-          refetchResource={loadSkills}
+          refetchResource={refreshSkills}
           isInheritPermission={selectedSkill.inheritPermission}
           resumeInheritPermission={() =>
-            resumeInheritPer(selectedSkill._id).then(() => loadSkills())
+            resumeInheritPer(selectedSkill._id).then(() => refreshSkills())
           }
           avatar={selectedSkill.avatar}
           name={selectedSkill.name}

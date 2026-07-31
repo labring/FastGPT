@@ -20,7 +20,7 @@ export type SkillListItemType = Omit<
 type SkillListContextType = {
   skills: SkillListItemType[];
   isFetchingSkills: boolean;
-  loadSkills: () => Promise<any>;
+  refreshSkills: () => void;
   searchKey: string;
   setSearchKey: Dispatch<SetStateAction<string>>;
   parentId: string | null;
@@ -33,7 +33,7 @@ type SkillListContextType = {
 export const SkillListContext = createContext<SkillListContextType>({
   skills: [],
   isFetchingSkills: false,
-  loadSkills: async () => {
+  refreshSkills: () => {
     throw new Error('Function not implemented.');
   },
   searchKey: '',
@@ -53,7 +53,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
 
   const {
     data,
-    runAsync: loadSkills,
+    refresh: refreshSkills,
     loading: isFetchingSkills
   } = useRequest(
     () =>
@@ -100,7 +100,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: SkillListContextType = {
     skills: data || [],
     isFetchingSkills,
-    loadSkills,
+    refreshSkills,
     searchKey,
     setSearchKey,
     parentId,

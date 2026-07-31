@@ -20,7 +20,6 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
-import { getSkillImportMaxBytes } from '@fastgpt/global/common/file/tools';
 
 export const config = {
   api: {
@@ -38,11 +37,7 @@ async function handler(
     return Promise.reject(SkillErrEnum.invalidArchiveFormat);
   }
 
-  // 上传上限同时遵守通用文件策略和沙盒可加载包上限，避免上传成功后运行时无法加载。
-  const sandboxPackageBytes = getAgentSandboxSkillMaxBytes();
-  const maxSkillPackageSize =
-    getSkillImportMaxBytes(global.feConfigs.uploadFileMaxSize, sandboxPackageBytes) ??
-    sandboxPackageBytes;
+  const maxSkillPackageSize = getAgentSandboxSkillMaxBytes();
   const contentLengthHeader = req.headers['content-length'];
   const contentLength = contentLengthHeader ? Number(contentLengthHeader) : undefined;
 
