@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import {
   type GetCollectionQuoteDataProps,
@@ -7,27 +7,24 @@ import {
 import CollectionQuoteReader from './CollectionQuoteReader';
 import QuoteReader from './QuoteReader';
 
-const ChatQuoteList = ({
-  rawSearch = [],
-  metadata,
-  singleQuote = false,
-  onClose
-}: {
+type Props = {
   rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetQuoteProps;
   singleQuote?: boolean;
   onClose: () => void;
-}) => {
+};
+
+/**
+ * 管理引用总览与分块详情之间的切换；外部引用变化由父级 key 触发同步重置。
+ */
+const ChatQuoteListContent = ({
+  rawSearch = [],
+  metadata,
+  singleQuote = false,
+  onClose
+}: Props) => {
   const [activeMetadata, setActiveMetadata] = useState<GetQuoteProps>(metadata);
   const [canBackToQuoteList, setCanBackToQuoteList] = useState(false);
-
-  // 外部切换引用后重置嵌套阅读器，避免沿用上一次的返回状态。
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    setActiveMetadata(metadata);
-    setCanBackToQuoteList(false);
-  }, [metadata]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   if ('collectionId' in activeMetadata) {
     return (
@@ -62,6 +59,15 @@ const ChatQuoteList = ({
   }
 
   return null;
+};
+
+/**
+ * 引用入口由外部对话状态驱动；metadata 变化时必须同步卸载旧阅读器，避免首帧使用旧授权或引用。
+ */
+const ChatQuoteList = (props: Props) => {
+  const contentKey = JSON.stringify({ metadata: props.metadata, singleQuote: props.singleQuote });
+
+  return <ChatQuoteListContent key={contentKey} {...props} />;
 };
 
 export default ChatQuoteList;

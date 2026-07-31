@@ -209,18 +209,20 @@ const ChatItem = (props: Props) => {
     const selectedQuote = item?.quoteId
       ? quoteList.find((quote) => quote.id === item.quoteId)
       : undefined;
+    const isSingleQuote = item?.singleQuote === true && !!selectedQuote;
+
+    // 引用已经不在当前消息的 quoteList 时，不能打开空的单条阅读器。
+    if (item?.singleQuote && !isSingleQuote) return;
+
     const collectionId = item?.collectionId ?? selectedQuote?.collectionId;
-    const rawSearch =
-      item?.singleQuote && item.quoteId
-        ? quoteList.filter((quote) => quote.id === item.quoteId)
-        : quoteList;
+    const rawSearch = isSingleQuote && selectedQuote ? [selectedQuote] : quoteList;
     const collectionIdList = collectionId
       ? [collectionId]
       : [...new Set(quoteList.map((quote) => quote.collectionId))];
 
     setCiteModalData({
       rawSearch,
-      singleQuote: item?.singleQuote,
+      singleQuote: isSingleQuote,
       metadata:
         collectionId && isShowFullText
           ? {

@@ -33,6 +33,7 @@ describe('useChatStore', () => {
 
     // Reset the store
     useChatStore.setState({
+      loaded: false,
       source: undefined,
       appId: '',
       lastChatAppId: '',
@@ -45,7 +46,27 @@ describe('useChatStore', () => {
     });
   });
 
-  it('should mark the store as loaded after persistence hydration', () => {
+  it('should mark the store as loaded after persistence hydration', async () => {
+    await useChatStore.persist.rehydrate();
+
+    expect(useChatStore.getState().loaded).toBe(true);
+  });
+
+  it('should finish hydration when storage access fails', async () => {
+    mockStorage.getItem.mockImplementationOnce(() => {
+      throw new Error('storage unavailable');
+    });
+
+    await useChatStore.persist.rehydrate();
+
+    expect(useChatStore.getState().loaded).toBe(true);
+  });
+
+  it('should finish hydration when persisted data is invalid JSON', async () => {
+    mockStorage.getItem.mockReturnValueOnce('{invalid json');
+
+    await useChatStore.persist.rehydrate();
+
     expect(useChatStore.getState().loaded).toBe(true);
   });
 

@@ -488,6 +488,7 @@ const Render = (props: Props) => {
   const {
     source,
     chatId,
+    appId: chatStoreAppId,
     setSource,
     setAppId,
     setOutLinkAuthData,
@@ -557,7 +558,16 @@ const Render = (props: Props) => {
     }
   });
 
-  return chatStoreLoaded && source === ChatSourceEnum.share && outLinkAuthData.outLinkUid ? (
+  const isCurrentChatLinkReady =
+    chatStoreLoaded &&
+    source === ChatSourceEnum.share &&
+    chatStoreAppId === appId &&
+    outLinkAuthData.shareId === shareId &&
+    outLinkAuthData.outLinkUid === outLinkUid &&
+    !!appId &&
+    !!outLinkUid;
+
+  return isCurrentChatLinkReady ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={false}

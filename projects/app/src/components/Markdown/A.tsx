@@ -123,6 +123,7 @@ const CiteLink = React.memo(function CiteLink({
       alignItems={'center'}
       justifyContent={'center'}
       cursor={'pointer'}
+      aria-label={t('common:chat.quote_detail_title')}
       onClick={!isPc ? handleOpenMobileQuote : undefined}
       _hover={{
         '.cite-link-icon': {
@@ -141,7 +142,7 @@ const CiteLink = React.memo(function CiteLink({
   );
 
   if (!isPc) {
-    return citeButton;
+    return onOpenCiteModal ? citeButton : null;
   }
 
   return (

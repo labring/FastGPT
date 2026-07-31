@@ -280,7 +280,7 @@ const QuoteReader = ({
       )}
 
       {/* quote list */}
-      {isPc || mobileTab === 'detail' ? quoteDetailList : quoteSourceList}
+      {singleQuote || isPc || mobileTab === 'detail' ? quoteDetailList : quoteSourceList}
 
       {!singleQuote && (
         <Box px={5} py={3}>
