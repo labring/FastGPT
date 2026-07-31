@@ -11,7 +11,7 @@ import {
   WechatQrcodeStatusResponseSchema,
   type WechatQrcodeStatusQueryType,
   type WechatQrcodeStatusResponseType
-} from '@fastgpt/global/openapi/support/outLink/api';
+} from '@fastgpt/global/openapi/support/outLink/provider/wechat';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWechatQrcodeCacheKey } from '@fastgpt/service/support/outLink/wechat/qrcode';
 import { assertWechatOutLink } from '@fastgpt/service/support/outLink/wechat/utils';
