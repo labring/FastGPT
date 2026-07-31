@@ -53,24 +53,24 @@ const SkillSelectEmptyState = ({
       flexDirection={'column'}
       justifyContent={'center'}
       alignItems={'center'}
-      gap={'24px'}
+      gap={6}
       w={'full'}
       h={'full'}
       minH={0}
     >
-      <EmptyTip text={t('skill:no_skills')} iconSize={'80px'} textGap={'25px'} mt={0} py={0} />
-      <Flex gap={'12px'} flexWrap={'wrap'} justifyContent={'center'}>
-        <SkillSelectActionButton
-          icon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-          onClick={onCreate}
-        >
-          {t('common:new_create')}
-        </SkillSelectActionButton>
+      <EmptyTip text={t('skill:no_skills')} iconSize={20} textGap={'25px'} mt={0} py={0} />
+      <Flex gap={3} flexWrap={'wrap'} justifyContent={'center'}>
         <SkillSelectActionButton
           icon={<MyIcon name={'common/importLight'} w={'14px'} />}
           onClick={onImport}
         >
           {t('common:Import')}
+        </SkillSelectActionButton>
+        <SkillSelectActionButton
+          icon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+          onClick={onCreate}
+        >
+          {t('common:new_create')}
         </SkillSelectActionButton>
       </Flex>
     </Flex>
@@ -206,7 +206,7 @@ const SkillSelectModal = ({
           <>
             <Flex
               alignItems={'center'}
-              gap={'12px'}
+              gap={3}
               flexWrap={['wrap', 'nowrap']}
               w={'full'}
               flexShrink={0}
@@ -219,7 +219,7 @@ const SkillSelectModal = ({
                 />
               </Box>
               {showHeaderCreateImportActions && (
-                <Flex gap={'12px'} flexShrink={0}>
+                <Flex gap={3} flexShrink={0}>
                   <SkillSelectActionButton
                     icon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
                     onClick={handleOpenCreate}
@@ -247,8 +247,8 @@ const SkillSelectModal = ({
                 {skillList.length > 0 ? (
                   <Grid
                     gridTemplateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}
-                    columnGap={'24px'}
-                    rowGap={'12px'}
+                    columnGap={6}
+                    rowGap={3}
                     w={'full'}
                   >
                     {skillList.map((item) => (
@@ -406,9 +406,7 @@ const SkillCard = React.memo(function SkillCard({
             aria-label={t('common:Remove')}
             size={'xsSquare'}
             color={'myGray.600'}
-            minW={'24px'}
-            w={'24px'}
-            h={'24px'}
+            minW={6}
             variant={'whiteDanger'}
             icon={<MyIcon name={'delete'} w={'13px'} />}
             onClick={onRemove}

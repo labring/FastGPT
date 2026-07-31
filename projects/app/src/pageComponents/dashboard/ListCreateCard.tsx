@@ -15,7 +15,7 @@ const ListCreateCard = ({
   onClick: () => void;
   label?: string;
   icon?: IconNameType;
-  /** 虚线框与加号颜色，技能页使用 #86EFAC */
+  /** 虚线框与加号颜色 */
   accentColor?: string;
   hoverBg?: string;
 }) => {

@@ -2,7 +2,6 @@ import React from 'react';
 import { Box, Flex, Image } from '@chakra-ui/react';
 
 const HOVER_OPACITY_TRANSITION = 'opacity 0.3s ease-out';
-/** Figma Drop shadow：默认 5%，hover 8% */
 const CARD_BOX_SHADOW = {
   default: '0 4px 22px 0 rgba(0, 0, 0, 0.05)',
   hover: '0 4px 22px 0 rgba(0, 0, 0, 0.08)'
@@ -10,7 +9,6 @@ const CARD_BOX_SHADOW = {
 const CARD_VIEW_BOX = '0 0 540.5 208';
 
 type CardVariant = 'import' | 'create';
-type CardVisualState = 'default' | 'hover';
 
 type EllipseGeometry = { cx: number; cy: number; rx: number; ry: number; rotate: number };
 type FilterBox = { x: number; y: number; width: number; height: number };
@@ -36,7 +34,6 @@ const ELLIPSE_HOVER: EllipseGeometry = {
 const FILTER_DEFAULT: FilterBox = { x: 187.203, y: 74.372, width: 434.524, height: 301.678 };
 const FILTER_HOVER: FilterBox = { x: 144.001, y: 45.265, width: 467.714, height: 304.797 };
 
-/** 仅颜色因卡片而异 */
 const GLOW_VARIANT_CONFIG: Record<CardVariant, { fill: string; fillOpacity: number }> = {
   import: { fill: '#AAE2F8', fillOpacity: 0.3 },
   create: { fill: '#C8FDE9', fillOpacity: 0.45 }
@@ -50,78 +47,26 @@ type Props = {
   actionIconSrc: string;
 };
 
-const GlowEllipseDecoration = ({
-  variant,
-  state,
-  uid
-}: {
-  variant: CardVariant;
-  state: CardVisualState;
-  uid: string;
-}) => {
-  const isHover = state === 'hover';
+const GlowFilter = ({ id, box }: { id: string; box: FilterBox }) => (
+  <filter
+    id={id}
+    x={box.x}
+    y={box.y}
+    width={box.width}
+    height={box.height}
+    filterUnits={'userSpaceOnUse'}
+    colorInterpolationFilters={'sRGB'}
+  >
+    <feFlood floodOpacity={'0'} result={'BackgroundImageFix'} />
+    <feBlend mode={'normal'} in={'SourceGraphic'} in2={'BackgroundImageFix'} result={'shape'} />
+    <feGaussianBlur stdDeviation={'28.8653'} result={'effect1_foregroundBlur'} />
+  </filter>
+);
+
+const SkillCardGlow = ({ variant, uid }: { variant: CardVariant; uid: string }) => {
   const color = GLOW_VARIANT_CONFIG[variant];
-  const ellipse = isHover ? ELLIPSE_HOVER : ELLIPSE_DEFAULT;
-  const filterBox = isHover ? FILTER_HOVER : FILTER_DEFAULT;
-  const blurId = `${uid}-${variant}-blur`;
-
-  return (
-    <>
-      <g filter={`url(#${blurId})`}>
-        <ellipse
-          cx={ellipse.cx}
-          cy={ellipse.cy}
-          rx={ellipse.rx}
-          ry={ellipse.ry}
-          transform={`rotate(${ellipse.rotate} ${ellipse.cx} ${ellipse.cy})`}
-          fill={color.fill}
-          fillOpacity={color.fillOpacity}
-        />
-      </g>
-      <defs>
-        <filter
-          id={blurId}
-          x={filterBox.x}
-          y={filterBox.y}
-          width={filterBox.width}
-          height={filterBox.height}
-          filterUnits={'userSpaceOnUse'}
-          colorInterpolationFilters={'sRGB'}
-        >
-          <feFlood floodOpacity={'0'} result={'BackgroundImageFix'} />
-          <feBlend
-            mode={'normal'}
-            in={'SourceGraphic'}
-            in2={'BackgroundImageFix'}
-            result={'shape'}
-          />
-          <feGaussianBlur stdDeviation={'28.8653'} result={'effect1_foregroundBlur'} />
-        </filter>
-      </defs>
-    </>
-  );
-};
-
-const SkillCardDecoration = ({
-  variant,
-  state,
-  uid
-}: {
-  variant: CardVariant;
-  state: CardVisualState;
-  uid: string;
-}) => {
-  const isHover = state === 'hover';
-  const opacityProps = isHover
-    ? {
-        opacity: 0,
-        transition: HOVER_OPACITY_TRANSITION,
-        _groupHover: { opacity: 1 }
-      }
-    : {
-        transition: HOVER_OPACITY_TRANSITION,
-        _groupHover: { opacity: 0 }
-      };
+  const defaultFilterId = `${uid}-default-blur`;
+  const hoverFilterId = `${uid}-hover-blur`;
 
   return (
     <Box
@@ -135,17 +80,48 @@ const SkillCardDecoration = ({
       pointerEvents={'none'}
       overflow={'visible'}
       preserveAspectRatio={'none'}
-      {...opacityProps}
+      sx={{
+        '& .skill-card-glow': {
+          transition: HOVER_OPACITY_TRANSITION
+        },
+        '& .skill-card-glow-default': {
+          opacity: 1
+        },
+        '& .skill-card-glow-hover': {
+          opacity: 0
+        }
+      }}
     >
-      <GlowEllipseDecoration variant={variant} state={state} uid={uid} />
+      <defs>
+        <GlowFilter id={defaultFilterId} box={FILTER_DEFAULT} />
+        <GlowFilter id={hoverFilterId} box={FILTER_HOVER} />
+      </defs>
+      <g className={'skill-card-glow skill-card-glow-default'} filter={`url(#${defaultFilterId})`}>
+        <ellipse
+          cx={ELLIPSE_DEFAULT.cx}
+          cy={ELLIPSE_DEFAULT.cy}
+          rx={ELLIPSE_DEFAULT.rx}
+          ry={ELLIPSE_DEFAULT.ry}
+          transform={`rotate(${ELLIPSE_DEFAULT.rotate} ${ELLIPSE_DEFAULT.cx} ${ELLIPSE_DEFAULT.cy})`}
+          fill={color.fill}
+          fillOpacity={color.fillOpacity}
+        />
+      </g>
+      <g className={'skill-card-glow skill-card-glow-hover'} filter={`url(#${hoverFilterId})`}>
+        <ellipse
+          cx={ELLIPSE_HOVER.cx}
+          cy={ELLIPSE_HOVER.cy}
+          rx={ELLIPSE_HOVER.rx}
+          ry={ELLIPSE_HOVER.ry}
+          transform={`rotate(${ELLIPSE_HOVER.rotate} ${ELLIPSE_HOVER.cx} ${ELLIPSE_HOVER.cy})`}
+          fill={color.fill}
+          fillOpacity={color.fillOpacity}
+        />
+      </g>
     </Box>
   );
 };
 
-/**
- * Skill Dashboard 空态行动卡片：
- * 背景光晕与导入卡同实现（椭圆 + feGaussianBlur），hover 时 300ms opacity 过渡。
- */
 const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIconSrc }: Props) => {
   const uid = React.useId().replace(/:/g, '');
 
@@ -154,7 +130,6 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
       as={'button'}
       type={'button'}
       aria-label={title}
-      className="group"
       textAlign={'left'}
       position={'relative'}
       cursor={'pointer'}
@@ -165,8 +140,8 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
       w={'full'}
       maxW={['full', '540px']}
       minW={0}
-      p={['20px', '32px']}
-      borderRadius={'12px'}
+      p={[5, 8]}
+      borderRadius={'lg'}
       overflow={'hidden'}
       bg={
         'linear-gradient(109deg, rgba(241, 246, 249, 0.10) 13.12%, rgba(230, 245, 242, 0.10) 83.48%), rgba(255, 255, 255, 0.80)'
@@ -185,27 +160,25 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
         WebkitAppearance: 'none',
         appearance: 'none',
         border: 0,
-        font: 'inherit'
+        font: 'inherit',
+        '&:hover .skill-card-glow-default': {
+          opacity: 0
+        },
+        '&:hover .skill-card-glow-hover': {
+          opacity: 1
+        }
       }}
     >
-      <SkillCardDecoration variant={variant} state={'default'} uid={uid} />
-      <SkillCardDecoration variant={variant} state={'hover'} uid={`${uid}-hover`} />
+      <SkillCardGlow variant={variant} uid={uid} />
 
-      <Flex
-        position={'relative'}
-        zIndex={1}
-        direction={'column'}
-        gap={'8px'}
-        w={'full'}
-        flexShrink={0}
-      >
-        <Box color={'myGray.600'} fontSize={'24px'} fontWeight={500} lineHeight={'32px'}>
+      <Flex position={'relative'} zIndex={1} direction={'column'} gap={2} w={'full'} flexShrink={0}>
+        <Box color={'myGray.600'} fontSize={'xl'} fontWeight={'medium'} lineHeight={'32px'}>
           {title}
         </Box>
         <Box
           color={'myGray.500'}
-          fontSize={'16px'}
-          fontWeight={400}
+          fontSize={'md'}
+          fontWeight={'normal'}
           lineHeight={'24px'}
           letterSpacing={'0.5px'}
         >
@@ -216,26 +189,19 @@ const SkillEmptyActionCard = ({ onClick, title, description, variant, actionIcon
       <Flex
         position={'relative'}
         zIndex={1}
-        mt={'16px'}
-        py={'16px'}
-        px={['32px', '120px']}
+        mt={4}
+        py={4}
+        px={[8, '120px']}
         justifyContent={'center'}
         alignItems={'center'}
-        gap={'10px'}
+        gap={2.5}
         alignSelf={'stretch'}
-        borderRadius={'12px'}
+        borderRadius={'lg'}
         border={'1px dashed'}
         borderColor={'#86EFAC'}
         bg={'rgba(255, 255, 255, 0.50)'}
       >
-        <Image
-          src={actionIconSrc}
-          alt={''}
-          w={'32px'}
-          h={'32px'}
-          flexShrink={0}
-          display={'block'}
-        />
+        <Image src={actionIconSrc} alt={''} w={8} h={8} flexShrink={0} display={'block'} />
       </Flex>
     </Flex>
   );

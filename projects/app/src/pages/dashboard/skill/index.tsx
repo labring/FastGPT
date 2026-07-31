@@ -50,7 +50,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const {
     skills,
     isFetchingSkills,
-    loadSkills,
+    refreshSkills,
     searchKey,
     setSearchKey,
     parentId,
@@ -63,7 +63,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const { runAsync: onCreateFolder } = useRequest(postCreateSkillFolder, {
     onSuccess() {
-      loadSkills();
+      refreshSkills();
     },
     errorToast: 'Error'
   });
@@ -80,11 +80,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const hasCreatePer = folderDetail
     ? folderDetail.permission.hasWritePer
     : userInfo?.team.permission.hasSkillCreatePer;
-
-  // 创建成功后刷新列表 best-effort：失败不阻断（详情页已在新标签页打开）。
-  const handleCreateSuccess = () => {
-    loadSkills().catch(() => {});
-  };
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -210,7 +205,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <CreateSkillModal
           parentId={parentId}
           onClose={() => setShowCreateModal(false)}
-          onSuccess={handleCreateSuccess}
+          onSuccess={refreshSkills}
           openDetailInNewTab
         />
       )}
@@ -219,9 +214,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <ImportSkillModal
           parentId={parentId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={() => {
-            loadSkills().catch(() => {});
-          }}
+          onSuccess={refreshSkills}
         />
       )}
 
