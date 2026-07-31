@@ -13,6 +13,7 @@ const CollectionQuoteItem = ({
   setQuoteIndex,
   refreshList,
   canEdit,
+  alwaysShowCopy = false,
 
   updated,
   isCurrentSelected,
@@ -26,6 +27,7 @@ const CollectionQuoteItem = ({
   setQuoteIndex: (quoteIndex: number) => void;
   refreshList: () => void;
   canEdit: boolean;
+  alwaysShowCopy?: boolean;
 
   updated?: boolean;
   isCurrentSelected: boolean;
@@ -46,6 +48,7 @@ const CollectionQuoteItem = ({
           quoteRefs.current.set(dataId, el);
         }}
         p={'12px'}
+        pb={alwaysShowCopy ? '40px' : '12px'}
         cursor={hasBeenSearched ? 'pointer' : 'default'}
         bg={isCurrentSelected ? 'blue.50' : ''}
         position={'relative'}
@@ -101,7 +104,7 @@ const CollectionQuoteItem = ({
           bottom={'12px'}
           right={'12px'}
           gap={1.5}
-          visibility={'hidden'}
+          visibility={alwaysShowCopy ? 'visible' : 'hidden'}
         >
           <MyTooltip label={t('common:Copy')}>
             <Flex
@@ -117,7 +120,10 @@ const CollectionQuoteItem = ({
                 '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
               }
               cursor={'pointer'}
-              onClick={() => copyData(`${q}${a ? '\n' + a : ''}`)}
+              onClick={(e) => {
+                e.stopPropagation();
+                copyData([q, a].filter(Boolean).join('\n'));
+              }}
             >
               <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
             </Flex>

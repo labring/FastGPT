@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useChatStore, createCustomStorage } from '@/web/core/chat/context/useChatStore';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
@@ -19,7 +18,13 @@ const mockStorage = {
 vi.stubGlobal('sessionStorage', mockStorage);
 vi.stubGlobal('localStorage', mockStorage);
 
+const { useChatStore, createCustomStorage } = await import('@/web/core/chat/context/useChatStore');
+
 describe('useChatStore', () => {
+  beforeAll(async () => {
+    await useChatStore.persist.rehydrate();
+  });
+
   beforeEach(() => {
     mockStorage.clear.mockClear();
     mockStorage.getItem.mockClear();
@@ -38,6 +43,10 @@ describe('useChatStore', () => {
       lastPane: undefined,
       outLinkAuthData: {}
     });
+  });
+
+  it('should mark the store as loaded after persistence hydration', () => {
+    expect(useChatStore.getState().loaded).toBe(true);
   });
 
   it('should set and get source', () => {

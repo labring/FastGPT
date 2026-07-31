@@ -10,25 +10,31 @@ import QuoteReader from './QuoteReader';
 const ChatQuoteList = ({
   rawSearch = [],
   metadata,
+  singleQuote = false,
   onClose
 }: {
   rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetQuoteProps;
+  singleQuote?: boolean;
   onClose: () => void;
 }) => {
   const [activeMetadata, setActiveMetadata] = useState<GetQuoteProps>(metadata);
   const [canBackToQuoteList, setCanBackToQuoteList] = useState(false);
 
+  // 外部切换引用后重置嵌套阅读器，避免沿用上一次的返回状态。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setActiveMetadata(metadata);
     setCanBackToQuoteList(false);
   }, [metadata]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if ('collectionId' in activeMetadata) {
     return (
       <CollectionQuoteReader
         rawSearch={rawSearch}
         metadata={activeMetadata}
+        singleQuote={singleQuote}
         onClose={onClose}
         onBack={
           canBackToQuoteList
@@ -45,6 +51,7 @@ const ChatQuoteList = ({
       <QuoteReader
         rawSearch={rawSearch}
         metadata={activeMetadata}
+        singleQuote={singleQuote}
         onClose={onClose}
         onOpenCollectionQuote={(nextMetadata: GetCollectionQuoteDataProps) => {
           setActiveMetadata(nextMetadata);

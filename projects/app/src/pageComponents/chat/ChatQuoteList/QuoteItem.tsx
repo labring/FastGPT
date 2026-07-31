@@ -9,12 +9,14 @@ const QuoteItem = ({
   icon,
   sourceName,
   onClick,
+  alwaysShowCopy = false,
   q,
   a
 }: {
   icon: string;
   sourceName: string;
   onClick?: () => void;
+  alwaysShowCopy?: boolean;
   q: string;
   a?: string;
 }) => {
@@ -25,6 +27,7 @@ const QuoteItem = ({
   return (
     <Box
       p={'12px'}
+      pb={alwaysShowCopy ? '40px' : '12px'}
       position={'relative'}
       overflow={'hidden'}
       borderRadius={'6px'}
@@ -92,7 +95,7 @@ const QuoteItem = ({
         bottom={2}
         right={5}
         gap={1.5}
-        visibility={'hidden'}
+        visibility={alwaysShowCopy ? 'visible' : 'hidden'}
       >
         <MyTooltip label={t('common:Copy')}>
           <Flex
@@ -110,7 +113,7 @@ const QuoteItem = ({
             cursor={'pointer'}
             onClick={(e) => {
               e.stopPropagation();
-              copyData(q + '\n' + a);
+              copyData([q, a].filter(Boolean).join('\n'));
             }}
           >
             <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
