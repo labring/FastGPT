@@ -111,7 +111,8 @@ const CollectionReader = ({
     loadInitData
   } = useLinkedScroll(getCollectionQuote, {
     params,
-    currentData: currentQuoteItem
+    currentData: currentQuoteItem,
+    enablePagination: !singleQuote
   });
 
   const isDeleted = useMemo(
