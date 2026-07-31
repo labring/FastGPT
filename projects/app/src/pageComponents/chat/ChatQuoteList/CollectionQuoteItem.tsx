@@ -128,7 +128,7 @@ const CollectionQuoteItem = ({
               <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
             </Flex>
           </MyTooltip>
-          {canEdit && !alwaysShowCopy && (
+          {canEdit && (
             <MyTooltip label={t('common:core.dataset.data.Edit')}>
               <Flex
                 alignItems={'center'}
