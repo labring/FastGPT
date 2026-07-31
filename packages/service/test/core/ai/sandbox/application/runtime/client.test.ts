@@ -122,9 +122,13 @@ const createProvider = () => ({
   execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 }))
 });
 
-const createInstance = (status: string, operationId?: string) =>
+const createInstance = (
+  status: string,
+  operationId?: string,
+  provider: 'sealosdevbox' | 'opensandbox' = 'sealosdevbox'
+) =>
   ({
-    provider: 'sealosdevbox',
+    provider,
     sandboxId: query.sandboxId,
     sourceType: query.sourceType,
     sourceId: query.sourceId,
@@ -248,6 +252,41 @@ describe('sandbox runtime client lifecycle', () => {
     );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ fromStatus: 'provisioning', status: 'running', touchActive: true })
+    );
+  });
+
+  it('uses restore-returned volume config without prefetching it outside the restore lease', async () => {
+    const vmConfig = {
+      volumes: [{ name: 'workspace', pvc: { claimName: 'fastgpt-session-sandbox-1' } }],
+      storage: {
+        volumes: [
+          {
+            name: 'workspace',
+            claimName: 'fastgpt-session-sandbox-1',
+            mountPath: '/workspace'
+          }
+        ],
+        mountPath: '/workspace'
+      }
+    };
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    const provisioning = createInstance('provisioning', 'provision-1', 'opensandbox');
+    mocks.createSandboxProvisioningInstance.mockResolvedValueOnce({
+      instance: provisioning,
+      created: true
+    });
+    mocks.restoreArchivedSandboxBeforeUse.mockResolvedValueOnce(vmConfig);
+
+    await getSandboxClient(query, { providerName: 'opensandbox' });
+
+    expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
+    expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
+      expect.not.objectContaining({ vmConfig: expect.anything(), storage: expect.anything() })
+    );
+    expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
+      'opensandbox',
+      query.sandboxId,
+      expect.objectContaining({ vmConfig })
     );
   });
 

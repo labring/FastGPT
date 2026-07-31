@@ -152,8 +152,13 @@ async function connectSandboxForArchive(resource: SandboxPhysicalResource) {
   };
 }
 
-async function deleteArchivedRemoteResource(resource: SandboxResourceDoc) {
+/** 归档阶段只删除远端 Provider，volume 清理由后续 checkpoint 单独确认。 */
+async function deleteArchivedProviderResource(resource: SandboxResourceDoc) {
   await buildSandboxResourceAdapter(resource).delete();
+}
+
+/** 等 Provider 删除 checkpoint 持久化后，再删除并等待 OpenSandbox volume 完成。 */
+async function deleteArchivedVolumeResource(resource: SandboxResourceDoc) {
   if (resource.provider === 'opensandbox') {
     await deleteSessionVolume(resource.sandboxId);
   }
@@ -361,7 +366,14 @@ async function archiveSandboxWithinLease(params: {
           fromPhase: 'archiveUploaded',
           toPhase: 'providerDeleted',
           run: async ({ resource: claimed }) => {
-            await deleteArchivedRemoteResource(claimed);
+            await deleteArchivedProviderResource(claimed);
+          }
+        },
+        {
+          fromPhase: 'providerDeleted',
+          toPhase: 'volumeDeleted',
+          run: async ({ resource: claimed }) => {
+            await deleteArchivedVolumeResource(claimed);
           }
         }
       ],
@@ -516,18 +528,14 @@ export async function retryStaleArchivingSandboxes(now = new Date()) {
   );
 }
 
+/** 在已持有 restore lifecycle lease 的 step 内准备 volume 并创建恢复 Sandbox。 */
 async function createRestoreSandbox(params: {
   provider: SandboxProviderType;
   sandboxId: string;
-  vmConfig?: VolumeManagerResult | null;
   createConfig?: SandboxCreateSpec;
 }) {
   const vmConfig =
-    params.vmConfig !== undefined
-      ? (params.vmConfig ?? undefined)
-      : params.provider === 'opensandbox'
-        ? await getSessionVolumeConfig(params.sandboxId)
-        : undefined;
+    params.provider === 'opensandbox' ? await getSessionVolumeConfig(params.sandboxId) : undefined;
   const profile = getSandboxRuntimeProfile(params.provider);
   const { providerConfig, createConfig } = getSandboxAdapterConfig({
     provider: params.provider,
@@ -539,7 +547,7 @@ async function createRestoreSandbox(params: {
   return {
     sandbox: await connectToSandbox(providerConfig, params.sandboxId, createConfig),
     profile,
-    storage: vmConfig?.storage
+    vmConfig
   };
 }
 
@@ -550,8 +558,6 @@ export async function restoreArchivedSandboxBeforeUse(params: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
-  vmConfig?: VolumeManagerResult | null;
-  storage?: SandboxInstanceSchemaType['storage'];
   resourceLimit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   createConfig?: SandboxCreateSpec;
 }) {
@@ -596,7 +602,8 @@ export async function restoreArchivedSandboxBeforeUse(params: {
         throw new SandboxLifecycleStateError(current.status);
       }
       let sandbox: ISandbox | undefined;
-      let restoredStorage = params.storage ?? current.storage;
+      let restoredVmConfig: VolumeManagerResult | undefined;
+      let restoredStorage = current.storage;
 
       try {
         const definition: SandboxLifecycleDefinition = {
@@ -609,7 +616,8 @@ export async function restoreArchivedSandboxBeforeUse(params: {
               run: async () => {
                 const target = await createRestoreSandbox(params);
                 sandbox = target.sandbox;
-                restoredStorage ??= target.storage;
+                restoredVmConfig = target.vmConfig;
+                restoredStorage = target.vmConfig?.storage ?? restoredStorage;
                 await ensureUnzipAvailableInSandbox(target.sandbox);
                 const body = await getS3SandboxSource().downloadWorkspaceArchive({
                   sandboxId: params.sandboxId,
@@ -646,6 +654,7 @@ export async function restoreArchivedSandboxBeforeUse(params: {
           previousStatus: SandboxInstanceStatusEnum.archived,
           claimConflictError: new SandboxLifecycleStateError(current.status)
         });
+        return restoredVmConfig;
       } catch (error) {
         if (sandbox) await sandbox.stop().catch(() => undefined);
         throw error;

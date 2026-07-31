@@ -7,6 +7,9 @@
 用户级实例、生命周期、Legacy 迁移以及本分支后续变更的最终契约统一见
 [用户级 Sandbox 最终方案](./user-level-sandbox.md)。本文只维护当前代码入口和运行行为索引。
 
+OpenSandbox Kubernetes PVC 的问题定论、生命周期设计和验证记录统一见
+[OpenSandbox Kubernetes PVC 生命周期问题与设计](./opensandbox-pvc-lifecycle.md)。
+
 ## 目标与边界
 
 Agent Sandbox 为 Agent 提供隔离的 Linux 运行环境、文件系统和工具调用能力，同时维护物理实例、业务归属、Provider 生命周期、归档恢复和 Skill 部署。

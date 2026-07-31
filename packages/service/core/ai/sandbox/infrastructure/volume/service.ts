@@ -56,7 +56,8 @@ export const ensureSessionVolume = async (sessionId: string): Promise<string> =>
 /**
  * 删除指定 sandbox 会话关联的持久卷。
  *
- * 未启用 volume-manager 时直接跳过；404 视为已清理，避免资源删除流程被重复清理中断。
+ * 未启用 volume-manager 时直接跳过；404 视为已清理，volume-manager 的成功响应表示
+ * driver 已完成对应 runtime 的删除语义（Kubernetes 会等待目标 PVC generation 结束）。
  */
 export const deleteSessionVolume = async (sessionId: string): Promise<void> => {
   const vmConfig = getVolumeManagerEnvConfig();

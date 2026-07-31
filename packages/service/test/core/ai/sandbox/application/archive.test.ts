@@ -186,8 +186,10 @@ describe('sandbox archive lifecycle', () => {
     );
     expect(mocks.advanceSandboxOperation.mock.calls.map((call) => call[0].phase)).toEqual([
       'archiveUploaded',
-      'providerDeleted'
+      'providerDeleted',
+      'volumeDeleted'
     ]);
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('sandbox-1');
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({
         operationId: 'archiving-operation',
@@ -250,7 +252,7 @@ describe('sandbox archive lifecycle', () => {
     );
   });
 
-  it('commits providerDeleted archive phase without recreating an empty sandbox', async () => {
+  it('resumes providerDeleted archive phase by completing volume deletion', async () => {
     const providerDeleted = createResource('archiving', {
       operation: {
         id: 'old-archive',
@@ -274,6 +276,10 @@ describe('sandbox archive lifecycle', () => {
     expect(mocks.connectToSandbox).not.toHaveBeenCalled();
     expect(mocks.uploadWorkspaceArchive).not.toHaveBeenCalled();
     expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('sandbox-1');
+    expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'resumed-archive', phase: 'volumeDeleted' })
+    );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'resumed-archive', status: 'archived' })
     );
@@ -336,42 +342,51 @@ describe('sandbox archive lifecycle', () => {
   it('installs the workspace before publishing restoring -> running', async () => {
     const archived = createResource('archived');
     mocks.findSandboxInstanceBySandboxId.mockResolvedValue(archived);
+    const vmConfig = {
+      volumes: [{ name: 'workspace', pvc: { claimName: 'fastgpt-session-sandbox-1' } }],
+      storage: {
+        volumes: [
+          {
+            name: 'workspace',
+            claimName: 'fastgpt-session-sandbox-1',
+            mountPath: '/workspace'
+          }
+        ],
+        mountPath: '/workspace'
+      }
+    };
+    mocks.getSessionVolumeConfig.mockResolvedValueOnce(vmConfig);
     mocks.completeSandboxOperation.mockResolvedValueOnce(createResource('running'));
 
-    await restoreArchivedSandboxBeforeUse({
-      provider: 'opensandbox',
-      sandboxId: 'sandbox-1',
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1'
-    });
+    await expect(
+      restoreArchivedSandboxBeforeUse({
+        provider: 'opensandbox',
+        sandboxId: 'sandbox-1',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
+        userId: 'user-1'
+      })
+    ).resolves.toEqual(vmConfig);
 
-    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'restoring', type: 'restore', previousStatus: 'archived' })
+    expect(mocks.claimSandboxOperation.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getSessionVolumeConfig.mock.invocationCallOrder[0]
+    );
+    expect(mocks.getSessionVolumeConfig.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.connectToSandbox.mock.invocationCallOrder[0]
+    );
+    expect(mocks.getSandboxAdapterConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ vmConfig })
+    );
+    expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'restoring-operation', phase: 'archiveInstalled' })
     );
     expect(mocks.downloadWorkspaceArchive).toHaveBeenCalledWith({
       sandboxId: 'sandbox-1',
       maxBytes: 1024 * 1024
     });
-    expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ operationId: 'restoring-operation', phase: 'archiveInstalled' })
-    );
-    expect(mocks.advanceSandboxOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.completeSandboxOperation.mock.invocationCallOrder[0]
-    );
-    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fromStatus: 'restoring',
-        status: 'running',
-        touchActive: true,
-        set: expect.objectContaining({
-          image: { repository: 'fastgpt/sandbox', tag: 'v2' }
-        })
-      })
-    );
   });
 
-  it('publishes an already installed restore phase without downloading again', async () => {
+  it('does not recreate a provider or volume for an already installed restore phase', async () => {
     const installed = createResource('restoring', {
       operation: {
         id: 'old-restore',
@@ -400,6 +415,7 @@ describe('sandbox archive lifecycle', () => {
 
     expect(mocks.connectToSandbox).not.toHaveBeenCalled();
     expect(mocks.downloadWorkspaceArchive).not.toHaveBeenCalled();
+    expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'resumed-restore', status: 'running' })
     );

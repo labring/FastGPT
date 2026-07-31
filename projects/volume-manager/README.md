@@ -59,6 +59,11 @@ DELETE /v1/volumes/:sessionId
 
 响应：`204 No Content`（幂等，卷不存在时同样返回 204）
 
+Kubernetes 模式下，`204` 表示目标 PVC generation 已完成删除（PVC 对象已不存在或已被新的
+UID generation 替换），不是仅表示 API Server 接受了 DELETE 请求。Terminating PVC 会被轮询到
+删除完成；等待超时或 Kubernetes 返回其他错误时接口返回失败。Docker 模式保持 Docker API
+原有的同步删除语义。
+
 ## 环境变量
 
 | 变量 | 必填 | 默认值 | 说明 |

@@ -456,9 +456,7 @@ export const getSandboxClient = async (
         sourceId: sandboxClientProps.sourceId,
         userId
       });
-      vmConfig =
-        providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
-      await restoreArchivedSandboxBeforeUse({
+      vmConfig = await restoreArchivedSandboxBeforeUse({
         provider: providerName,
         sandboxId,
         sourceType: sandboxClientProps.sourceType,
@@ -471,8 +469,6 @@ export const getSandboxClient = async (
               storageSize: opts.resourceLimits.storageSize
             }
           : undefined,
-        vmConfig: vmConfig ?? null,
-        storage: vmConfig?.storage,
         createConfig: opts.createConfig
       });
     }
