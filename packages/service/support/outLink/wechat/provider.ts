@@ -43,7 +43,8 @@ export const createWechatOutlinkProvider =
     const client = new ILinkClient(outLinkConfig.app.baseUrl, outLinkConfig.app.token);
     const adapter = createWechatOutlinkAdapter({
       client,
-      jobData
+      jobData,
+      appId: outLinkConfig.appId
     });
     const message = await adapter.normalizeMessage();
 

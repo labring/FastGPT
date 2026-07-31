@@ -50,6 +50,11 @@ const formatFetchError = (err: unknown) => {
 };
 
 export type WeixinMessage = {
+  /**
+   * 官方 OpenClaw 插件同样通过 JSON.parse 解析该字段，未处理 uint64 精度问题。
+   *
+   * @example 7488885545455209000
+   */
   message_id?: number;
   from_user_id?: string;
   to_user_id?: string;

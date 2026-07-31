@@ -1,3 +1,5 @@
+import type { MessageItem } from './ilinkClient';
+
 export type WechatPollJobData = {
   shareId: string;
 };
@@ -5,7 +7,7 @@ export type WechatPollJobData = {
 export type WechatReplyJobData = {
   shareId: string;
   userId: string;
-  text: string;
+  items?: MessageItem[];
   contextToken: string;
   lastMsgId: string;
 };
