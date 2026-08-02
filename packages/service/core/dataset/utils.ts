@@ -14,10 +14,10 @@ const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
 
 const createS3MarkdownKeyRegex = () => {
   const pattern = Object.values(S3Sources)
-    .map((prefix) => `${prefix}\\/[^)]+?`)
+    .map((prefix) => `${prefix}\\/[^)>]+?`)
     .join('|');
 
-  return new RegExp(String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(${pattern})\s*\)`, 'g');
+  return new RegExp(String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)<?(${pattern})>?\s*\)`, 'g');
 };
 
 const isPreviewUrlS3ObjectKey = (objectKey: string) =>
@@ -165,11 +165,13 @@ export async function replaceS3KeyToPreviewUrl(documentQuoteText: string, expire
 }
 
 const getAvailableDatasetVlmModel = (vlmModel?: string) => {
-  if (!vlmModel) return;
+  // 如果 dataset 没有存储 vlmModel，回退到系统默认 VLM 模型
+  const targetModel = vlmModel || getDefaultVLMModel()?.model;
+  if (!targetModel) return;
 
   const vlmModelList = getVlmModelList();
 
-  return vlmModelList.find((item) => item.model === vlmModel || item.name === vlmModel);
+  return vlmModelList.find((item) => item.model === targetModel || item.name === targetModel);
 };
 
 export const getDatasetImageIndexCapability = ({
