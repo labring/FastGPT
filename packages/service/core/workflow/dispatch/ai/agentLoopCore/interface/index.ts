@@ -11,7 +11,6 @@ export {
 } from '../application/context/files';
 export { readAgentLoopCoreActivePlan } from '../application/context/activePlan';
 export { buildAgentLoopCoreRequestMessages } from '../application/context/messages';
-export { buildAgentLoopCoreSystemPrompt } from '../application/context/prompt';
 export {
   buildAgentLoopCoreUserReminderInput,
   type AgentLoopCoreUserReminderContext,

@@ -14,7 +14,6 @@ import type { AgentLoopUsage } from './usage';
 
 export type AgentLoopLLMParams = {
   model: string;
-  promptMode?: 'fastAgent' | 'raw';
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
   stream?: boolean;

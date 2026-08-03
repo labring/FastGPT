@@ -104,6 +104,43 @@ describe('runFastAgentLoop', () => {
     }));
   });
 
+  it('uses the final input systemPrompt without injecting provider defaults', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_system_prompt',
+        content: 'direct answer'
+      })
+    ]);
+
+    await runFastAgentLoop({
+      input: {
+        systemPrompt: 'final system prompt',
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: 'stale system prompt'
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ]
+      },
+      runtime: createRuntime()
+    });
+
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages.slice(0, 2)).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'final system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'hello'
+      }
+    ]);
+  });
+
   it('injects system tools only when runtime systemTools enable them', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       text({

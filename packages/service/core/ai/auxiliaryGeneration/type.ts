@@ -17,6 +17,7 @@ export type AuxiliaryGenerationUser = {
 
 export type AuxiliaryGenerationProcessorParams<T = unknown> = {
   query: string;
+  userAnswer?: string;
   files: AuxiliaryGenerationChatFileType[];
   data: T;
   histories: ChatItemDBSchemaType[];
@@ -31,6 +32,7 @@ export type AuxiliaryGenerationProcessorParams<T = unknown> = {
 
 export type AuxiliaryGenerationProcessorResponse = {
   aiResponse: AIChatItemValueItemType[];
+  memories?: Record<string, any>;
   usage: {
     model: string;
     inputTokens: number;
@@ -51,6 +53,7 @@ export type AuxiliaryGenerationRunParams<T = unknown> = {
   sourceId: string;
   chatId: string;
   query: string;
+  userAnswer?: string;
   files: AuxiliaryGenerationChatFileType[];
   data: T;
   histories: ChatItemDBSchemaType[];

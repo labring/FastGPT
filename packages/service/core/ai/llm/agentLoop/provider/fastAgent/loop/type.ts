@@ -32,7 +32,6 @@ export type {
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   teamId: string;
   model: string;
-  promptMode?: 'fastAgent' | 'raw';
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;

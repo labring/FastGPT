@@ -1,8 +1,8 @@
 # 辅助生成当前设计
 
-状态：当前实现
+状态：已实现
 
-最后核对：2026-07-16
+最后核对：2026-08-03
 
 ## 适用范围
 
@@ -48,16 +48,41 @@ API route
 
 ## Agent Loop 接入
 
-`runAuxiliaryGenerationAgentLoop` 复用 [Agent Loop](./agent-loop/index.md)，当前约束如下：
+`runAuxiliaryGenerationAgentLoop` 复用 [Agent Loop](./agent-loop/index.md)，约束如下：
 
-- 启用 `plan` 系统工具。
-- runtime tool catalog 为空。
-- 不启用 ask、Sandbox、文件读取或知识库工具。
+- 不启用 `plan`、Sandbox、文件读取或知识库系统工具。
+- 启用标准 `ask_user` 系统工具；暂停和恢复完全遵循 Agent Loop 的 `providerState + userAnswer` 协议。
+- 业务调用方可以显式注入 runtime tools 和 executor；Chat Agent Helper 注入 `generate_config`。
 - reasoning delta 转为辅助生成 answer SSE。
 - usage 直接进入辅助生成 usage sink。
-- 最终只提取不含 tool calls 的 assistant message，返回 answer 和 reasoning 文本。
+- 结果保留标准 `status`、`pause` 和 `providerState`，业务层只负责转换展示和持久化，不自行判断暂停条件。
 
-如果新场景需要业务工具或 interactive，应先设计显式能力协议，不能依赖 processor 闭包隐式访问 Workflow runtime。
+如果新场景需要业务工具，必须通过 runtime tool catalog 和 executor 显式注入，不能依赖 processor 读取 Workflow runtime。
+
+## Chat Agent Helper 连续调用
+
+```text
+模型调用 ask_user
+  -> Agent Loop 返回 paused + ask + providerState
+  -> Chat Agent Helper 保存 interactive、ask tool call 和 providerState memory
+  -> 用户提交与 Workflow Agent 相同的 { answers: string[] } 原始结构
+  -> 调用方传回 providerState + userAnswer
+  -> Agent Loop 在原 ask tool call 后追加 tool response 并继续
+  -> 模型调用 generate_config
+  -> executor 校验并生成表单配置，返回 "Generate config success"
+  -> 模型自行结束，调用方清理 providerState memory
+```
+
+Chat Agent Helper 读取历史时使用 `reserveTool: true`。除 interactive 外，还需要持久化对应的 `ask_user` 和 `generate_config` tool call/response，否则历史转换无法恢复工具语义。
+
+`generate_config` 是普通 runtime tool，不设置 `stop`。工具参数使用配置生成业务结构，不包含用于旧 JSON 路由的 `phase` 和 `reasoning` 字段；executor 使用 Zod 校验，并确认全部资源 ID 都在当前成员的可访问资源集合内，再转换为最终表单结构。参数错误作为 tool error 返回给模型修正，不再额外调用模型修复 JSON。
+
+## Provider State 持久化
+
+- 暂停态把 Agent Loop 返回的完整 `providerState` 写入当前 AI ChatItem 的 `memories`。
+- 恢复态只从最后一条 AI history 读取该 memory，并把原始回答作为 `userAnswer` 传入。
+- `done`、`error` 和 `aborted` 都清除该 memory，避免后续普通消息恢复陈旧暂停点。
+- 通用 `saveChat` 已支持 memories；辅助生成只扩展 processor 返回协议和 Chat Agent Helper 保存调用，不修改通用保存语义。
 
 ## SSE 与断流续传
 

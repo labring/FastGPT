@@ -2,6 +2,7 @@ export * from './event';
 export * from './continuation';
 export * from './input';
 export * from './interactive';
+export * from './mainPrompt';
 export * from './provider';
 export * from './result';
 export * from './runtime';

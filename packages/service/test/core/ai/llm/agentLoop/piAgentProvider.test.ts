@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { AgentLoopSystemTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain';
 
 const {
   agentPromptMock,
@@ -303,15 +302,7 @@ describe('runPiAgentLoop', () => {
     });
 
     expect(agentPromptMock).toHaveBeenCalledWith('hello');
-    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain(
-      '<user_background>\nsystem prompt\n</user_background>'
-    );
-    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain(
-      'set_plan，参数格式为 {"name":"简短计划名","steps":["步骤一","步骤二"]}'
-    );
-    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain(
-      'update_plan，参数格式为 {"updates":[{"id":"已有步骤 id","status":"done","note":"简短结果"}]}'
-    );
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toBe('system prompt');
     expect(agentConstructorArgs[0].toolExecution).toBe('sequential');
     expect(agentConstructorArgs[0].initialState.messages).toEqual([]);
     expect(result).toMatchObject({
@@ -366,73 +357,6 @@ describe('runPiAgentLoop', () => {
       })
     ]);
   });
-
-  it.each([
-    {
-      name: 'no runtime-capable tools',
-      systemTools: undefined,
-      expectedConstraint: true
-    },
-    {
-      name: 'sandbox tools only',
-      systemTools: {
-        sandbox: {
-          enabled: true,
-          client: {} as any
-        }
-      },
-      expectedConstraint: false
-    },
-    {
-      name: 'read file tool only',
-      systemTools: {
-        readFile: {
-          enabled: true,
-          maxFileAmount: 20,
-          execute: vi.fn()
-        }
-      },
-      expectedConstraint: false
-    },
-    {
-      name: 'dataset search tool only',
-      systemTools: {
-        datasetSearch: {
-          enabled: true,
-          execute: vi.fn()
-        }
-      },
-      expectedConstraint: false
-    }
-  ] satisfies Array<{
-    name: string;
-    systemTools?: AgentLoopSystemTools;
-    expectedConstraint: boolean;
-  }>)(
-    'sets the runtime tool constraint correctly with $name',
-    async ({ systemTools, expectedConstraint }) => {
-      await runPiAgentLoop({
-        input: {
-          messages: [{ role: 'user', content: 'hello' }]
-        },
-        runtime: {
-          llmParams: {
-            model: 'gpt-5'
-          },
-          systemTools,
-          toolCatalog: {
-            runtimeTools: []
-          },
-          executeTool: vi.fn(),
-          checkIsStopping: vi.fn(() => false)
-        }
-      });
-
-      expect(
-        agentConstructorArgs.at(-1).initialState.systemPrompt.includes('<tool_constraint>')
-      ).toBe(expectedConstraint);
-    }
-  );
 
   it('preserves multimodal content in the current user prompt', async () => {
     await runPiAgentLoop({

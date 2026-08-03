@@ -66,7 +66,6 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
   const fastAgentRuntime: FastAgentInternalRuntime<TChildrenResponse> = {
     teamId: runtime.teamId,
     model: runtime.llmParams.model,
-    promptMode: runtime.llmParams.promptMode,
     reasoningEffort: runtime.llmParams.reasoningEffort,
     userKey: runtime.llmParams.userKey,
     stream: runtime.llmParams.stream,
