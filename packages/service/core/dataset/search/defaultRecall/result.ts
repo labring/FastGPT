@@ -37,6 +37,7 @@ export const buildSearchResultItem = ({
     imageId: data.imageId,
     chunkIndex: data.chunkIndex,
     ...(includeIndexes ? { indexes: data.indexes } : {}),
+    ...(data.metadata ? { metadata: data.metadata } : {}),
     datasetId: String(data.datasetId),
     collectionId: String(data.collectionId),
     ...getCollectionSourceData(collection),

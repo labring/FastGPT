@@ -357,6 +357,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       a: trainingData.a,
       imageId: trainingData.imageId,
       imageDescMap: trainingData.imageDescMap,
+      ...(trainingData.dataMetadata && { metadata: trainingData.dataMetadata }),
       chunkIndex: trainingData.chunkIndex,
       indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
       indexes: trainingData.indexes || [],

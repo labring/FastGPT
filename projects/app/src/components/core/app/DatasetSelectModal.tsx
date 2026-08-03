@@ -165,7 +165,14 @@ export const DatasetSelectModal = ({
         <ModalBody flex={1} h={0} overflow="hidden">
           {isRootEmpty ? (
             <VStack h={'full'} justifyContent={'center'}>
-              <EmptyTip text={t('app:dataset_empty_tips')} py={4} />
+              <EmptyTip
+                text={
+                  userInfo?.team?.permission.hasDatasetCreatePer
+                    ? t('app:dataset_empty_tips')
+                    : t('app:dataset_empty_tips_no_permission')
+                }
+                py={4}
+              />
               {userInfo?.team?.permission.hasDatasetCreatePer && (
                 <Button onClick={onOpenQuickCreate}>{t('common:Create')}</Button>
               )}

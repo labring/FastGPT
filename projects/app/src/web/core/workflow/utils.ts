@@ -273,9 +273,25 @@ export const storeNode2FlowNode = ({
       !!nodeItem.toolConfig?.systemTool ||
       !!nodeItem.pluginId?.startsWith('systemTool-') ||
       !!nodeItem.pluginId?.startsWith('commercial-'));
-  nodeItem.inputs = inputsWithLegacyDefaults.map((input) =>
-    normalizeFlowNodeInputType(input, { isTool, allowLegacyToolDescriptionFallback })
-  );
+  nodeItem.inputs =
+    nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
+      ? inputsWithLegacyDefaults.map((input) => {
+          // agentGenerated 属于工具实例配置，工作流工具本身不应持久化该类型。
+          const renderTypeList = input.renderTypeList.filter(
+            (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+          );
+          return {
+            ...input,
+            renderTypeList,
+            selectedType:
+              input.selectedType === FlowNodeInputTypeEnum.agentGenerated
+                ? renderTypeList[0]
+                : input.selectedType
+          };
+        })
+      : inputsWithLegacyDefaults.map((input) =>
+          normalizeFlowNodeInputType(input, { isTool, allowLegacyToolDescriptionFallback })
+        );
 
   // Format output invalid
   const llmList = useSystemStore.getState().llmModelList;

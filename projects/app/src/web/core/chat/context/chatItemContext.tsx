@@ -73,6 +73,7 @@ export type GetQuoteProps = GetAllQuoteDataProps | GetCollectionQuoteDataProps;
 export type QuoteDataType = {
   rawSearch: SearchDataResponseQuoteListItemType[];
   metadata: GetQuoteProps;
+  singleQuote?: boolean;
 };
 export type OnOpenCiteModalProps = {
   collectionId?: string;
@@ -80,6 +81,7 @@ export type OnOpenCiteModalProps = {
   sourceName?: string;
   datasetId?: string;
   quoteId?: string;
+  singleQuote?: boolean;
 };
 
 type ChatItemContextType = {

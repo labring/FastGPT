@@ -15,6 +15,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { CreateBackupCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { getDatasetCsvHeaders, parseDatasetCsvHeaders } from '@fastgpt/service/core/dataset/read';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -55,7 +56,8 @@ async function handler(req: ApiRequestProps) {
       getFormatText: false
     });
 
-    if (!rawText.trim().startsWith('q,a,indexes')) {
+    const { validTypedHeader } = parseDatasetCsvHeaders(getDatasetCsvHeaders(rawText));
+    if (!validTypedHeader) {
       return Promise.reject(i18nT('dataset:backup_template_invalid'));
     }
 

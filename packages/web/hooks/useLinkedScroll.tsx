@@ -8,6 +8,10 @@ import { useRequest } from './useRequest';
 
 const threshold = 200;
 
+/**
+ * 加载以锚点为中心的关联列表，并按滚动位置补充前后数据。
+ * 关闭分页时仍保留滚动容器和初始锚点请求，适用于只展示单条数据的场景。
+ */
 export function useLinkedScroll<
   TParams extends LinkedPaginationProps,
   TData extends LinkedListResponse
@@ -18,12 +22,14 @@ export function useLinkedScroll<
     params = {},
     currentData,
     defaultScroll = 'top',
+    enablePagination = true,
     showErrorToast = true
   }: {
     pageSize?: number;
     params?: Record<string, any>;
     currentData?: { id: string; anchor?: any };
     defaultScroll?: 'top' | 'bottom';
+    enablePagination?: boolean;
     showErrorToast?: boolean;
   }
 ) {
@@ -246,7 +252,7 @@ export function useLinkedScroll<
 
       useDebounceEffect(
         () => {
-          if (!actualContainerRef?.current || isLoading) return;
+          if (!enablePagination || !actualContainerRef?.current || isLoading) return;
 
           const { scrollTop, scrollHeight, clientHeight } = actualContainerRef.current;
 
@@ -260,7 +266,7 @@ export function useLinkedScroll<
             loadPrevData(actualContainerRef);
           }
         },
-        [scroll],
+        [scroll, enablePagination],
         { wait: 200 }
       );
 
@@ -280,7 +286,7 @@ export function useLinkedScroll<
         </MyBox>
       );
     },
-    [isLoading]
+    [enablePagination, isLoading]
   );
 
   return {

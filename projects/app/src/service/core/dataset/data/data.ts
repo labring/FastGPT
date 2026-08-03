@@ -117,6 +117,7 @@ export class DatasetDataOperation {
     embeddingModel,
     imageIndex,
     imageDescMap,
+    metadata,
     session
   }: CreateDatasetDataPropsType & {
     embeddingModel: string;
@@ -167,6 +168,7 @@ export class DatasetDataOperation {
           a,
           imageId,
           imageDescMap,
+          ...(metadata && { metadata }),
           chunkIndex,
           indexes: results
         }
@@ -221,6 +223,7 @@ export class DatasetDataOperation {
     indexSize = 512,
     indexPrefix,
     imageIndex,
+    metadata,
     forceRebuild = false
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = getEmbeddingModel(model);
@@ -294,6 +297,9 @@ export class DatasetDataOperation {
           : mongoData.history;
       mongoData.q = nextQ;
       mongoData.a = nextA;
+      if (metadata !== undefined) {
+        mongoData.metadata = metadata;
+      }
       mongoData.indexes = newIndexes;
       await mongoData.save({ session });
 

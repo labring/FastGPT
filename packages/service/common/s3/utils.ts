@@ -300,6 +300,10 @@ export function sanitizeS3ObjectKey(key: string) {
   };
 
   key = replaceParentheses(key);
+  // 替换空格为下划线，避免 turndown 将含空格的 URL 包裹在 <> 中，
+  // 导致 replaceS3KeyToPreviewUrl 正则无法匹配图片 key
+  const replaceSpaces = (key: string) => key.replace(/\s/g, '_');
+  key = replaceSpaces(key);
 
   return key;
 }

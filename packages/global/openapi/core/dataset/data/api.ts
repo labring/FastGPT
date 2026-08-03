@@ -32,7 +32,10 @@ const PushDataChunkSchema = z.object({
   indexes: z
     .array(DatasetDataIndexItemSchema.omit({ dataId: true }))
     .optional()
-    .meta({ description: '额外向量索引' })
+    .meta({ description: '额外向量索引' }),
+  metadata: z.record(z.string(), z.any()).optional().meta({
+    description: '自定义元数据'
+  })
 });
 export type PushDataChunkType = z.infer<typeof PushDataChunkSchema>;
 
@@ -55,7 +58,7 @@ export type GetDatasetDataDetailResponse = z.infer<typeof GetDatasetDataDetailRe
  * API: 更新数据集数据
  * Route: PUT /api/core/dataset/data/update
  * ============================================================================ */
-export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema;
+export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema.omit({ metadata: true });
 export type UpdateDatasetDataBody = z.infer<typeof UpdateDatasetDataBodySchema>;
 export const UpdateDatasetDataResponseSchema = z.object({
   q: z.string().optional().meta({

@@ -15,6 +15,7 @@
     "@bany/curl-to-json": "^1.2.8",
     "@fastgpt-plugin/sdk-client": "0.1.0-alpha.2",
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
+    "ajv": "catalog:",
     "axios": "catalog:",
     "ipaddr.js": "catalog:",
     "cron-parser": "^4.9.0",

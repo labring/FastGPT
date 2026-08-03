@@ -215,7 +215,8 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   fullTextToken: z.string().meta({ description: '全文 token' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
   rebuilding: z.boolean().optional().meta({ description: '重建中' }),
-  imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' })
+  imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
+  metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
 });
 export type DatasetDataSchemaType = z.infer<typeof DatasetDataSchema>;
 
@@ -245,6 +246,10 @@ export const DatasetTrainingSchema = z.object({
   a: z.string().meta({ description: '回答/补充文本' }),
   imageId: z.string().optional().meta({ description: '图片 ID' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
+  dataMetadata: z
+    .record(z.string(), z.any())
+    .optional()
+    .meta({ description: '自定义元数据（训练时透传）' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
   indexSize: z.number().optional().meta({ description: '索引大小' }),
   weight: z.number().meta({ description: '权重' }),
@@ -364,7 +369,8 @@ export const DatasetDataItemSchema = DatasetDataFieldSchema.extend({
   chunkIndex: z.number().meta({ description: '块索引' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
-  isOwner: z.boolean().meta({ description: '是否为 owner' })
+  isOwner: z.boolean().meta({ description: '是否为 owner' }),
+  metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
 });
 export type DatasetDataItemType = z.infer<typeof DatasetDataItemSchema>;
 
@@ -390,7 +396,8 @@ export const UpdateDatasetDataPropsSchema = z.object({
   }),
   indexPrefix: z.string().optional().meta({
     description: '索引前缀标题'
-  })
+  }),
+  metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
 });
 export type UpdateDatasetDataPropsType = z.infer<typeof UpdateDatasetDataPropsSchema>;
 
@@ -408,7 +415,8 @@ export const CreateDatasetDataPropsSchema = z.object({
     .array(DatasetDataIndexItemSchema.omit({ dataId: true }))
     .optional()
     .meta({ description: '向量索引列表' }),
-  indexPrefix: z.string().optional().meta({ description: '索引前缀标题' })
+  indexPrefix: z.string().optional().meta({ description: '索引前缀标题' }),
+  metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
 });
 export type CreateDatasetDataPropsType = z.infer<typeof CreateDatasetDataPropsSchema>;
 
@@ -435,7 +443,8 @@ export type DatasetFileSchemaType = z.infer<typeof DatasetFileSchema>;
 export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
   teamId: true,
   indexes: true,
-  isOwner: true
+  isOwner: true,
+  metadata: true
 })
   .extend({
     score: z
@@ -446,7 +455,8 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
           index: z.number().meta({ description: '索引' })
         })
       )
-      .meta({ description: '评分列表' })
+      .meta({ description: '评分列表' }),
+    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
   })
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;

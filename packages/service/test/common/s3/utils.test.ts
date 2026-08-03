@@ -158,7 +158,7 @@ describe('getFormatedFilename', () => {
     it('should handle filename with spaces', () => {
       const result = getFormatedFilename('my document.pdf');
 
-      expect(result.formatedFilename).toBe('my document_abc123');
+      expect(result.formatedFilename).toBe('my_document_abc123');
       expect(result.extension).toBe('pdf');
     });
   });
@@ -320,7 +320,7 @@ describe('getFormatedFilename', () => {
     it('should handle typical user upload filename', () => {
       const result = getFormatedFilename('My Document (Final Version).pdf');
 
-      expect(result.formatedFilename).toBe('My Document [Final Version]_abc123');
+      expect(result.formatedFilename).toBe('My_Document_[Final_Version]_abc123');
       expect(result.extension).toBe('pdf');
     });
 
@@ -389,7 +389,7 @@ describe('getFormatedFilename', () => {
 describe('sanitizeS3ObjectKey', () => {
   it('should replace parentheses with square brackets', () => {
     expect(sanitizeS3ObjectKey('file(1).txt')).toBe('file[1].txt');
-    expect(sanitizeS3ObjectKey('photo (copy).jpg')).toBe('photo [copy].jpg');
+    expect(sanitizeS3ObjectKey('photo (copy).jpg')).toBe('photo_[copy].jpg');
     expect(sanitizeS3ObjectKey('document(v2)(final).pdf')).toBe('document[v2][final].pdf');
   });
 
@@ -425,9 +425,36 @@ describe('sanitizeS3ObjectKey', () => {
 
   it('should handle S3 key paths with parentheses', () => {
     expect(sanitizeS3ObjectKey('dataset/uploads/file (1).pdf')).toBe(
-      'dataset/uploads/file [1].pdf'
+      'dataset/uploads/file_[1].pdf'
     );
     expect(sanitizeS3ObjectKey('chat/images/photo(copy).jpg')).toBe('chat/images/photo[copy].jpg');
+  });
+
+  it('should replace spaces with underscores', () => {
+    expect(sanitizeS3ObjectKey('my file.txt')).toBe('my_file.txt');
+    expect(sanitizeS3ObjectKey('photo copy.jpg')).toBe('photo_copy.jpg');
+    expect(sanitizeS3ObjectKey('document  final  version.pdf')).toBe(
+      'document__final__version.pdf'
+    );
+  });
+
+  it('should handle both spaces and parentheses together', () => {
+    expect(sanitizeS3ObjectKey('my file (1).txt')).toBe('my_file_[1].txt');
+    expect(sanitizeS3ObjectKey('photo (copy) of me.jpg')).toBe('photo_[copy]_of_me.jpg');
+    expect(sanitizeS3ObjectKey('report (2024) final version.pdf')).toBe(
+      'report_[2024]_final_version.pdf'
+    );
+  });
+
+  it('should handle multiple consecutive spaces', () => {
+    expect(sanitizeS3ObjectKey('file   with   many   spaces.txt')).toBe(
+      'file___with___many___spaces.txt'
+    );
+  });
+
+  it('should handle leading and trailing spaces', () => {
+    expect(sanitizeS3ObjectKey('  file  ')).toBe('__file__');
+    expect(sanitizeS3ObjectKey('  path/to/file  ')).toBe('__path/to/file__');
   });
 });
 

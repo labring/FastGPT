@@ -51,8 +51,7 @@ export type ToolNodeItemType = {
   flowNodeType: RuntimeNodeItemType['flowNodeType'];
 
   jsonSchema?: JSONSchemaInputType;
-  inputs?: RuntimeNodeItemType['inputs'];
-  toolParams: RuntimeNodeItemType['inputs'];
+  inputs: RuntimeNodeItemType['inputs'];
 };
 
 export type FileInputType = AgentLoopCoreInputFile;

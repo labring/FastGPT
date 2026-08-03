@@ -32,7 +32,7 @@ type ValidImportSkillFormType = ImportSkillFormType & {
 type Props = {
   parentId?: string | null;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (skillId: string) => void | Promise<void>;
 };
 
 const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
@@ -67,7 +67,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
     maxCount: 1
   });
 
-  const { runAsync: onImport, loading: isImporting } = useRequest(
+  const { runAsync: importSkillReq, loading: isImporting } = useRequest(
     ({ name, avatar, file }: ValidImportSkillFormType) => {
       return importSkill({
         file,
@@ -77,10 +77,6 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
       });
     },
     {
-      onSuccess() {
-        onSuccess?.();
-        onClose();
-      },
       successToast: t('common:import_success'),
       errorToast: t('common:import_failed')
     }
@@ -88,11 +84,15 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
 
   const handleImport = async (data: ImportSkillFormType) => {
     if (!data.file) return;
-    await onImport({
+    const skillId = await importSkillReq({
       ...data,
       name: data.name.trim(),
       file: data.file
     });
+    // 导入成功后立即关闭弹窗。
+    onClose();
+    // 关联/刷新交给调用方，由调用方自行处理异常。
+    await onSuccess?.(skillId);
   };
 
   const handleInvalid = (errors: FieldErrors<ImportSkillFormType>) => {

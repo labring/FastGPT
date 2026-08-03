@@ -2207,6 +2207,44 @@ describe('storeNode2FlowNode', () => {
     expect(result.data.inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
+  it('removes agentGenerated from workflow tool inputs before saving again', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'plugin-input',
+      flowNodeType: FlowNodeTypeEnum.pluginInput,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          selectedType: FlowNodeInputTypeEnum.input,
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.input,
+            FlowNodeInputTypeEnum.reference
+          ]
+        }
+      ],
+      outputs: [],
+      name: 'Plugin input',
+      version: '1.0'
+    };
+
+    const node = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [], chatConfig: {} });
+
+    expect(result.nodes[0].inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    });
+    expect(result.nodes[0].inputs[0].renderTypeList).not.toContain(
+      FlowNodeInputTypeEnum.agentGenerated
+    );
+  });
+
   // 这两个测试涉及到模拟冲突，请运行单独的测试文件:
   // - utils.deprecated.test.ts: 测试 deprecated inputs/outputs
   // - utils.version.test.ts: 测试 version 和 avatar inheritance

@@ -15,7 +15,7 @@ import { SystemToolRepo } from '../../../../../app/tool/systemTool/systemTool.re
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { filterAgentGeneratedToolParams } from '@fastgpt/global/core/app/formEdit/utils';
+import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 
 /**
  * 收集 Agent 节点可用的 workflow runtime tools 和用户选择的子应用工具。
@@ -212,15 +212,11 @@ export const getExecuteTool = ({
             errorMessage: response
           };
         }
-        const agentGeneratedParams = filterAgentGeneratedToolParams({
-          params: toolCallParams,
-          inputs: tool.inputs ?? [],
-          additionalAllowedKeys: tool.agentGeneratedInputKeys
+        const requestParams = mergeToolRuntimeParams({
+          agentGeneratedKeys: tool.agentGeneratedInputKeys ?? [],
+          fixedInputBindings: tool.params ?? {},
+          aiParams: toolCallParams ?? {}
         });
-        const requestParams = {
-          ...tool.params,
-          ...agentGeneratedParams
-        };
 
         if (tool.type === 'tool') {
           const { response, usages, nodeResponse, errorMessage } = await dispatchTool({

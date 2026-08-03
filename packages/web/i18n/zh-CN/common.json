@@ -400,6 +400,7 @@
   "core.dataset.Dataset ID": "知识库 ID",
   "core.dataset.Delete Confirm": "确认删除该知识库？删除后数据无法恢复，请确认！",
   "core.dataset.Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
+  "core.dataset.Empty Dataset Tips No Permission": "还没有知识库，且当前账号没有创建知识库的权限，请联系管理员获取权限。",
   "core.dataset.Folder placeholder": "这是一个目录",
   "core.dataset.Intro Placeholder": "这个知识库还没有介绍~",
   "core.dataset.My Dataset": "我的知识库",

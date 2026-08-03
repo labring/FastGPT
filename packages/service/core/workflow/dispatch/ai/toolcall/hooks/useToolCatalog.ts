@@ -3,14 +3,10 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { buildModelVisibleToolJsonSchema } from '@fastgpt/global/core/app/jsonschema';
+import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ToolNodeItemType } from '../type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  canInputBeAgentGenerated,
-  isAgentGeneratedToolInput
-} from '@fastgpt/global/core/app/formEdit/utils';
 import {
   getAgentLoopCoreSystemToolInfo,
   type AgentLoopCoreToolInfo
@@ -18,35 +14,14 @@ import {
 
 export type ToolInfo = AgentLoopCoreToolInfo<ToolNodeItemType>;
 
-export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
-  const toolParams = item.toolParams.filter(
-    (input) => isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)
-  );
-
-  if (item.jsonSchema) {
-    return {
-      type: 'function',
-      function: {
-        name: item.nodeId,
-        description: `${item.name}: ${item.toolDescription || item.intro}`,
-        parameters: buildModelVisibleToolJsonSchema({
-          inputs: item.inputs ?? item.toolParams,
-          toolParams,
-          jsonSchema: item.jsonSchema
-        })
-      }
-    };
-  }
-
-  return {
-    type: 'function',
-    function: {
-      name: item.nodeId,
-      description: `${item.name}: ${item.toolDescription || item.intro}`,
-      parameters: buildModelVisibleToolJsonSchema({ toolParams })
-    }
-  };
-};
+export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool =>
+  compileToolRuntime({
+    toolId: item.nodeId,
+    name: item.name,
+    description: item.toolDescription || item.intro,
+    inputs: item.inputs,
+    jsonSchema: item.jsonSchema
+  }).modelTool;
 
 /**
  * 工具分类

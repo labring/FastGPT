@@ -220,9 +220,11 @@ export async function rewriteAppWorkflowToDetail({
       if (allowLegacyFallback) {
         node.inputs = normalizeWorkflowToolInputsDefaultMode(node.inputs);
       }
-      node.inputs = node.inputs.map((input) =>
-        normalizeFlowNodeInputType(input, { deferDefaultSelection: true })
-      );
+      if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
+        node.inputs = node.inputs.map((input) =>
+          normalizeFlowNodeInputType(input, { deferDefaultSelection: true })
+        );
+      }
 
       // Tool node
       if (node.pluginId) {

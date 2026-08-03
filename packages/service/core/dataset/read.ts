@@ -24,6 +24,36 @@ import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
+const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'metadata']);
+
+/**
+ * 解析 CSV 模板表头，严格限制为 q/a/index/metadata 四类固定列名，并保留原始列顺序。
+ * q、a 必须各出现一次，metadata 最多一列，index 可以重复。
+ */
+export const parseDatasetCsvHeaders = (headers: string[]) => {
+  const normalized = headers.map((header) => header.trim().toLowerCase());
+  const typedHeader =
+    normalized.length > 0 && normalized.every((header) => datasetCsvColumnTypes.has(header));
+
+  return {
+    normalized,
+    typedHeader,
+    validTypedHeader:
+      typedHeader &&
+      normalized.filter((header) => header === 'q').length === 1 &&
+      normalized.filter((header) => header === 'a').length === 1 &&
+      normalized.filter((header) => header === 'metadata').length <= 1
+  };
+};
+
+/**
+ * 从 CSV 原文读取第一行表头，统一复用 PapaParse，避免 API 层用字符串 split 误判带引号的表头。
+ */
+export const getDatasetCsvHeaders = (rawText: string) => {
+  const [headers = []] = Papa.parse(rawText).data as string[][];
+  return headers;
+};
+
 export const readFileRawTextByUrl = async ({
   teamId,
   tmbId,
@@ -331,24 +361,94 @@ export const rawText2Chunks = async ({
     q: string;
     a: string;
     indexes?: string[];
+    metadata?: Record<string, any>;
     imageIdList?: string[];
   }[]
 > => {
   const parseDatasetBackup2Chunks = (rawText: string) => {
     const csvArr = Papa.parse(rawText).data as string[][];
+    if (csvArr.length < 2) return { chunks: [] };
+
+    const rawHeaders = csvArr[0];
+    const { normalized: headers, typedHeader } = parseDatasetCsvHeaders(rawHeaders);
+
+    // Build column index mapping
+    let qIdx = -1,
+      aIdx = -1;
+    const indexesIdxs: number[] = [];
+    const metadataKeys: { idx: number; key: string }[] = [];
+    const metadataIdxs: number[] = [];
+
+    headers.forEach((header, idx) => {
+      if (header === 'q') {
+        qIdx = idx;
+      } else if (header === 'a') {
+        aIdx = idx;
+      } else if (header === 'index' || header === 'indexes') {
+        indexesIdxs.push(idx);
+      } else if (typedHeader && header === 'metadata') {
+        metadataIdxs.push(idx);
+      } else {
+        metadataKeys.push({ idx, key: rawHeaders[idx].trim() });
+      }
+    });
+
+    // 旧导出格式只有一个 indexes 表头，但数据行会把多个索引展开到后续单元格。
+    const legacyIndexesStart =
+      metadataKeys.length === 0 && metadataIdxs.length === 0 && indexesIdxs.length === 1
+        ? indexesIdxs[0]
+        : undefined;
+
     const chunks = csvArr
       .slice(1)
-      .map((item) => ({
-        q: item[0] || '',
-        a: item[1] || '',
-        indexes: item.slice(2).filter((item) => item.trim()),
-        imageIdList
-      }))
+      .map((item) => {
+        const q = qIdx >= 0 ? item[qIdx] || '' : '';
+        const a = aIdx >= 0 ? item[aIdx] || '' : '';
+
+        const indexes = (
+          legacyIndexesStart !== undefined
+            ? item.slice(legacyIndexesStart)
+            : indexesIdxs.map((idx) => item[idx])
+        )
+          .map((value) => (value || '').trim())
+          .filter(Boolean);
+
+        // Build metadata: only include non-empty values
+        let metadata: Record<string, any> | undefined;
+        for (const { idx, key } of metadataKeys) {
+          const val = (item[idx] || '').trim();
+          if (val) {
+            metadata = metadata || {};
+            metadata[key] = val;
+          }
+        }
+
+        for (const idx of metadataIdxs) {
+          const val = (item[idx] || '').trim();
+          if (!val) continue;
+
+          let parsedValue: Record<string, any> | undefined;
+          try {
+            const parsed = JSON.parse(val);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              parsedValue = parsed;
+            }
+          } catch {}
+
+          metadata = metadata || {};
+          if (parsedValue) {
+            Object.assign(metadata, parsedValue);
+          } else {
+            // 固定 metadata 表头没有字段名，非法 JSON 仍按列序保留，避免静默丢值。
+            metadata[`metadata_${idx}`] = val;
+          }
+        }
+
+        return { q, a, indexes, metadata, imageIdList };
+      })
       .filter((item) => item.q || item.a);
 
-    return {
-      chunks
-    };
+    return { chunks };
   };
 
   if (backupParse) {

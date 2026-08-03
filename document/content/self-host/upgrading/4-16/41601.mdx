@@ -93,6 +93,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
 3. App Workflow 在 Sandbox Provider 或运行时镜像变化时自动归档并恢复 Workspace，升级过程在当前运行中静默完成。
 4. 工作流工具节点支持将指定输入参数交由 Agent 自动生成，并保留固定值、引用和用户输入等既有配置。
 5. ChatAgent 选择工具时，支持手动指定是否为 AI 生成参数。
+6. 知识库数据支持自定义 `metadata`，可通过 API 或 CSV 模板导入 JSON 元数据；检索结果和备份导出会保留该字段。CSV 模板仅允许 `q`、`a`、`index`、`metadata` 表头，`q`、`a`、`metadata` 各一列，`index` 可多列且顺序任意。
 
 ## ⚙️ 优化
 
