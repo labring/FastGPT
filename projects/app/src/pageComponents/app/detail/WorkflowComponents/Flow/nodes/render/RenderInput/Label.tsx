@@ -14,11 +14,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-import {
-  canInputBeAgentGenerated,
-  canInputBeManuallyConfigured,
-  getToolInputDisplayRenderTypeList
-} from '@fastgpt/global/core/app/formEdit/utils';
+import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 type Props = {
@@ -34,11 +30,8 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { description, required, label, renderTypeList, valueType, valueDesc } = input;
-  const canManuallyConfigure = canInputBeManuallyConfigured(input);
   const renderType =
-    isTool && canInputBeAgentGenerated(input) && !canManuallyConfigure
-      ? FlowNodeInputTypeEnum.agentGenerated
-      : (getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input);
+    getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
   const displayRenderTypeList = useMemo(
     () =>
       getToolInputDisplayRenderTypeList({

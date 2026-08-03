@@ -65,6 +65,41 @@ describe('compileToolRuntime', () => {
     });
   });
 
+  it('keeps a selected workflow reference out of the model schema', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'workflow-tool',
+      name: 'Workflow tool',
+      inputs: [
+        {
+          key: 'var_ref',
+          label: 'var_ref',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: ['workflowStart', 'userChatInput']
+        },
+        {
+          key: 'var_ref2',
+          label: 'var_ref2',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        }
+      ]
+    });
+
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        var_ref2: { type: 'string', description: '' }
+      }
+    });
+    expect(compiled.agentGeneratedKeys).toEqual(['var_ref2']);
+    expect(compiled.fixedInputBindings).toEqual({
+      var_ref: ['workflowStart', 'userChatInput']
+    });
+  });
+
   it('normalizes persisted modes to each input allowed modes', () => {
     const compiled = compileToolRuntime({
       toolId: 'guarded-tool',
