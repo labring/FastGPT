@@ -1017,6 +1017,22 @@ describe('agent generated tool input helpers', () => {
     expect(getToolInputManualRenderType(input)).toBeUndefined();
   });
 
+  it('should preserve an explicit reference-only selection in workflow tool context', () => {
+    const input = normalizeFlowNodeInputType(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference
+      }),
+      { isTool: true }
+    );
+
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.reference
+    ]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+  });
+
   it('should normalize reference-only inputs to agent generated mode', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
@@ -1481,6 +1497,20 @@ describe('agent generated tool input helpers', () => {
     expect(renderTypeList).toEqual([
       FlowNodeInputTypeEnum.agentGenerated,
       FlowNodeInputTypeEnum.textarea,
+      FlowNodeInputTypeEnum.reference
+    ]);
+  });
+
+  it('should keep reference available for reference-only workflow tool inputs', () => {
+    const renderTypeList = getToolInputDisplayRenderTypeList({
+      input: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference]
+      }),
+      showAgentGenerated: true
+    });
+
+    expect(renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
       FlowNodeInputTypeEnum.reference
     ]);
   });

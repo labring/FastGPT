@@ -163,15 +163,12 @@ export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
       : isLegacyDefaultSelection
         ? undefined
         : legacySelectedType;
-  const mustUseAgentGenerated =
-    canUseAgentGenerated && shouldUseAgentGeneratedOnly({ ...input, renderTypeList });
   const shouldDefaultToAgentGenerated = canUseAgentGenerated && recommendsAgentGenerated;
   const defaultManualType = renderTypeList.find(
     (type) => type !== FlowNodeInputTypeEnum.agentGenerated
   );
-  const selectedType = mustUseAgentGenerated
-    ? FlowNodeInputTypeEnum.agentGenerated
-    : deferDefaultSelection && recommendsAgentGenerated && !savedSelectedType
+  const selectedType =
+    deferDefaultSelection && recommendsAgentGenerated && !savedSelectedType
       ? undefined
       : savedSelectedType &&
           renderTypeList.includes(savedSelectedType) &&
@@ -307,12 +304,11 @@ export const getToolInputDisplayRenderTypeList = ({
   }
 
   const manualRenderType = getToolInputManualRenderType(input);
-  if (!manualRenderType) return [FlowNodeInputTypeEnum.agentGenerated];
 
   return Array.from(
     new Set([
       FlowNodeInputTypeEnum.agentGenerated,
-      manualRenderType,
+      ...(manualRenderType ? [manualRenderType] : []),
       ...input.renderTypeList.filter(
         (type) => type !== FlowNodeInputTypeEnum.agentGenerated && !manualInputRenderTypes.has(type)
       )
@@ -527,8 +523,17 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
   }: ToolInputDefaultModeOptions = {}
 ): T => {
   const isTool = allowUserChatInputAgentGenerated || input.key !== NodeInputKeyEnum.userChatInput;
+  const normalizedInput = normalizeFlowNodeInputType(input, { isTool, forceDefaultMode });
 
-  return normalizeFlowNodeInputType(input, { isTool, forceDefaultMode });
+  // Agent 配置不展示 reference 等工作流专用类型；没有手动控件时只能由 Agent 生成。
+  if (isTool && shouldUseAgentGeneratedOnly(normalizedInput)) {
+    return {
+      ...normalizedInput,
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    };
+  }
+
+  return normalizedInput;
 };
 
 export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>(
