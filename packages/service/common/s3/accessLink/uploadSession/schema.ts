@@ -1,10 +1,7 @@
-import { getLogger, LogCategories } from '../../../logger';
 import { defineIndex, getMongoModel, Schema } from '../../../mongo';
 import type { S3UploadSessionType } from '../type';
 
 export const S3UploadSessionCollectionName = 's3_upload_sessions';
-
-const logger = getLogger(LogCategories.INFRA.MONGO);
 
 const S3UploadSessionMongoSchema = new Schema({
   tokenHash: {
@@ -23,11 +20,10 @@ const S3UploadSessionMongoSchema = new Schema({
     type: Number,
     required: true
   },
-  uploadConstraints: {
+  uploadPolicy: {
     type: Object,
     required: true
   },
-  uploadPolicy: Object,
   fileHint: Object,
   metadata: Object,
   createTime: {
@@ -39,7 +35,11 @@ const S3UploadSessionMongoSchema = new Schema({
     required: true
   },
   usedAt: Date,
-  revokedAt: Date
+  revokedAt: Date,
+  multipart: {
+    type: Object,
+    required: false
+  }
 });
 
 defineIndex(S3UploadSessionMongoSchema, {

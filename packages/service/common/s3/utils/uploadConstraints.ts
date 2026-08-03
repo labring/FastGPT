@@ -4,7 +4,7 @@ import {
   type FileExtensionKeyType
 } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import type { UploadConstraintsInput, UploadConstraints } from '../contracts/type';
+import type { UploadConstraintsInput } from '../contracts/type';
 import {
   createUploadExtensionRulesFromFileSelectConfig,
   normalizeAllowedExtensions,
@@ -12,6 +12,7 @@ import {
   parseAllowedExtensions
 } from '../uploadPolicy/utils';
 import { createUploadPolicy } from '../uploadPolicy/service';
+import type { UploadPolicy } from '../uploadPolicy/type';
 
 const uploadConfigKeys: FileExtensionKeyType[] = [
   'canSelectFile',
@@ -61,7 +62,7 @@ export const createUploadConstraints = ({
   declaredFilename?: string;
   source?: 'local-file' | 'remote-url' | 'server-generated';
   size?: number;
-}): UploadConstraints => {
+}): UploadPolicy => {
   return createUploadPolicy({
     hint: {
       filename,

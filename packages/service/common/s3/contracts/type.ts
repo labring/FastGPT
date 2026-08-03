@@ -6,6 +6,7 @@ import {
   UploadPolicySchema
 } from '../uploadPolicy/type';
 import { assertStorageObjectKey } from '@fastgpt-sdk/storage';
+import type { MultipartUploadPart, StorageUploadBody } from '@fastgpt-sdk/storage';
 
 /** FastGPT 入口与底层 Storage SDK 共用同一套对象 key 规范。 */
 export const StorageObjectKeySchema = z.string().superRefine((key, context) => {
@@ -64,18 +65,93 @@ export type CreatePostPresignedUrlParams = z.infer<typeof CreatePostPresignedUrl
 export const CreatePostPresignedUrlOptionsSchema = z.object({
   expiredHours: z.number().positive().optional().describe('小时'),
   maxFileSize: z.number().positive().optional().describe('MB'),
-  uploadConstraints: UploadConstraintsInputSchema.optional()
+  uploadPolicy: UploadPolicySchema.optional()
 });
 export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUrlOptionsSchema>;
 
-export const CreatePostPresignedUrlResultSchema = z.object({
+const CreatePostPresignedUrlBaseResultSchema = z.object({
   url: z.string().nonempty(),
   key: z.string().nonempty(),
   headers: z.record(z.string(), z.string()),
   previewUrl: z.string().nonempty(),
   maxSize: z.number().positive().optional()
 });
+
+export const CreatePresignedPutUrlResultSchema = CreatePostPresignedUrlBaseResultSchema.extend({
+  uploadMode: z.literal('single')
+});
+export type CreatePresignedPutUrlResult = z.infer<typeof CreatePresignedPutUrlResultSchema>;
+
+export const CreatePostPresignedUrlResultSchema = z.discriminatedUnion('uploadMode', [
+  CreatePresignedPutUrlResultSchema,
+  CreatePostPresignedUrlBaseResultSchema.extend({
+    uploadMode: z.literal('multipart'),
+    completeUrl: z.string().nonempty(),
+    abortUrl: z.string().nonempty(),
+    partSize: z.number().int().positive(),
+    concurrency: z.number().int().positive(),
+    maxRetry: z.number().int().nonnegative()
+  })
+]);
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
+
+export const CreateMultipartUploadAccessUrlParamsSchema = CreatePostPresignedUrlParamsSchema.extend(
+  {
+    size: z
+      .number()
+      .int()
+      .positive()
+      .refine(Number.isSafeInteger, 'Multipart size must be a safe integer')
+  }
+);
+export type CreateMultipartUploadAccessUrlParams = z.infer<
+  typeof CreateMultipartUploadAccessUrlParamsSchema
+>;
+
+export const CreateMultipartUploadAccessUrlOptionsSchema =
+  CreatePostPresignedUrlOptionsSchema.extend({
+    partSize: z
+      .number()
+      .int()
+      .positive()
+      .refine(Number.isSafeInteger, 'Multipart part size must be a safe integer')
+      .optional(),
+    concurrency: z.number().int().positive().optional(),
+    maxRetry: z.number().int().nonnegative().optional()
+  });
+export type CreateMultipartUploadAccessUrlOptions = z.infer<
+  typeof CreateMultipartUploadAccessUrlOptionsSchema
+>;
+
+export const CreateMultipartUploadAccessUrlResultSchema =
+  CreatePostPresignedUrlBaseResultSchema.extend({
+    uploadMode: z.literal('multipart'),
+    completeUrl: z.string().nonempty(),
+    abortUrl: z.string().nonempty(),
+    partSize: z.number().int().positive(),
+    concurrency: z.number().int().positive(),
+    maxRetry: z.number().int().nonnegative()
+  });
+export type CreateMultipartUploadAccessUrlResult = z.infer<
+  typeof CreateMultipartUploadAccessUrlResultSchema
+>;
+
+export type UploadMultipartPartAccessParams = {
+  token: string;
+  partNumber: number;
+  body: StorageUploadBody;
+  contentLength: number;
+};
+
+export type CompleteMultipartUploadAccessParams = {
+  token: string;
+  parts: MultipartUploadPart[];
+};
+
+export type AbortMultipartUploadAccessParams = {
+  token: string;
+};
+
 export const CreateGetPresignedUrlParamsSchema = z.object({
   key: StorageObjectKeySchema,
   expiredHours: z.number().positive().optional(),

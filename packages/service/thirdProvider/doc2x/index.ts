@@ -5,7 +5,16 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { createProxyAxios, axios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
+import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 import { type UploadedFileResult } from '../../worker/readFile/type';
+
+const DOC2X_REQUEST_TIMEOUT_MS = 60000;
+const DOC2X_UPLOAD_TIMEOUT_MS = 600000;
+const DOC2X_IMAGE_DOWNLOAD_TIMEOUT_MS = 180000;
+const DOC2X_POLL_INTERVAL_MS = 5000;
+const DOC2X_RETRY_DELAY_MS = 500;
+
+const createDoc2xTimeoutError = (message = '[Doc2x] Process timeout') => new Error(message);
 
 type ApiResponseDataType<T = any> = {
   code: string;
@@ -20,12 +29,14 @@ type Doc2xImageUploadHandler = (
         url: string;
         mime: string;
         buffer: Buffer;
+        signal?: AbortSignal;
       }
     | {
         type: 'base64';
         mime: string;
         base64: string;
         dataUrl: string;
+        signal?: AbortSignal;
       }
 ) => Promise<UploadedFileResult>;
 
@@ -34,7 +45,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   // Init request
   const instance = createProxyAxios({
     baseURL: 'https://v2.doc2x.noedgeai.com/api',
-    timeout: 60000,
+    timeout: DOC2X_REQUEST_TIMEOUT_MS,
     headers: {
       Authorization: `Bearer ${apiKey}`
     }
@@ -49,27 +60,37 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   };
   const responseError = (err: any) => {
     if (!err) {
-      return Promise.reject({ message: '[Doc2x] Unknown error' });
+      return Promise.reject(new Error('[Doc2x] Unknown error'));
     }
     if (typeof err === 'string') {
-      return Promise.reject({ message: `[Doc2x] ${err}` });
+      return Promise.reject(new Error(`[Doc2x] ${err}`));
     }
     if (typeof err.data === 'string') {
-      return Promise.reject({ message: `[Doc2x] ${err.data}` });
+      return Promise.reject(new Error(`[Doc2x] ${err.data}`));
     }
     if (err?.response?.data) {
-      return Promise.reject({ message: `[Doc2x] ${getErrText(err?.response?.data)}` });
+      return Promise.reject(new Error(`[Doc2x] ${getErrText(err?.response?.data)}`));
     }
     if (typeof err.message === 'string') {
-      return Promise.reject({ message: `[Doc2x] ${err.message}` });
+      return Promise.reject(new Error(`[Doc2x] ${err.message}`));
     }
 
     logger.error('Doc2x request failed with unknown error', { error: err });
-    return Promise.reject({ message: `[Doc2x] ${getErrText(err)}` });
+    return Promise.reject(new Error(`[Doc2x] ${getErrText(err)}`));
   };
-  const request = <T>(url: string, data: any, method: Method): Promise<ApiResponseDataType<T>> => {
+  const request = <T>({
+    url,
+    data,
+    method,
+    timeout = DOC2X_REQUEST_TIMEOUT_MS
+  }: {
+    url: string;
+    data: any;
+    method: Method;
+    timeout?: number;
+  }): Promise<ApiResponseDataType<T>> => {
     // Remove empty data
-    for (const key in data) {
+    for (const key in data ?? {}) {
       if (data[key] === undefined) {
         delete data[key];
       }
@@ -81,7 +102,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
         method,
         data: ['POST', 'PUT'].includes(method) ? data : undefined,
         params: !['POST', 'PUT'].includes(method) ? data : undefined,
-        timeout: 60000
+        timeout
       })
       .then((res) => checkRes(res.data))
       .catch((err) => responseError(err));
@@ -95,15 +116,36 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
   ) => {
     logger.debug('Doc2x PDF parse started');
     const startTime = Date.now();
+    const deadline = startTime + getBackendFileOperationTimeoutMs();
+    const getRemainingMs = () => Math.max(0, deadline - Date.now());
+    const getRequestTimeout = (maxTimeoutMs: number): number => {
+      const remainingMs = getRemainingMs();
+      if (remainingMs <= 0) {
+        throw createDoc2xTimeoutError();
+      }
+      return Math.min(maxTimeoutMs, remainingMs);
+    };
+    const waitForNextPoll = async (waitMs: number) => {
+      const remainingMs = getRemainingMs();
+      if (remainingMs <= 0) return false;
+
+      await delay(Math.min(waitMs, remainingMs));
+      return getRemainingMs() > 0;
+    };
 
     // 1. Get pre-upload URL first
     const {
       code,
       msg,
       data: preupload_data
-    } = await request<{ uid: string; url: string }>('/v2/parse/preupload', {}, 'POST');
+    } = await request<{ uid: string; url: string }>({
+      url: '/v2/parse/preupload',
+      data: {},
+      method: 'POST',
+      timeout: getRequestTimeout(DOC2X_REQUEST_TIMEOUT_MS)
+    });
     if (!['ok', 'success'].includes(code)) {
-      return Promise.reject(`[Doc2x] Failed to get pre-upload URL: ${msg}`);
+      throw new Error(`[Doc2x] Failed to get pre-upload URL: ${msg}`);
     }
     const upload_url = preupload_data.url;
     const uid = preupload_data.uid;
@@ -115,95 +157,131 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
           'Content-Type': 'application/pdf',
           'Content-Length': fileBuffer.length.toString()
         },
-        timeout: 600000
+        timeout: getRequestTimeout(DOC2X_UPLOAD_TIMEOUT_MS)
       })
       .catch((error) => {
-        return Promise.reject(`[Doc2x] Failed to upload file: ${getErrText(error)}`);
+        throw new Error(`[Doc2x] Failed to upload file: ${getErrText(error)}`);
       });
 
     if (response.status !== 200) {
-      return Promise.reject(
+      throw new Error(
         `[Doc2x] Upload failed with status ${response.status}: ${response.statusText}`
       );
     }
     logger.debug('Doc2x file uploaded', { uid });
 
-    await delay(5000);
+    if (!(await waitForNextPoll(DOC2X_POLL_INTERVAL_MS))) {
+      throw createDoc2xTimeoutError(`[Doc2x] Failed to get result (uid: ${uid}): Process timeout`);
+    }
 
     // 3. Get the result by uid
     const checkResult = async () => {
-      // 10 minutes
-      let retry = 120;
-
-      while (retry > 0) {
+      while (getRemainingMs() > 0) {
+        let responseData: ApiResponseDataType<{
+          progress?: number;
+          status: string;
+          result?: {
+            pages: {
+              md: string;
+            }[];
+          };
+        }>;
         try {
-          const {
-            code,
-            data: result_data,
-            msg
-          } = await request<{
-            progress: number;
-            status: 'processing' | 'failed' | 'success';
-            result: {
-              pages: {
-                md: string;
-              }[];
-            };
-          }>(`/v2/parse/status?uid=${uid}`, null, 'GET');
-
-          // Error
-          if (!['ok', 'success'].includes(code)) {
-            return Promise.reject(`[Doc2x] Failed to get result (uid: ${uid}): ${msg}`);
-          }
-
-          // Process
-          if (['ready', 'processing'].includes(result_data.status)) {
-            logger.debug('Doc2x parse in progress', {
-              uid,
-              status: result_data.status,
-              progress: result_data.progress
-            });
-            await delay(5000);
-          }
-
-          // Finifsh
-          if (result_data.status === 'success') {
-            const cleanedText = result_data.result.pages
-              .map((page) => page.md)
-              .join('')
-              .replace(/\\[\(\)]/g, '$')
-              .replace(/\\[\[\]]/g, '$$')
-              .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
-              .replace(/<!-- Media -->/g, '')
-              .replace(/<!-- Footnote -->/g, '')
-              .replace(/<!-- Meanless:[\s\S]*?-->/g, '')
-              .replace(/<!-- figureText:[\s\S]*?-->/g, '')
-              .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
-              .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
-            const remainingTags = cleanedText.match(/<!--[\s\S]*?-->/g);
-            if (remainingTags) {
-              logger.warn('Doc2x cleaned markdown still contains tags', {
-                count: remainingTags.length,
-                tags: remainingTags.slice(0, 3)
-              });
-            }
-            return {
-              text: cleanedText,
-              pages: result_data.result.pages.length
-            };
-          }
+          responseData = await request({
+            url: `/v2/parse/status?uid=${uid}`,
+            data: null,
+            method: 'GET',
+            timeout: getRequestTimeout(DOC2X_REQUEST_TIMEOUT_MS)
+          });
         } catch (error) {
-          // Just network error
           logger.warn('Doc2x result polling failed', { error });
-          await delay(500);
+          if (!(await waitForNextPoll(DOC2X_RETRY_DELAY_MS))) {
+            break;
+          }
+          continue;
         }
 
-        retry--;
+        const { code, data: resultData, msg } = responseData;
+        if (!['ok', 'success'].includes(code)) {
+          throw new Error(`[Doc2x] Failed to get result (uid: ${uid}): ${msg}`);
+        }
+
+        if (resultData.status === 'ready' || resultData.status === 'processing') {
+          logger.debug('Doc2x parse in progress', {
+            uid,
+            status: resultData.status,
+            progress: resultData.progress
+          });
+          if (!(await waitForNextPoll(DOC2X_POLL_INTERVAL_MS))) {
+            break;
+          }
+          continue;
+        }
+
+        if (resultData.status === 'failed') {
+          throw new Error(
+            `[Doc2x] Failed to get result (uid: ${uid}): ${msg || 'provider processing failed'}`
+          );
+        }
+
+        if (resultData.status !== 'success' || !resultData.result?.pages) {
+          throw new Error(
+            `[Doc2x] Failed to get result (uid: ${uid}): unknown status ${resultData.status}`
+          );
+        }
+
+        const cleanedText = resultData.result.pages
+          .map((page) => page.md)
+          .join('')
+          .replace(/\\[\(\)]/g, '$')
+          .replace(/\\[\[\]]/g, '$$')
+          .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
+          .replace(/<!-- Media -->/g, '')
+          .replace(/<!-- Footnote -->/g, '')
+          .replace(/<!-- Meanless:[\s\S]*?-->/g, '')
+          .replace(/<!-- figureText:[\s\S]*?-->/g, '')
+          .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
+          .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
+        const remainingTags = cleanedText.match(/<!--[\s\S]*?-->/g);
+        if (remainingTags) {
+          logger.warn('Doc2x cleaned markdown still contains tags', {
+            count: remainingTags.length,
+            tags: remainingTags.slice(0, 3)
+          });
+        }
+        return {
+          text: cleanedText,
+          pages: resultData.result.pages.length
+        };
       }
-      return Promise.reject(`[Doc2x] Failed to get result (uid: ${uid}): Process timeout`);
+      throw createDoc2xTimeoutError(`[Doc2x] Failed to get result (uid: ${uid}): Process timeout`);
     };
 
     const { text, pages } = await checkResult();
+
+    const uploadImageWithDeadline = async (
+      image: Parameters<NonNullable<typeof options.uploadImage>>[0]
+    ): Promise<UploadedFileResult> => {
+      if (!options.uploadImage) {
+        throw new Error('Doc2x image upload handler is not configured');
+      }
+
+      const timeoutMs = getRequestTimeout(Number.MAX_SAFE_INTEGER);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort(createDoc2xTimeoutError());
+      }, timeoutMs);
+
+      try {
+        const result = await options.uploadImage({ ...image, signal: controller.signal });
+        if (getRemainingMs() <= 0) {
+          throw createDoc2xTimeoutError();
+        }
+        return result;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
 
     const formatText = await parseMarkdownBase64Images(htmlTable2Md(text), {
       parseBase64: true,
@@ -211,7 +289,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       controller: options.uploadImage
         ? async (image) => {
             if (image.type === 'base64') {
-              return options.uploadImage!({
+              return uploadImageWithDeadline({
                 type: 'base64',
                 mime: image.mime,
                 base64: image.base64,
@@ -220,8 +298,10 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
             }
 
             try {
-              const { buffer, mime } = await getImageBuffer(image.url);
-              return options.uploadImage!({
+              const { buffer, mime } = await getImageBuffer(image.url, {
+                timeoutMs: getRequestTimeout(DOC2X_IMAGE_DOWNLOAD_TIMEOUT_MS)
+              });
+              return uploadImageWithDeadline({
                 type: 'http',
                 url: image.url,
                 mime,

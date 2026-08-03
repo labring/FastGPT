@@ -12,6 +12,179 @@ const createAdapter = () =>
     }
   });
 
+describe('CosStorageAdapter.constructor', () => {
+  it('rejects a non-COS vendor', () => {
+    expect(
+      () =>
+        new CosStorageAdapter({
+          vendor: 'oss',
+          bucket: 'fastgpt-private',
+          region: 'ap-guangzhou',
+          credentials: {
+            accessKeyId: 'secret-id',
+            secretAccessKey: 'secret-key'
+          }
+        } as never)
+    ).toThrow('Invalid storage vendor: expected "cos"');
+  });
+});
+
+describe('CosStorageAdapter.multipartUpload', () => {
+  it('maps multipart uploads to COS', async () => {
+    const adapter = createAdapter();
+    const multipartInit = vi.fn((_params, callback) => {
+      callback(null, { UploadId: 'cos-upload-1' });
+    });
+    const multipartUpload = vi.fn((_params, callback) => {
+      callback(null, { ETag: 'cos-etag-1' });
+    });
+    const multipartComplete = vi.fn((_params, callback) => {
+      callback(null, { ETag: 'cos-final-etag' });
+    });
+    const multipartAbort = vi.fn((_params, callback) => {
+      callback(null, {});
+    });
+    Object.assign((adapter as any).client, {
+      multipartInit,
+      multipartUpload,
+      multipartComplete,
+      multipartAbort
+    });
+
+    await expect(
+      adapter.createMultipartUpload({
+        key: 'dataset/file.txt',
+        contentType: 'text/plain',
+        contentDisposition: 'attachment; filename="file.txt"',
+        metadata: { sourceFile: 'dataset' }
+      })
+    ).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      key: 'dataset/file.txt',
+      uploadId: 'cos-upload-1'
+    });
+    await expect(
+      adapter.uploadMultipartPart({
+        key: 'dataset/file.txt',
+        uploadId: 'cos-upload-1',
+        partNumber: 1,
+        body: Buffer.from('part'),
+        contentLength: 4
+      })
+    ).resolves.toMatchObject({ etag: 'cos-etag-1', partNumber: 1 });
+    await adapter.completeMultipartUpload({
+      key: 'dataset/file.txt',
+      uploadId: 'cos-upload-1',
+      parts: [{ partNumber: 1, etag: 'cos-etag-1' }]
+    });
+    await adapter.abortMultipartUpload({ key: 'dataset/file.txt', uploadId: 'cos-upload-1' });
+
+    expect(multipartInit).toHaveBeenCalledWith(
+      {
+        Bucket: 'fastgpt-private',
+        Region: 'ap-guangzhou',
+        Key: 'dataset/file.txt',
+        ContentType: 'text/plain',
+        Headers: {
+          'Content-Disposition': 'attachment; filename="file.txt"',
+          'x-cos-meta-source-file': 'dataset'
+        }
+      },
+      expect.any(Function)
+    );
+    expect(multipartUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Bucket: 'fastgpt-private',
+        Region: 'ap-guangzhou',
+        Key: 'dataset/file.txt',
+        UploadId: 'cos-upload-1',
+        PartNumber: 1,
+        ContentLength: 4
+      }),
+      expect.any(Function)
+    );
+    expect(multipartComplete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Bucket: 'fastgpt-private',
+        Region: 'ap-guangzhou',
+        Key: 'dataset/file.txt',
+        UploadId: 'cos-upload-1',
+        Parts: [{ PartNumber: 1, ETag: 'cos-etag-1' }]
+      }),
+      expect.any(Function)
+    );
+    expect(multipartAbort).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Bucket: 'fastgpt-private',
+        Region: 'ap-guangzhou',
+        Key: 'dataset/file.txt',
+        UploadId: 'cos-upload-1'
+      }),
+      expect.any(Function)
+    );
+  });
+
+  it('passes an empty header object when multipart initialization has no custom headers', async () => {
+    const adapter = createAdapter();
+    const multipartInit = vi.fn((_params, callback) => {
+      callback(null, { UploadId: 'cos-upload-empty-headers' });
+    });
+    (adapter as any).client.multipartInit = multipartInit;
+
+    await expect(
+      adapter.createMultipartUpload({
+        key: 'dataset/file.txt'
+      })
+    ).resolves.toMatchObject({ uploadId: 'cos-upload-empty-headers' });
+
+    expect(multipartInit).toHaveBeenCalledWith(
+      {
+        Bucket: 'fastgpt-private',
+        Region: 'ap-guangzhou',
+        Key: 'dataset/file.txt',
+        ContentType: undefined,
+        Headers: {}
+      },
+      expect.any(Function)
+    );
+  });
+
+  it('rejects an invalid part before calling COS', async () => {
+    const adapter = createAdapter();
+    const multipartUpload = vi.fn();
+    (adapter as any).client.multipartUpload = multipartUpload;
+
+    await expect(
+      adapter.uploadMultipartPart({
+        key: 'dataset/file.txt',
+        uploadId: 'cos-upload-1',
+        partNumber: 1,
+        body: Buffer.from('part'),
+        contentLength: 0
+      })
+    ).rejects.toThrow('Multipart contentLength must be a positive integer');
+    expect(multipartUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe('CosStorageAdapter error normalization', () => {
+  it.each([
+    ['a string error', 'request failed'],
+    ['a plain object error', { statusCode: 500, message: 'request failed' }]
+  ])('normalizes %s without reading properties from unknown', async (_case, error) => {
+    const adapter = createAdapter();
+    (adapter as any).client.headObject = vi.fn(
+      (_params: unknown, callback: (error: unknown, result: unknown) => void) => {
+        callback(error, undefined);
+      }
+    );
+
+    await expect(adapter.checkObjectExists({ key: 'dataset/file.txt' })).rejects.toMatchObject({
+      message: typeof error === 'string' ? 'Unknown COS error' : 'request failed'
+    });
+  });
+});
+
 describe('CosStorageAdapter.generatePresignedGetUrl', () => {
   const getObjectUrlMock = vi.fn();
 
@@ -70,9 +243,11 @@ describe('CosStorageAdapter.downloadObject', () => {
 
   it('destroys the output stream when the caller aborts the download', async () => {
     const adapter = createAdapter();
-    (adapter as any).client.headObject = vi.fn((_params: unknown, callback: Function) => {
-      callback(null, {});
-    });
+    (adapter as any).client.headObject = vi.fn(
+      (_params: unknown, callback: (error: unknown, result: unknown) => void) => {
+        callback(null, {});
+      }
+    );
     (adapter as any).client.getObject = vi.fn();
     const controller = new AbortController();
 

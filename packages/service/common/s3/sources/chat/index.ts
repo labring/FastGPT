@@ -14,6 +14,7 @@ import path from 'path';
 import { getFormatedFilename } from '../../utils';
 import type { ChatS3SourceType } from './type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { createUploadConstraints } from '../../utils/uploadConstraints';
 
 const getChatFileS3Key = ({
   sourceType,
@@ -98,7 +99,18 @@ export class S3ChatSource extends S3PrivateBucket {
       extensionRules
     } = ChatFileUploadSchema.parse(params);
     const { fileKey } = getChatFileS3Key({ sourceType, sourceId, chatId, uId, filename });
-    return await this.createPresignedPutUrl(
+    const uploadPolicy = createUploadConstraints({
+      filename,
+      ...(contentType ? { contentType } : {}),
+      ...(declaredExtension ? { declaredExtension } : {}),
+      ...(declaredFilename ? { declaredFilename } : {}),
+      ...(size !== undefined ? { size } : {}),
+      uploadConstraints: {
+        allowedExtensions,
+        extensionRules
+      }
+    });
+    return await this.createUploadAccessUrl(
       {
         rawKey: fileKey,
         filename,
@@ -110,10 +122,7 @@ export class S3ChatSource extends S3PrivateBucket {
       {
         expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 1,
         maxFileSize,
-        uploadConstraints: {
-          allowedExtensions,
-          extensionRules
-        }
+        uploadPolicy
       }
     );
   }

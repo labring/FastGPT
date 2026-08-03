@@ -82,7 +82,7 @@ describe('MinioStorageAdapter.constructor', () => {
             accessKeyId: 'access-key',
             secretAccessKey: 'secret-key'
           }
-        })
+        } as never)
     ).toThrow('Invalid storage vendor: expected "minio"');
   });
 

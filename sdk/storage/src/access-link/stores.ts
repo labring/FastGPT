@@ -19,5 +19,22 @@ export type S3UploadSessionStore = {
   create: (record: CreateS3UploadSessionRecord) => Promise<S3UploadSessionRecord>;
   findByTokenHash: (tokenHash: string) => Promise<S3UploadSessionRecord | null>;
   markUsed: (params: { tokenHash: string; usedAt: Date }) => Promise<void>;
+  markMultipartCompleting: (params: {
+    tokenHash: string;
+    completionAttemptId: string;
+    completingAt: Date;
+    reclaimBefore?: Date;
+  }) => Promise<string | null>;
+  markMultipartCompleted: (params: {
+    tokenHash: string;
+    completionAttemptId: string;
+    completedAt: Date;
+  }) => Promise<boolean>;
+  markMultipartCompleteFailed: (params: {
+    tokenHash: string;
+    completionAttemptId: string;
+    abortedAt: Date;
+  }) => Promise<boolean>;
+  markMultipartAborted: (params: { tokenHash: string; abortedAt: Date }) => Promise<boolean>;
   revoke: (params: { tokenHash: string; revokedAt: Date }) => Promise<void>;
 };

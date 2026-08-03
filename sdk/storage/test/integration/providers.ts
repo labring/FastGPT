@@ -357,6 +357,7 @@ const createR2Provider = (): StorageIntegrationProvider => ({
       publicEndpoint,
       credentials
     });
+    await publicStorage.ensureBucket();
     const initialEnsureResult = await storage.ensureBucket();
 
     return createContextResult({

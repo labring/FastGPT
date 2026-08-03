@@ -20,6 +20,7 @@ import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 import { isAuthorizedDatasetFileS3Key } from '../../common/s3/sources/dataset/key';
 import { getLogger, LogCategories } from '../../common/logger';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -73,10 +74,20 @@ export const readFileRawTextByUrl = async ({
   maxFileSize?: number;
 }) => {
   const extension = parseFileExtensionFromUrl(url);
+  const downloadTimeoutMs = getBackendFileOperationTimeoutMs();
+  const downloadDeadline = Date.now() + downloadTimeoutMs;
+  const getRemainingDownloadMs = () => Math.max(0, downloadDeadline - Date.now());
+  const getDownloadRequestTimeout = (maxTimeoutMs: number) => {
+    const remainingMs = getRemainingDownloadMs();
+    if (remainingMs <= 0) {
+      throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
+    }
+    return Math.min(maxTimeoutMs, remainingMs);
+  };
 
   // Check file size
   try {
-    const headResponse = await axios.head(url, { timeout: 10000 });
+    const headResponse = await axios.head(url, { timeout: getDownloadRequestTimeout(10000) });
     const contentLength = parseInt(
       getAxiosHeaderValue(headResponse.headers['content-length']) || '0'
     );
@@ -87,6 +98,7 @@ export const readFileRawTextByUrl = async ({
       );
     }
   } catch (error) {
+    if (getRemainingDownloadMs() <= 0) throw error;
     logger.warn('File HEAD request failed, skip size precheck', { url, error });
   }
 
@@ -96,7 +108,7 @@ export const readFileRawTextByUrl = async ({
     url: url,
     responseType: 'stream',
     maxContentLength: maxFileSize,
-    timeout: 30000
+    timeout: getDownloadRequestTimeout(30000)
   });
 
   // 优化：直接从 stream 转换为 buffer，避免 arraybuffer 中间步骤
@@ -115,10 +127,11 @@ export const readFileRawTextByUrl = async ({
     };
 
     // Stream timeout
+    const streamTimeoutMs = getRemainingDownloadMs();
     const timeoutId = setTimeout(() => {
       cleanup();
-      reject('File download timeout after 30 seconds');
-    }, 600000);
+      reject(new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`));
+    }, streamTimeoutMs);
 
     response.data.on('data', (chunk: Buffer) => {
       if (isAborted) return;
@@ -140,6 +153,10 @@ export const readFileRawTextByUrl = async ({
       clearTimeout(timeoutId);
 
       try {
+        if (getRemainingDownloadMs() <= 0) {
+          throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
+        }
+
         // 合并所有 chunks 为单个 buffer
         const buffer = Buffer.concat(chunks as unknown as Uint8Array[]);
 
@@ -165,6 +182,10 @@ export const readFileRawTextByUrl = async ({
             }
           });
         });
+
+        if (getRemainingDownloadMs() <= 0) {
+          throw new Error(`File download timeout after ${downloadTimeoutMs / 1000} seconds`);
+        }
 
         resolve({ rawText });
       } catch (error) {

@@ -5,6 +5,7 @@ export type S3AccessLinkClock = () => Date;
 export type S3AccessLinkIdGenerator = {
   aliasId: () => string;
   uploadToken: () => string;
+  multipartCompletionAttemptId: () => string;
 };
 
 export type S3AccessLinkRoutes = {
@@ -43,6 +44,18 @@ export type S3UploadFileHint = {
   declaredFilename?: string;
   source?: 'local-file' | 'remote-url' | 'server-generated';
   size?: number;
+};
+
+export type S3MultipartUploadSession = {
+  uploadId: string;
+  partSize: number;
+  totalSize: number;
+  status: 'active' | 'completing' | 'completed' | 'aborted';
+  /** 当前 completion owner 的 fencing token；旧 worker 不能使用新 token 写终态。 */
+  completionAttemptId?: string;
+  completingAt?: Date;
+  completedAt?: Date;
+  abortedAt?: Date;
 };
 
 export type S3DownloadAliasRecord = {
@@ -107,14 +120,14 @@ export type S3UploadSessionRecord = {
   bucketName: string;
   objectKey: string;
   maxSize: number;
-  uploadConstraints: S3UploadConstraints;
-  uploadPolicy?: S3UploadPolicy;
+  uploadPolicy: S3UploadPolicy;
   fileHint?: S3UploadFileHint;
   metadata?: Record<string, string>;
   createTime: Date;
   expiresAt: Date;
   usedAt?: Date;
   revokedAt?: Date;
+  multipart?: S3MultipartUploadSession;
 };
 
 export type CreateS3UploadSessionRecord = Omit<S3UploadSessionRecord, 'createTime'> & {
@@ -126,20 +139,20 @@ export type CreateS3UploadAccessUrlParams = {
   objectKey: string;
   expiredTime: Date;
   maxSize: number;
-  uploadConstraints: S3UploadConstraints;
-  uploadPolicy?: S3UploadPolicy;
+  uploadPolicy: S3UploadPolicy;
   fileHint?: S3UploadFileHint;
   metadata?: Record<string, string>;
+  multipart?: S3MultipartUploadSession;
 };
 
 export type S3ProxyUploadPayload = {
   bucketName: string;
   objectKey: string;
   maxSize: number;
-  uploadConstraints: S3UploadConstraints;
-  uploadPolicy?: S3UploadPolicy;
+  uploadPolicy: S3UploadPolicy;
   fileHint?: S3UploadFileHint;
   metadata?: Record<string, string>;
+  multipart?: S3MultipartUploadSession;
 };
 
 export type UploadSessionUsePolicy = 'allow-retry' | 'mark-used' | 'reject-used';
@@ -183,6 +196,22 @@ export type S3AccessLinkService = {
   deleteDownloadAliasByObjects: (params: DeleteS3DownloadAliasByObjectsParams) => Promise<void>;
   createUploadUrl: (params: CreateS3UploadAccessUrlParams) => Promise<string>;
   verifyUploadToken: (token: string) => Promise<S3ProxyUploadPayload>;
+  markMultipartCompleting: (params: {
+    token: string;
+    completingAt?: Date;
+    reclaimBefore?: Date;
+  }) => Promise<string | null>;
+  markMultipartCompleted: (params: {
+    token: string;
+    completionAttemptId: string;
+    completedAt?: Date;
+  }) => Promise<boolean>;
+  markMultipartCompleteFailed: (params: {
+    token: string;
+    completionAttemptId: string;
+    abortedAt?: Date;
+  }) => Promise<boolean>;
+  markMultipartAborted: (params: { token: string; abortedAt?: Date }) => Promise<boolean>;
   revokeUploadToken: (token: string) => Promise<void>;
 };
 

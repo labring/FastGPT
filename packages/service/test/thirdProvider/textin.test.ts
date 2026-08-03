@@ -1,18 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { postMock, getImageBufferMock } = vi.hoisted(() => ({
+const { postMock, getImageBufferMock, createProxyAxiosMock, mockEnv } = vi.hoisted(() => ({
   postMock: vi.fn(),
-  getImageBufferMock: vi.fn()
+  getImageBufferMock: vi.fn(),
+  createProxyAxiosMock: vi.fn(() => ({
+    post: postMock
+  })),
+  mockEnv: {
+    PARSE_FILE_TIMEOUT_SECONDS: 600
+  }
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  createProxyAxios: vi.fn(() => ({
-    post: postMock
-  }))
+  createProxyAxios: createProxyAxiosMock
 }));
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBuffer: getImageBufferMock
+}));
+
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: mockEnv
 }));
 
 const { useTextinServer } = await import('@fastgpt/service/thirdProvider/textin');
@@ -32,6 +40,7 @@ const mockTextinSuccess = (markdown: string) => {
 describe('useTextinServer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
     getImageBufferMock.mockResolvedValue({
       buffer: Buffer.from('image-bytes'),
       mime: 'image/png'
@@ -60,6 +69,7 @@ describe('useTextinServer', () => {
         })
       })
     );
+    expect(createProxyAxiosMock).toHaveBeenCalledWith(expect.objectContaining({ timeout: 600000 }));
     expect(uploadImage).toHaveBeenCalledWith({
       type: 'base64',
       mime: 'image/png',

@@ -17,6 +17,17 @@ export const getSystemMaxFileSize = () => global.feConfigs.uploadFileMaxSize || 
 
 export const S3_KEY_PATH_INVALID_CHARS = /[|\\/]/;
 
+/** 达到该大小的浏览器直传文件切换到代理层 Multipart 上传。 */
+export const S3_MULTIPART_UPLOAD_THRESHOLD_BYTES = 32 * 1024 * 1024;
+/** 首期固定分片大小，超过 S3/OSS/COS 常见最小分片限制。 */
+export const S3_MULTIPART_PART_SIZE_BYTES = 8 * 1024 * 1024;
+export const S3_MULTIPART_CONCURRENCY = 3;
+export const S3_MULTIPART_MAX_RETRY = 3;
+export { MAX_MULTIPART_PART_COUNT } from '@fastgpt/global/common/file/constants';
+export const S3_MULTIPART_SESSION_EXPIRE_HOURS = 3;
+/** provider complete 发生网络超时后，保留完成权的短租约，过期后允许同一 uploadId 重试。 */
+export const S3_MULTIPART_COMPLETING_LEASE_MS = 5 * 60 * 1000;
+
 type BucketStorageOptions = {
   publicBucket: string;
   privateBucket: string;

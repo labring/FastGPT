@@ -5,7 +5,7 @@ import { getUploadSearchTestImagePresignedUrl } from '@/web/core/dataset/api/fil
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   IMAGE_EXTENSION_SET,
@@ -57,8 +57,16 @@ export const useSearchTestImages = ({
         .catch(() => undefined));
     const maxImageSize =
       (planStatus?.standard?.maxUploadFileSize ?? uploadFileMaxSize ?? 500) * 1024 * 1024;
-    const validImageFiles = imageFiles.filter((file) => file.size <= maxImageSize);
-    if (validImageFiles.length < imageFiles.length) {
+    const nonEmptyImageFiles = imageFiles.filter((file) => file.size > 0);
+    if (nonEmptyImageFiles.length < imageFiles.length) {
+      toast({
+        status: 'warning',
+        title: t('file:empty_file')
+      });
+    }
+
+    const validImageFiles = nonEmptyImageFiles.filter((file) => file.size <= maxImageSize);
+    if (validImageFiles.length < nonEmptyImageFiles.length) {
       toast({
         status: 'warning',
         title: t('file:some_file_size_exceeds_limit', {
@@ -85,18 +93,18 @@ export const useSearchTestImages = ({
     try {
       const uploadedImages = await Promise.all(
         uploadFiles.map(async (file) => {
-          const { url, key, headers, maxSize, previewUrl } =
-            await getUploadSearchTestImagePresignedUrl({
-              datasetId,
-              filename: file.name
-            });
-          await putFileToS3({
-            url,
-            headers,
+          const uploadResult = await getUploadSearchTestImagePresignedUrl({
+            datasetId,
+            filename: file.name,
+            size: file.size
+          });
+          const { key, previewUrl } = uploadResult;
+          const uploader = new S3FileUploader({
+            ...uploadResult,
             file,
-            maxSize,
             t
           });
+          await uploader.upload();
           return { key, previewUrl };
         })
       );

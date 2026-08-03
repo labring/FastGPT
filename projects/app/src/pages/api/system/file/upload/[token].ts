@@ -31,7 +31,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         objectKey,
         bucketName,
         maxSize,
-        uploadConstraints,
+        uploadPolicy: uploadConstraints,
         metadata
       }
     });

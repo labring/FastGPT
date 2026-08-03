@@ -1,5 +1,6 @@
 import z from 'zod';
-import { StorageObjectKeySchema, UploadConstraintsSchema } from '../contracts/type';
+import { MAX_MULTIPART_PART_COUNT } from '@fastgpt/global/common/file/constants';
+import { StorageObjectKeySchema } from '../contracts/type';
 import { UploadFileHintSchema, UploadPolicySchema } from '../uploadPolicy/type';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 
@@ -74,42 +75,92 @@ export type VerifiedS3DownloadAccess = z.infer<typeof VerifiedS3DownloadAccessSc
 export const S3UploadTokenSchema = UrlSafeTokenSchema.min(20).max(64);
 export const S3UploadTokenHashSchema = HexSha256Schema;
 
+const PositiveSafeIntegerSchema = z
+  .number()
+  .int()
+  .positive()
+  .refine(Number.isSafeInteger, 'Must be a safe integer');
+
+export const S3MultipartUploadSessionSchema = z.object({
+  uploadId: z.string().min(1),
+  partSize: PositiveSafeIntegerSchema,
+  totalSize: PositiveSafeIntegerSchema,
+  status: z.enum(['active', 'completing', 'completed', 'aborted']),
+  completionAttemptId: z.string().min(1).optional(),
+  completingAt: z.coerce.date().optional(),
+  completedAt: z.coerce.date().optional(),
+  abortedAt: z.coerce.date().optional()
+});
+export type S3MultipartUploadSession = z.infer<typeof S3MultipartUploadSessionSchema>;
+
+/** 创建 session 时只允许服务端初始化的 active 状态，禁止伪造完成/取消时间。 */
+const CreateS3MultipartUploadSessionSchema = z
+  .object({
+    uploadId: z.string().min(1),
+    partSize: PositiveSafeIntegerSchema,
+    totalSize: PositiveSafeIntegerSchema,
+    status: z.literal('active'),
+    completingAt: z.never().optional(),
+    completedAt: z.never().optional(),
+    abortedAt: z.never().optional()
+  })
+  .strict()
+  .superRefine(({ totalSize, partSize }, context) => {
+    if (Math.ceil(totalSize / partSize) > MAX_MULTIPART_PART_COUNT) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['partSize'],
+        message: `Multipart upload cannot exceed ${MAX_MULTIPART_PART_COUNT} parts`
+      });
+    }
+  });
+
 export const S3UploadSessionSchema = z.object({
   tokenHash: S3UploadTokenHashSchema,
   bucketName: S3AccessBucketNameSchema,
   objectKey: S3AccessObjectKeySchema,
-  maxSize: z.number().positive(),
-  uploadConstraints: UploadConstraintsSchema,
-  uploadPolicy: UploadPolicySchema.optional(),
+  maxSize: PositiveSafeIntegerSchema,
+  uploadPolicy: UploadPolicySchema,
   fileHint: UploadFileHintSchema.optional(),
   metadata: z.record(z.string(), z.string()).optional(),
   createTime: z.coerce.date(),
   expiresAt: z.coerce.date(),
   usedAt: z.coerce.date().optional(),
-  revokedAt: z.coerce.date().optional()
+  revokedAt: z.coerce.date().optional(),
+  multipart: S3MultipartUploadSessionSchema.optional()
 });
 export type S3UploadSessionType = z.infer<typeof S3UploadSessionSchema>;
 
-export const CreateS3UploadAccessUrlParamsSchema = z.object({
-  bucketName: S3AccessBucketNameSchema,
-  objectKey: S3AccessObjectKeySchema,
-  expiredTime: z.coerce.date(),
-  maxSize: z.number().positive(),
-  uploadConstraints: UploadConstraintsSchema,
-  uploadPolicy: UploadPolicySchema.optional(),
-  fileHint: UploadFileHintSchema.optional(),
-  metadata: z.record(z.string(), z.string()).optional()
-});
+export const CreateS3UploadAccessUrlParamsSchema = z
+  .object({
+    bucketName: S3AccessBucketNameSchema,
+    objectKey: S3AccessObjectKeySchema,
+    expiredTime: z.coerce.date(),
+    maxSize: PositiveSafeIntegerSchema,
+    uploadPolicy: UploadPolicySchema,
+    fileHint: UploadFileHintSchema.optional(),
+    metadata: z.record(z.string(), z.string()).optional(),
+    multipart: CreateS3MultipartUploadSessionSchema.optional()
+  })
+  .superRefine(({ maxSize, multipart }, context) => {
+    if (multipart && multipart.totalSize > maxSize) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['multipart', 'totalSize'],
+        message: 'Multipart total size exceeds maxSize'
+      });
+    }
+  });
 export type CreateS3UploadAccessUrlParams = z.infer<typeof CreateS3UploadAccessUrlParamsSchema>;
 
 export const S3ProxyUploadPayloadSchema = S3UploadSessionSchema.pick({
   bucketName: true,
   objectKey: true,
   maxSize: true,
-  uploadConstraints: true,
   uploadPolicy: true,
   fileHint: true,
-  metadata: true
+  metadata: true,
+  multipart: true
 });
 export type S3ProxyUploadPayload = z.infer<typeof S3ProxyUploadPayloadSchema>;
 

@@ -350,10 +350,6 @@ describe('S3 access link SDK core', () => {
       objectKey: 'chat/team-1/file.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
-        defaultContentType: 'text/plain',
-        allowedExtensions: ['.txt']
-      },
       uploadPolicy: {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt'],
@@ -382,6 +378,8 @@ describe('S3 access link SDK core', () => {
     expect(token).toBe('UploadToken1234567890AB');
     expect(tokenHash).not.toBe(token);
     expect(tokenHash).toHaveLength(64);
+    expect(stores.uploadSessions.get(tokenHash!)?.uploadPolicy).toBeDefined();
+    expect(stores.uploadSessions.get(tokenHash!)).not.toHaveProperty('uploadConstraints');
 
     const payload = await service.verifyUploadToken(token);
 
@@ -389,10 +387,6 @@ describe('S3 access link SDK core', () => {
       bucketName: 'private',
       objectKey: 'chat/team-1/file.txt',
       maxSize: 1024,
-      uploadConstraints: {
-        defaultContentType: 'text/plain',
-        allowedExtensions: ['.txt']
-      },
       uploadPolicy: {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt'],
@@ -418,6 +412,264 @@ describe('S3 access link SDK core', () => {
     expect(stores.uploadSessions.get(tokenHash!)?.usedAt).toEqual(baseNow);
   });
 
+  it('rejects invalid Multipart create state, size, and part count', async () => {
+    const createParams = {
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/large-file.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-1',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active' as const
+      }
+    };
+
+    for (const multipart of [
+      { ...createParams.multipart, status: 'completed' as const },
+      { ...createParams.multipart, totalSize: createParams.maxSize + 1 },
+      { ...createParams.multipart, partSize: 1, totalSize: 10001 }
+    ]) {
+      const { service } = createDeterministicService();
+      await expect(service.createUploadUrl({ ...createParams, multipart })).rejects.toMatchObject({
+        code: S3AccessLinkErrCode.uploadSessionNotFound
+      });
+    }
+
+    const { service } = createDeterministicService();
+    await expect(
+      service.createUploadUrl({
+        ...createParams,
+        maxSize: Number.MAX_SAFE_INTEGER + 1
+      })
+    ).rejects.toMatchObject({ code: S3AccessLinkErrCode.uploadSessionNotFound });
+  });
+
+  it('reuses multipart tokens and atomically transitions active sessions', async () => {
+    const { service, stores } = createDeterministicService();
+    const url = await service.createUploadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/large-file.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-1',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+    const completedAt = getFutureDate(1);
+
+    await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
+      multipart: {
+        uploadId: 'upload-1',
+        status: 'active',
+        totalSize: 50 * 1024 * 1024
+      }
+    });
+
+    const completionAttemptId = await service.markMultipartCompleting({ token });
+    expect(completionAttemptId).toEqual(expect.any(String));
+    await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
+      multipart: {
+        status: 'completing'
+      }
+    });
+    expect(
+      await service.markMultipartCompleted({
+        token,
+        completionAttemptId: completionAttemptId!,
+        completedAt
+      })
+    ).toBe(true);
+    expect(await service.markMultipartAborted({ token })).toBe(false);
+    await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
+      multipart: {
+        status: 'completed',
+        completedAt
+      }
+    });
+
+    const storedSession = Array.from(stores.uploadSessions.values())[0];
+    expect(storedSession?.multipart?.status).toBe('completed');
+  });
+
+  it('reclaims only an expired completing lease', async () => {
+    const { service, stores } = createDeterministicService();
+    const url = await service.createUploadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/retryable-file.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-retry',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+
+    const firstAttemptId = await service.markMultipartCompleting({
+      token,
+      completingAt: baseNow
+    });
+    expect(firstAttemptId).toEqual(expect.any(String));
+    expect(
+      await service.markMultipartCompleting({
+        token,
+        reclaimBefore: new Date(baseNow.getTime() - 1)
+      })
+    ).toBeNull();
+    const reclaimedAttemptId = await service.markMultipartCompleting({
+      token,
+      reclaimBefore: new Date(baseNow.getTime() + 1)
+    });
+    expect(reclaimedAttemptId).toEqual(expect.any(String));
+    expect(reclaimedAttemptId).not.toBe(firstAttemptId);
+
+    const storedSession = Array.from(stores.uploadSessions.values())[0];
+    expect(storedSession?.multipart).toMatchObject({
+      uploadId: 'upload-retry',
+      status: 'completing',
+      completingAt: baseNow
+    });
+  });
+
+  it('fences stale completion updates after a lease is reclaimed', async () => {
+    const { service } = createDeterministicService();
+    const url = await service.createUploadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/stale-attempt.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-stale-attempt',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+    const firstAttemptId = await service.markMultipartCompleting({
+      token,
+      completingAt: baseNow
+    });
+    const secondAttemptId = await service.markMultipartCompleting({
+      token,
+      reclaimBefore: new Date(baseNow.getTime() + 1)
+    });
+
+    expect(firstAttemptId).toEqual(expect.any(String));
+    expect(secondAttemptId).toEqual(expect.any(String));
+    expect(secondAttemptId).not.toBe(firstAttemptId);
+    expect(
+      await service.markMultipartCompleted({
+        token,
+        completionAttemptId: firstAttemptId!
+      })
+    ).toBe(false);
+    expect(
+      await service.markMultipartCompleteFailed({
+        token,
+        completionAttemptId: firstAttemptId!
+      })
+    ).toBe(false);
+    await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
+      multipart: {
+        status: 'completing',
+        completionAttemptId: secondAttemptId
+      }
+    });
+  });
+
+  it('marks a completing multipart session aborted only through complete failure', async () => {
+    const { service } = createDeterministicService();
+    const url = await service.createUploadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/complete-failed-file.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-3',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+
+    const completionAttemptId = await service.markMultipartCompleting({ token });
+    expect(completionAttemptId).toEqual(expect.any(String));
+    expect(await service.markMultipartAborted({ token })).toBe(false);
+    expect(
+      await service.markMultipartCompleteFailed({
+        token,
+        completionAttemptId: completionAttemptId!
+      })
+    ).toBe(true);
+    expect(
+      await service.markMultipartCompleted({
+        token,
+        completionAttemptId: completionAttemptId!
+      })
+    ).toBe(false);
+  });
+
+  it('marks an active multipart session aborted and makes the transition idempotent', async () => {
+    const { service } = createDeterministicService();
+    const url = await service.createUploadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/aborted-file.pdf',
+      expiredTime: getFutureDate(10),
+      maxSize: 100 * 1024 * 1024,
+      uploadPolicy: {
+        defaultContentType: 'application/pdf'
+      },
+      multipart: {
+        uploadId: 'upload-2',
+        partSize: 8 * 1024 * 1024,
+        totalSize: 50 * 1024 * 1024,
+        status: 'active'
+      }
+    });
+    const token = extractLastPathSegment(url);
+
+    expect(await service.markMultipartAborted({ token })).toBe(true);
+    expect(await service.markMultipartAborted({ token })).toBe(false);
+    expect(
+      await service.markMultipartCompleted({
+        token,
+        completionAttemptId: 'stale-attempt'
+      })
+    ).toBe(false);
+    await expect(service.verifyUploadToken(token)).resolves.toMatchObject({
+      multipart: {
+        uploadId: 'upload-2',
+        status: 'aborted',
+        abortedAt: expect.any(Date)
+      }
+    });
+  });
+
   it('rejects revoked and expired upload sessions', async () => {
     const { service } = createDeterministicService();
     const revokedUrl = await service.createUploadUrl({
@@ -425,7 +677,7 @@ describe('S3 access link SDK core', () => {
       objectKey: 'chat/team-1/revoked.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain'
       }
     });
@@ -434,7 +686,7 @@ describe('S3 access link SDK core', () => {
       objectKey: 'chat/team-1/expired.txt',
       expiredTime: getFutureDate(-10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain'
       }
     });
@@ -462,7 +714,7 @@ describe('S3 access link SDK core', () => {
       objectKey: 'chat/team-1/file.txt',
       expiredTime: getFutureDate(10),
       maxSize: 1024,
-      uploadConstraints: {
+      uploadPolicy: {
         defaultContentType: 'text/plain'
       }
     });

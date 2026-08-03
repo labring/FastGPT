@@ -10,6 +10,7 @@ import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadC
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createUploadConstraints } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import {
   PresignSearchTestImageBodySchema,
   PresignSearchTestImageResponseSchema,
@@ -20,7 +21,7 @@ import {
 async function handler(
   req: ApiRequestProps<PresignSearchTestImageBody>
 ): Promise<PresignSearchTestImageResponse> {
-  const { datasetId, filename } = parseApiInput({
+  const { datasetId, filename, size } = parseApiInput({
     req,
     bodySchema: PresignSearchTestImageBodySchema
   }).body;
@@ -42,14 +43,18 @@ async function handler(
 
   const bucket = new S3PrivateBucket();
   const { fileKey } = getFileS3Key.temp({ teamId, filename });
-  const result = await bucket.createPresignedPutUrl(
-    { rawKey: fileKey, filename },
+  const uploadPolicy = createUploadConstraints({
+    filename,
+    uploadConstraints: {
+      allowedExtensions: parseAllowedExtensions(imageFileType)
+    }
+  });
+  const result = await bucket.createUploadAccessUrl(
+    { rawKey: fileKey, filename, ...(size !== undefined ? { size } : {}) },
     {
       expiredHours: 3,
       maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize,
-      uploadConstraints: {
-        allowedExtensions: parseAllowedExtensions(imageFileType)
-      }
+      uploadPolicy
     }
   );
 

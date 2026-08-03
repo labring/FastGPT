@@ -3,4 +3,9 @@ export type S3TtlSchemaType = {
   bucketName: string;
   minioKey: string;
   expiredTime: Date;
+  multipart?: {
+    uploadId: string;
+    objectMarker?: string;
+    totalSize?: number;
+  };
 };

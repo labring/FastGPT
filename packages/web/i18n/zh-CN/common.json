@@ -1185,6 +1185,7 @@
   "upgrade": "升级",
   "upload_file": "上传文件",
   "upload_file_error": "上传文件失败",
+  "empty_file": "不能上传空文件",
   "usage_records": "使用记录",
   "user.Account": "账号",
   "user.No_right_to_reset_password": "没有重置密码的权限",

@@ -1,14 +1,22 @@
 import FormData from 'form-data';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { postMock } = vi.hoisted(() => ({
-  postMock: vi.fn()
+const { postMock, createProxyAxiosMock, mockEnv } = vi.hoisted(() => ({
+  postMock: vi.fn(),
+  createProxyAxiosMock: vi.fn(() => ({
+    post: postMock
+  })),
+  mockEnv: {
+    PARSE_FILE_TIMEOUT_SECONDS: 600
+  }
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  createProxyAxios: vi.fn(() => ({
-    post: postMock
-  }))
+  createProxyAxios: createProxyAxiosMock
+}));
+
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: mockEnv
 }));
 
 const { useSomarkServer } = await import('@fastgpt/service/thirdProvider/somark');
@@ -35,6 +43,7 @@ const mockSomarkSuccess = () => {
 describe('useSomarkServer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
   });
 
   it('通过同步接口解析 PDF 并返回 Markdown 与页数', async () => {
@@ -57,6 +66,7 @@ describe('useSomarkServer', () => {
         })
       })
     );
+    expect(createProxyAxiosMock).toHaveBeenCalledWith(expect.objectContaining({ timeout: 600000 }));
 
     const form = postMock.mock.calls[0][1] as FormData;
     const body = form.getBuffer().toString();

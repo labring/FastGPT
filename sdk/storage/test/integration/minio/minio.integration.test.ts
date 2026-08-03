@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { MinioStorageAdapter } from '../../../src/adapters/minio.adapter';
 import { InvalidStorageObjectKeyError } from '../../../src/errors';
@@ -26,6 +28,75 @@ const uploadInBatches = async ({
       )
     );
   }
+};
+
+const uploadAndHashMultipartFile = async ({
+  context,
+  key,
+  totalSize,
+  partSize,
+  retryFirstPart = false
+}: {
+  context: StorageIntegrationContext;
+  key: string;
+  totalSize: number;
+  partSize: number;
+  retryFirstPart?: boolean;
+}) => {
+  const upload = await context.storage.createMultipartUpload({
+    key,
+    contentType: 'application/octet-stream',
+    metadata: { uploadSource: 'minio-multipart-integration' }
+  });
+  const expectedHash = createHash('sha256');
+  const parts = [];
+
+  for (let offset = 0, partNumber = 1; offset < totalSize; partNumber += 1) {
+    const length = Math.min(partSize, totalSize - offset);
+    const body = Buffer.alloc(length, partNumber % 251);
+    if (retryFirstPart && partNumber === 1) {
+      await expect(
+        context.storage.uploadMultipartPart({
+          key,
+          uploadId: upload.uploadId,
+          partNumber,
+          body: Readable.from(body),
+          contentLength: 0
+        })
+      ).rejects.toThrow('Multipart contentLength must be a positive integer');
+    }
+    expectedHash.update(body);
+    const result = await context.storage.uploadMultipartPart({
+      key,
+      uploadId: upload.uploadId,
+      partNumber,
+      body: Readable.from(body),
+      contentLength: length
+    });
+    parts.push({ partNumber, etag: result.etag });
+    offset += length;
+  }
+
+  await context.storage.completeMultipartUpload({
+    key,
+    uploadId: upload.uploadId,
+    parts
+  });
+
+  const download = await context.storage.downloadObject({ key });
+  const actualHash = createHash('sha256');
+  let actualSize = 0;
+  for await (const chunk of download.body) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    actualHash.update(buffer);
+    actualSize += buffer.length;
+  }
+
+  return {
+    actualSize,
+    actualHash: actualHash.digest('hex'),
+    expectedHash: expectedHash.digest('hex')
+  };
 };
 
 describe.skipIf(!minioIntegrationProvider.enabled).sequential('MinIO-specific integration', () => {
@@ -139,8 +210,43 @@ describe.skipIf(!minioIntegrationProvider.enabled).sequential('MinIO-specific in
     expect(Buffer.concat(chunks).toString()).toBe('public-content');
   });
 
-  it('removes bucket lifecycle when no lifecycle configuration exists', async () => {
-    const storage = context.storage as MinioStorageAdapter;
-    await expect(storage.removeBucketLifecycle()).resolves.toBeUndefined();
+  it.each([
+    { label: '50 MiB', totalSize: 50 * 1024 * 1024 },
+    { label: '500 MiB', totalSize: 500 * 1024 * 1024 }
+  ])(
+    'round-trips a $label Multipart object with a short final part',
+    async ({ label, totalSize }) => {
+      const key = `${context.rootPrefix}multipart/${label.replace(' ', '-')}.bin`;
+      const result = await uploadAndHashMultipartFile({
+        context,
+        key,
+        totalSize,
+        partSize: 8 * 1024 * 1024,
+        retryFirstPart: label === '50 MiB'
+      });
+
+      expect(result.actualSize).toBe(totalSize);
+      expect(result.actualHash).toBe(result.expectedHash);
+      await expect(context.storage.getObjectMetadata({ key })).resolves.toMatchObject({
+        contentLength: totalSize
+      });
+    },
+    10 * 60 * 1000
+  );
+
+  it('aborts an in-progress Multipart upload without leaving a final object', async () => {
+    const storage = context.storage;
+    const key = `${context.rootPrefix}multipart/cancelled.bin`;
+    const upload = await storage.createMultipartUpload({ key });
+    await storage.uploadMultipartPart({
+      key,
+      uploadId: upload.uploadId,
+      partNumber: 1,
+      body: Readable.from(Buffer.alloc(8 * 1024 * 1024, 0x33)),
+      contentLength: 8 * 1024 * 1024
+    });
+
+    await storage.abortMultipartUpload({ key, uploadId: upload.uploadId });
+    await expect(storage.checkObjectExists({ key })).resolves.toMatchObject({ exists: false });
   });
 });

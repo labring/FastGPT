@@ -19,7 +19,7 @@ import { getLogger, LogCategories } from '../../../logger';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readFileContentByBuffer } from '../../../file/read/utils';
 import { ensureTextContentTypeCharset, isTextLikeFile, resolveMimeType } from '../../utils/mime';
-import { datasetAllowedExtensions } from '../../utils/uploadConstraints';
+import { createUploadConstraints, datasetAllowedExtensions } from '../../utils/uploadConstraints';
 import { getFileS3Key, truncateFilename } from '../../utils';
 import { isAuthorizedDatasetFileS3Key } from './key';
 import type { S3RawTextSource } from '../rawText';
@@ -53,18 +53,30 @@ export class S3DatasetSource extends S3PrivateBucket {
     return await this.createPreviewUrl({ key, expiredHours, responseContentType });
   }
 
-  // 上传链接
   async createUploadDatasetFileURL(params: CreateUploadDatasetFileParams) {
-    const { filename, datasetId, maxFileSize } = CreateUploadDatasetFileParamsSchema.parse(params);
+    const { filename, datasetId, maxFileSize, size } =
+      CreateUploadDatasetFileParamsSchema.parse(params);
     const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
-    return await this.createPresignedPutUrl(
-      { rawKey: fileKey, filename },
+    const uploadPolicy = createUploadConstraints({
+      filename,
+      source: 'local-file',
+      ...(size !== undefined ? { size } : {}),
+      uploadConstraints: {
+        allowedExtensions: datasetAllowedExtensions
+      }
+    });
+
+    return await this.createUploadAccessUrl(
+      {
+        rawKey: fileKey,
+        filename,
+        source: 'local-file',
+        ...(size !== undefined ? { size } : {})
+      },
       {
         expiredHours: 3,
         maxFileSize,
-        uploadConstraints: {
-          allowedExtensions: datasetAllowedExtensions
-        }
+        uploadPolicy
       }
     );
   }

@@ -2,6 +2,7 @@ import FormData from 'form-data';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createProxyAxios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
+import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 
 type SomarkResponse = {
   code?: number;
@@ -28,7 +29,7 @@ export const useSomarkServer = ({ apiKey }: { apiKey: string }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   const instance = createProxyAxios({
     baseURL: 'https://somark.ai/api/v1',
-    timeout: 600000
+    timeout: getBackendFileOperationTimeoutMs()
   });
 
   const parsePDF = async (fileBuffer: Buffer) => {

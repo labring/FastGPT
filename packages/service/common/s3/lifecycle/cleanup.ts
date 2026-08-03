@@ -6,6 +6,10 @@ import { TimerIdEnum } from '../../system/timerLock/constants';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
+/**
+ * 扫描过期的 S3 TTL 记录；Multipart 记录先 Abort 远端分片，普通对象才提交删除任务。
+ * bucket 暂不可用时保留 Multipart 记录，等待后续 cron 重试，避免丢失 uploadId。
+ */
 export async function clearExpiredMinioFiles() {
   try {
     const expiredFiles = await MongoS3TTL.find({
@@ -25,26 +29,49 @@ export async function clearExpiredMinioFiles() {
       try {
         const bucketName = file.bucketName;
         const bucket = global.s3BucketMap[bucketName];
+        const multipartUploadId = file.multipart?.uploadId?.trim();
+        const hasMultipartMarker = file.multipart !== undefined && file.multipart !== null;
 
         if (bucket) {
-          await bucket.addDeleteJob({ key: file.minioKey });
+          if (hasMultipartMarker) {
+            if (!multipartUploadId) {
+              throw new Error('Invalid Multipart TTL record: uploadId is missing');
+            }
+            // Multipart TTL 只代表未完成的远端分片，不应提交最终对象删除任务。
+            await bucket.abortMultipartUploadByUploadId({
+              key: file.minioKey,
+              uploadId: multipartUploadId,
+              objectMarker: file.multipart?.objectMarker,
+              totalSize: file.multipart?.totalSize
+            });
+          } else {
+            await bucket.addDeleteJob({ key: file.minioKey });
+          }
           await MongoS3TTL.deleteOne({ _id: file._id });
 
           success++;
-          logger.info('Deleted expired S3 object', {
+          logger.info('Cleaned expired S3 file', {
             key: file.minioKey,
-            bucketName: file.bucketName
+            bucketName: file.bucketName,
+            multipart: hasMultipartMarker
           });
         } else {
           logger.warn('S3 bucket not found for expired file', {
             bucketName: file.bucketName,
             key: file.minioKey
           });
-          await MongoS3TTL.deleteOne({ minioKey: file.minioKey, bucketName: file.bucketName });
-          logger.info('Cleanup the expired document in MongoDB of S3 TTL', {
-            key: file.minioKey,
-            bucketName: file.bucketName
-          });
+          if (!hasMultipartMarker) {
+            await MongoS3TTL.deleteOne({ minioKey: file.minioKey, bucketName: file.bucketName });
+            logger.info('Removed expired S3 TTL without bucket', {
+              key: file.minioKey,
+              bucketName: file.bucketName
+            });
+          } else {
+            logger.info('Deferred expired Multipart cleanup because bucket is unavailable', {
+              key: file.minioKey,
+              bucketName: file.bucketName
+            });
+          }
         }
       } catch (error) {
         fail++;

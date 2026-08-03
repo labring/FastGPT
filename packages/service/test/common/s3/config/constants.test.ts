@@ -52,6 +52,22 @@ describe('s3 storage constants', () => {
     );
   });
 
+  it('uses the expected Multipart upload defaults', async () => {
+    const {
+      S3_MULTIPART_UPLOAD_THRESHOLD_BYTES,
+      S3_MULTIPART_PART_SIZE_BYTES,
+      S3_MULTIPART_CONCURRENCY,
+      S3_MULTIPART_MAX_RETRY,
+      S3_MULTIPART_SESSION_EXPIRE_HOURS
+    } = await loadConstants();
+
+    expect(S3_MULTIPART_UPLOAD_THRESHOLD_BYTES).toBe(32 * 1024 * 1024);
+    expect(S3_MULTIPART_PART_SIZE_BYTES).toBe(8 * 1024 * 1024);
+    expect(S3_MULTIPART_CONCURRENCY).toBe(3);
+    expect(S3_MULTIPART_MAX_RETRY).toBe(3);
+    expect(S3_MULTIPART_SESSION_EXPIRE_HOURS).toBe(3);
+  });
+
   it('rewrites external URLs with the CDN endpoint', async () => {
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com/files');

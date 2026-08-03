@@ -1,8 +1,5 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import Papa from 'papaparse';
-import { type AxiosProgressEvent } from 'axios';
-import axios from 'axios';
-import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 
 export const loadFile2Buffer = ({ file, onError }: { file: File; onError?: (err: any) => void }) =>
   new Promise<ArrayBuffer>((resolve, reject) => {
@@ -122,51 +119,4 @@ export const base64ToFile = (base64: string, filename: string) => {
     u8arr[n] = bstr.charCodeAt(n);
   }
   return new File([u8arr], filename, { type: mime });
-};
-
-export const putFileToS3 = async ({
-  headers,
-  url,
-  file,
-  onSuccess,
-  onUploadProgress,
-  signal,
-  maxSize,
-  t
-}: {
-  headers?: Record<string, string>;
-  url: string;
-  file: File;
-  onSuccess?: () => void;
-  onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
-  signal?: AbortSignal;
-  maxSize?: number;
-  t: any;
-}) => {
-  try {
-    const res = await axios.put(url, file, {
-      headers: {
-        ...headers
-      },
-      onUploadProgress,
-      signal,
-      timeout: 5 * 60 * 1000
-    });
-    if (res.status === 200) {
-      onSuccess?.();
-    }
-  } catch (error) {
-    if (
-      axios.isCancel(error) ||
-      (typeof error === 'object' &&
-        error !== null &&
-        ((error as { name?: string }).name === 'AbortError' ||
-          (error as { name?: string }).name === 'CanceledError' ||
-          (error as { code?: string }).code === 'ERR_CANCELED'))
-    ) {
-      return Promise.reject(error);
-    }
-
-    return Promise.reject(parseS3UploadError({ t, error, maxSize }));
-  }
 };

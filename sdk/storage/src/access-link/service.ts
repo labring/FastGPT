@@ -9,6 +9,10 @@ import {
 } from './download';
 import {
   createUploadUrlHandler,
+  markMultipartAbortedHandler,
+  markMultipartCompleteFailedHandler,
+  markMultipartCompletingHandler,
+  markMultipartCompletedHandler,
   revokeUploadTokenHandler,
   verifyUploadTokenHandler
 } from './upload';
@@ -32,7 +36,10 @@ const resolveOptions = (
     clock: options.clock ?? (() => new Date()),
     idGenerator: {
       aliasId: options.idGenerator?.aliasId ?? defaultIdGenerator.aliasId,
-      uploadToken: options.idGenerator?.uploadToken ?? defaultIdGenerator.uploadToken
+      uploadToken: options.idGenerator?.uploadToken ?? defaultIdGenerator.uploadToken,
+      multipartCompletionAttemptId:
+        options.idGenerator?.multipartCompletionAttemptId ??
+        defaultIdGenerator.multipartCompletionAttemptId
     },
     uploadSessionUsePolicy: options.uploadSessionUsePolicy ?? 'mark-used'
   };
@@ -60,6 +67,10 @@ export const createS3AccessLinkService = (
     deleteDownloadAliasByObjects: deleteDownloadAliasByObjectsHandler(deps),
     createUploadUrl: createUploadUrlHandler(deps),
     verifyUploadToken: verifyUploadTokenHandler(deps),
+    markMultipartCompleting: markMultipartCompletingHandler(deps),
+    markMultipartCompleted: markMultipartCompletedHandler(deps),
+    markMultipartCompleteFailed: markMultipartCompleteFailedHandler(deps),
+    markMultipartAborted: markMultipartAbortedHandler(deps),
     revokeUploadToken: revokeUploadTokenHandler(deps)
   };
 };
