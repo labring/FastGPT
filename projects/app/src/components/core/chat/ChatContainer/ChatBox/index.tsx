@@ -25,7 +25,6 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
   ChatInputWrapperStyle,
   ChatTypeEnum,
@@ -471,23 +470,6 @@ const ChatBox = ({
   const activeInteractive = lastInteractive
     ? extractDeepestInteractive(lastInteractive)
     : undefined;
-  const agentAskQuestions: AgentAskQuestionInteractive[] = (() => {
-    if (activeInteractive?.type === 'agentAsk') return activeInteractive.params.questions;
-    if (activeInteractive?.type !== 'userInput') return [];
-
-    // ? Aux gen collection phase
-    return activeInteractive.params.inputForm
-      .filter((input) => input.list?.length)
-      .map((input) => ({
-        question: input.label,
-        options:
-          input.list?.map((option) => ({
-            summary: option.label,
-            value: option.value
-          })) ?? [],
-        answer: typeof input.value === 'string' ? input.value : ''
-      }));
-  })();
   const isAgentAskPending = isPendingAgentAsk(lastInteractive);
   const canRenderChatInput =
     onStartChat && chatStarted && active && (canSendQuery || isAgentAskPending);
@@ -756,27 +738,25 @@ const ChatBox = ({
                     chatForm={chatForm}
                   />
                 </Box>
-                {isAgentAskPending &&
-                  (activeInteractive?.type === 'userInput' ||
-                    activeInteractive?.type === 'agentAsk') && (
-                    <Box
-                      w={'100%'}
-                      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
-                      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
-                      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
-                    >
-                      <AgentAskComposer
-                        questions={agentAskQuestions}
-                        onSubmit={(answers) =>
-                          sendPromptWithDisabledGuard({
-                            text: JSON.stringify({ answers }),
-                            interactive: lastInteractive,
-                            ...(activeInteractive.type === 'agentAsk' ? { hideInUI: true } : {})
-                          })
-                        }
-                      />
-                    </Box>
-                  )}
+                {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
+                  <Box
+                    w={'100%'}
+                    maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                    mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                    pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                  >
+                    <AgentAskComposer
+                      questions={activeInteractive.params.questions}
+                      onSubmit={(answers) =>
+                        sendPromptWithDisabledGuard({
+                          text: JSON.stringify({ answers }),
+                          interactive: lastInteractive,
+                          hideInUI: true
+                        })
+                      }
+                    />
+                  </Box>
+                )}
               </Box>
             </Box>
           )}
