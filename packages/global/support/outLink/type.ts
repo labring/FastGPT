@@ -25,17 +25,16 @@ export const DingtalkAppSchema = z.object({
  */
 export type DingtalkAppType = z.infer<typeof DingtalkAppSchema>;
 
-export interface WecomAppType {
-  CallbackToken: string;
-  CallbackEncodingAesKey: string;
+/**
+ * WeCom app config
+ * @see https://developer.work.weixin.qq.com/document/path/90238
+ */
+export const WecomAppSchema = z.object({
+  CallbackToken: z.string().trim().min(1),
+  CallbackEncodingAesKey: z.string().trim().min(1)
+});
 
-  /** @deprecated */
-  // AgentId: string;
-  /** @deprecated */
-  // CorpId: string;
-  /** @deprecated */
-  // SuiteSecret: string;
-}
+export type WecomAppType = z.infer<typeof WecomAppSchema>;
 
 /**
  * WeChat Claw Bot app config.
