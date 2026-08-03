@@ -116,6 +116,21 @@ describe('replaceS3KeyToPreviewUrl', () => {
       expect(result).toContain('https://example.com/api/system/file/d/mock-short-link-');
       expect(result).toMatch(/\[文档\]\(https:\/\/example\.com/);
     });
+
+    it('应替换 Turndown 使用尖括号包装的含空格 S3 key', async () => {
+      const objectKey = 'dataset/team1/新建 DOCX 文档 [2]_parsed/image.png';
+      const result = await replaceS3KeyToPreviewUrl(`![image](<${objectKey}>)`, expiredTime);
+
+      expect(result).toContain(`mock-short-link-${objectKey}`);
+      expect(result).not.toContain('<');
+    });
+
+    it('对象键包含大于号时应正常处理', async () => {
+      const objectKey = 'dataset/team1/a>b.png';
+      const result = await replaceS3KeyToPreviewUrl(`![image](<${objectKey}>)`, expiredTime);
+
+      expect(result).toContain(`mock-short-link-${objectKey}`);
+    });
   });
 
   // 测试 chat 前缀的 S3 链接替换

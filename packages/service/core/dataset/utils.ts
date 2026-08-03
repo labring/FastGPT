@@ -12,12 +12,20 @@ import { createS3DownloadAccessUrls } from '../../common/s3/accessLink';
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
 
+/**
+ * 匹配 Markdown 链接中的 S3 key，同时兼容 Turndown 的 `<...>` 包装。
+ *
+ * 尖括号包装与普通 key 分支必须分开匹配，避免把合法 key 中的 `>` 误判为包装结束符。
+ */
 const createS3MarkdownKeyRegex = () => {
-  const pattern = Object.values(S3Sources)
-    .map((prefix) => `${prefix}\\/[^)]+?`)
+  const sourcePattern = Object.values(S3Sources)
+    .map((prefix) => `${prefix}\\/`)
     .join('|');
 
-  return new RegExp(String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(${pattern})\s*\)`, 'g');
+  return new RegExp(
+    String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${sourcePattern})[^)]+)>|((?:${sourcePattern})[^)]+?))\s*\)`,
+    'g'
+  );
 };
 
 const isPreviewUrlS3ObjectKey = (objectKey: string) =>
@@ -33,7 +41,7 @@ export const getS3ObjectKeysFromMarkdownTexts = (texts: Array<string | undefined
     if (!text || typeof text !== 'string') continue;
 
     for (const match of text.matchAll(createS3MarkdownKeyRegex())) {
-      const objectKey = match[3];
+      const objectKey = match[3] ?? match[4];
       if (objectKey && isPreviewUrlS3ObjectKey(objectKey)) {
         objectKeys.add(objectKey);
       }
@@ -89,7 +97,8 @@ export const replaceS3KeysWithPreviewUrlMap = (
   let content = documentQuoteText;
 
   for (const match of matches.slice().reverse()) {
-    const [full, bang, alt, objectKey] = match;
+    const [full, bang, alt, wrappedObjectKey, unwrappedObjectKey] = match;
+    const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
     const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
 
     if (previewUrl) {
