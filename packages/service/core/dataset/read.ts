@@ -41,7 +41,8 @@ export const parseDatasetCsvHeaders = (headers: string[]) => {
     validTypedHeader:
       typedHeader &&
       normalized.filter((header) => header === 'q').length === 1 &&
-      normalized.filter((header) => header === 'a').length === 1
+      normalized.filter((header) => header === 'a').length === 1 &&
+      normalized.filter((header) => header === 'metadata').length <= 1
   };
 };
 

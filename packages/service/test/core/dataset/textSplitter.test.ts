@@ -446,12 +446,13 @@ function buildCsv(rows: string[][]): string {
 }
 
 describe('rawText2Chunks backupParse', () => {
-  it('accepts typed CSV headers in any order and merges JSON metadata columns', async () => {
+  it('accepts typed CSV headers in any order and parses one JSON metadata column', async () => {
     const csv =
-      'metadata,index,a,q,metadata,index\n"{""source"":""crm""}",tag1,answer,question,"{""rank"":3}",tag2';
+      'metadata,index,a,q,index\n"{""source"":""crm"",""rank"":3}",tag1,answer,question,tag2';
     const result = await rawText2Chunks({ rawText: csv, backupParse: true });
 
     expect(parseDatasetCsvHeaders(['metadata', 'index', 'a', 'q']).validTypedHeader).toBe(true);
+    expect(parseDatasetCsvHeaders(['q', 'a', 'metadata', 'metadata']).validTypedHeader).toBe(false);
     expect(parseDatasetCsvHeaders(['q', 'a', 'source']).validTypedHeader).toBe(false);
     expect(result).toEqual([
       {
