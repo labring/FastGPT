@@ -5,6 +5,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SANDBOX_WORKSPACE_VOLUME_NAME } from '@fastgpt/global/core/ai/sandbox/volume';
 import { MongoSandboxInstance } from './schema';
 import {
   SandboxInstanceStatusEnum,
@@ -319,14 +320,19 @@ export async function createSandboxProvisioningInstance(
   }
 }
 
-/** 仅刷新已经发布的 running 记录；不存在或处于过渡态时绝不 upsert。 */
+/**
+ * 仅刷新已经发布的 running 记录；不存在或处于过渡态时绝不 upsert。
+ *
+ * OpenSandbox 可传入预期 workspace claimName 做 CAS，防止 lease 外构造的旧 client 在 restore
+ * 提交新 generation 后继续命中快路径。storage 只能由 lifecycle checkpoint 写入，touch 不回写。
+ */
 export async function touchRunningSandboxInstance(params: {
   provider: SandboxProviderType;
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
-  storage?: SandboxInstanceSchemaType['storage'];
+  expectedWorkspaceClaimName?: string;
   limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
 }) {
   return MongoSandboxInstance.findOneAndUpdate(
@@ -337,12 +343,21 @@ export async function touchRunningSandboxInstance(params: {
       sourceId: params.sourceId,
       userId: params.userId,
       status: SandboxInstanceStatusEnum.running,
-      operation: { $exists: false }
+      operation: { $exists: false },
+      ...(params.expectedWorkspaceClaimName
+        ? {
+            'storage.volumes': {
+              $elemMatch: {
+                name: SANDBOX_WORKSPACE_VOLUME_NAME,
+                claimName: params.expectedWorkspaceClaimName
+              }
+            }
+          }
+        : {})
     },
     {
       $set: {
         lastActiveAt: new Date(),
-        ...(params.storage !== undefined ? { storage: params.storage } : {}),
         ...(params.limit ? { limit: params.limit } : {})
       }
     },

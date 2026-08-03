@@ -27,6 +27,7 @@ import {
 import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
 import {
   buildVolumeConfig,
+  createLegacySessionVolumeClaimName,
   createSessionVolumeClaimName,
   getSessionVolumeClaimName
 } from '../../infrastructure/volume/service';
@@ -67,7 +68,7 @@ type UserSandboxMigrationTrackData = Parameters<typeof pushTrack.userSandboxMigr
 
 /**
  * OpenSandbox migration target 必须先提交 volume generation，再创建远端资源。
- * 非 OpenSandbox 或已越过 claimed 的 operation 只返回当前 checkpoint。
+ * 旧版本停在 targetEnsured 但缺少 storage 时，补记其已经挂载的旧确定性 volume。
  */
 const assignMigrationTargetVolume = async (params: {
   target: SandboxResourceDoc;
@@ -75,7 +76,27 @@ const assignMigrationTargetVolume = async (params: {
   operationPhase: string;
 }) => {
   let storage = params.target.storage;
-  if (params.target.provider !== 'opensandbox' || params.operationPhase !== 'claimed') {
+  if (params.target.provider !== 'opensandbox') {
+    return { operationPhase: params.operationPhase, storage };
+  }
+
+  if (params.operationPhase === 'targetEnsured' && !getSessionVolumeClaimName(storage)) {
+    const claimName = createLegacySessionVolumeClaimName(params.target.sandboxId);
+    storage = buildVolumeConfig(claimName).storage;
+    const repaired = await advanceSandboxOperation({
+      resource: params.target,
+      operationId: params.operationId,
+      status: SandboxInstanceStatusEnum.legacyMigrating,
+      phase: 'targetEnsured',
+      set: { storage }
+    });
+    if (!repaired) {
+      throw new Error('Sandbox migration lost ownership while repairing Legacy volume storage');
+    }
+    return { operationPhase: 'targetEnsured', storage };
+  }
+
+  if (params.operationPhase !== 'claimed') {
     return { operationPhase: params.operationPhase, storage };
   }
 

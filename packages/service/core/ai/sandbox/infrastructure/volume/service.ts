@@ -8,11 +8,15 @@ import {
   OPEN_SANDBOX_DEFAULT_ROOT_PATH,
   type OpenSandboxConfigType
 } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  SANDBOX_WORKSPACE_VOLUME_NAME,
+  SandboxVolumeEnsureResponseSchema,
+  SandboxVolumeNameSchema
+} from '@fastgpt/global/core/ai/sandbox/volume';
 import type { SandboxStorageType } from '../../type';
 import { getVolumeManagerEnvConfig } from './config';
 
-const SESSION_VOLUME_NAME_PREFIX = 'fastgpt-session';
-const SESSION_VOLUME_GENERATION_LENGTH = 12;
+const SESSION_VOLUME_GENERATION_LENGTH = 8;
 
 export type VolumeManagerResult = {
   volumes: OpenSandboxConfigType['volumes'];
@@ -29,7 +33,7 @@ export const buildVolumeConfig = (claimName: string): VolumeManagerResult => {
   return {
     volumes: [
       {
-        name: 'workspace',
+        name: SANDBOX_WORKSPACE_VOLUME_NAME,
         pvc: {
           claimName,
           createIfNotExists: false,
@@ -39,7 +43,13 @@ export const buildVolumeConfig = (claimName: string): VolumeManagerResult => {
       }
     ],
     storage: {
-      volumes: [{ name: 'workspace', claimName, mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH }],
+      volumes: [
+        {
+          name: SANDBOX_WORKSPACE_VOLUME_NAME,
+          claimName,
+          mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
+        }
+      ],
       mountPath: OPEN_SANDBOX_DEFAULT_ROOT_PATH
     }
   };
@@ -51,7 +61,7 @@ export const buildVolumeConfig = (claimName: string): VolumeManagerResult => {
  * stopped/running 只能复用这个名称；archived restore 会先生成并持久化下一代名称。
  */
 export const getSessionVolumeClaimName = (storage?: SandboxStorageType | null) =>
-  storage?.volumes?.find((volume) => volume.name === 'workspace')?.claimName;
+  storage?.volumes?.find((volume) => volume.name === SANDBOX_WORKSPACE_VOLUME_NAME)?.claimName;
 
 /**
  * 为一次新的 workspace generation 生成唯一 claimName。
@@ -60,10 +70,23 @@ export const createSessionVolumeClaimName = (params: {
   sandboxId: string;
   generationId?: string;
 }) => {
+  const { volumeNamePrefix } = getVolumeManagerEnvConfig();
   const generationId =
     params.generationId ??
     randomUUID().replaceAll('-', '').slice(0, SESSION_VOLUME_GENERATION_LENGTH);
-  return `${SESSION_VOLUME_NAME_PREFIX}-${params.sandboxId}-${generationId}`.toLowerCase();
+  return SandboxVolumeNameSchema.parse(
+    `${volumeNamePrefix}-${params.sandboxId}-${generationId}`.toLowerCase()
+  );
+};
+
+/**
+ * 恢复 generation 命名上线前已经创建的确定性 volume 名称。
+ *
+ * 只供旧 migration checkpoint 修复使用；新 volume 必须通过 createSessionVolumeClaimName 分配。
+ */
+export const createLegacySessionVolumeClaimName = (sandboxId: string) => {
+  const { volumeNamePrefix } = getVolumeManagerEnvConfig();
+  return SandboxVolumeNameSchema.parse(`${volumeNamePrefix}-${sandboxId}`.toLowerCase());
 };
 
 /**
@@ -87,7 +110,7 @@ export const ensureSessionVolume = async (claimName: string): Promise<string> =>
   if (!res.ok) {
     throw new Error(`volume-manager error: ${res.status} ${await res.text()}`);
   }
-  const result = (await res.json()) as { claimName: string };
+  const result = SandboxVolumeEnsureResponseSchema.parse(await res.json());
   if (result.claimName !== claimName) {
     throw new Error(
       `volume-manager returned unexpected claimName: expected ${claimName}, received ${result.claimName}`
@@ -99,8 +122,9 @@ export const ensureSessionVolume = async (claimName: string): Promise<string> =>
 /**
  * 删除指定 sandbox 会话关联的持久卷。
  *
- * 未启用 volume-manager 时直接跳过；404 视为已清理，volume-manager 的成功响应表示
- * driver 已完成对应 runtime 的删除语义（Kubernetes 会等待目标 PVC generation 结束）。
+ * 未启用 volume-manager 时直接跳过；删除目标始终使用 Mongo 中持久化的完整 claimName。
+ * 404 视为已清理，volume-manager 的成功响应表示 driver 已完成对应 runtime 的删除语义
+ * （Kubernetes 会等待目标 PVC generation 结束）。
  */
 export const deleteSessionVolume = async (claimName: string): Promise<void> => {
   const vmConfig = getVolumeManagerEnvConfig();

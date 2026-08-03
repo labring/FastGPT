@@ -13,15 +13,15 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false,
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'runtime-image',
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'test',
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'runtime-image:test',
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sealos.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-sealos-token',
     AGENT_SANDBOX_STORAGE_SIZE_GI: 1
   }
 }));
 
-vi.mock('@fastgpt-sdk/sandbox-adapter', () => ({
+vi.mock('@fastgpt-sdk/sandbox-adapter', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt-sdk/sandbox-adapter')>()),
   OPEN_SANDBOX_DEFAULT_ROOT_PATH: '/workspace',
   createSandbox: mocks.createSandbox
 }));

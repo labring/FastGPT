@@ -1,6 +1,10 @@
 import { Agent } from 'undici';
-import type { EnsureResult, EnsureVolumeParams, IVolumeDriver } from './IVolumeDriver';
-import { validateVolumeName } from '../utils/naming';
+import {
+  SandboxVolumeNameSchema,
+  type SandboxVolumeEnsureRequest,
+  type SandboxVolumeEnsureResponse
+} from '@fastgpt/global/core/ai/sandbox/volume';
+import type { IVolumeDriver } from './IVolumeDriver';
 import { env } from '../env';
 import { logDebug } from '../utils/logger';
 
@@ -21,8 +25,8 @@ export class DockerVolumeDriver implements IVolumeDriver {
     } as RequestInit & { dispatcher: Agent });
   }
 
-  async ensure(params: EnsureVolumeParams): Promise<EnsureResult> {
-    const name = validateVolumeName(params.claimName);
+  async ensure(params: SandboxVolumeEnsureRequest): Promise<SandboxVolumeEnsureResponse> {
+    const name = SandboxVolumeNameSchema.parse(params.claimName);
 
     // Check if volume already exists
     logDebug(`Docker inspect volume name=${name}`);
@@ -56,7 +60,7 @@ export class DockerVolumeDriver implements IVolumeDriver {
   }
 
   async remove(claimName: string): Promise<void> {
-    const name = validateVolumeName(claimName);
+    const name = SandboxVolumeNameSchema.parse(claimName);
     logDebug(`Docker remove volume name=${name}`);
     const res = await this.dockerFetch(`/volumes/${name}`, { method: 'DELETE' });
     logDebug(`Docker remove volume status=${res.status}`);

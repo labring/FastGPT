@@ -203,7 +203,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-如果启用 Agent/Skill 沙盒，还需要单独部署 `fastgpt-agent-sandbox-proxy`，并同步替换 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO`，确保沙盒 provider 可以拉取 `fastgpt-agent-sandbox` 镜像。v4.15.0 默认部署文件不内置 `fastgpt-agent-sandbox-proxy`，也不会默认启动 OpenSandbox；沙盒 provider 的接入方式见 [V4.15.0 升级说明](../upgrading/4-15/41500.mdx#5-agent-sandbox-部署方案)。
+如果启用 Agent/Skill 沙盒，还需要单独部署 `fastgpt-agent-sandbox-proxy`，并同步替换 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，确保沙盒 provider 可以拉取 `fastgpt-agent-sandbox` 镜像。v4.15.0 默认部署文件不内置 `fastgpt-agent-sandbox-proxy`，也不会默认启动 OpenSandbox；沙盒 provider 的接入方式见 [V4.15.0 升级说明](../upgrading/4-15/41500.mdx#5-agent-sandbox-部署方案)。
 
 ### 2. 修改环境变量
 

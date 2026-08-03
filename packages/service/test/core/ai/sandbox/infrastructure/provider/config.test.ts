@@ -9,8 +9,7 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
   AGENT_SANDBOX_CPU_COUNT: process.env.AGENT_SANDBOX_CPU_COUNT,
   AGENT_SANDBOX_MEMORY_MIB: process.env.AGENT_SANDBOX_MEMORY_MIB,
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
@@ -62,14 +61,7 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
-    );
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', originalEnv.AGENT_SANDBOX_CPU_COUNT);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', originalEnv.AGENT_SANDBOX_MEMORY_MIB);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
@@ -210,8 +202,7 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-key');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'fastgpt-agent-sandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'test');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'fastgpt-agent-sandbox:test');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://volume-manager.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'volume-token');
 
@@ -274,8 +265,7 @@ describe('sandbox provider config', () => {
 
   it('builds opensandbox runtime create config from profile env image', async () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2');
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
     vi.resetModules();
@@ -375,8 +365,7 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'opensandbox',
         AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://opensandbox.local',
         AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-        AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: '',
-        AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: undefined,
+        AGENT_SANDBOX_OPENSANDBOX_IMAGE: '',
         AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true,
         AGENT_SANDBOX_CPU_COUNT: 1,
         AGENT_SANDBOX_MEMORY_MIB: 2048,
@@ -390,7 +379,7 @@ describe('sandbox provider config', () => {
       const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
 
       expect(() => runtimeProfile.buildConfig()).toThrow(
-        'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required'
+        'AGENT_SANDBOX_OPENSANDBOX_IMAGE is required'
       );
       expect(
         runtimeProfile.buildConfig({

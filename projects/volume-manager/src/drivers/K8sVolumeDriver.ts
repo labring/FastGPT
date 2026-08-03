@@ -1,8 +1,12 @@
 import { readFileSync } from 'fs';
 import { Agent } from 'undici';
 import { z } from 'zod';
-import type { EnsureResult, EnsureVolumeParams, IVolumeDriver } from './IVolumeDriver';
-import { validateVolumeName } from '../utils/naming';
+import {
+  SandboxVolumeNameSchema,
+  type SandboxVolumeEnsureRequest,
+  type SandboxVolumeEnsureResponse
+} from '@fastgpt/global/core/ai/sandbox/volume';
+import type { IVolumeDriver } from './IVolumeDriver';
 import { env } from '../env';
 import { logDebug } from '../utils/logger';
 
@@ -41,8 +45,7 @@ function pvcBody(params: { name: string; storageSize: string; namespace: string 
     kind: 'PersistentVolumeClaim',
     metadata: {
       name: params.name,
-      namespace: params.namespace,
-      labels: { 'app.kubernetes.io/managed-by': 'fastgpt-volume-manager' }
+      namespace: params.namespace
     },
     spec: {
       accessModes: ['ReadWriteOnce'],
@@ -138,8 +141,8 @@ export class K8sVolumeDriver implements IVolumeDriver {
     await new Promise((resolve) => setTimeout(resolve, Math.min(this.pollIntervalMs, remainingMs)));
   }
 
-  async ensure(params: EnsureVolumeParams): Promise<EnsureResult> {
-    const name = validateVolumeName(params.claimName);
+  async ensure(params: SandboxVolumeEnsureRequest): Promise<SandboxVolumeEnsureResponse> {
+    const name = SandboxVolumeNameSchema.parse(params.claimName);
     const storageSize = params.storageSize ?? DEFAULT_PVC_STORAGE_SIZE;
     const deadline = Date.now() + this.waitTimeoutMs;
 
@@ -185,7 +188,7 @@ export class K8sVolumeDriver implements IVolumeDriver {
   }
 
   async remove(claimName: string): Promise<void> {
-    const name = validateVolumeName(claimName);
+    const name = SandboxVolumeNameSchema.parse(claimName);
     const current = await this.readPvc(name);
     if (current.state === 'absent') return;
 

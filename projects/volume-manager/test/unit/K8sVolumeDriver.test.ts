@@ -68,6 +68,7 @@ describe('K8sVolumeDriver', () => {
     expect(body.spec.storageClassName).toBe('');
     expect(body.spec.resources.requests.storage).toBe('5Gi');
     expect(body.metadata.namespace).toBe('opensandbox');
+    expect(body.metadata).not.toHaveProperty('labels');
   });
 
   it('ensure waits for a deleting PVC before creating the next generation', async () => {

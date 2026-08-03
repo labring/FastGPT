@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   ensureConnectedSandboxRunning: vi.fn(),
   resolveSandboxHome: vi.fn(),
   buildVolumeConfig: vi.fn(),
+  createLegacySessionVolumeClaimName: vi.fn(),
   createSessionVolumeClaimName: vi.fn(),
   deleteSessionVolume: vi.fn(),
   getSessionVolumeClaimName: vi.fn(),
@@ -100,6 +101,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => ({
   buildVolumeConfig: mocks.buildVolumeConfig,
+  createLegacySessionVolumeClaimName: mocks.createLegacySessionVolumeClaimName,
   createSessionVolumeClaimName: mocks.createSessionVolumeClaimName,
   deleteSessionVolume: mocks.deleteSessionVolume,
   getSessionVolumeClaimName: mocks.getSessionVolumeClaimName,
@@ -313,6 +315,9 @@ describe('legacy sandbox migration', () => {
     mocks.createSessionVolumeClaimName.mockImplementation(
       ({ sandboxId, generationId }: { sandboxId: string; generationId?: string }) =>
         `fastgpt-session-${sandboxId}-${generationId ?? 'new'}`
+    );
+    mocks.createLegacySessionVolumeClaimName.mockImplementation(
+      (sandboxId: string) => `fastgpt-session-${sandboxId}`
     );
     mocks.getSessionVolumeClaimName.mockImplementation(
       (storage: any) =>
@@ -694,6 +699,38 @@ describe('legacy sandbox migration', () => {
         ])
       );
       expect(mocks.deleteLegacyWorkspaceArchiveNow).not.toHaveBeenCalled();
+    });
+
+    it('repairs a pre-generation targetEnsured checkpoint before resuming migration', async () => {
+      const targetSandboxId = generateSandboxId({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
+        userId: 'user-1'
+      });
+      await insertLegacyApp({ sandboxId: 'migration-test-target-ensured', chatId: 'chat-1' });
+      const migratingTarget = createMigrationTargetDoc(targetSandboxId);
+      migratingTarget.storage = undefined;
+      migratingTarget.operation.phase = 'targetEnsured';
+      mocks.claimAppSandboxMigrationTarget.mockResolvedValue(migratingTarget);
+
+      const result = await migrateLegacySandboxesToUserLevel({ dryRun: false });
+
+      const legacyClaimName = `fastgpt-session-${targetSandboxId}`;
+      expect(result).toMatchObject({ migratedAppCount: 1, failedCount: 0 });
+      expect(mocks.createLegacySessionVolumeClaimName).toHaveBeenCalledWith(targetSandboxId);
+      expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operationId: migratingTarget.operation.id,
+          phase: 'targetEnsured',
+          set: {
+            storage: expect.objectContaining({
+              volumes: [expect.objectContaining({ claimName: legacyClaimName })]
+            })
+          }
+        })
+      );
+      expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith(legacyClaimName);
+      expect(mocks.createSessionVolumeClaimName).not.toHaveBeenCalled();
     });
 
     it('stops an already published target before completing installed Legacy records', async () => {

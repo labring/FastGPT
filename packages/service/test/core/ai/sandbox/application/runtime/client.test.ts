@@ -317,7 +317,9 @@ describe('sandbox runtime client lifecycle', () => {
       }
     };
     mocks.touchRunningSandboxInstance.mockResolvedValue(null);
-    const provisioning = createInstance('provisioning', 'provision-1', 'opensandbox');
+    const provisioning = createInstance('provisioning', 'provision-1', 'opensandbox', {
+      storage: vmConfig.storage
+    });
     mocks.createSandboxProvisioningInstance.mockResolvedValueOnce({
       instance: provisioning,
       created: true
@@ -338,6 +340,39 @@ describe('sandbox runtime client lifecycle', () => {
       query.sandboxId,
       expect.objectContaining({ vmConfig })
     );
+  });
+
+  it('rebuilds the provider from the current claim after a stale storage CAS misses', async () => {
+    const staleVmConfig = mocks.buildVolumeConfig('fastgpt-session-sandbox-1-stale');
+    const current = createInstance('running', undefined, 'opensandbox', {
+      storage: mocks.buildVolumeConfig('fastgpt-session-sandbox-1-current').storage
+    });
+    const staleProvider = createProvider();
+    const currentProvider = createProvider();
+    mocks.buildRuntimeSandboxAdapter
+      .mockReturnValueOnce(staleProvider)
+      .mockReturnValueOnce(currentProvider);
+    mocks.restoreArchivedSandboxBeforeUse.mockResolvedValueOnce(staleVmConfig);
+    mocks.touchRunningSandboxInstance.mockResolvedValueOnce(null).mockResolvedValueOnce(current);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(current);
+
+    await getSandboxClient(query, { providerName: 'opensandbox' });
+
+    expect(mocks.touchRunningSandboxInstance).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        expectedWorkspaceClaimName: 'fastgpt-session-sandbox-1-stale'
+      })
+    );
+    expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenLastCalledWith(
+      'opensandbox',
+      query.sandboxId,
+      expect.objectContaining({
+        vmConfig: expect.objectContaining({ storage: current.storage })
+      })
+    );
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledWith(currentProvider);
+    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalledWith(staleProvider);
   });
 
   it('persists the initial claimName before ensuring a new OpenSandbox provider', async () => {

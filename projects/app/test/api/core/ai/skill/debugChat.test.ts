@@ -57,8 +57,7 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
       AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
       AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'mock-opensandbox-api-key',
       AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-      AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'runtime-image',
-      AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'test',
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'runtime-image:test',
       AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: false
     }
   };

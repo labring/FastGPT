@@ -27,7 +27,12 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
   AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
-  AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
+  AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX:
+    process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
 };
 
 const importServiceEnv = async () => {
@@ -66,6 +71,19 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
+    vi.stubEnv(
+      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO',
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO
+    );
+    vi.stubEnv(
+      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
+    );
+    vi.stubEnv(
+      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX',
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
+    );
   });
 
   it('enables MongoDB index synchronization by default and supports disabling it', async () => {
@@ -279,18 +297,35 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', undefined);
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', undefined);
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', undefined);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX', undefined);
     const defaultEnv = await importServiceEnv();
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(1);
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(2048);
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(1);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe(
+      'fastgpt-session'
+    );
 
     vi.stubEnv('AGENT_SANDBOX_CPU_COUNT', '2.5');
     vi.stubEnv('AGENT_SANDBOX_MEMORY_MIB', '4096');
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', '5');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX', 'custom-volume');
     const customEnv = await importServiceEnv();
     expect(customEnv.serviceEnv.AGENT_SANDBOX_CPU_COUNT).toBe(2.5);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(4096);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(5);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe('custom-volume');
+  });
+
+  it('rejects an invalid OpenSandbox volume name prefix', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX', 'invalid_prefix');
+
+    await expect(importServiceEnv()).rejects.toThrow(
+      'Invalid environment variables. Please check: AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX'
+    );
   });
 
   it('validates Agent Sandbox lifecycle thresholds during service env init', async () => {
@@ -336,11 +371,28 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'fastgpt-agent-sandbox:latest');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://mock-volume-manager.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'mock-volume-manager-token');
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
 
     await expect(importServiceEnv()).resolves.toBeDefined();
+  });
+
+  it('保留 OpenSandbox 旧镜像环境变量供升级兼容', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'legacy/runtime-image');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'legacy-stable');
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'legacy/runtime-image',
+        AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'legacy-stable'
+      }
+    });
   });
 });

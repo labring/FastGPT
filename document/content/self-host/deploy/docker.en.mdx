@@ -211,7 +211,7 @@ If you use an internal Harbor, private registry, or image mirror, download `dock
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-If Agent/Skill Sandbox is enabled, deploy `fastgpt-agent-sandbox-proxy` separately and also replace `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO` so the sandbox provider can pull the `fastgpt-agent-sandbox` image. The v4.15.0 default deployment file does not include `fastgpt-agent-sandbox-proxy` or start OpenSandbox by default. See the [V4.15.0 upgrade notes](../upgrading/4-15/41500.en.mdx#5-agent-sandbox-deployment-options) for sandbox provider setup.
+If Agent/Skill Sandbox is enabled, deploy `fastgpt-agent-sandbox-proxy` separately and also replace `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the `fastgpt-agent-sandbox` image. The v4.15.0 default deployment file does not include `fastgpt-agent-sandbox-proxy` or start OpenSandbox by default. See the [V4.15.0 upgrade notes](../upgrading/4-15/41500.en.mdx#5-agent-sandbox-deployment-options) for sandbox provider setup.
 
 ### 2. Modify Environment Variables
 

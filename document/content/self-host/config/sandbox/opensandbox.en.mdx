@@ -54,12 +54,13 @@ AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 # Docker compose deployments use docker runtime
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
 # Runtime image used when OpenSandbox creates Agent Sandbox instances
-AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
-AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG=v0.2.0
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 # Persistent volume manager URL and token. The token must match x-volume-manager-auth-token.
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
+# Prefix used by the FastGPT app when generating persistent volume claimName values
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 # Per-instance Agent Sandbox CPU count and memory limit (MiB)
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
