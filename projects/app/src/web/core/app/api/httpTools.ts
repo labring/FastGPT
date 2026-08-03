@@ -27,4 +27,6 @@ export const putUpdateHttpTool = (data: UpdateHttpToolsBodyType) =>
   PUT<UpdateHttpToolsResponseType>('/core/app/httpTools/update', data);
 
 export const postRunHTTPTool = (data: RunHttpToolBodyType) =>
-  POST<RunHttpToolResponseType>('/core/app/httpTools/runTool', data);
+  POST<RunHttpToolResponseType>('/core/app/httpTools/runTool', data, {
+    timeout: 600000
+  });

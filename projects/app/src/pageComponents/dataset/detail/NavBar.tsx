@@ -98,7 +98,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                     maxW={['45vw', '280px']}
                     className="textEllipsis"
                   >
-                    {datasetDetail.name}
+                    {t('common:back')}
                   </Box>
                 </MyTooltip>
               </Flex>
