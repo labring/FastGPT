@@ -245,7 +245,11 @@ export class E2BAdapter extends BaseSandboxAdapter {
 
       for (const path of paths.map((p) => this.normalizePath(p))) {
         try {
-          const content = await sandbox.files.read(path);
+          // Explicitly read as bytes — E2B SDK defaults to 'text' format,
+          // which corrupts binary files (zip, images, etc.) by transcoding
+          // through UTF-8 text. This causes "Corrupted zip: missing N bytes"
+          // errors when reading skill packages or other binary artifacts.
+          const content = await sandbox.files.read(path, { format: 'bytes' });
           results.push({
             path,
             content: Buffer.from(content),
