@@ -22,6 +22,12 @@ type DataItemType = {
   q: string;
   a: string;
   indexes: DatasetDataSchemaType['indexes'];
+  metadata?: Record<string, any>;
+};
+
+type ExportSchemaType = {
+  maxIndexCount?: number;
+  hasMetadata?: number;
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -46,22 +52,52 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     fields: '_id'
   });
 
+  const match = {
+    teamId,
+    datasetId: { $in: datasets.map((d) => d._id) }
+  };
+
+  const [exportSchema] = await MongoDatasetData.aggregate<ExportSchemaType>(
+    [
+      { $match: match },
+      { $limit: 50000 },
+      {
+        $project: {
+          indexCount: { $size: { $ifNull: ['$indexes', []] } },
+          hasMetadata: {
+            $cond: [{ $eq: [{ $type: '$metadata' }, 'object'] }, 1, 0]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          maxIndexCount: { $max: '$indexCount' },
+          hasMetadata: { $max: '$hasMetadata' }
+        }
+      }
+    ],
+    { ...readFromSecondary }
+  );
+
+  const indexCount = exportSchema?.maxIndexCount || 0;
+  const hasMetadata = exportSchema?.hasMetadata === 1;
+  const headers = [
+    'q',
+    'a',
+    ...Array.from({ length: indexCount }, () => 'index'),
+    ...(hasMetadata ? ['metadata'] : [])
+  ];
+
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
   res.setHeader(
     'Content-Disposition',
     `attachment; filename=${encodeURIComponent(dataset.name)}-backup.csv;`
   );
 
-  const cursor = MongoDatasetData.find<DataItemType>(
-    {
-      teamId,
-      datasetId: { $in: datasets.map((d) => d._id) }
-    },
-    'q a indexes',
-    {
-      ...readFromSecondary
-    }
-  )
+  const cursor = MongoDatasetData.find<DataItemType>(match, 'q a indexes metadata', {
+    ...readFromSecondary
+  })
     .limit(50000)
     .cursor();
 
@@ -70,14 +106,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     readStream: cursor
   });
 
-  write(`\uFEFFq,a,indexes`);
+  write(`\uFEFF${headers.join(',')}`);
 
   cursor.on('data', (doc: DataItemType) => {
     const sanitizedQ = sanitizeCsvField(doc.q || '');
     const sanitizedA = sanitizeCsvField(doc.a || '');
-    const sanitizedIndexes = doc.indexes.map((i) => sanitizeCsvField(i.text || '')).join(',');
+    const sanitizedIndexes = Array.from({ length: indexCount }, (_, index) =>
+      sanitizeCsvField(doc.indexes?.[index]?.text || '')
+    );
+    const sanitizedMetadata = hasMetadata
+      ? [sanitizeCsvField(doc.metadata ? JSON.stringify(doc.metadata) : '')]
+      : [];
 
-    write(`\n${sanitizedQ},${sanitizedA},${sanitizedIndexes}`);
+    write(`\n${[sanitizedQ, sanitizedA, ...sanitizedIndexes, ...sanitizedMetadata].join(',')}`);
   });
 
   cursor.on('end', () => {

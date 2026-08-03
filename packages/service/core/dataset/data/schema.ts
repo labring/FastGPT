@@ -38,6 +38,9 @@ const DatasetDataSchema = new Schema({
   },
   imageId: String,
   imageDescMap: Object,
+  metadata: {
+    type: Object
+  },
   history: {
     type: [
       {

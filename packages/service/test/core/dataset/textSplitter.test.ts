@@ -1,5 +1,5 @@
-import { it, expect } from 'vitest'; // 必须显式导入
-import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
+import { describe, it, expect } from 'vitest'; // 必须显式导入
+import { parseDatasetCsvHeaders, rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import { ChunkTriggerConfigTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const formatChunks = (
@@ -437,4 +437,302 @@ it('should not create header-only chunk for markdown table with a long first row
     '| id | payload | note |\n| --- | --- | --- |'
   );
   expect(data.map((chunk) => chunk.q).join('\n')).toContain('| 1 |');
+});
+
+// ── backupParse (parseDatasetBackup2Chunks) ──
+
+function buildCsv(rows: string[][]): string {
+  return rows.map((row) => row.join(',')).join('\n');
+}
+
+describe('rawText2Chunks backupParse', () => {
+  it('accepts typed CSV headers in any order and parses one JSON metadata column', async () => {
+    const csv =
+      'metadata,index,a,q,index\n"{""source"":""crm"",""rank"":3}",tag1,answer,question,tag2';
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+
+    expect(parseDatasetCsvHeaders(['metadata', 'index', 'a', 'q']).validTypedHeader).toBe(true);
+    expect(parseDatasetCsvHeaders(['q', 'a', 'indexes']).validTypedHeader).toBe(false);
+    expect(parseDatasetCsvHeaders(['q', 'a', 'metadata', 'metadata']).validTypedHeader).toBe(false);
+    expect(parseDatasetCsvHeaders(['q', 'a', 'source']).validTypedHeader).toBe(false);
+    expect(result).toEqual([
+      {
+        q: 'question',
+        a: 'answer',
+        indexes: ['tag1', 'tag2'],
+        metadata: { source: 'crm', rank: 3 },
+        imageIdList: undefined
+      }
+    ]);
+  });
+
+  it('returns empty array when CSV has only a header row', async () => {
+    const csv = buildCsv([['q', 'a']]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array for empty string', async () => {
+    const result = await rawText2Chunks({ rawText: '', backupParse: true });
+    expect(result).toEqual([]);
+  });
+
+  it('parses basic q and a columns', async () => {
+    const csv = buildCsv([
+      ['q', 'a'],
+      ['What is FastGPT?', 'A knowledge base QA system'],
+      ['How to deploy?', 'Use docker-compose']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toEqual([
+      {
+        q: 'What is FastGPT?',
+        a: 'A knowledge base QA system',
+        indexes: [],
+        metadata: undefined,
+        imageIdList: undefined
+      },
+      {
+        q: 'How to deploy?',
+        a: 'Use docker-compose',
+        indexes: [],
+        metadata: undefined,
+        imageIdList: undefined
+      }
+    ]);
+  });
+
+  it('handles headers with mixed case by lowercasing them', async () => {
+    const csv = buildCsv([
+      ['Q', 'A'],
+      ['question', 'answer']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toEqual([
+      { q: 'question', a: 'answer', indexes: [], metadata: undefined, imageIdList: undefined }
+    ]);
+  });
+
+  it('trims whitespace from headers', async () => {
+    const csv = buildCsv([
+      [' q ', ' a '],
+      ['question', 'answer']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toEqual([
+      { q: 'question', a: 'answer', indexes: [], metadata: undefined, imageIdList: undefined }
+    ]);
+  });
+
+  it('parses indexes column into an array', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'indexes'],
+      ['question', 'answer', 'tag1 tag2']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].indexes).toEqual(['tag1 tag2']);
+  });
+
+  it('keeps trailing indexes from the legacy q,a,indexes export format', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'indexes'],
+      ['question', 'answer', 'tag1', 'tag2', 'tag3']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].indexes).toEqual(['tag1', 'tag2', 'tag3']);
+  });
+
+  it('filters out empty index values', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'indexes'],
+      ['question', 'answer', '']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].indexes).toEqual([]);
+  });
+
+  it('collects extra columns as metadata', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'category', 'source'],
+      ['What is FastGPT?', 'A QA system', 'docs', 'official']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].metadata).toEqual({ category: 'docs', source: 'official' });
+  });
+
+  it('preserves original-case metadata keys (not lowercased)', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'Category', 'SourceURL'],
+      ['question', 'answer', 'docs', 'https://example.com']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].metadata).toEqual({
+      Category: 'docs',
+      SourceURL: 'https://example.com'
+    });
+  });
+
+  it('excludes empty metadata values from the metadata object', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'category', 'source'],
+      ['question', 'answer', '', '']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].metadata).toBeUndefined();
+  });
+
+  it('includes only non-empty metadata values (mixed)', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'category', 'source'],
+      ['question', 'answer', 'docs', '']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].metadata).toEqual({ category: 'docs' });
+  });
+
+  it('filters out rows where both q and a are empty', async () => {
+    const csv = buildCsv([
+      ['q', 'a'],
+      ['', ''],
+      ['valid question', 'valid answer'],
+      ['', '']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toHaveLength(1);
+    expect(result[0].q).toBe('valid question');
+  });
+
+  it('keeps rows where only q is present', async () => {
+    const csv = buildCsv([
+      ['q', 'a'],
+      ['only question', '']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(expect.objectContaining({ q: 'only question', a: '' }));
+  });
+
+  it('keeps rows where only a is present', async () => {
+    const csv = buildCsv([
+      ['q', 'a'],
+      ['', 'only answer']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(expect.objectContaining({ q: '', a: 'only answer' }));
+  });
+
+  it('handles missing q column by returning empty string for q', async () => {
+    const csv = buildCsv([
+      ['a', 'notes'],
+      ['answer text', 'some notes']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toEqual([
+      {
+        q: '',
+        a: 'answer text',
+        indexes: [],
+        metadata: { notes: 'some notes' },
+        imageIdList: undefined
+      }
+    ]);
+  });
+
+  it('handles missing a column by returning empty string for a', async () => {
+    const csv = buildCsv([
+      ['q', 'notes'],
+      ['question text', 'some notes']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toEqual([
+      {
+        q: 'question text',
+        a: '',
+        indexes: [],
+        metadata: { notes: 'some notes' },
+        imageIdList: undefined
+      }
+    ]);
+  });
+
+  it('propagates imageIdList to every chunk', async () => {
+    const csv = buildCsv([
+      ['q', 'a'],
+      ['q1', 'a1'],
+      ['q2', 'a2']
+    ]);
+    const result = await rawText2Chunks({
+      rawText: csv,
+      backupParse: true,
+      imageIdList: ['img1', 'img2']
+    });
+    expect(result).toHaveLength(2);
+    expect(result[0].imageIdList).toEqual(['img1', 'img2']);
+    expect(result[1].imageIdList).toEqual(['img1', 'img2']);
+  });
+
+  it('handles multiple indexes columns', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'indexes', 'indexes'],
+      ['question', 'answer', 'tag1', 'tag2']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].indexes).toEqual(['tag1', 'tag2']);
+  });
+
+  it('handles a complex CSV with q, a, indexes, and multiple metadata columns', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'indexes', 'category', 'priority', 'source'],
+      ['What is FastGPT?', 'A QA system', 'intro docs', 'documentation', 'high', 'official'],
+      ['How to install?', 'Run docker', '', 'guide', '', '']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      q: 'What is FastGPT?',
+      a: 'A QA system',
+      indexes: ['intro docs'],
+      metadata: { category: 'documentation', priority: 'high', source: 'official' },
+      imageIdList: undefined
+    });
+    expect(result[1]).toEqual({
+      q: 'How to install?',
+      a: 'Run docker',
+      indexes: [],
+      metadata: { category: 'guide' },
+      imageIdList: undefined
+    });
+  });
+
+  it('handles CSV values with commas by quoting (PapaParse built-in)', async () => {
+    const csv =
+      'q,a,category\n"What is FastGPT, really?","A knowledge base QA system with, many features",docs';
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result).toHaveLength(1);
+    expect(result[0].q).toBe('What is FastGPT, really?');
+    expect(result[0].a).toBe('A knowledge base QA system with, many features');
+    expect(result[0].metadata).toEqual({ category: 'docs' });
+  });
+
+  it('preserves order of rows from CSV', async () => {
+    const csv = buildCsv([
+      ['q', 'a'],
+      ['first', '1'],
+      ['second', '2'],
+      ['third', '3']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result.map((c) => c.q)).toEqual(['first', 'second', 'third']);
+  });
+
+  it('does not trim whitespace from q/a values', async () => {
+    const csv = buildCsv([
+      ['q', 'a'],
+      ['  question with spaces  ', '  answer with spaces  ']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].q).toBe('  question with spaces  ');
+    expect(result[0].a).toBe('  answer with spaces  ');
+  });
 });

@@ -24,7 +24,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
-  const { collectionId, q, a, indexes } = parseApiInput({
+  const { collectionId, q, a, indexes, metadata } = parseApiInput({
     req,
     bodySchema: InsertDataBodySchema
   }).body;
@@ -82,7 +82,8 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
     embeddingModel: vectorModelData.model,
     imageIndex: !!imageIndex,
-    indexes: formatIndexes
+    indexes: formatIndexes,
+    metadata
   });
 
   pushGenerateVectorUsage({
