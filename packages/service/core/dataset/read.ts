@@ -23,12 +23,11 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
-const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
+const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'metadata']);
 
 /**
- * 解析 CSV 模板表头，支持 q/a/index(es)/metadata 四类固定列名，并保留原始列顺序。
- * typedHeader 只在所有列名都属于固定列名时成立；旧模板的自定义 metadata 列名仍由
- * rawText2Chunks 以兼容模式处理。
+ * 解析 CSV 模板表头，严格限制为 q/a/index/metadata 四类固定列名，并保留原始列顺序。
+ * q、a 必须各出现一次，metadata 最多一列，index 可以重复。
  */
 export const parseDatasetCsvHeaders = (headers: string[]) => {
   const normalized = headers.map((header) => header.trim().toLowerCase());

@@ -452,6 +452,7 @@ describe('rawText2Chunks backupParse', () => {
     const result = await rawText2Chunks({ rawText: csv, backupParse: true });
 
     expect(parseDatasetCsvHeaders(['metadata', 'index', 'a', 'q']).validTypedHeader).toBe(true);
+    expect(parseDatasetCsvHeaders(['q', 'a', 'indexes']).validTypedHeader).toBe(false);
     expect(parseDatasetCsvHeaders(['q', 'a', 'metadata', 'metadata']).validTypedHeader).toBe(false);
     expect(parseDatasetCsvHeaders(['q', 'a', 'source']).validTypedHeader).toBe(false);
     expect(result).toEqual([
