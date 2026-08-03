@@ -34,7 +34,18 @@ E2B Sandbox Provider 已移除。此前配置过 E2B 的环境需要切换为 `o
 
 > FastGPT、`fastgpt-agent-sandbox-proxy` 和 `fastgpt-agent-sandbox` 的预览协议已同步变更。启用 Agent Sandbox 时必须使用本版本配套镜像，不支持新旧版本混合部署。
 
-### 2. 迁移 Agent Sandbox 数据
+### 2. 更新 Agent-sandbox-proxy 环境变量
+
+4.16.0 需要依赖 proxy 进行静态资源代理访问，如果网关支持 ws 和 http 在同一个端口，则可以只开放一个端口。如果不支持，可以通过设置 `PREVIEW_PORT` 来设置 http 访问端口。
+
+```dotenv
+# ws和http服务的端口
+PORT=1006
+# http服务的端口，可以覆盖 PORT
+PREVIEW_PORT=1007
+```
+
+### 3. 迁移 Agent Sandbox 数据
 
 本版本将 App Chat 的 Agent Sandbox 从“每个对话一个实例”调整为“同一 App、同一用户共享一个实例”。不同对话的文件仍分别保存在 `sessions/<chatId>` 目录中，已发布 Skill 则统一保存在共享的 `projects` 目录中。
 
@@ -62,7 +73,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
 
 请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount` 和 `failures`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示本次迁移全部完成。
 
-### 3. 迁移手动 HTTP 工具 Schema
+### 4. 迁移手动 HTTP 工具数据
 
 本版本将手动模式 HTTP 工具的数组参数改为标准 JSON Schema。升级前创建过手动 HTTP 工具的环境需要执行此迁移；OpenAPI 模式的 HTTP 工具无需迁移，脚本会自动跳过。
 
@@ -94,6 +105,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
 4. 工作流工具节点支持将指定输入参数交由 Agent 自动生成，并保留固定值、引用和用户输入等既有配置。
 5. ChatAgent 选择工具时，支持手动指定是否为 AI 生成参数。
 6. 知识库数据支持自定义 `metadata`，可通过 API 或 CSV 模板导入 JSON 元数据；检索结果和备份导出会保留该字段。CSV 模板仅允许 `q`、`a`、`index`、`metadata` 表头，`q`、`a`、`metadata` 各一列，`index` 可多列且顺序任意。
+7. 大文件分块上传。
 
 ## ⚙️ 优化
 
@@ -115,6 +127,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
 7. 修复工具运行错误在 Agent/工作流工具界面中被错误展示的问题。
 8. 修复系统工具列表中已卸载工具的展示问题。
 9. 修复 Agent/Agent V2 默认版本选择逻辑，使其默认选择最新版本。
+10. S3 文件如果有空格时，解析其文件内的图片，会因 key 异常 404。
 
 ## 🛠️ 代码优化
 
@@ -122,3 +135,4 @@ curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
 2. Agent Sandbox Proxy 和 IDE Agent 增加 Workspace 直连预览、Range 请求、路径逃逸防护及会话鉴权。
 3. 工作流 schema 优化，统一工具调用和表单渲染。
 4. 扩展工具 JSON Schema，支持更多数据类型。
+5. 统一服务文件读取超时时间。
