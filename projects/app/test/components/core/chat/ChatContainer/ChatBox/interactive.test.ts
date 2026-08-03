@@ -140,7 +140,7 @@ describe('getInteractiveByHistories', () => {
     });
   });
 
-  it('ignores legacy agent plan ask interactive', () => {
+  it('adapts unanswered legacy agent plan ask interactive to a pending agentAsk', () => {
     const interactive = {
       ...baseInteractive,
       type: 'agentPlanAskQuery',
@@ -151,10 +151,30 @@ describe('getInteractiveByHistories', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    expect(getInteractiveByHistories([createAiRecord(interactive)])).toEqual({
-      interactive: undefined,
+    const result = getInteractiveByHistories([createAiRecord(interactive)]);
+
+    expect(result).toMatchObject({
+      interactive: {
+        type: 'agentAsk',
+        askId: 'ask-1',
+        params: {
+          description: '',
+          questions: [
+            {
+              question: 'Need more detail',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' },
+                { summary: 'C', value: 'C' }
+              ],
+              answer: ''
+            }
+          ]
+        }
+      },
       canSendQuery: true
     });
+    expect(isPendingAgentAsk(result.interactive)).toBe(true);
   });
 });
 
@@ -445,6 +465,64 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
     expect((result[0].value[0] as any).interactive.params.questions[0].answer).toBe('');
     expect((result[1].value[0] as any).interactive.params.questions[0].answer).toBe('B');
     expect((result[2].value[0] as any).interactive.params.answer).toBeUndefined();
+  });
+
+  it('replaces an unanswered legacy agent ask with submitted agentAsk', () => {
+    const legacyAsk = {
+      ...baseInteractive,
+      type: 'agentPlanAskQuery',
+      askId: 'ask-1',
+      params: {
+        content: 'Need more detail',
+        reason: 'Choose one',
+        options: ['A', 'B', 'C']
+      }
+    } as WorkflowInteractiveResponseType;
+    const pendingAsk = {
+      ...baseInteractive,
+      type: 'agentAsk',
+      askId: 'ask-1',
+      params: {
+        description: 'Choose one',
+        questions: [
+          {
+            question: 'Need more detail',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' },
+              { summary: 'C', value: 'C' }
+            ],
+            answer: ''
+          }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+
+    const result = persistAgentAskAnswersToHistories({
+      histories: [createAiRecord(legacyAsk)],
+      interactive: pendingAsk,
+      answer: JSON.stringify({ answers: ['B'] })
+    });
+
+    expect((result[0].value[0] as any).interactive).toMatchObject({
+      type: 'agentAsk',
+      askId: 'ask-1',
+      params: {
+        description: 'Choose one',
+        questions: [
+          {
+            question: 'Need more detail',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' },
+              { summary: 'C', value: 'C' }
+            ],
+            answer: 'B'
+          }
+        ],
+        submitted: true
+      }
+    });
   });
 });
 

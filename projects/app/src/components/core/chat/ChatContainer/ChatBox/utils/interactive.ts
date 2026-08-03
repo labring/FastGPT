@@ -71,7 +71,7 @@ export const persistAgentAskAnswersToHistories = ({
   const submittedAnswers = parseAgentAskAnswers(answer);
   let hasUpdated = false;
 
-  const nextHistories = histories.map((item) => {
+  const nextHistories = histories.map<ChatSiteItemType>((item) => {
     if (item.obj !== ChatRoleEnum.AI) return item;
 
     let itemUpdated = false;
@@ -79,6 +79,37 @@ export const persistAgentAskAnswersToHistories = ({
       if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
+
+      // Convert the legacy ask_user interactive record to the new one.
+      if (
+        val.interactive.type === 'agentPlanAskQuery' &&
+        val.interactive.askId === targetAskId &&
+        !val.interactive.params.answer
+      ) {
+        itemUpdated = true;
+        hasUpdated = true;
+        return {
+          ...val,
+          interactive: {
+            ...val.interactive,
+            type: 'agentAsk' as const,
+            params: {
+              description: val.interactive.params.reason ?? '',
+              questions: [
+                {
+                  question: val.interactive.params.content,
+                  options: val.interactive.params.options.map((option) => ({
+                    summary: option,
+                    value: option
+                  })),
+                  answer: submittedAnswers[0] ?? ''
+                }
+              ],
+              submitted: true
+            }
+          }
+        };
+      }
 
       if (finalInteractive.type !== 'agentAsk' || finalInteractive.askId !== targetAskId) {
         return val;

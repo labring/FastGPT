@@ -386,12 +386,8 @@ export const chats2GPTMessages = ({
           : undefined;
 
         // Legacy ask
-        if (
-          finalInteractive?.type === 'agentPlanAskQuery' &&
-          finalInteractive.askId &&
-          typeof finalInteractive.params.answer === 'string'
-        ) {
-          agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer);
+        if (finalInteractive?.type === 'agentPlanAskQuery' && finalInteractive.askId) {
+          agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer || '未回答');
         }
 
         // New ask_user

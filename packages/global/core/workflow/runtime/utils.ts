@@ -171,8 +171,33 @@ export const getLastInteractiveValue = (
       return;
     }
 
+    // Convert legacy ask_user call to the new one.
+    if (lastValue.interactive.type === 'agentPlanAskQuery') {
+      if (lastValue.interactive.params.answer) {
+        return;
+      }
+
+      return {
+        ...lastValue.interactive,
+        type: 'agentAsk',
+        params: {
+          description: lastValue.interactive.params.reason ?? '',
+          questions: [
+            {
+              question: lastValue.interactive.params.content,
+              options: lastValue.interactive.params.options.map((option) => ({
+                summary: option,
+                value: option
+              })),
+              answer: ''
+            }
+          ]
+        }
+      };
+    }
+
     const finalInteractive = extractDeepestInteractive(lastValue.interactive);
-    if (finalInteractive?.type === 'agentPlanAskQuery') {
+    if (finalInteractive.type === 'agentPlanAskQuery') {
       return;
     }
 
