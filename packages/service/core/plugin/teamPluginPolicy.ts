@@ -1,7 +1,12 @@
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { SystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getTeamPluginSource,
+  isDebugToolSource,
+  isTeamPluginSource,
+  parseTeamPluginSource
+} from '@fastgpt/global/core/app/tool/utils';
 import {
   TeamPluginInstallSourceEnum,
   TeamPluginPolicyStatusEnum,
@@ -9,9 +14,7 @@ import {
   type TeamInstalledPluginSchemaType
 } from '@fastgpt/global/core/plugin/schema/type';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoTeamInstalledPlugin } from './schema/teamInstalledPluginSchema';
-import { MongoTeamPluginTag } from './schema/teamPluginTagSchema';
 import { SystemToolRepo } from '../app/tool/systemTool/systemTool.repo';
 
 export type TeamPluginPolicyRecord = TeamInstalledPluginSchemaType;
@@ -20,8 +23,6 @@ export type TeamPluginListItem = SystemToolListItemType & {
   registrySource: TeamPluginRegistrySourceEnum;
   installSource?: TeamPluginInstallSourceEnum;
   teamInstallStatus: TeamPluginPolicyStatusEnum | 'system';
-  teamHidden: boolean;
-  teamTagIds: string[];
   confirmedPermissions?: string[];
   installedVersion?: string;
   installedEtag?: string;
@@ -29,23 +30,13 @@ export type TeamPluginListItem = SystemToolListItemType & {
 };
 
 export type TeamPluginListFilter = {
-  includeHidden?: boolean;
   includeDeleted?: boolean;
   includeDebug?: boolean;
   source?: 'all' | 'system' | 'team';
-  teamTagIds?: string[];
 };
 
 export const normalizeTeamPluginStatus = (status?: PluginStatusType) =>
   status === PluginStatusEnum.SoonOffline ? PluginStatusEnum.Normal : status;
-
-const policyKey = ({
-  registrySource,
-  pluginId
-}: {
-  registrySource: TeamPluginRegistrySourceEnum;
-  pluginId: string;
-}) => `${registrySource}:${pluginId}`;
 
 export const getRawPluginIdFromSystemToolId = (toolId: string) =>
   SystemToolCodec.getPluginIdFromDB(toolId).split('/')[0];
@@ -60,31 +51,16 @@ export const getTeamPluginPolicyStatus = (policy?: TeamInstalledPluginSchemaType
 
 export const getTeamPluginPolicyMap = async (teamId: string) => {
   const policies = await MongoTeamInstalledPlugin.find({ teamId }).lean();
-  return new Map(
-    policies.map((policy) => [
-      policyKey({
-        registrySource: policy.registrySource ?? TeamPluginRegistrySourceEnum.team,
-        pluginId: policy.pluginId
-      }),
-      policy
-    ])
-  );
+  return new Map(policies.map((policy) => [policy.pluginId, policy]));
 };
 
 export const getTeamPluginPolicy = async ({
   teamId,
-  pluginId,
-  registrySource
+  pluginId
 }: {
   teamId: string;
   pluginId: string;
-  registrySource: TeamPluginRegistrySourceEnum;
-}) =>
-  MongoTeamInstalledPlugin.findOne({
-    teamId,
-    pluginId,
-    registrySource
-  }).lean();
+}) => MongoTeamInstalledPlugin.findOne({ teamId, pluginId }).lean();
 
 export const assertTeamPluginInstalled = async ({
   teamId,
@@ -93,11 +69,7 @@ export const assertTeamPluginInstalled = async ({
   teamId: string;
   pluginId: string;
 }) => {
-  const policy = await getTeamPluginPolicy({
-    teamId,
-    pluginId,
-    registrySource: TeamPluginRegistrySourceEnum.team
-  });
+  const policy = await getTeamPluginPolicy({ teamId, pluginId });
 
   if (getTeamPluginPolicyStatus(policy) !== TeamPluginPolicyStatusEnum.installed) {
     return Promise.reject('plugin.team_not_installed');
@@ -106,10 +78,26 @@ export const assertTeamPluginInstalled = async ({
   return policy;
 };
 
-/**
- * 安装接口返回成功后，仍要从当前 team source 读回插件。
- * plugin service 如果尚未按 source 写入，FastGPT 不能提前把团队账本标记为 installed。
- */
+/** 校验持久化 team source 属于当前执行团队，并确认插件授权仍有效。 */
+export const assertTeamPluginSourceAccess = async ({
+  teamId,
+  source,
+  pluginId
+}: {
+  teamId: string;
+  source: string;
+  pluginId: string;
+}) => {
+  const parsedSource = parseTeamPluginSource(source);
+  if (!parsedSource || parsedSource.teamId !== teamId) {
+    return Promise.reject('plugin.team_source_forbidden');
+  }
+
+  await assertTeamPluginInstalled({ teamId, pluginId });
+  return source;
+};
+
+/** 安装成功后从同一 team source 读回，避免账本先于 plugin service 生效。 */
 export const assertTeamPluginSourceReady = async ({
   teamId,
   tools
@@ -118,39 +106,17 @@ export const assertTeamPluginSourceReady = async ({
   tools: { pluginId: string; version?: string }[];
 }) => {
   const systemToolRepo = SystemToolRepo.getInstance();
+  const source = getTeamPluginSource(teamId);
 
   await Promise.all(
     tools.map((tool) =>
       systemToolRepo.getSystemToolRuntime({
         pluginId: SystemToolCodec.getDBPluginId(getRawPluginIdFromSystemToolId(tool.pluginId)),
         version: tool.version,
-        source: teamId
+        source
       })
     )
-  ).catch(() => {
-    return Promise.reject('plugin.team_source_install_failed');
-  });
-};
-
-export const validateTeamPluginTagIds = async ({
-  teamId,
-  teamTagIds = []
-}: {
-  teamId: string;
-  teamTagIds?: string[];
-}) => {
-  const uniqueTagIds = Array.from(new Set(teamTagIds));
-  if (uniqueTagIds.length === 0) return [];
-
-  const count = await MongoTeamPluginTag.countDocuments({
-    teamId,
-    tagId: { $in: uniqueTagIds }
-  });
-  if (count !== uniqueTagIds.length) {
-    return Promise.reject('plugin.team_tag_not_found');
-  }
-
-  return uniqueTagIds;
+  ).catch(() => Promise.reject('plugin.team_source_install_failed'));
 };
 
 export const upsertTeamInstalledPluginPolicy = async ({
@@ -160,7 +126,6 @@ export const upsertTeamInstalledPluginPolicy = async ({
   version,
   etag,
   installSource,
-  teamTagIds,
   confirmedPermissions,
   packageSource
 }: {
@@ -170,19 +135,13 @@ export const upsertTeamInstalledPluginPolicy = async ({
   version?: string;
   etag?: string;
   installSource: TeamPluginInstallSourceEnum;
-  teamTagIds?: string[];
   confirmedPermissions?: string[];
   packageSource?: TeamInstalledPluginSchemaType['packageSource'];
 }) => {
   const now = new Date();
-  const validTeamTagIds = await validateTeamPluginTagIds({ teamId, teamTagIds });
 
   return MongoTeamInstalledPlugin.findOneAndUpdate(
-    {
-      teamId,
-      pluginId,
-      registrySource: TeamPluginRegistrySourceEnum.team
-    },
+    { teamId, pluginId },
     {
       $set: {
         teamId,
@@ -190,12 +149,9 @@ export const upsertTeamInstalledPluginPolicy = async ({
         pluginId,
         version,
         etag,
-        registrySource: TeamPluginRegistrySourceEnum.team,
         installSource,
         status: TeamPluginPolicyStatusEnum.installed,
-        hidden: false,
         installed: true,
-        teamTagIds: validTeamTagIds,
         confirmedPermissions: confirmedPermissions ?? [],
         permissionsConfirmedAt: now,
         packageSource,
@@ -206,55 +162,6 @@ export const upsertTeamInstalledPluginPolicy = async ({
         updateTime: now
       },
       $setOnInsert: {
-        createTime: now
-      }
-    },
-    {
-      upsert: true,
-      new: true
-    }
-  );
-};
-
-export const setTeamSystemPluginHidden = async ({
-  teamId,
-  tmbId,
-  pluginId,
-  hidden
-}: {
-  teamId: string;
-  tmbId: string;
-  pluginId: string;
-  hidden: boolean;
-}) => {
-  const now = new Date();
-
-  return MongoTeamInstalledPlugin.findOneAndUpdate(
-    {
-      teamId,
-      pluginId,
-      registrySource: TeamPluginRegistrySourceEnum.system
-    },
-    {
-      $set: {
-        teamId,
-        pluginType: 'tool',
-        pluginId,
-        registrySource: TeamPluginRegistrySourceEnum.system,
-        status: hidden
-          ? TeamPluginPolicyStatusEnum.hidden
-          : TeamPluginPolicyStatusEnum.installed,
-        hidden,
-        installed: true,
-        hiddenByTmbId: hidden ? tmbId : undefined,
-        hiddenAt: hidden ? now : undefined,
-        updatedByTmbId: tmbId,
-        updatedAt: now,
-        updateTime: now
-      },
-      $setOnInsert: {
-        teamTagIds: [],
-        confirmedPermissions: [],
         createTime: now
       }
     },
@@ -277,154 +184,36 @@ export const setTeamPluginDeleted = async ({
   const now = new Date();
 
   return MongoTeamInstalledPlugin.findOneAndUpdate(
-    {
-      teamId,
-      pluginId,
-      registrySource: TeamPluginRegistrySourceEnum.team
-    },
+    { teamId, pluginId },
     {
       $set: {
         status: TeamPluginPolicyStatusEnum.deleted,
         installed: false,
-        hidden: false,
         deletedByTmbId: tmbId,
         deletedAt: now,
         updatedByTmbId: tmbId,
         updatedAt: now,
         updateTime: now
-      },
-      $setOnInsert: {
-        teamId,
-        pluginType: 'tool',
-        pluginId,
-        registrySource: TeamPluginRegistrySourceEnum.team,
-        teamTagIds: [],
-        confirmedPermissions: [],
-        createTime: now
       }
     },
-    {
-      upsert: true,
-      new: true
-    }
-  );
-};
-
-export const updateTeamPluginTags = async ({
-  teamId,
-  pluginId,
-  registrySource,
-  teamTagIds,
-  tmbId
-}: {
-  teamId: string;
-  pluginId: string;
-  registrySource: TeamPluginRegistrySourceEnum;
-  teamTagIds: string[];
-  tmbId: string;
-}) => {
-  const validTeamTagIds = await validateTeamPluginTagIds({ teamId, teamTagIds });
-  const now = new Date();
-
-  const current = await getTeamPluginPolicy({ teamId, pluginId, registrySource });
-  if (registrySource === TeamPluginRegistrySourceEnum.team && !current) {
-    return Promise.reject('plugin.team_not_installed');
-  }
-
-  return MongoTeamInstalledPlugin.findOneAndUpdate(
-    {
-      teamId,
-      pluginId,
-      registrySource
-    },
-    {
-      $set: {
-        teamId,
-        pluginType: 'tool',
-        pluginId,
-        registrySource,
-        status:
-          getTeamPluginPolicyStatus(current) ??
-          (registrySource === TeamPluginRegistrySourceEnum.system
-            ? TeamPluginPolicyStatusEnum.installed
-            : TeamPluginPolicyStatusEnum.deleted),
-        hidden: current?.hidden ?? false,
-        installed: current?.installed ?? true,
-        teamTagIds: validTeamTagIds,
-        updatedByTmbId: tmbId,
-        updatedAt: now,
-        updateTime: now
-      },
-      $setOnInsert: {
-        confirmedPermissions: [],
-        createTime: now
-      }
-    },
-    {
-      upsert: registrySource === TeamPluginRegistrySourceEnum.system,
-      new: true
-    }
-  );
-};
-
-export const listTeamPluginTags = (teamId: string) =>
-  MongoTeamPluginTag.find({ teamId }).sort({ tagOrder: 1, createTime: 1 }).lean();
-
-export const createTeamPluginTag = async ({
-  teamId,
-  tagName
-}: {
-  teamId: string;
-  tagName: string;
-}) => {
-  const lastTag = await MongoTeamPluginTag.findOne({ teamId }).sort({ tagOrder: -1 }).lean();
-  return MongoTeamPluginTag.create({
-    teamId,
-    tagId: getNanoid(12),
-    tagName,
-    tagOrder: (lastTag?.tagOrder ?? -1) + 1
-  });
-};
-
-export const updateTeamPluginTag = ({
-  teamId,
-  tagId,
-  tagName
-}: {
-  teamId: string;
-  tagId: string;
-  tagName: string;
-}) =>
-  MongoTeamPluginTag.findOneAndUpdate(
-    { teamId, tagId },
-    { $set: { tagName, updateTime: new Date() } },
     { new: true }
   );
+};
 
-export const updateTeamPluginTagOrder = async ({
-  teamId,
-  tagIds
+const getToolRegistrySource = ({
+  tool,
+  teamId
 }: {
+  tool: SystemToolListItemType;
   teamId: string;
-  tagIds: string[];
 }) => {
-  await Promise.all(
-    tagIds.map((tagId, index) =>
-      MongoTeamPluginTag.updateOne({ teamId, tagId }, { $set: { tagOrder: index } })
-    )
-  );
-};
-
-export const deleteTeamPluginTag = async ({ teamId, tagId }: { teamId: string; tagId: string }) => {
-  await MongoTeamPluginTag.deleteOne({ teamId, tagId });
-  await MongoTeamInstalledPlugin.updateMany({ teamId }, { $pull: { teamTagIds: tagId } });
-};
-
-const getToolRegistrySource = ({ tool, teamId }: { tool: SystemToolListItemType; teamId: string }) => {
   if (isDebugToolSource(tool.source)) return undefined;
-  return tool.source === teamId
-    ? TeamPluginRegistrySourceEnum.team
-    : TeamPluginRegistrySourceEnum.system;
+  if (isTeamPluginSource(tool.source)) {
+    return parseTeamPluginSource(tool.source)?.teamId === teamId
+      ? TeamPluginRegistrySourceEnum.team
+      : undefined;
+  }
+  return TeamPluginRegistrySourceEnum.system;
 };
 
 const buildDeletedToolPlaceholder = ({
@@ -439,7 +228,7 @@ const buildDeletedToolPlaceholder = ({
   versionLabel: policy.version,
   etag: policy.etag,
   status: PluginStatusEnum.Normal,
-  source: 'team',
+  source: getTeamPluginSource(String(policy.teamId)),
   isToolSet: false,
   avatar: '',
   name: policy.pluginId,
@@ -460,8 +249,6 @@ const buildDeletedToolPlaceholder = ({
   registrySource: TeamPluginRegistrySourceEnum.team,
   installSource: policy.installSource,
   teamInstallStatus: TeamPluginPolicyStatusEnum.deleted,
-  teamHidden: false,
-  teamTagIds: policy.teamTagIds ?? [],
   confirmedPermissions: policy.confirmedPermissions,
   installedVersion: policy.version,
   installedEtag: policy.etag,
@@ -481,19 +268,18 @@ export const resolveTeamPluginList = ({
   filter?: TeamPluginListFilter;
   canManage: boolean;
 }): TeamPluginListItem[] => {
-  const seenKeys = new Set<string>();
-  const teamTagIdSet = new Set(filter.teamTagIds ?? []);
+  const seenTeamPluginIds = new Set<string>();
 
   const list = tools.flatMap<TeamPluginListItem>((tool) => {
     if (isDebugToolSource(tool.source)) {
-      if (filter.includeDebug === false) return [];
+      if (filter.includeDebug === false || (filter.source && filter.source !== 'all')) {
+        return [];
+      }
       return [
         {
           ...tool,
           registrySource: TeamPluginRegistrySourceEnum.system,
           teamInstallStatus: 'system',
-          teamHidden: false,
-          teamTagIds: [],
           canManage
         }
       ];
@@ -504,49 +290,34 @@ export const resolveTeamPluginList = ({
     if (filter.source && filter.source !== 'all' && filter.source !== registrySource) return [];
 
     const pluginId = getRawPluginIdFromSystemToolId(tool.id);
-    const key = policyKey({ registrySource, pluginId });
-    const policy = policyMap.get(key);
-    const status = getTeamPluginPolicyStatus(policy);
-    const hidden = !!policy?.hidden || status === TeamPluginPolicyStatusEnum.hidden;
-    seenKeys.add(key);
-
     if (registrySource === TeamPluginRegistrySourceEnum.system) {
-      if (hidden && !filter.includeHidden) return [];
-    } else {
-      if (!policy && !filter.includeDeleted) return [];
-      if (status === TeamPluginPolicyStatusEnum.deleted && !filter.includeDeleted) return [];
-      if (status !== TeamPluginPolicyStatusEnum.installed && !filter.includeDeleted) return [];
+      return [
+        {
+          ...tool,
+          registrySource,
+          teamInstallStatus: 'system',
+          canManage
+        }
+      ];
     }
 
-    const teamTagIds = policy?.teamTagIds ?? [];
-    if (
-      teamTagIdSet.size > 0 &&
-      !teamTagIds.some((teamTagId) => teamTagIdSet.has(teamTagId))
-    ) {
-      return [];
-    }
+    const policy = policyMap.get(pluginId);
+    if (!policy) return [];
+    const status = getTeamPluginPolicyStatus(policy);
+    seenTeamPluginIds.add(pluginId);
+    if (status === TeamPluginPolicyStatusEnum.deleted && !filter.includeDeleted) return [];
+    if (status !== TeamPluginPolicyStatusEnum.installed && !filter.includeDeleted) return [];
 
     return [
       {
         ...tool,
-        status:
-          registrySource === TeamPluginRegistrySourceEnum.team
-            ? (normalizeTeamPluginStatus(tool.status) ?? PluginStatusEnum.Normal)
-            : tool.status,
-        source: registrySource === TeamPluginRegistrySourceEnum.team ? 'team' : tool.source,
+        status: normalizeTeamPluginStatus(tool.status) ?? PluginStatusEnum.Normal,
         registrySource,
-        installSource: policy?.installSource,
-        teamInstallStatus:
-          registrySource === TeamPluginRegistrySourceEnum.system
-            ? hidden
-              ? TeamPluginPolicyStatusEnum.hidden
-              : 'system'
-            : status ?? TeamPluginPolicyStatusEnum.deleted,
-        teamHidden: hidden,
-        teamTagIds,
-        confirmedPermissions: policy?.confirmedPermissions,
-        installedVersion: policy?.version,
-        installedEtag: policy?.etag,
+        installSource: policy.installSource,
+        teamInstallStatus: status ?? TeamPluginPolicyStatusEnum.deleted,
+        confirmedPermissions: policy.confirmedPermissions,
+        installedVersion: policy.version,
+        installedEtag: policy.etag,
         canManage
       }
     ];
@@ -554,13 +325,9 @@ export const resolveTeamPluginList = ({
 
   if (filter.includeDeleted) {
     policyMap.forEach((policy) => {
-      const registrySource = policy.registrySource ?? TeamPluginRegistrySourceEnum.team;
-      const status = getTeamPluginPolicyStatus(policy);
-      const key = policyKey({ registrySource, pluginId: policy.pluginId });
       if (
-        registrySource !== TeamPluginRegistrySourceEnum.team ||
-        status !== TeamPluginPolicyStatusEnum.deleted ||
-        seenKeys.has(key)
+        getTeamPluginPolicyStatus(policy) !== TeamPluginPolicyStatusEnum.deleted ||
+        seenTeamPluginIds.has(policy.pluginId)
       ) {
         return;
       }

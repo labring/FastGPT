@@ -3,7 +3,6 @@ import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mon
 import {
   TeamPluginInstallSourceEnum,
   TeamPluginPolicyStatusEnum,
-  TeamPluginRegistrySourceEnum,
   type TeamInstalledPluginSchemaType
 } from '@fastgpt/global/core/plugin/schema/type';
 
@@ -27,11 +26,6 @@ const TeamInstalledPluginSchema = new Schema({
   },
   version: String,
   etag: String,
-  registrySource: {
-    type: String,
-    enum: Object.values(TeamPluginRegistrySourceEnum),
-    default: TeamPluginRegistrySourceEnum.team
-  },
   installSource: {
     type: String,
     enum: Object.values(TeamPluginInstallSourceEnum)
@@ -39,14 +33,6 @@ const TeamInstalledPluginSchema = new Schema({
   status: {
     type: String,
     enum: Object.values(TeamPluginPolicyStatusEnum)
-  },
-  hidden: {
-    type: Boolean,
-    default: false
-  },
-  teamTagIds: {
-    type: [String],
-    default: []
   },
   packageSource: {
     marketplaceToolId: String,
@@ -65,8 +51,6 @@ const TeamInstalledPluginSchema = new Schema({
   updatedAt: Date,
   deletedByTmbId: String,
   deletedAt: Date,
-  hiddenByTmbId: String,
-  hiddenAt: Date,
   createTime: {
     type: Date,
     default: Date.now
@@ -81,12 +65,10 @@ const TeamInstalledPluginSchema = new Schema({
 });
 
 defineIndex(TeamInstalledPluginSchema, {
-  key: { teamId: 1, registrySource: 1, pluginId: 1 },
+  key: { teamId: 1, pluginId: 1 },
   options: { unique: true }
 });
 defineIndex(TeamInstalledPluginSchema, { key: { teamId: 1, status: 1, updateTime: -1 } });
-defineIndex(TeamInstalledPluginSchema, { key: { teamId: 1, teamTagIds: 1 } });
-defineIndex(TeamInstalledPluginSchema, { key: { teamId: 1, hidden: 1 } });
 
 export const MongoTeamInstalledPlugin = getMongoModel<TeamInstalledPluginSchemaType>(
   collectionName,

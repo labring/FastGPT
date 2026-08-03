@@ -3,6 +3,7 @@ import {
   getToolNameCandidates,
   isSystemOrCommercialToolId,
   isDebugToolSource,
+  isTeamPluginSource,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -59,9 +60,8 @@ import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/tem
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 import { getMCPChildren } from '../../../../../../app/mcp';
 import { getTmbInfoByTmbId } from '../../../../../../../support/user/team/controller';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 import {
-  assertTeamPluginInstalled,
+  assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
 
@@ -136,21 +136,22 @@ export const getAgentRuntimeTools = async ({
     const systemToolRepo = SystemToolRepo.getInstance();
     const toolConfigSource = (() => {
       if (isDebugToolSource(runtimeSource)) return runtimeSource;
-      if (runtimeSource === TeamPluginRegistrySourceEnum.team) {
-        return TeamPluginRegistrySourceEnum.team;
-      }
+      if (isTeamPluginSource(runtimeSource)) return runtimeSource;
     })();
     const detailSource = await (async () => {
-      if (runtimeSource !== TeamPluginRegistrySourceEnum.team) {
-        return toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system');
+      if (!isTeamPluginSource(runtimeSource)) {
+        return (
+          toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system')
+        );
       }
 
-      await assertTeamPluginInstalled({
+      await assertTeamPluginSourceAccess({
         teamId,
+        source: runtimeSource,
         pluginId: getRawPluginIdFromSystemToolId(toolId)
       });
 
-      return teamId;
+      return runtimeSource;
     })();
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,

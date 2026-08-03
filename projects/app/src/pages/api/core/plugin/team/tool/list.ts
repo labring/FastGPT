@@ -13,7 +13,7 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { getTeamPluginSource, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   getTeamPluginPolicyMap,
@@ -45,13 +45,14 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
 
   const { teamId, tmbId, permission } = await authUserPer({ req, authToken: true });
   const debugSource = await getActiveDebugSource(tmbId);
+  const teamSource = getTeamPluginSource(teamId);
 
   const systemToolRepo = SystemToolRepo.getInstance();
   const [tools, userDetail, policyMap] = await Promise.all([
     systemToolRepo.getSystemToolList({
       op: 'or',
       // 调试 source 作为额外来源追加，保留 system/team 的生产插件可见性。
-      sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
+      sources: ['system', teamSource, ...(debugSource ? [debugSource] : [])],
       lang
     }),
     getUserDetail({ tmbId }),
@@ -65,8 +66,7 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
       tools: tools.filter((tool) => tool.status !== PluginStatusEnum.Offline),
       policyMap,
       filter: query,
-      canManage:
-        permission.hasPluginManagePer || permission.hasManagePer || permission.isOwner
+      canManage: permission.hasPluginManagePer || permission.hasManagePer || permission.isOwner
     })
       .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
       .filter((tool) => {

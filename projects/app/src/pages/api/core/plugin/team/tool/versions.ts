@@ -10,9 +10,9 @@ import {
   type GetTeamToolVersionsResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, isTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import {
-  assertTeamPluginInstalled,
+  assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
@@ -34,9 +34,10 @@ async function handler(
   const lang = getLocale(req);
 
   const { teamId } = await authCert({ req, authToken: true });
-  if (source === 'team') {
-    await assertTeamPluginInstalled({
+  if (isTeamPluginSource(source)) {
+    await assertTeamPluginSourceAccess({
       teamId,
+      source,
       pluginId: getRawPluginIdFromSystemToolId(toolId)
     });
   }
@@ -44,7 +45,7 @@ async function handler(
   const systemToolRepo = SystemToolRepo.getInstance();
   const versions = await systemToolRepo.getVersions({
     pluginId: toolId,
-    source: getQuerySource({ source, teamId }),
+    source: getQuerySource(source),
     lang
   });
 
@@ -53,8 +54,7 @@ async function handler(
 
 export default NextAPI(handler);
 
-function getQuerySource({ source, teamId }: { source?: string; teamId: string }) {
-  if (source === 'team') return teamId;
-  if (isDebugToolSource(source)) return source;
+function getQuerySource(source?: string) {
+  if (isTeamPluginSource(source) || isDebugToolSource(source)) return source;
   return 'system';
 }

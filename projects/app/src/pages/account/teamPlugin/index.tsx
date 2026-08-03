@@ -1,10 +1,9 @@
 'use client';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Box,
   Button,
-  Checkbox,
   Flex,
   HStack,
   Input,
@@ -33,44 +32,31 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   confirmTeamPkgPluginUpload,
-  createTeamPluginTag,
   deleteTeamPlugin,
-  deleteTeamPluginTag,
   getTeamSystemPluginList,
-  hideTeamSystemPlugin,
   installTeamPluginWithUrl,
-  listTeamPluginTags,
-  updateTeamPluginTag,
-  updateTeamPluginTags,
   uploadTeamPkgPlugin
 } from '@/web/core/plugin/team/api';
-import {
-  getMarketplaceDownloadURL,
-  getMarketplaceTools
-} from '@/web/core/plugin/marketplace/api';
+import { getMarketplaceDownloadURL, getMarketplaceTools } from '@/web/core/plugin/marketplace/api';
 import {
   TeamPluginPolicyStatusEnum,
   TeamPluginRegistrySourceEnum
 } from '@fastgpt/global/core/plugin/schema/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
-import type { TeamPluginTagItemType } from '@fastgpt/global/openapi/core/plugin/team/tag/api';
 import type { UploadTeamPkgPluginResponseType } from '@fastgpt/global/openapi/core/plugin/team/pkg/api';
 import { useDebounce } from 'ahooks';
 
 enum TeamPluginTabEnum {
   available = 'available',
   marketplace = 'marketplace',
-  hidden = 'hidden',
-  deleted = 'deleted',
-  tags = 'tags'
+  deleted = 'deleted'
 }
 
 type TeamPluginItem = GetTeamPluginListResponseType[number];
 type UploadedPlugin = UploadTeamPkgPluginResponseType['plugins'][number];
 
-const getRawPluginId = (pluginId: string) =>
-  pluginId.replace(/^systemTool-/, '').split('/')[0];
+const getRawPluginId = (pluginId: string) => pluginId.replace(/^systemTool-/, '').split('/')[0];
 
 const getSourceLabelKey = (plugin: TeamPluginItem) => {
   if (plugin.registrySource === TeamPluginRegistrySourceEnum.team) {
@@ -101,17 +87,8 @@ const TeamPlugin = () => {
   const [searchKey, setSearchKey] = useState('');
   const debouncedSearchKey = useDebounce(searchKey, { wait: 300 });
   const [uploadPreview, setUploadPreview] = useState<UploadedPlugin[]>([]);
-  const [newTagName, setNewTagName] = useState('');
-  const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({});
 
   const listQuery = useMemo(() => {
-    if (tab === TeamPluginTabEnum.hidden) {
-      return {
-        includeHidden: true,
-        includeDebug: false,
-        source: TeamPluginRegistrySourceEnum.system
-      } as const;
-    }
     if (tab === TeamPluginTabEnum.deleted) {
       return {
         includeDeleted: true,
@@ -134,10 +111,7 @@ const TeamPlugin = () => {
     refreshDeps: [listQuery]
   });
 
-  const {
-    data: installedTeamPlugins = [],
-    refresh: refreshInstalledTeamPlugins
-  } = useRequest(
+  const { data: installedTeamPlugins = [], refresh: refreshInstalledTeamPlugins } = useRequest(
     () =>
       getTeamSystemPluginList({
         includeDeleted: true,
@@ -148,14 +122,6 @@ const TeamPlugin = () => {
       manual: false
     }
   );
-
-  const {
-    data: teamTags = [],
-    loading: loadingTags,
-    refresh: refreshTeamTags
-  } = useRequest(listTeamPluginTags, {
-    manual: false
-  });
 
   const {
     data: marketplaceData,
@@ -174,12 +140,6 @@ const TeamPlugin = () => {
     }
   );
 
-  useEffect(() => {
-    setTagDrafts(
-      Object.fromEntries(teamTags.map((tag) => [tag.tagId, tag.tagName]))
-    );
-  }, [teamTags]);
-
   const installedPluginMap = useMemo(
     () =>
       new Map(
@@ -194,7 +154,6 @@ const TeamPlugin = () => {
     const keyword = debouncedSearchKey.trim().toLowerCase();
     return pluginList
       .filter((plugin) => {
-        if (tab === TeamPluginTabEnum.hidden) return plugin.teamHidden;
         if (tab === TeamPluginTabEnum.deleted) {
           return plugin.teamInstallStatus === TeamPluginPolicyStatusEnum.deleted;
         }
@@ -204,30 +163,16 @@ const TeamPlugin = () => {
       .filter((plugin) => {
         if (!keyword) return true;
         return [plugin.name, plugin.intro, plugin.author, ...(plugin.tags ?? [])].some((text) =>
-          String(text ?? '').toLowerCase().includes(keyword)
+          String(text ?? '')
+            .toLowerCase()
+            .includes(keyword)
         );
       });
   }, [debouncedSearchKey, pluginList, tab]);
 
   const refreshAll = async () => {
-    await Promise.all([
-      refreshPluginList(),
-      refreshInstalledTeamPlugins(),
-      refreshTeamTags(),
-      refreshMarketplace()
-    ]);
+    await Promise.all([refreshPluginList(), refreshInstalledTeamPlugins(), refreshMarketplace()]);
   };
-
-  const { runAsync: onHidePlugin, loading: hidingPlugin } = useRequest(
-    async ({ pluginId, hidden }: { pluginId: string; hidden: boolean }) => {
-      await hideTeamSystemPlugin({ pluginId, hidden });
-    },
-    {
-      manual: true,
-      successToast: t('common:Success'),
-      onSuccess: refreshAll
-    }
-  );
 
   const { runAsync: onDeletePlugin, loading: deletingPlugin } = useRequest(
     async (plugin: TeamPluginItem) => {
@@ -239,50 +184,6 @@ const TeamPlugin = () => {
     {
       manual: true,
       successToast: t('common:Success'),
-      onSuccess: refreshAll
-    }
-  );
-
-  const { runAsync: onUpdatePluginTags } = useRequest(updateTeamPluginTags, {
-    manual: true,
-    successToast: t('common:Success'),
-    onSuccess: refreshAll
-  });
-
-  const { runAsync: onCreateTag, loading: creatingTag } = useRequest(
-    async () => {
-      const tagName = newTagName.trim();
-      if (!tagName) return;
-      await createTeamPluginTag({ tagName });
-      setNewTagName('');
-    },
-    {
-      manual: true,
-      successToast: t('common:create_success'),
-      onSuccess: refreshTeamTags
-    }
-  );
-
-  const { runAsync: onRenameTag } = useRequest(
-    async (tag: TeamPluginTagItemType) => {
-      const tagName = tagDrafts[tag.tagId]?.trim();
-      if (!tagName || tagName === tag.tagName) return;
-      await updateTeamPluginTag({ tagId: tag.tagId, tagName });
-    },
-    {
-      manual: true,
-      successToast: t('common:update_success'),
-      onSuccess: refreshTeamTags
-    }
-  );
-
-  const { runAsync: onDeleteTag } = useRequest(
-    async (tagId: string) => {
-      await deleteTeamPluginTag({ tagId });
-    },
-    {
-      manual: true,
-      successToast: t('common:delete_success'),
       onSuccess: refreshAll
     }
   );
@@ -385,39 +286,8 @@ const TeamPlugin = () => {
     [i18n.language, installedPluginMap, marketplaceData?.list]
   );
 
-  const renderTagSelector = (plugin: TeamPluginItem) => {
-    if (!canManage || teamTags.length === 0 || !plugin.registrySource) return null;
-
-    return (
-      <HStack spacing={3} flexWrap={'wrap'}>
-        {teamTags.map((tag) => {
-          const checked = plugin.teamTagIds?.includes(tag.tagId) ?? false;
-          return (
-            <Checkbox
-              key={tag.tagId}
-              size={'sm'}
-              isChecked={checked}
-              onChange={(e) => {
-                const nextTagIds = e.target.checked
-                  ? [...(plugin.teamTagIds ?? []), tag.tagId]
-                  : (plugin.teamTagIds ?? []).filter((tagId) => tagId !== tag.tagId);
-                onUpdatePluginTags({
-                  pluginId: plugin.id,
-                  registrySource: plugin.registrySource!,
-                  teamTagIds: nextTagIds
-                });
-              }}
-            >
-              {tag.tagName}
-            </Checkbox>
-          );
-        })}
-      </HStack>
-    );
-  };
-
   const renderPluginTable = () => (
-    <MyBox isLoading={loadingPlugins || hidingPlugin || deletingPlugin} flex={'1 0 0'} h={0}>
+    <MyBox isLoading={loadingPlugins || deletingPlugin} flex={'1 0 0'} h={0}>
       <TableContainer h={'100%'} overflowY={'auto'}>
         <Table variant={'simple'} size={'sm'}>
           <Thead>
@@ -425,7 +295,6 @@ const TeamPlugin = () => {
               <Th>{t('common:name')}</Th>
               <Th>{t('common:Status')}</Th>
               <Th>{t('account_team:team_plugin_version')}</Th>
-              <Th>{t('account_team:team_plugin_bind_tags')}</Th>
               <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
@@ -465,24 +334,7 @@ const TeamPlugin = () => {
                     </Text>
                   ) : null}
                 </Td>
-                <Td minW={'260px'}>{renderTagSelector(plugin)}</Td>
                 <Td>
-                  {canManage && plugin.registrySource === TeamPluginRegistrySourceEnum.system && (
-                    <Button
-                      size={'sm'}
-                      variant={'whiteBase'}
-                      onClick={() =>
-                        onHidePlugin({
-                          pluginId: plugin.id,
-                          hidden: !plugin.teamHidden
-                        })
-                      }
-                    >
-                      {plugin.teamHidden
-                        ? t('account_team:team_plugin_unhide')
-                        : t('account_team:team_plugin_hide')}
-                    </Button>
-                  )}
                   {canManage &&
                     plugin.registrySource === TeamPluginRegistrySourceEnum.team &&
                     plugin.teamInstallStatus !== TeamPluginPolicyStatusEnum.deleted && (
@@ -525,7 +377,9 @@ const TeamPlugin = () => {
               <HStack>
                 <Text fontWeight={500}>{tool.displayName}</Text>
                 {tool.installed && (
-                  <Badge colorScheme={tool.installed.teamInstallStatus === 'deleted' ? 'red' : 'green'}>
+                  <Badge
+                    colorScheme={tool.installed.teamInstallStatus === 'deleted' ? 'red' : 'green'}
+                  >
                     {tool.installed.teamInstallStatus}
                   </Badge>
                 )}
@@ -548,7 +402,9 @@ const TeamPlugin = () => {
             )}
           </Flex>
         ))}
-        {!marketplaceTools.length && <EmptyTip text={t('account_team:team_plugin_empty')} py={10} />}
+        {!marketplaceTools.length && (
+          <EmptyTip text={t('account_team:team_plugin_empty')} py={10} />
+        )}
       </VStack>
     </MyBox>
   );
@@ -586,44 +442,6 @@ const TeamPlugin = () => {
     );
   };
 
-  const renderTagManage = () => (
-    <MyBox isLoading={loadingTags} flex={'1 0 0'} h={0} p={4} overflowY={'auto'}>
-      <Flex gap={3} mb={4}>
-        <Input
-          maxW={'260px'}
-          value={newTagName}
-          placeholder={t('account_team:team_plugin_tag_placeholder')}
-          onChange={(e) => setNewTagName(e.target.value)}
-        />
-        <Button isLoading={creatingTag} onClick={() => onCreateTag()}>
-          {t('account_team:team_plugin_add_tag')}
-        </Button>
-      </Flex>
-      <VStack align={'stretch'} spacing={2}>
-        {teamTags.map((tag) => (
-          <Flex key={tag.tagId} gap={3} align={'center'}>
-            <Input
-              maxW={'260px'}
-              value={tagDrafts[tag.tagId] ?? tag.tagName}
-              onChange={(e) =>
-                setTagDrafts((prev) => ({
-                  ...prev,
-                  [tag.tagId]: e.target.value
-                }))
-              }
-            />
-            <Button size={'sm'} variant={'whiteBase'} onClick={() => onRenameTag(tag)}>
-              {t('common:Save')}
-            </Button>
-            <Button size={'sm'} variant={'whiteDanger'} onClick={() => onDeleteTag(tag.tagId)}>
-              {t('common:Delete')}
-            </Button>
-          </Flex>
-        ))}
-      </VStack>
-    </MyBox>
-  );
-
   if (!canManage) {
     return (
       <AccountContainer>
@@ -649,18 +467,16 @@ const TeamPlugin = () => {
             </Text>
           </Box>
           <HStack>
-            {tab !== TeamPluginTabEnum.tags && (
-              <SearchInput
-                w={'260px'}
-                value={searchKey}
-                placeholder={
-                  tab === TeamPluginTabEnum.marketplace
-                    ? t('account_team:team_plugin_marketplace_search')
-                    : t('common:Search')
-                }
-                onChange={(e) => setSearchKey(e.target.value)}
-              />
-            )}
+            <SearchInput
+              w={'260px'}
+              value={searchKey}
+              placeholder={
+                tab === TeamPluginTabEnum.marketplace
+                  ? t('account_team:team_plugin_marketplace_search')
+                  : t('common:Search')
+              }
+              onChange={(e) => setSearchKey(e.target.value)}
+            />
             {uploadEnabled && (
               <>
                 <Input
@@ -694,9 +510,7 @@ const TeamPlugin = () => {
               label: t('account_team:team_plugin_marketplace'),
               value: TeamPluginTabEnum.marketplace
             },
-            { label: t('account_team:team_plugin_hidden'), value: TeamPluginTabEnum.hidden },
-            { label: t('account_team:team_plugin_deleted'), value: TeamPluginTabEnum.deleted },
-            { label: t('account_team:team_plugin_tags'), value: TeamPluginTabEnum.tags }
+            { label: t('account_team:team_plugin_deleted'), value: TeamPluginTabEnum.deleted }
           ]}
           value={tab}
           onChange={(value) => {
@@ -707,11 +521,7 @@ const TeamPlugin = () => {
 
         {renderUploadPreview()}
 
-        {tab === TeamPluginTabEnum.marketplace
-          ? renderMarketplace()
-          : tab === TeamPluginTabEnum.tags
-            ? renderTagManage()
-            : renderPluginTable()}
+        {tab === TeamPluginTabEnum.marketplace ? renderMarketplace() : renderPluginTable()}
       </Flex>
       <ConfirmDeletePluginModal />
     </AccountContainer>

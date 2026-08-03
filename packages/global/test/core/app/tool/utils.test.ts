@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getTeamPluginSource,
   getToolNameCandidates,
   getToolRawId,
   hasDebugToolInNodes,
   hasDebugToolInSelectedTools,
+  isTeamPluginSource,
   parseDebugToolSource,
+  parseTeamPluginSource,
   parseToolsetToolId,
   shouldUseLegacyToolDescriptionFallback,
   splitCombineToolId,
@@ -152,6 +155,22 @@ describe('parseDebugToolSource', () => {
 
   it('does not parse debug source from combined tool id', () => {
     expect(() => splitCombineToolId('debug:tmbId:tmb-1|weather')).toThrow('Invalid tool id');
+  });
+});
+
+describe('team plugin source', () => {
+  it('builds and parses a stable team source', () => {
+    const source = getTeamPluginSource('team-1');
+
+    expect(source).toBe('teamId:team-1');
+    expect(isTeamPluginSource(source)).toBe(true);
+    expect(parseTeamPluginSource(source)).toEqual({ teamId: 'team-1' });
+  });
+
+  it('rejects malformed team sources', () => {
+    expect(parseTeamPluginSource('team')).toBeUndefined();
+    expect(parseTeamPluginSource('teamId:team-1:extra')).toBeUndefined();
+    expect(parseTeamPluginSource('system')).toBeUndefined();
   });
 });
 

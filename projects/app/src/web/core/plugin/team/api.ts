@@ -1,10 +1,8 @@
-import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
+import { GET, POST } from '@/web/common/api/request';
 import type {
   DeleteTeamToolBodyType,
   GetTeamSystemPluginListQueryType,
-  GetTeamPluginListResponseType,
-  HideTeamSystemToolBodyType,
-  UpdateTeamToolTagsBodyType
+  GetTeamPluginListResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import type {
   GetTeamToolDetailQueryType,
@@ -12,14 +10,6 @@ import type {
   GetTeamToolVersionsQueryType,
   GetTeamToolVersionsResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
-import type {
-  CreateTeamPluginTagBodyType,
-  DeleteTeamPluginTagQueryType,
-  ListTeamPluginTagsResponseType,
-  TeamPluginTagItemType,
-  UpdateTeamPluginTagBodyType,
-  UpdateTeamPluginTagOrderBodyType
-} from '@fastgpt/global/openapi/core/plugin/team/tag/api';
 import type {
   ConfirmTeamUploadPkgPluginBodyType,
   InstallTeamPluginFromUrlBodyType,
@@ -36,30 +26,8 @@ export const getTeamToolDetail = (data: GetTeamToolDetailQueryType) =>
 export const getTeamToolVersions = (data: GetTeamToolVersionsQueryType) =>
   GET<GetTeamToolVersionsResponseType>(`/core/plugin/team/tool/versions`, data);
 
-export const hideTeamSystemPlugin = (data: HideTeamSystemToolBodyType) =>
-  POST(`/core/plugin/team/tool/hide`, data);
-
 export const deleteTeamPlugin = (data: DeleteTeamToolBodyType) =>
   POST(`/core/plugin/team/tool/delete`, data);
-
-export const updateTeamPluginTags = (data: UpdateTeamToolTagsBodyType) =>
-  PUT(`/core/plugin/team/tool/tag/update`, data);
-
-/* ===== Tag ===== */
-export const listTeamPluginTags = () =>
-  GET<ListTeamPluginTagsResponseType>(`/core/plugin/team/tag/list`);
-
-export const createTeamPluginTag = (data: CreateTeamPluginTagBodyType) =>
-  POST<TeamPluginTagItemType>(`/core/plugin/team/tag/create`, data);
-
-export const updateTeamPluginTag = (data: UpdateTeamPluginTagBodyType) =>
-  PUT<TeamPluginTagItemType>(`/core/plugin/team/tag/update`, data);
-
-export const updateTeamPluginTagOrder = (data: UpdateTeamPluginTagOrderBodyType) =>
-  PUT(`/core/plugin/team/tag/updateOrder`, data);
-
-export const deleteTeamPluginTag = (data: DeleteTeamPluginTagQueryType) =>
-  DELETE(`/core/plugin/team/tag/delete`, data);
 
 /* ===== Pkg ===== */
 export const uploadTeamPkgPlugin = (formData: FormData) =>

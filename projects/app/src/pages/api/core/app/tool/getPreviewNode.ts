@@ -6,7 +6,11 @@ import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  isDebugToolSource,
+  isTeamPluginSource,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -16,7 +20,6 @@ import {
   GetPreviewNodeResponseSchema,
   type GetPreviewNodeQuery
 } from '@fastgpt/global/openapi/core/app/tool/api';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetPreviewNodeQuery>
@@ -34,7 +37,7 @@ async function handler(
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }
   const previewSource =
-    isDebugToolSource(source) || source === TeamPluginRegistrySourceEnum.team ? source : undefined;
+    isDebugToolSource(source) || isTeamPluginSource(source) ? source : undefined;
 
   return GetPreviewNodeResponseSchema.parse(
     await getClientToolPreviewNode({

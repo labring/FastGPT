@@ -1,8 +1,5 @@
 import z from 'zod';
-import {
-  UploadPkgPluginResponseSchema,
-  UploadPkgPluginResponseItemSchema
-} from '../../admin/api';
+import { UploadPkgPluginResponseSchema, UploadPkgPluginResponseItemSchema } from '../../admin/api';
 import { TeamPluginEmptyResponseSchema } from '../common';
 
 /* ============================================================================
@@ -40,11 +37,6 @@ const TeamInstallPluginMetaSchema = UploadPkgPluginResponseItemSchema.pick({
 
 export type TeamInstallPluginMetaType = z.infer<typeof TeamInstallPluginMetaSchema>;
 
-const TeamTagIdsBodySchema = z.array(z.string()).optional().meta({
-  example: ['tag_xxx'],
-  description: '安装后绑定的团队插件标签 ID'
-});
-
 /* ============================================================================
  * API: 确认团队上传插件安装
  * Route: POST /api/core/plugin/team/pkg/confirm
@@ -54,11 +46,13 @@ const TeamTagIdsBodySchema = z.array(z.string()).optional().meta({
  * ============================================================================ */
 
 export const ConfirmTeamUploadPkgPluginBodySchema = z.object({
-  toolIds: z.array(TeamInstallPluginMetaSchema).min(1).meta({
-    example: [{ pluginId: 'systemTool-weather', version: '1.0.0', etag: 'sha256:xxx' }],
-    description: '待确认安装的插件唯一标识'
-  }),
-  teamTagIds: TeamTagIdsBodySchema
+  toolIds: z
+    .array(TeamInstallPluginMetaSchema)
+    .min(1)
+    .meta({
+      example: [{ pluginId: 'systemTool-weather', version: '1.0.0', etag: 'sha256:xxx' }],
+      description: '待确认安装的插件唯一标识'
+    })
 });
 export type ConfirmTeamUploadPkgPluginBodyType = z.infer<
   typeof ConfirmTeamUploadPkgPluginBodySchema
@@ -74,22 +68,25 @@ export type ConfirmTeamUploadPkgPluginBodyType = z.infer<
 
 export const InstallTeamPluginFromUrlBodySchema = z
   .object({
-    downloadUrls: z.array(z.string().min(1)).min(1).meta({
-      example: ['https://marketplace.fastgpt.io/plugin/weather.pkg'],
-      description: 'Marketplace 插件下载 URL 列表'
-    }),
-    plugins: z.array(TeamInstallPluginMetaSchema).min(1).meta({
-      example: [{ pluginId: 'weather', version: '1.0.0', etag: 'sha256:xxx' }],
-      description: '与下载 URL 对应的插件元信息，用于写入团队账本'
-    }),
-    teamTagIds: TeamTagIdsBodySchema
+    downloadUrls: z
+      .array(z.string().min(1))
+      .min(1)
+      .meta({
+        example: ['https://marketplace.fastgpt.io/plugin/weather.pkg'],
+        description: 'Marketplace 插件下载 URL 列表'
+      }),
+    plugins: z
+      .array(TeamInstallPluginMetaSchema)
+      .min(1)
+      .meta({
+        example: [{ pluginId: 'weather', version: '1.0.0', etag: 'sha256:xxx' }],
+        description: '与下载 URL 对应的插件元信息，用于写入团队账本'
+      })
   })
   .refine((data) => data.downloadUrls.length === data.plugins.length, {
     message: 'downloadUrls length must match plugins length'
   });
-export type InstallTeamPluginFromUrlBodyType = z.infer<
-  typeof InstallTeamPluginFromUrlBodySchema
->;
+export type InstallTeamPluginFromUrlBodyType = z.infer<typeof InstallTeamPluginFromUrlBodySchema>;
 
 export const TeamPkgEmptyResponseSchema = TeamPluginEmptyResponseSchema;
 export type TeamPkgEmptyResponseType = z.infer<typeof TeamPkgEmptyResponseSchema>;

@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import {
-  TeamPluginPolicyStatusEnum,
-  TeamPluginRegistrySourceEnum
-} from '@fastgpt/global/core/plugin/schema/type';
+import { TeamPluginPolicyStatusEnum } from '@fastgpt/global/core/plugin/schema/type';
 
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
@@ -108,7 +105,7 @@ describe('team system plugin list handler', () => {
     });
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       op: 'or',
-      sources: ['system', 'team-1', 'debug:tmbId:tmb-1'],
+      sources: ['system', 'teamId:team-1', 'debug:tmbId:tmb-1'],
       lang: 'zh'
     });
   });
@@ -131,7 +128,7 @@ describe('team system plugin list handler', () => {
 
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       op: 'or',
-      sources: ['system', 'team-1'],
+      sources: ['system', 'teamId:team-1'],
       lang: 'zh'
     });
   });
@@ -185,50 +182,18 @@ describe('team system plugin list handler', () => {
     expect(res.data.map((tool) => tool.id)).toEqual(['system-tool']);
   });
 
-  it('filters team hidden system plugins from default list', async () => {
-    mocks.getTeamPluginPolicyMap.mockResolvedValueOnce(
-      new Map([
-        [
-          'system:system-tool',
-          {
-            teamId: 'team-1',
-            pluginId: 'system-tool',
-            pluginType: 'tool',
-            registrySource: TeamPluginRegistrySourceEnum.system,
-            status: TeamPluginPolicyStatusEnum.hidden,
-            hidden: true,
-            installed: true
-          }
-        ]
-      ])
-    );
-
-    const res = await Call(handler, {
-      query: {},
-      auth: {
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
-      } as any
-    });
-
-    expect(res.code).toBe(200);
-    expect(res.data).toEqual([]);
-  });
-
   it('returns deleted team plugin placeholders when requested', async () => {
     mocks.getTeamPluginPolicyMap.mockResolvedValueOnce(
       new Map([
         [
-          'team:team-tool',
+          'team-tool',
           {
             teamId: 'team-1',
             pluginId: 'team-tool',
             pluginType: 'tool',
-            registrySource: TeamPluginRegistrySourceEnum.team,
             installSource: 'marketplace',
             status: TeamPluginPolicyStatusEnum.deleted,
             installed: false,
-            hidden: false,
             version: '1.0.0',
             etag: 'etag-1'
           }
@@ -251,7 +216,7 @@ describe('team system plugin list handler', () => {
     expect(res.data).toEqual([
       expect.objectContaining({
         id: 'systemTool-team-tool',
-        source: 'team',
+        source: 'teamId:team-1',
         registrySource: 'team',
         teamInstallStatus: TeamPluginPolicyStatusEnum.deleted,
         installedVersion: '1.0.0',

@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   getSystemToolDisplayInfoWithChildIcons: vi.fn(),
   getInstance: vi.fn(),
   getTeamPluginPolicyMap: vi.fn(),
-  assertTeamPluginInstalled: vi.fn(),
+  assertTeamPluginSourceAccess: vi.fn(),
   pluginClient: {
     getDebugSessionStatus: vi.fn()
   }
@@ -43,7 +43,7 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>()),
   getTeamPluginPolicyMap: mocks.getTeamPluginPolicyMap,
-  assertTeamPluginInstalled: mocks.assertTeamPluginInstalled
+  assertTeamPluginSourceAccess: mocks.assertTeamPluginSourceAccess
 }));
 
 import {
@@ -68,7 +68,7 @@ describe('get system tool templates handler', () => {
       getSystemToolDisplayInfoWithChildIcons: mocks.getSystemToolDisplayInfoWithChildIcons
     });
     mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
-    mocks.assertTeamPluginInstalled.mockResolvedValue({});
+    mocks.assertTeamPluginSourceAccess.mockResolvedValue('teamId:team-1');
     mocks.pluginClient.getDebugSessionStatus.mockResolvedValue({
       tmbId: 'tmb-1',
       status: 'revoked',
@@ -120,7 +120,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1'],
+      sources: ['system', 'teamId:team-1'],
       tags: ['life']
     });
   });
@@ -168,7 +168,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1', 'debug:tmbId:tmb-1'],
+      sources: ['system', 'teamId:team-1', 'debug:tmbId:tmb-1'],
       tags: undefined
     });
   });
@@ -183,7 +183,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1'],
+      sources: ['system', 'teamId:team-1'],
       tags: undefined
     });
   });
@@ -208,7 +208,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1', 'debug:tmbId:tmb-1'],
+      sources: ['system', 'teamId:team-1', 'debug:tmbId:tmb-1'],
       tags: undefined
     });
   });

@@ -6,6 +6,7 @@ import {
   type TeamPkgEmptyResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/pkg/api';
 import { TeamPluginInstallSourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import { TeamPluginManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -28,7 +29,7 @@ async function handler(
   }
 
   const {
-    body: { toolIds, teamTagIds }
+    body: { toolIds }
   } = parseApiInput({
     req,
     bodySchema: ConfirmTeamUploadPkgPluginBodySchema
@@ -40,7 +41,7 @@ async function handler(
     per: TeamPluginManagePermissionVal
   });
 
-  await confirmPluginToSource(toolIds, teamId);
+  await confirmPluginToSource(toolIds, getTeamPluginSource(teamId));
   await assertTeamPluginSourceReady({
     teamId,
     tools: toolIds
@@ -54,7 +55,6 @@ async function handler(
         version: tool.version,
         etag: tool.etag,
         installSource: TeamPluginInstallSourceEnum.upload,
-        teamTagIds,
         confirmedPermissions: tool.permission,
         packageSource: {
           uploadedFileName: tool.pluginId

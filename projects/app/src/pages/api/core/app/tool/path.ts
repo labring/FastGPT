@@ -2,7 +2,11 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
-import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  isDebugToolSource,
+  isTeamPluginSource,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   GetToolPathQuerySchema,
@@ -11,10 +15,9 @@ import {
   type GetToolPathResponseType
 } from '@fastgpt/global/openapi/core/app/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
-  assertTeamPluginInstalled,
+  assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
@@ -32,10 +35,9 @@ export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promis
     querySchema: GetToolPathQuerySchema
   });
   const lang = getLocale(req);
-  const { teamId } =
-    source === TeamPluginRegistrySourceEnum.team
-      ? await authCert({ req, authToken: true })
-      : { teamId: undefined };
+  const { teamId } = isTeamPluginSource(source)
+    ? await authCert({ req, authToken: true })
+    : { teamId: undefined };
 
   if (!pluginId) return GetToolPathResponseSchema.parse([]);
 
@@ -94,15 +96,16 @@ async function getToolPathItem({
     ? parseToolIdForPath(toolId).idSource
     : splitCombineToolId(toolId).source;
   const toolSource = await (async () => {
-    if (source === TeamPluginRegistrySourceEnum.team) {
+    if (isTeamPluginSource(source)) {
       if (!teamId) return Promise.reject('plugin.team_id_required');
 
-      await assertTeamPluginInstalled({
+      await assertTeamPluginSourceAccess({
         teamId,
+        source,
         pluginId: getRawPluginIdFromSystemToolId(toolId)
       });
 
-      return teamId;
+      return source;
     }
 
     if (isDebugToolSource(source)) return source;

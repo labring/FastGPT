@@ -6,10 +6,9 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import { isDebugToolSource, isTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import {
-  assertTeamPluginInstalled,
+  assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../plugin/teamPluginPolicy';
 
@@ -53,22 +52,21 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   const toolConfigSource = (() => {
     const toolConfigSource = toolSetNode.toolConfig?.systemToolSet?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
-    if (toolConfigSource === TeamPluginRegistrySourceEnum.team) {
-      return TeamPluginRegistrySourceEnum.team;
-    }
+    if (isTeamPluginSource(toolConfigSource)) return toolConfigSource;
 
     return 'system';
   })();
   const systemToolSource = await (async () => {
-    if (toolConfigSource !== TeamPluginRegistrySourceEnum.team) return toolConfigSource;
+    if (!isTeamPluginSource(toolConfigSource)) return toolConfigSource;
     if (!teamId) return Promise.reject('plugin.team_id_required');
 
-    await assertTeamPluginInstalled({
+    await assertTeamPluginSourceAccess({
       teamId,
+      source: toolConfigSource,
       pluginId: getRawPluginIdFromSystemToolId(systemToolId)
     });
 
-    return teamId;
+    return toolConfigSource;
   })();
   const selectedTools = toolSetNode.toolConfig?.systemToolSet?.toolList ?? [];
   if (!selectedTools.length) return [];
@@ -122,8 +120,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       toolConfig: {
         systemTool: {
           toolId: pluginId,
-          ...(isDebugToolSource(toolConfigSource) ||
-          toolConfigSource === TeamPluginRegistrySourceEnum.team
+          ...(isDebugToolSource(toolConfigSource) || isTeamPluginSource(toolConfigSource)
             ? { source: toolConfigSource }
             : {})
         }

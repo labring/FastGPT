@@ -7,12 +7,12 @@ import {
   TeamPluginEmptyResponseSchema,
   type TeamPluginEmptyResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/common';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import { TeamPluginManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
+  assertTeamPluginInstalled,
   getRawPluginIdFromSystemToolId,
-  getTeamPluginPolicy,
   setTeamPluginDeleted
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
 import { deletePluginFromSource } from '@fastgpt/service/thirdProvider/fastgptPlugin';
@@ -36,25 +36,23 @@ async function handler(req: ApiRequestProps<DeleteTeamToolBody>): Promise<Delete
     per: TeamPluginManagePermissionVal
   });
   const rawPluginId = getRawPluginIdFromSystemToolId(pluginId);
-  const policy = await getTeamPluginPolicy({
+  const policy = await assertTeamPluginInstalled({
     teamId,
-    pluginId: rawPluginId,
-    registrySource: TeamPluginRegistrySourceEnum.team
+    pluginId: rawPluginId
   });
   const targetVersion = version ?? policy?.version;
+  if (!targetVersion) return Promise.reject('plugin.version_required');
 
-  if (targetVersion) {
-    await deletePluginFromSource({
-      pluginId: rawPluginId,
-      source: teamId,
-      version: targetVersion
-    }).catch((error) => {
-      const errorText = typeof error === 'string' ? error : JSON.stringify(error);
-      if (!/not\s*found|404/i.test(errorText)) {
-        return Promise.reject(error);
-      }
-    });
-  }
+  await deletePluginFromSource({
+    pluginId: rawPluginId,
+    source: getTeamPluginSource(teamId),
+    version: targetVersion
+  }).catch((error) => {
+    const errorText = typeof error === 'string' ? error : JSON.stringify(error);
+    if (!/not\s*found|404/i.test(errorText)) {
+      return Promise.reject(error);
+    }
+  });
 
   await setTeamPluginDeleted({
     teamId,

@@ -16,6 +16,7 @@ import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app
 import {
   getToolNameCandidates,
   isDebugToolSource,
+  isTeamPluginSource,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -55,9 +56,8 @@ import type {
 } from '@fastgpt/global/core/workflow/type';
 import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 import {
-  assertTeamPluginInstalled,
+  assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId,
   normalizeTeamPluginStatus
 } from '../../../plugin/teamPluginPolicy';
@@ -151,15 +151,16 @@ export async function getClientSystemToolPreviewNode({
 }): Promise<FlowNodeTemplateType> {
   const systemToolRepo = SystemToolRepo.getInstance();
   const runtimeSource = await (async () => {
-    if (toolSource !== TeamPluginRegistrySourceEnum.team) return toolSource;
+    if (!isTeamPluginSource(toolSource)) return toolSource;
     if (!teamId) return Promise.reject('plugin.team_id_required');
 
-    await assertTeamPluginInstalled({
+    await assertTeamPluginSourceAccess({
       teamId,
+      source: toolSource,
       pluginId: getRawPluginIdFromSystemToolId(pluginId)
     });
 
-    return teamId;
+    return toolSource;
   })();
   const toolDetail = await systemToolRepo.getSystemToolDetail({
     pluginId,
@@ -190,13 +191,10 @@ export async function getClientSystemToolPreviewNode({
     ...(isWorkflowTool ? schemaInputs.map(projectExternalVariableInput) : schemaInputs)
   ];
   const toolConfigSource =
-    isDebugToolSource(toolSource) || toolSource === TeamPluginRegistrySourceEnum.team
-      ? toolSource
-      : undefined;
-  const displayStatus =
-    toolSource === TeamPluginRegistrySourceEnum.team
-      ? normalizeTeamPluginStatus(toolDetail.status)
-      : toolDetail.status;
+    isDebugToolSource(toolSource) || isTeamPluginSource(toolSource) ? toolSource : undefined;
+  const displayStatus = isTeamPluginSource(toolSource)
+    ? normalizeTeamPluginStatus(toolDetail.status)
+    : toolDetail.status;
 
   return {
     id: getNanoid(),
@@ -530,9 +528,7 @@ export async function getClientToolPreviewNode({
       id: getNanoid(),
       pluginId: app.id,
       source:
-        isDebugToolSource(toolSource) || toolSource === TeamPluginRegistrySourceEnum.team
-          ? toolSource
-          : undefined,
+        isDebugToolSource(toolSource) || isTeamPluginSource(toolSource) ? toolSource : undefined,
       flowNodeType,
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),

@@ -3,21 +3,11 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   DeleteTeamToolBodySchema,
   GetTeamPluginListResponseSchema,
-  HideTeamSystemToolBodySchema,
   GetTeamToolDetailQuerySchema,
   GetTeamToolVersionsQuerySchema,
   GetTeamToolVersionsResponseSchema,
-  OpenAPITeamToolDetailSchema,
-  UpdateTeamToolTagsBodySchema
+  OpenAPITeamToolDetailSchema
 } from './tool/api';
-import {
-  CreateTeamPluginTagBodySchema,
-  DeleteTeamPluginTagQuerySchema,
-  ListTeamPluginTagsResponseSchema,
-  TeamPluginTagItemSchema,
-  UpdateTeamPluginTagBodySchema,
-  UpdateTeamPluginTagOrderBodySchema
-} from './tag/api';
 import {
   ConfirmTeamUploadPkgPluginBodySchema,
   InstallTeamPluginFromUrlBodySchema,
@@ -86,30 +76,6 @@ export const PluginTeamPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/team/tool/hide': {
-    post: {
-      summary: '隐藏或取消隐藏系统插件',
-      description: '团队隐藏系统预装插件，仅影响新增入口，不影响已有工作流运行',
-      tags: [DevApiTagsMap.pluginTeam],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: HideTeamSystemToolBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '更新团队系统插件隐藏状态成功',
-          content: {
-            'application/json': {
-              schema: TeamPluginEmptyResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
   '/core/plugin/team/tool/delete': {
     post: {
       summary: '删除团队插件',
@@ -125,139 +91,6 @@ export const PluginTeamPath: OpenAPIPath = {
       responses: {
         200: {
           description: '删除团队插件成功',
-          content: {
-            'application/json': {
-              schema: TeamPluginEmptyResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/team/tool/tag/update': {
-    put: {
-      summary: '更新团队插件标签绑定',
-      description: '给系统插件或团队安装插件绑定团队自定义标签',
-      tags: [DevApiTagsMap.pluginTeam],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdateTeamToolTagsBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '更新团队插件标签绑定成功',
-          content: {
-            'application/json': {
-              schema: TeamPluginEmptyResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/team/tag/list': {
-    get: {
-      summary: '获取团队插件标签',
-      description: '获取当前团队的插件自定义标签列表',
-      tags: [DevApiTagsMap.pluginTeam],
-      responses: {
-        200: {
-          description: '获取团队插件标签成功',
-          content: {
-            'application/json': {
-              schema: ListTeamPluginTagsResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/team/tag/create': {
-    post: {
-      summary: '创建团队插件标签',
-      description: '创建当前团队的插件自定义标签',
-      tags: [DevApiTagsMap.pluginTeam],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: CreateTeamPluginTagBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '创建团队插件标签成功',
-          content: {
-            'application/json': {
-              schema: TeamPluginTagItemSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/team/tag/update': {
-    put: {
-      summary: '更新团队插件标签',
-      description: '重命名当前团队的插件自定义标签',
-      tags: [DevApiTagsMap.pluginTeam],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdateTeamPluginTagBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '更新团队插件标签成功',
-          content: {
-            'application/json': {
-              schema: TeamPluginTagItemSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/team/tag/updateOrder': {
-    put: {
-      summary: '更新团队插件标签排序',
-      description: '更新当前团队的插件自定义标签排序',
-      tags: [DevApiTagsMap.pluginTeam],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdateTeamPluginTagOrderBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '更新团队插件标签排序成功',
-          content: {
-            'application/json': {
-              schema: TeamPluginEmptyResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/team/tag/delete': {
-    delete: {
-      summary: '删除团队插件标签',
-      description: '删除团队插件标签，并从插件账本中移除引用',
-      tags: [DevApiTagsMap.pluginTeam],
-      requestParams: {
-        query: DeleteTeamPluginTagQuerySchema
-      },
-      responses: {
-        200: {
-          description: '删除团队插件标签成功',
           content: {
             'application/json': {
               schema: TeamPluginEmptyResponseSchema

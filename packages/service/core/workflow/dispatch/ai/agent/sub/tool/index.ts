@@ -4,7 +4,8 @@ import type { DispatchSubAppResponse } from '../../type';
 import {
   getToolNameCandidates,
   getToolRawId,
-  isDebugToolSource
+  isDebugToolSource,
+  isTeamPluginSource
 } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -27,9 +28,8 @@ import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowAppId } from '../../../../utils/source';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 import {
-  assertTeamPluginInstalled,
+  assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
 
@@ -96,9 +96,7 @@ export const dispatchTool = async ({
   const getSystemToolSource = () => {
     const toolConfigSource = toolConfig?.systemTool?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
-    if (toolConfigSource === TeamPluginRegistrySourceEnum.team) {
-      return TeamPluginRegistrySourceEnum.team;
-    }
+    if (isTeamPluginSource(toolConfigSource)) return toolConfigSource;
 
     return 'system';
   };
@@ -110,14 +108,15 @@ export const dispatchTool = async ({
     source: string;
     toolId: string;
   }) => {
-    if (source !== TeamPluginRegistrySourceEnum.team) return source;
+    if (!isTeamPluginSource(source)) return source;
 
-    await assertTeamPluginInstalled({
+    await assertTeamPluginSourceAccess({
       teamId: String(runningUserInfo.teamId),
+      source,
       pluginId: getRawPluginIdFromSystemToolId(toolId)
     });
 
-    return String(runningUserInfo.teamId);
+    return source;
   };
 
   try {

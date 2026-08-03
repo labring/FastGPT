@@ -12,8 +12,7 @@ export enum TeamPluginInstallSourceEnum {
 
 export enum TeamPluginPolicyStatusEnum {
   installed = 'installed',
-  deleted = 'deleted',
-  hidden = 'hidden'
+  deleted = 'deleted'
 }
 
 export const TeamPluginRegistrySourceSchema = z.enum(TeamPluginRegistrySourceEnum);
@@ -27,11 +26,8 @@ export const TeamInstalledPluginSchema = z.object({
   pluginId: z.string(),
   version: z.string().optional(),
   etag: z.string().optional(),
-  registrySource: TeamPluginRegistrySourceSchema.default(TeamPluginRegistrySourceEnum.team),
   installSource: TeamPluginInstallSourceSchema.optional(),
   status: TeamPluginPolicyStatusSchema.optional(),
-  hidden: z.boolean().optional(),
-  teamTagIds: z.array(z.string()).optional(),
   packageSource: z
     .object({
       marketplaceToolId: z.string().optional(),
@@ -48,22 +44,8 @@ export const TeamInstalledPluginSchema = z.object({
   updatedAt: z.date().optional(),
   deletedByTmbId: z.string().optional(),
   deletedAt: z.date().optional(),
-  hiddenByTmbId: z.string().optional(),
-  hiddenAt: z.date().optional(),
   createTime: z.date().optional(),
   updateTime: z.date().optional(),
   installed: z.boolean().optional()
 });
 export type TeamInstalledPluginSchemaType = z.infer<typeof TeamInstalledPluginSchema>;
-
-export const TeamPluginTagSchema = z.object({
-  _id: z.string(),
-  teamId: z.string(),
-  tagId: z.string(),
-  tagName: z.string(),
-  tagOrder: z.number(),
-  color: z.string().optional(),
-  createTime: z.date().optional(),
-  updateTime: z.date().optional()
-});
-export type TeamPluginTagSchemaType = z.infer<typeof TeamPluginTagSchema>;

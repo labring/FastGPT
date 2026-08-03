@@ -16,14 +16,17 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import {
-  assertTeamPluginInstalled,
+  getTeamPluginSource,
+  isDebugToolSource,
+  isTeamPluginSource
+} from '@fastgpt/global/core/app/tool/utils';
+import {
+  assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId,
   getTeamPluginPolicyMap,
   resolveTeamPluginList
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
-import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
@@ -47,9 +50,10 @@ export async function handler(
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
   if (parentId) {
-    if (source === TeamPluginRegistrySourceEnum.team) {
-      await assertTeamPluginInstalled({
+    if (isTeamPluginSource(source)) {
+      await assertTeamPluginSourceAccess({
         teamId,
+        source,
         pluginId: getRawPluginIdFromSystemToolId(parentId)
       });
     }
@@ -77,10 +81,7 @@ export async function handler(
           intro: child.description,
           toolDescription: child.toolDescription,
           id: `${parentId}/${child.id}`,
-          source:
-            source === TeamPluginRegistrySourceEnum.team || parent.source === teamId
-              ? TeamPluginRegistrySourceEnum.team
-              : parent.source,
+          source: isTeamPluginSource(source) ? source : parent.source,
           avatar: child.icon ?? parent.avatar,
           currentCost: child.currentCost,
           systemKeyCost: child.systemKeyCost,
@@ -99,7 +100,7 @@ export async function handler(
       lang,
       op: 'or',
       // 调试状态下追加 debug source，Agent/Workflow 仍保留生产环境插件可选。
-      sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
+      sources: ['system', getTeamPluginSource(teamId), ...(debugSource ? [debugSource] : [])],
       tags
     }),
     getTeamPluginPolicyMap(teamId)
@@ -156,7 +157,7 @@ async function getQuerySource({
   teamId: string;
   tmbId: string;
 }) {
-  if (source === TeamPluginRegistrySourceEnum.team) return teamId;
+  if (isTeamPluginSource(source)) return source;
   if (isDebugToolSource(source)) {
     return getActiveDebugSource({ tmbId, source });
   }

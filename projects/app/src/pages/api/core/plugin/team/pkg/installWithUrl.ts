@@ -6,6 +6,7 @@ import {
   type TeamPkgEmptyResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/pkg/api';
 import { TeamPluginInstallSourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 import { TeamPluginManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -28,7 +29,7 @@ async function handler(
   req: ApiRequestProps<InstallTeamPluginFromUrlBody>
 ): Promise<InstallTeamPluginFromUrlResponse> {
   const {
-    body: { downloadUrls, plugins, teamTagIds }
+    body: { downloadUrls, plugins }
   } = parseApiInput({
     req,
     bodySchema: InstallTeamPluginFromUrlBodySchema
@@ -40,7 +41,7 @@ async function handler(
     per: TeamPluginManagePermissionVal
   });
 
-  const installResult = await installPluginsToSource(downloadUrls, teamId);
+  const installResult = await installPluginsToSource(downloadUrls, getTeamPluginSource(teamId));
   const failed = (installResult as any)?.failed;
   if (Array.isArray(failed) && failed.length > 0) {
     return Promise.reject(JSON.stringify(failed));
@@ -59,7 +60,6 @@ async function handler(
         version: plugin.version,
         etag: plugin.etag,
         installSource: TeamPluginInstallSourceEnum.marketplace,
-        teamTagIds,
         confirmedPermissions: plugin.permission,
         packageSource: {
           marketplaceToolId: plugin.marketplaceToolId ?? plugin.pluginId,
