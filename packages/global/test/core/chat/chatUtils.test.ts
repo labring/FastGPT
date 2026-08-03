@@ -582,7 +582,7 @@ describe('getFlatAppResponses', () => {
 });
 
 describe('checkInteractiveResponseStatus', () => {
-  it('should return query for agentPlanAskQuery type', () => {
+  it('should keep legacy agentPlanAskQuery as a query', () => {
     const result = checkInteractiveResponseStatus({
       interactive: {
         type: 'agentPlanAskQuery',
@@ -598,7 +598,43 @@ describe('checkInteractiveResponseStatus', () => {
     expect(result).toBe('query');
   });
 
-  it('should return query for an agent ask nested inside child interactive wrappers', () => {
+  it('should return query for agentAsk by default and submit when configured', () => {
+    const interactive = {
+      type: 'agentAsk' as const,
+      askId: 'call_ask',
+      params: {
+        description: 'Need input',
+        questions: [
+          {
+            question: 'Need input?',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ],
+            answer: ''
+          }
+        ]
+      }
+    };
+    expect(
+      checkInteractiveResponseStatus({
+        interactive,
+        input: '{"answers":["A"]}'
+      })
+    ).toBe('query');
+
+    expect(
+      checkInteractiveResponseStatus({
+        interactive: {
+          ...interactive,
+          responseMode: 'submit'
+        },
+        input: '{"answers":["A"]}'
+      })
+    ).toBe('submit');
+  });
+
+  it('should keep a nested legacy agent ask as a query', () => {
     const result = checkInteractiveResponseStatus({
       interactive: {
         type: 'toolChildrenInteractive',

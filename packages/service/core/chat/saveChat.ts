@@ -33,6 +33,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
 import type { NodeResponseWriteSummary } from './nodeResponseStorage';
@@ -755,11 +756,24 @@ export const updateInteractiveChat = async ({
       throw new Error('Prepared chat round is required for interactive query');
     }
 
-    if (finalInteractive.type === 'agentPlanAskQuery') {
+    if (finalInteractive.type === 'agentPlanAskQuery' || finalInteractive.type === 'agentAsk') {
       if (!finalInteractive.askId) {
         throw new Error(`Agent ask interactive askId is required: ${chatId}`);
       }
-      finalInteractive.params.answer = userInteractiveVal;
+      if (finalInteractive.type === 'agentPlanAskQuery') {
+        // Legacy ask_user
+        finalInteractive.params.answer = userInteractiveVal;
+      } else {
+        // New (multiple questions)
+        const answers = parseAgentAskAnswers(userInteractiveVal);
+        finalInteractive.params.questions = finalInteractive.params.questions.map(
+          (question, index) => ({
+            ...question,
+            answer: answers[index] ?? question.answer
+          })
+        );
+        finalInteractive.params.submitted = true;
+      }
 
       const interactiveChatItem = await MongoChatItem.findOne({
         ...buildChatSourceQuery(chatSource),

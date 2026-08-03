@@ -104,8 +104,16 @@ describe('summarizeAgentLoopCoreResult', () => {
     const ask = {
       reason: 'Need input',
       blockerType: 'missing_required_input' as const,
-      question: 'Confirm?',
-      options: ['Yes', 'No', 'Not sure']
+      questions: [
+        {
+          question: 'Confirm?',
+          options: [
+            { summary: 'Yes', value: 'Yes' },
+            { summary: 'No', value: 'No' },
+            { summary: 'Not sure', value: 'Not sure' }
+          ]
+        }
+      ]
     };
 
     expect(
@@ -129,13 +137,21 @@ describe('summarizeAgentLoopCoreResult', () => {
         status: 'interactive',
         providerState,
         interactive: {
-          type: 'agentPlanAskQuery',
+          type: 'agentAsk',
           askId: 'call_ask',
           params: {
-            content: 'Confirm?',
-            reason: 'Need input',
-            blockerType: 'missing_required_input',
-            options: ['Yes', 'No', 'Not sure']
+            description: 'Need input',
+            questions: [
+              {
+                question: 'Confirm?',
+                options: [
+                  { summary: 'Yes', value: 'Yes' },
+                  { summary: 'No', value: 'No' },
+                  { summary: 'Not sure', value: 'Not sure' }
+                ],
+                answer: ''
+              }
+            ]
           }
         }
       })

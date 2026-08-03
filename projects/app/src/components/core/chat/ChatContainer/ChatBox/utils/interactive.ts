@@ -4,17 +4,56 @@ import {
   extractDeepestInteractive,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  UserInputInteractive,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
 import type { ChatSiteItemType } from '../type';
 
+/** 判断当前 Agent Ask 是否正在等待多题选择回答。 */
+export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType) => {
+  if (!interactive) return false;
+
+  const finalInteractive = extractDeepestInteractive(interactive);
+  return finalInteractive.type === 'agentAsk' && !finalInteractive.params.submitted;
+};
+
+/**
+ * 判断同条 AI 消息中的 userInput 是否已提交。
+ *
+ * 旧聊天记录可能未持久化 `submitted`，但运行结果仍会保留 formInputResult；
+ * 非最后一条消息也必然已完成，避免历史 ask 误显示为等待状态。
+ */
+export const isUserInputInteractiveSubmitted = ({
+  interactive,
+  responseData,
+  isLastChild
+}: {
+  interactive: UserInputInteractive;
+  responseData?: ChatHistoryItemResType[];
+  isLastChild: boolean;
+}) => {
+  if (interactive.params.submitted || !isLastChild) return true;
+
+  return !!responseData?.some((item) => {
+    const formInputResult = item.formInputResult;
+    if (!formInputResult || typeof formInputResult !== 'object' || Array.isArray(formInputResult)) {
+      return false;
+    }
+
+    return interactive.params.inputForm.some((input) => input.key in formInputResult);
+  });
+};
+
 /**
  * 用户回答 Agent 收集问题后，前端会立即追加 Human/AI 占位消息。
- * 这里把答案乐观写回对应的 agentPlanAskQuery，避免旧消息在失去 isLastChild 后丢失选中态。
+ * 这里把答案乐观写回对应的 Agent Ask，避免旧消息在失去 isLastChild 后丢失选中态。
  */
-export const persistAgentPlanAskAnswerToHistories = ({
+export const persistAgentAskAnswersToHistories = ({
   histories,
   interactive,
   answer
@@ -24,14 +63,15 @@ export const persistAgentPlanAskAnswerToHistories = ({
   answer: string;
 }): ChatSiteItemType[] => {
   const sourceInteractive = extractDeepestInteractive(interactive);
-  if (sourceInteractive.type !== 'agentPlanAskQuery') {
+  if (sourceInteractive.type !== 'agentAsk') {
     return histories;
   }
 
   const targetAskId = sourceInteractive.askId;
+  const submittedAnswers = parseAgentAskAnswers(answer);
   let hasUpdated = false;
 
-  const nextHistories = histories.map((item) => {
+  const nextHistories = histories.map<ChatSiteItemType>((item) => {
     if (item.obj !== ChatRoleEnum.AI) return item;
 
     let itemUpdated = false;
@@ -39,10 +79,42 @@ export const persistAgentPlanAskAnswerToHistories = ({
       if (!('interactive' in val) || !val.interactive) return val;
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
-      if (finalInteractive.type !== 'agentPlanAskQuery') return val;
-      if (finalInteractive.params.answer) return val;
 
-      if (finalInteractive.askId !== targetAskId) {
+      // Convert the legacy ask_user interactive record to the new one.
+      if (
+        val.interactive.type === 'agentPlanAskQuery' &&
+        val.interactive.askId === targetAskId &&
+        !val.interactive.params.answer
+      ) {
+        itemUpdated = true;
+        hasUpdated = true;
+        return {
+          ...val,
+          interactive: {
+            ...val.interactive,
+            type: 'agentAsk' as const,
+            params: {
+              description: val.interactive.params.reason ?? '',
+              questions: [
+                {
+                  question: val.interactive.params.content,
+                  options: val.interactive.params.options.map((option) => ({
+                    summary: option,
+                    value: option
+                  })),
+                  answer: submittedAnswers[0] ?? ''
+                }
+              ],
+              submitted: true
+            }
+          }
+        };
+      }
+
+      if (finalInteractive.type !== 'agentAsk' || finalInteractive.askId !== targetAskId) {
+        return val;
+      }
+      if (finalInteractive.params.submitted) {
         return val;
       }
 
@@ -54,7 +126,11 @@ export const persistAgentPlanAskAnswerToHistories = ({
           ...finalInteractive,
           params: {
             ...finalInteractive.params,
-            answer
+            questions: finalInteractive.params.questions.map((question, index) => ({
+              ...question,
+              answer: submittedAnswers[index] ?? question.answer
+            })),
+            submitted: true
           }
         }
       };
@@ -205,7 +281,8 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: false
     };
-  } else if (finalInteractive.type === 'agentPlanAskQuery') {
+  } else if (finalInteractive.type === 'agentAsk') {
+    // New
     return {
       interactive: finalInteractive,
       canSendQuery: true
@@ -237,10 +314,7 @@ export const resolveInteractiveResponseChatItemId = ({
 }) => {
   if (!interactive) return responseChatItemId;
 
-  const status = checkInteractiveResponseStatus({
-    interactive,
-    input: interactiveVal
-  });
+  const status = checkInteractiveResponseStatus({ interactive, input: interactiveVal });
   if (status === 'query') return responseChatItemId;
 
   const previousAiItem = histories.findLast((item) => item.obj === ChatRoleEnum.AI);
@@ -256,10 +330,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
   interactiveVal: string;
   interactive: WorkflowInteractiveResponseType;
 }): ChatSiteItemType[] => {
-  const status = checkInteractiveResponseStatus({
-    interactive,
-    input: interactiveVal
-  });
+  const status = checkInteractiveResponseStatus({ interactive, input: interactiveVal });
 
   const formatHistories = (() => {
     if (status === 'query') {
@@ -270,7 +341,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
 
   const workingHistories =
     status === 'query'
-      ? persistAgentPlanAskAnswerToHistories({
+      ? persistAgentAskAnswersToHistories({
           histories: formatHistories,
           interactive,
           answer: interactiveVal
@@ -332,6 +403,24 @@ export const rewriteHistoriesByInteractiveResponse = ({
             params: {
               ...finalInteractive.params,
               inputForm: updatedInputForm,
+              submitted: true
+            }
+          }
+        };
+      }
+
+      if (finalInteractive.type === 'agentAsk') {
+        const answers = parseAgentAskAnswers(interactiveVal);
+        return {
+          ...val,
+          interactive: {
+            ...finalInteractive,
+            params: {
+              ...finalInteractive.params,
+              questions: finalInteractive.params.questions.map((question, index) => ({
+                ...question,
+                answer: answers[index] ?? question.answer
+              })),
               submitted: true
             }
           }

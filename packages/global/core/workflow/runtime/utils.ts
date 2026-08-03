@@ -26,7 +26,7 @@ export const extractDeepestInteractive = (
   let current = interactive;
   let depth = 0;
 
-  while (depth < MAX_DEPTH && 'childrenResponse' in current.params) {
+  while (depth < MAX_DEPTH && current?.params && 'childrenResponse' in current.params) {
     current = current.params.childrenResponse;
     depth++;
   }
@@ -171,6 +171,36 @@ export const getLastInteractiveValue = (
       return;
     }
 
+    // Convert legacy ask_user call to the new one.
+    if (lastValue.interactive.type === 'agentPlanAskQuery') {
+      if (lastValue.interactive.params.answer) {
+        return;
+      }
+
+      return {
+        ...lastValue.interactive,
+        type: 'agentAsk',
+        params: {
+          description: lastValue.interactive.params.reason ?? '',
+          questions: [
+            {
+              question: lastValue.interactive.params.content,
+              options: lastValue.interactive.params.options.map((option) => ({
+                summary: option,
+                value: option
+              })),
+              answer: ''
+            }
+          ]
+        }
+      };
+    }
+
+    const finalInteractive = extractDeepestInteractive(lastValue.interactive);
+    if (finalInteractive.type === 'agentPlanAskQuery') {
+      return;
+    }
+
     if (isChildInteractive(lastValue.interactive.type)) {
       return lastValue.interactive;
     }
@@ -188,15 +218,11 @@ export const getLastInteractiveValue = (
       return lastValue.interactive;
     }
 
-    if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
+    if (lastValue.interactive.type === 'agentAsk' && !lastValue.interactive.params.submitted) {
       return lastValue.interactive;
     }
 
-    // Agent plan ask query
-    if (
-      lastValue.interactive.type === 'agentPlanAskQuery' &&
-      !lastValue.interactive.params.answer
-    ) {
+    if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
       return lastValue.interactive;
     }
   }

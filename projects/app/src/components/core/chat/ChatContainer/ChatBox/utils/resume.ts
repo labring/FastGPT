@@ -177,7 +177,7 @@ export const mergeResumeCompletedChatRecords = ({
 /**
  * 恢复流 replay 交互节点时，判断是否应 append 到 AI record.value。
  *
- * 核心约束：若 existing 中已有同一身份且已 submitted 的 `userInput`，
+ * 核心约束：若 existing 中已有同一身份且已 submitted 的表单交互，
  * 则跳过 incoming 的未提交副本，避免空表单覆盖已回填的文件/字段值。
  * 不同身份交互，或同身份但 existing 尚未 submitted（例如中间插入了确认文本），仍允许 append。
  */
@@ -199,7 +199,9 @@ export const shouldAppendResumeInteractive = ({
   if (!isSameInteractive) return true;
 
   return !(
-    existingFinalInteractive.type === 'userInput' && existingFinalInteractive.params.submitted
+    (existingFinalInteractive.type === 'userInput' ||
+      existingFinalInteractive.type === 'agentAsk') &&
+    existingFinalInteractive.params.submitted
   );
 };
 
@@ -225,7 +227,7 @@ const areSameInteractive = (
 };
 
 /**
- * 将 current 侧已提交的 `userInput` 交互写回 completed 侧同身份交互节点。
+ * 将 current 侧已提交的表单交互写回 completed 侧同身份交互节点。
  * completed record 持久化后 `inputForm.value` 可能为空（尤其 fileSelect URL 数组），
  * 而恢复流 replay 期间已在 current record 中 hydrate 过，此处防止覆盖时丢失。
  */
@@ -242,7 +244,10 @@ const mergeSubmittedInteractiveValues = ({
       if (!interactive) return false;
 
       const finalInteractive = extractDeepestInteractive(interactive);
-      return finalInteractive.type === 'userInput' && !!finalInteractive.params.submitted;
+      return (
+        (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentAsk') &&
+        !!finalInteractive.params.submitted
+      );
     });
 
   if (!currentSubmittedInteractives.length) return completedValues;
@@ -252,7 +257,7 @@ const mergeSubmittedInteractiveValues = ({
     if (!value.interactive) return value;
 
     const finalInteractive = extractDeepestInteractive(value.interactive);
-    if (finalInteractive.type !== 'userInput') {
+    if (finalInteractive.type !== 'userInput' && finalInteractive.type !== 'agentAsk') {
       return value;
     }
 

@@ -350,8 +350,16 @@ describe('runAgentLoopCore', () => {
     const ask = {
       reason: 'Need confirmation',
       blockerType: 'missing_required_input' as const,
-      question: 'Confirm?',
-      options: ['Yes', 'No', 'Not sure']
+      questions: [
+        {
+          question: 'Confirm?',
+          options: [
+            { summary: 'Yes', value: 'Yes' },
+            { summary: 'No', value: 'No' },
+            { summary: 'Not sure', value: 'Not sure' }
+          ]
+        }
+      ]
     };
     runAgentLoopMock.mockResolvedValue({
       status: 'paused',

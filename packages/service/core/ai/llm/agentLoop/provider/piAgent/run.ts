@@ -16,7 +16,11 @@ import { formatModelChars2Points } from '../../../../../../support/wallet/usage/
 import { getLLMModel } from '../../../../model';
 import { AgentUsageModuleName } from '../../domain/usage';
 import { getMainAgentSystemPrompt } from '../../domain/mainPrompt';
-import { askUserToolName, type AgentAskPayload } from '../../domain/systemTool/ask';
+import {
+  askUserToolName,
+  formatAgentAskToolResponse,
+  type AgentAskPayload
+} from '../../domain/systemTool/ask';
 import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
 import {
   normalizeAgentLoopUsages,
@@ -217,7 +221,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           {
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: askResumeId,
-            content: normalizeToolResponseContent(input.userAnswer)
+            content: normalizeToolResponseContent(
+              formatAgentAskToolResponse({
+                messages: pendingMainContext!.messages,
+                askToolCallId: askResumeId,
+                answer: input.userAnswer ?? ''
+              })
+            )
           } as ChatCompletionMessageParam
         ]
       : undefined;

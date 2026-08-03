@@ -310,7 +310,11 @@ export const checkInteractiveResponseStatus = ({
   interactive: WorkflowInteractiveResponseType;
   input: string;
 }): 'submit' | 'query' => {
-  if (extractDeepestInteractive(interactive).type === 'agentPlanAskQuery') {
+  const finalInteractive = extractDeepestInteractive(interactive);
+  if (
+    finalInteractive.type === 'agentPlanAskQuery' ||
+    (finalInteractive.type === 'agentAsk' && finalInteractive.responseMode !== 'submit')
+  ) {
     return 'query';
   }
   return 'submit';

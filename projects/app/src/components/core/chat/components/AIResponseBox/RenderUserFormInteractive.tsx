@@ -44,22 +44,24 @@ const getInputFormValueFromResponseData = ({
   return (formInputResult as Record<string, unknown>)[inputKey];
 };
 
+type RenderUserFormInteractiveProps = {
+  interactive: UserInputInteractive;
+  responseData?: ChatHistoryItemResType[];
+  isLastChild: boolean;
+};
+
 /**
- * 渲染已提交/待提交的 `userInput` 工作流交互表单。
+ * 渲染标准 `userInput` 工作流交互表单。
  *
  * fileSelect 始终优先使用 inputForm.value 中持久化的原始文件信息；
  * responseData.formInputResult 只为缺少原始值的旧历史兜底。
  * 非最后一条子消息时强制 `submitted: true`，禁止重复提交历史表单。
  */
-const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive({
+const RenderStandardUserFormInteractive = ({
   interactive,
   responseData,
   isLastChild
-}: {
-  interactive: UserInputInteractive;
-  responseData?: ChatHistoryItemResType[];
-  isLastChild: boolean;
-}) {
+}: RenderUserFormInteractiveProps) => {
   const { t } = useTranslation();
 
   const defaultValues = useMemo(() => {
@@ -124,6 +126,21 @@ const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive(
         />
       </Flex>
     </InteractiveCard>
+  );
+};
+
+/** 渲染标准 `userInput` 工作流交互表单。 */
+const RenderUserFormInteractive = React.memo(function RenderUserFormInteractive({
+  interactive,
+  responseData,
+  isLastChild
+}: RenderUserFormInteractiveProps) {
+  return (
+    <RenderStandardUserFormInteractive
+      interactive={interactive}
+      responseData={responseData}
+      isLastChild={isLastChild}
+    />
   );
 });
 

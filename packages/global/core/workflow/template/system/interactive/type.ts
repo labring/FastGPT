@@ -5,6 +5,7 @@ import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schem
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
+import { AgentAskQuestionSchema } from '../../../../ai/agent/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
@@ -95,19 +96,32 @@ export type LoopRunInteractive = InteractiveNodeType & {
 export const AgentPlanAskOptionSchema = z.string().min(1);
 export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
 
-export const AgentPlanAskQueryInteractiveSchema = z.object({
-  type: z.literal('agentPlanAskQuery'),
-  askId: z.string().min(1),
-  params: z.object({
-    content: z.string(),
-    reason: z.string().optional(),
-    blockerType: z
-      .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal', 'user_choice'])
-      .optional(),
-    options: z.array(AgentPlanAskOptionSchema).min(2).max(5),
-    answer: z.string().optional()
+/**
+ * Legacy `ask_user` schema.
+ *
+ * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ */
+export const AgentPlanAskQueryInteractiveSchema = z
+  .object({
+    type: z.literal('agentPlanAskQuery'),
+    askId: z.string().min(1),
+    params: z.object({
+      content: z.string(),
+      reason: z.string().optional(),
+      blockerType: z
+        .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal', 'user_choice'])
+        .optional(),
+      options: z.array(AgentPlanAskOptionSchema).min(2).max(5),
+      answer: z.string().optional()
+    })
   })
-});
+  .meta({
+    deprecated: true
+  });
+
+/**
+ * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ */
 export type AgentPlanAskQueryInteractive = z.infer<typeof AgentPlanAskQueryInteractiveSchema>;
 
 // User selector
@@ -154,6 +168,23 @@ export const UserInputInteractiveSchema = z.object({
 });
 export type UserInputInteractive = z.infer<typeof UserInputInteractiveSchema>;
 
+export const AgentAskQuestionInteractiveSchema = AgentAskQuestionSchema.safeExtend({
+  answer: z.string()
+});
+export type AgentAskQuestionInteractive = z.infer<typeof AgentAskQuestionInteractiveSchema>;
+
+export const AgentAskInteractiveSchema = z.object({
+  type: z.literal('agentAsk'),
+  askId: z.string().min(1),
+  responseMode: z.literal('submit').optional(),
+  params: z.object({
+    description: z.string(),
+    questions: z.array(AgentAskQuestionInteractiveSchema).min(1).max(3),
+    submitted: z.boolean().optional()
+  })
+});
+export type AgentAskInteractive = z.infer<typeof AgentAskInteractiveSchema>;
+
 // 欠费暂停交互
 export const PaymentPauseInteractiveSchema = z.object({
   type: z.literal('paymentPause'),
@@ -173,7 +204,8 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     LoopInteractiveSchema,
     LoopRunInteractiveSchema,
     PaymentPauseInteractiveSchema,
-    AgentPlanAskQueryInteractiveSchema
+    AgentPlanAskQueryInteractiveSchema,
+    AgentAskInteractiveSchema
   ]),
   z.object({
     askId: z.string().nullish()

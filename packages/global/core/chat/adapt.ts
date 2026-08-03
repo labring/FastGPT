@@ -19,6 +19,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
+import { formatAgentAskAnswers } from '../ai/agent/utils';
 import { normalizeToolResponseContent } from '../ai/llm/utils';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 
@@ -383,12 +384,21 @@ export const chats2GPTMessages = ({
         const finalInteractive = value.interactive
           ? extractDeepestInteractive(value.interactive)
           : undefined;
-        if (
-          finalInteractive?.type === 'agentPlanAskQuery' &&
-          finalInteractive.askId &&
-          typeof finalInteractive.params.answer === 'string'
-        ) {
-          agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer);
+
+        // Legacy ask
+        if (finalInteractive?.type === 'agentPlanAskQuery' && finalInteractive.askId) {
+          agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer || '未回答');
+        }
+
+        // New ask_user
+        if (finalInteractive?.type === 'agentAsk' && finalInteractive.params.submitted) {
+          agentAskAnswerMap.set(
+            finalInteractive.askId,
+            formatAgentAskAnswers({
+              questions: finalInteractive.params.questions,
+              answers: finalInteractive.params.questions.map((question) => question.answer)
+            })
+          );
         }
       });
 

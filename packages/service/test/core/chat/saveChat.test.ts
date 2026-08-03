@@ -1215,7 +1215,7 @@ describe('pushChatRecords', () => {
       );
     });
 
-    it('should persist agentPlanAskQuery answer on previous interactive and finalize prepared records', async () => {
+    it('should persist multi-question agentAsk form values and finalize prepared records', async () => {
       await MongoChatItem.create({
         chatId: 'test-chat-id',
         teamId: testTeamId,
@@ -1227,13 +1227,28 @@ describe('pushChatRecords', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'call_ask_agent',
               params: {
-                content: '请补充目标',
-                reason: '需要用户明确任务目标',
-                blockerType: 'missing_required_input',
-                options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
+                description: '需要用户明确任务目标',
+                questions: [
+                  {
+                    question: '请选择方向',
+                    options: [
+                      { summary: 'Rust', value: 'Rust' },
+                      { summary: 'Go', value: 'Go' }
+                    ],
+                    answer: ''
+                  },
+                  {
+                    question: '需要示例吗',
+                    options: [
+                      { summary: '需要', value: '需要' },
+                      { summary: '不需要', value: '不需要' }
+                    ],
+                    answer: ''
+                  }
+                ]
               }
             }
           }
@@ -1247,7 +1262,7 @@ describe('pushChatRecords', () => {
             dataId: 'prepared-round-data-id',
             value: [
               {
-                text: { content: '深入了解 Rust 系统编程方向' }
+                text: { content: JSON.stringify({ answers: ['Rust', ''] }) }
               }
             ]
           },
@@ -1283,7 +1298,7 @@ describe('pushChatRecords', () => {
           dataId: 'prepared-round-data-id',
           value: [
             {
-              text: { content: '深入了解 Rust 系统编程方向' }
+              text: { content: JSON.stringify({ answers: ['Rust', ''] }) }
             }
           ]
         },
@@ -1300,13 +1315,28 @@ describe('pushChatRecords', () => {
       ]);
 
       const interactive = {
-        type: 'agentPlanAskQuery' as const,
+        type: 'agentAsk' as const,
         askId: 'call_ask_agent',
         params: {
-          content: '请补充目标',
-          reason: '需要用户明确任务目标',
-          blockerType: 'missing_required_input',
-          options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
+          description: '需要用户明确任务目标',
+          questions: [
+            {
+              question: '请选择方向',
+              options: [
+                { summary: 'Rust', value: 'Rust' },
+                { summary: 'Go', value: 'Go' }
+              ],
+              answer: ''
+            },
+            {
+              question: '需要示例吗',
+              options: [
+                { summary: '需要', value: '需要' },
+                { summary: '不需要', value: '不需要' }
+              ],
+              answer: ''
+            }
+          ]
         },
         entryNodeIds: [],
         memoryEdges: [],
@@ -1330,16 +1360,14 @@ describe('pushChatRecords', () => {
         throw new Error('previousChatItem does not have AI interactive value');
       }
       const lastValue = previousChatItem.value[previousChatItem.value.length - 1];
-      if (lastValue.interactive?.type !== 'agentPlanAskQuery') {
-        throw new Error('previousChatItem does not have agentPlanAskQuery interactive');
+      if (lastValue.interactive?.type !== 'agentAsk') {
+        throw new Error('previousChatItem does not have agentAsk interactive');
       }
 
-      expect(lastValue.interactive.params.answer).toBe('深入了解 Rust 系统编程方向');
-      expect(lastValue.interactive.params.reason).toBe('需要用户明确任务目标');
-      expect(lastValue.interactive.params.options).toEqual([
-        '继续研究 Rust',
-        '改为研究 Go',
-        '先给出学习路线'
+      expect(lastValue.interactive.params.submitted).toBe(true);
+      expect(lastValue.interactive.params.questions.map((question) => question.answer)).toEqual([
+        'Rust',
+        ''
       ]);
 
       const finalizedAiItem = await MongoChatItem.findOne({

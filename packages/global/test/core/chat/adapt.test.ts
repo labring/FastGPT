@@ -1798,6 +1798,93 @@ describe('chats2GPTMessages', () => {
     expect(result).toHaveLength(0);
   });
 
+  it('should rebuild an ask_user response from submitted agentAsk form values', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentAsk: {
+              id: 'call_ask',
+              askId: 'call_ask',
+              functionName: 'ask_user',
+              params: '{"questions":[]}'
+            }
+          },
+          {
+            interactive: {
+              type: 'agentAsk',
+              askId: 'call_ask',
+              params: {
+                description: 'Need input',
+                submitted: true,
+                questions: [
+                  {
+                    question: 'First?',
+                    options: [
+                      { summary: 'A', value: 'Answer A' },
+                      { summary: 'B', value: 'B' }
+                    ],
+                    answer: 'Answer A'
+                  },
+                  {
+                    question: 'Second?',
+                    options: [
+                      { summary: 'C', value: 'C' },
+                      { summary: 'D', value: 'D' }
+                    ],
+                    answer: 'Custom answer'
+                  },
+                  {
+                    question: 'Third?',
+                    options: [
+                      { summary: 'E', value: 'E' },
+                      { summary: 'F', value: 'F' }
+                    ],
+                    answer: ''
+                  }
+                ]
+              }
+            }
+          } as any
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_ask',
+            type: 'function',
+            function: {
+              name: 'ask_user',
+              arguments: '{"questions":[]}'
+            }
+          }
+        ]
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_ask',
+        content: `## First?
+
+回答：A - Answer A
+
+## Second?
+
+回答：Custom answer
+
+## Third?
+
+回答：未回答`
+      }
+    ]);
+  });
+
   it('should skip plan card when building GPT messages', () => {
     const messages: ChatItemMiniType[] = [
       {

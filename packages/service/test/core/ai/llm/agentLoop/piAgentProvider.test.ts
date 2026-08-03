@@ -1534,10 +1534,18 @@ describe('runPiAgentLoop', () => {
       name: 'ask_user',
       callId: 'call_ask_pause',
       args: {
-        question: '请确认目标',
         reason: '需要补充范围',
         blockerType: 'missing_required_input',
-        options: ['目标 A', '目标 B', '目标 C']
+        questions: [
+          {
+            question: '请确认目标',
+            options: [
+              { summary: '目标 A', value: '目标 A' },
+              { summary: '目标 B', value: '目标 B' },
+              { summary: '目标 C', value: '目标 C' }
+            ]
+          }
+        ]
       }
     };
 

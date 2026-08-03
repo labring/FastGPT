@@ -162,7 +162,7 @@ describe('runFastAgentMainLoop', () => {
     expect(mainAgentPrompt).toContain('你是 Work Agent');
     expect(mainAgentPrompt).toContain('任务或 Skill 明确需要通过选项向用户收集信息');
     expect(mainAgentPrompt).toContain('Skill 要求向用户收集选项信息时');
-    expect(mainAgentPrompt).toContain('options：2 到 5 个');
+    expect(mainAgentPrompt).toContain('每个问题提供 2 到 4 个候选答案');
   });
 
   it.each([
@@ -498,11 +498,15 @@ describe('runFastAgentMainLoop', () => {
         args: {
           reason: 'Need private repository path',
           blockerType: 'missing_required_input',
-          question: 'Which repository should I inspect?',
-          options: [
-            'Use the current workspace',
-            'I will provide a repository path',
-            'Skip repository inspection'
+          questions: [
+            {
+              question: 'Which repository should I inspect?',
+              options: [
+                { summary: 'Current workspace', value: 'Use the current workspace' },
+                { summary: 'Repository path', value: 'I will provide a repository path' },
+                { summary: 'Skip inspection', value: 'Skip repository inspection' }
+              ]
+            }
           ]
         }
       })
@@ -522,13 +526,15 @@ describe('runFastAgentMainLoop', () => {
 
     expect(result.status).toBe('paused');
     expect(result.pause?.type).toBe('ask');
-    expect(result.pause?.type === 'ask' ? result.pause.ask.question : undefined).toBe(
-      'Which repository should I inspect?'
-    );
-    expect(result.pause?.type === 'ask' ? result.pause.ask.options : undefined).toEqual([
-      'Use the current workspace',
-      'I will provide a repository path',
-      'Skip repository inspection'
+    expect(result.pause?.type === 'ask' ? result.pause.ask.questions : undefined).toEqual([
+      {
+        question: 'Which repository should I inspect?',
+        options: [
+          { summary: 'Current workspace', value: 'Use the current workspace' },
+          { summary: 'Repository path', value: 'I will provide a repository path' },
+          { summary: 'Skip inspection', value: 'Skip repository inspection' }
+        ]
+      }
     ]);
     expect(result.pendingMainContext?.askToolCallId).toBe('call_ask');
     expect(result.pendingMainContext?.messages.at(-1)).toEqual({
@@ -540,8 +546,7 @@ describe('runFastAgentMainLoop', () => {
           type: 'function',
           function: {
             name: 'ask_user',
-            arguments:
-              '{"reason":"Need private repository path","blockerType":"missing_required_input","question":"Which repository should I inspect?","options":["Use the current workspace","I will provide a repository path","Skip repository inspection"]}'
+            arguments: expect.stringContaining('"summary":"Current workspace"')
           }
         }
       ]
@@ -569,8 +574,19 @@ describe('runFastAgentMainLoop', () => {
               arguments: JSON.stringify({
                 reason: 'Need confirmation before changing data',
                 blockerType: 'missing_required_input',
-                question: 'Should I continue with the data change?',
-                options: ['Continue', 'Cancel', 'Review the proposed change first']
+                questions: [
+                  {
+                    question: 'Should I continue with the data change?',
+                    options: [
+                      { summary: 'Continue', value: 'Continue' },
+                      { summary: 'Cancel', value: 'Cancel' },
+                      {
+                        summary: 'Review proposal',
+                        value: 'Review the proposed change first'
+                      }
+                    ]
+                  }
+                ]
               })
             }
           },
