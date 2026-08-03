@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
@@ -53,8 +54,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   const match = {
-    teamId,
-    datasetId: { $in: datasets.map((d) => d._id) }
+    teamId: new Types.ObjectId(teamId),
+    datasetId: { $in: datasets.map((d) => new Types.ObjectId(d._id)) }
   };
 
   const [exportSchema] = await MongoDatasetData.aggregate<ExportSchemaType>(
