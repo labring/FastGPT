@@ -2,6 +2,7 @@ import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import Ajv2019 from 'ajv/dist/2019';
 import Ajv2020 from 'ajv/dist/2020';
 import type { ChatCompletionTool } from '../../ai/llm/type';
+import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import { AgentToolInputModeEnum } from './constants';
 import {
@@ -9,6 +10,7 @@ import {
   canInputBeManuallyConfigured,
   isAgentGeneratedToolInput
 } from '../formEdit/utils';
+import { getSelectedInputRenderType } from '../../workflow/utils';
 import {
   buildModelVisibleToolJsonSchema,
   type JSONSchemaInputType,
@@ -47,8 +49,10 @@ const createToolInputDefinitions = ({
 }): ToolInputDefinition[] =>
   inputs.map((input) => {
     const canAgentGenerate = canInputBeAgentGenerated(input);
-    const canConfigureManually =
+    // reference 在工作流执行前已解析为固定值，不受 Agent 配置页手动控件范围限制。
+    const canUseFixedBinding =
       canInputBeManuallyConfigured({ renderTypeList: input.renderTypeList ?? [] }) ||
+      getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.reference ||
       !canAgentGenerate;
 
     return {
@@ -57,7 +61,7 @@ const createToolInputDefinitions = ({
       nodeInput: input,
       allowedModes: [
         ...(canAgentGenerate ? [AgentToolInputModeEnum.agentGenerated] : []),
-        ...(canConfigureManually ? [AgentToolInputModeEnum.manual] : [])
+        ...(canUseFixedBinding ? [AgentToolInputModeEnum.manual] : [])
       ]
     };
   });
