@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'; // 必须显式导入
-import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
+import { parseDatasetCsvHeaders, rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import { ChunkTriggerConfigTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const formatChunks = (
@@ -446,6 +446,24 @@ function buildCsv(rows: string[][]): string {
 }
 
 describe('rawText2Chunks backupParse', () => {
+  it('accepts typed CSV headers in any order and merges JSON metadata columns', async () => {
+    const csv =
+      'metadata,index,a,q,metadata,index\n"{""source"":""crm""}",tag1,answer,question,"{""rank"":3}",tag2';
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+
+    expect(parseDatasetCsvHeaders(['metadata', 'index', 'a', 'q']).validTypedHeader).toBe(true);
+    expect(parseDatasetCsvHeaders(['q', 'a', 'source']).validTypedHeader).toBe(false);
+    expect(result).toEqual([
+      {
+        q: 'question',
+        a: 'answer',
+        indexes: ['tag1', 'tag2'],
+        metadata: { source: 'crm', rank: 3 },
+        imageIdList: undefined
+      }
+    ]);
+  });
+
   it('returns empty array when CSV has only a header row', async () => {
     const csv = buildCsv([['q', 'a']]);
     const result = await rawText2Chunks({ rawText: csv, backupParse: true });
@@ -511,6 +529,15 @@ describe('rawText2Chunks backupParse', () => {
     ]);
     const result = await rawText2Chunks({ rawText: csv, backupParse: true });
     expect(result[0].indexes).toEqual(['tag1 tag2']);
+  });
+
+  it('keeps trailing indexes from the legacy q,a,indexes export format', async () => {
+    const csv = buildCsv([
+      ['q', 'a', 'indexes'],
+      ['question', 'answer', 'tag1', 'tag2', 'tag3']
+    ]);
+    const result = await rawText2Chunks({ rawText: csv, backupParse: true });
+    expect(result[0].indexes).toEqual(['tag1', 'tag2', 'tag3']);
   });
 
   it('filters out empty index values', async () => {

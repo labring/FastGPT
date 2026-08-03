@@ -185,7 +185,10 @@ export type CreateBackupCollectionFormType = z.infer<typeof CreateBackupCollecti
 
 // OpenAPI 文档专用
 export const CreateBackupCollectionMultipartSchema = z.object({
-  file: z.any().meta({ format: 'binary', description: '备份 CSV 文件（格式：q,a,indexes）' }),
+  file: z.any().meta({
+    format: 'binary',
+    description: '备份 CSV 文件（表头由 q、a、index、metadata 组成，metadata 单元格为 JSON object）'
+  }),
   data: CreateBackupCollectionFormSchema.meta({ description: '集合参数（JSON 序列化后传入）' })
 });
 
@@ -203,7 +206,10 @@ export type CreateTemplateCollectionFormType = z.infer<typeof CreateTemplateColl
 
 // OpenAPI 文档专用
 export const CreateTemplateCollectionMultipartSchema = z.object({
-  file: z.any().meta({ format: 'binary', description: '模板 CSV 文件（格式：q,a,indexes）' }),
+  file: z.any().meta({
+    format: 'binary',
+    description: '模板 CSV 文件（表头由 q、a、index、metadata 组成，metadata 单元格为 JSON object）'
+  }),
   data: CreateTemplateCollectionFormSchema.meta({ description: '集合参数（JSON 序列化后传入）' })
 });
 

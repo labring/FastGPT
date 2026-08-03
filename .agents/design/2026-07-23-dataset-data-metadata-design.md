@@ -29,7 +29,7 @@ updated: 2026-07-23
 | pushData Schema | `packages/global/openapi/core/dataset/data/api.ts` | `PushDataChunkSchema`、`GetDataListItemSchema` 新增 `metadata` |
 | MongoDB Schema | `packages/service/core/dataset/data/schema.ts` | 新增 `metadata: { type: Object }` |
 | Training MongoDB | `packages/service/core/dataset/training/schema.ts` | 新增 `dataMetadata: { type: Object }`（与 data 层的 metadata 区分命名） |
-| CSV 模板解析 | `packages/service/core/dataset/read.ts` | `parseDatasetBackup2Chunks` 解析非 q/a/indexes 列为 metadata |
+| CSV 模板解析 | `packages/service/core/dataset/read.ts` | `rawText2Chunks` 按 q/a/index(es)/metadata 固定表头解析，metadata 单元格使用 JSON object |
 | 训练入队 | `packages/service/core/dataset/training/controller.ts` | 传递 metadata |
 | 向量生成 | `projects/app/src/service/core/dataset/queues/generateVector.ts` | `insertData`/`rebuildData` 传递 metadata |
 | 数据操作 | `projects/app/src/service/core/dataset/data/data.ts` | `createDatasetData` 接受并存储 metadata |
@@ -55,7 +55,7 @@ updated: 2026-07-23
 | 缩写/术语 | 定义 | 备注 |
 |---|---|---|
 | metadata | 附加元数据，`Record<string, any>` 类型，可为空 | 不参与向量索引，仅为透传字段 |
-| template CSV | 用户通过模板导入的 CSV 文件 | 表头格式：`q,a,[metadata 列名...],indexes` |
+| template CSV | 用户通过模板导入的 CSV 文件 | 表头由 `q`、`a`、`index`、`metadata` 组成，metadata 单元格为 JSON object |
 | PushData | 通过 API 推送数据到训练队列 | POST `/api/core/dataset/data/pushData` |
 
 ## 1.3 参考和引用
@@ -85,7 +85,7 @@ updated: 2026-07-23
 **方案描述：**
 
 1. **字段定义**：`metadata` 类型为 `Record<string, any>`，在 MongoDB 中以 `Object` 存储，默认值为 `undefined`/不存储（节省空间）
-2. **模板导入**：CSV 解析时读取表头，`q`、`a` 列保持不变，`indexes` 列继续作为索引文本，其余列名作为 metadata key，对应行的值作为 metadata value
+2. **模板导入**：CSV 解析时读取表头，要求每个表头非空且属于 `q`、`a`、`index`、`metadata`（兼容旧的 `indexes`）。`q`、`a` 各一个，`index`/`metadata` 可重复且顺序任意；metadata 单元格为 JSON object，多个 metadata 单元格合并
 3. **全链路透传**：模板 → 训练队列 → 向量生成 → `dataset_data` 写入 → 检索输出 → API 返回，每一环都透传 metadata
 4. **不参与索引**：metadata 不参与向量索引和全文检索，仅作为数据的附属信息
 
@@ -131,7 +131,7 @@ updated: 2026-07-23
 
 #### 3.2.2.1 模板 CSV 导入流程
 
-**流程描述：** 用户上传 CSV 模板文件，系统解析表头，将非 `q`/`a`/`indexes` 的列名和对应值提取为 metadata，随数据进入训练队列。
+**流程描述：** 用户上传 CSV 模板文件，系统按列类型解析表头。`q`、`a` 是主字段，重复的 `index`/`indexes` 列进入索引，重复的 `metadata` 列读取 JSON object 后合并，随数据进入训练队列。
 
 **流程图：**
 
@@ -143,16 +143,16 @@ sequenceDiagram
     participant Train as Training Controller
     participant DB as dataset_trainings
 
-    User->>API: 上传 CSV (header: q,a,source,author,indexes)
-    API->>API: 验证表头前缀 q,a,indexes
+    User->>API: 上传 CSV (header: q,a,index,index,metadata)
+    API->>API: 验证每个表头属于 q/a/index/metadata
     API->>Read: rawText2Chunks(rawText, backupParse=true)
     Read->>Read: Papa.parse CSV
     Read->>Read: 读取 header row
-    Read->>Read: 识别 q/a 列 + metadata 列 + indexes 列
+    Read->>Read: 识别 q/a/index/metadata 列
 
-    alt header 中有非 q/a/indexes 的列名
-        Read->>Read: metadata = { source: 'xxx', author: 'yyy' }
-    else header 只有 q,a,indexes
+    alt header 中有 metadata 列
+        Read->>Read: 合并 metadata JSON object
+    else header 只有 q,a,index
         Read->>Read: metadata = undefined
     end
 
@@ -166,9 +166,9 @@ sequenceDiagram
 | 步骤 | 类型 | 处理内容 | 涉及模块/函数 | 异常处理 |
 |---|---|---|---|---|
 | 1 | [内部] | 接收 CSV 文件，Papa.parse 解析 | `read.ts : rawText2Chunks` | 解析失败返回错误 |
-| 2 | [内部] | 读取 header row（第一行） | `read.ts : parseDatasetBackup2Chunks` | header 为空 → 当作无 metadata 处理 |
-| 3 | [内部] | 遍历 header，标记各列类型（q/a/indexes/metadata） | `read.ts : parseDatasetBackup2Chunks` | 列名去空白后匹配 |
-| 4 | [内部] | 遍历数据行，构建 metadata object，仅保留非空值的列。所有 metadata 列均为空时 metadata 为 undefined（不存储） | `read.ts : parseDatasetBackup2Chunks` | 空值列跳过 |
+| 2 | [内部] | 读取 header row（第一行） | `read.ts : getDatasetCsvHeaders` | header 为空或含未知/空列名时由模板 API 拒绝 |
+| 3 | [内部] | 遍历 header，标记 q/a/index(es)/metadata 列 | `read.ts : parseDatasetCsvHeaders`、`rawText2Chunks` | 列名去空白后匹配，q/a 必须各一个 |
+| 4 | [内部] | 遍历数据行，解析 metadata JSON object 并合并。所有 metadata 列均为空时 metadata 为 undefined（不存储） | `read.ts : rawText2Chunks` | 非法 JSON 按列序保留，避免静默丢值 |
 | 5 | [内部] | 传递到训练队列 | `training/controller.ts : pushDataListToTrainingQueue` | 正常透传 |
 
 #### 3.2.2.2 训练写入 dataset_data 流程
@@ -330,13 +330,13 @@ metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定�
 
 | 用例编号 | 用例名称 | 类型 | 前置条件/测试数据 | 操作步骤/输入 | 预期结果/断言 | 自动化方式 | 关联改动 |
 |---|---|---|---|---|---|---|
-| TC-001 | CSV 模板导入含 metadata 列 | 正常 | CSV: `q,a,source,author,indexes` 含 3 行数据 | 1. 上传 CSV<br>2. 等待训练完成<br>3. 查询 dataset_data | 每条 data 的 metadata 为 `{source: "xxx", author: "yyy"}` | API 测试 | §3.2.2.1 |
+| TC-001 | CSV 模板导入含 metadata 列 | 正常 | CSV: `q,a,index,index,metadata`，metadata 单元格为 JSON object | 1. 上传 CSV<br>2. 等待训练完成<br>3. 查询 dataset_data | 每条 data 的 metadata 合并 JSON object | API 测试 | §3.2.2.1 |
 | TC-002 | CSV 模板导入仅 q,a,indexes（无 metadata 列） | 正常 | CSV: `q,a,indexes` 含数据 | 1. 上传 CSV<br>2. 等待训练完成<br>3. 查询 dataset_data | 每条 data 无 metadata 字段（或为 undefined） | API 测试 | §3.2.2.1 |
 | TC-003 | pushData 含 metadata | 正常 | collection 已创建 | 1. POST pushData `{data: [{q: "test", metadata: {key: "val"}}]}`<br>2. 等待训练完成<br>3. 查询 data | dataset_data 含 `metadata: {key: "val"}` | API 测试 | §3.2.2.2 |
 | TC-004 | 知识库检索输出含 metadata | 正常 | 已有含 metadata 的 dataset_data | 1. 执行知识库检索<br>2. 查看输出 `quoteQA` | 每条结果含 `metadata` 字段 | API/集成测试 | §3.2.1 |
 | TC-005 | pushData 不含 metadata（兼容性） | 正常 | collection 已创建 | 1. POST pushData `{data: [{q: "test"}]}` | 正常训练完成，data 无 metadata | API 测试 | §3.2.1 |
 | TC-006 | get detail API 返回 metadata | 正常 | 已有含 metadata 的 data | 1. GET `/api/core/dataset/data/detail?id=xxx` | Response 含 `metadata` 字段 | API 测试 | §3.2.1 |
-| TC-007 | indexes 列可以有多个（CSV 多列同名 indexes） | 正常 | CSV: `q,a,source,indexes,indexes` | 1. 上传 CSV<br>2. 查询 dataset_data | indexes 数组包含两列的内容（去空），metadata 含 source | API 测试 | §3.2.2.1 |
+| TC-007 | index 列可以有多个（CSV 多列同名 index） | 正常 | CSV: `q,a,index,index,metadata` | 1. 上传 CSV<br>2. 查询 dataset_data | indexes 数组包含两列的内容（去空），metadata 合并 JSON object | API 测试 | §3.2.2.1 |
 
 ## 5.2 回归测试用例
 
@@ -351,7 +351,7 @@ metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定�
 | 用例编号 | 类型 | 异常/边界场景 | 前置条件/输入 | 操作步骤 | 预期结果/断言 | 自动化方式 |
 |---|---|---|---|---|---|---|
 | ET-001 | 边界 | CSV 仅有 q,a,indexes 表头，无其他列 | CSV: header=`q,a,indexes` | 1. 上传 CSV | metadata 为 undefined/不存在 | API 测试 |
-| ET-002 | 边界 | metadata 列为空值 | CSV: `q,a,metadata_col,indexes`，metadata_col 行为空 | 1. 上传 CSV | 该行 data 不包含 metadata 字段（undefined 而非 `{}`） | API 测试 |
+| ET-002 | 边界 | metadata 列为空值 | CSV: `q,a,metadata,index`，metadata 行为空 | 1. 上传 CSV | 该行 data 不包含 metadata 字段（undefined 而非 `{}`） | API 测试 |
 | ET-003 | 边界 | metadata value 包含特殊字符（JSON、换行） | CSV cell 含有 `{"nested": true}` | 1. 上传 CSV<br>2. 查询 data | metadata value 正确存储为字符串 | API 测试 |
 | ET-004 | 异常 | pushData metadata 为非 object 类型 | `metadata: "not an object"` | 1. POST pushData | Zod 校验失败，返回 400 | API 测试 |
 

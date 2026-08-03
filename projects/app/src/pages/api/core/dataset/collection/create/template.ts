@@ -15,6 +15,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { getDatasetCsvHeaders, parseDatasetCsvHeaders } from '@fastgpt/service/core/dataset/read';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -55,10 +56,8 @@ async function handler(req: ApiRequestProps) {
       getFormatText: false
     });
 
-    // Check first two columns are q and a (case-insensitive). Other columns are metadata or indexes.
-    const firstLine = rawText.trim().split('\n')[0];
-    const headerCols = firstLine.split(',').map((h) => h.trim().toLowerCase());
-    if (headerCols[0] !== 'q' || headerCols[1] !== 'a') {
+    const { validTypedHeader } = parseDatasetCsvHeaders(getDatasetCsvHeaders(rawText));
+    if (!validTypedHeader) {
       return Promise.reject(i18nT('dataset:template_file_invalid'));
     }
 
