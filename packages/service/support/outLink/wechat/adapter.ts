@@ -104,7 +104,8 @@ export const createWechatOutlinkAdapter = ({
         buffer: await buffer(
           createOutLinkFileLimitStream({
             source: Readable.fromWeb(response.body as never),
-            maxBytes: allowedBytes
+            maxBytes: allowedBytes,
+            timeoutMs: WECHAT_MEDIA_TIMEOUT_MS
           })
         ),
         contentType: normalizeMimeType(response.headers.get('content-type') ?? undefined, '')
