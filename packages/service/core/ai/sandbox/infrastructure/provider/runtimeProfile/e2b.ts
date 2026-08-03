@@ -5,8 +5,11 @@
  */
 import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, mergeUnknownRecord } from './utils';
+import { E2B_DEFAULT_ROOT_PATH } from '@fastgpt-sdk/sandbox-adapter';
 
-const E2B_DEFAULT_WORK_DIRECTORY = '/home/user';
+// Align with OpenSandbox: /workspace is the persistent working directory,
+// separate from HOME (/home/user) where dotfiles and credentials live.
+const E2B_DEFAULT_WORK_DIRECTORY = E2B_DEFAULT_ROOT_PATH;
 
 /**
  * 构建 E2B 的 FastGPT 运行态 profile。

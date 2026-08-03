@@ -61,7 +61,9 @@ export function buildSandboxAdapter(
       }
       return createSandbox('e2b', {
         apiKey: providerConfig.apiKey,
-        sandboxId: props.sandboxId
+        sandboxId: props.sandboxId,
+        metadata: props.createConfig?.metadata as Record<string, string> | undefined,
+        envs: props.createConfig?.env as Record<string, string> | undefined
       });
 
     default:

@@ -3,6 +3,7 @@ import { BaseSandboxAdapter } from '../BaseSandboxAdapter';
 import { CommandPolyfillService } from '@/polyfill/CommandPolyfillService';
 import { CommandExecutionError, ConnectionError } from '@/errors';
 import { fileDataToUint8Array, uint8ArrayToCleanArrayBuffer } from '@/utils/files';
+import { E2B_DEFAULT_ROOT_PATH } from '@/constants';
 import type {
   ExecuteOptions,
   ExecuteResult,
@@ -13,7 +14,8 @@ import type {
   FileDeleteResult,
   FileReadResult,
   MoveEntry,
-  DirectoryEntry
+  DirectoryEntry,
+  Endpoint
 } from '@/types';
 import type { E2BConfig } from './type';
 
@@ -26,7 +28,10 @@ export class E2BAdapter extends BaseSandboxAdapter {
   readonly provider = 'e2b' as const;
 
   get rootPath(): string {
-    return '/home/user';
+    // Align with OpenSandbox: use /workspace as the working directory so that
+    // command execution and file operations default to the persistent volume
+    // mount point instead of HOME (/home/user).
+    return E2B_DEFAULT_ROOT_PATH;
   }
 
   private sandbox: Sandbox | null = null;
@@ -61,11 +66,23 @@ export class E2BAdapter extends BaseSandboxAdapter {
       const sandboxes = await paginator.nextItems();
       if (sandboxes.length > 0) {
         const sandboxInfo = sandboxes[0];
-        // 连接到找到的沙盒
-        const sandbox = await Sandbox.connect(sandboxInfo.sandboxId, {
-          apiKey: this.config.apiKey
-        });
-        return sandbox;
+        // The sandbox record exists in the control plane, but the actual
+        // instance may have been reclaimed by the platform. If connect fails,
+        // return null so that ensureRunning() falls through to create a new
+        // sandbox instead of throwing and getting stuck.
+        try {
+          const sandbox = await Sandbox.connect(sandboxInfo.sandboxId, {
+            apiKey: this.config.apiKey
+          });
+          return sandbox;
+        } catch (connectError: any) {
+          console.warn(
+            '[E2BAdapter] Found sandbox record but connect failed (may have been reclaimed), will create new:',
+            sandboxInfo.sandboxId,
+            connectError?.message || connectError
+          );
+          return null;
+        }
       }
 
       return null;
@@ -202,6 +219,34 @@ export class E2BAdapter extends BaseSandboxAdapter {
     }
   }
 
+  // ==================== Endpoint ====================
+
+  async getEndpoint(port: number): Promise<Endpoint> {
+    await this.ensureSandbox();
+
+    const domain = process.env.E2B_DOMAIN || '';
+    if (!domain) {
+      throw new Error('Cannot resolve E2B endpoint: E2B_DOMAIN env not set');
+    }
+
+    const sandboxId = this.sandbox?.sandboxId || '';
+    if (!sandboxId) {
+      throw new Error('Cannot resolve E2B endpoint: sandbox not connected');
+    }
+
+    // E2B port forwarding URL pattern: {port}-{sandboxId}.{domain}
+    const host = `${port}-${sandboxId}.${domain}`;
+    const protocol = 'https';
+    const url = `${protocol}://${host}`;
+
+    return {
+      host,
+      port,
+      protocol: protocol as 'http' | 'https',
+      url
+    };
+  }
+
   // ==================== 命令执行 ====================
 
   async execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult> {
@@ -245,7 +290,11 @@ export class E2BAdapter extends BaseSandboxAdapter {
 
       for (const path of paths.map((p) => this.normalizePath(p))) {
         try {
-          const content = await sandbox.files.read(path);
+          // Explicitly read as bytes — E2B SDK defaults to 'text' format,
+          // which corrupts binary files (zip, images, etc.) by transcoding
+          // through UTF-8 text. This causes "Corrupted zip: missing N bytes"
+          // errors when reading skill packages or other binary artifacts.
+          const content = await sandbox.files.read(path, { format: 'bytes' });
           results.push({
             path,
             content: Buffer.from(content),

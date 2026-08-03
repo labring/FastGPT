@@ -191,7 +191,9 @@ export function getSandboxAdapterConfig({
         providerConfig,
         createConfig: runtime
           ? profile.buildConfig({
-              createConfig
+              createConfig,
+              sessionId,
+              env: { ...createConfig?.env, ...baseEnv }
             })
           : undefined
       };
