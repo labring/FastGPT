@@ -37,6 +37,10 @@ export interface WecomAppType {
   // SuiteSecret: string;
 }
 
+/**
+ * WeChat Claw Bot app config.
+ * @see https://github.com/Tencent/openclaw-weixin
+ */
 export const WechatAppSchema = z.object({
   token: z.string().default(''),
   baseUrl: z.string().default('https://ilinkai.weixin.qq.com'),
@@ -49,16 +53,20 @@ export const WechatAppSchema = z.object({
 });
 export type WechatAppType = z.infer<typeof WechatAppSchema>;
 
-export interface OffiAccountAppType {
-  appId: string;
-  isVerified?: boolean; // if isVerified, we could use '客服接口' to reply
-  secret: string;
-  CallbackToken: string;
-  CallbackEncodingAesKey?: string;
-  timeoutReply?: string; // if timeout (15s), will reply this content.
-  // timeout reply is optional, but when isVerified is false, the wechat will reply a default message which is `该公众号暂时无法提供服务，请稍后再试`
-  // because we can not reply anything in 15s. Thus, the wechat server will treat this request as a failed request.
-}
+/**
+ * WeChat Official Account app config.
+ * @see https://developers.weixin.qq.com/doc/service/guide/dev/api/
+ */
+export const OffiAccountAppSchema = z.object({
+  appId: z.string().trim().min(1),
+  isVerified: z.boolean().optional(),
+  secret: z.string().trim().min(1),
+  CallbackToken: z.string().trim().min(1),
+  CallbackEncodingAesKey: z.string().trim().optional(),
+  timeoutReply: z.string().optional()
+});
+
+export type OffiAccountAppType = z.infer<typeof OffiAccountAppSchema>;
 
 export type OutlinkAppType =
   | FeishuAppType

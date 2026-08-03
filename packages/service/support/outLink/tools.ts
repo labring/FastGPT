@@ -54,23 +54,34 @@ export class OutLinkFileSizeExceededError extends Error {
 }
 
 /**
- * 将外部渠道下载流包装为带实际字节限制的 Readable。
- * 调用方负责设置平台上限、超时和用户提示；下游停止消费时会同步销毁源流。
+ * 将外部渠道下载流包装为带字节和可选时长限制的 Readable。
+ * 下游停止消费时会同步销毁源流。
  */
 export const createOutLinkFileLimitStream = ({
   source,
-  maxBytes
+  maxBytes,
+  timeoutMs
 }: {
   source: Readable;
   maxBytes: number;
+  timeoutMs?: number;
 }) => {
   if (!Number.isFinite(maxBytes) || maxBytes <= 0) {
     throw new Error('maxBytes must be a finite positive number');
+  }
+  if (timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) {
+    throw new Error('timeoutMs must be a finite positive number');
   }
 
   return Readable.from(
     (async function* () {
       let totalBytes = 0;
+      const timeout =
+        timeoutMs === undefined
+          ? undefined
+          : setTimeout(() => {
+              source.destroy(new Error('OutLink file download timeout'));
+            }, timeoutMs);
 
       try {
         for await (const chunk of source) {
@@ -86,6 +97,7 @@ export const createOutLinkFileLimitStream = ({
           yield chunk;
         }
       } finally {
+        if (timeout) clearTimeout(timeout);
         if (!source.destroyed) {
           source.destroy();
         }

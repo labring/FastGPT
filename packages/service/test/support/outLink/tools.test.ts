@@ -108,6 +108,15 @@ describe('createOutLinkFileLimitStream', () => {
     );
   });
 
+  it('destroys a stalled source when the timeout is reached', async () => {
+    const source = new Readable({ read() {} });
+
+    await expect(
+      buffer(createOutLinkFileLimitStream({ source, maxBytes: 10, timeoutMs: 10 }))
+    ).rejects.toThrow('OutLink file download timeout');
+    expect(source.destroyed).toBe(true);
+  });
+
   it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
     'rejects invalid maxBytes value %s',
     (maxBytes) => {
@@ -117,6 +126,19 @@ describe('createOutLinkFileLimitStream', () => {
           maxBytes
         })
       ).toThrow('maxBytes must be a finite positive number');
+    }
+  );
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    'rejects invalid timeoutMs value %s',
+    (timeoutMs) => {
+      expect(() =>
+        createOutLinkFileLimitStream({
+          source: Readable.from([]),
+          maxBytes: 1,
+          timeoutMs
+        })
+      ).toThrow('timeoutMs must be a finite positive number');
     }
   );
 });
