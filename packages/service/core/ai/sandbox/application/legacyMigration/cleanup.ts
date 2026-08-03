@@ -13,7 +13,10 @@ import {
 } from '../../infrastructure/instance/legacyRepository';
 import type { LegacySandboxInstanceSchemaType } from '../../infrastructure/instance/legacySchema';
 import { buildSandboxResourceAdapter } from '../../infrastructure/provider/adapter';
-import { deleteSessionVolume } from '../../infrastructure/volume/service';
+import {
+  deleteSessionVolume,
+  getSessionVolumeClaimName
+} from '../../infrastructure/volume/service';
 import { getSandboxWorkspaceArchiveForMigration } from '../archive';
 import {
   deleteAppSandboxes as deleteCurrentAppSandboxes,
@@ -68,10 +71,14 @@ async function deleteLegacyPhysicalResources(params: {
     }
   });
   if (resource.provider === 'opensandbox') {
+    const claimName = getSessionVolumeClaimName(resource.storage);
+    if (!claimName) {
+      throw new Error(`OpenSandbox ${resource.sandboxId} has no persisted workspace claimName`);
+    }
     await runLegacyCleanupStep({
       step: 'delete_volume',
       assertLeaseValid,
-      fn: () => deleteSessionVolume(resource.sandboxId)
+      fn: () => deleteSessionVolume(claimName)
     });
   }
 }

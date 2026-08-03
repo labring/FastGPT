@@ -30,6 +30,7 @@ export const toLegacyResource = (doc: LegacySandboxInstanceSchemaType) => ({
   sandboxId: doc.sandboxId,
   status: doc.status ?? SandboxStatusEnum.stopped,
   lastActiveAt: doc.lastActiveAt ?? new Date(0),
+  storage: doc.storage,
   metadata: doc.metadata
 });
 

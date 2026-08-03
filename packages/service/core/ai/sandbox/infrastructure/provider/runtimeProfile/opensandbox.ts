@@ -88,6 +88,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
         ...createConfig,
         image,
         resourceLimits,
+        readyTimeoutSeconds: 120,
         ...(entrypoint ? { entrypoint } : {}),
         ...(env ? { env } : {}),
         ...(metadata ? { metadata } : {}),

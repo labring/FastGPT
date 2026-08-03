@@ -4,7 +4,7 @@ import type { VolumeService } from '../services/VolumeService';
 import { logInfo } from '../utils/logger';
 
 export const EnsureVolumeBodySchema = z.object({
-  sessionId: z.string(),
+  claimName: z.string().trim().min(1).max(253),
   storageSize: z.string().trim().min(1).max(64).optional()
 });
 export type EnsureVolumeBody = z.infer<typeof EnsureVolumeBodySchema>;
@@ -20,20 +20,20 @@ export function volumeRoutes(service: VolumeService): Hono {
       return c.json({ error: 'Invalid request body', details: parsed.error.issues }, 400);
     }
 
-    const { sessionId, storageSize } = parsed.data;
-    logInfo(`POST /v1/volumes/ensure sessionId=${sessionId}`);
-    const result = await service.ensure(sessionId, storageSize);
+    const { claimName, storageSize } = parsed.data;
+    logInfo(`POST /v1/volumes/ensure claimName=${claimName}`);
+    const result = await service.ensure({ claimName, storageSize });
     const status = result.created ? 201 : 200;
     logInfo(`ensure done claimName=${result.claimName} created=${result.created} status=${status}`);
     return c.json(result, status);
   });
 
-  // DELETE /v1/volumes/:sessionId
-  app.delete('/:sessionId', async (c) => {
-    const sessionId = c.req.param('sessionId');
-    logInfo(`DELETE /v1/volumes/${sessionId}`);
-    await service.remove(sessionId);
-    logInfo(`remove done sessionId=${sessionId}`);
+  // DELETE /v1/volumes/:claimName
+  app.delete('/:claimName', async (c) => {
+    const claimName = c.req.param('claimName');
+    logInfo(`DELETE /v1/volumes/${claimName}`);
+    await service.remove(claimName);
+    logInfo(`remove done claimName=${claimName}`);
     return c.body(null, 204);
   });
 

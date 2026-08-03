@@ -15,8 +15,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', () => (
 
 import {
   buildVolumeConfig,
+  createSessionVolumeClaimName,
   deleteSessionVolume,
   ensureSessionVolume,
+  getSessionVolumeClaimName,
   getSessionVolumeConfig
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service';
 
@@ -33,7 +35,17 @@ describe('sandbox volume service', () => {
 
   it('builds provider volume config and persisted storage metadata', () => {
     expect(buildVolumeConfig('claim-1')).toEqual({
-      volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
+      volumes: [
+        {
+          name: 'workspace',
+          pvc: {
+            claimName: 'claim-1',
+            createIfNotExists: false,
+            deleteOnSandboxTermination: false
+          },
+          mountPath: '/workspace'
+        }
+      ],
       storage: {
         volumes: [{ name: 'workspace', claimName: 'claim-1', mountPath: '/workspace' }],
         mountPath: '/workspace'
@@ -41,21 +53,31 @@ describe('sandbox volume service', () => {
     });
   });
 
-  it('ensures session volume with auth header', async () => {
+  it('generates a claimName and reads it from storage', () => {
+    const claimName = createSessionVolumeClaimName({
+      sandboxId: 'ABC123',
+      generationId: 'generation1'
+    });
+
+    expect(claimName).toBe('fastgpt-session-abc123-generation1');
+    expect(getSessionVolumeClaimName(buildVolumeConfig(claimName).storage)).toBe(claimName);
+  });
+
+  it('ensures an exact claimName with auth header', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
-      json: async () => ({ claimName: 'claim-session-1' })
+      json: async () => ({ claimName: 'claim-1' })
     }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(ensureSessionVolume('session-1')).resolves.toBe('claim-session-1');
+    await expect(ensureSessionVolume('claim-1')).resolves.toBe('claim-1');
     expect(fetchMock).toHaveBeenCalledWith('http://volume-manager.local/v1/volumes/ensure', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer volume-token'
       },
-      body: JSON.stringify({ sessionId: 'session-1', storageSize: '1Gi' })
+      body: JSON.stringify({ claimName: 'claim-1', storageSize: '1Gi' })
     });
   });
 
@@ -64,13 +86,13 @@ describe('sandbox volume service', () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       status: 204,
-      json: async () => ({ claimName: 'claim-session-1' }),
+      json: async () => ({ claimName: 'claim-1' }),
       text: async () => ''
     }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(ensureSessionVolume('session-1')).resolves.toBe('claim-session-1');
-    await expect(deleteSessionVolume('session-1')).resolves.toBeUndefined();
+    await expect(ensureSessionVolume('claim-1')).resolves.toBe('claim-1');
+    await expect(deleteSessionVolume('claim-1')).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -79,12 +101,12 @@ describe('sandbox volume service', () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ sessionId: 'session-1', storageSize: '1Gi' })
+        body: JSON.stringify({ claimName: 'claim-1', storageSize: '1Gi' })
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'http://volume-manager.local/v1/volumes/session-1',
+      'http://volume-manager.local/v1/volumes/claim-1',
       expect.objectContaining({
         headers: {}
       })
@@ -101,9 +123,7 @@ describe('sandbox volume service', () => {
       }))
     );
 
-    await expect(ensureSessionVolume('session-1')).rejects.toThrow(
-      'volume-manager error: 500 boom'
-    );
+    await expect(ensureSessionVolume('claim-1')).rejects.toThrow('volume-manager error: 500 boom');
   });
 
   it('deletes session volume and treats disabled or 404 as success', async () => {
@@ -133,7 +153,7 @@ describe('sandbox volume service', () => {
       }))
     );
 
-    await expect(deleteSessionVolume('session-1')).rejects.toThrow(
+    await expect(deleteSessionVolume('claim-1')).rejects.toThrow(
       'volume-manager error: 503 unavailable'
     );
   });
@@ -141,13 +161,13 @@ describe('sandbox volume service', () => {
   it('returns undefined when session volume is disabled', async () => {
     volumeConfigMock.config.enable = false;
 
-    await expect(getSessionVolumeConfig('session-1')).resolves.toBeUndefined();
+    await expect(getSessionVolumeConfig('claim-1')).resolves.toBeUndefined();
   });
 
   it('requires volume-manager url when enabled', async () => {
     volumeConfigMock.config.url = '';
 
-    await expect(getSessionVolumeConfig('session-1')).rejects.toThrow(
+    await expect(getSessionVolumeConfig('claim-1')).rejects.toThrow(
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required'
     );
   });
@@ -157,12 +177,24 @@ describe('sandbox volume service', () => {
       'fetch',
       vi.fn(async () => ({
         ok: true,
-        json: async () => ({ claimName: 'claim-session-1' })
+        json: async () => ({ claimName: 'claim-1' })
       }))
     );
 
-    await expect(getSessionVolumeConfig('session-1')).resolves.toEqual(
-      buildVolumeConfig('claim-session-1')
+    await expect(getSessionVolumeConfig('claim-1')).resolves.toEqual(buildVolumeConfig('claim-1'));
+  });
+
+  it('rejects a different claimName returned by volume-manager', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ claimName: 'other-claim' })
+      }))
+    );
+
+    await expect(ensureSessionVolume('claim-1')).rejects.toThrow(
+      'expected claim-1, received other-claim'
     );
   });
 });

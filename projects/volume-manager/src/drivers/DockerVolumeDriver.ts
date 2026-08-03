@@ -1,17 +1,15 @@
 import { Agent } from 'undici';
-import type { IVolumeDriver, EnsureResult } from './IVolumeDriver';
-import { toVolumeName } from '../utils/naming';
+import type { EnsureResult, EnsureVolumeParams, IVolumeDriver } from './IVolumeDriver';
+import { validateVolumeName } from '../utils/naming';
 import { env } from '../env';
 import { logDebug } from '../utils/logger';
 
 export class DockerVolumeDriver implements IVolumeDriver {
   private readonly socketPath: string;
-  private readonly prefix: string;
   private readonly dispatcher: Agent;
 
-  constructor(socketPath = env.VM_DOCKER_SOCKET, prefix = env.VM_VOLUME_NAME_PREFIX) {
+  constructor(socketPath = env.VM_DOCKER_SOCKET) {
     this.socketPath = socketPath;
-    this.prefix = prefix;
     this.dispatcher = new Agent({ connect: { socketPath } });
   }
 
@@ -23,8 +21,8 @@ export class DockerVolumeDriver implements IVolumeDriver {
     } as RequestInit & { dispatcher: Agent });
   }
 
-  async ensure(sessionId: string): Promise<EnsureResult> {
-    const name = toVolumeName(this.prefix, sessionId);
+  async ensure(params: EnsureVolumeParams): Promise<EnsureResult> {
+    const name = validateVolumeName(params.claimName);
 
     // Check if volume already exists
     logDebug(`Docker inspect volume name=${name}`);
@@ -57,8 +55,8 @@ export class DockerVolumeDriver implements IVolumeDriver {
     return { claimName: name, created: true };
   }
 
-  async remove(sessionId: string): Promise<void> {
-    const name = toVolumeName(this.prefix, sessionId);
+  async remove(claimName: string): Promise<void> {
+    const name = validateVolumeName(claimName);
     logDebug(`Docker remove volume name=${name}`);
     const res = await this.dockerFetch(`/volumes/${name}`, { method: 'DELETE' });
     logDebug(`Docker remove volume status=${res.status}`);

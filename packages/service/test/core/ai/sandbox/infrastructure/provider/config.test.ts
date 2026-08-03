@@ -256,6 +256,7 @@ describe('sandbox provider config', () => {
           cpuCount: 1,
           memoryMiB: 512
         },
+        readyTimeoutSeconds: 120,
         entrypoint: ['sh', '-c', 'echo ok'],
         env: { A: 'B' },
         metadata: { teamId: 'team-1' },
@@ -281,7 +282,8 @@ describe('sandbox provider config', () => {
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
     const profile = getSandboxRuntimeProfile('opensandbox');
-    expect(profile.buildConfig()).toEqual({
+    const defaultConfig = profile.buildConfig();
+    expect(defaultConfig).toEqual({
       image: {
         repository: 'default-opensandbox-image',
         tag: 'stable'
@@ -290,6 +292,7 @@ describe('sandbox provider config', () => {
         cpuCount: 2,
         memoryMiB: 4096
       },
+      readyTimeoutSeconds: 120,
       networkPolicy: defaultOpenSandboxDockerNetworkPolicy
     });
 
@@ -298,16 +301,8 @@ describe('sandbox provider config', () => {
         entrypoint: profile.entrypoint
       })
     ).toEqual({
-      image: {
-        repository: 'default-opensandbox-image',
-        tag: 'stable'
-      },
-      resourceLimits: {
-        cpuCount: 2,
-        memoryMiB: 4096
-      },
-      entrypoint: ['/home/sandbox/entrypoint.sh'],
-      networkPolicy: defaultOpenSandboxDockerNetworkPolicy
+      ...defaultConfig,
+      entrypoint: ['/home/sandbox/entrypoint.sh']
     });
 
     expect(

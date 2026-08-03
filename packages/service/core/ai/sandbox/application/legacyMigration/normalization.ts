@@ -15,7 +15,10 @@ import {
   type LegacySandboxSourceUpdate
 } from '../../infrastructure/instance/legacyRepository';
 import { buildSandboxResourceAdapter } from '../../infrastructure/provider/adapter';
-import { deleteSessionVolume } from '../../infrastructure/volume/service';
+import {
+  deleteSessionVolume,
+  getSessionVolumeClaimName
+} from '../../infrastructure/volume/service';
 import { withSandboxLifecycleLease } from '../lease';
 import { cleanupLegacySkillDebugChats } from './debugChatCleanup';
 import type { LegacySandboxNormalizationResult } from './types';
@@ -62,7 +65,11 @@ const deleteLegacyOrphanSandbox = async (doc: LegacySandboxNormalizationDoc) => 
       await buildSandboxResourceAdapter(doc).delete();
       assertValid();
       if (doc.provider === 'opensandbox') {
-        await deleteSessionVolume(doc.sandboxId);
+        const claimName = getSessionVolumeClaimName(doc.storage);
+        if (!claimName) {
+          throw new Error(`OpenSandbox ${doc.sandboxId} has no persisted workspace claimName`);
+        }
+        await deleteSessionVolume(claimName);
         assertValid();
       }
       await getS3SandboxSource().deleteLegacyWorkspaceArchiveNow({ sandboxId: doc.sandboxId });
