@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const originalMultipartEnabled = process.env.STORAGE_MULTIPART_UPLOAD_ENABLED;
-
-const loadBucketModule = async (enabled: boolean) => {
+const loadBucketModule = async () => {
   vi.resetModules();
-  vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', String(enabled));
 
   const [{ S3BaseBucket }, constants] = await Promise.all([
     vi.importActual<typeof import('@fastgpt/service/common/s3/buckets/base')>(
@@ -17,14 +14,13 @@ const loadBucketModule = async (enabled: boolean) => {
 };
 
 afterEach(() => {
-  vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', originalMultipartEnabled);
   vi.resetModules();
   vi.restoreAllMocks();
 });
 
 describe('S3BaseBucket automatic upload access URL', () => {
-  it('selects Multipart for enabled uploads at or above the threshold', async () => {
-    const { S3BaseBucket, threshold } = await loadBucketModule(true);
+  it('selects Multipart for uploads at or above the threshold', async () => {
+    const { S3BaseBucket, threshold } = await loadBucketModule();
     const bucket = Object.create(S3BaseBucket.prototype) as InstanceType<typeof S3BaseBucket>;
     const createPresignedPutUrl = vi.fn();
     const createMultipartUploadAccessUrl = vi.fn().mockResolvedValue({ uploadMode: 'multipart' });
@@ -51,14 +47,11 @@ describe('S3BaseBucket automatic upload access URL', () => {
     expect(createPresignedPutUrl).not.toHaveBeenCalled();
   });
 
-  it('keeps single PUT when disabled or when size is unavailable', async () => {
-    const cases = [
-      { enabled: false, size: 64 * 1024 * 1024 },
-      { enabled: true, size: undefined }
-    ];
+  it('keeps single PUT below the threshold or when size is unavailable', async () => {
+    const { S3BaseBucket, threshold } = await loadBucketModule();
+    const cases = [{ size: threshold - 1 }, { size: undefined }];
 
     for (const testCase of cases) {
-      const { S3BaseBucket, threshold } = await loadBucketModule(testCase.enabled);
       const bucket = Object.create(S3BaseBucket.prototype) as InstanceType<typeof S3BaseBucket>;
       const createPresignedPutUrl = vi.fn().mockResolvedValue({ uploadMode: 'single' });
       const createMultipartUploadAccessUrl = vi.fn();
@@ -67,7 +60,7 @@ describe('S3BaseBucket automatic upload access URL', () => {
       await bucket.createUploadAccessUrl({
         rawKey: 'dataset/file.bin',
         filename: 'file.bin',
-        ...(testCase.size === undefined ? {} : { size: Math.max(testCase.size, threshold) })
+        ...(testCase.size === undefined ? {} : { size: testCase.size })
       });
 
       expect(createPresignedPutUrl).toHaveBeenCalledTimes(1);

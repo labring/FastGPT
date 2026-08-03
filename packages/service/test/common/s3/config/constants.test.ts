@@ -6,8 +6,7 @@ const originalEnv = {
   STORAGE_EXTERNAL_ENDPOINT: process.env.STORAGE_EXTERNAL_ENDPOINT,
   STORAGE_S3_CDN_ENDPOINT: process.env.STORAGE_S3_CDN_ENDPOINT,
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
-  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: process.env.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS,
-  STORAGE_MULTIPART_UPLOAD_ENABLED: process.env.STORAGE_MULTIPART_UPLOAD_ENABLED
+  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: process.env.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
 };
 
 const loadConstants = async () => {
@@ -23,7 +22,6 @@ describe('s3 storage constants', () => {
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', undefined);
     vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', undefined);
-    vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', undefined);
   });
 
   afterEach(() => {
@@ -35,7 +33,6 @@ describe('s3 storage constants', () => {
       'STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS',
       originalEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
     );
-    vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', originalEnv.STORAGE_MULTIPART_UPLOAD_ENABLED);
     vi.restoreAllMocks();
   });
 
@@ -55,9 +52,8 @@ describe('s3 storage constants', () => {
     );
   });
 
-  it('keeps Multipart disabled by default until provider cleanup is confirmed', async () => {
+  it('uses the expected Multipart upload defaults', async () => {
     const {
-      S3_MULTIPART_UPLOAD_ENABLED,
       S3_MULTIPART_UPLOAD_THRESHOLD_BYTES,
       S3_MULTIPART_PART_SIZE_BYTES,
       S3_MULTIPART_CONCURRENCY,
@@ -65,28 +61,11 @@ describe('s3 storage constants', () => {
       S3_MULTIPART_SESSION_EXPIRE_HOURS
     } = await loadConstants();
 
-    expect(S3_MULTIPART_UPLOAD_ENABLED).toBe(false);
     expect(S3_MULTIPART_UPLOAD_THRESHOLD_BYTES).toBe(32 * 1024 * 1024);
     expect(S3_MULTIPART_PART_SIZE_BYTES).toBe(8 * 1024 * 1024);
     expect(S3_MULTIPART_CONCURRENCY).toBe(3);
     expect(S3_MULTIPART_MAX_RETRY).toBe(3);
     expect(S3_MULTIPART_SESSION_EXPIRE_HOURS).toBe(3);
-  });
-
-  it('allows disabling Multipart as a provider compatibility rollback switch', async () => {
-    vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', 'false');
-
-    const { S3_MULTIPART_UPLOAD_ENABLED } = await loadConstants();
-
-    expect(S3_MULTIPART_UPLOAD_ENABLED).toBe(false);
-  });
-
-  it('enables Multipart only when explicitly configured', async () => {
-    vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', 'true');
-
-    const { S3_MULTIPART_UPLOAD_ENABLED } = await loadConstants();
-
-    expect(S3_MULTIPART_UPLOAD_ENABLED).toBe(true);
   });
 
   it('rewrites external URLs with the CDN endpoint', async () => {

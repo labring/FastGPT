@@ -233,10 +233,6 @@ export const serviceEnv = createEnv({
     }),
     STORAGE_S3_ENDPOINT: UrlSchema.default('http://localhost:9000'),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
-    STORAGE_MULTIPART_UPLOAD_ENABLED: BoolSchema.default(false).meta({
-      description:
-        '是否启用浏览器对象存储上传的自动 Multipart；默认关闭，确认 Provider 清理能力后显式开启'
-    }),
     STORAGE_ACCESS_KEY_ID: z.string().default('minioadmin'),
     STORAGE_SECRET_ACCESS_KEY: z.string().default('minioadmin'),
     STORAGE_S3_FORCE_PATH_STYLE: BoolSchema.default(false),

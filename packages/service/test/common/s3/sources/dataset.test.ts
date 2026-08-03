@@ -1,8 +1,6 @@
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-const originalMultipartEnabled = process.env.STORAGE_MULTIPART_UPLOAD_ENABLED;
 vi.resetModules();
-vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', 'true');
 
 const { S3_MULTIPART_UPLOAD_THRESHOLD_BYTES } = await vi.importActual<
   typeof import('@fastgpt/service/common/s3/config/constants')
@@ -11,10 +9,6 @@ const { S3_MULTIPART_UPLOAD_THRESHOLD_BYTES } = await vi.importActual<
 const { S3DatasetSource } = await vi.importActual<
   typeof import('@fastgpt/service/common/s3/sources/dataset')
 >('@fastgpt/service/common/s3/sources/dataset');
-
-afterAll(() => {
-  vi.stubEnv('STORAGE_MULTIPART_UPLOAD_ENABLED', originalMultipartEnabled);
-});
 
 const datasetId = '507f1f77bcf86cd799439011';
 

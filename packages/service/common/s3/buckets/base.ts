@@ -21,7 +21,6 @@ import {
   MAX_MULTIPART_PART_COUNT,
   S3_MULTIPART_CONCURRENCY,
   S3_MULTIPART_COMPLETING_LEASE_MS,
-  S3_MULTIPART_UPLOAD_ENABLED,
   S3_MULTIPART_UPLOAD_THRESHOLD_BYTES,
   S3_MULTIPART_MAX_RETRY,
   S3_MULTIPART_PART_SIZE_BYTES,
@@ -266,7 +265,7 @@ export class S3BaseBucket {
 
   /**
    * 根据文件大小统一选择单 PUT 或 S3 Multipart 上传。
-   * 未提供文件大小、未开启开关或文件小于阈值时返回 single；大文件才创建 Multipart session。
+   * 未提供文件大小或文件小于阈值时返回 single；大文件创建 Multipart session。
    */
   async createUploadAccessUrl(
     params: CreatePostPresignedUrlParams,
@@ -275,11 +274,7 @@ export class S3BaseBucket {
     const parsedParams = CreatePostPresignedUrlParamsSchema.parse(params);
     const { size } = parsedParams;
 
-    if (
-      S3_MULTIPART_UPLOAD_ENABLED &&
-      size !== undefined &&
-      size >= S3_MULTIPART_UPLOAD_THRESHOLD_BYTES
-    ) {
+    if (size !== undefined && size >= S3_MULTIPART_UPLOAD_THRESHOLD_BYTES) {
       return this.createMultipartUploadAccessUrl(
         {
           ...parsedParams,
