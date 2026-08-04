@@ -35,6 +35,7 @@ import {
 } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
@@ -351,10 +352,19 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
           if (!downloadUrl) return;
 
-          // Call install interface for update
-          await intallPluginWithUrl({
+          // 即使接口返回 200，也要检查 plugin-server 返回的单项失败结果。
+          const installResult = await intallPluginWithUrl({
             downloadUrls: [downloadUrl]
           });
+          const failures = getBatchUpdateFailures({
+            toolIds: [tool.id],
+            downloadUrls: [downloadUrl],
+            installResult,
+            language: i18n.language
+          });
+          if (failures.length > 0) {
+            throw new Error(failures[0].reason);
+          }
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
@@ -370,7 +380,21 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
+    [i18n.language, refreshInstalledPlugins, selectedTool, updatingToolIdsDispatch]
+  );
+
+  const handleUpdateToolWithErrorHandling = useCallback(
+    async (tool: ToolCardItemType, version?: string) => {
+      try {
+        await handleUpdateTool(tool, version);
+      } catch (error) {
+        toast({
+          title: getErrText(error, t('app:toolkit_update_failed')),
+          status: 'error'
+        });
+      }
+    },
+    [handleUpdateTool, t, toast]
   );
 
   const { runAsync: handleUninstallTool } = useRequest(
@@ -906,7 +930,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                         openMarketplaceUninstallConfirm(tool);
                         return Promise.resolve();
                       }}
-                      onUpdate={() => handleUpdateTool(tool)}
+                      onUpdate={() => handleUpdateToolWithErrorHandling(tool)}
                       onClickCard={() => setSelectedTool(tool)}
                       showActionButton={!tool.installed}
                     />
@@ -930,7 +954,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             openMarketplaceUninstallConfirm(selectedTool);
             return Promise.resolve();
           }}
-          onUpdate={(version) => handleUpdateTool(selectedTool, version)}
+          onUpdate={(version) => handleUpdateToolWithErrorHandling(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"

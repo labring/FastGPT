@@ -362,15 +362,20 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                     <Flex px={3} align="center" gap={1} minW={0}>
                       {failureReason ? (
                         <>
-                          <Box color="red.600" fontSize="xs" whiteSpace="nowrap">
+                          <Box color="red.600" fontSize="xs" lineHeight="16px" whiteSpace="nowrap">
                             {t('app:toolkit_update_failed')}
                           </Box>
-                          <MyTooltip label={failureReason} maxW="240px">
-                            <MyIcon name="infoRounded" w={3} color="red.600" />
+                          <MyTooltip label={failureReason} maxW="240px" shouldWrapChildren={false}>
+                            <Box w={3} h={3} display="flex" alignItems="center">
+                              <MyIcon name="infoRounded" w={3} h={3} color="red.600" />
+                            </Box>
                           </MyTooltip>
                           <MyIconButton
                             icon="common/refreshLight"
-                            size="16px"
+                            size="12px"
+                            w="16px"
+                            h="16px"
+                            minW="16px"
                             p={0}
                             isLoading={isUpdating}
                             tip={t('app:toolkit_retry_update')}
