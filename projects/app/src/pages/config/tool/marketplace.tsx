@@ -950,11 +950,16 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onClose={() => setShowBatchUpdateDrawer(false)}
           updatableTools={updatableTools}
           onBatchUpdate={handleBatchUpdate}
+          onUpdate={handleUpdateTool}
+          onDelete={openMarketplaceUninstallConfirm}
           isBatchUpdating={isBatchUpdating}
+          singleUpdatingToolIds={updatingToolIds}
+          deletingToolIds={installingOrDeletingToolIds}
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
             await getMarketplaceToolDetail({ toolId, version })
           }
+          onFetchVersions={getMarketplaceToolVersions}
         />
       )}
       <UninstallConfirmModal />

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -10,27 +10,25 @@ import {
   DrawerOverlay,
   Flex,
   Grid,
-  VStack,
-  Accordion
+  VStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../common/Avatar';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyIconButton from '../../../common/Icon/button';
-import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
-import MyBox from '../../../common/MyBox';
 import MyIcon from '../../../common/Icon';
 import MyTooltip from '../../../common/MyTooltip';
+import MyMenu from '../../../common/MyMenu';
 import { useTableMultipleSelect } from '../../../../hooks/useTableMultipleSelect';
+import { useRequest } from '../../../../hooks/useRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
-  ParamSection,
-  ReadmeBox,
-  SubToolAccordionItem,
+  ToolDetailBody,
   useToolDetail,
   drawerScrollbarStyles,
-  type ToolDetailFetchResponse
+  type ToolDetailFetchResponse,
+  type ToolDetailVersionType
 } from './ToolDetail';
 
 type ViewMode = 'list' | 'detail';
@@ -45,8 +43,13 @@ type BatchUpdateDrawerProps = {
   onClose: () => void;
   updatableTools: ToolCardItemType[];
   onBatchUpdate: (toolIds: string[]) => Promise<BatchUpdateFailure[]>;
+  onUpdate: (tool: ToolCardItemType, version?: string) => Promise<void>;
+  onDelete: (tool: ToolCardItemType) => void | Promise<void>;
   isBatchUpdating: boolean;
-  onFetchDetail?: (toolId: string) => Promise<ToolDetailFetchResponse>;
+  singleUpdatingToolIds?: ReadonlySet<string>;
+  deletingToolIds?: ReadonlySet<string>;
+  onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
+  onFetchVersions?: (toolId: string) => Promise<ToolDetailVersionType[]>;
 };
 
 const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
@@ -54,13 +57,18 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   onClose,
   updatableTools,
   onBatchUpdate,
+  onUpdate,
+  onDelete,
   isBatchUpdating,
-  onFetchDetail
+  singleUpdatingToolIds,
+  deletingToolIds,
+  onFetchDetail,
+  onFetchVersions
 }) => {
   const { t, i18n } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedToolForDetail, setSelectedToolForDetail] = useState<ToolCardItemType | null>(null);
-  const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
+  const [selectedVersion, setSelectedVersion] = useState<string>();
   const [isUpdatingSingle, setIsUpdatingSingle] = useState(false);
   const [failureReasons, setFailureReasons] = useState<Record<string, string>>({});
   const [updatingToolIds, setUpdatingToolIds] = useState<Set<string>>(new Set());
@@ -79,10 +87,46 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     getItemId: (tool: ToolCardItemType) => tool.id
   });
 
+  const {
+    data: toolVersionsResult,
+    loading: loadingVersions,
+    run: fetchToolVersions
+  } = useRequest(
+    async (toolId: string) => {
+      if (!onFetchVersions) return { toolId, versions: [] };
+      return { toolId, versions: await onFetchVersions(toolId) };
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
+
+  useEffect(() => {
+    if (!selectedToolForDetail?.id || !onFetchVersions) return;
+
+    setSelectedVersion(undefined);
+    fetchToolVersions(selectedToolForDetail.id);
+  }, [fetchToolVersions, onFetchVersions, selectedToolForDetail?.id]);
+
+  const toolVersions =
+    toolVersionsResult?.toolId === selectedToolForDetail?.id
+      ? (toolVersionsResult?.versions ?? [])
+      : [];
+  const activeVersion =
+    selectedVersion ?? toolVersions[0]?.version ?? selectedToolForDetail?.version;
+  const isSelectedToolUpdating = selectedToolForDetail
+    ? (singleUpdatingToolIds?.has(selectedToolForDetail.id) ?? false)
+    : false;
+  const isSelectedToolDeleting = selectedToolForDetail
+    ? (deletingToolIds?.has(selectedToolForDetail.id) ?? false)
+    : false;
+
   // Use tool detail hook
   const { parentTool, isToolSet, subTools, readmeContent, loadingDetail } = useToolDetail({
     toolId: selectedToolForDetail?.id,
-    tags: selectedToolForDetail?.tags || undefined,
+    version: activeVersion,
+    tags: selectedToolForDetail?.tags ?? undefined,
     onFetchDetail,
     autoFetch: viewMode === 'detail'
   });
@@ -90,7 +134,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   const handleClose = useCallback(() => {
     setViewMode('list');
     setSelectedToolForDetail(null);
-    setActiveTab('params');
+    setSelectedVersion(undefined);
     setSelectedItems([]);
     setFailureReasons({});
     setUpdatingToolIds(new Set());
@@ -98,6 +142,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   }, [onClose, setSelectedItems]);
 
   const handleViewDetail = useCallback((tool: ToolCardItemType) => {
+    setSelectedVersion(undefined);
     setSelectedToolForDetail(tool);
     setViewMode('detail');
   }, []);
@@ -105,8 +150,18 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   const handleBack = useCallback(() => {
     setViewMode('list');
     setSelectedToolForDetail(null);
-    setActiveTab('params');
+    setSelectedVersion(undefined);
   }, []);
+
+  useEffect(() => {
+    if (
+      viewMode === 'detail' &&
+      selectedToolForDetail &&
+      !updatableTools.some((tool) => tool.id === selectedToolForDetail.id)
+    ) {
+      handleBack();
+    }
+  }, [handleBack, selectedToolForDetail, updatableTools, viewMode]);
 
   /** 执行选中插件更新，并把插件级失败原因留在当前列表中供用户重试。 */
   const handleUpdateTools = useCallback(
@@ -158,12 +213,23 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
 
     setIsUpdatingSingle(true);
     try {
-      await handleUpdateTools([selectedToolForDetail.id]);
+      await onUpdate(selectedToolForDetail, activeVersion);
+      setFailureReasons((previous) => {
+        const next = { ...previous };
+        delete next[selectedToolForDetail.id];
+        return next;
+      });
+      handleBack();
+    } catch (error) {
+      setFailureReasons((previous) => ({
+        ...previous,
+        [selectedToolForDetail.id]: getErrText(error, t('app:toolkit_update_failed'))
+      }));
       handleBack();
     } finally {
       setIsUpdatingSingle(false);
     }
-  }, [selectedToolForDetail, handleUpdateTools, handleBack]);
+  }, [activeVersion, handleBack, onUpdate, selectedToolForDetail, t]);
 
   return (
     <Drawer isOpen={isOpen} onClose={handleClose} placement="right">
@@ -180,11 +246,48 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
             </Flex>
           ) : (
             <Flex gap={1.5}>
-              <Avatar src={parentTool?.icon || ''} borderRadius={'md'} w={6} />
+              <Avatar src={parentTool?.icon ?? ''} borderRadius={'md'} w={6} />
               <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
-                {parseI18nString(parentTool?.name || '', i18n.language)}
+                {parseI18nString(parentTool?.name ?? '', i18n.language)}
               </Box>
               <Box flex={1} />
+              {toolVersions.length > 0 && (
+                <MyMenu
+                  trigger="hover"
+                  placement="bottom-end"
+                  Button={
+                    <Flex
+                      alignItems="center"
+                      gap={1}
+                      px={2}
+                      h={7}
+                      border="1px solid"
+                      borderColor="myGray.200"
+                      borderRadius="md"
+                      cursor="pointer"
+                      color="myGray.700"
+                    >
+                      <Box fontSize="12px">{activeVersion ?? t('common:Version')}</Box>
+                      <MyIcon name="core/chat/chevronDown" w={4} />
+                    </Flex>
+                  }
+                  menuList={[
+                    {
+                      children: toolVersions.map((item) => ({
+                        label: item.version,
+                        description: item.versionDescription,
+                        isActive: item.version === activeVersion,
+                        onClick: () => setSelectedVersion(item.version)
+                      }))
+                    }
+                  ]}
+                />
+              )}
+              {loadingVersions && activeVersion && (
+                <Box fontSize="12px" color="myGray.500">
+                  {activeVersion}
+                </Box>
+              )}
               <MyIconButton icon={'common/backFill'} onClick={handleBack} />
             </Flex>
           )}
@@ -230,11 +333,13 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                     </Flex>
                     <Flex
                       as="button"
+                      role="group"
                       minW={0}
                       px={3}
                       align="center"
                       gap={2}
                       textAlign="left"
+                      cursor="pointer"
                       onClick={() => handleViewDetail(tool)}
                     >
                       <Avatar src={tool.icon} w={5} h={5} borderRadius="md" flexShrink={0} />
@@ -246,6 +351,10 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                         fontSize="sm"
                         fontWeight="medium"
                         color="myGray.900"
+                        _groupHover={{
+                          color: 'primary.600',
+                          textDecoration: 'underline'
+                        }}
                       >
                         {parseI18nString(tool.name, i18n.language)}
                       </Box>
@@ -320,132 +429,36 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
               </Flex>
             </VStack>
           ) : (
-            <MyBox>
-              <Flex gap={2} flexWrap="wrap">
-                {parentTool?.tags?.map((tag: string) => (
-                  <Box
-                    key={tag}
-                    px={2}
-                    py={1}
-                    border={'1px solid'}
-                    borderRadius={'6px'}
-                    borderColor={'myGray.200'}
-                    fontSize={'10px'}
-                    fontWeight={'medium'}
-                    color={'myGray.700'}
+            <ToolDetailBody
+              parentTool={parentTool}
+              isToolSet={isToolSet}
+              subTools={subTools}
+              readmeContent={readmeContent}
+              actions={
+                <Flex gap={2}>
+                  <Button
+                    flex="1 1 0"
+                    minW={0}
+                    variant="primary"
+                    isLoading={isUpdatingSingle || isSelectedToolUpdating || loadingDetail}
+                    isDisabled={isSelectedToolDeleting}
+                    onClick={handleUpdateSingle}
                   >
-                    {tag}
-                  </Box>
-                ))}
-              </Flex>
-              <Box fontSize={'12px'} color="myGray.500" mt={3}>
-                {parseI18nString(parentTool?.description || '', i18n.language)}
-              </Box>
-              <Box fontSize={'12px'} color="myGray.500" mt={3}>
-                {`by ${parentTool?.author || 'FastGPT'}`}
-              </Box>
-              <Flex mt={3} gap={2}>
-                <Button
-                  flex={1}
-                  variant="primary"
-                  isLoading={isUpdatingSingle || loadingDetail}
-                  onClick={handleUpdateSingle}
-                >
-                  {t('app:custom_plugin_update')}
-                </Button>
-              </Flex>
-
-              <Flex mt={4} gap={1.5} alignItems={'center'}>
-                <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
-                  {t('app:toolkit_activation_label')}
-                </Box>
-                <Box fontSize={'12px'} color={'myGray.600'}>
-                  {parentTool?.hasSystemSecret ||
-                  (parentTool?.secretInputConfig && parentTool?.secretInputConfig.length > 0) ||
-                  (parentTool?.inputList && parentTool?.inputList.length > 0)
-                    ? t('app:toolkit_activation_required')
-                    : t('app:toolkit_activation_not_required')}
-                </Box>
-              </Flex>
-
-              <Box mt={4}>
-                <LightRowTabs
-                  list={[
-                    {
-                      label: isToolSet
-                        ? t('app:toolkit_tool_list')
-                        : t('app:toolkit_params_description'),
-                      value: 'params'
-                    },
-                    ...(parentTool?.courseUrl || parentTool?.readme || parentTool?.userGuide
-                      ? [{ label: t('app:toolkit_user_guide'), value: 'guide' }]
-                      : [])
-                  ]}
-                  value={activeTab}
-                  onChange={(value) => {
-                    if (
-                      value === 'guide' &&
-                      parentTool?.courseUrl &&
-                      !parentTool?.readme &&
-                      !parentTool?.userGuide
-                    ) {
-                      window.open(parentTool?.courseUrl, '_blank');
-                    } else {
-                      setActiveTab(value as 'guide' | 'params');
-                    }
-                  }}
-                  gap={4}
-                />
-                <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
-              </Box>
-
-              <Box mt={4}>
-                {activeTab === 'guide' && (
-                  <VStack align="stretch" spacing={4} flex="1" minH="0">
-                    {(parentTool?.readme || readmeContent || parentTool?.userGuide) && (
-                      <ReadmeBox
-                        source={readmeContent || parentTool?.userGuide || ''}
-                        courseUrl={parentTool?.courseUrl}
-                      />
-                    )}
-                  </VStack>
-                )}
-
-                {activeTab === 'params' && (
-                  <VStack align="stretch" spacing={4}>
-                    {isToolSet && subTools.length > 0 && (
-                      <Accordion
-                        allowMultiple
-                        {...(subTools.length === 1 ? { defaultIndex: [0] } : {})}
-                      >
-                        {subTools.map((subTool) => (
-                          <SubToolAccordionItem key={subTool.toolId} tool={subTool} />
-                        ))}
-                      </Accordion>
-                    )}
-
-                    {!isToolSet && (
-                      <>
-                        {parentTool?.versionList?.[0]?.inputs &&
-                          parentTool?.versionList?.[0]?.inputs.length > 0 && (
-                            <ParamSection
-                              title={t('app:toolkit_inputs')}
-                              params={parentTool?.versionList?.[0]?.inputs}
-                            />
-                          )}
-                        {parentTool?.versionList?.[0]?.outputs &&
-                          parentTool?.versionList?.[0]?.outputs.length > 0 && (
-                            <ParamSection
-                              title={t('app:toolkit_outputs')}
-                              params={parentTool?.versionList?.[0]?.outputs}
-                            />
-                          )}
-                      </>
-                    )}
-                  </VStack>
-                )}
-              </Box>
-            </MyBox>
+                    {t('app:custom_plugin_update')}
+                  </Button>
+                  <Button
+                    flex="0 0 62px"
+                    minW={0}
+                    variant="dangerOutline"
+                    isLoading={isSelectedToolDeleting}
+                    isDisabled={isUpdatingSingle || isSelectedToolUpdating}
+                    onClick={() => selectedToolForDetail && onDelete(selectedToolForDetail)}
+                  >
+                    {t('app:toolkit_uninstall')}
+                  </Button>
+                </Flex>
+              }
+            />
           )}
         </DrawerBody>
       </DrawerContent>
