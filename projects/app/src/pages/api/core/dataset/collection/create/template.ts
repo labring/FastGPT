@@ -1,7 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
@@ -10,12 +9,11 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { getDatasetCsvHeaders, parseDatasetCsvHeaders } from '@fastgpt/service/core/dataset/read';
+import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -29,10 +27,6 @@ async function handler(req: ApiRequestProps) {
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);
     const { datasetId, parentId } = CreateTemplateCollectionFormSchema.parse(result.data);
-
-    if (!isCSVFile(filename)) {
-      return Promise.reject('File must be a CSV file');
-    }
 
     const { teamId, tmbId, dataset } = await authDataset({
       req,
@@ -48,18 +42,16 @@ async function handler(req: ApiRequestProps) {
       insertLen: 1
     });
 
-    const { rawText } = await readRawTextByLocalFile({
+    const rawText = await parseDatasetImportFile({
       teamId,
       tmbId,
-      path: result.fileMetadata.path,
-      encoding: result.fileMetadata.encoding,
-      getFormatText: false
-    });
-
-    const { validTypedHeader } = parseDatasetCsvHeaders(getDatasetCsvHeaders(rawText));
-    if (!validTypedHeader) {
+      filePath: result.fileMetadata.path,
+      filename,
+      encoding: result.fileMetadata.encoding
+    }).catch((error) => {
+      logger.warn('Template dataset import file parse failed', { filename, error });
       return Promise.reject(i18nT('dataset:template_file_invalid'));
-    }
+    });
 
     const fileId = await getS3DatasetSource().upload({
       datasetId: dataset._id,
@@ -86,7 +78,7 @@ async function handler(req: ApiRequestProps) {
 
     return {};
   } catch (error) {
-    logger.error(`Backup dataset collection create error: ${error}`);
+    logger.error(`Template dataset collection create error: ${error}`);
     return Promise.reject(error);
   } finally {
     multer.clearDiskTempFiles(filepaths);

@@ -21,6 +21,16 @@ const {
         formatText: buffer.toString(encoding || 'utf-8')
       };
     }
+    if (extension === 'xlsx') {
+      return {
+        rawText: 'q,a\nquestion,answer',
+        formatText: '| q | a |',
+        tableInfo: {
+          sheetCount: 1,
+          mergedCellCount: 0
+        }
+      };
+    }
     return {
       rawText: `parsed-${extension}-content`,
       formatText: `parsed-${extension}-content`
@@ -171,6 +181,25 @@ describe('readFileContentByBuffer', () => {
         extension: 'txt'
       })
     );
+  });
+
+  it('should preserve table information returned by the readFile worker', async () => {
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'xlsx',
+      buffer: Buffer.from('xlsx-content'),
+      encoding: 'utf-8',
+      getFormatText: false
+    });
+
+    expect(result).toEqual({
+      rawText: 'q,a\nquestion,answer',
+      tableInfo: {
+        sheetCount: 1,
+        mergedCellCount: 0
+      }
+    });
   });
 
   it('should use system parse for non-pdf files', async () => {

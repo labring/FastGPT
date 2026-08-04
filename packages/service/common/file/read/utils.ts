@@ -73,9 +73,7 @@ export const readFileContentByBuffer = async ({
     prefix: string;
     expiredTime?: Date;
   };
-}): Promise<{
-  rawText: string;
-}> => {
+}): Promise<Pick<ReadFileResponse, 'rawText' | 'tableInfo'>> => {
   // 归一化扩展名为小写，避免大写/混合大小写后缀（如 .PDF）无法匹配解析器（#6996）
   const extension = rawExtension.toLowerCase();
 
@@ -274,7 +272,7 @@ export const readFileContentByBuffer = async ({
   const start = Date.now();
   logger.debug('Start parsing file', { extension });
 
-  const { rawText, formatText } = await (async () => {
+  const { rawText, formatText, tableInfo } = await (async () => {
     if (extension === 'pdf') {
       return await pdfParseFn();
     }
@@ -284,6 +282,7 @@ export const readFileContentByBuffer = async ({
   logger.debug('File parsing completed', { extension, durationMs: Date.now() - start });
 
   return {
-    rawText: getFormatText ? formatText || rawText : rawText
+    rawText: getFormatText ? formatText || rawText : rawText,
+    tableInfo
   };
 };
