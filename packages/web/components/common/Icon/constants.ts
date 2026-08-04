@@ -421,6 +421,7 @@ export const iconPaths = {
   empty: () => import('./icons/empty.svg'),
   export: () => import('./icons/export.svg'),
   feedback: () => import('./icons/feedback.svg'),
+  'common/edit-filled': () => import('./icons/common/edit-filled.svg'),
   'file/fill/audio': () => import('./icons/file/fill/audio.svg'),
   'file/fill/csv': () => import('./icons/file/fill/csv.svg'),
   'file/fill/doc': () => import('./icons/file/fill/doc.svg'),
