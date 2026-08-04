@@ -19,6 +19,7 @@ import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getRegisterMethods } from '@/web/common/system/utils';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -50,7 +51,10 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   });
   const username = watch('username');
 
-  const { SendCodeBox, openCodeAuthModal } = useSendCode({ type: 'register' });
+  const { SendCodeBox, openCodeAuthModal } = useSendCode({
+    type: UserAuthTypeEnum.register,
+    purpose: 'register'
+  });
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest(
     async ({ username, password, code }: RegisterType) => {
@@ -101,7 +105,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   return (
     <>
-      <Box fontWeight={'medium'} fontSize={'lg'} textAlign={'center'} color={'myGray.900'}>
+      <Box
+        fontWeight={'medium'}
+        fontSize={'lg'}
+        lineHeight={'30px'}
+        textAlign={'center'}
+        color={'myGray.900'}
+      >
         {t('user:register.register_account', { account: feConfigs?.systemTitle })}
       </Box>
       <Box
@@ -151,7 +161,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             bg={'myGray.50'}
             size={'lg'}
             type={'password'}
-            placeholder={t('login:password_tip')}
+            placeholder={t('common:support.user.login.Password')}
+            _invalid={{
+              borderColor: 'red.500',
+              boxShadow: '0 0 0 1px #F04438'
+            }}
             {...register('password', {
               required: true,
               validate: (val) => {
@@ -161,7 +175,18 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
                 return true;
               }
             })}
-          ></Input>
+          />
+          <Box
+            mt={2}
+            fontSize={'mini'}
+            lineHeight={'16px'}
+            fontWeight={'medium'}
+            letterSpacing={'0.5px'}
+            wordBreak={'break-word'}
+            color={errors.password ? 'red.600' : 'myGray.400'}
+          >
+            {t('login:password_tip')}
+          </Box>
         </FormControl>
         <FormControl mt={6} isInvalid={!!errors.password2}>
           <Input
@@ -180,8 +205,8 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           mt={12}
           w={'100%'}
           size={['md', 'md']}
-          rounded={['md', 'md']}
-          h={[10, 10]}
+          rounded={['sm', 'md']}
+          h={['34px', '40px']}
           fontWeight={['medium', 'medium']}
           colorScheme="blue"
           isLoading={requesting}
@@ -192,6 +217,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <Box
           float={'right'}
           fontSize="mini"
+          lineHeight={'18px'}
           mt={3}
           fontWeight={'medium'}
           color={'primary.700'}

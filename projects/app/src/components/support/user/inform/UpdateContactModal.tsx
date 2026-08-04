@@ -62,7 +62,10 @@ const UpdateContactModal = ({
     }
   );
 
-  const { SendCodeBox } = useSendCode({ type: UserAuthTypeEnum.bindNotification });
+  const { SendCodeBox } = useSendCode({
+    type: UserAuthTypeEnum.bindNotification,
+    purpose: 'bindNotification'
+  });
 
   const placeholder = feConfigs?.bind_notification_method
     ?.map((item) => {

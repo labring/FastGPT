@@ -1,6 +1,5 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import type { SearchResult } from '@fastgpt/global/support/user/api';
@@ -10,28 +9,30 @@ import type {
   OauthLoginBodyType,
   FastLoginBodyType,
   WxLoginBodyType,
-  GetWXLoginQRResponseType
+  GetWXLoginQRResponseType,
+  LoginSuccessResponseType,
+  WxLoginResultResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type {
+  SendAuthCodeBodyType,
+  SendAuthCodeResponseType
+} from '@fastgpt/global/openapi/support/user/inform/api';
 import type {
   UpdatePasswordByCodeBodyType,
   UpdatePasswordByOldBodyType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
-import type { LangEnum } from '@fastgpt/global/common/i18n/type';
-import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
+
+export type UserVerificationPurpose = CaptchaVerificationPurpose;
 
 /* ===== Auth code ===== */
-export const sendAuthCode = (data: {
-  username: string;
-  type: `${UserAuthTypeEnum}`;
-  googleToken: string;
-  captcha: string;
-  lang: `${LangEnum}`;
-}) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
-export const getCaptchaPic = (username: string) =>
+export const sendAuthCode = (data: SendAuthCodeBodyType) =>
+  POST<SendAuthCodeResponseType>('/proApi/support/user/inform/sendAuthCode', data);
+export const getCaptchaPic = (username: string, purpose: UserVerificationPurpose) =>
   GET<{
     captchaImage: string;
-  }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
+  }>('/proApi/support/user/account/captcha/getImgCaptcha', { username, purpose });
 
 /* ===== login ===== */
 export const getPreLogin = (username: string) =>
@@ -55,7 +56,9 @@ export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponseType>('/proApi/support/user/account/login/wx/getQR');
 
 export const getWXLoginResult = (params: WxLoginBodyType) =>
-  POST<LoginSuccessResponseType>(`/proApi/support/user/account/login/wx/getResult`, params);
+  POST<WxLoginResultResponseType>(`/proApi/support/user/account/login/wx/getResult`, params, {
+    maxQuantity: 1
+  });
 export const loginOut = () => GET('/support/user/account/loginout');
 
 /* ===== register ===== */

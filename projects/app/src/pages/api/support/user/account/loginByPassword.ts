@@ -1,11 +1,9 @@
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { serviceEnv } from '@fastgpt/service/env';
 import { passwordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
 import { createUserSession } from '@fastgpt/service/support/user/session';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
@@ -32,38 +30,44 @@ async function handler(
     bodySchema: LoginByPasswordBodySchema
   }).body;
 
-  const user = await passwordVerificationService.verifyCredentials({
-    username,
-    password,
-    code
-  });
+  const { user, userDetail, visitorIdentity } =
+    await passwordVerificationService.withVerifiedCredentials(
+      {
+        username,
+        password,
+        code,
+        purpose: 'login'
+      },
+      async ({ user, session }) => {
+        if (user.status === UserStatusEnum.forbidden) {
+          return Promise.reject('Invalid account!');
+        }
 
-  if (user.status === UserStatusEnum.forbidden) {
-    return Promise.reject('Invalid account!');
-  }
+        if (user.username.startsWith('wecom-')) {
+          return Promise.reject(new UserError('Wecom user can not login with password'));
+        }
 
-  if (user) {
-    if (user.username.startsWith('wecom-')) {
-      return Promise.reject(new UserError('Wecom user can not login with password'));
-    }
-  }
+        const userDetail = await getUserDetail({
+          tmbId: user?.lastLoginTmbId,
+          userId: user._id,
+          isRoot: username === 'root',
+          session
+        });
 
-  const userDetail = await getUserDetail({
-    tmbId: user?.lastLoginTmbId,
-    userId: user._id,
-    isRoot: username === 'root'
-  });
+        user.lastLoginTmbId = userDetail.team.tmbId;
+        user.language = language;
+        const visitorIdentity = resolveCRMVisitorId({
+          storedFastgptSem: user.fastgpt_sem,
+          incomingVisitorId: fastgpt_sem?.visitor_id
+        });
+        if (visitorIdentity.shouldPersist) {
+          user.fastgpt_sem = visitorIdentity.fastgptSem;
+        }
+        await user.save({ session });
 
-  user.lastLoginTmbId = userDetail.team.tmbId;
-  user.language = language;
-  const visitorIdentity = resolveCRMVisitorId({
-    storedFastgptSem: user.fastgpt_sem,
-    incomingVisitorId: fastgpt_sem?.visitor_id
-  });
-  if (visitorIdentity.shouldPersist) {
-    user.fastgpt_sem = visitorIdentity.fastgptSem;
-  }
-  await user.save();
+        return { user, userDetail, visitorIdentity };
+      }
+    );
 
   const token = await createUserSession({
     userId: user._id,
@@ -100,8 +104,4 @@ async function handler(
   };
 }
 
-const lockTime = serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS;
-export default NextAPI(
-  useIPFrequencyLimit({ id: 'login-by-password', seconds: lockTime, limit: 10, force: true }),
-  handler
-);
+export default NextAPI(handler);

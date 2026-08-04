@@ -9,6 +9,7 @@ import {
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
   LoginSuccessResponseSchema,
+  WxLoginResultResponseSchema,
   OpenAPIUserSchema
 } from './api';
 
@@ -153,10 +154,10 @@ export const LoginPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '登录成功',
+          description: '登录成功或二维码已过期',
           content: {
             'application/json': {
-              schema: LoginSuccessResponseSchema
+              schema: WxLoginResultResponseSchema
             }
           }
         }

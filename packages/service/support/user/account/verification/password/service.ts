@@ -1,39 +1,54 @@
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { addSeconds } from 'date-fns';
-import { addAuthCode, authCode } from '../../../auth/controller';
+import { verification, VerificationMaterialError } from '../../../../tmpData/verification';
 import { MongoUser } from '../../../schema';
+import { serviceEnv } from '../../../../../env';
+import {
+  assertPasswordVerificationConsumeFrequency,
+  assertPasswordVerificationCreateFrequency
+} from '../utils';
 import type {
   IssuePreLoginCodeParams,
   IssuePreLoginCodeResult,
   PasswordVerificationDependencies,
+  PasswordVerificationHandler,
   VerifyPasswordCredentialsParams
 } from './type';
 
 const defaultDependencies: PasswordVerificationDependencies = {
   generateCode: getNanoid,
-  now: () => new Date(),
-  savePreLoginCode: ({ username, code, expiredTime }) =>
-    addAuthCode({
-      type: UserAuthTypeEnum.login,
-      key: username,
-      code,
-      expiredTime
+  assertCreateFrequency: ({ account, scene }) =>
+    assertPasswordVerificationCreateFrequency({
+      account,
+      scene,
+      limit: serviceEnv.PASSWORD_LOGIN_LIMIT
     }),
-  verifyPreLoginCode: ({ username, code }) =>
-    authCode({
-      key: username,
-      code,
-      type: UserAuthTypeEnum.login
+  assertConsumeFrequency: ({ account, scene }) =>
+    assertPasswordVerificationConsumeFrequency({
+      account,
+      scene,
+      limit: serviceEnv.PASSWORD_LOGIN_LIMIT
     }),
-  findUserByCredentials: ({ username, password }) => MongoUser.findOne({ username, password })
+  savePreLoginCode: ({ purpose, username, code, ttlPreset }) =>
+    verification.upsert({
+      scene: purpose,
+      type: 'password',
+      key: username,
+      data: { preLoginCode: code },
+      ttlPreset
+    }),
+  findUserByCredentials: ({ username, password, session }) => {
+    const query = MongoUser.findOne({ username, password });
+    if (session) query.session(session);
+    return query;
+  },
+  consumeInTransaction: verification.consumeInTransaction
 };
 
 /**
  * 只负责预登录验证码和用户名密码匹配，并返回匹配到的用户。
  * forbidden、WeCom 账号限制以及团队、Session、Cookie 等登录策略由业务层负责。
- * 当前实例尚未接入生产入口。
  */
 export class PasswordVerificationService {
   private readonly dependencies: PasswordVerificationDependencies;
@@ -45,27 +60,61 @@ export class PasswordVerificationService {
     };
   }
 
-  async issuePreLoginCode({ username }: IssuePreLoginCodeParams): Promise<IssuePreLoginCodeResult> {
+  async issuePreLoginCode({
+    username,
+    purpose
+  }: IssuePreLoginCodeParams): Promise<IssuePreLoginCodeResult> {
+    await this.dependencies.assertCreateFrequency({ account: username, scene: purpose });
+
     const code = this.dependencies.generateCode(6);
 
     await this.dependencies.savePreLoginCode({
       username,
       code,
-      expiredTime: addSeconds(this.dependencies.now(), 30)
+      purpose,
+      ttlPreset: 'short'
     });
 
     return { code };
   }
 
-  async verifyCredentials({ username, password, code }: VerifyPasswordCredentialsParams) {
-    await this.dependencies.verifyPreLoginCode({ username, code });
+  /** 在同一事务内完成凭据校验、业务回调和预登录材料消费。 */
+  async withVerifiedCredentials<T>(
+    params: VerifyPasswordCredentialsParams,
+    handler: PasswordVerificationHandler<T>
+  ) {
+    await this.dependencies.assertConsumeFrequency({
+      account: params.username,
+      scene: params.purpose
+    });
 
-    const user = await this.dependencies.findUserByCredentials({ username, password });
-    if (!user) {
-      return Promise.reject(UserErrEnum.account_psw_error);
+    try {
+      return await this.dependencies.consumeInTransaction(
+        {
+          scene: params.purpose,
+          type: 'password',
+          key: params.username,
+          match: { preLoginCode: params.code }
+        },
+        async ({ session }) => {
+          const user = await this.dependencies.findUserByCredentials({
+            username: params.username,
+            password: params.password,
+            session
+          });
+          if (!user) {
+            return Promise.reject(UserErrEnum.account_psw_error);
+          }
+
+          return handler({ user, session });
+        }
+      );
+    } catch (error) {
+      if (error instanceof VerificationMaterialError) {
+        return Promise.reject(new UserError(UserErrEnum.invalidVerificationCode));
+      }
+      throw error;
     }
-
-    return user;
   }
 }
 

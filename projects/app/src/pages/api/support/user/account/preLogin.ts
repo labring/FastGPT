@@ -14,7 +14,7 @@ async function handler(
 ): Promise<PreLoginResponseType> {
   const { username } = parseApiInput({ req, querySchema: PreLoginQuerySchema }).query;
 
-  return passwordVerificationService.issuePreLoginCode({ username });
+  return passwordVerificationService.issuePreLoginCode({ username, purpose: 'login' });
 }
 
 export default NextAPI(handler);

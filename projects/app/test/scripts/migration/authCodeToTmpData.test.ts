@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest';
+import { mapLegacyAuthCode } from '../../../scripts/migration/authCodeToTmpData';
+
+const now = new Date('2026-07-31T00:00:00.000Z');
+const expireAt = new Date('2026-07-31T00:05:00.000Z');
+
+describe('mapLegacyAuthCode', () => {
+  it('maps password login materials to the current password payload', () => {
+    expect(
+      mapLegacyAuthCode(
+        {
+          key: 'user@example.com',
+          type: 'login',
+          code: 'Ab12Cd',
+          expiredTime: expireAt
+        },
+        now
+      )
+    ).toEqual({
+      kind: 'mapped',
+      record: {
+        dataId: 'verification:v1:login:password:user@example.com',
+        data: { preLoginCode: 'Ab12Cd' },
+        expireAt
+      }
+    });
+  });
+
+  it.each([
+    ['register', 'register'],
+    ['findPassword', 'forgetPassword'],
+    ['bindNotification', 'bindNotification']
+  ] as const)('maps %s materials to the %s code scene', (legacyType, scene) => {
+    expect(
+      mapLegacyAuthCode(
+        { key: 'account@example.com', type: legacyType, code: '123456', expiredTime: expireAt },
+        now
+      )
+    ).toEqual({
+      kind: 'mapped',
+      record: {
+        dataId: `verification:v1:${scene}:code:account@example.com`,
+        data: { code: '123456' },
+        expireAt
+      }
+    });
+  });
+
+  it('hashes WeChat scene keys and maps openid to openId', () => {
+    expect(
+      mapLegacyAuthCode(
+        { key: 'wx-scene', type: 'wxLogin', openid: 'openid-1', expiredTime: expireAt },
+        now
+      )
+    ).toEqual({
+      kind: 'mapped',
+      record: {
+        dataId:
+          'verification:v1:login:wechat:fc3413ae75ac6b00f7c1933b7b6457184a9e579e08236b9f5513ab220523dce7',
+        data: { openId: 'openid-1' },
+        expireAt
+      }
+    });
+  });
+
+  it('maps all legacy captchas to the register purpose', () => {
+    expect(
+      mapLegacyAuthCode(
+        { key: 'account@example.com', type: 'captcha', code: 'AbC123', expiredTime: expireAt },
+        now
+      )
+    ).toEqual({
+      kind: 'mapped',
+      record: {
+        dataId: 'verification:v1:register:captcha:account@example.com',
+        data: { code: 'abc123' },
+        expireAt
+      }
+    });
+  });
+
+  it('skips expired records and derives the legacy default expiry when needed', () => {
+    expect(
+      mapLegacyAuthCode(
+        {
+          key: 'expired@example.com',
+          type: 'register',
+          code: '123456',
+          expiredTime: new Date('2026-07-30T23:59:59.000Z')
+        },
+        now
+      )
+    ).toEqual({ kind: 'skipped', reason: 'expired' });
+
+    expect(
+      mapLegacyAuthCode(
+        {
+          key: 'account@example.com',
+          type: 'register',
+          code: '123456',
+          createTime: new Date('2026-07-30T23:59:00.000Z')
+        },
+        now
+      )
+    ).toEqual({
+      kind: 'mapped',
+      record: expect.objectContaining({
+        expireAt: new Date('2026-07-31T00:04:00.000Z')
+      })
+    });
+  });
+});
