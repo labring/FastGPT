@@ -1,4 +1,4 @@
-import { Box, Button, Flex, IconButton, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex, Textarea, useColorMode } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'next-i18next';
@@ -36,33 +36,36 @@ const AgentAskNavigation = ({
   onSkipAll
 }: AgentAskNavigationProps) => {
   const { t } = useTranslation();
+  const darkMode = useColorMode().colorMode === 'dark';
 
   return (
     <Flex flexShrink={0} alignItems={'center'} gap={3}>
       <Flex alignItems={'center'} gap={2}>
-        <IconButton
-          variant={'unstyled'}
-          display={'flex'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          borderRadius={'full'}
+        <Button
+          variant={'pagination'}
+          className={'!h-6 !w-6 !rounded-full !p-0'}
+          style={{ minWidth: '24px' }}
           w={6}
           h={6}
           minW={6}
           maxW={6}
           minH={6}
           maxH={6}
-          flexShrink={0}
+          borderRadius={'full'}
           p={0}
           bg={'myGray.150'}
+          _hover={{ bg: 'myGray.150' }}
+          _disabled={{ opacity: 0.5, bg: 'myGray.150' }}
           isDisabled={isPreviousDisabled}
-          _hover={isPreviousDisabled ? undefined : { bg: 'myGray.200' }}
-          _focusVisible={{ bg: 'myGray.200', boxShadow: 'none', outline: 'none' }}
-          _active={{ transform: 'none' }}
           onClick={onPrevious}
           aria-label={t('chat:Previous')}
-          icon={<MyIcon name={'common/leftArrowLight'} w={'6px'} color={'myGray.900'} />}
-        />
+        >
+          <MyIcon
+            name={'common/leftArrowLight'}
+            w={'6px'}
+            color={darkMode ? undefined : '#262A32'}
+          />
+        </Button>
         <Box color={'myGray.500'} fontSize={'sm'} fontWeight={500} whiteSpace={'nowrap'}>
           {questionIndex + 1}
           <Box as={'span'} mx={1}>
@@ -72,29 +75,27 @@ const AgentAskNavigation = ({
             {questionCount}
           </Box>
         </Box>
-        <IconButton
-          variant={'unstyled'}
-          display={'flex'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          borderRadius={'full'}
+        <Button
+          variant={'pagination'}
+          className={'!h-6 !w-6 !rounded-full !p-0'}
+          style={{ minWidth: '24px' }}
           w={6}
           h={6}
           minW={6}
           maxW={6}
           minH={6}
           maxH={6}
-          flexShrink={0}
+          borderRadius={'full'}
           p={0}
           bg={'myGray.150'}
+          _hover={{ bg: 'myGray.150' }}
+          _disabled={{ opacity: 0.5, bg: 'myGray.150' }}
           isDisabled={isNextDisabled}
-          _hover={isNextDisabled ? undefined : { bg: 'myGray.200' }}
-          _focusVisible={{ bg: 'myGray.200', boxShadow: 'none', outline: 'none' }}
-          _active={{ transform: 'none' }}
           onClick={onNext}
           aria-label={t('chat:Next')}
-          icon={<MyIcon name={'common/rightArrow'} w={'6px'} color={'myGray.900'} />}
-        />
+        >
+          <MyIcon name={'common/rightArrow'} w={'6px'} color={darkMode ? undefined : '#262A32'} />
+        </Button>
       </Flex>
       <Button
         variant={'unstyled'}
@@ -103,7 +104,10 @@ const AgentAskNavigation = ({
         justifyContent={'center'}
         w={6}
         h={6}
-        minW={0}
+        maxW={6}
+        minH={6}
+        maxH={6}
+        minW={6}
         p={0}
         borderRadius={'full'}
         isDisabled={isDisabled}
@@ -113,7 +117,7 @@ const AgentAskNavigation = ({
         onClick={onSkipAll}
         aria-label={t('chat:interactive.agent_ask.skip_all')}
       >
-        <MyIcon name={'common/closeLight'} w={4} h={4} />
+        <MyIcon name={'common/closeLight'} w={'10px'} h={'10px'} />
       </Button>
     </Flex>
   );
@@ -157,6 +161,10 @@ type AgentAskOptionButtonProps = {
   isSelected: boolean;
   isDisabled: boolean;
   optionRef: (element: HTMLButtonElement | null) => void;
+  isTemporarilyFocused: boolean;
+  onMouseEnter: () => void;
+  onFocus: (() => void) | undefined;
+  onBlur: (() => void) | undefined;
   onSelect: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
 };
@@ -167,10 +175,20 @@ const AgentAskOptionButton = ({
   isSelected,
   isDisabled,
   optionRef,
+  isTemporarilyFocused,
+  onMouseEnter,
+  onFocus,
+  onBlur,
   onSelect,
   onKeyDown
 }: AgentAskOptionButtonProps) => (
-  <Box role={'group'}>
+  <Box
+    role={'group'}
+    onMouseEnter={onMouseEnter}
+    _focusWithin={
+      isSelected ? undefined : { '& [data-agent-ask-option-index]': { bg: 'myGray.200' } }
+    }
+  >
     <Button
       ref={optionRef}
       variant={'unstyled'}
@@ -188,14 +206,11 @@ const AgentAskOptionButton = ({
       borderColor={isSelected ? 'primary.300' : 'transparent'}
       borderRadius={'21px'}
       bg={isSelected ? 'primary.50' : 'transparent'}
+      transition={'background 0.15s ease, border-color 0.15s ease'}
       textAlign={'left'}
-      _hover={
-        isSelected ? { bg: 'primary.50', borderColor: 'primary.300' } : { bg: 'blackAlpha.50' }
-      }
+      _hover={isSelected ? { bg: 'primary.50', borderColor: 'primary.300' } : { bg: 'myGray.05' }}
       _focusVisible={{
-        ...(isSelected
-          ? { bg: 'primary.50', borderColor: 'primary.300' }
-          : { bg: 'blackAlpha.50' }),
+        ...(isSelected ? { bg: 'primary.50', borderColor: 'primary.300' } : { bg: 'myGray.05' }),
         boxShadow: 'none',
         outline: 'none',
         '& > svg': { opacity: 1 }
@@ -203,19 +218,24 @@ const AgentAskOptionButton = ({
       _active={{ transform: 'none' }}
       isDisabled={isDisabled}
       _disabled={isSelected ? { opacity: 1 } : undefined}
+      onFocus={onFocus}
+      onBlur={onBlur}
       onKeyDown={onKeyDown}
       onClick={onSelect}
       aria-pressed={isSelected}
     >
       <Flex minW={0} alignItems={'center'} gap={2}>
         <Flex
+          data-agent-ask-option-index
           flexShrink={0}
           alignItems={'center'}
           justifyContent={'center'}
           w={6}
           h={6}
           borderRadius={'full'}
-          bg={isSelected ? 'primary.600' : 'myGray.50'}
+          bg={isSelected ? 'primary.600' : isTemporarilyFocused ? 'myGray.200' : 'myGray.50'}
+          transition={'background 0.15s ease'}
+          _groupHover={isSelected ? undefined : { bg: 'myGray.200' }}
           color={isSelected ? 'myGray.100' : 'myGray.600'}
           fontSize={'sm'}
           fontWeight={500}
@@ -227,7 +247,7 @@ const AgentAskOptionButton = ({
             {option.summary}
           </Box>
           {option.summary !== option.value && (
-            <Box as={'span'} color={'myGray.600'}>
+            <Box as={'span'} color={'myGray.600'} fontWeight={400}>
               {` ${option.value}`}
             </Box>
           )}
@@ -264,9 +284,11 @@ const AgentAskComposer = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isQuestionVisible, setIsQuestionVisible] = useState(true);
   const [isQuestionTransitioning, setIsQuestionTransitioning] = useState(false);
+  const [isInitialFocusActive, setIsInitialFocusActive] = useState(false);
   const [contentHeight, setContentHeight] = useState<number>();
   const contentRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const initialFocusStatus = useRef<'pending' | 'active' | 'cleared'>('pending');
   const questionTransitionTimer = useRef<ReturnType<typeof setTimeout>>();
   const updateContentHeight = useCallback(() => {
     const content = contentRef.current;
@@ -280,10 +302,31 @@ const AgentAskComposer = ({
     if (nextHeight) setContentHeight(nextHeight);
   }, []);
 
-  // Ask 覆盖普通输入区时，焦点始终从当前题的第一个选项开始。
+  const clearTemporaryInitialFocus = () => {
+    if (initialFocusStatus.current === 'cleared') return;
+
+    initialFocusStatus.current = 'cleared';
+    setIsInitialFocusActive(false);
+    optionRefs.current[0]?.blur();
+  };
+
   useEffect(() => {
-    optionRefs.current[0]?.focus();
-  }, [questionIndex]);
+    if (initialFocusStatus.current !== 'pending') return;
+
+    const firstOption = optionRefs.current[0];
+    if (!firstOption) {
+      initialFocusStatus.current = 'cleared';
+      return;
+    }
+
+    initialFocusStatus.current = 'active';
+    firstOption.focus();
+    const frame = requestAnimationFrame(() => {
+      if (initialFocusStatus.current === 'active') setIsInitialFocusActive(true);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -306,6 +349,16 @@ const AgentAskComposer = ({
   const isEditingCustom = editingQuestionIndex === questionIndex;
   const isAnswerValid = !!answer;
   const isLastQuestion = questionIndex === questions.length - 1;
+  const shouldTrimCustomAnswer = isCustom || isEditingCustom;
+
+  const trimCurrentCustomAnswer = () => {
+    if (!shouldTrimCustomAnswer) return answer;
+
+    const trimmedAnswer = answer.trim();
+    setAnswers((answers) => ({ ...answers, [questionKey]: trimmedAnswer }));
+    setCustomValues((values) => ({ ...values, [questionKey]: trimmedAnswer }));
+    return trimmedAnswer;
+  };
 
   const changeQuestion = (nextQuestionIndex: number, delay = false) => {
     if (isQuestionTransitioning || nextQuestionIndex === questionIndex) return;
@@ -338,8 +391,16 @@ const AgentAskComposer = ({
     delayTransition = false,
     nextSelectedOptionIndex?: number
   ) => {
-    const nextAnswers = { ...answers, [questionKey]: nextAnswer };
+    clearTemporaryInitialFocus();
+    const normalizedAnswer =
+      nextSelectedOptionIndex === undefined && shouldTrimCustomAnswer
+        ? nextAnswer.trim()
+        : nextAnswer;
+    const nextAnswers = { ...answers, [questionKey]: normalizedAnswer };
     setAnswers(nextAnswers);
+    if (nextSelectedOptionIndex === undefined && shouldTrimCustomAnswer) {
+      setCustomValues((values) => ({ ...values, [questionKey]: normalizedAnswer }));
+    }
     setSelectedOptionIndexes((indexes) => {
       const nextIndexes = { ...indexes };
       if (nextSelectedOptionIndex === undefined) {
@@ -357,9 +418,13 @@ const AgentAskComposer = ({
     }
     changeQuestion(questionIndex + 1, delayTransition);
   };
-  const skipOrAdvance = () => goNext(isCustom && customValue.trim() ? customValue.trim() : '');
-  const skipAll = () => submit({});
+  const skipOrAdvance = () => goNext(shouldTrimCustomAnswer ? customValue : '');
+  const skipAll = () => {
+    clearTemporaryInitialFocus();
+    submit({});
+  };
   const selectCustom = () => {
+    clearTemporaryInitialFocus();
     setEditingQuestionIndex(questionIndex);
     setAnswers((answers) => ({ ...answers, [questionKey]: customValue }));
     setSelectedOptionIndexes((indexes) => {
@@ -408,6 +473,7 @@ const AgentAskComposer = ({
       boxShadow={'0px 5px 10px rgba(19, 51, 107, 0.13)'}
       p={4}
       ref={contentRef}
+      onPointerDown={clearTemporaryInitialFocus}
       h={contentHeight ? `${contentHeight}px` : undefined}
       overflow={'hidden'}
       transition={'height 0.2s ease'}
@@ -431,13 +497,17 @@ const AgentAskComposer = ({
           isNextDisabled={isNextDisabled}
           isDisabled={isInputDisabled}
           onPrevious={() => {
+            clearTemporaryInitialFocus();
+            trimCurrentCustomAnswer();
             setEditingQuestionIndex(undefined);
             changeQuestion(questionIndex - 1);
           }}
           onNext={() => {
+            clearTemporaryInitialFocus();
+            const nextAnswer = trimCurrentCustomAnswer();
             setEditingQuestionIndex(undefined);
             if (isLastQuestion) {
-              goNext(answer);
+              goNext(nextAnswer);
               return;
             }
             changeQuestion(questionIndex + 1);
@@ -462,11 +532,16 @@ const AgentAskComposer = ({
               index={index}
               isSelected={isSelected}
               isDisabled={isInputDisabled}
+              isTemporarilyFocused={isInitialFocusActive && questionIndex === 0 && index === 0}
               optionRef={(element) => {
                 optionRefs.current[index] = element;
               }}
+              onMouseEnter={clearTemporaryInitialFocus}
+              onFocus={index === 0 ? undefined : clearTemporaryInitialFocus}
+              onBlur={index === 0 ? clearTemporaryInitialFocus : undefined}
               onSelect={() => goNext(option.value, true, index)}
               onKeyDown={(event) => {
+                clearTemporaryInitialFocus();
                 const lastOptionIndex = question.options.length - 1;
                 const nextIndex = (() => {
                   if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
@@ -489,60 +564,88 @@ const AgentAskComposer = ({
 
         {isEditingCustom ? (
           <Flex
-            alignItems={'center'}
+            alignItems={'stretch'}
             flexWrap={'nowrap'}
             gap={2}
             pl={2}
             minW={0}
             minH={'42px'}
+            h={'auto'}
             borderRadius={'21px'}
           >
-            <Flex
-              flexShrink={0}
-              alignItems={'center'}
-              justifyContent={'center'}
-              w={6}
-              h={6}
-              borderRadius={'full'}
-              bg={'primary.600'}
-              color={'myGray.100'}
-            >
-              <MyIcon name={'common/edit'} w={'14px'} h={'14px'} />
+            <Flex flex={'1 0 0'} minW={0} alignItems={'flex-start'} gap={2}>
+              <Flex
+                flexShrink={0}
+                mt={'9px'}
+                alignItems={'center'}
+                justifyContent={'center'}
+                w={6}
+                h={6}
+                borderRadius={'full'}
+                bg={'primary.600'}
+                color={'myGray.100'}
+              >
+                <MyIcon name={'common/edit-filled'} w={'11px'} h={'11px'} />
+              </Flex>
+              <Textarea
+                autoFocus
+                ref={resizeCustomTextarea}
+                flex={'1 0 0'}
+                minW={0}
+                minH={'40px'}
+                maxH={'116px'}
+                h={'40px'}
+                py={2}
+                px={3}
+                resize={'none'}
+                borderColor={'primary.600'}
+                boxShadow={'0 0 0 2.4px rgba(51, 112, 255, 0.15)'}
+                color={'myGray.900'}
+                fontSize={'sm'}
+                lineHeight={5}
+                value={customValue}
+                aria-label={t('chat:interactive.agent_ask.custom_answer')}
+                onChange={(event) => {
+                  resizeCustomTextarea(event.currentTarget);
+                  const value = event.currentTarget.value;
+                  setCustomValues((values) => ({ ...values, [questionKey]: value }));
+                  setAnswers((answers) => ({ ...answers, [questionKey]: value }));
+                  setSelectedOptionIndexes((indexes) => {
+                    const nextIndexes = { ...indexes };
+                    delete nextIndexes[questionKey];
+                    return nextIndexes;
+                  });
+                }}
+              />
             </Flex>
-            <Textarea
-              autoFocus
-              ref={resizeCustomTextarea}
-              flex={'1 0 0'}
-              minW={0}
-              minH={'40px'}
-              maxH={'116px'}
-              h={'40px'}
-              py={2}
-              px={3}
-              resize={'none'}
-              borderColor={'primary.600'}
-              boxShadow={'0 0 0 2.4px rgba(51, 112, 255, 0.15)'}
-              color={'myGray.900'}
-              fontSize={'sm'}
-              lineHeight={5}
-              value={customValue}
-              aria-label={t('chat:interactive.agent_ask.custom_answer')}
-              onChange={(event) => {
-                resizeCustomTextarea(event.currentTarget);
-                const value = event.currentTarget.value;
-                setCustomValues((values) => ({ ...values, [questionKey]: value }));
-                setAnswers((answers) => ({ ...answers, [questionKey]: value }));
-                setSelectedOptionIndexes((indexes) => {
-                  const nextIndexes = { ...indexes };
-                  delete nextIndexes[questionKey];
-                  return nextIndexes;
-                });
-              }}
-            />
-            {advanceButton}
+            <Box alignSelf={'stretch'} alignItems={'flex-end'} display={'flex'}>
+              <Box my={'5px'}>{advanceButton}</Box>
+            </Box>
           </Flex>
         ) : (
-          <Flex alignItems={'center'} gap={2} minW={0} minH={'42px'}>
+          <Flex
+            role={'group'}
+            alignItems={'stretch'}
+            gap={2}
+            pr={1}
+            w={'100%'}
+            minW={0}
+            minH={'42px'}
+            h={isCustom ? 'auto' : '42px'}
+            cursor={'text'}
+            border={'1px solid'}
+            borderColor={isCustom ? 'primary.300' : 'transparent'}
+            borderRadius={'21px'}
+            bg={isCustom ? 'primary.50' : 'transparent'}
+            transition={'background 0.15s ease, border-color 0.15s ease'}
+            _hover={
+              isCustom ? { bg: 'primary.50', borderColor: 'primary.300' } : { bg: 'myGray.05' }
+            }
+            _focusWithin={{
+              bg: isCustom ? 'primary.50' : 'myGray.05',
+              borderColor: isCustom ? 'primary.300' : 'transparent'
+            }}
+          >
             <Button
               variant={'unstyled'}
               display={'flex'}
@@ -556,48 +659,47 @@ const AgentAskComposer = ({
               justifyContent={'flex-start'}
               gap={2}
               p={2}
-              borderRadius={'21px'}
-              bg={isCustom ? 'primary.50' : 'transparent'}
-              border={'1px solid'}
-              borderColor={isCustom ? 'primary.300' : 'transparent'}
               textAlign={'left'}
-              _hover={
-                isCustom
-                  ? { bg: 'primary.50', borderColor: 'primary.300' }
-                  : { bg: 'blackAlpha.50' }
-              }
-              _focusVisible={{
-                bg: isCustom ? 'primary.50' : 'blackAlpha.50',
-                borderColor: isCustom ? 'primary.300' : 'transparent',
-                boxShadow: 'none',
-                outline: 'none'
-              }}
               _active={{ transform: 'none' }}
               isDisabled={isSubmitting || isQuestionTransitioning}
               onClick={selectCustom}
             >
-              <Flex
-                flexShrink={0}
-                alignItems={'center'}
-                justifyContent={'center'}
-                w={6}
-                h={6}
-                borderRadius={'full'}
-                bg={isCustom ? 'primary.600' : 'myGray.50'}
-                color={isCustom ? 'myGray.100' : 'myGray.600'}
-              >
-                <MyIcon name={'common/edit'} w={'14px'} h={'14px'} />
+              <Flex minW={0} alignItems={'center'} gap={2}>
+                <Flex
+                  flexShrink={0}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  w={6}
+                  h={6}
+                  borderRadius={'full'}
+                  bg={isCustom ? 'primary.600' : 'myGray.50'}
+                  transition={'background 0.15s ease'}
+                  _groupHover={isCustom ? undefined : { bg: 'myGray.200' }}
+                  color={isCustom ? 'myGray.100' : 'myGray.600'}
+                >
+                  <MyIcon name={'common/edit'} w={'14px'} h={'14px'} />
+                </Flex>
+                <Box
+                  minW={0}
+                  color={isCustom ? 'myGray.900' : 'myGray.600'}
+                  fontWeight={400}
+                  lineHeight={5}
+                  whiteSpace={'nowrap'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  sx={{
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 1
+                  }}
+                >
+                  {customValue || t('chat:interactive.agent_ask.custom_answer')}
+                </Box>
               </Flex>
-              <Box
-                minW={0}
-                color={isCustom ? 'myGray.900' : 'myGray.600'}
-                whiteSpace={'pre-wrap'}
-                wordBreak={'break-word'}
-              >
-                {customValue || t('chat:interactive.agent_ask.custom_answer')}
-              </Box>
             </Button>
-            {advanceButton}
+            <Box alignSelf={'stretch'}>
+              <Box my={'4px'}>{advanceButton}</Box>
+            </Box>
           </Flex>
         )}
       </Flex>
