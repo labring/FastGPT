@@ -117,7 +117,7 @@ const AgentAskNavigation = ({
         onClick={onSkipAll}
         aria-label={t('chat:interactive.agent_ask.skip_all')}
       >
-        <MyIcon name={'common/closeLight'} w={'10px'} h={'10px'} />
+        <MyIcon name={'common/closeLight'} w={'14px'} h={'14px'} />
       </Button>
     </Flex>
   );
@@ -206,7 +206,7 @@ const AgentAskOptionButton = ({
       borderColor={isSelected ? 'primary.300' : 'transparent'}
       borderRadius={'21px'}
       bg={isSelected ? 'primary.50' : 'transparent'}
-      transition={'background 0.15s ease, border-color 0.15s ease'}
+      // transition={'background 0.15s ease, border-color 0.15s ease'}
       textAlign={'left'}
       _hover={isSelected ? { bg: 'primary.50', borderColor: 'primary.300' } : { bg: 'myGray.05' }}
       _focusVisible={{
@@ -234,7 +234,7 @@ const AgentAskOptionButton = ({
           h={6}
           borderRadius={'full'}
           bg={isSelected ? 'primary.600' : isTemporarilyFocused ? 'myGray.200' : 'myGray.50'}
-          transition={'background 0.15s ease'}
+          // transition={'background 0.15s ease'}
           _groupHover={isSelected ? undefined : { bg: 'myGray.200' }}
           color={isSelected ? 'myGray.100' : 'myGray.600'}
           fontSize={'sm'}
@@ -476,7 +476,7 @@ const AgentAskComposer = ({
       onPointerDown={clearTemporaryInitialFocus}
       h={contentHeight ? `${contentHeight}px` : undefined}
       overflow={'hidden'}
-      transition={'height 0.2s ease'}
+      // transition={'height 0s ease'}
     >
       <Flex alignItems={'center'} justifyContent={'space-between'} gap={4} px={1} mb={4}>
         <Box
@@ -485,8 +485,8 @@ const AgentAskComposer = ({
           fontSize={'md'}
           fontWeight={500}
           lineHeight={6}
-          opacity={isQuestionVisible ? 1 : 0}
-          transition={'opacity 0.2s ease'}
+          // opacity={isQuestionVisible ? 1 : 0}
+          // transition={'opacity 0s ease'}
         >
           {question.question}
         </Box>
@@ -519,8 +519,8 @@ const AgentAskComposer = ({
       <Flex
         direction={'column'}
         gap={1}
-        opacity={isQuestionVisible ? 1 : 0}
-        transition={'opacity 0.2s ease'}
+        // opacity={isQuestionVisible ? 1 : 0}
+        // transition={'opacity 0s ease'}
       >
         {question.options.map((option, index) => {
           const isSelected = selectedOptionIndex === index;
@@ -637,7 +637,7 @@ const AgentAskComposer = ({
             borderColor={isCustom ? 'primary.300' : 'transparent'}
             borderRadius={'21px'}
             bg={isCustom ? 'primary.50' : 'transparent'}
-            transition={'background 0.15s ease, border-color 0.15s ease'}
+            // transition={'background 0.15s ease, border-color 0.15s ease'}
             _hover={
               isCustom ? { bg: 'primary.50', borderColor: 'primary.300' } : { bg: 'myGray.05' }
             }
@@ -673,7 +673,7 @@ const AgentAskComposer = ({
                   h={6}
                   borderRadius={'full'}
                   bg={isCustom ? 'primary.600' : 'myGray.50'}
-                  transition={'background 0.15s ease'}
+                  // transition={'background 0.15s ease'}
                   _groupHover={isCustom ? undefined : { bg: 'myGray.200' }}
                   color={isCustom ? 'myGray.100' : 'myGray.600'}
                 >
