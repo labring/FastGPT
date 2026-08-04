@@ -9,6 +9,7 @@ import {
   DrawerHeader,
   DrawerOverlay,
   Flex,
+  Grid,
   VStack,
   Accordion
 } from '@chakra-ui/react';
@@ -19,7 +20,10 @@ import MyIconButton from '../../../common/Icon/button';
 import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
 import MyBox from '../../../common/MyBox';
+import MyIcon from '../../../common/Icon';
+import MyTooltip from '../../../common/MyTooltip';
 import { useTableMultipleSelect } from '../../../../hooks/useTableMultipleSelect';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   ParamSection,
   ReadmeBox,
@@ -31,14 +35,19 @@ import {
 
 type ViewMode = 'list' | 'detail';
 
-interface BatchUpdateDrawerProps {
+export type BatchUpdateFailure = {
+  toolId: string;
+  reason: string;
+};
+
+type BatchUpdateDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
   updatableTools: ToolCardItemType[];
-  onBatchUpdate: (toolIds: string[]) => Promise<void>;
+  onBatchUpdate: (toolIds: string[]) => Promise<BatchUpdateFailure[]>;
   isBatchUpdating: boolean;
   onFetchDetail?: (toolId: string) => Promise<ToolDetailFetchResponse>;
-}
+};
 
 const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   isOpen,
@@ -53,6 +62,8 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   const [selectedToolForDetail, setSelectedToolForDetail] = useState<ToolCardItemType | null>(null);
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
   const [isUpdatingSingle, setIsUpdatingSingle] = useState(false);
+  const [failureReasons, setFailureReasons] = useState<Record<string, string>>({});
+  const [updatingToolIds, setUpdatingToolIds] = useState<Set<string>>(new Set());
 
   // Use table multiple select hook
   const {
@@ -81,6 +92,8 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     setSelectedToolForDetail(null);
     setActiveTab('params');
     setSelectedItems([]);
+    setFailureReasons({});
+    setUpdatingToolIds(new Set());
     onClose();
   }, [onClose, setSelectedItems]);
 
@@ -95,18 +108,62 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
     setActiveTab('params');
   }, []);
 
+  /** 执行选中插件更新，并把插件级失败原因留在当前列表中供用户重试。 */
+  const handleUpdateTools = useCallback(
+    async (toolIds: string[]) => {
+      if (toolIds.length === 0) return [];
+
+      setUpdatingToolIds((previous) => new Set([...previous, ...toolIds]));
+      setFailureReasons((previous) => {
+        const next = { ...previous };
+        toolIds.forEach((toolId) => delete next[toolId]);
+        return next;
+      });
+
+      try {
+        const failures = await onBatchUpdate(toolIds);
+        const failedToolIds = new Set(failures.map((failure) => failure.toolId));
+
+        setFailureReasons((previous) => ({
+          ...previous,
+          ...Object.fromEntries(failures.map((failure) => [failure.toolId, failure.reason]))
+        }));
+        setSelectedItems((previous) =>
+          previous.filter((tool) => !toolIds.includes(tool.id) || failedToolIds.has(tool.id))
+        );
+
+        return failures;
+      } catch (error) {
+        const reason = getErrText(error, t('app:toolkit_update_failed'));
+        const failures = toolIds.map((toolId) => ({ toolId, reason }));
+
+        setFailureReasons((previous) => ({
+          ...previous,
+          ...Object.fromEntries(failures.map((failure) => [failure.toolId, failure.reason]))
+        }));
+        return failures;
+      } finally {
+        setUpdatingToolIds((previous) => {
+          const next = new Set(previous);
+          toolIds.forEach((toolId) => next.delete(toolId));
+          return next;
+        });
+      }
+    },
+    [onBatchUpdate, setSelectedItems, t]
+  );
+
   const handleUpdateSingle = useCallback(async () => {
     if (!selectedToolForDetail) return;
 
     setIsUpdatingSingle(true);
     try {
-      await onBatchUpdate([selectedToolForDetail.id]);
-      // Go back to list view after successful update
+      await handleUpdateTools([selectedToolForDetail.id]);
       handleBack();
     } finally {
       setIsUpdatingSingle(false);
     }
-  }, [selectedToolForDetail, onBatchUpdate, handleBack]);
+  }, [selectedToolForDetail, handleUpdateTools, handleBack]);
 
   return (
     <Drawer isOpen={isOpen} onClose={handleClose} placement="right">
@@ -116,7 +173,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
           {viewMode === 'list' ? (
             <Flex gap={1.5} alignItems="center">
               <Box fontSize={'16px'} fontWeight={500} color={'myGray.900'}>
-                {t('app:toolkit_updatable_plugins')}
+                {t('app:toolkit_plugin_update')}
               </Box>
               <Box flex={1} />
               <MyIconButton icon={'common/closeLight'} onClick={handleClose} />
@@ -136,60 +193,118 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
         <DrawerBody position="relative" sx={drawerScrollbarStyles}>
           {viewMode === 'list' ? (
             <VStack align="stretch" spacing={0} pb={20}>
-              {updatableTools.map((tool) => (
-                <Flex
-                  key={tool.id}
-                  align="center"
-                  p={3}
-                  borderRadius="md"
-                  borderBottom={'1px solid'}
-                  borderColor={'myGray.200'}
-                  _hover={{ bg: 'myGray.50' }}
-                  cursor="pointer"
-                  onClick={() => toggleSelect(tool)}
-                >
-                  <Flex onClick={(e) => e.stopPropagation()} mr={3} align="center">
-                    <Checkbox isChecked={isSelected(tool)} onChange={() => toggleSelect(tool)} />
-                  </Flex>
-                  <Avatar src={tool.icon} w={6} h={6} borderRadius="md" mr={3} flexShrink={0} />
-                  <Box flex={1}>
-                    <Box fontSize="sm" fontWeight="medium" color="myGray.900">
-                      {parseI18nString(tool.name, i18n.language)}
-                    </Box>
-                  </Box>
-                  <Box
-                    as="button"
-                    fontSize="sm"
-                    color="primary.600"
-                    _hover={{ textDecoration: 'underline' }}
-                    onClick={(e: any) => {
-                      e.stopPropagation();
-                      handleViewDetail(tool);
-                    }}
-                  >
-                    {t('common:view_detail')}
-                  </Box>
-                </Flex>
-              ))}
+              <Grid
+                gridTemplateColumns="48px minmax(0, 1fr) 108px"
+                h={10}
+                alignItems="center"
+                bg="myGray.100"
+                borderRadius="md"
+                color="myGray.600"
+                fontSize="xs"
+              >
+                <Box px={3}>{t('app:toolkit_select')}</Box>
+                <Box px={3}>{t('common:Name')}</Box>
+                <Box px={3}>{t('common:Status')}</Box>
+              </Grid>
 
-              {/* Bottom action bar - Always visible */}
+              {updatableTools.map((tool) => {
+                const failureReason = failureReasons[tool.id];
+                const isUpdating = updatingToolIds.has(tool.id);
+
+                return (
+                  <Grid
+                    key={tool.id}
+                    gridTemplateColumns="48px minmax(0, 1fr) 108px"
+                    minH={12}
+                    alignItems="center"
+                    borderBottom="1px solid"
+                    borderColor="myGray.200"
+                  >
+                    <Flex px={3} align="center">
+                      <Checkbox
+                        size="sm"
+                        isChecked={isSelected(tool)}
+                        isDisabled={isUpdating}
+                        onChange={() => toggleSelect(tool)}
+                      />
+                    </Flex>
+                    <Flex
+                      as="button"
+                      minW={0}
+                      px={3}
+                      align="center"
+                      gap={2}
+                      textAlign="left"
+                      onClick={() => handleViewDetail(tool)}
+                    >
+                      <Avatar src={tool.icon} w={5} h={5} borderRadius="md" flexShrink={0} />
+                      <Box
+                        minW={0}
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                        fontSize="sm"
+                        fontWeight="medium"
+                        color="myGray.900"
+                      >
+                        {parseI18nString(tool.name, i18n.language)}
+                      </Box>
+                    </Flex>
+                    <Flex px={3} align="center" gap={1} minW={0}>
+                      {failureReason ? (
+                        <>
+                          <Box color="red.600" fontSize="xs" whiteSpace="nowrap">
+                            {t('app:toolkit_update_failed')}
+                          </Box>
+                          <MyTooltip label={failureReason} maxW="240px">
+                            <MyIcon name="infoRounded" w={3} color="red.600" />
+                          </MyTooltip>
+                          <MyIconButton
+                            icon="common/refreshLight"
+                            size="16px"
+                            p={0}
+                            isLoading={isUpdating}
+                            tip={t('app:toolkit_retry_update')}
+                            aria-label={t('app:toolkit_retry_update')}
+                            onClick={() => handleUpdateTools([tool.id])}
+                          />
+                        </>
+                      ) : (
+                        <Flex align="center" gap={1} color="myGray.600" fontSize="xs">
+                          <Box whiteSpace="nowrap">
+                            {t(isUpdating ? 'app:toolkit_updating' : 'app:toolkit_update_pending')}
+                          </Box>
+                          {isUpdating && <MyIcon name="common/loading" w={3} />}
+                        </Flex>
+                      )}
+                    </Flex>
+                  </Grid>
+                );
+              })}
+
               <Flex
                 position="fixed"
                 bottom={0}
-                left={0}
                 right={0}
-                w={'480px'}
-                px={8}
-                py={2}
+                w="min(480px, 100vw)"
+                px={6}
+                py={3}
                 alignItems="center"
                 justifyContent="space-between"
                 borderLeftRadius="md"
                 backgroundColor="white"
+                borderTop="1px solid"
+                borderColor="myGray.100"
               >
                 <Flex alignItems="center" gap={2}>
-                  <Checkbox size="sm" isChecked={isSelecteAll} onChange={selectAllTrigger} ml={1} />
-                  <Box fontSize="sm" color="gray.600">
-                    {t('common:select_count_num', { num: selectedItems.length })}
+                  <Checkbox
+                    size="sm"
+                    isChecked={isSelecteAll}
+                    isDisabled={isBatchUpdating}
+                    onChange={selectAllTrigger}
+                  />
+                  <Box fontSize="sm" color="myGray.700">
+                    {t('common:Select_all')}
                   </Box>
                 </Flex>
                 <Button
@@ -197,10 +312,10 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                   isLoading={isBatchUpdating}
                   isDisabled={!hasSelections}
                   onClick={() =>
-                    onBatchUpdate(selectedItems.map((tool: ToolCardItemType) => tool.id))
+                    handleUpdateTools(selectedItems.map((tool: ToolCardItemType) => tool.id))
                   }
                 >
-                  {t('app:toolkit_batch_update')}
+                  {t('app:toolkit_update_selected', { count: selectedItems.length })}
                 </Button>
               </Flex>
             </VStack>

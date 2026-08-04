@@ -27,6 +27,7 @@ import {
   getMarketplaceTools,
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
+import { getBatchUpdateFailures } from '@/web/core/plugin/marketplace/utils';
 import {
   getAdminSystemToolDetail,
   getAdminSystemTools,
@@ -436,23 +437,41 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
   const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
     async (toolIds: string[]) => {
-      if (toolIds.length === 0) return;
+      if (toolIds.length === 0) return [];
 
       // 1. Batch get download URLs
       const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
 
       // 2. Batch install (update)
-      await intallPluginWithUrl({ downloadUrls });
+      const installResult = await intallPluginWithUrl({ downloadUrls });
+
+      const failures = getBatchUpdateFailures({
+        toolIds,
+        downloadUrls,
+        installResult,
+        language: i18n.language
+      });
 
       // 3. Refresh installed plugins list
       await refreshInstalledPlugins();
 
-      // 4. Close Drawer
-      setShowBatchUpdateDrawer(false);
+      const successCount = toolIds.length - failures.length;
+      if (successCount > 0) {
+        toast({
+          title: t('app:toolkit_update_success_count', { count: successCount }),
+          status: 'success'
+        });
+      }
+
+      // 4. 保留部分失败项，用户可直接在 Drawer 内重试。
+      if (failures.length === 0) {
+        setShowBatchUpdateDrawer(false);
+      }
+
+      return failures;
     },
     {
-      manual: true,
-      successToast: t('common:Success')
+      manual: true
     }
   );
 
