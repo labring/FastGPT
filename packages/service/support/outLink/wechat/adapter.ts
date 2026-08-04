@@ -1,10 +1,9 @@
 import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
-import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import {
   normalizeMimeType,
   resolveMimeExtension,
@@ -14,7 +13,8 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import {
   composeOutLinkQuery,
   createOutLinkFileLimitStream,
-  OutLinkFileSizeExceededError
+  OutLinkFileSizeExceededError,
+  uploadOutLinkFile
 } from '../tools';
 import type {
   OutlinkMessage,
@@ -181,12 +181,12 @@ export const createWechatOutlinkAdapter = ({
         return `image${resolveMimeExtension(contentType) || '.jpg'}`;
       })();
       const resolvedContentType = contentType || resolveMimeType([filename]);
-      const { key } = await getS3ChatSource().uploadChatFile({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: appId,
-        body: fileBuffer,
+      const { key } = await uploadOutLinkFile({
+        source: fileBuffer,
+        maxBytes,
+        appId,
         chatId,
-        uId: jobData.userId,
+        userId: jobData.userId,
         filename,
         contentType: resolvedContentType
       });

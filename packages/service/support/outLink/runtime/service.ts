@@ -49,7 +49,13 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authOutLinkLimit } from './auth';
-import type { OutlinkResponder, OutlinkResponseEvent, RunOutlinkRuntimeProps } from './type';
+import type {
+  OutlinkProviderMessageHandler,
+  OutlinkMessage,
+  OutlinkResponder,
+  OutlinkResponseEvent,
+  RunOutlinkRuntimeProps
+} from './type';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
 
@@ -193,11 +199,37 @@ const createResponseController = (respond: OutlinkResponder) => {
   };
 };
 
+/** Starts one provider task and sends its terminal error through the provider responder. */
+export const dispatchOutlinkProviderMessage = <T extends OutlinkAppType>({
+  onMessage,
+  outLinkConfig,
+  message,
+  respond,
+  errorContent = '文件处理失败，请稍后重试',
+  onProcessingError,
+  onResponseError
+}: Omit<RunOutlinkRuntimeProps<T>, 'message'> & {
+  onMessage: OutlinkProviderMessageHandler<T>;
+  message: OutlinkMessage | undefined | Promise<OutlinkMessage | undefined>;
+  errorContent?: string;
+  onProcessingError: (error: unknown) => void;
+  onResponseError: (error: unknown) => void;
+}) => {
+  void (async () => {
+    try {
+      const normalizedMessage = await message;
+      if (!normalizedMessage) return;
+      await onMessage({ outLinkConfig, message: normalizedMessage, respond });
+    } catch (error) {
+      onProcessingError(error);
+      await respond(Readable.from([{ type: 'error', content: errorContent }]));
+    }
+  })().catch(onResponseError);
+};
+
 /**
  * Runs a platform-agnostic outlink chat and bridges synchronous workflow events into an ordered
  * response stream.
- *
- * @todo Remove the legacy runtime after all providers migrate to this runtime.
  */
 export async function runOutlinkRuntime<T extends OutlinkAppType>({
   outLinkConfig,

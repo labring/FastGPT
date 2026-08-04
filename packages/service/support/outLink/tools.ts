@@ -7,6 +7,8 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../common/logger';
 import { Readable } from 'node:stream';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getS3ChatSource } from '../../common/s3/sources/chat';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.TOOLS);
 
@@ -105,6 +107,74 @@ export const createOutLinkFileLimitStream = ({
     })(),
     { objectMode: false }
   );
+};
+
+/** Uploads a bounded outlink file to the app chat source. */
+export const uploadOutLinkFile = async ({
+  source,
+  contentLength,
+  maxBytes,
+  timeoutMs,
+  appId,
+  chatId,
+  userId,
+  filename,
+  contentType
+}: {
+  source: Readable | Buffer;
+  contentLength?: number;
+  maxBytes: number;
+  timeoutMs?: number;
+  appId: string;
+  chatId: string;
+  userId: string;
+  filename: string;
+  contentType?: string;
+}) => {
+  const destroySource = () => {
+    if (source instanceof Readable && !source.destroyed) source.destroy();
+  };
+  if (
+    (Number.isFinite(contentLength) && (contentLength as number) > maxBytes) ||
+    (Buffer.isBuffer(source) && source.length > maxBytes)
+  ) {
+    destroySource();
+    throw new OutLinkFileSizeExceededError(maxBytes);
+  }
+
+  if (Buffer.isBuffer(source)) {
+    return getS3ChatSource().uploadChatFile({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      body: source,
+      chatId,
+      uId: userId,
+      filename,
+      contentType
+    });
+  }
+
+  const limitedStream = createOutLinkFileLimitStream({ source, maxBytes, timeoutMs });
+  let sizeError: OutLinkFileSizeExceededError | undefined;
+  limitedStream.once('error', (error) => {
+    if (error instanceof OutLinkFileSizeExceededError) sizeError = error;
+  });
+
+  try {
+    return await getS3ChatSource().uploadChatFile({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      body: limitedStream,
+      chatId,
+      uId: userId,
+      filename,
+      contentType
+    });
+  } catch (error) {
+    throw sizeError ?? error;
+  } finally {
+    destroySource();
+  }
 };
 
 export const addOutLinkUsage = ({
