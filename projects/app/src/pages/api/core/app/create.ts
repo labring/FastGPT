@@ -182,7 +182,7 @@ export const onCreateApp = async ({
     }
   }
 
-  beforeUpdateAppFormat({
+  await beforeUpdateAppFormat({
     nodes: modules
   });
   if (!AppFolderTypeList.includes(type!)) {
