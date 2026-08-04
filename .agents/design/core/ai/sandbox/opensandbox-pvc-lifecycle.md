@@ -63,7 +63,8 @@ runtime client 直接复用。若恢复没有执行创建 step，再在外层获
 
 ## 兼容性
 
-- `IVolumeDriver` 和 volume HTTP API 不变。
+- volume HTTP API 从 `sessionId` 切换为 app 预先持久化的 `claimName`；FastGPT app
+  与 volume-manager 按同一版本整体升级，不支持混用版本。
 - `DockerVolumeDriver` 不执行 Kubernetes 状态解析、轮询或 UID precondition。
 - Sandbox application 只对 `opensandbox` 使用 volume-manager；Docker 不产生额外 volume 请求。
 
@@ -78,7 +79,9 @@ runtime client 直接复用。若恢复没有执行创建 step，再在外层获
 
 - FastGPT app 与 volume-manager 按同一版本同步升级，`claimName` HTTP 合同不增加旧版
   `sessionId` 兼容层。
-- 本轮不修改已有 compose、Helm、环境变量模板或部署文档；这些发布物由后续发布流程统一处理。
+- compose、Helm、环境变量模板和中英文部署文档必须与新合同同步更新。旧的
+  `VM_VOLUME_NAME_PREFIX` 配置需以原值迁移到
+  `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX`。
 
 ### 运行态 storage 并发保护
 

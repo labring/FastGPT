@@ -14,7 +14,11 @@ import {
   type SandboxProviderType
 } from '../type';
 import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
-import { deleteSessionVolume, getSessionVolumeClaimName } from '../infrastructure/volume/service';
+import {
+  createLegacySessionVolumeClaimName,
+  deleteSessionVolume,
+  getSessionVolumeClaimName
+} from '../infrastructure/volume/service';
 import {
   archiveSandboxResourceWithinLease,
   SANDBOX_STALE_ARCHIVING_MINUTES,
@@ -87,9 +91,16 @@ export async function migrateSandboxProviderBeforeUse(params: {
 
         const rollbackFromPhase =
           resource.operation?.phase === 'archiveInstalled' ||
-          resource.operation?.phase === 'volumeAssigned'
+          resource.operation?.phase === 'volumeAssigned' ||
+          resource.operation?.phase === 'previousProviderDeleted' ||
+          resource.operation?.phase === 'previousVolumeDeleted'
             ? resource.operation.phase
             : 'claimed';
+        const allowLegacyClaimNameFallback = [
+          'claimed',
+          'previousProviderDeleted',
+          'previousVolumeDeleted'
+        ].includes(rollbackFromPhase);
         const definition: SandboxLifecycleDefinition = {
           operationType: SandboxOperationTypeEnum.restore,
           status: SandboxInstanceStatusEnum.restoring,
@@ -100,7 +111,11 @@ export async function migrateSandboxProviderBeforeUse(params: {
               run: async ({ resource: claimed }) => {
                 await buildSandboxResourceAdapter(claimed).delete();
                 if (claimed.provider === 'opensandbox') {
-                  const claimName = getSessionVolumeClaimName(claimed.storage);
+                  const claimName =
+                    getSessionVolumeClaimName(claimed.storage) ??
+                    (allowLegacyClaimNameFallback
+                      ? createLegacySessionVolumeClaimName(claimed.sandboxId)
+                      : undefined);
                   if (!claimName) {
                     throw new Error(
                       `OpenSandbox ${claimed.sandboxId} has no persisted workspace claimName`

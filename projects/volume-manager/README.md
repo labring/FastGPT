@@ -137,7 +137,6 @@ src/
 │   ├── DockerVolumeDriver.ts
 │   └── K8sVolumeDriver.ts
 └── utils/
-    ├── naming.ts         # 最终卷名校验
     └── logger.ts         # 日志工具
 ```
 

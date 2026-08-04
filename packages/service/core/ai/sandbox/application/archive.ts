@@ -26,6 +26,7 @@ import { connectToSandbox, disconnectSandbox } from '../infrastructure/provider/
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
 import {
   buildVolumeConfig,
+  createLegacySessionVolumeClaimName,
   createSessionVolumeClaimName,
   deleteSessionVolume,
   getSessionVolumeClaimName,
@@ -159,17 +160,31 @@ async function connectSandboxForArchive(resource: SandboxPhysicalResource) {
   };
 }
 
-/** 归档阶段只删除远端 Provider，volume 清理由后续 checkpoint 单独确认。 */
-async function deleteArchivedProviderResource(resource: SandboxResourceDoc) {
+/** 只删除远端 Provider，volume 清理由独立 checkpoint 确认。 */
+async function deleteSandboxProviderResource(resource: SandboxResourceDoc) {
   await buildSandboxResourceAdapter(resource).delete();
 }
 
-/** 等 Provider 删除 checkpoint 持久化后，再删除并等待 OpenSandbox volume 完成。 */
-async function deleteArchivedVolumeResource(resource: SandboxResourceDoc) {
+/** 删除并等待 OpenSandbox volume 完成；兼容旧记录缺少持久化 claimName。 */
+async function deleteSandboxVolumeResource(
+  resource: SandboxResourceDoc,
+  options: { useLegacyClaimNameFallback?: boolean } = {}
+) {
   if (resource.provider === 'opensandbox') {
-    const claimName = getSessionVolumeClaimName(resource.storage);
+    const persistedClaimName = getSessionVolumeClaimName(resource.storage);
+    const claimName =
+      persistedClaimName ??
+      (options.useLegacyClaimNameFallback
+        ? createLegacySessionVolumeClaimName(resource.sandboxId)
+        : undefined);
     if (!claimName) {
       throw new Error(`OpenSandbox ${resource.sandboxId} has no persisted workspace claimName`);
+    }
+    if (!persistedClaimName) {
+      logger.warn('Deleting legacy deterministic Sandbox volume without persisted claimName', {
+        sandboxId: resource.sandboxId,
+        claimName
+      });
     }
     await deleteSessionVolume(claimName);
   }
@@ -377,14 +392,14 @@ async function archiveSandboxWithinLease(params: {
           fromPhase: 'archiveUploaded',
           toPhase: 'providerDeleted',
           run: async ({ resource: claimed }) => {
-            await deleteArchivedProviderResource(claimed);
+            await deleteSandboxProviderResource(claimed);
           }
         },
         {
           fromPhase: 'providerDeleted',
           toPhase: 'volumeDeleted',
           run: async ({ resource: claimed }) => {
-            await deleteArchivedVolumeResource(claimed);
+            await deleteSandboxVolumeResource(claimed);
           }
         }
       ],
@@ -622,50 +637,77 @@ export async function restoreArchivedSandboxBeforeUse(params: {
       let restoredVmConfig: VolumeManagerResult | undefined;
       let restoredStorage = current.storage;
       let assignedClaimName = getSessionVolumeClaimName(current.storage);
+      const cleanupPreviousRestoreResources =
+        current.status === SandboxInstanceStatusEnum.restoring &&
+        ['claimed', 'previousProviderDeleted', 'previousVolumeDeleted'].includes(
+          current.operation?.phase ?? 'claimed'
+        );
 
       try {
+        const cleanupSteps: SandboxLifecycleDefinition['steps'] = cleanupPreviousRestoreResources
+          ? [
+              {
+                fromPhase: 'claimed',
+                toPhase: 'previousProviderDeleted',
+                run: async ({ resource: claimed }) => {
+                  await deleteSandboxProviderResource(claimed);
+                }
+              },
+              {
+                fromPhase: 'previousProviderDeleted',
+                toPhase: 'previousVolumeDeleted',
+                run: async ({ resource: claimed }) => {
+                  await deleteSandboxVolumeResource(claimed, {
+                    useLegacyClaimNameFallback: true
+                  });
+                }
+              }
+            ]
+          : [];
+        const restoreSteps: SandboxLifecycleDefinition['steps'] = [
+          ...cleanupSteps,
+          {
+            fromPhase: cleanupPreviousRestoreResources ? 'previousVolumeDeleted' : 'claimed',
+            toPhase: 'volumeAssigned',
+            run: async ({ resource: claimed }) => {
+              if (claimed.provider !== 'opensandbox') return;
+              assignedClaimName = createSessionVolumeClaimName({
+                sandboxId: claimed.sandboxId
+              });
+              restoredStorage = buildVolumeConfig(assignedClaimName).storage;
+            },
+            set: () => (restoredStorage !== undefined ? { storage: restoredStorage } : {})
+          },
+          {
+            fromPhase: 'volumeAssigned',
+            toPhase: 'archiveInstalled',
+            run: async () => {
+              assignedClaimName ??= getSessionVolumeClaimName(restoredStorage);
+              const target = await createRestoreSandbox({
+                ...params,
+                claimName: assignedClaimName
+              });
+              sandbox = target.sandbox;
+              restoredVmConfig = target.vmConfig;
+              restoredStorage = target.vmConfig?.storage ?? restoredStorage;
+              await ensureUnzipAvailableInSandbox(target.sandbox);
+              const body = await getS3SandboxSource().downloadWorkspaceArchive({
+                sandboxId: params.sandboxId,
+                maxBytes: getAgentSandboxArchiveMaxBytes()
+              });
+              await restoreWorkspaceArchive({
+                sandbox: target.sandbox,
+                workDirectory: target.profile.workDirectory,
+                sandboxId: params.sandboxId,
+                archiveBody: body
+              });
+            }
+          }
+        ];
         const definition: SandboxLifecycleDefinition = {
           operationType: SandboxOperationTypeEnum.restore,
           status: SandboxInstanceStatusEnum.restoring,
-          steps: [
-            {
-              fromPhase: 'claimed',
-              toPhase: 'volumeAssigned',
-              run: async ({ resource: claimed }) => {
-                if (claimed.provider !== 'opensandbox') return;
-                assignedClaimName = createSessionVolumeClaimName({
-                  sandboxId: claimed.sandboxId
-                });
-                restoredStorage = buildVolumeConfig(assignedClaimName).storage;
-              },
-              set: () => (restoredStorage !== undefined ? { storage: restoredStorage } : {})
-            },
-            {
-              fromPhase: 'volumeAssigned',
-              toPhase: 'archiveInstalled',
-              run: async () => {
-                assignedClaimName ??= getSessionVolumeClaimName(restoredStorage);
-                const target = await createRestoreSandbox({
-                  ...params,
-                  claimName: assignedClaimName
-                });
-                sandbox = target.sandbox;
-                restoredVmConfig = target.vmConfig;
-                restoredStorage = target.vmConfig?.storage ?? restoredStorage;
-                await ensureUnzipAvailableInSandbox(target.sandbox);
-                const body = await getS3SandboxSource().downloadWorkspaceArchive({
-                  sandboxId: params.sandboxId,
-                  maxBytes: getAgentSandboxArchiveMaxBytes()
-                });
-                await restoreWorkspaceArchive({
-                  sandbox: target.sandbox,
-                  workDirectory: target.profile.workDirectory,
-                  sandboxId: params.sandboxId,
-                  archiveBody: body
-                });
-              }
-            }
-          ],
+          steps: restoreSteps,
           finish: {
             type: 'complete',
             status: SandboxInstanceStatusEnum.running,

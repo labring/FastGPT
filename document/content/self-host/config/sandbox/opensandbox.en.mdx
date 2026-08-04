@@ -12,6 +12,12 @@ import { Alert } from '@/components/docs/Alert';
 
 OpenSandbox is suitable when you want to self-host the Agent/Skill sandbox runtime. Before starting, complete [General Sandbox Configuration](./common) and make sure `fastgpt-agent-sandbox-proxy` is deployed. Configure the proxy secret, WebSocket URL, and preview URL in `fastgpt-app`; you must configure the preview URL in `fastgpt-pro`.
 
+<Alert icon="⚠️" context="warning">
+  When upgrading from an earlier Volume Manager release, set
+  `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` to the previous `VM_VOLUME_NAME_PREFIX` value so
+  existing persistent volumes can still be cleaned up by their original names.
+</Alert>
+
 The OpenSandbox setup flow is below.
 
 ## 1. Add yml services

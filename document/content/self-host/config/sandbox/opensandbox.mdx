@@ -11,6 +11,11 @@ import { Alert } from '@/components/docs/Alert';
 
 OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。开始前，请先完成[沙盒通用配置](./common)，确保 `fastgpt-agent-sandbox-proxy` 已部署；`fastgpt-app` 需配置 Proxy Secret、WebSocket URL 和预览 URL，`fastgpt-pro` 必须配置预览 URL。
 
+<Alert icon="⚠️" context="warning">
+  从旧版 Volume Manager 升级时，请将原 `VM_VOLUME_NAME_PREFIX` 的值配置到
+  `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX`，避免历史持久卷无法按原名称清理。
+</Alert>
+
 下面是 OpenSandbox 部署和配置流程。
 
 ## 1. 添加 yml service

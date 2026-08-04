@@ -82,7 +82,7 @@ export const createSessionVolumeClaimName = (params: {
 /**
  * 恢复 generation 命名上线前已经创建的确定性 volume 名称。
  *
- * 只供旧 migration checkpoint 修复使用；新 volume 必须通过 createSessionVolumeClaimName 分配。
+ * 只供旧 lifecycle checkpoint 修复使用；新 volume 必须通过 createSessionVolumeClaimName 分配。
  */
 export const createLegacySessionVolumeClaimName = (sandboxId: string) => {
   const { volumeNamePrefix } = getVolumeManagerEnvConfig();
