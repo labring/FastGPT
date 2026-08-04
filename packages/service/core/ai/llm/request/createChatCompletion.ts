@@ -35,7 +35,7 @@ export const createChatCompletion = async ({
     body.model = modelData.model;
 
     logger.debug('Start create chat completion', { model: body.model });
-    console.dir(body.messages, { depth: null });
+
     // requestUrl/requestAuth 只属于系统模型配置。用户 key 请求由 getAIApi 内部完成 baseUrl/key 选择。
     const response = await ai.chat.completions.create(body, {
       ...options,
