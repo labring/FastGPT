@@ -9,6 +9,7 @@ const assertVerificationFrequency = async ({
   account,
   scene,
   action,
+  limit = CodeVerificationConsumeQpm,
   seconds = CodeVerificationConsumeWindowSeconds
 }: {
   account: string;
@@ -19,11 +20,12 @@ const assertVerificationFrequency = async ({
     | 'captcha:consume'
     | 'password:create'
     | 'password:consume';
+  limit?: number;
   seconds?: number;
 }) => {
   const allowed = await checkFixedWindowQpmLimit({
     key: `account-verification:${action}:${scene}:${account}`,
-    limit: CodeVerificationConsumeQpm,
+    limit,
     seconds
   });
 
@@ -69,28 +71,28 @@ export const assertCaptchaVerificationConsumeFrequency = async ({
   return assertVerificationFrequency({ account, scene, action: 'captcha:consume' });
 };
 
-/** 按账号限制预登录码生成次数，窗口由登录安全配置决定。 */
+/** 按账号限制每分钟预登录码生成次数。 */
 export const assertPasswordVerificationCreateFrequency = async ({
   account,
   scene,
-  seconds
+  limit
 }: {
   account: string;
   scene: string;
-  seconds: number;
+  limit: number;
 }) => {
-  return assertVerificationFrequency({ account, scene, action: 'password:create', seconds });
+  return assertVerificationFrequency({ account, scene, action: 'password:create', limit });
 };
 
-/** 按账号限制预登录码和密码的联合校验次数，窗口由登录安全配置决定。 */
+/** 按账号限制每分钟预登录码和密码的联合校验次数。 */
 export const assertPasswordVerificationConsumeFrequency = async ({
   account,
   scene,
-  seconds
+  limit
 }: {
   account: string;
   scene: string;
-  seconds: number;
+  limit: number;
 }) => {
-  return assertVerificationFrequency({ account, scene, action: 'password:consume', seconds });
+  return assertVerificationFrequency({ account, scene, action: 'password:consume', limit });
 };

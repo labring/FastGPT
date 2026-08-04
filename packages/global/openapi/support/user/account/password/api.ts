@@ -62,7 +62,6 @@ export const UpdatePasswordByCodeBodySchema = z.object({
   username: AccountContactUsernameSchema.meta({ description: '用户名（邮箱或手机号）' }),
   code: ShortAuthStringSchema.meta({ description: '验证码' }),
   password: AccountPasswordSchema.meta({ description: '新密码' }),
-  tmbId: ShortAuthStringSchema.optional().meta({ description: '团队成员 ID（可选）' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 

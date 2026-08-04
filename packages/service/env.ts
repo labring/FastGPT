@@ -294,8 +294,8 @@ export const serviceEnv = createEnv({
       description:
         '可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析'
     }),
-    PASSWORD_LOGIN_LOCK_SECONDS: defaultableIntSchema(120).meta({
-      description: '密码错误锁定时长（秒）'
+    PASSWORD_LOGIN_LIMIT: defaultableIntSchema(10).meta({
+      description: '密码登录每分钟次数限制'
     }),
     MAX_LOGIN_SESSION: IntSchema.default(10).meta({ description: '最大登录客户端数量（默认 10）' }),
     ALLOWED_ORIGINS: z

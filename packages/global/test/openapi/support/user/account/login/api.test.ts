@@ -93,8 +93,11 @@ describe('user account OpenAPI contracts', () => {
         props: { access_token: longExternalValue }
       })
     ).toMatchObject({ callbackUrl: longExternalValue, props: { access_token: longExternalValue } });
-    expect(FastLoginBodySchema.parse({ token: longExternalValue, code: 'code' })).toMatchObject({
-      token: longExternalValue
+    expect(
+      FastLoginBodySchema.parse({ token: longExternalValue, code: longExternalValue })
+    ).toMatchObject({
+      token: longExternalValue,
+      code: longExternalValue
     });
     expect(() => WxLoginBodySchema.parse({ code: tooLongShortValue })).toThrow();
     expect(
@@ -119,6 +122,21 @@ describe('user account OpenAPI contracts', () => {
     ['expired password', ResetExpiredPswBodySchema, { newPsw: 'a'.repeat(101) }]
   ] as const)('rejects an overlong %s', (_name, schema, body) => {
     expect(() => schema.parse(body)).toThrow();
+  });
+
+  it('strips a client-supplied team member ID from password reset input', () => {
+    expect(
+      UpdatePasswordByCodeBodySchema.parse({
+        username: 'user@example.com',
+        code: '123456',
+        password: 'password',
+        tmbId: 'another-user-team-member-id'
+      })
+    ).toEqual({
+      username: 'user@example.com',
+      code: '123456',
+      password: 'password'
+    });
   });
 
   it.each([

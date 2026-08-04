@@ -59,14 +59,10 @@ const SendCodeAuthModal = ({
     }
   };
 
-  const onError = (err: any) => {
-    console.log(err);
-  };
-
   const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation();
     if (e.nativeEvent.isComposing || e.keyCode === 229 || e.key.toLowerCase() !== 'enter') return;
-    handleSubmit(onSubmit, onError)();
+    handleSubmit(onSubmit)();
   };
 
   return (
@@ -102,7 +98,7 @@ const SendCodeAuthModal = ({
         <Button isLoading={onSending} variant={'whiteBase'} onClick={onClose}>
           {t('common:Cancel')}
         </Button>
-        <Button isLoading={onSending} onClick={handleSubmit(onSubmit, onError)}>
+        <Button isLoading={onSending} onClick={handleSubmit(onSubmit)}>
           {t('common:Confirm')}
         </Button>
       </ModalFooter>

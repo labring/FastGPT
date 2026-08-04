@@ -22,13 +22,13 @@ const defaultDependencies: PasswordVerificationDependencies = {
     assertPasswordVerificationCreateFrequency({
       account,
       scene,
-      seconds: serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS
+      limit: serviceEnv.PASSWORD_LOGIN_LIMIT
     }),
   assertConsumeFrequency: ({ account, scene }) =>
     assertPasswordVerificationConsumeFrequency({
       account,
       scene,
-      seconds: serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS
+      limit: serviceEnv.PASSWORD_LOGIN_LIMIT
     }),
   savePreLoginCode: ({ purpose, username, code, ttlPreset }) =>
     verification.upsert({

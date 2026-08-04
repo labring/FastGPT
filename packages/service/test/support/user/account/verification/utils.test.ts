@@ -63,12 +63,12 @@ describe('account verification frequency actions', () => {
     [
       'password create',
       assertPasswordVerificationCreateFrequency,
-      { account, scene: 'login', seconds: 120 }
+      { account, scene: 'login', limit: 10 }
     ],
     [
       'password consume',
       assertPasswordVerificationConsumeFrequency,
-      { account, scene: 'login', seconds: 120 }
+      { account, scene: 'login', limit: 10 }
     ]
   ] as const)('limits %s to 10 attempts', async (_name, assertFrequency, params) => {
     for (let index = 0; index < 10; index++) {
@@ -87,20 +87,25 @@ describe('account verification frequency actions', () => {
       assertCaptchaVerificationConsumeFrequency({ account, scene: 'register' })
     ).resolves.toBeUndefined();
     await expect(
-      assertPasswordVerificationCreateFrequency({ account, scene: 'login', seconds: 120 })
+      assertPasswordVerificationCreateFrequency({ account, scene: 'login', limit: 10 })
     ).resolves.toBeUndefined();
     await expect(
-      assertPasswordVerificationConsumeFrequency({ account, scene: 'login', seconds: 120 })
+      assertPasswordVerificationConsumeFrequency({ account, scene: 'login', limit: 10 })
     ).resolves.toBeUndefined();
   });
 
-  it('uses the configured window for password actions', async () => {
-    await assertPasswordVerificationCreateFrequency({ account, scene: 'login', seconds: 17 });
+  it('uses the configured request limit with a fixed one-minute window', async () => {
+    const params = { account, scene: 'login', limit: 1 } as const;
+
+    await expect(assertPasswordVerificationCreateFrequency(params)).resolves.toBeUndefined();
+    await expect(assertPasswordVerificationCreateFrequency(params)).rejects.toThrow(
+      UserErrEnum.verifyCodeTooFrequently
+    );
 
     const ttl = await getGlobalRedisConnection().ttl(
       `account-verification:password:create:login:${account}`
     );
     expect(ttl).toBeGreaterThan(0);
-    expect(ttl).toBeLessThanOrEqual(17);
+    expect(ttl).toBeLessThanOrEqual(60);
   });
 });

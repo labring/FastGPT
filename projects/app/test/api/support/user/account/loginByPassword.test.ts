@@ -11,6 +11,7 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import type { LoginByPasswordBodyType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { Call } from '@test/utils/request';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 
@@ -121,9 +122,9 @@ describe('loginByPassword API', () => {
       }
     });
 
-    // Empty password passes zod z.string() but won't match any user record
     expect(res.code).toBe(500);
-    expect(res.error).toBe(UserErrEnum.account_psw_error);
+    expect(res.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(res.error.context).toEqual({ inputSource: 'body' });
   });
 
   it('should reject login when auth code verification fails', async () => {
