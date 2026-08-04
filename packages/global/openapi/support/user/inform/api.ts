@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { LanguageSchema } from '../../../../common/i18n/type';
-import { UserAuthTypeEnum } from '../../../../support/user/auth/constants';
+import { VerificationCodeTypeEnum } from '../../../../support/user/account/verification/constants';
 import {
   AccountContactUsernameSchema,
   ShortAuthStringSchema,
@@ -26,34 +26,38 @@ const SendAuthCodeCommonSchema = z
 
 export const SendAuthCodeBodySchema = z.discriminatedUnion('type', [
   SendAuthCodeCommonSchema.extend({
-    type: z.literal(UserAuthTypeEnum.register).meta({
+    type: z.literal(VerificationCodeTypeEnum.register).meta({
       description: '验证码类型',
-      example: UserAuthTypeEnum.register
+      example: VerificationCodeTypeEnum.register
     }),
-    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[UserAuthTypeEnum.register]).meta({
+    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[VerificationCodeTypeEnum.register]).meta({
       description: '验证码业务场景',
       example: 'register'
     })
   }).strict(),
   SendAuthCodeCommonSchema.extend({
-    type: z.literal(UserAuthTypeEnum.findPassword).meta({
+    type: z.literal(VerificationCodeTypeEnum.findPassword).meta({
       description: '验证码类型',
-      example: UserAuthTypeEnum.findPassword
+      example: VerificationCodeTypeEnum.findPassword
     }),
-    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[UserAuthTypeEnum.findPassword]).meta({
-      description: '验证码业务场景',
-      example: 'forgetPassword'
-    })
+    purpose: z
+      .literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[VerificationCodeTypeEnum.findPassword])
+      .meta({
+        description: '验证码业务场景',
+        example: 'forgetPassword'
+      })
   }).strict(),
   SendAuthCodeCommonSchema.extend({
-    type: z.literal(UserAuthTypeEnum.bindNotification).meta({
+    type: z.literal(VerificationCodeTypeEnum.bindNotification).meta({
       description: '验证码类型',
-      example: UserAuthTypeEnum.bindNotification
+      example: VerificationCodeTypeEnum.bindNotification
     }),
-    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[UserAuthTypeEnum.bindNotification]).meta({
-      description: '验证码业务场景',
-      example: 'bindNotification'
-    })
+    purpose: z
+      .literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[VerificationCodeTypeEnum.bindNotification])
+      .meta({
+        description: '验证码业务场景',
+        example: 'bindNotification'
+      })
   }).strict()
 ]);
 export type SendAuthCodeBodyType = z.infer<typeof SendAuthCodeBodySchema>;

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import mongoose from 'mongoose';
+import { CAPTCHA_VERIFICATION_PURPOSES } from '@fastgpt/global/support/user/account/verification/type';
 
 const SOURCE_COLLECTION = 'auth_codes';
 const TARGET_COLLECTION = 'tmp_datas';
@@ -41,12 +42,13 @@ type VerificationRecord = {
 export type LegacyAuthCodeMapping =
   | {
       kind: 'mapped';
-      record: VerificationRecord;
+      records: VerificationRecord[];
     }
   | {
       kind: 'skipped';
       reason:
         | 'unsupported-type'
+        | 'obsolete-prelogin'
         | 'missing-key'
         | 'missing-code'
         | 'missing-openid'
@@ -61,6 +63,7 @@ type MigrationOptions = {
 
 type SkipReason =
   | 'unsupported-type'
+  | 'obsolete-prelogin'
   | 'missing-key'
   | 'missing-code'
   | 'missing-openid'
@@ -86,6 +89,7 @@ const createStats = (): MigrationStats => ({
   duplicateSource: 0,
   skipped: {
     'unsupported-type': 0,
+    'obsolete-prelogin': 0,
     'missing-key': 0,
     'missing-code': 0,
     'missing-openid': 0,
@@ -143,15 +147,20 @@ export const mapLegacyAuthCode = (
     if (!isNonEmptyString(record.code)) {
       return { kind: 'skipped', reason: 'missing-code' };
     }
+    const key = record.key;
 
     return {
       kind: 'mapped',
-      record: {
-        dataId: getDataId({ scene: 'register', type: 'captcha', key: record.key }),
+      records: CAPTCHA_VERIFICATION_PURPOSES.map((scene) => ({
+        dataId: getDataId({ scene, type: 'captcha', key }),
         data: { code: record.code.toLowerCase() },
         expireAt
-      }
+      }))
     };
+  }
+
+  if (record.type === 'login') {
+    return { kind: 'skipped', reason: 'obsolete-prelogin' };
   }
 
   if (record.type === 'wxLogin') {
@@ -161,11 +170,13 @@ export const mapLegacyAuthCode = (
 
     return {
       kind: 'mapped',
-      record: {
-        dataId: getDataId({ scene: 'login', type: 'wechat', key: hashKey(record.key) }),
-        data: { openId: record.openid },
-        expireAt
-      }
+      records: [
+        {
+          dataId: getDataId({ scene: 'login', type: 'wechat', key: hashKey(record.key) }),
+          data: { openId: record.openid },
+          expireAt
+        }
+      ]
     };
   }
 
@@ -173,25 +184,16 @@ export const mapLegacyAuthCode = (
     return { kind: 'skipped', reason: 'missing-code' };
   }
 
-  if (record.type === 'login') {
-    return {
-      kind: 'mapped',
-      record: {
-        dataId: getDataId({ scene: 'login', type: 'password', key: record.key }),
-        data: { preLoginCode: record.code },
-        expireAt
-      }
-    };
-  }
-
   const scene = record.type === 'findPassword' ? 'forgetPassword' : record.type;
   return {
     kind: 'mapped',
-    record: {
-      dataId: getDataId({ scene, type: 'code', key: record.key }),
-      data: { code: record.code },
-      expireAt
-    }
+    records: [
+      {
+        dataId: getDataId({ scene, type: 'code', key: record.key }),
+        data: { code: record.code },
+        expireAt
+      }
+    ]
   };
 };
 
@@ -292,22 +294,24 @@ const run = async ({ dryRun, uri }: MigrationOptions) => {
         continue;
       }
 
-      stats.mapped += 1;
-      if (seenDataIds.has(mapping.record.dataId)) {
-        stats.duplicateSource += 1;
-        continue;
-      }
-      seenDataIds.add(mapping.record.dataId);
+      stats.mapped += mapping.records.length;
+      for (const record of mapping.records) {
+        if (seenDataIds.has(record.dataId)) {
+          stats.duplicateSource += 1;
+          continue;
+        }
+        seenDataIds.add(record.dataId);
 
-      if (dryRun) {
-        stats.wouldInsert += 1;
-        continue;
-      }
+        if (dryRun) {
+          stats.wouldInsert += 1;
+          continue;
+        }
 
-      if (await upsertOnInsert(targetCollection, mapping.record)) {
-        stats.inserted += 1;
-      } else {
-        stats.existing += 1;
+        if (await upsertOnInsert(targetCollection, record)) {
+          stats.inserted += 1;
+        } else {
+          stats.existing += 1;
+        }
       }
     }
 

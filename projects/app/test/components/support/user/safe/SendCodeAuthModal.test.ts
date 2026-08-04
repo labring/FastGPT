@@ -70,13 +70,19 @@ const findElement = (node: ReactNode, type: string): ReactElement => {
   throw new Error(`Unable to find ${type}`);
 };
 
-const renderModal = () =>
+const renderModal = ({
+  onClose = vi.fn(),
+  onSendCode = vi.fn(async () => undefined)
+}: {
+  onClose?: () => void;
+  onSendCode?: (params: { username: string; captcha: string }) => Promise<void>;
+} = {}) =>
   SendCodeAuthModal({
     username: 'user@example.com',
     purpose: 'register',
-    onClose: vi.fn(),
+    onClose,
     onSending: false,
-    onSendCode: vi.fn(async () => undefined)
+    onSendCode
   });
 
 describe('SendCodeAuthModal', () => {
@@ -102,6 +108,18 @@ describe('SendCodeAuthModal', () => {
     expect(mocks.handleSubmit).toHaveBeenCalledTimes(2);
     expect(mocks.handleSubmit.mock.calls[1]).toHaveLength(1);
     expect(mocks.submit).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the current captcha when sending fails', async () => {
+    const onClose = vi.fn();
+    const onSendCode = vi.fn(async () => Promise.reject(new Error('send failed')));
+    renderModal({ onClose, onSendCode });
+    const onSubmit = mocks.handleSubmit.mock.calls[0][0];
+
+    await expect(onSubmit({ code: 'captcha' })).rejects.toThrow('send failed');
+
+    expect(mocks.refreshCaptcha).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it.each([

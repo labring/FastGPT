@@ -11,7 +11,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -43,7 +43,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const username = watch('username');
 
   const { SendCodeBox } = useSendCode({
-    type: UserAuthTypeEnum.findPassword,
+    type: VerificationCodeTypeEnum.findPassword,
     purpose: 'forgetPassword'
   });
 

@@ -50,13 +50,8 @@ const SendCodeAuthModal = ({
   }, [data?.captchaImage, refreshCaptcha]);
 
   const onSubmit = async ({ code }: { code: string }) => {
-    try {
-      await onSendCode({ username, captcha: code });
-      onClose();
-    } catch (error) {
-      refreshCaptcha();
-      throw error;
-    }
+    await onSendCode({ username, captcha: code });
+    onClose();
   };
 
   const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

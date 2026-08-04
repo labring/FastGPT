@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '@/web/support/user/api';
 import { POST } from '@/web/common/api/request';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
 vi.mock('@/web/common/api/request', () => ({
@@ -16,9 +16,9 @@ beforeEach(() => {
 
 describe('user api', () => {
   it.each([
-    [UserAuthTypeEnum.register, 'register'],
-    [UserAuthTypeEnum.findPassword, 'forgetPassword'],
-    [UserAuthTypeEnum.bindNotification, 'bindNotification']
+    [VerificationCodeTypeEnum.register, 'register'],
+    [VerificationCodeTypeEnum.findPassword, 'forgetPassword'],
+    [VerificationCodeTypeEnum.bindNotification, 'bindNotification']
   ] as const)('should send %s auth code through the shared endpoint', async (type, purpose) => {
     const data = {
       username: 'test@test.com',

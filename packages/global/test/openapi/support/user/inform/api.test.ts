@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 import { SendAuthCodeBodySchema } from '@fastgpt/global/openapi/support/user/inform/api';
 
 const common = {
@@ -10,9 +10,9 @@ const common = {
 
 describe('SendAuthCodeBodySchema', () => {
   it.each([
-    [UserAuthTypeEnum.register, 'register'],
-    [UserAuthTypeEnum.findPassword, 'forgetPassword'],
-    [UserAuthTypeEnum.bindNotification, 'bindNotification']
+    [VerificationCodeTypeEnum.register, 'register'],
+    [VerificationCodeTypeEnum.findPassword, 'forgetPassword'],
+    [VerificationCodeTypeEnum.bindNotification, 'bindNotification']
   ] as const)('accepts the purpose assigned to %s', (type, purpose) => {
     expect(SendAuthCodeBodySchema.parse({ ...common, type, purpose })).toMatchObject({
       type,
@@ -21,10 +21,10 @@ describe('SendAuthCodeBodySchema', () => {
   });
 
   it.each([
-    [UserAuthTypeEnum.register, 'forgetPassword'],
-    [UserAuthTypeEnum.findPassword, 'register'],
-    [UserAuthTypeEnum.bindNotification, 'login'],
-    [UserAuthTypeEnum.register, 'arbitrary-purpose']
+    [VerificationCodeTypeEnum.register, 'forgetPassword'],
+    [VerificationCodeTypeEnum.findPassword, 'register'],
+    [VerificationCodeTypeEnum.bindNotification, 'login'],
+    [VerificationCodeTypeEnum.register, 'arbitrary-purpose']
   ] as const)('rejects %s with an invalid purpose %s', (type, purpose) => {
     expect(() => SendAuthCodeBodySchema.parse({ ...common, type, purpose })).toThrow();
   });
@@ -33,7 +33,7 @@ describe('SendAuthCodeBodySchema', () => {
     expect(() =>
       SendAuthCodeBodySchema.parse({
         ...common,
-        type: UserAuthTypeEnum.login,
+        type: 'login',
         purpose: 'login'
       })
     ).toThrow();
@@ -44,7 +44,7 @@ describe('SendAuthCodeBodySchema', () => {
       SendAuthCodeBodySchema.parse({
         ...common,
         captcha: '  A1B2C3  ',
-        type: UserAuthTypeEnum.register,
+        type: VerificationCodeTypeEnum.register,
         purpose: 'register'
       }).captcha
     ).toBe('A1B2C3');
@@ -52,7 +52,7 @@ describe('SendAuthCodeBodySchema', () => {
       SendAuthCodeBodySchema.parse({
         ...common,
         captcha: 'a'.repeat(65),
-        type: UserAuthTypeEnum.register,
+        type: VerificationCodeTypeEnum.register,
         purpose: 'register'
       })
     ).toThrow();
@@ -63,7 +63,7 @@ describe('SendAuthCodeBodySchema', () => {
       SendAuthCodeBodySchema.parse({
         ...common,
         captcha: '   ',
-        type: UserAuthTypeEnum.register,
+        type: VerificationCodeTypeEnum.register,
         purpose: 'register'
       })
     ).toThrow();

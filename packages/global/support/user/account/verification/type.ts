@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserAuthTypeEnum } from '../../auth/constants';
+import { VerificationCodeTypeEnum } from './constants';
 
 export const ACCOUNT_VERIFICATION_PURPOSES = [
   'login',
@@ -75,9 +75,9 @@ export type VerificationMaterialMatch<T extends VerificationType> = Partial<{
 }>;
 
 export const VERIFICATION_CODE_TYPES = [
-  UserAuthTypeEnum.register,
-  UserAuthTypeEnum.findPassword,
-  UserAuthTypeEnum.bindNotification
+  VerificationCodeTypeEnum.register,
+  VerificationCodeTypeEnum.findPassword,
+  VerificationCodeTypeEnum.bindNotification
 ] as const;
 export const VerificationCodeTypeSchema = z.enum(VERIFICATION_CODE_TYPES);
 export type VerificationCodeType = z.infer<typeof VerificationCodeTypeSchema>;
@@ -89,9 +89,9 @@ export type CodeVerificationPurpose = z.infer<typeof CodeVerificationPurposeSche
 
 /** Each public code template has exactly one account-verification purpose. */
 export const VERIFICATION_CODE_PURPOSES_BY_TYPE = {
-  [UserAuthTypeEnum.register]: 'register',
-  [UserAuthTypeEnum.findPassword]: 'forgetPassword',
-  [UserAuthTypeEnum.bindNotification]: 'bindNotification'
+  [VerificationCodeTypeEnum.register]: 'register',
+  [VerificationCodeTypeEnum.findPassword]: 'forgetPassword',
+  [VerificationCodeTypeEnum.bindNotification]: 'bindNotification'
 } as const satisfies Record<VerificationCodeType, CodeVerificationPurpose>;
 
 /** Backwards-compatible singular alias for callers that use the map as a lookup. */

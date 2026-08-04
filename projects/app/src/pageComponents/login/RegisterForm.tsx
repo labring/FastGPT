@@ -19,7 +19,7 @@ import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getRegisterMethods } from '@/web/common/system/utils';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -52,7 +52,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const username = watch('username');
 
   const { SendCodeBox, openCodeAuthModal } = useSendCode({
-    type: UserAuthTypeEnum.register,
+    type: VerificationCodeTypeEnum.register,
     purpose: 'register'
   });
 

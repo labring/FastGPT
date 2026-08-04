@@ -9,7 +9,7 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 
 type FormType = {
   contact: string;
@@ -63,7 +63,7 @@ const UpdateContactModal = ({
   );
 
   const { SendCodeBox } = useSendCode({
-    type: UserAuthTypeEnum.bindNotification,
+    type: VerificationCodeTypeEnum.bindNotification,
     purpose: 'bindNotification'
   });
 
