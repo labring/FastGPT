@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, HStack, ModalBody, ModalFooter, VStack, Flex, Link } from '@chakra-ui/react';
+import { Box, Button, HStack, VStack, Flex, Link } from '@chakra-ui/react';
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -63,96 +63,93 @@ const TemplateImportModal = ({
 
   return (
     <MyModal
-      iconSrc="common/layer"
-      iconColor={'primary.600'}
       title={t('dataset:template_dataset')}
       isOpen
-      w={'500px'}
-      h={'auto'}
-    >
-      <ModalBody py={6} px={8}>
-        <VStack spacing={3} alignItems="stretch">
-          <Flex justify={'space-between'} align={'center'} fontSize={'sm'} fontWeight={500}>
-            <Box color={'myGray.900'}>{t('dataset:upload_by_template_format')}</Box>
-            <Link
-              display={'flex'}
-              alignItems={'center'}
-              gap={0.5}
-              href={getDocPath('/guide/dataset/template')}
-              color="primary.600"
-              target="_blank"
-            >
-              <MyIcon name={'book'} w={'18px'} />
-              {t('common:Instructions')}
-            </Link>
-          </Flex>
-
-          <Button
-            variant="whiteBase"
-            w={'100%'}
-            h={'48px'}
-            leftIcon={<MyIcon name={'common/download'} w={'18px'} />}
-            onClick={handleDownloadTemplate}
-          >
-            {t('dataset:download_csv_template')}
+      size="md"
+      footer={
+        <>
+          <Button isLoading={isImporting} variant="whiteBase" onClick={onClose}>
+            {t('common:Close')}
           </Button>
+          <Button onClick={onImport} isDisabled={selectFiles.length === 0 || isImporting}>
+            {isImporting
+              ? percent === 100
+                ? t('dataset:data_parsing')
+                : t('dataset:data_uploading', { num: percent })
+              : t('common:comfirm_import')}
+          </Button>
+        </>
+      }
+    >
+      <VStack spacing={3} alignItems="stretch">
+        <Flex justify={'space-between'} align={'center'} fontSize={'sm'} fontWeight={500}>
+          <Box color={'myGray.900'}>{t('dataset:upload_by_template_format')}</Box>
+          <Link
+            display={'flex'}
+            alignItems={'center'}
+            gap={0.5}
+            href={getDocPath('/guide/dataset/template')}
+            color="primary.600"
+            target="_blank"
+          >
+            <MyIcon name={'book'} w={'18px'} />
+            {t('common:Instructions')}
+          </Link>
+        </Flex>
 
-          <FileSelector
-            maxCount={1}
-            fileType=".csv,.xlsx"
-            selectFiles={selectFiles}
-            setSelectFiles={setSelectFiles}
-            FileTypeNode={
-              <Box fontSize={'xs'}>
-                <Trans
-                  i18nKey={i18nT('file:template_csv_file_select_tip')}
-                  values={{
-                    fileType: '.csv, .xlsx'
-                  }}
-                  components={{
-                    highlight: <Box as="span" color="primary.600" fontWeight="medium" />
+        <Button
+          variant="whiteBase"
+          w={'100%'}
+          h={'48px'}
+          leftIcon={<MyIcon name={'common/download'} w={'18px'} />}
+          onClick={handleDownloadTemplate}
+        >
+          {t('dataset:download_csv_template')}
+        </Button>
+
+        <FileSelector
+          maxCount={1}
+          fileType=".csv,.xlsx"
+          selectFiles={selectFiles}
+          setSelectFiles={setSelectFiles}
+          FileTypeNode={
+            <Box fontSize={'xs'}>
+              <Trans
+                i18nKey={i18nT('file:template_csv_file_select_tip')}
+                values={{
+                  fileType: '.csv, .xlsx'
+                }}
+                components={{
+                  highlight: <Box as="span" color="primary.600" fontWeight="medium" />
+                }}
+              />
+            </Box>
+          }
+        />
+
+        {/* File render */}
+        {selectFiles.length > 0 && (
+          <VStack gap={2}>
+            {selectFiles.map((item, index) => (
+              <HStack key={index} w={'100%'}>
+                <MyIcon name={item.icon as any} w={'1rem'} />
+                <Box color={'myGray.900'}>{item.name}</Box>
+                <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
+                  {item.size}
+                </Box>
+                <MyIconButton
+                  icon="delete"
+                  hoverColor="red.500"
+                  hoverBg="red.50"
+                  onClick={() => {
+                    setSelectFiles(selectFiles.filter((_, i) => i !== index));
                   }}
                 />
-              </Box>
-            }
-          />
-
-          {/* File render */}
-          {selectFiles.length > 0 && (
-            <VStack gap={2}>
-              {selectFiles.map((item, index) => (
-                <HStack key={index} w={'100%'}>
-                  <MyIcon name={item.icon as any} w={'1rem'} />
-                  <Box color={'myGray.900'}>{item.name}</Box>
-                  <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
-                    {item.size}
-                  </Box>
-                  <MyIconButton
-                    icon="delete"
-                    hoverColor="red.500"
-                    hoverBg="red.50"
-                    onClick={() => {
-                      setSelectFiles(selectFiles.filter((_, i) => i !== index));
-                    }}
-                  />
-                </HStack>
-              ))}
-            </VStack>
-          )}
-        </VStack>
-      </ModalBody>
-      <ModalFooter>
-        <Button isLoading={isImporting} variant="whiteBase" mr={2} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-        <Button onClick={onImport} isDisabled={selectFiles.length === 0 || isImporting}>
-          {isImporting
-            ? percent === 100
-              ? t('dataset:data_parsing')
-              : t('dataset:data_uploading', { num: percent })
-            : t('common:comfirm_import')}
-        </Button>
-      </ModalFooter>
+              </HStack>
+            ))}
+          </VStack>
+        )}
+      </VStack>
     </MyModal>
   );
 };

@@ -115,7 +115,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
 3. App Workflow 在 Sandbox Provider 或运行时镜像变化时自动归档并恢复 Workspace，升级过程在当前运行中静默完成。
 4. 工作流工具节点支持将指定输入参数交由 Agent 自动生成，并保留固定值、引用和用户输入等既有配置。
 5. ChatAgent 选择工具时，支持手动指定是否为 AI 生成参数。
-6. 知识库数据支持自定义 `metadata`，可通过 API、CSV 或 Excel 模板导入 JSON 元数据；检索结果和备份导出会保留该字段。CSV 和 Excel 模板使用 `q`、`a`、`index`、`metadata` 表头，`q`、`a`、`metadata` 各一列，`index` 可多列且顺序任意；Excel 仅支持单个工作表且不能包含合并单元格。模板导入和备份导入同时兼容旧版 `q`、`a`、`indexes` 表头。
+6. 知识库数据支持自定义 `metadata`，可通过 API、CSV 或 Excel 模板导入 JSON 元数据；检索结果和备份导出会保留该字段。模板导入和备份导入均支持 `.csv` 和 `.xlsx` 文件，使用 `q`、`a`、`index`、`metadata` 表头；`q`、`a`、`metadata` 各一列，`index` 可多列且顺序任意。Excel 文件仅支持单个工作表且不能包含合并单元格，无法正确解析的 CSV 或 Excel 文件会提示文件格式异常。
 7. 大文件分块上传。
 8. 管理员配置系统工具密钥时，加密（兼容已配置的密钥）。
 
