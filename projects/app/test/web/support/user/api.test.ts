@@ -137,6 +137,9 @@ describe('user api', () => {
       code: 'code123'
     };
     await api.getWXLoginResult(params);
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/account/login/wx/getResult', params, {
+      maxQuantity: 1
+    });
   });
 
   it('should get captcha pic', async () => {

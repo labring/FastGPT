@@ -38,4 +38,23 @@ describe('SendAuthCodeBodySchema', () => {
       })
     ).toThrow();
   });
+
+  it('trims captcha input and keeps its stricter 64-character limit', () => {
+    expect(
+      SendAuthCodeBodySchema.parse({
+        ...common,
+        captcha: '  A1B2C3  ',
+        type: UserAuthTypeEnum.register,
+        purpose: 'register'
+      }).captcha
+    ).toBe('A1B2C3');
+    expect(() =>
+      SendAuthCodeBodySchema.parse({
+        ...common,
+        captcha: 'a'.repeat(65),
+        type: UserAuthTypeEnum.register,
+        purpose: 'register'
+      })
+    ).toThrow();
+  });
 });

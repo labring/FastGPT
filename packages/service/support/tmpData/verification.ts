@@ -1,6 +1,6 @@
 import { MongoTmpData } from './schema';
 import type { ClientSession } from '../../common/mongo';
-import { mongoSessionRunWithDriverRetry } from '../../common/mongo/sessionRun';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import {
   VerificationTtlSeconds,
   type AccountVerificationPurpose,
@@ -180,7 +180,7 @@ export const verification = {
     params: VerificationConsumeParams<T>,
     handler: (context: VerificationConsumeContext<T>) => Promise<R>
   ): Promise<R> => {
-    return mongoSessionRunWithDriverRetry(async (session) => {
+    return mongoSessionRun(async (session) => {
       const record = await findActiveRecord(params, session);
       if (!record) {
         throw new VerificationMaterialError();

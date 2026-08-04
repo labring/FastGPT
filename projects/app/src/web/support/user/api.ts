@@ -56,7 +56,9 @@ export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponseType>('/proApi/support/user/account/login/wx/getQR');
 
 export const getWXLoginResult = (params: WxLoginBodyType) =>
-  POST<WxLoginResultResponseType>(`/proApi/support/user/account/login/wx/getResult`, params);
+  POST<WxLoginResultResponseType>(`/proApi/support/user/account/login/wx/getResult`, params, {
+    maxQuantity: 1
+  });
 export const loginOut = () => GET('/support/user/account/loginout');
 
 /* ===== register ===== */

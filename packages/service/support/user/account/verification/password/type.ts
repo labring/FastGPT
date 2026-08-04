@@ -38,6 +38,10 @@ export type PasswordVerificationHandler<T> = (params: {
 
 export type PasswordVerificationDependencies = {
   generateCode: (length: number) => string;
+  assertCreateFrequency: (params: {
+    account: string;
+    scene: PasswordVerificationPurpose;
+  }) => Promise<unknown>;
   assertConsumeFrequency: (params: {
     account: string;
     scene: PasswordVerificationPurpose;

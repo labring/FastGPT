@@ -50,8 +50,13 @@ const SendCodeAuthModal = ({
   }, [data?.captchaImage, refreshCaptcha]);
 
   const onSubmit = async ({ code }: { code: string }) => {
-    await onSendCode({ username, captcha: code });
-    onClose();
+    try {
+      await onSendCode({ username, captcha: code });
+      onClose();
+    } catch (error) {
+      refreshCaptcha();
+      throw error;
+    }
   };
 
   const onError = (err: any) => {

@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { CaptchaVerificationPurposeSchema } from '../../../../../support/user/account/verification/type';
+import {
+  CaptchaVerificationPurposeSchema,
+  PublicAuthStringSchema
+} from '../../../../../support/user/account/verification/type';
 
 /* ============================================================================
  * API: 获取图片验证码
@@ -10,7 +13,7 @@ import { CaptchaVerificationPurposeSchema } from '../../../../../support/user/ac
  * ============================================================================ */
 
 export const GetImgCaptchaQuerySchema = z.object({
-  username: z.string().meta({
+  username: PublicAuthStringSchema.meta({
     example: 'user@example.com',
     description: '待验证的账号'
   }),

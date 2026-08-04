@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 import { VerificationTtlSeconds } from '@fastgpt/global/support/user/account/verification/type';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
-import { getDataId, verification } from '@fastgpt/service/support/tmpData/verification';
+import {
+  getDataId,
+  verification,
+  VerificationMaterialError
+} from '@fastgpt/service/support/tmpData/verification';
 
 describe('tmp data verification wrapper', () => {
   beforeEach(async () => {
@@ -207,6 +211,35 @@ describe('tmp data verification wrapper', () => {
         dataId: getDataId({ scene: 'login', type: 'oauth', key })
       }).lean()
     ).resolves.toBeNull();
+  });
+
+  it('rejects expired material that is still waiting for TTL cleanup', async () => {
+    const key = 'expired-transaction-material';
+    const dataId = getDataId({ scene: 'login', type: 'oauth', key });
+    const handler = vi.fn();
+
+    await verification.upsert({
+      scene: 'login',
+      type: 'oauth',
+      key,
+      data: { provider: 'github', state: 'expired-state' },
+      ttlPreset: 'medium'
+    });
+    await MongoTmpData.updateOne({ dataId }, { $set: { expireAt: new Date(Date.now() - 1000) } });
+
+    await expect(
+      verification.consumeInTransaction(
+        {
+          scene: 'login',
+          type: 'oauth',
+          key,
+          match: { state: 'expired-state' }
+        },
+        handler
+      )
+    ).rejects.toBeInstanceOf(VerificationMaterialError);
+    expect(handler).not.toHaveBeenCalled();
+    await expect(MongoTmpData.countDocuments({ dataId })).resolves.toBe(1);
   });
 
   it('rolls back both business writes and material consumption when the callback fails', async () => {

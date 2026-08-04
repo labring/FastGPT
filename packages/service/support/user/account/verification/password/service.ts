@@ -3,7 +3,11 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { verification, VerificationMaterialError } from '../../../../tmpData/verification';
 import { MongoUser } from '../../../schema';
-import { assertCodeVerificationConsumeFrequency } from '../utils';
+import { serviceEnv } from '../../../../../env';
+import {
+  assertPasswordVerificationConsumeFrequency,
+  assertPasswordVerificationCreateFrequency
+} from '../utils';
 import type {
   IssuePreLoginCodeParams,
   IssuePreLoginCodeResult,
@@ -14,7 +18,18 @@ import type {
 
 const defaultDependencies: PasswordVerificationDependencies = {
   generateCode: getNanoid,
-  assertConsumeFrequency: assertCodeVerificationConsumeFrequency,
+  assertCreateFrequency: ({ account, scene }) =>
+    assertPasswordVerificationCreateFrequency({
+      account,
+      scene,
+      seconds: serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS
+    }),
+  assertConsumeFrequency: ({ account, scene }) =>
+    assertPasswordVerificationConsumeFrequency({
+      account,
+      scene,
+      seconds: serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS
+    }),
   savePreLoginCode: ({ purpose, username, code, ttlPreset }) =>
     verification.upsert({
       scene: purpose,
@@ -49,6 +64,8 @@ export class PasswordVerificationService {
     username,
     purpose
   }: IssuePreLoginCodeParams): Promise<IssuePreLoginCodeResult> {
+    await this.dependencies.assertCreateFrequency({ account: username, scene: purpose });
+
     const code = this.dependencies.generateCode(6);
 
     await this.dependencies.savePreLoginCode({

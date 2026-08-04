@@ -17,6 +17,7 @@ const createDependencies = (
   overrides: Partial<PasswordVerificationDependencies> = {}
 ): PasswordVerificationDependencies => ({
   generateCode: vi.fn(() => 'ABC123'),
+  assertCreateFrequency: vi.fn(async () => undefined),
   assertConsumeFrequency: vi.fn(async () => undefined),
   savePreLoginCode: vi.fn(async () => undefined),
   findUserByCredentials: vi.fn(async () => null),
@@ -44,6 +45,24 @@ describe('PasswordVerificationService.issuePreLoginCode', () => {
       purpose: 'login',
       ttlPreset: 'short'
     });
+    expect(dependencies.assertCreateFrequency).toHaveBeenCalledWith({
+      account: 'test@example.com',
+      scene: 'login'
+    });
+    expect(dependencies.assertConsumeFrequency).not.toHaveBeenCalled();
+  });
+
+  it('does not generate or replace pre-login material after the account limit rejects', async () => {
+    const dependencies = createDependencies({
+      assertCreateFrequency: vi.fn(async () => Promise.reject(new Error('rate limited')))
+    });
+    const service = new PasswordVerificationService(dependencies);
+
+    await expect(
+      service.issuePreLoginCode({ username: 'test@example.com', purpose: 'login' })
+    ).rejects.toThrow('rate limited');
+    expect(dependencies.generateCode).not.toHaveBeenCalled();
+    expect(dependencies.savePreLoginCode).not.toHaveBeenCalled();
   });
 });
 
@@ -84,6 +103,65 @@ describe('PasswordVerificationService default adapters', () => {
 });
 
 describe('PasswordVerificationService.withVerifiedCredentials', () => {
+  it('checks the account limit once before reading the login material', async () => {
+    const calls: string[] = [];
+    const dependencies = createDependencies({
+      assertConsumeFrequency: vi.fn(async () => {
+        calls.push('limit');
+      }),
+      consumeInTransaction: vi.fn(async (_params, handler) => {
+        calls.push('consume');
+        return handler({
+          material: { preLoginCode: 'ABC123' },
+          session: undefined as unknown as ClientSession
+        });
+      }),
+      findUserByCredentials: vi.fn(async () => {
+        calls.push('password');
+        return { _id: 'user-id' } as unknown as PasswordVerificationUser;
+      })
+    });
+    const service = new PasswordVerificationService(dependencies);
+
+    await service.withVerifiedCredentials(
+      {
+        username: 'test@example.com',
+        password: 'hashed-password',
+        code: 'ABC123',
+        purpose: 'login'
+      },
+      async () => 'completed'
+    );
+
+    expect(calls).toEqual(['limit', 'consume', 'password']);
+    expect(dependencies.assertConsumeFrequency).toHaveBeenCalledTimes(1);
+    expect(dependencies.assertConsumeFrequency).toHaveBeenCalledWith({
+      account: 'test@example.com',
+      scene: 'login'
+    });
+  });
+
+  it('does not read or consume login material after the account limit rejects', async () => {
+    const dependencies = createDependencies({
+      assertConsumeFrequency: vi.fn(async () => Promise.reject(new Error('rate limited')))
+    });
+    const service = new PasswordVerificationService(dependencies);
+
+    await expect(
+      service.withVerifiedCredentials(
+        {
+          username: 'test@example.com',
+          password: 'hashed-password',
+          code: 'ABC123',
+          purpose: 'login'
+        },
+        async () => 'unreachable'
+      )
+    ).rejects.toThrow('rate limited');
+    expect(dependencies.consumeInTransaction).not.toHaveBeenCalled();
+    expect(dependencies.findUserByCredentials).not.toHaveBeenCalled();
+  });
+
   it('passes the matched user and transaction session to the business callback', async () => {
     const user = { _id: 'user-id' } as unknown as PasswordVerificationUser;
     const session = {} as ClientSession;

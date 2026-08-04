@@ -122,8 +122,10 @@ export type PasswordVerificationPurpose = z.infer<typeof PasswordVerificationPur
 export const WechatPurposeSchema = AccountVerificationPurposeSchema.extract(['login']);
 export type WechatPurpose = z.infer<typeof WechatPurposeSchema>;
 
-export const AccountEmailUsernameSchema = z.email().max(254);
-export const AccountPhoneUsernameSchema = z.string().regex(/^1[3456789]\d{9}$/);
+export const PublicAuthStringSchema = z.string().trim().max(100);
+
+export const AccountEmailUsernameSchema = PublicAuthStringSchema.pipe(z.email());
+export const AccountPhoneUsernameSchema = PublicAuthStringSchema.regex(/^1[3456789]\d{9}$/);
 export const AccountContactUsernameSchema = z.union([
   AccountEmailUsernameSchema,
   AccountPhoneUsernameSchema

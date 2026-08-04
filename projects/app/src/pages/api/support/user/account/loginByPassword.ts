@@ -1,11 +1,9 @@
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { serviceEnv } from '@fastgpt/service/env';
 import { passwordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
 import { createUserSession } from '@fastgpt/service/support/user/session';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
@@ -106,8 +104,4 @@ async function handler(
   };
 }
 
-const lockTime = serviceEnv.PASSWORD_LOGIN_LOCK_SECONDS;
-export default NextAPI(
-  useIPFrequencyLimit({ id: 'login-by-password', seconds: lockTime, limit: 10, force: true }),
-  handler
-);
+export default NextAPI(handler);

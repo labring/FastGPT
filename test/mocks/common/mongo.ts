@@ -77,7 +77,6 @@ vi.mock(import('@fastgpt/service/common/mongo/sessionRun'), async () => {
   };
 
   return {
-    mongoSessionRun: vi.fn(runWithoutTransaction),
-    mongoSessionRunWithDriverRetry: vi.fn(runWithoutTransaction)
+    mongoSessionRun: vi.fn(runWithoutTransaction)
   };
 });

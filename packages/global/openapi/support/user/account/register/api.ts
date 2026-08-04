@@ -1,13 +1,16 @@
-import { z } from 'zod';
-import { TrackRegisterParamsSchema } from '../../../../../support/marketing/type';
+import type { z } from 'zod';
 import { LanguageSchema } from '../../../../../common/i18n/type';
-import { AccountContactUsernameSchema } from '../../../../../support/user/account/verification/type';
+import {
+  AccountContactUsernameSchema,
+  PublicAuthStringSchema
+} from '../../../../../support/user/account/verification/type';
+import { PublicAuthTrackRegisterParamsSchema } from '../common';
 
 // ===== Register by email or phone =====
-export const AccountRegisterBodySchema = TrackRegisterParamsSchema.extend({
+export const AccountRegisterBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
   username: AccountContactUsernameSchema.meta({ description: '用户名（邮箱或手机号）' }),
-  code: z.string().meta({ description: '验证码' }),
-  password: z.string().meta({ description: '密码（已加密）' }),
+  code: PublicAuthStringSchema.meta({ description: '验证码' }),
+  password: PublicAuthStringSchema.meta({ description: '密码（已加密）' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 

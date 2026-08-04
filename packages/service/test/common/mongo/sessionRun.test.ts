@@ -1,19 +1,18 @@
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { mongoSessionRunWithDriverRetry } from '@fastgpt/service/common/mongo/sessionRun';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const createSession = () =>
   ({
-    transaction: { isCommitted: false },
     withTransaction: vi.fn(),
     endSession: vi.fn(async () => undefined),
     commitTransaction: vi.fn()
   }) as unknown as ClientSession;
 
-describe('mongoSessionRunWithDriverRetry', () => {
+describe('mongoSessionRun', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -25,7 +24,7 @@ describe('mongoSessionRunWithDriverRetry', () => {
     session.withTransaction = vi.fn(async (callback) => callback());
     vi.spyOn(connectionMongo, 'startSession').mockResolvedValue(session);
 
-    await expect(mongoSessionRunWithDriverRetry(handler)).rejects.toBe(businessError);
+    await expect(mongoSessionRun(handler)).rejects.toBe(businessError);
     expect(handler).toHaveBeenCalledTimes(1);
     expect(session.withTransaction).toHaveBeenCalledWith(expect.any(Function), {
       maxCommitTimeMS: 60000
@@ -64,7 +63,7 @@ describe('mongoSessionRunWithDriverRetry', () => {
     });
     vi.spyOn(connectionMongo, 'startSession').mockResolvedValue(session);
 
-    await expect(mongoSessionRunWithDriverRetry(handler)).resolves.toBe('completed');
+    await expect(mongoSessionRun(handler)).resolves.toBe('completed');
     expect(handler).toHaveBeenCalledTimes(1);
     expect(session.commitTransaction).toHaveBeenCalledTimes(2);
   });

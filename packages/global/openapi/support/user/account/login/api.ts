@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { OAuthEnum } from '../../../../../support/user/constant';
-import { TrackRegisterParamsSchema } from '../../../../../support/marketing/type';
 import { LanguageSchema } from '../../../../../common/i18n/type';
 import { UserSchema } from '../../../../../support/user/type';
 import { TeamTmbItemSchema } from '../../../../../support/user/team/type';
+import { PublicAuthStringSchema } from '../../../../../support/user/account/verification/type';
+import { PublicAuthTrackRegisterParamsSchema } from '../common';
 
 const OpenAPITeamTmbItemSchema = TeamTmbItemSchema.omit({
   permission: true
@@ -51,7 +52,7 @@ export type WxLoginResultResponseType = z.infer<typeof WxLoginResultResponseSche
 
 // ===== Pre login - get login verification code =====
 export const PreLoginQuerySchema = z.object({
-  username: z.string().meta({
+  username: PublicAuthStringSchema.meta({
     example: 'admin',
     description: '用户名'
   })
@@ -73,16 +74,16 @@ export const PreLoginResponseSchema = z
 export type PreLoginResponseType = z.infer<typeof PreLoginResponseSchema>;
 
 // ===== Login by password =====
-export const LoginByPasswordBodySchema = TrackRegisterParamsSchema.extend({
-  username: z.string().meta({
+export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
+  username: PublicAuthStringSchema.meta({
     example: 'admin',
     description: '用户名'
   }),
-  password: z.string().meta({
+  password: PublicAuthStringSchema.meta({
     example: 'hashed_password',
     description: '密码'
   }),
-  code: z.string().meta({
+  code: PublicAuthStringSchema.meta({
     example: '123456',
     description: '预登录验证码'
   }),
@@ -102,8 +103,8 @@ export type LoginByPasswordBodyType = z.infer<typeof LoginByPasswordBodySchema>;
 
 /* ===== Wecom Login ===== */
 export const WecomGetRedirectURLBodySchema = z.object({
-  redirectUri: z.string(),
-  state: z.string(),
+  redirectUri: PublicAuthStringSchema,
+  state: PublicAuthStringSchema,
   isWecomWorkTerminal: z.boolean()
 });
 export const WecomGetRedirectURLResponseSchema = z.string();
@@ -111,25 +112,25 @@ export type WecomGetRedirectURLBodyType = z.infer<typeof WecomGetRedirectURLBody
 export type WecomGetRedirectURLResponseType = z.infer<typeof WecomGetRedirectURLResponseSchema>;
 
 // ===== OAuth Login =====
-export const OauthLoginBodySchema = TrackRegisterParamsSchema.extend({
+export const OauthLoginBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
   type: z.enum(OAuthEnum).meta({ description: 'OAuth 登录类型' }),
-  callbackUrl: z.string().meta({ description: '回调 URL' }),
-  props: z.record(z.string(), z.string()).meta({ description: '附加属性' }),
+  callbackUrl: PublicAuthStringSchema.meta({ description: '回调 URL' }),
+  props: z.record(PublicAuthStringSchema, PublicAuthStringSchema).meta({ description: '附加属性' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 export type OauthLoginBodyType = z.infer<typeof OauthLoginBodySchema>;
 
 // ===== Fast Login =====
-export const FastLoginBodySchema = TrackRegisterParamsSchema.extend({
-  token: z.string().meta({ description: 'Token' }),
-  code: z.string().meta({ description: 'Code' }),
+export const FastLoginBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
+  token: PublicAuthStringSchema.meta({ description: 'Token' }),
+  code: PublicAuthStringSchema.meta({ description: 'Code' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 export type FastLoginBodyType = z.infer<typeof FastLoginBodySchema>;
 
 // ===== WeChat Login Result =====
-export const WxLoginBodySchema = TrackRegisterParamsSchema.extend({
-  code: z.string().meta({ description: '微信登录 Code' }),
+export const WxLoginBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
+  code: PublicAuthStringSchema.meta({ description: '微信登录 Code' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 export type WxLoginBodyType = z.infer<typeof WxLoginBodySchema>;
