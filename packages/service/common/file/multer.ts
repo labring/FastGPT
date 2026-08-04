@@ -4,7 +4,7 @@ import m from 'multer';
 import type { NodeHttpRequest } from '../../types/http';
 import path from 'path';
 import fs from 'node:fs';
-import { normalizeAllowedExtensions, normalizeFileExtension } from '../s3/utils/uploadConstraints';
+import { normalizeAllowedExtensions, normalizeFileExtension } from '../s3/utils/extension';
 
 type MulterFileFilterOptions = {
   allowedExtensions?: string[];
