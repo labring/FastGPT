@@ -46,6 +46,7 @@ import { MongoChat } from '../../../core/chat/chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from '../../../core/chat/source';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoChatItem } from '../../../core/chat/chatItemSchema';
+import { assertAccountUsable } from '../../user/account/cancellation/guard';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
 
@@ -117,6 +118,17 @@ const DEFAULT_REPLY = 'This is default reply';
 
 export const STREAM_END_FLAG = OUTLINK_STREAM_END_FLAG;
 
+/** 分享链接没有用户 Session，使用发布链接绑定的 tmb/team 作为业务执行身份。 */
+export const assertOutLinkTeamUsable = async ({
+  teamId,
+  tmbId
+}: {
+  teamId: string;
+  tmbId: string;
+}) => {
+  await assertAccountUsable({ teamId, tmbId });
+};
+
 export async function outlinkInvokeChat<T extends OutlinkAppType>({
   outLinkConfig,
   chatId,
@@ -127,6 +139,10 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   onStreamChunk,
   streamId
 }: outLinkInvokeChatProps<T>) {
+  await assertOutLinkTeamUsable({
+    teamId: String(outLinkConfig.teamId),
+    tmbId: String(outLinkConfig.tmbId)
+  });
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: '',
