@@ -35,7 +35,8 @@ export enum TeamErrEnum {
   invitationLinkInvalid = 'invitationLinkInvalid',
   youHaveBeenInTheTeam = 'youHaveBeenInTheTeam',
   tooManyInvitations = 'tooManyInvitations',
-  unPermission = 'unPermission'
+  unPermission = 'unPermission',
+  accountCancellationPending = 'accountCancellationPending'
 }
 
 const teamErr = [
@@ -46,6 +47,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.unPermission,
     message: i18nT('common:error_un_permission')
+  },
+  {
+    statusText: TeamErrEnum.accountCancellationPending,
+    message: i18nT('common:code_error.team_error.account_cancellation_pending')
   },
   {
     statusText: TeamErrEnum.teamOverSize,
