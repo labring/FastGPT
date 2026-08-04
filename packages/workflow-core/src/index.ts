@@ -1,5 +1,6 @@
 export * from './command/apply';
 export * from './command/applyChangeSet';
+export * from './command/mergeChangeSet';
 export * from './command/type';
 export * from './code/io';
 export * from './binding/service';
@@ -18,6 +19,9 @@ export * from './node/add';
 export * from './io/service';
 export * from './nesting/service';
 export * from './config/service';
+export * from './config/automationMeta';
+export * from './config/descriptor';
+export * from './config/type';
 export * from './store/compile';
 export * from './store/decompile';
 export * from './template/automationMeta';

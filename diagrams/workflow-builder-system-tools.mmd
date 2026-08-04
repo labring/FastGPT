@@ -1,0 +1,26 @@
+graph LR
+  U[用户 / 工作流生成对话] --> H[Builder Handler]
+  H --> A[authApp：登录 + 应用写权限]
+  A --> R[WorkflowBuilder Runner]
+  R --> G[CLI Gateway]
+
+  G --> Q[workflow_cli_query]
+  Q --> C[系统工具能力服务]
+  C --> S[SystemToolRepo + 插件服务 + Mongo 配置]
+  S --> F[权限过滤：来源 / 状态 / hideTags / 团队]
+  F --> K[授权工具快照：schema + 节点信息]
+  K --> P[WorkflowTemplateProvider]
+  P --> CORE[Workflow Core：解析 / 实例化 / 校验]
+  CORE --> D[WorkflowDocument]
+
+  G --> ST[workflow_cli_stage：草稿分块]
+  ST --> DR[私有 Draft]
+  DR --> V[Draft validate：计划 + 引用校验]
+  V --> CM[workflow_cli_commit：draftRevision]
+  CM --> RE[提交前重检：快照版本 / 工具状态 / 可访问性]
+  RE --> AP[原子应用到画布]
+  D --> AP
+
+  AP --> RT[现有工作流运行时]
+  RT --> RR[SystemToolRepo Runtime]
+  RR --> X[pluginClient.runToolStream]

@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Box, Flex, IconButton, Text, useBreakpointValue } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -13,14 +12,17 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { AppContext } from '../../context';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
+import { appDetailToWorkflowDocumentApp } from '../adapters/document';
 import {
   compileStoreWorkflow,
+  decompileStoreWorkflow,
   getWorkflowChecksum,
   parseCompatibleWorkflowDocument
 } from '@fastgpt/workflow-core';
 import type { WorkflowBuilderApplied } from '@fastgpt/global/openapi/core/workflow/builder/api';
 import ChatPanel, { type WorkflowBuilderChatPanelRef } from './ChatPanel';
-import { requestWorkflowAutoLayout } from '../Flow/utils/workflowAutoLayout';
+import { mergeWorkflowBuilderAppliedAppDetail } from './utils';
+import { useWorkflowAutoLayout } from '../Flow/hooks/useWorkflowAutoLayout';
 
 const WorkflowBuilder = () => {
   const { t } = useTranslation('workflow');
@@ -30,13 +32,17 @@ const WorkflowBuilder = () => {
     title: t('workflow_builder_clear_history'),
     content: t('workflow_builder_clear_history_confirm')
   });
-  const { fitView, getNodes } = useReactFlow();
+  const { requestAutoLayout } = useWorkflowAutoLayout();
   const feConfigs = useSystemStore((state) => state.feConfigs);
   const getMyModelList = useSystemStore((state) => state.getMyModelList);
   const appId = useContextSelector(AppContext, (value) => value.appId);
   const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
   const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
   const initData = useContextSelector(WorkflowUtilsContext, (value) => value.initData);
+  const flowData2StoreData = useContextSelector(
+    WorkflowUtilsContext,
+    (value) => value.flowData2StoreData
+  );
   const [isOpen, setIsOpen] = useState(false);
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
   const panelWidth = useBreakpointValue({ base: '100%', md: '420px' }) || '420px';
@@ -55,6 +61,21 @@ const WorkflowBuilder = () => {
       if ((await getWorkflowChecksum(targetDocument)) !== result.checksum) {
         throw new Error('Workflow Builder apply response checksum mismatch');
       }
+      const currentFlowData = flowData2StoreData();
+      if (!currentFlowData) {
+        throw new Error('Workflow Builder current canvas is unavailable');
+      }
+      const currentDocument = decompileStoreWorkflow({
+        workflow: {
+          nodes: currentFlowData.nodes,
+          edges: currentFlowData.edges,
+          chatConfig: appDetail.chatConfig
+        },
+        app: appDetailToWorkflowDocumentApp(appDetail)
+      });
+      if ((await getWorkflowChecksum(currentDocument)) !== result.baseChecksum) {
+        throw new Error(t('workflow_builder_canvas_changed'));
+      }
       const workflowConfig = parseWorkflowImportConfig({
         config: compileStoreWorkflow(targetDocument),
         appType:
@@ -67,22 +88,19 @@ const WorkflowBuilder = () => {
         modules: workflowConfig.nodes,
         allowedModels: await getMyModelList()
       });
-      await initData(workflowConfig);
-      setAppDetail((current) => ({
-        ...current,
-        name: targetDocument.app?.name ?? current.name,
-        intro: targetDocument.app?.intro ?? current.intro
-      }));
-
-      let nodeDimensionsReady = false;
-      for (let attempt = 0; attempt < 30; attempt += 1) {
-        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-        const nodes = getNodes();
-        nodeDimensionsReady = nodes.length > 0 && nodes.every((node) => node.width && node.height);
-        if (nodeDimensionsReady) break;
-      }
-      if (!nodeDimensionsReady || !requestWorkflowAutoLayout()) {
-        fitView({ padding: 0.25 });
+      const workflowDataRevision = await initData(workflowConfig);
+      setAppDetail((current) =>
+        mergeWorkflowBuilderAppliedAppDetail({
+          current,
+          targetDocument
+        })
+      );
+      const autoLayoutResult = await requestAutoLayout({
+        nodeIds: workflowConfig.nodes.map((node) => node.nodeId),
+        workflowDataRevision
+      });
+      if (autoLayoutResult === 'failed') {
+        throw new Error('Workflow Builder auto layout failed');
       }
       toast({ status: 'success', title: t('workflow_builder_applied') });
     } catch (error) {

@@ -1,0 +1,52 @@
+%% Workflow Builder 当前单次任务生命周期
+flowchart TD
+    START["收到用户消息"] --> PREP["Runner 准备 Sandbox、历史、Memory、Prompt 和工具"]
+    PREP --> LOOP["进入 AgentLoop"]
+    LOOP --> INTENT{"工作流任务?"}
+
+    INTENT -->|"否"| CHAT["普通回答并结束"]
+    INTENT -->|"是"| READY{"需求和必要资源已闭合?"}
+    READY -->|"否"| ASK["ask_agent：一次性收集缺口"]
+    ASK --> PAUSE["暂停并保存 Provider State"]
+    PAUSE -->|"用户回复"| PREP
+
+    READY -->|"是"| MERMAID["workflow_builder_present_preview<br/>完整 Mermaid + 自由章节"]
+    MERMAID --> CHOICE{"用户选择"}
+    CHOICE -->|"修改 + 文本意见"| REVISE["合并反馈并重新调用 Preview 工具"]
+    REVISE --> MERMAID
+    CHOICE -->|"取消"| CANCEL["cancelled"]
+    CHOICE -->|"确认"| BUILD["恢复同一主 AgentLoop，禁止再次提问"]
+
+    BUILD --> QUERY["query 当前画布和描述符"]
+    QUERY --> STAGE["按业务分片 stage 私有 Draft"]
+    STAGE --> VALIDATE["Workflow Core 校验 Draft"]
+    VALIDATE --> VALID{"Draft valid?"}
+    VALID -->|"否"| REPAIR["结构化 diagnostics 返回 Agent 自修复"]
+    REPAIR --> STAGE
+    VALID -->|"是"| COMMIT["使用 draftRevision commit"]
+    COMMIT --> APPLIED{"原子应用成功?"}
+    APPLIED -->|"是"| SUCCESS["applied"]
+    APPLIED -->|"可修复且未达 10 次"| REPAIR
+    APPLIED -->|"同一目标连续失败 10 次"| FAILED["terminal_internal"]
+
+    LOOP -->|"无工具自然结束"| POLICY{"CompletionPolicy"}
+    POLICY -->|"已确认但未 applied"| LOOP
+    POLICY -->|"普通对话"| CHAT
+    POLICY -->|"已有 applied / cancelled / failed 事实"| FINAL
+
+    CANCEL --> FINAL["独立无工具收尾 Agent"]
+    SUCCESS --> FINAL
+    FAILED --> FINAL
+    FINAL --> END["向用户展示权威结果"]
+
+    classDef user fill:#e8f1ff,stroke:#2f7df6,color:#102a56;
+    classDef agent fill:#f1eaff,stroke:#845ef7,color:#29134d;
+    classDef mutation fill:#e9f8ef,stroke:#2f9e5b,color:#123d24;
+    classDef core fill:#e8faf8,stroke:#12a594,color:#073d38;
+    classDef terminal fill:#fff0f0,stroke:#e03131,color:#5c1111;
+
+    class START,ASK,PAUSE,MERMAID,CHOICE,END user;
+    class PREP,LOOP,INTENT,READY,CHAT,REVISE,BUILD,QUERY,POLICY,FINAL agent;
+    class STAGE,REPAIR,COMMIT mutation;
+    class VALIDATE,VALID,APPLIED,SUCCESS core;
+    class CANCEL,FAILED terminal;

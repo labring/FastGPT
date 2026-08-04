@@ -29,6 +29,38 @@ const hasRequiredValue = (value: unknown) =>
   value !== '' &&
   (!Array.isArray(value) || value.length > 0);
 
+const isNonEmptyReference = (value: unknown): value is [string, string] =>
+  Array.isArray(value) &&
+  value.length === 2 &&
+  typeof value[0] === 'string' &&
+  value[0].length > 0 &&
+  typeof value[1] === 'string' &&
+  value[1].length > 0;
+
+const isVariableUpdateValueMissing = (item: {
+  value?: unknown;
+  renderType?: unknown;
+  arrayMode?: unknown;
+  booleanMode?: unknown;
+}) => {
+  if (item.renderType === FlowNodeInputTypeEnum.reference) {
+    if (isNonEmptyReference(item.value)) return false;
+    return !(
+      Array.isArray(item.value) &&
+      item.value.length > 0 &&
+      item.value.every(isNonEmptyReference)
+    );
+  }
+
+  if (item.arrayMode === 'clear' || item.booleanMode) return false;
+  return (
+    !Array.isArray(item.value) ||
+    item.value[1] === undefined ||
+    item.value[1] === null ||
+    item.value[1] === ''
+  );
+};
+
 const getReachableNodeIds = (document: WorkflowDocument, startNodeId: string) => {
   const reachable = new Set([startNodeId]);
   const pending = [startNodeId];
@@ -318,6 +350,50 @@ const validateSpecialNode = ({
 }) => {
   const getInputValue = (key: NodeInputKeyEnum) =>
     node.inputs.find((item) => item.key === key)?.value;
+
+  if (node.flowNodeType === FlowNodeTypeEnum.variableUpdate) {
+    const updateList = getInputValue(NodeInputKeyEnum.updateList);
+    if (Array.isArray(updateList)) {
+      updateList.forEach((item, index) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          diagnostics.push({
+            code: 'WORKFLOW_VARIABLE_UPDATE_ITEM_INVALID',
+            severity: 'error',
+            nodeId: node.nodeId,
+            inputKey: NodeInputKeyEnum.updateList,
+            params: { index }
+          });
+          return;
+        }
+
+        const update = item as {
+          variable?: unknown;
+          value?: unknown;
+          renderType?: unknown;
+          arrayMode?: unknown;
+          booleanMode?: unknown;
+        };
+        if (!isNonEmptyReference(update.variable)) {
+          diagnostics.push({
+            code: 'WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING',
+            severity: 'error',
+            nodeId: node.nodeId,
+            inputKey: NodeInputKeyEnum.updateList,
+            params: { index, field: 'variable' }
+          });
+        }
+        if (isVariableUpdateValueMissing(update)) {
+          diagnostics.push({
+            code: 'WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING',
+            severity: 'error',
+            nodeId: node.nodeId,
+            inputKey: NodeInputKeyEnum.updateList,
+            params: { index, field: 'value' }
+          });
+        }
+      });
+    }
+  }
 
   if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
     const branches = getInputValue(NodeInputKeyEnum.ifElseList);

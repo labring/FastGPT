@@ -232,6 +232,7 @@ export const WorkflowChangeSummarySchema = z.object({
 export type WorkflowChangeSummary = z.infer<typeof WorkflowChangeSummarySchema>;
 
 export const WORKFLOW_CHANGESET_SCHEMA_VERSION = 'fastgpt-workflow-changeset/v1' as const;
+export const WORKFLOW_CHANGESET_CHUNK_SCHEMA_VERSION = 'fastgpt-workflow-chunk/v1' as const;
 export const WORKFLOW_PLAN_SCHEMA_VERSION = 'fastgpt-workflow-plan/v1' as const;
 
 const WorkflowChecksumSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
@@ -245,6 +246,21 @@ export const WorkflowChangeSetSchema = z
   .strict();
 
 export type WorkflowChangeSet = z.infer<typeof WorkflowChangeSetSchema>;
+
+/**
+ * Agent 分片提交的最小单元。分片不携带 baseChecksum，版本和基准由服务端事务会话持有，
+ * 避免模型在多个分片之间自行维护容易失真的工作流版本信息。
+ */
+export const WorkflowChangeSetChunkSchema = z
+  .object({
+    schemaVersion: z.literal(WORKFLOW_CHANGESET_CHUNK_SCHEMA_VERSION),
+    chunkId: z.string().min(1).max(128),
+    dependsOn: z.array(z.string().min(1).max(128)).max(128).default([]),
+    commands: z.array(WorkflowCommandSchema).min(1).max(100)
+  })
+  .strict();
+
+export type WorkflowChangeSetChunk = z.infer<typeof WorkflowChangeSetChunkSchema>;
 
 export const WorkflowPlanSchema = z
   .object({

@@ -8,10 +8,13 @@ import { WorkflowDocumentSchema, getWorkflowChecksum } from '@fastgpt/workflow-c
 import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
 import { buildStreamFetchBody, handleEventSourceData } from '@/web/common/api/fetch';
 import { clearWorkflowBuilderChatHistory } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/api';
+import { mergeWorkflowBuilderAppliedAppDetail } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/utils';
 import {
-  registerWorkflowAutoLayout,
-  requestWorkflowAutoLayout
-} from '@/pageComponents/app/detail/WorkflowComponents/Flow/utils/workflowAutoLayout';
+  matchesWorkflowAutoLayoutRequest,
+  mergeWorkflowLayoutNodes
+} from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useWorkflowAutoLayout';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { Node } from 'reactflow';
 
 const mocks = vi.hoisted(() => ({
   batchDeleteChatHistories: vi.fn()
@@ -22,15 +25,66 @@ vi.mock('@/web/core/chat/history/api', () => ({
 }));
 
 describe('Workflow Builder Web Adapter', () => {
-  it('reuses the mounted canvas auto-layout handler after import', () => {
-    const layout = vi.fn();
-    const unregister = registerWorkflowAutoLayout(layout);
+  it('binds auto-layout readiness to the exact Builder-applied node set', () => {
+    const nodes = [{ id: 'start' }, { id: 'answer' }] as Parameters<
+      typeof matchesWorkflowAutoLayoutRequest
+    >[0]['nodes'];
 
-    expect(requestWorkflowAutoLayout()).toBe(true);
-    expect(layout).toHaveBeenCalledTimes(1);
+    expect(
+      matchesWorkflowAutoLayoutRequest({
+        nodes,
+        nodeIds: new Set(['start', 'answer'])
+      })
+    ).toBe(true);
+    expect(
+      matchesWorkflowAutoLayoutRequest({
+        nodes,
+        nodeIds: new Set(['start', 'old-node'])
+      })
+    ).toBe(false);
+  });
 
-    unregister();
-    expect(requestWorkflowAutoLayout()).toBe(false);
+  it('merges auto-layout positions without overwriting newer node business data', () => {
+    const createNode = ({
+      name,
+      prompt,
+      position
+    }: {
+      name: string;
+      prompt: string;
+      position: { x: number; y: number };
+    }) =>
+      ({
+        id: 'ai-node',
+        position,
+        data: {
+          nodeId: 'ai-node',
+          name,
+          inputs: [{ key: 'systemPrompt', value: prompt }]
+        }
+      }) as Node<FlowNodeItemType>;
+
+    const importedNode = createNode({
+      name: 'Updated AI node',
+      prompt: 'Use the confirmed workflow requirements',
+      position: { x: 0, y: 0 }
+    });
+    const staleLayoutNode = createNode({
+      name: 'Old AI node',
+      prompt: 'Old prompt',
+      position: { x: 320, y: 160 }
+    });
+
+    const [result] = mergeWorkflowLayoutNodes({
+      currentNodes: [importedNode],
+      layoutedNodes: [staleLayoutNode],
+      resizedNodeIds: new Set()
+    });
+
+    expect(result.position).toEqual({ x: 320, y: 160 });
+    expect(result.data).toBe(importedNode.data);
+    expect(result.data.name).toBe('Updated AI node');
+    expect(result.data.inputs[0]?.value).toBe('Use the confirmed workflow requirements');
   });
 
   it('clears only the current Builder history before restarting the local chat', async () => {
@@ -103,6 +157,7 @@ describe('Workflow Builder Web Adapter', () => {
   it('delivers the validated applied document event without mixing it into answer text', async () => {
     const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
     const applied = WorkflowBuilderAppliedSchema.parse({
+      baseChecksum: await getWorkflowChecksum(document),
       document,
       checksum: await getWorkflowChecksum(document)
     });
@@ -123,5 +178,31 @@ describe('Workflow Builder Web Adapter', () => {
       workflowBuilderApplied: applied
     });
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('keeps Builder-applied chatConfig when updating local app detail', () => {
+    const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
+    document.app.name = 'Builder Result';
+    document.app.intro = 'Updated by Builder';
+    document.chatConfig.fileSelectConfig = { maxFiles: 1, canSelectFile: true };
+
+    const current = {
+      name: 'Old Name',
+      intro: 'Old intro',
+      chatConfig: {}
+    } as Parameters<typeof mergeWorkflowBuilderAppliedAppDetail>[0]['current'];
+
+    expect(
+      mergeWorkflowBuilderAppliedAppDetail({
+        current,
+        targetDocument: document
+      })
+    ).toMatchObject({
+      name: 'Builder Result',
+      intro: 'Updated by Builder',
+      chatConfig: {
+        fileSelectConfig: { maxFiles: 1, canSelectFile: true }
+      }
+    });
   });
 });

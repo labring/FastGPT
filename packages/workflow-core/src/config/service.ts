@@ -10,23 +10,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
+import { CHAT_CONFIG_PATHS } from './type';
 
-export const CHAT_CONFIG_PATHS = [
-  'welcomeText',
-  'autoExecute',
-  'autoExecute.open',
-  'autoExecute.defaultPrompt',
-  'questionGuide',
-  'questionGuide.open',
-  'questionGuide.model',
-  'questionGuide.customPrompt',
-  'ttsConfig',
-  'whisperConfig',
-  'scheduledTriggerConfig',
-  'chatInputGuide',
-  'fileSelectConfig',
-  'instruction'
-] as const;
+export { CHAT_CONFIG_PATHS } from './type';
 
 const assertConfigPath = (path: string) => {
   if (!(CHAT_CONFIG_PATHS as readonly string[]).includes(path)) {

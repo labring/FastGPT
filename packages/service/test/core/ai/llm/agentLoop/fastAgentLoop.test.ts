@@ -164,6 +164,113 @@ describe('runFastAgentMainLoop', () => {
     expect(mainAgentPrompt).toContain('你是一个 Work Agent');
   });
 
+  it('continues the same loop when completion policy rejects a natural completion', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_early', content: 'phase summary' }),
+      text({ requestId: 'req_terminal', content: 'terminal answer' })
+    ]);
+    const completionPolicy = vi
+      .fn()
+      .mockResolvedValueOnce({
+        action: 'continue',
+        message: 'Continue until terminal facts exist.'
+      })
+      .mockResolvedValueOnce({ action: 'complete' });
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ completionPolicy }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'build it' }]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
+    expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
+    expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
+    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: 'Continue until terminal facts exist.'
+    });
+  });
+
+  it('returns an error when completion policy cannot reach terminal facts within the run budget', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_budget', content: 'still incomplete' })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        maxRunAgentTimes: 1,
+        completionPolicy: () => ({ action: 'continue', message: 'Continue.' })
+      }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'build it' }]
+      }
+    });
+
+    expect(result.status).toBe('error');
+    expect(String(result.error)).toContain('Agent loop reached max run times: 1');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {
+      name: 'no runtime-capable tools',
+      toolCatalog: { runtimeTools: [] },
+      expectedConstraint: true
+    },
+    {
+      name: 'sandbox tools only',
+      toolCatalog: { runtimeTools: [], sandboxTools: [tool('sandbox_shell')] },
+      expectedConstraint: false
+    },
+    {
+      name: 'read file tool only',
+      toolCatalog: { runtimeTools: [], readFileTool: tool('read_files') },
+      expectedConstraint: false
+    },
+    {
+      name: 'dataset search tool only',
+      toolCatalog: { runtimeTools: [], datasetSearchTool: tool('dataset_search') },
+      expectedConstraint: false
+    }
+  ] satisfies Array<{
+    name: string;
+    toolCatalog: AgentLoopRuntime['toolCatalog'];
+    expectedConstraint: boolean;
+  }>)(
+    'sets the runtime tool constraint correctly with $name',
+    async ({ toolCatalog, expectedConstraint }) => {
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        text({
+          requestId: 'req_runtime_tool_constraint',
+          content: 'direct answer'
+        })
+      ]);
+
+      await runFastAgentMainLoop({
+        runtime: createRuntime({
+          toolCatalog,
+          hasExecutableTools: !expectedConstraint,
+          systemPromptBuilder: ({ hasExecutableTools }) =>
+            hasExecutableTools ? '' : '<tool_constraint>Use a tool.</tool_constraint>'
+        }),
+        input: {
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: 'hello'
+            }
+          ]
+        }
+      });
+
+      const mainAgentPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[0].content;
+      expect(mainAgentPrompt.includes('<tool_constraint>')).toBe(expectedConstraint);
+    }
+  );
+
   it('creates an active plan through set_plan', async () => {
     const events: any[] = [];
     mockCreateLLMResponseQueue(createLLMResponseMock, [
@@ -610,6 +717,60 @@ describe('runFastAgentMainLoop', () => {
     expect(result.status).toBe('done');
     expect(getFinalAssistantText(result)).toBe('Recovered after invalid ask args.');
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns an injected ask validation error to the model without pausing', async () => {
+    const validateAsk = vi.fn(() => 'Preview markdown is required.');
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_invalid_preview',
+        name: 'ask_user',
+        content: '```mermaid\nflowchart LR\n  A --> B\n```',
+        args: {
+          reason: 'Need workflow confirmation',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Confirm this workflow?',
+              options: [
+                { summary: 'Confirm', value: 'Confirm the workflow.' },
+                { summary: 'Revise', value: 'Revise the workflow.' }
+              ]
+            }
+          ]
+        }
+      }),
+      text({
+        requestId: 'req_after_preview_validation',
+        content: 'Recovered after preview validation.'
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ validateAsk }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'Build a workflow'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(validateAsk).toHaveBeenCalledWith(
+      expect.objectContaining({
+        questions: [expect.objectContaining({ question: 'Confirm this workflow?' })]
+      }),
+      { assistantContent: '```mermaid\nflowchart LR\n  A --> B\n```' }
+    );
+    expect(result.completeMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_invalid_preview',
+      content: 'Preview markdown is required.'
+    });
+    expect(getFinalAssistantText(result)).toBe('Recovered after preview validation.');
   });
 
   it('normalizes empty ask_agent resume answer to none in tool message', async () => {

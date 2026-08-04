@@ -1124,6 +1124,9 @@ importers:
       lodash-es:
         specifier: 'catalog:'
         version: 4.18.1
+      mermaid:
+        specifier: ^10.9.6
+        version: 10.9.6
       mongoose:
         specifier: 'catalog:'
         version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.9)

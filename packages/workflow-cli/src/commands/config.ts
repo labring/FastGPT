@@ -1,4 +1,5 @@
-import { CHAT_CONFIG_PATHS, getChatConfigValue } from '@fastgpt/workflow-core';
+import { getChatConfigDescriptor, listChatConfigDescriptors } from '@fastgpt/workflow-core';
+import { createTranslator } from '../i18n';
 import { readWorkflowFile } from '../io/workflowFile';
 import type { CliContext, CliResult } from '../type';
 import { readInputValue, requireString, runMutation } from './helpers';
@@ -10,7 +11,10 @@ export const listConfig = async (
   const document = await readWorkflowFile(context.dir);
   return {
     changed: false,
-    result: CHAT_CONFIG_PATHS.map((path) => ({ path, value: getChatConfigValue(document, path) }))
+    result: listChatConfigDescriptors({
+      document,
+      translate: createTranslator(context.locale)
+    })
   };
 };
 
@@ -21,7 +25,11 @@ export const getConfig = async (
   const path = requireString(input, 'path');
   return {
     changed: false,
-    result: { path, value: getChatConfigValue(await readWorkflowFile(context.dir), path) }
+    result: getChatConfigDescriptor({
+      document: await readWorkflowFile(context.dir),
+      path,
+      translate: createTranslator(context.locale)
+    })
   };
 };
 

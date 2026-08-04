@@ -225,6 +225,13 @@ export const getLastInteractiveValue = (
     if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
       return lastValue.interactive;
     }
+
+    if (
+      lastValue.interactive.type === 'workflowBuilderPreview' &&
+      !lastValue.interactive.params.answerValue
+    ) {
+      return lastValue.interactive;
+    }
   }
 
   return;

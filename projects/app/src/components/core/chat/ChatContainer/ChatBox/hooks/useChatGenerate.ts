@@ -650,6 +650,7 @@ export const useChatGenerate = ({
       files = [],
       history = chatRecords,
       interactive,
+      agentPlanAskResponse,
       autoTTSResponse = false,
       hideInUI = false,
       clearInput = false
@@ -763,7 +764,8 @@ export const useChatGenerate = ({
               ? rewriteHistoriesByInteractiveResponse({
                   histories: newChatList,
                   interactive,
-                  interactiveVal: text
+                  interactiveVal: text,
+                  agentPlanAskResponse
                 })
               : newChatList
           );
@@ -796,6 +798,7 @@ export const useChatGenerate = ({
               messages,
               responseChatItemId: responseChatId,
               interactive,
+              agentPlanAskResponse,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
