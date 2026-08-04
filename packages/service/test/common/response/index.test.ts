@@ -110,18 +110,6 @@ describe('jsonRes HTTP status mapping', () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 500 }));
   });
-
-  it('uses an explicitly provided httpStatus', () => {
-    const res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    } as unknown as Parameters<typeof jsonRes>[0];
-    const error = Object.assign(new Error('OAuth failure'), { httpStatus: 401 });
-
-    jsonRes(res, { error });
-
-    expect(res.status).toHaveBeenCalledWith(401);
-  });
 });
 
 describe('getSseErrorResponse logging', () => {

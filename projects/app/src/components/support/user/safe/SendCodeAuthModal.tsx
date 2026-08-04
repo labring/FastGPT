@@ -5,6 +5,9 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
+import { useMemoizedFn } from 'ahooks';
+import { useEffect } from 'react';
+import { VerificationTtlSeconds } from '@fastgpt/global/support/user/account/verification/type';
 
 const SendCodeAuthModal = ({
   username,
@@ -31,8 +34,20 @@ const SendCodeAuthModal = ({
   const {
     data,
     loading,
-    runAsync: getCaptcha
+    run: getCaptcha
   } = useRequest(() => getCaptchaPic(username, purpose), { manual: false });
+
+  const refreshCaptcha = useMemoizedFn(() => {
+    getCaptcha();
+  });
+
+  useEffect(() => {
+    if (!data?.captchaImage) return;
+
+    const timer = window.setInterval(refreshCaptcha, VerificationTtlSeconds.medium * 1000);
+
+    return () => window.clearInterval(timer);
+  }, [data?.captchaImage, refreshCaptcha]);
 
   const onSubmit = async ({ code }: { code: string }) => {
     await onSendCode({ username, captcha: code });
@@ -66,7 +81,7 @@ const SendCodeAuthModal = ({
             h={'200px'}
             _hover={{ cursor: 'pointer' }}
             mb={8}
-            onClick={getCaptcha}
+            onClick={refreshCaptcha}
             src={data?.captchaImage}
             alt=""
           />

@@ -9,12 +9,6 @@ import { authOpenApiKey } from '../../../support/openapi/auth';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
 
-/** 复用 service 包内的 Cookie 解析实现，供跨 workspace 的服务端模块使用。 */
-export const parseCookie = (value?: string) => Cookie.parse(value || '');
-
-/** 复用 service 包内的 Cookie 序列化实现，避免调用方重复声明 cookie 依赖。 */
-export const serializeCookie = Cookie.serialize;
-
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
 
@@ -41,7 +35,7 @@ export async function parseHeaderCert({
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
     // 获取 cookie
-    const cookies = parseCookie(cookie);
+    const cookies = Cookie.parse(cookie ?? '');
     const cookieToken = token || cookies[TokenName];
 
     if (!cookieToken) {

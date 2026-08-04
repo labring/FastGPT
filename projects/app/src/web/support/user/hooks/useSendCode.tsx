@@ -1,11 +1,9 @@
 import { useState, useMemo } from 'react';
-import {
-  sendBindNotificationAuthCode,
-  sendForgetPasswordAuthCode,
-  sendRegisterAuthCode,
-  type UserVerificationPurpose
-} from '@/web/support/user/api';
-import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { sendAuthCode } from '@/web/support/user/api';
+import type {
+  VerificationCodePurposeForType,
+  VerificationCodeType
+} from '@fastgpt/global/support/user/account/verification/type';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { Box, type BoxProps, useDisclosure } from '@chakra-ui/react';
@@ -15,13 +13,14 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 let timer: NodeJS.Timeout;
 
-export const useSendCode = ({
-  type,
-  purpose
-}: {
-  type: UserAuthTypeEnum;
-  purpose: UserVerificationPurpose;
-}) => {
+type UseSendCodeParams = {
+  [T in VerificationCodeType]: {
+    type: T;
+    purpose: VerificationCodePurposeForType<T>;
+  };
+}[VerificationCodeType];
+
+export const useSendCode = (params: UseSendCodeParams) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const [codeCountDown, setCodeCountDown] = useState(0);
@@ -29,14 +28,9 @@ export const useSendCode = ({
   const { runAsync: sendCode, loading: codeSending } = useRequest(
     async ({ username, captcha }: { username: string; captcha: string }) => {
       if (codeCountDown > 0) return;
-      const sendAuthCode = (() => {
-        if (purpose === 'register') return sendRegisterAuthCode;
-        if (purpose === 'forgetPassword') return sendForgetPasswordAuthCode;
-        return sendBindNotificationAuthCode;
-      })();
       await sendAuthCode({
         username,
-        type,
+        ...params,
         captcha,
         lang: i18n.language as LangEnum
       });
@@ -55,7 +49,7 @@ export const useSendCode = ({
     {
       successToast: t('user:password.code_sended'),
       errorToast: t('user:password.code_send_error'),
-      refreshDeps: [codeCountDown, type, purpose]
+      refreshDeps: [codeCountDown, params.type, params.purpose]
     }
   );
 
@@ -111,7 +105,7 @@ export const useSendCode = ({
           <SendCodeAuthModal
             onClose={onCloseCodeAuthModal}
             username={username}
-            purpose={purpose}
+            purpose={params.purpose}
             onSending={codeSending}
             onSendCode={sendCode}
           />

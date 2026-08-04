@@ -110,7 +110,7 @@ const getExpireAt = (record: LegacyAuthCodeRecord) => {
   return createTime ? new Date(createTime.getTime() + LEGACY_EXPIRE_AFTER_MS) : undefined;
 };
 
-const getDataId = (scene: string, type: string, key: string) =>
+const getDataId = ({ scene, type, key }: { scene: string; type: string; key: string }) =>
   `verification:v1:${scene}:${type}:${key}`;
 
 const hashKey = (key: string) => createHash('sha256').update(key).digest('hex');
@@ -147,7 +147,7 @@ export const mapLegacyAuthCode = (
     return {
       kind: 'mapped',
       record: {
-        dataId: getDataId('register', 'captcha', record.key),
+        dataId: getDataId({ scene: 'register', type: 'captcha', key: record.key }),
         data: { code: record.code.toLowerCase() },
         expireAt
       }
@@ -162,7 +162,7 @@ export const mapLegacyAuthCode = (
     return {
       kind: 'mapped',
       record: {
-        dataId: getDataId('login', 'wechat', hashKey(record.key)),
+        dataId: getDataId({ scene: 'login', type: 'wechat', key: hashKey(record.key) }),
         data: { openId: record.openid },
         expireAt
       }
@@ -177,7 +177,7 @@ export const mapLegacyAuthCode = (
     return {
       kind: 'mapped',
       record: {
-        dataId: getDataId('login', 'password', record.key),
+        dataId: getDataId({ scene: 'login', type: 'password', key: record.key }),
         data: { preLoginCode: record.code },
         expireAt
       }
@@ -188,7 +188,7 @@ export const mapLegacyAuthCode = (
   return {
     kind: 'mapped',
     record: {
-      dataId: getDataId(scene, 'code', record.key),
+      dataId: getDataId({ scene, type: 'code', key: record.key }),
       data: { code: record.code },
       expireAt
     }

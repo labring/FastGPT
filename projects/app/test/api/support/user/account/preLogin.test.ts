@@ -27,7 +27,7 @@ describe('preLogin API', () => {
 
     expect(res.code).toBe(200);
     const record = await MongoTmpData.findOne({
-      dataId: getDataId('login', 'password', 'testuser')
+      dataId: getDataId({ scene: 'login', type: 'password', key: 'testuser' })
     });
     expect(record).toBeDefined();
     expect(record?.data).toEqual({ preLoginCode: res.data.code });
@@ -45,10 +45,10 @@ describe('preLogin API', () => {
     expect(res2.code).toBe(200);
 
     const record1 = await MongoTmpData.findOne({
-      dataId: getDataId('login', 'password', 'user1')
+      dataId: getDataId({ scene: 'login', type: 'password', key: 'user1' })
     });
     const record2 = await MongoTmpData.findOne({
-      dataId: getDataId('login', 'password', 'user2')
+      dataId: getDataId({ scene: 'login', type: 'password', key: 'user2' })
     });
     expect(record1?.data).toEqual({ preLoginCode: res1.data.code });
     expect(record2?.data).toEqual({ preLoginCode: res2.data.code });
@@ -59,7 +59,7 @@ describe('preLogin API', () => {
     const res2 = await Call(preLoginApi.default, { query: { username: 'testuser' } });
 
     const records = await MongoTmpData.find({
-      dataId: getDataId('login', 'password', 'testuser')
+      dataId: getDataId({ scene: 'login', type: 'password', key: 'testuser' })
     });
     // upsert: only one record per key+type
     expect(records.length).toBe(1);
@@ -75,7 +75,7 @@ describe('preLogin API', () => {
 
     expect(res.code).toBe(200);
     const record = await MongoTmpData.findOne({
-      dataId: getDataId('login', 'password', 'testuser')
+      dataId: getDataId({ scene: 'login', type: 'password', key: 'testuser' })
     });
     expect(record?.expireAt).toBeDefined();
     const expiredTime = new Date(record!.expireAt).getTime();

@@ -5,18 +5,18 @@ import {
   ActivityAdResponseSchema
 } from '../../../admin/support/user/inform/api';
 import { DevApiTagsMap } from '../../../tag';
-import { SendAuthCodeResponseSchema, SendBindNotificationAuthCodeBodySchema } from './api';
+import { SendAuthCodeBodySchema, SendAuthCodeResponseSchema } from './api';
 
 export const UserInformPath: OpenAPIPath = {
   '/proApi/support/user/inform/sendAuthCode': {
     post: {
-      summary: '发送绑定通知验证码',
-      description: '发送绑定通知账号使用的邮箱/短信验证码',
+      summary: '发送验证码',
+      description: '发送注册、找回密码或绑定通知账号使用的邮箱/短信验证码',
       tags: [DevApiTagsMap.userInform],
       requestBody: {
         content: {
           'application/json': {
-            schema: SendBindNotificationAuthCodeBodySchema
+            schema: SendAuthCodeBodySchema
           }
         }
       },

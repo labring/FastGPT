@@ -1,5 +1,3 @@
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { PasswordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
 import type {
   PasswordVerificationDependencies,
@@ -7,33 +5,27 @@ import type {
 } from '@fastgpt/service/support/user/account/verification/password/type';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
-import { getDataId } from '@fastgpt/service/support/tmpData/verification';
+import {
+  getDataId,
+  VerificationMaterialError
+} from '@fastgpt/service/support/tmpData/verification';
+import type { ClientSession } from '@fastgpt/service/common/mongo';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { describe, expect, it, vi } from 'vitest';
-
-const createUser = (): PasswordVerificationUser =>
-  ({
-    _id: 'user-id',
-    username: 'test@example.com',
-    password: 'hashed-password',
-    promotionRate: 0,
-    openaiKey: '',
-    createTime: 0,
-    timezone: 'Asia/Shanghai',
-    language: 'zh-CN',
-    status: 'active',
-    tags: [],
-    save: vi.fn(async () => undefined)
-  }) as PasswordVerificationUser;
 
 const createDependencies = (
   overrides: Partial<PasswordVerificationDependencies> = {}
 ): PasswordVerificationDependencies => ({
   generateCode: vi.fn(() => 'ABC123'),
-  now: vi.fn(() => new Date('2026-07-28T00:00:00.000Z')),
   assertConsumeFrequency: vi.fn(async () => undefined),
   savePreLoginCode: vi.fn(async () => undefined),
-  verifyPreLoginCode: vi.fn(async () => undefined),
-  findUserByCredentials: vi.fn(async () => createUser()),
+  findUserByCredentials: vi.fn(async () => null),
+  consumeInTransaction: vi.fn(async (_params, handler) =>
+    handler({
+      material: { preLoginCode: 'ABC123' },
+      session: undefined as unknown as ClientSession
+    })
+  ),
   ...overrides
 });
 
@@ -50,120 +42,13 @@ describe('PasswordVerificationService.issuePreLoginCode', () => {
       username: 'test@example.com',
       code: 'ABC123',
       purpose: 'login',
-      expiredTime: new Date('2026-07-28T00:00:30.000Z')
+      ttlPreset: 'short'
     });
-  });
-});
-
-describe('PasswordVerificationService.verifyCredentials', () => {
-  it('verifies the pre-login code before querying the user', async () => {
-    const calls: string[] = [];
-    const user = createUser();
-    const dependencies = createDependencies({
-      verifyPreLoginCode: vi.fn(async () => {
-        calls.push('verify-code');
-      }),
-      assertConsumeFrequency: vi.fn(async () => {
-        calls.push('consume-frequency');
-      }),
-      findUserByCredentials: vi.fn(async () => {
-        calls.push('find-user');
-        return user;
-      })
-    });
-    const service = new PasswordVerificationService(dependencies);
-
-    await expect(
-      service.verifyCredentials({
-        username: 'test@example.com',
-        password: 'hashed-password',
-        code: 'ABC123',
-        purpose: 'login'
-      })
-    ).resolves.toBe(user);
-    expect(calls).toEqual(['consume-frequency', 'verify-code', 'find-user']);
-    expect(dependencies.findUserByCredentials).toHaveBeenCalledWith({
-      username: 'test@example.com',
-      password: 'hashed-password'
-    });
-  });
-
-  it('keeps the original account/password error when no user matches', async () => {
-    const dependencies = createDependencies({
-      findUserByCredentials: vi.fn(async () => null)
-    });
-    const service = new PasswordVerificationService(dependencies);
-
-    await expect(
-      service.verifyCredentials({
-        username: 'missing@example.com',
-        password: 'wrong-password',
-        code: 'ABC123',
-        purpose: 'login'
-      })
-    ).rejects.toBe(UserErrEnum.account_psw_error);
-  });
-
-  it('returns a matched user without applying login-only account policies', async () => {
-    const user = {
-      ...createUser(),
-      username: 'wecom-openid',
-      status: 'forbidden'
-    } as UserModelSchema;
-    const dependencies = createDependencies({
-      findUserByCredentials: vi.fn(async () => user)
-    });
-    const service = new PasswordVerificationService(dependencies);
-
-    await expect(
-      service.verifyCredentials({
-        username: 'wecom-openid',
-        password: 'hashed-password',
-        code: 'ABC123',
-        purpose: 'login'
-      })
-    ).resolves.toBe(user);
-  });
-
-  it('does not query the user when pre-login verification fails', async () => {
-    const error = new Error('invalid code');
-    const dependencies = createDependencies({
-      verifyPreLoginCode: vi.fn(async () => Promise.reject(error))
-    });
-    const service = new PasswordVerificationService(dependencies);
-
-    await expect(
-      service.verifyCredentials({
-        username: 'test@example.com',
-        password: 'hashed-password',
-        code: 'invalid',
-        purpose: 'login'
-      })
-    ).rejects.toBe(error);
-    expect(dependencies.findUserByCredentials).not.toHaveBeenCalled();
-  });
-
-  it('does not consume the pre-login material when frequency is exceeded', async () => {
-    const error = new Error('too frequent');
-    const dependencies = createDependencies({
-      assertConsumeFrequency: vi.fn(async () => Promise.reject(error))
-    });
-    const service = new PasswordVerificationService(dependencies);
-
-    await expect(
-      service.verifyCredentials({
-        username: 'test@example.com',
-        password: 'hashed-password',
-        code: 'ABC123',
-        purpose: 'login'
-      })
-    ).rejects.toBe(error);
-    expect(dependencies.verifyPreLoginCode).not.toHaveBeenCalled();
   });
 });
 
 describe('PasswordVerificationService default adapters', () => {
-  it('stores and consumes password material in tmp_datas', async () => {
+  it('stores and consumes password material after the business callback succeeds', async () => {
     const username = 'default-adapters@example.com';
     const password = 'hashed-password';
     const beforeIssue = Date.now();
@@ -172,23 +57,93 @@ describe('PasswordVerificationService default adapters', () => {
     const { code } = await service.issuePreLoginCode({ username, purpose: 'login' });
     const afterIssue = Date.now();
     const authMaterial = await MongoTmpData.findOne({
-      dataId: getDataId('login', 'password', username)
+      dataId: getDataId({ scene: 'login', type: 'password', key: username })
     }).lean();
 
     expect(code).toMatch(/^[a-z][a-zA-Z0-9]{5}$/);
     expect(authMaterial).toMatchObject({
-      dataId: getDataId('login', 'password', username),
+      dataId: getDataId({ scene: 'login', type: 'password', key: username }),
       data: { preLoginCode: code }
     });
     expect(authMaterial?.expireAt.getTime()).toBeGreaterThanOrEqual(beforeIssue + 30_000);
     expect(authMaterial?.expireAt.getTime()).toBeLessThanOrEqual(afterIssue + 30_000);
 
     const storedUser = await MongoUser.create({ username, password });
-    const result = await service.verifyCredentials({ username, password, code, purpose: 'login' });
+    const result = await service.withVerifiedCredentials(
+      { username, password, code, purpose: 'login' },
+      async ({ user }) => user
+    );
 
     await expect(
-      MongoTmpData.findOne({ dataId: getDataId('login', 'password', username) })
+      MongoTmpData.findOne({
+        dataId: getDataId({ scene: 'login', type: 'password', key: username })
+      })
     ).resolves.toBeNull();
     expect(String(result._id)).toBe(String(storedUser._id));
+  });
+});
+
+describe('PasswordVerificationService.withVerifiedCredentials', () => {
+  it('passes the matched user and transaction session to the business callback', async () => {
+    const user = { _id: 'user-id' } as unknown as PasswordVerificationUser;
+    const session = {} as ClientSession;
+    const consumeInTransaction = vi.fn(async (_params, handler) =>
+      handler({ material: { preLoginCode: 'ABC123' }, session })
+    );
+    const dependencies = createDependencies({
+      findUserByCredentials: vi.fn(async (params) => {
+        expect(params.session).toBe(session);
+        return user;
+      }),
+      consumeInTransaction
+    });
+    const service = new PasswordVerificationService(dependencies);
+    const handler = vi.fn(async ({ user: matchedUser, session: callbackSession }) => {
+      expect(matchedUser).toBe(user);
+      expect(callbackSession).toBe(session);
+      return 'completed';
+    });
+
+    await expect(
+      service.withVerifiedCredentials(
+        {
+          username: 'test@example.com',
+          password: 'hashed-password',
+          code: 'ABC123',
+          purpose: 'login'
+        },
+        handler
+      )
+    ).resolves.toBe('completed');
+    expect(consumeInTransaction).toHaveBeenCalledWith(
+      {
+        scene: 'login',
+        type: 'password',
+        key: 'test@example.com',
+        match: { preLoginCode: 'ABC123' }
+      },
+      expect.any(Function)
+    );
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps missing verification material to the original invalid-code error', async () => {
+    const dependencies = createDependencies({
+      consumeInTransaction: vi.fn(async () => Promise.reject(new VerificationMaterialError()))
+    });
+    const service = new PasswordVerificationService(dependencies);
+
+    await expect(
+      service.withVerifiedCredentials(
+        {
+          username: 'test@example.com',
+          password: 'hashed-password',
+          code: 'invalid',
+          purpose: 'login'
+        },
+        async () => 'unreachable'
+      )
+    ).rejects.toMatchObject({ message: UserErrEnum.invalidVerificationCode });
+    expect(dependencies.findUserByCredentials).not.toHaveBeenCalled();
   });
 });

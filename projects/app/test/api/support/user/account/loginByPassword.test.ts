@@ -16,9 +16,9 @@ import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 
 const saveLoginCode = (username: string, code = '123456') =>
   MongoTmpData.updateOne(
-    { dataId: getDataId('login', 'password', username) },
+    { dataId: getDataId({ scene: 'login', type: 'password', key: username }) },
     {
-      dataId: getDataId('login', 'password', username),
+      dataId: getDataId({ scene: 'login', type: 'password', key: username }),
       data: { preLoginCode: code },
       expireAt: new Date(Date.now() + 30_000)
     },
@@ -84,7 +84,9 @@ describe('loginByPassword API', () => {
     expect(res.data.token.length).toBeGreaterThan(0);
 
     await expect(
-      MongoTmpData.findOne({ dataId: getDataId('login', 'password', 'testuser') })
+      MongoTmpData.findOne({
+        dataId: getDataId({ scene: 'login', type: 'password', key: 'testuser' })
+      })
     ).resolves.toBeNull();
     expect(setCookie).toHaveBeenCalled();
     expect(pushTrack.login).toHaveBeenCalledWith({

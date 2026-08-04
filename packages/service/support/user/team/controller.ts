@@ -22,8 +22,13 @@ import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
-async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
-  const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();
+async function getTeamMember(
+  match: Record<string, any>,
+  session?: ClientSession
+): Promise<TeamTmbItemType> {
+  const query = MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team');
+  if (session) query.session(session);
+  const tmb = await query.lean();
   if (!tmb) {
     return Promise.reject('member not exist');
   }
@@ -66,23 +71,36 @@ export const getTeamOwner = async (teamId: string) => {
   return tmb;
 };
 
-export async function getTmbInfoByTmbId({ tmbId }: { tmbId: string }) {
+export async function getTmbInfoByTmbId({
+  tmbId,
+  session
+}: {
+  tmbId: string;
+  session?: ClientSession;
+}) {
   if (!tmbId) {
     return Promise.reject('tmbId or userId is required');
   }
-  return getTeamMember({
-    _id: new Types.ObjectId(String(tmbId)),
-    status: notLeaveStatus
-  });
+  return getTeamMember(
+    {
+      _id: new Types.ObjectId(String(tmbId)),
+      status: notLeaveStatus
+    },
+    session
+  );
 }
 
-export async function getUserDefaultTeam({ userId }: { userId: string }) {
+export async function getUserDefaultTeam({
+  userId,
+  session
+}: {
+  userId: string;
+  session?: ClientSession;
+}) {
   if (!userId) {
     return Promise.reject('tmbId or userId is required');
   }
-  return getTeamMember({
-    userId: new Types.ObjectId(userId)
-  });
+  return getTeamMember({ userId: new Types.ObjectId(userId) }, session);
 }
 
 export async function createDefaultTeam({

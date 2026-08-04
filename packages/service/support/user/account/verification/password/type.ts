@@ -1,15 +1,19 @@
 import type { HydratedDocument } from 'mongoose';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
+import type {
+  PasswordVerificationPurpose,
+  VerificationTtlPreset,
+  VerificationType
+} from '@fastgpt/global/support/user/account/verification/type';
+import type { ClientSession } from '../../../../../common/mongo';
+import type {
+  VerificationConsumeContext,
+  VerificationConsumeParams
+} from '../../../../tmpData/verification';
 
 export type PasswordVerificationUser = HydratedDocument<UserModelSchema>;
 
-export type PasswordVerificationPurpose =
-  | 'login'
-  | 'register'
-  | 'forgetPassword'
-  | 'changePassword'
-  | 'unsubscribe'
-  | 'bindNotification';
+export type { PasswordVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 
 export type IssuePreLoginCodeParams = {
   username: string;
@@ -27,9 +31,13 @@ export type VerifyPasswordCredentialsParams = {
   purpose: PasswordVerificationPurpose;
 };
 
+export type PasswordVerificationHandler<T> = (params: {
+  user: PasswordVerificationUser;
+  session: ClientSession;
+}) => Promise<T>;
+
 export type PasswordVerificationDependencies = {
   generateCode: (length: number) => string;
-  now: () => Date;
   assertConsumeFrequency: (params: {
     account: string;
     scene: PasswordVerificationPurpose;
@@ -38,15 +46,15 @@ export type PasswordVerificationDependencies = {
     username: string;
     code: string;
     purpose: PasswordVerificationPurpose;
-    expiredTime: Date;
-  }) => Promise<unknown>;
-  verifyPreLoginCode: (params: {
-    username: string;
-    code: string;
-    purpose: PasswordVerificationPurpose;
+    ttlPreset: VerificationTtlPreset;
   }) => Promise<unknown>;
   findUserByCredentials: (params: {
     username: string;
     password: string;
+    session?: ClientSession;
   }) => Promise<PasswordVerificationUser | null>;
+  consumeInTransaction: <T extends VerificationType, R>(
+    params: VerificationConsumeParams<T>,
+    handler: (context: VerificationConsumeContext<T>) => Promise<R>
+  ) => Promise<R>;
 };

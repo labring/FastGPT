@@ -1,17 +1,16 @@
 import { z } from 'zod';
 import { LanguageSchema } from '../../../../common/i18n/type';
 import { UserAuthTypeEnum } from '../../../../support/user/auth/constants';
-import { AccountContactUsernameSchema } from '../../../../support/user/account/verification/type';
+import {
+  AccountContactUsernameSchema,
+  VERIFICATION_CODE_PURPOSES_BY_TYPE
+} from '../../../../support/user/account/verification/type';
 
-const SendAuthCodeBodySchema = z
+const SendAuthCodeCommonSchema = z
   .object({
     username: AccountContactUsernameSchema.meta({
       description: '接收验证码的邮箱或手机号',
       example: 'user@example.com'
-    }),
-    type: z.enum(UserAuthTypeEnum).meta({
-      description: '验证码类型',
-      example: UserAuthTypeEnum.register
     }),
     captcha: z.string().min(1).max(64).meta({
       description: '图片验证码答案',
@@ -23,38 +22,40 @@ const SendAuthCodeBodySchema = z
     })
   })
   .strict();
+
+export const SendAuthCodeBodySchema = z.discriminatedUnion('type', [
+  SendAuthCodeCommonSchema.extend({
+    type: z.literal(UserAuthTypeEnum.register).meta({
+      description: '验证码类型',
+      example: UserAuthTypeEnum.register
+    }),
+    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[UserAuthTypeEnum.register]).meta({
+      description: '验证码业务场景',
+      example: 'register'
+    })
+  }).strict(),
+  SendAuthCodeCommonSchema.extend({
+    type: z.literal(UserAuthTypeEnum.findPassword).meta({
+      description: '验证码类型',
+      example: UserAuthTypeEnum.findPassword
+    }),
+    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[UserAuthTypeEnum.findPassword]).meta({
+      description: '验证码业务场景',
+      example: 'forgetPassword'
+    })
+  }).strict(),
+  SendAuthCodeCommonSchema.extend({
+    type: z.literal(UserAuthTypeEnum.bindNotification).meta({
+      description: '验证码类型',
+      example: UserAuthTypeEnum.bindNotification
+    }),
+    purpose: z.literal(VERIFICATION_CODE_PURPOSES_BY_TYPE[UserAuthTypeEnum.bindNotification]).meta({
+      description: '验证码业务场景',
+      example: 'bindNotification'
+    })
+  }).strict()
+]);
 export type SendAuthCodeBodyType = z.infer<typeof SendAuthCodeBodySchema>;
-
-/** 注册验证码接口，purpose 由后端固定为 register。 */
-export const SendRegisterAuthCodeBodySchema = SendAuthCodeBodySchema.extend({
-  type: z.literal(UserAuthTypeEnum.register).meta({
-    description: '验证码类型',
-    example: UserAuthTypeEnum.register
-  })
-}).strict();
-export type SendRegisterAuthCodeBodyType = z.infer<typeof SendRegisterAuthCodeBodySchema>;
-
-/** 找回密码验证码接口，purpose 由后端固定为 forgetPassword。 */
-export const SendForgetPasswordAuthCodeBodySchema = SendAuthCodeBodySchema.extend({
-  type: z.literal(UserAuthTypeEnum.findPassword).meta({
-    description: '验证码类型',
-    example: UserAuthTypeEnum.findPassword
-  })
-}).strict();
-export type SendForgetPasswordAuthCodeBodyType = z.infer<
-  typeof SendForgetPasswordAuthCodeBodySchema
->;
-
-/** 绑定通知账号验证码接口，purpose 由后端固定为 bindNotification。 */
-export const SendBindNotificationAuthCodeBodySchema = SendAuthCodeBodySchema.extend({
-  type: z.literal(UserAuthTypeEnum.bindNotification).meta({
-    description: '验证码类型',
-    example: UserAuthTypeEnum.bindNotification
-  })
-}).strict();
-export type SendBindNotificationAuthCodeBodyType = z.infer<
-  typeof SendBindNotificationAuthCodeBodySchema
->;
 
 export const SendAuthCodeResponseSchema = z
   .object({

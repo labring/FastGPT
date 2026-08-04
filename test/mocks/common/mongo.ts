@@ -71,10 +71,13 @@ vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any
  * MongoDB transactions require replica set, which may not be available in test environment
  */
 vi.mock(import('@fastgpt/service/common/mongo/sessionRun'), async () => {
+  const runWithoutTransaction = async (fn: (session: any) => Promise<unknown>) => {
+    // Execute the function without a real session
+    return await fn(null as any);
+  };
+
   return {
-    mongoSessionRun: vi.fn(async (fn) => {
-      // Execute the function without a real session
-      return await fn(null as any);
-    })
+    mongoSessionRun: vi.fn(runWithoutTransaction),
+    mongoSessionRunWithDriverRetry: vi.fn(runWithoutTransaction)
   };
 });

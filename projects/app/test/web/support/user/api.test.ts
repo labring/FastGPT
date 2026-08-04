@@ -15,36 +15,19 @@ beforeEach(() => {
 });
 
 describe('user api', () => {
-  it('should send register auth code', async () => {
+  it.each([
+    [UserAuthTypeEnum.register, 'register'],
+    [UserAuthTypeEnum.findPassword, 'forgetPassword'],
+    [UserAuthTypeEnum.bindNotification, 'bindNotification']
+  ] as const)('should send %s auth code through the shared endpoint', async (type, purpose) => {
     const data = {
       username: 'test@test.com',
-      type: UserAuthTypeEnum.register,
+      type,
+      purpose,
       captcha: 'captcha123',
       lang: 'zh-CN'
     };
-    await api.sendRegisterAuthCode(data);
-    expect(POST).toHaveBeenCalledWith('/proApi/support/user/account/register/sendAuthCode', data);
-  });
-
-  it('should send forget password auth code', async () => {
-    const data = {
-      username: 'test@test.com',
-      type: UserAuthTypeEnum.findPassword,
-      captcha: 'captcha123',
-      lang: 'zh-CN'
-    };
-    await api.sendForgetPasswordAuthCode(data);
-    expect(POST).toHaveBeenCalledWith('/proApi/support/user/account/password/sendAuthCode', data);
-  });
-
-  it('should send bind notification auth code', async () => {
-    const data = {
-      username: 'test@test.com',
-      type: UserAuthTypeEnum.bindNotification,
-      captcha: 'captcha123',
-      lang: 'zh-CN'
-    };
-    await api.sendBindNotificationAuthCode(data);
+    await api.sendAuthCode(data);
     expect(POST).toHaveBeenCalledWith('/proApi/support/user/inform/sendAuthCode', data);
   });
 

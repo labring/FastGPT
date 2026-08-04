@@ -10,7 +10,8 @@ import type {
   FastLoginBodyType,
   WxLoginBodyType,
   GetWXLoginQRResponseType,
-  LoginSuccessResponseType
+  LoginSuccessResponseType,
+  WxLoginResultResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type {
   SendAuthCodeBodyType,
@@ -21,21 +22,12 @@ import type {
   UpdatePasswordByOldBodyType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
+import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 
-export type UserVerificationPurpose =
-  | 'login'
-  | 'register'
-  | 'forgetPassword'
-  | 'changePassword'
-  | 'unsubscribe'
-  | 'bindNotification';
+export type UserVerificationPurpose = CaptchaVerificationPurpose;
 
 /* ===== Auth code ===== */
-export const sendRegisterAuthCode = (data: SendAuthCodeBodyType) =>
-  POST<SendAuthCodeResponseType>('/proApi/support/user/account/register/sendAuthCode', data);
-export const sendForgetPasswordAuthCode = (data: SendAuthCodeBodyType) =>
-  POST<SendAuthCodeResponseType>('/proApi/support/user/account/password/sendAuthCode', data);
-export const sendBindNotificationAuthCode = (data: SendAuthCodeBodyType) =>
+export const sendAuthCode = (data: SendAuthCodeBodyType) =>
   POST<SendAuthCodeResponseType>('/proApi/support/user/inform/sendAuthCode', data);
 export const getCaptchaPic = (username: string, purpose: UserVerificationPurpose) =>
   GET<{
@@ -64,7 +56,7 @@ export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponseType>('/proApi/support/user/account/login/wx/getQR');
 
 export const getWXLoginResult = (params: WxLoginBodyType) =>
-  POST<LoginSuccessResponseType>(`/proApi/support/user/account/login/wx/getResult`, params);
+  POST<WxLoginResultResponseType>(`/proApi/support/user/account/login/wx/getResult`, params);
 export const loginOut = () => GET('/support/user/account/loginout');
 
 /* ===== register ===== */

@@ -32,39 +32,44 @@ async function handler(
     bodySchema: LoginByPasswordBodySchema
   }).body;
 
-  const user = await passwordVerificationService.verifyCredentials({
-    username,
-    password,
-    code,
-    purpose: 'login'
-  });
+  const { user, userDetail, visitorIdentity } =
+    await passwordVerificationService.withVerifiedCredentials(
+      {
+        username,
+        password,
+        code,
+        purpose: 'login'
+      },
+      async ({ user, session }) => {
+        if (user.status === UserStatusEnum.forbidden) {
+          return Promise.reject('Invalid account!');
+        }
 
-  if (user.status === UserStatusEnum.forbidden) {
-    return Promise.reject('Invalid account!');
-  }
+        if (user.username.startsWith('wecom-')) {
+          return Promise.reject(new UserError('Wecom user can not login with password'));
+        }
 
-  if (user) {
-    if (user.username.startsWith('wecom-')) {
-      return Promise.reject(new UserError('Wecom user can not login with password'));
-    }
-  }
+        const userDetail = await getUserDetail({
+          tmbId: user?.lastLoginTmbId,
+          userId: user._id,
+          isRoot: username === 'root',
+          session
+        });
 
-  const userDetail = await getUserDetail({
-    tmbId: user?.lastLoginTmbId,
-    userId: user._id,
-    isRoot: username === 'root'
-  });
+        user.lastLoginTmbId = userDetail.team.tmbId;
+        user.language = language;
+        const visitorIdentity = resolveCRMVisitorId({
+          storedFastgptSem: user.fastgpt_sem,
+          incomingVisitorId: fastgpt_sem?.visitor_id
+        });
+        if (visitorIdentity.shouldPersist) {
+          user.fastgpt_sem = visitorIdentity.fastgptSem;
+        }
+        await user.save({ session });
 
-  user.lastLoginTmbId = userDetail.team.tmbId;
-  user.language = language;
-  const visitorIdentity = resolveCRMVisitorId({
-    storedFastgptSem: user.fastgpt_sem,
-    incomingVisitorId: fastgpt_sem?.visitor_id
-  });
-  if (visitorIdentity.shouldPersist) {
-    user.fastgpt_sem = visitorIdentity.fastgptSem;
-  }
-  await user.save();
+        return { user, userDetail, visitorIdentity };
+      }
+    );
 
   const token = await createUserSession({
     userId: user._id,

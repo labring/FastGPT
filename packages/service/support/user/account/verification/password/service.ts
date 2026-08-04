@@ -1,41 +1,39 @@
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { addSeconds } from 'date-fns';
-import { verification } from '../../../../tmpData/verification';
+import { verification, VerificationMaterialError } from '../../../../tmpData/verification';
 import { MongoUser } from '../../../schema';
 import { assertCodeVerificationConsumeFrequency } from '../utils';
 import type {
   IssuePreLoginCodeParams,
   IssuePreLoginCodeResult,
   PasswordVerificationDependencies,
+  PasswordVerificationHandler,
   VerifyPasswordCredentialsParams
 } from './type';
 
 const defaultDependencies: PasswordVerificationDependencies = {
   generateCode: getNanoid,
-  now: () => new Date(),
   assertConsumeFrequency: assertCodeVerificationConsumeFrequency,
-  savePreLoginCode: ({ purpose, username, code, expiredTime }) =>
-    verification.upsert(purpose, 'password', username, { preLoginCode: code }, expiredTime),
-  verifyPreLoginCode: async ({ purpose, username, code }) => {
-    const material = await verification.consume(purpose, 'password', username, {
-      preLoginCode: code
-    });
-
-    if (!material) {
-      return Promise.reject(new UserError(UserErrEnum.invalidVerificationCode));
-    }
-
-    return 'SUCCESS';
+  savePreLoginCode: ({ purpose, username, code, ttlPreset }) =>
+    verification.upsert({
+      scene: purpose,
+      type: 'password',
+      key: username,
+      data: { preLoginCode: code },
+      ttlPreset
+    }),
+  findUserByCredentials: ({ username, password, session }) => {
+    const query = MongoUser.findOne({ username, password });
+    if (session) query.session(session);
+    return query;
   },
-  findUserByCredentials: ({ username, password }) => MongoUser.findOne({ username, password })
+  consumeInTransaction: verification.consumeInTransaction
 };
 
 /**
  * 只负责预登录验证码和用户名密码匹配，并返回匹配到的用户。
  * forbidden、WeCom 账号限制以及团队、Session、Cookie 等登录策略由业务层负责。
- * 当前实例尚未接入生产入口。
  */
 export class PasswordVerificationService {
   private readonly dependencies: PasswordVerificationDependencies;
@@ -57,22 +55,49 @@ export class PasswordVerificationService {
       username,
       code,
       purpose,
-      expiredTime: addSeconds(this.dependencies.now(), 30)
+      ttlPreset: 'short'
     });
 
     return { code };
   }
 
-  async verifyCredentials({ username, password, code, purpose }: VerifyPasswordCredentialsParams) {
-    await this.dependencies.assertConsumeFrequency({ account: username, scene: purpose });
-    await this.dependencies.verifyPreLoginCode({ username, code, purpose });
+  /** 在同一事务内完成凭据校验、业务回调和预登录材料消费。 */
+  async withVerifiedCredentials<T>(
+    params: VerifyPasswordCredentialsParams,
+    handler: PasswordVerificationHandler<T>
+  ) {
+    await this.dependencies.assertConsumeFrequency({
+      account: params.username,
+      scene: params.purpose
+    });
 
-    const user = await this.dependencies.findUserByCredentials({ username, password });
-    if (!user) {
-      return Promise.reject(UserErrEnum.account_psw_error);
+    try {
+      return await this.dependencies.consumeInTransaction(
+        {
+          scene: params.purpose,
+          type: 'password',
+          key: params.username,
+          match: { preLoginCode: params.code }
+        },
+        async ({ session }) => {
+          const user = await this.dependencies.findUserByCredentials({
+            username: params.username,
+            password: params.password,
+            session
+          });
+          if (!user) {
+            return Promise.reject(UserErrEnum.account_psw_error);
+          }
+
+          return handler({ user, session });
+        }
+      );
+    } catch (error) {
+      if (error instanceof VerificationMaterialError) {
+        return Promise.reject(new UserError(UserErrEnum.invalidVerificationCode));
+      }
+      throw error;
     }
-
-    return user;
   }
 }
 

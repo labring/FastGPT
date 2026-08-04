@@ -34,6 +34,21 @@ export const LoginSuccessResponseSchema = z.object({
 });
 export type LoginSuccessResponseType = z.infer<typeof LoginSuccessResponseSchema>;
 
+export const WxLoginExpiredResponseSchema = z.object({
+  expired: z.literal(true).meta({
+    description: '微信登录二维码是否已过期'
+  })
+});
+export const WxLoginPendingResponseSchema = z.null().meta({
+  description: '二维码仍在等待扫码'
+});
+export const WxLoginResultResponseSchema = z.union([
+  LoginSuccessResponseSchema,
+  WxLoginExpiredResponseSchema,
+  WxLoginPendingResponseSchema
+]);
+export type WxLoginResultResponseType = z.infer<typeof WxLoginResultResponseSchema>;
+
 // ===== Pre login - get login verification code =====
 export const PreLoginQuerySchema = z.object({
   username: z.string().meta({
