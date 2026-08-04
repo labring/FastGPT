@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "bullmq": "^5.81.2",
+    "bullmq": "5.52.2",
     "ioredis": "^5.11.1",
     "zod": "catalog:"
   },
