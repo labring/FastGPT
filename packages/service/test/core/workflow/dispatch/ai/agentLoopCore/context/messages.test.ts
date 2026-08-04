@@ -5,9 +5,7 @@ import {
   buildAgentLoopCoreInput,
   buildAgentLoopCoreRequestMessages,
   buildAgentLoopCoreSkillsPrompt,
-  buildAgentLoopCoreSystemPrompt,
-  buildAgentLoopCoreUserReminderInput,
-  parseAgentLoopCoreUserSystemPrompt
+  buildAgentLoopCoreUserReminderInput
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context';
 import { describe, expect, it } from 'vitest';
 
@@ -138,21 +136,6 @@ describe('buildAgentLoopCoreInput', () => {
       userAnswer: 'confirmed',
       childrenInteractiveParams
     });
-  });
-});
-
-describe('agentLoopCore prompt helpers', () => {
-  it('rewrites user system prompt and merges runtime prompts before rewriting', () => {
-    expect(parseAgentLoopCoreUserSystemPrompt({ userSystemPrompt: '' })).toBe('');
-
-    const prompt = buildAgentLoopCoreSystemPrompt({
-      userSystemPrompt: 'system prompt',
-      runtimePrompts: ['sandbox prompt']
-    });
-
-    expect(prompt).toContain('system prompt\n\nsandbox prompt');
-    expect(prompt).toContain('<user_background></user_background>');
-    expect(prompt).toContain('@工具名');
   });
 });
 

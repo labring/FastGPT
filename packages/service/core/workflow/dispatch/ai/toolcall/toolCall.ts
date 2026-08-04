@@ -2,6 +2,7 @@ import type {
   ChatCompletionMessageParam,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { DispatchToolModuleProps } from './type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { normalizeAgentLoopUsages } from '../../../../ai/llm/agentLoop/interface';
@@ -87,12 +88,24 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse
   });
   getProviderToolInfo = toolProvider.getToolInfo;
+  const systemPrompt = toolProvider.finalMessages
+    .filter((message) => message.role === ChatCompletionRequestMessageRoleEnum.System)
+    .flatMap((message) => {
+      if (typeof message.content === 'string') return [message.content];
+      return (message.content ?? []).flatMap((item) => (item.type === 'text' ? [item.text] : []));
+    })
+    .filter(Boolean)
+    .join('\n\n');
+  const loopMessages = toolProvider.finalMessages.filter(
+    (message) => message.role !== ChatCompletionRequestMessageRoleEnum.System
+  );
 
   const { summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
       provider: 'fastAgent',
       input: buildAgentLoopCoreInput({
-        messages: toolProvider.finalMessages,
+        messages: loopMessages,
+        systemPrompt,
         childrenInteractiveParams
       }),
       runtime: createAgentLoopCoreRuntimeWithEnvironment({
@@ -100,7 +113,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         environment: runtimeEnvironment,
         llmParams: {
           model: toolModel.model,
-          promptMode: 'raw',
           maxTokens: maxToken,
           stream,
           temperature,

@@ -188,6 +188,41 @@ describe('runToolCall compression node responses', () => {
     delete (global as any).feConfigs;
   });
 
+  it('passes the extracted system prompt separately from conversation messages', async () => {
+    runAgentLoopMock.mockResolvedValue(createLoopResult());
+
+    await runToolCall(
+      createProps({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: 'custom system prompt'
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: [{ type: 'text', text: 'array system prompt' }]
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ]
+      })
+    );
+
+    expect(runAgentLoopMock.mock.calls[0][0].input).toEqual(
+      expect.objectContaining({
+        systemPrompt: 'custom system prompt\n\narray system prompt',
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ]
+      })
+    );
+  });
+
   it('records context compression as ToolCall child node response and tool-response compression under the tool node', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',
@@ -271,7 +306,6 @@ describe('runToolCall compression node responses', () => {
           },
           llmParams: expect.objectContaining({
             model: 'gpt-4',
-            promptMode: 'raw',
             maxTokens: 1000,
             temperature: 0,
             topP: 0.7,

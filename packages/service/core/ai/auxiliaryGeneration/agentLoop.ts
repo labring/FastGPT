@@ -1,5 +1,9 @@
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import { runAgentLoop } from '../llm/agentLoop/interface';
+import type { AgentLoopRuntime } from '../llm/agentLoop/interface';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AuxiliaryGenerationStreamWriter } from './stream';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
@@ -16,13 +20,18 @@ type RunAuxiliaryGenerationAgentLoopParams = {
   streamWriter?: AuxiliaryGenerationStreamWriter;
   checkIsStopping?: () => boolean;
   usageSink?: (usages: ChatNodeUsageType[]) => void;
+  providerState?: unknown;
+  userAnswer?: string;
+  runtimeTools?: ChatCompletionTool[];
+  executeTool?: AgentLoopRuntime['executeTool'];
 };
 
 /**
- * 运行辅助生成的无工具 Agent Loop。
+ * 运行辅助生成 Agent Loop。
  *
- * 该入口只封装统一 agent loop 的模型循环和计划维护，不注册 runtime tools，
- * 因此不会隐式获得 workflow、Skill 或虚拟机执行能力。
+ * systemPrompt 作为调用方提供的最终提示词原样传入。该入口启用标准 ask_user，并允许
+ * 业务方显式注入 runtime tools；不会隐式获得默认 Agent 提示词、workflow、Skill、计划
+ * 或虚拟机执行能力。paused/providerState 等结果保持 Agent Loop 原语义。
  */
 export async function runAuxiliaryGenerationAgentLoop({
   teamId,
@@ -34,7 +43,11 @@ export async function runAuxiliaryGenerationAgentLoop({
   useVideo,
   streamWriter,
   checkIsStopping,
-  usageSink
+  usageSink,
+  providerState,
+  userAnswer,
+  runtimeTools = [],
+  executeTool
 }: RunAuxiliaryGenerationAgentLoopParams) {
   const result = await runAgentLoop({
     runtime: {
@@ -47,14 +60,16 @@ export async function runAuxiliaryGenerationAgentLoop({
         useVideo
       },
       systemTools: {
-        plan: { enabled: true }
+        ask: { enabled: true }
       },
       toolCatalog: {
-        runtimeTools: []
+        runtimeTools
       },
-      executeTool: async () => {
-        throw new Error('Auxiliary generation does not support runtime tools');
-      },
+      executeTool:
+        executeTool ??
+        (async () => {
+          throw new Error('Auxiliary generation runtime tool executor is not configured');
+        }),
       checkIsStopping,
       emitEvent: (event) => {
         if (event.type === 'reasoning_delta') {
@@ -63,12 +78,20 @@ export async function runAuxiliaryGenerationAgentLoop({
             data: createChatCompletionDeltaResponse({ reasoningContent: event.text })
           });
         }
+        if (event.type === 'answer_delta') {
+          streamWriter?.({
+            event: AuxiliaryGenerationEventEnum.answer,
+            data: createChatCompletionDeltaResponse({ text: event.text })
+          });
+        }
       },
       usagePush: usageSink
     },
     input: {
       systemPrompt,
-      messages
+      messages,
+      providerState,
+      userAnswer
     }
   });
 
@@ -86,7 +109,7 @@ export async function runAuxiliaryGenerationAgentLoop({
     .join('');
 
   return {
-    status: result.status,
+    ...result,
     answerText,
     reasoningText
   };

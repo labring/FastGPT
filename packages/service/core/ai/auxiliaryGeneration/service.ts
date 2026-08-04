@@ -22,6 +22,7 @@ export const runAuxiliaryGeneration = async <T>({
   sourceId,
   chatId,
   query,
+  userAnswer,
   files,
   data,
   histories,
@@ -69,6 +70,7 @@ export const runAuxiliaryGeneration = async <T>({
   try {
     const result = await processor({
       query,
+      userAnswer,
       files,
       data,
       histories,

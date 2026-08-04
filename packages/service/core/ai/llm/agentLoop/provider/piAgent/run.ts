@@ -15,7 +15,6 @@ import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { getLLMModel } from '../../../../model';
 import { AgentUsageModuleName } from '../../domain/usage';
-import { getMainAgentSystemPrompt } from '../../domain/mainPrompt';
 import {
   askUserToolName,
   formatAgentAskToolResponse,
@@ -408,20 +407,9 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 
   const pendingRequests: Array<{ requestId: string; requestIndex: number; startedAt: number }> = [];
   const maxRunAgentTimes = Math.max(1, runtime.maxRunAgentTimes ?? 100);
-  const systemPrompt =
-    runtime.llmParams.promptMode === 'raw'
-      ? input.systemPrompt || ''
-      : getMainAgentSystemPrompt({
-          systemPrompt: input.systemPrompt,
-          hasRuntimeTools:
-            runtime.toolCatalog.runtimeTools.length > 0 ||
-            runtime.systemTools?.sandbox?.enabled === true ||
-            runtime.systemTools?.readFile?.enabled === true ||
-            runtime.systemTools?.datasetSearch?.enabled === true
-        });
   const agent = new Agent({
     initialState: {
-      systemPrompt,
+      systemPrompt: input.systemPrompt ?? '',
       model: piModel,
       thinkingLevel: getPiThinkingLevel(modelName, runtime.llmParams.reasoningEffort),
       tools,

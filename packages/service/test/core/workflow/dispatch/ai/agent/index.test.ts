@@ -432,7 +432,7 @@ describe('dispatchRunAgent user context', () => {
     expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
   });
 
-  it('uses an empty system prompt when the parameter is omitted', async () => {
+  it('uses the default agent system prompt when the user prompt is omitted', async () => {
     const props = createProps();
     delete props.params.systemPrompt;
 
@@ -449,7 +449,9 @@ describe('dispatchRunAgent user context', () => {
     const result = await resultPromise!;
 
     expect(result.error).toBeUndefined();
-    expect(runAgentLoopMock.mock.calls[0][0].input.systemPrompt).toBe('');
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('你是一个 Work Agent。');
+    expect(systemPrompt).not.toContain('<user_system_prompt>');
   });
 
   it('injects sandbox input files before starting the agent loop', async () => {
@@ -499,6 +501,8 @@ describe('dispatchRunAgent user context', () => {
       sandboxWriteFilesMock.mock.invocationCallOrder[0]
     );
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).toContain('<sandbox_capability>');
+    expect(loopInput.systemPrompt).toContain('</sandbox_capability>');
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(
       '当前 sandbox 工作目录: /workspace'
@@ -1209,7 +1213,7 @@ describe('dispatchRunAgent user context', () => {
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
-    expect(loopInput.systemPrompt).not.toContain('## 沙盒能力');
+    expect(loopInput.systemPrompt).not.toContain('<sandbox_capability>');
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).not.toContain(
       '<available_skills>'
     );

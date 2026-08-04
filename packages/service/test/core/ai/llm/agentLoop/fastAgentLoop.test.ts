@@ -68,6 +68,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', () => ({
 }));
 
 import {
+  buildDefaultAgentSystemPrompt,
   createAskUserAgentTool,
   createSetPlanAgentTool,
   createUpdatePlanAgentTool
@@ -144,6 +145,7 @@ describe('runFastAgentMainLoop', () => {
     const result = await runFastAgentMainLoop({
       runtime: createRuntime(),
       input: {
+        systemPrompt: buildDefaultAgentSystemPrompt(),
         messages: [
           {
             role: ChatCompletionRequestMessageRoleEnum.User,
@@ -159,63 +161,8 @@ describe('runFastAgentMainLoop', () => {
     expect(result.activePlan).toBeUndefined();
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
     const mainAgentPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[0].content;
-    expect(mainAgentPrompt).toContain('你是 Work Agent');
-    expect(mainAgentPrompt).toContain('任务或 Skill 明确需要通过选项向用户收集信息');
-    expect(mainAgentPrompt).toContain('Skill 要求向用户收集选项信息时');
-    expect(mainAgentPrompt).toContain('每个问题提供 2 到 4 个候选答案');
+    expect(mainAgentPrompt).toContain('你是一个 Work Agent');
   });
-
-  it.each([
-    {
-      name: 'no runtime-capable tools',
-      toolCatalog: { runtimeTools: [] },
-      expectedConstraint: true
-    },
-    {
-      name: 'sandbox tools only',
-      toolCatalog: { runtimeTools: [], sandboxTools: [tool('sandbox_shell')] },
-      expectedConstraint: false
-    },
-    {
-      name: 'read file tool only',
-      toolCatalog: { runtimeTools: [], readFileTool: tool('read_files') },
-      expectedConstraint: false
-    },
-    {
-      name: 'dataset search tool only',
-      toolCatalog: { runtimeTools: [], datasetSearchTool: tool('dataset_search') },
-      expectedConstraint: false
-    }
-  ] satisfies Array<{
-    name: string;
-    toolCatalog: AgentLoopRuntime['toolCatalog'];
-    expectedConstraint: boolean;
-  }>)(
-    'sets the runtime tool constraint correctly with $name',
-    async ({ toolCatalog, expectedConstraint }) => {
-      mockCreateLLMResponseQueue(createLLMResponseMock, [
-        text({
-          requestId: 'req_runtime_tool_constraint',
-          content: 'direct answer'
-        })
-      ]);
-
-      await runFastAgentMainLoop({
-        runtime: createRuntime({ toolCatalog }),
-        input: {
-          messages: [
-            {
-              role: ChatCompletionRequestMessageRoleEnum.User,
-              content: 'hello'
-            }
-          ]
-        }
-      });
-
-      const mainAgentPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[0].content;
-      expect(mainAgentPrompt.includes('<tool_constraint>')).toBe(expectedConstraint);
-    }
-  );
 
   it('creates an active plan through set_plan', async () => {
     const events: any[] = [];

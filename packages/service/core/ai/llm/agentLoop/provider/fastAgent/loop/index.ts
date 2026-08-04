@@ -7,7 +7,6 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
-import { getMainAgentSystemPrompt } from '../../../domain/mainPrompt';
 import {
   formatAgentAskToolResponse,
   parseAgentAskToolCall,
@@ -100,31 +99,12 @@ const stripSystemMessages = (messages: ChatCompletionMessageParam[]) =>
 
 /**
  * 构建进入主 Agent 的初始消息链。
- * raw 模式完全尊重调用方传入的 messages；fastAgent 模式会注入平台主提示词并剔除外部 system。
+ * systemPrompt 是调用方已经组装完成的最终提示词；messages 中的 system message 不再重复注入。
  */
-const buildInitialMessages = ({
-  input,
-  hasRuntimeTools,
-  promptMode = 'fastAgent'
-}: {
-  input: FastAgentLoopInput;
-  hasRuntimeTools: boolean;
-  promptMode?: AgentLoopRuntime['promptMode'];
-}): ChatCompletionMessageParam[] => {
-  if (promptMode === 'raw') {
-    return input.messages;
-  }
-
-  return [
-    createSystemMessage(
-      getMainAgentSystemPrompt({
-        systemPrompt: input.systemPrompt,
-        hasRuntimeTools
-      })
-    ),
-    ...stripSystemMessages(input.messages)
-  ];
-};
+const buildInitialMessages = ({ input }: { input: FastAgentLoopInput }) => [
+  ...(input.systemPrompt ? [createSystemMessage(input.systemPrompt)] : []),
+  ...stripSystemMessages(input.messages)
+];
 
 /**
  * ask_user 暂停时保存恢复所需上下文。
@@ -186,12 +166,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     toolCatalog: normalized
   };
 
-  const hasRuntimeTools =
-    normalized.runtimeTools.length > 0 ||
-    (normalized.sandboxTools?.length ?? 0) > 0 ||
-    !!normalized.readFileTool ||
-    !!normalized.datasetSearchTool;
-
   let pendingAsk:
     | {
         ask: AgentAskPayload;
@@ -218,7 +192,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             )
           } as ChatCompletionMessageParam
         ]
-      : buildInitialMessages({ input, hasRuntimeTools, promptMode: runtime.promptMode });
+      : buildInitialMessages({ input });
   // 普通续轮通过 input.activePlan 恢复结构化 plan；ask_user 续跑则优先使用暂停时的完整快照。
   // 历史 checkpoint 只负责给模型提供上下文，不再作为运行时状态的反序列化来源。
   let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;

@@ -7,7 +7,6 @@ import type {
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
@@ -36,13 +35,13 @@ import {
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreProviderStateMemories,
   buildAgentLoopCoreRequestMessages,
-  buildAgentLoopCoreSystemPrompt,
   createAgentLoopCoreChildInteractiveParams,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreActivePlan,
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -241,15 +240,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       subAppsMap: agentSubAppsMap,
       lang
     });
-    // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
+    // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按工具能力构建。
     // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
-    const formatedSystemPrompt = buildAgentLoopCoreSystemPrompt({
-      userSystemPrompt: replaceAgentPromptToolReferences({
-        text: systemPrompt,
-        resolveName: (id) =>
-          promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
-      }),
-      runtimePrompts: sandboxClient ? [SANDBOX_SYSTEM_PROMPT] : []
+    const formattedUserSystemPrompt = replaceAgentPromptToolReferences({
+      text: systemPrompt,
+      resolveName: (id) => promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
     });
 
     // 2. 创建 workflow adapter。
@@ -257,7 +252,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: {
         ...props,
-        systemPrompt: formatedSystemPrompt,
+        systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
         getSubApp,
         completionTools: agentCompletionTools,
@@ -270,6 +265,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       assistantResponses,
       nodeResponses: childNodeResponses,
       appendNodeResponse: nodeResponseCollector.appendNodeResponse
+    });
+    const agentSystemPrompt = buildDefaultAgentSystemPrompt({
+      userSystemPrompt: formattedUserSystemPrompt,
+      sandboxEnabled: !!sandboxClient
     });
 
     // providerState 统一保存 provider 内部恢复信息。
@@ -292,7 +291,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       runtime,
       input: buildAgentLoopCoreInput({
         messages: loopMessages,
-        systemPrompt: formatedSystemPrompt,
+        systemPrompt: agentSystemPrompt,
         activePlan,
         providerState: runtimeProviderState,
         userAnswer: isAskResume ? queryInput || userChatInput : undefined,
