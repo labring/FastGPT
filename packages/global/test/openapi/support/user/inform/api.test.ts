@@ -57,4 +57,15 @@ describe('SendAuthCodeBodySchema', () => {
       })
     ).toThrow();
   });
+
+  it('rejects a blank captcha after trimming', () => {
+    expect(() =>
+      SendAuthCodeBodySchema.parse({
+        ...common,
+        captcha: '   ',
+        type: UserAuthTypeEnum.register,
+        purpose: 'register'
+      })
+    ).toThrow();
+  });
 });

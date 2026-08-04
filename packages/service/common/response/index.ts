@@ -39,15 +39,6 @@ function resolveHttpStatusForApiError(
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
 
-  const explicitErrorStatus = error?.httpStatus;
-  if (
-    typeof explicitErrorStatus === 'number' &&
-    explicitErrorStatus >= 400 &&
-    explicitErrorStatus <= 599
-  ) {
-    return explicitErrorStatus;
-  }
-
   if (typeof bc === 'number' && bc >= 400 && bc <= 499) {
     return bc;
   }
@@ -66,15 +57,6 @@ function resolveHttpStatusForApiError(
   }
 
   const raw = typeof error === 'string' ? error : error?.message;
-  const configuredHttpStatus = ERROR_RESPONSE[raw]?.httpStatus;
-  if (
-    typeof configuredHttpStatus === 'number' &&
-    configuredHttpStatus >= 400 &&
-    configuredHttpStatus <= 599
-  ) {
-    return configuredHttpStatus;
-  }
-
   if (raw === 'EntityTooLarge') {
     return 413;
   }

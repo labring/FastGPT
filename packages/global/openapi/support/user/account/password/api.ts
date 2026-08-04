@@ -2,17 +2,18 @@ import { z } from 'zod';
 import { LanguageSchema } from '../../../../../common/i18n/type';
 import {
   AccountContactUsernameSchema,
-  PublicAuthStringSchema
+  AccountPasswordSchema,
+  ShortAuthStringSchema
 } from '../../../../../support/user/account/verification/type';
 
 // ===== Update password by old password =====
 export const UpdatePasswordByOldBodySchema = z
   .object({
-    oldPsw: PublicAuthStringSchema.min(1).meta({
+    oldPsw: AccountPasswordSchema.meta({
       example: 'hashed_old_password',
       description: '旧密码（已加密）'
     }),
-    newPsw: PublicAuthStringSchema.min(1).meta({
+    newPsw: AccountPasswordSchema.meta({
       example: 'hashed_new_password',
       description: '新密码（已加密）'
     })
@@ -39,7 +40,7 @@ export type CheckPswExpiredResponseType = z.infer<typeof CheckPswExpiredResponse
 // ===== Reset expired password =====
 export const ResetExpiredPswBodySchema = z
   .object({
-    newPsw: PublicAuthStringSchema.min(1).meta({
+    newPsw: AccountPasswordSchema.meta({
       example: 'hashed_new_password',
       description: '新密码（已加密）'
     })
@@ -59,9 +60,9 @@ export type ResetExpiredPswResponseType = z.infer<typeof ResetExpiredPswResponse
 // ===== Find Password (update by code) =====
 export const UpdatePasswordByCodeBodySchema = z.object({
   username: AccountContactUsernameSchema.meta({ description: '用户名（邮箱或手机号）' }),
-  code: PublicAuthStringSchema.meta({ description: '验证码' }),
-  password: PublicAuthStringSchema.min(1).meta({ description: '新密码' }),
-  tmbId: PublicAuthStringSchema.optional().meta({ description: '团队成员 ID（可选）' }),
+  code: ShortAuthStringSchema.meta({ description: '验证码' }),
+  password: AccountPasswordSchema.meta({ description: '新密码' }),
+  tmbId: ShortAuthStringSchema.optional().meta({ description: '团队成员 ID（可选）' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
 });
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
-  CaptchaVerificationPurposeSchema,
-  PublicAuthStringSchema
+  AccountContactUsernameSchema,
+  CaptchaVerificationPurposeSchema
 } from '../../../../../support/user/account/verification/type';
 
 /* ============================================================================
@@ -13,7 +13,7 @@ import {
  * ============================================================================ */
 
 export const GetImgCaptchaQuerySchema = z.object({
-  username: PublicAuthStringSchema.meta({
+  username: AccountContactUsernameSchema.meta({
     example: 'user@example.com',
     description: '待验证的账号'
   }),

@@ -4,6 +4,8 @@ import { ApiRequestInputParseError } from '../../../common/zod/requestParseError
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -98,18 +100,45 @@ describe('processError HTTP status mapping', () => {
 });
 
 describe('jsonRes HTTP status mapping', () => {
-  it('does not trust a third-party statusCode field', () => {
-    const res = {
+  const createResponse = () =>
+    ({
       status: vi.fn().mockReturnThis(),
       json: vi.fn()
-    } as unknown as Parameters<typeof jsonRes>[0];
-    const error = Object.assign(new Error('Upstream failure'), { statusCode: 404 });
+    }) as unknown as Parameters<typeof jsonRes>[0];
 
-    jsonRes(res, { code: 500, error });
+  it.each([
+    [UserErrEnum.invalidVerificationCode, 400],
+    [UserErrEnum.sendVerificationCodeTooFrequently, 429],
+    [UserErrEnum.verifyCodeTooFrequently, 429],
+    [SandboxErrEnum.agentSandboxInitializing, 409]
+  ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
+    const res = createResponse();
 
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 500 }));
+    jsonRes(res, { code: 500, error: new UserError(errorKey) });
+
+    expect(res.status).toHaveBeenCalledWith(httpStatus);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: ERROR_RESPONSE[errorKey].code,
+        statusText: errorKey,
+        message: ERROR_RESPONSE[errorKey].message,
+        errorType: 'UserError'
+      })
+    );
   });
+
+  it.each(['httpStatus', 'statusCode'] as const)(
+    'does not trust a third-party %s field',
+    (statusField) => {
+      const res = createResponse();
+      const error = Object.assign(new Error('Upstream failure'), { [statusField]: 404 });
+
+      jsonRes(res, { code: 500, error });
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 500 }));
+    }
+  );
 });
 
 describe('getSseErrorResponse logging', () => {
