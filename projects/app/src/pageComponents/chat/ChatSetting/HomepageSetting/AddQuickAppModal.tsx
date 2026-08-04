@@ -90,7 +90,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
           });
           return prev.filter((v) => v !== id);
         }
-        if (prev.length >= 4) return prev;
+        if (prev.length >= 3) return prev;
         // add id and cache its info if available from current list
         const app = availableAppsMap.get(id);
         if (app) {
@@ -312,7 +312,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
               <VStack spacing={2} alignItems="stretch" h="100%" minH={0} minW={0}>
                 <Box pb={3} px={4} pt={4} fontSize="sm" color="myGray.600">
                   {t('chat:setting.favourite.selected_list', {
-                    num: `${checkedQuickApps.length} / 4`
+                    num: `${checkedQuickApps.length} / 3`
                   })}
                 </Box>
 

@@ -59,7 +59,9 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         selectedTools: data?.selectedTools || [],
         wideLogoUrl: data?.wideLogoUrl,
         squareLogoUrl: data?.squareLogoUrl,
-        quickAppList: data?.quickAppList || []
+
+        // 兼容旧版本最多保存 4 个快捷应用的配置，加载时收敛到当前上限。
+        quickAppList: (data?.quickAppList || []).slice(0, 3)
       };
     },
     [t]
@@ -117,7 +119,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       const { quickAppList, ...params } = values;
       return updateChatSetting({
         ...params,
-        quickAppIds: quickAppList.map((q) => q._id),
+        quickAppIds: quickAppList.slice(0, 3).map((q) => q._id),
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
           inputs: tool.inputs
@@ -469,7 +471,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         <AddQuickAppModal
           selectedIds={(formQuickApps || []).map((q) => q._id)}
           onClose={onCloseAddQuickApp}
-          onConfirm={(list) => setValue('quickAppList', list)}
+          onConfirm={(list) => setValue('quickAppList', list.slice(0, 3))}
         />
       )}
     </Flex>
