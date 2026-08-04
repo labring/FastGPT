@@ -1,5 +1,4 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import fs from 'fs';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -44,7 +43,9 @@ async function handler(req: ApiRequestProps) {
     });
 
     const rawText = await parseDatasetImportFile({
-      buffer: await fs.promises.readFile(result.fileMetadata.path),
+      teamId,
+      tmbId,
+      filePath: result.fileMetadata.path,
       filename,
       encoding: result.fileMetadata.encoding
     }).catch((error) => {

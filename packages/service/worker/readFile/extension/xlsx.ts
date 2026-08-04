@@ -1,5 +1,6 @@
 import { CUSTOM_SPLIT_SIGN } from '../../../common/string/textSplitter';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
+import Papa from 'papaparse';
 import XLSX from 'xlsx';
 import { filterEmptyTableData, formatMarkdownTableRow } from './utils';
 
@@ -52,7 +53,8 @@ export const readXlsxRawText = async ({
 
     return {
       name,
-      data
+      data,
+      mergedCellCount: merges.length
     };
   });
 
@@ -64,7 +66,7 @@ export const readXlsxRawText = async ({
   const format2Csv = result.map(({ name, data }) => {
     return {
       title: `#${name}`,
-      csvText: data.map((item) => item.join(',')).join('\n')
+      csvText: Papa.unparse(data)
     };
   });
 
@@ -86,6 +88,10 @@ ${data.slice(1).map(formatMarkdownTableRow).join('\n')}`;
 
   return {
     rawText: rawText,
-    formatText
+    formatText,
+    tableInfo: {
+      sheetCount: result.length,
+      mergedCellCount: result.reduce((count, item) => count + item.mergedCellCount, 0)
+    }
   };
 };
