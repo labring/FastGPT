@@ -78,17 +78,17 @@ export const createAskAgentTool = (name = 'ask_agent'): ChatCompletionTool => ({
                 minItems: 2,
                 maxItems: 4,
                 description:
-                  'Two to four choices. summary is concise UI text; value is the complete answer returned after selection.',
+                  'Use three choices by default when possible. Choices must be clear, mutually exclusive, definitive answers. Do not use choices to request any input from the user. The user can select exactly one choice or enter a custom answer. Do not add an "Other" choice because the user can enter custom text directly. Each choice uses a short summary phrase and a sentence that explains the answer itself to the user.',
                 items: {
                   type: 'object',
                   properties: {
                     summary: {
                       type: 'string',
-                      description: 'Concise option text shown to the user.'
+                      description: 'A short phrase summarizing the answer content.'
                     },
                     value: {
                       type: 'string',
-                      description: 'Complete answer returned to the agent after selection.'
+                      description: 'A sentence that explains the answer itself to the user.'
                     }
                   },
                   required: ['summary', 'value']
