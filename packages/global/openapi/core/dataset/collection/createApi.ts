@@ -188,7 +188,7 @@ export const CreateBackupCollectionMultipartSchema = z.object({
   file: z.any().meta({
     format: 'binary',
     description:
-      '备份 CSV 文件（表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object）'
+      '备份 CSV 文件（新版表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；兼容旧版 q、a、indexes 表头）'
   }),
   data: CreateBackupCollectionFormSchema.meta({ description: '集合参数（JSON 序列化后传入）' })
 });
@@ -210,7 +210,7 @@ export const CreateTemplateCollectionMultipartSchema = z.object({
   file: z.any().meta({
     format: 'binary',
     description:
-      '模板 CSV 文件（表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object）'
+      '模板 CSV 文件（新版表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；兼容旧版 q、a、indexes 表头）'
   }),
   data: CreateTemplateCollectionFormSchema.meta({ description: '集合参数（JSON 序列化后传入）' })
 });

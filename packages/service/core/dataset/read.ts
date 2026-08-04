@@ -24,11 +24,11 @@ import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
-const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'metadata']);
+const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
 
 /**
- * 解析 CSV 模板表头，严格限制为 q/a/index/metadata 四类固定列名，并保留原始列顺序。
- * q、a 必须各出现一次，metadata 最多一列，index 可以重复。
+ * 解析知识库 CSV 表头，支持新版 q/a/index/metadata 和旧版 q/a/indexes 结构。
+ * q、a 必须各出现一次，metadata 最多一列，index/indexes 可以重复。
  */
 export const parseDatasetCsvHeaders = (headers: string[]) => {
   const normalized = headers.map((header) => header.trim().toLowerCase());

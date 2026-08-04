@@ -239,7 +239,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
     post: {
       summary: '导入备份 CSV 创建集合',
       description:
-        '上传表头由 q、a、index、metadata 组成的 CSV 备份文件，q/a/metadata 各一列，index 可多列且顺序任意，恢复数据到知识库集合。metadata 单元格为 JSON object。`file` 为 CSV 文件，`data` 为 JSON 序列化的集合参数对象',
+        '上传 CSV 备份文件，恢复数据到知识库集合。新版表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；同时兼容旧版 q、a、indexes 表头。`file` 为 CSV 文件，`data` 为 JSON 序列化的集合参数对象',
       tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
@@ -266,7 +266,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
     post: {
       summary: '导入模板 CSV 创建集合',
       description:
-        '上传表头由 q、a、index、metadata 组成的 CSV 模板文件，q/a/metadata 各一列，index 可多列且顺序任意，批量导入数据到知识库集合。metadata 单元格为 JSON object。`file` 为 CSV 文件，`data` 为 JSON 序列化的集合参数对象',
+        '上传 CSV 模板文件，批量导入数据到知识库集合。新版表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；同时兼容旧版 q、a、indexes 表头。`file` 为 CSV 文件，`data` 为 JSON 序列化的集合参数对象',
       tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
