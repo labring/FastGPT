@@ -1,15 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 
-const { runAgentLoopMock, buildDefaultAgentSystemPromptMock } = vi.hoisted(() => ({
-  runAgentLoopMock: vi.fn(),
-  buildDefaultAgentSystemPromptMock: vi.fn(() => 'built system prompt')
+const { runAgentLoopMock } = vi.hoisted(() => ({
+  runAgentLoopMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/agentLoop/interface', async (importOriginal) => ({
   ...(await importOriginal()),
-  runAgentLoop: runAgentLoopMock,
-  buildDefaultAgentSystemPrompt: buildDefaultAgentSystemPromptMock
+  runAgentLoop: runAgentLoopMock
 }));
 
 import { runAuxiliaryGenerationAgentLoop } from '@fastgpt/service/core/ai/auxiliaryGeneration/agentLoop';
@@ -17,7 +15,6 @@ import { runAuxiliaryGenerationAgentLoop } from '@fastgpt/service/core/ai/auxili
 describe('runAuxiliaryGenerationAgentLoop', () => {
   beforeEach(() => {
     runAgentLoopMock.mockReset();
-    buildDefaultAgentSystemPromptMock.mockClear();
   });
 
   it('uses ask without plan and preserves pause state', async () => {
@@ -96,7 +93,7 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
           executeTool
         }),
         input: {
-          systemPrompt: 'built system prompt',
+          systemPrompt: 'helper prompt',
           messages: [{ role: 'user', content: '创建客服 Agent' }],
           providerState,
           userAnswer: JSON.stringify({ answers: ['小范围'] })

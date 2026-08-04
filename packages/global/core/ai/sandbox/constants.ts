@@ -57,7 +57,7 @@ export const generateSandboxId = ({
 // Prompt
 export const SANDBOX_USER_FILES_PATH = 'user_files/';
 export const SANDBOX_ENTRYPOINT_MAX_LENGTH = 16 * 1024;
-export const SANDBOX_SYSTEM_PROMPT = `## 沙盒能力
+export const SANDBOX_SYSTEM_PROMPT = `<sandbox_capability>
 你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 sandbox 工具操作文件和执行命令。
 - 系统预装：bash / python3 / node / bun / git / curl
 - 用户对话上传的文件存储在 ${SANDBOX_USER_FILES_PATH} 目录下
@@ -70,4 +70,5 @@ export const SANDBOX_SYSTEM_PROMPT = `## 沙盒能力
 - 使用 ${SANDBOX_LS_TOOL_NAME} 列出目录内容，优先于通过 shell 调用 ls
 - 默认将生成文件保存在当前 sandbox 工作目录；若本轮 system-reminder 指定了更具体的产物目录或禁止目录，必须优先遵守
 - HTML 等多文件预览产物必须使用相对资源路径（例如 ./assets/app.js），不要使用 /assets/app.js 这类根路径
-- 若需要将生成的文件链接，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 获取临时访问链接`;
+- 若需要将生成的文件链接，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 获取临时访问链接
+</sandbox_capability>`;

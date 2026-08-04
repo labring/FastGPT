@@ -501,7 +501,8 @@ describe('dispatchRunAgent user context', () => {
       sandboxWriteFilesMock.mock.invocationCallOrder[0]
     );
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
-    expect(loopInput.systemPrompt).toContain('## 沙盒能力');
+    expect(loopInput.systemPrompt).toContain('<sandbox_capability>');
+    expect(loopInput.systemPrompt).toContain('</sandbox_capability>');
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(
       '当前 sandbox 工作目录: /workspace'
@@ -1212,7 +1213,7 @@ describe('dispatchRunAgent user context', () => {
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
-    expect(loopInput.systemPrompt).not.toContain('## 沙盒能力');
+    expect(loopInput.systemPrompt).not.toContain('<sandbox_capability>');
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).not.toContain(
       '<available_skills>'
     );

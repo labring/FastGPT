@@ -53,12 +53,15 @@ describe('buildDefaultAgentSystemPrompt', () => {
       /<user_system_prompt>\n([\s\S]*?)\n<\/user_system_prompt>/
     )?.[1];
 
-    expect(prompt).toContain('## 沙盒能力');
-    expect(prompt.indexOf('## 沙盒能力')).toBeLessThan(prompt.indexOf(userPromptSection));
+    expect(prompt).toContain('<sandbox_capability>');
+    expect(prompt).toContain('</sandbox_capability>');
+    expect(prompt.indexOf('<sandbox_capability>')).toBeLessThan(prompt.indexOf(userPromptSection));
     expect(userPromptContent).toBe(userSystemPrompt);
   });
 
   it('omits sandbox capability when disabled', () => {
-    expect(buildDefaultAgentSystemPrompt({ sandboxEnabled: false })).not.toContain('## 沙盒能力');
+    expect(buildDefaultAgentSystemPrompt({ sandboxEnabled: false })).not.toContain(
+      '<sandbox_capability>'
+    );
   });
 });

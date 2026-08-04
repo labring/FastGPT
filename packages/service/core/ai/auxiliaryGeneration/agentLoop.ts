@@ -2,7 +2,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import { buildDefaultAgentSystemPrompt, runAgentLoop } from '../llm/agentLoop/interface';
+import { runAgentLoop } from '../llm/agentLoop/interface';
 import type { AgentLoopRuntime } from '../llm/agentLoop/interface';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AuxiliaryGenerationStreamWriter } from './stream';
@@ -29,8 +29,9 @@ type RunAuxiliaryGenerationAgentLoopParams = {
 /**
  * 运行辅助生成 Agent Loop。
  *
- * 该入口启用标准 ask_user，并允许业务方显式注入 runtime tools；不会隐式获得
- * workflow、Skill、计划或虚拟机执行能力。paused/providerState 等结果保持 Agent Loop 原语义。
+ * systemPrompt 作为调用方提供的最终提示词原样传入。该入口启用标准 ask_user，并允许
+ * 业务方显式注入 runtime tools；不会隐式获得默认 Agent 提示词、workflow、Skill、计划
+ * 或虚拟机执行能力。paused/providerState 等结果保持 Agent Loop 原语义。
  */
 export async function runAuxiliaryGenerationAgentLoop({
   teamId,
@@ -87,9 +88,7 @@ export async function runAuxiliaryGenerationAgentLoop({
       usagePush: usageSink
     },
     input: {
-      systemPrompt: buildDefaultAgentSystemPrompt({
-        systemPromptExtension: systemPrompt
-      }),
+      systemPrompt,
       messages,
       providerState,
       userAnswer
