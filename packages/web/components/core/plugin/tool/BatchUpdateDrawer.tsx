@@ -200,7 +200,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                 bg="myGray.100"
                 borderRadius="md"
                 color="myGray.600"
-                fontSize="xs"
+                fontSize="12px"
               >
                 <Box px={3}>{t('app:toolkit_select')}</Box>
                 <Box px={3}>{t('common:Name')}</Box>
