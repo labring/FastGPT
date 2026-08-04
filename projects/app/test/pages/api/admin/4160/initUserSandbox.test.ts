@@ -58,7 +58,9 @@ describe('initUserSandbox API', () => {
       appGroupCount: 1,
       completedAppGroupCount: 0,
       failedCount: 0,
-      failures: []
+      failures: [],
+      skippedCount: 0,
+      skipped: []
     });
   });
 
@@ -68,7 +70,8 @@ describe('initUserSandbox API', () => {
 
     expect(mocks.authCert).toHaveBeenCalledWith({ req, authRoot: true });
     expect(mocks.migrateLegacySandboxesToUserLevel).toHaveBeenCalledWith({
-      dryRun: true
+      dryRun: true,
+      skipError: false
     });
   });
 });

@@ -3,7 +3,10 @@ import type { LegacySandboxInstanceSchemaType } from '../../infrastructure/insta
 import type { VolumeManagerResult } from '../../infrastructure/volume/service';
 import type { SandboxRuntimePaths } from '../../utils';
 
-export type UserSandboxMigrationParams = { dryRun?: boolean };
+export type UserSandboxMigrationParams = {
+  dryRun?: boolean;
+  skipError?: boolean;
+};
 
 export type LegacyMigrationPhase =
   | 'pending'
@@ -90,4 +93,6 @@ export type UserSandboxMigrationResult = {
   completedAppGroupCount: number;
   failedCount: number;
   failures: UserSandboxMigrationFailure[];
+  skippedCount: number;
+  skipped: UserSandboxMigrationFailure[];
 };

@@ -223,6 +223,12 @@ Legacy 预检使用独立的 `LegacySandboxInstanceZodSchema`，不得使用 v2 
    `stopped`；暂停失败不得提交迁移完成。
 7. 发布后把 Legacy 阶段提交为 `completed`，保留旧 S3 和 Legacy Mongo 记录作为迁移备份。
 
+管理员入口支持可选 `skipError=true`，用于兼容业务 source 已不存在或已软删除、但 Legacy Sandbox
+记录仍残留的升级场景。该开关只跳过 source fence 返回 `Sandbox source is missing or deleted` 的
+整个 source 分组，被跳过的记录不执行归档、资源删除、目标创建或安装，并通过 `skippedCount/skipped`
+单独返回。对象存储、Provider、Lease、归档和安装等其他错误仍计入 `failedCount/failures` 并维持
+全局归档屏障；省略该参数或传 `false` 时保持原有严格行为。
+
 第一阶段释放单个 Source Lease 后，正常用户请求可以先创建确定性的 v2 目标。第二阶段必须接管或
 复用该目标，并按“目标内容优先”规则合并，不能覆盖已经产生的用户文件。
 
@@ -364,3 +370,4 @@ interface -> application -> infrastructure -> sandbox-adapter
 - [x] 将阶段性技术方案合并到本文并删除重复文档。
 - [x] 将 beta6 Sandbox 归一化移入 `initUserSandbox` 并在剩余待处理数归零前阻断归档。
 - [x] restore 后保留 v2 S3 归档，仅在业务资源删除时清理。
+- [x] 为 `initUserSandbox` 增加可选 `skipError`，仅跳过 source 已缺失的 Legacy Sandbox 分组并返回跳过明细。
