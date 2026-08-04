@@ -60,12 +60,21 @@ import type {
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
 
 // Chat reset commands.
-const RESET_CHAT_INPUT: Record<string, boolean> = {
-  Reset: true,
-  '/reset': true
-};
+const RESET_CHAT_INPUT = new Set(['Reset', '/reset']);
+const CITED_TEXT_PATTERN = /<Cite>[\s\S]*?<\/Cite>/g;
 const RESET_CHAT_REPLY = '对话已重置。\n\nThe chat records have been reset.';
 const DEFAULT_REPLY = 'This is default reply';
+
+/** Detects reset commands after providers merge quoted text into the current query. */
+const isResetChatCommand = (query: UserChatItemType['value']) => {
+  const content = query
+    .flatMap((item) => (item.text?.content ? [item.text.content] : []))
+    .join('\n')
+    .trim();
+  if (RESET_CHAT_INPUT.has(content)) return true;
+
+  return RESET_CHAT_INPUT.has(content.replace(CITED_TEXT_PATTERN, '').trim());
+};
 const DEFAULT_RESPONSE_START_TIMEOUT_MS = 30000;
 
 /**
@@ -261,7 +270,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
 
     // * Chat reset
     // Move existing records to a new chat ID so the next message starts a fresh conversation.
-    if (RESET_CHAT_INPUT[userQuestion]) {
+    if (isResetChatCommand(query)) {
       await resetChat({
         sourceType: ChatSourceTypeEnum.app,
         sourceId: outLinkConfig.appId,
