@@ -13,13 +13,16 @@ import type {
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { failChatRound, finalizeChatRound } from '@fastgpt/service/core/chat/saveChat';
 import { authOutLinkLimit } from '@fastgpt/service/support/outLink/runtime/auth';
 import { addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { getWorkflowFileLimits } from '@fastgpt/service/core/workflow/utils/fileLimits';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: { findById: vi.fn() }
@@ -31,7 +34,16 @@ vi.mock('@fastgpt/service/core/chat/controller', () => ({
   getChatItems: vi.fn()
 }));
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
-  MongoChat: { findOne: vi.fn(() => ({ variables: { retained: 'value' } })) }
+  MongoChat: {
+    findOne: vi.fn(() => ({ variables: { retained: 'value' } })),
+    updateOne: vi.fn()
+  }
+}));
+vi.mock('@fastgpt/service/core/chat/chatItemSchema', () => ({
+  MongoChatItem: { updateMany: vi.fn() }
+}));
+vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
+  mongoSessionRun: vi.fn(async (callback: (session: undefined) => unknown) => callback(undefined))
 }));
 vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
   preChatRound: vi.fn()
@@ -251,6 +263,34 @@ describe('runOutlinkRuntime', () => {
 
     expect(resolveQuery).not.toHaveBeenCalled();
     expect(preChatRound).not.toHaveBeenCalled();
+    expect(dispatchWorkFlow).not.toHaveBeenCalled();
+  });
+
+  it('resets chats when a quoted provider message precedes the command', async () => {
+    const { respond, events } = createResponder();
+
+    await runOutlinkRuntime({
+      outLinkConfig,
+      message: {
+        ...message,
+        query: [{ text: { content: '<Cite>previous question</Cite>\nReset' } }]
+      },
+      respond
+    });
+
+    expect(mongoSessionRun).toHaveBeenCalledTimes(1);
+    expect(MongoChat.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({ chatId: message.chatId }),
+      { $set: { chatId: expect.any(String) } },
+      { session: undefined }
+    );
+    expect(MongoChatItem.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ chatId: message.chatId }),
+      { $set: { chatId: expect.any(String) } },
+      { session: undefined }
+    );
+    expect(events).toEqual([{ type: 'done', content: expect.stringContaining('reset') }]);
+    expect(getChatItems).not.toHaveBeenCalled();
     expect(dispatchWorkFlow).not.toHaveBeenCalled();
   });
 
