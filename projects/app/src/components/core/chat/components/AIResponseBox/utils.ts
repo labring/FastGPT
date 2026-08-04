@@ -3,10 +3,12 @@ import type {
   AgentPlanAskQueryInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import type { AgentPlanAskResponse } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
-export const onSendPrompt = (text: string) =>
+export const onSendPrompt = (text: string, agentPlanAskResponse?: AgentPlanAskResponse) =>
   eventBus.emit(EventNameEnum.sendQuestion, {
     text,
+    agentPlanAskResponse,
     focus: true
   });
 

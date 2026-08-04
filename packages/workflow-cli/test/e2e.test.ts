@@ -1137,6 +1137,25 @@ describe('PR1 through PR4 CLI end to end', () => {
         )
       ).exitCode
     ).toBe(0);
+    const fileSelectDescriptor = JSON.parse(
+      (
+        await invoke(
+          jsonArgs(dir, ['config', 'get', '--path', 'fileSelectConfig', '--locale', 'zh-CN'])
+        )
+      ).stdout[0]
+    ).result;
+    expect(fileSelectDescriptor).toMatchObject({
+      path: 'fileSelectConfig',
+      description: expect.stringContaining('用户从对话入口提供的文件'),
+      capabilities: ['user-file-input'],
+      value: { maxFiles: 1, canSelectFile: true },
+      valueSchema: {
+        type: 'object',
+        properties: {
+          canSelectFile: expect.objectContaining({ type: 'boolean' })
+        }
+      }
+    });
     expect(
       (
         await invoke(

@@ -1,37 +1,37 @@
-%% 当前 Workflow Builder 实际架构
-graph LR
-    U[用户] --> UI[Workflow Builder 聊天窗口]
-    UI --> R[Pro Workflow Builder Runner]
+%% Workflow Builder 当前模块架构
+flowchart LR
+    U["用户"] --> UI["Workflow Builder UI<br/>消息、计划、Mermaid 交互"]
+    UI --> R["Builder Handler / Runner<br/>任务编排与状态恢复"]
 
-    R --> L[Agent Loop Core<br/>主 Agent + AgentPlan]
-    R --> S[研究 Sandbox<br/>Skill / 文档 / 用户文件]
-    L --> Q[workflow_cli_query<br/>只读查询]
-    L --> A[workflow_cli_apply<br/>ChangeSet 提交]
+    P["Builder Prompt Policy<br/>角色、生命周期、交互约束"] --> R
+    M["Provider State / Memory<br/>暂停与恢复"] <--> R
+    R --> S["单物理 Sandbox<br/>共享 Skill 根目录 + sessions/chatId"]
+    R --> L["AgentLoop Core<br/>模型循环、工具调用、事件收集"]
 
-    Q --> G[CLI Gateway<br/>白名单 / 参数校验 / 重试计数]
-    A --> G
-    G --> T[事务 Sandbox<br/>隔离的 workflow.json + CLI]
-    T --> C[Workflow CLI<br/>changeset plan / apply]
-    C --> W[Workflow Core<br/>Schema / Command / Validation]
+    L --> A["ask_agent<br/>一次性闭合业务需求"]
+    A --> UI
+    L --> PV["workflow_builder_present_preview<br/>完整 Mermaid + 自由章节"]
+    PV --> UI
+    L --> G["Workflow CLI Gateway<br/>query / stage / commit"]
+    G --> D["Chunk Session / Draft<br/>私有草稿与 revision"]
+    D --> C["Workflow Core<br/>Schema、IO、引用、边、必填项校验"]
+    C -->|"diagnostics"| L
+    C -->|"valid + draftRevision"| G
+    G -->|"原子应用"| W["当前画布 WorkflowDocument"]
 
-    W --> P[WorkflowPlan<br/>目标文档 / checksum / diagnostics]
-    P --> G
-    G --> V[服务端语义审查<br/>无工具 Agent 回合]
-    V --> X{审查通过?}
-    X -->|否| L
-    X -->|是| D[ApplyWorkflowPlan<br/>再次校验并原子应用]
-    D --> CANVAS[WorkflowDocument<br/>映射到实际画布 / 保存]
-    CANVAS --> F[最终无工具 Agent 回合<br/>向用户报告完成或失败]
+    L --> CP["CompletionPolicy<br/>只读取结构化终止事实"]
+    CP -->|"尚未 commit"| L
+    W --> F["独立无工具收尾 Agent<br/>根据权威事实生成答复"]
     F --> UI
 
     classDef user fill:#e8f1ff,stroke:#2f7df6,color:#102a56;
-    classDef agent fill:#fff4dc,stroke:#d88a00,color:#4d3000;
-    classDef boundary fill:#e9f8ef,stroke:#2f9e5b,color:#123d24;
-    classDef core fill:#f1eaff,stroke:#845ef7,color:#29134d;
-    classDef output fill:#e8faf8,stroke:#12a594,color:#073d38;
+    classDef runner fill:#fff4dc,stroke:#d88a00,color:#4d3000;
+    classDef loop fill:#f1eaff,stroke:#845ef7,color:#29134d;
+    classDef gateway fill:#e9f8ef,stroke:#2f9e5b,color:#123d24;
+    classDef core fill:#e8faf8,stroke:#12a594,color:#073d38;
 
     class U,UI user;
-    class R,L,S,Q,A,V,F agent;
-    class G,T,C boundary;
-    class W,P core;
-    class D,CANVAS,X output;
+    class R,P,M,S runner;
+    class L,A,PV,CP,F loop;
+    class G,D gateway;
+    class C,W core;

@@ -1,0 +1,38 @@
+%% Workflow CLI Gateway 的真实错误与修复判断
+flowchart TD
+    CALL["Workflow CLI 工具调用"] --> PHASE{"调用阶段"}
+
+    PHASE -->|"query"| QUERY["执行只读查询或 draft validate"]
+    QUERY --> QOK{"查询成功?"}
+    QOK -->|"是"| QRETURN["返回结果或 diagnostics<br/>stop = false"]
+    QOK -->|"否"| QERROR["返回结构化 error<br/>当前不计入 10 次修复预算"]
+
+    PHASE -->|"stage"| STAGE["按 action + chunkId 等生成 repairTarget"]
+    PHASE -->|"commit"| COMMIT["按当前 chunkSession.revision 生成 repairTarget"]
+    STAGE --> EXEC["参数校验并执行"]
+    COMMIT --> EXEC
+    EXEC --> OK{"执行成功?"}
+
+    OK -->|"stage 成功"| STAGED["清除该 Stage 目标计数<br/>清空旧 Commit 计数<br/>taskComplete = false"]
+    OK -->|"commit 成功"| APPLIED["decision = applied<br/>taskComplete = true<br/>stop = true"]
+    OK -->|"失败"| COUNT["同一 repairTarget 的 attempt + 1"]
+    COUNT --> LIMIT{"attempt >= 10?"}
+    LIMIT -->|"否"| REPAIR["decision = auto_repairable<br/>stop = false<br/>返回结构化诊断"]
+    LIMIT -->|"是"| TERMINAL["decision = terminal_internal<br/>记录 terminalError<br/>stop = true"]
+
+    RESERVED["needs_user_input 目前仅在类型中预留<br/>当前 Gateway 没有任何分支产出该值"] -.-> LIMIT
+    REPAIR --> AGENT["同一 AgentLoop 根据结构化诊断自修复"]
+    AGENT --> CALL
+    TERMINAL --> FINAL["Runner 结束主循环并进入收尾"]
+    APPLIED --> FINAL
+
+    classDef input fill:#eef4ff,stroke:#5b8def,color:#172b4d;
+    classDef decision fill:#ffffff,stroke:#7c8798,color:#1f2937;
+    classDef tool fill:#edf9f1,stroke:#46a36b,color:#173d25;
+    classDef success fill:#ecfbfa,stroke:#28a5a0,color:#123d3a;
+    classDef terminal fill:#fff0f0,stroke:#d64545,color:#5c1111;
+    class CALL,AGENT input;
+    class PHASE,QOK,OK,LIMIT decision;
+    class QUERY,QRETURN,QERROR,STAGE,COMMIT,EXEC,COUNT,REPAIR,STAGED tool;
+    class APPLIED success;
+    class TERMINAL,FINAL,RESERVED terminal;

@@ -241,10 +241,46 @@ describe('runFastAgentLoop', () => {
     const systemMessage = createLLMResponseMock.mock.calls[0][0].body.messages.find(
       (message: { role: string }) => message.role === ChatCompletionRequestMessageRoleEnum.System
     );
-    expect(systemMessage.content).toContain(
-      '<user_background>\nSandbox is available.\n</user_background>'
-    );
+    expect(systemMessage.content).toBe('Sandbox is available.');
     expect(systemMessage.content).not.toContain('<tool_constraint>');
+  });
+
+  it('uses the injected system prompt builder', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_custom_prompt',
+        content: 'direct answer'
+      })
+    ]);
+    const systemPromptBuilder = vi.fn(
+      ({ systemPrompt, hasExecutableTools }) =>
+        `Workflow Builder\n${systemPrompt}\ntools=${hasExecutableTools}`
+    );
+
+    await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'build workflow'
+          }
+        ],
+        systemPrompt: 'runtime context'
+      },
+      runtime: createRuntime({
+        systemPromptBuilder
+      })
+    });
+
+    const systemMessage = createLLMResponseMock.mock.calls[0][0].body.messages.find(
+      (message: { role: string }) => message.role === ChatCompletionRequestMessageRoleEnum.System
+    );
+    expect(systemPromptBuilder).toHaveBeenCalledWith({
+      systemPrompt: 'runtime context',
+      hasExecutableTools: true
+    });
+    expect(systemMessage.content).toBe('Workflow Builder\nruntime context\ntools=true');
+    expect(systemMessage.content).not.toContain('你是 Work Agent');
   });
 
   it('initializes runtime plan from history without changing request messages', async () => {

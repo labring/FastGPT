@@ -410,6 +410,40 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
     });
   });
 
+  it('persists the stable option value and revision text separately from the visible answer', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'workflowBuilderPreview',
+      previewId: 'ask-preview',
+      params: {
+        title: 'Confirm this workflow?',
+        mermaid: 'flowchart LR\n  A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+          { value: 'revise', label: 'Revise', inputMode: 'text' },
+          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+
+    const result = rewriteHistoriesByInteractiveResponse({
+      histories: [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()],
+      interactive,
+      interactiveVal: 'Add a review branch',
+      agentPlanAskResponse: {
+        askId: 'ask-preview',
+        optionValue: 'revise',
+        text: 'Add a review branch'
+      }
+    });
+
+    expect((result[0].value[0] as any).interactive.params).toMatchObject({
+      answerValue: 'revise',
+      answerText: 'Add a review branch'
+    });
+  });
+
   it('only persists an agent ask answer to the matching askId', () => {
     const firstAsk = {
       ...baseInteractive,

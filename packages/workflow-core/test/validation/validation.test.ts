@@ -36,6 +36,33 @@ describe('validateWorkflow', () => {
     expect(codes).toContain('WORKFLOW_REQUIRED_INPUT_MISSING');
   });
 
+  it('reports incomplete variable update rows', async () => {
+    const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
+    const start = await applyWorkflowCommand({
+      document: createWorkflowDocument(),
+      command: {
+        type: 'node.add',
+        nodeId: 'start',
+        template: parseNodeTemplateRef('builtin:workflow-start')
+      },
+      dependencies
+    });
+    const update = await applyWorkflowCommand({
+      document: start.document,
+      command: {
+        type: 'node.add',
+        nodeId: 'update',
+        template: parseNodeTemplateRef('builtin:variable-update'),
+        connectFrom: { kind: 'next', nodeId: 'start' }
+      },
+      dependencies
+    });
+
+    const codes = validateWorkflow(update.document).map((item) => item.code);
+    expect(codes).toContain('WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING');
+    expect(codes).toContain('WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING');
+  });
+
   it('reports malformed and non-upstream references', () => {
     const malformed: WorkflowDocument = structuredClone(WorkflowDocumentSchema.parse(aiWorkflow));
     const input = malformed.nodes

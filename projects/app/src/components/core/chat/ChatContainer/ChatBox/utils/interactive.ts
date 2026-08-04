@@ -5,6 +5,7 @@ import {
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
+  AgentPlanAskResponse,
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -56,13 +57,50 @@ export const isUserInputInteractiveSubmitted = ({
 export const persistAgentAskAnswersToHistories = ({
   histories,
   interactive,
-  answer
+  answer,
+  agentPlanAskResponse
 }: {
   histories: ChatSiteItemType[];
   interactive: WorkflowInteractiveResponseType;
   answer: string;
+  agentPlanAskResponse?: AgentPlanAskResponse;
 }): ChatSiteItemType[] => {
   const sourceInteractive = extractDeepestInteractive(interactive);
+
+  if (sourceInteractive.type === 'workflowBuilderPreview') {
+    if (agentPlanAskResponse?.askId !== sourceInteractive.previewId) return histories;
+
+    return histories.map((item) => {
+      if (item.obj !== ChatRoleEnum.AI) return item;
+
+      return {
+        ...item,
+        value: item.value.map((val) => {
+          if (!('interactive' in val) || !val.interactive) return val;
+
+          const finalInteractive = extractDeepestInteractive(val.interactive);
+          if (
+            finalInteractive.type !== 'workflowBuilderPreview' ||
+            finalInteractive.previewId !== sourceInteractive.previewId
+          ) {
+            return val;
+          }
+
+          return {
+            ...val,
+            interactive: {
+              ...finalInteractive,
+              params: {
+                ...finalInteractive.params,
+                answerValue: agentPlanAskResponse.optionValue as 'confirm' | 'revise' | 'cancel',
+                answerText: agentPlanAskResponse.text
+              }
+            }
+          };
+        })
+      };
+    });
+  }
   if (sourceInteractive.type !== 'agentAsk') {
     return histories;
   }
@@ -287,6 +325,11 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: true
     };
+  } else if (finalInteractive.type === 'workflowBuilderPreview') {
+    return {
+      interactive: finalInteractive,
+      canSendQuery: true
+    };
   }
 
   return {
@@ -324,11 +367,13 @@ export const resolveInteractiveResponseChatItemId = ({
 export const rewriteHistoriesByInteractiveResponse = ({
   histories,
   interactiveVal,
-  interactive
+  interactive,
+  agentPlanAskResponse
 }: {
   histories: ChatSiteItemType[];
   interactiveVal: string;
   interactive: WorkflowInteractiveResponseType;
+  agentPlanAskResponse?: AgentPlanAskResponse;
 }): ChatSiteItemType[] => {
   const status = checkInteractiveResponseStatus({ interactive, input: interactiveVal });
 
@@ -344,7 +389,8 @@ export const rewriteHistoriesByInteractiveResponse = ({
       ? persistAgentAskAnswersToHistories({
           histories: formatHistories,
           interactive,
-          answer: interactiveVal
+          answer: interactiveVal,
+          agentPlanAskResponse
         })
       : formatHistories;
 
@@ -435,6 +481,24 @@ export const rewriteHistoriesByInteractiveResponse = ({
             params: {
               ...finalInteractive.params,
               continue: true
+            }
+          }
+        };
+      }
+
+      if (finalInteractive.type === 'workflowBuilderPreview') {
+        return {
+          ...val,
+          interactive: {
+            ...finalInteractive,
+            params: {
+              ...finalInteractive.params,
+              answerValue: agentPlanAskResponse?.optionValue as
+                | 'confirm'
+                | 'revise'
+                | 'cancel'
+                | undefined,
+              answerText: agentPlanAskResponse?.text
             }
           }
         };

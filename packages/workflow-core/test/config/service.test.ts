@@ -3,6 +3,8 @@ import {
   applyWorkflowCommand,
   builtinTemplateProvider,
   createWorkflowDocument,
+  getChatConfigDescriptor,
+  listChatConfigDescriptors,
   parseNodeTemplateRef
 } from '../../src';
 import { describe, expect, it } from 'vitest';
@@ -21,6 +23,44 @@ const createDocument = async () =>
       template: parseNodeTemplateRef('builtin:workflow-start')
     })
   ).document;
+
+describe('ChatConfig descriptors', () => {
+  it('exposes Agent guidance, value schema, capabilities and current value', () => {
+    const document = createWorkflowDocument({
+      chatConfig: { fileSelectConfig: { maxFiles: 1, canSelectFile: true } }
+    });
+    const descriptor = getChatConfigDescriptor({
+      document,
+      path: 'fileSelectConfig',
+      translate: (value) =>
+        value === 'workflow:cli.config.file_select' ? 'Enable user file input' : value
+    });
+
+    expect(descriptor).toMatchObject({
+      path: 'fileSelectConfig',
+      description: 'Enable user file input',
+      capabilities: ['user-file-input'],
+      value: { maxFiles: 1, canSelectFile: true },
+      valueSchema: {
+        type: 'object',
+        properties: {
+          maxFiles: expect.objectContaining({ type: 'integer' }),
+          canSelectFile: expect.objectContaining({ type: 'boolean' })
+        }
+      }
+    });
+  });
+
+  it('returns one descriptor for every allowlisted configuration path', () => {
+    const descriptors = listChatConfigDescriptors({ document: createWorkflowDocument() });
+
+    expect(descriptors).toHaveLength(14);
+    expect(descriptors.every(({ description }) => description.length > 0)).toBe(true);
+    expect(descriptors.find(({ path }) => path === 'autoExecute.open')?.valueSchema).toMatchObject({
+      type: 'boolean'
+    });
+  });
+});
 
 describe('fileSelectConfig output synchronization', () => {
   it.each([

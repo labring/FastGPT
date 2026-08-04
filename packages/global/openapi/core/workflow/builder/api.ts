@@ -3,6 +3,7 @@ import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { AgentPlanAskResponseSchema } from '../../../../core/workflow/template/system/interactive/type';
 
 /* ============================================================================
  * API: Workflow Builder 辅助生成对话
@@ -96,6 +97,9 @@ export const WorkflowBuilderChatBodySchema = z
       description: 'Workflow Builder 使用的 LLM 模型',
       example: 'gpt-5'
     }),
+    agentPlanAskResponse: AgentPlanAskResponseSchema.optional().meta({
+      description: '用户对当前 Agent 结构化选项的回答'
+    }),
     workflowContext: z
       .object({
         document: WorkflowBuilderDocumentSchema,
@@ -111,6 +115,9 @@ export type WorkflowBuilderChatBody = z.infer<typeof WorkflowBuilderChatBodySche
 /** CLI Apply 完成后通过 SSE 返回给画布的目标文档。 */
 export const WorkflowBuilderAppliedSchema = z
   .object({
+    baseChecksum: WorkflowChecksumSchema.meta({
+      description: '生成开始时的 WorkflowDocument checksum，用于应用前的乐观并发校验'
+    }),
     document: WorkflowBuilderDocumentSchema.meta({
       description: 'CLI Apply 后经服务端校验的目标 WorkflowDocument'
     }),

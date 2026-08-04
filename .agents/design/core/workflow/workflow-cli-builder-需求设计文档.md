@@ -3,7 +3,7 @@
 ## 0. 文档标识
 
 - 文档状态：开发中
-- 修订日期：2026-07-22
+- 修订日期：2026-08-04
 - 目标仓库：FastGPT
 - 目标对象：FastGPT Workflow 的本地构建、自动化修改、Web 辅助生成、远端保存、发布与调试
 - 关联开发文档：`workflow-cli-builder-功能开发文档.md`
@@ -32,6 +32,7 @@ FastGPT Workflow CLI ┘
 9. 第一阶段只交付本地核心闭环，远端鉴权和并发控制完成后再开放远端写入。
 10. 新建和导入工作流必须包含唯一且不可删除的系统配置节点；变量和开关仍以 `chatConfig` 为唯一事实源，系统配置节点只提供 Web 编辑入口。
 11. PR5 在 Workflow 编辑器内提供独立的辅助生成 Demo：复用现有 Chat、Agent Loop、Sandbox、Skill 和计费基础设施，但不抽象或改写 Skill 辅助生成的业务 Handler。
+12. 当前 Workflow Builder 可使用已安装系统工具，但工具事实和用户权限仍由 FastGPT Service 负责；Service 按当前身份构造只包含已授权工具的 `WorkflowTemplateProvider`，CLI/Core 复用现有模板链路，不持久化全量工具清单，外层 Agent Loop 工具集不变。
 
 ## 2. 目标与设计约束
 
@@ -49,6 +50,7 @@ FastGPT Workflow CLI ┘
 - 将本地草稿保存为可审查、可版本控制的 `workflow.json`。
 - 拉取、保存、发布、调试和运行远端 FastGPT 应用。
 - 让 AI 只生成可审查的 ChangeSet，再由确定性代码应用。
+- 让 Workflow Builder 能枚举当前用户有权限的全部系统工具，按需查看完整 Schema/节点信息，并用实际 `systemTool` 模板构建工作流。
 
 ### 2.2 设计约束
 
@@ -60,6 +62,8 @@ FastGPT Web 已经具备完整的画布操作。CLI 需要将分布在 React Con
 - 嵌套关系遵循与 Web 相同的领域规则。
 - CLI 与 Web 使用同一套运行、发布校验规则。
 - 远端命令只使用已明确支持并经过权限测试的 API Key 契约。
+- 系统工具可见性必须在 Service 边界按当前用户、团队、来源、状态和隐藏标签过滤；CLI/Core 只消费过滤结果，不自行推导权限。
+- 系统工具 Provider 返回值不得包含 `secretsVal`、token、credential、Authorization 或其他敏感值；不存在、无权限和已下架对 CLI/Agent 统一表现为不可用。
 
 第一阶段先建立可被 Web 和 CLI 共同调用的工作流领域核心，再实现命令行入口。
 
@@ -198,10 +202,11 @@ FastGPT API / Service -> Schema、权限、资源、运行和发布校验
 
 - Workflow 编辑器内的独立聊天入口。
 - 建立独立 `WorkflowBuilderRunner`，直接复用公共 Agent Loop 协议，不再构造 `WorkflowStart -> Agent` 假工作流。
-- 使用研究 Sandbox 承载 Skill、文档和通用分析；使用隔离的事务 Sandbox 承载当前 `workflow.json` 和固定版本 CLI。
-- Agent 只通过 `workflow_cli_query` 和 `workflow_cli_apply` 访问事务 Sandbox，不获得该 Sandbox 的 Shell 权限。
-- `workflow_cli_apply` 直接接收 `WorkflowChangeSet`，由 Gateway 完成 CLI plan、Core 二次校验和原子 apply，不产生待确认中间态。
-- 应用成功或失败终止后，Runner 必须进入一次禁用工具的主 Agent 收尾，再由 Web Adapter 覆盖当前画布并自动对齐。
+- 同一 App 用户复用一个物理 Sandbox，不同 Builder `chatId` 使用独立的 `sessions/<chatId>` 会话工作目录；当前会话同时承载 Skill、用户文件和受保护的事务目录。
+- AgentLoop 只获得研究工具执行器，`workflow_cli_query`、`workflow_cli_stage` 和 `workflow_cli_commit` 由 Gateway 持有底层 Sandbox 能力并访问事务目录；这是服务端逻辑能力边界，不宣称物理或 OS 权限隔离。
+- 业务需求和资源闭合后，Agent 必须调用 `workflow_builder_present_preview` 提交 `title + mermaid + sections` 完整方案；运行时统一注入 `confirm`、`revise`、`cancel` 三个动作，未确认前拒绝 Stage 和 Commit。
+- `workflow_cli_stage` 维护分片化私有草稿，draft validate 由 Gateway 完成 CLI plan 和 Core 二次校验；`workflow_cli_commit` 只原子应用已校验且版本未变的草稿。
+- 应用成功或失败终止后，Runner 必须另启动一次禁用工具、最多一轮的收尾 Agent，再由 Web Adapter 覆盖当前画布并自动对齐。
 - PR5 不自动保存、发布或调试，不支持节点选中上下文、文件上传或复杂 diff 编辑。
 
 ### 4.5 档位 E：远端生命周期
@@ -362,6 +367,8 @@ Automation Metadata 只进入 Descriptor 归一化和参数校验，不进入节
 | Workflow Core | `packages/workflow-core` | 模板实例化、Command、图操作、引用、嵌套、校验、编译 | ReactFlow、fs、HTTP、终端交互 |
 | Web Adapter | `projects/app/.../WorkflowComponents/adapters` | ReactFlow 与 WorkflowDocument 转换、UI action 适配、诊断展示 | 重复实现领域规则 |
 | Template Provider | core 接口 + Web/CLI 实现 | 提供内置模板、团队应用、系统工具的完整模板和可选自动化元数据 | 直接修改工作流 |
+| System Tool Capability Service | 现有 SystemTool Service/Repo 之上的 Builder 适配层 | 按已认证用户复用 Web 可见性策略，生成已授权目录和脱敏 preview | 向 CLI 暴露越权条目或 Secret |
+| Authorized System Tool Provider | Builder 请求级依赖 | 用已授权目录实现 `list/resolve`，并与 builtin Provider 组合 | 持久化工具副本或自行判断用户权限 |
 | Template Descriptor | `packages/workflow-core/src/template` | 将现有模板字段与 Automation Metadata 归一化为机器可读参数契约 | 修改 Web 模板或进入 StoreNode |
 | Workflow File IO | `packages/workflow-cli/src/io` | `workflow.json` 的 Schema 解析、确定性序列化和单文件原子写入 | 判断节点是否合法 |
 | Remote Client | `packages/workflow-cli/src/remote` | profile、鉴权、pull、save、publish、debug、run | 直接读写数据库 |
@@ -509,18 +516,20 @@ Workflow ChatBox
   -> WorkflowBuilderRunner
        -> prepare research sandbox with builtin workflow-builder Skill
        -> prepare isolated transaction sandbox with current workflow.json and version-matched CLI
-       -> run public Agent Loop with plan/ask/research tools and two Builder runtime tools
+       -> run public Agent Loop with plan/ask/research tools and three Builder runtime tools
   -> workflow_cli_query
        -> validate a discriminated read-only query
        -> execute an allowlisted CLI query in transaction sandbox
-  -> workflow_cli_apply
-       -> validate WorkflowChangeSetSchema
-       -> write a server-owned per-call temporary ChangeSet
-       -> execute CLI changeset plan and parse JSON stdout
-       -> revalidate plan through workflow-core
-       -> execute CLI changeset apply and validate target WorkflowDocument
-       -> delete the temporary file in finally
-       -> return authoritative applied or failed result with stop=true
+  -> workflow_cli_stage
+       -> validate and upsert/remove/reset WorkflowChangeSetChunk
+       -> update the private draft without changing the canvas
+  -> workflow_cli_query(view=draft, action=validate)
+       -> merge chunks, execute CLI plan and revalidate through workflow-core
+       -> return a validated draftRevision
+  -> workflow_cli_commit
+       -> require the unchanged validated draftRevision
+       -> execute CLI Confirm Apply and validate target WorkflowDocument
+       -> return authoritative applied or failed result
   -> WorkflowBuilderRunner starts one tool-free main Agent finalization turn
   -> SSE returns the validated target WorkflowDocument
   -> Web Adapter overwrites the current canvas and runs the existing auto-layout
@@ -557,11 +566,38 @@ type WorkflowBuilderApplied = {
 
 PR5 不传入 `mode`、不单独建模“修改记录”、不传节点选中上下文。事务 Sandbox 只修改本轮请求 Document 的副本；校验成功后允许覆盖内存画布，但不得自动调用保存、发布或运行 API。
 
-Agent 与事务执行层之间的结构化交接仅通过 `workflow_cli_apply`：服务端在事务 Sandbox 中创建每次调用唯一的临时 ChangeSet 文件，Gateway 先生成并重算 WorkflowPlan，再调用注入的 apply 回调完成 CLI 应用和目标文档校验。tool result 只暴露 `applied` 或结构化失败诊断，不暴露待确认 plan 生命周期。模型不得指定输入/输出路径，不得直接访问事务 Sandbox Shell，不存在跨轮固定 WorkflowPlan 文件。
+Agent 与事务执行层之间的结构化交接仅通过 `workflow_cli_stage` 和 `workflow_cli_commit`：Stage 幂等维护分片化私有草稿，draft validate 由 Gateway 合并分片、调用 CLI 生成 WorkflowPlan 并通过 Core 重算，Commit 仅接受已校验且未变化的 `draftRevision`。模型不得指定输入/输出路径，不得直接访问事务 Sandbox Shell，不存在待用户确认的 WorkflowPlan 文件。
 
-Workflow Builder 专用状态为 `reasoning -> clarification_pending | drafting_changeset -> validating -> applying -> finalizing -> applied | failed`。普通问答可在 `reasoning` 直接结束；AgentPlan 只是当前任务的实时推理进度，只有 ask continuation 可恢复；`workflow_cli_apply` 结束变更阶段后，Runner 立即启动一次无工具主 Agent 收尾。每轮最多三次校验失败，apply 失败则直接进入收尾并报告真实问题。
+Workflow Builder 专用状态为 `reasoning -> clarification_pending | drafting_changeset -> validating -> applying -> finalizing -> applied | failed`。普通问答可在 `reasoning` 直接结束；AgentPlan 只是当前任务的实时推理进度，只有 ask continuation 可恢复；`workflow_cli_commit` 成功结束变更阶段后，Runner 立即另启动一次无工具、最多一轮的收尾 Agent。同一 Stage 或 Commit 修复目标最多连续失败 10 次，达到上限时才进入结构化终止。
 
 Workflow Builder 复用 Chat 基础设施不等于继承工作流运行配置。当前 `WorkflowDocument.chatConfig` 仅作为 Agent 可读取和修改的画布事实；Builder ChatBox 与 Builder Handler 必须使用独立最小 ChatConfig，禁止继承原工作流的欢迎语、启动变量、自动执行、问题引导、语音和定时触发等配置。Builder 需要保留本次辅助 Agent 的运行详情；当详情包含 `llmRequestIds` 时，用户可继续查看对应的 LLM 请求体与响应体。
+
+#### 5.12.1 当前实例系统工具自动发现
+
+本扩展服务于当前 Workflow Builder，不等同于 PR6 的独立 CLI 远端 profile/API Key 能力。现有 Core 已支持 `systemTool:<toolId>` 模板引用，CLI 也已有 `template list/show`、节点创建、ChangeSet、校验和 commit 链路；因此不新增一套系统工具流程，只把当前写死的 `builtinTemplateProvider` 替换为组合 Provider：
+
+```text
+SystemToolRepo / Plugin Service / Mongo Config
+  -> 复用 Web 的用户/团队/来源/状态/hideTags 过滤
+  -> 已授权、已脱敏的系统工具数据
+  -> Builder 进程内 Provider + Sandbox 受保护数据文件
+
+builtinTemplateProvider + authorizedSystemToolProvider（由相同数据构造）
+  -> WorkflowTemplateProvider
+  -> 现有 template list/show、node/tool、stage/validate/commit
+```
+
+契约如下：
+
+1. “全部系统工具”指当前用户经过现有 Web 可见性规则过滤后可使用的全部工具，不包含未授权或被隐藏工具。
+2. `authorizedSystemToolProvider.list()` 返回当前授权的 `systemTool` 引用；`resolve()` 只能解析这份列表中的 ID，防止 Agent 绕过列表手写未授权工具 ID。
+3. CLI 的 `template list` 在现有结果上增加 `total`、按 `kind` 聚合的 `counts`，并让每个条目明确输出 `kind`；`template show` 继续输出指定工具的完整脱敏 Descriptor/节点 Schema。
+4. 当前 Builder 通过 Sandbox 子进程运行真实 CLI，不能直接传递 Provider 对象；Service 应将授权、脱敏后的工具数据写入事务受保护文件，CLI 从该文件构造 Provider，Builder 服务端 plan 重算从同一份内存数据构造 Provider。
+5. CLI、ChangeSet 和 Builder 服务端 plan 重算必须基于同一份授权数据使用组合 Provider，避免列表能看到系统工具但创建或校验时仍使用 builtin-only Provider。
+6. Provider 只返回节点构建需要的脱敏信息，不返回 `secretsVal`、工具运行密钥或用户凭证；真实 Secret 继续由现有运行 Service 解析。
+7. 每次 Builder 请求重新查询当前系统工具并覆盖受保护数据文件，因此不增加系统工具持久化、cron 或定时同步。
+8. 外层 Agent Loop 仍只看到 `workflow_cli_query`、`workflow_cli_stage`、`workflow_cli_commit`；不新增 Agent Loop tool，不改变 draft/commit 协议。
+9. `workflow-builder` Skill 只说明如何查看类型、数量、列表和精确 Descriptor，不写死工具名称、数量或参数结构。
 
 ### 5.13 Workflow Core 抽取与阶段交付
 
@@ -956,6 +992,7 @@ WorkflowDocument <-> Optional Manifest Codec <-> workflow.manifest/
 | FR-09 | ChangeSet 与 Confirm | 提供可审查、可确认、原子应用的批量修改 |
 | FR-10 | FastGPT 服务端生命周期 | pull、save、publish、versions、debug 和 run |
 | FR-11 | Workflow 辅助生成 | 通过 Chat + Agent Loop + Sandbox + Skill + CLI 生成并应用可审查 ChangeSet |
+| FR-12 | 当前实例系统工具 | 按当前用户权限自动发现、脱敏解析并用于 Workflow Builder |
 
 ### 7.0 CLI 公共契约
 
@@ -1169,8 +1206,12 @@ fastgpt-workflow build --dir ./flow --output workflow.generated.json
 
 ```bash
 fastgpt-workflow template list --source builtin
+fastgpt-workflow template list --source system
+fastgpt-workflow template list --source system --search "calendar"
+fastgpt-workflow template list --source system --parent TOOLSET_ID
 fastgpt-workflow template list --source team --profile prod
 fastgpt-workflow template show --template builtin:ai-chat --locale zh-CN --format json
+fastgpt-workflow template show --template systemTool:TOOL_ID --format json
 fastgpt-workflow template show --template teamApp:APP_ID --version VERSION_ID --format json
 ```
 
@@ -1181,6 +1222,8 @@ fastgpt-workflow template show --template teamApp:APP_ID --version VERSION_ID --
 - 普通参数从现有 FlowNodeTemplate inputs/outputs 归一化，不在 CLI 中维护第二份说明。
 - 内置模板可以离线生成 Descriptor。
 - 团队应用、插件和工具先通过 Template Provider 获取完整 preview，再生成 Descriptor。
+- Workflow Builder 的 `template list` 通过组合 Provider 列出 builtin 与当前已授权 systemTool，`template show` 输出指定工具的完整脱敏 Descriptor；两者对未授权工具均不泄露存在性。
+- `template list` JSON 输出必须包含 `total`、按 `kind` 聚合的 `counts` 和带 `kind` 的 `items`；`counts.systemTool` 只统计当前用户已授权工具，不泄露被过滤工具数量。
 - custom/object/array 参数必须提供 `valueSchema` 或返回 `WORKFLOW_TEMPLATE_PARAMETER_SCHEMA_MISSING` warning，禁止让 Agent猜测结构。
 - `configurable: false` 的参数不得通过 `input set/ref/unset` 修改。
 - Descriptor 中不得包含 input 当前 secret、credential、Authorization 或其他敏感值。
@@ -1401,15 +1444,26 @@ fastgpt-workflow run --app APP_ID --input "你好" --profile prod
 - Workflow 编辑器提供独立聊天入口，复用普通 Chat 历史、模型选择、SSE、停止、计费和 Agent memories。
 - Workflow Builder 使用独立 Handler 和 Runner，不抽取或修改 Skill 辅助生成的 Handler；仅复用现有底层 Chat、Agent Loop、AgentLoopCore 事件适配和 Sandbox 能力。
 - 每轮以前端当前 `WorkflowDocument + checksum` 为事实输入，历史由后端根据 `appId + chatId` 恢复，不建立独立修改记录模型。
-- Agent 只能通过内置 `workflow-builder` Skill 调用 `workflow_cli_query` 和 `workflow_cli_apply`；Gateway 必须执行查询白名单、ChangeSet Schema、CLI JSON envelope、Core 二次校验和原子 apply。
-- 研究 Sandbox 与事务 Sandbox 必须物理寻址隔离，Agent 的通用 Sandbox tools 不得读写事务 Sandbox。
-- `workflow_cli_apply` 必须以 `WorkflowChangeSet` 作为结构化入参；临时文件由服务端生成和清理，模型不得管理文件路径。
+- Agent 只能通过内置 `workflow-builder` Skill 调用现有 `workflow_cli_query`、`workflow_cli_stage` 和 `workflow_cli_commit`；Gateway 必须执行查询白名单、ChangeSet Schema、CLI JSON envelope、Core 二次校验和原子 commit。接入系统工具不改变这三个外层工具。
+- `ask_agent` 只用于一次性收集缺失的业务信息；Mermaid 确认必须通过 `workflow_builder_present_preview` 生成 `workflowBuilderPreview` 交互。Preview 载荷由 Agent 提供标题、完整 Mermaid 和自由章节，确认、修改、取消动作由运行时统一注入。
+- 同一 App 用户复用一个物理 Sandbox；不同 `chatId` 的事务状态必须落在独立的会话工作目录。Agent 的研究工具执行器不得读写当前会话的事务目录，Gateway 独占事务路径和 CLI 执行能力。
+- `workflow_cli_stage` 必须以版本化 `WorkflowChangeSetChunk` 作为结构化入参；`workflow_cli_commit` 只接受 draft validate 返回的 `draftRevision`；临时文件由服务端生成和清理，模型不得管理文件路径。
 - WorkflowPlan 只作为服务端内部校验对象，不持久化为待确认 Artifact，也不直接返回原始 ChangeSet JSON。
 - Gateway 在同一工具调用中注入 CLI `changeset apply --confirm <targetChecksum>` 能力，不向 Agent 暴露直接 apply 命令。
 - 服务端必须用本轮请求的 WorkflowDocument 覆盖 Sandbox 副本，重新校验 base/target/plan 内容，读取并校验 CLI 产生的目标 WorkflowDocument 后才返回。
 - 前端通过 Web Adapter 覆盖当前内存画布，等待节点尺寸就绪后复用现有 dagre 自动布局和 `fitView`。
-- 服务端必须在工具终态后再调用一次无工具主 Agent，并把其基于真实执行结果生成的终态回答持久化进 ChatItem；固定摘要只作为收尾模型失败时的兜底。
-- PR5 不支持节点选中上下文、自动保存/发布/调试或远端资源模板解析。
+- 服务端必须在工具终态后另调用一次无工具、最多一轮的收尾 Agent，并把其基于真实执行结果生成的终态回答持久化进 ChatItem；收尾模型失败或返回空内容时，保留主 Agent 已产生的内容和结构化运行结果，不注入固定摘要。
+- PR5 不支持节点选中上下文、自动保存/发布/调试或基于独立 profile/API Key 的远端资源模板解析；FR-12 只增加当前 Web 会话身份下的已安装系统工具。
+
+### 7.12 FR-12：当前实例系统工具
+
+- Builder Handler 必须复用当前 FastGPT 的 SystemToolRepo 和 Web 可见性策略，只返回当前用户可使用且状态为 `Normal` 的工具（兼容旧来源未返回状态的条目），并继续处理系统、团队、debug 来源及 `hideTags` 等过滤条件。
+- Core 继续使用现有 `NodeTemplateRef.systemTool` 和 `WorkflowTemplateProvider` 契约，不新增授权快照 Schema、系统工具持久化表、定时同步任务或第二个工具 Repo。
+- CLI 必须在现有 `template list` 输出中增加 `total`、按模板 `kind` 聚合的 `counts` 和条目 `kind`，并通过 `template show` 输出某一工具的完整脱敏节点/Schema。
+- Service 将当前请求已授权、已脱敏的工具数据写入 Sandbox 事务受保护文件；CLI 子进程从该文件构造 `authorizedSystemToolProvider`，Builder 服务端重算从相同内存数据构造 Provider。
+- `authorizedSystemToolProvider.resolve()` 只允许命中当前请求已授权列表；`template show`、节点创建、工具挂载、ChangeSet plan/apply 和服务端重算均基于同一份数据使用组合 Provider，直接传入未授权 `systemTool` ID 必须失败。
+- 新 Builder 请求重新读取 Service，自然看到工具安装、更新、下架和权限变化；真实运行继续由现有 SystemToolRepo/runtime 处理状态和 Secret。
+- Skill 必须引导 Agent 先搜索授权目录、再查看精确 Descriptor、最后构造 ChangeSet；当目标工具不可用时，向用户说明权限/可用性限制，不猜测 ID 或伪造 Schema。
 
 ## 8. 共享规则与 UI 边界
 
@@ -1553,6 +1607,16 @@ PR 是可审核、可回滚的增量开发单元，不等于发布单元。每�
 - 允许覆盖生成期间的人工画布修改；PR5 不自动保存、发布或运行工作流。
 - 验收结果：用户可在 Workflow 编辑器中通过多轮对话直接生成并应用工作流，以验证 CLI 在 FastGPT 链路中的完整可用性。
 
+### PR5 后续增强：当前实例系统工具
+
+- 在 Builder Handler 内复用 SystemToolRepo 和当前 Web 的系统工具可见性策略，建立已授权轻量目录。
+- 用该目录构造 request-scoped `authorizedSystemToolProvider`，再与现有 `builtinTemplateProvider` 组合。
+- 将 CLI、节点创建、工具挂载、ChangeSet 和服务端 plan 重算中写死的 builtin Provider 替换为同一个组合 Provider。
+- 在 `template list` 输出中增加模板类型和数量；`template show` 继续提供完整脱敏 Descriptor。
+- 更新 `workflow-builder` Skill 及模板/节点参考，要求 Agent 先查目录和 Descriptor，禁止硬编码工具信息。
+- 外层 Agent Loop 和 `workflow_cli_query/stage/commit` 不变，不开放自动保存、发布或执行。
+- 验收结果：Agent 可看到当前用户全部已授权系统工具及精确 Schema，但无法通过手写 ID 越权，且输出和 Sandbox 中不包含 Secret。
+
 ### PR6：远端只读能力
 
 - profile、密钥读取和 API Key 只读鉴权契约。
@@ -1610,6 +1674,15 @@ PR1 只验收 `workflow.json` 的确定性 round-trip、失败不覆盖原文件
 - 两个客户端基于同一版本更新时，后提交者收到 409 冲突。
 - draft save 可以保存未完成图；publish 和 run 会被完整校验阻断。
 
+### 12.3.1 当前实例系统工具
+
+- 同一身份下 Builder CLI 的系统工具列表与 Web 可见性策略结果一致，只包含当前用户已授权的可用工具。
+- `template list` 返回 `total`、按 `kind` 聚合的 `counts` 和带 `kind` 的 `items`；其中 `systemTool` 数量与当前授权系统工具数量一致，不包含被权限过滤条目。
+- `template show` 能返回选中工具的完整脱敏节点、用户可配置输入输出、参数 Schema、执行端口和版本信息；系统 Secret 配置 Schema/实值、`secretsVal` 和运行凭证不属于 Agent 可见的“完整信息”。
+- 通过已授权工具可成功生成系统工具节点或工具边；手写未授权、隐藏、非 `Normal` 或不存在的 ID 在 Provider resolve/plan/apply 时被统一拒绝。
+- list/show/节点创建/ChangeSet/服务端重算使用同一个组合 Provider；工具在下一轮请求中新增或更新时可被发现，无需等待 Core/CLI 同步任务。
+- Skill 不包含静态工具数量、名称、ID 或 Schema；测试中更新授权目录后，Agent 的下一轮查询结果自动变化。
+
 ### 12.4 测试样本
 
 至少覆盖五类真实导出工作流：
@@ -1648,6 +1721,9 @@ Workflow Builder 的真实调用证明，仅暴露输入参数不足以让 Agent
 | Agent 或示例编造远端资源 | 本地校验通过、导入后运行失败或泄露内部异常 | 固定值来源优先级；PR6 前资源留空；Binding Collector 输出待绑定项；禁止 fixture 使用占位资源 |
 | PR6 验证后的资源被删除或撤权 | debug/publish 时使用过期资源 | PR7 服务端重新验证存在性、团队边界和权限，不信任本地 validated 状态 |
 | 动态模板版本变化 | 构建不可复现 | `workflow.json` 保存完整节点快照；远端模板解析结果进入变更摘要和审计日志 |
+| 将系统工具静态复制到 Core/CLI/Skill | 工具更新后三份目录漂移 | Service 保持唯一事实源，每次 Builder 请求构造授权 Provider |
+| 只在 `template list` 做权限过滤 | Agent 通过手写 `systemTool` ID 越权 | Provider 的 `resolve()` 只允许当前授权列表中的 ID，所有模板消费路径共用该 Provider |
+| 工具 preview 含有 Secret | Sandbox、模型上下文或日志泄密 | Service presenter 使用字段 allowlist，禁止 `secretsVal`/credential，真实 Secret 只在执行边界解析 |
 | 语义端口覆盖不完整 | 导入丢边 | golden round-trip；未知 handle 导入时阻断并报告，不静默丢弃 |
 | 本地 JSON 被当作校验器 | 可绕过 | 所有门禁在代码中重新计算 |
 | 远端覆盖他人修改 | 数据丢失 | baseVersionId 事务内比较，无 `--force` |
@@ -1660,7 +1736,7 @@ Workflow Builder 的真实调用证明，仅暴露输入参数不足以让 Agent
 
 - 状态载体：WorkflowDocument、`workflow.json`、StoreWorkflow。
 - 构建来源：模板、导入、ChangeSet。
-- 参数发现：Template Descriptor、Automation Metadata、机器可读 Schema。
+- 参数发现：Template Descriptor、Automation Metadata、机器可读 Schema、已授权系统工具目录。
 - 输入初始化：用户显式值、PR6 已验证值、模板安全默认值、资源安全空值。
 - 图操作：节点、执行边、变量引用、工具、嵌套。
 - 生命周期：校验、build、draft save、publish、debug、run。
@@ -1673,6 +1749,8 @@ Workflow Builder 的真实调用证明，仅暴露输入参数不足以让 Agent
 - ChangeSet 不承担完整状态存储。
 - ReactFlow 不承担共享领域模型。
 - Automation Metadata 不承担运行时节点状态，也不进入 StoreWorkflow。
+- Service 负责认证、权限过滤和 Secret；Core/CLI 只消费注入的组合 Provider，不反向推导用户权限。
+- 当前 Builder 的 request-scoped Provider 使用 Web 会话身份；PR6 的独立 CLI remote provider 使用 profile/API Key，二者不是同一能力。
 - 模板值来源优先级只负责实例化；PR6 资源读取验证与 PR7 运行/发布复验职责互不替代。
 - 本地 build 只表示结构可编译，不等于资源已解析、可调试或可发布。
 - draft save 不等于 publish。
@@ -1680,4 +1758,4 @@ Workflow Builder 的真实调用证明，仅暴露输入参数不足以让 Agent
 
 ### 14.3 最终评审结论
 
-该方案可以作为实现基线，但必须严格按 PR1 到 PR7 增量落地。PR1 要以最小可运行 CLI 证明从模板、Command、Document、Validator、`workflow.json` 到 StoreWorkflow 的完整链路；PR5 只在 PR4 契约上增加独立的 Workflow 辅助生成产品入口，不得引入第二套修改规则。后续 PR 只能扩展能力，不能破坏已固化的基础契约和端到端测试。分片 Manifest 不进入初期开发范围，只有真实实验数据证明单文件方案存在瓶颈后再单独立项。
+该方案可以作为实现基线，但必须严格按 PR1 到 PR7 增量落地。PR1 要以最小可运行 CLI 证明从模板、Command、Document、Validator、`workflow.json` 到 StoreWorkflow 的完整链路；PR5 只在 PR4 契约上增加独立的 Workflow 辅助生成产品入口，不得引入第二套修改规则。当前实例系统工具作为 PR5 后续增强：Service 依用户权限构造系统工具 Provider，并与现有 builtin Provider 组合；CLI 只增加模板类型和数量输出，外层 query/stage/commit 和 Agent Loop 不变，不增加定时同步。后续 PR 只能扩展能力，不能破坏已固化的基础契约和端到端测试。分片 Manifest 不进入初期开发范围，只有真实实验数据证明单文件方案存在瓶颈后再单独立项。
