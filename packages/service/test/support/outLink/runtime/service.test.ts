@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { runOutlinkRuntime } from '@fastgpt/service/support/outLink/runtime/service';
+import {
+  dispatchOutlinkProviderMessage,
+  runOutlinkRuntime
+} from '@fastgpt/service/support/outLink/runtime/service';
 import type {
   OutlinkResponder,
   OutlinkResponseEvent
@@ -44,9 +47,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: vi.fn()
 }));
 vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@fastgpt/service/core/workflow/utils/fileLimits')
-  >()),
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/fileLimits')>()),
   getWorkflowFileLimits: vi.fn()
 }));
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
@@ -294,5 +295,29 @@ describe('runOutlinkRuntime', () => {
       responseChatItemId: message.messageId,
       error
     });
+  });
+});
+
+describe('dispatchOutlinkProviderMessage', () => {
+  it('returns one terminal error through the provider responder', async () => {
+    const events: OutlinkResponseEvent[] = [];
+    const onProcessingError = vi.fn();
+    const onResponseError = vi.fn();
+    dispatchOutlinkProviderMessage({
+      onMessage: vi.fn().mockRejectedValue(new Error('runtime failed')),
+      outLinkConfig: outLinkConfig as any,
+      message,
+      respond: async (stream) => {
+        for await (const event of stream) events.push(event);
+      },
+      onProcessingError,
+      onResponseError
+    });
+
+    await vi.waitFor(() => {
+      expect(events).toEqual([{ type: 'error', content: '文件处理失败，请稍后重试' }]);
+    });
+    expect(onProcessingError).toHaveBeenCalledWith(expect.any(Error));
+    expect(onResponseError).not.toHaveBeenCalled();
   });
 });

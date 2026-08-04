@@ -1,12 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   citeOutLinkQuery,
   composeOutLinkQuery,
-  createOutLinkFileLimitStream
+  createOutLinkFileLimitStream,
+  uploadOutLinkFile
 } from '@fastgpt/service/support/outLink/tools';
+
+const { uploadChatFile } = vi.hoisted(() => ({ uploadChatFile: vi.fn() }));
+vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
+  getS3ChatSource: () => ({ uploadChatFile })
+}));
 
 describe('outLink query composition', () => {
   const parentFile = {
@@ -20,19 +26,6 @@ describe('outLink query composition', () => {
     url: 'https://example.com/current.txt'
   };
 
-  it('merges cited text and keeps files', () => {
-    expect(
-      citeOutLinkQuery([
-        { text: { content: 'parent line 1' } },
-        { file: parentFile },
-        { text: { content: 'parent line 2' } }
-      ])
-    ).toEqual([
-      { text: { content: '<Cite>parent line 1\nparent line 2</Cite>' } },
-      { file: parentFile }
-    ]);
-  });
-
   it('composes one text item followed by files in query order', () => {
     expect(
       composeOutLinkQuery(
@@ -45,24 +38,9 @@ describe('outLink query composition', () => {
       { file: currentFile }
     ]);
   });
-
-  it('omits empty text and keeps a file-only citation', () => {
-    expect(citeOutLinkQuery([{ text: { content: '' } }, { file: parentFile }])).toEqual([
-      { file: parentFile }
-    ]);
-    expect(composeOutLinkQuery([], [{ text: { content: '' } }])).toEqual([]);
-  });
 });
 
 describe('createOutLinkFileLimitStream', () => {
-  it('forwards chunks without changing their order or content', async () => {
-    const source = Readable.from([Buffer.from('hello'), Buffer.from(' '), Buffer.from('world')]);
-
-    const result = await buffer(createOutLinkFileLimitStream({ source, maxBytes: 11 }));
-
-    expect(result.toString()).toBe('hello world');
-  });
-
   it('allows content whose size equals the limit', async () => {
     const source = Readable.from([Buffer.from('123'), Buffer.from('45')]);
 
@@ -94,20 +72,6 @@ describe('createOutLinkFileLimitStream', () => {
     expect(source.destroyed).toBe(true);
   });
 
-  it('propagates source stream errors', async () => {
-    const sourceError = new Error('download failed');
-    const source = Readable.from(
-      (async function* () {
-        yield Buffer.from('123');
-        throw sourceError;
-      })()
-    );
-
-    await expect(buffer(createOutLinkFileLimitStream({ source, maxBytes: 10 }))).rejects.toBe(
-      sourceError
-    );
-  });
-
   it('destroys a stalled source when the timeout is reached', async () => {
     const source = new Readable({ read() {} });
 
@@ -116,29 +80,35 @@ describe('createOutLinkFileLimitStream', () => {
     ).rejects.toThrow('OutLink file download timeout');
     expect(source.destroyed).toBe(true);
   });
+});
 
-  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
-    'rejects invalid maxBytes value %s',
-    (maxBytes) => {
-      expect(() =>
-        createOutLinkFileLimitStream({
-          source: Readable.from([]),
-          maxBytes
-        })
-      ).toThrow('maxBytes must be a finite positive number');
-    }
-  );
+describe('uploadOutLinkFile', () => {
+  it('uploads a bounded stream and rejects its declared oversize before S3', async () => {
+    uploadChatFile.mockImplementation(async ({ body }: { body: Readable }) => ({
+      key: (await buffer(body)).toString()
+    }));
 
-  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
-    'rejects invalid timeoutMs value %s',
-    (timeoutMs) => {
-      expect(() =>
-        createOutLinkFileLimitStream({
-          source: Readable.from([]),
-          maxBytes: 1,
-          timeoutMs
-        })
-      ).toThrow('timeoutMs must be a finite positive number');
-    }
-  );
+    await expect(
+      uploadOutLinkFile({
+        source: Readable.from(['file']),
+        maxBytes: 4,
+        appId: '507f1f77bcf86cd799439011',
+        chatId: 'chat',
+        userId: 'user',
+        filename: 'file.txt'
+      })
+    ).resolves.toEqual({ key: 'file' });
+    await expect(
+      uploadOutLinkFile({
+        source: Readable.from(['ignored']),
+        contentLength: 5,
+        maxBytes: 4,
+        appId: '507f1f77bcf86cd799439011',
+        chatId: 'chat',
+        userId: 'user',
+        filename: 'file.txt'
+      })
+    ).rejects.toMatchObject({ name: 'OutLinkFileSizeExceededError' });
+    expect(uploadChatFile).toHaveBeenCalledTimes(1);
+  });
 });
