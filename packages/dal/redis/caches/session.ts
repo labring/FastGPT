@@ -123,6 +123,21 @@ export class SessionCache {
     await this.redis.delete(this.getKey(sessionId));
   }
 
+  /** 更新 Session 的团队上下文，不刷新原有过期时间。 */
+  updateTeam = ({
+    sessionId,
+    teamId,
+    tmbId
+  }: {
+    sessionId: string;
+    teamId: string;
+    tmbId: string;
+  }) =>
+    this.redis.updateHashFields({
+      key: this.getKey(sessionId),
+      fields: { teamId, tmbId }
+    });
+
   /** 分页扫描某个用户的全部 typed session，损坏记录会被尽力清理。 */
   async listByUser(userId: string): Promise<SessionRecord[]> {
     const records: SessionRecord[] = [];

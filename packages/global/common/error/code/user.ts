@@ -11,6 +11,7 @@ export enum UserErrEnum {
   sendVerificationCodeTooFrequently = 'sendVerificationCodeTooFrequently',
   verifyCodeTooFrequently = 'verifyCodeTooFrequently',
   invalidAccount = 'invalidAccount',
+  accountCancellationPending = 'accountCancellationPending',
   registrationMethodNotSupported = 'registrationMethodNotSupported'
 }
 const errList = [
@@ -48,6 +49,10 @@ const errList = [
   {
     statusText: UserErrEnum.invalidAccount,
     message: i18nT('common:code_error.invalid_account')
+  },
+  {
+    statusText: UserErrEnum.accountCancellationPending,
+    message: i18nT('common:code_error.account_cancellation_pending')
   },
   {
     statusText: UserErrEnum.registrationMethodNotSupported,

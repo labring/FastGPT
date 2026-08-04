@@ -30,8 +30,8 @@ export type VerificationType = (typeof VERIFICATION_TYPES)[number];
 
 export const VERIFICATION_SCENES_BY_TYPE = {
   password: ['login'],
-  code: ['register', 'forgetPassword', 'bindNotification'],
-  captcha: ['register', 'forgetPassword', 'bindNotification'],
+  code: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'],
+  captcha: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'],
   // The callback adapter discovers the scene from all active QR materials.
   wechat: ACCOUNT_VERIFICATION_PURPOSES,
   oauth: ['login']
@@ -121,7 +121,10 @@ export const PasswordVerificationPurposeSchema = AccountVerificationPurposeSchem
 );
 export type PasswordVerificationPurpose = z.infer<typeof PasswordVerificationPurposeSchema>;
 
-export const WechatPurposeSchema = AccountVerificationPurposeSchema.extract(['login']);
+export const WechatPurposeSchema = AccountVerificationPurposeSchema.extract([
+  'login',
+  'unsubscribe'
+]);
 export type WechatPurpose = z.infer<typeof WechatPurposeSchema>;
 
 export const ShortAuthStringSchema = z.string().trim().min(1).max(100);
