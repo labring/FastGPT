@@ -33,6 +33,7 @@ import type {
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
 import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import { formatToolInputSecrets } from './tool/secretConfig';
 import z from 'zod';
 
 /**
@@ -327,6 +328,8 @@ export async function rewriteAppWorkflowToDetail({
                         : inputWithTypeConfig.value // Keep default value
                   };
                 });
+
+                formatToolInputSecrets({ inputs: mergedInputs });
 
                 return {
                   ...data,

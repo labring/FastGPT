@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
-  beforeUpdateAppFormat({
+  await beforeUpdateAppFormat({
     nodes
   });
   if (isPublish) {

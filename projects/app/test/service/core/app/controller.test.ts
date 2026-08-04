@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   beforeUpdateAppFormat,
   validatePublishAppAgentSkillReadPermissions
@@ -16,10 +16,16 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
+const mocks = vi.hoisted(() => ({
+  getClientToolPreviewNode: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
+
 describe('beforeUpdateAppFormat', () => {
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
     '保存前清理 %s 类型中的临时密钥值',
-    (type) => {
+    async (type) => {
       const nodes = [
         {
           inputs: [
@@ -40,13 +46,13 @@ describe('beforeUpdateAppFormat', () => {
         } as StoreNodeItemType
       ];
 
-      beforeUpdateAppFormat({ nodes });
+      await beforeUpdateAppFormat({ nodes });
 
       expect(nodes[0].inputs[0].value).toEqual({ type });
     }
   );
 
-  it('即使系统输入被标记为引用，也不能保留临时密钥值', () => {
+  it('即使系统输入被标记为引用，也不能保留临时密钥值', async () => {
     const nodes = [
       {
         inputs: [
@@ -69,14 +75,14 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual({
       type: SystemToolSecretInputTypeEnum.system
     });
   });
 
-  it('保存前仅加密 manual 类型的临时密钥值', () => {
+  it('保存前仅加密 manual 类型的临时密钥值', async () => {
     const nodes = [
       {
         inputs: [
@@ -101,7 +107,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     const value = nodes[0].inputs[0].value as any;
     expect(value.type).toBe(SystemToolSecretInputTypeEnum.manual);
@@ -110,7 +116,47 @@ describe('beforeUpdateAppFormat', () => {
     expect(value.value.region).toBe('cn');
   });
 
-  it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', () => {
+  it('保存 Agent 嵌套工具配置前加密手动密钥', async () => {
+    mocks.getClientToolPreviewNode.mockResolvedValueOnce({
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          inputList: [{ key: 'apiKey', inputType: 'secret' }]
+        }
+      ]
+    });
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: 'system-tool',
+                config: {
+                  system_input_config: {
+                    type: SystemToolSecretInputTypeEnum.manual,
+                    value: {
+                      apiKey: { value: 'nested-secret', secret: '' }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const config = (nodes[0].inputs[0].value as any)[0].config;
+    expect(config.system_input_config.value.apiKey.value).toBe('');
+    expect(config.system_input_config.value.apiKey.secret).toEqual(expect.any(String));
+  });
+
+  it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -135,7 +181,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
@@ -144,7 +190,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前兼容旧版单对象知识库选择项', () => {
+  it('保存前兼容旧版单对象知识库选择项', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -166,7 +212,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
@@ -175,7 +221,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前兼容已压缩的知识库选择项数组', () => {
+  it('保存前兼容已压缩的知识库选择项数组', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -197,7 +243,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
@@ -209,7 +255,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前统一压缩 Agent datasetParams 中的知识库选择项', () => {
+  it('保存前统一压缩 Agent datasetParams 中的知识库选择项', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -236,7 +282,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toMatchObject({
       datasets: [
@@ -249,7 +295,7 @@ describe('beforeUpdateAppFormat', () => {
     });
   });
 
-  it('保存前保留知识库选择输入的引用模式值', () => {
+  it('保存前保留知识库选择输入的引用模式值', async () => {
     const referenceValue = ['sourceNode', 'datasets'];
     const nodes = [
       {
@@ -265,12 +311,12 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toBe(referenceValue);
   });
 
-  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', () => {
+  it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -289,10 +335,10 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    expect(() => beforeUpdateAppFormat({ nodes })).toThrow();
+    await expect(beforeUpdateAppFormat({ nodes })).rejects.toThrow();
   });
 
-  it('保存前移除 Agent Skill 的编辑态删除标记和展示快照字段', () => {
+  it('保存前移除 Agent Skill 的编辑态删除标记和展示快照字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -321,7 +367,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes });
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
