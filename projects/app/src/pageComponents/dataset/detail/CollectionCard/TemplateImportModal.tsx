@@ -99,7 +99,7 @@ const TemplateImportModal = ({
 
           <FileSelector
             maxCount={1}
-            fileType=".csv"
+            fileType=".csv,.xlsx"
             selectFiles={selectFiles}
             setSelectFiles={setSelectFiles}
             FileTypeNode={
@@ -107,7 +107,7 @@ const TemplateImportModal = ({
                 <Trans
                   i18nKey={i18nT('file:template_csv_file_select_tip')}
                   values={{
-                    fileType: '.csv'
+                    fileType: '.csv, .xlsx'
                   }}
                   components={{
                     highlight: <Box as="span" color="primary.600" fontWeight="medium" />

@@ -48,7 +48,7 @@ const BackupImportModal = ({
 
         <FileSelectorBox
           maxCount={1}
-          fileType=".csv"
+          fileType=".csv,.xlsx"
           selectFiles={selectFiles}
           setSelectFiles={(e) => setSelectFiles(e)}
         />
