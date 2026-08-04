@@ -53,7 +53,7 @@ catalog:
   express: ^4
   file-type: 21.3.0
   gpt-tokenizer: 3.4.0
-  hono: 4.12.27
+  hono: 4.12.34
   '@hono/node-server': ^2.0.10
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
