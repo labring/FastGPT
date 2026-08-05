@@ -4,6 +4,7 @@ import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants'
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxVolumeNameSchema } from '@fastgpt/global/core/ai/sandbox/volume';
 import {
   AgentSandboxPreviewProxyUrlSchema,
   AgentSandboxProxyUrlSchema,
@@ -110,11 +111,23 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: z.enum(['docker', 'kubernetes']).default('docker'),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().default('fastgpt-agent-sandbox'),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().default('latest'),
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE: z.string().optional().meta({
+      description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
+    }),
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().optional().meta({
+      description: 'Deprecated OpenSandbox image repository fallback',
+      deprecated: true
+    }),
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().optional().meta({
+      description: 'Deprecated OpenSandbox image tag fallback',
+      deprecated: true
+    }),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: SandboxVolumeNameSchema.default(
+      'fastgpt-session'
+    ).meta({ description: 'OpenSandbox persistent volume claimName prefix' }),
     AGENT_SANDBOX_OPENSANDBOX_DISABLE_NETWORK_POLICY: BoolSchema.default(false).meta({
       description:
         'Disable the default outbound network policy for OpenSandbox Docker runtime. ' +

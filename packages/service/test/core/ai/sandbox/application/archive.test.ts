@@ -14,6 +14,10 @@ const mocks = vi.hoisted(() => ({
   connectToSandbox: vi.fn(),
   disconnectSandbox: vi.fn(),
   buildSandboxResourceAdapter: vi.fn(),
+  buildVolumeConfig: vi.fn(),
+  createLegacySessionVolumeClaimName: vi.fn(),
+  createSessionVolumeClaimName: vi.fn(),
+  getSessionVolumeClaimName: vi.fn(),
   getSessionVolumeConfig: vi.fn(),
   deleteSessionVolume: vi.fn(),
   uploadWorkspaceArchive: vi.fn(),
@@ -63,7 +67,11 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => ({
+  buildVolumeConfig: mocks.buildVolumeConfig,
+  createLegacySessionVolumeClaimName: mocks.createLegacySessionVolumeClaimName,
+  createSessionVolumeClaimName: mocks.createSessionVolumeClaimName,
   deleteSessionVolume: mocks.deleteSessionVolume,
+  getSessionVolumeClaimName: mocks.getSessionVolumeClaimName,
   getSessionVolumeConfig: mocks.getSessionVolumeConfig
 }));
 
@@ -93,6 +101,31 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/application/archive';
 
 const EMPTY_ZIP_BUFFER = Buffer.from('504b0506000000000000000000000000000000000000', 'hex');
+const restoreParams = {
+  provider: 'opensandbox' as const,
+  sandboxId: 'sandbox-1',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: 'app-1',
+  userId: 'user-1'
+};
+
+const createVolumeConfig = (claimName: string) => ({
+  volumes: [
+    {
+      name: 'workspace',
+      pvc: {
+        claimName,
+        createIfNotExists: false,
+        deleteOnSandboxTermination: false
+      },
+      mountPath: '/workspace'
+    }
+  ],
+  storage: {
+    volumes: [{ name: 'workspace', claimName, mountPath: '/workspace' }],
+    mountPath: '/workspace'
+  }
+});
 
 const createResource = (status = 'stopped', overrides: Record<string, unknown> = {}) =>
   ({
@@ -103,6 +136,16 @@ const createResource = (status = 'stopped', overrides: Record<string, unknown> =
     userId: 'user-1',
     status,
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
+    storage: {
+      volumes: [
+        {
+          name: 'workspace',
+          claimName: 'fastgpt-session-sandbox-1-old',
+          mountPath: '/workspace'
+        }
+      ],
+      mountPath: '/workspace'
+    },
     ...overrides
   }) as any;
 
@@ -130,6 +173,32 @@ const createSandbox = () => ({
   stop: vi.fn(async () => undefined)
 });
 
+const createStaleRestore = (phase: string, overrides: Record<string, unknown> = {}) =>
+  createResource('restoring', {
+    operation: {
+      id: 'old-restore',
+      type: 'restore',
+      phase,
+      previousStatus: 'archived',
+      startedAt: new Date(0),
+      heartbeatAt: new Date(0),
+      error: 'worker stopped'
+    },
+    ...overrides
+  });
+
+const mockRestoreResume = (resource: ReturnType<typeof createResource>) => {
+  mocks.findSandboxInstanceBySandboxId.mockResolvedValue(resource);
+  mocks.claimSandboxOperation.mockResolvedValueOnce({
+    ...resource,
+    operation: { ...resource.operation, id: 'resumed-restore' }
+  });
+};
+
+const restoreSandbox = () => restoreArchivedSandboxBeforeUse(restoreParams);
+const getAdvancedPhases = () =>
+  mocks.advanceSandboxOperation.mock.calls.map(([input]) => input.phase);
+
 describe('sandbox archive lifecycle', () => {
   const lease = {
     signal: new AbortController().signal,
@@ -153,6 +222,13 @@ describe('sandbox archive lifecycle', () => {
     mocks.connectToSandbox.mockResolvedValue(createSandbox());
     mocks.disconnectSandbox.mockResolvedValue(undefined);
     mocks.buildSandboxResourceAdapter.mockReturnValue({ delete: vi.fn(async () => undefined) });
+    mocks.buildVolumeConfig.mockImplementation(createVolumeConfig);
+    mocks.createLegacySessionVolumeClaimName.mockReturnValue('fastgpt-session-sandbox-1');
+    mocks.createSessionVolumeClaimName.mockReturnValue('fastgpt-session-sandbox-1-new');
+    mocks.getSessionVolumeClaimName.mockImplementation(
+      (storage: any) =>
+        storage?.volumes?.find((volume: any) => volume.name === 'workspace')?.claimName
+    );
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
     mocks.uploadWorkspaceArchive.mockResolvedValue(undefined);
     mocks.downloadWorkspaceArchive.mockResolvedValue(EMPTY_ZIP_BUFFER);
@@ -186,8 +262,10 @@ describe('sandbox archive lifecycle', () => {
     );
     expect(mocks.advanceSandboxOperation.mock.calls.map((call) => call[0].phase)).toEqual([
       'archiveUploaded',
-      'providerDeleted'
+      'providerDeleted',
+      'volumeDeleted'
     ]);
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1-old');
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({
         operationId: 'archiving-operation',
@@ -250,7 +328,7 @@ describe('sandbox archive lifecycle', () => {
     );
   });
 
-  it('commits providerDeleted archive phase without recreating an empty sandbox', async () => {
+  it('resumes providerDeleted archive phase by completing volume deletion', async () => {
     const providerDeleted = createResource('archiving', {
       operation: {
         id: 'old-archive',
@@ -274,6 +352,10 @@ describe('sandbox archive lifecycle', () => {
     expect(mocks.connectToSandbox).not.toHaveBeenCalled();
     expect(mocks.uploadWorkspaceArchive).not.toHaveBeenCalled();
     expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1-old');
+    expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'resumed-archive', phase: 'volumeDeleted' })
+    );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'resumed-archive', status: 'archived' })
     );
@@ -323,6 +405,16 @@ describe('sandbox archive lifecycle', () => {
       sandboxId: 'legacy-sandbox',
       status: 'stopped',
       lastActiveAt: new Date(),
+      storage: {
+        volumes: [
+          {
+            name: 'workspace',
+            claimName: 'fastgpt-session-legacy-sandbox-old',
+            mountPath: '/workspace'
+          }
+        ],
+        mountPath: '/workspace'
+      },
       metadata: { archive: { state: 'archiving' } }
     });
 
@@ -336,88 +428,156 @@ describe('sandbox archive lifecycle', () => {
   it('installs the workspace before publishing restoring -> running', async () => {
     const archived = createResource('archived');
     mocks.findSandboxInstanceBySandboxId.mockResolvedValue(archived);
+    const vmConfig = createVolumeConfig('fastgpt-session-sandbox-1-new');
+    mocks.getSessionVolumeConfig.mockResolvedValueOnce(vmConfig);
     mocks.completeSandboxOperation.mockResolvedValueOnce(createResource('running'));
 
-    await restoreArchivedSandboxBeforeUse({
-      provider: 'opensandbox',
-      sandboxId: 'sandbox-1',
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1'
-    });
+    await expect(restoreSandbox()).resolves.toEqual(vmConfig);
 
-    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'restoring', type: 'restore', previousStatus: 'archived' })
+    expect(mocks.claimSandboxOperation.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.advanceSandboxOperation.mock.invocationCallOrder[0]
+    );
+    expect(mocks.advanceSandboxOperation.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getSessionVolumeConfig.mock.invocationCallOrder[0]
+    );
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('fastgpt-session-sandbox-1-new');
+    expect(mocks.getSessionVolumeConfig.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.connectToSandbox.mock.invocationCallOrder[0]
+    );
+    expect(mocks.getSandboxAdapterConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ vmConfig })
+    );
+    expect(mocks.advanceSandboxOperation).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        operationId: 'restoring-operation',
+        phase: 'volumeAssigned',
+        set: {
+          storage: vmConfig.storage
+        }
+      })
     );
     expect(mocks.downloadWorkspaceArchive).toHaveBeenCalledWith({
       sandboxId: 'sandbox-1',
       maxBytes: 1024 * 1024
     });
-    expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ operationId: 'restoring-operation', phase: 'archiveInstalled' })
+    expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+    expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
+  });
+
+  it('cleans an old claimed restore before assigning the next volume generation', async () => {
+    mockRestoreResume(createStaleRestore('claimed'));
+    mocks.getSessionVolumeConfig.mockResolvedValueOnce(
+      createVolumeConfig('fastgpt-session-sandbox-1-new')
     );
-    expect(mocks.advanceSandboxOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.completeSandboxOperation.mock.invocationCallOrder[0]
+
+    await restoreSandbox();
+
+    const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
+    expect(adapter.delete).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1-old');
+    expect(adapter.delete.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.deleteSessionVolume.mock.invocationCallOrder[0]
     );
-    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+    expect(mocks.deleteSessionVolume.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.createSessionVolumeClaimName.mock.invocationCallOrder[0]
+    );
+    expect(getAdvancedPhases()).toEqual([
+      'previousProviderDeleted',
+      'previousVolumeDeleted',
+      'volumeAssigned',
+      'archiveInstalled'
+    ]);
+  });
+
+  it('deletes the deterministic legacy volume when claimed restore storage is missing', async () => {
+    mockRestoreResume(createStaleRestore('claimed', { storage: undefined }));
+
+    await restoreSandbox();
+
+    expect(mocks.createLegacySessionVolumeClaimName).toHaveBeenCalledWith('sandbox-1');
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1');
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Deleting legacy deterministic Sandbox volume without persisted claimName',
+      {
+        sandboxId: 'sandbox-1',
+        claimName: 'fastgpt-session-sandbox-1'
+      }
+    );
+  });
+
+  it('does not assign a new volume when previous volume cleanup fails', async () => {
+    mockRestoreResume(createStaleRestore('claimed'));
+    mocks.deleteSessionVolume.mockRejectedValueOnce(new Error('volume cleanup failed'));
+
+    await expect(restoreSandbox()).rejects.toThrow('volume cleanup failed');
+
+    expect(getAdvancedPhases()).toEqual(['previousProviderDeleted']);
+    expect(mocks.createSessionVolumeClaimName).not.toHaveBeenCalled();
+    expect(mocks.connectToSandbox).not.toHaveBeenCalled();
+    expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
       expect.objectContaining({
-        fromStatus: 'restoring',
-        status: 'running',
-        touchActive: true,
-        set: expect.objectContaining({
-          image: { repository: 'fastgpt/sandbox', tag: 'v2' }
-        })
+        operationId: 'resumed-restore',
+        status: 'restoring',
+        error: 'volume cleanup failed'
       })
     );
   });
 
-  it('publishes an already installed restore phase without downloading again', async () => {
-    const installed = createResource('restoring', {
-      operation: {
-        id: 'old-restore',
-        type: 'restore',
-        phase: 'archiveInstalled',
-        previousStatus: 'archived',
-        startedAt: new Date(0),
-        heartbeatAt: new Date(0),
-        error: 'commit interrupted'
-      }
-    });
-    const reclaimed = {
-      ...installed,
-      operation: { ...installed.operation, id: 'resumed-restore' }
-    };
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValue(installed);
-    mocks.claimSandboxOperation.mockResolvedValueOnce(reclaimed);
+  it.each([
+    {
+      phase: 'previousProviderDeleted',
+      expectedPhases: ['previousVolumeDeleted', 'volumeAssigned', 'archiveInstalled'],
+      deletesVolume: true
+    },
+    {
+      phase: 'previousVolumeDeleted',
+      expectedPhases: ['volumeAssigned', 'archiveInstalled'],
+      deletesVolume: false
+    }
+  ])('resumes restore cleanup from $phase', async ({ phase, expectedPhases, deletesVolume }) => {
+    mockRestoreResume(createStaleRestore(phase));
 
-    await restoreArchivedSandboxBeforeUse({
-      provider: 'opensandbox',
-      sandboxId: 'sandbox-1',
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
-      userId: 'user-1'
-    });
+    await restoreSandbox();
+
+    expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledTimes(deletesVolume ? 1 : 0);
+    expect(getAdvancedPhases()).toEqual(expectedPhases);
+  });
+
+  it('does not recreate a provider or volume for an already installed restore phase', async () => {
+    mockRestoreResume(createStaleRestore('archiveInstalled'));
+
+    await restoreSandbox();
 
     expect(mocks.connectToSandbox).not.toHaveBeenCalled();
     expect(mocks.downloadWorkspaceArchive).not.toHaveBeenCalled();
+    expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'resumed-restore', status: 'running' })
     );
+  });
+
+  it('reuses the persisted generation when retrying volumeAssigned restore phase', async () => {
+    const vmConfig = createVolumeConfig('fastgpt-session-sandbox-1-assigned');
+    const assigned = createStaleRestore('volumeAssigned', {
+      storage: vmConfig.storage
+    });
+    mockRestoreResume(assigned);
+    mocks.getSessionVolumeConfig.mockResolvedValueOnce(vmConfig);
+
+    await restoreSandbox();
+
+    expect(mocks.createSessionVolumeClaimName).not.toHaveBeenCalled();
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('fastgpt-session-sandbox-1-assigned');
+    expect(getAdvancedPhases()).toEqual(['archiveInstalled']);
   });
 
   it('records restore failures and never publishes running', async () => {
     mocks.findSandboxInstanceBySandboxId.mockResolvedValue(createResource('archived'));
     mocks.downloadWorkspaceArchive.mockRejectedValueOnce(new Error('archive missing'));
 
-    await expect(
-      restoreArchivedSandboxBeforeUse({
-        provider: 'opensandbox',
-        sandboxId: 'sandbox-1',
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app-1',
-        userId: 'user-1'
-      })
-    ).rejects.toThrow('archive missing');
+    await expect(restoreSandbox()).rejects.toThrow('archive missing');
     expect(mocks.completeSandboxOperation).not.toHaveBeenCalled();
     expect(mocks.markSandboxOperationFailed).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'restoring', error: 'archive missing' })

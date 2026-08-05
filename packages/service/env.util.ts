@@ -86,6 +86,7 @@ const agentSandboxProviderRequiredEnvKeys = {
   opensandbox: [
     'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
     'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
+    'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
   ]
@@ -106,7 +107,15 @@ export const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): s
     return [];
   }
 
-  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => !env[key]);
+  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => {
+    if (key !== 'AGENT_SANDBOX_OPENSANDBOX_IMAGE') return !env[key];
+
+    // 升级窗口内允许旧的 repo/tag 配置提供默认镜像；新 IMAGE 始终优先。
+    return (
+      !env.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim() &&
+      !env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO?.trim()
+    );
+  });
 };
 
 /* ===== Sandbox proxy ===== */

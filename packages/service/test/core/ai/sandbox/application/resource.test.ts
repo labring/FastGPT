@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
   buildSandboxResourceAdapter: vi.fn(),
   deleteSessionVolume: vi.fn(),
+  getSessionVolumeClaimName: vi.fn(),
   deleteWorkspaceArchiveNow: vi.fn(),
   withSandboxLifecycleLease: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
@@ -32,7 +33,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () =
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => ({
-  deleteSessionVolume: mocks.deleteSessionVolume
+  deleteSessionVolume: mocks.deleteSessionVolume,
+  getSessionVolumeClaimName: mocks.getSessionVolumeClaimName
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
@@ -70,6 +72,16 @@ const createResource = (overrides: Record<string, unknown> = {}) =>
     userId: 'user-1',
     status: 'running',
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
+    storage: {
+      volumes: [
+        {
+          name: 'workspace',
+          claimName: 'fastgpt-session-sandbox-1-current',
+          mountPath: '/workspace'
+        }
+      ],
+      mountPath: '/workspace'
+    },
     ...overrides
   }) as any;
 
@@ -102,6 +114,10 @@ describe('sandbox resource lifecycle', () => {
     mocks.deleteClaimedSandboxRecord.mockResolvedValue({ deletedCount: 1 });
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
+    mocks.getSessionVolumeClaimName.mockImplementation(
+      (storage: any) =>
+        storage?.volumes?.find((volume: any) => volume.name === 'workspace')?.claimName
+    );
     mocks.deleteWorkspaceArchiveNow.mockResolvedValue(undefined);
     mocks.findSandboxResourcesBySource.mockResolvedValue([]);
     mocks.findSkillRelatedSandboxResources.mockResolvedValue([]);
@@ -196,7 +212,7 @@ describe('sandbox resource lifecycle', () => {
 
     const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
     expect(adapter.delete).toHaveBeenCalledTimes(1);
-    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('sandbox-1');
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1-current');
     expect(mocks.deleteWorkspaceArchiveNow).toHaveBeenCalledWith({ sandboxId: 'sandbox-1' });
     expect(mocks.advanceSandboxOperation.mock.calls.map((call) => call[0].phase)).toEqual([
       'providerDeleted',

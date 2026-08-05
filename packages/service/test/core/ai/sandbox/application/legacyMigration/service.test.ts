@@ -28,7 +28,11 @@ const mocks = vi.hoisted(() => ({
   buildSandboxResourceAdapter: vi.fn(),
   ensureConnectedSandboxRunning: vi.fn(),
   resolveSandboxHome: vi.fn(),
+  buildVolumeConfig: vi.fn(),
+  createLegacySessionVolumeClaimName: vi.fn(),
+  createSessionVolumeClaimName: vi.fn(),
   deleteSessionVolume: vi.fn(),
+  getSessionVolumeClaimName: vi.fn(),
   getSessionVolumeConfig: vi.fn(),
   downloadLegacyWorkspaceArchive: vi.fn(),
   deleteLegacyWorkspaceArchiveNow: vi.fn(),
@@ -96,7 +100,11 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => ({
+  buildVolumeConfig: mocks.buildVolumeConfig,
+  createLegacySessionVolumeClaimName: mocks.createLegacySessionVolumeClaimName,
+  createSessionVolumeClaimName: mocks.createSessionVolumeClaimName,
   deleteSessionVolume: mocks.deleteSessionVolume,
+  getSessionVolumeClaimName: mocks.getSessionVolumeClaimName,
   getSessionVolumeConfig: mocks.getSessionVolumeConfig
 }));
 
@@ -149,6 +157,17 @@ const createWorkspaceTarget = () => ({
   })
 });
 
+const createStorage = (sandboxId: string) => ({
+  volumes: [
+    {
+      name: 'workspace',
+      claimName: `fastgpt-session-${sandboxId}-current`,
+      mountPath: '/workspace'
+    }
+  ],
+  mountPath: '/workspace'
+});
+
 const createMigrationTargetDoc = (sandboxId = 'target-sandbox') =>
   ({
     _id: `id-${sandboxId}`,
@@ -159,6 +178,7 @@ const createMigrationTargetDoc = (sandboxId = 'target-sandbox') =>
     userId: 'user-1',
     status: 'legacyMigrating',
     lastActiveAt: new Date(),
+    storage: createStorage(sandboxId),
     operation: {
       id: `operation-${sandboxId}`,
       type: 'legacyMigration',
@@ -189,6 +209,7 @@ const insertLegacyApp = async (params: {
     chatId: params.chatId ?? 'chat-1',
     status: params.status ?? SandboxStatusEnum.stopped,
     lastActiveAt: params.lastActiveAt ?? new Date(),
+    storage: createStorage(params.sandboxId),
     ...(params.phase
       ? {
           metadata: {
@@ -217,6 +238,7 @@ const insertLegacySkill = async (params: {
     sourceId,
     status: SandboxStatusEnum.stopped,
     lastActiveAt: new Date(),
+    storage: createStorage(params.sandboxId),
     metadata: params.metadata ?? {}
   });
 };
@@ -237,6 +259,7 @@ const insertPreBeta6Sandbox = async (params: {
     status: SandboxStatusEnum.stopped,
     lastActiveAt: new Date(),
     createdAt: new Date(),
+    storage: createStorage(params.sandboxId),
     ...(params.skillId ? { metadata: { skillId: params.skillId } } : {})
   });
 
@@ -272,6 +295,34 @@ describe('legacy sandbox migration', () => {
     mocks.markSandboxOperationFailed.mockResolvedValue(undefined);
     mocks.ensureConnectedSandboxRunning.mockResolvedValue(undefined);
     mocks.resolveSandboxHome.mockResolvedValue('/home/sandbox');
+    mocks.buildVolumeConfig.mockImplementation((claimName: string) => ({
+      volumes: [
+        {
+          name: 'workspace',
+          pvc: {
+            claimName,
+            createIfNotExists: false,
+            deleteOnSandboxTermination: false
+          },
+          mountPath: '/workspace'
+        }
+      ],
+      storage: {
+        volumes: [{ name: 'workspace', claimName, mountPath: '/workspace' }],
+        mountPath: '/workspace'
+      }
+    }));
+    mocks.createSessionVolumeClaimName.mockImplementation(
+      ({ sandboxId, generationId }: { sandboxId: string; generationId?: string }) =>
+        `fastgpt-session-${sandboxId}-${generationId ?? 'new'}`
+    );
+    mocks.createLegacySessionVolumeClaimName.mockImplementation(
+      (sandboxId: string) => `fastgpt-session-${sandboxId}`
+    );
+    mocks.getSessionVolumeClaimName.mockImplementation(
+      (storage: any) =>
+        storage?.volumes?.find((volume: any) => volume.name === 'workspace')?.claimName
+    );
     mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
     mocks.deleteSessionVolume.mockResolvedValue(undefined);
     mocks.downloadLegacyWorkspaceArchive.mockResolvedValue(Buffer.from('zip'));
@@ -648,6 +699,38 @@ describe('legacy sandbox migration', () => {
         ])
       );
       expect(mocks.deleteLegacyWorkspaceArchiveNow).not.toHaveBeenCalled();
+    });
+
+    it('repairs a pre-generation targetEnsured checkpoint before resuming migration', async () => {
+      const targetSandboxId = generateSandboxId({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
+        userId: 'user-1'
+      });
+      await insertLegacyApp({ sandboxId: 'migration-test-target-ensured', chatId: 'chat-1' });
+      const migratingTarget = createMigrationTargetDoc(targetSandboxId);
+      migratingTarget.storage = undefined;
+      migratingTarget.operation.phase = 'targetEnsured';
+      mocks.claimAppSandboxMigrationTarget.mockResolvedValue(migratingTarget);
+
+      const result = await migrateLegacySandboxesToUserLevel({ dryRun: false });
+
+      const legacyClaimName = `fastgpt-session-${targetSandboxId}`;
+      expect(result).toMatchObject({ migratedAppCount: 1, failedCount: 0 });
+      expect(mocks.createLegacySessionVolumeClaimName).toHaveBeenCalledWith(targetSandboxId);
+      expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operationId: migratingTarget.operation.id,
+          phase: 'targetEnsured',
+          set: {
+            storage: expect.objectContaining({
+              volumes: [expect.objectContaining({ claimName: legacyClaimName })]
+            })
+          }
+        })
+      );
+      expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith(legacyClaimName);
+      expect(mocks.createSessionVolumeClaimName).not.toHaveBeenCalled();
     });
 
     it('stops an already published target before completing installed Legacy records', async () => {

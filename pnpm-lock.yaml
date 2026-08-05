@@ -1831,6 +1831,9 @@ importers:
 
   projects/volume-manager:
     dependencies:
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../../packages/global
       '@hono/node-server':
         specifier: 'catalog:'
         version: 2.0.12(hono@4.12.27)
