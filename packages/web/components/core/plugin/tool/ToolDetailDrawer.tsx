@@ -24,6 +24,7 @@ import {
   type ToolDetailFetchResponse,
   type ToolDetailVersionType
 } from './ToolDetail';
+import { isToolVersionInstalled } from './utils';
 
 const ToolDetailDrawer = ({
   onClose,
@@ -35,6 +36,7 @@ const ToolDetailDrawer = ({
   systemTitle,
   onFetchDetail,
   onFetchVersions,
+  onFetchInstalledVersions,
   onVersionChange,
   isLoading,
   showPoint,
@@ -51,6 +53,7 @@ const ToolDetailDrawer = ({
   systemTitle?: string;
   onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
   onFetchVersions?: (toolId: string) => Promise<ToolDetailVersionType[]>;
+  onFetchInstalledVersions?: (toolId: string) => Promise<ToolDetailVersionType[]>;
   onVersionChange?: (version: string) => void;
   isLoading?: boolean;
   showPoint: boolean;
@@ -87,6 +90,27 @@ const ToolDetailDrawer = ({
     }
   }, [fetchToolVersions, onFetchVersions, selectedTool.id]);
 
+  const {
+    data: installedToolVersions,
+    loading: loadingInstalledVersions,
+    runAsync: fetchInstalledToolVersions
+  } = useRequest(
+    async (toolId: string) => {
+      if (!onFetchInstalledVersions) return [];
+      return onFetchInstalledVersions(toolId);
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
+
+  useEffect(() => {
+    if (selectedTool.id && onFetchInstalledVersions) {
+      fetchInstalledToolVersions(selectedTool.id);
+    }
+  }, [fetchInstalledToolVersions, onFetchInstalledVersions, selectedTool.id]);
+
   const activeVersion = selectedVersion || toolVersions[0]?.version;
 
   // Use tool detail hook
@@ -98,9 +122,12 @@ const ToolDetailDrawer = ({
   });
 
   const currentVersion = activeVersion || parentTool?.version || selectedTool.version;
-  const isCurrentVersionInstalled = installedVersion
-    ? installedVersion === currentVersion
-    : !!isInstalled;
+  const isCurrentVersionInstalled = isToolVersionInstalled({
+    isInstalled: !!isInstalled,
+    currentVersion,
+    installedVersions: installedToolVersions?.map((item) => item.version),
+    installedVersion
+  });
   const isLatestVersionSelected = currentVersion === selectedTool.version;
   const hasUpdateButton =
     !!isInstalled &&
@@ -182,10 +209,13 @@ const ToolDetailDrawer = ({
                       flex={'1 1 0'}
                       minW={0}
                       variant={isCurrentVersionInstalled ? 'primaryOutline' : 'primary'}
-                      isLoading={isLoading || loadingDetail}
+                      isLoading={isLoading || loadingDetail || loadingInstalledVersions}
                       isDisabled={isUpdating}
                       onClick={async () => {
                         await onToggleInstall?.(!isCurrentVersionInstalled, currentVersion);
+                        if (onFetchInstalledVersions) {
+                          await fetchInstalledToolVersions(selectedTool.id);
+                        }
                       }}
                     >
                       {isDownload

@@ -9,6 +9,17 @@ export type BatchUpdateFailure = {
   reason: string;
 };
 
+/** 判断离线工具是否可以直接重新启用，版本不同时仍需下载安装所选版本。 */
+export const shouldReinstallOfflineMarketplaceTool = ({
+  isOffline,
+  installedVersion,
+  targetVersion
+}: {
+  isOffline: boolean;
+  installedVersion?: string;
+  targetVersion?: string;
+}) => isOffline && installedVersion === targetVersion;
+
 /**
  * 将 plugin-server 按下载地址返回的失败项映射回 marketplace toolId。
  * 下载地址与 toolId 按请求数组下标一一对应，未出现在 failed 中的项目视为更新成功。

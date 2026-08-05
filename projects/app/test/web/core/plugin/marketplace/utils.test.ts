@@ -1,5 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import { getBatchUpdateFailures } from '@/web/core/plugin/marketplace/utils';
+import {
+  getBatchUpdateFailures,
+  shouldReinstallOfflineMarketplaceTool
+} from '@/web/core/plugin/marketplace/utils';
+import { isToolVersionInstalled } from '@fastgpt/web/components/core/plugin/tool/utils';
+
+describe('shouldReinstallOfflineMarketplaceTool', () => {
+  it('re-enables an offline tool only when the selected version matches', () => {
+    expect(
+      shouldReinstallOfflineMarketplaceTool({
+        isOffline: true,
+        installedVersion: '3.0.0',
+        targetVersion: '3.0.0'
+      })
+    ).toBe(true);
+    expect(
+      shouldReinstallOfflineMarketplaceTool({
+        isOffline: true,
+        installedVersion: '3.0.0',
+        targetVersion: '2.0.0'
+      })
+    ).toBe(false);
+  });
+});
+
+describe('isToolVersionInstalled', () => {
+  it('recognizes every installed version returned by plugin-server', () => {
+    expect(
+      isToolVersionInstalled({
+        isInstalled: true,
+        currentVersion: '2.0.0',
+        installedVersions: ['3.0.0', '2.0.0'],
+        installedVersion: '3.0.0'
+      })
+    ).toBe(true);
+  });
+
+  it('treats all versions as unavailable while the tool is offline', () => {
+    expect(
+      isToolVersionInstalled({
+        isInstalled: false,
+        currentVersion: '2.0.0',
+        installedVersions: ['3.0.0', '2.0.0']
+      })
+    ).toBe(false);
+  });
+});
 
 describe('getBatchUpdateFailures', () => {
   it('maps partial failures from download URLs back to tool IDs', () => {

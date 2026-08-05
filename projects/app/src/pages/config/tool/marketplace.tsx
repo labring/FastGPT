@@ -27,9 +27,13 @@ import {
   getMarketplaceTools,
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
-import { getBatchUpdateFailures } from '@/web/core/plugin/marketplace/utils';
+import {
+  getBatchUpdateFailures,
+  shouldReinstallOfflineMarketplaceTool
+} from '@/web/core/plugin/marketplace/utils';
 import {
   getAdminSystemToolDetail,
+  getAdminSystemToolVersions,
   getAdminSystemTools,
   putAdminUpdateSystemTool
 } from '@/web/core/plugin/admin/tool/api';
@@ -284,7 +288,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       }
 
       const offlineTool = systemInstalledPlugins?.allMap.get(tool.id);
-      const shouldReinstallOfflineTool = offlineTool?.status === PluginStatusEnum.Offline;
+      const targetVersion = version ?? tool.version;
+      const shouldReinstallOfflineTool = shouldReinstallOfflineMarketplaceTool({
+        isOffline: offlineTool?.status === PluginStatusEnum.Offline,
+        installedVersion: offlineTool?.version,
+        targetVersion
+      });
       const reinstallSystemTool = async (systemToolId: string) => {
         const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
 
@@ -324,7 +333,14 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             if (failures.length > 0) {
               throw new Error(failures[0].reason);
             }
+
+            if (offlineTool) {
+              await reinstallSystemTool(offlineTool.systemToolId);
+            }
           }
+
+          const refreshedInstalledPlugins = await refreshInstalledPlugins();
+          const refreshedInstalledTool = refreshedInstalledPlugins?.map.get(tool.id);
 
           if (selectedTool?.id === tool.id && shouldReinstallOfflineTool) {
             setSelectedTool(null);
@@ -333,14 +349,13 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               prev
                 ? {
                     ...prev,
-                    installed: true,
-                    installedVersion: version ?? tool.version,
+                    installed: !!refreshedInstalledTool,
+                    installedVersion: refreshedInstalledTool?.version,
                     update: false
                   }
                 : null
             );
           }
-          await refreshInstalledPlugins();
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
@@ -396,20 +411,22 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             throw new Error(failures[0].reason);
           }
 
+          const refreshedInstalledPlugins = await refreshInstalledPlugins();
+          const refreshedInstalledTool = refreshedInstalledPlugins?.map.get(tool.id);
+
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) =>
               prev
                 ? {
                     ...prev,
-                    installed: true,
-                    installedVersion: version ?? tool.version,
+                    installed: !!refreshedInstalledTool,
+                    installedVersion: refreshedInstalledTool?.version,
                     update: false
                   }
                 : null
             );
           }
-          await refreshInstalledPlugins();
         } finally {
           updatingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
@@ -540,6 +557,11 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     {
       manual: true
     }
+  );
+
+  const fetchInstalledToolVersions = useCallback(
+    (toolId: string) => getAdminSystemToolVersions({ toolId }),
+    []
   );
 
   const heroSectionRef = useRef<HTMLDivElement>(null);
@@ -1011,6 +1033,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             await getMarketplaceToolDetail({ toolId, version })
           }
           onFetchVersions={getMarketplaceToolVersions}
+          onFetchInstalledVersions={fetchInstalledToolVersions}
         />
       )}
 
