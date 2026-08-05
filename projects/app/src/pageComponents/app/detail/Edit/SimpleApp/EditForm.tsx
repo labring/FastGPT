@@ -11,7 +11,6 @@ import {
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
-import { useLocalStorageState } from 'ahooks';
 
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -36,6 +35,7 @@ import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -79,12 +79,7 @@ const EditForm = ({
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
   const isAgentSandboxEnabled = !!appForm.aiSettings.useAgentSandbox;
-  const [isWelcomeTextFolded = false, setIsWelcomeTextFolded] = useLocalStorageState<boolean>(
-    'chat-agent-welcome-text-folded',
-    {
-      defaultValue: false
-    }
-  );
+  const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -459,7 +454,7 @@ const EditForm = ({
           <WelcomeTextConfig
             value={appForm.chatConfig.welcomeText}
             isFolded={isWelcomeTextFolded}
-            onToggleFold={() => setIsWelcomeTextFolded((state) => !state)}
+            onToggleFold={toggleWelcomeTextFold}
             onChange={(e) => {
               updateWelcomeText(e.target.value);
             }}

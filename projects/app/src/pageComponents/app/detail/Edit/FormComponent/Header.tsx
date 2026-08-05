@@ -312,18 +312,15 @@ const Header = ({
         )}
       </Flex>
 
-      {isShowHistories && currentTab === TabEnum.appEdit && (
-        <PublishHistories<SimpleAppSnapshotType>
-          onClose={closeHistories}
-          past={past}
-          onSwitchTmpVersion={onSwitchTmpVersion}
-          onSwitchCloudVersion={onSwitchCloudVersion}
-          positionStyles={{
-            top: 14,
-            bottom: 3
-          }}
-        />
-      )}
+      <PublishHistories<SimpleAppSnapshotType>
+        isOpen={isShowHistories && currentTab === TabEnum.appEdit}
+        onClose={closeHistories}
+        past={past}
+        onSwitchTmpVersion={onSwitchTmpVersion}
+        onSwitchCloudVersion={onSwitchCloudVersion}
+        topOffset={14}
+        panelHeight={'calc(100vh - 68px)'}
+      />
     </Box>
   );
 };

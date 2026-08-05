@@ -7,15 +7,13 @@ type WelcomeQuestionsConfigProps = {
   onChange: (value: string[]) => void;
 };
 
-const emptyQuestionList = [''];
-
 /**
  * 编辑对话开场白下方的预设问题列表。
- * 保持为受控组件；空列表仅派生一个空输入用于编辑，问题过滤由使用端统一处理。
+ * 保持为受控组件；空列表不创建输入项，用户点击新增后才写入一个空问题。
  */
 function WelcomeQuestionsConfig({ value, zoom, onChange }: WelcomeQuestionsConfigProps) {
   const { t } = useTranslation();
-  const questions = value?.length ? value : emptyQuestionList;
+  const questions = value ?? [];
 
   const updateQuestion = (key: string, text: string) => {
     const updateIndex = Number(key);

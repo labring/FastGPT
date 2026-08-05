@@ -1,4 +1,4 @@
-import React, { type Dispatch, useCallback, useMemo, useState } from 'react';
+import React, { type Dispatch, useCallback, useMemo } from 'react';
 import { type NodeProps, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -36,6 +36,8 @@ type ComponentProps = {
   chatConfig: AppChatConfigType;
   setAppDetail: Dispatch<React.SetStateAction<AppDetailType>>;
   mode?: 'node' | 'drawer';
+  isWelcomeTextFolded?: boolean;
+  onToggleWelcomeTextFold?: () => void;
 };
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -71,7 +73,6 @@ export default React.memo(NodeUserGuide);
 
 export function SystemConfigForm(props: ComponentProps) {
   const isDrawerMode = props.mode === 'drawer';
-  const [isWelcomeTextFolded, setIsWelcomeTextFolded] = useState(false);
   const configItems = (
     <>
       <ConfigSection isDrawerMode={isDrawerMode} mt={2} pt={2}>
@@ -106,10 +107,10 @@ export function SystemConfigForm(props: ComponentProps) {
       <Box display={'flex'} w={'100%'} flexDirection={'column'}>
         <WelcomeText
           {...props}
-          isFolded={isWelcomeTextFolded}
-          onToggleFold={() => setIsWelcomeTextFolded((state) => !state)}
+          isFolded={props.isWelcomeTextFolded}
+          onToggleFold={props.onToggleWelcomeTextFold}
         />
-        {!isWelcomeTextFolded && (
+        {!props.isWelcomeTextFolded && (
           <Box mt={2}>
             <WelcomeQuestions {...props} />
           </Box>

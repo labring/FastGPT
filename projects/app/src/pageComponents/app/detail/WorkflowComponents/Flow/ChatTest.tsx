@@ -1,5 +1,5 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -16,12 +16,12 @@ import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import RunPreviewHeader from './RunPreviewHeader';
+import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 
 type Props = {
   isOpen: boolean;
@@ -59,6 +59,11 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
+  const handleClose = useCallback(() => {
+    setCiteModalData(undefined);
+    onClose();
+  }, [onClose, setCiteModalData]);
+
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
@@ -73,33 +78,11 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
 
   return (
     <Flex h={'full'}>
-      <Box
-        zIndex={300}
-        display={isOpen ? 'block' : 'none'}
-        position={'fixed'}
-        top={0}
-        left={0}
-        bottom={0}
-        right={0}
-        onClick={() => {
-          setCiteModalData(undefined);
-          onClose();
-        }}
-      />
-      <MyBox
-        zIndex={300}
-        display={'flex'}
-        flexDirection={'column'}
-        position={'absolute'}
-        top={5}
-        right={0}
-        h={isOpen ? '95%' : '0'}
-        w={isOpen ? (datasetCiteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
-        bg={'white'}
-        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-        borderRadius={'md'}
-        overflow={'hidden'}
-        transition={'.2s ease'}
+      <AppDetailPanelModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        width={datasetCiteData ? ['100%', '960px'] : ['100%', '460px']}
+        height={'100vh'}
       >
         {isPlugin ? (
           <Flex
@@ -128,7 +111,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
               fontSize={'sm'}
             />
 
-            <CloseIcon mt={1} onClick={onClose} />
+            <CloseIcon mt={1} onClick={handleClose} />
           </Flex>
         ) : (
           <RunPreviewHeader
@@ -141,7 +124,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             onCopyChatId={() => copyData(chatId)}
             onOpenSandboxModal={onOpenSandboxModal}
             onRestart={restartChat}
-            onClose={onClose}
+            onClose={handleClose}
           />
         )}
 
@@ -179,7 +162,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             </Box>
           )}
         </Flex>
-      </MyBox>
+      </AppDetailPanelModal>
 
       <SandboxEditorModal />
     </Flex>

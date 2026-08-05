@@ -235,8 +235,9 @@ const Header = () => {
   return (
     <>
       {Render}
-      {showHistoryModal && currentTab === TabEnum.appEdit && (
+      {currentTab === TabEnum.appEdit && (
         <PublishHistories<WorkflowSnapshotsType>
+          isOpen={showHistoryModal}
           onClose={() => {
             setShowHistoryModal(false);
           }}
