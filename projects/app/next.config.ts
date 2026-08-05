@@ -82,8 +82,6 @@ const nextConfig: NextConfig = {
   // 优化大库的 barrel exports tree-shaking
   experimental: {
     optimizePackageImports: optimizedPackageImports,
-    // 按页面拆分 CSS chunk，减少首屏 CSS 体积
-    cssChunking: 'strict',
     // 减少内存占用
     memoryBasedWorkersCount: true,
 
