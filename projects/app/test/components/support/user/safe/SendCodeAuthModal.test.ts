@@ -38,6 +38,7 @@ vi.mock('ahooks', () => ({
 
 vi.mock('@chakra-ui/react', () => ({
   Button: 'button',
+  FormControl: 'form-control',
   Input: 'input',
   ModalBody: 'modal-body',
   ModalFooter: 'modal-footer',
@@ -93,8 +94,10 @@ describe('SendCodeAuthModal', () => {
 
   it('registers only the success callback for button and Enter submissions', () => {
     const modal = renderModal();
+    const formControl = findElement(modal, 'form-control');
     const input = findElement(modal, 'input');
 
+    expect(formControl.props.isInvalid).toBe(false);
     expect(mocks.handleSubmit).toHaveBeenCalledTimes(1);
     expect(mocks.handleSubmit.mock.calls[0]).toHaveLength(1);
 

@@ -20,6 +20,7 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getRegisterMethods } from '@/web/common/system/utils';
 import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
+import { AccountContactUsernameSchema } from '@fastgpt/global/support/user/account/verification/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -117,7 +118,14 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       <Box
         mt={9}
         onKeyDown={(e) => {
-          if (!openCodeAuthModal && e.key === 'Enter' && !e.shiftKey && !requesting) {
+          if (
+            !openCodeAuthModal &&
+            e.key === 'Enter' &&
+            !e.shiftKey &&
+            !e.nativeEvent.isComposing &&
+            e.keyCode !== 229 &&
+            !requesting
+          ) {
             handleSubmit(onclickRegister, onSubmitErr)();
           }
         }}
@@ -129,11 +137,9 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
-              pattern: {
-                value:
-                  /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
-                message: t('user:password.email_phone_error')
-              }
+              validate: (value) =>
+                AccountContactUsernameSchema.safeParse(value).success ||
+                t('user:password.email_phone_error')
             })}
           ></Input>
         </FormControl>

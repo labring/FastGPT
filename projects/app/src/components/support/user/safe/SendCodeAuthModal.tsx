@@ -1,5 +1,5 @@
 import { getCaptchaPic, type UserVerificationPurpose } from '@/web/support/user/api';
-import { Button, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
+import { Button, FormControl, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -83,11 +83,13 @@ const SendCodeAuthModal = ({
           />
         </Skeleton>
 
-        <Input
-          placeholder={t('common:support.user.captcha_placeholder')}
-          {...register('code')}
-          onKeyDown={handleEnterKeyDown}
-        />
+        <FormControl isInvalid={false}>
+          <Input
+            placeholder={t('common:support.user.captcha_placeholder')}
+            {...register('code')}
+            onKeyDown={handleEnterKeyDown}
+          />
+        </FormControl>
       </ModalBody>
       <ModalFooter gap={2}>
         <Button isLoading={onSending} variant={'whiteBase'} onClick={onClose}>
