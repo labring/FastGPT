@@ -356,8 +356,10 @@ export const cliCommandRegistry: CliCommandDefinition[] = [
     path: ['template', 'list'],
     introducedIn: 'PR1',
     kind: 'query',
-    inputSchema: z.object({ source: z.literal('builtin').optional() }).strict(),
-    options: [option('--source', 'Template source; PR1 supports builtin only')],
+    inputSchema: z
+      .object({ kind: z.enum(['builtin', 'teamApp', 'systemTool', 'tool']).optional() })
+      .strict(),
+    options: [option('--kind', 'Filter by template kind')],
     supportsDryRun: false,
     confirm: 'none',
     handler: listTemplates

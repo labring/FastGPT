@@ -1,21 +1,34 @@
 import { listTemplates, showTemplate } from '../src/commands/template';
 import type { CliContext } from '../src/type';
+import { builtinTemplateProvider } from '@fastgpt/workflow-core';
 import { describe, expect, it } from 'vitest';
 
 const context = {
   locale: 'en',
-  format: 'json'
+  format: 'json',
+  templateProvider: builtinTemplateProvider
 } as CliContext;
 
 describe('template contract commands', () => {
   it('returns versioned contracts for all builtin templates', async () => {
     const result = await listTemplates({}, context);
-    const descriptors = result.result as Array<Record<string, unknown>>;
+    const output = result.result as {
+      total: number;
+      counts: Record<string, number>;
+      items: Array<Record<string, unknown>>;
+    };
 
-    expect(descriptors).toHaveLength(22);
-    expect(
-      descriptors.every((item) => item.schemaVersion === 'fastgpt-workflow-node-contract/v1')
-    ).toBe(true);
+    expect(output).toMatchObject({
+      total: 22,
+      counts: { builtin: 22, teamApp: 0, systemTool: 0, tool: 0 }
+    });
+    expect(output.items).toContainEqual(
+      expect.objectContaining({
+        kind: 'builtin',
+        ref: 'builtin:ai-chat',
+        template: { kind: 'builtin', templateId: 'ai-chat' }
+      })
+    );
   });
 
   it('returns branch semantics through template show', async () => {

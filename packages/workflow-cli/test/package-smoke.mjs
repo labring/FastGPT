@@ -44,7 +44,7 @@ try {
     if (!file.endsWith('.js')) continue;
     const filePath = join(previousDistDirectory, file);
     const content = await readFile(filePath, 'utf8');
-    await writeFile(filePath, content.replaceAll('0.2.0-beta.2', '0.2.0-beta.0'));
+    await writeFile(filePath, content.replaceAll('0.3.0-beta.1', '0.2.0-beta.0'));
   }
   run('npm', ['pack', '--pack-destination', previousPackDirectory], {
     cwd: previousPackageRoot
@@ -71,7 +71,7 @@ try {
   run(binPath, ['init', '--dir', workflowDirectory, '--format', 'json']);
 
   install(tarballPath);
-  assert.equal(run(binPath, ['--version']), '0.2.0-beta.2');
+  assert.equal(run(binPath, ['--version']), '0.3.0-beta.1');
   const inspected = JSON.parse(
     run(binPath, ['inspect', '--dir', workflowDirectory, '--format', 'json'])
   );
@@ -82,7 +82,7 @@ try {
   JSON.parse(run(binPath, ['inspect', '--dir', workflowDirectory, '--format', 'json']));
 
   install(tarballPath);
-  assert.equal(run(binPath, ['--version']), '0.2.0-beta.2');
+  assert.equal(run(binPath, ['--version']), '0.3.0-beta.1');
   process.stdout.write('workflow-cli package install, upgrade and rollback smoke passed\n');
 } finally {
   await rm(workspace, { recursive: true, force: true });

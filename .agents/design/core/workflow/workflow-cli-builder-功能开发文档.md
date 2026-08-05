@@ -289,7 +289,7 @@ flowchart LR
 
 ### 2.3 当前实例系统工具接入架构
 
-这条链路使用 Builder Handler 已有的 Web 会话身份，不等待 PR6 的独立 CLI profile/API Key。Core 已有 `systemTool` TemplateRef 和 `WorkflowTemplateProvider`，CLI 已有完整的模板、ChangeSet 和校验链路，因此只补一个动态 Provider 并替换当前 builtin-only 注入点：
+这条链路使用 Builder Handler 已有的 Web 会话身份，不等待 PR6 的独立 CLI profile/API Key。Core 将 `systemTool` TemplateRef 统一为必填 `source + toolId`，CLI 继续使用既有模板、ChangeSet 和校验链路，因此只补请求级模板包 Provider 并替换当前 builtin-only 注入点：
 
 ```mermaid
 flowchart LR
@@ -313,7 +313,7 @@ flowchart LR
 | --- | --- | --- |
 | SystemToolRepo | 合并插件服务和 Mongo 系统工具事实 | 为 CLI 维护副本 |
 | System Tool Capability Service | 抽取 Web 当前可见性规则，返回已授权目录并按需生成脱敏 preview | 将越权条目或 Secret 返回给 Provider |
-| Authorized Tool Bundle | 保存当前请求已授权的摘要和脱敏完整模板，同时供 Sandbox CLI 与服务端 plan 重算使用 | 保存 Secret、跨请求复用或成为长期工具仓库 |
+| Authorized Tool Bundle | 使用严格传输 Schema 保存当前请求已授权的完整身份和脱敏模板，同时供 Sandbox CLI 与服务端 plan 重算使用 | 保存 Secret、跨请求复用或成为长期工具仓库 |
 | authorizedSystemToolProvider | 从 bundle 构造；`list()` 返回已授权引用，`resolve()` 只解析 bundle 中的 ID | 保存跨请求权限结论或自行实现用户鉴权 |
 | CLI | 从 `CliContext` 取得组合 Provider，用现有 list/show/mutation/ChangeSet 链路消费 | 硬编码系统工具清单或另建系统工具命令体系 |
 | workflow-core | 继续使用现有 TemplateRef、Provider、实例化和校验能力 | 新增权限模型、访问数据库或认证用户 |
@@ -326,11 +326,11 @@ flowchart LR
 | --- | --- |
 | `packages/service/core/app/tool/systemTool/capability.ts` | 抽取 Web API 和 Builder 共用的授权目录、精确详情解析和脱敏 presenter |
 | `projects/app/src/pages/api/core/app/tool/getSystemToolTemplates.ts` | 保留 API 边界鉴权/入参/响应解析，内部调用 Capability Service，不复制过滤逻辑 |
-| `packages/workflow-core/src/template/compose.ts` | 提供轻量 Provider 组合器；不新增授权快照 Schema |
+| `packages/workflow-core/src/template/type.ts`、`provider.ts` | 统一系统工具引用，定义严格请求级模板包、内存 Provider 和组合器 |
 | `packages/workflow-cli/src/type.ts`、`src/run.ts` 与模板 Provider loader | 从受控文件加载 systemTool Provider 并注入现有 `CliContext`；未提供文件时仍为 builtin-only |
 | `packages/workflow-cli/src/commands/template.ts` | 从 Context Provider 读取模板，输出 `kind`、`total`、`counts`、`items`，保留精确 show |
 | `packages/workflow-cli/src/commands/changeSet.ts` 及模板实例化命令 | 移除 builtin provider 硬编码，从 `CliContext` 获取 Provider |
-| `pro/admin/src/service/core/ai/workflowBuilder/systemToolBundle.ts` | 按 Builder 身份构造 request-scoped 授权脱敏数据；服务端可从该数据构造 Provider |
+| `pro/admin/src/service/core/ai/workflowBuilder/handler.ts` | 按 Builder 身份调用 Capability Service，构造 request-scoped 授权脱敏模板包 |
 | `pro/admin/src/service/core/ai/workflowBuilder/sandbox.ts` | 将 bundle 写入事务受保护目录，并通过固定环境变量把路径传给 CLI launcher |
 | `pro/admin/src/service/core/ai/workflowBuilder/cliGateway.ts` | 复用现有 query/stage/commit，仅映射模板列表和详情查询 |
 | `pro/admin/src/service/core/ai/workflowBuilder/plan.ts` | 服务端重算使用同一个组合 Provider，不再固定 builtin-only |
@@ -339,7 +339,7 @@ flowchart LR
 Provider 使用方式：
 
 1. `template list` 调用组合 Provider 的 `list()`，返回 builtin 与当前授权 systemTool，并增加模板类型和数量统计。
-2. `template show --template systemTool:<id>` 调用同一 Provider 的 `resolve()`，按需生成完整脱敏节点和 Descriptor。
+2. `template show --template systemTool:<encodedSource>/<encodedToolId>` 调用同一 Provider 的 `resolve()`，返回完整脱敏节点和 Descriptor；Agent 直接复制 list 条目的 `ref`，不自行编码。
 3. Builder 服务端保留 bundle 的内存值，同时把完全相同的数据写入事务受保护 JSON 文件；CLI 子进程从该文件构造 Provider，不能接收 Agent 指定的文件路径。
 4. 节点创建、工具挂载、ChangeSet plan/apply 和 Builder 服务端重算都基于该 bundle 使用组合 Provider；目录外 ID 在 `resolve()` 时统一失败。
 5. 每次新 Builder 请求重新读取 Capability Service 并覆盖文件，所以系统工具更新无需 cron 或 Core/CLI 同步；该文件只是子进程传输载体，不是新的持久化模型。
@@ -618,12 +618,13 @@ export type TemplateResolveContext = {
   appId?: string;
 };
 
-export interface WorkflowTemplateProvider {
+export type WorkflowTemplateProvider = {
+  list(context: TemplateResolveContext): Promise<NodeTemplateRef[]>;
   resolve(
     ref: NodeTemplateRef,
     context: TemplateResolveContext
   ): Promise<ResolvedWorkflowTemplate>;
-}
+};
 ```
 
 Provider 行为：
@@ -637,7 +638,7 @@ Provider 行为：
 
 #### 3.3.4 系统工具 Provider 组合契约
 
-Core 不新增授权快照数据模型，只提供 Provider 组合能力。Builder 服务端从内存 bundle 构造 Provider，Sandbox CLI 从受保护 bundle 文件构造等价 Provider：
+Core 不新增授权领域模型或持久化快照，只定义严格的请求级模板包传输 Schema 和 Provider 组合能力。Builder 服务端从内存 bundle 构造 Provider，Sandbox CLI 从受保护 bundle 文件构造等价 Provider：
 
 ```ts
 const templateProvider = composeWorkflowTemplateProviders([
@@ -649,7 +650,7 @@ const templateProvider = composeWorkflowTemplateProviders([
 实现约束：
 
 - `authorizedSystemToolProvider.list()` 只返回 Service 已过滤的 `systemTool` 引用。
-- `resolve(systemToolRef)` 先检查引用是否位于当前授权集合，再调用脱敏详情 presenter；未命中时返回统一 `WORKFLOW_TEMPLATE_UNAVAILABLE`，不区分不存在和无权限。
+- `resolve(systemToolRef)` 按 `source + toolId` 检查引用是否位于当前模板包；未命中时返回统一 `WORKFLOW_TEMPLATE_UNAVAILABLE`，不区分不存在和无权限。
 - Bundle 已包含 CLI 构建节点所需的脱敏模板数据，Provider 只做内存查询，不在 Sandbox 子进程中回调 FastGPT Service。
 - 组合 Provider 按 `NodeTemplateRef.kind` 路由；相同引用由多个 Provider 声明时失败，不依赖注册顺序覆盖。
 - Core 不校验用户、团队、来源、状态或 `hideTags`，也不定义授权 Schema；这些规则只在 Service 层维护。
@@ -1263,7 +1264,7 @@ const showTemplate = async ({ ref, locale, format }) => {
 
 - `template list` 继续从 `templateProvider.list()` 获取全部可用模板，并在现有列表结果上增加 `total`、按 `kind` 聚合的 `counts` 和每项的 `kind`。
 - `counts.systemTool` 只统计当前 Provider 中已授权的系统工具；禁止返回过滤前的全站工具数量。
-- `template show --template systemTool:<id>` 从同一 Provider 解析并归一化完整脱敏 Descriptor。
+- `template show --template systemTool:<encodedSource>/<encodedToolId>` 从同一 Provider 解析并归一化完整脱敏 Descriptor。
 - 本地 CLI 未注入系统工具 Provider 时只返回 builtin 模板，不主动访问 FastGPT 数据库。
 
 稳定 JSON 结构：
@@ -1489,7 +1490,7 @@ Builder 流程调整为：
 Skill 改动限定在现有文件：
 
 - `pro/admin/src/service/core/ai/skill/builtin/workflow-builder/SKILL.md`：增加“搜索授权系统工具 -> 查询精确 Descriptor -> stage -> draft validate -> commit”流程，以及 unavailable 处理规则。
-- `references/templates-and-nodes.md`：增加 `systemTool:<id>` 模板引用、toolset 父子查询和完整 Descriptor 查询说明。
+- `references/templates-and-nodes.md`：增加带 `source + toolId` 的系统工具模板引用、精确 ref 复制和完整 Descriptor 查询说明。
 - `references/edges-and-tools.md`：说明系统工具节点与 toolCall 的挂载方式仍由运行时 Descriptor/命令契约决定。
 - 不在 Skill 中枚举工具名称、数量、ID、版本或参数 Schema；这些数据只从 `workflow_cli_query` 运行时获取。
 
@@ -1915,13 +1916,13 @@ i18n 要求：
 
 #### 当前 Workflow Builder 系统工具增强
 
-- [ ] T41.7 在 workflow-core 增加轻量 Provider 组合器，复用现有 `NodeTemplateRef.systemTool` 和 `WorkflowTemplateProvider`；覆盖重复引用冲突、kind 路由和 unavailable 测试，不新增授权快照 Schema。
-- [ ] T41.8 将 workflow-cli 对 `builtinTemplateProvider` 的硬编码改为 `CliContext.templateProvider` 依赖注入，让 template/document/changeSet/node/tool 命令共用组合 Provider；`template list` 增加 `kind`、`total`、`counts`，`template show` 保持完整 Descriptor。
-- [ ] T41.9 在 Service 层抽取 Web API 与 Builder 共用的 System Tool Capability Service，复用 SystemToolRepo、active debug source、root/user tags、`hideTags` 和状态策略，用 allowlist presenter 产出授权列表和脱敏 preview。
-- [ ] T41.10 在 Builder 中生成 request-scoped 授权脱敏 bundle：服务端内存用于 plan 重算，同一数据写入 Sandbox 事务受保护文件并通过固定环境变量交给 CLI loader；两端构造等价组合 Provider，目录外 ID unavailable，不增加 cron 或长期持久化。
-- [ ] T41.11 保持 `WorkflowCliGateway` 的 query/stage/commit 外层契约不变，让 list/show、节点/工具命令、draft validate、commit 内部 plan/apply 全部消费同一个组合 Provider。
-- [ ] T41.12 更新 `workflow-builder/SKILL.md`、`references/templates-and-nodes.md` 和 `references/edges-and-tools.md`，说明查看模板类型、数量、列表、精确 Descriptor 和 unavailable 处理，不写死任何工具数据。
-- [ ] T41.13 补齐 Core/CLI/Service/Builder 定向测试，覆盖 Web 可见集合等价、类型/数量统计、直接 ID 越权、Secret 零泄露、toolset child 和跨请求更新。
+- [x] T41.7 在 workflow-core 增加严格请求级模板包、必填 `source + toolId` 的系统工具引用和 Provider 组合器；覆盖重复引用冲突、unavailable、旧单 ID 格式拒绝和未知字段拒绝。
+- [x] T41.8 将 workflow-cli 对 `builtinTemplateProvider` 的硬编码改为 `CliContext.templateProvider` 依赖注入，让 template/document/changeSet/node/tool 命令共用组合 Provider；`template list` 增加 `kind/ref/total/counts`，`template show` 保持完整 Descriptor。
+- [x] T41.9 在 Service 层抽取 Web API 与 Builder 共用的 System Tool Capability Service，复用 SystemToolRepo、active debug source、root/user tags、`hideTags` 和状态策略，通过现有客户端 preview presenter 产出授权脱敏模板。
+- [x] T41.10 在 Builder 中生成 request-scoped 授权脱敏 bundle：服务端内存用于 plan 重算，同一数据写入 Sandbox 事务受保护文件并通过固定环境变量交给 CLI loader；两端构造等价组合 Provider，目录外 ID unavailable，不增加 cron 或长期持久化。
+- [x] T41.11 保持 `WorkflowCliGateway` 的 query/stage/commit 外层契约不变，让 list/show、节点/工具命令、draft validate、commit 内部 plan/apply 全部消费同一个组合 Provider。
+- [x] T41.12 更新 `workflow-builder/SKILL.md`、`references/templates-and-nodes.md` 和 `references/edges-and-tools.md`，说明查看模板类型、数量、列表、精确 Descriptor 和 unavailable 处理，不写死任何工具数据。
+- [x] T41.13 补齐 Core/CLI/Service/Builder 定向测试，覆盖 Web 可见集合、类型/数量统计、旧引用拒绝、Secret/未知字段拒绝、toolset child 和同 Provider 复算。
 - [ ] T41.14 完成手工端到端验收：用普通用户/root/团队/调试来源分别生成包含系统工具的工作流，确认列表数量、画布节点、工具边、参数 Schema 和权限拒绝符合 Web 现状。
 
 ### PR6：远端只读能力

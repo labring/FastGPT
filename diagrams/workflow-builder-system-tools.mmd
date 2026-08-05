@@ -1,26 +1,33 @@
-graph LR
-  U[用户 / 工作流生成对话] --> H[Builder Handler]
-  H --> A[authApp：登录 + 应用写权限]
-  A --> R[WorkflowBuilder Runner]
-  R --> G[CLI Gateway]
+graph TD
+  U[用户提出工作流需求] --> H[Builder Handler<br/>authApp + teamId + tmbId + isRoot]
 
-  G --> Q[workflow_cli_query]
-  Q --> C[系统工具能力服务]
-  C --> S[SystemToolRepo + 插件服务 + Mongo 配置]
-  S --> F[权限过滤：来源 / 状态 / hideTags / 团队]
-  F --> K[授权工具快照：schema + 节点信息]
-  K --> P[WorkflowTemplateProvider]
-  P --> CORE[Workflow Core：解析 / 实例化 / 校验]
-  CORE --> D[WorkflowDocument]
+  subgraph SERVICE[FastGPT Service 权限边界]
+    REPO[(SystemToolRepo<br/>Plugin Service / Mongo Config)] --> C[System Tool Capability Service<br/>按来源、状态、团队、hideTags 过滤]
+    H --> C
+    C --> B[请求级脱敏工具包<br/>严格 Schema + id/source 唯一身份]
+  end
 
-  G --> ST[workflow_cli_stage：草稿分块]
-  ST --> DR[私有 Draft]
-  DR --> V[Draft validate：计划 + 引用校验]
-  V --> CM[workflow_cli_commit：draftRevision]
-  CM --> RE[提交前重检：快照版本 / 工具状态 / 可访问性]
-  RE --> AP[原子应用到画布]
-  D --> AP
+  subgraph BUILDER[Workflow Builder 服务端]
+    H --> AL[现有 AgentLoop<br/>workflow_cli_query / stage / commit]
+    B --> SP[服务端组合 Provider<br/>builtin + authorized systemTool]
+    AL --> CLI[现有 CLI 命令与 Workflow Core]
+    CLI --> V[服务端 plan 重算与提交校验]
+    SP --> V
+  end
 
-  AP --> RT[现有工作流运行时]
-  RT --> RR[SystemToolRepo Runtime]
-  RR --> X[pluginClient.runToolStream]
+  subgraph SANDBOX[Sandbox CLI 进程]
+    B --> FILE[事务受保护 JSON 文件]
+    FILE --> LOADER[CLI Loader<br/>校验工具包并构造组合 Provider]
+    LOADER --> CLI
+  end
+
+  V --> DOC[目标 WorkflowDocument]
+  DOC --> UI[原子应用到当前画布]
+  DOC -. 后续真实运行 .-> RT[现有 runTool / SystemToolRepo Runtime<br/>重新检查状态并解析 Secret]
+
+  classDef auth fill:#fff4d6,stroke:#9a6700,color:#3b2f00;
+  classDef data fill:#e8f1ff,stroke:#2457a7,color:#102a43;
+  classDef unchanged fill:#e9f7ef,stroke:#287d4b,color:#143d28;
+  class C,B,FILE auth;
+  class SP,LOADER,CLI,V,DOC data;
+  class AL,UI,RT unchanged;

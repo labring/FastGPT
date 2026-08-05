@@ -111,8 +111,11 @@ describe('PR1 through PR4 CLI end to end', () => {
       targetHandle: 'ai-target-left'
     });
 
-    const templateList = await invoke(jsonArgs(dir, ['template', 'list', '--source', 'builtin']));
-    expect(JSON.parse(templateList.stdout[0]).result).toHaveLength(22);
+    const templateList = await invoke(jsonArgs(dir, ['template', 'list', '--kind', 'builtin']));
+    expect(JSON.parse(templateList.stdout[0]).result).toMatchObject({
+      total: 22,
+      counts: { builtin: 22, teamApp: 0, systemTool: 0, tool: 0 }
+    });
     const nodeList = await invoke(jsonArgs(dir, ['node', 'list', '--type', 'chatNode']));
     expect(JSON.parse(nodeList.stdout[0]).result).toHaveLength(1);
     const nodeShow = await invoke(jsonArgs(dir, ['node', 'show', '--node', 'ai']));
@@ -620,7 +623,7 @@ describe('PR1 through PR4 CLI end to end', () => {
   it('renders global/command help, version and text output without executing handlers', async () => {
     const { invoke } = await createHarness();
     expect((await invoke(['--help'])).stdout[0]).toContain('Commands:');
-    expect((await invoke(['--version'])).stdout).toEqual(['0.2.0-beta.2']);
+    expect((await invoke(['--version'])).stdout).toEqual(['0.3.0-beta.1']);
     const commandHelp = await invoke(['node', 'show', '--help']);
     expect(commandHelp.exitCode).toBe(0);
     expect(commandHelp.stdout[0]).toContain('Usage: fastgpt-workflow node show');

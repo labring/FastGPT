@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { WorkflowTemplateProvider } from '@fastgpt/workflow-core';
 
 export type CliFormat = 'text' | 'json';
 
@@ -13,7 +14,10 @@ export type CliContext = {
   readonly isTTY: boolean;
   readonly readStdin: () => Promise<string>;
   readonly requestConfirmation: (targetChecksum: string) => Promise<boolean>;
+  readonly templateProvider: WorkflowTemplateProvider;
 };
+
+export type ParsedCliContext = Omit<CliContext, 'templateProvider'>;
 
 export type CliAuditEvent = {
   command: string;

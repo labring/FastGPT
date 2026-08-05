@@ -1,7 +1,6 @@
 import {
   WorkflowValidationError,
   applyWorkflowCommand,
-  builtinTemplateProvider,
   type WorkflowCommand
 } from '@fastgpt/workflow-core';
 import { readFile } from 'node:fs/promises';
@@ -33,7 +32,7 @@ export const runMutation = async ({
     document,
     command,
     dependencies: {
-      templateProvider: builtinTemplateProvider,
+      templateProvider: context.templateProvider,
       locale: context.locale,
       translate: createTranslator(context.locale)
     }

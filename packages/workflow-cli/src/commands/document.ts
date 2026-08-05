@@ -1,5 +1,4 @@
 import {
-  builtinTemplateProvider,
   collectWorkflowBindings,
   compileStoreWorkflow,
   createDefaultWorkflowDocument,
@@ -36,7 +35,7 @@ export const initDocument = async (
   const result = await createDefaultWorkflowDocument({
     app: typeof input.name === 'string' ? { name: input.name } : {},
     dependencies: {
-      templateProvider: builtinTemplateProvider,
+      templateProvider: context.templateProvider,
       locale: context.locale,
       translate: createTranslator(context.locale)
     }
@@ -94,7 +93,7 @@ export const importDocument = async (
   const systemConfigResult = await ensureSystemConfigNode({
     document,
     dependencies: {
-      templateProvider: builtinTemplateProvider,
+      templateProvider: context.templateProvider,
       locale: context.locale,
       translate: createTranslator(context.locale)
     }
