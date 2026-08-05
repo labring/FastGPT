@@ -1,6 +1,6 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import React, { useCallback, useMemo } from 'react';
+import { Box, CloseButton, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
@@ -10,18 +10,17 @@ import { useChatTest } from '../../useChatTest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
-import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import RunPreviewHeader from './RunPreviewHeader';
+import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 
 type Props = {
   isOpen: boolean;
@@ -59,6 +58,11 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
+  const handleClose = useCallback(() => {
+    setCiteModalData(undefined);
+    onClose();
+  }, [onClose, setCiteModalData]);
+
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
@@ -73,78 +77,49 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
 
   return (
     <Flex h={'full'}>
-      <Box
-        zIndex={300}
-        display={isOpen ? 'block' : 'none'}
-        position={'fixed'}
-        top={0}
-        left={0}
-        bottom={0}
-        right={0}
-        onClick={() => {
-          setCiteModalData(undefined);
-          onClose();
-        }}
-      />
-      <MyBox
-        zIndex={300}
-        display={'flex'}
-        flexDirection={'column'}
-        position={'absolute'}
-        top={5}
-        right={0}
-        h={isOpen ? '95%' : '0'}
-        w={isOpen ? (datasetCiteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
-        bg={'white'}
-        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-        borderRadius={'md'}
-        overflow={'hidden'}
-        transition={'.2s ease'}
-      >
-        {isPlugin ? (
-          <Flex
-            alignItems={'flex-start'}
-            justifyContent={'space-between'}
-            px={3}
-            pt={3}
-            bg={'myGray.25'}
-            borderBottom={'base'}
-          >
-            <LightRowTabs<PluginRunBoxTabEnum>
-              list={[
-                { label: t('common:Input'), value: PluginRunBoxTabEnum.input },
-                ...(chatRecords.length > 0
-                  ? [
-                      { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
-                      { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
-                    ]
-                  : [])
-              ]}
-              value={pluginRunTab}
-              onChange={setPluginRunTab}
-              inlineStyles={{ px: 0.5, pb: 2 }}
-              gap={5}
-              py={0}
-              fontSize={'sm'}
+      <AppDetailPanelModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        width={datasetCiteData ? ['100%', '960px'] : ['100%', '460px']}
+        height={'100vh'}
+        header={
+          isPlugin ? (
+            <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+              <LightRowTabs<PluginRunBoxTabEnum>
+                list={[
+                  { label: t('common:Input'), value: PluginRunBoxTabEnum.input },
+                  ...(chatRecords.length > 0
+                    ? [
+                        { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
+                        { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
+                      ]
+                    : [])
+                ]}
+                value={pluginRunTab}
+                onChange={setPluginRunTab}
+                inlineStyles={{ px: 0.5, pb: 2 }}
+                gap={5}
+                py={0}
+                fontSize={'sm'}
+              />
+              <CloseButton flexShrink={0} size={'sm'} onClick={handleClose} />
+            </Flex>
+          ) : (
+            <RunPreviewHeader
+              title={t('common:core.chat.Run test')}
+              chatId={chatId}
+              chatIdLabel={chatId ? t('common:chat_chatId', { chatId }) : ''}
+              restartLabel={t('common:core.chat.Restart')}
+              closeLabel={t('common:Close')}
+              SandboxEntryIcon={SandboxEntryIcon}
+              onCopyChatId={() => copyData(chatId)}
+              onOpenSandboxModal={onOpenSandboxModal}
+              onRestart={restartChat}
+              onClose={handleClose}
             />
-
-            <CloseIcon mt={1} onClick={onClose} />
-          </Flex>
-        ) : (
-          <RunPreviewHeader
-            title={t('common:core.chat.Run test')}
-            chatId={chatId}
-            chatIdLabel={chatId ? t('common:chat_chatId', { chatId }) : ''}
-            restartLabel={t('common:core.chat.Restart')}
-            closeLabel={t('common:Close')}
-            SandboxEntryIcon={SandboxEntryIcon}
-            onCopyChatId={() => copyData(chatId)}
-            onOpenSandboxModal={onOpenSandboxModal}
-            onRestart={restartChat}
-            onClose={onClose}
-          />
-        )}
-
+          )
+        }
+      >
         <Flex flex={'1 0 0'} minH={0} h={0} alignItems={'stretch'}>
           <Box
             flex={'1 0 0'}
@@ -179,7 +154,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             </Box>
           )}
         </Flex>
-      </MyBox>
+      </AppDetailPanelModal>
 
       <SandboxEditorModal />
     </Flex>

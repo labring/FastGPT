@@ -6,9 +6,7 @@ import {
   getGuideModule,
   splitGuideModule,
   getAppChatConfig,
-  mergeSystemConfigNodeToChatConfig,
-  filterSystemConfigNodes,
-  chatConfigToSystemConfigNode,
+  normalizeWorkflowConfig,
   getOrInitModuleInputValue,
   getModuleInputUiField,
   pluginData2FlowNodeIO,
@@ -347,69 +345,107 @@ describe('splitGuideModule', () => {
   });
 });
 
-describe('mergeSystemConfigNodeToChatConfig', () => {
-  it('should merge legacy system config node only when chatConfig field is missing', () => {
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.welcomeText,
-          label: 'Welcome',
-          value: 'Legacy welcome',
-          renderTypeList: [FlowNodeInputTypeEnum.input]
-        },
-        {
-          key: NodeInputKeyEnum.welcomeQuestions,
-          label: 'Welcome Questions',
-          value: ['Legacy question'],
-          renderTypeList: [FlowNodeInputTypeEnum.input]
-        },
-        {
-          key: NodeInputKeyEnum.variables,
-          label: 'Variables',
-          value: [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }],
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        },
-        {
-          key: NodeInputKeyEnum.questionGuide,
-          label: 'Question guide',
-          value: true,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        }
-      ],
-      outputs: []
-    };
+describe('normalizeWorkflowConfig', () => {
+  const createSystemConfigNode = (
+    inputs: Array<[NodeInputKeyEnum, unknown]> = [],
+    nodeId = 'system'
+  ): StoreNodeItemType => ({
+    nodeId,
+    flowNodeType: FlowNodeTypeEnum.systemConfig,
+    name: 'System config',
+    inputs: inputs.map(([key, value]) => ({
+      key,
+      label: key,
+      value,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden]
+    })),
+    outputs: []
+  });
 
-    const result = mergeSystemConfigNodeToChatConfig({
+  const legacyInputs: Array<[NodeInputKeyEnum, unknown]> = [
+    [NodeInputKeyEnum.welcomeText, 'Legacy welcome'],
+    [NodeInputKeyEnum.welcomeQuestions, ['Legacy question']],
+    [
+      NodeInputKeyEnum.variables,
+      [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }]
+    ],
+    [NodeInputKeyEnum.questionGuide, true],
+    [NodeInputKeyEnum.tts, { type: 'web' }],
+    [NodeInputKeyEnum.whisper, { open: true, autoSend: true, autoTTSResponse: false }],
+    [
+      NodeInputKeyEnum.scheduleTrigger,
+      { cronString: '0 0 * * *', timezone: 'UTC', defaultPrompt: 'Run' }
+    ],
+    [NodeInputKeyEnum.chatInputGuide, { open: true, customUrl: 'https://example.com' }],
+    [NodeInputKeyEnum.autoExecute, { open: true, defaultPrompt: 'Run automatically' }],
+    [NodeInputKeyEnum.instruction, 'Legacy instruction']
+  ];
+
+  it('should migrate every legacy system config field into chatConfig', () => {
+    const result = normalizeWorkflowConfig({
+      nodes: [createSystemConfigNode(legacyInputs)]
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.chatConfig).toMatchObject({
+      welcomeText: 'Legacy welcome',
+      welcomeConfig: {
+        welcomeText: 'Legacy welcome',
+        welcomeQuestions: ['Legacy question']
+      },
+      variables: [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }],
+      questionGuide: { ...defaultQGConfig, open: true },
+      ttsConfig: { type: 'web' },
+      whisperConfig: { open: true, autoSend: true, autoTTSResponse: false },
+      scheduledTriggerConfig: {
+        cronString: '0 0 * * *',
+        timezone: 'UTC',
+        defaultPrompt: 'Run'
+      },
+      chatInputGuide: { open: true, customUrl: 'https://example.com' },
+      autoExecute: { open: true, defaultPrompt: 'Run automatically' },
+      instruction: 'Legacy instruction'
+    });
+  });
+
+  it('should preserve explicit current values instead of overwriting them', () => {
+    const result = normalizeWorkflowConfig({
+      nodes: [createSystemConfigNode(legacyInputs)],
       chatConfig: {
         welcomeConfig: {
           welcomeText: '',
           welcomeQuestions: []
         },
-        variables: []
-      },
-      systemConfigNode: guideModule
+        variables: [],
+        questionGuide: { open: false },
+        scheduledTriggerConfig: {
+          cronString: '0 9 * * *',
+          timezone: 'Asia/Shanghai',
+          defaultPrompt: ''
+        },
+        instruction: ''
+      }
     });
 
-    expect(result.welcomeConfig).toEqual({
+    expect(result.chatConfig.welcomeConfig).toEqual({
       welcomeText: '',
       welcomeQuestions: []
     });
-    expect(result.variables).toEqual([]);
-    expect(result.questionGuide).toEqual({ ...defaultQGConfig, open: true });
+    expect(result.chatConfig.welcomeText).toBe('');
+    expect(result.chatConfig.variables).toEqual([]);
+    expect(result.chatConfig.questionGuide).toEqual({ open: false });
+    expect(result.chatConfig.scheduledTriggerConfig).toEqual({
+      cronString: '0 9 * * *',
+      timezone: 'Asia/Shanghai',
+      defaultPrompt: ''
+    });
+    expect(result.chatConfig.instruction).toBe('');
   });
 
-  it('should filter system config nodes from saved workflow', () => {
+  it('should remove all system config nodes and their connected edges', () => {
     const nodes: StoreNodeItemType[] = [
-      {
-        nodeId: 'system',
-        flowNodeType: FlowNodeTypeEnum.systemConfig,
-        name: 'System',
-        inputs: [],
-        outputs: []
-      },
+      createSystemConfigNode([], 'system-1'),
+      createSystemConfigNode([], 'system-2'),
       {
         nodeId: 'chat',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -419,34 +455,52 @@ describe('mergeSystemConfigNodeToChatConfig', () => {
       }
     ];
 
-    expect(filterSystemConfigNodes(nodes)).toEqual([nodes[1]]);
+    const edges = [
+      {
+        source: 'system-1',
+        sourceHandle: 'system-1-source-right',
+        target: 'chat',
+        targetHandle: 'chat-target-left'
+      },
+      {
+        source: 'chat',
+        sourceHandle: 'chat-source-right',
+        target: 'system-2',
+        targetHandle: 'system-2-target-left'
+      },
+      {
+        source: 'chat',
+        sourceHandle: 'chat-source-right',
+        target: 'answer',
+        targetHandle: 'answer-target-left'
+      }
+    ];
+
+    const result = normalizeWorkflowConfig({ nodes, edges });
+
+    expect(result.nodes).toEqual([nodes[2]]);
+    expect(result.edges).toEqual([edges[2]]);
   });
 
-  it('should create legacy system config node for export from chatConfig', () => {
-    const result = chatConfigToSystemConfigNode({
-      chatConfig: {
-        welcomeConfig: {
-          welcomeText: 'New welcome',
-          welcomeQuestions: ['Question 1']
-        },
-        variables: [],
-        questionGuide: { open: false }
+  it('should be pure and idempotent', () => {
+    const systemConfigNode = createSystemConfigNode([
+      [NodeInputKeyEnum.welcomeText, 'Legacy welcome']
+    ]);
+    const nodes = [systemConfigNode];
+    const chatConfig = {
+      welcomeConfig: {
+        welcomeQuestions: ['Current question']
+      }
+    };
+    const first = normalizeWorkflowConfig({ nodes, chatConfig });
+
+    expect(normalizeWorkflowConfig(first)).toEqual(first);
+    expect(nodes).toEqual([systemConfigNode]);
+    expect(chatConfig).toEqual({
+      welcomeConfig: {
+        welcomeQuestions: ['Current question']
       }
     });
-
-    expect(result.flowNodeType).toBe(FlowNodeTypeEnum.systemConfig);
-    expect(result.inputs.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value).toBe(
-      'New welcome'
-    );
-    expect(
-      result.inputs.find((item) => item.key === NodeInputKeyEnum.welcomeQuestions)?.value
-    ).toEqual(['Question 1']);
-    expect(result.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value).toEqual(
-      []
-    );
-    expect(
-      result.inputs.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value
-    ).toEqual({ open: false });
   });
 });
 

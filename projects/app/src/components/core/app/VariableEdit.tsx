@@ -9,8 +9,7 @@ import {
   Th,
   Td,
   TableContainer,
-  Tbody,
-  useDisclosure
+  Tbody
 } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
@@ -26,6 +25,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {
   Draggable,
+  getDraggableItemProps,
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
@@ -73,23 +73,7 @@ const VariableEdit = ({
   zoom?: number;
 }) => {
   const { t } = useTranslation();
-  const {
-    isOpen: isEditModalOpen,
-    onOpen: onOpenEditModal,
-    onClose: onCloseEditModal
-  } = useDisclosure();
-
   const [editingVariable, setEditingVariable] = useState<VariableItemType | null>(null);
-
-  const openVariableEditor = (variable: VariableItemType) => {
-    setEditingVariable(variable);
-    onOpenEditModal();
-  };
-
-  const closeVariableEditor = () => {
-    onCloseEditModal();
-    setEditingVariable(null);
-  };
 
   const formatVariables = useMemo(() => {
     const results = formatEditorVariablePickerIcon(variables);
@@ -118,7 +102,7 @@ const VariableEdit = ({
           color={'myGray.600'}
           mr={'-5px'}
           onClick={() => {
-            openVariableEditor(addVariable());
+            setEditingVariable(addVariable());
           }}
         >
           {t('common:add_new')}
@@ -126,95 +110,63 @@ const VariableEdit = ({
       </Flex>
       {/* Form render */}
       {formatVariables.length > 0 && (
-        <VariableTable
-          mt={2}
-          variables={variables}
-          formatVariables={formatVariables}
-          zoom={zoom}
-          onEdit={openVariableEditor}
-          onChange={onChange}
-        />
+        <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
+          <Table variant={'workflow'}>
+            <Thead>
+              <Tr>
+                <Th>{t('workflow:Variable_name')}</Th>
+                <Th>{t('common:Required_input')}</Th>
+                <Th>{t('common:Operation')}</Th>
+              </Tr>
+            </Thead>
+            <DndDrag<VariableItemType>
+              onDragEndCb={onChange}
+              dataList={formatVariables}
+              renderClone={(provided, snapshot, rubric) => (
+                <TableItem
+                  provided={provided}
+                  snapshot={snapshot}
+                  item={formatVariables[rubric.source.index]}
+                  onEdit={setEditingVariable}
+                  onChange={onChange}
+                  variables={variables}
+                />
+              )}
+              zoom={zoom}
+            >
+              {({ provided }) => (
+                <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                  {formatVariables.map((item, index) => (
+                    <Draggable key={item.key} draggableId={item.key} index={index}>
+                      {(provided, snapshot) => (
+                        <TableItem
+                          provided={provided}
+                          snapshot={snapshot}
+                          item={item}
+                          onEdit={setEditingVariable}
+                          onChange={onChange}
+                          variables={variables}
+                        />
+                      )}
+                    </Draggable>
+                  ))}
+                </Tbody>
+              )}
+            </DndDrag>
+          </Table>
+        </TableContainer>
       )}
 
       {/* Edit modal */}
       {editingVariable && (
         <VariableEditModal
-          isOpen={isEditModalOpen}
-          onClose={closeVariableEditor}
+          onClose={() => setEditingVariable(null)}
           variable={editingVariable}
           variables={variables}
           onChange={onChange}
         />
       )}
     </Box>
-  );
-};
-
-const VariableTable = ({
-  variables,
-  formatVariables,
-  zoom,
-  onEdit,
-  onChange,
-  ...props
-}: {
-  variables: VariableItemType[];
-  formatVariables: (VariableItemType & { icon?: string })[];
-  zoom: number;
-  onEdit: (variable: VariableItemType) => void;
-  onChange: (data: VariableItemType[]) => void;
-} & Omit<React.ComponentProps<typeof TableContainer>, 'onChange'>) => {
-  const { t } = useTranslation();
-
-  return (
-    <TableContainer borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} {...props}>
-      <Table variant={'workflow'}>
-        <Thead>
-          <Tr>
-            <Th>{t('workflow:Variable_name')}</Th>
-            <Th>{t('common:Required_input')}</Th>
-            <Th>{t('common:Operation')}</Th>
-          </Tr>
-        </Thead>
-        <DndDrag<VariableItemType>
-          onDragEndCb={(list) => {
-            onChange(list);
-          }}
-          dataList={formatVariables}
-          renderClone={(provided, snapshot, rubric) => (
-            <TableItem
-              provided={provided}
-              snapshot={snapshot}
-              item={formatVariables[rubric.source.index]}
-              onEdit={onEdit}
-              onChange={onChange}
-              variables={variables}
-            />
-          )}
-          zoom={zoom}
-        >
-          {({ provided }) => (
-            <Tbody {...provided.droppableProps} ref={provided.innerRef}>
-              {formatVariables.map((item, index) => (
-                <Draggable key={item.key} draggableId={item.key} index={index}>
-                  {(provided, snapshot) => (
-                    <TableItem
-                      provided={provided}
-                      snapshot={snapshot}
-                      item={item}
-                      onEdit={onEdit}
-                      onChange={onChange}
-                      variables={variables}
-                      key={item.key}
-                    />
-                  )}
-                </Draggable>
-              ))}
-            </Tbody>
-          )}
-        </DndDrag>
-      </Table>
-    </TableContainer>
   );
 };
 
@@ -245,18 +197,10 @@ const TableItem = ({
     };
     onEdit(formattedItem);
   };
+  const { draggableItemProps, dragHandleProps } = getDraggableItemProps(provided, snapshot);
 
   return (
-    /* eslint-disable react-hooks/refs -- react-beautiful-dnd 需要在 render props 中透传拖拽 ref 与 props。 */
-    <Tr
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      {...provided.dragHandleProps}
-      style={{
-        ...provided.draggableProps.style,
-        opacity: snapshot.isDragging ? 0.8 : 1
-      }}
-    >
+    <Tr {...draggableItemProps} {...dragHandleProps}>
       <Td fontWeight={'medium'}>
         <Flex alignItems={'center'}>
           <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
@@ -279,7 +223,6 @@ const TableItem = ({
         </Flex>
       </Td>
     </Tr>
-    /* eslint-enable react-hooks/refs */
   );
 };
 

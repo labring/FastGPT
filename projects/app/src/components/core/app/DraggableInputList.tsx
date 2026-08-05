@@ -1,16 +1,9 @@
 import React from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Input,
-  Textarea,
-  type InputProps,
-  type TextareaProps
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import DndDrag, {
   Draggable,
+  getDraggableItemProps,
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
@@ -37,7 +30,6 @@ type DraggableInputListProps<T extends DraggableInputListItemType> = {
   onAdd: () => void;
   onDelete: (key: string) => void;
   renderRight?: (item: T, snapshot: DraggableStateSnapshot) => React.ReactNode;
-  getInputProps?: (item: T) => InputProps;
 };
 
 /**
@@ -55,8 +47,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
   onChange,
   onAdd,
   onDelete,
-  renderRight,
-  getInputProps
+  renderRight
 }: DraggableInputListProps<T>) {
   const canDrag = items.length > 1;
 
@@ -80,7 +71,6 @@ function DraggableInputList<T extends DraggableInputListItemType>({
             onChange={onChange}
             onDelete={onDelete}
             renderRight={renderRight}
-            getInputProps={getInputProps}
           />
         )}
       >
@@ -105,7 +95,6 @@ function DraggableInputList<T extends DraggableInputListItemType>({
                     onChange={onChange}
                     onDelete={onDelete}
                     renderRight={renderRight}
-                    getInputProps={getInputProps}
                   />
                 )}
               </Draggable>
@@ -116,17 +105,16 @@ function DraggableInputList<T extends DraggableInputListItemType>({
       </DndDrag>
       <Button
         variant={'transparentBase'}
-        h={'32px'}
-        minH={'32px'}
-        px={'8px'}
-        py={'6px'}
-        color={'#485264'}
-        fontFamily={'PingFang SC'}
-        fontSize={'14px'}
-        fontWeight={500}
-        lineHeight={'20px'}
-        letterSpacing={'0.1px'}
-        leftIcon={<MyIcon name={'common/addLight'} w={'18px'} color={'#485264'} />}
+        h={8}
+        minH={8}
+        px={2}
+        py={1.5}
+        color={'myGray.600'}
+        fontSize={'sm'}
+        fontWeight={'medium'}
+        lineHeight={5}
+        letterSpacing={0}
+        leftIcon={<MyIcon name={'common/addLight'} w={'18px'} color={'myGray.600'} />}
         onClick={onAdd}
       >
         {addText}
@@ -149,8 +137,7 @@ function DraggableInputItem<T extends DraggableInputListItemType>({
   multiline,
   onChange,
   onDelete,
-  renderRight,
-  getInputProps
+  renderRight
 }: {
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
@@ -162,114 +149,69 @@ function DraggableInputItem<T extends DraggableInputListItemType>({
   onChange: (key: string, value: string) => void;
   onDelete: (key: string) => void;
   renderRight?: (item: T, snapshot: DraggableStateSnapshot) => React.ReactNode;
-  getInputProps?: (item: T) => InputProps;
 }) {
   const { t } = useTranslation();
-  const inputProps = getInputProps?.(item) ?? {};
+  const inputStyles = {
+    value: item.value,
+    w: '100%',
+    minW: 0,
+    bg: 'white',
+    border: 'sm',
+    borderRadius: 'md',
+    px: 2.5,
+    fontSize: 'sm',
+    lineHeight: 5,
+    color: 'myGray.900',
+    letterSpacing: 0,
+    placeholder,
+    _placeholder: { color: 'myGray.500' },
+    _hover: { borderColor: 'myGray.200' },
+    _focus: {
+      borderColor: 'primary.600',
+      boxShadow: 'none'
+    },
+    maxLength
+  } as const;
+  const { draggableItemProps, dragHandleProps } = getDraggableItemProps(provided, snapshot);
 
-  /* eslint-disable react-hooks/refs -- @hello-pangea/dnd passes refs via render props */
   return (
-    <Flex
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      style={{
-        ...provided.draggableProps.style,
-        opacity: snapshot.isDragging ? 0.8 : 1
-      }}
-      alignItems={'center'}
-      gap={'8px'}
-      mb={'8px'}
-    >
+    <Flex {...draggableItemProps} alignItems={'center'} gap={2} mb={2}>
       <Flex
-        {...provided.dragHandleProps}
-        w={'16px'}
-        h={'24px'}
+        {...dragHandleProps}
+        w={4}
+        h={6}
         alignItems={'center'}
         justifyContent={'center'}
         cursor={canDrag ? 'grab' : 'not-allowed'}
       >
-        <MyIcon name={'drag'} w={'14px'} color={canDrag ? '#8A95A7' : 'myGray.400'} />
+        <MyIcon name={'drag'} w={'14px'} color={'myGray.400'} />
       </Flex>
       <Box position={'relative'} flex={'1 0 0'} minW={0}>
         {multiline ? (
           <Textarea
             as={ResizeTextarea}
             className="nowheel"
-            value={item.value}
-            w={'100%'}
-            minW={0}
+            {...inputStyles}
             rows={1}
-            minH={'40px'}
+            minH={10}
             py={'9px'}
-            px={'10px'}
-            bg={'white'}
-            border={'1px solid'}
-            borderColor={'#E8EBF0'}
-            borderRadius={'8px'}
-            fontFamily={'PingFang SC'}
-            fontSize={'14px'}
-            lineHeight={'20px'}
-            color={'#111824'}
-            letterSpacing={'0'}
-            placeholder={placeholder}
-            _placeholder={{
-              color: '#667085'
-            }}
-            _hover={{
-              borderColor: '#E8EBF0'
-            }}
-            _focus={{
-              borderColor: 'primary.600',
-              boxShadow: 'none'
-            }}
             resize={'none'}
             overflow={'hidden'}
-            maxLength={maxLength}
             // 连续无空格的长串也要在框内换行，而不是横向撑出去
             sx={{ overflowWrap: 'anywhere' }}
             onChange={(e) => onChange(item.key, e.target.value)}
-            {...(inputProps as TextareaProps)}
           />
         ) : (
-          <Input
-            value={item.value}
-            h={'40px'}
-            w={'100%'}
-            minW={0}
-            bg={'white'}
-            border={'1px solid'}
-            borderColor={'#E8EBF0'}
-            borderRadius={'8px'}
-            px={'10px'}
-            fontFamily={'PingFang SC'}
-            fontSize={'14px'}
-            lineHeight={'20px'}
-            color={'#111824'}
-            letterSpacing={'0'}
-            placeholder={placeholder}
-            _placeholder={{
-              color: '#667085'
-            }}
-            _hover={{
-              borderColor: '#E8EBF0'
-            }}
-            _focus={{
-              borderColor: 'primary.600',
-              boxShadow: 'none'
-            }}
-            maxLength={maxLength}
-            onChange={(e) => onChange(item.key, e.target.value)}
-            {...inputProps}
-          />
+          <Input {...inputStyles} h={10} onChange={(e) => onChange(item.key, e.target.value)} />
         )}
         {renderRight?.(item, snapshot)}
       </Box>
-      <Flex w={'16px'} alignItems={'center'} justifyContent={'center'}>
+      <Flex w={4} alignItems={'center'} justifyContent={'center'}>
         <MyTooltip label={t('common:Delete')}>
           <MyIcon
             name={'circleMinus'}
-            w={'16px'}
-            color={'#667085'}
+            w={4}
+            color={'myGray.500'}
             cursor={'pointer'}
             _hover={{ color: 'red.600' }}
             onClick={() => onDelete(item.key)}

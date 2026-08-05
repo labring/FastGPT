@@ -1,6 +1,7 @@
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
   const version = await MongoAppVersion.findOne({
@@ -13,20 +14,26 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
     .lean();
 
   if (version) {
+    const normalizedWorkflow = normalizeWorkflowConfig({
+      nodes: version.nodes,
+      edges: version.edges,
+      chatConfig: version.chatConfig ?? app?.chatConfig
+    });
     return {
       versionId: String(version._id),
       versionName: version.versionName,
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig || app?.chatConfig || {}
+      ...normalizedWorkflow
     };
   }
+  const normalizedWorkflow = normalizeWorkflowConfig({
+    nodes: app?.modules ?? [],
+    edges: app?.edges ?? [],
+    chatConfig: app?.chatConfig
+  });
   return {
     versionId: app?.pluginData?.nodeVersion,
     versionName: app?.name,
-    nodes: app?.modules || [],
-    edges: app?.edges || [],
-    chatConfig: app?.chatConfig || {}
+    ...normalizedWorkflow
   };
 };
 
@@ -47,12 +54,15 @@ export const getAppVersionById = async ({
     }).lean();
 
     if (version) {
+      const normalizedWorkflow = normalizeWorkflowConfig({
+        nodes: version.nodes,
+        edges: version.edges,
+        chatConfig: version.chatConfig ?? app?.chatConfig
+      });
       return {
         versionId: String(version._id),
         versionName: version.versionName,
-        nodes: version.nodes,
-        edges: version.edges,
-        chatConfig: version.chatConfig || app?.chatConfig || {}
+        ...normalizedWorkflow
       };
     }
   }

@@ -54,10 +54,7 @@ const AppChatMain = ({
   boxBodyProps,
   EmptyState
 }: AppChatMainProps) => {
-  const visibleWelcomeQuestions = React.useMemo(
-    () => welcomeQuestions.map((text) => text.trim()).filter(Boolean),
-    [welcomeQuestions]
-  );
+  const visibleWelcomeQuestions = welcomeQuestions.map((text) => text.trim()).filter(Boolean);
   // 复用快捷回复的发送通道：它不受 canSendPrompt 限制，开场白阶段的预设问题也能直接发送，
   // 由 sendPrompt 内部校验变量，行为与旧版 welcomeText 内嵌的 quick-replies 一致。
   const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
@@ -85,14 +82,7 @@ const AppChatMain = ({
       >
         {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
         {visibleWelcomeQuestions.length > 0 && (
-          <Flex
-            mt={3}
-            mb={4}
-            flexDirection={'column'}
-            alignItems={'flex-start'}
-            gap={'8px'}
-            w={'100%'}
-          >
+          <Flex mt={3} mb={4} flexDirection={'column'} alignItems={'flex-start'} gap={2} w={'100%'}>
             {visibleWelcomeQuestions.map((text) => (
               <Flex
                 key={text}
@@ -100,18 +90,18 @@ const AppChatMain = ({
                 gap={2}
                 maxW={'100%'}
                 minW={0}
-                px={['16px', '8px']}
-                py={['8px', '4px']}
-                borderRadius={'8px'}
+                px={[4, 2]}
+                py={[2, 1]}
+                borderRadius={'md'}
                 border={'0.5px solid'}
                 borderColor={'myGray.250'}
                 bg={'transparent'}
                 color={'myGray.600'}
-                fontSize={'14px'}
-                lineHeight={'20px'}
-                fontWeight={500}
+                fontSize={'sm'}
+                lineHeight={5}
+                fontWeight={'medium'}
                 cursor={'pointer'}
-                _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+                _hover={{ bg: 'myGray.05' }}
                 onClick={() => {
                   if (onQuickReplyClick) {
                     onQuickReplyClick(text);

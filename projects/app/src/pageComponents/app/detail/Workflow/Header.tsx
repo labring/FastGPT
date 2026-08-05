@@ -67,10 +67,11 @@ const Header = () => {
     (v) => v
   );
 
-  const { showHistoryModal, setShowHistoryModal } = useContextSelector(
-    WorkflowModalContext,
-    (v) => v
-  );
+  const { activePanel, setActivePanel } = useContextSelector(WorkflowModalContext, (v) => ({
+    activePanel: v.activePanel,
+    setActivePanel: v.setActivePanel
+  }));
+  const showHistoryModal = activePanel === 'history';
 
   const { isSaved, leaveSaveSign: leaveSaveSignRef } = useContextSelector(
     WorkflowPersistenceContext,
@@ -175,19 +176,15 @@ const Header = () => {
 
           {currentTab === TabEnum.appEdit && (
             <HStack flexDirection={['column', 'row']} spacing={[2, 3]}>
-              {!showHistoryModal && (
-                <IconButton
-                  icon={<MyIcon name={'history'} w={'18px'} />}
-                  aria-label={''}
-                  size={'sm'}
-                  w={'34px'}
-                  h={'34px'}
-                  variant={'whitePrimary'}
-                  onClick={() => {
-                    setShowHistoryModal(true);
-                  }}
-                />
-              )}
+              <IconButton
+                icon={<MyIcon name={'history'} w={'18px'} />}
+                aria-label={''}
+                size={'sm'}
+                w={'34px'}
+                h={'34px'}
+                variant={'whitePrimary'}
+                onClick={() => setActivePanel(showHistoryModal ? null : 'history')}
+              />
               <SystemConfigDrawer />
               <Button
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
@@ -204,14 +201,13 @@ const Header = () => {
               >
                 {t('common:core.workflow.Run')}
               </Button>
-              {!showHistoryModal && (
-                <SaveButton
-                  colorSchema={'black'}
-                  isLoading={loading}
-                  onClickSave={onClickSave}
-                  checkData={() => !!flowData2StoreDataAndCheck()}
-                />
-              )}
+              <SaveButton
+                colorSchema={'black'}
+                isLoading={loading}
+                isDisabled={showHistoryModal}
+                onClickSave={onClickSave}
+                checkData={() => !!flowData2StoreDataAndCheck()}
+              />
             </HStack>
           )}
         </Flex>
@@ -227,7 +223,7 @@ const Header = () => {
     t,
     loading,
     onClickSave,
-    setShowHistoryModal,
+    setActivePanel,
     flowData2StoreDataAndCheck,
     setWorkflowTestData
   ]);
@@ -235,10 +231,11 @@ const Header = () => {
   return (
     <>
       {Render}
-      {showHistoryModal && currentTab === TabEnum.appEdit && (
+      {currentTab === TabEnum.appEdit && (
         <PublishHistories<WorkflowSnapshotsType>
+          isOpen={showHistoryModal}
           onClose={() => {
-            setShowHistoryModal(false);
+            setActivePanel(null);
           }}
           past={past}
           onSwitchCloudVersion={onSwitchCloudVersion}

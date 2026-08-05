@@ -36,7 +36,9 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import DatasetCard from '@/components/core/app/DatasetCard';
-import { useLocalStorageState } from 'ahooks';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -67,14 +69,10 @@ const EditForm = ({
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
-  const [isWelcomeTextFolded = false, setIsWelcomeTextFolded] = useLocalStorageState<boolean>(
-    'chat-agent-v2-welcome-text-folded',
-    {
-      defaultValue: false
-    }
-  );
+  const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appId);
 
   const {
     selectedAgentSkills,
@@ -174,11 +172,6 @@ const EditForm = ({
   const tokenLimit = useMemo(() => {
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
-
-  const welcomeQuestions = useMemo(
-    () => appForm.chatConfig.welcomeConfig?.welcomeQuestions,
-    [appForm.chatConfig.welcomeConfig?.welcomeQuestions]
-  );
 
   const updateWelcomeText = useCallback(
     (value: string) => {
@@ -583,16 +576,18 @@ const EditForm = ({
         <Box {...BoxStyles}>
           <WelcomeTextConfig
             value={appForm.chatConfig.welcomeText}
-            showFoldButton
             isFolded={isWelcomeTextFolded}
-            onToggleFold={() => setIsWelcomeTextFolded((state) => !state)}
+            onToggleFold={toggleWelcomeTextFold}
             onChange={(e) => {
               updateWelcomeText(e.target.value);
             }}
           />
           {!isWelcomeTextFolded && (
             <Box mt={3}>
-              <WelcomeQuestionsConfig value={welcomeQuestions} onChange={updateWelcomeQuestions} />
+              <WelcomeQuestionsConfig
+                value={appForm.chatConfig.welcomeConfig?.welcomeQuestions}
+                onChange={updateWelcomeQuestions}
+              />
             </Box>
           )}
         </Box>

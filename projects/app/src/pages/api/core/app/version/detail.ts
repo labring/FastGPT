@@ -12,6 +12,7 @@ import {
   GetAppVersionDetailResponseSchema,
   type GetAppVersionDetailResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponseType> {
   const { versionId, appId } = parseApiInput({
@@ -38,10 +39,16 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     isRoot,
     lang: getLocale(req)
   });
+  const normalizedWorkflow = normalizeWorkflowConfig({
+    nodes: result.nodes,
+    edges: result.edges,
+    chatConfig: result.chatConfig ?? app.chatConfig
+  });
 
   return GetAppVersionDetailResponseSchema.parse({
     ...result,
-    versionName: result?.versionName || formatTime2YMDHM(result?.time)
+    ...normalizedWorkflow,
+    versionName: result?.versionName ?? formatTime2YMDHM(result?.time)
   });
 }
 
