@@ -7,12 +7,12 @@
   "login_success": "Login successful",
   "no_remind": "Don't remind again",
   "password_condition": "Password must be 4–60 characters",
-  "password_tip": "At least 8 characters, including at least two of letters, numbers, or special characters, with no spaces allowed",
+  "password_tip": "At least 8 characters, including at least two of numbers, lowercase letters, uppercase letters, or special characters, with no spaces allowed",
   "policy_tip": "By using it, you have read and agree to <lineBreak/>our<termsLink> Terms </termsLink>&<privacyLink> Privacy Policy</privacyLink>",
   "privacy_policy": "Privacy Policy",
   "redirect": "Jump",
   "register": "Register",
-  "reset_password_tip": "The new password must be at least 8 characters long and contain at least two combinations: numbers, letters, or special characters",
+  "reset_password_tip": "The new password must be at least 8 characters and include at least two of numbers, lowercase letters, uppercase letters, or special characters, with no spaces allowed",
   "root_password_placeholder": "The root user password is the value of the environment variable DEFAULT_ROOT_PSW",
   "use_root_login": "Log in as root user"
 }

@@ -10,7 +10,8 @@ export enum UserErrEnum {
   invalidVerificationCode = 'invalidVerificationCode',
   sendVerificationCodeTooFrequently = 'sendVerificationCodeTooFrequently',
   verifyCodeTooFrequently = 'verifyCodeTooFrequently',
-  invalidAccount = 'invalidAccount'
+  invalidAccount = 'invalidAccount',
+  registrationMethodNotSupported = 'registrationMethodNotSupported'
 }
 const errList = [
   {
@@ -47,6 +48,11 @@ const errList = [
   {
     statusText: UserErrEnum.invalidAccount,
     message: i18nT('common:code_error.invalid_account')
+  },
+  {
+    statusText: UserErrEnum.registrationMethodNotSupported,
+    message: i18nT('common:error.registration_method_not_supported'),
+    httpStatus: 403
   }
 ];
 export default errList.reduce((acc, cur, index) => {

@@ -20,7 +20,10 @@ import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/u
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getRegisterMethods } from '@/web/common/system/utils';
 import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
-import { AccountContactUsernameSchema } from '@fastgpt/global/support/user/account/verification/type';
+import {
+  AccountEmailUsernameSchema,
+  AccountPhoneUsernameSchema
+} from '@fastgpt/global/support/user/account/verification/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -51,10 +54,23 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     mode: 'onBlur'
   });
   const username = watch('username');
+  const registerMethods = getRegisterMethods(feConfigs);
+
+  const validateUsername = (value: string) => {
+    const method = (() => {
+      if (AccountEmailUsernameSchema.safeParse(value).success) return 'email';
+      if (AccountPhoneUsernameSchema.safeParse(value).success) return 'phone';
+    })();
+
+    // validate username
+    if (!method) return t('user:password.email_phone_error');
+    return registerMethods.includes(method) || t('common:error.registration_method_not_supported');
+  };
 
   const { SendCodeBox, openCodeAuthModal } = useSendCode({
     type: VerificationCodeTypeEnum.register,
-    purpose: 'register'
+    purpose: 'register',
+    validateUsername
   });
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest(
@@ -93,7 +109,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     }
   };
 
-  const placeholder = getRegisterMethods(feConfigs)
+  const placeholder = registerMethods
     .map((item) => {
       switch (item) {
         case 'email':
@@ -137,9 +153,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
-              validate: (value) =>
-                AccountContactUsernameSchema.safeParse(value).success ||
-                t('user:password.email_phone_error')
+              validate: validateUsername
             })}
           ></Input>
         </FormControl>

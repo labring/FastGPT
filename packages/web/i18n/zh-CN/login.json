@@ -7,12 +7,12 @@
   "login_success": "登录成功",
   "no_remind": "不再提醒",
   "password_condition": "密码最多 60 位",
-  "password_tip": "至少8位，且至少包含字母、数字或特殊字符中的两种，不允许包含空格",
+  "password_tip": "至少 8 位，且至少包含数字、小写字母、大写字母或特殊字符中的两种，不允许包含空格",
   "policy_tip": "使用即代表您已经阅读并且同意<lineBreak/>我们的<termsLink> 服务协议 </termsLink> & <privacyLink> 隐私协议</privacyLink>",
   "privacy_policy": "隐私政策",
   "redirect": "跳转",
   "register": "注册账号",
-  "reset_password_tip": "新密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符",
+  "reset_password_tip": "新密码至少 8 位，且至少包含数字、小写字母、大写字母或特殊字符中的两种，不允许包含空格",
   "root_password_placeholder": "root 用户密码为环境变量 DEFAULT_ROOT_PSW 的值",
   "use_root_login": "使用 root 用户登录"
 }
