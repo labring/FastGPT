@@ -7,11 +7,8 @@ export type { DingtalkAccessTokenCacheOptions } from './dingtalkAccessToken';
 export { SystemVersionCache, systemVersionCache } from './systemVersion';
 export type { SystemVersionCacheOptions } from './systemVersion';
 
-export { FixedWindowRateLimitCache, fixedWindowRateLimitCache } from './fixedWindowRateLimit';
-export type {
-  FixedWindowRateLimitCacheOptions,
-  FixedWindowRateLimitResult
-} from './fixedWindowRateLimit';
+export { RateLimitCache, rateLimitCache } from './rateLimit';
+export type { RateLimitCacheOptions, RateLimitResult } from './rateLimit';
 
 export { TeamQpmCache, teamQpmCache } from './teamQpm';
 export type { TeamQpmCacheOptions } from './teamQpm';

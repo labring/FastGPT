@@ -9,7 +9,7 @@ const {
   mockClearDiskTempFiles,
   mockAuthDataset,
   mockCheckDatasetIndexLimit,
-  mockAuthFrequencyLimit,
+  mockAssertUploadRateLimit,
   mockGetTeamPlanStatus,
   mockReadFile,
   mockGetFileS3Key,
@@ -21,7 +21,7 @@ const {
   mockClearDiskTempFiles: vi.fn(),
   mockAuthDataset: vi.fn(),
   mockCheckDatasetIndexLimit: vi.fn(),
-  mockAuthFrequencyLimit: vi.fn(),
+  mockAssertUploadRateLimit: vi.fn(),
   mockGetTeamPlanStatus: vi.fn(),
   mockReadFile: vi.fn(),
   mockGetFileS3Key: {
@@ -51,8 +51,8 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkDatasetIndexLimit: mockCheckDatasetIndexLimit
 }));
 
-vi.mock('@fastgpt/service/common/system/frequencyLimit/utils', () => ({
-  authFrequencyLimit: mockAuthFrequencyLimit
+vi.mock('@fastgpt/service/common/rateLimit/interface/upload', () => ({
+  assertUploadRateLimit: mockAssertUploadRateLimit
 }));
 
 vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
@@ -170,6 +170,11 @@ describe('POST /api/core/dataset/collection/create/images', () => {
       expiredTime: expect.any(Date)
     });
     expect(mockUploadImage2S3Bucket.mock.calls[0][1]).not.toHaveProperty('base64Img');
+    expect(mockAssertUploadRateLimit).toHaveBeenCalledWith({
+      identity: 'tmb-id',
+      limit: 10,
+      increment: 1
+    });
     expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/cat.png']);
   });
 });

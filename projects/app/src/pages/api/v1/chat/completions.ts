@@ -158,7 +158,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           shareId,
           outLinkUid,
           chatId,
-          ip: originIp,
           question: startHookText
         });
       }

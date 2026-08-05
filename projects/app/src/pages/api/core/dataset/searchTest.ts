@@ -6,8 +6,8 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { type ApiRequestProps } from '@fastgpt/next/type';
+import type { NextApiResponse } from 'next';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -21,10 +21,12 @@ import {
   type SearchDatasetTestResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 
 export async function handler(
-  req: ApiRequestProps<SearchDatasetTestBody>
-): Promise<SearchDatasetTestResponse> {
+  req: ApiRequestProps<SearchDatasetTestBody>,
+  res: NextApiResponse
+): Promise<SearchDatasetTestResponse | void> {
   const {
     datasetId,
     text,
@@ -58,6 +60,7 @@ export async function handler(
     datasetId,
     per: ReadPermissionVal
   });
+  if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) return;
   // auth balance
   await checkTeamAIPoints(teamId);
 
@@ -185,4 +188,4 @@ export async function handler(
   });
 }
 
-export default NextAPI(useIPFrequencyLimit({ id: 'search-test', seconds: 1, limit: 15 }), handler);
+export default NextAPI(handler);

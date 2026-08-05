@@ -508,7 +508,7 @@ describe('dispatchRunAgent user context', () => {
     expect(loopInput.systemPrompt).toContain('</sandbox_capability>');
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(
-      '当前 sandbox 工作目录: /workspace'
+      '当前沙盒的工作目录: /workspace'
     );
     const loopRuntime = runAgentLoopMock.mock.calls[0][0].runtime;
     expect(runAgentLoopMock.mock.calls[0][0].provider).toBe('fastAgent');
@@ -633,7 +633,7 @@ describe('dispatchRunAgent user context', () => {
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).not.toContain(
-      '当前 sandbox 工作目录'
+      '当前沙盒的工作目录'
     );
   });
 

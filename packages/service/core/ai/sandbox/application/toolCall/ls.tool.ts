@@ -17,7 +17,10 @@ export const sandboxLsTool = defineTool({
   execute: async ({ sandboxInstance, params }) => {
     await sandboxInstance.ensureAvailable();
     const limit = params.limit ?? DEFAULT_LS_LIMIT;
-    const entries = await sandboxInstance.provider.listDirectory(params.path ?? '.');
+    const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
+      allowAbsolutePath: true
+    });
+    const entries = await sandboxInstance.provider.listDirectory(providerPath);
     const results = entries
       .map((entry) => `${entry.name}${entry.isDirectory ? '/' : ''}`)
       .sort((a, b) => a.localeCompare(b));

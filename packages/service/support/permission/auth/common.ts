@@ -35,7 +35,7 @@ export async function parseHeaderCert({
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
     // 获取 cookie
-    const cookies = Cookie.parse(cookie || '');
+    const cookies = Cookie.parse(cookie ?? '');
     const cookieToken = token || cookies[TokenName];
 
     if (!cookieToken) {

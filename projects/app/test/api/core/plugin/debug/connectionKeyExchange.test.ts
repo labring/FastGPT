@@ -2,14 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
 const mocks = vi.hoisted(() => ({
-  useIPFrequencyLimit: vi.fn(() => async () => undefined),
   pluginClient: {
     exchangeDebugSessionConnectionKey: vi.fn()
   }
-}));
-
-vi.mock('@fastgpt/service/common/middle/reqFrequencyLimit', () => ({
-  useIPFrequencyLimit: mocks.useIPFrequencyLimit
 }));
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
@@ -52,12 +47,6 @@ describe('plugin debug channel connection key exchange handler', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(mocks.useIPFrequencyLimit).toHaveBeenCalledWith({
-      id: 'plugin-debug-channel-connection-key-exchange',
-      seconds: 60,
-      limit: 60,
-      force: true
-    });
     expect(mocks.pluginClient.exchangeDebugSessionConnectionKey).toHaveBeenCalledWith({
       connectionKey: 'connection_key'
     });

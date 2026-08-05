@@ -425,6 +425,28 @@ describe('sandbox archive lifecycle', () => {
     });
   });
 
+  it('leaves provisioning recovery to the runtime client', async () => {
+    mocks.findSandboxInstanceBySandboxId.mockResolvedValue(
+      createResource('provisioning', {
+        operation: {
+          id: 'failed-provision',
+          type: 'provision',
+          phase: 'claimed',
+          previousStatus: 'stopped',
+          startedAt: new Date(),
+          heartbeatAt: new Date(),
+          failedAt: new Date(),
+          error: 'Failed to create sandbox'
+        }
+      })
+    );
+
+    await expect(restoreSandbox()).resolves.toBeUndefined();
+
+    expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
+    expect(mocks.connectToSandbox).not.toHaveBeenCalled();
+  });
+
   it('installs the workspace before publishing restoring -> running', async () => {
     const archived = createResource('archived');
     mocks.findSandboxInstanceBySandboxId.mockResolvedValue(archived);

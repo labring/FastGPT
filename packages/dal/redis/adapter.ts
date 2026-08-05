@@ -130,16 +130,23 @@ export class RedisCacheAdapter {
   /** 原子递增固定窗口计数，并在同一事务中建立窗口 TTL 后返回窗口剩余秒数。 */
   consumeFixedWindow = ({
     key,
-    windowSeconds
+    windowSeconds,
+    increment = 1
   }: {
     key: RedisLogicalKey;
     windowSeconds: number;
+    increment?: number;
   }) => {
-    const operation = 'fixedWindow.consume';
+    const operation = 'rateLimit.consume';
     const parsedWindowSeconds = parsePositiveInteger({
       value: windowSeconds,
       operation,
       field: 'windowSeconds'
+    });
+    const parsedIncrement = parsePositiveInteger({
+      value: increment,
+      operation,
+      field: 'increment'
     });
 
     return this.operationExecutor.uncertainWrite({
@@ -148,7 +155,7 @@ export class RedisCacheAdapter {
         const physicalKey = toPhysicalRedisKey(key);
         const result = await this.getCommandClient()
           .multi()
-          .incr(physicalKey)
+          .incrby(physicalKey, parsedIncrement)
           .expire(physicalKey, parsedWindowSeconds, 'NX')
           .ttl(physicalKey)
           .exec();
@@ -170,7 +177,9 @@ export class RedisCacheAdapter {
           return entry[1];
         };
 
-        const currentCount = NonNegativeSafeIntegerSchema.safeParse(parseResult(result[0], 'INCR'));
+        const currentCount = NonNegativeSafeIntegerSchema.safeParse(
+          parseResult(result[0], 'INCRBY')
+        );
         const expireResult = z
           .union([z.literal(0), z.literal(1)])
           .safeParse(parseResult(result[1], 'EXPIRE'));

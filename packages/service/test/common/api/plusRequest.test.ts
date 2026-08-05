@@ -119,7 +119,7 @@ describe('plusRequest', () => {
     });
 
     const { POST } = await importPlusRequest();
-    await expect(POST('/support/openapi/authLimit', {})).rejects.toMatchObject({
+    await expect(POST('/support/test-user-error', {})).rejects.toMatchObject({
       name: 'UserError',
       message: 'API key has expired'
     });

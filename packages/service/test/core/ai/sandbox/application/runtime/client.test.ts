@@ -460,6 +460,17 @@ describe('sandbox runtime client lifecycle', () => {
     await expect(getSandboxClient(query)).rejects.toThrow('Sandbox is initializing');
   });
 
+  it('maps active provisioning to initializing', async () => {
+    const provisioning = createInstance('provisioning', 'active-provision');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(provisioning);
+
+    await expect(getSandboxClient(query)).rejects.toThrow('Sandbox is initializing');
+
+    expect(mocks.createAgentSandboxInitializingError).toHaveBeenCalledTimes(1);
+    expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
+  });
+
   it('publishes a stale providerEnsured phase without reconnecting the provider', async () => {
     const provisioning = createInstance('provisioning', 'old-provision');
     provisioning.operation.phase = 'providerEnsured';
@@ -518,6 +529,27 @@ describe('sandbox runtime client lifecycle', () => {
         status: 'running',
         set: { image: { repository: 'fastgpt/sandbox', tag: 'v2' } }
       })
+    );
+  });
+
+  it('retries failed OpenSandbox provisioning with its persisted Legacy claimName', async () => {
+    const failedProvisioning = createInstance('provisioning', 'failed-provision', 'opensandbox');
+    failedProvisioning.operation.error = 'Failed to create sandbox';
+    const retriedProvisioning = createInstance('provisioning', 'retried-provision', 'opensandbox');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(failedProvisioning);
+    mocks.claimSandboxOperation.mockResolvedValueOnce(retriedProvisioning);
+    mocks.advanceSandboxOperation.mockResolvedValueOnce(retriedProvisioning);
+
+    await getSandboxClient(query, { providerName: 'opensandbox' });
+
+    expect(mocks.createSessionVolumeClaimName).not.toHaveBeenCalled();
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('fastgpt-session-sandbox-1-current');
+    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'provisioning', type: 'provision' })
+    );
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'retried-provision', status: 'running' })
     );
   });
 

@@ -7,8 +7,10 @@ import {
   GetLLMRequestRecordParamsSchema,
   LLMRequestRecordSchema
 } from '@fastgpt/global/openapi/core/ai/api';
-import { addSeconds } from 'date-fns';
-import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
+import {
+  assertMemberRateLimit,
+  MemberRateLimitPolicy
+} from '@fastgpt/service/common/rateLimit/interface/member';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -23,10 +25,9 @@ export type GetRecordResponse = LLMRequestRecordSchemaType;
 async function handler(req: ApiRequestProps): Promise<GetRecordResponse | undefined> {
   const { teamId, tmbId } = await authCert({ req, authToken: true });
 
-  await authFrequencyLimit({
-    eventId: `${tmbId}-getrecords`,
-    maxAmount: 60,
-    expiredTime: addSeconds(new Date(), 60)
+  await assertMemberRateLimit({
+    policy: MemberRateLimitPolicy.GetLlmRequestRecord,
+    memberId: String(tmbId)
   }).catch(() => {
     return Promise.reject('Frequency limit exceeded');
   });

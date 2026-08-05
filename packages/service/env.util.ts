@@ -108,13 +108,8 @@ export const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): s
   }
 
   return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => {
-    if (key !== 'AGENT_SANDBOX_OPENSANDBOX_IMAGE') return !env[key];
-
-    // 升级窗口内允许旧的 repo/tag 配置提供默认镜像；新 IMAGE 始终优先。
-    return (
-      !env.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim() &&
-      !env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO?.trim()
-    );
+    const value = env[key];
+    return key === 'AGENT_SANDBOX_OPENSANDBOX_IMAGE' ? !value?.trim() : !value;
   });
 };
 

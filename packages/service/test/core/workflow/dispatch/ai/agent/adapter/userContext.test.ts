@@ -201,7 +201,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
     expect(result).toContain('<id>dataset_1</id>');
     expect(result).toContain('## 背景信息');
     expect(result).toContain('当前时间: 2026-05-14 10:00:00 Thursday');
-    expect(result).toContain('当前 sandbox 工作目录: /workspace');
+    expect(result).toContain('当前沙盒的工作目录: /workspace');
     expect(result).toContain('帮我总结');
   });
 
@@ -241,7 +241,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
         query: '',
         currentWorkingDirectory: '/workspace'
       })
-    ).toContain(`当前 sandbox 工作目录: /workspace`);
+    ).toContain(`当前沙盒的工作目录: /workspace`);
     expect(
       buildAgentLoopCoreUserReminderInput({
         query: '',
@@ -289,7 +289,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
       ]
     });
 
-    expect(result).toContain('以下技能为特定任务提供专门的操作说明：');
+    expect(result).toContain('当用户任务与某个技能的描述匹配时');
     expect(result).toContain('先使用 sandbox_read_file 读取完整的技能文件');
     expect(result).toContain('<available_skills>');
     expect(result).toContain('</available_skills>');
@@ -374,7 +374,7 @@ describe('useUserContext', () => {
         );
 
         expect(historyText).toContain('<url>https://files.example.com/old.pdf</url>');
-        expect(historyText).not.toContain('当前 sandbox 工作目录');
+        expect(historyText).not.toContain('当前沙盒的工作目录');
         expect(historyText).not.toContain('当前时间');
         expect(currentFiles).toEqual([
           {
@@ -384,7 +384,7 @@ describe('useUserContext', () => {
           }
         ]);
         expect(currentText).toContain('## 背景信息');
-        expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
+        expect(currentText).toContain('当前沙盒的工作目录: /workspace');
         expect(currentText).toContain('<url>https://files.example.com/current.pdf</url>');
         expect(currentText).toContain('<url>https://files.example.com/current.png</url>');
         expect(currentText).not.toContain('<id>current_chat_item-');

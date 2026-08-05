@@ -5,22 +5,39 @@ description: 'FastGPT V4.16.0-beta1 release notes'
 
 ## 📦 Upgrade Guide
 
-### 1. Update the Agent Sandbox configuration
+### 1. Update the Agent Sandbox Proxy environment variables (optional)
 
-Environments that enable Agent Sandbox must add a browser-accessible preview proxy URL to both `fastgpt-app` and `fastgpt-pro`:
+Version 4.16.0 requires the proxy for static resource access. If your gateway supports WebSocket and HTTP traffic on the same port, you only need to expose one port. Otherwise, set `PREVIEW_PORT` to configure the HTTP port.
 
 ```dotenv
-# HTTP(S) URL used by browsers to preview Sandbox files
-AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+# Port for the WebSocket and HTTP services
+PORT=1006
+# HTTP service port; overrides PORT when set
+PREVIEW_PORT=1007
 ```
 
-The URL must start with `http://` or `https://`. With a default single-port deployment, it can point to the same host and port as `AGENT_SANDBOX_PROXY_URL`, while the protocols remain HTTP(S) and WebSocket(S), respectively.
+The access URL must start with `http://` or `https://`. With a single-port deployment, it can use the same host and port as `AGENT_SANDBOX_PROXY_URL`, while the protocols remain HTTP(S) and WebSocket(S), respectively. We strongly recommend using a different origin from the main FastGPT site. A same-origin deployment places user-generated scripts inside the main site's security boundary, where they may access site credentials or APIs. FastGPT does not currently enforce origin isolation.
 
-We strongly recommend using a different origin for the preview URL and the main FastGPT site. Sandbox HTML may contain user-generated scripts; serving it from the same origin would place those scripts inside the main site's same-origin security boundary, where they could access site credentials or APIs. FastGPT does not currently enforce origin isolation.
+Visit `https://{{host}}/health` to verify that the service is accessible.
 
-The preview URL is a short-lived, read-only bearer capability. It authorizes access to the entire Sandbox Workspace, not just the individual file in the URL. Anyone with the link can change the URL path during its validity period and read other files in the same Sandbox Workspace. Do not share it with users who should not access that Workspace.
+### 2. Update the fastgpt-app environment variables (required when Sandbox is enabled)
 
-The following optional settings are also available:
+Update the variables in both `fastgpt-app` and `fastgpt-pro`.
+
+1. Add the following environment variables
+
+```dotenv
+# HTTP(S) URL used by browsers to preview Sandbox files. Use the URL configured in step 1.
+AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+# Required for OpenSandbox. Sets the full storage name prefix (previously configured on the volume image).
+VM_VOLUME_NAME_PREFIX=fastgpt-session
+```
+
+2. Deprecated Sandbox environment variables
+
+`AGENT_SANDBOX_DISK_MB` and all E2B-related variables.
+
+3. New optional Sandbox environment variables
 
 | Variable                              | Default | Description                                                                                                                           |
 | ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -32,20 +49,18 @@ The following optional settings are also available:
 
 The E2B Sandbox Provider has been removed. Environments previously configured for E2B must switch to `opensandbox` or `sealosdevbox` and remove `AGENT_SANDBOX_E2B_API_KEY`.
 
-> The preview protocol has changed for FastGPT, `fastgpt-agent-sandbox-proxy`, and `fastgpt-agent-sandbox`. When Agent Sandbox is enabled, use the images released with this version. Mixing old and new versions is not supported.
+> The preview protocols have changed for FastGPT, `fastgpt-agent-sandbox-proxy`, and `fastgpt-agent-sandbox`. When Agent Sandbox is enabled, use the images released with this version. Mixing old and new versions is not supported.
 
-### 2. Update the Agent Sandbox Proxy environment variables
+### 3. Update images
 
-Version 4.16.0 requires the proxy for static resource access. If your gateway supports WebSocket and HTTP traffic on the same port, you only need to expose one port. Otherwise, set `PREVIEW_PORT` to configure the HTTP port.
+To be added...
 
-```dotenv
-# Port for the WebSocket and HTTP services
-PORT=1006
-# HTTP service port; overrides PORT when set
-PREVIEW_PORT=1007
-```
+1. app
+2. pro
+3. agent-sandbox-volumn
+4. agent-sandbox-proxy
 
-### 3. Migrate Agent Sandbox data
+### 4. Migrate Agent Sandbox data
 
 This release changes App Chat's Agent Sandbox from “one instance per conversation” to “one shared instance per App and user.” Files from different conversations remain isolated under `sessions/<chatId>`. Published Skills are stored in the shared `projects` directory.
 
@@ -60,7 +75,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":true}'
 ```
 
-After reviewing the dry-run result, run the migration:
+After reviewing the dry-run result, run the migration. The migration first performs the beta6 normalization and continues to Workspace archiving in the same request only when no pending normalization work remains:
 
 ```bash
 curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
@@ -72,19 +87,19 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
 If every item in `failures` reports `Sandbox source is missing or deleted`, and you have confirmed that the corresponding Apps or Skills no longer exist, you can explicitly skip those stale Sandboxes:
 
 ```bash
-curl -X POST 'https://your-domain/api/admin/4160/initUserSandbox' \
+curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
   -H 'Content-Type: application/json' \
-  -H 'rootkey: YOUR_ROOT_KEY' \
+  -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":false,"skipError":true}'
 ```
 
 `skipError` defaults to `false`, so omitting it preserves strict migration behavior. The switch only skips an entire source group when that source is missing or soft-deleted. Sandboxes in the group are not archived, deleted, or migrated, and are reported through `skippedCount` and `skipped`. Archive, object storage, provider, concurrency-control, and all other errors remain blocking.
 
-The migration first runs all V4.15.0-beta6 normalization steps. It fills in `sourceType/sourceId` for legacy Sandboxes, removes obsolete fields, deletes orphaned resources that cannot be associated, and cleans up the three legacy Skill Debug Chat collections and old private/public Bucket prefixes when `sourceType` is missing. After recounting, the two categories are combined into `normalization.pendingCount`; Workspace archiving does not begin while the count is non-zero. Once normalization is complete, all legacy Workspaces are archived, old compute resources are cleaned up, Skills are migrated, and records are aggregated into user-level Sandboxes by App and user. Installation does not start if any archive operation fails. New Sandboxes are suspended after Workspace installation and start normally on first use. The script is safe to retry: completed archive and migration operations are not repeated. Old archives and MongoDB records are retained as backups after migration.
+The migration first runs all V4.15.0-beta6 normalization steps. It fills in `sourceType/sourceId` for legacy Sandboxes, removes obsolete fields, deletes orphaned resources that cannot be associated, and cleans up the three legacy Skill Debug Chat collections and old private/public Bucket prefixes when `sourceType` is missing. A Skill whose ID matches an App ID is excluded from Chat cleanup. After recounting, the two categories are combined into `normalization.pendingCount`; Workspace archiving does not begin while the count is non-zero. Once normalization is complete, all legacy Workspaces are archived, old compute resources are cleaned up, Skills are migrated, and records are aggregated into user-level Sandboxes by App and user. Installation does not start if any archive operation fails. New Sandboxes are suspended after Workspace installation and start normally on first use. The script is safe to retry: completed archive and migration operations are not repeated. Old archives and MongoDB records are retained as backups after migration.
 
 Check `normalization.pendingCount`, `normalizationBlocked`, `failedCount`, `failures`, `skippedCount`, and `skipped` in the response. When both `normalization.pendingCount` and `failedCount` are `0` and `normalizationBlocked` is `false`, every non-skipped Sandbox has been migrated. Legacy records listed in `skipped` remain in place and are not migrated.
 
-### 4. Migrate manual HTTP tool data
+### 5. Migrate HTTP tool data
 
 This release changes array parameters in manually configured HTTP tools to standard JSON Schema. Environments with manual HTTP tools created before the upgrade must run this migration. OpenAPI-mode HTTP tools do not require migration and are skipped automatically.
 
@@ -108,6 +123,10 @@ curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
 
 The script first filters Apps by HTTP tool type, then migrates historical versions associated with those `appId` values. Only manual-mode tools without `apiSchemaStr` are processed; other Apps and OpenAPI-mode tools are left unchanged. The migration runs in batches and is safe to retry. `total.changedDocumentCount` in the response shows how many documents require processing. Run another dry run after the migration and confirm that this value is `0`.
 
+### 6. Other changes (optional)
+
+1. `PASSWORD_LOGIN_LOCK_SECONDS` is deprecated. Use `PASSWORD_LOGIN_MINUTE_LIMIT_COUNT` to control the maximum number of password login attempts allowed per account per minute.
+
 ## 🚀 New
 
 1. Agent Sandbox now runs at the App-user level. Multiple conversations from the same user and App share a Sandbox while keeping files isolated in separate session directories.
@@ -118,6 +137,7 @@ The script first filters Apps by HTTP tool type, then migrates historical versio
 6. Knowledge Base data supports custom `metadata`, which can be imported as JSON through the API, CSV templates, or Excel templates. Search results and backup exports preserve this field. Template and backup imports accept both `.csv` and `.xlsx` files with `q`, `a`, `index`, and `metadata` headers. `q`, `a`, and `metadata` each use one column, while `index` may use multiple columns in any order. Excel files must contain a single worksheet with no merged cells. FastGPT reports an invalid file format when it cannot parse a CSV or Excel file correctly.
 7. Large-file chunked uploads.
 8. System tool keys configured by administrators are now encrypted, with backward compatibility for existing keys.
+9. Added empty-state guidance to the Skill list and linked Skill creation from the Skill selector.
 
 ## ⚙️ Improvements
 
@@ -152,3 +172,5 @@ The script first filters Apps by HTTP tool type, then migrates historical versio
 4. Extended tool JSON Schema support for additional data types.
 5. Unified service file-read timeouts.
 6. Hardened system tool permissions in multi-process deployments.
+7. Refactored login and authentication code.
+8. Refactored the rate-limiting module.

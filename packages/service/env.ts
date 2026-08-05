@@ -114,14 +114,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: z.string().optional().meta({
       description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
     }),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().optional().meta({
-      description: 'Deprecated OpenSandbox image repository fallback',
-      deprecated: true
-    }),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().optional().meta({
-      description: 'Deprecated OpenSandbox image tag fallback',
-      deprecated: true
-    }),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
@@ -177,9 +169,6 @@ export const serviceEnv = createEnv({
     }),
     TEXTIN_SECRET_CODE: z.string().optional().meta({
       description: '合合信息 Textin 服务 Secret Code'
-    }),
-    HOME_CHAT_CUSTOM_PDF_PARSE: BoolSchema.default(false).meta({
-      description: '首页聊天是否启用 PDF 增强解析'
     }),
 
     // ==================== 数据库与缓存 ====================
@@ -307,8 +296,8 @@ export const serviceEnv = createEnv({
       description:
         '可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析'
     }),
-    PASSWORD_LOGIN_LOCK_SECONDS: defaultableIntSchema(120).meta({
-      description: '密码错误锁定时长（秒）'
+    PASSWORD_LOGIN_MINUTE_LIMIT_COUNT: defaultableIntSchema(10).meta({
+      description: '密码登录每分钟次数限制'
     }),
     MAX_LOGIN_SESSION: IntSchema.default(10).meta({ description: '最大登录客户端数量（默认 10）' }),
     ALLOWED_ORIGINS: z

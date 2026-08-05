@@ -19,6 +19,11 @@ import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getRegisterMethods } from '@/web/common/system/utils';
+import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
+import {
+  AccountEmailUsernameSchema,
+  AccountPhoneUsernameSchema
+} from '@fastgpt/global/support/user/account/verification/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -49,8 +54,23 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     mode: 'onBlur'
   });
   const username = watch('username');
+  const registerMethods = getRegisterMethods(feConfigs);
 
-  const { SendCodeBox, openCodeAuthModal } = useSendCode({ type: 'register' });
+  const validateUsername = (value: string) => {
+    const method = (() => {
+      if (AccountEmailUsernameSchema.safeParse(value).success) return 'email';
+      if (AccountPhoneUsernameSchema.safeParse(value).success) return 'phone';
+    })();
+
+    if (!method) return t('user:password.email_phone_error');
+    return registerMethods.includes(method) || t('common:error.registration_method_not_supported');
+  };
+
+  const { SendCodeBox, openCodeAuthModal } = useSendCode({
+    type: VerificationCodeTypeEnum.register,
+    purpose: 'register',
+    validateBeforeSend: validateUsername
+  });
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest(
     async ({ username, password, code }: RegisterType) => {
@@ -88,7 +108,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     }
   };
 
-  const placeholder = getRegisterMethods(feConfigs)
+  const placeholder = registerMethods
     .map((item) => {
       switch (item) {
         case 'email':
@@ -101,13 +121,26 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   return (
     <>
-      <Box fontWeight={'medium'} fontSize={'lg'} textAlign={'center'} color={'myGray.900'}>
+      <Box
+        fontWeight={'medium'}
+        fontSize={'lg'}
+        lineHeight={'30px'}
+        textAlign={'center'}
+        color={'myGray.900'}
+      >
         {t('user:register.register_account', { account: feConfigs?.systemTitle })}
       </Box>
       <Box
         mt={9}
         onKeyDown={(e) => {
-          if (!openCodeAuthModal && e.key === 'Enter' && !e.shiftKey && !requesting) {
+          if (
+            !openCodeAuthModal &&
+            e.key === 'Enter' &&
+            !e.shiftKey &&
+            !e.nativeEvent.isComposing &&
+            e.keyCode !== 229 &&
+            !requesting
+          ) {
             handleSubmit(onclickRegister, onSubmitErr)();
           }
         }}
@@ -119,11 +152,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
-              pattern: {
-                value:
-                  /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
-                message: t('user:password.email_phone_error')
-              }
+              validate: validateUsername
             })}
           ></Input>
         </FormControl>
@@ -151,7 +180,11 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             bg={'myGray.50'}
             size={'lg'}
             type={'password'}
-            placeholder={t('login:password_tip')}
+            placeholder={t('common:support.user.login.Password')}
+            _invalid={{
+              borderColor: 'red.500',
+              boxShadow: '0 0 0 1px #F04438'
+            }}
             {...register('password', {
               required: true,
               validate: (val) => {
@@ -161,7 +194,18 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
                 return true;
               }
             })}
-          ></Input>
+          />
+          <Box
+            mt={2}
+            fontSize={'mini'}
+            lineHeight={'16px'}
+            fontWeight={'medium'}
+            letterSpacing={'0.5px'}
+            wordBreak={'break-word'}
+            color={errors.password ? 'red.600' : 'myGray.400'}
+          >
+            {t('login:password_tip')}
+          </Box>
         </FormControl>
         <FormControl mt={6} isInvalid={!!errors.password2}>
           <Input
@@ -180,8 +224,8 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           mt={12}
           w={'100%'}
           size={['md', 'md']}
-          rounded={['md', 'md']}
-          h={[10, 10]}
+          rounded={['sm', 'md']}
+          h={['34px', '40px']}
           fontWeight={['medium', 'medium']}
           colorScheme="blue"
           isLoading={requesting}
@@ -192,6 +236,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         <Box
           float={'right'}
           fontSize="mini"
+          lineHeight={'18px'}
           mt={3}
           fontWeight={'medium'}
           color={'primary.700'}

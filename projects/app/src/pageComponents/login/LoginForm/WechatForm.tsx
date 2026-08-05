@@ -17,7 +17,10 @@ import {
   onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
 import PolicyTip from './PolicyTip';
-import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type {
+  LoginSuccessResponseType,
+  WxLoginResultResponseType
+} from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
@@ -31,14 +34,18 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
 
-  const { data: wechatInfo } = useQuery(['getWXLoginQR'], getWXLoginQR, {
-    onError(err) {
-      toast({
-        status: 'warning',
-        title: getErrText(err, t('common:get_QR_failed'))
-      });
+  const { data: wechatInfo, refetch: refetchWechatInfo } = useQuery(
+    ['getWXLoginQR'],
+    getWXLoginQR,
+    {
+      onError(err) {
+        toast({
+          status: 'warning',
+          title: getErrText(err, t('common:get_QR_failed'))
+        });
+      }
     }
-  });
+  );
 
   useQuery(
     ['getWXLoginResult', wechatInfo?.code, i18n.language],
@@ -54,10 +61,15 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     {
       refetchInterval: 3 * 1000,
       enabled: !!wechatInfo?.code,
-      async onSuccess(data: LoginSuccessResponseType | undefined) {
-        if (data) {
-          await onFastGPTLoginSuccess(loginSuccess, data);
+      async onSuccess(data: WxLoginResultResponseType | undefined) {
+        if (!data) return;
+
+        if ('expired' in data) {
+          await refetchWechatInfo();
+          return;
         }
+
+        await onFastGPTLoginSuccess(loginSuccess, data);
       }
     }
   );

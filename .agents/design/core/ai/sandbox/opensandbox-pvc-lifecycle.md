@@ -96,11 +96,11 @@ workspace claim 重建 OpenSandbox provider。这样旧 client 既不能覆盖 r
 检测到该 checkpoint 且缺少 workspace claim 时，按旧命名规则恢复 claim，并以同阶段 CAS 原子补写
 storage，再继续安装归档。`claimed` 阶段仍使用 generation `0` 的新命名规则。
 
-### 镜像环境变量兼容
+### 镜像环境变量
 
-`AGENT_SANDBOX_OPENSANDBOX_IMAGE` 是新配置入口；未配置时回退到旧的
-`AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO` 和 `AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG`。
-新变量优先，旧 tag 缺失时沿用 `latest`。只有新旧入口都没有可用 repository 时才报告缺失。
+`AGENT_SANDBOX_OPENSANDBOX_IMAGE` 是 OpenSandbox 唯一的运行态镜像配置入口，必须配置完整镜像地址（包括
+tag）。`AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO` 和 `AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG` 已移除，不再作为
+兼容回退；启用 `opensandbox` 时缺少完整镜像变量必须阻止服务启动。
 
 ### volume 删除边界
 

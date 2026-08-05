@@ -20,7 +20,10 @@ import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import {
+  assertMemberRateLimit,
+  MemberRateLimitPolicy
+} from '@fastgpt/service/common/rateLimit/interface/member';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
@@ -71,6 +74,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     authToken: true,
     appId,
     per: AppReadChatLogPerVal
+  });
+  await assertMemberRateLimit({
+    policy: MemberRateLimitPolicy.ExportChatLogs,
+    memberId: String(tmbId)
   });
   const { chatConfig } = await getAppLatestVersion(appId, app);
   const variables = (chatConfig.variables || []).filter(
@@ -526,7 +533,4 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   })();
 }
 
-export default NextAPI(
-  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 1, limit: 1, force: true }),
-  handler
-);
+export default NextAPI(handler);

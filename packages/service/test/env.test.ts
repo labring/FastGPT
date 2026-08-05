@@ -17,7 +17,6 @@ const originalEnv = {
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   SOMARK_API_KEY: process.env.SOMARK_API_KEY,
-  HOME_CHAT_CUSTOM_PDF_PARSE: process.env.HOME_CHAT_CUSTOM_PDF_PARSE,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
@@ -29,8 +28,6 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
 };
@@ -60,7 +57,6 @@ describe('serviceEnv', () => {
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('SOMARK_API_KEY', originalEnv.SOMARK_API_KEY);
-    vi.stubEnv('HOME_CHAT_CUSTOM_PDF_PARSE', originalEnv.HOME_CHAT_CUSTOM_PDF_PARSE);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
@@ -72,14 +68,6 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
-    );
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
@@ -113,20 +101,6 @@ describe('serviceEnv', () => {
         SOMARK_API_KEY: 'sk-somark-test'
       }
     });
-  });
-
-  it('disables home chat custom PDF parsing by default and supports enabling it', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-
-    vi.stubEnv('HOME_CHAT_CUSTOM_PDF_PARSE', undefined);
-    const defaultEnv = await importServiceEnv();
-    expect(defaultEnv.serviceEnv.HOME_CHAT_CUSTOM_PDF_PARSE).toBe(false);
-
-    vi.stubEnv('HOME_CHAT_CUSTOM_PDF_PARSE', 'true');
-    const enabledEnv = await importServiceEnv();
-    expect(enabledEnv.serviceEnv.HOME_CHAT_CUSTOM_PDF_PARSE).toBe(true);
   });
 
   it('validates SYSTEM_MAX_STRING_LENGTH_M during service env init', async () => {
@@ -380,19 +354,22 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).resolves.toBeDefined();
   });
 
-  it('保留 OpenSandbox 旧镜像环境变量供升级兼容', async () => {
+  it('启用 opensandbox 后未配置新运行镜像会阻止启动', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
+    vi.stubEnv('VITEST', 'true');
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'legacy/runtime-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'legacy-stable');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://mock-volume-manager.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'mock-volume-manager-token');
 
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'legacy/runtime-image',
-        AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'legacy-stable'
-      }
-    });
+    await expect(importServiceEnv()).rejects.toThrow(
+      'AGENT_SANDBOX_OPENSANDBOX_IMAGE are required when AGENT_SANDBOX_PROVIDER is opensandbox'
+    );
   });
 });
