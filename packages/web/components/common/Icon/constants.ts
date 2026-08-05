@@ -500,6 +500,7 @@ export const iconPaths = {
   'support/config/configFill': () => import('./icons/support/config/configFill.svg'),
   'support/config/configLight': () => import('./icons/support/config/configLight.svg'),
   'support/outlink/apikeyFill': () => import('./icons/support/outlink/apikeyFill.svg'),
+  'support/outlink/share': () => import('./icons/support/outlink/share.svg'),
   'support/permission/collaborator': () => import('./icons/support/permission/collaborator.svg'),
   'support/permission/privateLight': () => import('./icons/support/permission/privateLight.svg'),
   'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg'),

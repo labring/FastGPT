@@ -33,7 +33,13 @@ import { getDocPath } from '@/web/common/system/doc';
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
 
-const FeiShu = ({ appId }: { appId: string }) => {
+const FeiShu = ({
+  appId,
+  onRefreshOutLinkCounts
+}: {
+  appId: string;
+  onRefreshOutLinkCounts: () => Promise<unknown>;
+}) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
@@ -65,10 +71,10 @@ const FeiShu = ({ appId }: { appId: string }) => {
   const [showShareLink, setShowShareLink] = useState<string | null>(null);
 
   return (
-    <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
+    <Box position={'relative'} p={6} minH={'50vh'}>
       <Flex justifyContent={'space-between'} flexDirection="row">
         <HStack>
-          <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
+          <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
             {t('common:core.app.publish.Fei shu bot publish')}
           </Box>
           {feConfigs?.docUrl && (
@@ -111,14 +117,9 @@ const FeiShu = ({ appId }: { appId: string }) => {
             <Tr>
               <Th>{t('common:Name')}</Th>
               <Th>{t('common:support.outlink.Usage points')}</Th>
-              {feConfigs?.isPlus && (
-                <>
-                  <Th>{t('common:core.app.share.Ip limit title')}</Th>
-                  <Th>{t('common:expired_time')}</Th>
-                </>
-              )}
+              {feConfigs?.isPlus && <Th>{t('common:expired_time')}</Th>}
               <Th>{t('common:last_use_time')}</Th>
-              <Th></Th>
+              <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -136,14 +137,11 @@ const FeiShu = ({ appId }: { appId: string }) => {
                     : ''}
                 </Td>
                 {feConfigs?.isPlus && (
-                  <>
-                    <Td>{item?.limit?.QPM || '-'}</Td>
-                    <Td>
-                      {item?.limit?.expiredTime
-                        ? dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
-                        : '-'}
-                    </Td>
-                  </>
+                  <Td>
+                    {item.limit?.expiredTime
+                      ? dayjs(item.limit.expiredTime).format('YYYY/MM/DD\nHH:mm')
+                      : '-'}
+                  </Td>
                 )}
                 <Td>
                   {item.lastTime
@@ -199,7 +197,10 @@ const FeiShu = ({ appId }: { appId: string }) => {
                               setIsLoading(true);
                               try {
                                 await delShareChatById(item._id);
-                                refetchShareChatList();
+                                void Promise.all([
+                                  refetchShareChatList(),
+                                  onRefreshOutLinkCounts()
+                                ]);
                               } catch (error) {
                                 console.log(error);
                               }
@@ -220,7 +221,10 @@ const FeiShu = ({ appId }: { appId: string }) => {
         <FeiShuEditModal
           appId={appId}
           defaultData={editFeiShuLinkData}
-          onCreate={() => Promise.all([refetchShareChatList(), setEditFeiShuLinkData(undefined)])}
+          onCreate={() => {
+            void Promise.all([refetchShareChatList(), onRefreshOutLinkCounts()]);
+            setEditFeiShuLinkData(undefined);
+          }}
           onEdit={() => Promise.all([refetchShareChatList(), setEditFeiShuLinkData(undefined)])}
           onClose={() => setEditFeiShuLinkData(undefined)}
           isEdit={isEdit}

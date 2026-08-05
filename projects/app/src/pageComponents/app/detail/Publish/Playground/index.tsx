@@ -82,8 +82,8 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   };
 
   return (
-    <Flex flexDirection="column">
-      <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'} mb={3}>
+    <Flex flexDirection="column" p={6}>
+      <Box fontSize={'lg'} fontWeight={'medium'} color={'myGray.900'} mb={3}>
         {t('app:publish.playground_link')}
       </Box>
 

@@ -50,7 +50,14 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
-const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
+const Share = ({
+  appId,
+  onRefreshOutLinkCounts
+}: {
+  appId: string;
+  type: PublishChannelEnum;
+  onRefreshOutLinkCounts: () => Promise<unknown>;
+}) => {
   const { t } = useTranslation();
   const { setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
@@ -72,13 +79,13 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   );
 
   return (
-    <MyBox h={'100%'} isLoading={isFetching} position={'relative'} pt={3} px={5} minH={'50vh'}>
+    <MyBox h={'100%'} isLoading={isFetching} position={'relative'} p={6} minH={'50vh'}>
       <Flex justifyContent={'space-between'} flexDirection="row">
         <HStack>
           <Box>
             <Flex alignItems={'center'}>
-              <Box color={'myGray.900'} fontWeight={'bold'} fontSize={['md', 'lg']}>
-                {t('common:core.app.Share link')}
+              <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
+                {t('common:share_link')}
               </Box>
               {feConfigs?.docUrl && (
                 <Link
@@ -95,7 +102,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                 </Link>
               )}
             </Flex>
-            <Box fontSize={'mini'} color={'myGray.600'}>
+            <Box fontSize={'mini'} fontWeight={'normal'} color={'myGray.600'}>
               {t('common:core.app.Share link desc detail')}
             </Box>
           </Box>
@@ -121,36 +128,16 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
           <Thead>
             <Tr>
               <Th>{t('common:Name')}</Th>
-              {feConfigs?.isPlus && (
-                <>
-                  <Th>{t('common:expired_time')}</Th>
-                </>
-              )}
               <Th>{t('common:support.outlink.Usage points')}</Th>
-              <Th>{t('common:core.app.share.Is response quote')}</Th>
-              {feConfigs?.isPlus && (
-                <>
-                  <Th>{t('common:core.app.share.Ip limit title')}</Th>
-                  <Th>{t('common:core.app.share.Role check')}</Th>
-                </>
-              )}
+              {feConfigs?.isPlus && <Th>{t('common:expired_time')}</Th>}
               <Th>{t('common:last_use_time')}</Th>
-              <Th></Th>
+              <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
           <Tbody>
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                {feConfigs?.isPlus && (
-                  <>
-                    <Td>
-                      {item.limit?.expiredTime
-                        ? dayjs(item.limit.expiredTime).format('YYYY-MM-DD HH:mm')
-                        : '-'}
-                    </Td>
-                  </>
-                )}
                 <Td>
                   {Math.round(item.usagePoints)}
                   {feConfigs?.isPlus
@@ -161,13 +148,12 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                       }`
                     : ''}
                 </Td>
-                <Td>{item.showCite ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
-                  <>
-                    <Td>{item?.limit?.QPM || '-'}</Td>
-
-                    <Th>{item?.limit?.hookUrl ? '✔' : '✖'}</Th>
-                  </>
+                  <Td>
+                    {item.limit?.expiredTime
+                      ? dayjs(item.limit.expiredTime).format('YYYY-MM-DD HH:mm')
+                      : '-'}
+                  </Td>
                 )}
                 <Td>
                   {item.lastTime
@@ -221,7 +207,10 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                   setIsLoading(true);
                                   try {
                                     await delShareChatById(item._id);
-                                    refetchShareChatList();
+                                    void Promise.all([
+                                      refetchShareChatList(),
+                                      onRefreshOutLinkCounts()
+                                    ]);
                                   } catch (error) {
                                     console.log(error);
                                   }
@@ -251,7 +240,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
           onCreate={(id) => {
             const url = `${location.origin}/chat/share?shareId=${id}`;
             copyData(url, t('common:core.app.share.Create link tip'));
-            refetchShareChatList();
+            void Promise.all([refetchShareChatList(), onRefreshOutLinkCounts()]);
             setEditLinkData(undefined);
           }}
           onEdit={() => {

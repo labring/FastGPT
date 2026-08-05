@@ -22,18 +22,23 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dynamic from 'next/dynamic';
+import dayjs from 'dayjs';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import { POST } from '@/web/common/api/request';
-import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const WechatEditModal = dynamic(() => import('./WechatEditModal'));
 const QRLoginModal = dynamic(() => import('./QRLoginModal'));
 
-const Wechat = ({ appId }: { appId: string }) => {
+const Wechat = ({
+  appId,
+  onRefreshOutLinkCounts
+}: {
+  appId: string;
+  onRefreshOutLinkCounts: () => Promise<unknown>;
+}) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
@@ -53,21 +58,11 @@ const Wechat = ({ appId }: { appId: string }) => {
     }
   );
 
-  const statusBadge = (status?: string) => {
-    const map: Record<string, { colorSchema: ColorSchemaType; label: string }> = {
-      online: { colorSchema: 'green', label: t('publish:wechat.status.online') },
-      offline: { colorSchema: 'gray', label: t('publish:wechat.status.offline') },
-      error: { colorSchema: 'red', label: t('publish:wechat.status.error') }
-    };
-    const cfg = map[status || 'offline'] ?? map['offline'];
-    return <MyTag colorSchema={cfg.colorSchema}>{cfg.label}</MyTag>;
-  };
-
   return (
-    <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
+    <Box position={'relative'} p={6} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Flex alignItems={'center'}>
-          <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
+          <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
             {t('publish:wechat.title')}
           </Box>
           {feConfigs?.docUrl && (
@@ -106,18 +101,22 @@ const Wechat = ({ appId }: { appId: string }) => {
           <Thead>
             <Tr>
               <Th>{t('common:Name')}</Th>
-              <Th>{t('publish:wechat.status')}</Th>
               <Th>{t('common:support.outlink.Usage points')}</Th>
+              <Th>{t('common:expired_time')}</Th>
               <Th>{t('common:last_use_time')}</Th>
-              <Th />
+              <Th>{t('common:Action')}</Th>
             </Tr>
           </Thead>
           <Tbody>
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                <Td>{statusBadge(item.app?.status)}</Td>
                 <Td>{Math.round(item.usagePoints)}</Td>
+                <Td>
+                  {item.limit?.expiredTime
+                    ? dayjs(item.limit.expiredTime).format('YYYY/MM/DD\nHH:mm')
+                    : '-'}
+                </Td>
                 <Td>
                   {item.lastTime
                     ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
@@ -197,7 +196,7 @@ const Wechat = ({ appId }: { appId: string }) => {
                               setIsLoading(true);
                               try {
                                 await delShareChatById(item._id);
-                                refetch();
+                                void Promise.all([refetch(), onRefreshOutLinkCounts()]);
                               } finally {
                                 setIsLoading(false);
                               }
@@ -224,7 +223,7 @@ const Wechat = ({ appId }: { appId: string }) => {
           defaultData={editData}
           isEdit={isEdit}
           onCreate={async (shareId) => {
-            const newList = await refetch();
+            const [newList] = await Promise.all([refetch(), onRefreshOutLinkCounts()]);
             return newList?.find((i) => i.shareId === shareId)?._id;
           }}
           onEdit={() => refetch()}
