@@ -957,8 +957,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onUpdate={(version) => handleUpdateToolWithErrorHandling(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
+          installedVersion={systemInstalledPlugins?.map.get(selectedTool.id)?.version}
           mode="admin"
-          showActionButton={!selectedTool.installed}
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>

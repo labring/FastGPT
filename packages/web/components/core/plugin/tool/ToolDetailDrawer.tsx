@@ -39,6 +39,7 @@ const ToolDetailDrawer = ({
   isLoading,
   showPoint,
   mode,
+  installedVersion,
   showActionButton = true
 }: {
   onClose: () => void;
@@ -54,6 +55,7 @@ const ToolDetailDrawer = ({
   isLoading?: boolean;
   showPoint: boolean;
   mode: 'admin' | 'team' | 'marketplace';
+  installedVersion?: string;
   showActionButton?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
@@ -63,9 +65,6 @@ const ToolDetailDrawer = ({
   const isDownload = useMemo(() => {
     return mode === 'marketplace';
   }, [mode]);
-  const showUninstallButton = mode === 'admin' && isInstalled && !!onDelete;
-  const showInstallButton = showActionButton && !showUninstallButton;
-  const hasUpdateButton = !!selectedTool.update && !!onUpdate && mode !== 'marketplace';
 
   const {
     data: toolVersions = [],
@@ -99,6 +98,18 @@ const ToolDetailDrawer = ({
   });
 
   const currentVersion = activeVersion || parentTool?.version || selectedTool.version;
+  const isCurrentVersionInstalled = installedVersion
+    ? installedVersion === currentVersion
+    : !!isInstalled;
+  const isLatestVersionSelected = currentVersion === selectedTool.version;
+  const hasUpdateButton =
+    !!isInstalled &&
+    !!onUpdate &&
+    mode !== 'marketplace' &&
+    isLatestVersionSelected &&
+    (!!selectedTool.update || (!!installedVersion && installedVersion !== currentVersion));
+  const showInstallButton = showActionButton && !isCurrentVersionInstalled && !hasUpdateButton;
+  const showUninstallButton = mode === 'admin' && !!isInstalled && !!onDelete;
 
   return (
     <Drawer isOpen={true} onClose={onClose} placement="right">
@@ -170,16 +181,16 @@ const ToolDetailDrawer = ({
                     <Button
                       flex={'1 1 0'}
                       minW={0}
-                      variant={isInstalled ? 'primaryOutline' : 'primary'}
+                      variant={isCurrentVersionInstalled ? 'primaryOutline' : 'primary'}
                       isLoading={isLoading || loadingDetail}
                       isDisabled={isUpdating}
                       onClick={async () => {
-                        await onToggleInstall?.(!isInstalled, currentVersion);
+                        await onToggleInstall?.(!isCurrentVersionInstalled, currentVersion);
                       }}
                     >
                       {isDownload
                         ? t('common:Download')
-                        : isInstalled
+                        : isCurrentVersionInstalled
                           ? t('app:toolkit_uninstall')
                           : t('app:toolkit_install')}
                     </Button>
