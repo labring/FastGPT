@@ -119,6 +119,9 @@ const getDataId = ({ scene, type, key }: { scene: string; type: string; key: str
 
 const hashKey = (key: string) => createHash('sha256').update(key).digest('hex');
 
+const getCodeVerificationKey = ({ account, code }: { account: string; code: string }) =>
+  `${account}:${hashKey(code.toLowerCase())}`;
+
 const isLegacyAuthCodeType = (value: unknown): value is LegacyAuthCodeType =>
   typeof value === 'string' && legacyAuthCodeTypes.has(value);
 
@@ -148,12 +151,13 @@ export const mapLegacyAuthCode = (
       return { kind: 'skipped', reason: 'missing-code' };
     }
     const key = record.key;
+    const code = record.code.toLowerCase();
 
     return {
       kind: 'mapped',
       records: CAPTCHA_VERIFICATION_PURPOSES.map((scene) => ({
         dataId: getDataId({ scene, type: 'captcha', key }),
-        data: { code: record.code.toLowerCase() },
+        data: { code },
         expireAt
       }))
     };
@@ -185,12 +189,17 @@ export const mapLegacyAuthCode = (
   }
 
   const scene = record.type === 'findPassword' ? 'forgetPassword' : record.type;
+  const code = record.code.toLowerCase();
   return {
     kind: 'mapped',
     records: [
       {
-        dataId: getDataId({ scene, type: 'code', key: record.key }),
-        data: { code: record.code },
+        dataId: getDataId({
+          scene,
+          type: 'code',
+          key: getCodeVerificationKey({ account: record.key, code })
+        }),
+        data: { code },
         expireAt
       }
     ]

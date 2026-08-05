@@ -10,7 +10,9 @@ import {
   GetWXLoginQRResponseSchema,
   LoginSuccessResponseSchema,
   WxLoginResultResponseSchema,
-  OpenAPIUserSchema
+  OpenAPIUserSchema,
+  SsoGetAuthorizationURLBodySchema,
+  SsoGetAuthorizationURLResponseSchema
 } from './api';
 
 export const LoginPath: OpenAPIPath = {
@@ -93,6 +95,30 @@ export const LoginPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: LoginSuccessResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/login/getAuthURL': {
+    post: {
+      summary: '获取 SSO 授权地址',
+      description: '根据当前登录回调地址生成 SSO 授权跳转地址',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SsoGetAuthorizationURLBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功生成 SSO 授权地址',
+          content: {
+            'application/json': {
+              schema: SsoGetAuthorizationURLResponseSchema
             }
           }
         }

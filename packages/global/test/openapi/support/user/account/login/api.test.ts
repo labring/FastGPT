@@ -7,6 +7,7 @@ import {
   LoginSuccessResponseSchema,
   OauthLoginBodySchema,
   PreLoginQuerySchema,
+  SsoGetAuthorizationURLBodySchema,
   WecomGetRedirectURLBodySchema,
   WxLoginBodySchema,
   WxLoginResultResponseSchema
@@ -25,12 +26,32 @@ import {
 } from '../../../../../../support/user/account/verification/type';
 
 const captchaPath = '/proApi/support/user/account/captcha/getImgCaptcha';
+const ssoAuthorizationPath = '/proApi/support/user/account/login/getAuthURL';
 
 describe('user account OpenAPI contracts', () => {
   it('registers the image captcha route in the generated Dev API document', () => {
     expect(openAPIPaths[captchaPath]).toBeDefined();
     expect(openAPIDocument.paths?.[captchaPath]).toBeDefined();
     expect(openAPIPaths['/api/support/user/account/captcha/getImgCaptcha']).toBeUndefined();
+  });
+
+  it('registers and validates the SSO authorization URL route', () => {
+    expect(openAPIPaths[ssoAuthorizationPath]).toBeDefined();
+    expect(openAPIDocument.paths?.[ssoAuthorizationPath]).toBeDefined();
+    expect(
+      SsoGetAuthorizationURLBodySchema.parse({
+        redirectUri: 'https://fastgpt.example.com/login',
+        isWecomWorkTerminal: false
+      })
+    ).toEqual({
+      redirectUri: 'https://fastgpt.example.com/login',
+      isWecomWorkTerminal: false
+    });
+    expect(() =>
+      SsoGetAuthorizationURLBodySchema.parse({
+        redirectUri: 'https://fastgpt.example.com/login'
+      })
+    ).toThrow();
   });
 
   it('declares null while the WeChat QR login is waiting for a scan', () => {

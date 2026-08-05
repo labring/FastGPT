@@ -116,6 +116,26 @@ export const WecomGetRedirectURLResponseSchema = z.string();
 export type WecomGetRedirectURLBodyType = z.infer<typeof WecomGetRedirectURLBodySchema>;
 export type WecomGetRedirectURLResponseType = z.infer<typeof WecomGetRedirectURLResponseSchema>;
 
+/* ===== SSO Authorization URL ===== */
+export const SsoGetAuthorizationURLBodySchema = z.object({
+  redirectUri: ExternalAuthStringSchema.meta({
+    example: 'https://fastgpt.example.com/login',
+    description: 'SSO 登录完成后的回调地址'
+  }),
+  isWecomWorkTerminal: z.boolean().meta({
+    example: false,
+    description: '当前是否为企业微信工作台环境'
+  })
+});
+export const SsoGetAuthorizationURLResponseSchema = z.string().meta({
+  example: 'https://sso.example.com/oauth/authorize',
+  description: 'SSO 授权跳转地址'
+});
+export type SsoGetAuthorizationURLBodyType = z.infer<typeof SsoGetAuthorizationURLBodySchema>;
+export type SsoGetAuthorizationURLResponseType = z.infer<
+  typeof SsoGetAuthorizationURLResponseSchema
+>;
+
 // ===== OAuth Login =====
 export const OauthLoginBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
   type: z.enum(OAuthEnum).meta({ description: 'OAuth 登录类型' }),

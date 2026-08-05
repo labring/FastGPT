@@ -1,8 +1,21 @@
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { mapLegacyAuthCode } from '../../../scripts/migration/authCodeToTmpData';
 
 const now = new Date('2026-07-31T00:00:00.000Z');
 const expireAt = new Date('2026-07-31T00:05:00.000Z');
+const getCodeDataId = ({
+  scene,
+  account,
+  code
+}: {
+  scene: string;
+  account: string;
+  code: string;
+}) =>
+  `verification:v1:${scene}:code:${account}:${createHash('sha256')
+    .update(code.toLowerCase())
+    .digest('hex')}`;
 
 describe('mapLegacyAuthCode', () => {
   it('skips obsolete prelogin materials', () => {
@@ -33,7 +46,7 @@ describe('mapLegacyAuthCode', () => {
       kind: 'mapped',
       records: [
         {
-          dataId: `verification:v1:${scene}:code:account@example.com`,
+          dataId: getCodeDataId({ scene, account: 'account@example.com', code: '123456' }),
           data: { code: '123456' },
           expireAt
         }

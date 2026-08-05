@@ -4,6 +4,7 @@ vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 import { VerificationTtlSeconds } from '@fastgpt/global/support/user/account/verification/type';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
+  getCodeVerificationKey,
   getDataId,
   verification,
   VerificationMaterialError
@@ -75,6 +76,88 @@ describe('tmp data verification wrapper', () => {
       Date.now() + VerificationTtlSeconds.medium * 1000
     );
     expect(record?.expireAt.getTime()).toBeGreaterThan(firstStartedAt + 30_000);
+  });
+
+  it('keeps independently issued account codes active and consumes only the matched code', async () => {
+    const account = 'multi-code@example.com';
+    const firstCode = '111111';
+    const secondCode = '222222';
+    const firstKey = getCodeVerificationKey({ account, code: firstCode });
+    const secondKey = getCodeVerificationKey({ account, code: secondCode });
+
+    await expect(
+      verification.createIfInactive({
+        scene: 'register',
+        type: 'code',
+        key: firstKey,
+        data: { code: firstCode, issueId: 'issue-1' },
+        ttlPreset: 'medium'
+      })
+    ).resolves.toBe(true);
+    await expect(
+      verification.createIfInactive({
+        scene: 'register',
+        type: 'code',
+        key: firstKey,
+        data: { code: firstCode, issueId: 'collision' },
+        ttlPreset: 'medium'
+      })
+    ).resolves.toBe(false);
+    await expect(
+      verification.createIfInactive({
+        scene: 'register',
+        type: 'code',
+        key: secondKey,
+        data: { code: secondCode, issueId: 'issue-2' },
+        ttlPreset: 'medium'
+      })
+    ).resolves.toBe(true);
+
+    await expect(MongoTmpData.countDocuments({})).resolves.toBe(2);
+    await verification.consumeInTransaction(
+      {
+        scene: 'register',
+        type: 'code',
+        key: firstKey,
+        match: { code: firstCode }
+      },
+      async () => undefined
+    );
+    await expect(
+      verification.get({
+        scene: 'register',
+        type: 'code',
+        key: secondKey,
+        match: { code: secondCode }
+      })
+    ).resolves.toEqual({ code: secondCode, issueId: 'issue-2' });
+  });
+
+  it('replaces an expired record when the same account code is issued again', async () => {
+    const account = 'expired-code@example.com';
+    const code = '111111';
+    const key = getCodeVerificationKey({ account, code });
+    const dataId = getDataId({ scene: 'register', type: 'code', key });
+
+    await MongoTmpData.create({
+      dataId,
+      data: { code, issueId: 'expired-issue' },
+      expireAt: new Date(Date.now() - 1000)
+    });
+
+    await expect(
+      verification.createIfInactive({
+        scene: 'register',
+        type: 'code',
+        key,
+        data: { code, issueId: 'new-issue' },
+        ttlPreset: 'medium'
+      })
+    ).resolves.toBe(true);
+    await expect(MongoTmpData.findOne({ dataId }).lean()).resolves.toMatchObject({
+      data: { code, issueId: 'new-issue' },
+      expireAt: expect.any(Date)
+    });
   });
 
   it('only reports material that is still active', async () => {

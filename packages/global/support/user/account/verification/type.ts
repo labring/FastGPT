@@ -50,6 +50,8 @@ export type VerificationMaterialByType = {
   };
   code: {
     code: string;
+    /** Distinguishes different issuances when the same numeric code is generated again. */
+    issueId?: string;
   };
   captcha: {
     code: string;

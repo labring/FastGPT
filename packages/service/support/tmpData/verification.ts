@@ -10,6 +10,7 @@ import {
   type VerificationType,
   type VerificationTtlPreset
 } from '@fastgpt/global/support/user/account/verification/type';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 export type Scene = AccountVerificationPurpose;
 export type Type = VerificationType;
@@ -35,6 +36,8 @@ type VerificationUpsertParams<T extends Type> = VerificationDataIdParamsByType<T
   ttlPreset: VerificationTtlPreset;
   session?: ClientSession;
 };
+
+type VerificationCreateParams<T extends Type> = VerificationUpsertParams<T>;
 
 type VerificationUpdateParams<T extends Type> = VerificationUpsertParams<T>;
 
@@ -69,6 +72,10 @@ export const getDataId = <T extends Type>({
   key
 }: VerificationDataIdParamsByType<T>) => `verification:v1:${scene}:${type}:${key}`;
 
+/** 为账号下的单个验证码生成稳定且不暴露验证码明文的材料 key。 */
+export const getCodeVerificationKey = ({ account, code }: { account: string; code: string }) =>
+  `${account}:${hashStr(code.toLowerCase())}`;
+
 /** 将材料字段转换为 Mongo 查询字段，字段名受具体材料类型约束。 */
 const getDataMatch = (match: VerificationConsumeMatch) =>
   Object.fromEntries(Object.entries(match).map(([field, value]) => [`data.${field}`, value]));
@@ -92,6 +99,9 @@ const findActiveRecord = async <T extends Type>(
 const getExpireAt = (ttlPreset: VerificationTtlPreset) =>
   new Date(Date.now() + VerificationTtlSeconds[ttlPreset] * 1000);
 
+const isMongoDuplicateKeyError = (error: unknown) =>
+  !!error && typeof error === 'object' && 'code' in error && error.code === 11000;
+
 /**
  * 身份验证材料的临时存取包装。
  *
@@ -99,6 +109,40 @@ const getExpireAt = (ttlPreset: VerificationTtlPreset) =>
  * 通过无关的泛型把验证码材料当成其它材料读取，也不能拼写不存在的字段。
  */
 export const verification = {
+  /**
+   * 仅在同 ID 不存在有效材料时创建，用于允许同账号的不同验证码并存。
+   * 过期记录可能尚未被 TTL 索引清理，因此创建前会精确删除同 ID 的过期记录。
+   */
+  createIfInactive: async <T extends Type>(params: VerificationCreateParams<T>) => {
+    const dataId = getDataId(params);
+    const sessionOptions = params.session ? { session: params.session } : {};
+
+    await MongoTmpData.deleteOne(
+      {
+        dataId,
+        expireAt: { $lte: new Date() }
+      },
+      sessionOptions
+    );
+
+    try {
+      await MongoTmpData.create(
+        [
+          {
+            dataId,
+            data: params.data,
+            expireAt: getExpireAt(params.ttlPreset)
+          }
+        ],
+        sessionOptions
+      );
+      return true;
+    } catch (error) {
+      if (isMongoDuplicateKeyError(error)) return false;
+      throw error;
+    }
+  },
+
   /** 覆盖同一场景、类型和 key 的材料，并刷新过期时间。 */
   upsert: async <T extends Type>(params: VerificationUpsertParams<T>) => {
     const dataId = getDataId(params);
