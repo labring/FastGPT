@@ -112,26 +112,6 @@ const EditForm = ({
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
 
-  // 简易应用不暴露多模态开关，文件选择能力直接跟随模型能力。
-  useEffect(() => {
-    setAppForm((state) => ({
-      ...state,
-      chatConfig: {
-        ...state.chatConfig,
-        ...(state.chatConfig.fileSelectConfig
-          ? {
-              fileSelectConfig: {
-                ...state.chatConfig.fileSelectConfig,
-                canSelectImg: !!selectedModel.vision,
-                canSelectAudio: !!selectedModel.audio,
-                canSelectVideo: !!selectedModel.video
-              }
-            }
-          : {})
-      }
-    }));
-  }, [selectedModel, setAppForm]);
-
   useEffect(() => {
     if (
       appForm.dataset.datasetSearchUsingExtensionQuery &&
@@ -402,7 +382,6 @@ const EditForm = ({
         {/* File select */}
         <Box {...BoxStyles}>
           <FileSelectConfig
-            forbidVision={!selectedModel?.vision}
             value={appForm.chatConfig.fileSelectConfig}
             onChange={(e) => {
               setAppForm((state) => ({
