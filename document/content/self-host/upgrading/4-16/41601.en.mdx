@@ -45,7 +45,14 @@ PORT=1006
 PREVIEW_PORT=1007
 ```
 
-### 3. Migrate Agent Sandbox data
+### 3. Image environment variable changes
+
+Environments that enable OpenSandbox must update the following environment variables:
+
+- `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO` and `AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG` are no longer supported. Remove them and set the full image in `AGENT_SANDBOX_OPENSANDBOX_IMAGE`, for example `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0`; this variable is required when `opensandbox` is enabled, and startup fails if it is missing.
+- Volume Manager no longer reads `VM_VOLUME_NAME_PREFIX`. Configure `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` on both `fastgpt-app` and `fastgpt-pro`, and remove `VM_VOLUME_NAME_PREFIX` from the volume-manager service. Keep the previous value when upgrading so existing persistent volumes can still be cleaned up by their original names.
+
+### 4. Migrate Agent Sandbox data
 
 This release changes App Chat's Agent Sandbox from “one instance per conversation” to “one shared instance per App and user.” Files from different conversations remain isolated under `sessions/<chatId>`. Published Skills are stored in the shared `projects` directory.
 
@@ -84,7 +91,7 @@ The migration first runs all V4.15.0-beta6 normalization steps. It fills in `sou
 
 Check `normalization.pendingCount`, `normalizationBlocked`, `failedCount`, `failures`, `skippedCount`, and `skipped` in the response. When both `normalization.pendingCount` and `failedCount` are `0` and `normalizationBlocked` is `false`, every non-skipped Sandbox has been migrated. Legacy records listed in `skipped` remain in place and are not migrated.
 
-### 4. Migrate manual HTTP tool data
+### 5. Migrate manual HTTP tool data
 
 This release changes array parameters in manually configured HTTP tools to standard JSON Schema. Environments with manual HTTP tools created before the upgrade must run this migration. OpenAPI-mode HTTP tools do not require migration and are skipped automatically.
 

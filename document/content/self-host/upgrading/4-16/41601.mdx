@@ -20,7 +20,7 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 
 预览 URL 是短期只读 bearer capability，不只授权 URL 中的单个文件。获得链接的人可以在有效期内修改 URL 路径，读取同一 Sandbox Workspace 中的其他文件，请勿将链接分享给不应访问该 Workspace 的用户。
 
-本版本还新增以下可选配置：
+本版本 `fastgpt-app` 和 `fastgpt-pro` 还新增以下可选配置：
 
 | 变量                                  | 默认值 | 说明                                                                                                         |
 | ------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
@@ -34,7 +34,7 @@ E2B Sandbox Provider 已移除。此前配置过 E2B 的环境需要切换为 `o
 
 > FastGPT、`fastgpt-agent-sandbox-proxy` 和 `fastgpt-agent-sandbox` 的预览协议已同步变更。启用 Agent Sandbox 时必须使用本版本配套镜像，不支持新旧版本混合部署。
 
-### 2. 更新 Agent-sandbox-proxy 环境变量
+### 2. 更新 Agent-sandbox-proxy 环境变量（可选）
 
 4.16.0 需要依赖 proxy 进行静态资源代理访问，如果网关支持 ws 和 http 在同一个端口，则可以只开放一个端口。如果不支持，可以通过设置 `PREVIEW_PORT` 来设置 http 访问端口。
 
@@ -45,7 +45,14 @@ PORT=1006
 PREVIEW_PORT=1007
 ```
 
-### 3. 迁移 Agent Sandbox 数据
+### 3. 镜像变更
+
+启用 OpenSandbox 的环境需要同步调整以下环境变量：
+
+- `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO` 和 `AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG` 已移除，不再兼容。请删除这两个变量，改为配置完整的 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，例如 `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0`；启用 `opensandbox` 时该项为必填，未配置会阻止服务启动。
+- Volume Manager 不再读取 `VM_VOLUME_NAME_PREFIX`。请在 `fastgpt-app` 和 `fastgpt-pro` 中配置 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX`，并从 volume-manager 服务中移除 `VM_VOLUME_NAME_PREFIX`；升级时需沿用原值，否则历史持久卷可能无法按原名称清理。
+
+### 4. 迁移 Agent Sandbox 数据
 
 本版本将 App Chat 的 Agent Sandbox 从“每个对话一个实例”调整为“同一 App、同一用户共享一个实例”。不同对话的文件仍分别保存在 `sessions/<chatId>` 目录中，已发布 Skill 则统一保存在共享的 `projects` 目录中。
 
@@ -84,7 +91,7 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
 
 请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount`、`failures`、`skippedCount` 和 `skipped`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示所有未跳过的 Sandbox 迁移完成；`skipped` 中的 Legacy 记录会保留且不会迁移。
 
-### 4. 迁移手动 HTTP 工具数据
+### 5. 迁移 HTTP 工具数据
 
 本版本将手动模式 HTTP 工具的数组参数改为标准 JSON Schema。升级前创建过手动 HTTP 工具的环境需要执行此迁移；OpenAPI 模式的 HTTP 工具无需迁移，脚本会自动跳过。
 

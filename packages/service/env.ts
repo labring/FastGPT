@@ -114,14 +114,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: z.string().optional().meta({
       description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
     }),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().optional().meta({
-      description: 'Deprecated OpenSandbox image repository fallback',
-      deprecated: true
-    }),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().optional().meta({
-      description: 'Deprecated OpenSandbox image tag fallback',
-      deprecated: true
-    }),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),

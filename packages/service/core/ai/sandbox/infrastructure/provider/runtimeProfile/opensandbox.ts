@@ -30,17 +30,7 @@ const OPEN_SANDBOX_DOCKER_LOCAL_NETWORK_POLICY = {
  */
 export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
   const workDirectory = OPEN_SANDBOX_DEFAULT_ROOT_PATH;
-  const defaultImage = (() => {
-    const image = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim();
-    if (image) return parseImageSpec(image);
-
-    const repository = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO?.trim() ?? '';
-    if (!repository) return { repository };
-    return {
-      repository,
-      tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG?.trim() || 'latest'
-    };
-  })();
+  const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim());
 
   return {
     provider: 'opensandbox',

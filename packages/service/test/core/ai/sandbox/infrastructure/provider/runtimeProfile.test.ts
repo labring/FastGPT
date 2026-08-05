@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
   AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI
@@ -20,14 +18,6 @@ describe('sandbox runtime profile', () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
     vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
-    );
-    vi.stubEnv(
       'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
@@ -38,8 +28,6 @@ describe('sandbox runtime profile', () => {
   it('uses fixed /workspace as opensandbox work directory', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'registry.local:5000/runtime-image:stable');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'legacy/image');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'legacy-tag');
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
     const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
@@ -54,34 +42,6 @@ describe('sandbox runtime profile', () => {
       entrypoint: '/home/sandbox/entrypoint.sh'
     });
     expect(runtimeProfile.skillsRootPath).toBe('/workspace/skills');
-  });
-
-  it('falls back to the legacy opensandbox repo and tag variables', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', '');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'legacy/runtime-image');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'legacy-stable');
-
-    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
-
-    expect(getSandboxRuntimeProfile('opensandbox').defaultImage).toEqual({
-      repository: 'legacy/runtime-image',
-      tag: 'legacy-stable'
-    });
-  });
-
-  it('defaults the legacy opensandbox image tag to latest', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', '');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'legacy/runtime-image');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', '');
-
-    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
-
-    expect(getSandboxRuntimeProfile('opensandbox').defaultImage).toEqual({
-      repository: 'legacy/runtime-image',
-      tag: 'latest'
-    });
   });
 
   it('preserves an explicit opensandbox ready timeout', async () => {
