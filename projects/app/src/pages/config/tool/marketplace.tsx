@@ -48,6 +48,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
+type MarketplaceToolCardItemType = ToolCardItemType & { installedVersion?: string };
 const TOOL_GRID_TEMPLATE_COLUMNS =
   'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
@@ -160,8 +161,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   // Use custom hook for URL params management
   const { searchText, tagIds, sourceFilter, updateParams } = useSearchParams();
 
-  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
-  const [selectedInstalledVersion, setSelectedInstalledVersion] = useState<string>();
+  const [selectedTool, setSelectedTool] = useState<MarketplaceToolCardItemType | null>(null);
   const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
   const [updatingToolIds, updatingToolIdsDispatch] = useSet<string>();
   const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
@@ -329,8 +329,16 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           if (selectedTool?.id === tool.id && shouldReinstallOfflineTool) {
             setSelectedTool(null);
           } else if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
-            setSelectedInstalledVersion(version ?? tool.version);
+            setSelectedTool((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    installed: true,
+                    installedVersion: version ?? tool.version,
+                    update: false
+                  }
+                : null
+            );
           }
           await refreshInstalledPlugins();
         } finally {
@@ -390,8 +398,16 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
-            setSelectedInstalledVersion(version ?? tool.version);
+            setSelectedTool((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    installed: true,
+                    installedVersion: version ?? tool.version,
+                    update: false
+                  }
+                : null
+            );
           }
           await refreshInstalledPlugins();
         } finally {
@@ -448,8 +464,11 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           });
 
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, installed: false, update: false } : null));
-            setSelectedInstalledVersion(undefined);
+            setSelectedTool((prev) =>
+              prev
+                ? { ...prev, installed: false, installedVersion: undefined, update: false }
+                : null
+            );
           }
           await refreshInstalledPlugins();
         } finally {
@@ -546,7 +565,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     };
   }, []);
 
-  const displayTools: ToolCardItemType[] = useMemo(() => {
+  const displayTools: MarketplaceToolCardItemType[] = useMemo(() => {
     return (
       tools
         ?.map((tool) => {
@@ -573,6 +592,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
             }),
             installed: isInstalled,
+            installedVersion: installedTool?.version,
             update,
             version: tool.version,
             etag: tool.etag,
@@ -955,12 +975,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                         return Promise.resolve();
                       }}
                       onUpdate={() => handleUpdateToolWithErrorHandling(tool)}
-                      onClickCard={() => {
-                        setSelectedTool(tool);
-                        setSelectedInstalledVersion(
-                          systemInstalledPlugins?.map.get(tool.id)?.version
-                        );
-                      }}
+                      onClickCard={() => setSelectedTool(tool)}
                       showActionButton={!tool.installed}
                     />
                   );
@@ -975,10 +990,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
       {!!selectedTool && (
         <ToolDetailDrawer
-          onClose={() => {
-            setSelectedTool(null);
-            setSelectedInstalledVersion(undefined);
-          }}
+          onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
           showPoint={false}
           onToggleInstall={(_, version) =>
@@ -991,7 +1003,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onUpdate={(version) => handleUpdateToolWithErrorHandling(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
-          installedVersion={selectedInstalledVersion}
+          installedVersion={selectedTool.installedVersion}
           mode="admin"
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
