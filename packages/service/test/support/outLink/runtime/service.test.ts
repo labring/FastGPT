@@ -266,6 +266,35 @@ describe('runOutlinkRuntime', () => {
     expect(dispatchWorkFlow).not.toHaveBeenCalled();
   });
 
+  it('stops delivering workflow chunks after the responder fails', async () => {
+    let releaseSecondChunk!: () => void;
+    const secondChunk = new Promise<void>((resolve) => {
+      releaseSecondChunk = resolve;
+    });
+    vi.mocked(dispatchWorkFlow).mockImplementation(async (props) => {
+      props.workflowStreamResponse?.(workflowSseEvent.answerDelta('first'));
+      await secondChunk;
+      props.workflowStreamResponse?.(workflowSseEvent.answerDelta('second'));
+      return workflowResult as any;
+    });
+    const events: OutlinkResponseEvent[] = [];
+    const respond = vi.fn(async (stream: AsyncIterable<OutlinkResponseEvent>) => {
+      for await (const event of stream) {
+        events.push(event);
+        if (event.type === 'chunk') throw new Error('chunk failed');
+      }
+    });
+
+    const result = runOutlinkRuntime({ outLinkConfig, message, respond });
+    await vi.waitFor(() =>
+      expect(events).toEqual([{ type: 'start' }, { type: 'chunk', content: 'first' }])
+    );
+    releaseSecondChunk();
+    await result;
+
+    expect(events).toEqual([{ type: 'start' }, { type: 'chunk', content: 'first' }]);
+  });
+
   it('resets chats when a quoted provider message precedes the command', async () => {
     const { respond, events } = createResponder();
 

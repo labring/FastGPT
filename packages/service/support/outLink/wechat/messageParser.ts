@@ -33,7 +33,7 @@ export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[]
     if (msg.message_type !== WechatMessageType.USER) continue;
 
     if (msg.message_id === undefined) continue;
-    const messageId = String(msg.message_id);
+    const messageId = msg.message_id;
 
     const items = (msg.item_list ?? []).filter(isSupportedMessageItem);
     if (items.length === 0) continue;

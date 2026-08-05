@@ -177,6 +177,11 @@ const createResponseController = (respond: OutlinkResponder) => {
       return startFailure;
     }
 
+    if (!result.success && !terminal) {
+      terminal = true;
+      stream.destroy();
+    }
+
     settleResult(result);
     return result;
   };
