@@ -7,7 +7,7 @@ import { runOutlinkRuntime } from '../runtime/service';
 import type { OutlinkProviderMessageHandler } from '../runtime/type';
 import { ILinkClient } from './ilinkClient';
 import { createWechatOutlinkAdapter } from './adapter';
-import type { WechatReplyJobData } from './type';
+import type { WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 

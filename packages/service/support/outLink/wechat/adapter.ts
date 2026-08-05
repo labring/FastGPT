@@ -21,7 +21,7 @@ import type {
   OutlinkQueryResolveOptions,
   OutlinkResponder
 } from '../../../support/outLink/runtime/type';
-import type { WechatReplyJobData } from './type';
+import type { WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
 import {
   WechatMessageItemType,
   type CDNMedia,
@@ -56,7 +56,7 @@ export const createWechatOutlinkAdapter = ({
   appId
 }: CreateWechatOutlinkAdapterProps) => {
   const chatId = `wechat_${jobData.shareId}_${jobData.userId}`;
-  const items = jobData.items ?? [];
+  const items = (jobData.items ?? []) as MessageItem[];
 
   /** 将微信媒体字段的两种 AES key 编码还原为 AES-128-ECB 原始密钥。 */
   const parseAesKey = (aesKey: string) => {
