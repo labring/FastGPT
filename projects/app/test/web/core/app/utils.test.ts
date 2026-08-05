@@ -57,6 +57,45 @@ describe('form2AppWorkflow', () => {
     expect(result.edges).toHaveLength(1);
   });
 
+  it('should preserve file upload settings independently from model capabilities', () => {
+    const fileSelectConfigs = [
+      {
+        canSelectFile: true,
+        canSelectImg: true,
+        canSelectAudio: true,
+        canSelectVideo: true
+      },
+      {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectAudio: false,
+        canSelectVideo: false
+      }
+    ];
+    const workflows = fileSelectConfigs.map((fileSelectConfig) => {
+      const form = getDefaultAppForm();
+      form.chatConfig.fileSelectConfig = fileSelectConfig;
+
+      return form2AppWorkflow(form, mockT);
+    });
+
+    expect(workflows.map((workflow) => workflow.chatConfig.fileSelectConfig)).toEqual(
+      fileSelectConfigs
+    );
+
+    const getMultimodalInputs = (workflow: (typeof workflows)[number]) => {
+      const aiNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.chatNode);
+
+      return [
+        NodeInputKeyEnum.aiChatVision,
+        NodeInputKeyEnum.aiChatAudio,
+        NodeInputKeyEnum.aiChatVideo
+      ].map((key) => aiNode?.inputs.find((input) => input.key === key)?.value);
+    };
+
+    expect(getMultimodalInputs(workflows[0])).toEqual(getMultimodalInputs(workflows[1]));
+  });
+
   it('roundtrips simple app sandbox entrypoint through the tool call node', () => {
     const form: AppFormEditFormType = {
       aiSettings: {
@@ -394,6 +433,45 @@ describe('getAppQGuideCustomURL', () => {
 
 describe('appWorkflow2AgentForm', () => {
   const mockT = (str: string) => str;
+
+  it('should preserve agent file upload settings independently from model capabilities', () => {
+    const fileSelectConfigs = [
+      {
+        canSelectFile: true,
+        canSelectImg: true,
+        canSelectAudio: true,
+        canSelectVideo: true
+      },
+      {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectAudio: false,
+        canSelectVideo: false
+      }
+    ];
+    const workflows = fileSelectConfigs.map((fileSelectConfig) => {
+      const form = getDefaultAppForm();
+      form.chatConfig.fileSelectConfig = fileSelectConfig;
+
+      return agentForm2AppWorkflow(form, mockT);
+    });
+
+    expect(workflows.map((workflow) => workflow.chatConfig.fileSelectConfig)).toEqual(
+      fileSelectConfigs
+    );
+
+    const getMultimodalInputs = (workflow: (typeof workflows)[number]) => {
+      const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+
+      return [
+        NodeInputKeyEnum.aiChatVision,
+        NodeInputKeyEnum.aiChatAudio,
+        NodeInputKeyEnum.aiChatVideo
+      ].map((key) => agentNode?.inputs.find((input) => input.key === key)?.value);
+    };
+
+    expect(getMultimodalInputs(workflows[0])).toEqual(getMultimodalInputs(workflows[1]));
+  });
 
   it('should normalize dataset rerank fields from partial datasetParams', () => {
     const result = appWorkflow2AgentForm({
