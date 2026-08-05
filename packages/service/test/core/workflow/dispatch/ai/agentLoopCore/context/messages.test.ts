@@ -200,7 +200,7 @@ describe('agentLoopCore reminder helpers', () => {
     expect(result.indexOf('## 文件')).toBeLessThan(result.indexOf('## 知识库'));
     expect(result.indexOf('## 知识库')).toBeLessThan(result.indexOf('## 背景信息'));
     expect(result).toContain('<description>产品 &lt;FAQ&gt; &amp; 售后说明</description>');
-    expect(result).toContain('当前 sandbox 工作目录: /workspace');
+    expect(result).toContain('当前沙盒的工作目录: /workspace');
     expect(result).toContain('帮我总结');
   });
 });
