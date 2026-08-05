@@ -89,6 +89,10 @@ const nextConfig: NextConfig = {
     turbopackFileSystemCacheForDev: false
   },
   outputFileTracingRoot: path.join(__dirname, '../../'),
+  outputFileTracingIncludes: {
+    // Node 24 resolves @swc/helpers through module-sync, but Next 16.3 does not trace all ESM helpers.
+    '*': ['../../node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/esm/**/*']
+  },
   // Exclude build-time-only packages from standalone output file tracing
   outputFileTracingExcludes: {
     '*': [
