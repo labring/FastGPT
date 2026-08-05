@@ -50,12 +50,8 @@ const formatFetchError = (err: unknown) => {
 };
 
 export type WeixinMessage = {
-  /**
-   * 官方 OpenClaw 插件同样通过 JSON.parse 解析该字段，未处理 uint64 精度问题。
-   *
-   * @example 7488885545455209000
-   */
-  message_id?: number;
+  /** WeChat message IDs are uint64 and must remain strings after parsing. */
+  message_id?: string;
   from_user_id?: string;
   to_user_id?: string;
   message_type?: number;
@@ -222,7 +218,16 @@ export class ILinkClient {
     });
     try {
       const raw = await this.post('ilink/bot/getupdates', body, LONG_POLL_TIMEOUT_MS);
-      return JSON.parse(raw);
+      // ! JSON.parse reviver context.source requires Node.js >=22.
+      return (
+        JSON.parse as (
+          text: string,
+          reviver: (key: string, value: unknown, context: { source: string }) => unknown
+        ) => GetUpdatesResponse
+      )(raw, (key, value, context) => {
+        if (key !== 'message_id' || typeof value !== 'number') return value;
+        return context.source;
+      });
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         return { ret: 0, msgs: [], get_updates_buf: buf };

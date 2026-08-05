@@ -12,7 +12,7 @@
 // 当前流程（串行）
 Poll Job:
   getUpdates                           // ~0-35s 长轮询
-  → outlinkInvokeChat (slow LLM)       // ~可能几分钟
+  → provider adapter → runOutlinkRuntime (slow LLM) // ~可能几分钟
   → client.sendMessage                  // ~几秒
   → scheduleNextPoll                    // ← 回复完才续链
 ```
@@ -43,7 +43,7 @@ Worker 每 lockDuration/2 续一次锁
 |---|---|
 | `REPLY_LOCK_MS = 30min` + `stalledInterval = 60s` | 抗住 GC/网络抖动、长回复，理论上给足余量 |
 | 幂等 `replyJobId = wechat-reply:{shareId}:{lastMsgId}` | 拦住队列层的重复入队 |
-| `outlinkInvokeChat` 内部按 `messageId` 幂等（由被调用方保证） | 真发生 stalled retry / attempt 重试时，保证不重复回复 |
+| `runOutlinkRuntime` 内部按 `messageId` 幂等（由 provider adapter 调用） | 真发生 stalled retry / attempt 重试时，保证不重复回复 |
 
 ## 目标
 
@@ -177,7 +177,7 @@ import { ILinkClient } from './ilinkClient';
 import type { WechatPollJobData, WechatReplyJobData } from './type';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
-import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
+import { runOutlinkRuntime } from '../../../support/outLink/runtime/service';
 import { setRedisCache, getRedisCache } from '../../../common/redis/cache';
 import { groupMessagesByUser } from './messageParser';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -331,18 +331,24 @@ async function processWechatReplyJob(job: Job<WechatReplyJobData>): Promise<void
   const chatId = `wechat_${shareId}_${userId}`;
 
   try {
-    await outlinkInvokeChat({
+    await runOutlinkRuntime({
       outLinkConfig: outLink,
-      chatId,
-      query: [{ text: { content: text } }],
-      messageId: lastMsgId,
-      chatUserId: userId,
-      onReply: async (replyContent: string) => {
-        await client.sendMessage({
-          to_user_id: userId,
-          text: replyContent,
-          context_token: contextToken
-        });
+      message: {
+        chatId,
+        query: [{ text: { content: text } }],
+        messageId: lastMsgId,
+        chatUserId: userId
+      },
+      respond: async (events) => {
+        for await (const event of events) {
+          if (event.type === 'done' || event.type === 'error') {
+            await client.sendMessage({
+              to_user_id: userId,
+              text: event.content,
+              context_token: contextToken
+            });
+          }
+        }
       }
     });
 
@@ -459,10 +465,10 @@ export const stopWechatPolling = async (shareId: string): Promise<void> => {
 | 回复阻塞拉取 | 拆 `wechatReply` 队列，poll dispatch 后立即续链 | `mq.ts` processWechatPollJob |
 | 续链重复 | `pollJobId = wechat-poll:{shareId}` 幂等 | `scheduleNextPoll` |
 | 回复重复（入队重复） | `replyJobId = wechat-reply:{shareId}:{lastMsgId}` 幂等 | `processWechatReplyJob` |
-| 回复重复（stalled retry / attempt 重试） | 依赖 `outlinkInvokeChat` 按 `messageId` 自身幂等 | — |
+| 回复重复（stalled retry / attempt 重试） | 依赖 provider adapter 调用的 `runOutlinkRuntime` 按 `messageId` 自身幂等 | — |
 | enqueue 失败丢消息 | 先 dispatch reply 成功后才推进 `syncBuf`；at-least-once + 幂等键去重 | poll worker 1) → 2) 顺序 |
 | 重试时错误提示被重复发 | 仅最后一次 attempt 失败才发 defaultResponse | `processWechatReplyJob` catch |
-| 长回复被 stalled 误判 | `REPLY_LOCK_MS = 30min` 足够长 + `outlinkInvokeChat` 幂等兜底 | worker 配置 |
+| 长回复被 stalled 误判 | `REPLY_LOCK_MS = 30min` 足够长 + `runOutlinkRuntime` 幂等兜底 | worker 配置 |
 | `stopWechatPolling` 残留链 | 主动 `queue.getJob().remove()` | `stopWechatPolling` |
 | 服务重启多实例 | `resumeAllWechatPolling` 用幂等 jobId，BullMQ 自然去重 | `resumeAllWechatPolling` |
 

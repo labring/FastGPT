@@ -18,7 +18,8 @@
 │     ┌──────────┴──────────┐                             │
 │     │  1. getUpdates()    │                             │
 │     │  2. 按用户分组合并   │                             │
-│     │  3. outlinkInvokeChat│                            │
+│     │  3. provider adapter │                            │
+│     │     → runOutlinkRuntime                            │
 │     │  4. sendMessage()   │                             │
 │     │  5. 更新 buf        │                             │
 │     │  6. 自链: queue.add │  ←── 完成后立刻创建下一个    │
@@ -49,7 +50,7 @@ Worker 消费 Job
     ├── 2. 检查渠道状态（离线 → 不续链，轮询自然停止）
     ├── 3. 调用 ilink getUpdates(buf)（长轮询，最多 35 秒）
     ├── 4. 收到消息 → groupMessagesByUser → 合并文本
-    ├── 5. 对每组调用 outlinkInvokeChat → sendMessage 回复
+    ├── 5. 对每组通过 provider adapter 调用 runOutlinkRuntime → sendMessage 回复
     ├── 6. 更新 buf 到数据库
     └── 7. 自链: queue.add 创建下一个 Job
 ```
