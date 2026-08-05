@@ -1,4 +1,4 @@
-import { authFrequencyLimit } from '../../../common/system/frequencyLimit/utils';
+import { assertRedisFrequencyLimit } from '../../../common/system/frequencyLimit/redisFixedWindow';
 import type {
   AuthOutLinkInitProps,
   AuthOutLinkLimitProps,
@@ -7,7 +7,6 @@ import type {
 import { axios } from '../../../common/api/axios';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
-import { addMinutes } from 'date-fns';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { S3_KEY_PATH_INVALID_CHARS } from '../../../common/s3/config/constants';
 
@@ -55,10 +54,11 @@ const authIpLimit = async ({ ip, outLink }: { ip: string; outLink: OutLinkSchema
   }
 
   try {
-    await authFrequencyLimit({
-      eventId: `${outLink._id}-${ip}`,
-      maxAmount: outLink.limit.QPM,
-      expiredTime: addMinutes(new Date(), 1)
+    await assertRedisFrequencyLimit({
+      group: 'out-link',
+      id: `${outLink._id}:${ip}`,
+      limit: outLink.limit.QPM,
+      seconds: 60
     });
   } catch (error) {
     return Promise.reject(new UserError(`每分钟仅能请求 ${outLink.limit.QPM} 次~`));

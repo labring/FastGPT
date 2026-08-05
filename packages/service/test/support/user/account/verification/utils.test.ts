@@ -1,5 +1,5 @@
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { getRedisRuntime, toPhysicalRedisKey } from '@fastgpt/dal/redis/runtime';
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   assertCaptchaVerificationConsumeFrequency,
@@ -8,13 +8,19 @@ import {
   assertPasswordVerificationCreateFrequency,
   assertPasswordVerificationConsumeFrequency
 } from '@fastgpt/service/support/user/account/verification/utils';
+import { FREQUENCY_LIMIT_KEY_PREFIX } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
+
+const getVerificationFrequencyLimitKey = (id: string) =>
+  toPhysicalRedisKey(`${FREQUENCY_LIMIT_KEY_PREFIX}:account-verification:${id}`);
+
+const getRedisConnection = () => getRedisRuntime().getCommandConnection();
 
 describe('assertCodeVerificationConsumeFrequency', () => {
   const account = 'verification-rate-limit@example.com';
-  const key = `account-verification:code:consume:register:${account}`;
+  const key = getVerificationFrequencyLimitKey(`code:consume:register:${account}`);
 
   beforeEach(async () => {
-    await getGlobalRedisConnection().del(key);
+    await getRedisConnection().del(key);
   });
 
   it('allows 10 attempts and rejects the 11th attempt', async () => {
@@ -47,14 +53,14 @@ describe('assertCodeVerificationConsumeFrequency', () => {
 describe('account verification frequency actions', () => {
   const account = 'verification-actions@example.com';
   const keys = [
-    `account-verification:captcha:create:register:${account}`,
-    `account-verification:captcha:consume:register:${account}`,
-    `account-verification:password:create:login:${account}`,
-    `account-verification:password:consume:login:${account}`
+    getVerificationFrequencyLimitKey(`captcha:create:register:${account}`),
+    getVerificationFrequencyLimitKey(`captcha:consume:register:${account}`),
+    getVerificationFrequencyLimitKey(`password:create:login:${account}`),
+    getVerificationFrequencyLimitKey(`password:consume:login:${account}`)
   ];
 
   beforeEach(async () => {
-    await getGlobalRedisConnection().del(...keys);
+    await getRedisConnection().del(...keys);
   });
 
   it.each([
@@ -102,8 +108,8 @@ describe('account verification frequency actions', () => {
       UserErrEnum.verifyCodeTooFrequently
     );
 
-    const ttl = await getGlobalRedisConnection().ttl(
-      `account-verification:password:create:login:${account}`
+    const ttl = await getRedisConnection().ttl(
+      getVerificationFrequencyLimitKey(`password:create:login:${account}`)
     );
     expect(ttl).toBeGreaterThan(0);
     expect(ttl).toBeLessThanOrEqual(60);

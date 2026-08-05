@@ -30,7 +30,8 @@ describe('FixedWindowRateLimitCache', () => {
     });
     expect(consumeFixedWindow).toHaveBeenCalledWith({
       key: 'frequency:chat:team-1',
-      windowSeconds: 60
+      windowSeconds: 60,
+      increment: 1
     });
   });
 
@@ -46,7 +47,23 @@ describe('FixedWindowRateLimitCache', () => {
     });
     expect(consumeFixedWindow).toHaveBeenCalledWith({
       key: 'frequency:chat:team-1',
-      windowSeconds: 60
+      windowSeconds: 60,
+      increment: 1
+    });
+  });
+
+  it('passes a custom increment to Redis', async () => {
+    await cache.consume({
+      key: 'frequency:upload:member-1',
+      limit: 10,
+      windowSeconds: 60,
+      increment: 3
+    });
+
+    expect(consumeFixedWindow).toHaveBeenCalledWith({
+      key: 'frequency:upload:member-1',
+      windowSeconds: 60,
+      increment: 3
     });
   });
 
@@ -55,6 +72,19 @@ describe('FixedWindowRateLimitCache', () => {
     async (limit) => {
       await expect(
         cache.consume({ key: 'frequency:chat:team-1', limit: limit as any })
+      ).rejects.toMatchObject({
+        code: 'REDIS_INVALID_ARGUMENT',
+        operation: 'fixedWindow.consume'
+      });
+      expect(consumeFixedWindow).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, '2'])(
+    'rejects invalid increment %s before Redis access',
+    async (increment) => {
+      await expect(
+        cache.consume({ key: 'frequency:chat:team-1', limit: 5, increment: increment as any })
       ).rejects.toMatchObject({
         code: 'REDIS_INVALID_ARGUMENT',
         operation: 'fixedWindow.consume'

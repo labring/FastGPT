@@ -1,6 +1,6 @@
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { checkFixedWindowQpmLimit } from '../../../../common/system/frequencyLimit/redisFixedWindow';
+import { checkRedisFrequencyLimit } from '../../../../common/system/frequencyLimit/redisFixedWindow';
 
 const CodeVerificationConsumeQpm = 10;
 const CodeVerificationConsumeWindowSeconds = 60;
@@ -23,8 +23,9 @@ const assertVerificationFrequency = async ({
   limit?: number;
   seconds?: number;
 }) => {
-  const allowed = await checkFixedWindowQpmLimit({
-    key: `account-verification:${action}:${scene}:${account}`,
+  const allowed = await checkRedisFrequencyLimit({
+    group: 'account-verification',
+    id: `${action}:${scene}:${account}`,
     limit,
     seconds
   });

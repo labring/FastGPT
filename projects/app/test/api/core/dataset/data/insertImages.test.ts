@@ -5,7 +5,7 @@ const {
   mockResolveMultipleFormData,
   mockClearDiskTempFiles,
   mockAuthDatasetCollection,
-  mockAuthFrequencyLimit,
+  mockAssertRedisFrequencyLimit,
   mockGetTeamPlanStatus,
   mockReadFile,
   mockGetFileS3Key,
@@ -18,7 +18,7 @@ const {
   mockResolveMultipleFormData: vi.fn(),
   mockClearDiskTempFiles: vi.fn(),
   mockAuthDatasetCollection: vi.fn(),
-  mockAuthFrequencyLimit: vi.fn(),
+  mockAssertRedisFrequencyLimit: vi.fn(),
   mockGetTeamPlanStatus: vi.fn(),
   mockReadFile: vi.fn(),
   mockGetFileS3Key: {
@@ -46,8 +46,8 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: mockAuthDatasetCollection
 }));
 
-vi.mock('@fastgpt/service/common/system/frequencyLimit/utils', () => ({
-  authFrequencyLimit: mockAuthFrequencyLimit
+vi.mock('@fastgpt/service/common/system/frequencyLimit/redisFixedWindow', () => ({
+  assertRedisFrequencyLimit: mockAssertRedisFrequencyLimit
 }));
 
 vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({

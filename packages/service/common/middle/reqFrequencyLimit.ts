@@ -1,9 +1,8 @@
-import { authFrequencyLimit } from '../system/frequencyLimit/utils';
-import { addSeconds } from 'date-fns';
 import { jsonRes } from '../response';
 import { serviceEnv } from '../../env';
 import { getClientIpFromRequest } from '../security/clientIp';
 import type { NodeApiResponse, NodeHttpRequest } from '../../types/http';
+import { checkIPFrequencyLimit } from '../system/frequencyLimit/redisFixedWindow';
 
 // unit: times/s
 // how to use?
@@ -25,14 +24,15 @@ export function useIPFrequencyLimit({
     }
 
     const ip = getClientIpFromRequest(req) ?? 'unknown';
-    try {
-      await authFrequencyLimit({
-        eventId: `ip-qps-limit-${id}-` + ip,
-        maxAmount: limit,
-        expiredTime: addSeconds(new Date(), seconds)
-      });
-    } catch (_) {
-      jsonRes(res, {
+    const allowed = await checkIPFrequencyLimit({
+      id,
+      ip,
+      limit,
+      seconds
+    });
+
+    if (!allowed) {
+      return jsonRes(res, {
         code: 429,
         error: `Too many request, request ${limit} times every ${seconds} seconds`
       });

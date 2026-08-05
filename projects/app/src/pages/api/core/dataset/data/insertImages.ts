@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
-import { addDays, addSeconds } from 'date-fns';
+import { assertRedisFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
+import { addDays } from 'date-fns';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -57,11 +57,12 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     }
 
     const planStatus = await getTeamPlanStatus({ teamId });
-    await authFrequencyLimit({
-      eventId: `${tmbId}-uploadfile`,
-      maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
-      expiredTime: addSeconds(new Date(), 30), // 30s
-      num: result.fileMetadata.length
+    await assertRedisFrequencyLimit({
+      group: 'upload',
+      id: String(tmbId),
+      limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      seconds: 30,
+      increment: result.fileMetadata.length
     });
 
     const imageIds = await Promise.all(

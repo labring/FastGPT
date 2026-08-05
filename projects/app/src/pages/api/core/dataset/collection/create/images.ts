@@ -12,8 +12,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
-import { addDays, addSeconds } from 'date-fns';
+import { assertRedisFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
+import { addDays } from 'date-fns';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
@@ -53,11 +53,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
 
     const planStatus = await getTeamPlanStatus({ teamId });
-    await authFrequencyLimit({
-      eventId: `${tmbId}-uploadfile`,
-      maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
-      expiredTime: addSeconds(new Date(), 30), // 30s
-      num: result.fileMetadata.length
+    await assertRedisFrequencyLimit({
+      group: 'upload',
+      id: String(tmbId),
+      limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      seconds: 30,
+      increment: result.fileMetadata.length
     });
 
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({

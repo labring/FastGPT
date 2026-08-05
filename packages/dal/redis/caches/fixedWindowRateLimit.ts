@@ -40,11 +40,13 @@ export class FixedWindowRateLimitCache {
   async consume({
     key,
     limit,
-    windowSeconds = 60
+    windowSeconds = 60,
+    increment = 1
   }: {
     key: string;
     limit: number;
     windowSeconds?: number;
+    increment?: number;
   }): Promise<FixedWindowRateLimitResult> {
     const parsedLimit = PositiveSafeIntegerSchema.safeParse(limit);
     if (!parsedLimit.success) {
@@ -54,9 +56,18 @@ export class FixedWindowRateLimitCache {
       });
     }
 
+    const parsedIncrement = PositiveSafeIntegerSchema.safeParse(increment);
+    if (!parsedIncrement.success) {
+      throw new RedisInvalidArgumentError({
+        operation: 'fixedWindow.consume',
+        message: 'increment must be a positive safe integer'
+      });
+    }
+
     const { currentCount, ttlSeconds } = await this.redis.consumeFixedWindow({
       key: asRedisLogicalKey(key),
-      windowSeconds
+      windowSeconds,
+      increment: parsedIncrement.data
     });
 
     return {
