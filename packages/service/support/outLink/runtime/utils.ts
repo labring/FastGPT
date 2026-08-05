@@ -28,7 +28,12 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { authOutLinkLimit } from './auth';
 import { addOutLinkUsage } from '../../../support/outLink/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { appendRedisCache } from '../../../common/redis/cache';
+import {
+  OUTLINK_STREAM_CONTENT_TTL_SECONDS,
+  OUTLINK_STREAM_END_FLAG,
+  OUTLINK_STREAM_INITIAL_TTL_SECONDS,
+  outLinkStreamCache
+} from '@fastgpt/dal/redis/caches';
 import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { getUsageSourceByPublishChannel } from '@fastgpt/global/support/wallet/usage/tools';
 import {
@@ -110,8 +115,7 @@ export type outLinkInvokeChatProps<T extends OutlinkAppType> = {
 
 const DEFAULT_REPLY = 'This is default reply';
 
-export const STREAM_END_FLAG = '[DONE]';
-export const STREAM_CACHE_KEY_PREFIX = 'streamResponse:';
+export const STREAM_END_FLAG = OUTLINK_STREAM_END_FLAG;
 
 export async function outlinkInvokeChat<T extends OutlinkAppType>({
   outLinkConfig,
@@ -123,7 +127,6 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   onStreamChunk,
   streamId
 }: outLinkInvokeChatProps<T>) {
-  const streamResKey = `${STREAM_CACHE_KEY_PREFIX}${streamId}`;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: '',
@@ -155,8 +158,16 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       });
       await onReply?.(RESET_CHAT_REPLY);
       if (streamId) {
-        await appendRedisCache(streamResKey, RESET_CHAT_REPLY, 60);
-        await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
+        await outLinkStreamCache.append({
+          streamId,
+          value: RESET_CHAT_REPLY,
+          ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
+        });
+        await outLinkStreamCache.append({
+          streamId,
+          value: STREAM_END_FLAG,
+          ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
+        });
       }
       return;
     }
@@ -206,7 +217,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
               const text = data.choices?.[0]?.delta?.content;
               if (text) {
                 if (streamId) {
-                  await appendRedisCache(streamResKey, text, 60);
+                  await outLinkStreamCache.append({
+                    streamId,
+                    value: text,
+                    ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
+                  });
                 }
                 if (onStreamChunk) {
                   await onStreamChunk(text);
@@ -225,7 +240,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     // Initialize Redis key only when needed
     if (streamId) {
-      await appendRedisCache(streamResKey, '', 120);
+      await outLinkStreamCache.append({
+        streamId,
+        value: '',
+        ttlSeconds: OUTLINK_STREAM_INITIAL_TTL_SECONDS
+      });
     }
 
     // Merge global variables from database
@@ -364,7 +383,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     });
 
     if (streamId) {
-      await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
+      await outLinkStreamCache.append({
+        streamId,
+        value: STREAM_END_FLAG,
+        ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
+      });
     }
   } catch (error) {
     const { preparedRound } = roundState;
@@ -411,7 +434,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     try {
       if (streamId) {
-        await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
+        await outLinkStreamCache.append({
+          streamId,
+          value: STREAM_END_FLAG,
+          ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
+        });
       }
       await onReply?.(`App run error: ${getErrText(error)}`);
     } catch (error) {

@@ -1,19 +1,21 @@
-import { getWorker, getQueue, QueueNames, type Job } from '../../../common/bullmq';
+import {
+  wechatMQService,
+  WECHAT_POLL_JOB_NAME,
+  type Job,
+  type WechatPollJobData,
+  type WechatReplyJobData
+} from '@fastgpt/dal/redis/bullmq';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { ILinkClient } from './ilinkClient';
-import type { WechatPollJobData, WechatReplyJobData } from './type';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
-import { delRedisCache, getRedisCache, setRedisCache } from '../../../common/redis/cache';
+import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
 import { groupMessagesByUser } from './messageParser';
 import { serviceEnv } from '../../../env';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
-
-const POLL_JOB_NAME = 'wechatPublishPoll';
-const REPLY_JOB_NAME = 'wechatPublishReply';
 
 const MAX_CONSECUTIVE_FAILURES = 5;
 const FAILURE_BACKOFF_MS = 10_000;
@@ -31,7 +33,6 @@ const POLL_HARD_TIMEOUT_MS = 120_000;
 // 续链在 worker 'completed' / 'failed' 事件里发起，此时 job 已从 Redis 删除，add 不会冲突
 const pollJobId = (shareId: string) => `wechat-poll:${shareId}`;
 const replyJobId = (shareId: string, lastMsgId: string) => `wechat-reply:${shareId}:${lastMsgId}`;
-const failKey = (shareId: string) => `wechat:publish:failures:${shareId}`;
 
 /* ============ Poll Worker 处理器 ============ */
 // 设计约定：
@@ -107,8 +108,7 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
       errmsg: resp.errmsg
     });
 
-    const failures = Number((await getRedisCache(failKey(shareId))) ?? '0') + 1;
-    await setRedisCache(failKey(shareId), String(failures), 300);
+    const failures = await wechatPollingFailureCache.increment(shareId);
 
     if (failures >= MAX_CONSECUTIVE_FAILURES) {
       await MongoOutLink.updateOne(
@@ -116,14 +116,14 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
         { $set: { 'app.status': 'error', 'app.lastError': resp.errmsg || 'Too many failures' } }
       );
       logger.error('Too many failures, stop polling', { shareId, failures });
-      await delRedisCache(failKey(shareId));
+      await wechatPollingFailureCache.clear(shareId);
     }
 
     // 抛错走 'failed' 事件 → 续链带退避
     throw new Error(`getUpdates API error: ret=${resp.ret} errcode=${resp.errcode}`);
   }
 
-  await setRedisCache(failKey(shareId), '0', 300);
+  await wechatPollingFailureCache.reset(shareId);
 
   const hadMessages = Boolean(resp.msgs && resp.msgs.length > 0);
 
@@ -136,11 +136,9 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
       userGroups: groups.length
     });
 
-    const replyQueue = getQueue<WechatReplyJobData>(QueueNames.wechatReply);
     await Promise.all(
       groups.map((g) =>
-        replyQueue.add(
-          REPLY_JOB_NAME,
+        wechatMQService.addReplyJob(
           {
             shareId,
             userId: g.userId,
@@ -214,9 +212,7 @@ async function processWechatReplyJob(job: Job<WechatReplyJobData>): Promise<void
 //   - 如果链正在运行（job 处于 active），add 会因 jobId 冲突被 BullMQ 静默忽略（幂等）
 //   - 如果链已死（无 job），add 正常入队
 async function scheduleNextPoll(shareId: string, delayMs?: number): Promise<void> {
-  const queue = getQueue<WechatPollJobData>(QueueNames.wechatPoll);
-  const job = await queue.add(
-    POLL_JOB_NAME,
+  const job = await wechatMQService.addPollJob(
     { shareId },
     {
       jobId: pollJobId(shareId),
@@ -256,23 +252,19 @@ async function shouldContinuePolling(shareId: string): Promise<boolean> {
  * 初始化微信轮询 / 回复 Worker
  */
 export const initWechatPollWorker = async () => {
-  const pollWorker = getWorker<WechatPollJobData, boolean>(
-    QueueNames.wechatPoll,
-    processWechatPollJob,
-    {
-      // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
-      concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
-      lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
-      stalledInterval: 30_000, // 30s 检查下是否活跃
-      removeOnComplete: { count: 0 },
-      removeOnFail: { count: 0 }
-    }
-  );
+  const pollWorker = wechatMQService.getPollWorker(processWechatPollJob, {
+    // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
+    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
+    lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
+    stalledInterval: 30_000, // 30s 检查下是否活跃
+    removeOnComplete: { count: 0 },
+    removeOnFail: { count: 0 }
+  });
 
   // 成功完成：续链。事件内 add 因 job 已被移除，不会冲突。
   // 有消息立即续链清空积压；无消息（空响应）延迟 EMPTY_POLL_DELAY_MS，避免服务端秒回空包时退化成热循环。
   pollWorker.on('completed', async (job, hadMessages) => {
-    if (job.name !== POLL_JOB_NAME) return;
+    if (job.name !== WECHAT_POLL_JOB_NAME) return;
     const { shareId } = job.data as WechatPollJobData;
     try {
       await scheduleNextPoll(shareId, hadMessages ? undefined : EMPTY_POLL_DELAY_MS);
@@ -283,7 +275,7 @@ export const initWechatPollWorker = async () => {
 
   // 失败：续链（带退避）。渠道仍 online 时尝试恢复
   pollWorker.on('failed', async (job) => {
-    if (!job || job.name !== POLL_JOB_NAME) return;
+    if (!job || job.name !== WECHAT_POLL_JOB_NAME) return;
     const { shareId } = job.data as WechatPollJobData;
     logger.warn('Wechat poll job failed', {
       shareId,
@@ -300,7 +292,7 @@ export const initWechatPollWorker = async () => {
     }
   });
 
-  getWorker<WechatReplyJobData>(QueueNames.wechatReply, processWechatReplyJob, {
+  wechatMQService.getReplyWorker(processWechatReplyJob, {
     concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
     lockDuration: REPLY_LOCK_MS,
     stalledInterval: 60_000,
@@ -340,9 +332,8 @@ async function resumeAllWechatPolling(): Promise<void> {
  * 启动某个渠道的轮询
  */
 export const startWechatPolling = async (shareId: string): Promise<void> => {
-  const queue = getQueue<WechatPollJobData>(QueueNames.wechatPoll);
   // 重新登录后优先丢弃旧的 offline/delayed poll job，避免确定 jobId 被旧任务占用。
-  await queue.remove(pollJobId(shareId)).catch((error) => {
+  await wechatMQService.removePollJob(pollJobId(shareId)).catch((error) => {
     logger.warn('Remove old wechat poll job before start failed (job may be active)', {
       shareId,
       error: String(error)
@@ -360,8 +351,7 @@ export const stopWechatPolling = async (shareId: string): Promise<void> => {
   await MongoOutLink.updateOne({ shareId }, { $set: { 'app.status': 'offline', 'app.token': '' } });
 
   // Delete job from queue
-  const queue = getQueue<WechatPollJobData>(QueueNames.wechatPoll);
-  await queue.remove(pollJobId(shareId)).catch((error) => {
+  await wechatMQService.removePollJob(pollJobId(shareId)).catch((error) => {
     logger.warn('Remove poll job failed (job may be active)', { shareId, error: String(error) });
   });
 

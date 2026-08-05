@@ -1,42 +1,14 @@
-import { getQueue, getWorker, QueueNames } from '../../bullmq';
 import { getLogger, LogCategories } from '../../logger';
 import path from 'path';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { deleteS3DownloadAliasByObjects } from '../accessLink';
+import { s3FileDeleteMQService, type S3MQJobData } from '@fastgpt/dal/redis/bullmq';
+
+export type { S3MQJobData } from '@fastgpt/dal/redis/bullmq';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
-export type S3MQJobData = {
-  key?: string;
-  keys?: string[];
-  prefix?: string;
-  bucketName: string;
-};
-
-const jobOption = {
-  attempts: 10,
-  removeOnFail: {
-    count: 10000,
-    age: 14 * 24 * 60 * 60
-  },
-  removeOnComplete: true,
-  backoff: {
-    delay: 2000,
-    type: 'exponential'
-  }
-};
-
-export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
-  const queue = getQueue<S3MQJobData>(QueueNames.s3FileDelete);
-  const jobId = (() => {
-    if (data.key) return data.key;
-    if (data.keys) return undefined;
-    if (data.prefix) return `${data.bucketName}:${data.prefix}`;
-    throw new Error('Invalid s3 delete job data');
-  })();
-
-  await queue.add('delete-s3-files', data, { jobId, ...jobOption });
-};
+export const addS3DelJob = (data: S3MQJobData) => s3FileDeleteMQService.addJob(data);
 
 const assertNoFailedKeys = (failedKeys: string[] | undefined, action: string) => {
   if (!failedKeys || failedKeys.length === 0) return;
@@ -96,13 +68,5 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
 };
 
 export const startS3DelWorker = async () => {
-  return getWorker<S3MQJobData>(
-    QueueNames.s3FileDelete,
-    async (job) => {
-      await executeS3DeleteJob(job.data);
-    },
-    {
-      concurrency: 6
-    }
-  );
+  return s3FileDeleteMQService.getWorker(async (job) => executeS3DeleteJob(job.data));
 };

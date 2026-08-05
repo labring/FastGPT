@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { configureRedisRuntime as configureTestRedisRuntime } from '@fastgpt/dal/redis/runtime';
 
 // In-memory storage for mock Redis
 const createRedisStorage = () => {
@@ -89,6 +90,13 @@ const createRedisStorage = () => {
       storage.set(key, next);
       return next;
     },
+    incrbyfloat: (key: string, increment: number) => {
+      if (isExpired(key)) storage.delete(key);
+      const current = Number(storage.get(key) ?? 0);
+      const next = current + Number(increment);
+      storage.set(key, next);
+      return String(next);
+    },
     pexpire: (key: string, milliseconds: number) => {
       if (isExpired(key) || !storage.has(key)) return 0;
       expiryMap.set(key, Date.now() + milliseconds);
@@ -158,11 +166,7 @@ const createSharedMockRedisClient = () => {
         Promise.resolve(globalRedisStorage.pexpire(key, milliseconds))
       ),
     keys: vi.fn().mockResolvedValue([]),
-    scan: vi.fn().mockImplementation((cursor) => {
-      if (cursor === '0') return ['100', ['key1', 'key2']];
-      if (cursor === '100') return ['0', ['key3']];
-      return ['0', []];
-    }),
+    scan: vi.fn().mockResolvedValue(['0', []]),
 
     // Hash operations
     hget: vi.fn().mockResolvedValue(null),
@@ -224,12 +228,32 @@ const createSharedMockRedisClient = () => {
     multi: vi.fn(() => {
       const commands: Array<() => [null, unknown]> = [];
       const pipeline = {
+        get: vi.fn((key: string) => {
+          commands.push(() => [null, globalRedisStorage.get(key)]);
+          return pipeline;
+        }),
+        hmset: vi.fn((_key: string, _fields: Record<string, string>) => {
+          commands.push(() => [null, globalRedisStorage.set(_key, _fields)]);
+          return pipeline;
+        }),
+        set: vi.fn((key: string, value: any, ...args: any[]) => {
+          commands.push(() => [null, globalRedisStorage.set(key, value, ...args)]);
+          return pipeline;
+        }),
         incr: vi.fn((key: string) => {
           commands.push(() => [null, globalRedisStorage.incr(key)]);
           return pipeline;
         }),
+        incrbyfloat: vi.fn((key: string, increment: number) => {
+          commands.push(() => [null, globalRedisStorage.incrbyfloat(key, increment)]);
+          return pipeline;
+        }),
         expire: vi.fn((key: string, seconds: number, mode?: string) => {
           commands.push(() => [null, globalRedisStorage.expire(key, seconds, mode)]);
+          return pipeline;
+        }),
+        ttl: vi.fn((key: string) => {
+          commands.push(() => [null, globalRedisStorage.ttl(key)]);
           return pipeline;
         }),
         exec: vi
@@ -244,26 +268,15 @@ const createSharedMockRedisClient = () => {
   };
 };
 
-// Mock Redis connections to prevent connection errors in tests
-vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
+const sharedRedisClient = createSharedMockRedisClient();
 
-  return {
-    ...actual,
-    newQueueRedisConnection: vi.fn(createSharedMockRedisClient),
-    newWorkerRedisConnection: vi.fn(createSharedMockRedisClient),
-    getGlobalRedisConnection: vi.fn(() => {
-      if (!global.mockRedisClient) {
-        global.mockRedisClient = createSharedMockRedisClient();
-      }
-      return global.mockRedisClient;
-    }),
-    initRedisClient: vi.fn().mockResolvedValue(createSharedMockRedisClient())
-  };
+// 通过公开配置入口让预加载的 service adapter 也使用内存 Redis，不依赖模块 mock 顺序。
+configureTestRedisRuntime({
+  redisUrl: 'redis://default:mypassword@localhost:6379',
+  clientFactory: (options) => {
+    const client = sharedRedisClient as any;
+    // Runtime 的 blocking/worker 角色必须拥有独立连接，测试中按 ioredis 的
+    // maxRetriesPerRequest=null 选项模拟 duplicate 生命周期，避免 XREAD 与 command 共用 mock。
+    return options.maxRetriesPerRequest === null ? (client.duplicate?.() ?? client) : client;
+  }
 });
-
-// Initialize global.redisClient with mock before any module imports it
-// This prevents getGlobalRedisConnection() from creating a real Redis client
-if (!global.redisClient) {
-  global.redisClient = createSharedMockRedisClient() as any;
-}

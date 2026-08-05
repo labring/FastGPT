@@ -1,4 +1,4 @@
-import type { Processor } from 'bullmq';
+import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import { type TeamDeleteJobData } from './index';
 import { MongoImage } from '../../../../common/file/image/schema';
 import { MongoOpenApi } from '../../../openapi/schema';

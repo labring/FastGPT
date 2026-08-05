@@ -1,4 +1,4 @@
-import type { Processor } from 'bullmq';
+import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import type { AppDeleteJobData } from './index';
 import { findAppAndAllChildren, deleteAppDataProcessor } from '../controller';
 import { batchRun } from '@fastgpt/global/common/system/utils';

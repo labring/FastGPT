@@ -1,4 +1,4 @@
-import type { Processor } from 'bullmq';
+import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import type { AgentSkillDeleteJobData } from './index';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';

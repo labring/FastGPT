@@ -1,6 +1,11 @@
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
-import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
+import {
+  StreamResumeCache,
+  type StreamResumeActiveState as DalStreamResumeActiveState,
+  type StreamResumeParams,
+  type StreamResumeUnavailableState as DalStreamResumeUnavailableState
+} from '@fastgpt/dal/redis/caches';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -25,6 +30,13 @@ export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
 export const STREAM_RESUME_INACTIVE_MS = 2 * 60 * 1000;
 
+const streamResumeCache = new StreamResumeCache({
+  logger,
+  streamTtlSeconds: STREAM_RESUME_TTL_SECONDS,
+  postCompleteTtlSeconds: STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
+  ttlTouchIntervalMs: STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
+});
+
 type ResumeRequestHeaderValue = string | string[] | undefined;
 type RedisMemoryPressureCache = {
   checkedAt: number;
@@ -37,11 +49,8 @@ let redisMemoryPressureCache: RedisMemoryPressureCache | undefined;
 let redisMemoryPressurePromise: Promise<boolean> | undefined;
 let lastLoggedMemoryPressureState: boolean | undefined;
 
-type StreamResumeRedisKeysParams = {
-  teamId: string;
+export type StreamResumeRedisKeysParams = StreamResumeParams & {
   sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  chatId: string;
 };
 
 export const getStreamResumeRedisKeys = ({
@@ -49,27 +58,13 @@ export const getStreamResumeRedisKeys = ({
   sourceType,
   sourceId,
   chatId
-}: StreamResumeRedisKeysParams) => ({
-  keyOfStream: `stream:resume:data:${teamId}:${sourceType}:${sourceId}:${chatId}`,
-  keyOfUnavailable: `stream:resume:unavailable:${teamId}:${sourceType}:${sourceId}:${chatId}`,
-  keyOfActive: `stream:resume:active:${teamId}:${sourceType}:${sourceId}:${chatId}`
-});
+}: StreamResumeRedisKeysParams) =>
+  streamResumeCache.getKeys({ teamId, sourceType, sourceId, chatId });
 
-type StreamResumeKeys = ReturnType<typeof getStreamResumeRedisKeys>;
-
-const getRawRedisKey = (key: string) => `${FASTGPT_REDIS_PREFIX}${key}`;
-
-const getStreamResumeRedisRawKeys = (keys: StreamResumeKeys) => ({
-  rawKeyOfStream: getRawRedisKey(keys.keyOfStream)
-});
-
-export type StreamResumeUnavailableState = {
+export type StreamResumeUnavailableState = DalStreamResumeUnavailableState & {
   reason: `${StreamResumeUnavailableReasonEnum}`;
 };
-
-export type StreamResumeActiveState = {
-  updatedAt: number;
-};
+export type StreamResumeActiveState = DalStreamResumeActiveState;
 
 const resumeRequestEnabledValues = new Set(['1', 'true', 'yes', 'on']);
 
@@ -85,14 +80,6 @@ export const isStreamResumeMirrorRequested = (headerValue?: ResumeRequestHeaderV
   if (!normalizedHeaderValue) return false;
 
   return resumeRequestEnabledValues.has(normalizedHeaderValue);
-};
-
-const parseRedisInfoNumber = (info: string, key: string) => {
-  const match = info.match(new RegExp(`(?:^|\\r?\\n)${key}:(\\d+)`));
-  if (!match) return undefined;
-
-  const value = Number(match[1]);
-  return Number.isFinite(value) ? value : undefined;
 };
 
 const logRedisMemoryPressureState = (cache: RedisMemoryPressureCache) => {
@@ -143,10 +130,7 @@ const isRedisMemoryPressureBlockingStreamResume = async () => {
 
   redisMemoryPressurePromise = (async () => {
     try {
-      const redis = getGlobalRedisConnection();
-      const info = await redis.info('memory');
-      const usedMemory = parseRedisInfoNumber(info, 'used_memory');
-      const maxMemory = parseRedisInfoNumber(info, 'maxmemory');
+      const { usedMemory, maxMemory } = await streamResumeCache.getMemoryInfo();
       const blocked =
         typeof usedMemory === 'number' &&
         typeof maxMemory === 'number' &&
@@ -187,76 +171,12 @@ export const resetStreamResumeMirrorGuardForTest = () => {
 const isResponseClosed = (res: NodeHttpResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
-const touchStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
-  const redis = getGlobalRedisConnection();
-  await redis.expire(keyOfStream, STREAM_RESUME_TTL_SECONDS);
-};
-
-const touchStreamResumeActiveState = async (keys: StreamResumeKeys) => {
-  const redis = getGlobalRedisConnection();
-  await redis.set(
-    keys.keyOfActive,
-    JSON.stringify({ updatedAt: Date.now() } satisfies StreamResumeActiveState),
-    'EX',
-    STREAM_RESUME_TTL_SECONDS
-  );
-};
-
-const touchStreamResumeState = async (keys: StreamResumeKeys) => {
-  await Promise.all([touchStreamResumeTTL(keys), touchStreamResumeActiveState(keys)]);
-};
-
-const shrinkStreamResumeTTL = async ({ keyOfStream, keyOfActive }: StreamResumeKeys) => {
-  const redis = getGlobalRedisConnection();
-  await Promise.all([
-    redis.expire(keyOfStream, STREAM_RESUME_POST_COMPLETE_TTL_SECONDS),
-    redis.expire(keyOfActive, STREAM_RESUME_POST_COMPLETE_TTL_SECONDS)
-  ]);
-};
-
-const setStreamResumeUnavailableState = async (
-  keys: StreamResumeKeys,
-  state: StreamResumeUnavailableState
-) => {
-  const redis = getGlobalRedisConnection();
-  await redis.set(keys.keyOfUnavailable, JSON.stringify(state), 'EX', STREAM_RESUME_TTL_SECONDS);
-};
-
-const clearStreamResumeUnavailableState = async (keys: StreamResumeKeys) => {
-  const redis = getGlobalRedisConnection();
-  await redis.del(keys.keyOfUnavailable);
-};
-
 export const getStreamResumeUnavailableState = async (params: StreamResumeRedisKeysParams) => {
-  const redis = getGlobalRedisConnection();
-  const keys = getStreamResumeRedisKeys(params);
-  const state = await redis.get(keys.keyOfUnavailable);
-
-  if (!state) return;
-
-  try {
-    const parsed = JSON.parse(state) as StreamResumeUnavailableState;
-    if (!parsed?.reason) return;
-    return parsed;
-  } catch {
-    return;
-  }
+  return streamResumeCache.getUnavailable(params);
 };
 
 export const getStreamResumeActiveState = async (params: StreamResumeRedisKeysParams) => {
-  const redis = getGlobalRedisConnection();
-  const keys = getStreamResumeRedisKeys(params);
-  const state = await redis.get(keys.keyOfActive);
-
-  if (!state) return;
-
-  try {
-    const parsed = JSON.parse(state) as StreamResumeActiveState;
-    if (!Number.isFinite(parsed?.updatedAt)) return;
-    return parsed;
-  } catch {
-    return;
-  }
+  return streamResumeCache.getActive(params);
 };
 
 export const isStreamResumeActiveStale = (
@@ -270,57 +190,15 @@ const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEnc
   return Buffer.from(chunk).toString(encoding || 'utf8');
 };
 
-/** 新一轮流式开始前清空 Redis 镜像，否则 XADD 会接在旧 Stream 后面，续传会重复历史 */
-const clearStreamResumeMirrorKeys = async (keys: StreamResumeKeys) => {
-  await Promise.all([
-    clearStreamResumeUnavailableState(keys),
-    getGlobalRedisConnection().del(keys.keyOfStream),
-    getGlobalRedisConnection().del(keys.keyOfActive)
-  ]);
-};
-
 export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
-  const redis = getGlobalRedisConnection();
-  const keys = getStreamResumeRedisKeys(params);
-  const rawKeys = getStreamResumeRedisRawKeys(keys);
-  /** 先清空上一轮镜像，再顺序 XADD；首个 chunk 一定排在清空之后 */
-  let queue: Promise<void> = clearStreamResumeMirrorKeys(keys).catch((error) => {
-    logger.error('Failed to clear stream resume redis keys before mirror', { params, error });
-  });
-  let lastTouchedAt = 0;
-
-  const enqueueRaw = (chunk: string) => {
-    queue = queue
-      .then(async () => {
-        await redis.call('XADD', rawKeys.rawKeyOfStream, '*', 'raw', chunk);
-        const now = Date.now();
-        if (lastTouchedAt === 0 || now - lastTouchedAt >= STREAM_RESUME_TTL_TOUCH_INTERVAL_MS) {
-          await touchStreamResumeState(keys);
-          lastTouchedAt = now;
-        }
-      })
-      .catch((error) => {
-        logger.error('Failed to mirror stream response to redis', { params, error });
-      });
-
-    return queue;
-  };
+  const mirror = streamResumeCache.createMirror(params);
 
   return {
-    ...keys,
+    ...getStreamResumeRedisKeys(params),
     enqueueRaw: (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) =>
-      enqueueRaw(chunkToString(chunk, encoding)),
-    flush: async () => {
-      await queue;
-    },
-    /** 队列刷完后调用：把续期从「生成中长 TTL」改为「结束后短 TTL」，否则最后一次 touch 仍会长留 30min */
-    shrinkTTLAfterComplete: async () => {
-      try {
-        await shrinkStreamResumeTTL(keys);
-      } catch (error) {
-        logger.error('Failed to shrink stream resume redis ttl', { params, error });
-      }
-    }
+      mirror.enqueueRaw(chunkToString(chunk, encoding)),
+    flush: mirror.flush,
+    shrinkTTLAfterComplete: mirror.shrinkTTLAfterComplete
   };
 };
 
@@ -330,14 +208,14 @@ export const getStreamResumeMirror = async ({
 }: StreamResumeRedisKeysParams & { resumeRequestHeaderValue?: ResumeRequestHeaderValue }) => {
   if (!isStreamResumeMirrorRequested(resumeRequestHeaderValue)) return;
 
-  const keys = getStreamResumeRedisKeys(params);
-
   if (await isRedisMemoryPressureBlockingStreamResume()) {
-    await setStreamResumeUnavailableState(keys, {
-      reason: StreamResumeUnavailableReasonEnum.memoryPressure
-    }).catch((error) => {
-      logger.warn('Failed to persist stream resume unavailable state', { params, error });
-    });
+    await streamResumeCache
+      .setUnavailable(params, {
+        reason: StreamResumeUnavailableReasonEnum.memoryPressure
+      })
+      .catch((error) => {
+        logger.warn('Failed to persist stream resume unavailable state', { params, error });
+      });
     return;
   }
 
@@ -345,18 +223,6 @@ export const getStreamResumeMirror = async ({
 };
 
 type RedisStreamFields = Record<string, string>;
-
-const parseRedisStreamFields = (rawFields: string[]) => {
-  const fields: RedisStreamFields = {};
-
-  for (let i = 0; i < rawFields.length; i += 2) {
-    const key = rawFields[i];
-    const value = rawFields[i + 1] ?? '';
-    fields[key] = value;
-  }
-
-  return fields;
-};
 
 const isTerminalRedisStreamFields = (fields: RedisStreamFields) => {
   if (fields.event === 'done' || fields.event === 'error') return true;
@@ -391,8 +257,6 @@ type ResumeBaseParams = StreamResumeRedisKeysParams & {
   res: NodeHttpResponse;
 };
 
-type XRangeResponse = [string, string[]][];
-
 /**
  * Replay the mirrored stream from the beginning for this HTTP connection only.
  * Does not read or write the shared Redis cursor key so multiple tabs / refresh-during-resume
@@ -403,31 +267,24 @@ export const catchUpAllHistoryItems = async ({
   maxReplayLength = 50,
   ...params
 }: ResumeBaseParams & { maxReplayLength?: number }) => {
-  const redis = getGlobalRedisConnection();
-  const keys = getStreamResumeRedisKeys(params);
-  const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
-
   let lastStreamId = '';
 
   while (!isResponseClosed(res)) {
     const rangeStart = lastStreamId ? `(${lastStreamId}` : '-';
 
-    const historyItems = (await redis.call(
-      'XRANGE',
-      rawKeyOfStream,
-      rangeStart,
-      '+',
-      'COUNT',
-      maxReplayLength
-    )) as XRangeResponse;
+    const historyItems = await streamResumeCache.range({
+      params,
+      start: rangeStart,
+      end: '+',
+      count: maxReplayLength
+    });
 
     if (historyItems.length === 0) {
       return lastStreamId;
     }
 
-    for (const [streamId, rawFields] of historyItems) {
+    for (const { id: streamId, fields } of historyItems) {
       lastStreamId = streamId;
-      const fields = parseRedisStreamFields(rawFields);
 
       writeRedisStreamFields({
         res,
@@ -448,88 +305,54 @@ export const catchUpAllHistoryItems = async ({
   return lastStreamId;
 };
 
-type XReadResponse = [string, [string, string[]][]][] | null;
-
 export const _resume = async ({
   res,
   cursor: initialCursor,
   ...params
 }: ResumeBaseParams & { cursor?: string }) => {
-  const redis = getGlobalRedisConnection();
-  // BLOCK reserves the socket until data arrives or timeout, so each in-flight resume uses a
-  // dedicated duplicated Redis connection. If high-concurrency deployments hit connection limits,
-  // consider fan-out or a shared blocking pool in a follow-up refactor.
-  const blockingRedis = redis.duplicate();
-  const keys = getStreamResumeRedisKeys(params);
-  const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
+  let cursor = initialCursor ?? '';
 
-  try {
-    let cursor = initialCursor ?? '';
+  if (cursor) {
+    const currentItems = await streamResumeCache.range({
+      params,
+      start: cursor,
+      end: cursor,
+      count: 1
+    });
 
-    if (cursor) {
-      const currentItem = (await redis.call(
-        'XRANGE',
-        rawKeyOfStream,
-        cursor,
-        cursor,
-        'COUNT',
-        1
-      )) as XRangeResponse;
-
-      if (currentItem.length > 0) {
-        const [, rawFields] = currentItem[0];
-        const fields = parseRedisStreamFields(rawFields);
-
-        if (isTerminalRedisStreamFields(fields)) {
-          return cursor;
-        }
-      }
-    }
-
-    while (!isResponseClosed(res)) {
-      const streamId = cursor || '$';
-      const result = (await blockingRedis.call(
-        'XREAD',
-        'BLOCK',
-        STREAM_RESUME_BLOCK_MS,
-        'COUNT',
-        1,
-        'STREAMS',
-        rawKeyOfStream,
-        streamId
-      )) as XReadResponse;
-
-      if (!result || result.length === 0) {
-        continue;
-      }
-
-      const [, streamItems] = result[0] || [];
-      if (!streamItems?.length) {
-        continue;
-      }
-
-      for (const [streamItemId, rawFields] of streamItems) {
-        cursor = streamItemId;
-
-        const fields = parseRedisStreamFields(rawFields);
-
-        writeRedisStreamFields({
-          res,
-          fields
-        });
-
-        if (isTerminalRedisStreamFields(fields) || isResponseClosed(res)) {
-          return cursor;
-        }
-      }
-    }
-
-    return cursor;
-  } finally {
-    try {
-      await blockingRedis.quit();
-    } catch {
-      blockingRedis.disconnect();
+    if (currentItems.length > 0 && isTerminalRedisStreamFields(currentItems[0].fields)) {
+      return cursor;
     }
   }
+
+  return streamResumeCache.withBlockingReader({
+    params,
+    blockMs: STREAM_RESUME_BLOCK_MS,
+    count: 1,
+    callback: async (blockingReader) => {
+      while (!isResponseClosed(res)) {
+        const streamId = cursor || '$';
+        const streamItems = await blockingReader.read(streamId);
+
+        if (streamItems.length === 0) {
+          continue;
+        }
+
+        for (const { id: streamItemId, fields } of streamItems) {
+          cursor = streamItemId;
+
+          writeRedisStreamFields({
+            res,
+            fields
+          });
+
+          if (isTerminalRedisStreamFields(fields) || isResponseClosed(res)) {
+            return cursor;
+          }
+        }
+      }
+
+      return cursor;
+    }
+  });
 };

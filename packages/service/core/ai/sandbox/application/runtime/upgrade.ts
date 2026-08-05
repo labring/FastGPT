@@ -18,7 +18,7 @@ import {
   startSandboxRuntimeUpgradeArchive
 } from '../archive';
 import { migrateSandboxProviderBeforeUse } from '../providerMigration';
-import { isRedisLeaseError } from '../../../../../common/redis/lock';
+import { isRedisLeaseError } from '@fastgpt/dal/redis/caches';
 import { createSandboxRuntimeUpgradeFailedError } from '../../error';
 import type { SandboxClientQuery } from './client';
 import { SANDBOX_PROVISIONING_STALE_MS } from './constants';
