@@ -171,7 +171,7 @@ describe('registration method validation', () => {
 
     const usernameOptions = mocks.register.mock.calls.find(([field]) => field === 'username')?.[1];
     const validateField = usernameOptions?.validate;
-    const validateBeforeSend = mocks.useSendCode.mock.calls[0]?.[0]?.validateUsername;
+    const validateBeforeSend = mocks.useSendCode.mock.calls[0]?.[0]?.validateBeforeSend;
 
     expect(validateField('user@example.com')).toBe(true);
     expect(validateField('13800138000')).toBe('common:error.registration_method_not_supported');

@@ -17,7 +17,7 @@ type UseSendCodeParams = {
   [T in VerificationCodeType]: {
     type: T;
     purpose: VerificationCodePurposeForType<T>;
-    validateUsername?: (username: string) => true | string;
+    validateBeforeSend?: (username: string) => true | string;
   };
 }[VerificationCodeType];
 
@@ -25,13 +25,14 @@ export const useSendCode = (params: UseSendCodeParams) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const [codeCountDown, setCodeCountDown] = useState(0);
+  const { validateBeforeSend, ...verificationParams } = params;
 
   const { runAsync: sendCode, loading: codeSending } = useRequest(
     async ({ username, captcha }: { username: string; captcha: string }) => {
       if (codeCountDown > 0) return;
       await sendAuthCode({
         username,
-        ...params,
+        ...verificationParams,
         captcha,
         lang: i18n.language as LangEnum
       });
@@ -50,7 +51,7 @@ export const useSendCode = (params: UseSendCodeParams) => {
     {
       successToast: t('user:password.code_sended'),
       errorToast: t('user:password.code_send_error'),
-      refreshDeps: [codeCountDown, params.type, params.purpose]
+      refreshDeps: [codeCountDown, verificationParams.type, verificationParams.purpose]
     }
   );
 
@@ -95,7 +96,7 @@ export const useSendCode = (params: UseSendCodeParams) => {
                       title: t('common:error.username_empty')
                     });
                   } else {
-                    const validationResult = params.validateUsername?.(username);
+                    const validationResult = validateBeforeSend?.(username);
                     if (typeof validationResult === 'string') {
                       toast({
                         status: 'warning',
@@ -114,7 +115,7 @@ export const useSendCode = (params: UseSendCodeParams) => {
           <SendCodeAuthModal
             onClose={onCloseCodeAuthModal}
             username={username}
-            purpose={params.purpose}
+            purpose={verificationParams.purpose}
             onSending={codeSending}
             onSendCode={sendCode}
           />

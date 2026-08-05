@@ -62,7 +62,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       if (AccountPhoneUsernameSchema.safeParse(value).success) return 'phone';
     })();
 
-    // validate username
     if (!method) return t('user:password.email_phone_error');
     return registerMethods.includes(method) || t('common:error.registration_method_not_supported');
   };
@@ -70,7 +69,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { SendCodeBox, openCodeAuthModal } = useSendCode({
     type: VerificationCodeTypeEnum.register,
     purpose: 'register',
-    validateUsername
+    validateBeforeSend: validateUsername
   });
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest(

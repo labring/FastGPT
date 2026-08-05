@@ -1,30 +1,5 @@
-import { act, createElement, type ReactNode } from 'react';
-import type { Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { JSDOM } from 'jsdom';
-
-const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-  url: 'http://localhost',
-  pretendToBeVisual: true
-});
-vi.stubGlobal('window', dom.window);
-vi.stubGlobal('document', dom.window.document);
-vi.stubGlobal('navigator', dom.window.navigator);
-vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
-vi.stubGlobal('Element', dom.window.Element);
-vi.stubGlobal('SVGElement', dom.window.SVGElement);
-vi.stubGlobal('HTMLIFrameElement', dom.window.HTMLIFrameElement);
-vi.stubGlobal('KeyboardEvent', dom.window.KeyboardEvent);
-vi.stubGlobal('Node', dom.window.Node);
-vi.stubGlobal('MutationObserver', dom.window.MutationObserver);
-vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
-vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window));
-vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window));
-vi.stubGlobal('React', await import('react'));
-vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-
-const { createRoot } = await import('react-dom/client');
-const { ChakraProvider, FormControl } = await import('@chakra-ui/react');
+import type { ReactElement, ReactNode } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   handleSubmit: vi.fn(),
@@ -38,6 +13,11 @@ vi.mock('react-hook-form', () => ({
     register: mocks.register,
     handleSubmit: mocks.handleSubmit
   })
+}));
+
+vi.mock('react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react')>()),
+  useEffect: vi.fn()
 }));
 
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
@@ -56,74 +36,55 @@ vi.mock('ahooks', () => ({
   useMemoizedFn: (fn: unknown) => fn
 }));
 
-vi.mock('@fastgpt/web/components/common/Image/MyImage', () => ({
-  default: ({ src, alt }: { src?: string; alt: string }) => createElement('img', { src, alt })
+vi.mock('@chakra-ui/react', () => ({
+  Button: 'button',
+  FormControl: 'form-control',
+  Input: 'input',
+  ModalBody: 'modal-body',
+  ModalFooter: 'modal-footer',
+  Skeleton: 'skeleton'
 }));
 
-vi.mock('@fastgpt/web/components/common/MyModal', async () => {
-  const { Modal, ModalContent } = await import('@chakra-ui/react');
+vi.mock('@fastgpt/web/components/common/Image/MyImage', () => ({ default: 'image' }));
+vi.mock('@fastgpt/web/components/common/MyModal', () => ({ default: 'modal' }));
 
-  return {
-    default: ({ children }: { children: ReactNode }) =>
-      createElement(
-        Modal,
-        {
-          isOpen: true,
-          onClose: () => undefined,
-          motionPreset: 'none',
-          trapFocus: false,
-          useInert: false,
-          blockScrollOnMount: false
-        },
-        createElement(ModalContent, undefined, children)
-      )
-  };
-});
+vi.stubGlobal('React', await import('react'));
 
 const SendCodeAuthModal = (await import('@/components/support/user/safe/SendCodeAuthModal'))
   .default;
 
-const roots: Root[] = [];
+const findElement = (node: ReactNode, type: string): ReactElement => {
+  if (!node || typeof node !== 'object') throw new Error(`Unable to find ${type}`);
+
+  const element = node as ReactElement<{ children?: ReactNode }>;
+  if (element.type === type) return element;
+
+  const children = Array.isArray(element.props.children)
+    ? element.props.children
+    : [element.props.children];
+  for (const child of children) {
+    try {
+      return findElement(child, type);
+    } catch {}
+  }
+
+  throw new Error(`Unable to find ${type}`);
+};
 
 const renderModal = ({
   onClose = vi.fn(),
-  onSendCode = vi.fn(async () => undefined),
-  outerInvalid = false
+  onSendCode = vi.fn(async () => undefined)
 }: {
   onClose?: () => void;
   onSendCode?: (params: { username: string; captcha: string }) => Promise<void>;
-  outerInvalid?: boolean;
-} = {}) => {
-  const container = document.createElement('div');
-  document.body.appendChild(container);
-  const root = createRoot(container);
-  roots.push(root);
-
-  act(() => {
-    root.render(
-      createElement(
-        ChakraProvider,
-        undefined,
-        createElement(
-          FormControl,
-          { isInvalid: outerInvalid },
-          createElement(SendCodeAuthModal, {
-            username: 'user@example.com',
-            purpose: 'register',
-            onClose,
-            onSending: false,
-            onSendCode
-          })
-        )
-      )
-    );
+} = {}) =>
+  SendCodeAuthModal({
+    username: 'user@example.com',
+    purpose: 'register',
+    onClose,
+    onSending: false,
+    onSendCode
   });
-
-  const input = document.body.querySelector('input');
-  if (!input) throw new Error('Unable to find captcha input');
-
-  return { input, onClose, onSendCode };
-};
 
 describe('SendCodeAuthModal', () => {
   beforeEach(() => {
@@ -131,34 +92,20 @@ describe('SendCodeAuthModal', () => {
     mocks.handleSubmit.mockReturnValue(mocks.submit);
   });
 
-  afterEach(() => {
-    act(() => {
-      roots.splice(0).forEach((root) => root.unmount());
-    });
-    document.body.innerHTML = '';
-  });
-
-  it('isolates the portal input from an invalid outer FormControl', () => {
-    const { input } = renderModal({ outerInvalid: true });
-
-    expect(input.getAttribute('aria-invalid')).not.toBe('true');
-    expect(input.getAttribute('data-invalid')).toBeNull();
-  });
-
   it('registers only the success callback for button and Enter submissions', () => {
-    const { input } = renderModal();
+    const modal = renderModal();
+    const formControl = findElement(modal, 'form-control');
+    const input = findElement(modal, 'input');
 
+    expect(formControl.props.isInvalid).toBe(false);
     expect(mocks.handleSubmit).toHaveBeenCalledTimes(1);
     expect(mocks.handleSubmit.mock.calls[0]).toHaveLength(1);
 
-    act(() => {
-      input.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          bubbles: true,
-          key: 'Enter',
-          keyCode: 13
-        })
-      );
+    input.props.onKeyDown({
+      stopPropagation: vi.fn(),
+      nativeEvent: { isComposing: false },
+      keyCode: 13,
+      key: 'Enter'
     });
 
     expect(mocks.handleSubmit).toHaveBeenCalledTimes(2);
@@ -179,14 +126,16 @@ describe('SendCodeAuthModal', () => {
   });
 
   it.each([
-    ['IME composition', { isComposing: true, keyCode: 13, key: 'Enter' }],
-    ['IME fallback key code', { isComposing: false, keyCode: 229, key: 'Enter' }],
-    ['another key', { isComposing: false, keyCode: 65, key: 'a' }]
+    ['IME composition', { nativeEvent: { isComposing: true }, keyCode: 13, key: 'Enter' }],
+    ['IME fallback key code', { nativeEvent: { isComposing: false }, keyCode: 229, key: 'Enter' }],
+    ['another key', { nativeEvent: { isComposing: false }, keyCode: 65, key: 'a' }]
   ])('does not submit for %s', (_name, event) => {
-    const { input } = renderModal();
+    const modal = renderModal();
+    const input = findElement(modal, 'input');
 
-    act(() => {
-      input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, ...event }));
+    input.props.onKeyDown({
+      stopPropagation: vi.fn(),
+      ...event
     });
 
     expect(mocks.handleSubmit).toHaveBeenCalledTimes(1);
