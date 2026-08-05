@@ -170,9 +170,6 @@ export const serviceEnv = createEnv({
     TEXTIN_SECRET_CODE: z.string().optional().meta({
       description: '合合信息 Textin 服务 Secret Code'
     }),
-    HOME_CHAT_CUSTOM_PDF_PARSE: BoolSchema.default(false).meta({
-      description: '首页聊天是否启用 PDF 增强解析'
-    }),
 
     // ==================== 数据库与缓存 ====================
     // Redisg
