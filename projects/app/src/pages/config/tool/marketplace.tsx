@@ -161,6 +161,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { searchText, tagIds, sourceFilter, updateParams } = useSearchParams();
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
+  const [selectedInstalledVersion, setSelectedInstalledVersion] = useState<string>();
   const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
   const [updatingToolIds, updatingToolIdsDispatch] = useSet<string>();
   const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
@@ -311,15 +312,25 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
             if (!downloadUrl) return;
 
-            await intallPluginWithUrl({
+            const installResult = await intallPluginWithUrl({
               downloadUrls: [downloadUrl]
             });
+            const failures = getBatchUpdateFailures({
+              toolIds: [tool.id],
+              downloadUrls: [downloadUrl],
+              installResult,
+              language: i18n.language
+            });
+            if (failures.length > 0) {
+              throw new Error(failures[0].reason);
+            }
           }
 
           if (selectedTool?.id === tool.id && shouldReinstallOfflineTool) {
             setSelectedTool(null);
           } else if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
+            setSelectedInstalledVersion(version ?? tool.version);
           }
           await refreshInstalledPlugins();
         } finally {
@@ -334,6 +345,17 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     {
       manual: true
     }
+  );
+
+  const handleInstallToolWithErrorHandling = useCallback(
+    async (tool: ToolCardItemType, version?: string) => {
+      try {
+        await handleInstallTool(tool, version);
+      } catch {
+        // useRequest 已统一展示安装失败提示，这里只消费拒绝的 Promise。
+      }
+    },
+    [handleInstallTool]
   );
 
   const handleUpdateTool = useCallback(
@@ -369,6 +391,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
+            setSelectedInstalledVersion(version ?? tool.version);
           }
           await refreshInstalledPlugins();
         } finally {
@@ -426,6 +449,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
           if (selectedTool?.id === tool.id) {
             setSelectedTool((prev) => (prev ? { ...prev, installed: false, update: false } : null));
+            setSelectedInstalledVersion(undefined);
           }
           await refreshInstalledPlugins();
         } finally {
@@ -925,13 +949,18 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                       variant="marketplace"
                       isInstallingOrDeleting={installingOrDeletingToolIds.has(tool.id)}
                       isUpdating={updatingToolIds.has(tool.id)}
-                      onInstall={() => handleInstallTool(tool)}
+                      onInstall={() => handleInstallToolWithErrorHandling(tool)}
                       onDelete={() => {
                         openMarketplaceUninstallConfirm(tool);
                         return Promise.resolve();
                       }}
                       onUpdate={() => handleUpdateToolWithErrorHandling(tool)}
-                      onClickCard={() => setSelectedTool(tool)}
+                      onClickCard={() => {
+                        setSelectedTool(tool);
+                        setSelectedInstalledVersion(
+                          systemInstalledPlugins?.map.get(tool.id)?.version
+                        );
+                      }}
                       showActionButton={!tool.installed}
                     />
                   );
@@ -946,10 +975,15 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
       {!!selectedTool && (
         <ToolDetailDrawer
-          onClose={() => setSelectedTool(null)}
+          onClose={() => {
+            setSelectedTool(null);
+            setSelectedInstalledVersion(undefined);
+          }}
           selectedTool={selectedTool}
           showPoint={false}
-          onToggleInstall={(_, version) => handleInstallTool(selectedTool, version)}
+          onToggleInstall={(_, version) =>
+            handleInstallToolWithErrorHandling(selectedTool, version)
+          }
           onDelete={() => {
             openMarketplaceUninstallConfirm(selectedTool);
             return Promise.resolve();
@@ -957,7 +991,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onUpdate={(version) => handleUpdateToolWithErrorHandling(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
-          installedVersion={systemInstalledPlugins?.map.get(selectedTool.id)?.version}
+          installedVersion={selectedInstalledVersion}
           mode="admin"
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
