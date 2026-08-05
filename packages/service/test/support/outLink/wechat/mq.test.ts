@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
   updateOne: vi.fn(),
   increment: vi.fn(),
   reset: vi.fn(),
-  clear: vi.fn()
+  clear: vi.fn(),
+  queueAdd: vi.fn()
 }));
 
 vi.mock('@fastgpt/dal/redis/bullmq', () => ({
@@ -131,7 +132,7 @@ describe('Wechat polling failure counter integration', () => {
       return { on: vi.fn() };
     });
     mocks.getQueue.mockReturnValue({
-      add: vi.fn(),
+      add: mocks.queueAdd,
       remove: vi.fn()
     });
     mocks.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
@@ -141,6 +142,7 @@ describe('Wechat polling failure counter integration', () => {
     mocks.increment.mockResolvedValue(1);
     mocks.reset.mockResolvedValue(undefined);
     mocks.clear.mockResolvedValue(true);
+    mocks.queueAdd.mockResolvedValue(undefined);
   });
 
   const getPollProcessor = async () => {
@@ -167,6 +169,39 @@ describe('Wechat polling failure counter integration', () => {
     expect(mocks.updateOne).toHaveBeenCalledWith(
       { shareId: 'share-1' },
       { $set: { 'app.syncBuf': 'next-cursor' } }
+    );
+  });
+
+  it('keeps rich message items in the reply job', async () => {
+    const items = [{ type: 1, text_item: { text: 'hello' } }];
+    mocks.getUpdates.mockResolvedValue({
+      ret: 0,
+      msgs: [
+        {
+          message_type: 1,
+          message_id: '18446744073709551615',
+          from_user_id: 'user-1',
+          context_token: 'context-token',
+          item_list: items
+        }
+      ]
+    });
+    const processor = await getPollProcessor();
+
+    await expect(processor?.(job)).resolves.toBe(true);
+    expect(mocks.queueAdd).toHaveBeenCalledWith(
+      'wechatPublishReply',
+      {
+        shareId: 'share-1',
+        userId: 'user-1',
+        items,
+        contextToken: 'context-token',
+        lastMsgId: '18446744073709551615'
+      },
+      {
+        jobId: 'wechat-reply:share-1:18446744073709551615',
+        backoff: { type: 'fixed', delay: 2000 }
+      }
     );
   });
 
