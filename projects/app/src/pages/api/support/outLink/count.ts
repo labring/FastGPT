@@ -32,7 +32,7 @@ async function handler(
     req,
     querySchema: OutLinkCountQuerySchema
   }).query;
-  await authApp({
+  const { teamId } = await authApp({
     req,
     authToken: true,
     appId,
@@ -42,6 +42,7 @@ async function handler(
   const groupedCounts = await MongoOutLink.aggregate<{ _id: OutLinkCountType; count: number }>([
     {
       $match: {
+        teamId: new Types.ObjectId(teamId),
         appId: new Types.ObjectId(appId),
         type: { $in: countTypes }
       }
