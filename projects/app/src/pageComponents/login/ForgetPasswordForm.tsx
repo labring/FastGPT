@@ -105,7 +105,13 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       <Box
         mt={9}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !requesting) {
+          if (
+            e.key === 'Enter' &&
+            !e.shiftKey &&
+            !e.nativeEvent.isComposing &&
+            e.keyCode !== 229 &&
+            !requesting
+          ) {
             handleSubmit(onclickFindPassword, onSubmitErr)();
           }
         }}

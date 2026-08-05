@@ -46,7 +46,7 @@
   "package_expiry_time": "套餐到期時間",
   "package_usage_rules": "套餐使用規則：系統優先使用更進階的套餐，原未用完的套餐將延遲生效",
   "password": "密碼",
-  "password_tip": "密碼至少 8 位，且至少包含兩種組合：數字、字母或特殊字元",
+  "password_tip": "至少 8 位，且至少包含數字、小寫字母、大寫字母或特殊字元中的兩種，不允許包含空格",
   "password_update_error": "修改密碼異常",
   "password_update_success": "修改密碼成功",
   "pending_usage": "待使用",

@@ -17,6 +17,7 @@ type UseSendCodeParams = {
   [T in VerificationCodeType]: {
     type: T;
     purpose: VerificationCodePurposeForType<T>;
+    validateUsername?: (username: string) => true | string;
   };
 }[VerificationCodeType];
 
@@ -94,6 +95,14 @@ export const useSendCode = (params: UseSendCodeParams) => {
                       title: t('common:error.username_empty')
                     });
                   } else {
+                    const validationResult = params.validateUsername?.(username);
+                    if (typeof validationResult === 'string') {
+                      toast({
+                        status: 'warning',
+                        title: validationResult
+                      });
+                      return;
+                    }
                     onOpenCodeAuthModal();
                   }
                 }
