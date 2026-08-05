@@ -131,6 +131,7 @@
   "code_error.account_error": "帳號名稱或密碼錯誤",
   "code_error.account_exist": "賬號已註冊",
   "code_error.account_not_found": "使用者未註冊",
+  "code_error.invalid_account": "帳號錯誤",
   "code_error.app_error.can_not_edit_admin_permission": "不能編輯管理員權限",
   "code_error.app_error.invalid_app_type": "無效的應用程式類型",
   "code_error.app_error.invalid_owner": "非法的應用程式擁有者",

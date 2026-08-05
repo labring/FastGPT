@@ -132,6 +132,7 @@
   "code_error.account_error": "账号名或密码错误",
   "code_error.account_exist": "账号已注册",
   "code_error.account_not_found": "用户未注册",
+  "code_error.invalid_account": "账号错误",
   "code_error.app_error.can_not_edit_admin_permission": "不能编辑管理员权限",
   "code_error.app_error.invalid_app_type": "错误的应用类型",
   "code_error.app_error.invalid_owner": "非法的应用所有者",

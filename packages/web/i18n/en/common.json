@@ -132,6 +132,7 @@
   "code_error.account_error": "Incorrect account name or password",
   "code_error.account_exist": "Account has been registered",
   "code_error.account_not_found": "User is not registered",
+  "code_error.invalid_account": "Incorrect account",
   "code_error.app_error.can_not_edit_admin_permission": "Can not edit admin permission",
   "code_error.app_error.invalid_app_type": "Invalid Application Type",
   "code_error.app_error.invalid_owner": "Unauthorized Application Owner",

@@ -9,7 +9,8 @@ export enum UserErrEnum {
   unAuthSso = 'unAuthSso',
   invalidVerificationCode = 'invalidVerificationCode',
   sendVerificationCodeTooFrequently = 'sendVerificationCodeTooFrequently',
-  verifyCodeTooFrequently = 'verifyCodeTooFrequently'
+  verifyCodeTooFrequently = 'verifyCodeTooFrequently',
+  invalidAccount = 'invalidAccount'
 }
 const errList = [
   {
@@ -42,6 +43,10 @@ const errList = [
     statusText: UserErrEnum.verifyCodeTooFrequently,
     message: i18nT('common:error.verify_code_too_frequently'),
     httpStatus: 429
+  },
+  {
+    statusText: UserErrEnum.invalidAccount,
+    message: i18nT('common:code_error.invalid_account')
   }
 ];
 export default errList.reduce((acc, cur, index) => {
