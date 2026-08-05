@@ -4,33 +4,27 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import * as countApi from '@/pages/api/support/outLink/count';
 
 describe('OutLink Count API', () => {
   let rootUser: Awaited<ReturnType<typeof getRootUser>>;
   let testApp: Awaited<ReturnType<typeof MongoApp.create>>;
   let otherApp: Awaited<ReturnType<typeof MongoApp.create>>;
+  let emptyApp: Awaited<ReturnType<typeof MongoApp.create>>;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     rootUser = await getRootUser();
     const appData = {
       type: 'simple' as const,
       tmbId: rootUser.tmbId,
       teamId: rootUser.teamId
     };
-    [testApp, otherApp] = await Promise.all([
+    [testApp, otherApp, emptyApp] = await Promise.all([
       MongoApp.create({ ...appData, name: 'Test App for OutLink Count' }),
-      MongoApp.create({ ...appData, name: 'Other App for OutLink Count' })
+      MongoApp.create({ ...appData, name: 'Other App for OutLink Count' }),
+      MongoApp.create({ ...appData, name: 'Empty App for OutLink Count' })
     ]);
-  });
-
-  afterEach(async () => {
-    await MongoOutLink.deleteMany({ appId: { $in: [testApp._id, otherApp._id] } });
-  });
-
-  afterAll(async () => {
-    await MongoApp.deleteMany({ _id: { $in: [testApp._id, otherApp._id] } });
   });
 
   const createOutLink = (appId: string, type: PublishChannelEnum) =>
@@ -77,7 +71,7 @@ describe('OutLink Count API', () => {
   it('returns zero for every countable channel without configurations', async () => {
     const res = await Call<OutLinkCountResponseType>(countApi.default, {
       auth: rootUser,
-      query: { appId: testApp._id }
+      query: { appId: emptyApp._id }
     });
 
     expect(res.code).toBe(200);
