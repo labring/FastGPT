@@ -797,7 +797,7 @@
   "error.folderMoveDepthLimit": "Cannot move here. The folder would exceed the depth limit.",
   "error.inheritPermissionError": "Inherit permission Error",
   "error.invalid_params": "Invalid parameter",
-  "error.registration_method_not_supported": "Unsupported user type",
+  "error.registration_method_not_supported": "Unsupported username",
   "error.llm_track_expired": "Request details expired",
   "error.missingParams": "Insufficient parameters",
   "error.s3_upload_invalid_file_type": "Unsupported file content or file extension does not match",

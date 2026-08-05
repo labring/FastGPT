@@ -791,7 +791,7 @@
   "error.folderMoveDepthLimit": "無法移入：該位置會使資料夾超出層級上限",
   "error.inheritPermissionError": "繼承權限錯誤",
   "error.invalid_params": "參數無效",
-  "error.registration_method_not_supported": "不支援的使用者類型",
+  "error.registration_method_not_supported": "不支援的用户名",
   "error.llm_track_expired": "請求詳情已過期",
   "error.missingParams": "參數不足",
   "error.s3_upload_invalid_file_type": "文件內容不受支援，或副檔名與內容不匹配",

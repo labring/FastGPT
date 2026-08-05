@@ -797,7 +797,7 @@
   "error.folderMoveDepthLimit": "无法移入：该位置会使文件夹超出层级上限",
   "error.inheritPermissionError": "权限继承错误",
   "error.invalid_params": "参数无效",
-  "error.registration_method_not_supported": "不支持的用户类型",
+  "error.registration_method_not_supported": "不支持的用户名",
   "error.llm_track_expired": "请求详情已过期",
   "error.missingParams": "参数缺失",
   "error.s3_upload_invalid_file_type": "文件内容不受支持，或文件后缀与内容不匹配",
