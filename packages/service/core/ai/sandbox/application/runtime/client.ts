@@ -538,6 +538,12 @@ export const getSandboxClient = async (
     return sandbox;
   } catch (error) {
     if (isRedisLeaseError(error)) throw createAgentSandboxInitializingError();
+    if (
+      error instanceof SandboxLifecycleStateError &&
+      error.state === SandboxInstanceStatusEnum.provisioning
+    ) {
+      throw createAgentSandboxInitializingError();
+    }
     throw error;
   }
 };

@@ -597,7 +597,8 @@ export async function restoreArchivedSandboxBeforeUse(params: {
   if (
     !initial ||
     initial.status === SandboxInstanceStatusEnum.running ||
-    initial.status === SandboxInstanceStatusEnum.stopped
+    initial.status === SandboxInstanceStatusEnum.stopped ||
+    initial.status === SandboxInstanceStatusEnum.provisioning
   ) {
     return;
   }
