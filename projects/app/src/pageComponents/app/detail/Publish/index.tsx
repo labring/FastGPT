@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
@@ -208,7 +208,11 @@ const OutLink = () => {
 
             return (
               <Box key={group}>
-                <Flex
+                <Button
+                  variant={'unstyled'}
+                  display={'flex'}
+                  w={'full'}
+                  h={'auto'}
                   py={2}
                   pl={2}
                   pr={2}
@@ -224,18 +228,28 @@ const OutLink = () => {
                   justifyContent={'space-between'}
                   alignItems={'center'}
                   onClick={onClick}
+                  aria-expanded={isOpen}
+                  _focusVisible={{
+                    bg: 'rgba(17, 24, 36, 0.05)'
+                  }}
                 >
-                  <Box fontWeight={'medium'}>{name}</Box>
+                  <Box minW={0} fontWeight={'medium'} textAlign={'left'} whiteSpace={'normal'}>
+                    {name}
+                  </Box>
                   <MyIcon
                     name={'core/chat/chevronDown'}
                     w={'1rem'}
                     transform={isOpen ? undefined : 'rotate(-90deg)'}
                   />
-                </Flex>
+                </Button>
                 {isOpen &&
                   items.map((item) => (
-                    <Flex
+                    <Button
                       key={item.value}
+                      variant={'unstyled'}
+                      display={'flex'}
+                      w={'full'}
+                      h={'auto'}
                       fontSize={'sm'}
                       fontWeight={500}
                       rounded={'md'}
@@ -244,16 +258,21 @@ const OutLink = () => {
                       pr={2}
                       cursor={'pointer'}
                       mb={0.5}
+                      justifyContent={'space-between'}
                       {...(linkType === item.value
                         ? {
                             bg: 'primary.50',
                             color: 'primary.600',
-                            _hover: { bg: 'primary.50' }
+                            _hover: { bg: 'primary.50' },
+                            _focusVisible: { bg: 'primary.50' }
                           }
                         : {
                             bg: 'transparent',
                             color: 'myGray.500',
                             _hover: {
+                              bg: 'rgba(17, 24, 36, 0.05)'
+                            },
+                            _focusVisible: {
                               bg: 'rgba(17, 24, 36, 0.05)'
                             }
                           })}
@@ -264,10 +283,13 @@ const OutLink = () => {
                           setLinkType(item.value);
                         }
                       }}
+                      aria-pressed={linkType === item.value}
                       alignItems={'center'}
                     >
                       <Avatar src={item.icon} w={'1rem'} mr={1} />
-                      {item.title}
+                      <Box flex={1} minW={0} textAlign={'left'} whiteSpace={'normal'}>
+                        {item.title}
+                      </Box>
                       {item.countKey && outLinkCounts && outLinkCounts[item.countKey] > 0 && (
                         <Box
                           ml={'auto'}
@@ -285,7 +307,7 @@ const OutLink = () => {
                           {outLinkCounts[item.countKey]}
                         </Box>
                       )}
-                    </Flex>
+                    </Button>
                   ))}
               </Box>
             );
