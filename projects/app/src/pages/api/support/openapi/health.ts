@@ -7,7 +7,6 @@ import {
 } from '@fastgpt/global/openapi/support/openapi/api';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { resolveOpenApiCredential } from '@fastgpt/service/support/openapi/auth';
-import { useIPFrequencyLimit } from '../../../../../../../packages/service/common/middle/reqFrequencyLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export async function handler(req: ApiRequestProps): Promise<ApiKeyHealthResponseType> {
@@ -30,7 +29,4 @@ export async function handler(req: ApiRequestProps): Promise<ApiKeyHealthRespons
   });
 }
 
-export default NextAPI(
-  useIPFrequencyLimit({ id: 'openapi-health', seconds: 1, limit: 1 }),
-  handler
-);
+export default NextAPI(handler);

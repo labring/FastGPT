@@ -137,7 +137,7 @@ export class RedisCacheAdapter {
     windowSeconds: number;
     increment?: number;
   }) => {
-    const operation = 'fixedWindow.consume';
+    const operation = 'rateLimit.consume';
     const parsedWindowSeconds = parsePositiveInteger({
       value: windowSeconds,
       operation,

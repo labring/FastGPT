@@ -1,15 +1,11 @@
 /* 基于 Team 的限流 */
-import {
-  fixedWindowRateLimitCache,
-  type FixedWindowRateLimitCache
-} from '@fastgpt/dal/redis/caches';
 import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
 import { jsonRes } from '../../common/response';
 import type { NodeApiResponse } from '../../types/http';
 import { teamQPM } from '../../support/wallet/sub/utils';
 import z from 'zod';
 import { getLogger, LogCategories } from '../logger';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { consumeTeamChatRateLimit } from '../rateLimit/interface/team';
 
 const logger = getLogger(LogCategories.HTTP.RESPONSE);
 
@@ -47,11 +43,9 @@ const getLimitData = async (data: FrequencyLimitOption) => {
 export const teamFrequencyLimit = async ({
   teamId,
   type,
-  res,
-  cache = fixedWindowRateLimitCache
+  res
 }: FrequencyLimitOption & {
   res: NodeApiResponse;
-  cache?: Pick<FixedWindowRateLimitCache, 'consume'>;
 }) => {
   let data: Awaited<ReturnType<typeof getLimitData>>;
   try {
@@ -68,12 +62,12 @@ export const teamFrequencyLimit = async ({
 
   const { limit, seconds } = data;
 
-  let result: Awaited<ReturnType<FixedWindowRateLimitCache['consume']>>;
+  let result: Awaited<ReturnType<typeof consumeTeamChatRateLimit>>;
   try {
-    result = await cache.consume({
-      key: `frequency:${type}:${teamId}`,
+    result = await consumeTeamChatRateLimit({
+      teamId,
       limit,
-      windowSeconds: seconds
+      seconds
     });
   } catch (error) {
     if (error instanceof RedisInvalidArgumentError) throw error;

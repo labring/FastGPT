@@ -2,7 +2,7 @@ import { jsonRes } from '../response';
 import { serviceEnv } from '../../env';
 import { getClientIpFromRequest } from '../security/clientIp';
 import type { NodeApiResponse, NodeHttpRequest } from '../../types/http';
-import { checkIPFrequencyLimit } from '../system/frequencyLimit/redisFixedWindow';
+import { checkIPRateLimit } from '../rateLimit/interface/ip';
 
 // unit: times/s
 // how to use?
@@ -24,7 +24,7 @@ export function useIPFrequencyLimit({
     }
 
     const ip = getClientIpFromRequest(req) ?? 'unknown';
-    const allowed = await checkIPFrequencyLimit({
+    const allowed = await checkIPRateLimit({
       id,
       ip,
       limit,

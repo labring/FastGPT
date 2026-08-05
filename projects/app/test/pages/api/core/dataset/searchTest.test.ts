@@ -10,6 +10,7 @@ const mockUpdateApiKeyUsage = vi.hoisted(() => vi.fn());
 const mockGetRerankModel = vi.hoisted(() => vi.fn());
 const mockAddAuditLog = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
+const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mockAuthDataset
@@ -51,8 +52,9 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: vi.fn((...args: unknown[]) => args.at(-1))
 }));
 
-vi.mock('@fastgpt/service/common/middle/reqFrequencyLimit', () => ({
-  useIPFrequencyLimit: vi.fn((props: unknown) => props)
+vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
+  LimitTypeEnum: { chat: 'chat' },
+  teamFrequencyLimit: mockTeamFrequencyLimit
 }));
 
 import { handler } from '@/pages/api/core/dataset/searchTest';
@@ -74,6 +76,7 @@ describe('searchTest query image auth', () => {
       tmbId: 'tmb-1',
       userId: 'user-1'
     });
+    mockTeamFrequencyLimit.mockResolvedValue(true);
     mockCheckTeamAIPoints.mockResolvedValue(undefined);
     mockGetRerankModel.mockReturnValue({
       model: 'mock-rerank-model'
@@ -96,12 +99,16 @@ describe('searchTest query image auth', () => {
   });
 
   it('should convert current-team temp image keys to external urls before dataset search', async () => {
-    await handler({
-      body: {
-        datasetId,
-        queryImageUrls: ['temp/team-1/search-image.png']
-      }
-    } as any);
+    const res = {} as any;
+    await handler(
+      {
+        body: {
+          datasetId,
+          queryImageUrls: ['temp/team-1/search-image.png']
+        }
+      } as any,
+      res
+    );
 
     expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -115,25 +122,53 @@ describe('searchTest query image auth', () => {
       key: 'temp/team-1/search-image.png',
       expiredHours: 1
     });
+    expect(mockTeamFrequencyLimit).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      type: 'chat',
+      res
+    });
   });
 
   it('should reject non-temp or foreign-team query image keys before dataset search', async () => {
     await expect(
-      handler({
-        body: {
-          datasetId,
-          queryImageUrls: [
-            'temp/team-2/search-image.png',
-            'dataset/dataset-1/image.png',
-            'chat/app-1/user-1/chat-1/image.png',
-            'https://example.com/image.png'
-          ]
-        }
-      } as any)
+      handler(
+        {
+          body: {
+            datasetId,
+            queryImageUrls: [
+              'temp/team-2/search-image.png',
+              'dataset/dataset-1/image.png',
+              'chat/app-1/user-1/chat-1/image.png',
+              'https://example.com/image.png'
+            ]
+          }
+        } as any,
+        {} as any
+      )
     ).rejects.toBe('Invalid query image key');
 
     expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
     expect(mockDeepRagSearch).not.toHaveBeenCalled();
     expect(mockCreateExternalUrl).not.toHaveBeenCalled();
+  });
+
+  it('should stop before searching when the shared team chat QPM is exhausted', async () => {
+    mockTeamFrequencyLimit.mockResolvedValue(false);
+
+    await expect(
+      handler(
+        {
+          body: {
+            datasetId,
+            text: 'query'
+          }
+        } as any,
+        {} as any
+      )
+    ).resolves.toBeUndefined();
+
+    expect(mockCheckTeamAIPoints).not.toHaveBeenCalled();
+    expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
+    expect(mockDeepRagSearch).not.toHaveBeenCalled();
   });
 });

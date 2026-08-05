@@ -12,17 +12,17 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { assertRedisFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
 import { addDays } from 'date-fns';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
-import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
+import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -53,11 +53,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     });
 
     const planStatus = await getTeamPlanStatus({ teamId });
-    await assertRedisFrequencyLimit({
-      group: 'upload',
-      id: String(tmbId),
+    await assertUploadRateLimit({
+      identity: String(tmbId),
       limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
-      seconds: 30,
       increment: result.fileMetadata.length
     });
 

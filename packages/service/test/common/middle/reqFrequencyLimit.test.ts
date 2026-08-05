@@ -2,14 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { serviceEnv } from '@fastgpt/service/env';
-import { getRedisRuntime, toPhysicalRedisKey } from '@fastgpt/dal/redis/runtime';
-import { FREQUENCY_LIMIT_KEY_PREFIX } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
+import {
+  createRedisLogicalKey,
+  getRedisRuntime,
+  toPhysicalRedisKey
+} from '@fastgpt/dal/redis/runtime';
+import { RATE_LIMIT_KEY_PREFIX } from '@fastgpt/service/common/rateLimit/core';
 
 const originalUseIpLimit = serviceEnv.USE_IP_LIMIT;
 const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
 
 const getIPFrequencyLimitKey = (id: string, ip: string) =>
-  toPhysicalRedisKey(`${FREQUENCY_LIMIT_KEY_PREFIX}:ip:${id}:${ip}`);
+  toPhysicalRedisKey(
+    createRedisLogicalKey({
+      namespace: RATE_LIMIT_KEY_PREFIX,
+      segments: ['ip', id, 'ip', ip]
+    })
+  );
 
 const getRedisConnection = () => getRedisRuntime().getCommandConnection();
 

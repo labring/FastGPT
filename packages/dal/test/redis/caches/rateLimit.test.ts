@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FixedWindowRateLimitCache } from '@fastgpt/dal/redis/caches';
+import { RateLimitCache } from '@fastgpt/dal/redis/caches';
 
-describe('FixedWindowRateLimitCache', () => {
+describe('RateLimitCache', () => {
   const consumeFixedWindow = vi.fn();
   const now = vi.fn(() => 1_000_000);
-  const cache = new FixedWindowRateLimitCache({
+  const cache = new RateLimitCache({
     redis: { consumeFixedWindow } as any,
     now
   });
@@ -17,7 +17,7 @@ describe('FixedWindowRateLimitCache', () => {
   it('returns an allow decision, remaining quota and reset timestamp', async () => {
     await expect(
       cache.consume({
-        key: 'frequency:chat:team-1',
+        key: 'rate-limit:team:chat-qpm:team:team-1',
         limit: 5,
         windowSeconds: 60
       })
@@ -29,7 +29,7 @@ describe('FixedWindowRateLimitCache', () => {
       resetAt: 1_058_000
     });
     expect(consumeFixedWindow).toHaveBeenCalledWith({
-      key: 'frequency:chat:team-1',
+      key: 'rate-limit:team:chat-qpm:team:team-1',
       windowSeconds: 60,
       increment: 1
     });
@@ -38,7 +38,9 @@ describe('FixedWindowRateLimitCache', () => {
   it('blocks after the limit and clamps remaining quota to zero', async () => {
     consumeFixedWindow.mockResolvedValue({ currentCount: 6, ttlSeconds: 4 });
 
-    await expect(cache.consume({ key: 'frequency:chat:team-1', limit: 5 })).resolves.toMatchObject({
+    await expect(
+      cache.consume({ key: 'rate-limit:team:chat-qpm:team:team-1', limit: 5 })
+    ).resolves.toMatchObject({
       allowed: false,
       currentCount: 6,
       remaining: 0,
@@ -46,7 +48,7 @@ describe('FixedWindowRateLimitCache', () => {
       resetAt: 1_004_000
     });
     expect(consumeFixedWindow).toHaveBeenCalledWith({
-      key: 'frequency:chat:team-1',
+      key: 'rate-limit:team:chat-qpm:team:team-1',
       windowSeconds: 60,
       increment: 1
     });
@@ -54,14 +56,14 @@ describe('FixedWindowRateLimitCache', () => {
 
   it('passes a custom increment to Redis', async () => {
     await cache.consume({
-      key: 'frequency:upload:member-1',
+      key: 'rate-limit:upload:file-count:identity:member-1',
       limit: 10,
       windowSeconds: 60,
       increment: 3
     });
 
     expect(consumeFixedWindow).toHaveBeenCalledWith({
-      key: 'frequency:upload:member-1',
+      key: 'rate-limit:upload:file-count:identity:member-1',
       windowSeconds: 60,
       increment: 3
     });
@@ -71,10 +73,10 @@ describe('FixedWindowRateLimitCache', () => {
     'rejects invalid rate limit %s before Redis access',
     async (limit) => {
       await expect(
-        cache.consume({ key: 'frequency:chat:team-1', limit: limit as any })
+        cache.consume({ key: 'rate-limit:team:chat-qpm:team:team-1', limit: limit as any })
       ).rejects.toMatchObject({
         code: 'REDIS_INVALID_ARGUMENT',
-        operation: 'fixedWindow.consume'
+        operation: 'rateLimit.consume'
       });
       expect(consumeFixedWindow).not.toHaveBeenCalled();
     }
@@ -84,10 +86,14 @@ describe('FixedWindowRateLimitCache', () => {
     'rejects invalid increment %s before Redis access',
     async (increment) => {
       await expect(
-        cache.consume({ key: 'frequency:chat:team-1', limit: 5, increment: increment as any })
+        cache.consume({
+          key: 'rate-limit:team:chat-qpm:team:team-1',
+          limit: 5,
+          increment: increment as any
+        })
       ).rejects.toMatchObject({
         code: 'REDIS_INVALID_ARGUMENT',
-        operation: 'fixedWindow.consume'
+        operation: 'rateLimit.consume'
       });
       expect(consumeFixedWindow).not.toHaveBeenCalled();
     }
@@ -97,6 +103,8 @@ describe('FixedWindowRateLimitCache', () => {
     const error = new Error('redis down');
     consumeFixedWindow.mockRejectedValue(error);
 
-    await expect(cache.consume({ key: 'frequency:chat:team-1', limit: 5 })).rejects.toBe(error);
+    await expect(
+      cache.consume({ key: 'rate-limit:team:chat-qpm:team:team-1', limit: 5 })
+    ).rejects.toBe(error);
   });
 });

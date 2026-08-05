@@ -7,7 +7,7 @@ import {
   getAllowedExtensionsFromFileSelectConfig,
   getUploadExtensionRulesFromFileSelectConfig
 } from '@fastgpt/service/common/s3/utils/uploadConstraints';
-import { assertRedisFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
+import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
 /**
@@ -48,11 +48,9 @@ export const createAuthorizedChatFileUploadUrl = async ({
   }
 
   const planStatus = await getTeamPlanStatus({ teamId });
-  await assertRedisFrequencyLimit({
-    group: 'upload',
-    id: uid,
-    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
-    seconds: 30
+  await assertUploadRateLimit({
+    identity: uid,
+    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount
   });
 
   return getS3ChatSource().createUploadChatFileURL({

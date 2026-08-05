@@ -9,7 +9,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
-import { assertRedisFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
+import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -31,11 +31,9 @@ async function handler(
   });
   const planStatus = await getTeamPlanStatus({ teamId });
 
-  await assertRedisFrequencyLimit({
-    group: 'upload',
-    id: String(tmbId),
-    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
-    seconds: 30
+  await assertUploadRateLimit({
+    identity: String(tmbId),
+    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount
   });
 
   const bucket = new S3PrivateBucket();

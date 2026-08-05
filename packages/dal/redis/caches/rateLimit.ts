@@ -6,7 +6,7 @@ import {
 } from '../adapter';
 import { PositiveSafeIntegerSchema } from '../runtime/schema';
 
-export type FixedWindowRateLimitResult = {
+export type RateLimitResult = {
   allowed: boolean;
   currentCount: number;
   remaining: number;
@@ -14,25 +14,22 @@ export type FixedWindowRateLimitResult = {
   resetAt: number;
 };
 
-export type FixedWindowRateLimitCacheOptions = {
+export type RateLimitCacheOptions = {
   redis?: RedisCacheAdapter;
   now?: () => number;
 };
 
 /**
- * 固定窗口限流 Cache。
+ * Redis 限流 Cache。
  *
- * 计数与 TTL 的原子性由 adapter 保证；Cache 只负责限制值校验和业务决策结果。
- * Redis 执行错误向上抛出，由认证或 API service 统一映射为 fail-closed。
+ * 当前使用固定窗口算法。计数与 TTL 的原子性由 adapter 保证；Cache 只负责限制值校验
+ * 和业务决策结果。Redis 执行错误向上抛出，由 Service 层按场景映射故障策略。
  */
-export class FixedWindowRateLimitCache {
+export class RateLimitCache {
   private readonly redis: RedisCacheAdapter;
   private readonly now: () => number;
 
-  constructor({
-    redis = redisCacheAdapter,
-    now = Date.now
-  }: FixedWindowRateLimitCacheOptions = {}) {
+  constructor({ redis = redisCacheAdapter, now = Date.now }: RateLimitCacheOptions = {}) {
     this.redis = redis;
     this.now = now;
   }
@@ -47,11 +44,11 @@ export class FixedWindowRateLimitCache {
     limit: number;
     windowSeconds?: number;
     increment?: number;
-  }): Promise<FixedWindowRateLimitResult> {
+  }): Promise<RateLimitResult> {
     const parsedLimit = PositiveSafeIntegerSchema.safeParse(limit);
     if (!parsedLimit.success) {
       throw new RedisInvalidArgumentError({
-        operation: 'fixedWindow.consume',
+        operation: 'rateLimit.consume',
         message: 'limit must be a positive safe integer'
       });
     }
@@ -59,7 +56,7 @@ export class FixedWindowRateLimitCache {
     const parsedIncrement = PositiveSafeIntegerSchema.safeParse(increment);
     if (!parsedIncrement.success) {
       throw new RedisInvalidArgumentError({
-        operation: 'fixedWindow.consume',
+        operation: 'rateLimit.consume',
         message: 'increment must be a positive safe integer'
       });
     }
@@ -80,4 +77,4 @@ export class FixedWindowRateLimitCache {
   }
 }
 
-export const fixedWindowRateLimitCache = new FixedWindowRateLimitCache();
+export const rateLimitCache = new RateLimitCache();

@@ -177,7 +177,7 @@ describe('RedisCacheAdapter', () => {
 
     await expect(adapter.consumeFixedWindow({ key, windowSeconds: 60 })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
-      operation: 'fixedWindow.consume'
+      operation: 'rateLimit.consume'
     });
   });
 

@@ -195,8 +195,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     await authOutLinkLimit({
       outLinkUid: chatUserId,
       outLink: outLinkConfig as any, // HACK, we do not need to provide app: T
-      question: userQuestion,
-      ip: chatId
+      question: userQuestion
     });
 
     const enableStreaming = !!streamId || !!onStreamChunk;

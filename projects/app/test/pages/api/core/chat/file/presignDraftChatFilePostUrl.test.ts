@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
   authApp: vi.fn(),
   getTeamPlanStatus: vi.fn(),
-  assertRedisFrequencyLimit: vi.fn(),
+  assertUploadRateLimit: vi.fn(),
   createUploadChatFileURL: vi.fn()
 }));
 
@@ -29,8 +29,8 @@ vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
   getTeamPlanStatus: mocks.getTeamPlanStatus
 }));
 
-vi.mock('@fastgpt/service/common/system/frequencyLimit/redisFixedWindow', () => ({
-  assertRedisFrequencyLimit: mocks.assertRedisFrequencyLimit
+vi.mock('@fastgpt/service/common/rateLimit/interface/upload', () => ({
+  assertUploadRateLimit: mocks.assertUploadRateLimit
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({

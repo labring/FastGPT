@@ -5,9 +5,9 @@ import { verification, VerificationMaterialError } from '../../../../tmpData/ver
 import { MongoUser } from '../../../schema';
 import { serviceEnv } from '../../../../../env';
 import {
-  assertPasswordVerificationConsumeFrequency,
-  assertPasswordVerificationCreateFrequency
-} from '../utils';
+  assertPasswordVerificationConsumeRateLimit,
+  assertPasswordVerificationCreateRateLimit
+} from '../../../../../common/rateLimit/interface/accountVerification';
 import type {
   IssuePreLoginCodeParams,
   IssuePreLoginCodeResult,
@@ -19,13 +19,13 @@ import type {
 const defaultDependencies: PasswordVerificationDependencies = {
   generateCode: getNanoid,
   assertCreateFrequency: ({ account, scene }) =>
-    assertPasswordVerificationCreateFrequency({
+    assertPasswordVerificationCreateRateLimit({
       account,
       scene,
       limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
     }),
   assertConsumeFrequency: ({ account, scene }) =>
-    assertPasswordVerificationConsumeFrequency({
+    assertPasswordVerificationConsumeRateLimit({
       account,
       scene,
       limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT

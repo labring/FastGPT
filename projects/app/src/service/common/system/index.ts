@@ -12,7 +12,6 @@ import {
   type DeepRagSearchProps,
   type SearchDatasetDataResponse
 } from '@fastgpt/service/core/dataset/search';
-import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
@@ -46,11 +45,6 @@ export function initGlobalVariables() {
 
     global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
       return POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
-    };
-
-    global.authOpenApiHandler = function authOpenApiHandler(data: AuthOpenApiLimitProps) {
-      if (!isProVersion()) return Promise.resolve();
-      return POST<AuthOpenApiLimitProps>('/support/openapi/authLimit', data);
     };
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {

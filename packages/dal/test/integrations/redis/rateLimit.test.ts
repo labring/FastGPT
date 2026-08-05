@@ -1,12 +1,12 @@
 import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
-import { FixedWindowRateLimitCache } from '@fastgpt/dal/redis/caches';
+import { RateLimitCache } from '@fastgpt/dal/redis/caches';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
 
-describeWithRedis('FixedWindowRateLimitCache Redis 7.2 integration', () => {
+describeWithRedis('RateLimitCache Redis 7.2 integration', () => {
   const key = `integration-fixed-window-${process.pid}-${Date.now()}`;
   const physicalKey = `fastgpt:${key}`;
   let client: Redis;
@@ -27,7 +27,7 @@ describeWithRedis('FixedWindowRateLimitCache Redis 7.2 integration', () => {
 
   it('assigns unique counts under concurrency and keeps one fixed TTL', async () => {
     const adapter = new RedisCacheAdapter({ getCommandClient: () => client });
-    const cache = new FixedWindowRateLimitCache({ redis: adapter });
+    const cache = new RateLimitCache({ redis: adapter });
 
     const results = await Promise.all(
       Array.from({ length: 64 }, () => cache.consume({ key, limit: 32, windowSeconds: 60 }))

@@ -1,4 +1,4 @@
-import { assertRedisFrequencyLimit } from '../../../common/system/frequencyLimit/redisFixedWindow';
+import { assertOutLinkRateLimit } from '../../../common/rateLimit/interface/outLink';
 import type {
   AuthOutLinkInitProps,
   AuthOutLinkLimitProps,
@@ -48,26 +48,20 @@ export const authOutLinkInit = async ({
   return { uid };
 };
 
-const authIpLimit = async ({ ip, outLink }: { ip: string; outLink: OutLinkSchemaType }) => {
+const assertOutLinkQpmLimit = async (outLink: OutLinkSchemaType, uid: string) => {
   if (!outLink.limit || !outLink.limit.QPM) {
     return;
   }
 
-  try {
-    await assertRedisFrequencyLimit({
-      group: 'out-link',
-      id: `${outLink._id}:${ip}`,
-      limit: outLink.limit.QPM,
-      seconds: 60
-    });
-  } catch (error) {
-    return Promise.reject(new UserError(`每分钟仅能请求 ${outLink.limit.QPM} 次~`));
-  }
+  await assertOutLinkRateLimit({
+    outLinkId: String(outLink._id),
+    uid,
+    limit: outLink.limit.QPM
+  });
 };
 
 export async function authOutLinkLimit({
   outLink,
-  ip,
   outLinkUid,
   question
 }: AuthOutLinkLimitProps): Promise<AuthOutLinkResponse> {
@@ -88,10 +82,7 @@ export async function authOutLinkLimit({
     return Promise.reject(new UserError('链接超出使用限制'));
   }
 
-  // ip limit
-  if (ip) {
-    await authIpLimit({ ip, outLink });
-  }
+  await assertOutLinkQpmLimit(outLink, outLinkUid);
 
   // url auth. send request
   if (!outLink.limit.hookUrl) {
@@ -113,7 +104,7 @@ export async function authOutLinkLimit({
     }
 
     return { uid: data?.data?.uid || outLinkUid };
-  } catch (error) {
+  } catch {
     return Promise.reject(new UserError('身份校验失败'));
   }
 }

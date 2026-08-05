@@ -169,8 +169,13 @@
   "content/plugin/model-presets.mdx": "2026-06-04T16:10:15+08:00",
   "content/plugin/system-tool-development.en.mdx": "2026-07-02T11:54:55+08:00",
   "content/plugin/system-tool-development.mdx": "2026-07-02T11:54:55+08:00",
+<<<<<<< HEAD
   "content/self-host/config/env.en.mdx": "2026-08-04T12:18:23+08:00",
   "content/self-host/config/env.mdx": "2026-08-04T12:18:23+08:00",
+=======
+  "content/self-host/config/env.en.mdx": "2026-08-05T00:04:49+08:00",
+  "content/self-host/config/env.mdx": "2026-08-05T00:04:49+08:00",
+>>>>>>> e3139317e (refactor: centralize rate limit policies)
   "content/self-host/config/model/intro.en.mdx": "2026-06-04T16:10:15+08:00",
   "content/self-host/config/model/intro.mdx": "2026-06-04T16:10:15+08:00",
   "content/self-host/config/model/minimax.en.mdx": "2026-06-03T10:40:17+08:00",
