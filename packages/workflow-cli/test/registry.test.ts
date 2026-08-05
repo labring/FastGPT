@@ -198,7 +198,7 @@ describe('cliCommandRegistry', () => {
           "introducedIn": "PR1",
           "kind": "query",
           "options": [
-            "--source",
+            "--kind",
           ],
           "path": "template list",
           "supportsDryRun": false,

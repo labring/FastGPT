@@ -5,8 +5,9 @@ import { CliArgumentError } from './error';
 import { renderHelp } from './help';
 import { renderError, renderSuccess } from './output/render';
 import { parseCliArgs } from './parser';
+import { loadCliTemplateProvider } from './template/provider';
 
-export const CLI_VERSION = '0.2.0-beta.2' as const;
+export const CLI_VERSION = '0.3.0-beta.1' as const;
 
 export const runCli = async ({
   argv,
@@ -50,8 +51,10 @@ export const runCli = async ({
     }
 
     const parsed = parseCliArgs({ argv, cwd, env });
+    const templateProvider = await loadCliTemplateProvider(env);
     const context = {
       ...parsed.context,
+      templateProvider,
       isTTY,
       ...(stdin ? { readStdin: stdin } : {}),
       requestConfirmation:

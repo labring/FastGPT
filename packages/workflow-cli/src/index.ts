@@ -6,4 +6,5 @@ export * from './output/render';
 export * from './parser';
 export * from './registry';
 export * from './run';
+export * from './template/provider';
 export * from './type';

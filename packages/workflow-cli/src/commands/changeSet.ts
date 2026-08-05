@@ -3,7 +3,6 @@ import {
   WorkflowCommandError,
   WorkflowPlanSchema,
   WorkflowValidationError,
-  builtinTemplateProvider,
   getWorkflowChecksum,
   planWorkflowChangeSet,
   type WorkflowDocument,
@@ -51,7 +50,7 @@ const getChangedEdgeCount = (base: WorkflowDocument, target: WorkflowDocument) =
 };
 
 const createDependencies = (context: CliContext) => ({
-  templateProvider: builtinTemplateProvider,
+  templateProvider: context.templateProvider,
   locale: context.locale,
   translate: createTranslator(context.locale)
 });

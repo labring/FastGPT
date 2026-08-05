@@ -1,6 +1,6 @@
 import {
-  builtinTemplateProvider,
   normalizeNodeTemplateDescriptor,
+  formatNodeTemplateRef,
   parseNodeTemplateRef,
   type NodeTemplateRef
 } from '@fastgpt/workflow-core';
@@ -9,7 +9,7 @@ import type { CliContext, CliResult } from '../type';
 import { requireString } from './helpers';
 
 const resolveDescriptor = async (ref: NodeTemplateRef, context: CliContext) => {
-  const resolved = await builtinTemplateProvider.resolve(ref, { locale: context.locale });
+  const resolved = await context.templateProvider.resolve(ref, { locale: context.locale });
   return normalizeNodeTemplateDescriptor({
     template: resolved.template,
     templateRef: ref,
@@ -19,13 +19,41 @@ const resolveDescriptor = async (ref: NodeTemplateRef, context: CliContext) => {
 };
 
 export const listTemplates = async (
-  _input: Record<string, unknown>,
+  input: Record<string, unknown>,
   context: CliContext
 ): Promise<CliResult> => {
-  const refs = await builtinTemplateProvider.list({ locale: context.locale });
+  const refs = (await context.templateProvider.list({ locale: context.locale })).filter(
+    (ref) => input.kind === undefined || ref.kind === input.kind
+  );
+  const counts = {
+    builtin: 0,
+    teamApp: 0,
+    systemTool: 0,
+    tool: 0
+  };
+  refs.forEach((ref) => {
+    counts[ref.kind] += 1;
+  });
+  const items = await Promise.all(
+    refs.map(async (ref) => {
+      const descriptor = await resolveDescriptor(ref, context);
+      return {
+        kind: ref.kind,
+        ref: formatNodeTemplateRef(ref),
+        template: descriptor.template,
+        name: descriptor.name,
+        intro: descriptor.intro,
+        flowNodeType: descriptor.flowNodeType
+      };
+    })
+  );
   return {
     changed: false,
-    result: await Promise.all(refs.map((ref) => resolveDescriptor(ref, context)))
+    result: {
+      total: items.length,
+      counts,
+      items
+    }
   };
 };
 
@@ -38,7 +66,7 @@ export const showTemplate = async (
 });
 
 export const findDescriptorForNode = async (flowNodeType: string, context: CliContext) => {
-  const refs = await builtinTemplateProvider.list({ locale: context.locale });
+  const refs = await context.templateProvider.list({ locale: context.locale });
   for (const ref of refs) {
     const descriptor = await resolveDescriptor(ref, context);
     if (descriptor.flowNodeType === flowNodeType) return descriptor;

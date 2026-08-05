@@ -574,7 +574,7 @@ Workflow Builder 复用 Chat 基础设施不等于继承工作流运行配置。
 
 #### 5.12.1 当前实例系统工具自动发现
 
-本扩展服务于当前 Workflow Builder，不等同于 PR6 的独立 CLI 远端 profile/API Key 能力。现有 Core 已支持 `systemTool:<toolId>` 模板引用，CLI 也已有 `template list/show`、节点创建、ChangeSet、校验和 commit 链路；因此不新增一套系统工具流程，只把当前写死的 `builtinTemplateProvider` 替换为组合 Provider：
+本扩展服务于当前 Workflow Builder，不等同于 PR6 的独立 CLI 远端 profile/API Key 能力。Core 将系统工具身份统一为包含 `source + toolId` 的结构化引用，CLI 复用已有 `template list/show`、节点创建、ChangeSet、校验和 commit 链路；因此不新增一套系统工具流程，只把当前写死的 `builtinTemplateProvider` 替换为组合 Provider：
 
 ```text
 SystemToolRepo / Plugin Service / Mongo Config
@@ -590,8 +590,8 @@ builtinTemplateProvider + authorizedSystemToolProvider（由相同数据构造�
 契约如下：
 
 1. “全部系统工具”指当前用户经过现有 Web 可见性规则过滤后可使用的全部工具，不包含未授权或被隐藏工具。
-2. `authorizedSystemToolProvider.list()` 返回当前授权的 `systemTool` 引用；`resolve()` 只能解析这份列表中的 ID，防止 Agent 绕过列表手写未授权工具 ID。
-3. CLI 的 `template list` 在现有结果上增加 `total`、按 `kind` 聚合的 `counts`，并让每个条目明确输出 `kind`；`template show` 继续输出指定工具的完整脱敏 Descriptor/节点 Schema。
+2. request-scoped Provider 的 `list()` 返回当前授权的 `{ kind: "systemTool", source, toolId }` 引用；`resolve()` 只能解析模板包中的完整身份，防止不同来源同 ID 冲突或 Agent 绕过列表手写未授权工具。
+3. CLI 的 `template list` 返回 `total`、按 `kind` 聚合的 `counts` 和包含精确 `ref` 的轻量摘要；`template show` 继续输出指定工具的完整脱敏 Descriptor/节点 Schema。字符串引用固定为 `systemTool:<encodedSource>/<encodedToolId>`，不兼容旧的单 ID 格式。
 4. 当前 Builder 通过 Sandbox 子进程运行真实 CLI，不能直接传递 Provider 对象；Service 应将授权、脱敏后的工具数据写入事务受保护文件，CLI 从该文件构造 Provider，Builder 服务端 plan 重算从同一份内存数据构造 Provider。
 5. CLI、ChangeSet 和 Builder 服务端 plan 重算必须基于同一份授权数据使用组合 Provider，避免列表能看到系统工具但创建或校验时仍使用 builtin-only Provider。
 6. Provider 只返回节点构建需要的脱敏信息，不返回 `secretsVal`、工具运行密钥或用户凭证；真实 Secret 继续由现有运行 Service 解析。
@@ -1111,8 +1111,8 @@ CLI 不猜测字符串是否为 JSON、文件或变量引用，也不允许通�
 
 | 命令 | 必填参数 | 可选参数与关键约束 |
 | --- | --- | --- |
-| `template list` | 无 | `--source builtin\|team\|system\|plugin`、远端来源要求 `--profile` |
-| `template show` | `--template <TemplateRef>` | `--version`、`--locale`、远端模板要求 `--profile` |
+| `template list` | 无 | `--kind builtin\|teamApp\|systemTool\|tool`；返回当前 Provider 的数量和轻量摘要 |
+| `template show` | `--template <TemplateRef>` | 全局 `--locale`；返回单个模板的完整 Descriptor |
 | `node list` | 无 | `--dir`、`--type`、`--parent` |
 | `node show` | `--node <nodeId>` | `--dir`；输出节点、Descriptor、执行端口和引用摘要 |
 | `node add` | `--template`、`--node` | `--name`、`--position`、`--after`；`--parent` 从 PR3 开放 |
@@ -1205,14 +1205,10 @@ fastgpt-workflow build --dir ./flow --output workflow.generated.json
 ### 7.2 FR-02：节点模板
 
 ```bash
-fastgpt-workflow template list --source builtin
-fastgpt-workflow template list --source system
-fastgpt-workflow template list --source system --search "calendar"
-fastgpt-workflow template list --source system --parent TOOLSET_ID
-fastgpt-workflow template list --source team --profile prod
+fastgpt-workflow template list --kind builtin
+fastgpt-workflow template list --kind systemTool
 fastgpt-workflow template show --template builtin:ai-chat --locale zh-CN --format json
-fastgpt-workflow template show --template systemTool:TOOL_ID --format json
-fastgpt-workflow template show --template teamApp:APP_ID --version VERSION_ID --format json
+fastgpt-workflow template show --template 'systemTool:<encodedSource>/<encodedToolId>' --format json
 ```
 
 `template show` 必须输出 `NodeTemplateDescriptor`，包括输入、输出、动态字段、允许的执行端口、是否唯一节点、是否工具节点和嵌套限制。
@@ -1458,7 +1454,7 @@ fastgpt-workflow run --app APP_ID --input "你好" --profile prod
 ### 7.12 FR-12：当前实例系统工具
 
 - Builder Handler 必须复用当前 FastGPT 的 SystemToolRepo 和 Web 可见性策略，只返回当前用户可使用且状态为 `Normal` 的工具（兼容旧来源未返回状态的条目），并继续处理系统、团队、debug 来源及 `hideTags` 等过滤条件。
-- Core 继续使用现有 `NodeTemplateRef.systemTool` 和 `WorkflowTemplateProvider` 契约，不新增授权快照 Schema、系统工具持久化表、定时同步任务或第二个工具 Repo。
+- Core 统一 `NodeTemplateRef.systemTool` 为必填 `source + toolId`，并增加严格的请求级模板包传输 Schema 和 Provider 组合器；不建立授权领域模型、持久化授权快照、定时同步任务或第二个工具 Repo。
 - CLI 必须在现有 `template list` 输出中增加 `total`、按模板 `kind` 聚合的 `counts` 和条目 `kind`，并通过 `template show` 输出某一工具的完整脱敏节点/Schema。
 - Service 将当前请求已授权、已脱敏的工具数据写入 Sandbox 事务受保护文件；CLI 子进程从该文件构造 `authorizedSystemToolProvider`，Builder 服务端重算从相同内存数据构造 Provider。
 - `authorizedSystemToolProvider.resolve()` 只允许命中当前请求已授权列表；`template show`、节点创建、工具挂载、ChangeSet plan/apply 和服务端重算均基于同一份数据使用组合 Provider，直接传入未授权 `systemTool` ID 必须失败。

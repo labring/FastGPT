@@ -29,6 +29,7 @@ export * from './template/builtin';
 export * from './template/descriptor';
 export * from './template/defaultValue';
 export * from './template/instantiate';
+export * from './template/provider';
 export * from './template/type';
 export * from './template/valueSchema';
 export * from './validation';

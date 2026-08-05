@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { ZodError } from 'zod';
 import { CliArgumentError } from './error';
 import { cliCommandRegistry, globalCliOptions, getCommandName } from './registry';
-import type { CliCommandDefinition, CliContext, CliOptionDefinition } from './type';
+import type { CliCommandDefinition, CliOptionDefinition, ParsedCliContext } from './type';
 
 const toInputKey = (optionName: string) =>
   optionName.slice(2).replace(/-([a-z])/g, (_, character: string) => character.toUpperCase());
@@ -13,7 +13,7 @@ const findOption = (name: string, options: readonly CliOptionDefinition[]) =>
 export type ParsedCliCommand = {
   definition: CliCommandDefinition;
   input: Record<string, unknown>;
-  context: CliContext;
+  context: ParsedCliContext;
   help: boolean;
 };
 
