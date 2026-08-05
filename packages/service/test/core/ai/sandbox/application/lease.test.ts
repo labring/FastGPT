@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const mocks = vi.hoisted(() => ({ withRedisLease: vi.fn() }));
+const mocks = vi.hoisted(() => ({ withLease: vi.fn() }));
 
-vi.mock('@fastgpt/service/common/redis/lock', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/common/redis/lock')>();
-  return { ...actual, withRedisLease: mocks.withRedisLease };
+vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
+  return {
+    ...actual,
+    LeaseCache: class MockLeaseCache {
+      withLease = mocks.withLease;
+    }
+  };
 });
 
 import {
@@ -16,8 +21,8 @@ import {
 
 describe('sandbox lifecycle leases', () => {
   beforeEach(() => {
-    mocks.withRedisLease.mockReset();
-    mocks.withRedisLease.mockImplementation(async ({ fn }) =>
+    mocks.withLease.mockReset();
+    mocks.withLease.mockImplementation(async ({ fn }) =>
       fn({ signal: new AbortController().signal, assertValid: vi.fn() })
     );
   });
@@ -39,7 +44,7 @@ describe('sandbox lifecycle leases', () => {
       fn: vi.fn().mockResolvedValue(undefined)
     });
 
-    expect(mocks.withRedisLease.mock.calls.map(([params]) => params.key)).toEqual([
+    expect(mocks.withLease.mock.calls.map(([params]) => params.key)).toEqual([
       'agent-sandbox:source:app:app-1',
       'agent-sandbox:lifecycle:stable-id',
       'agent-sandbox:legacy-migration-job'

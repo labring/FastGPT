@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { checkFixedWindowQpmLimit } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
+import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
+import {
+  checkFixedWindowQpmLimit,
+  createFixedWindowQpmLimitChecker
+} from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
 
 describe('checkFixedWindowQpmLimit', () => {
   beforeEach(async () => {
-    await getGlobalRedisConnection().flushdb();
+    await getRedisRuntime().getCommandConnection().flushdb();
   });
 
   it('同一个 key 在固定窗口内超过限制后返回 false', async () => {
@@ -32,5 +36,23 @@ describe('checkFixedWindowQpmLimit', () => {
     await expect(
       checkFixedWindowQpmLimit({ key: 'enterprise-auth:start:team:t2', limit: 1 })
     ).resolves.toBe(true);
+  });
+
+  it('Redis execution failure is mapped to fail-closed', async () => {
+    const consume = vi.fn().mockRejectedValue(new Error('redis down'));
+    const check = createFixedWindowQpmLimitChecker({ cache: { consume } });
+
+    await expect(check({ key: 'frequency:test:team-1', limit: 1 })).resolves.toBe(false);
+  });
+
+  it('invalid arguments are not hidden as a rate-limit denial', async () => {
+    const error = new RedisInvalidArgumentError({
+      operation: 'fixedWindow.consume',
+      message: 'limit must be a positive safe integer'
+    });
+    const consume = vi.fn().mockRejectedValue(error);
+    const check = createFixedWindowQpmLimitChecker({ cache: { consume } });
+
+    await expect(check({ key: 'frequency:test:team-1', limit: 0 })).rejects.toBe(error);
   });
 });

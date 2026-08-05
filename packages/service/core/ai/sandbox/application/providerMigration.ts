@@ -1,7 +1,7 @@
 /** App Sandbox 跨 provider 生命周期迁移。 */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { subMinutes } from 'date-fns';
-import { isRedisLeaseError } from '../../../../common/redis/lock';
+import { isRedisLeaseError } from '@fastgpt/dal/redis/caches';
 import { createAgentSandboxInitializingError } from '../error';
 import {
   findSandboxInstanceBySource,

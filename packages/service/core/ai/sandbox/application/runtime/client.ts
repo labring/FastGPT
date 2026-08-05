@@ -14,7 +14,7 @@ import {
   type ResourceLimits,
   type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
-import type { RedisLeaseContext } from '../../../../../common/redis/lock';
+import { isRedisLeaseError, type RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import {
   getSessionVolumeConfig,
   type VolumeManagerResult
@@ -49,7 +49,6 @@ import { migrateSandboxProviderBeforeUse } from '../providerMigration';
 import { withSandboxLifecycleLease, withSandboxSourceMutationLease } from '../lease';
 import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '../lifecycle/runner';
 import { assertSandboxSourceActive } from '../sourceGuard';
-import { isRedisLeaseError } from '../../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../../error';
 import { SANDBOX_PROVISIONING_STALE_MS } from './constants';
 import { resolveSandboxRuntimeImage } from './image';

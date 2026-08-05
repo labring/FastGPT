@@ -15,8 +15,7 @@ import type {
   DatasetDataSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { retryFn } from '@fastgpt/global/common/system/utils';
-import { delay } from '@fastgpt/service/common/bullmq';
+import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import {

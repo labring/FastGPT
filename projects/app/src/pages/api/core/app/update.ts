@@ -132,7 +132,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
   const onUpdate = async (session?: ClientSession) => {
     // format nodes data
     // 1. dataset search limit, less than model quoteMaxToken
-    beforeUpdateAppFormat({
+    await beforeUpdateAppFormat({
       nodes
     });
 

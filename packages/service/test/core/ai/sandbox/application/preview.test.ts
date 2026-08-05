@@ -3,12 +3,15 @@ import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
-vi.mock('@fastgpt/service/common/redis', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/common/redis')>()),
-  getGlobalRedisConnection: vi.fn()
+const redisMock = vi.hoisted(() => ({
+  evalScript: vi.fn(),
+  get: vi.fn()
 }));
 
-import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+vi.mock('@fastgpt/dal/redis/adapter', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/dal/redis/adapter')>()),
+  redisCacheAdapter: redisMock
+}));
 
 import {
   buildSandboxPreviewFileUrl,
@@ -23,10 +26,6 @@ import {
 const originalProxyUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
 const originalPreviewProxyUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
 const originalProvider = serviceEnv.AGENT_SANDBOX_PROVIDER;
-const redisMock = {
-  eval: vi.fn(),
-  get: vi.fn()
-};
 const sandboxId = generateSandboxId({
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
@@ -46,8 +45,7 @@ describe('sandbox preview application', () => {
     serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://agent-preview.example.com:3007/base/';
     serviceEnv.AGENT_SANDBOX_PROVIDER = 'opensandbox';
     vi.resetAllMocks();
-    redisMock.eval.mockResolvedValue(1);
-    vi.mocked(getGlobalRedisConnection).mockReturnValue(redisMock as any);
+    redisMock.evalScript.mockResolvedValue(1);
   });
 
   afterEach(() => {
@@ -60,31 +58,22 @@ describe('sandbox preview application', () => {
     const sessionId = await createSandboxPreviewSession(sessionContext);
 
     expect(sessionId).toMatch(/^[a-z][a-zA-Z0-9]{23}$/);
-    const [
-      script,
-      keyCount,
-      sessionIndexKey,
-      sessionKey,
-      now,
-      maxSessions,
-      payload,
-      ttl,
-      indexedSessionId
-    ] = redisMock.eval.mock.calls[0];
-    expect(script).toContain('zremrangebyscore');
-    expect(script).toContain('zcard');
-    expect(keyCount).toBe(2);
-    expect(sessionIndexKey).toBe(`sandbox:preview:${sandboxId}:active`);
-    expect(sessionKey).toMatch(/^sandbox:preview:app-[a-f0-9]{16}:[a-z][a-zA-Z0-9]{23}$/);
-    expect(now).toEqual(expect.any(Number));
-    expect(maxSessions).toBe(SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX);
-    expect(JSON.parse(String(payload))).toEqual(sessionContext);
-    expect(ttl).toBe(SANDBOX_PREVIEW_SESSION_TTL_SECONDS);
-    expect(indexedSessionId).toBe(sessionId);
+    const [scriptOptions] = redisMock.evalScript.mock.calls[0];
+    expect(scriptOptions.script).toContain('zremrangebyscore');
+    expect(scriptOptions.script).toContain('zcard');
+    expect(scriptOptions.keys).toEqual([
+      `sandbox:preview:${sandboxId}:active`,
+      expect.stringMatching(/^sandbox:preview:app-[a-f0-9]{16}:[a-z][a-zA-Z0-9]{23}$/)
+    ]);
+    expect(scriptOptions.args[0]).toEqual(expect.any(Number));
+    expect(scriptOptions.args[1]).toBe(SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX);
+    expect(JSON.parse(String(scriptOptions.args[2]))).toEqual(sessionContext);
+    expect(scriptOptions.args[3]).toBe(SANDBOX_PREVIEW_SESSION_TTL_SECONDS);
+    expect(scriptOptions.args[4]).toBe(sessionId);
   });
 
   it('rejects creation when the atomic session limit check fails', async () => {
-    redisMock.eval.mockResolvedValueOnce(0);
+    redisMock.evalScript.mockResolvedValueOnce(0);
     await expect(createSandboxPreviewSession(sessionContext)).rejects.toBeInstanceOf(
       SandboxPreviewSessionLimitError
     );
@@ -92,7 +81,7 @@ describe('sandbox preview application', () => {
 
   it('allows at most 500 concurrent session creations', async () => {
     let activeSessionCount = 0;
-    redisMock.eval.mockImplementation(async () => {
+    redisMock.evalScript.mockImplementation(async () => {
       if (activeSessionCount >= SANDBOX_PREVIEW_SESSION_MAX_PER_SANDBOX) return 0;
       activeSessionCount += 1;
       return 1;

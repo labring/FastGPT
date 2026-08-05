@@ -3,6 +3,14 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoApp } from '../../../app/schema';
 import { MongoAgentSkills } from '../../skill/model/schema';
 
+/** 业务 source 不存在或已软删除；调用方可据此决定是否显式跳过遗留资源。 */
+export class SandboxSourceMissingError extends Error {
+  constructor(params: { sourceType: ChatSourceTypeEnum; sourceId: string }) {
+    super(`Sandbox source is missing or deleted: ${params.sourceType}/${params.sourceId}`);
+    this.name = 'SandboxSourceMissingError';
+  }
+}
+
 /** source 不存在或已经设置 deleteTime 时禁止创建、恢复或迁移 Sandbox。 */
 export async function assertSandboxSourceActive(params: {
   sourceType: ChatSourceTypeEnum;
@@ -19,9 +27,7 @@ export async function assertSandboxSourceActive(params: {
   })();
 
   if (!active) {
-    throw new Error(
-      `Sandbox source is missing or deleted: ${params.sourceType}/${params.sourceId}`
-    );
+    throw new SandboxSourceMissingError(params);
   }
 }
 

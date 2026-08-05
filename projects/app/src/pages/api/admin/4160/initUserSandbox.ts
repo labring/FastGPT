@@ -7,7 +7,8 @@ import { migrateLegacySandboxesToUserLevel } from '@fastgpt/service/core/ai/sand
 import z from 'zod';
 
 const InitUserSandboxBodySchema = z.object({
-  dryRun: BoolSchema.optional().default(true)
+  dryRun: BoolSchema.optional().default(true),
+  skipError: BoolSchema.optional().default(false)
 });
 
 const InitUserSandboxResponseSchema = z.object({
@@ -63,6 +64,13 @@ const InitUserSandboxResponseSchema = z.object({
       sandboxId: z.string(),
       error: z.string()
     })
+  ),
+  skippedCount: z.number().int().nonnegative(),
+  skipped: z.array(
+    z.object({
+      sandboxId: z.string(),
+      error: z.string()
+    })
   )
 });
 type InitUserSandboxResponse = z.infer<typeof InitUserSandboxResponseSchema>;
@@ -70,12 +78,12 @@ type InitUserSandboxResponse = z.infer<typeof InitUserSandboxResponseSchema>;
 /** 管理员升级入口；默认 dry-run，真实执行时先完成 beta6 清理再迁移 Legacy Sandbox。 */
 async function handler(req: ApiRequestProps): Promise<InitUserSandboxResponse> {
   await authCert({ req, authRoot: true });
-  const { dryRun } = parseApiInput({
+  const { dryRun, skipError } = parseApiInput({
     req,
     bodySchema: InitUserSandboxBodySchema
   }).body;
 
-  const result = await migrateLegacySandboxesToUserLevel({ dryRun });
+  const result = await migrateLegacySandboxesToUserLevel({ dryRun, skipError });
   return InitUserSandboxResponseSchema.parse(result);
 }
 

@@ -15,9 +15,9 @@ import {
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
-import { delay } from '@fastgpt/service/common/bullmq';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
@@ -85,7 +85,7 @@ export async function generateQA(): Promise<any> {
             data,
             text: data.q
           };
-        } catch (error) {
+        } catch {
           return {
             error: true
           };

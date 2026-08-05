@@ -92,7 +92,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', () => ({
   assertSandboxSourceActive: mocks.assertSandboxSourceActive
 }));
 
-vi.mock('@fastgpt/service/common/redis/lock', () => ({
+vi.mock('@fastgpt/dal/redis/caches', () => ({
   isRedisLeaseError: mocks.isRedisLeaseError
 }));
 

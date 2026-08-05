@@ -495,6 +495,24 @@ describe('MCPClient', () => {
       expect(result).toBe(client);
     });
 
+    it('should pass custom headers once to the SSE fallback transport', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.connect = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(405, 'Method Not Allowed'))
+        .mockResolvedValueOnce(undefined);
+
+      await (mcpClient as any).getConnection();
+
+      const sseTransport = client.connect.mock.calls[1][0] as {
+        _requestInit?: RequestInit;
+        _eventSourceInit?: EventSourceInit;
+      };
+      expect(sseTransport._requestInit?.headers).toEqual(config.headers);
+      expect(sseTransport._eventSourceInit).toBeUndefined();
+    });
+
     it('should not fallback to SSE on a non-HTTP (e.g. network) error', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);

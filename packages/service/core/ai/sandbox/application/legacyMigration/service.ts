@@ -32,7 +32,7 @@ import {
   withSandboxSourceMutationLease
 } from '../lease';
 import { stopSandboxResource } from '../resource';
-import { assertSandboxSourceActive } from '../sourceGuard';
+import { assertSandboxSourceActive, SandboxSourceMissingError } from '../sourceGuard';
 import { archiveLegacyInstanceBeforeMigration, LegacySandboxCleanupError } from './cleanup';
 import type {
   LegacyMigrationPhase,
@@ -83,9 +83,11 @@ async function archiveAllLegacySandboxes(params: {
   docs: LegacySandboxInstanceSchemaType[];
   result: UserSandboxMigrationResult;
   runId: string;
+  skipError: boolean;
 }) {
-  const { docs, result, runId } = params;
+  const { docs, result, runId, skipError } = params;
   const failedIds = new Set<string>();
+  const skippedIds = new Set<string>();
   const groups = new Map<string, LegacySandboxInstanceSchemaType[]>();
   for (const doc of docs) {
     if (getLegacyMigrationPhase(doc) === 'completed') continue;
@@ -136,6 +138,13 @@ async function archiveAllLegacySandboxes(params: {
         }
       });
     } catch (error) {
+      if (skipError && error instanceof SandboxSourceMissingError) {
+        for (const doc of group) {
+          skippedIds.add(String(doc._id));
+          result.skipped.push({ sandboxId: doc.sandboxId, error: getErrText(error) });
+        }
+        return;
+      }
       await Promise.all(group.map((doc) => recordFailure(doc, error)));
     }
   };
@@ -150,7 +159,7 @@ async function archiveAllLegacySandboxes(params: {
   }
   await Promise.all(skillGroups.map((group) => skillLimit(() => archiveGroup(group))));
   await Promise.all(appGroups.map((group) => appLimit(() => archiveGroup(group))));
-  return failedIds.size === 0;
+  return { archiveCompleted: failedIds.size === 0, skippedIds };
 }
 
 /** 把单条 Legacy Skill workspace 发布到确定性 v2 Sandbox。 */
@@ -340,8 +349,9 @@ const migrateAppGroup = async (params: {
   group: ResolvedLegacyApp[];
   result: UserSandboxMigrationResult;
   runId: string;
+  skipError: boolean;
 }) => {
-  const { group, result, runId } = params;
+  const { group, result, runId, skipError } = params;
   const first = group[0];
   const targetSandboxId = getLegacyMigrationTargetSandboxId(first.doc);
 
@@ -540,6 +550,12 @@ const migrateAppGroup = async (params: {
     }
   }).catch(async (error) => {
     const errorText = getErrText(error);
+    if (skipError && error instanceof SandboxSourceMissingError) {
+      for (const item of group) {
+        result.skipped.push({ sandboxId: item.doc.sandboxId, error: errorText });
+      }
+      return;
+    }
     result.failures.push({ sandboxId: first.doc.sandboxId, error: errorText });
     await recordMigrationTrack({
       runId,
@@ -559,6 +575,7 @@ const runLegacySandboxMigration = async (
   assertLeaseValid?: () => void
 ): Promise<UserSandboxMigrationResult> => {
   const dryRun = params.dryRun ?? true;
+  const skipError = params.skipError ?? false;
   const startedAt = Date.now();
   const normalization = await normalizeLegacySandboxes({ dryRun, assertLeaseValid });
   if (normalization.pendingCount > 0) {
@@ -574,7 +591,9 @@ const runLegacySandboxMigration = async (
       appGroupCount: 0,
       completedAppGroupCount: 0,
       failedCount: normalization.failures.length,
-      failures: normalization.failures
+      failures: normalization.failures,
+      skippedCount: 0,
+      skipped: []
     };
   }
 
@@ -635,15 +654,23 @@ const runLegacySandboxMigration = async (
     appGroupCount: appGroups.size,
     completedAppGroupCount: 0,
     failedCount: 0,
-    failures: []
+    failures: [],
+    skippedCount: 0,
+    skipped: []
   };
   await recordMigrationTrack({ runId, phase: 'started', dryRun });
   if (!dryRun) {
-    const archiveCompleted = await archiveAllLegacySandboxes({ docs, result, runId });
+    const { archiveCompleted, skippedIds } = await archiveAllLegacySandboxes({
+      docs,
+      result,
+      runId,
+      skipError
+    });
     if (archiveCompleted) {
       const skillLimit = pLimit(SKILL_SANDBOX_MIGRATION_CONCURRENCY);
       const skillGroups = new Map<string, ResolvedLegacySkill[]>();
       for (const item of skillItems) {
+        if (skippedIds.has(String(item.doc._id))) continue;
         skillGroups.set(item.sourceId, [...(skillGroups.get(item.sourceId) ?? []), item]);
       }
       await Promise.all(
@@ -655,6 +682,10 @@ const runLegacySandboxMigration = async (
                 result.migratedSkillCount += 1;
               } catch (error) {
                 const errorText = getErrText(error);
+                if (skipError && error instanceof SandboxSourceMissingError) {
+                  result.skipped.push({ sandboxId: item.doc.sandboxId, error: errorText });
+                  continue;
+                }
                 result.failures.push({ sandboxId: item.doc.sandboxId, error: errorText });
                 await recordMigrationTrack({
                   runId,
@@ -672,6 +703,7 @@ const runLegacySandboxMigration = async (
 
       const appSourceGroups = new Map<string, ResolvedLegacyApp[][]>();
       for (const group of appGroups.values()) {
+        if (group.some((item) => skippedIds.has(String(item.doc._id)))) continue;
         const sourceId = group[0]?.sourceId;
         if (!sourceId) continue;
         appSourceGroups.set(sourceId, [...(appSourceGroups.get(sourceId) ?? []), group]);
@@ -680,13 +712,16 @@ const runLegacySandboxMigration = async (
       await Promise.all(
         Array.from(appSourceGroups.values(), (groups) =>
           appLimit(async () => {
-            for (const group of groups) await migrateAppGroup({ group, result, runId });
+            for (const group of groups) {
+              await migrateAppGroup({ group, result, runId, skipError });
+            }
           })
         )
       );
     }
   }
   result.failedCount = result.failures.length;
+  result.skippedCount = result.skipped.length;
   await recordMigrationTrack({
     runId,
     phase: 'completed',

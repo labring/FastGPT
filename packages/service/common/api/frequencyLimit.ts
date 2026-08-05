@@ -1,5 +1,9 @@
 /* 基于 Team 的限流 */
-import { getGlobalRedisConnection } from '../../common/redis';
+import {
+  fixedWindowRateLimitCache,
+  type FixedWindowRateLimitCache
+} from '@fastgpt/dal/redis/caches';
+import { RedisInvalidArgumentError } from '@fastgpt/dal/redis';
 import { jsonRes } from '../../common/response';
 import type { NodeApiResponse } from '../../types/http';
 import { teamQPM } from '../../support/wallet/sub/utils';
@@ -43,48 +47,62 @@ const getLimitData = async (data: FrequencyLimitOption) => {
 export const teamFrequencyLimit = async ({
   teamId,
   type,
-  res
-}: FrequencyLimitOption & { res: NodeApiResponse }) => {
-  const data = await getLimitData({ type, teamId });
+  res,
+  cache = fixedWindowRateLimitCache
+}: FrequencyLimitOption & {
+  res: NodeApiResponse;
+  cache?: Pick<FixedWindowRateLimitCache, 'consume'>;
+}) => {
+  let data: Awaited<ReturnType<typeof getLimitData>>;
+  try {
+    data = await getLimitData({ type, teamId });
+  } catch (error) {
+    logger.error('Team QPM configuration lookup failed closed', { teamId, type, error });
+    jsonRes(res, {
+      code: 429,
+      error: 'Rate limit service unavailable. Please try again later.'
+    });
+    return false;
+  }
   if (!data) return true;
 
   const { limit, seconds } = data;
 
-  const redis = getGlobalRedisConnection();
-  const key = `frequency:${type}:${teamId}`;
+  let result: Awaited<ReturnType<FixedWindowRateLimitCache['consume']>>;
+  try {
+    result = await cache.consume({
+      key: `frequency:${type}:${teamId}`,
+      limit,
+      windowSeconds: seconds
+    });
+  } catch (error) {
+    if (error instanceof RedisInvalidArgumentError) throw error;
 
-  const result = await redis
-    .multi()
-    .incr(key)
-    .expire(key, seconds, 'NX') // 只在key不存在时设置过期时间
-    .exec();
-
-  if (!result) {
-    return true;
+    logger.error('Team QPM rate limit failed closed', { teamId, type, error });
+    jsonRes(res, {
+      code: 429,
+      error: 'Rate limit service unavailable. Please try again later.'
+    });
+    return false;
   }
 
-  const currentCount = result[0][1] as number;
-
-  if (currentCount > limit) {
-    const remainingTime = await redis.ttl(key);
+  if (!result.allowed) {
     logger.info('Completion QPM limit exceeded', {
       teamId,
-      currentCount,
+      currentCount: result.currentCount,
       limit,
-      ttlSeconds: remainingTime
+      ttlSeconds: result.ttlSeconds
     });
     jsonRes(res, {
       code: 429,
-      error: new UserError(
-        `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${remainingTime} seconds.`
-      )
+      error: `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
     });
     return false;
   }
 
   // 在响应头中添加限流信息
   res.setHeader('X-RateLimit-Limit', limit);
-  res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - currentCount));
-  res.setHeader('X-RateLimit-Reset', Date.now() + seconds * 1000);
+  res.setHeader('X-RateLimit-Remaining', result.remaining);
+  res.setHeader('X-RateLimit-Reset', result.resetAt);
   return true;
 };

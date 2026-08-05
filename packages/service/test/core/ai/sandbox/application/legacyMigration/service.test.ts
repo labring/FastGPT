@@ -118,7 +118,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
   withLegacySandboxMigrationJobLease: mocks.withLegacySandboxMigrationJobLease
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', async (importOriginal) => ({
+  ...(await importOriginal()),
   assertSandboxSourceActive: mocks.assertSandboxSourceActive,
   assertSandboxSourceDeleted: mocks.assertSandboxSourceDeleted
 }));
@@ -130,6 +131,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/legacyMigration/debugChatC
 import { deleteAppSandboxesForAppDeletion } from '@fastgpt/service/core/ai/sandbox/application/legacyMigration/cleanup';
 import { migrateLegacySandboxesToUserLevel } from '@fastgpt/service/core/ai/sandbox/application/legacyMigration/service';
 import { installLegacyWorkspaceArchive } from '@fastgpt/service/core/ai/sandbox/application/legacyMigration/workspace';
+import { SandboxSourceMissingError } from '@fastgpt/service/core/ai/sandbox/application/sourceGuard';
 import { MongoLegacySandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/legacySchema';
 
 const createTargetProvider = () => ({
@@ -415,7 +417,48 @@ describe('legacy sandbox migration', () => {
       expect(mocks.claimAppSandboxMigrationTarget).not.toHaveBeenCalled();
     });
 
-    it('archives every Legacy source and blocks all v2 targets when phase one has a failure', async () => {
+    it('skips missing sources and continues migrating active sources when skipError is enabled', async () => {
+      const missingSourceId = 'app-missing-source-skipped';
+      const activeSourceId = 'app-active-source';
+      await insertLegacyApp({
+        sandboxId: 'migration-test-missing-source-skipped',
+        sourceId: missingSourceId
+      });
+      await insertLegacyApp({
+        sandboxId: 'migration-test-active-source',
+        sourceId: activeSourceId
+      });
+      mocks.assertSandboxSourceActive.mockImplementation(async ({ sourceId, sourceType }: any) => {
+        if (sourceId === missingSourceId) {
+          throw new SandboxSourceMissingError({ sourceType, sourceId });
+        }
+      });
+
+      const result = await migrateLegacySandboxesToUserLevel({
+        dryRun: false,
+        skipError: true
+      });
+
+      expect(result).toMatchObject({
+        migratedAppCount: 1,
+        failedCount: 0,
+        failures: [],
+        skippedCount: 1,
+        skipped: [
+          {
+            sandboxId: 'migration-test-missing-source-skipped',
+            error: `Sandbox source is missing or deleted: app/${missingSourceId}`
+          }
+        ]
+      });
+      expect(mocks.getSandboxWorkspaceArchiveForMigration).toHaveBeenCalledTimes(1);
+      expect(mocks.claimAppSandboxMigrationTarget).toHaveBeenCalledTimes(1);
+      expect(mocks.claimAppSandboxMigrationTarget).toHaveBeenCalledWith(
+        expect.objectContaining({ sourceId: activeSourceId })
+      );
+    });
+
+    it('keeps non-source archive errors blocking when skipError is enabled', async () => {
       await insertLegacyApp({
         sandboxId: 'migration-test-archive-success',
         sourceId: 'app-archive-success'
@@ -433,7 +476,10 @@ describe('legacy sandbox migration', () => {
         }
       );
 
-      const result = await migrateLegacySandboxesToUserLevel({ dryRun: false });
+      const result = await migrateLegacySandboxesToUserLevel({
+        dryRun: false,
+        skipError: true
+      });
 
       expect(result).toMatchObject({
         migratedAppCount: 0,

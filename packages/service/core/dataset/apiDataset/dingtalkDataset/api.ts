@@ -5,11 +5,16 @@ import type {
   DingtalkServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { DingtalkAccessTokenCache } from '@fastgpt/dal/redis/caches';
 import type { Method } from 'axios';
 import { axios, createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
-import { getDingtalkAppAccessToken } from '../../../../common/dingtalk/accessToken';
+
+type DingtalkAccessTokenResponse = {
+  accessToken: string;
+  expireIn: number;
+};
 
 type DingtalkUserResponse = {
   errcode?: number;
@@ -85,6 +90,7 @@ const dingtalkBaseUrl = serviceEnv.DINGTALK_BASE_URL;
 const dingtalkOapiBaseUrl = serviceEnv.DINGTALK_OAPI_BASE_URL;
 const dingtalkListPageSize = 100;
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
+const dingtalkAccessTokenCache = new DingtalkAccessTokenCache({ logger });
 
 const instance = createProxyAxios({
   baseURL: dingtalkBaseUrl,
@@ -124,6 +130,48 @@ const toSafeError = (error: any) => {
   if (error?.data) return error.data;
   if (error?.message) return { message: error.message };
   return error;
+};
+
+const requestDingtalkAccessToken = async ({
+  appKey,
+  appSecret
+}: DingtalkServerType): Promise<DingtalkAccessTokenResponse> => {
+  if (!appKey || !appSecret) {
+    return Promise.reject('钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限');
+  }
+
+  try {
+    const { data } = await axios.post<DingtalkAccessTokenResponse>(
+      `${dingtalkBaseUrl}/v1.0/oauth2/accessToken`,
+      {
+        appKey,
+        appSecret
+      }
+    );
+
+    if (!data?.accessToken) {
+      return Promise.reject('钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限');
+    }
+
+    return data;
+  } catch (error) {
+    logger.warn('DingTalk accessToken request failed', {
+      provider: 'dingtalk',
+      error: toSafeError(error)
+    });
+
+    if (isRateLimitError(error)) {
+      return Promise.reject('钉钉鉴权接口请求过快，请稍后重试');
+    }
+    return Promise.reject('钉钉应用鉴权失败，请检查 AppKey/AppSecret 和应用权限');
+  }
+};
+
+const getDingtalkAccessToken = async (server: DingtalkServerType) => {
+  return dingtalkAccessTokenCache.getOrRefresh({
+    server,
+    fetchToken: () => requestDingtalkAccessToken(server)
+  });
 };
 
 const request = async <T>({
@@ -522,7 +570,7 @@ export const useDingtalkDatasetRequest = ({
   dingtalkServer: DingtalkServerType;
 }) => {
   const getTokenAndOperatorId = async () => {
-    const accessToken = await getDingtalkAppAccessToken(dingtalkServer);
+    const accessToken = await getDingtalkAccessToken(dingtalkServer);
     const operatorId = await getDingtalkOperatorId({ dingtalkServer, accessToken });
 
     return {

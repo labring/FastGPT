@@ -39,4 +39,8 @@ export type ParsedPage = {
 export type ReadFileResponse = {
   rawText: string;
   formatText?: string;
+  tableInfo?: {
+    sheetCount: number;
+    mergedCellCount: number;
+  };
 };

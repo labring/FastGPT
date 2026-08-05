@@ -269,20 +269,6 @@ export class MCPClient {
             fetch: safeFetch,
             requestInit: {
               headers: this.headers
-            },
-            eventSourceInit: {
-              fetch: (url, init) => {
-                const mergedHeaders = {
-                  ...this.headers
-                };
-
-                Object.assign(mergedHeaders, headersInitToRecord(init?.headers));
-
-                return safeFetch(url, {
-                  ...init,
-                  headers: mergedHeaders
-                });
-              }
             }
           })
         );

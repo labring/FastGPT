@@ -15,18 +15,12 @@ import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
 import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import {
-  setRedisCache,
-  getRedisCache,
-  delRedisCache,
-  CacheKeyEnum,
-  CacheKeyEnumTime,
-  incrValueToCache
-} from '../../../common/redis/cache';
+import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
+const teamPointCache = new TeamPointCache({ logger });
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
@@ -274,17 +268,10 @@ export const getTeamPlanStatus = async ({
 /* ===== Buffer controller ===== */
 export const teamPoint = {
   getTeamPoints: async ({ teamId }: { teamId: string }) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
+    const cached = await teamPointCache.get(teamId);
 
-    const [surplusCacheStr, totalCacheStr] = await Promise.all([
-      getRedisCache(surplusCacheKey),
-      getRedisCache(totalCacheKey)
-    ]);
-
-    if (surplusCacheStr && totalCacheStr) {
-      const totalPoints = Number(totalCacheStr);
-      const surplusPoints = Number(surplusCacheStr);
+    if (cached) {
+      const { totalPoints, surplusPoints } = cached;
       return {
         totalPoints,
         surplusPoints,
@@ -300,8 +287,7 @@ export const teamPoint = {
     };
   },
   incrTeamPointsCache: async ({ teamId, value }: { teamId: string; value: number }) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    await incrValueToCache(surplusCacheKey, value);
+    await teamPointCache.incrementSurplus({ teamId, value });
   },
   updateTeamPointsCache: async ({
     teamId,
@@ -312,29 +298,19 @@ export const teamPoint = {
     totalPoints: number;
     surplusPoints: number;
   }) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
-
-    await Promise.all([
-      setRedisCache(surplusCacheKey, surplusPoints, CacheKeyEnumTime.team_point_surplus),
-      setRedisCache(totalCacheKey, totalPoints, CacheKeyEnumTime.team_point_total)
-    ]);
+    await teamPointCache.set({ teamId, totalPoints, surplusPoints });
   },
   clearTeamPointsCache: async (teamId: string) => {
-    const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
-    const totalCacheKey = `${CacheKeyEnum.team_point_total}:${teamId}`;
-
-    await Promise.all([delRedisCache(surplusCacheKey), delRedisCache(totalCacheKey)]);
+    await teamPointCache.clear(teamId);
   }
 };
 export const teamQPM = {
   getTeamQPMLimit: async (teamId: string): Promise<number | undefined> => {
     // 1. 尝试从缓存中获取
-    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
-    const cached = await getRedisCache(cacheKey);
+    const cached = await teamQpmCache.getCachedLimit(teamId);
 
-    if (cached) {
-      return Number(cached);
+    if (cached !== null) {
+      return cached;
     }
 
     // 2. Computed
@@ -351,12 +327,10 @@ export const teamQPM = {
     return limit;
   },
   setCachedTeamQPMLimit: async (teamId: string, limit: number): Promise<void> => {
-    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
-    await setRedisCache(cacheKey, limit.toString(), CacheKeyEnumTime.team_qpm_limit);
+    await teamQpmCache.setCachedLimit({ teamId, limit });
   },
   clearTeamQPMLimitCache: async (teamId: string): Promise<void> => {
-    const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
-    await delRedisCache(cacheKey);
+    await teamQpmCache.clearCachedLimit(teamId);
   }
 };
 

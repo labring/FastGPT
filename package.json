@@ -45,9 +45,12 @@
     "typescript-eslint": "catalog:lint",
     "vitest": "catalog:"
   },
-  "engines": {
-    "node": ">=20.19.0",
-    "pnpm": "10.x"
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.18.1",
+      "onFail": "download"
+    }
   },
   "packageManager": "pnpm@10.33.4"
 }

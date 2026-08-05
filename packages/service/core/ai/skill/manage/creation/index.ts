@@ -1,10 +1,7 @@
-import {
-  getQueue,
-  getWorker,
-  QueueNames,
-  type Job,
-  type Worker
-} from '../../../../../common/bullmq';
+import { type Job, type Worker } from '@fastgpt/dal/redis/bullmq';
+import { skillCreateMQService, type AgentSkillCreateJobData } from '@fastgpt/dal/redis/bullmq';
+
+export type { AgentSkillCreateJobData } from '@fastgpt/dal/redis/bullmq';
 import { Types } from '../../../../../common/mongo';
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { MongoAgentSkills } from '../../model/schema';
@@ -24,24 +21,6 @@ import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/cons
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
-export type AgentSkillCreateJobData = {
-  skillId: string;
-  teamId: string;
-  tmbId: string;
-};
-
-const agentSkillCreateQueue = getQueue<AgentSkillCreateJobData>(QueueNames.agentSkillCreate, {
-  defaultJobOptions: {
-    // 初次创建是“先落库 pending，再异步补齐包和版本”的链路。
-    // 失败需要保留在队列一段时间，便于排查；业务上的失败态会写回 skill 行。
-    attempts: 1,
-    removeOnComplete: true,
-    removeOnFail: {
-      age: 30 * 24 * 60 * 60,
-      count: 1000
-    }
-  }
-});
 let hookedWorker: Worker<AgentSkillCreateJobData> | null = null;
 
 /**
@@ -51,21 +30,8 @@ let hookedWorker: Worker<AgentSkillCreateJobData> | null = null;
  * 同一个创建任务。已完成/失败的历史 job 会先删除再重建，因为是否仍需重试以 skill
  * 数据行为准，而不是以队列里的旧任务状态为准。
  */
-export const addAgentSkillCreateJob = async (data: AgentSkillCreateJobData) => {
-  const skillId = String(data.skillId);
-  const existingJob = await agentSkillCreateQueue.getJob(skillId);
-  if (existingJob) {
-    const state = await existingJob.getState();
-    if (state !== 'completed' && state !== 'failed') {
-      return existingJob;
-    }
-    await existingJob.remove();
-  }
-
-  return agentSkillCreateQueue.add(skillId, data, {
-    jobId: skillId
-  });
-};
+export const addAgentSkillCreateJob = (data: AgentSkillCreateJobData) =>
+  skillCreateMQService.addJob(data);
 
 /**
  * worker 启动时恢复仍处于 creating 的可见 skill。
@@ -220,18 +186,12 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
 }
 
 export const initAgentSkillCreateWorker = () => {
-  const worker = getWorker<AgentSkillCreateJobData>(
-    QueueNames.agentSkillCreate,
-    async (job: Job<AgentSkillCreateJobData>) => {
-      await completePendingSkillCreation(job.data);
-    },
-    {
-      concurrency: 2
-    }
-  );
+  const worker = skillCreateMQService.getWorker(async (job: Job<AgentSkillCreateJobData>) => {
+    await completePendingSkillCreation(job.data);
+  });
 
   if (hookedWorker !== worker) {
-    // getWorker 可能返回同一个单例 worker；只挂一次 failed 监听，避免重复写失败态和重复日志。
+    // binding 可能返回同一个单例 worker；只挂一次 failed 监听，避免重复写失败态和重复日志。
     worker.on('failed', async (job, error) => {
       try {
         const skillId = job?.data.skillId;

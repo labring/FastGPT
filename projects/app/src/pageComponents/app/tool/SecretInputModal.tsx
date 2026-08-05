@@ -104,11 +104,13 @@ export const SecretInputForm = ({
 
   const changeConfigType = (type: SystemToolSecretInputTypeEnum) => {
     setValue('type', type);
+    if (type !== SystemToolSecretInputTypeEnum.manual) {
+      setValue('value', undefined);
+    }
     onTypeChange?.(type);
   };
 
-  const isCardExpanded = (type: SystemToolSecretInputTypeEnum) =>
-    configType === type && isExpanded;
+  const isCardExpanded = (type: SystemToolSecretInputTypeEnum) => configType === type && isExpanded;
 
   const expandCard = (type: SystemToolSecretInputTypeEnum) => {
     if (configType !== type) {
@@ -182,9 +184,7 @@ export const SecretInputForm = ({
         {isFolder ? (
           <HStack flex={1} minW={0}>
             <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
-            <Box fontSize={'sm'}>
-              {t('app:tool_active_system_config_price_desc_folder')}
-            </Box>
+            <Box fontSize={'sm'}>{t('app:tool_active_system_config_price_desc_folder')}</Box>
           </HStack>
         ) : (
           <HStack flex={1} minW={0}>
@@ -365,7 +365,14 @@ export const SecretInputForm = ({
                                         {t('common:had_auth_value')}
                                       </Box>
                                     </Flex>
-                                    <IconButton name="edit" onClick={() => setEditIndex(i)} />
+                                    <IconButton
+                                      name="edit"
+                                      onClick={() => {
+                                        setEditIndex(i);
+                                        // 进入编辑态即表示替换该密钥，空提交需要清除旧密文。
+                                        setValue(`value.${item.key}.secret` as any, '');
+                                      }}
+                                    />
                                   </>
                                 )}
                               </Flex>

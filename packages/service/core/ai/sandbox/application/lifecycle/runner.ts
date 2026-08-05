@@ -6,7 +6,7 @@
  * Provider、S3 和 volume 逻辑仍由各业务模块通过 step 注入，避免 runner 变成第二个业务层。
  */
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { RedisLeaseContext } from '../../../../../common/redis/lock';
+import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import {
   advanceSandboxOperation,
   claimSandboxOperation,
