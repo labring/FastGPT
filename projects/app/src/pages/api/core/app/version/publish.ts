@@ -23,6 +23,7 @@ import {
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -41,17 +42,19 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
+  const normalizedWorkflow = normalizeWorkflowConfig({ nodes, edges, chatConfig });
+
   await beforeUpdateAppFormat({
-    nodes
+    nodes: normalizedWorkflow.nodes
   });
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
-      nodes,
+      nodes: normalizedWorkflow.nodes,
       tmbId,
       isRoot
     });
   }
-  const resourceRefs = extractAppResourceRefsFromNodes(nodes);
+  const resourceRefs = extractAppResourceRefsFromNodes(normalizedWorkflow.nodes);
   updateParentFoldersUpdateTime({
     parentId: app.parentId
   });
@@ -66,9 +69,9 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         {
           tmbId,
           appId,
-          nodes,
-          edges,
-          chatConfig,
+          nodes: normalizedWorkflow.nodes,
+          edges: normalizedWorkflow.edges,
+          chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
           time: new Date(),
           resourceRefs
@@ -80,9 +83,9 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       await MongoApp.updateOne(
         { _id: appId },
         {
-          modules: nodes,
-          edges,
-          chatConfig,
+          modules: normalizedWorkflow.nodes,
+          edges: normalizedWorkflow.edges,
+          chatConfig: normalizedWorkflow.chatConfig,
           updateTime: new Date()
         },
         {
@@ -112,9 +115,9 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       [
         {
           appId,
-          nodes: nodes,
-          edges,
-          chatConfig,
+          nodes: normalizedWorkflow.nodes,
+          edges: normalizedWorkflow.edges,
+          chatConfig: normalizedWorkflow.chatConfig,
           isPublish,
           versionName,
           tmbId,
@@ -126,17 +129,17 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
     // update app
     const setUpdate = {
-      modules: nodes,
-      edges,
-      chatConfig,
+      modules: normalizedWorkflow.nodes,
+      edges: normalizedWorkflow.edges,
+      chatConfig: normalizedWorkflow.chatConfig,
       updateTime: new Date(),
       version: 'v2',
       ...(isPublish && { resourceRefs }),
-      ...(isPublish && chatConfig?.scheduledTriggerConfig?.cronString
+      ...(isPublish && normalizedWorkflow.chatConfig.scheduledTriggerConfig?.cronString
         ? {
-            scheduledTriggerConfig: chatConfig.scheduledTriggerConfig,
+            scheduledTriggerConfig: normalizedWorkflow.chatConfig.scheduledTriggerConfig,
             scheduledTriggerNextTime: getNextTimeByCronStringAndTimezone(
-              chatConfig.scheduledTriggerConfig
+              normalizedWorkflow.chatConfig.scheduledTriggerConfig
             )
           }
         : {}),
@@ -146,7 +149,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       { _id: appId },
       {
         $set: setUpdate,
-        ...(isPublish && !chatConfig?.scheduledTriggerConfig?.cronString
+        ...(isPublish && !normalizedWorkflow.chatConfig.scheduledTriggerConfig?.cronString
           ? { $unset: { scheduledTriggerConfig: '', scheduledTriggerNextTime: '' } }
           : {})
       },

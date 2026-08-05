@@ -16,10 +16,10 @@ import { AppContext } from '../../context';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { SystemConfigForm } from './nodes/NodeSystemConfig';
 
-const WORKFLOW_NAVIGATION_HEIGHT = '67px';
+const WORKFLOW_DESKTOP_NAVIGATION_HEIGHT = '67px';
 const SYSTEM_CONFIG_DRAWER_NAVIGATION_OVERLAP = '1px';
-const systemConfigDrawerTop = `calc(${WORKFLOW_NAVIGATION_HEIGHT} - ${SYSTEM_CONFIG_DRAWER_NAVIGATION_OVERLAP})`;
-const systemConfigDrawerMaxHeight = `calc(100vh - ${systemConfigDrawerTop})`;
+const systemConfigDrawerDesktopTop = `calc(${WORKFLOW_DESKTOP_NAVIGATION_HEIGHT} - ${SYSTEM_CONFIG_DRAWER_NAVIGATION_OVERLAP})`;
+const systemConfigDrawerDesktopMaxHeight = `calc(100vh - ${systemConfigDrawerDesktopTop})`;
 
 const SystemConfigDrawer = () => {
   const { t } = useTranslation();
@@ -41,10 +41,7 @@ const SystemConfigDrawer = () => {
       <Button
         aria-label={t('workflow:template.system_config')}
         title={t('workflow:template.system_config')}
-        minW={0}
-        w={'34px'}
-        h={'34px'}
-        p={0}
+        size={'baseSquare'}
         variant={'whitePrimary'}
         flexShrink={0}
         onClick={onOpen}
@@ -63,57 +60,53 @@ const SystemConfigDrawer = () => {
         <DrawerOverlay bg={'transparent'} />
         <DrawerContent
           display={'flex'}
-          w={'400px'}
+          w={'100%'}
           maxW={'400px'}
-          h={'auto'}
-          maxH={systemConfigDrawerMaxHeight}
+          h={['100vh', 'auto']}
+          maxH={['100vh', systemConfigDrawerDesktopMaxHeight]}
           bottom={'auto'}
-          mt={systemConfigDrawerTop}
+          mt={[0, systemConfigDrawerDesktopTop]}
           mr={0}
-          p={'24px'}
+          p={6}
           flexDirection={'column'}
           alignItems={'flex-start'}
           alignSelf={'flex-start'}
-          borderRadius={'10px'}
+          borderRadius={[0, 'semilg']}
           bg={'white'}
           overflow={'hidden'}
-          boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
+          boxShadow={'3.5'}
         >
           <Box w={'100%'} flexShrink={0}>
             <Flex h={'26px'} w={'100%'} justifyContent={'space-between'} alignItems={'center'}>
               <Text
-                color={'#111824'}
-                fontFamily={'PingFang SC'}
-                fontSize={'20px'}
-                fontWeight={500}
+                color={'myGray.900'}
+                fontSize={'lg'}
+                fontWeight={'medium'}
                 lineHeight={'26px'}
-                letterSpacing={'0.15px'}
+                letterSpacing={0}
               >
                 {t('workflow:template.system_config')}
               </Text>
               <Button
                 variant={'transparentBase'}
                 minW={0}
-                w={'20px'}
-                h={'20px'}
+                w={5}
+                h={5}
                 p={0}
-                fontSize={'24px'}
-                fontWeight={300}
-                lineHeight={'20px'}
-                color={'#111824'}
+                color={'myGray.900'}
                 _hover={{ bg: 'transparent' }}
                 onClick={onClose}
                 aria-label={t('common:Close')}
               >
-                ×
+                <MyIcon name={'common/closeLight'} w={4} />
               </Button>
             </Flex>
-            <Box h={'8px'} />
-            <Box h={'1px'} w={'100%'} bg={'#E8EBF0'} />
+            <Box h={2} />
+            <Box h={'1px'} w={'100%'} bg={'myGray.200'} />
           </Box>
           <Box
             w={'100%'}
-            pt={'16px'}
+            pt={4}
             flex={'1 1 auto'}
             minH={0}
             overflowY={'auto'}

@@ -15,10 +15,7 @@ import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  chatConfigToSystemConfigNode,
-  filterSystemConfigNodes
-} from '@fastgpt/global/core/workflow/utils';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 type ExportConfigPopoverProps = {
   appType: AppTypeEnum;
@@ -86,18 +83,14 @@ const ExportConfigPopover = ({
         const nodes = filterSensitiveInfo
           ? filterSensitiveNodesData(workflowData.nodes)
           : workflowData.nodes;
-        const exportNodes = [
-          ...filterSystemConfigNodes(nodes),
-          chatConfigToSystemConfigNode({
-            chatConfig,
-            name: t('workflow:template.system_config')
-          })
-        ];
+        const normalizedWorkflow = normalizeWorkflowConfig({
+          nodes,
+          edges: workflowData.edges,
+          chatConfig
+        });
         config = JSON.stringify(
           {
-            nodes: exportNodes,
-            edges: workflowData.edges,
-            chatConfig,
+            ...normalizedWorkflow,
             type: appType,
             name: appName,
             intro: appIntro ?? ''

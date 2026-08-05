@@ -20,6 +20,7 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
+import type { StoreEdgeItemType } from './type/edge';
 import type {
   VariableItemType,
   AppTTSConfigType,
@@ -182,18 +183,25 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
 };
 
 /**
- * 将旧系统配置节点迁入 chatConfig。
+ * 将任意版本的工作流配置清洗为当前保存结构。
  *
- * 只在新版字段为 undefined/null 时用旧节点补值，空字符串、空数组、false 都视为用户明确配置。
- * 这个函数用于编辑态初始化、导入/草稿恢复和后续迁移，避免运行链路继续依赖旧节点兜底。
+ * 旧系统配置节点只补充 chatConfig 中缺失的字段，显式空值不会被覆盖。清洗结果不再包含
+ * systemConfig 节点及其关联边，且函数无副作用、可重复执行。
  */
-export const mergeSystemConfigNodeToChatConfig = ({
-  chatConfig,
-  systemConfigNode
+export const normalizeWorkflowConfig = ({
+  nodes,
+  edges = [],
+  chatConfig
 }: {
+  nodes: StoreNodeItemType[];
+  edges?: StoreEdgeItemType[];
   chatConfig?: AppChatConfigType;
-  systemConfigNode?: StoreNodeItemType;
-}): AppChatConfigType => {
+}): {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+  chatConfig: AppChatConfigType;
+} => {
+  const systemConfigNode = getGuideModule(nodes);
   const nextChatConfig: AppChatConfigType = { ...(chatConfig ?? {}) };
 
   const welcomeConfig: AppWelcomeConfigType = { ...(nextChatConfig.welcomeConfig ?? {}) };
@@ -293,63 +301,17 @@ export const mergeSystemConfigNodeToChatConfig = ({
     nextChatConfig.instruction = instruction;
   }
 
-  return nextChatConfig;
-};
-
-export const filterSystemConfigNodes = (nodes: StoreNodeItemType[]) =>
-  nodes.filter((item) => item.flowNodeType !== FlowNodeTypeEnum.systemConfig);
-
-/**
- * 导出新版工作流时生成旧环境可识别的系统配置节点副本。
- *
- * 这个节点只用于导出文件，不应写回新版保存态；新版再次导入时会通过
- * mergeSystemConfigNodeToChatConfig 合并回 chatConfig。
- */
-export const chatConfigToSystemConfigNode = ({
-  chatConfig,
-  name = 'System Config'
-}: {
-  chatConfig?: AppChatConfigType;
-  name?: string;
-}): StoreNodeItemType => {
-  const welcomeConfig = chatConfig?.welcomeConfig;
-  const inputValues: { key: NodeInputKeyEnum; value: unknown }[] = [
-    {
-      key: NodeInputKeyEnum.welcomeText,
-      value: welcomeConfig?.welcomeText ?? chatConfig?.welcomeText
-    },
-    {
-      key: NodeInputKeyEnum.welcomeQuestions,
-      value: welcomeConfig?.welcomeQuestions
-    },
-    { key: NodeInputKeyEnum.variables, value: chatConfig?.variables },
-    { key: NodeInputKeyEnum.questionGuide, value: chatConfig?.questionGuide },
-    { key: NodeInputKeyEnum.tts, value: chatConfig?.ttsConfig },
-    { key: NodeInputKeyEnum.whisper, value: chatConfig?.whisperConfig },
-    { key: NodeInputKeyEnum.scheduleTrigger, value: chatConfig?.scheduledTriggerConfig },
-    { key: NodeInputKeyEnum.chatInputGuide, value: chatConfig?.chatInputGuide },
-    { key: NodeInputKeyEnum.autoExecute, value: chatConfig?.autoExecute },
-    { key: NodeInputKeyEnum.instruction, value: chatConfig?.instruction }
-  ];
-
+  const systemConfigNodeIds = new Set(
+    nodes
+      .filter((node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig)
+      .map((node) => node.nodeId)
+  );
   return {
-    nodeId: FlowNodeTypeEnum.systemConfig,
-    name,
-    intro: '',
-    flowNodeType: FlowNodeTypeEnum.systemConfig,
-    position: {
-      x: 0,
-      y: 0
-    },
-    inputs: inputValues
-      .filter((item) => !isConfigMissing(item.value))
-      .map((item) => ({
-        key: item.key,
-        label: item.key,
-        value: item.value,
-        renderTypeList: [FlowNodeInputTypeEnum.hidden]
-      })),
-    outputs: []
+    nodes: nodes.filter((node) => !systemConfigNodeIds.has(node.nodeId)),
+    edges: edges.filter(
+      (edge) => !systemConfigNodeIds.has(edge.source) && !systemConfigNodeIds.has(edge.target)
+    ),
+    chatConfig: nextChatConfig
   };
 };
 

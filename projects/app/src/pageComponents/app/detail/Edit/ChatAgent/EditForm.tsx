@@ -175,11 +175,6 @@ const EditForm = ({
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
 
-  const welcomeQuestions = useMemo(
-    () => appForm.chatConfig.welcomeConfig?.welcomeQuestions,
-    [appForm.chatConfig.welcomeConfig?.welcomeQuestions]
-  );
-
   const updateWelcomeText = useCallback(
     (value: string) => {
       setAppForm((state) => ({
@@ -583,7 +578,6 @@ const EditForm = ({
         <Box {...BoxStyles}>
           <WelcomeTextConfig
             value={appForm.chatConfig.welcomeText}
-            showFoldButton
             isFolded={isWelcomeTextFolded}
             onToggleFold={() => setIsWelcomeTextFolded((state) => !state)}
             onChange={(e) => {
@@ -592,7 +586,10 @@ const EditForm = ({
           />
           {!isWelcomeTextFolded && (
             <Box mt={3}>
-              <WelcomeQuestionsConfig value={welcomeQuestions} onChange={updateWelcomeQuestions} />
+              <WelcomeQuestionsConfig
+                value={appForm.chatConfig.welcomeConfig?.welcomeQuestions}
+                onChange={updateWelcomeQuestions}
+              />
             </Box>
           )}
         </Box>

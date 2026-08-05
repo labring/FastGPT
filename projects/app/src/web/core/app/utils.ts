@@ -67,8 +67,10 @@ export const workflowSystemVariables: EditorVariablePickerType[] = [
 
 export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
   return (
+    appDetail.chatConfig?.chatInputGuide?.customUrl ??
     appDetail?.modules
       .find((m) => m.flowNodeType === FlowNodeTypeEnum.systemConfig)
-      ?.inputs.find((i) => i.key === NodeInputKeyEnum.chatInputGuide)?.value.customUrl || ''
+      ?.inputs.find((i) => i.key === NodeInputKeyEnum.chatInputGuide)?.value.customUrl ??
+    ''
   );
 };

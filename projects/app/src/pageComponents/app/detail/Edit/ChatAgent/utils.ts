@@ -24,14 +24,13 @@ import {
   WorkflowStart,
   userFilesInput
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig, normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
   canInputBeAgentGenerated,
@@ -54,11 +53,16 @@ export const appWorkflow2AgentForm = ({
   chatConfig: AppChatConfigType;
 }) => {
   const defaultAppForm = getDefaultAppForm();
+  const normalizedWorkflow = normalizeWorkflowConfig({ nodes, chatConfig });
+  defaultAppForm.chatConfig = getAppChatConfig({
+    chatConfig: normalizedWorkflow.chatConfig,
+    isPublicFetch: true
+  });
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
   };
 
-  nodes.forEach((node) => {
+  normalizedWorkflow.nodes.forEach((node) => {
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
@@ -105,12 +109,6 @@ export const appWorkflow2AgentForm = ({
       if (skills && skills.length > 0) {
         defaultAppForm.selectedAgentSkills = skills;
       }
-    } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
-      defaultAppForm.chatConfig = getAppChatConfig({
-        chatConfig,
-        systemConfigNode: node,
-        isPublicFetch: true
-      });
     }
   });
 
@@ -160,21 +158,6 @@ export function agentForm2AppWorkflow(
     extractFiles: !!(modelData?.vision || modelData?.audio || modelData?.video)
   };
 
-  function systemConfigTemplate(): StoreNodeItemType {
-    return {
-      nodeId: SystemConfigNode.id,
-      name: t(SystemConfigNode.name),
-      intro: '',
-      flowNodeType: SystemConfigNode.flowNodeType,
-      position: {
-        x: 531.2422736065552,
-        y: -486.7611729549753
-      },
-      version: SystemConfigNode.version,
-      inputs: [],
-      outputs: []
-    };
-  }
   function workflowStartTemplate(): StoreNodeItemType {
     return {
       nodeId: workflowStartNodeId,
@@ -397,7 +380,7 @@ export function agentForm2AppWorkflow(
   const workflow = agentChatTemplate();
 
   return {
-    nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
+    nodes: [workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
     chatConfig: data.chatConfig
   };

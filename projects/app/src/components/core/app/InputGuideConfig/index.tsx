@@ -11,7 +11,6 @@ import ChatFunctionTip from '../Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputGuideConfigModal from './InputGuideConfigModal';
 import dynamic from 'next/dynamic';
-import { drawerActionButtonStyle } from '../configDrawerStyles';
 
 const LexiconConfigModal = dynamic(() => import('./LexiconConfigModal'), {
   ssr: false
@@ -21,14 +20,12 @@ type InputGuideConfigProps = {
   appId: string;
   value?: ChatInputGuideConfigType;
   onChange: (e: ChatInputGuideConfigType) => void;
-  drawerMode?: boolean;
 };
 
 const InputGuideConfig = ({
   appId,
   value = defaultChatInputGuideConfig,
-  onChange,
-  drawerMode = false
+  onChange
 }: InputGuideConfigProps) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -51,7 +48,7 @@ const InputGuideConfig = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'} w={'100%'}>
+    <Flex alignItems={'center'}>
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
       <Flex alignItems={'center'}>
         <FormLabel>{t('app:input_guide')}</FormLabel>
@@ -63,9 +60,8 @@ const InputGuideConfig = ({
           variant={'transparentBase'}
           iconSpacing={1}
           size={'sm'}
-          mr={drawerMode ? 0 : '-5px'}
+          mr={'-5px'}
           color={'myGray.600'}
-          {...(drawerMode ? drawerActionButtonStyle : {})}
           onClick={onOpen}
         >
           {statusText}

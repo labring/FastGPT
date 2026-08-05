@@ -15,6 +15,7 @@ import {
   type TransitionWorkflowBodyType,
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -62,7 +63,17 @@ async function handler(
     return TransitionWorkflowResponseSchema.parse({ id: appId });
   }
 
-  await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
+  const normalizedWorkflow = normalizeWorkflowConfig({
+    nodes: app.modules,
+    edges: app.edges,
+    chatConfig: app.chatConfig
+  });
+  await MongoApp.findByIdAndUpdate(appId, {
+    type: AppTypeEnum.workflow,
+    modules: normalizedWorkflow.nodes,
+    edges: normalizedWorkflow.edges,
+    chatConfig: normalizedWorkflow.chatConfig
+  });
 
   return TransitionWorkflowResponseSchema.parse(undefined);
 }

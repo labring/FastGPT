@@ -7,16 +7,13 @@ import { useTranslation } from 'next-i18next';
 import ChatFunctionTip from './Tip';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { drawerActionButtonStyle } from './configDrawerStyles';
 
 const AutoExecConfig = ({
   value = defaultAutoExecuteConfig,
-  onChange,
-  drawerMode = false
+  onChange
 }: {
   value?: AppAutoExecuteConfigType;
   onChange: (e: AppAutoExecuteConfigType) => void;
-  drawerMode?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -28,7 +25,7 @@ const AutoExecConfig = ({
     : t('common:core.app.whisper.Close');
 
   return (
-    <Flex alignItems={'center'} w={'100%'}>
+    <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/autoExec'} mr={2} w={'20px'} />
       <FormLabel color={'myGray.600'}>{t('app:auto_execute')}</FormLabel>
       <ChatFunctionTip type={'autoExec'} />
@@ -38,10 +35,9 @@ const AutoExecConfig = ({
           variant={'transparentBase'}
           iconSpacing={1}
           size={'sm'}
-          mr={drawerMode ? 0 : '-5px'}
+          mr={'-5px'}
           onClick={onOpen}
           color={'myGray.600'}
-          {...(drawerMode ? drawerActionButtonStyle : {})}
         >
           {formLabel}
         </Button>
