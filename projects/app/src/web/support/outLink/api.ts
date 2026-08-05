@@ -11,6 +11,8 @@ import type {
 import type {
   OutLinkCreateBodyType,
   OutLinkCreateResponseType,
+  OutLinkCountQueryType,
+  OutLinkCountResponseType,
   OutLinkDeleteQueryType,
   OutLinkDeleteResponseType,
   OutLinkListQueryType,
@@ -36,6 +38,9 @@ export function getShareChatList<T extends OutlinkAppType>(
 export function getShareChatList(data: OutLinkListQueryType) {
   return GET<OutLinkListResponseType>(`/support/outLink/list`, data);
 }
+
+export const getOutLinkCounts = (data: OutLinkCountQueryType) =>
+  GET<OutLinkCountResponseType>('/support/outLink/count', data);
 
 // delete a  shareChat
 export function delShareChatById(id: OutLinkDeleteQueryType['id']) {

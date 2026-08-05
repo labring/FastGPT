@@ -98,6 +98,50 @@ export const OutLinkListResponseSchema = z.array(OutLinkSchema).meta({
 export type OutLinkListResponseType = z.infer<typeof OutLinkListResponseSchema>;
 
 /* ============================================================================
+ * API: 获取发布渠道连接数量
+ * Route: GET /api/support/outLink/count
+ * Method: GET
+ * Description: 获取应用侧栏展示的发布渠道连接数量。
+ * Tags: ['发布渠道']
+ * ============================================================================ */
+
+export const OutLinkCountQuerySchema = z.object({
+  appId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '应用 ID'
+  })
+});
+export type OutLinkCountQueryType = z.infer<typeof OutLinkCountQuerySchema>;
+
+export const OutLinkCountResponseSchema = z.object({
+  [PublishChannelEnum.share]: z.number().int().nonnegative().meta({
+    example: 2,
+    description: '分享链接数量'
+  }),
+  [PublishChannelEnum.feishu]: z.number().int().nonnegative().meta({
+    example: 1,
+    description: '飞书机器人数量'
+  }),
+  [PublishChannelEnum.dingtalk]: z.number().int().nonnegative().meta({
+    example: 1,
+    description: '钉钉机器人数量'
+  }),
+  [PublishChannelEnum.wecom]: z.number().int().nonnegative().meta({
+    example: 1,
+    description: '企业微信机器人数量'
+  }),
+  [PublishChannelEnum.wechat]: z.number().int().nonnegative().meta({
+    example: 1,
+    description: '微信机器人数量'
+  }),
+  [PublishChannelEnum.officialAccount]: z.number().int().nonnegative().meta({
+    example: 1,
+    description: '微信公众号数量'
+  })
+});
+export type OutLinkCountResponseType = z.infer<typeof OutLinkCountResponseSchema>;
+
+/* ============================================================================
  * API: 创建发布渠道
  * Route: POST /api/support/outLink/create
  * Method: POST
