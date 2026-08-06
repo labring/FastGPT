@@ -41,6 +41,53 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
+describe('rewriteAppWorkflowToDetail - legacy HTTP workflow tool inputs', () => {
+  it('恢复旧版 HTTP 动态工具参数并保留显式手动配置', async () => {
+    const nodes = [
+      {
+        nodeId: 'http-tool',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: 'query',
+            label: 'query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            toolDescription: 'Search query',
+            canEdit: true
+          },
+          {
+            key: 'manual',
+            label: 'manual',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            toolDescription: 'Manual value',
+            canEdit: true,
+            isToolParam: false
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      isToolParam: true,
+      selectedType: undefined
+    });
+    expect(nodes[0].inputs[1]).toMatchObject({
+      isToolParam: false,
+      selectedType: FlowNodeInputTypeEnum.reference
+    });
+  });
+});
+
 describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
   it('回显旧版工作流工具输入的默认 AI 生成配置并保留显式关闭', async () => {
     const legacyInput = {

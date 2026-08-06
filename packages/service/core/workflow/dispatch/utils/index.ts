@@ -39,6 +39,7 @@ import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/u
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
+  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
@@ -772,10 +773,15 @@ export const rewriteRuntimeWorkFlow = async ({
       node.pluginId?.startsWith('systemTool-') ||
       node.pluginId?.startsWith('commercial-')
     );
-    const inputsWithLegacyDefaults =
-      node.flowNodeType === FlowNodeTypeEnum.pluginModule && isTool
-        ? normalizeWorkflowToolInputsDefaultMode(node.inputs)
-        : node.inputs;
+    const inputsWithLegacyDefaults = (() => {
+      if (node.flowNodeType === FlowNodeTypeEnum.pluginModule && isTool) {
+        return normalizeWorkflowToolInputsDefaultMode(node.inputs);
+      }
+      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468 && isTool) {
+        return normalizeLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
+      }
+      return node.inputs;
+    })();
 
     node.inputs = inputsWithLegacyDefaults.map((input) =>
       normalizeFlowNodeInputType(input, {

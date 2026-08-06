@@ -1025,6 +1025,62 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(runtimeInputs.find((input) => input.key === 'text2')?.value).toBe('');
   });
 
+  it('should restore legacy HTTP workflow tool params at runtime', async () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const httpToolNode = makeNode('http-tool', FlowNodeTypeEnum.httpRequest468, {
+      inputs: [
+        {
+          key: 'query',
+          label: 'query',
+          valueType: 'string',
+          required: true,
+          canEdit: true,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          toolDescription: 'Search query'
+        },
+        {
+          key: 'manual',
+          label: 'manual',
+          valueType: 'string',
+          required: false,
+          canEdit: true,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          toolDescription: 'Manual value',
+          isToolParam: false
+        }
+      ]
+    });
+    const nodes = [toolCallNode, httpToolNode];
+    const edges = [
+      makeEdge('tool-call', 'http-tool', {
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(httpToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      isToolParam: true,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference]
+    });
+    expect(httpToolNode.inputs[1]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      isToolParam: false
+    });
+
+    const runtimeInputs = updateAgentLoopCoreWorkflowToolInputValue({
+      params: {
+        query: 'generated query',
+        manual: 'ignored model value'
+      },
+      inputs: httpToolNode.inputs
+    });
+    expect(runtimeInputs[0].value).toBe('generated query');
+    expect(runtimeInputs[1].value).toBeUndefined();
+  });
+
   it('should normalize legacy system tool inputs at the runtime boundary', async () => {
     const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
     const systemToolNode = makeNode('system-tool', FlowNodeTypeEnum.tool, {
