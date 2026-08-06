@@ -20,13 +20,11 @@ const sideTabDeepTreeMinDepth = 4;
 export const ResponseBox = React.memo(function ResponseBox({
   response,
   dataId,
-  hideTabs = false,
-  useMobile = false
+  hideTabs = false
 }: {
   response: ChatHistoryItemResType[];
   dataId?: string;
   hideTabs?: boolean;
-  useMobile?: boolean;
 }) {
   const { t } = useSafeTranslation();
   const { isPc } = useSystem();
@@ -79,7 +77,7 @@ export const ResponseBox = React.memo(function ResponseBox({
 
   return (
     <>
-      {isPc && !useMobile ? (
+      {isPc ? (
         <Flex
           overflow={'hidden'}
           height={'100%'}

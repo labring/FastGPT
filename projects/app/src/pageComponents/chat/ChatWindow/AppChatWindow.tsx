@@ -174,7 +174,7 @@ const AppChatWindow = () => {
   );
 
   return (
-    <Flex h={'100%'} flexDirection={['column', 'row']}>
+    <Flex h={'100%'} minH={0} minW={0} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
       <NextHead
         title={isCurrentChatReady ? chatBoxData.app.name : undefined}
@@ -202,64 +202,69 @@ const AppChatWindow = () => {
       <Flex
         position={'relative'}
         h={[0, '100%']}
+        minH={0}
+        minW={0}
         w={['100%', 0]}
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        {isPc ? (
-          <ChatWindowHeader
-            title={chatWindowTitle}
-            history={chatRecords}
-            chatType={ChatTypeEnum.chat}
-            rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
-          />
-        ) : (
-          <Flex
-            h="48px"
-            px={4}
-            bg="white"
-            alignItems="center"
-            justifyContent="space-between"
-            color="myGray.600"
-          >
-            <IconButton
-              aria-label="Open history"
-              icon={<MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />}
-              variant="unstyled"
-              {...mobileChatHeaderIconButtonStyle}
-              onClick={onOpenSlider}
+        {!isPlugin &&
+          (isPc ? (
+            <ChatWindowHeader
+              title={chatWindowTitle}
+              history={chatRecords}
+              chatType={ChatTypeEnum.chat}
+              rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
             />
+          ) : (
+            <Flex
+              h="48px"
+              px={4}
+              bg="white"
+              alignItems="center"
+              justifyContent="space-between"
+              color="myGray.600"
+            >
+              <IconButton
+                aria-label="Open history"
+                icon={
+                  <MyIcon name="core/chat/sidebar/menu" w="20px" h="20px" color="currentColor" />
+                }
+                variant="unstyled"
+                {...mobileChatHeaderIconButtonStyle}
+                onClick={onOpenSlider}
+              />
 
-            <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3} gap={2}>
-              {isCurrentChatReady && (
-                <Avatar
-                  src={chatBoxData.app.avatar}
-                  w="24px"
-                  h="24px"
-                  borderRadius="6px"
-                  flexShrink={0}
-                />
-              )}
-              <Box
-                minW={0}
-                fontSize="16px"
-                fontWeight={500}
-                color="myGray.900"
-                overflow="hidden"
-                whiteSpace="nowrap"
-                textOverflow="clip"
-              >
-                {mobileHeaderTitle}
+              <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3} gap={2}>
+                {isCurrentChatReady && (
+                  <Avatar
+                    src={chatBoxData.app.avatar}
+                    w="24px"
+                    h="24px"
+                    borderRadius="6px"
+                    flexShrink={0}
+                  />
+                )}
+                <Box
+                  minW={0}
+                  fontSize="16px"
+                  fontWeight={500}
+                  color="myGray.900"
+                  overflow="hidden"
+                  whiteSpace="nowrap"
+                  textOverflow="clip"
+                >
+                  {mobileHeaderTitle}
+                </Box>
+              </Flex>
+
+              <Box minW="36px">
+                <ToolMenu history={chatRecords} chatType={ChatTypeEnum.chat} />
               </Box>
             </Flex>
+          ))}
 
-            <Box minW="36px">
-              <ToolMenu history={chatRecords} chatType={ChatTypeEnum.chat} />
-            </Box>
-          </Flex>
-        )}
-
-        <Box flex={'1 0 0'} bg={'white'}>
+        <Box flex={'1 0 0'} minH={0} minW={0} overflow={'hidden'} bg={'white'}>
           {isPlugin ? (
             <CustomPluginRunBox
               appId={appId}

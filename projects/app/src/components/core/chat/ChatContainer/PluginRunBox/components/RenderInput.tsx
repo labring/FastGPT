@@ -131,7 +131,7 @@ const RenderInput = () => {
   const isDisabledInput = !!hasHistory;
 
   return (
-    <Box>
+    <>
       {/* instruction */}
       {instruction && (
         <Box
@@ -273,7 +273,7 @@ const RenderInput = () => {
           </Button>
         </Flex>
       )}
-    </Box>
+    </>
   );
 };
 

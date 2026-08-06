@@ -304,6 +304,8 @@ const OutLink = (props: Props) => {
       />
       <Flex
         h={'full'}
+        minH={0}
+        minW={0}
         gap={datasetCiteData ? 0 : 4}
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
@@ -311,6 +313,8 @@ const OutLink = (props: Props) => {
           <PageContainer
             flex={'1 0 0'}
             w={0}
+            minH={0}
+            minW={0}
             p={'0 !important'}
             insertProps={
               datasetCiteData
@@ -320,19 +324,22 @@ const OutLink = (props: Props) => {
                 : undefined
             }
           >
-            <Flex h={'100%'} flexDirection={['column', 'row']}>
+            <Flex h={'100%'} minH={0} minW={0} flexDirection={['column', 'row']}>
               {RenderHistoryList}
 
               {/* chat container */}
               <Flex
                 position={'relative'}
                 h={[0, '100%']}
+                minH={0}
+                minW={0}
                 w={['100%', 0]}
                 flex={'1 0 0'}
                 flexDirection={'column'}
               >
                 {/* header */}
                 {showHead === '1' &&
+                  !isPlugin &&
                   (isPc ? (
                     <ChatWindowHeader
                       title={chatWindowTitle}
@@ -414,7 +421,7 @@ const OutLink = (props: Props) => {
                     </Flex>
                   ))}
                 {/* chat box */}
-                <Box flex={1} bg={'white'}>
+                <Box flex={1} minH={0} minW={0} overflow={'hidden'} bg={'white'}>
                   {isPlugin ? (
                     <CustomPluginRunBox
                       appId={appId}

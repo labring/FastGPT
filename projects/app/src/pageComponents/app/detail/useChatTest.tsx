@@ -10,7 +10,6 @@ import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
-import { Box } from '@chakra-ui/react';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -21,6 +20,7 @@ import { useTranslation } from 'next-i18next';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import { Box } from '@chakra-ui/react';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -172,7 +172,15 @@ export const useChatTest = ({
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.workflowTool ? (
-      <Box p={5} h={'100%'} minH={0} display={'flex'} flexDirection={'column'}>
+      <Box
+        p={5}
+        h={'100%'}
+        minH={0}
+        minW={0}
+        overflowY={'auto'}
+        display={'flex'}
+        flexDirection={'column'}
+      >
         <PluginRunBox
           appId={appId}
           chatId={chatId}
