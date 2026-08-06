@@ -7,8 +7,8 @@
 用户级实例、生命周期、Legacy 迁移以及本分支后续变更的最终契约统一见
 [用户级 Sandbox 最终方案](./user-level-sandbox.md)。本文只维护当前代码入口和运行行为索引。
 
-OpenSandbox Kubernetes PVC 的问题定论、生命周期设计和验证记录统一见
-[OpenSandbox Kubernetes PVC 生命周期问题与设计](./opensandbox-pvc-lifecycle.md)。
+OpenSandbox Kubernetes PVC、原生 pause/resume 的问题定论、生命周期设计和验证记录统一见
+[OpenSandbox 生命周期问题与设计](./opensandbox-pvc-lifecycle.md)。
 
 ## 目标与边界
 

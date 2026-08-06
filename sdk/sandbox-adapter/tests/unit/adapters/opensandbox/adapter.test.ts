@@ -52,6 +52,7 @@ const createSdkSandbox = (
   });
   const writeFiles = vi.fn(async (_entries: WriteEntry[]) => undefined);
   const getFileInfo = vi.fn(async () => ({}));
+  const pause = vi.fn(async () => undefined);
   const commandRun = vi.fn(
     async (
       _command: string,
@@ -69,6 +70,7 @@ const createSdkSandbox = (
     id,
     getInfo,
     close: vi.fn(async () => undefined),
+    pause,
     kill: vi.fn(async () => undefined),
     commands: {
       run: commandRun
@@ -81,7 +83,16 @@ const createSdkSandbox = (
     }
   } as unknown as Sandbox;
 
-  return { sandbox, getInfo, readBytes, readBytesStream, writeFiles, getFileInfo, commandRun };
+  return {
+    sandbox,
+    getInfo,
+    readBytes,
+    readBytesStream,
+    writeFiles,
+    getFileInfo,
+    pause,
+    commandRun
+  };
 };
 
 const bindSandbox = (adapter: OpenSandboxAdapter, sandbox: Sandbox): void => {
@@ -93,15 +104,17 @@ const bindSandbox = (adapter: OpenSandboxAdapter, sandbox: Sandbox): void => {
 
 const mockManager = (items: SdkSandboxInfo[] = [], info: SdkSandboxInfo = sdkInfo('Deleted')) => {
   const getSandboxInfo = vi.fn(async () => info);
+  const pauseSandbox = vi.fn(async () => undefined);
   const killSandbox = vi.fn(async () => undefined);
   const manager = {
     listSandboxInfos: vi.fn(async () => ({ items })),
     getSandboxInfo,
+    pauseSandbox,
     killSandbox,
     close: vi.fn(async () => undefined)
   } as unknown as SandboxManager;
   vi.spyOn(SandboxManager, 'create').mockReturnValue(manager);
-  return { getSandboxInfo, killSandbox };
+  return { getSandboxInfo, pauseSandbox, killSandbox };
 };
 
 describe('OpenSandboxAdapter', () => {
@@ -177,27 +190,55 @@ describe('OpenSandboxAdapter', () => {
     );
   });
 
-  it('deletes a bound sandbox on stop and releases its client', async () => {
+  it('pauses a bound sandbox on stop and releases its stale client', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
-    const bound = createSdkSandbox({ info: [sdkInfo('Deleted')] });
+    const bound = createSdkSandbox({ info: [sdkInfo('Running'), sdkInfo('Paused')] });
     bindSandbox(adapter, bound.sandbox);
 
     await adapter.stop();
 
-    expect(bound.sandbox.kill).toHaveBeenCalledTimes(1);
+    expect(bound.pause).toHaveBeenCalledTimes(1);
+    expect(bound.sandbox.kill).not.toHaveBeenCalled();
     expect(bound.sandbox.close).toHaveBeenCalledTimes(1);
-    expect(adapter.status.state).toBe('UnExist');
+    expect(adapter.status.state).toBe('Stopped');
     expect(adapter.id).toBeUndefined();
   });
 
-  it('deletes an unbound sandbox found by session metadata on stop', async () => {
-    const manager = mockManager([sdkInfo('Running')], sdkInfo('Deleted'));
+  it('pauses an unbound sandbox found by session metadata on stop', async () => {
+    const manager = mockManager([sdkInfo('Running')], sdkInfo('Paused'));
     const adapter = new OpenSandboxAdapter(CONNECTION);
 
     await adapter.stop();
 
-    expect(manager.killSandbox).toHaveBeenCalledWith('sandbox-1');
+    expect(manager.pauseSandbox).toHaveBeenCalledWith('sandbox-1');
+    expect(manager.killSandbox).not.toHaveBeenCalled();
     expect(manager.getSandboxInfo).toHaveBeenCalledWith('sandbox-1');
+    expect(adapter.status.state).toBe('Stopped');
+  });
+
+  it.each(['Paused', 'Pausing'] as const)(
+    'stops idempotently from %s without another provider request',
+    async (state) => {
+      const manager = mockManager([sdkInfo(state)], sdkInfo('Paused'));
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+
+      await adapter.stop();
+
+      expect(manager.pauseSandbox).not.toHaveBeenCalled();
+      expect(adapter.status.state).toBe('Stopped');
+    }
+  );
+
+  it('keeps delete as the permanent lifecycle operation', async () => {
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    const bound = createSdkSandbox({ info: [sdkInfo('Deleted')] });
+    bindSandbox(adapter, bound.sandbox);
+
+    await adapter.delete();
+
+    expect(bound.pause).not.toHaveBeenCalled();
+    expect(bound.sandbox.kill).toHaveBeenCalledTimes(1);
+    expect(bound.sandbox.close).toHaveBeenCalledTimes(1);
     expect(adapter.status.state).toBe('UnExist');
   });
 
