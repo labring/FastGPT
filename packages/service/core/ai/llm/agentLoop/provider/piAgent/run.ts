@@ -209,12 +209,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   );
   const standardHistoryMessages =
     lastUserMessageIndex >= 0 ? requestMessages.slice(0, lastUserMessageIndex) : requestMessages;
+  const askContinuation = input.continuation?.type === 'ask' ? input.continuation : undefined;
   const shouldResumeStandardAsk =
-    !input.childrenInteractiveParams && !!pendingMainContext && input.userAnswer !== undefined;
+    !input.childrenInteractiveParams && !!pendingMainContext && !!askContinuation;
   const shouldResumeAsk = shouldResumeStandardAsk;
   const askResumeId = pendingMainContext?.askToolCallId;
   const standardAskResumeMessages =
-    shouldResumeStandardAsk && askResumeId
+    shouldResumeStandardAsk && askResumeId && askContinuation
       ? [
           ...pendingMainContext!.messages,
           {
@@ -224,10 +225,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
               formatAgentAskToolResponse({
                 messages: pendingMainContext!.messages,
                 askToolCallId: askResumeId,
-                answer: input.userAnswer ?? ''
+                answer: askContinuation.answer
               })
             )
-          } as ChatCompletionMessageParam
+          } as ChatCompletionMessageParam,
+          ...(askContinuation.additionalMessages ?? [])
         ]
       : undefined;
   // ask resume follows the FastAgent contract: the new user input is represented by
@@ -366,8 +368,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     resumedInteractiveTool = true;
   }
 
-  if (shouldResumeAsk && askResumeId) {
-    const answer = normalizeToolResponseContent(input.userAnswer);
+  if (shouldResumeAsk && askResumeId && askContinuation) {
+    const answer = normalizeToolResponseContent(askContinuation.answer);
     resumedAsk = true;
     runtime.emitEvent?.({
       type: 'ask_resume',

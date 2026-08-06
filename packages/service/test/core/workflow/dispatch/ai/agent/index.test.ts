@@ -901,7 +901,10 @@ describe('dispatchRunAgent user context', () => {
       expect.objectContaining({
         provider: 'fastAgent',
         input: expect.objectContaining({
-          userAnswer: '前端原始问题',
+          continuation: {
+            type: 'ask',
+            answer: '前端原始问题'
+          },
           providerState: {
             pendingMainContext: expect.objectContaining({
               askToolCallId: 'call_ask',
@@ -981,7 +984,10 @@ describe('dispatchRunAgent user context', () => {
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
-          userAnswer: '{"answers":["A",""]}'
+          continuation: {
+            type: 'ask',
+            answer: '{"answers":["A",""]}'
+          }
         })
       })
     );
@@ -1089,7 +1095,10 @@ describe('dispatchRunAgent user context', () => {
       expect.objectContaining({
         provider: 'piAgent',
         input: expect.objectContaining({
-          userAnswer: '前端原始问题',
+          continuation: {
+            type: 'ask',
+            answer: '前端原始问题'
+          },
           providerState: expect.objectContaining({
             pendingMainContext: expect.objectContaining({
               activePlan: {

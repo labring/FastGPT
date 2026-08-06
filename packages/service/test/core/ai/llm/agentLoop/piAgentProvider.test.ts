@@ -1556,7 +1556,23 @@ describe('runPiAgentLoop', () => {
             ]
           }
         },
-        userAnswer: '我要分析销售数据'
+        continuation: {
+          type: 'ask',
+          answer: '我要分析销售数据',
+          additionalMessages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: '<system-reminder>本轮新增文件</system-reminder>' },
+                {
+                  type: 'file_url',
+                  name: 'sales.csv',
+                  url: 'https://files.example/sales.csv'
+                }
+              ]
+            }
+          ]
+        }
       },
       runtime: {
         llmParams: {
@@ -1580,6 +1596,13 @@ describe('runPiAgentLoop', () => {
         role: 'toolResult',
         toolCallId: 'call_ask',
         content: [{ type: 'text', text: '我要分析销售数据' }]
+      }),
+      expect.objectContaining({
+        role: 'user',
+        content: expect.arrayContaining([
+          { type: 'text', text: '<system-reminder>本轮新增文件</system-reminder>' },
+          { type: 'text', text: '[File: sales.csv] https://files.example/sales.csv' }
+        ])
       })
     ]);
     expect(agentContinueMock).toHaveBeenCalledTimes(1);
@@ -1589,6 +1612,14 @@ describe('runPiAgentLoop', () => {
       tool_call_id: 'call_ask',
       content: '我要分析销售数据'
     });
+    expect(result.completeMessages).toContainEqual(
+      expect.objectContaining({
+        role: 'user',
+        content: expect.arrayContaining([
+          expect.objectContaining({ type: 'file_url', name: 'sales.csv' })
+        ])
+      })
+    );
     expect(result.activePlan).toMatchObject({ planId: 'plan_1' });
     expect(result.assistantMessages).not.toContainEqual(
       expect.objectContaining({
@@ -1611,7 +1642,10 @@ describe('runPiAgentLoop', () => {
             messages: [{ role: 'assistant', content: null }]
           }
         },
-        userAnswer: '我要分析销售数据'
+        continuation: {
+          type: 'ask',
+          answer: '我要分析销售数据'
+        }
       },
       runtime: {
         llmParams: { model: 'gpt-5' },

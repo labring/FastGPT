@@ -11,6 +11,8 @@ import type {
 } from '@fastgpt/global/core/ai/skill/runtime/builtin';
 import { getSandboxBuiltinSkillsRootPath } from '../../../infrastructure/provider/runtimeProfile/utils';
 import { buildRuntimeHash, joinSandboxPath } from '../../../utils';
+import { resolveSandboxHome } from '../home';
+import type { SandboxPrepareContext } from '../prepare';
 import {
   getRuntimeStateValue,
   readSandboxRuntimeState,
@@ -25,9 +27,56 @@ type BuiltinSkillSyncSource = BuiltinSkillSource & {
   etag: string;
 };
 
+export type BuiltinSkillPrepareContext = SandboxPrepareContext & {
+  skillScanDirectories: string[];
+};
+
+export type BuiltinSkillPrepareAction = <Context extends BuiltinSkillPrepareContext>(
+  context: Context
+) => Promise<Context>;
+
 export function getBuiltinSkillsRootPath(homeDirectory: string): string {
   return getSandboxBuiltinSkillsRootPath(homeDirectory);
 }
+
+/**
+ * 创建“同步内置 Skill 到当前 sandbox”的通用 prepare step。
+ *
+ * 业务调用方只负责延迟提供 Skill 文件；HOME、目标目录和扫描目录都由 sandbox runtime 管理，
+ * 因而 Skill Debug、Workflow 等入口无需各自维护一份适配逻辑。
+ */
+export const createBuiltinSkillPrepareAction =
+  ({
+    getSources,
+    injectToSandbox = syncBuiltinSkillsToSandbox
+  }: {
+    getSources: () => Promise<BuiltinSkillSource[]>;
+    injectToSandbox?: typeof syncBuiltinSkillsToSandbox;
+  }): BuiltinSkillPrepareAction =>
+  async <Context extends BuiltinSkillPrepareContext>(context: Context): Promise<Context> => {
+    const sources = await getSources();
+    if (sources.length === 0) return context;
+
+    const homeDirectory = await resolveSandboxHome(context.sandbox);
+    if (!homeDirectory) {
+      throw new Error('Failed to resolve sandbox HOME for builtin skill sync');
+    }
+
+    await injectToSandbox({
+      sandbox: context.sandbox,
+      homeDirectory,
+      sources
+    });
+
+    const builtinSkillsRootPath = getBuiltinSkillsRootPath(homeDirectory);
+    return {
+      ...context,
+      skillScanDirectories: [
+        ...context.skillScanDirectories,
+        ...sources.map((source) => `${builtinSkillsRootPath}/${source.name}`)
+      ]
+    };
+  };
 
 /**
  * 将内置 Skill 源码注入 sandbox 用户主目录。
