@@ -31,6 +31,8 @@ import {
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { MAX_QUICK_APP_COUNT } from './constants';
 
 const AddQuickAppModal = dynamic(
   () => import('@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal')
@@ -44,6 +46,7 @@ type Props = {
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
@@ -59,9 +62,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         selectedTools: data?.selectedTools || [],
         wideLogoUrl: data?.wideLogoUrl,
         squareLogoUrl: data?.squareLogoUrl,
-
-        // 兼容旧版本最多保存 4 个快捷应用的配置，加载时收敛到当前上限。
-        quickAppList: (data?.quickAppList || []).slice(0, 3)
+        quickAppList: data?.quickAppList || []
       };
     },
     [t]
@@ -114,12 +115,12 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     [selectedTools, setValue]
   );
 
-  const { runAsync: onSubmit, loading: isSaving } = useRequest(
+  const { runAsync: saveChatSetting, loading: isSaving } = useRequest(
     async (values: ChatSettingType) => {
       const { quickAppList, ...params } = values;
       return updateChatSetting({
         ...params,
-        quickAppIds: quickAppList.slice(0, 3).map((q) => q._id),
+        quickAppIds: quickAppList.map((q) => q._id),
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
           inputs: tool.inputs
@@ -132,6 +133,20 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       },
       successToast: t('chat:setting.save_success')
     }
+  );
+
+  const onSubmit = useCallback(
+    (values: ChatSettingType) => {
+      if (values.quickAppList.length > MAX_QUICK_APP_COUNT) {
+        toast({
+          status: 'warning',
+          title: t('chat:setting.home.quick_apps.over_limit', { max: MAX_QUICK_APP_COUNT })
+        });
+        return;
+      }
+      return saveChatSetting(values);
+    },
+    [saveChatSetting, t, toast]
   );
 
   const {
@@ -471,7 +486,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         <AddQuickAppModal
           selectedIds={(formQuickApps || []).map((q) => q._id)}
           onClose={onCloseAddQuickApp}
-          onConfirm={(list) => setValue('quickAppList', list.slice(0, 3))}
+          onConfirm={(list) => setValue('quickAppList', list)}
         />
       )}
     </Flex>
