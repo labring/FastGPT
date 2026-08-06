@@ -616,7 +616,7 @@ export default CreateAppsPage;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'user']))
+      ...(await serviceSideProps(content, ['app', 'user', 'workflow']))
     }
   };
 }
