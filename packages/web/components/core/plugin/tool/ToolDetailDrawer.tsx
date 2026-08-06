@@ -233,6 +233,9 @@ const ToolDetailDrawer = ({
                       isLoading={isUpdating || loadingDetail}
                       onClick={async () => {
                         await onUpdate?.(currentVersion);
+                        if (onFetchInstalledVersions) {
+                          await fetchInstalledToolVersions(selectedTool.id);
+                        }
                       }}
                     >
                       {t('app:custom_plugin_update')}

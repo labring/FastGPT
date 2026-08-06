@@ -10,6 +10,7 @@ import {
   DrawerOverlay,
   Flex,
   Grid,
+  Spinner,
   VStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -22,6 +23,7 @@ import MyTooltip from '../../../common/MyTooltip';
 import MyMenu from '../../../common/MyMenu';
 import { useTableMultipleSelect } from '../../../../hooks/useTableMultipleSelect';
 import { useRequest } from '../../../../hooks/useRequest';
+import { useToast } from '../../../../hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   ToolDetailBody,
@@ -66,6 +68,7 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
   onFetchVersions
 }) => {
   const { t, i18n } = useTranslation();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedToolForDetail, setSelectedToolForDetail] = useState<ToolCardItemType | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<string>();
@@ -219,17 +222,24 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
         delete next[selectedToolForDetail.id];
         return next;
       });
-      handleBack();
+      toast({
+        title: t('common:update_success'),
+        status: 'success'
+      });
     } catch (error) {
+      const reason = getErrText(error, t('app:toolkit_update_failed'));
       setFailureReasons((previous) => ({
         ...previous,
-        [selectedToolForDetail.id]: getErrText(error, t('app:toolkit_update_failed'))
+        [selectedToolForDetail.id]: reason
       }));
-      handleBack();
+      toast({
+        title: reason,
+        status: 'error'
+      });
     } finally {
       setIsUpdatingSingle(false);
     }
-  }, [activeVersion, handleBack, onUpdate, selectedToolForDetail, t]);
+  }, [activeVersion, onUpdate, selectedToolForDetail, t, toast]);
 
   return (
     <Drawer isOpen={isOpen} onClose={handleClose} placement="right">
@@ -385,10 +395,11 @@ const BatchUpdateDrawer: React.FC<BatchUpdateDrawerProps> = ({
                         </>
                       ) : (
                         <Flex align="center" gap={1} color="myGray.600" fontSize="xs">
-                          <Box whiteSpace="nowrap">
-                            {t(isUpdating ? 'app:toolkit_updating' : 'app:toolkit_update_pending')}
-                          </Box>
-                          {isUpdating && <MyIcon name="common/loading" w={3} />}
+                          {isUpdating ? (
+                            <Spinner size="xs" color="primary.500" />
+                          ) : (
+                            <Box whiteSpace="nowrap">{t('app:toolkit_update_pending')}</Box>
+                          )}
                         </Flex>
                       )}
                     </Flex>

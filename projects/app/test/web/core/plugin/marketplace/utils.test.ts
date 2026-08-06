@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getBatchUpdateFailures,
+  getMarketplaceToolStateAfterInstall,
   shouldReinstallOfflineMarketplaceTool
 } from '@/web/core/plugin/marketplace/utils';
 import { isToolVersionInstalled } from '@fastgpt/web/components/core/plugin/tool/utils';
@@ -24,6 +25,21 @@ describe('shouldReinstallOfflineMarketplaceTool', () => {
   });
 });
 
+describe('getMarketplaceToolStateAfterInstall', () => {
+  it('keeps the detail installed when refresh has not returned the newly installed tool yet', () => {
+    expect(
+      getMarketplaceToolStateAfterInstall({
+        targetVersion: '3.0.0',
+        refreshedInstalledVersion: undefined
+      })
+    ).toEqual({
+      installed: true,
+      installedVersion: '3.0.0',
+      update: false
+    });
+  });
+});
+
 describe('isToolVersionInstalled', () => {
   it('recognizes every installed version returned by plugin-server', () => {
     expect(
@@ -31,6 +47,17 @@ describe('isToolVersionInstalled', () => {
         isInstalled: true,
         currentVersion: '2.0.0',
         installedVersions: ['3.0.0', '2.0.0'],
+        installedVersion: '3.0.0'
+      })
+    ).toBe(true);
+  });
+
+  it('uses the updated installed version while the installed version list is stale', () => {
+    expect(
+      isToolVersionInstalled({
+        isInstalled: true,
+        currentVersion: '3.0.0',
+        installedVersions: ['2.0.0'],
         installedVersion: '3.0.0'
       })
     ).toBe(true);

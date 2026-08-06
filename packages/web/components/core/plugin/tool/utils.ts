@@ -17,7 +17,8 @@ export const isToolVersionInstalled = ({
   installedVersion?: string;
 }) => {
   if (!isInstalled) return false;
+  if (installedVersion === currentVersion) return true;
   if (installedVersions) return installedVersions.includes(currentVersion ?? '');
-  if (installedVersion) return installedVersion === currentVersion;
+  if (installedVersion) return false;
   return true;
 };

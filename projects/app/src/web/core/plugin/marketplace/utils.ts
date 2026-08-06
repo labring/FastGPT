@@ -9,6 +9,19 @@ export type BatchUpdateFailure = {
   reason: string;
 };
 
+/** 根据安装后的刷新结果生成详情页安装状态。 */
+export const getMarketplaceToolStateAfterInstall = ({
+  targetVersion,
+  refreshedInstalledVersion
+}: {
+  targetVersion?: string;
+  refreshedInstalledVersion?: string;
+}) => ({
+  installed: true,
+  installedVersion: targetVersion ?? refreshedInstalledVersion,
+  update: false
+});
+
 /** 判断离线工具是否可以直接重新启用，版本不同时仍需下载安装所选版本。 */
 export const shouldReinstallOfflineMarketplaceTool = ({
   isOffline,

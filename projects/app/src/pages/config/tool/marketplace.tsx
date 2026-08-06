@@ -28,6 +28,7 @@ import {
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
 import {
+  getMarketplaceToolStateAfterInstall,
   getBatchUpdateFailures,
   shouldReinstallOfflineMarketplaceTool
 } from '@/web/core/plugin/marketplace/utils';
@@ -349,9 +350,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               prev
                 ? {
                     ...prev,
-                    installed: !!refreshedInstalledTool,
-                    installedVersion: refreshedInstalledTool?.version,
-                    update: false
+                    ...getMarketplaceToolStateAfterInstall({
+                      targetVersion: version ?? tool.version,
+                      refreshedInstalledVersion: refreshedInstalledTool?.version
+                    })
                   }
                 : null
             );
@@ -420,9 +422,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               prev
                 ? {
                     ...prev,
-                    installed: !!refreshedInstalledTool,
-                    installedVersion: refreshedInstalledTool?.version,
-                    update: false
+                    ...getMarketplaceToolStateAfterInstall({
+                      targetVersion: version ?? tool.version,
+                      refreshedInstalledVersion: refreshedInstalledTool?.version
+                    })
                   }
                 : null
             );
@@ -443,6 +446,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     async (tool: ToolCardItemType, version?: string) => {
       try {
         await handleUpdateTool(tool, version);
+        toast({
+          title: t('common:update_success'),
+          status: 'success'
+        });
       } catch (error) {
         toast({
           title: getErrText(error, t('app:toolkit_update_failed')),
