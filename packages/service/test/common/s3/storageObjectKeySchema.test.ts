@@ -41,13 +41,11 @@ describe('FastGPT storage object key schemas', () => {
     expect(parseKey('team/folder # & + % ?/\u6587\u4ef6-\ud83d\ude00.txt').success).toBe(true);
   });
 
-  it.each(keySchemas)('%s rejects a path the storage SDK would reject', (_name, parseKey) => {
+  it.each(keySchemas)('%s sanitizes a path the storage SDK would reject', (_name, parseKey) => {
     const result = parseKey('team//file.txt');
 
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0]?.message).toContain('consecutive slashes');
-    }
+    expect(result.success).toBe(true);
+    expect(StorageObjectKeySchema.parse('team//file.txt')).toBe('team/_/file.txt');
   });
 
   it.each(keySchemas)('%s rejects a key beyond 850 UTF-8 bytes', (_name, parseKey) => {
