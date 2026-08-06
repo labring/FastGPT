@@ -9,7 +9,7 @@ export type ISandboxLifecycle = {
   create(): Promise<void>;
   start(): Promise<void>;
 
-  /** Apply the provider stop policy. OpenSandbox deletes the resource; Sealos pauses it. */
+  /** Reversibly stop the remote sandbox while preserving its provider identity. */
   stop(): Promise<void>;
 
   /** Permanently delete the remote sandbox. */
