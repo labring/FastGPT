@@ -8,9 +8,9 @@
     "volume-manager": "v0.2.0",
     "agent-sandbox-image": "v0.2.0",
     "agent-sandbox-proxy": "v0.2.0",
-    "opensandbox-server": "v0.2.1",
+    "opensandbox-server": "v0.2.2",
     "opensandbox-execd": "v1.0.21",
-    "opensandbox-egress": "v1.1.4",
+    "opensandbox-egress": "v1.1.5",
 
     "aiproxy": "v0.6.5",
     "aiproxy-pg": "0.8.0-pg15",

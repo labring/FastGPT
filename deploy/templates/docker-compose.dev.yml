@@ -447,6 +447,8 @@ configs:
 
       [egress]
       image = "${{opensandbox-egress.image}}:${{opensandbox-egress.tag}}"
+      mode = "dns+nft"
+      disable_ipv6 = true
 
       [docker]
       network_mode = "bridge"
