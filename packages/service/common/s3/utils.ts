@@ -14,6 +14,7 @@ import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
+import { sanitizeS3ObjectKey } from './keySanitizer';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -293,17 +294,4 @@ export function isS3ObjectKey<T extends keyof typeof S3Sources>(
   return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
 }
 
-export function sanitizeS3ObjectKey(key: string) {
-  // 替换掉圆括号
-  const replaceParentheses = (key: string) => {
-    return key.replace(/[()]/g, (match) => (match === '(' ? '[' : ']'));
-  };
-
-  key = replaceParentheses(key);
-  // 替换空格为下划线，避免 turndown 将含空格的 URL 包裹在 <> 中，
-  // 导致 replaceS3KeyToPreviewUrl 正则无法匹配图片 key
-  const replaceSpaces = (key: string) => key.replace(/\s/g, '_');
-  key = replaceSpaces(key);
-
-  return key;
-}
+export { sanitizeS3ObjectKey } from './keySanitizer';
