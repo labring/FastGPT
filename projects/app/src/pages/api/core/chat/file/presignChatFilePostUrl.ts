@@ -13,6 +13,50 @@ import { createAuthorizedChatFileUploadUrl } from '@/service/core/chat/file/uplo
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
 import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+
+/**
+ * 合并应用级文件上传配置和文件变量配置。
+ * 文件变量可以独立声明允许的文件类型；发布后的上传授权必须同时识别这两种配置，
+ * 否则工具运行页虽能渲染文件输入，预签名接口仍会误判为未开启文件上传。
+ */
+const getPublishedFileSelectConfig = ({
+  chatConfig
+}: {
+  chatConfig?: {
+    fileSelectConfig?: AppFileSelectConfigType;
+    variables?: Array<AppFileSelectConfigType & { type?: VariableInputEnum }>;
+  };
+}): AppFileSelectConfigType | undefined => {
+  const fileVariables = chatConfig?.variables?.filter(
+    (item) => item.type === VariableInputEnum.file
+  );
+  if (!fileVariables?.length) return chatConfig?.fileSelectConfig;
+
+  return {
+    ...chatConfig?.fileSelectConfig,
+    canSelectFile:
+      !!chatConfig?.fileSelectConfig?.canSelectFile ||
+      fileVariables.some((item) => item.canSelectFile),
+    canSelectImg:
+      !!chatConfig?.fileSelectConfig?.canSelectImg ||
+      fileVariables.some((item) => item.canSelectImg),
+    canSelectVideo:
+      !!chatConfig?.fileSelectConfig?.canSelectVideo ||
+      fileVariables.some((item) => item.canSelectVideo),
+    canSelectAudio:
+      !!chatConfig?.fileSelectConfig?.canSelectAudio ||
+      fileVariables.some((item) => item.canSelectAudio),
+    canSelectCustomFileExtension:
+      !!chatConfig?.fileSelectConfig?.canSelectCustomFileExtension ||
+      fileVariables.some((item) => item.canSelectCustomFileExtension),
+    customFileExtensionList: [
+      ...(chatConfig?.fileSelectConfig?.customFileExtensionList ?? []),
+      ...fileVariables.flatMap((item) => item.customFileExtensionList ?? [])
+    ]
+  };
+};
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
   const {
@@ -54,7 +98,7 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
       }
 
       const { chatConfig } = await getAppLatestVersion(authRes.sourceId, app);
-      return chatConfig.fileSelectConfig;
+      return getPublishedFileSelectConfig({ chatConfig });
     }
 
     if (authRes.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
