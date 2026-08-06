@@ -271,6 +271,7 @@
   "setting.home.no_selected_app": "No selected App",
   "setting.home.quick_apps": "Quick Apps",
   "setting.home.quick_apps.add": "Configure quick applications",
+  "setting.home.quick_apps.over_limit": "You can add up to {{max}} quick apps. Remove the extras before saving.",
   "setting.home.quick_apps.placeholder": "Please select an application",
   "setting.home.slogan": "Slogan",
   "setting.home.slogan.default": "今天想做点什么？",
