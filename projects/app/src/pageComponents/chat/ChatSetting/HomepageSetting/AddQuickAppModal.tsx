@@ -17,6 +17,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { MAX_QUICK_APP_COUNT } from './constants';
 
 type Props = {
   selectedIds: string[];
@@ -90,7 +91,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
           });
           return prev.filter((v) => v !== id);
         }
-        if (prev.length >= 4) return prev;
+        if (prev.length >= MAX_QUICK_APP_COUNT) return prev;
         // add id and cache its info if available from current list
         const app = availableAppsMap.get(id);
         if (app) {
@@ -312,7 +313,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
               <VStack spacing={2} alignItems="stretch" h="100%" minH={0} minW={0}>
                 <Box pb={3} px={4} pt={4} fontSize="sm" color="myGray.600">
                   {t('chat:setting.favourite.selected_list', {
-                    num: `${checkedQuickApps.length} / 4`
+                    num: `${checkedQuickApps.length} / ${MAX_QUICK_APP_COUNT}`
                   })}
                 </Box>
 
@@ -414,7 +415,12 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
           <Button variant="whitePrimary" isDisabled={isUpdating} onClick={onClose}>
             {t('chat:setting.home.cancel_button')}
           </Button>
-          <Button variant="primary" isLoading={isUpdating} onClick={confirmSelect}>
+          <Button
+            variant="primary"
+            isLoading={isUpdating}
+            isDisabled={checkedQuickApps.length > MAX_QUICK_APP_COUNT}
+            onClick={confirmSelect}
+          >
             {t('chat:setting.home.confirm_button')}
           </Button>
         </HStack>

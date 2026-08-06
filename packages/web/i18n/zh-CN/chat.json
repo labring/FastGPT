@@ -269,6 +269,7 @@
   "setting.home.no_selected_app": "未选择应用",
   "setting.home.quick_apps": "快捷应用",
   "setting.home.quick_apps.add": "配置快捷应用",
+  "setting.home.quick_apps.over_limit": "快捷应用最多只能添加 {{max}} 个，请先移除多余应用后再保存",
   "setting.home.quick_apps.placeholder": "请选择应用",
   "setting.home.slogan": "Slogan",
   "setting.home.slogan.default": "今天想做点什么？",
