@@ -12,6 +12,10 @@ describe('getEmptyAppsTemplate', () => {
     ];
 
     expect(nodes.every((node) => node.name.startsWith('translated:'))).toBe(true);
+    expect(templates[AppTypeEnum.workflowTool].nodes[0]).toMatchObject({
+      nodeId: 'pluginInput',
+      name: 'translated:workflow:template.plugin_start'
+    });
     expect(nodes.filter((node) => node.intro).map((node) => node.intro)).toEqual([
       'translated:common:core.module.template.config_params',
       'translated:common:core.module.template.ai_chat_intro',
