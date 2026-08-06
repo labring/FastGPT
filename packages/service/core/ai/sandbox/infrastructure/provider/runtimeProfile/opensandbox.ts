@@ -4,24 +4,59 @@
  * 只负责 OpenSandbox createConfig 映射，不连接远端实例。
  */
 import { serviceEnv } from '../../../../../../env';
-import type { SandboxRuntimeProfile } from './types';
+import type { SandboxRuntimeCreateConfigInput, SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, normalizeEntrypoint } from './utils';
 import { OPEN_SANDBOX_DEFAULT_ROOT_PATH, parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 
 const OPEN_SANDBOX_ENTRYPOINT = '/home/sandbox/entrypoint.sh';
-const OPEN_SANDBOX_DOCKER_LOCAL_NETWORK_POLICY = {
+const OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES = [
+  { action: 'deny' as const, target: 'localhost' },
+  { action: 'deny' as const, target: '127.0.0.0/8' },
+  { action: 'deny' as const, target: '::1/128' },
+  { action: 'deny' as const, target: '10.0.0.0/8' },
+  { action: 'deny' as const, target: '100.64.0.0/10' },
+  { action: 'deny' as const, target: '169.254.0.0/16' },
+  { action: 'deny' as const, target: '172.16.0.0/12' },
+  { action: 'deny' as const, target: '192.168.0.0/16' },
+  { action: 'deny' as const, target: '198.18.0.0/15' },
+  { action: 'deny' as const, target: '224.0.0.0/4' },
+  { action: 'deny' as const, target: 'fc00::/7' },
+  { action: 'deny' as const, target: 'fe80::/10' },
+  { action: 'deny' as const, target: '*.local' },
+  { action: 'deny' as const, target: 'host.docker.internal' },
+  { action: 'deny' as const, target: 'host.orb.internal' },
+  { action: 'deny' as const, target: 'docker.orb.internal' },
+  { action: 'deny' as const, target: 'gateway.orb.internal' },
+  { action: 'deny' as const, target: 'proxyproxy.orb.internal' },
+  { action: 'deny' as const, target: '*.orb.internal' },
+  { action: 'deny' as const, target: '*.orb.local' }
+];
+
+const OPEN_SANDBOX_NETWORK_POLICY = {
   defaultAction: 'allow' as const,
-  egress: [
-    { action: 'deny' as const, target: 'localhost' },
-    { action: 'deny' as const, target: 'host.docker.internal' },
-    { action: 'deny' as const, target: 'host.orb.internal' },
-    { action: 'deny' as const, target: 'docker.orb.internal' },
-    { action: 'deny' as const, target: 'gateway.orb.internal' },
-    { action: 'deny' as const, target: 'proxyproxy.orb.internal' },
-    { action: 'deny' as const, target: '*.orb.internal' },
-    { action: 'deny' as const, target: '*.orb.local' }
-  ]
+  egress: OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES
 };
+
+/** Keep internal network targets denied while allowing all unmatched public destinations. */
+function buildOpenSandboxNetworkPolicy(
+  policy?: NonNullable<SandboxRuntimeCreateConfigInput['createConfig']>['networkPolicy']
+) {
+  const protectedTargets = new Set(
+    OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES.map(({ target }) => target)
+  );
+
+  return {
+    // Public egress is intentionally open. Create callers may add deny rules, but
+    // cannot replace the platform default with deny or override protected targets.
+    defaultAction: OPEN_SANDBOX_NETWORK_POLICY.defaultAction,
+    egress: [
+      ...OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES,
+      ...(policy?.egress?.filter(
+        ({ action, target }) => action === 'deny' && !protectedTargets.has(target)
+      ) ?? [])
+    ]
+  };
+}
 
 /**
  * 构建 OpenSandbox 的 FastGPT 运行态 profile。
@@ -71,13 +106,8 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       // volume 既可能来自 volume manager，也可能来自调用方透传的 createConfig；运行态 VM 配置优先。
       const volumes = input.volumes ?? input.vmConfig?.volumes ?? createConfig.volumes;
-      // Docker 模式下默认拒绝常见宿主机别名；公网默认保持放行，私网 CIDR 需依赖部署网络边界。
-      const networkPolicy =
-        createConfig.networkPolicy ??
-        (!serviceEnv.AGENT_SANDBOX_OPENSANDBOX_DISABLE_NETWORK_POLICY &&
-        serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'docker'
-          ? OPEN_SANDBOX_DOCKER_LOCAL_NETWORK_POLICY
-          : undefined);
+      // Docker/Kubernetes 均启用 nftables 层的内部网段拒绝；未命中规则的公网地址保持放行。
+      const networkPolicy = buildOpenSandboxNetworkPolicy(createConfig.networkPolicy);
 
       return {
         ...createConfig,
