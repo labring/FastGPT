@@ -14,7 +14,8 @@ import {
   type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema,
   CreatePostPresignedUrlOptionsSchema,
-  CreatePostPresignedUrlParamsSchema
+  CreatePostPresignedUrlParamsSchema,
+  StorageObjectKeySchema
 } from '../contracts/type';
 import {
   getSystemMaxFileSize,
@@ -65,6 +66,9 @@ import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/fil
 import { randomUUID } from 'node:crypto';
 
 const logger = getLogger(LogCategories.INFRA.S3);
+
+/** Normalize keys at bucket boundaries so Mongo records and provider objects share one identity. */
+const canonicalizeObjectKey = (key: string): string => StorageObjectKeySchema.parse(key);
 
 export class S3BaseBucket {
   constructor(
@@ -138,23 +142,26 @@ export class S3BaseBucket {
       temporary?: boolean;
     };
   }) {
+    const sourceKey = canonicalizeObjectKey(from);
+    const targetKey = canonicalizeObjectKey(to);
     if (options?.temporary) {
       await MongoS3TTL.create({
-        minioKey: to,
+        minioKey: targetKey,
         bucketName: this.bucketName,
         expiredTime: addHours(new Date(), 24)
       });
     }
-    return this.client.copyObjectInSelfBucket({ sourceKey: from, targetKey: to });
+    return this.client.copyObjectInSelfBucket({ sourceKey, targetKey });
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    await this.client.deleteObject({ key: objectKey }).catch((err) => {
+    const key = canonicalizeObjectKey(objectKey);
+    await this.client.deleteObject({ key }).catch((err) => {
       if (isFileNotFoundError(err)) {
         return Promise.resolve();
       }
       logger.error('S3 delete object failed', {
-        key: objectKey,
+        key,
         code: err?.code,
         error: err
       });
@@ -163,7 +170,7 @@ export class S3BaseBucket {
 
     deleteS3DownloadAliasByObject({
       bucketName: this.bucketName,
-      objectKey
+      objectKey: key
     }).catch((err) => {
       logger.warn('S3 download alias cleanup failed after object delete', {
         key: objectKey,
@@ -258,7 +265,8 @@ export class S3BaseBucket {
   }
 
   async isObjectExists(key: string) {
-    const { exists } = await this.client.checkObjectExists({ key });
+    const canonicalKey = canonicalizeObjectKey(key);
+    const { exists } = await this.client.checkObjectExists({ key: canonicalKey });
 
     return exists ?? false;
   }
@@ -1012,12 +1020,15 @@ export class S3BaseBucket {
   }
 
   async getFileMetadata(key: string) {
-    const metadataResponse = await this.client.getObjectMetadata({ key }).catch((error) => {
-      if (isFileNotFoundError(error)) {
-        throw CommonErrEnum.fileNotFound;
-      }
-      throw error;
-    });
+    const canonicalKey = canonicalizeObjectKey(key);
+    const metadataResponse = await this.client
+      .getObjectMetadata({ key: canonicalKey })
+      .catch((error) => {
+        if (isFileNotFoundError(error)) {
+          throw CommonErrEnum.fileNotFound;
+        }
+        throw error;
+      });
     if (!metadataResponse) return;
 
     const contentLength = metadataResponse.contentLength;
@@ -1034,8 +1045,9 @@ export class S3BaseBucket {
   }
 
   async getFileStream(key: string, options?: { abortSignal?: AbortSignal }) {
+    const canonicalKey = canonicalizeObjectKey(key);
     const downloadResponse = await this.client.downloadObject({
-      key,
+      key: canonicalKey,
       ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
     });
     if (!downloadResponse) return;
