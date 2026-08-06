@@ -97,6 +97,13 @@ const createRedisStorage = () => {
       storage.set(key, next);
       return String(next);
     },
+    incrby: (key: string, increment: number) => {
+      if (isExpired(key)) storage.delete(key);
+      const current = Number(storage.get(key) ?? 0);
+      const next = current + increment;
+      storage.set(key, next);
+      return next;
+    },
     pexpire: (key: string, milliseconds: number) => {
       if (isExpired(key) || !storage.has(key)) return 0;
       expiryMap.set(key, Date.now() + milliseconds);
@@ -189,7 +196,11 @@ const createSharedMockRedisClient = () => {
       .fn()
       .mockImplementation((key: string) => Promise.resolve(globalRedisStorage.incr(key))),
     decr: vi.fn().mockResolvedValue(1),
-    incrby: vi.fn().mockResolvedValue(1),
+    incrby: vi
+      .fn()
+      .mockImplementation((key: string, increment: number) =>
+        Promise.resolve(globalRedisStorage.incrby(key, increment))
+      ),
     decrby: vi.fn().mockResolvedValue(1),
     incrbyfloat: vi.fn().mockResolvedValue(1),
 
@@ -246,6 +257,10 @@ const createSharedMockRedisClient = () => {
         }),
         incrbyfloat: vi.fn((key: string, increment: number) => {
           commands.push(() => [null, globalRedisStorage.incrbyfloat(key, increment)]);
+          return pipeline;
+        }),
+        incrby: vi.fn((key: string, increment: number) => {
+          commands.push(() => [null, globalRedisStorage.incrby(key, increment)]);
           return pipeline;
         }),
         expire: vi.fn((key: string, seconds: number, mode?: string) => {

@@ -11,6 +11,11 @@ import { Alert } from '@/components/docs/Alert';
 
 OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。开始前，请先完成[沙盒通用配置](./common)，确保 `fastgpt-agent-sandbox-proxy` 已部署；`fastgpt-app` 需配置 Proxy Secret、WebSocket URL 和预览 URL，`fastgpt-pro` 必须配置预览 URL。
 
+<Alert icon="⚠️" context="warning">
+  从旧版 Volume Manager 升级时，请将原 `VM_VOLUME_NAME_PREFIX` 的值配置到
+  `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX`，避免历史持久卷无法按原名称清理。
+</Alert>
+
 下面是 OpenSandbox 部署和配置流程。
 
 ## 1. 添加 yml service
@@ -53,12 +58,13 @@ AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 # Docker compose 部署使用 docker runtime
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
 # OpenSandbox 创建 Agent Sandbox 时使用的运行态镜像
-AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
-AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG=v0.2.0
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 # 持久卷管理服务地址和 Token，需要与 x-volume-manager-auth-token 一致。
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
+# FastGPT app 生成持久卷 claimName 时使用的前缀
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 # Agent Sandbox 单实例 CPU 核数和内存上限（MiB）
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048

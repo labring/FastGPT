@@ -114,7 +114,7 @@ describe('RedisCacheAdapter', () => {
       [null, 58]
     ]);
     const multi = {
-      incr: vi.fn().mockReturnThis(),
+      incrby: vi.fn().mockReturnThis(),
       expire: vi.fn().mockReturnThis(),
       ttl: vi.fn().mockReturnThis(),
       exec
@@ -122,12 +122,14 @@ describe('RedisCacheAdapter', () => {
     client.multi.mockReturnValue(multi);
     const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
 
-    await expect(adapter.consumeFixedWindow({ key, windowSeconds: 60 })).resolves.toEqual({
+    await expect(
+      adapter.consumeFixedWindow({ key, windowSeconds: 60, increment: 2 })
+    ).resolves.toEqual({
       currentCount: 2,
       ttlSeconds: 58
     });
     expect(client.multi).toHaveBeenCalledTimes(1);
-    expect(multi.incr).toHaveBeenCalledWith('fastgpt:cache:string');
+    expect(multi.incrby).toHaveBeenCalledWith('fastgpt:cache:string', 2);
     expect(multi.expire).toHaveBeenCalledWith('fastgpt:cache:string', 60, 'NX');
     expect(multi.ttl).toHaveBeenCalledWith('fastgpt:cache:string');
     expect(exec).toHaveBeenCalledTimes(1);
@@ -165,7 +167,7 @@ describe('RedisCacheAdapter', () => {
   ])('rejects malformed fixed window transaction response %#', async (result) => {
     const exec = vi.fn().mockResolvedValue(result);
     const multi = {
-      incr: vi.fn().mockReturnThis(),
+      incrby: vi.fn().mockReturnThis(),
       expire: vi.fn().mockReturnThis(),
       ttl: vi.fn().mockReturnThis(),
       exec
@@ -175,7 +177,7 @@ describe('RedisCacheAdapter', () => {
 
     await expect(adapter.consumeFixedWindow({ key, windowSeconds: 60 })).rejects.toMatchObject({
       code: 'REDIS_INVALID_RESPONSE',
-      operation: 'fixedWindow.consume'
+      operation: 'rateLimit.consume'
     });
   });
 
@@ -185,6 +187,15 @@ describe('RedisCacheAdapter', () => {
     expect(() => adapter.consumeFixedWindow({ key, windowSeconds: windowSeconds as any })).toThrow(
       'windowSeconds must be a positive safe integer'
     );
+    expect(client.multi).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -1, 1.5, '2'])('rejects invalid fixed window increment %s', (increment) => {
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => client as any });
+
+    expect(() =>
+      adapter.consumeFixedWindow({ key, windowSeconds: 60, increment: increment as any })
+    ).toThrow('increment must be a positive safe integer');
     expect(client.multi).not.toHaveBeenCalled();
   });
 

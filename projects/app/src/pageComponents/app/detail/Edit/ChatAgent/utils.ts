@@ -159,19 +159,6 @@ export function agentForm2AppWorkflow(
     video: !!modelData?.video,
     extractFiles: !!(modelData?.vision || modelData?.audio || modelData?.video)
   };
-  const chatConfig: AppChatConfigType = {
-    ...data.chatConfig,
-    ...(data.chatConfig.fileSelectConfig
-      ? {
-          fileSelectConfig: {
-            ...data.chatConfig.fileSelectConfig,
-            canSelectImg: modelMultimodal.vision,
-            canSelectAudio: modelMultimodal.audio,
-            canSelectVideo: modelMultimodal.video
-          }
-        }
-      : {})
-  };
 
   function systemConfigTemplate(): StoreNodeItemType {
     return {
@@ -412,7 +399,7 @@ export function agentForm2AppWorkflow(
   return {
     nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
-    chatConfig
+    chatConfig: data.chatConfig
   };
 }
 

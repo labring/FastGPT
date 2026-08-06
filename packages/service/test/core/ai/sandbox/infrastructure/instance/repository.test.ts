@@ -153,6 +153,49 @@ describe('sandbox instance lifecycle repository', () => {
     ).resolves.toBeNull();
   });
 
+  it('uses workspace claimName as CAS without overwriting storage', async () => {
+    const identity = createAppIdentity();
+    const storage = {
+      volumes: [
+        {
+          name: 'workspace',
+          claimName: 'fastgpt-session-current-generation',
+          mountPath: '/workspace'
+        }
+      ],
+      mountPath: '/workspace'
+    };
+    const running = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sourceType: ChatSourceTypeEnum.app,
+      ...identity,
+      status: SandboxInstanceStatusEnum.running,
+      lastActiveAt: oldDate,
+      createdAt: oldDate,
+      storage
+    });
+
+    await expect(
+      touchRunningSandboxInstance({
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.app,
+        ...identity,
+        expectedWorkspaceClaimName: 'fastgpt-session-stale-generation'
+      })
+    ).resolves.toBeNull();
+    await expect(
+      touchRunningSandboxInstance({
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.app,
+        ...identity,
+        expectedWorkspaceClaimName: 'fastgpt-session-current-generation'
+      })
+    ).resolves.toMatchObject({ storage });
+    await expect(MongoSandboxInstance.findById(running._id).lean()).resolves.toMatchObject({
+      storage
+    });
+  });
+
   it('advances, fails and completes a stop operation with CAS fencing', async () => {
     const identity = createAppIdentity();
     const running = await MongoSandboxInstance.create({

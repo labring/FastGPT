@@ -146,7 +146,6 @@ const provider = () => {
     (async () => {
       await retryFn(async () => clearToken());
       router.prefetch('/dashboard/agent');
-
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({
           status: 'warning',

@@ -86,6 +86,7 @@ const agentSandboxProviderRequiredEnvKeys = {
   opensandbox: [
     'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
     'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
+    'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
   ]
@@ -106,7 +107,10 @@ export const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): s
     return [];
   }
 
-  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => !env[key]);
+  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => {
+    const value = env[key];
+    return key === 'AGENT_SANDBOX_OPENSANDBOX_IMAGE' ? !value?.trim() : !value;
+  });
 };
 
 /* ===== Sandbox proxy ===== */

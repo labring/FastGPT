@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
   getTeamPlanStatus: vi.fn(),
-  authFrequencyLimit: vi.fn(),
+  assertUploadRateLimit: vi.fn(),
   createUploadChatFileURL: vi.fn(),
   findAppById: vi.fn(),
   chatSettingExists: vi.fn(),
@@ -26,8 +26,8 @@ vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
   getTeamPlanStatus: mocks.getTeamPlanStatus
 }));
 
-vi.mock('@fastgpt/service/common/system/frequencyLimit/utils', () => ({
-  authFrequencyLimit: mocks.authFrequencyLimit
+vi.mock('@fastgpt/service/common/rateLimit/interface/upload', () => ({
+  assertUploadRateLimit: mocks.assertUploadRateLimit
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({

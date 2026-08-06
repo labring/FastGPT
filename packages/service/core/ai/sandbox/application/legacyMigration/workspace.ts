@@ -37,9 +37,15 @@ export const createMigrationTarget = async (params: {
   sourceType: ChatSourceTypeEnum.app | ChatSourceTypeEnum.skillEdit;
   chatId?: string;
   limit?: LegacySandboxInstanceSchemaType['limit'];
+  claimName?: string;
 }): Promise<LegacyMigrationTarget> => {
-  const vmConfig =
-    params.provider === 'opensandbox' ? await getSessionVolumeConfig(params.sandboxId) : undefined;
+  const vmConfig = await (async () => {
+    if (params.provider !== 'opensandbox') return;
+    if (!params.claimName) {
+      throw new Error(`OpenSandbox ${params.sandboxId} has no assigned workspace claimName`);
+    }
+    return getSessionVolumeConfig(params.claimName);
+  })();
   const provider = buildRuntimeSandboxAdapter(params.provider, params.sandboxId, {
     vmConfig,
     resourceLimits: params.limit

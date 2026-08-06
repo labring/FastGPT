@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   ensureConnectedSandboxRunning: vi.fn(),
   deleteSandboxResource: vi.fn(),
   stopSandboxResource: vi.fn(),
+  buildVolumeConfig: vi.fn(),
+  createSessionVolumeClaimName: vi.fn(),
+  getSessionVolumeClaimName: vi.fn(),
   getSessionVolumeConfig: vi.fn(),
   existsSandboxInstanceBySandboxId: vi.fn(),
   touchRunningSandboxInstance: vi.fn(),
@@ -51,6 +54,9 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => ({
+  buildVolumeConfig: mocks.buildVolumeConfig,
+  createSessionVolumeClaimName: mocks.createSessionVolumeClaimName,
+  getSessionVolumeClaimName: mocks.getSessionVolumeClaimName,
   getSessionVolumeConfig: mocks.getSessionVolumeConfig
 }));
 
@@ -122,15 +128,34 @@ const createProvider = () => ({
   execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 }))
 });
 
-const createInstance = (status: string, operationId?: string) =>
+const createInstance = (
+  status: string,
+  operationId?: string,
+  provider: 'sealosdevbox' | 'opensandbox' = 'sealosdevbox',
+  overrides: Record<string, unknown> = {}
+) =>
   ({
-    provider: 'sealosdevbox',
+    provider,
     sandboxId: query.sandboxId,
     sourceType: query.sourceType,
     sourceId: query.sourceId,
     userId: query.userId,
     status,
     lastActiveAt: new Date('2026-07-01T00:00:00.000Z'),
+    ...(provider === 'opensandbox'
+      ? {
+          storage: {
+            volumes: [
+              {
+                name: 'workspace',
+                claimName: 'fastgpt-session-sandbox-1-current',
+                mountPath: '/workspace'
+              }
+            ],
+            mountPath: '/workspace'
+          }
+        }
+      : {}),
     operation: operationId
       ? {
           id: operationId,
@@ -139,7 +164,8 @@ const createInstance = (status: string, operationId?: string) =>
           startedAt: new Date(),
           heartbeatAt: new Date()
         }
-      : undefined
+      : undefined,
+    ...overrides
   }) as any;
 
 describe('sandbox runtime client lifecycle', () => {
@@ -149,6 +175,31 @@ describe('sandbox runtime client lifecycle', () => {
     vi.clearAllMocks();
     mocks.buildRuntimeSandboxAdapter.mockReturnValue(createProvider());
     mocks.assertSandboxSourceActive.mockResolvedValue(undefined);
+    mocks.buildVolumeConfig.mockImplementation((claimName: string) => ({
+      volumes: [
+        {
+          name: 'workspace',
+          pvc: {
+            claimName,
+            createIfNotExists: false,
+            deleteOnSandboxTermination: false
+          },
+          mountPath: '/workspace'
+        }
+      ],
+      storage: {
+        volumes: [{ name: 'workspace', claimName, mountPath: '/workspace' }],
+        mountPath: '/workspace'
+      }
+    }));
+    mocks.createSessionVolumeClaimName.mockImplementation(
+      ({ sandboxId, generationId }: { sandboxId: string; generationId?: string }) =>
+        `fastgpt-session-${sandboxId}-${generationId ?? 'new'}`
+    );
+    mocks.getSessionVolumeClaimName.mockImplementation(
+      (storage: any) =>
+        storage?.volumes?.find((volume: any) => volume.name === 'workspace')?.claimName
+    );
     mocks.getSessionVolumeConfig.mockResolvedValue(undefined);
     mocks.touchRunningSandboxInstance.mockResolvedValue(createInstance('running'));
     mocks.findSandboxInstanceBySource.mockResolvedValue(null);
@@ -251,18 +302,135 @@ describe('sandbox runtime client lifecycle', () => {
     );
   });
 
-  it('claims stopped -> provisioning before resuming the provider', async () => {
-    const stopped = createInstance('stopped');
-    const claimed = createInstance('provisioning', 'resume-1');
+  it('reuses the restore-assigned claimName and only ensures it inside provisioning', async () => {
+    const vmConfig = {
+      volumes: [{ name: 'workspace', pvc: { claimName: 'fastgpt-session-sandbox-1' } }],
+      storage: {
+        volumes: [
+          {
+            name: 'workspace',
+            claimName: 'fastgpt-session-sandbox-1',
+            mountPath: '/workspace'
+          }
+        ],
+        mountPath: '/workspace'
+      }
+    };
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    const provisioning = createInstance('provisioning', 'provision-1', 'opensandbox', {
+      storage: vmConfig.storage
+    });
+    mocks.createSandboxProvisioningInstance.mockResolvedValueOnce({
+      instance: provisioning,
+      created: true
+    });
+    mocks.restoreArchivedSandboxBeforeUse.mockResolvedValueOnce(vmConfig);
+
+    await getSandboxClient(query, { providerName: 'opensandbox' });
+
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('fastgpt-session-sandbox-1');
+    expect(mocks.withSandboxLifecycleLease.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getSessionVolumeConfig.mock.invocationCallOrder[0]
+    );
+    expect(mocks.restoreArchivedSandboxBeforeUse).toHaveBeenCalledWith(
+      expect.not.objectContaining({ vmConfig: expect.anything(), storage: expect.anything() })
+    );
+    expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
+      'opensandbox',
+      query.sandboxId,
+      expect.objectContaining({ vmConfig })
+    );
+  });
+
+  it('rebuilds the provider from the current claim after a stale storage CAS misses', async () => {
+    const staleVmConfig = mocks.buildVolumeConfig('fastgpt-session-sandbox-1-stale');
+    const current = createInstance('running', undefined, 'opensandbox', {
+      storage: mocks.buildVolumeConfig('fastgpt-session-sandbox-1-current').storage
+    });
+    const staleProvider = createProvider();
+    const currentProvider = createProvider();
+    mocks.buildRuntimeSandboxAdapter
+      .mockReturnValueOnce(staleProvider)
+      .mockReturnValueOnce(currentProvider);
+    mocks.restoreArchivedSandboxBeforeUse.mockResolvedValueOnce(staleVmConfig);
+    mocks.touchRunningSandboxInstance.mockResolvedValueOnce(null).mockResolvedValueOnce(current);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(current);
+
+    await getSandboxClient(query, { providerName: 'opensandbox' });
+
+    expect(mocks.touchRunningSandboxInstance).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        expectedWorkspaceClaimName: 'fastgpt-session-sandbox-1-stale'
+      })
+    );
+    expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenLastCalledWith(
+      'opensandbox',
+      query.sandboxId,
+      expect.objectContaining({
+        vmConfig: expect.objectContaining({ storage: current.storage })
+      })
+    );
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledWith(currentProvider);
+    expect(mocks.ensureConnectedSandboxRunning).not.toHaveBeenCalledWith(staleProvider);
+  });
+
+  it('persists the initial claimName before ensuring a new OpenSandbox provider', async () => {
+    const provisioning = createInstance('provisioning', 'provision-1', 'opensandbox', {
+      storage: {
+        volumes: [
+          {
+            name: 'workspace',
+            claimName: 'fastgpt-session-sandbox-1-0',
+            mountPath: '/workspace'
+          }
+        ],
+        mountPath: '/workspace'
+      }
+    });
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(null);
+    mocks.createSandboxProvisioningInstance.mockResolvedValueOnce({
+      instance: provisioning,
+      created: true
+    });
+
+    await getSandboxClient(query, { providerName: 'opensandbox' });
+
+    expect(mocks.createSandboxProvisioningInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        storage: {
+          volumes: [
+            {
+              name: 'workspace',
+              claimName: 'fastgpt-session-sandbox-1-0',
+              mountPath: '/workspace'
+            }
+          ],
+          mountPath: '/workspace'
+        }
+      })
+    );
+    expect(mocks.createSandboxProvisioningInstance.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getSessionVolumeConfig.mock.invocationCallOrder[0]
+    );
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('fastgpt-session-sandbox-1-0');
+  });
+
+  it('claims stopped -> provisioning and reuses its persisted OpenSandbox claimName', async () => {
+    const stopped = createInstance('stopped', undefined, 'opensandbox');
+    const claimed = createInstance('provisioning', 'resume-1', 'opensandbox');
     mocks.touchRunningSandboxInstance.mockResolvedValue(null);
     mocks.findSandboxInstanceBySource.mockResolvedValue(stopped);
     mocks.claimSandboxOperation.mockResolvedValue(claimed);
 
-    await getSandboxClient(query);
+    await getSandboxClient(query, { providerName: 'opensandbox' });
 
     expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'provisioning', type: 'provision' })
     );
+    expect(mocks.createSessionVolumeClaimName).not.toHaveBeenCalled();
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('fastgpt-session-sandbox-1-current');
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'resume-1', status: 'running' })
     );
@@ -290,6 +458,17 @@ describe('sandbox runtime client lifecycle', () => {
     mocks.isRedisLeaseError.mockReturnValueOnce(true);
 
     await expect(getSandboxClient(query)).rejects.toThrow('Sandbox is initializing');
+  });
+
+  it('maps active provisioning to initializing', async () => {
+    const provisioning = createInstance('provisioning', 'active-provision');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(provisioning);
+
+    await expect(getSandboxClient(query)).rejects.toThrow('Sandbox is initializing');
+
+    expect(mocks.createAgentSandboxInitializingError).toHaveBeenCalledTimes(1);
+    expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
   });
 
   it('publishes a stale providerEnsured phase without reconnecting the provider', async () => {
@@ -350,6 +529,27 @@ describe('sandbox runtime client lifecycle', () => {
         status: 'running',
         set: { image: { repository: 'fastgpt/sandbox', tag: 'v2' } }
       })
+    );
+  });
+
+  it('retries failed OpenSandbox provisioning with its persisted Legacy claimName', async () => {
+    const failedProvisioning = createInstance('provisioning', 'failed-provision', 'opensandbox');
+    failedProvisioning.operation.error = 'Failed to create sandbox';
+    const retriedProvisioning = createInstance('provisioning', 'retried-provision', 'opensandbox');
+    mocks.touchRunningSandboxInstance.mockResolvedValue(null);
+    mocks.findSandboxInstanceBySource.mockResolvedValue(failedProvisioning);
+    mocks.claimSandboxOperation.mockResolvedValueOnce(retriedProvisioning);
+    mocks.advanceSandboxOperation.mockResolvedValueOnce(retriedProvisioning);
+
+    await getSandboxClient(query, { providerName: 'opensandbox' });
+
+    expect(mocks.createSessionVolumeClaimName).not.toHaveBeenCalled();
+    expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('fastgpt-session-sandbox-1-current');
+    expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'provisioning', type: 'provision' })
+    );
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'retried-provision', status: 'running' })
     );
   });
 

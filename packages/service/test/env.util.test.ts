@@ -114,7 +114,7 @@ describe('validateS3Env', () => {
 });
 
 describe('env util', () => {
-  it('requires opensandbox volume manager env when opensandbox provider is enabled', () => {
+  it('requires opensandbox image and volume manager env when opensandbox provider is enabled', () => {
     expect(
       getAgentSandboxMissingRequiredEnvKeys({
         AGENT_SANDBOX_PROVIDER: 'opensandbox',
@@ -122,9 +122,24 @@ describe('env util', () => {
         AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'opensandbox-key'
       } as NodeJS.ProcessEnv)
     ).toEqual([
+      'AGENT_SANDBOX_OPENSANDBOX_IMAGE',
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
     ]);
+  });
+
+  it('requires the new opensandbox image even when legacy image variables are set', () => {
+    expect(
+      getAgentSandboxMissingRequiredEnvKeys({
+        AGENT_SANDBOX_PROVIDER: 'opensandbox',
+        AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://opensandbox.local',
+        AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'opensandbox-key',
+        AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'legacy/runtime',
+        AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'legacy-stable',
+        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: 'http://volume-manager.local',
+        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token'
+      } as NodeJS.ProcessEnv)
+    ).toEqual(['AGENT_SANDBOX_OPENSANDBOX_IMAGE']);
   });
 
   it('does not require sandbox env for an unsupported provider', () => {

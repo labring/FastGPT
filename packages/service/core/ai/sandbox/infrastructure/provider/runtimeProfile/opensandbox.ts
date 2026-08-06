@@ -6,7 +6,7 @@
 import { serviceEnv } from '../../../../../../env';
 import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, normalizeEntrypoint } from './utils';
-import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt-sdk/sandbox-adapter';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH, parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 
 const OPEN_SANDBOX_ENTRYPOINT = '/home/sandbox/entrypoint.sh';
 const OPEN_SANDBOX_DOCKER_LOCAL_NETWORK_POLICY = {
@@ -30,10 +30,7 @@ const OPEN_SANDBOX_DOCKER_LOCAL_NETWORK_POLICY = {
  */
 export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
   const workDirectory = OPEN_SANDBOX_DEFAULT_ROOT_PATH;
-  const defaultImage = {
-    repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-    tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
-  };
+  const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim());
 
   return {
     provider: 'opensandbox',
@@ -46,9 +43,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       const createConfig = input.createConfig ?? {};
       const image = input.image ?? createConfig.image ?? defaultImage;
       if (!image?.repository) {
-        throw new Error(
-          'AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required for opensandbox provider'
-        );
+        throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE is required for opensandbox provider');
       }
 
       const entrypoint = createConfig.entrypoint ?? normalizeEntrypoint(input.entrypoint);
@@ -88,6 +83,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
         ...createConfig,
         image,
         resourceLimits,
+        readyTimeoutSeconds: createConfig.readyTimeoutSeconds ?? 120,
         ...(entrypoint ? { entrypoint } : {}),
         ...(env ? { env } : {}),
         ...(metadata ? { metadata } : {}),

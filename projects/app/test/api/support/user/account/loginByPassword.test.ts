@@ -4,14 +4,27 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { authCode } from '@fastgpt/service/support/user/auth/controller';
+import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
+import { getDataId } from '@fastgpt/service/support/tmpData/verification';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import type { LoginByPasswordBodyType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { Call } from '@test/utils/request';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
+
+const saveLoginCode = (username: string, code = '123456') =>
+  MongoTmpData.updateOne(
+    { dataId: getDataId({ scene: 'login', type: 'password', key: username }) },
+    {
+      dataId: getDataId({ scene: 'login', type: 'password', key: username }),
+      data: { preLoginCode: code },
+      expireAt: new Date(Date.now() + 30_000)
+    },
+    { upsert: true }
+  );
 
 describe('loginByPassword API', () => {
   let testUser: any;
@@ -19,6 +32,7 @@ describe('loginByPassword API', () => {
   let testTmb: any;
 
   beforeEach(async () => {
+    await MongoTmpData.deleteMany({});
     testUser = await MongoUser.create({
       username: 'testuser',
       password: 'testpassword',
@@ -45,6 +59,8 @@ describe('loginByPassword API', () => {
       lastLoginTmbId: testTmb._id
     });
 
+    await saveLoginCode('testuser');
+
     vi.clearAllMocks();
   });
 
@@ -68,11 +84,11 @@ describe('loginByPassword API', () => {
     expect(typeof res.data.token).toBe('string');
     expect(res.data.token.length).toBeGreaterThan(0);
 
-    expect(authCode).toHaveBeenCalledWith({
-      key: 'testuser',
-      code: '123456',
-      type: expect.any(String)
-    });
+    await expect(
+      MongoTmpData.findOne({
+        dataId: getDataId({ scene: 'login', type: 'password', key: 'testuser' })
+      })
+    ).resolves.toBeNull();
     expect(setCookie).toHaveBeenCalled();
     expect(pushTrack.login).toHaveBeenCalledWith({
       type: 'password',
@@ -106,14 +122,12 @@ describe('loginByPassword API', () => {
       }
     });
 
-    // Empty password passes zod z.string() but won't match any user record
     expect(res.code).toBe(500);
-    expect(res.error).toBe(UserErrEnum.account_psw_error);
+    expect(res.error).toBeInstanceOf(ApiRequestInputParseError);
+    expect(res.error.context).toEqual({ inputSource: 'body' });
   });
 
   it('should reject login when auth code verification fails', async () => {
-    vi.mocked(authCode).mockRejectedValueOnce(new Error('Invalid code'));
-
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
@@ -128,6 +142,8 @@ describe('loginByPassword API', () => {
   });
 
   it('should reject login when user does not exist', async () => {
+    await saveLoginCode('nonexistentuser');
+
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'nonexistentuser',
@@ -258,6 +274,7 @@ describe('loginByPassword API', () => {
     await MongoUser.findByIdAndUpdate(rootUser._id, {
       lastLoginTmbId: rootTmb._id
     });
+    await saveLoginCode('root');
 
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {

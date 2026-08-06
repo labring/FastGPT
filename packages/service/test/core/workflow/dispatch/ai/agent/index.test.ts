@@ -48,8 +48,7 @@ const {
     AGENT_ENGINE: 'fastAgent',
     AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: 'fastgpt-agent-sandbox',
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'latest',
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'fastgpt-agent-sandbox:latest',
     AGENT_SANDBOX_MAX_EDIT_DEBUG: 100,
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: 300,
     AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace',
@@ -509,7 +508,7 @@ describe('dispatchRunAgent user context', () => {
     expect(loopInput.systemPrompt).toContain('</sandbox_capability>');
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(
-      '当前 sandbox 工作目录: /workspace'
+      '当前沙盒的工作目录: /workspace'
     );
     const loopRuntime = runAgentLoopMock.mock.calls[0][0].runtime;
     expect(runAgentLoopMock.mock.calls[0][0].provider).toBe('fastAgent');
@@ -634,7 +633,7 @@ describe('dispatchRunAgent user context', () => {
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).not.toContain(
-      '当前 sandbox 工作目录'
+      '当前沙盒的工作目录'
     );
   });
 

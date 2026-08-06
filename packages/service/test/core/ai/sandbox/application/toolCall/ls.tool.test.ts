@@ -5,6 +5,11 @@ import { sandboxLsTool } from '@fastgpt/service/core/ai/sandbox/application/tool
 const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
+    resolveRuntimePath: vi.fn((path?: string) => {
+      if (!path || path === '.') return '/workspace/sessions/chat';
+      if (path.startsWith('/')) return path;
+      return `/workspace/sessions/chat/${path}`;
+    }),
     provider: {
       listDirectory: vi.fn(async () => [
         { name: 'src', isDirectory: true },
@@ -29,6 +34,9 @@ describe('sandboxLsTool', () => {
 
     expect(result.response).toBe('.env\nREADME.md\nsrc/');
     expect(sandbox.ensureAvailable).toHaveBeenCalledTimes(1);
+    expect(sandbox.resolveRuntimePath).toHaveBeenCalledWith('/workspace', {
+      allowAbsolutePath: true
+    });
     expect(sandbox.provider.listDirectory).toHaveBeenCalledWith('/workspace');
   });
 
@@ -46,7 +54,10 @@ describe('sandboxLsTool', () => {
         params: {}
       })
     ).resolves.toEqual({ response: '(empty directory)' });
-    expect(sandbox.provider.listDirectory).toHaveBeenCalledWith('.');
+    expect(sandbox.resolveRuntimePath).toHaveBeenCalledWith(undefined, {
+      allowAbsolutePath: true
+    });
+    expect(sandbox.provider.listDirectory).toHaveBeenCalledWith('/workspace/sessions/chat');
   });
 
   it('reports when the entry limit is reached', async () => {

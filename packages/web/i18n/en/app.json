@@ -61,7 +61,6 @@
   "avatar_and_name": "Avatar & Name",
   "chat.collapse_deleted_items": "Collapse deleted records",
   "chat.expand_deleted_items": "Expand deleted records",
-  "chat_agent_beta_tip": "Agent mode is in the testing stage, and major interaction/scheduling logic changes may be made in the future.",
   "chat_agent_description": "An AI-driven Agent that can make decisions, plan steps, and call tools. Supports full-process interaction, ideal for tasks with dynamic workflows.",
   "chat_agent_intro": "Let AI call tools autonomously",
   "chat_debug": "Chat Preview",

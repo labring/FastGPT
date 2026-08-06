@@ -63,12 +63,16 @@ vi.mock('../../../../support/outLink/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
+  WechatMessageType: { USER: 1, BOT: 2 },
+  WechatMessageItemType: { TEXT: 1, IMAGE: 2, VOICE: 3, FILE: 4 },
   ILinkClient: class {
     getUpdates = mocks.getUpdates;
   }
 }));
 
 vi.mock('../../../../support/outLink/wechat/ilinkClient', () => ({
+  WechatMessageType: { USER: 1, BOT: 2 },
+  WechatMessageItemType: { TEXT: 1, IMAGE: 2, VOICE: 3, FILE: 4 },
   ILinkClient: class {
     getUpdates = mocks.getUpdates;
   }
@@ -190,7 +194,6 @@ describe('Wechat polling failure counter integration', () => {
 
     await expect(processor?.(job)).resolves.toBe(true);
     expect(mocks.queueAdd).toHaveBeenCalledWith(
-      'wechatPublishReply',
       {
         shareId: 'share-1',
         userId: 'user-1',

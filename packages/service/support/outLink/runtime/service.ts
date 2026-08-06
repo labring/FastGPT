@@ -316,8 +316,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
     await authOutLinkLimit({
       outLinkUid: chatUserId,
       outLink: outLinkConfig as OutLinkSchemaType,
-      question: userQuestion,
-      ip: chatId
+      question: userQuestion
     });
 
     const workflowFileLimits = await getWorkflowFileLimits({

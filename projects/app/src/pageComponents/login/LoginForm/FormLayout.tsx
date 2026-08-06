@@ -121,6 +121,11 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   const onClickOauth = useCallback(
     async (item: OAuthItem) => {
+      if (item.pageType) {
+        setPageType(item.pageType);
+        return;
+      }
+
       if (item.provider === OAuthEnum.sso) {
         const redirectUrl = await POST<string>('/proApi/support/user/account/login/getAuthURL', {
           redirectUri,
@@ -164,7 +169,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         });
         router.replace(item.redirectUrl, '_self');
       }
-      item.pageType && setPageType(item.pageType);
     },
     [
       computedLastRoute,

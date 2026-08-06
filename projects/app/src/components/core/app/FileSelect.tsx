@@ -18,7 +18,6 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -29,12 +28,10 @@ import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileType
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const FileSelect = ({
-  forbidVision = false,
   value = defaultAppSelectFileConfig,
   onChange,
   ...labelStyle
 }: Omit<BoxProps, 'onChange'> & {
-  forbidVision?: boolean;
   value?: AppFileSelectConfigType;
   onChange: (e: AppFileSelectConfigType) => void;
 }) => {
@@ -60,16 +57,6 @@ const FileSelect = ({
   const formLabel = canUploadFile
     ? t('common:core.app.whisper.Open')
     : t('common:core.app.whisper.Close');
-
-  // Close select img switch when vision is forbidden
-  useMount(() => {
-    if (forbidVision) {
-      onChange({
-        ...value,
-        canSelectImg: false
-      });
-    }
-  });
 
   return (
     <Flex alignItems={'center'}>

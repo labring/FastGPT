@@ -9,7 +9,10 @@ import {
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
   LoginSuccessResponseSchema,
-  OpenAPIUserSchema
+  WxLoginResultResponseSchema,
+  OpenAPIUserSchema,
+  SsoGetAuthorizationURLBodySchema,
+  SsoGetAuthorizationURLResponseSchema
 } from './api';
 
 export const LoginPath: OpenAPIPath = {
@@ -98,6 +101,30 @@ export const LoginPath: OpenAPIPath = {
       }
     }
   },
+  '/proApi/support/user/account/login/getAuthURL': {
+    post: {
+      summary: '获取 SSO 授权地址',
+      description: '根据当前登录回调地址生成 SSO 授权跳转地址',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SsoGetAuthorizationURLBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功生成 SSO 授权地址',
+          content: {
+            'application/json': {
+              schema: SsoGetAuthorizationURLResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/proApi/support/user/account/login/fastLogin': {
     post: {
       summary: '快捷登录',
@@ -153,10 +180,10 @@ export const LoginPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '登录成功',
+          description: '登录成功或二维码已过期',
           content: {
             'application/json': {
-              schema: LoginSuccessResponseSchema
+              schema: WxLoginResultResponseSchema
             }
           }
         }

@@ -9,6 +9,5 @@ import './common/tracks';
 import './common/log';
 import './common/response';
 import './support/audit/utils';
-import './support/user/auth/controller';
 import './core/ai/embedding';
 import './core/ai/llm';

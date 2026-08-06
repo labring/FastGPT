@@ -16,7 +16,10 @@ import {
 } from '@fastgpt-sdk/sandbox-adapter';
 import { isRedisLeaseError, type RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import {
+  buildVolumeConfig,
+  createSessionVolumeClaimName,
   getSessionVolumeConfig,
+  getSessionVolumeClaimName,
   type VolumeManagerResult
 } from '../../infrastructure/volume/service';
 import { buildRuntimeSandboxAdapter } from '../../infrastructure/provider/adapter';
@@ -95,7 +98,8 @@ export class SandboxClient {
   private sandboxId: string;
   private providerName: SandboxProviderType;
   private runtimePaths: SandboxRuntimePaths;
-  readonly provider: ISandbox;
+  private workspaceClaimName?: string;
+  private runtimeProvider: ISandbox;
 
   constructor(
     private readonly props: SandboxClientProps,
@@ -108,12 +112,17 @@ export class SandboxClient {
     this.chatId = props.chatId;
 
     this.providerName = opts.providerName ?? getConfiguredSandboxProvider();
+    this.workspaceClaimName = getSessionVolumeClaimName(opts.vmConfig?.storage);
     this.runtimePaths = getSandboxRuntimePaths({
       sourceType: this.sourceType,
       workDirectory: getSandboxRuntimeProfile(this.providerName).workDirectory,
       chatId: this.chatId
     });
-    this.provider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, opts);
+    this.runtimeProvider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, opts);
+  }
+
+  get provider(): ISandbox {
+    return this.runtimeProvider;
   }
 
   /**
@@ -130,22 +139,35 @@ export class SandboxClient {
       sandboxId: this.sandboxId,
       createConfig: this.opts.createConfig
     });
-    const instanceParams = {
+    const instanceIdentity = {
       provider: this.providerName,
       sandboxId: this.sandboxId,
       sourceType: this.sourceType,
       sourceId: this.sourceId,
-      userId: this.userId,
-      storage: this.opts?.vmConfig?.storage,
-      ...(this.opts?.resourceLimits && {
-        limit: {
+      userId: this.userId
+    };
+    const instanceLimit = this.opts.resourceLimits
+      ? {
           cpuCount: this.opts.resourceLimits.cpuCount,
           memoryMiB: this.opts.resourceLimits.memoryMiB,
           storageSize: this.opts.resourceLimits.storageSize
         }
-      })
+      : undefined;
+    const instanceParams = {
+      ...instanceIdentity,
+      storage: this.opts.vmConfig?.storage,
+      ...(instanceLimit ? { limit: instanceLimit } : {})
     };
-    const touched = await touchRunningSandboxInstance(instanceParams);
+    const touchRunning = async (expectedWorkspaceClaimName = this.workspaceClaimName) => {
+      if (this.providerName === 'opensandbox' && !expectedWorkspaceClaimName) return null;
+
+      return touchRunningSandboxInstance({
+        ...instanceIdentity,
+        ...(this.providerName === 'opensandbox' ? { expectedWorkspaceClaimName } : {}),
+        ...(instanceLimit ? { limit: instanceLimit } : {})
+      });
+    };
+    const touched = await touchRunning();
     let repairMissingProvider = false;
     if (touched) {
       try {
@@ -189,8 +211,27 @@ export class SandboxClient {
       if (current.provider !== this.providerName) {
         throw new Error(`Sandbox belongs to provider ${current.provider}`);
       }
+      let workspaceClaimName: string | undefined;
+      if (this.providerName === 'opensandbox') {
+        workspaceClaimName = getSessionVolumeClaimName(current.storage);
+        if (!workspaceClaimName) {
+          throw new Error(`OpenSandbox ${this.sandboxId} has no persisted workspace claimName`);
+        }
+        if (workspaceClaimName !== this.workspaceClaimName) {
+          // lease 内数据库记录是 generation 真值；旧 client 必须切换 adapter 后才能继续自愈。
+          const vmConfig = buildVolumeConfig(workspaceClaimName);
+          this.runtimeProvider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, {
+            ...this.opts,
+            vmConfig
+          });
+          this.workspaceClaimName = workspaceClaimName;
+        }
+      }
       if (current.status === SandboxInstanceStatusEnum.running) {
-        await touchRunningSandboxInstance(instanceParams);
+        const runningTouched = await touchRunning(workspaceClaimName);
+        if (!runningTouched) {
+          throw new Error(`Sandbox ${this.sandboxId} storage changed during lifecycle operation`);
+        }
         lease.assertValid();
         await ensureConnectedSandboxRunning(this.provider);
         lease.assertValid();
@@ -219,6 +260,7 @@ export class SandboxClient {
             toPhase: 'providerEnsured',
             run: async () => {
               await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+              if (workspaceClaimName) await getSessionVolumeConfig(workspaceClaimName);
               await ensureConnectedSandboxRunning(this.provider);
             }
           }
@@ -455,9 +497,7 @@ export const getSandboxClient = async (
         sourceId: sandboxClientProps.sourceId,
         userId
       });
-      vmConfig =
-        providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
-      await restoreArchivedSandboxBeforeUse({
+      vmConfig = await restoreArchivedSandboxBeforeUse({
         provider: providerName,
         sandboxId,
         sourceType: sandboxClientProps.sourceType,
@@ -470,13 +510,23 @@ export const getSandboxClient = async (
               storageSize: opts.resourceLimits.storageSize
             }
           : undefined,
-        vmConfig: vmConfig ?? null,
-        storage: vmConfig?.storage,
         createConfig: opts.createConfig
       });
     }
-    vmConfig ??=
-      providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+    if (!vmConfig && providerName === 'opensandbox') {
+      const instance = await findSandboxInstanceBySource({
+        sourceType: sandboxClientProps.sourceType,
+        sourceId: sandboxClientProps.sourceId,
+        userId
+      });
+      const persistedClaimName = getSessionVolumeClaimName(instance?.storage);
+      if (instance && !persistedClaimName) {
+        throw new Error(`OpenSandbox ${sandboxId} has no persisted workspace claimName`);
+      }
+      const claimName =
+        persistedClaimName ?? createSessionVolumeClaimName({ sandboxId, generationId: '0' });
+      vmConfig = buildVolumeConfig(claimName);
+    }
     const sandbox = new SandboxClient(sandboxClientProps, {
       ...opts,
       providerName,
@@ -488,6 +538,12 @@ export const getSandboxClient = async (
     return sandbox;
   } catch (error) {
     if (isRedisLeaseError(error)) throw createAgentSandboxInitializingError();
+    if (
+      error instanceof SandboxLifecycleStateError &&
+      error.state === SandboxInstanceStatusEnum.provisioning
+    ) {
+      throw createAgentSandboxInitializingError();
+    }
     throw error;
   }
 };

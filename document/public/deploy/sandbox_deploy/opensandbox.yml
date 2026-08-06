@@ -7,6 +7,7 @@
 # AGENT_SANDBOX_OPENSANDBOX_API_KEY=fastgpt-opensandbox-api-key
 # AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 # AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=vmtoken
+# AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
 
 x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"
 x-no-proxy-config: &x-no-proxy-config
@@ -55,7 +56,6 @@ services:
       PORT: 3000
       VM_RUNTIME: docker
       VM_AUTH_TOKEN: *x-volume-manager-auth-token
-      VM_VOLUME_NAME_PREFIX: fastgpt-session
       VM_LOG_LEVEL: info
     healthcheck:
       test:

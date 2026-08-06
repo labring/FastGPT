@@ -7,12 +7,12 @@
   "login_success": "登入成功",
   "no_remind": "不再提醒",
   "password_condition": "密碼最多 60 個字元",
-  "password_tip": "密碼至少 8 位，且至少包含兩種組合：數字、字母或特殊字元",
+  "password_tip": "至少 8 位，且至少包含數字、小寫字母、大寫字母或特殊字元中的兩種，不允許包含空格",
   "policy_tip": "使用即代表您已經閱讀並且同意<lineBreak/>我們的<termsLink> 服務協議 </termsLink> & <privacyLink> 隱私協議</privacyLink>",
   "privacy_policy": "隱私權政策",
   "redirect": "跳轉",
   "register": "註冊帳號",
-  "reset_password_tip": "新密碼至少 8 位，且至少包含兩種組合：數字、字母或特殊字符",
+  "reset_password_tip": "新密碼至少 8 位，且至少包含數字、小寫字母、大寫字母或特殊字元中的兩種，不允許包含空格",
   "root_password_placeholder": "root 使用者密碼為環境變數 DEFAULT_ROOT_PSW 的值",
   "use_root_login": "使用 root 使用者登入"
 }

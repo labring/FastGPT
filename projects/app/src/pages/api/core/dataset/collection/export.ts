@@ -2,7 +2,10 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authChatTargetCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import {
+  assertMemberRateLimit,
+  MemberRateLimitPolicy
+} from '@fastgpt/service/common/rateLimit/interface/member';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -25,6 +28,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const {
     collection,
     teamId: userTeamId,
+    tmbId,
     chatTime
   } = await (async () => {
     if (!('chatItemDataId' in parseBody)) {
@@ -78,6 +82,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       chatTime
     };
   })();
+
+  await assertMemberRateLimit({
+    policy: MemberRateLimitPolicy.ExportDataset,
+    memberId: String(tmbId)
+  });
 
   const where = {
     teamId: userTeamId,
@@ -142,7 +151,4 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   });
 }
 
-export default NextAPI(
-  useIPFrequencyLimit({ id: 'export-usage', seconds: 60, limit: 1, force: true }),
-  handler
-);
+export default NextAPI(handler);
