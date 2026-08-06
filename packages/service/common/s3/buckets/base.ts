@@ -984,7 +984,6 @@ export class S3BaseBucket {
       contentLength,
       expiredTime = addHours(new Date(), 1)
     } = UploadFileByBodySchema.parse(params);
-
     await MongoS3TTL.create({
       minioKey: key,
       bucketName: this.bucketName,
