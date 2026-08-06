@@ -74,6 +74,31 @@ type WorkflowUtilsContextValue = {
     errorOutputs: FlowNodeOutputItemType[];
   };
 };
+
+/** 将工具输入和普通节点输入分开，避免 Agent 生成参数在节点内重复渲染。 */
+export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: boolean) => {
+  const toolInputs: FlowNodeInputItemType[] = [];
+  const commonInputs: FlowNodeInputItemType[] = [];
+
+  inputs.forEach((item) => {
+    const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
+    const isAgentGeneratedInput =
+      isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
+
+    if (isTool && isAgentGeneratedInput && item.canEdit) {
+      toolInputs.push(item);
+      return;
+    }
+
+    commonInputs.push(normalizedInput);
+  });
+
+  return {
+    toolInputs,
+    commonInputs
+  };
+};
+
 export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
   initData: (...args: Parameters<WorkflowUtilsContextValue['initData']>) => {
     void args;
@@ -148,18 +173,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const splitToolInputs = useCallback(
     (inputs: FlowNodeInputItemType[], nodeId: string) => {
       const isTool = toolNodesMap[nodeId] ?? false;
-
-      const toolInputs: FlowNodeInputItemType[] = [];
-      const commonInputs: FlowNodeInputItemType[] = [];
-      inputs.forEach((item) => {
-        const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
-        const isAgentGeneratedInput =
-          isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
-        if (isTool && isAgentGeneratedInput && item.canEdit) {
-          toolInputs.push(item);
-        }
-        commonInputs.push(normalizedInput);
-      });
+      const { toolInputs, commonInputs } = splitToolInputsByMode(inputs, isTool);
 
       return {
         isTool,
