@@ -104,7 +104,7 @@ describe('assertAccountUsable', () => {
       ownerId: String(ownerId)
     };
     const tokenLoginOptions = resolveAccountCancellationAccess({
-      req: { method: 'GET', url: '/api/support/user/account/login/tokenLogin' },
+      req: { method: 'GET', url: '/api/support/user/account/tokenLogin' },
       accountCancellationAccess: 'tokenLogin'
     });
 

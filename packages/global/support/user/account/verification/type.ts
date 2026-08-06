@@ -79,6 +79,7 @@ export type VerificationMaterialMatch<T extends VerificationType> = Partial<{
 export const VERIFICATION_CODE_TYPES = [
   VerificationCodeTypeEnum.register,
   VerificationCodeTypeEnum.findPassword,
+  VerificationCodeTypeEnum.unsubscribe,
   VerificationCodeTypeEnum.bindNotification
 ] as const;
 export const VerificationCodeTypeSchema = z.enum(VERIFICATION_CODE_TYPES);
@@ -89,10 +90,11 @@ export const CodeVerificationPurposeSchema = AccountVerificationPurposeSchema.ex
 );
 export type CodeVerificationPurpose = z.infer<typeof CodeVerificationPurposeSchema>;
 
-/** Each public code template has exactly one account-verification purpose. */
+/** Each verification code type has exactly one account-verification purpose. */
 export const VERIFICATION_CODE_PURPOSES_BY_TYPE = {
   [VerificationCodeTypeEnum.register]: 'register',
   [VerificationCodeTypeEnum.findPassword]: 'forgetPassword',
+  [VerificationCodeTypeEnum.unsubscribe]: 'unsubscribe',
   [VerificationCodeTypeEnum.bindNotification]: 'bindNotification'
 } as const satisfies Record<VerificationCodeType, CodeVerificationPurpose>;
 

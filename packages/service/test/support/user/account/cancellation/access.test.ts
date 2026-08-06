@@ -33,9 +33,11 @@ describe('resolveAccountCancellationAccess', () => {
   });
 
   it.each([
-    '/api/support/user/account/login/tokenLogin',
-    '/proApi/support/user/account/login/tokenLogin'
-  ])('allows token login route %s', (url) => {
+    '/api/support/user/account/tokenLogin',
+    '/api/support/user/account/tokenLogin?maxQuantity=1',
+    '/proApi/support/user/account/tokenLogin',
+    '/api/support/user/team/plan/getTeamPlanStatus'
+  ])('allows token initialization route %s', (url) => {
     expect(() =>
       resolveAccountCancellationAccess({
         req: { method: 'GET', url },
@@ -65,7 +67,7 @@ describe('resolveAccountCancellationAccess', () => {
 
   it('does not let tokenLogin bypass the user finalizing state', () => {
     const result = resolveAccountCancellationAccess({
-      req: { method: 'GET', url: '/api/support/user/account/login/tokenLogin' },
+      req: { method: 'GET', url: '/api/support/user/account/tokenLogin' },
       accountCancellationAccess: 'tokenLogin'
     });
 
