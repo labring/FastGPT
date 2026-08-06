@@ -110,8 +110,7 @@ export const SecretInputForm = ({
     onTypeChange?.(type);
   };
 
-  const isCardExpanded = (type: SystemToolSecretInputTypeEnum) =>
-    configType === type && isExpanded;
+  const isCardExpanded = (type: SystemToolSecretInputTypeEnum) => configType === type && isExpanded;
 
   const expandCard = (type: SystemToolSecretInputTypeEnum) => {
     if (configType !== type) {
@@ -185,9 +184,7 @@ export const SecretInputForm = ({
         {isFolder ? (
           <HStack flex={1} minW={0}>
             <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
-            <Box fontSize={'sm'}>
-              {t('app:tool_active_system_config_price_desc_folder')}
-            </Box>
+            <Box fontSize={'sm'}>{t('app:tool_active_system_config_price_desc_folder')}</Box>
           </HStack>
         ) : (
           <HStack flex={1} minW={0}>

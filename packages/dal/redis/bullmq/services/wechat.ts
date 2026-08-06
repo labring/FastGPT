@@ -9,7 +9,7 @@ export type WechatPollJobData = {
 export type WechatReplyJobData = {
   shareId: string;
   userId: string;
-  text: string;
+  items?: unknown[];
   contextToken: string;
   lastMsgId: string;
 };

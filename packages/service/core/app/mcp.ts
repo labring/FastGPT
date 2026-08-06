@@ -265,7 +265,7 @@ export class MCPClient {
 
       try {
         await this.client.connect(
-                  new SSEClientTransport(new URL(this.url), {
+          new SSEClientTransport(new URL(this.url), {
             fetch: safeFetch,
             requestInit: {
               headers: this.headers

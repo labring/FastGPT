@@ -35,7 +35,7 @@ wechatPoll Queue ---- getUpdates ---- groupMessagesByUser
                                 wechatReply Queue
                                       |
                                       v
-                           outlinkInvokeChat -> sendMessage
+                    provider adapter -> runOutlinkRuntime -> sendMessage
 ```
 
 队列合同位于 `packages/dal/redis/bullmq/services/wechat.ts`，领域 processor 位于 `packages/service/support/outLink/wechat/mq.ts`。
@@ -99,7 +99,7 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。拉到消息�
 | Stalled interval | 60 秒 |
 | Failed retention | 500 条或 7 天 |
 
-Reply processor 使用稳定 `messageId=lastMsgId` 调用 `outlinkInvokeChat`，由聊天写入层保证业务幂等。队列 jobId 解决重复入队，messageId 解决 stalled retry 或 processor 重试后的副作用重复。
+Reply processor 使用稳定 `messageId=lastMsgId` 通过 provider adapter 调用 `runOutlinkRuntime`，由聊天写入层保证业务幂等。队列 jobId 解决重复入队，messageId 解决 stalled retry 或 processor 重试后的副作用重复。
 
 ## 5. Poll 处理顺序
 
@@ -165,7 +165,7 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 | getUpdates 网络/API 错误 | 增加失败计数，job failed，10 秒退避 |
 | Reply enqueue 失败 | 不推进 syncBuf，下次 poll 重拉 |
 | Mongo syncBuf 更新失败 | job failed，下次重拉，replyJobId 去重 |
-| outlinkInvokeChat/sendMessage 失败 | reply job failed，保留失败记录 |
+| runOutlinkRuntime/sendMessage 失败 | reply job failed，保留失败记录 |
 | 渠道下线或 token 缺失 | 当前 job 停止，后续不续链 |
 | Redis/BullMQ 不可用 | processor/调度失败，依赖基础设施告警和恢复流程 |
 

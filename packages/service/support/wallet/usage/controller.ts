@@ -12,6 +12,7 @@ import { formatModelChars2Points } from './utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoUsageItem } from './usageItemSchema';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getDefaultSTTModel } from '../../../core/ai/model';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.USAGE);
 
@@ -163,6 +164,47 @@ export const pushChatItemUsage = ({
       inputTokens: item.inputTokens,
       outputTokens: item.outputTokens
     }))
+  });
+};
+
+/** 记录 STT 音频用量；source 由调用方显式指定，区分 API 与各 outLink 渠道。 */
+export const pushWhisperUsage = ({
+  teamId,
+  tmbId,
+  duration,
+  source
+}: {
+  teamId: string;
+  tmbId: string;
+  duration: number;
+  source: UsageSourceEnum;
+}) => {
+  const whisperModel = getDefaultSTTModel();
+
+  if (!whisperModel) return;
+
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model: whisperModel.model,
+    inputTokens: duration,
+    multiple: 60
+  });
+
+  const name = i18nT('common:support.wallet.usage.Whisper');
+
+  createUsage({
+    teamId,
+    tmbId,
+    appName: name,
+    totalPoints,
+    source,
+    list: [
+      {
+        moduleName: name,
+        amount: totalPoints,
+        model: modelName,
+        duration
+      }
+    ]
   });
 };
 
