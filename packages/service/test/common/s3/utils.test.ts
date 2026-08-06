@@ -456,6 +456,12 @@ describe('sanitizeS3ObjectKey', () => {
     expect(sanitizeS3ObjectKey('  file  ')).toBe('__file__');
     expect(sanitizeS3ObjectKey('  path/to/file  ')).toBe('__path/to/file__');
   });
+
+  it('should sanitize invalid path segments consistently', () => {
+    expect(sanitizeS3ObjectKey('team\\user/../file\u0000.txt')).toBe('team_user/_/file_.txt');
+    expect(sanitizeS3ObjectKey('/file.txt')).toBe('_/file.txt');
+    expect(sanitizeS3ObjectKey('folder//file.txt')).toBe('folder/_/file.txt');
+  });
 });
 
 describe('isS3ObjectKey', () => {
