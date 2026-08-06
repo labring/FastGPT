@@ -72,12 +72,7 @@ const ToolCard = ({
     isMarketplaceVariant && mode === 'admin' && item.installed && !showActionButton;
 
   useEffect(() => {
-    if (displayTags.length === 0) {
-      setVisibleTagsCount(0);
-      return;
-    }
-
-    setVisibleTagsCount(displayTags.length);
+    if (displayTags.length === 0) return;
 
     const calculate = () => {
       const container = tagsContainerRef.current;
@@ -204,42 +199,6 @@ const ToolCard = ({
         }
       }}
     >
-      {/* Update badge in top-right corner */}
-      {item.update && mode === 'admin' && !item.isDebug && (
-        <Flex
-          alignItems="center"
-          position={'absolute'}
-          top={isMarketplaceVariant ? '17px' : 4}
-          right={isMarketplaceVariant ? '17px' : 4}
-          px={2}
-          py={0.5}
-          bg={'rgb(255, 247, 237)'}
-          color={'rgba(234,88,12,1)'}
-          fontSize={'12px'}
-          fontWeight={'medium'}
-          borderRadius={'0.5rem'}
-          borderColor={'rgba(255,237,213,1)'}
-          borderWidth={'1px'}
-          zIndex={1}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
-          </svg>
-          {t('app:app.modules.has new version')}
-        </Flex>
-      )}
-
       <HStack
         minW={0}
         spacing={isMarketplaceVariant ? 2 : undefined}
@@ -250,6 +209,7 @@ const ToolCard = ({
           borderRadius={'sm'}
           w={isMarketplaceVariant ? '24px' : '1.5rem'}
           h={isMarketplaceVariant ? '24px' : undefined}
+          flexShrink={0}
         />
         <Box
           color={isMarketplaceVariant ? '#111824' : 'myGray.900'}
@@ -257,7 +217,7 @@ const ToolCard = ({
           lineHeight={isMarketplaceVariant ? '24px' : undefined}
           fontWeight={'medium'}
           minW={0}
-          flexShrink={1}
+          flex={1}
           className={'textEllipsis'}
         >
           {parseI18nString(item.name, i18n.language)}
@@ -279,6 +239,37 @@ const ToolCard = ({
           </Box>
         )}
         {item.isDebug && <DebugToolTag />}
+        {item.update && mode === 'admin' && !item.isDebug && (
+          <Flex
+            alignItems="center"
+            flexShrink={0}
+            px={2}
+            py={0.5}
+            bg={'rgb(255, 247, 237)'}
+            color={'rgba(234,88,12,1)'}
+            fontSize={'12px'}
+            fontWeight={'medium'}
+            borderRadius={'0.5rem'}
+            borderColor={'rgba(255,237,213,1)'}
+            borderWidth={'1px'}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+            </svg>
+            {t('app:app.modules.has new version')}
+          </Flex>
+        )}
         {statusLabel && (
           <Flex
             flexShrink={0}
