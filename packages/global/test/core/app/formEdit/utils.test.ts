@@ -13,6 +13,7 @@ import {
   getToolConfigStatus,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
+  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -903,6 +904,57 @@ describe('getToolConfigStatus', () => {
 });
 
 describe('agent generated tool input helpers', () => {
+  it('should restore only legacy editable HTTP tool params', () => {
+    const legacyInput = createMockInput({
+      canEdit: true,
+      toolDescription: 'Generated query',
+      renderTypeList: [FlowNodeInputTypeEnum.reference]
+    });
+    const explicitManualInput = createMockInput({
+      key: 'manual',
+      canEdit: true,
+      toolDescription: 'Manual query',
+      isToolParam: false
+    });
+    const selectedManualInput = createMockInput({
+      key: 'selected-manual',
+      canEdit: true,
+      toolDescription: 'Selected manual query',
+      selectedType: FlowNodeInputTypeEnum.reference
+    });
+    const staticInput = createMockInput({
+      key: 'static',
+      toolDescription: 'Static input'
+    });
+    const emptyDescriptionInput = createMockInput({
+      key: 'empty-description',
+      canEdit: true,
+      toolDescription: ''
+    });
+    const unsafeInput = createMockInput({
+      key: 'unsafe',
+      canEdit: true,
+      toolDescription: 'Secret input',
+      renderTypeList: [FlowNodeInputTypeEnum.password]
+    });
+
+    const result = normalizeLegacyWorkflowHttpToolInputsDefaultMode([
+      legacyInput,
+      explicitManualInput,
+      selectedManualInput,
+      staticInput,
+      emptyDescriptionInput,
+      unsafeInput
+    ]);
+
+    expect(result[0]).toMatchObject({ isToolParam: true });
+    expect(result[1]).toBe(explicitManualInput);
+    expect(result[2]).toBe(selectedManualInput);
+    expect(result[3]).toBe(staticInput);
+    expect(result[4]).toBe(emptyDescriptionInput);
+    expect(result[5]).toBe(unsafeInput);
+  });
+
   it.each([
     FlowNodeInputTypeEnum.hidden,
     FlowNodeInputTypeEnum.fileSelect,

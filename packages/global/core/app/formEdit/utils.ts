@@ -111,6 +111,31 @@ export const canInputBeAgentGenerated = (
 };
 
 /**
+ * 恢复旧版工作流 HTTP 节点动态工具参数的默认来源。
+ *
+ * 旧编辑器只保存 canEdit 和 toolDescription；显式来源配置始终优先，避免覆盖用户手动选择。
+ */
+export const normalizeLegacyWorkflowHttpToolInputsDefaultMode = <T extends FlowNodeInputItemType>(
+  inputs: T[]
+): T[] =>
+  inputs.map((input) => {
+    if (
+      input.canEdit !== true ||
+      !input.toolDescription ||
+      input.isToolParam !== undefined ||
+      input.selectedType !== undefined ||
+      !canInputBeAgentGenerated(input)
+    ) {
+      return input;
+    }
+
+    return {
+      ...input,
+      isToolParam: true
+    };
+  });
+
+/**
  * 将节点输入升级为 selectedType 协议。
  *
  * 显式 selectedType 优先；旧 selectedTypeIndex 仅在没有新字段时用于恢复选择。

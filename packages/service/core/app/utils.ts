@@ -7,6 +7,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import {
   initAgentToolInputType,
+  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from './tool/utils/client';
@@ -220,6 +221,9 @@ export async function rewriteAppWorkflowToDetail({
       }
       if (allowLegacyFallback) {
         node.inputs = normalizeWorkflowToolInputsDefaultMode(node.inputs);
+      }
+      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
+        node.inputs = normalizeLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
       }
       if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
         node.inputs = node.inputs.map((input) =>
