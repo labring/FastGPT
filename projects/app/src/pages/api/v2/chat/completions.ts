@@ -632,7 +632,8 @@ const authShareChat = async ({
     app,
     apikey: '',
     authType,
-    responseAllData: false,
+    // 工作流工具的分享运行需要把完整节点链路返回给运行面板；普通对话仍按公开字段过滤。
+    responseAllData: app.type === AppTypeEnum.workflowTool,
     showCite,
     outLinkUserId: uid,
     showRunningStatus,

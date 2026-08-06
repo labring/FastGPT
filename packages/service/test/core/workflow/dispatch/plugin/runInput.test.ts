@@ -204,6 +204,21 @@ describe('dispatchPluginInput', () => {
     expect(result.data?.upload).toEqual(['https://external.example.com/1.pdf']);
   });
 
+  it('treats empty file selector placeholders as no file input', async () => {
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {
+          upload: [{ type: ChatFileTypeEnum.file }]
+        },
+        query: [],
+        node: pluginInputNode
+      } as any)
+    );
+
+    expect(result.data?.upload).toEqual([]);
+    expect(mockRegisterInputFile).not.toHaveBeenCalled();
+  });
+
   it('reuses a file already selected in the current child context', async () => {
     mockResolveInputFile.mockReturnValueOnce({
       modelUrl: 'https://parent.example.com/signed.pdf'

@@ -57,8 +57,17 @@ export const dispatchPluginInput = async (
       const val = params[key];
       const maxFiles = fileInputMaxFiles.get(key);
       if (maxFiles !== undefined && Array.isArray(val)) {
+        // 文件选择器未选文件时可能提交无 key/url 的占位项，应按空输入处理。
+        const fileItems = val
+          .filter((fileItem) => {
+            if (typeof fileItem === 'string') return fileItem.trim().length > 0;
+            return (
+              !!fileItem && typeof fileItem === 'object' && Boolean(fileItem.key || fileItem.url)
+            );
+          })
+          .slice(0, maxFiles);
         const fileUrls = await Promise.all(
-          val.slice(0, maxFiles).map(async (fileItem) => {
+          fileItems.map(async (fileItem) => {
             const storeValue =
               typeof fileItem === 'string'
                 ? normalizeChatFileStoreValue({ url: fileItem })

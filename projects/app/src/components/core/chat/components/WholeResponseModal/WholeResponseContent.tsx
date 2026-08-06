@@ -32,7 +32,9 @@ export const WholeResponseContent = ({
       minH={0}
       ref={contentRef}
       py={3}
-      px={hideTabs ? 4 : 3}
+      // 详情页移动端需要让内容贴合滚动容器，水平留白由外层面板负责。
+      // 桌面端保留原有留白，避免改变完整结果的布局。
+      px={hideTabs ? [0, 4] : 3}
       display={'flex'}
       flexDirection={'column'}
       gap={3}
