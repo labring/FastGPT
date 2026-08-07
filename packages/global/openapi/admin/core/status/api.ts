@@ -76,3 +76,19 @@ export const TrainingActionResponseSchema = z.object({
   affectedCount: z.number().meta({ description: '实际影响的任务数量' })
 });
 export type TrainingActionResponseType = z.infer<typeof TrainingActionResponseSchema>;
+
+export const StatusOverviewAlertSchema = z.object({
+  level: z.literal('warning').meta({ description: '告警等级' }),
+  title: z.string().meta({ description: '告警标题' }),
+  description: z.string().meta({ description: '告警描述' }),
+  source: z.string().meta({ description: '告警来源' }),
+  scope: z.string().meta({ description: '告警范围' }),
+  count: z.number().meta({ description: '异常数量' })
+});
+export type StatusOverviewAlertType = z.infer<typeof StatusOverviewAlertSchema>;
+
+export const GetStatusOverviewResponseSchema = z.object({
+  unresolvedCount: z.number().meta({ description: '未恢复告警数' }),
+  alerts: z.array(StatusOverviewAlertSchema).meta({ description: '告警消息列表' })
+});
+export type GetStatusOverviewResponseType = z.infer<typeof GetStatusOverviewResponseSchema>;

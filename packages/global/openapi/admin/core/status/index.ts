@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import {
+  GetStatusOverviewResponseSchema,
   GetTrainingRecordListBodySchema,
   GetTrainingRecordListResponseSchema,
   GetTrainingTaskListResponseSchema,
@@ -9,6 +10,18 @@ import {
 import { DevApiTagsMap } from '../../../tag';
 
 export const StatusPath: OpenAPIPath = {
+  '/admin/status/overview': {
+    get: {
+      summary: '获取 Chunk 训练总览告警',
+      tags: [DevApiTagsMap.adminStatus],
+      responses: {
+        200: {
+          description: '成功获取训练总览告警',
+          content: { 'application/json': { schema: GetStatusOverviewResponseSchema } }
+        }
+      }
+    }
+  },
   '/admin/status/dataset/tasks': {
     get: {
       summary: '获取 Chunk 训练状态汇总',
