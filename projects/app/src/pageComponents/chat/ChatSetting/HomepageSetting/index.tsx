@@ -31,6 +31,8 @@ import {
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { MAX_QUICK_APP_COUNT } from './constants';
 
 const AddQuickAppModal = dynamic(
   () => import('@/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal')
@@ -44,6 +46,7 @@ type Props = {
 const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
@@ -112,7 +115,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     [selectedTools, setValue]
   );
 
-  const { runAsync: onSubmit, loading: isSaving } = useRequest(
+  const { runAsync: saveChatSetting, loading: isSaving } = useRequest(
     async (values: ChatSettingType) => {
       const { quickAppList, ...params } = values;
       return updateChatSetting({
@@ -130,6 +133,20 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
       },
       successToast: t('chat:setting.save_success')
     }
+  );
+
+  const onSubmit = useCallback(
+    (values: ChatSettingType) => {
+      if (values.quickAppList.length > MAX_QUICK_APP_COUNT) {
+        toast({
+          status: 'warning',
+          title: t('chat:setting.home.quick_apps.over_limit', { max: MAX_QUICK_APP_COUNT })
+        });
+        return;
+      }
+      return saveChatSetting(values);
+    },
+    [saveChatSetting, t, toast]
   );
 
   const {

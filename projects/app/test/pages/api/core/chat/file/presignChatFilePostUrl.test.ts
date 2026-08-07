@@ -1,6 +1,7 @@
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -386,5 +387,36 @@ describe('presignChatFilePostUrl', () => {
     ).rejects.toBe(S3ErrEnum.fileUploadDisabled);
 
     expect(mocks.createUploadChatFileURL).not.toHaveBeenCalled();
+  });
+
+  it('allows uploads enabled by a published file variable', async () => {
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      chatConfig: {
+        fileSelectConfig: {},
+        variables: [
+          {
+            type: VariableInputEnum.file,
+            canSelectImg: true
+          }
+        ]
+      }
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        contentType: 'image/png',
+        appId,
+        chatId
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedExtensions: expect.arrayContaining(['.jpg', '.jpeg', '.png'])
+      })
+    );
   });
 });

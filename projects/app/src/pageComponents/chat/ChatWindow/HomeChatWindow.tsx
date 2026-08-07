@@ -504,7 +504,7 @@ const HomeChatWindow = () => {
             onStartChat={onStartChat}
             onMarkChatRead={postMarkChatRead}
             onChatGenerateStatusChange={onChatGenerateStatusChange}
-            quickAppList={(chatSettings?.quickAppList || []).slice(0, 3)}
+            quickAppList={chatSettings?.quickAppList || []}
             onSwitchQuickApp={handleSwitchQuickApp}
           />
         </Box>

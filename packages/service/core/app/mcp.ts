@@ -265,24 +265,10 @@ export class MCPClient {
 
       try {
         await this.client.connect(
-          new SSEClientTransport(new URL(this.url), {
+                  new SSEClientTransport(new URL(this.url), {
             fetch: safeFetch,
             requestInit: {
               headers: this.headers
-            },
-            eventSourceInit: {
-              fetch: (url, init) => {
-                const mergedHeaders = {
-                  ...this.headers
-                };
-
-                Object.assign(mergedHeaders, headersInitToRecord(init?.headers));
-
-                return safeFetch(url, {
-                  ...init,
-                  headers: mergedHeaders
-                });
-              }
             }
           })
         );
