@@ -9,6 +9,10 @@ import {
   DatasetListItemSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
+import { PaginationResponseSchema } from '../../api';
+import { ListV2PaginationSchema, v2PaginationMutualExclusion } from '../../pagination';
+import { SourceMemberSchema } from '../../../support/user/type';
+import { TeamMemberStatusEnum } from '../../../support/user/team/constant';
 
 /* ============================================================================
  * API: 创建知识库
@@ -196,6 +200,41 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
 // 出参复用 DatasetListItemSchema
 export const GetDatasetListResponseSchema = z.array(DatasetListItemSchema);
 export type GetDatasetListResponse = z.infer<typeof GetDatasetListResponseSchema>;
+
+/* ============================================================================
+ * API: 获取知识库列表（分页版）
+ * Route: POST /api/core/dataset/listV2
+ * ============================================================================ */
+export const ListDatasetV2BodySchema = ListV2PaginationSchema.extend({
+  parentId: ParentIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '父级文件夹 ID,null 或不传表示根目录'
+  }),
+  type: z.enum(DatasetTypeEnum).optional().meta({
+    example: DatasetTypeEnum.dataset,
+    description: '知识库类型筛选（仅单值，与旧 schema 一致）'
+  }),
+  searchKey: z.string().optional().meta({
+    example: '产品文档',
+    description: '搜索关键词,按名称和简介模糊匹配'
+  })
+}).superRefine(v2PaginationMutualExclusion);
+export type ListDatasetV2Body = z.infer<typeof ListDatasetV2BodySchema>;
+
+/**
+ * v2 知识库列表项。基为具体 ZodObject 的 DatasetListItemSchema 派生，
+ * 仅 sourceMember.status 可为 null —— 成员缺失（已删除/离职）时以占位返回，不丢弃资源。
+ * 注意：DatasetListItemSchema 不含 parentId（旧 route 也不返回），v2 不得新增该响应字段。
+ */
+export const ListDatasetV2ItemSchema = DatasetListItemSchema.extend({
+  sourceMember: SourceMemberSchema.extend({
+    status: z.enum(TeamMemberStatusEnum).nullable()
+  })
+});
+export type ListDatasetV2Item = z.infer<typeof ListDatasetV2ItemSchema>;
+
+export const ListDatasetV2ResponseSchema = PaginationResponseSchema(ListDatasetV2ItemSchema);
+export type ListDatasetV2Response = z.infer<typeof ListDatasetV2ResponseSchema>;
 
 /* ============================================================================
  * API: 获取知识库路径

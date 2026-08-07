@@ -18,7 +18,9 @@ import {
   CreateDatasetFolderBodySchema,
   SearchDatasetTestBodySchema,
   ExportDatasetQuerySchema,
-  GetDatasetPermissionQuerySchema
+  GetDatasetPermissionQuerySchema,
+  ListDatasetV2BodySchema,
+  ListDatasetV2ResponseSchema
 } from './api';
 
 export const DatasetPath: OpenAPIPath = {
@@ -94,6 +96,34 @@ export const DatasetPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功返回知识库列表'
+        }
+      }
+    }
+  },
+  '/core/dataset/listV2': {
+    post: {
+      summary: '获取知识库列表（分页）',
+      description: '分页获取当前用户可读的知识库列表，返回 {list, total}',
+      tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListDatasetV2BodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回知识库列表和总数',
+          content: {
+            'application/json': {
+              schema: ListDatasetV2ResponseSchema
+            }
+          }
+        },
+        403: {
+          description:
+            'Phase 1（owner-only gate）期间，非团队 owner 请求返回 403；Phase 2 全量开放后移除'
         }
       }
     }

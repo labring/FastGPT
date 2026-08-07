@@ -13,6 +13,8 @@ import {
   GetAppDetailResponseSchema,
   ListAppBodySchema,
   ListAppResponseSchema,
+  ListAppV2BodySchema,
+  ListAppV2ResponseSchema,
   TransitionWorkflowBodySchema,
   TransitionWorkflowResponseSchema,
   UpdateAppBodySchema,
@@ -41,6 +43,34 @@ export const AppCommonPath: OpenAPIPath = {
               schema: ListAppResponseSchema
             }
           }
+        }
+      }
+    }
+  },
+  '/core/app/listV2': {
+    post: {
+      summary: '获取应用列表（分页）',
+      description: '分页获取当前团队下当前用户可读的应用或文件夹列表，返回 {list, total}',
+      tags: [DevApiTagsMap.appCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListAppV2BodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取应用列表和总数',
+          content: {
+            'application/json': {
+              schema: ListAppV2ResponseSchema
+            }
+          }
+        },
+        403: {
+          description:
+            'Phase 1（owner-only gate）期间，非团队 owner 请求返回 403；Phase 2 全量开放后移除'
         }
       }
     }

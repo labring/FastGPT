@@ -19,6 +19,8 @@ import {
   ListSkillVersionsResponseSchema,
   ListSkillsQuerySchema,
   ListSkillsResponseSchema,
+  ListSkillsV2QuerySchema,
+  ListSkillsV2ResponseSchema,
   SaveDeploySkillBodySchema,
   SaveDeploySkillResponseSchema,
   SkillDebugChatBodySchema,
@@ -51,6 +53,34 @@ export const SkillPath: OpenAPIPath = {
               schema: ListSkillsResponseSchema
             }
           }
+        }
+      }
+    }
+  },
+  '/core/ai/skill/listV2': {
+    post: {
+      summary: '获取技能列表（分页）',
+      description: '分页获取当前用户可读的系统技能或个人技能，返回 {list, total}',
+      tags: [DevApiTagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListSkillsV2QuerySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回技能列表和总数',
+          content: {
+            'application/json': {
+              schema: ListSkillsV2ResponseSchema
+            }
+          }
+        },
+        403: {
+          description:
+            'Phase 1（owner-only gate）期间，非团队 owner 请求返回 403；Phase 2 全量开放后移除'
         }
       }
     }
