@@ -14,6 +14,11 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
 import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 
 /**
@@ -22,7 +27,8 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
  * 否则工具运行页虽能渲染文件输入，预签名接口仍会误判为未开启文件上传。
  */
 const getPublishedFileSelectConfig = ({
-  chatConfig
+  chatConfig,
+  nodes = []
 }: {
   chatConfig?: {
     fileSelectConfig?: AppFileSelectConfigType;
@@ -30,32 +36,47 @@ const getPublishedFileSelectConfig = ({
       AppFileSelectConfigType & { type?: VariableInputEnum; canLocalUpload?: boolean }
     >;
   };
+  nodes?: Array<{
+    flowNodeType?: string;
+    inputs?: FlowNodeInputItemType[];
+  }>;
 }): AppFileSelectConfigType | undefined => {
   const fileVariables = chatConfig?.variables?.filter(
     (item) => item.type === VariableInputEnum.file && item.canLocalUpload !== false
   );
-  if (!fileVariables?.length) return chatConfig?.fileSelectConfig;
+  const pluginFileInputs = nodes
+    .filter((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
+    .flatMap((node) => node.inputs ?? [])
+    .filter((input) => input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect));
+
+  if (!fileVariables?.length && !pluginFileInputs.length) return chatConfig?.fileSelectConfig;
 
   return {
     ...chatConfig?.fileSelectConfig,
     canSelectFile:
       !!chatConfig?.fileSelectConfig?.canSelectFile ||
-      fileVariables.some((item) => item.canSelectFile),
+      fileVariables?.some((item) => item.canSelectFile) ||
+      pluginFileInputs.some((item) => item.canSelectFile),
     canSelectImg:
       !!chatConfig?.fileSelectConfig?.canSelectImg ||
-      fileVariables.some((item) => item.canSelectImg),
+      fileVariables?.some((item) => item.canSelectImg) ||
+      pluginFileInputs.some((item) => item.canSelectImg),
     canSelectVideo:
       !!chatConfig?.fileSelectConfig?.canSelectVideo ||
-      fileVariables.some((item) => item.canSelectVideo),
+      fileVariables?.some((item) => item.canSelectVideo) ||
+      pluginFileInputs.some((item) => item.canSelectVideo),
     canSelectAudio:
       !!chatConfig?.fileSelectConfig?.canSelectAudio ||
-      fileVariables.some((item) => item.canSelectAudio),
+      fileVariables?.some((item) => item.canSelectAudio) ||
+      pluginFileInputs.some((item) => item.canSelectAudio),
     canSelectCustomFileExtension:
       !!chatConfig?.fileSelectConfig?.canSelectCustomFileExtension ||
-      fileVariables.some((item) => item.canSelectCustomFileExtension),
+      fileVariables?.some((item) => item.canSelectCustomFileExtension) ||
+      pluginFileInputs.some((item) => item.canSelectCustomFileExtension),
     customFileExtensionList: [
       ...(chatConfig?.fileSelectConfig?.customFileExtensionList ?? []),
-      ...fileVariables.flatMap((item) => item.customFileExtensionList ?? [])
+      ...(fileVariables?.flatMap((item) => item.customFileExtensionList ?? []) ?? []),
+      ...pluginFileInputs.flatMap((item) => item.customFileExtensionList ?? [])
     ]
   };
 };
@@ -99,8 +120,8 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
         if (isHomeApp) return homeChatFileSelectConfig;
       }
 
-      const { chatConfig } = await getAppLatestVersion(authRes.sourceId, app);
-      return getPublishedFileSelectConfig({ chatConfig });
+      const { chatConfig, nodes } = await getAppLatestVersion(authRes.sourceId, app);
+      return getPublishedFileSelectConfig({ chatConfig, nodes });
     }
 
     if (authRes.sourceType === ChatSourceTypeEnum.chatAgentHelper) {

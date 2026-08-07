@@ -445,4 +445,42 @@ describe('presignChatFilePostUrl', () => {
 
     expect(mocks.createUploadChatFileURL).not.toHaveBeenCalled();
   });
+
+  it('allows uploads enabled by a published plugin input file config', async () => {
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      chatConfig: {
+        variables: []
+      },
+      nodes: [
+        {
+          flowNodeType: 'pluginInput',
+          inputs: [
+            {
+              renderTypeList: ['fileSelect', 'reference'],
+              canSelectFile: true,
+              canSelectImg: true,
+              maxFiles: 5
+            }
+          ]
+        }
+      ]
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        contentType: 'image/png',
+        appId,
+        chatId
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedExtensions: expect.arrayContaining(['.jpg', '.jpeg', '.png'])
+      })
+    );
+  });
 });

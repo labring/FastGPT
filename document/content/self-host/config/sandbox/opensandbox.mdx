@@ -1,118 +1,146 @@
 ---
-title: OpenSandbox 部署
-description: FastGPT 使用 OpenSandbox 自托管 Agent Sandbox
+title: OpenSandbox 配置
+description: FastGPT OpenSandbox 与 Agent Sandbox Proxy 配置
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
-  注意：OpenSandbox 方案默认未做网络隔离。如需网络隔离，请自行补充对应的网络隔离策略。
+  OpenSandbox 方案默认未做网络隔离。如有安全隔离要求，请自行补充网络隔离策略。
 </Alert>
 
-OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。开始前，请先完成[沙盒通用配置](./common)，确保 `fastgpt-agent-sandbox-proxy` 已部署；`fastgpt-app` 需配置 Proxy Secret、WebSocket URL 和预览 URL，`fastgpt-pro` 必须配置预览 URL。
+OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。FastGPT 通过 OpenSandbox Server 创建沙盒，并通过 Agent Sandbox Proxy 为浏览器提供文件、终端和预览访问能力。
 
-<Alert icon="⚠️" context="warning">
-  从旧版 Volume Manager 升级时，请将原 `VM_VOLUME_NAME_PREFIX` 的值配置到
-  `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX`，避免历史持久卷无法按原名称清理。
-</Alert>
+## Docker Compose 配置
 
-下面是 OpenSandbox 部署和配置流程。
+最新版 Docker Compose 已经包含 OpenSandbox Server、Volume Manager、Agent Sandbox Proxy 和沙盒运行时镜像配置，无需再单独合并其他 YAML 文件。
 
-## 1. 添加 yml service
+[查看最新版 docker-compose.yml（PgVector，中国大陆镜像源）](/deploy/docker/main/cn/docker-compose.pg.yml)
 
-参考 [opensandbox.yml](/deploy/sandbox_deploy/opensandbox.yml)，将 `fastgpt-opensandbox-server`、`fastgpt-volume-manager`、预拉取镜像和 `opensandbox-config` 加入当前 FastGPT 部署的 `docker-compose.yml`，并放到 FastGPT App 所在的 `app` network 中；不需要对外暴露 OpenSandbox 或 Volume Manager 端口。Agent Sandbox Proxy 请按[沙盒通用配置](./common)单独部署。
+其他向量数据库和全球镜像源版本见 [Docker Compose 部署](../../deploy/docker)。
 
-下面示例使用国内镜像源。海外部署可将镜像替换为：
+## 环境变量配置
 
-- `opensandbox/server:v0.2.1`
-- `ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0`
-- `opensandbox/execd:v1.0.21`
-- `opensandbox/egress:v1.1.4`
-- `ghcr.io/labring/fastgpt-agent-volume-manager:v0.2.0`
+Docker compose yml 文件里均已带默认值，这里补充做每个变量的说明。该文档始终是最新配置，旧版的配置可能存在差异，需找旧版的 yml 来看实际变量值。
 
-## 2. 修改 OpenSandbox 变量
+### OpenSandbox 服务
 
-根据实际部署环境修改下面变量：
+根据实际部署环境检查 Compose 文件中的以下配置：
 
-| 配置                          | 说明                                                                                                               |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `x-volume-manager-auth-token` | `fastgpt-volume-manager` 的认证 Token，需要与 FastGPT 里的 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 一致。 |
-| `[server].api_key`            | OpenSandbox Server API Key，需要与 FastGPT 里的 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 一致。                         |
+| 配置                          | 说明                                                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `x-volume-manager-auth-token` | Volume Manager 的认证 Token，需要与 FastGPT 的 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 一致。           |
+| `[server].api_key`            | OpenSandbox Server API Key，需要与 FastGPT 的 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 一致。                         |
+| `[docker].host_ip`            | 沙盒端点对 Proxy 可访问的宿主机地址，通常使用宿主机内网 IP 或 `host.docker.internal`。                           |
+| Docker socket 挂载            | Docker runtime 需要挂载宿主机 Docker socket，默认是 `/var/run/docker.sock`；OrbStack 等环境需替换为实际 socket。 |
 
-Docker runtime 必须挂载宿主机 Docker socket。Docker 默认路径通常是 `/var/run/docker.sock`；OrbStack 等环境需要替换为实际 socket 路径。
+如果服务器配置了 `HTTP_PROXY` / `HTTPS_PROXY`，建议给 OpenSandbox Server 和 Volume Manager 显式配置 `NO_PROXY` / `no_proxy`。至少包含 `localhost,127.0.0.1,127.0.0.0/8,fastgpt-app,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,host.docker.internal`，避免内部服务调用经过代理。
 
-如果服务器配置了 `HTTP_PROXY` / `HTTPS_PROXY`，建议给 OpenSandbox Server 和 Volume Manager 补充 `NO_PROXY` / `no_proxy`，至少包含 `localhost,127.0.0.1,127.0.0.0/8,fastgpt-opensandbox-server,fastgpt-volume-manager,host.docker.internal`，避免内部服务调用被代理劫持。OrbStack/Docker 可能自动注入包含 IPv6 CIDR 的 `NO_PROXY`，OpenSandbox 依赖的 httpx 可能把未加方括号的 IPv6 CIDR 误解析成 URL 端口，导致启动失败；遇到该问题时应显式覆盖 `NO_PROXY`。
+### Agent Sandbox Proxy 服务
 
-## 3. 修改 FastGPT 相关变量
+| 变量                               | 默认值                                   | 说明                                                                                                    |
+| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `PORT`                             | `1006`                                   | Proxy 容器监听端口，默认映射到宿主机 `3006`。                                                           |
+| `PREVIEW_PORT`                     | 与 `PORT` 相同                           | 4.16 可单独指定 HTTP 预览监听端口；修改后需同步调整宿主机端口映射和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。 |
+| `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                                               |
+| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | Proxy 回源 FastGPT 主服务的内网地址。                                                                   |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Proxy 回源请求超时时间，单位秒；沙盒冷启动较慢时可适当调大。                                            |
+| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy 服务日志级别。                                                                                    |
 
-在 `fastgpt-app` 和 `fastgpt-pro` 中增加或修改下面环境变量：
+4.16 默认使用同一个端口提供 WebSocket 和 HTTP 预览。如果网关不支持同端口转发，可设置 `PREVIEW_PORT` 为其他容器端口（例如 `1007`），并将 Compose 端口映射改为 `3007:1007`，同时把 `AGENT_SANDBOX_PREVIEW_PROXY_URL` 指向新的 3007 端口。
+
+### fastgpt-app 服务
+
+在 Compose 文件的 `x-agent-sandbox-config` 中配置以下变量，使 `fastgpt-app` 和 `fastgpt-pro` 共用 OpenSandbox 配置：
 
 ```dotenv
-# 启用 OpenSandbox 作为 Agent Sandbox provider
 AGENT_SANDBOX_PROVIDER=opensandbox
 
-# FastGPT 主服务访问 OpenSandbox Server 的内网地址
+# FastGPT 访问 OpenSandbox Server 的内网地址和密钥
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
-# OpenSandbox 访问密钥，需要与 opensandbox-config 里的 [server].api_key 一致
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
-# Docker compose 部署使用 docker runtime
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
-# OpenSandbox 创建 Agent Sandbox 时使用的运行态镜像
 AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
-# 持久卷管理服务地址和 Token，需要与 x-volume-manager-auth-token 一致。
+
+# Volume Manager 地址、Token 和持久卷名称前缀
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
-# FastGPT app 生成持久卷 claimName 时使用的前缀
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
-# Agent Sandbox 单实例 CPU 核数和内存上限（MiB）
+
+# Agent Sandbox Proxy 配置
+AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
+AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
+AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+
+# 单个沙盒的资源限制
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
-# OpenSandbox 持久卷容量，仅 K8s 模式下创建新 PVC 时有效
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
 
-如果你的 `docker-compose.yml` 已经使用 `x-agent-sandbox-config` 统一注入 Agent Sandbox 变量，可直接在该 anchor 中填入上述值，确保 `fastgpt-app` 和 `fastgpt-pro` 都继承该配置。
+`AGENT_SANDBOX_OPENSANDBOX_API_KEY` 必须与 `[server].api_key` 一致，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 必须与 `x-volume-manager-auth-token` 一致，`AGENT_SANDBOX_PROXY_SECRET` 必须与 Agent Sandbox Proxy 中的同名变量一致。
 
-## 4. 启动验证
+`fastgpt-pro` 不提供 Sandbox Editor 和 WebSocket Proxy 链路，因此不要求 `AGENT_SANDBOX_PROXY_SECRET` 和 `AGENT_SANDBOX_PROXY_URL`，但必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
 
-1. 预拉取沙盒运行时镜像：
+<Alert icon="⚠️" context="warning">
+  预览代理应部署在与 FastGPT 主站不同的 origin（协议、域名或端口至少一项不同）。Sandbox 中的 HTML
+  可能包含用户生成的脚本；如果预览地址与主站同源，脚本可能访问主站凭证或接口。
+</Alert>
 
-```bash
-docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image
+预览链接是短期只读 bearer capability。获得链接的人可以在链接有效期内通过修改 URL 路径读取同一 Sandbox Workspace 中的其他文件，请勿将链接分享给无权访问该 Workspace 的用户。
+
+从旧版 Volume Manager 升级时，请将原 `VM_VOLUME_NAME_PREFIX` 的值配置到 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX`，避免历史持久卷无法按原名称清理。
+
+## 更多配置
+
+### 自定义依赖源
+
+如果沙盒内需要安装 npm 或 Python 依赖，可以在 `fastgpt-app` 和 `fastgpt-pro` 中配置依赖源：
+
+```dotenv
+AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
+AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-2. 启动或重启相关服务：
+### 资源与生命周期
 
-```bash
-docker compose up -d fastgpt-opensandbox-server fastgpt-volume-manager fastgpt-app fastgpt-pro
-```
-
-3. 在容器网络内检查服务健康状态：
-
-```bash
-docker compose exec fastgpt-opensandbox-server python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8090/health', timeout=5).read().decode())"
-docker compose exec fastgpt-volume-manager node -e "fetch('http://localhost:3000/health').then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
-```
-
-正常情况下，OpenSandbox 的健康检查会返回 `{"status":"healthy"}`，`fastgpt-volume-manager` 会返回健康状态 JSON。Agent Sandbox Proxy 的验证方式见[沙盒通用配置](./common)。
-
-4. 登录 FastGPT，打开支持 Agent Sandbox 的场景，例如 Agent V2 虚拟机、Skill 编辑或 Skill 调试，确认可以正常创建沙盒、打开文件树和终端。
+| 变量                                  | 默认值     | 说明                                       |
+| ------------------------------------- | ---------- | ------------------------------------------ |
+| `AGENT_SANDBOX_CPU_COUNT`             | `1`        | 单个 Agent Sandbox 的 CPU 核数上限。       |
+| `AGENT_SANDBOX_MEMORY_MIB`            | `2048`     | 单个 Agent Sandbox 的内存上限，单位 MiB。  |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`       | `1`        | 沙盒存储容量，单位 Gi。                    |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`  | `67108864` | IDE Agent WebSocket 单消息大小上限。       |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`    | `16777216` | IDE Agent WebSocket 单帧大小上限。         |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。 |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`        | 已暂停的沙盒持续未活跃多少天后自动归档。   |
 
 ## 常见问题
 
 ### 提示 Sandbox provider apiKey is required for opensandbox
 
-检查 `fastgpt-app` 和 `fastgpt-pro` 是否配置了 `AGENT_SANDBOX_OPENSANDBOX_API_KEY`，并确认它与 `opensandbox-config` 中的 `[server].api_key` 一致。
+检查 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 是否已配置，并确认它与 `opensandbox-config` 中的 `[server].api_key` 一致。
 
 ### 提示 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required
 
-OpenSandbox 模式需要部署 `fastgpt-volume-manager`，并在 FastGPT 中配置 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` 和 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`。
+检查 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` 和 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`，并确认 Volume Manager 服务正常运行。
+
+### 提示 AGENT_SANDBOX_PROXY_URL 或 AGENT_SANDBOX_PREVIEW_PROXY_URL is required
+
+`fastgpt-app` 必须配置 `AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_URL` 和 `AGENT_SANDBOX_PREVIEW_PROXY_URL`；`fastgpt-pro` 必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
+
+### 浏览器 WebSocket 连接失败
+
+检查 Proxy 是否可从浏览器访问，并确认反向代理支持 WebSocket Upgrade。如果 FastGPT 使用 HTTPS，`AGENT_SANDBOX_PROXY_URL` 也应使用 `wss://`。
+
+### Proxy 校验失败或返回 401
+
+确认 FastGPT 主服务和 Agent Sandbox Proxy 中的 `AGENT_SANDBOX_PROXY_SECRET` 完全一致，且长度不少于 32 位。
 
 ### 沙盒创建成功，但文件树或终端连接失败
 
-检查 `AGENT_SANDBOX_PROXY_URL` 是否是浏览器可访问的 `ws://` 或 `wss://` 地址，并确认反向代理支持 WebSocket Upgrade。如果 FastGPT 主站使用 HTTPS，proxy 地址也应使用 `wss://`。
+确认 `AGENT_SANDBOX_PROXY_URL` 是浏览器可访问的 `ws://` 或 `wss://` 地址，并检查宿主机 `3006` 端口或对应域名是否已开放。
 
-### proxy 无法连接沙盒 endpoint
+### Proxy 无法连接沙盒 endpoint
 
-优先检查 `opensandbox-config` 的 `[docker].host_ip`。当 OpenSandbox Server 运行在容器内时，沙盒 endpoint 里的 `localhost` 或 `127.0.0.1` 对 proxy 容器不可达，通常需要改成宿主机内网 IP 或 `host.docker.internal`。
+检查 `opensandbox-config` 的 `[docker].host_ip`。沙盒 endpoint 中的 `localhost` 或 `127.0.0.1` 对 Proxy 容器不可达，通常应改为宿主机内网 IP 或 `host.docker.internal`。

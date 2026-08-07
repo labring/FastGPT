@@ -7,9 +7,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerOverlay,
-  Flex,
-  VStack,
-  Accordion
+  Flex
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../common/Avatar';
@@ -17,19 +15,16 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyIconButton from '../../../common/Icon/button';
 import MyIcon from '../../../common/Icon';
 import MyMenu from '../../../common/MyMenu';
-import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
-import MyBox from '../../../common/MyBox';
 import { useRequest } from '../../../../hooks/useRequest';
 import {
-  ParamSection,
-  ReadmeBox,
-  SubToolAccordionItem,
+  ToolDetailBody,
   useToolDetail,
   drawerScrollbarStyles,
   type ToolDetailFetchResponse,
   type ToolDetailVersionType
 } from './ToolDetail';
+import { isToolVersionInstalled } from './utils';
 
 const ToolDetailDrawer = ({
   onClose,
@@ -41,10 +36,12 @@ const ToolDetailDrawer = ({
   systemTitle,
   onFetchDetail,
   onFetchVersions,
+  onFetchInstalledVersions,
   onVersionChange,
   isLoading,
   showPoint,
   mode,
+  installedVersion,
   showActionButton = true
 }: {
   onClose: () => void;
@@ -56,23 +53,21 @@ const ToolDetailDrawer = ({
   systemTitle?: string;
   onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
   onFetchVersions?: (toolId: string) => Promise<ToolDetailVersionType[]>;
+  onFetchInstalledVersions?: (toolId: string) => Promise<ToolDetailVersionType[]>;
   onVersionChange?: (version: string) => void;
   isLoading?: boolean;
   showPoint: boolean;
   mode: 'admin' | 'team' | 'marketplace';
+  installedVersion?: string;
   showActionButton?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
   const isInstalled = selectedTool.installed;
   const [selectedVersion, setSelectedVersion] = useState<string | undefined>(selectedTool.version);
 
   const isDownload = useMemo(() => {
     return mode === 'marketplace';
   }, [mode]);
-  const showUninstallButton = mode === 'admin' && isInstalled && !!onDelete;
-  const showInstallButton = showActionButton && !showUninstallButton;
-  const hasUpdateButton = !!selectedTool.update && !!onUpdate && mode !== 'marketplace';
 
   const {
     data: toolVersions = [],
@@ -95,6 +90,27 @@ const ToolDetailDrawer = ({
     }
   }, [fetchToolVersions, onFetchVersions, selectedTool.id]);
 
+  const {
+    data: installedToolVersions,
+    loading: loadingInstalledVersions,
+    runAsync: fetchInstalledToolVersions
+  } = useRequest(
+    async (toolId: string) => {
+      if (!onFetchInstalledVersions) return [];
+      return onFetchInstalledVersions(toolId);
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
+
+  useEffect(() => {
+    if (selectedTool.id && onFetchInstalledVersions) {
+      fetchInstalledToolVersions(selectedTool.id);
+    }
+  }, [fetchInstalledToolVersions, onFetchInstalledVersions, selectedTool.id]);
+
   const activeVersion = selectedVersion || toolVersions[0]?.version;
 
   // Use tool detail hook
@@ -106,6 +122,21 @@ const ToolDetailDrawer = ({
   });
 
   const currentVersion = activeVersion || parentTool?.version || selectedTool.version;
+  const isCurrentVersionInstalled = isToolVersionInstalled({
+    isInstalled: !!isInstalled,
+    currentVersion,
+    installedVersions: installedToolVersions?.map((item) => item.version),
+    installedVersion
+  });
+  const isLatestVersionSelected = currentVersion === selectedTool.version;
+  const hasUpdateButton =
+    !!isInstalled &&
+    !!onUpdate &&
+    mode !== 'marketplace' &&
+    isLatestVersionSelected &&
+    (!!selectedTool.update || (!!installedVersion && installedVersion !== currentVersion));
+  const showInstallButton = showActionButton && !isCurrentVersionInstalled && !hasUpdateButton;
+  const showUninstallButton = mode === 'admin' && !!isInstalled && !!onDelete && !showInstallButton;
 
   return (
     <Drawer isOpen={true} onClose={onClose} placement="right">
@@ -163,182 +194,68 @@ const ToolDetailDrawer = ({
         </DrawerHeader>
 
         <DrawerBody position="relative" sx={drawerScrollbarStyles}>
-          <MyBox>
-            <Flex gap={2} flexWrap="wrap">
-              {parentTool?.tags?.map((tag: string) => (
-                <Box
-                  key={tag}
-                  px={2}
-                  py={1}
-                  border={'1px solid'}
-                  borderRadius={'6px'}
-                  borderColor={'myGray.200'}
-                  fontSize={'10px'}
-                  fontWeight={'medium'}
-                  color={'myGray.700'}
-                >
-                  {tag}
-                </Box>
-              ))}
-            </Flex>
-            <Box fontSize={'12px'} color="myGray.500" mt={3}>
-              {parseI18nString(parentTool?.description || '', i18n.language)}
-            </Box>
-            <Box fontSize={'12px'} color="myGray.500" mt={3}>
-              {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
-            </Box>
-            {(showInstallButton || showUninstallButton || hasUpdateButton) && (
-              <Flex mt={3} gap={2}>
-                {showInstallButton && (
-                  <Button
-                    flex={'1 1 0'}
-                    minW={0}
-                    variant={isInstalled ? 'primaryOutline' : 'primary'}
-                    isLoading={isLoading || loadingDetail}
-                    isDisabled={isUpdating}
-                    onClick={async () => {
-                      await onToggleInstall?.(!isInstalled, currentVersion);
-                    }}
-                  >
-                    {isDownload
-                      ? t('common:Download')
-                      : isInstalled
-                        ? t('app:toolkit_uninstall')
-                        : t('app:toolkit_install')}
-                  </Button>
-                )}
-                {hasUpdateButton && (
-                  <Button
-                    variant="primary"
-                    flex={'1 1 0'}
-                    minW={0}
-                    isLoading={isUpdating || loadingDetail}
-                    onClick={async () => {
-                      await onUpdate?.(currentVersion);
-                    }}
-                  >
-                    {t('app:custom_plugin_update')}
-                  </Button>
-                )}
-                {showUninstallButton && (
-                  <Button
-                    flex={hasUpdateButton ? '0 0 62px' : '1 1 0'}
-                    minW={0}
-                    variant="dangerOutline"
-                    isLoading={isLoading || loadingDetail}
-                    onClick={() => onDelete?.()}
-                  >
-                    {t('app:toolkit_uninstall')}
-                  </Button>
-                )}
-              </Flex>
-            )}
-
-            {showPoint && (
-              <Flex mt={4} gap={1.5} alignItems={'center'}>
-                <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
-                  {t('app:toolkit_call_points_label')}
-                </Box>
-                <Box fontSize={'12px'} color={'myGray.600'}>
-                  {!!parentTool?.currentCost
-                    ? parentTool?.currentCost
-                    : t('app:toolkit_no_call_points')}
-                </Box>
-              </Flex>
-            )}
-
-            <Flex mt={4} gap={1.5} alignItems={'center'}>
-              <Box fontWeight={'medium'} fontSize={'14px'} color={'myGray.900'}>
-                {t('app:toolkit_activation_label')}
-              </Box>
-              <Box fontSize={'12px'} color={'myGray.600'}>
-                {parentTool?.hasSystemSecret ||
-                (parentTool?.secrets && parentTool?.secrets.length > 0) ||
-                (parentTool?.secretInputConfig && parentTool?.secretInputConfig.length > 0) ||
-                (parentTool?.inputList && parentTool?.inputList.length > 0)
-                  ? t('app:toolkit_activation_required')
-                  : t('app:toolkit_activation_not_required')}
-              </Box>
-            </Flex>
-
-            <Box mt={4}>
-              <LightRowTabs
-                list={[
-                  {
-                    label: isToolSet
-                      ? t('app:toolkit_tool_list')
-                      : t('app:toolkit_params_description'),
-                    value: 'params'
-                  },
-                  ...(parentTool?.courseUrl || parentTool?.readme || parentTool?.userGuide
-                    ? [{ label: t('app:toolkit_user_guide'), value: 'guide' }]
-                    : [])
-                ]}
-                value={activeTab}
-                onChange={(value) => {
-                  if (
-                    value === 'guide' &&
-                    parentTool?.courseUrl &&
-                    !parentTool?.readme &&
-                    !parentTool?.userGuide
-                  ) {
-                    window.open(parentTool?.courseUrl, '_blank');
-                  } else {
-                    setActiveTab(value as 'guide' | 'params');
-                  }
-                }}
-                gap={4}
-              />
-              <Box h={'1px'} w={'full'} bg={'myGray.200'} mt={'-5px'} mx={1} />
-            </Box>
-
-            <Box mt={4}>
-              {activeTab === 'guide' && (
-                <VStack align="stretch" spacing={4} flex="1" minH="0">
-                  {(parentTool?.readme || readmeContent || parentTool?.userGuide) && (
-                    <ReadmeBox
-                      source={readmeContent || parentTool?.userGuide || ''}
-                      courseUrl={parentTool?.courseUrl}
-                    />
-                  )}
-                </VStack>
-              )}
-
-              {activeTab === 'params' && (
-                <VStack align="stretch" spacing={4}>
-                  {isToolSet && subTools.length > 0 && (
-                    <Accordion
-                      allowMultiple
-                      {...(subTools.length === 1 ? { defaultIndex: [0] } : {})}
+          <ToolDetailBody
+            parentTool={parentTool}
+            isToolSet={isToolSet}
+            subTools={subTools}
+            readmeContent={readmeContent}
+            showPoint={showPoint}
+            systemTitle={systemTitle}
+            actions={
+              (showInstallButton || showUninstallButton || hasUpdateButton) && (
+                <Flex gap={2}>
+                  {showInstallButton && (
+                    <Button
+                      flex={'1 1 0'}
+                      minW={0}
+                      variant={isCurrentVersionInstalled ? 'primaryOutline' : 'primary'}
+                      isLoading={isLoading || loadingDetail || loadingInstalledVersions}
+                      isDisabled={isUpdating}
+                      onClick={async () => {
+                        await onToggleInstall?.(!isCurrentVersionInstalled, currentVersion);
+                        if (onFetchInstalledVersions) {
+                          await fetchInstalledToolVersions(selectedTool.id);
+                        }
+                      }}
                     >
-                      {subTools.map((subTool) => (
-                        <SubToolAccordionItem key={subTool.pluginId} tool={subTool} />
-                      ))}
-                    </Accordion>
+                      {isDownload
+                        ? t('common:Download')
+                        : isCurrentVersionInstalled
+                          ? t('app:toolkit_uninstall')
+                          : t('app:toolkit_install')}
+                    </Button>
                   )}
-
-                  {!isToolSet && (
-                    <>
-                      {parentTool?.versionList?.[0]?.inputs &&
-                        parentTool?.versionList?.[0]?.inputs.length > 0 && (
-                          <ParamSection
-                            title={t('app:toolkit_inputs')}
-                            params={parentTool?.versionList?.[0]?.inputs}
-                          />
-                        )}
-                      {parentTool?.versionList?.[0]?.outputs &&
-                        parentTool?.versionList?.[0]?.outputs.length > 0 && (
-                          <ParamSection
-                            title={t('app:toolkit_outputs')}
-                            params={parentTool?.versionList?.[0]?.outputs}
-                          />
-                        )}
-                    </>
+                  {hasUpdateButton && (
+                    <Button
+                      variant="primary"
+                      flex={'1 1 0'}
+                      minW={0}
+                      isLoading={isUpdating || loadingDetail}
+                      onClick={async () => {
+                        await onUpdate?.(currentVersion);
+                        if (onFetchInstalledVersions) {
+                          await fetchInstalledToolVersions(selectedTool.id);
+                        }
+                      }}
+                    >
+                      {t('app:custom_plugin_update')}
+                    </Button>
                   )}
-                </VStack>
-              )}
-            </Box>
-          </MyBox>
+                  {showUninstallButton && (
+                    <Button
+                      flex={hasUpdateButton ? '0 0 62px' : '1 1 0'}
+                      minW={0}
+                      variant="dangerOutline"
+                      isLoading={isLoading || loadingDetail}
+                      onClick={() => onDelete?.()}
+                    >
+                      {t('app:toolkit_uninstall')}
+                    </Button>
+                  )}
+                </Flex>
+              )
+            }
+          />
         </DrawerBody>
       </DrawerContent>
     </Drawer>

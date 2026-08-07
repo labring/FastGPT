@@ -137,6 +137,7 @@ const loadVectorConfigs = async () => {
       extra: await readOptionalFile(config.extraFile),
       depends: config.dbFile ? '      fastgpt-vector:\n        condition: service_healthy' : ''
     };
+    vectors[name].extraEntries = vectors[name].extra ? `  ${vectors[name].extra}` : '';
     vectors[name].extraBlock = vectors[name].extra ? `configs:\n  ${vectors[name].extra}` : '';
   }
 
@@ -186,7 +187,7 @@ const loadArgs = (version) => {
  * @param {RegionEnum} region
  * @param {string | undefined} vec
  * @param {Record<ServiceKey, ArgItemType>} args
- * @param {Record<string, { filename: string, db: string, config: string, extra: string, extraBlock: string, depends: string }>} vectors
+ * @param {Record<string, { filename: string, db: string, config: string, extra: string, extraEntries: string, extraBlock: string, depends: string }>} vectors
  * @param {string} context
  * @returns {string}
  */
@@ -230,7 +231,9 @@ const replace = (source, region, vec, args, vectors, context) => {
     } else if (b === 'image') {
       const image = arg.image?.[region];
       if (!image) {
-        throw new Error(`Missing deploy image "${a}.${region}" for ${formatExpr(expr)} in ${context}`);
+        throw new Error(
+          `Missing deploy image "${a}.${region}" for ${formatExpr(expr)} in ${context}`
+        );
       }
       return image;
     }
@@ -261,11 +264,15 @@ const generateDevFile = async (deployVersions, vectors) => {
   await Promise.all([
     fs.promises.writeFile(
       path.join(process.cwd(), 'dev', 'docker-compose.cn.yml'),
-      formatYamlOutput(replace(template, 'cn', undefined, args, vectors, 'dev/docker-compose.cn.yml'))
+      formatYamlOutput(
+        replace(template, 'cn', undefined, args, vectors, 'dev/docker-compose.cn.yml')
+      )
     ),
     fs.promises.writeFile(
       path.join(process.cwd(), 'dev', 'docker-compose.yml'),
-      formatYamlOutput(replace(template, 'global', undefined, args, vectors, 'dev/docker-compose.yml'))
+      formatYamlOutput(
+        replace(template, 'global', undefined, args, vectors, 'dev/docker-compose.yml')
+      )
     )
   ]);
 

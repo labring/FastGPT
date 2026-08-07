@@ -4,6 +4,7 @@ import type {
   InstallPluginFromUrlBodyType,
   UploadPkgPluginResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/api';
+import type { PluginInstallResultType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 // Pkg plugin
 export const uploadPkgPlugin = (formData: FormData) =>
@@ -13,4 +14,4 @@ export const confirmPkgPluginUpload = (data: ConfirmUploadPkgPluginBodyType) =>
   POST(`/core/plugin/admin/pkg/confirm`, data);
 
 export const intallPluginWithUrl = (data: InstallPluginFromUrlBodyType) =>
-  POST('/core/plugin/admin/installWithUrl', data);
+  POST<PluginInstallResultType>('/core/plugin/admin/installWithUrl', data);

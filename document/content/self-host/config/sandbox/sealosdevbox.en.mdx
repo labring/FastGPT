@@ -14,6 +14,7 @@ import { Alert } from '@/components/docs/Alert';
 
 1. FastGPT commercial edition is deployed, and the team has Agent Sandbox access.
 2. Request Sealos Devbox connection details from support: Devbox service URL, access token, and runtime image.
+3. Follow [OpenSandbox Configuration](./opensandbox) to deploy `fastgpt-agent-sandbox-proxy`.
 
 ## Configure FastGPT Environment Variables
 
@@ -41,7 +42,7 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 
 ### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `fastgpt-app` requires both `AGENT_SANDBOX_PROXY_URL` and `AGENT_SANDBOX_PREVIEW_PROXY_URL`, while `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`. See [General Sandbox Configuration](./common) for details.
+After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `fastgpt-app` requires `AGENT_SANDBOX_PROXY_SECRET`, `AGENT_SANDBOX_PROXY_URL`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL`, while `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`. The proxy secret must match the value configured for `fastgpt-agent-sandbox-proxy` and contain at least 32 characters.
 
 ### AGENT_SANDBOX_SEALOS_IMAGE is required
 
