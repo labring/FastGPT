@@ -1,11 +1,15 @@
 # 用于部署的 docker-compose 文件:
 # - FastGPT 端口映射为 3000:3000
 # - FastGPT-mcp-server 端口映射 3003:3000
-# - 如需启用 Agent/Skill 沙盒，请单独部署 fastgpt-agent-sandbox-proxy
+# - Agent Sandbox Proxy 端口映射为 3006:1006
 # - 建议修改账密后再运行
 
 # root 默认密码（重启后会强制重置该密码成环境变量值）
 x-default-root-psw: &x-default-root-psw '1234'
+# FastGPT 前端访问地址，必须填写用户实际访问 FastGPT 的地址
+x-fe-domain: &x-fe-domain ''
+# Sandbox Proxy WebSocket 地址，必须填写用户实际访问地址
+x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url ''
 # 系统最高密钥凭证
 x-system-key: &x-system-key 'fastgpt-xxx'
 # 文件阅读 token 密钥
@@ -20,6 +24,8 @@ x-plugin-auth-token: &x-plugin-auth-token 'fastgpt-plugin-token-please-change'
 x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'
 # agent sandbox proxy secret，必须与 FastGPT 主站环境变量保持一致，且至少 32 位
 x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'
+# volume manager token，必须与 FastGPT 主站环境变量保持一致
+x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
@@ -55,8 +61,8 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
 
 # FastGPT 主服务的服务地址配置
 x-fastgpt-service-config: &x-fastgpt-service-config
@@ -69,29 +75,25 @@ x-fastgpt-service-config: &x-fastgpt-service-config
 
 # FastGPT 主服务的 Agent Sandbox 配置
 x-agent-sandbox-config: &x-agent-sandbox-config
-  # v4.15.0 默认不绑定具体 Agent Sandbox provider。
-  # 如需启用 Agent/Skill 沙盒，请参考升级文档选择 sealosdevbox 或 opensandbox 后补充对应环境变量。
-  AGENT_SANDBOX_PROVIDER:
+  # 默认启用 OpenSandbox；如使用其他 provider，请按沙盒配置文档替换相关变量。
+  AGENT_SANDBOX_PROVIDER: opensandbox
   AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
-  # 浏览器访问 agent-sandbox-proxy 的地址。启用 Agent/Skill 沙盒时，必须改成单独部署的 proxy 的 ws:// 或 wss:// 地址。
-  AGENT_SANDBOX_PROXY_URL:
-  AGENT_SANDBOX_OPENSANDBOX_BASEURL:
-  AGENT_SANDBOX_OPENSANDBOX_API_KEY:
+  AGENT_SANDBOX_PROXY_URL: *x-agent-sandbox-proxy-url
+  AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
+  AGENT_SANDBOX_OPENSANDBOX_API_KEY: fastgpt-opensandbox-api-key
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO:
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG:
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ghcr.io/labring/fastgpt-agent-sandbox
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.2.0
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
-  AGENT_SANDBOX_SEALOS_BASEURL:
-  AGENT_SANDBOX_SEALOS_TOKEN:
-  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: /home/devbox/workspace
-  AGENT_SANDBOX_SEALOS_IMAGE:
-  AGENT_SANDBOX_ENABLE_VOLUME: false
-  AGENT_SANDBOX_VOLUME_MANAGER_URL:
-  AGENT_SANDBOX_VOLUME_MANAGER_TOKEN:
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
   AGENT_SANDBOX_DISK_MB: 1024
   AGENT_SANDBOX_MAX_EDIT_DEBUG: 100
+  AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: 30
   AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: 67108864
   AGENT_SANDBOX_WS_MAX_FRAME_BYTES: 16777216
+  AGENT_SANDBOX_NPM_REGISTRY:
+  AGENT_SANDBOX_PYPI_INDEX_URL:
 
 # FastGPT App 专用环境变量（projects/app/src/env.ts · appEnv）
 x-app-env-config: &x-app-env-config
@@ -129,7 +131,7 @@ x-service-env-config: &x-service-env-config
   PASSWORD_LOGIN_LOCK_SECONDS:
   MAX_LOGIN_SESSION:
   ALLOWED_ORIGINS:
-  AGENT_ENGINE: default
+  AGENT_ENGINE: fastAgent
   SKIP_FILE_TYPE_CHECK: false
   WECHAT_CHANNEL_CONCURRENCY: 1000
   PARSE_FILE_WORKERS: 5
@@ -328,7 +330,7 @@ services:
           *x-app-env-config
         ]
       # 必填。客户端访问 FastGPT 时使用的地址，由协议、主机和可选端口组成，用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。
-      FE_DOMAIN:
+      FE_DOMAIN: *x-fe-domain
       # 文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容
       FILE_DOMAIN:
   fastgpt-code-sandbox:
@@ -430,6 +432,90 @@ services:
       timeout: 20s
       retries: 3
 
+  # OpenSandbox Server 和 Volume Manager 仅需在 app 内网中访问。
+  fastgpt-opensandbox-server:
+    image: opensandbox/server:v0.2.0
+    container_name: fastgpt-opensandbox-server
+    restart: always
+    networks:
+      - app
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      <<: [*x-no-proxy-config]
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8090/health',timeout=3).status==200 else 1)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastgpt-volume-manager:
+    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.2.0
+    container_name: fastgpt-volume-manager
+    restart: always
+    networks:
+      - app
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 3000
+      VM_RUNTIME: docker
+      VM_AUTH_TOKEN: *x-volume-manager-auth-token
+      VM_LOG_LEVEL: info
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1));"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 仅用于预拉取运行时镜像，不会随 docker compose up 启动。
+  opensandbox-agent-sandbox-image:
+    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+    profiles:
+      - prepull
+  opensandbox-execd-image:
+    image: opensandbox/execd:v1.0.21
+    profiles:
+      - prepull
+  opensandbox-egress-image:
+    image: opensandbox/egress:v1.1.4
+    profiles:
+      - prepull
+
+  # 浏览器访问 Agent Sandbox 的鉴权代理，生产环境应通过独立域名反向代理 3006 端口。
+  fastgpt-agent-sandbox-proxy:
+    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0
+    container_name: fastgpt-agent-sandbox-proxy
+    restart: always
+    networks:
+      - app
+    ports:
+      - 3006:1006
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 1006
+      AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
+      FASTGPT_APP_URL: http://fastgpt-app:3000
+      FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
+      RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
+
   # AI Proxy
   fastgpt-aiproxy:
     image: ghcr.io/labring/aiproxy:v0.6.5
@@ -501,3 +587,26 @@ volumes:
   fastgpt-seekdb-data:
   fastgpt-seekdb-config:
   fastgpt-aiproxy_pg:
+
+configs:
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      api_key = "fastgpt-opensandbox-api-key"
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "opensandbox/execd:v1.0.21"
+
+      [egress]
+      image = "opensandbox/egress:v1.1.4"
+
+      [docker]
+      network_mode = "bridge"
+      host_ip = "host.docker.internal"
+
+      [ingress]
+      mode = "direct"

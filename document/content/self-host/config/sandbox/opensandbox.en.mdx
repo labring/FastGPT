@@ -1,120 +1,148 @@
 ---
-title: OpenSandbox Deployment
-description: Use self-hosted OpenSandbox with FastGPT Agent Sandbox
+title: OpenSandbox Configuration
+description: Configure OpenSandbox and Agent Sandbox Proxy for FastGPT
 ---
 
 import { Alert } from '@/components/docs/Alert';
 
 <Alert icon="⚠️" context="warning">
-  Note: The OpenSandbox setup does not provide network isolation by default. Add your own network
-  isolation policy if your deployment requires it.
+  OpenSandbox does not provide network isolation by default. Add your own network isolation policy
+  if your environment requires it.
 </Alert>
 
-OpenSandbox is suitable when you want to self-host the Agent/Skill sandbox runtime. Before starting, complete [General Sandbox Configuration](./common) and make sure `fastgpt-agent-sandbox-proxy` is deployed. Configure the proxy secret, WebSocket URL, and preview URL in `fastgpt-app`; you must configure the preview URL in `fastgpt-pro`.
+OpenSandbox is designed for self-hosted Agent and Skill sandbox runtimes. FastGPT creates sandboxes through OpenSandbox Server, while Agent Sandbox Proxy provides browser access to files, terminals, and previews.
 
-<Alert icon="⚠️" context="warning">
-  When upgrading from an earlier Volume Manager release, set
-  `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` to the previous `VM_VOLUME_NAME_PREFIX` value so
-  existing persistent volumes can still be cleaned up by their original names.
-</Alert>
+## Docker Compose Configuration
 
-The OpenSandbox setup flow is below.
+The latest Docker Compose file already includes OpenSandbox Server, Volume Manager, Agent Sandbox Proxy, and the sandbox runtime images. You do not need to merge any additional YAML files.
 
-## 1. Add yml services
+[View the latest docker-compose.yml (PgVector, global registries)](/deploy/docker/main/global/docker-compose.pg.yml)
 
-Use [opensandbox.yml](/deploy/sandbox_deploy/opensandbox.yml) as a reference. Add `fastgpt-opensandbox-server`, `fastgpt-volume-manager`, the image pre-pull services, and `opensandbox-config` to your current FastGPT `docker-compose.yml`. Place them on the same `app` network as the FastGPT App service. You do not need to expose OpenSandbox or Volume Manager ports publicly. Deploy Agent Sandbox Proxy separately as described in [General Sandbox Configuration](./common).
+See [Deploy with Docker Compose](../../deploy/docker.en.mdx) for other vector databases and China Mainland registries.
 
-The sample uses China Mainland image registries. For deployments outside China Mainland, replace them with:
+## Environment Variables
 
-- `opensandbox/server:v0.2.1`
-- `ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0`
-- `opensandbox/execd:v1.0.21`
-- `opensandbox/egress:v1.1.4`
-- `ghcr.io/labring/fastgpt-agent-volume-manager:v0.2.0`
+The Docker Compose YAML files include default values. This section documents each variable. This page tracks the latest configuration; older releases may differ, so check the YAML for the corresponding older release when needed.
 
-## 2. Update OpenSandbox variables
+### OpenSandbox Service
 
-Only the following values usually need to be changed:
+Review these settings in the Compose file for your environment:
 
-| Setting                       | Description                                                                                                                   |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `x-volume-manager-auth-token` | Authentication token for `fastgpt-volume-manager`. It must match `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` in FastGPT. |
-| `[server].api_key`            | OpenSandbox Server API key. It must match `AGENT_SANDBOX_OPENSANDBOX_API_KEY` in FastGPT.                                     |
+| Setting                       | Description                                                                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `x-volume-manager-auth-token` | Volume Manager token. It must match `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` in FastGPT.                             |
+| `[server].api_key`            | OpenSandbox Server API key. It must match `AGENT_SANDBOX_OPENSANDBOX_API_KEY` in FastGPT.                                    |
+| `[docker].host_ip`            | Host address that sandbox endpoints expose to the proxy. Use the host's internal IP or `host.docker.internal`.               |
+| Docker socket mount           | The Docker runtime requires the host Docker socket. The default is `/var/run/docker.sock`; use the actual path if different. |
 
-Docker runtime requires mounting the host Docker socket. The default Docker path is usually `/var/run/docker.sock`; environments such as OrbStack may require replacing it with the actual socket path.
+If the host uses `HTTP_PROXY` or `HTTPS_PROXY`, explicitly set `NO_PROXY` and `no_proxy` for OpenSandbox Server and Volume Manager. Include at least `localhost,127.0.0.1,127.0.0.0/8,fastgpt-app,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,host.docker.internal` so internal requests do not go through the proxy.
 
-If the server has `HTTP_PROXY` / `HTTPS_PROXY` configured, set `NO_PROXY` / `no_proxy` for OpenSandbox Server and Volume Manager. Include at least `localhost,127.0.0.1,127.0.0.0/8,fastgpt-opensandbox-server,fastgpt-volume-manager,host.docker.internal` to prevent internal service calls from being routed through the proxy. OrbStack/Docker may inject IPv6 CIDR entries into `NO_PROXY`; httpx used by OpenSandbox may parse unbracketed IPv6 CIDR values as invalid URL ports. Explicitly override `NO_PROXY` if you hit that startup issue.
+### Agent Sandbox Proxy Service
 
-## 3. Update FastGPT variables
+| Variable                           | Default                                  | Description                                                                                                                     |
+| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                             | `1006`                                   | Proxy container port, mapped to port `3006` on the host by default.                                                             |
+| `PREVIEW_PORT`                     | Same as `PORT`                           | In 4.16, sets a separate HTTP preview listener; update the host port mapping and `AGENT_SANDBOX_PREVIEW_PROXY_URL` accordingly. |
+| `AGENT_SANDBOX_PROXY_SECRET`       | None                                     | Secret shared with the FastGPT main service. Must be at least 32 characters.                                                    |
+| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | Internal FastGPT URL used by the proxy.                                                                                         |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout for proxy requests to FastGPT, in seconds. Increase for slow cold starts.                                               |
+| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Proxy service log level.                                                                                                        |
 
-Add or update the following environment variables in both `fastgpt-app` and `fastgpt-pro`:
+In 4.16, WebSocket and HTTP preview traffic use the same port by default. If your gateway cannot route both protocols on one port, set `PREVIEW_PORT` to another container port (for example, `1007`), change the Compose mapping to `3007:1007`, and point `AGENT_SANDBOX_PREVIEW_PROXY_URL` to port 3007.
+
+### fastgpt-app Service
+
+Configure these variables in the Compose file's `x-agent-sandbox-config` anchor so `fastgpt-app` and `fastgpt-pro` share the OpenSandbox settings:
 
 ```dotenv
-# Enable OpenSandbox as the Agent Sandbox provider
 AGENT_SANDBOX_PROVIDER=opensandbox
 
-# Internal URL for FastGPT to access OpenSandbox Server
+# Internal OpenSandbox Server URL and API key
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
-# OpenSandbox API key. Must match [server].api_key in opensandbox-config.
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
-# Docker compose deployments use docker runtime
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
-# Runtime image used when OpenSandbox creates Agent Sandbox instances
-AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
-# Persistent volume manager URL and token. The token must match x-volume-manager-auth-token.
+
+# Volume Manager URL, token, and persistent volume name prefix
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=replace_with_volume_manager_token
-# Prefix used by the FastGPT app when generating persistent volume claimName values
 AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX=fastgpt-session
-# Per-instance Agent Sandbox CPU count and memory limit (MiB)
+
+# Agent Sandbox Proxy settings
+AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
+AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
+AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
+
+# Per-sandbox resource limits
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
-# OpenSandbox persistent volume size. Effective only when creating new PVCs in Kubernetes mode.
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
 
-If your `docker-compose.yml` already uses `x-agent-sandbox-config` to inject Agent Sandbox variables, fill these values in that anchor so both `fastgpt-app` and `fastgpt-pro` inherit the same configuration.
+`AGENT_SANDBOX_OPENSANDBOX_API_KEY` must match `[server].api_key`, `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` must match `x-volume-manager-auth-token`, and `AGENT_SANDBOX_PROXY_SECRET` must match the same variable in Agent Sandbox Proxy.
 
-## 4. Start and verify
+`fastgpt-pro` does not provide the Sandbox Editor or WebSocket proxy path, so it does not require `AGENT_SANDBOX_PROXY_SECRET` or `AGENT_SANDBOX_PROXY_URL`. It still requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`.
 
-1. Pre-pull the sandbox runtime images:
+<Alert icon="⚠️" context="warning">
+  Host the preview proxy on an origin separate from the FastGPT application, using a different
+  scheme, host, or port. Sandbox HTML may contain user-generated scripts. If previews share the
+  application origin, those scripts may be able to access application credentials or APIs.
+</Alert>
 
-```bash
-docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image
+Preview URLs are temporary, read-only bearer capabilities. Anyone with a URL can change its path to read other files in the same Sandbox Workspace while the URL remains valid. Do not share preview URLs with users who should not have access to that Workspace.
+
+When upgrading from an earlier Volume Manager release, set `AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX` to the previous `VM_VOLUME_NAME_PREFIX` value so existing persistent volumes can still be cleaned up by their original names.
+
+## Additional Configuration
+
+### Custom Package Registries
+
+Configure package registries in both `fastgpt-app` and `fastgpt-pro` when sandboxes need to install npm or Python dependencies:
+
+```dotenv
+AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
+AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-2. Start or restart the related services:
+### Resource and Lifecycle Settings
 
-```bash
-docker compose up -d fastgpt-opensandbox-server fastgpt-volume-manager fastgpt-app fastgpt-pro
-```
-
-3. Check service health inside the container network:
-
-```bash
-docker compose exec fastgpt-opensandbox-server python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8090/health', timeout=5).read().decode())"
-docker compose exec fastgpt-volume-manager node -e "fetch('http://localhost:3000/health').then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
-```
-
-OpenSandbox should return `{"status":"healthy"}`, and `fastgpt-volume-manager` should return a health JSON response. See [General Sandbox Configuration](./common) for Agent Sandbox Proxy verification.
-
-4. Log in to FastGPT and open a scenario that supports Agent Sandbox, such as Agent V2 VM, Skill editing, or Skill debugging. Confirm that the sandbox can be created and that the file tree and terminal open normally.
+| Variable                              | Default    | Description                                             |
+| ------------------------------------- | ---------- | ------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`             | `1`        | Maximum CPU count for each Agent Sandbox.               |
+| `AGENT_SANDBOX_MEMORY_MIB`            | `2048`     | Maximum memory for each Agent Sandbox, in MiB.          |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`       | `1`        | Sandbox storage capacity, in Gi.                        |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`  | `67108864` | Maximum IDE Agent WebSocket message size.               |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`    | `16777216` | Maximum IDE Agent WebSocket frame size.                 |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`       | Inactive minutes before a running sandbox is suspended. |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`        | Inactive days before a suspended sandbox is archived.   |
 
 ## FAQ
 
 ### Sandbox provider apiKey is required for opensandbox
 
-Check that both `fastgpt-app` and `fastgpt-pro` have `AGENT_SANDBOX_OPENSANDBOX_API_KEY` configured, and make sure it matches `[server].api_key` in `opensandbox-config`.
+Check `AGENT_SANDBOX_OPENSANDBOX_API_KEY` and make sure it matches `[server].api_key` in `opensandbox-config`.
 
 ### AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required
 
-OpenSandbox mode requires deploying `fastgpt-volume-manager` and configuring `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` and `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` in FastGPT.
+Check `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` and `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN`, and make sure Volume Manager is running.
 
-### The sandbox is created, but the file tree or terminal fails to connect
+### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
 
-Check that `AGENT_SANDBOX_PROXY_URL` is a browser-accessible `ws://` or `wss://` URL and that your reverse proxy supports WebSocket Upgrade. If the FastGPT main site uses HTTPS, the proxy URL should use `wss://`.
+`fastgpt-app` requires `AGENT_SANDBOX_PROXY_SECRET`, `AGENT_SANDBOX_PROXY_URL`, and `AGENT_SANDBOX_PREVIEW_PROXY_URL`. `fastgpt-pro` requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`.
 
-### proxy cannot connect to the sandbox endpoint
+### Browser WebSocket connection fails
 
-Check `[docker].host_ip` in `opensandbox-config` first. When OpenSandbox Server runs in a container, sandbox endpoints using `localhost` or `127.0.0.1` are not reachable from the proxy container. Use the host's internal IP or `host.docker.internal`.
+Check that the proxy is reachable from the browser and that your reverse proxy supports WebSocket Upgrade. If FastGPT uses HTTPS, `AGENT_SANDBOX_PROXY_URL` should use `wss://`.
+
+### Proxy validation fails or returns 401
+
+Make sure `AGENT_SANDBOX_PROXY_SECRET` is identical in FastGPT and Agent Sandbox Proxy and contains at least 32 characters.
+
+### The sandbox is created, but the file tree or terminal does not connect
+
+Make sure `AGENT_SANDBOX_PROXY_URL` is a browser-accessible `ws://` or `wss://` URL, and verify that host port `3006` or the corresponding domain is accessible.
+
+### Proxy cannot connect to the sandbox endpoint
+
+Check `[docker].host_ip` in `opensandbox-config`. Sandbox endpoints that use `localhost` or `127.0.0.1` are not reachable from the proxy container. Use the host's internal IP or `host.docker.internal`.
