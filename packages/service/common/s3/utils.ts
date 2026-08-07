@@ -15,6 +15,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import { encodeS3ObjectKey } from './keySanitizer';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -153,6 +154,7 @@ export async function uploadImage2S3Bucket(
     body: buffer,
     contentType: mimetype,
     metadata: {
+      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       uploadTime: new Date().toISOString(),
       originFilename: encodeURIComponent(filename)
     }
@@ -183,7 +185,7 @@ export const getFormatedFilename = (filename?: string) => {
   const truncatedFilename = truncateFilename(filename);
   // 移除扩展名
   const extension = path.extname(truncatedFilename);
-  let name = encodeS3ObjectKey(path.basename(truncatedFilename, extension));
+  let name = path.basename(truncatedFilename, extension);
 
   // 移除末尾的 (_随机数)
   const splitName = name.split('_');
@@ -203,25 +205,27 @@ export const getFileS3Key = {
   temp: ({ teamId, filename }: { teamId: string; filename?: string }) => {
     const { formatedFilename, extension } = getFormatedFilename(filename);
 
+    const fileKey = [
+      S3Sources.temp,
+      teamId,
+      `${formatedFilename}${extension ? `.${extension}` : ''}`
+    ].join('/');
     return {
-      fileKey: [
-        S3Sources.temp,
-        teamId,
-        `${formatedFilename}${extension ? `.${extension}` : ''}`
-      ].join('/'),
-      fileParsedPrefix: [S3Sources.temp, teamId, `${formatedFilename}-parsed`].join('/')
+      fileKey: encodeS3ObjectKey(fileKey),
+      fileParsedPrefix: encodeS3ObjectKey(
+        [S3Sources.temp, teamId, `${formatedFilename}-parsed`].join('/')
+      )
     };
   },
 
   avatar: ({ teamId, filename }: { teamId: string; filename?: string }) => {
     const { formatedFilename, extension } = getFormatedFilename(filename);
-    return {
-      fileKey: [
-        S3Sources.avatar,
-        teamId,
-        `${formatedFilename}${extension ? `.${extension}` : ''}`
-      ].join('/')
-    };
+    const fileKey = [
+      S3Sources.avatar,
+      teamId,
+      `${formatedFilename}${extension ? `.${extension}` : ''}`
+    ].join('/');
+    return { fileKey: encodeS3ObjectKey(fileKey) };
   },
 
   // 对话中上传的文件的解析结果的图片的 Key
@@ -239,9 +243,12 @@ export const getFileS3Key = {
     const { formatedFilename, extension } = getFormatedFilename(filename);
     const basePrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
 
+    const fileKey = [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join(
+      '/'
+    );
     return {
-      fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),
-      fileParsedPrefix: [basePrefix, `${formatedFilename}-parsed`].join('/')
+      fileKey: encodeS3ObjectKey(fileKey),
+      fileParsedPrefix: encodeS3ObjectKey([basePrefix, `${formatedFilename}-parsed`].join('/'))
     };
   },
 
@@ -250,34 +257,45 @@ export const getFileS3Key = {
     const { datasetId, filename } = params;
     const { formatedFilename, extension } = getFormatedFilename(filename);
 
+    const fileKey = [
+      S3Sources.dataset,
+      datasetId,
+      `${formatedFilename}${extension ? `.${extension}` : ''}`
+    ].join('/');
     return {
-      fileKey: [
-        S3Sources.dataset,
-        datasetId,
-        `${formatedFilename}${extension ? `.${extension}` : ''}`
-      ].join('/'),
-      fileParsedPrefix: [S3Sources.dataset, datasetId, `${formatedFilename}-parsed`].join('/')
+      fileKey: encodeS3ObjectKey(fileKey),
+      fileParsedPrefix: encodeS3ObjectKey(
+        [S3Sources.dataset, datasetId, `${formatedFilename}-parsed`].join('/')
+      )
     };
   },
 
   s3Key: (key: string) => {
+    const encodedKey = encodeS3ObjectKey(key);
     // 特殊处理，不包含/的key，认为是根级别的key
-    if (!key.includes('/')) {
+    if (!encodedKey.includes('/')) {
       return {
-        fileKey: key,
-        fileParsedPrefix: `${path.basename(key, path.extname(key))}-parsed`
+        fileKey: encodedKey,
+        fileParsedPrefix: encodeS3ObjectKey(
+          `${path.basename(encodedKey, path.extname(encodedKey))}-parsed`
+        )
       };
     }
 
-    const prefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
+    const prefix = `${path.dirname(encodedKey)}/${path.basename(
+      encodedKey,
+      path.extname(encodedKey)
+    )}-parsed`;
     return {
-      fileKey: key,
+      fileKey: encodedKey,
       fileParsedPrefix: prefix
     };
   },
 
   rawText: ({ hash, customPdfParse }: { hash: string; customPdfParse?: boolean }) => {
-    return [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/');
+    return encodeS3ObjectKey(
+      [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/')
+    );
   }
 };
 

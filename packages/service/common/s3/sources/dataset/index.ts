@@ -1,4 +1,5 @@
 import { S3Sources } from '../../contracts/type';
+import { encodeS3ObjectKey } from '../../keySanitizer';
 import { S3PrivateBucket } from '../../buckets/private';
 import streamConsumer from 'node:stream/consumers';
 import {
@@ -24,6 +25,7 @@ import { getFileS3Key, truncateFilename } from '../../utils';
 import { isAuthorizedDatasetFileS3Key } from './key';
 import type { S3RawTextSource } from '../rawText';
 import { getS3RawTextSource } from '../rawText';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -98,7 +100,7 @@ export class S3DatasetSource extends S3PrivateBucket {
    **/
   deleteDatasetFilesByPrefix(params: DeleteDatasetFilesByPrefixParams) {
     const { datasetId } = DeleteDatasetFilesByPrefixParamsSchema.parse(params);
-    const prefix = [S3Sources.dataset, datasetId].filter(Boolean).join('/');
+    const prefix = encodeS3ObjectKey([S3Sources.dataset, datasetId].filter(Boolean).join('/'));
     return this.addDeleteJob({ prefix });
   }
 
@@ -196,6 +198,10 @@ export class S3DatasetSource extends S3PrivateBucket {
       body: 'buffer' in file ? file.buffer : file.stream,
       contentType: contentType || resolveMimeType([truncatedFilename]),
       metadata: {
+        contentDisposition: getContentDisposition({
+          filename: truncatedFilename,
+          type: 'attachment'
+        }),
         uploadTime: new Date().toISOString(),
         originFilename: encodeURIComponent(truncatedFilename)
       }

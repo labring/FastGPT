@@ -14,8 +14,7 @@ import {
   type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema,
   CreatePostPresignedUrlOptionsSchema,
-  CreatePostPresignedUrlParamsSchema,
-  StorageObjectKeySchema
+  CreatePostPresignedUrlParamsSchema
 } from '../contracts/type';
 import {
   getSystemMaxFileSize,
@@ -64,14 +63,12 @@ import {
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
 import { randomUUID } from 'node:crypto';
+import { encodeS3ObjectKey } from '../keySanitizer';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
-/** Normalize keys at bucket boundaries so Mongo records and provider objects share one identity. */
-const canonicalizeObjectKey = (key: string): string => StorageObjectKeySchema.parse(key);
-
 const getStorageKeyCandidates = (key: string): string[] => {
-  const canonicalKey = canonicalizeObjectKey(key);
+  const canonicalKey = encodeS3ObjectKey(key);
   return canonicalKey === key ? [canonicalKey] : [canonicalKey, key];
 };
 
@@ -160,7 +157,7 @@ export class S3BaseBucket {
       temporary?: boolean;
     };
   }) {
-    const targetKey = canonicalizeObjectKey(to);
+    const targetKey = encodeS3ObjectKey(to);
     if (options?.temporary) {
       await MongoS3TTL.create({
         minioKey: targetKey,
@@ -1021,7 +1018,7 @@ export class S3BaseBucket {
       contentType: contentType ?? 'application/octet-stream',
       contentLength,
       metadata: {
-        contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
+        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
         originFilename: encodeURIComponent(filename),
         uploadTime: new Date().toISOString()
       }
