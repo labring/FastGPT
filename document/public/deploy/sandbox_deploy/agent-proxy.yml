@@ -6,7 +6,7 @@ x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_age
 
 services:
   fastgpt-agent-sandbox-proxy:
-    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0
+    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.3.0-beta4
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     networks:

@@ -44,7 +44,7 @@ services:
       retries: 5
 
   fastgpt-volume-manager:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.2.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.3.0-beta4
     container_name: fastgpt-volume-manager
     restart: always
     networks:
@@ -71,7 +71,7 @@ services:
 
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.0-beta4
     profiles:
       - prepull
 

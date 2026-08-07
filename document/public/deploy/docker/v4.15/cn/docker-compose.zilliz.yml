@@ -165,9 +165,10 @@ x-service-env-config: &x-service-env-config
   WORKFLOW_HTTP_IGNORE_HTTPS_CERT: false
 
 # 向量库相关配置
-x-vec-config: &x-vec-config
+x-vec-config: &x-vec-config 
   MILVUS_ADDRESS: zilliz_cloud_address
   MILVUS_TOKEN: zilliz_cloud_token
+
 
 services:
   fastgpt-mongo:
@@ -269,7 +270,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.15.4
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.15.6
     ports:
       - 3000:3000
     networks:
@@ -308,7 +309,7 @@ services:
       FILE_DOMAIN:
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.15.4
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.15.6
     networks:
       - codesandbox
     restart: always
@@ -375,7 +376,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.3
     container_name: fastgpt-plugin
     restart: always
     networks:

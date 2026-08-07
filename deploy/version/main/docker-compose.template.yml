@@ -11,6 +11,8 @@ x-system-key: &x-system-key 'fastgpt-xxx'
 x-plugin-auth-token: &x-plugin-auth-token 'token'
 # code sandbox token
 x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'
+# agent sandbox proxy secret，必须与 FastGPT 主站环境变量保持一致，且至少 32 位
+x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
@@ -41,6 +43,42 @@ x-log-config: &x-log-config
 x-no-proxy-config: &x-no-proxy-config
   NO_PROXY: localhost,127.0.0.1,::1,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
   no_proxy: localhost,127.0.0.1,::1,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
+
+# FastGPT 主服务的 Agent Sandbox 配置
+x-agent-sandbox-config: &x-agent-sandbox-config
+  AGENT_SANDBOX_PROVIDER:
+  AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
+  # 浏览器访问 agent-sandbox-proxy 的 WebSocket 地址。
+  AGENT_SANDBOX_PROXY_URL:
+  # 浏览器访问 Sandbox 文件预览的 HTTP(S) 地址。
+  AGENT_SANDBOX_PREVIEW_PROXY_URL:
+  # 沙盒规模大小
+  AGENT_SANDBOX_CPU_COUNT: 1
+  AGENT_SANDBOX_MEMORY_MIB: 2048
+  AGENT_SANDBOX_STORAGE_SIZE_GI: 1
+  # 不活跃判断阈值
+  AGENT_SANDBOX_SUSPEND_MINUTES: 60
+  # 长期不活跃判断阈值
+  AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: 7
+  AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: 67108864
+  AGENT_SANDBOX_WS_MAX_FRAME_BYTES: 16777216
+  # 自定义 npm/pip 源
+  AGENT_SANDBOX_NPM_REGISTRY:
+  AGENT_SANDBOX_PYPI_INDEX_URL:
+  # Opensandox 配置
+  AGENT_SANDBOX_OPENSANDBOX_BASEURL:
+  AGENT_SANDBOX_OPENSANDBOX_API_KEY:
+  AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE:
+  AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL:
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: fastgpt-session
+  # Sealos devbox 配置
+  AGENT_SANDBOX_SEALOS_BASEURL:
+  AGENT_SANDBOX_SEALOS_TOKEN:
+  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: /home/devbox/workspace
+  AGENT_SANDBOX_SEALOS_IMAGE:
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
@@ -158,7 +196,7 @@ services:
     restart: always
     environment:
       # 完整变量请参考: https://github.com/labring/FastGPT/blob/main/projects/app/.env.template
-      <<: [*x-share-db-config, *x-vec-config, *x-log-config, *x-no-proxy-config]
+      <<: [*x-share-db-config, *x-vec-config, *x-log-config, *x-no-proxy-config, *x-agent-sandbox-config]
       HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
       # 必填。客户端访问 FastGPT 时使用的地址，由协议、主机和可选端口组成，用于补全文件资源路径。例如 https://fastgpt.cn；本地开发可使用 http://localhost:3000。
@@ -193,11 +231,9 @@ services:
       AIPROXY_API_ENDPOINT: http://fastgpt-aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       AIPROXY_API_TOKEN: *x-aiproxy-token
+      PASSWORD_LOGIN_MINUTE_LIMIT_COUNT:
       # MCP Server 代理地址，用于 MCP 使用方式页拼接 SSE 地址
       SSE_MCP_SERVER_PROXY_ENDPOINT:
-      # 官网访客归因 CRM；地址需包含 /api/v1，为空时不进行身份上报
-      CRM_API_URL:
-      CRM_API_KEY:
 
       # ==================== 日志与监控 ====================
       # 传递给 OTLP 收集器的服务名称
