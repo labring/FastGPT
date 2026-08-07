@@ -153,6 +153,155 @@ validate_config_file() {
     fi
 }
 
+validate_fe_domain() {
+    local value="$1"
+    if [[ ! "$value" =~ ^https?://[^[:space:]]+$ ]]; then
+        echo "错误: FE_DOMAIN 必须是以 http:// 或 https:// 开头的完整地址" >&2
+        return 1
+    fi
+}
+
+validate_sandbox_preview_proxy_url() {
+    local value="$1"
+    if [[ ! "$value" =~ ^https?://[^[:space:]]+$ ]]; then
+        echo "错误: FASTGPT_SANDBOX_PREVIEW_PROXY_URL 必须是以 http:// 或 https:// 开头的完整地址" >&2
+        return 1
+    fi
+}
+
+validate_sandbox_proxy_url() {
+    local value="$1"
+    if [[ ! "$value" =~ ^wss?://[^[:space:]]+$ ]]; then
+        echo "错误: FASTGPT_SANDBOX_PROXY_URL 必须是以 ws:// 或 wss:// 开头的完整地址" >&2
+        return 1
+    fi
+}
+
+request_fe_domain() {
+    local input
+
+    if [ -n "$FASTGPT_FE_DOMAIN" ]; then
+        input="$FASTGPT_FE_DOMAIN"
+    elif [ "$NON_INTERACTIVE" = true ]; then
+        echo "错误: 非交互模式必须设置 FASTGPT_FE_DOMAIN，例如 https://fastgpt.example.com" >&2
+        exit 1
+    else
+        while true; do
+            read -r -p "请输入 FastGPT 访问地址 (如 http://localhost:3000): " input
+            if validate_fe_domain "$input"; then
+                break
+            fi
+        done
+    fi
+
+    validate_fe_domain "$input" || exit 1
+    FE_DOMAIN_INPUT="$input"
+}
+
+request_sandbox_proxy_url() {
+    local input
+
+    if [ -n "$FASTGPT_SANDBOX_PROXY_URL" ]; then
+        input="$FASTGPT_SANDBOX_PROXY_URL"
+    elif [ "$NON_INTERACTIVE" = true ]; then
+        echo "错误: 非交互模式必须设置 FASTGPT_SANDBOX_PROXY_URL，例如 wss://sandbox-proxy.example.com" >&2
+        exit 1
+    else
+        while true; do
+            read -r -p "请输入 Sandbox-proxy 访问地址 (ws 地址，如 ws://localhost:3006): " input
+            if validate_sandbox_proxy_url "$input"; then
+                break
+            fi
+        done
+    fi
+
+    validate_sandbox_proxy_url "$input" || exit 1
+    SANDBOX_PROXY_URL_INPUT="${input%/}"
+}
+
+is_v415_deploy() {
+    [ "$DEPLOY_VERSION" = "v4.15" ] ||
+        { [ "$DEPLOY_VERSION" = "$LOCAL_DEPLOY_VERSION" ] && grep -q 'fastgpt:v4\.15' "$LOCAL_COMPOSE_PATH" 2>/dev/null; }
+}
+
+request_sandbox_preview_proxy_url() {
+    local input
+
+    if [ -n "$FASTGPT_SANDBOX_PREVIEW_PROXY_URL" ]; then
+        input="$FASTGPT_SANDBOX_PREVIEW_PROXY_URL"
+    elif is_v415_deploy; then
+        if [[ "$SANDBOX_PROXY_URL_INPUT" == wss://* ]]; then
+            input="https://${SANDBOX_PROXY_URL_INPUT#wss://}"
+        else
+            input="http://${SANDBOX_PROXY_URL_INPUT#ws://}"
+        fi
+    elif [ "$NON_INTERACTIVE" = true ]; then
+        echo "错误: 非交互模式必须设置 FASTGPT_SANDBOX_PREVIEW_PROXY_URL，例如 http://localhost:3006" >&2
+        exit 1
+    else
+        while true; do
+            read -r -p "请输入 Sandbox-proxy 访问地址 (http 地址，如 http://localhost:3006): " input
+            if validate_sandbox_preview_proxy_url "$input"; then
+                break
+            fi
+        done
+    fi
+
+    validate_sandbox_preview_proxy_url "$input" || exit 1
+    SANDBOX_PREVIEW_PROXY_URL_INPUT="${input%/}"
+}
+
+configure_fe_domain() {
+    local input escaped_domain
+
+    input="$FE_DOMAIN_INPUT"
+    if [ -z "$input" ]; then
+        request_fe_domain
+        input="$FE_DOMAIN_INPUT"
+    fi
+
+    escaped_domain="$(escape_sed_replacement "$input")"
+    if LC_ALL=C grep -qE "^x-fe-domain: &x-fe-domain" docker-compose.yml; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^x-fe-domain: &x-fe-domain.*|x-fe-domain: \\&x-fe-domain '$escaped_domain'|g" docker-compose.yml
+        else
+            sed -i "s|^x-fe-domain: &x-fe-domain.*|x-fe-domain: \\&x-fe-domain '$escaped_domain'|g" docker-compose.yml
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|^\([[:space:]]*FE_DOMAIN:\).*|\1 $escaped_domain|g" docker-compose.yml
+    else
+        sed -i "s|^\([[:space:]]*FE_DOMAIN:\).*|\1 $escaped_domain|g" docker-compose.yml
+    fi
+    echo "已更新 FastGPT 访问地址为: $input"
+}
+
+configure_sandbox_proxy_urls() {
+    local preview_url="$SANDBOX_PREVIEW_PROXY_URL_INPUT"
+    local proxy_url="$SANDBOX_PROXY_URL_INPUT"
+    local escaped_preview escaped_proxy
+
+    escaped_preview="$(escape_sed_replacement "$preview_url")"
+    escaped_proxy="$(escape_sed_replacement "$proxy_url")"
+    if LC_ALL=C grep -qE '^x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url' docker-compose.yml; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url.*|x-agent-sandbox-proxy-url: \\&x-agent-sandbox-proxy-url '$escaped_proxy'|g" docker-compose.yml
+            sed -i '' "s|^x-agent-sandbox-preview-proxy-url: &x-agent-sandbox-preview-proxy-url.*|x-agent-sandbox-preview-proxy-url: \\&x-agent-sandbox-preview-proxy-url '$escaped_preview'|g" docker-compose.yml
+        else
+            sed -i "s|^x-agent-sandbox-proxy-url: &x-agent-sandbox-proxy-url.*|x-agent-sandbox-proxy-url: \\&x-agent-sandbox-proxy-url '$escaped_proxy'|g" docker-compose.yml
+            sed -i "s|^x-agent-sandbox-preview-proxy-url: &x-agent-sandbox-preview-proxy-url.*|x-agent-sandbox-preview-proxy-url: \\&x-agent-sandbox-preview-proxy-url '$escaped_preview'|g" docker-compose.yml
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|^\([[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:\).*|\1 $escaped_preview|g" docker-compose.yml
+        sed -i '' "s|^\([[:space:]]*AGENT_SANDBOX_PROXY_URL:\).*|\1 $escaped_proxy|g" docker-compose.yml
+    else
+        sed -i "s|^\([[:space:]]*AGENT_SANDBOX_PREVIEW_PROXY_URL:\).*|\1 $escaped_preview|g" docker-compose.yml
+        sed -i "s|^\([[:space:]]*AGENT_SANDBOX_PROXY_URL:\).*|\1 $escaped_proxy|g" docker-compose.yml
+    fi
+    if [ -n "$preview_url" ]; then
+        echo "已更新 Sandbox 预览地址为: $preview_url"
+    fi
+}
+
 resolve_input_path() {
     local input="$1"
 
@@ -217,6 +366,13 @@ normalize_bool_env() {
     fi
 }
 
+normalize_deploy_base_url() {
+    local url="$1"
+    url="${url%/}"
+    url="${url%/deploy}"
+    printf '%s/deploy\n' "$url"
+}
+
 ROOT_LOGIN_PASSWORD="1234"
 
 randomize_compose_credentials() {
@@ -264,6 +420,7 @@ randomize_compose_credentials() {
     replace_text "x-invoke-token-secret: &x-invoke-token-secret 'fastgpt_invoke_token_secret_32_chars_min'" "x-invoke-token-secret: &x-invoke-token-secret '$invoke_token_secret'"
     replace_text 'x-invoke-token-secret: &x-invoke-token-secret "fastgpt_invoke_token_secret_32_chars_min"' "x-invoke-token-secret: &x-invoke-token-secret \"$invoke_token_secret\""
     replace_text "x-plugin-auth-token: &x-plugin-auth-token 'token'" "x-plugin-auth-token: &x-plugin-auth-token '$plugin_token'"
+    replace_text "x-plugin-auth-token: &x-plugin-auth-token 'fastgpt_plugin_auth_token_32char'" "x-plugin-auth-token: &x-plugin-auth-token '$plugin_token'"
     replace_text 'x-plugin-auth-token: &x-plugin-auth-token "token"' "x-plugin-auth-token: &x-plugin-auth-token \"$plugin_token\""
     replace_text "x-plugin-auth-token: &x-plugin-auth-token 'fastgpt-plugin-token-please-change'" "x-plugin-auth-token: &x-plugin-auth-token '$plugin_token'"
     replace_text 'x-plugin-auth-token: &x-plugin-auth-token "fastgpt-plugin-token-please-change"' "x-plugin-auth-token: &x-plugin-auth-token \"$plugin_token\""
@@ -337,6 +494,13 @@ if [ -n "$FASTGPT_NON_INTERACTIVE" ]; then
     NON_INTERACTIVE="$(normalize_bool_env FASTGPT_NON_INTERACTIVE "$FASTGPT_NON_INTERACTIVE")"
 fi
 
+# 可选：指定部署文件下载源的站点地址，例如 https://doc.example.com 或
+# https://doc.example.com/deploy。适用于文档站使用自定义域名、内网镜像或本地调试。
+CUSTOM_DEPLOY_BASE_URL=""
+if [ -n "$FASTGPT_DEPLOY_BASE_URL" ]; then
+    CUSTOM_DEPLOY_BASE_URL="$(normalize_deploy_base_url "$FASTGPT_DEPLOY_BASE_URL")"
+fi
+
 # 获取部署版本展示文案：main 为迭代版，其他版本均视为稳定版
 get_version_label() {
     local version="$1"
@@ -403,11 +567,11 @@ if [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ]; then
         case "$FASTGPT_REGION" in
             cn | CN | china | China)
                 REGION="cn"
-                BASE_URL="https://doc.fastgpt.cn/deploy"
+                BASE_URL="${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.cn/deploy}"
                 ;;
             global | GLOBAL | Global | github | GitHub)
                 REGION="global"
-                BASE_URL="https://doc.fastgpt.io/deploy"
+                BASE_URL="${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.io/deploy}"
                 ;;
             *)
                 echo "错误: 不支持的 FASTGPT_REGION: $FASTGPT_REGION"
@@ -417,17 +581,17 @@ if [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ]; then
         esac
     elif [ "$NON_INTERACTIVE" = true ]; then
         REGION="cn"
-        BASE_URL="https://doc.fastgpt.cn/deploy"
+        BASE_URL="${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.cn/deploy}"
     else
         radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
         case $RADIO_RESULT in
             1)
                 REGION="global"
-                BASE_URL="https://doc.fastgpt.io/deploy"
+                BASE_URL="${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.io/deploy}"
                 ;;
             *)
                 REGION="cn"
-                BASE_URL="https://doc.fastgpt.cn/deploy"
+                BASE_URL="${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.cn/deploy}"
                 ;;
         esac
     fi
@@ -606,6 +770,17 @@ select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访�
 MCP_ADDR="$SELECTED_ADDR"
 MCP_CUSTOM=$SELECTED_CUSTOM
 
+# ========== 8. 输入 FastGPT 访问地址 ==========
+request_fe_domain
+
+# ========== 9. 输入 Sandbox Proxy 地址 ==========
+request_sandbox_proxy_url
+
+# ========== 10. 输入 Sandbox 预览地址 ==========
+if ! is_v415_deploy; then
+    request_sandbox_preview_proxy_url
+fi
+
 # ========== 确认配置 ==========
 DEPLOY_VERSION_LABEL="$(get_version_label "$DEPLOY_VERSION")"
 
@@ -653,8 +828,17 @@ if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "  S3 地址:      $S3_DISPLAY"
 fi
 echo "  MCP 地址:     $MCP_DISPLAY"
+echo "  FastGPT 地址: $FE_DOMAIN_INPUT"
+echo "  Sandbox WebSocket 地址: $SANDBOX_PROXY_URL_INPUT"
+if ! is_v415_deploy; then
+    echo "  Sandbox 预览地址: $SANDBOX_PREVIEW_PROXY_URL_INPUT"
+fi
 echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
+echo "请确认域名或反向代理已指向对应端口：FastGPT -> 3000，Sandbox Proxy -> 3006，MCP -> 3003。"
+if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+    echo "S3 地址需指向 9000 端口。"
+fi
 echo ""
 if [ "$NON_INTERACTIVE" = true ]; then
     echo "非交互模式已自动确认配置"
@@ -707,6 +891,10 @@ else
     echo "已下载 docker-compose.yml"
 fi
 
+# ========== 配置 FastGPT 访问地址 ==========
+configure_fe_domain
+configure_sandbox_proxy_urls
+
 USES_CONFIG_JSON=false
 if LC_ALL=C grep -q -- "./config.json:/app/data/config.json" docker-compose.yml; then
     USES_CONFIG_JSON=true
@@ -725,7 +913,8 @@ if LC_ALL=C grep -q -- "./config.json:/app/data/config.json" docker-compose.yml;
             mv "$CONFIG_FILE" config.json
             echo "已复制 config.json"
         else
-            CONFIG_URL="https://doc.fastgpt.cn/deploy/config/config.json"
+            CONFIG_BASE_URL="${BASE_URL:-${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.cn/deploy}}"
+            CONFIG_URL="${CONFIG_BASE_URL}/config/config.json"
             curl -fsSL "$CONFIG_URL" -o "$CONFIG_FILE"
             if [ $? -ne 0 ]; then
                 echo "错误: 下载 config.json 失败: $CONFIG_URL"
@@ -925,7 +1114,18 @@ else
     echo "        生产环境启动前请手动修改默认凭证。"
 fi
 if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
-    echo "  1. 预热沙盒:   docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image"
+    echo "  1. 预拉取镜像: docker compose --profile prepull pull"
+    echo "  2. 启动服务:   docker compose up -d"
+    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+        echo "  3. 开放端口:   3000, 9000, 3003, 3006"
+    else
+        echo "  3. 开放端口:   3000, 3003, 3006"
+    fi
+    echo "  4. 访问服务:   http://localhost:3000"
+    echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
+    echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+else
+    echo "  1. 预拉取镜像: docker compose pull"
     echo "  2. 启动服务:   docker compose up -d"
     if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
         echo "  3. 开放端口:   3000, 9000, 3003"
@@ -935,16 +1135,6 @@ if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  4. 访问服务:   http://localhost:3000"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
-else
-    echo "  1. 启动服务:   docker compose up -d"
-    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
-        echo "  2. 开放端口:   3000, 9000, 3003"
-    else
-        echo "  2. 开放端口:   3000, 3003"
-    fi
-    echo "  3. 访问服务:   http://localhost:3000"
-    echo "  4. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
-    echo "  5. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 fi
 echo ""
 echo "详细文档: https://doc.fastgpt.cn/self-host/deploy/docker"

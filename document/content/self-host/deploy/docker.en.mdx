@@ -132,14 +132,24 @@ Refer to https://doc.fastgpt.cn/deploy/SKILL.md and deploy FastGPT with Docker f
 Run in Linux/MacOS/Windows WSL. The script guides you through selecting deployment environment, vector database version, IP address, etc.
 
 ```bash
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
 <CurrentOriginCodeBlockUpdater />
 
+If the documentation site uses a custom domain, an internal domain, or a local address, set `FASTGPT_DEPLOY_BASE_URL` to choose the download source. You can provide either the site root or a URL ending in `/deploy`; the script downloads YAML and `config.json` from that source:
+
+```bash
+FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+```
+
+<CurrentOriginCodeBlockUpdater />
+
+Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`, and `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`. Version 4.16 also requires `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL. In interactive mode, the script prompts for the addresses required by each version; 4.15 prompts only for the WebSocket URL.
+
 The script automatically:
 
-- Downloads or copies `docker-compose.yml`.
+- Downloads `docker-compose.yml`.
 - Guides you through selecting externally accessible S3 and MCP addresses, then writes them into the config files.
 - Generates a random `root` login password, service tokens, app keys, and component passwords, then writes them into `docker-compose.yml`.
 - Detects the host Docker socket path and updates the mount path in `docker-compose.yml` when needed.
@@ -164,24 +174,26 @@ If you need to pin deployment to a specific `docker-compose.yml` file, we recomm
 curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -o docker-compose.source.yml
 ```
 
+<CurrentOriginCodeBlockUpdater />
+
 <details>
 <summary>Click to view docker-compose config file download links for different databases</summary>
 
 - **Pgvector**
-  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.pg.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](/deploy/docker/v4.15/cn/docker-compose.pg.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](/deploy/docker/v4.15/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
 - **Milvus**
-  - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.milvus.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.milvus.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](/deploy/docker/v4.15/cn/docker-compose.milvus.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](/deploy/docker/v4.15/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.zilliz.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](/deploy/docker/v4.15/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.seekdb.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.seekdb.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/v4.15/cn/docker-compose.seekdb.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/v4.15/global/docker-compose.seekdb.yml)
 
 </details>
 
@@ -211,9 +223,18 @@ If you use an internal Harbor, private registry, or image mirror, download `dock
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-If Agent/Skill Sandbox is enabled, deploy `fastgpt-agent-sandbox-proxy` separately and also replace `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the `fastgpt-agent-sandbox` image. The v4.15.0 default deployment file does not include `fastgpt-agent-sandbox-proxy` or start OpenSandbox by default. See the [V4.15.0 upgrade notes](../upgrading/4-15/41500.en.mdx#5-agent-sandbox-deployment-options) for sandbox provider setup.
+If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in the Compose file and update `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the matching images. See [OpenSandbox Configuration](../config/sandbox/opensandbox) for details.
 
 ### 2. Modify Environment Variables
+
+You must set `FE_DOMAIN` in `fastgpt-app` to the full URL users use to access FastGPT, such as `https://fastgpt.example.com`. It must include a scheme, host, and optional port; do not leave it empty or use an internal container address.
+
+When Agent/Skill Sandbox is enabled, also configure:
+
+- `AGENT_SANDBOX_PROXY_URL`: the browser-accessible Sandbox Proxy WebSocket URL using `ws://` or `wss://`, such as `wss://sandbox-proxy.example.com`, pointing to port 3006.
+- Version 4.16 additionally requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`: the browser-accessible HTTP(S) URL for sandbox file previews, such as `https://sandbox-proxy.example.com`, also pointing to port 3006.
+
+The interactive install script prompts for these addresses before the final confirmation.
 
 For `Zilliz version`, you also need credentials — see [Deploy Zilliz Version: Get Account and Credentials](#deploy-zilliz-version-get-account-and-credentials). Other versions can skip to the next step.
 
@@ -224,12 +245,16 @@ These ports must be accessible:
 1. Port 3000 (FastGPT main service)
 2. Port 9000 (S3 service)
 3. Port 3003 (FastGPT SSE MCP server service)
+4. Port 3006 (FastGPT Agent Sandbox Proxy service)
 
 ### 4. Start Containers
 
 Run in the same directory as docker-compose.yml. Ensure `docker-compose` version is 2.17+, or automated commands may fail.
 
 ```bash
+# Pre-pull all service and sandbox runtime images
+docker compose --profile prepull pull
+
 # Start containers
 docker compose up -d
 ```

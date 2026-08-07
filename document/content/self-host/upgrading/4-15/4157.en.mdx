@@ -1,0 +1,17 @@
+---
+title: 'V4.15.7'
+description: 'FastGPT V4.15.7 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### Image Changes
+
+- Update the fastgpt-app (FastGPT core service) image tag to v4.15.7.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.7.
+
+## 🐛 Fixes
+
+1. Fixed duplicate request headers when MCP falls back to SSE after a failed Streamable HTTP connection.
+2. Limited portal quick apps to 3 and added validation for legacy configurations that contain more than the allowed number.
+3. Fixed published apps incorrectly rejecting uploads when file variables allow file uploads but the app-level upload configuration is disabled.
