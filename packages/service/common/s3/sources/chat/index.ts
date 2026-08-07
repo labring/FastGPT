@@ -15,7 +15,7 @@ import { getFormatedFilename } from '../../utils';
 import type { ChatS3SourceType } from './type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { createUploadConstraints } from '../../utils/uploadConstraints';
-import { sanitizeS3ObjectKey } from '../../keySanitizer';
+import { encodeS3ObjectKey } from '../../keySanitizer';
 
 const getChatFileS3Key = ({
   sourceType,
@@ -132,7 +132,7 @@ export class S3ChatSource extends S3PrivateBucket {
     const { sourceType, sourceId, chatId, uId } = DelChatFileByPrefixSchema.parse(params);
 
     const rawPrefix = [S3Sources.chat, sourceType, sourceId, uId, chatId].filter(Boolean).join('/');
-    const prefix = sanitizeS3ObjectKey(rawPrefix);
+    const prefix = encodeS3ObjectKey(rawPrefix);
     const publicBucket = global.s3BucketMap[S3Buckets.public];
 
     const prefixes = [...new Set([prefix, rawPrefix])];
@@ -141,7 +141,7 @@ export class S3ChatSource extends S3PrivateBucket {
 
     if (sourceType === ChatSourceTypeEnum.app) {
       const rawLegacyPrefix = [S3Sources.chat, sourceId, uId, chatId].filter(Boolean).join('/');
-      const legacyPrefix = sanitizeS3ObjectKey(rawLegacyPrefix);
+      const legacyPrefix = encodeS3ObjectKey(rawLegacyPrefix);
       const legacyPrefixes = [...new Set([legacyPrefix, rawLegacyPrefix])];
       await Promise.all(legacyPrefixes.map((item) => this.addDeleteJob({ prefix: item })));
       await Promise.all(legacyPrefixes.map((item) => publicBucket.addDeleteJob({ prefix: item })));

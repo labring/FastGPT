@@ -14,7 +14,7 @@ import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
-import { sanitizeS3ObjectKey } from './keySanitizer';
+import { encodeS3ObjectKey } from './keySanitizer';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -183,7 +183,7 @@ export const getFormatedFilename = (filename?: string) => {
   const truncatedFilename = truncateFilename(filename);
   // 移除扩展名
   const extension = path.extname(truncatedFilename);
-  let name = sanitizeS3ObjectKey(path.basename(truncatedFilename, extension));
+  let name = encodeS3ObjectKey(path.basename(truncatedFilename, extension));
 
   // 移除末尾的 (_随机数)
   const splitName = name.split('_');
@@ -294,4 +294,4 @@ export function isS3ObjectKey<T extends keyof typeof S3Sources>(
   return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
 }
 
-export { sanitizeS3ObjectKey } from './keySanitizer';
+export { encodeS3ObjectKey } from './keySanitizer';

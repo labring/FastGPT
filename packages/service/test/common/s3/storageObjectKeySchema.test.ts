@@ -41,11 +41,14 @@ describe('FastGPT storage object key schemas', () => {
     expect(parseKey('team/folder # & + % ?/\u6587\u4ef6-\ud83d\ude00.txt').success).toBe(true);
   });
 
-  it.each(keySchemas)('%s sanitizes a path the storage SDK would reject', (_name, parseKey) => {
-    const result = parseKey('team//file.txt');
+  it.each(keySchemas)('%s rejects an invalid path structure', (_name, parseKey) => {
+    expect(parseKey('team//file.txt').success).toBe(false);
+  });
 
-    expect(result.success).toBe(true);
-    expect(StorageObjectKeySchema.parse('team//file.txt')).toBe('team/_/file.txt');
+  it('returns a canonical encoded key', () => {
+    expect(StorageObjectKeySchema.parse('team/user name/file (1).txt')).toBe(
+      'team/user%20name/file%20(1).txt'
+    );
   });
 
   it.each(keySchemas)('%s rejects a key beyond 850 UTF-8 bytes', (_name, parseKey) => {
