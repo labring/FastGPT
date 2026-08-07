@@ -31,6 +31,7 @@ import {
   getMarketplaceTools,
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
+import { getBatchUpdateFailures } from '@/web/core/plugin/marketplace/utils';
 import {
   getAdminSystemToolDetail,
   getAdminSystemTools,
@@ -495,19 +496,27 @@ export const ToolkitMarketplace = ({
 
   const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
     async (toolIds: string[]) => {
-      if (toolIds.length === 0) return;
+      if (toolIds.length === 0) return [];
 
       // 1. Batch get download URLs
       const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
 
       // 2. Batch install (update)
-      await intallPluginWithUrl({ downloadUrls });
+      const installResult = await intallPluginWithUrl({ downloadUrls });
+      const failures = getBatchUpdateFailures({
+        toolIds,
+        downloadUrls,
+        installResult,
+        language: i18n.language
+      });
 
       // 3. Refresh installed plugins list
       await refreshInstalledPlugins();
 
       // 4. Close Drawer
       setShowBatchUpdateDrawer(false);
+
+      return failures;
     },
     {
       manual: true,
@@ -990,11 +999,16 @@ export const ToolkitMarketplace = ({
           onClose={() => setShowBatchUpdateDrawer(false)}
           updatableTools={updatableTools}
           onBatchUpdate={handleBatchUpdate}
+          onUpdate={handleUpdateTool}
+          onDelete={openMarketplaceUninstallConfirm}
           isBatchUpdating={isBatchUpdating}
+          singleUpdatingToolIds={updatingToolIds}
+          deletingToolIds={installingOrDeletingToolIds}
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
             await getMarketplaceToolDetail({ toolId, version })
           }
+          onFetchVersions={getMarketplaceToolVersions}
         />
       )}
       <UninstallConfirmModal />

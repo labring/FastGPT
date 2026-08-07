@@ -152,29 +152,16 @@ const ToolCard = ({
 
     if (mode === 'admin') {
       if (isMarketplaceVariant) return null;
-
-      return item.installed
-        ? {
-            label: t('app:toolkit_installed'),
-            color: 'myGray.500',
-            icon: 'common/check'
-          }
-        : null;
+      return null;
     }
 
     if (mode === 'team') {
       if (item.status && pluginStatusMap[item.status]) {
         return pluginStatusMap[item.status];
       }
-      return item.installed
-        ? {
-            label: t('app:toolkit_installed'),
-            color: 'myGray.500',
-            icon: 'common/check'
-          }
-        : null;
+      return null;
     }
-  }, [isMarketplaceVariant, item.installed, item.status, mode, t]);
+  }, [isMarketplaceVariant, item.status, mode, t]);
 
   return (
     <MyBox

@@ -45,6 +45,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { inheritToolInputConfig } from './utils';
 
 type Props = {
@@ -357,6 +358,7 @@ const RenderList = React.memo(function RenderList({
                 t(parseI18nString(template.intro || '', i18n.language)) ||
                 t('common:core.workflow.Not intro');
               const isDebugTool = isDebugToolSource(template.source);
+              const isSystemSource = template.source === 'system';
 
               return (
                 <MyTooltip
@@ -380,6 +382,7 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
+                        {isSystemSource && <SystemToolTag />}
                         {isDebugTool && <DebugToolTag />}
                         {isSystemTool && (
                           <Box color={'myGray.500'}>
@@ -428,6 +431,7 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
+                        {isSystemSource && <SystemToolTag />}
                         {isDebugTool && <DebugToolTag />}
                       </Flex>
                     </Box>
