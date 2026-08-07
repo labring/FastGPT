@@ -387,10 +387,13 @@ describe('encodeS3ObjectKey', () => {
     );
   });
 
-  it('is idempotent for already encoded segments', () => {
-    const encoded = 'team/user%20name/file%20(1).txt';
-    expect(encodeS3ObjectKey(encoded)).toBe(encoded);
-    expect(encodeS3ObjectKey(encodeS3ObjectKey(encoded))).toBe(encoded);
+  it('preserves literal percent sequences without colliding with decoded input', () => {
+    expect(encodeS3ObjectKey('team/user%20name/file%2F%25.txt')).toBe(
+      'team/user%2520name/file%252F%2525.txt'
+    );
+    expect(encodeS3ObjectKey('team/user%20name/file.txt')).not.toBe(
+      encodeS3ObjectKey('team/user name/file.txt')
+    );
   });
 
   it('throws when the encoded key violates the storage key contract', () => {
@@ -402,6 +405,10 @@ describe('encodeS3ObjectKey', () => {
 
   it('encodes backslashes and control characters instead of replacing them', () => {
     expect(encodeS3ObjectKey('team\\user/file\u0000.txt')).toBe('team%5Cuser/file%00.txt');
+  });
+
+  it('throws the shared storage validation error for malformed Unicode', () => {
+    expect(() => encodeS3ObjectKey('team/\uD800/file.txt')).toThrow('well-formed Unicode');
   });
 });
 

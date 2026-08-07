@@ -46,7 +46,7 @@ import type {
   UploadMultipartPartResult,
   IStorage
 } from '@fastgpt-sdk/storage';
-import { isNoSuchMultipartUploadError } from '@fastgpt-sdk/storage';
+import { assertStorageObjectKey, isNoSuchMultipartUploadError } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import {
@@ -63,13 +63,23 @@ import {
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
 import { randomUUID } from 'node:crypto';
-import { encodeS3ObjectKey } from '../keySanitizer';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
 const getStorageKeyCandidates = (key: string): string[] => {
-  const canonicalKey = encodeS3ObjectKey(key);
-  return canonicalKey === key ? [canonicalKey] : [canonicalKey, key];
+  assertStorageObjectKey(key);
+  const legacyKey = key
+    .split('/')
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join('/');
+
+  return legacyKey === key ? [key] : [key, legacyKey];
 };
 
 const withStorageKeyFallback = async <T>(
@@ -167,7 +177,8 @@ export class S3BaseBucket {
       temporary?: boolean;
     };
   }) {
-    const targetKey = encodeS3ObjectKey(to);
+    assertStorageObjectKey(to, 'targetKey');
+    const targetKey = to;
     if (options?.temporary) {
       await MongoS3TTL.create({
         minioKey: targetKey,
@@ -1018,6 +1029,8 @@ export class S3BaseBucket {
       contentLength,
       expiredTime = addHours(new Date(), 1)
     } = UploadFileByBodySchema.parse(params);
+    assertStorageObjectKey(key);
+
     await MongoS3TTL.create({
       minioKey: key,
       bucketName: this.bucketName,

@@ -26,7 +26,9 @@ export function getSkillPackageKey(params: {
   packageObjectId: string;
 }): string {
   const { teamId, skillId, packageObjectId } = params;
-  return encodeS3ObjectKey(`${getSkillPackagePrefix({ teamId, skillId })}${packageObjectId}.zip`);
+  return encodeS3ObjectKey(
+    [SKILL_PACKAGE_ROOT_PREFIX, teamId, skillId, `${packageObjectId}.zip`].join('/')
+  );
 }
 
 export class S3SkillSource extends S3PrivateBucket {

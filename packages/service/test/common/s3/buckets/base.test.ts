@@ -772,8 +772,8 @@ describe('S3BaseBucket historical key compatibility', () => {
         contentType: 'text/plain'
       });
 
-    await expect(bucket.isObjectExists(rawKey)).resolves.toBe(true);
-    await expect(bucket.getFileMetadata(rawKey)).resolves.toMatchObject({
+    await expect(bucket.isObjectExists(canonicalKey)).resolves.toBe(true);
+    await expect(bucket.getFileMetadata(canonicalKey)).resolves.toMatchObject({
       filename: 'file.txt',
       contentLength: 4
     });
@@ -795,7 +795,9 @@ describe('S3BaseBucket historical key compatibility', () => {
         targetKey: 'archive/file.txt'
       });
 
-    await expect(bucket.copy({ from: rawKey, to: 'archive/file.txt' })).resolves.toMatchObject({
+    await expect(
+      bucket.copy({ from: canonicalKey, to: 'archive/file.txt' })
+    ).resolves.toMatchObject({
       sourceKey: rawKey,
       targetKey: 'archive/file.txt'
     });
@@ -808,8 +810,26 @@ describe('S3BaseBucket historical key compatibility', () => {
       targetKey: 'archive/file.txt'
     });
 
-    await bucket.removeObject(rawKey);
+    await bucket.removeObject(canonicalKey);
     expect(storage.deleteObject).toHaveBeenNthCalledWith(1, { key: canonicalKey });
     expect(storage.deleteObject).toHaveBeenNthCalledWith(2, { key: rawKey });
+  });
+
+  it('validates body-upload keys before creating a TTL record', async () => {
+    const { storage, bucket } = createBucket();
+    const invalidKey = 'dataset//file.txt';
+
+    await expect(
+      bucket.uploadFileByBody({
+        key: invalidKey,
+        body: 'content',
+        filename: 'file.txt'
+      })
+    ).rejects.toThrow('consecutive slashes');
+
+    await expect(
+      MongoS3TTL.findOne({ bucketName: storage.bucketName, minioKey: invalidKey })
+    ).resolves.toBeNull();
+    expect(storage.uploadObject).not.toHaveBeenCalled();
   });
 });
