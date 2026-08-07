@@ -53,7 +53,10 @@ describe('form2AppWorkflow', () => {
 
     const result = form2AppWorkflow(form, mockT);
 
-    expect(result.nodes).toHaveLength(3);
+    expect(result.nodes.map((node) => node.flowNodeType)).toEqual([
+      FlowNodeTypeEnum.workflowStart,
+      FlowNodeTypeEnum.chatNode
+    ]);
     expect(result.edges).toHaveLength(1);
   });
 
@@ -182,7 +185,7 @@ describe('form2AppWorkflow', () => {
 
     const result = form2AppWorkflow(form, mockT);
 
-    expect(result.nodes).toHaveLength(4);
+    expect(result.nodes).toHaveLength(3);
     expect(result.edges).toHaveLength(2);
 
     const datasetNode = result.nodes.find(
@@ -397,19 +400,13 @@ describe('filterSensitiveFormData', () => {
 describe('getAppQGuideCustomURL', () => {
   it('should get custom URL from app detail', () => {
     const appDetail = {
-      modules: [
-        {
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
-          inputs: [
-            {
-              key: NodeInputKeyEnum.chatInputGuide,
-              value: {
-                customUrl: 'https://example.com'
-              }
-            }
-          ]
+      modules: [],
+      chatConfig: {
+        chatInputGuide: {
+          open: true,
+          customUrl: 'https://example.com'
         }
-      ]
+      }
     } as any;
 
     const result = getAppQGuideCustomURL(appDetail);
@@ -428,6 +425,27 @@ describe('getAppQGuideCustomURL', () => {
 
     const result = getAppQGuideCustomURL(appDetail);
     expect(result).toBe('');
+  });
+
+  it('should fall back to the legacy system config node', () => {
+    const appDetail = {
+      modules: [
+        {
+          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.chatInputGuide,
+              value: {
+                customUrl: 'https://legacy.example.com'
+              }
+            }
+          ]
+        }
+      ],
+      chatConfig: {}
+    } as any;
+
+    expect(getAppQGuideCustomURL(appDetail)).toBe('https://legacy.example.com');
   });
 });
 
@@ -525,6 +543,9 @@ describe('appWorkflow2AgentForm', () => {
     };
 
     const workflow = agentForm2AppWorkflow(form, mockT);
+    expect(workflow.nodes.some((node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig)).toBe(
+      false
+    );
     const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
 
     expect(

@@ -35,6 +35,7 @@ import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -43,6 +44,9 @@ const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
+const WelcomeQuestionsConfig = dynamic(
+  () => import('@/components/core/app/WelcomeQuestionsConfig')
+);
 const FileSelectConfig = dynamic(() => import('@/components/core/app/FileSelect'));
 
 const BoxStyles: BoxProps = {
@@ -75,6 +79,7 @@ const EditForm = ({
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
   const isAgentSandboxEnabled = !!appForm.aiSettings.useAgentSandbox;
+  const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -111,6 +116,39 @@ const EditForm = ({
   const tokenLimit = useMemo(() => {
     return selectedModel.quoteMaxToken || 3000;
   }, [selectedModel.quoteMaxToken]);
+
+  const updateWelcomeText = useCallback(
+    (value: string) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeText: value,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeText: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
+
+  const updateWelcomeQuestions = useCallback(
+    (value: string[]) => {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeQuestions: value
+          }
+        }
+      }));
+    },
+    [setAppForm]
+  );
 
   useEffect(() => {
     if (
@@ -415,16 +453,20 @@ const EditForm = ({
         <Box {...BoxStyles}>
           <WelcomeTextConfig
             value={appForm.chatConfig.welcomeText}
+            isFolded={isWelcomeTextFolded}
+            onToggleFold={toggleWelcomeTextFold}
             onChange={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  welcomeText: e.target.value
-                }
-              }));
+              updateWelcomeText(e.target.value);
             }}
           />
+          {!isWelcomeTextFolded && (
+            <Box mt={3}>
+              <WelcomeQuestionsConfig
+                value={appForm.chatConfig.welcomeConfig?.welcomeQuestions}
+                onChange={updateWelcomeQuestions}
+              />
+            </Box>
+          )}
         </Box>
 
         {/* tts */}

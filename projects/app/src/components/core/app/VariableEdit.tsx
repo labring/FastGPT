@@ -25,6 +25,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {
   Draggable,
+  getDraggableItemProps,
   type DraggableProvided,
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
@@ -72,7 +73,6 @@ const VariableEdit = ({
   zoom?: number;
 }) => {
   const { t } = useTranslation();
-
   const [editingVariable, setEditingVariable] = useState<VariableItemType | null>(null);
 
   const formatVariables = useMemo(() => {
@@ -120,9 +120,7 @@ const VariableEdit = ({
               </Tr>
             </Thead>
             <DndDrag<VariableItemType>
-              onDragEndCb={(list) => {
-                onChange(list);
-              }}
+              onDragEndCb={onChange}
               dataList={formatVariables}
               renderClone={(provided, snapshot, rubric) => (
                 <TableItem
@@ -148,7 +146,6 @@ const VariableEdit = ({
                           onEdit={setEditingVariable}
                           onChange={onChange}
                           variables={variables}
-                          key={item.key}
                         />
                       )}
                     </Draggable>
@@ -190,16 +187,20 @@ const TableItem = ({
   onChange: (data: VariableItemType[]) => void;
   variables: VariableItemType[];
 }) => {
+  const handleEdit = () => {
+    const formattedItem = {
+      ...item,
+      list:
+        item.list ||
+        item.enums?.map((item: { value: string }) => ({ label: item.value, value: item.value })) ||
+        []
+    };
+    onEdit(formattedItem);
+  };
+  const { draggableItemProps, dragHandleProps } = getDraggableItemProps(provided, snapshot);
+
   return (
-    <Tr
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      {...provided.dragHandleProps}
-      style={{
-        ...provided.draggableProps.style,
-        opacity: snapshot.isDragging ? 0.8 : 1
-      }}
-    >
+    <Tr {...draggableItemProps} {...dragHandleProps}>
       <Td fontWeight={'medium'}>
         <Flex alignItems={'center'}>
           <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
@@ -213,19 +214,7 @@ const TableItem = ({
       </Td>
       <Td>
         <Flex>
-          <MyIconButton
-            icon={'common/settingLight'}
-            onClick={() => {
-              const formattedItem = {
-                ...item,
-                list:
-                  item.list ||
-                  item.enums?.map((item) => ({ label: item.value, value: item.value })) ||
-                  []
-              };
-              onEdit(formattedItem);
-            }}
-          />
+          <MyIconButton icon={'common/settingLight'} onClick={handleEdit} />
           <MyIconButton
             icon={'delete'}
             hoverColor={'red.500'}

@@ -6,6 +6,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 export type JsonImportModalScene = 'agent' | 'tool';
 
@@ -191,7 +192,9 @@ const parseSimpleImportWorkflow = ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
+  const workflow = form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
+
+  return normalizeWorkflowConfig(workflow);
 };
 
 const parseWorkflowLikeImportConfig = ({
@@ -219,11 +222,11 @@ const parseWorkflowLikeImportConfig = ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return {
+  return normalizeWorkflowConfig({
     nodes: config.nodes as StoreNodeItemType[],
     edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
-    chatConfig: (config.chatConfig || {}) as AppChatConfigType
-  };
+    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
+  });
 };
 
 /**

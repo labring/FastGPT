@@ -7,7 +7,6 @@ import { DatasetSearchModule } from './system/datasetSearch';
 import { EmptyNode } from './system/emptyNode';
 import { HttpNode468 } from './system/http468';
 import { PluginConfigNode } from './system/pluginConfig';
-import { SystemConfigNode } from './system/systemConfig';
 import { WorkflowStart } from './system/workflowStart';
 
 import { StopToolNode } from './system/stopTool';
@@ -27,6 +26,7 @@ import { IfElseNode } from './system/ifElse/index';
 import { FormInputNode } from './system/interactive/formInput';
 import { UserSelectNode } from './system/interactive/userSelect';
 import { LoopNode } from './system/abandoned/loop/index';
+import { SystemConfigNode } from './system/abandoned/systemConfig';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { LoopStartNode } from './system/loop/loopStart';
 import { LoopRunNode } from './system/loopRun/loopRun';
@@ -65,7 +65,6 @@ const systemNodes: FlowNodeTemplateType[] = [
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
-  SystemConfigNode,
   WorkflowStart,
   ...systemNodes,
   CustomFeedbackNode,
@@ -92,6 +91,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunAppNode,
   RunAppModule,
   LoopNode,
+  SystemConfigNode,
   LoopStartNode,
   LoopEndNode,
   LoopRunStartNode,

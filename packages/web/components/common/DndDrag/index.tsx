@@ -1,5 +1,5 @@
-import { Box, Tbody } from '@chakra-ui/react';
-import React, { type ReactElement, type ReactNode, useState } from 'react';
+import { Box } from '@chakra-ui/react';
+import React, { type ReactElement, useState } from 'react';
 import {
   DragDropContext,
   Draggable,
@@ -24,6 +24,29 @@ export type {
   DroppableProvided,
   DroppableStateSnapshot,
   Omit
+};
+
+/**
+ * 将 react-beautiful-dnd 的 render-props 对象转换为可直接透传给元素的属性。
+ * 适配层避免 React Hooks lint 将第三方对象中的 innerRef 误判为组件渲染期间读取 ref。
+ */
+export const getDraggableItemProps = (
+  provided: DraggableProvided,
+  snapshot: DraggableStateSnapshot
+) => {
+  const { innerRef, draggableProps, dragHandleProps } = provided;
+
+  return {
+    draggableItemProps: {
+      ref: innerRef,
+      ...draggableProps,
+      style: {
+        ...draggableProps.style,
+        opacity: snapshot.isDragging ? 0.8 : 1
+      }
+    },
+    dragHandleProps
+  };
 };
 
 type Props<T = any> = {

@@ -1,0 +1,109 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
+const { findOneMock } = vi.hoisted(() => ({
+  findOneMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/app/version/schema', () => ({
+  MongoAppVersion: {
+    findOne: findOneMock
+  }
+}));
+
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+
+describe('app version controller compatibility', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('normalizes a legacy published version before returning it', async () => {
+    const scheduledTriggerConfig = {
+      cronString: '0 9 * * *',
+      timezone: 'Asia/Shanghai',
+      defaultPrompt: 'Run scheduled workflow'
+    };
+    const version = {
+      _id: '507f1f77bcf86cd799439011',
+      versionName: 'Legacy version',
+      nodes: [
+        {
+          nodeId: 'userGuide',
+          name: 'System config',
+          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.scheduleTrigger,
+              label: 'Schedule trigger',
+              value: scheduledTriggerConfig,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'start',
+          name: 'Start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'userGuide',
+          target: 'start',
+          sourceHandle: 'userGuide-source-right',
+          targetHandle: 'start-target-left'
+        }
+      ],
+      chatConfig: {}
+    };
+    const leanMock = vi.fn().mockResolvedValue(version);
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: leanMock })
+    });
+
+    const result = await getAppLatestVersion('app-id');
+
+    expect(result.nodes.map((node) => node.nodeId)).toEqual(['start']);
+    expect(result.edges).toEqual([]);
+    expect(result.chatConfig.scheduledTriggerConfig).toEqual(scheduledTriggerConfig);
+  });
+
+  it('normalizes the app fallback when no published version exists', async () => {
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
+    });
+
+    const result = await getAppLatestVersion('app-id', {
+      name: 'Legacy app',
+      modules: [
+        {
+          nodeId: 'userGuide',
+          name: 'System config',
+          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.welcomeText,
+              label: 'Welcome text',
+              value: 'Legacy welcome',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    } as any);
+
+    expect(result.nodes).toEqual([]);
+    expect(result.chatConfig.welcomeConfig?.welcomeText).toBe('Legacy welcome');
+  });
+});

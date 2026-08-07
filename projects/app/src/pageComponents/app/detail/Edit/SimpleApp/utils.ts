@@ -22,7 +22,6 @@ import {
   WorkflowStart,
   userFilesInput
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
 import {
   AiChatModule,
   AiChatQuotePrompt,
@@ -38,7 +37,7 @@ import {
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig, normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
@@ -55,11 +54,16 @@ export const appWorkflow2Form = ({
   chatConfig: AppChatConfigType;
 }) => {
   const defaultAppForm = getDefaultAppForm();
+  const normalizedWorkflow = normalizeWorkflowConfig({ nodes, chatConfig });
+  defaultAppForm.chatConfig = getAppChatConfig({
+    chatConfig: normalizedWorkflow.chatConfig,
+    isPublicFetch: true
+  });
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
   };
 
-  nodes.forEach((node) => {
+  normalizedWorkflow.nodes.forEach((node) => {
     if (
       node.flowNodeType === FlowNodeTypeEnum.chatNode ||
       node.flowNodeType === FlowNodeTypeEnum.toolCall
@@ -194,12 +198,6 @@ export const appWorkflow2Form = ({
         systemKeyCost: node.systemKeyCost,
         configStatus: getToolConfigStatus({ tool: node as unknown as FlowNodeTemplateType }).status
       });
-    } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
-      defaultAppForm.chatConfig = getAppChatConfig({
-        chatConfig,
-        systemConfigNode: node,
-        isPublicFetch: true
-      });
     }
   });
 
@@ -227,21 +225,6 @@ export function form2AppWorkflow(
     extractFiles: !!(modelData?.vision || modelData?.audio || modelData?.video)
   };
 
-  function systemConfigTemplate(): StoreNodeItemType {
-    return {
-      nodeId: SystemConfigNode.id,
-      name: t(SystemConfigNode.name),
-      intro: '',
-      flowNodeType: SystemConfigNode.flowNodeType,
-      position: {
-        x: 531.2422736065552,
-        y: -486.7611729549753
-      },
-      version: SystemConfigNode.version,
-      inputs: [],
-      outputs: []
-    };
-  }
   function workflowStartTemplate(): StoreNodeItemType {
     return {
       nodeId: workflowStartNodeId,
@@ -845,7 +828,7 @@ export function form2AppWorkflow(
   })();
 
   return {
-    nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
+    nodes: [workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
     chatConfig: data.chatConfig
   };
