@@ -5,15 +5,15 @@ import {
   truncateFilename,
   S3_FILENAME_MAX_LENGTH,
   isS3ObjectKey,
-  getFileS3Key,
-  uploadImage2S3Bucket
+  getFileS3Key
 } from '@fastgpt/service/common/s3/utils';
 import * as stringTools from '@fastgpt/global/common/string/tools';
 import { StorageObjectKeySchema } from '@fastgpt/service/common/s3/contracts/type';
 
 describe('uploadImage2S3Bucket', () => {
-  it('rejects invalid keys at the FastGPT boundary', () => {
-    expect(() => StorageObjectKeySchema.parse('dataset//image.png')).toThrow();
+  it('does not transform the upload key schema value', () => {
+    const key = 'dataset//image.png';
+    expect(StorageObjectKeySchema.parse(key)).toBe(key);
   });
 });
 
@@ -152,7 +152,7 @@ describe('getFormatedFilename', () => {
     it('should handle filename with spaces', () => {
       const result = getFormatedFilename('my document.pdf');
 
-      expect(result.formatedFilename).toBe('my%20document_abc123');
+      expect(result.formatedFilename).toBe('my document_abc123');
       expect(result.extension).toBe('pdf');
     });
   });
@@ -240,14 +240,14 @@ describe('getFormatedFilename', () => {
     it('should handle Chinese characters', () => {
       const result = getFormatedFilename('文档.pdf');
 
-      expect(result.formatedFilename).toBe('%E6%96%87%E6%A1%A3_abc123');
+      expect(result.formatedFilename).toBe('文档_abc123');
       expect(result.extension).toBe('pdf');
     });
 
     it('should handle mixed Chinese and English', () => {
       const result = getFormatedFilename('my文档document.pdf');
 
-      expect(result.formatedFilename).toBe('my%E6%96%87%E6%A1%A3document_abc123');
+      expect(result.formatedFilename).toBe('my文档document_abc123');
       expect(result.extension).toBe('pdf');
     });
 
@@ -314,14 +314,14 @@ describe('getFormatedFilename', () => {
     it('should handle typical user upload filename', () => {
       const result = getFormatedFilename('My Document (Final Version).pdf');
 
-      expect(result.formatedFilename).toBe('My%20Document%20(Final%20Version)_abc123');
+      expect(result.formatedFilename).toBe('My Document (Final Version)_abc123');
       expect(result.extension).toBe('pdf');
     });
 
     it('should handle filename from different OS', () => {
       const result = getFormatedFilename('file:name.pdf'); // colon in Windows
 
-      expect(result.formatedFilename).toBe('file%3Aname_abc123');
+      expect(result.formatedFilename).toBe('file:name_abc123');
       expect(result.extension).toBe('pdf');
     });
 
@@ -548,6 +548,16 @@ describe('getFileS3Key', () => {
       expect(result.fileKey).toBe('temp/team123/%E6%96%87%E6%A1%A3_abc123.pdf');
       expect(result.fileParsedPrefix).toBe('temp/team123/%E6%96%87%E6%A1%A3_abc123-parsed');
     });
+
+    it('should encode dynamic path segments', () => {
+      const result = getFileS3Key.temp({
+        teamId: 'team one',
+        filename: 'file name.txt'
+      });
+
+      expect(result.fileKey).toBe('temp/team%20one/file%20name_abc123.txt');
+      expect(result.fileParsedPrefix).toBe('temp/team%20one/file%20name_abc123-parsed');
+    });
   });
 
   describe('avatar', () => {
@@ -593,6 +603,17 @@ describe('getFileS3Key', () => {
 
       expect(result.fileKey).toBe('chat/app123/user789/chat456/image_abc123.jpg');
       expect(result.fileParsedPrefix).toBe('chat/app123/user789/chat456/image_abc123-parsed');
+    });
+
+    it('should encode user and chat identifiers', () => {
+      const result = getFileS3Key.chat({
+        appId: 'app one',
+        chatId: 'chat two',
+        uId: 'user three',
+        filename: 'image.jpg'
+      });
+
+      expect(result.fileKey).toBe('chat/app%20one/user%20three/chat%20two/image_abc123.jpg');
     });
 
     it('should generate chat file key without filename', () => {

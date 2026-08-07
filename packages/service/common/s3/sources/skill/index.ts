@@ -2,6 +2,7 @@ import type { ClientSession } from 'mongoose';
 import type { Readable } from 'node:stream';
 import { S3PrivateBucket } from '../../buckets/private';
 import { removeS3TTL } from '../../utils';
+import { encodeS3ObjectKey } from '../../keySanitizer';
 
 const SKILL_PACKAGE_ROOT_PREFIX = 'agent-skills';
 
@@ -13,7 +14,7 @@ const SKILL_PACKAGE_ROOT_PREFIX = 'agent-skills';
  */
 export function getSkillPackagePrefix(params: { teamId: string; skillId: string }): string {
   const { teamId, skillId } = params;
-  return `${[SKILL_PACKAGE_ROOT_PREFIX, teamId, skillId].join('/')}/`;
+  return `${encodeS3ObjectKey([SKILL_PACKAGE_ROOT_PREFIX, teamId, skillId].join('/'))}/`;
 }
 
 /**
@@ -25,7 +26,7 @@ export function getSkillPackageKey(params: {
   packageObjectId: string;
 }): string {
   const { teamId, skillId, packageObjectId } = params;
-  return `${getSkillPackagePrefix({ teamId, skillId })}${packageObjectId}.zip`;
+  return encodeS3ObjectKey(`${getSkillPackagePrefix({ teamId, skillId })}${packageObjectId}.zip`);
 }
 
 export class S3SkillSource extends S3PrivateBucket {
