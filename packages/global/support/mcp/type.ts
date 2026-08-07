@@ -5,6 +5,7 @@ export type McpKeyType = {
   tmbId: string;
   apps: McpAppType[];
   name: string;
+  authProxy: boolean;
 };
 
 export type McpAppType = {
@@ -13,3 +14,8 @@ export type McpAppType = {
   toolName: string;
   description: string;
 };
+
+export const McpAuthProxyHeader = {
+  username: 'x-fastgpt-auth-proxy-username',
+  tmbId: 'x-fastgpt-auth-proxy-tmb-id'
+} as const;

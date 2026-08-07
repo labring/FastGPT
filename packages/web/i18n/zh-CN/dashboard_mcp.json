@@ -2,6 +2,8 @@
   "app_description": "应用描述",
   "app_name": "应用名",
   "apps": "暴露的应用",
+  "auth_proxy": "身份代理",
+  "auth_proxy_tip": "允许调用方通过请求头代理团队成员身份执行工具。仅团队所有者可开启。",
   "create_mcp": "创建 MCP 服务",
   "create_mcp_server": "新建服务",
   "delete_mcp_server_confirm_tip": "确认删除该服务？",

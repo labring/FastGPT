@@ -10,6 +10,7 @@ import { callTool, getTools } from './api/fastgpt';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { configureLogger, getLogger, LogCategories } from './logger';
 import { mcpServerEnv } from './env';
+import { McpAuthProxyHeader } from '@fastgpt/global/support/mcp/type';
 
 const app = express();
 const logger = getLogger(LogCategories.MODULE.MCP.SERVER);
@@ -18,6 +19,10 @@ const transportMap: Record<string, SSEServerTransport> = {};
 
 app.get('/:key/sse', async (req, res) => {
   const { key } = req.params;
+  const authProxy = {
+    username: req.header(McpAuthProxyHeader.username),
+    tmbId: req.header(McpAuthProxyHeader.tmbId)
+  };
 
   const transport = new SSEServerTransport(`/${key}/messages`, res);
 
@@ -61,7 +66,7 @@ app.get('/:key/sse', async (req, res) => {
   ): Promise<CallToolResult> => {
     try {
       logger.info(`Call tool: ${name} with args: ${JSON.stringify(args)}`);
-      const result = await callTool({ key, toolName: name, inputs: args });
+      const result = await callTool({ key, toolName: name, inputs: args }, authProxy);
 
       return {
         content: [

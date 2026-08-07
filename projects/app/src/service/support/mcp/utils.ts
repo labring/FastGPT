@@ -42,6 +42,9 @@ import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { resolveMcpEffectiveTmbId } from './auth';
 
 const stringifyMcpPluginOutput = (pluginOutput: unknown) => {
   if (pluginOutput === undefined || pluginOutput === null) {
@@ -176,11 +179,15 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
 /**
  * 调用 MCP key 已绑定的工具。
  *
- * 这里延续 MCP key 的绑定快照语义：调用时只校验 key 和 toolName 是否存在于绑定关系中，
- * 不根据创建人的实时应用权限再次拒绝执行；如需撤销 MCP 访问，应更新或删除对应 MCP key。
+ * 发布 key 用于定位绑定关系；每次执行都按发布者或 authProxy 代理成员重新校验应用读权限，
+ * 并将对话与运行用户上下文归属到该有效成员。
  */
-export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps) => {
-  const dispatchApp = async (app: AppSchemaType, variables: Record<string, any>) => {
+export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: toolCallProps) => {
+  const dispatchApp = async (
+    app: AppSchemaType,
+    variables: Record<string, any>,
+    effectiveTmbId: string
+  ) => {
     const isPlugin = app.type === AppTypeEnum.workflowTool;
     const pluginFixedTitle = isPlugin ? 'Mcp call' : undefined;
 
@@ -247,7 +254,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       ...chatSource,
       chatId,
       teamId: String(app.teamId),
-      tmbId: String(app.tmbId),
+      tmbId: effectiveTmbId,
       source: ChatSourceEnum.mcp,
       userContent: workflowUserQuestion,
       responseChatItemId,
@@ -274,8 +281,8 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
           teamId: String(app.teamId),
           tmbId: String(app.tmbId)
         },
-        runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
-        uid: String(app.tmbId),
+        runningUserInfo: await getRunningUserInfoByTmbId(effectiveTmbId),
+        uid: effectiveTmbId,
         runtimeNodes,
         runtimeEdges: storeEdges2RuntimeEdges(edges),
         variables,
@@ -305,7 +312,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         chatId: preparedRound.chatId,
         versionId,
         teamId: String(app.teamId),
-        tmbId: String(app.tmbId),
+        tmbId: effectiveTmbId,
         nodes,
         appChatConfig: chatConfig,
         variables: newVariables,
@@ -350,7 +357,10 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     }
   };
 
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1 }).lean();
+  const mcp = await MongoMcpKey.findOne(
+    { key },
+    { apps: 1, teamId: 1, tmbId: 1, authProxy: 1 }
+  ).lean();
 
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
@@ -374,5 +384,12 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  return await dispatchApp(app, inputs);
+  const effectiveTmbId = await resolveMcpEffectiveTmbId({ mcp, authProxy });
+  await authAppByTmbId({
+    tmbId: effectiveTmbId,
+    appId: String(app._id),
+    per: ReadPermissionVal
+  });
+
+  return await dispatchApp(app, inputs, effectiveTmbId);
 };
