@@ -49,20 +49,19 @@ describe.skipIf(!shouldRun).sequential('OpenSandboxAdapter Integration Tests', (
   }, 130_000);
 
   describe('Lifecycle Stop', () => {
-    it('deletes on stop and creates a new sandbox when ensured again', async () => {
+    it('pauses on stop and resumes the same sandbox when ensured again', async () => {
       const sandboxId = adapter.id;
       expect(sandboxId).toBeDefined();
 
       await adapter.stop();
-      expect(adapter.status.state).toBe('UnExist');
+      expect(adapter.status.state).toBe('Stopped');
       expect(adapter.id).toBeUndefined();
 
       await adapter.close();
       await adapter.ensureRunning();
 
       expect(adapter.status.state).toBe('Running');
-      expect(adapter.id).toBeDefined();
-      expect(adapter.id).not.toBe(sandboxId);
+      expect(adapter.id).toBe(sandboxId);
     }, 90_000);
   });
 

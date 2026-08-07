@@ -28,10 +28,22 @@ const loadSandboxConfigModule = async () => {
   return import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config');
 };
 
-const defaultOpenSandboxDockerNetworkPolicy = {
+const defaultOpenSandboxNetworkPolicy = {
   defaultAction: 'allow',
   egress: [
     { action: 'deny', target: 'localhost' },
+    { action: 'deny', target: '127.0.0.0/8' },
+    { action: 'deny', target: '::1/128' },
+    { action: 'deny', target: '10.0.0.0/8' },
+    { action: 'deny', target: '100.64.0.0/10' },
+    { action: 'deny', target: '169.254.0.0/16' },
+    { action: 'deny', target: '172.16.0.0/12' },
+    { action: 'deny', target: '192.168.0.0/16' },
+    { action: 'deny', target: '198.18.0.0/15' },
+    { action: 'deny', target: '224.0.0.0/4' },
+    { action: 'deny', target: 'fc00::/7' },
+    { action: 'deny', target: 'fe80::/10' },
+    { action: 'deny', target: '*.local' },
     { action: 'deny', target: 'host.docker.internal' },
     { action: 'deny', target: 'host.orb.internal' },
     { action: 'deny', target: 'docker.orb.internal' },
@@ -253,7 +265,7 @@ describe('sandbox provider config', () => {
         metadata: { teamId: 'team-1' },
         networkPolicy: {
           defaultAction: 'allow',
-          egress: [{ action: 'deny', target: 'host.docker.internal' }]
+          egress: defaultOpenSandboxNetworkPolicy.egress
         },
         extensions: {
           traceId: 'trace-1'
@@ -283,7 +295,7 @@ describe('sandbox provider config', () => {
         memoryMiB: 4096
       },
       readyTimeoutSeconds: 120,
-      networkPolicy: defaultOpenSandboxDockerNetworkPolicy
+      networkPolicy: defaultOpenSandboxNetworkPolicy
     });
 
     expect(
@@ -302,6 +314,46 @@ describe('sandbox provider config', () => {
     ).toEqual({
       cpuCount: 3,
       memoryMiB: 4096
+    });
+  });
+
+  it('applies the protected network policy for kubernetes runtime as well', async () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'kubernetes');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
+    vi.resetModules();
+    const { getSandboxRuntimeProfile } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
+    const profile = getSandboxRuntimeProfile('opensandbox');
+
+    expect(profile.buildConfig()?.networkPolicy).toEqual(defaultOpenSandboxNetworkPolicy);
+  });
+
+  it('does not allow a caller policy to open protected targets or close public egress', async () => {
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
+    vi.resetModules();
+    const { getSandboxRuntimeProfile } =
+      await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
+    const profile = getSandboxRuntimeProfile('opensandbox');
+
+    expect(
+      profile.buildConfig({
+        createConfig: {
+          networkPolicy: {
+            defaultAction: 'deny',
+            egress: [
+              { action: 'allow', target: '10.0.0.1' },
+              { action: 'deny', target: 'api.example.com' }
+            ]
+          }
+        }
+      })?.networkPolicy
+    ).toEqual({
+      defaultAction: 'allow',
+      egress: [
+        ...defaultOpenSandboxNetworkPolicy.egress,
+        { action: 'deny', target: 'api.example.com' }
+      ]
     });
   });
 
