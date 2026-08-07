@@ -11,7 +11,8 @@ export enum CommonErrEnum {
   missingParams = 'missingParams',
   inheritPermissionError = 'inheritPermissionError',
   folderDepthLimit = 'folderDepthLimit',
-  folderMoveDepthLimit = 'folderMoveDepthLimit'
+  folderMoveDepthLimit = 'folderMoveDepthLimit',
+  tooManyReadableResources = 'tooManyReadableResources'
 }
 const datasetErr = [
   {
@@ -46,6 +47,11 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.folderMoveDepthLimit,
     message: i18nT('common:error.folderMoveDepthLimit')
+  },
+  {
+    statusText: CommonErrEnum.tooManyReadableResources,
+    message: i18nT('common:error.tooManyReadableResources'),
+    httpStatus: 400
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

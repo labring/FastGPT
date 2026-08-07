@@ -13,6 +13,9 @@ import {
 } from '../../../../core/ai/skill/type';
 import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { PaginationResponseSchema } from '../../../api';
+import { ListV2PaginationSchema, v2PaginationMutualExclusion } from '../../../pagination';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -56,6 +59,55 @@ export const ListSkillsResponseSchema = z.object({
   total: z.number()
 });
 export type ListSkillsResponse = z.infer<typeof ListSkillsResponseSchema>;
+
+/* ============================================================================
+ * API: 获取技能列表（分页版）
+ * Route: POST /api/core/ai/skill/listV2
+ * ============================================================================ */
+export const ListSkillsV2QuerySchema = ListV2PaginationSchema.extend({
+  source: z.enum(['store', 'mine']).optional().describe('技能来源: store=系统技能, mine=我的技能'),
+  searchKey: z.string().optional().describe('搜索关键词'),
+  category: AgentSkillCategorySchema.optional().describe('技能分类'),
+  type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
+  skillIds: z.array(IdSchema).optional().describe('按技能 ID 列表过滤，用于校验已关联技能状态'),
+  parentId: NullableParentIdSchema,
+  withAppCount: z.boolean().optional().describe('是否返回引用应用数量')
+}).superRefine(v2PaginationMutualExclusion);
+export type ListSkillsV2Query = z.infer<typeof ListSkillsV2QuerySchema>;
+
+/**
+ * v2 技能列表项。基为具体 ZodObject 的 AgentSkillListItemSchema 派生，
+ * 字段契约按运行时实际输出修正：
+ * - _id/parentId/tmbId 用 ObjectIdSchema 预处理（运行时为 Mongo ObjectId）并支持 nullish（system skill tmbId 可为 null）
+ * - createTime/updateTime 与运行时 Date 对齐（z.coerce.date()）
+ * - 补 tmbId/private（运行时实际返回）
+ * - sourceMember.status 可为 null（成员缺失时以占位返回）
+ */
+export const ListSkillsV2ItemSchema = AgentSkillListItemSchema.omit({
+  createTime: true,
+  updateTime: true
+}).extend({
+  source: AgentSkillSourceSchema,
+  type: AgentSkillTypeSchema,
+  createTime: z.coerce.date(),
+  updateTime: z.coerce.date(),
+  _id: ObjectIdSchema,
+  parentId: ObjectIdSchema.nullable().optional(),
+  tmbId: ObjectIdSchema.nullable().optional(),
+  private: z.boolean().optional().describe('是否仅自己可见'),
+  permission: SkillPermissionSchema,
+  sourceMember: z
+    .object({
+      name: z.string(),
+      avatar: z.string().nullable().optional(),
+      status: z.enum(TeamMemberStatusEnum).nullable()
+    })
+    .optional()
+});
+export type ListSkillsV2Item = z.infer<typeof ListSkillsV2ItemSchema>;
+
+export const ListSkillsV2ResponseSchema = PaginationResponseSchema(ListSkillsV2ItemSchema);
+export type ListSkillsV2Response = z.infer<typeof ListSkillsV2ResponseSchema>;
 
 export const CreateSkillBodySchema = z.object({
   parentId: NullableParentIdSchema,

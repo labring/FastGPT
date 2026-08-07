@@ -140,6 +140,13 @@ defineIndex(AppSchema, {
   key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 }
 });
 
+// v2 list 接口（listV2）：owner 目录路径的过滤+排序，非 owner 继承分支前缀
+defineIndex(AppSchema, {
+  key: { teamId: 1, parentId: 1, deleteTime: 1, type: 1, updateTime: -1, _id: -1 }
+});
+// v2 list 接口：非 owner 创建者分支（{tmbId}）
+defineIndex(AppSchema, { key: { teamId: 1, tmbId: 1 } });
+
 // Schedule
 defineIndex(AppSchema, {
   key: { scheduledTriggerConfig: 1, scheduledTriggerNextTime: -1 },

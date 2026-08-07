@@ -155,4 +155,11 @@ defineIndex(DatasetSchema, { key: { teamId: 1 } });
 defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
 defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
 
+// v2 list 接口（listV2）：owner 目录路径的过滤+排序，非 owner 继承分支前缀
+defineIndex(DatasetSchema, {
+  key: { teamId: 1, parentId: 1, deleteTime: 1, type: 1, updateTime: -1, _id: -1 }
+});
+// v2 list 接口：非 owner 创建者分支（{tmbId}）
+defineIndex(DatasetSchema, { key: { teamId: 1, tmbId: 1 } });
+
 export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);

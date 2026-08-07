@@ -133,6 +133,19 @@ defineIndex(AgentSkillsSchema, { key: { category: 1 } });
 // 文件夹树查询：findSkillAndAllChildren 按 teamId + parentId + deleteTime 逐层查子节点。
 defineIndex(AgentSkillsSchema, { key: { teamId: 1, parentId: 1, deleteTime: 1 } });
 
+// v2 list 接口（listV2）：mine 分支（source+teamId 等值）过滤+排序，非 owner 继承分支前缀
+defineIndex(AgentSkillsSchema, {
+  key: { source: 1, teamId: 1, parentId: 1, deleteTime: 1, type: 1, updateTime: -1, _id: -1 }
+});
+// v2 list 接口：store 分支（无 teamId 前缀）
+defineIndex(AgentSkillsSchema, {
+  key: { source: 1, deleteTime: 1, type: 1, updateTime: -1, _id: -1 }
+});
+// v2 list 接口：mine 场景创建者分支（{tmbId}，依赖外层 teamId）
+defineIndex(AgentSkillsSchema, { key: { teamId: 1, tmbId: 1 } });
+// v2 list 接口：store 场景创建者分支（无 teamId 约束，单键索引）
+defineIndex(AgentSkillsSchema, { key: { tmbId: 1 } });
+
 export const MongoAgentSkills = getMongoModel<MongoAgentSkillSchemaType>(
   agentSkillsCollectionName,
   AgentSkillsSchema

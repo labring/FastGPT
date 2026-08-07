@@ -15,6 +15,9 @@ import { AppPermissionSchema } from '../../../../support/permission/app/controll
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
+import { PaginationResponseSchema } from '../../../api';
+import { ListV2PaginationSchema, v2PaginationMutualExclusion } from '../../../pagination';
+import { TeamMemberStatusEnum } from '../../../../support/user/team/constant';
 import z from 'zod';
 
 const AppIdSchema = ObjectIdSchema.meta({
@@ -255,6 +258,64 @@ export const ListAppResponseSchema = z.array(AppListItemSchema).meta({
   description: '应用列表'
 });
 export type ListAppResponseType = z.infer<typeof ListAppResponseSchema>;
+
+/* ============================================================================
+ * API: 获取应用列表（分页版）
+ * Route: POST /api/core/app/listV2
+ * Method: POST
+ * Description: 分页获取当前团队下当前用户可读的应用或文件夹列表。
+ * Tags: ['基础管理']
+ * ============================================================================ */
+
+export const ListAppV2BodySchema = ListV2PaginationSchema.extend({
+  parentId: ParentIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '父级应用/文件夹 ID，为空时查询根目录'
+  }),
+  type: z
+    .preprocess(
+      preprocessListAppType,
+      z.union([z.enum(AppTypeEnum), z.array(z.enum(AppTypeEnum))]).optional()
+    )
+    .optional()
+    .meta({
+      example: AppTypeEnum.workflow,
+      description: '应用类型筛选，支持单个类型或类型数组；空字符串按全部类型处理'
+    }),
+  searchKey: z.string().optional().meta({
+    example: '客服',
+    description: '应用名称或介绍搜索关键词'
+  })
+}).superRefine(v2PaginationMutualExclusion);
+export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
+
+/**
+ * v2 应用列表项。独立完整 object（不对被断言为通用 ZodType 的 AppListItemSchema 调 .extend()），
+ * 字段与旧 AppListItemSchema 逐一对应；仅 sourceMember.status 可为 null ——
+ * 成员缺失（已删除/离职）时以占位返回，不丢弃资源。
+ */
+export const ListAppV2ItemSchema = z.object({
+  _id: ObjectIdSchema.meta({ description: '应用 ID' }),
+  parentId: ParentIdSchema.meta({ description: '父级应用/文件夹 ID' }),
+  tmbId: ObjectIdSchema.meta({ description: '创建者团队成员 ID' }),
+  name: z.string().meta({ example: '客服应用', description: '应用名称' }),
+  avatar: z.string().meta({ description: '应用头像' }),
+  intro: z.string().meta({ description: '应用介绍' }),
+  type: z.enum(AppTypeEnum).meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
+  updateTime: z.coerce.date().meta({ description: '更新时间' }),
+  pluginData: AppSchemaTypeSchema.shape.pluginData,
+  permission: AppPermissionSchema,
+  inheritPermission: BoolSchema.optional().meta({ description: '是否继承父级权限' }),
+  private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
+  hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+  sourceMember: SourceMemberSchema.extend({
+    status: z.enum(TeamMemberStatusEnum).nullable()
+  }).meta({ description: '创建者信息，成员缺失时为占位（status 为 null）' })
+});
+export type ListAppV2ItemType = z.infer<typeof ListAppV2ItemSchema>;
+
+export const ListAppV2ResponseSchema = PaginationResponseSchema(ListAppV2ItemSchema);
+export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
 
 /* ============================================================================
  * API: 获取应用详情
