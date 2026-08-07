@@ -1,21 +1,27 @@
+import { assertStorageObjectKey } from '@fastgpt-sdk/storage';
+
 /**
- * Normalize an object key before it is persisted or sent to object storage.
- * The transformation is deterministic and idempotent so every caller observes
- * the same key after schema parsing.
+ * Encode an object key segment while preserving the S3 path separators.
+ * Existing percent-encoded segments are decoded once first so the result is
+ * canonical and safe to pass through this function repeatedly.
  */
-export function sanitizeS3ObjectKey(key: string): string {
-  if (!key) return key;
+const encodeObjectKeySegment = (segment: string): string => {
+  let decodedSegment = segment;
+  try {
+    decodedSegment = decodeURIComponent(segment);
+  } catch {
+    // Invalid percent sequences are treated as literal characters and encoded below.
+  }
+  return encodeURIComponent(decodedSegment);
+};
 
-  const replaceParentheses = (value: string) =>
-    value.replace(/[()]/g, (match) => (match === '(' ? '[' : ']'));
-
-  return replaceParentheses(key)
-    .replace(/\s/g, '_')
-    .split('/')
-    .map((segment) => {
-      const sanitized = segment.replace(/\\/g, '_').replace(/[\u0000-\u001f\u007f]/gu, '_');
-      if (sanitized.trim() === '.' || sanitized.trim() === '..') return '_';
-      return sanitized || '_';
-    })
-    .join('/');
+/**
+ * Encode an object key before it is persisted or sent to object storage.
+ * The function validates the encoded key internally and throws when the
+ * resulting key violates the shared storage contract.
+ */
+export function encodeS3ObjectKey(key: string): string {
+  const encodedKey = key.split('/').map(encodeObjectKeySegment).join('/');
+  assertStorageObjectKey(encodedKey);
+  return encodedKey;
 }

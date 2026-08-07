@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  sanitizeS3ObjectKey,
+  encodeS3ObjectKey,
   getFormatedFilename,
   truncateFilename,
   S3_FILENAME_MAX_LENGTH,
@@ -12,8 +12,8 @@ import * as stringTools from '@fastgpt/global/common/string/tools';
 import { StorageObjectKeySchema } from '@fastgpt/service/common/s3/contracts/type';
 
 describe('uploadImage2S3Bucket', () => {
-  it('sanitizes invalid keys at the FastGPT boundary', () => {
-    expect(StorageObjectKeySchema.parse('dataset//image.png')).toBe('dataset/_/image.png');
+  it('rejects invalid keys at the FastGPT boundary', () => {
+    expect(() => StorageObjectKeySchema.parse('dataset//image.png')).toThrow();
   });
 });
 
@@ -152,30 +152,30 @@ describe('getFormatedFilename', () => {
     it('should handle filename with spaces', () => {
       const result = getFormatedFilename('my document.pdf');
 
-      expect(result.formatedFilename).toBe('my_document_abc123');
+      expect(result.formatedFilename).toBe('my%20document_abc123');
       expect(result.extension).toBe('pdf');
     });
   });
 
-  describe('parentheses sanitization', () => {
-    it('should replace opening parenthesis with opening bracket', () => {
+  describe('parentheses encoding', () => {
+    it('should preserve opening parenthesis as encodeURIComponent does', () => {
       const result = getFormatedFilename('file(name).pdf');
 
-      expect(result.formatedFilename).toBe('file[name]_abc123');
+      expect(result.formatedFilename).toBe('file(name)_abc123');
       expect(result.extension).toBe('pdf');
     });
 
-    it('should replace closing parenthesis with closing bracket', () => {
+    it('should preserve closing parenthesis as encodeURIComponent does', () => {
       const result = getFormatedFilename('file(test).pdf');
 
-      expect(result.formatedFilename).toBe('file[test]_abc123');
+      expect(result.formatedFilename).toBe('file(test)_abc123');
       expect(result.extension).toBe('pdf');
     });
 
-    it('should replace multiple parentheses', () => {
+    it('should preserve multiple parentheses as encodeURIComponent does', () => {
       const result = getFormatedFilename('(file)(name)(test).pdf');
 
-      expect(result.formatedFilename).toBe('[file][name][test]_abc123');
+      expect(result.formatedFilename).toBe('(file)(name)(test)_abc123');
       expect(result.extension).toBe('pdf');
     });
   });
@@ -240,14 +240,14 @@ describe('getFormatedFilename', () => {
     it('should handle Chinese characters', () => {
       const result = getFormatedFilename('文档.pdf');
 
-      expect(result.formatedFilename).toBe('文档_abc123');
+      expect(result.formatedFilename).toBe('%E6%96%87%E6%A1%A3_abc123');
       expect(result.extension).toBe('pdf');
     });
 
     it('should handle mixed Chinese and English', () => {
       const result = getFormatedFilename('my文档document.pdf');
 
-      expect(result.formatedFilename).toBe('my文档document_abc123');
+      expect(result.formatedFilename).toBe('my%E6%96%87%E6%A1%A3document_abc123');
       expect(result.extension).toBe('pdf');
     });
 
@@ -314,14 +314,14 @@ describe('getFormatedFilename', () => {
     it('should handle typical user upload filename', () => {
       const result = getFormatedFilename('My Document (Final Version).pdf');
 
-      expect(result.formatedFilename).toBe('My_Document_[Final_Version]_abc123');
+      expect(result.formatedFilename).toBe('My%20Document%20(Final%20Version)_abc123');
       expect(result.extension).toBe('pdf');
     });
 
     it('should handle filename from different OS', () => {
       const result = getFormatedFilename('file:name.pdf'); // colon in Windows
 
-      expect(result.formatedFilename).toBe('file:name_abc123');
+      expect(result.formatedFilename).toBe('file%3Aname_abc123');
       expect(result.extension).toBe('pdf');
     });
 
@@ -380,81 +380,28 @@ describe('getFormatedFilename', () => {
   });
 });
 
-describe('sanitizeS3ObjectKey', () => {
-  it('should replace parentheses with square brackets', () => {
-    expect(sanitizeS3ObjectKey('file(1).txt')).toBe('file[1].txt');
-    expect(sanitizeS3ObjectKey('photo (copy).jpg')).toBe('photo_[copy].jpg');
-    expect(sanitizeS3ObjectKey('document(v2)(final).pdf')).toBe('document[v2][final].pdf');
-  });
-
-  it('should replace opening parenthesis with opening bracket', () => {
-    expect(sanitizeS3ObjectKey('test(')).toBe('test[');
-    expect(sanitizeS3ObjectKey('((test')).toBe('[[test');
-  });
-
-  it('should replace closing parenthesis with closing bracket', () => {
-    expect(sanitizeS3ObjectKey('test)')).toBe('test]');
-    expect(sanitizeS3ObjectKey('test))')).toBe('test]]');
-  });
-
-  it('should handle multiple parentheses', () => {
-    expect(sanitizeS3ObjectKey('a(b)c(d)e')).toBe('a[b]c[d]e');
-    expect(sanitizeS3ObjectKey('((()))')).toBe('[[[]]]');
-  });
-
-  it('should return unchanged string when no parentheses present', () => {
-    expect(sanitizeS3ObjectKey('normal-file.txt')).toBe('normal-file.txt');
-    expect(sanitizeS3ObjectKey('path/to/file.jpg')).toBe('path/to/file.jpg');
-    expect(sanitizeS3ObjectKey('file_name_123.pdf')).toBe('file_name_123.pdf');
-  });
-
-  it('should handle empty string', () => {
-    expect(sanitizeS3ObjectKey('')).toBe('');
-  });
-
-  it('should preserve existing square brackets', () => {
-    expect(sanitizeS3ObjectKey('file[1].txt')).toBe('file[1].txt');
-    expect(sanitizeS3ObjectKey('file[1](2).txt')).toBe('file[1][2].txt');
-  });
-
-  it('should handle S3 key paths with parentheses', () => {
-    expect(sanitizeS3ObjectKey('dataset/uploads/file (1).pdf')).toBe(
-      'dataset/uploads/file_[1].pdf'
-    );
-    expect(sanitizeS3ObjectKey('chat/images/photo(copy).jpg')).toBe('chat/images/photo[copy].jpg');
-  });
-
-  it('should replace spaces with underscores', () => {
-    expect(sanitizeS3ObjectKey('my file.txt')).toBe('my_file.txt');
-    expect(sanitizeS3ObjectKey('photo copy.jpg')).toBe('photo_copy.jpg');
-    expect(sanitizeS3ObjectKey('document  final  version.pdf')).toBe(
-      'document__final__version.pdf'
+describe('encodeS3ObjectKey', () => {
+  it('encodes each path segment while preserving separators', () => {
+    expect(encodeS3ObjectKey('team/user name/file (1).txt')).toBe(
+      'team/user%20name/file%20(1).txt'
     );
   });
 
-  it('should handle both spaces and parentheses together', () => {
-    expect(sanitizeS3ObjectKey('my file (1).txt')).toBe('my_file_[1].txt');
-    expect(sanitizeS3ObjectKey('photo (copy) of me.jpg')).toBe('photo_[copy]_of_me.jpg');
-    expect(sanitizeS3ObjectKey('report (2024) final version.pdf')).toBe(
-      'report_[2024]_final_version.pdf'
-    );
+  it('is idempotent for already encoded segments', () => {
+    const encoded = 'team/user%20name/file%20(1).txt';
+    expect(encodeS3ObjectKey(encoded)).toBe(encoded);
+    expect(encodeS3ObjectKey(encodeS3ObjectKey(encoded))).toBe(encoded);
   });
 
-  it('should handle multiple consecutive spaces', () => {
-    expect(sanitizeS3ObjectKey('file   with   many   spaces.txt')).toBe(
-      'file___with___many___spaces.txt'
-    );
+  it('throws when the encoded key violates the storage key contract', () => {
+    expect(() => encodeS3ObjectKey('')).toThrow();
+    expect(() => encodeS3ObjectKey('/file.txt')).toThrow();
+    expect(() => encodeS3ObjectKey('folder//file.txt')).toThrow();
+    expect(() => encodeS3ObjectKey('folder/../file.txt')).toThrow();
   });
 
-  it('should handle leading and trailing spaces', () => {
-    expect(sanitizeS3ObjectKey('  file  ')).toBe('__file__');
-    expect(sanitizeS3ObjectKey('  path/to/file  ')).toBe('__path/to/file__');
-  });
-
-  it('should sanitize invalid path segments consistently', () => {
-    expect(sanitizeS3ObjectKey('team\\user/../file\u0000.txt')).toBe('team_user/_/file_.txt');
-    expect(sanitizeS3ObjectKey('/file.txt')).toBe('_/file.txt');
-    expect(sanitizeS3ObjectKey('folder//file.txt')).toBe('folder/_/file.txt');
+  it('encodes backslashes and control characters instead of replacing them', () => {
+    expect(encodeS3ObjectKey('team\\user/file\u0000.txt')).toBe('team%5Cuser/file%00.txt');
   });
 });
 
@@ -598,8 +545,8 @@ describe('getFileS3Key', () => {
         filename: '文档.pdf'
       });
 
-      expect(result.fileKey).toBe('temp/team123/文档_abc123.pdf');
-      expect(result.fileParsedPrefix).toBe('temp/team123/文档_abc123-parsed');
+      expect(result.fileKey).toBe('temp/team123/%E6%96%87%E6%A1%A3_abc123.pdf');
+      expect(result.fileParsedPrefix).toBe('temp/team123/%E6%96%87%E6%A1%A3_abc123-parsed');
     });
   });
 
@@ -810,25 +757,25 @@ describe('getFileS3Key', () => {
   });
 
   describe('integration - sanitization', () => {
-    it('should sanitize parentheses in temp files', () => {
+    it('should encode parentheses in temp files', () => {
       const result = getFileS3Key.temp({
         teamId: 'team123',
         filename: 'file(1).pdf'
       });
 
-      expect(result.fileKey).toBe('temp/team123/file[1]_abc123.pdf');
+      expect(result.fileKey).toBe('temp/team123/file(1)_abc123.pdf');
     });
 
-    it('should sanitize parentheses in avatar files', () => {
+    it('should encode parentheses in avatar files', () => {
       const result = getFileS3Key.avatar({
         teamId: 'team123',
         filename: 'avatar(copy).jpg'
       });
 
-      expect(result.fileKey).toBe('avatar/team123/avatar[copy]_abc123.jpg');
+      expect(result.fileKey).toBe('avatar/team123/avatar(copy)_abc123.jpg');
     });
 
-    it('should sanitize parentheses in chat files', () => {
+    it('should encode parentheses in chat files', () => {
       const result = getFileS3Key.chat({
         appId: 'app123',
         chatId: 'chat456',
@@ -836,16 +783,16 @@ describe('getFileS3Key', () => {
         filename: 'image(final).png'
       });
 
-      expect(result.fileKey).toBe('chat/app123/user789/chat456/image[final]_abc123.png');
+      expect(result.fileKey).toBe('chat/app123/user789/chat456/image(final)_abc123.png');
     });
 
-    it('should sanitize parentheses in dataset files', () => {
+    it('should encode parentheses in dataset files', () => {
       const result = getFileS3Key.dataset({
         datasetId: 'dataset123',
         filename: 'data(v2).csv'
       });
 
-      expect(result.fileKey).toBe('dataset/dataset123/data[v2]_abc123.csv');
+      expect(result.fileKey).toBe('dataset/dataset123/data(v2)_abc123.csv');
     });
   });
 

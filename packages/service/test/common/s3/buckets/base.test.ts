@@ -758,7 +758,7 @@ describe('S3BaseBucket historical key compatibility', () => {
   it('falls back to the raw key for reads and existence checks', async () => {
     const { storage, bucket } = createBucket();
     const rawKey = 'legacy/user name/file.txt';
-    const canonicalKey = 'legacy/user_name/file.txt';
+    const canonicalKey = 'legacy/user%20name/file.txt';
     vi.spyOn(storage, 'checkObjectExists')
       .mockResolvedValueOnce({ bucket: storage.bucketName, key: canonicalKey, exists: false })
       .mockResolvedValueOnce({ bucket: storage.bucketName, key: rawKey, exists: true });
@@ -786,7 +786,7 @@ describe('S3BaseBucket historical key compatibility', () => {
   it('uses the raw source as a copy fallback and deletes both key forms', async () => {
     const { storage, bucket } = createBucket();
     const rawKey = 'legacy/user name/file.txt';
-    const canonicalKey = 'legacy/user_name/file.txt';
+    const canonicalKey = 'legacy/user%20name/file.txt';
     vi.spyOn(storage, 'copyObjectInSelfBucket')
       .mockRejectedValueOnce({ statusCode: 404 })
       .mockResolvedValueOnce({
