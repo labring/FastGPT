@@ -32,7 +32,9 @@ const getPublishedFileSelectConfig = ({
 }: {
   chatConfig?: {
     fileSelectConfig?: AppFileSelectConfigType;
-    variables?: Array<AppFileSelectConfigType & { type?: VariableInputEnum }>;
+    variables?: Array<
+      AppFileSelectConfigType & { type?: VariableInputEnum; canLocalUpload?: boolean }
+    >;
   };
   nodes?: Array<{
     flowNodeType?: string;
@@ -40,7 +42,7 @@ const getPublishedFileSelectConfig = ({
   }>;
 }): AppFileSelectConfigType | undefined => {
   const fileVariables = chatConfig?.variables?.filter(
-    (item) => item.type === VariableInputEnum.file
+    (item) => item.type === VariableInputEnum.file && item.canLocalUpload !== false
   );
   const pluginFileInputs = nodes
     .filter((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)

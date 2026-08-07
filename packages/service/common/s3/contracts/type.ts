@@ -5,20 +5,10 @@ import {
   UploadFileHintSchema,
   UploadPolicySchema
 } from '../uploadPolicy/type';
-import { assertStorageObjectKey } from '@fastgpt-sdk/storage';
 import type { MultipartUploadPart, StorageUploadBody } from '@fastgpt-sdk/storage';
 
 /** FastGPT 入口与底层 Storage SDK 共用同一套对象 key 规范。 */
-export const StorageObjectKeySchema = z.string().superRefine((key, context) => {
-  try {
-    assertStorageObjectKey(key);
-  } catch (error) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: error instanceof Error ? error.message : 'Invalid storage object key'
-    });
-  }
-});
+export const StorageObjectKeySchema = z.string();
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -155,7 +145,8 @@ export type AbortMultipartUploadAccessParams = {
 export const CreateGetPresignedUrlParamsSchema = z.object({
   key: StorageObjectKeySchema,
   expiredHours: z.number().positive().optional(),
-  responseContentType: z.string().nonempty().optional()
+  responseContentType: z.string().nonempty().optional(),
+  filename: z.string().min(1).optional()
 });
 export type createPreviewUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
 

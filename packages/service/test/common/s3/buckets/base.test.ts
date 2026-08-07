@@ -753,3 +753,83 @@ describe('S3BaseBucket Multipart helpers', () => {
     });
   });
 });
+
+describe('S3BaseBucket historical key compatibility', () => {
+  it('falls back to the raw key for reads and existence checks', async () => {
+    const { storage, bucket } = createBucket();
+    const rawKey = 'legacy/user name/file.txt';
+    const canonicalKey = 'legacy/user%20name/file.txt';
+    vi.spyOn(storage, 'checkObjectExists')
+      .mockResolvedValueOnce({ bucket: storage.bucketName, key: canonicalKey, exists: false })
+      .mockResolvedValueOnce({ bucket: storage.bucketName, key: rawKey, exists: true });
+    vi.spyOn(storage, 'getObjectMetadata')
+      .mockRejectedValueOnce({ statusCode: 404 })
+      .mockResolvedValueOnce({
+        bucket: storage.bucketName,
+        key: rawKey,
+        metadata: { originFilename: encodeURIComponent('file.txt') },
+        contentLength: 4,
+        contentType: 'text/plain'
+      });
+
+    await expect(bucket.isObjectExists(canonicalKey)).resolves.toBe(true);
+    await expect(bucket.getFileMetadata(canonicalKey)).resolves.toMatchObject({
+      filename: 'file.txt',
+      contentLength: 4
+    });
+    expect(storage.checkObjectExists).toHaveBeenNthCalledWith(1, { key: canonicalKey });
+    expect(storage.checkObjectExists).toHaveBeenNthCalledWith(2, { key: rawKey });
+    expect(storage.getObjectMetadata).toHaveBeenNthCalledWith(1, { key: canonicalKey });
+    expect(storage.getObjectMetadata).toHaveBeenNthCalledWith(2, { key: rawKey });
+  });
+
+  it('uses the raw source as a copy fallback and deletes both key forms', async () => {
+    const { storage, bucket } = createBucket();
+    const rawKey = 'legacy/user name/file.txt';
+    const canonicalKey = 'legacy/user%20name/file.txt';
+    vi.spyOn(storage, 'copyObjectInSelfBucket')
+      .mockRejectedValueOnce({ statusCode: 404 })
+      .mockResolvedValueOnce({
+        bucket: storage.bucketName,
+        sourceKey: rawKey,
+        targetKey: 'archive/file.txt'
+      });
+
+    await expect(
+      bucket.copy({ from: canonicalKey, to: 'archive/file.txt' })
+    ).resolves.toMatchObject({
+      sourceKey: rawKey,
+      targetKey: 'archive/file.txt'
+    });
+    expect(storage.copyObjectInSelfBucket).toHaveBeenNthCalledWith(1, {
+      sourceKey: canonicalKey,
+      targetKey: 'archive/file.txt'
+    });
+    expect(storage.copyObjectInSelfBucket).toHaveBeenNthCalledWith(2, {
+      sourceKey: rawKey,
+      targetKey: 'archive/file.txt'
+    });
+
+    await bucket.removeObject(canonicalKey);
+    expect(storage.deleteObject).toHaveBeenNthCalledWith(1, { key: canonicalKey });
+    expect(storage.deleteObject).toHaveBeenNthCalledWith(2, { key: rawKey });
+  });
+
+  it('validates body-upload keys before creating a TTL record', async () => {
+    const { storage, bucket } = createBucket();
+    const invalidKey = 'dataset//file.txt';
+
+    await expect(
+      bucket.uploadFileByBody({
+        key: invalidKey,
+        body: 'content',
+        filename: 'file.txt'
+      })
+    ).rejects.toThrow('consecutive slashes');
+
+    await expect(
+      MongoS3TTL.findOne({ bucketName: storage.bucketName, minioKey: invalidKey })
+    ).resolves.toBeNull();
+    expect(storage.uploadObject).not.toHaveBeenCalled();
+  });
+});

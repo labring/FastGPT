@@ -46,13 +46,13 @@ import type {
   UploadMultipartPartResult,
   IStorage
 } from '@fastgpt-sdk/storage';
-import { isNoSuchMultipartUploadError } from '@fastgpt-sdk/storage';
+import { assertStorageObjectKey, isNoSuchMultipartUploadError } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import {
   createS3DownloadAccessUrl,
   createS3UploadAccessUrl,
-  deleteS3DownloadAliasByObject,
+  deleteS3DownloadAliasByObjects,
   markS3MultipartUploadAborted,
   markS3MultipartUploadCompleteFailed,
   markS3MultipartUploadCompleting,
@@ -65,6 +65,45 @@ import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/fil
 import { randomUUID } from 'node:crypto';
 
 const logger = getLogger(LogCategories.INFRA.S3);
+
+const getStorageKeyCandidates = (key: string): string[] => {
+  assertStorageObjectKey(key);
+  const legacyKey = key
+    .split('/')
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join('/');
+
+  return legacyKey === key ? [key] : [key, legacyKey];
+};
+
+const withStorageKeyFallback = async <T>(
+  key: string,
+  operation: (candidate: string) => Promise<T>
+): Promise<T> => {
+  const candidates = getStorageKeyCandidates(key);
+  try {
+    return await operation(candidates[0]);
+  } catch (error) {
+    if (candidates.length === 1 || !isFileNotFoundError(error)) throw error;
+    return operation(candidates[1]);
+  }
+};
+
+/** Decode an encoded key basename for download links when the caller has no original filename. */
+const getDownloadFilenameFromKey = (key: string) => {
+  const filename = path.basename(key);
+  try {
+    return decodeURIComponent(filename) || 'file';
+  } catch {
+    return filename || 'file';
+  }
+};
 
 export class S3BaseBucket {
   constructor(
@@ -92,8 +131,8 @@ export class S3BaseBucket {
       key,
       body: Buffer.from('ok'),
       contentType: 'text/plain',
+      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
         originFilename: filename,
         uploadTime: new Date().toISOString()
       }
@@ -138,35 +177,36 @@ export class S3BaseBucket {
       temporary?: boolean;
     };
   }) {
+    assertStorageObjectKey(to, 'targetKey');
+    const targetKey = to;
     if (options?.temporary) {
       await MongoS3TTL.create({
-        minioKey: to,
+        minioKey: targetKey,
         bucketName: this.bucketName,
         expiredTime: addHours(new Date(), 24)
       });
     }
-    return this.client.copyObjectInSelfBucket({ sourceKey: from, targetKey: to });
+    return withStorageKeyFallback(from, (sourceKey) =>
+      this.client.copyObjectInSelfBucket({ sourceKey, targetKey })
+    );
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    await this.client.deleteObject({ key: objectKey }).catch((err) => {
-      if (isFileNotFoundError(err)) {
-        return Promise.resolve();
-      }
-      logger.error('S3 delete object failed', {
-        key: objectKey,
-        code: err?.code,
-        error: err
+    const keys = getStorageKeyCandidates(objectKey);
+    for (const key of keys) {
+      await this.client.deleteObject({ key }).catch((err) => {
+        if (isFileNotFoundError(err)) return;
+        logger.error('S3 delete object failed', { key, code: err?.code, error: err });
+        throw err;
       });
-      throw err;
-    });
+    }
 
-    deleteS3DownloadAliasByObject({
+    deleteS3DownloadAliasByObjects({
       bucketName: this.bucketName,
-      objectKey
+      objectKeys: keys
     }).catch((err) => {
       logger.warn('S3 download alias cleanup failed after object delete', {
-        key: objectKey,
+        key: keys,
         bucketName: this.bucketName,
         error: err
       });
@@ -258,9 +298,12 @@ export class S3BaseBucket {
   }
 
   async isObjectExists(key: string) {
-    const { exists } = await this.client.checkObjectExists({ key });
-
-    return exists ?? false;
+    const candidates = getStorageKeyCandidates(key);
+    const { exists } = await this.client.checkObjectExists({ key: candidates[0] });
+    if (exists) return true;
+    if (candidates.length === 1) return false;
+    const fallback = await this.client.checkObjectExists({ key: candidates[1] });
+    return fallback.exists ?? false;
   }
 
   /**
@@ -335,7 +378,8 @@ export class S3BaseBucket {
 
       const { url: previewUrl } = await this.createExternalUrl({
         key: parsedParams.rawKey,
-        expiredHours
+        expiredHours,
+        filename: resolvedFilename
       });
 
       return {
@@ -485,7 +529,8 @@ export class S3BaseBucket {
 
       const { url: previewUrl } = await this.createExternalUrl({
         key: parsedParams.rawKey,
-        expiredHours
+        expiredHours,
+        filename: resolvedFilename
       });
 
       return {
@@ -946,7 +991,7 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours, responseContentType } = parsed;
+    const { key, expiredHours, responseContentType, filename } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return {
@@ -956,7 +1001,7 @@ export class S3BaseBucket {
         objectKey: key,
         bucketName: this.bucketName,
         expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
-        filename: path.basename(key),
+        filename: filename ?? getDownloadFilenameFromKey(key),
         responseContentType
       })
     };
@@ -984,6 +1029,7 @@ export class S3BaseBucket {
       contentLength,
       expiredTime = addHours(new Date(), 1)
     } = UploadFileByBodySchema.parse(params);
+    assertStorageObjectKey(key);
 
     await MongoS3TTL.create({
       minioKey: key,
@@ -996,8 +1042,8 @@ export class S3BaseBucket {
       body,
       contentType: contentType ?? 'application/octet-stream',
       contentLength,
+      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
         originFilename: encodeURIComponent(filename),
         uploadTime: new Date().toISOString()
       }
@@ -1013,7 +1059,9 @@ export class S3BaseBucket {
   }
 
   async getFileMetadata(key: string) {
-    const metadataResponse = await this.client.getObjectMetadata({ key }).catch((error) => {
+    const metadataResponse = await withStorageKeyFallback(key, (candidate) =>
+      this.client.getObjectMetadata({ key: candidate })
+    ).catch((error) => {
       if (isFileNotFoundError(error)) {
         throw CommonErrEnum.fileNotFound;
       }
@@ -1035,10 +1083,12 @@ export class S3BaseBucket {
   }
 
   async getFileStream(key: string, options?: { abortSignal?: AbortSignal }) {
-    const downloadResponse = await this.client.downloadObject({
-      key,
-      ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
-    });
+    const downloadResponse = await withStorageKeyFallback(key, (candidate) =>
+      this.client.downloadObject({
+        key: candidate,
+        ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
+      })
+    );
     if (!downloadResponse) return;
 
     return downloadResponse.body;

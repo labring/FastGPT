@@ -99,6 +99,9 @@ const parseRequestFilename = (filename?: string) => {
   }
 };
 
+const parseObjectKeyFilename = (objectKey: string) =>
+  parseRequestFilename(path.basename(objectKey)) || 'file';
+
 export const parseS3ProxyContentLength = (value: string | string[] | undefined) => {
   const raw = Array.isArray(value) ? value[0] : value;
   if (!raw) return undefined;
@@ -234,12 +237,10 @@ export const buildS3UploadMetadata = ({
 }) => {
   if (!filename) return metadata;
 
+  const { contentDisposition: _contentDisposition, ...customMetadata } = metadata ?? {};
+
   return {
-    ...metadata,
-    contentDisposition: getContentDisposition({
-      filename,
-      type: 'attachment'
-    }),
+    ...customMetadata,
     originFilename: encodeURIComponent(filename)
   };
 };
@@ -256,7 +257,7 @@ const resolveProxyUploadFileHint = ({
   if (fileHint) return fileHint;
 
   return {
-    filename: parseRequestFilename(metadata?.originFilename) || path.basename(objectKey) || 'file'
+    filename: parseRequestFilename(metadata?.originFilename) || parseObjectKeyFilename(objectKey)
   };
 };
 
@@ -288,8 +289,7 @@ export const handleS3ProxyDownload = async ({
     const filename =
       parseRequestFilename(payload.filename) ||
       metadata?.filename ||
-      path.basename(objectKey) ||
-      'file';
+      parseObjectKeyFilename(objectKey);
     const contentType =
       payload.responseContentType || metadata?.contentType || DEFAULT_CONTENT_TYPE;
 
@@ -441,6 +441,10 @@ export const handleS3ProxyUpload = async ({
     body: guardStream,
     contentType: validatedFile.contentType,
     contentLength,
+    contentDisposition: getContentDisposition({
+      filename: validatedFile.filename,
+      type: 'attachment'
+    }),
     metadata: buildS3UploadMetadata({
       metadata,
       filename: validatedFile.filename
