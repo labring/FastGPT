@@ -26,11 +26,13 @@ const getPublishedFileSelectConfig = ({
 }: {
   chatConfig?: {
     fileSelectConfig?: AppFileSelectConfigType;
-    variables?: Array<AppFileSelectConfigType & { type?: VariableInputEnum }>;
+    variables?: Array<
+      AppFileSelectConfigType & { type?: VariableInputEnum; canLocalUpload?: boolean }
+    >;
   };
 }): AppFileSelectConfigType | undefined => {
   const fileVariables = chatConfig?.variables?.filter(
-    (item) => item.type === VariableInputEnum.file
+    (item) => item.type === VariableInputEnum.file && item.canLocalUpload !== false
   );
   if (!fileVariables?.length) return chatConfig?.fileSelectConfig;
 

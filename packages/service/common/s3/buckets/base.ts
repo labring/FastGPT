@@ -53,7 +53,7 @@ import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import {
   createS3DownloadAccessUrl,
   createS3UploadAccessUrl,
-  deleteS3DownloadAliasByObject,
+  deleteS3DownloadAliasByObjects,
   markS3MultipartUploadAborted,
   markS3MultipartUploadCompleteFailed,
   markS3MultipartUploadCompleting,
@@ -69,6 +69,24 @@ const logger = getLogger(LogCategories.INFRA.S3);
 
 /** Normalize keys at bucket boundaries so Mongo records and provider objects share one identity. */
 const canonicalizeObjectKey = (key: string): string => StorageObjectKeySchema.parse(key);
+
+const getStorageKeyCandidates = (key: string): string[] => {
+  const canonicalKey = canonicalizeObjectKey(key);
+  return canonicalKey === key ? [canonicalKey] : [canonicalKey, key];
+};
+
+const withStorageKeyFallback = async <T>(
+  key: string,
+  operation: (candidate: string) => Promise<T>
+): Promise<T> => {
+  const candidates = getStorageKeyCandidates(key);
+  try {
+    return await operation(candidates[0]);
+  } catch (error) {
+    if (candidates.length === 1 || !isFileNotFoundError(error)) throw error;
+    return operation(candidates[1]);
+  }
+};
 
 export class S3BaseBucket {
   constructor(
@@ -142,7 +160,6 @@ export class S3BaseBucket {
       temporary?: boolean;
     };
   }) {
-    const sourceKey = canonicalizeObjectKey(from);
     const targetKey = canonicalizeObjectKey(to);
     if (options?.temporary) {
       await MongoS3TTL.create({
@@ -151,29 +168,27 @@ export class S3BaseBucket {
         expiredTime: addHours(new Date(), 24)
       });
     }
-    return this.client.copyObjectInSelfBucket({ sourceKey, targetKey });
+    return withStorageKeyFallback(from, (sourceKey) =>
+      this.client.copyObjectInSelfBucket({ sourceKey, targetKey })
+    );
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    const key = canonicalizeObjectKey(objectKey);
-    await this.client.deleteObject({ key }).catch((err) => {
-      if (isFileNotFoundError(err)) {
-        return Promise.resolve();
-      }
-      logger.error('S3 delete object failed', {
-        key,
-        code: err?.code,
-        error: err
+    const keys = getStorageKeyCandidates(objectKey);
+    for (const key of keys) {
+      await this.client.deleteObject({ key }).catch((err) => {
+        if (isFileNotFoundError(err)) return;
+        logger.error('S3 delete object failed', { key, code: err?.code, error: err });
+        throw err;
       });
-      throw err;
-    });
+    }
 
-    deleteS3DownloadAliasByObject({
+    deleteS3DownloadAliasByObjects({
       bucketName: this.bucketName,
-      objectKey: key
+      objectKeys: keys
     }).catch((err) => {
       logger.warn('S3 download alias cleanup failed after object delete', {
-        key: objectKey,
+        key: keys,
         bucketName: this.bucketName,
         error: err
       });
@@ -265,10 +280,12 @@ export class S3BaseBucket {
   }
 
   async isObjectExists(key: string) {
-    const canonicalKey = canonicalizeObjectKey(key);
-    const { exists } = await this.client.checkObjectExists({ key: canonicalKey });
-
-    return exists ?? false;
+    const candidates = getStorageKeyCandidates(key);
+    const { exists } = await this.client.checkObjectExists({ key: candidates[0] });
+    if (exists) return true;
+    if (candidates.length === 1) return false;
+    const fallback = await this.client.checkObjectExists({ key: candidates[1] });
+    return fallback.exists ?? false;
   }
 
   /**
@@ -1020,15 +1037,14 @@ export class S3BaseBucket {
   }
 
   async getFileMetadata(key: string) {
-    const canonicalKey = canonicalizeObjectKey(key);
-    const metadataResponse = await this.client
-      .getObjectMetadata({ key: canonicalKey })
-      .catch((error) => {
-        if (isFileNotFoundError(error)) {
-          throw CommonErrEnum.fileNotFound;
-        }
-        throw error;
-      });
+    const metadataResponse = await withStorageKeyFallback(key, (candidate) =>
+      this.client.getObjectMetadata({ key: candidate })
+    ).catch((error) => {
+      if (isFileNotFoundError(error)) {
+        throw CommonErrEnum.fileNotFound;
+      }
+      throw error;
+    });
     if (!metadataResponse) return;
 
     const contentLength = metadataResponse.contentLength;
@@ -1045,11 +1061,12 @@ export class S3BaseBucket {
   }
 
   async getFileStream(key: string, options?: { abortSignal?: AbortSignal }) {
-    const canonicalKey = canonicalizeObjectKey(key);
-    const downloadResponse = await this.client.downloadObject({
-      key: canonicalKey,
-      ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
-    });
+    const downloadResponse = await withStorageKeyFallback(key, (candidate) =>
+      this.client.downloadObject({
+        key: candidate,
+        ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
+      })
+    );
     if (!downloadResponse) return;
 
     return downloadResponse.body;
