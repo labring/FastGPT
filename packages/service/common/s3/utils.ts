@@ -153,8 +153,8 @@ export async function uploadImage2S3Bucket(
     key: uploadKey,
     body: buffer,
     contentType: mimetype,
+    contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
     metadata: {
-      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       uploadTime: new Date().toISOString(),
       originFilename: encodeURIComponent(filename)
     }

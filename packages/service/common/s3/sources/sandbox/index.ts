@@ -1,6 +1,7 @@
 import type { Readable } from 'node:stream';
 import { S3PrivateBucket } from '../../buckets/private';
 import { readStreamToBuffer } from '../../utils';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 
 const SANDBOX_WORKSPACE_ARCHIVE_FILENAME = 'package.zip';
 
@@ -21,6 +22,10 @@ export class S3SandboxSource extends S3PrivateBucket {
       key: params.key,
       body: params.body,
       contentType: 'application/zip',
+      contentDisposition: getContentDisposition({
+        filename: SANDBOX_WORKSPACE_ARCHIVE_FILENAME,
+        type: 'attachment'
+      }),
       metadata: {
         uploadTime: new Date().toISOString(),
         originFilename: encodeURIComponent(SANDBOX_WORKSPACE_ARCHIVE_FILENAME)

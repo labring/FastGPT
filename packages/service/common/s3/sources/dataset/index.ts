@@ -50,7 +50,12 @@ export class S3DatasetSource extends S3PrivateBucket {
         : undefined;
 
     if (external) {
-      return await this.createExternalUrl({ key, expiredHours, responseContentType });
+      return await this.createExternalUrl({
+        key,
+        expiredHours,
+        responseContentType,
+        filename: fileMetadata?.filename
+      });
     }
     return await this.createPreviewUrl({ key, expiredHours, responseContentType });
   }
@@ -197,11 +202,11 @@ export class S3DatasetSource extends S3PrivateBucket {
       key,
       body: 'buffer' in file ? file.buffer : file.stream,
       contentType: contentType || resolveMimeType([truncatedFilename]),
+      contentDisposition: getContentDisposition({
+        filename: truncatedFilename,
+        type: 'attachment'
+      }),
       metadata: {
-        contentDisposition: getContentDisposition({
-          filename: truncatedFilename,
-          type: 'attachment'
-        }),
         uploadTime: new Date().toISOString(),
         originFilename: encodeURIComponent(truncatedFilename)
       }
