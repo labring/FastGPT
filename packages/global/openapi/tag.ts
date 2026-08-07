@@ -70,6 +70,7 @@ export const DevApiTagsMap = {
 
   /* 管理员-系统管理 */
   adminDashboard: '仪表盘',
+  adminStatus: '运维数据',
   adminInform: '通知管理',
   adminApps: '应用管理',
   adminWalletCoupon: '兑换码管理',

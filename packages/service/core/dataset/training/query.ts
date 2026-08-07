@@ -3,6 +3,7 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
+import { subMinutes } from 'date-fns';
 
 type TrainingStatusCount = {
   activeCount: number;
@@ -10,6 +11,18 @@ type TrainingStatusCount = {
 };
 
 export const BLOCKED_LOCK_TIME = new Date('2050-01-01');
+
+export const trainingModeLockTimeoutMinutes: Record<TrainingModeEnum, number> = {
+  [TrainingModeEnum.parse]: 10,
+  [TrainingModeEnum.imageParse]: 10,
+  [TrainingModeEnum.qa]: 10,
+  [TrainingModeEnum.image]: 10,
+  [TrainingModeEnum.auto]: 10,
+  [TrainingModeEnum.chunk]: 3
+};
+
+export const getTrainingLockExpireTime = (mode: TrainingModeEnum, now = new Date()) =>
+  subMinutes(now, trainingModeLockTimeoutMinutes[mode]);
 
 export const trainingModeRankMap: Record<TrainingModeEnum, number> = {
   [TrainingModeEnum.parse]: 0,

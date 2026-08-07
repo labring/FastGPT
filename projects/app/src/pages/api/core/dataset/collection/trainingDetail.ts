@@ -14,7 +14,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
   BLOCKED_LOCK_TIME,
-  finalErrorTrainingMatch
+  finalErrorTrainingMatch,
+  trainingModeLockTimeoutMinutes
 } from '@fastgpt/service/core/dataset/training/query';
 import { subMinutes } from 'date-fns';
 
@@ -25,15 +26,6 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   image: 0,
   auto: 0,
   imageParse: 0
-};
-
-const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
-  parse: 10,
-  qa: 10,
-  chunk: 3,
-  image: 10,
-  auto: 10,
-  imageParse: 10
 };
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
@@ -57,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
   };
 
   const now = new Date();
-  const activeTrainingExpr = Object.entries(MODE_LOCK_TIMEOUT_MINUTES).map(
+  const activeTrainingExpr = Object.entries(trainingModeLockTimeoutMinutes).map(
     ([mode, timeoutMinutes]) => ({
       mode,
       lockTime: { $gt: subMinutes(now, timeoutMinutes), $lt: BLOCKED_LOCK_TIME }
