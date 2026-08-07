@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { LanguageSchema } from '../../../../../common/i18n/type';
 import {
   AccountContactUsernameSchema,
+  AccountPasswordSchema,
+  ShortAuthStringSchema,
   AccountVerificationMethodSchema
 } from '../../../../../support/user/account/verification/type';
 
@@ -13,6 +15,19 @@ const OAuthVerificationMethods = [
   'oauth/wecom',
   'oauth/sso'
 ] as const;
+type OAuthVerificationMethod = (typeof OAuthVerificationMethods)[number];
+
+/** 将固定的 OAuth 验证方式展开为静态 tuple，避免动态数组擦除 union 的 schema 类型。 */
+const createOAuthVerificationSchemaTuple = <Schema extends z.ZodType>(
+  createSchema: (method: OAuthVerificationMethod) => Schema
+) =>
+  [
+    createSchema(OAuthVerificationMethods[0]),
+    createSchema(OAuthVerificationMethods[1]),
+    createSchema(OAuthVerificationMethods[2]),
+    createSchema(OAuthVerificationMethods[3]),
+    createSchema(OAuthVerificationMethods[4])
+  ] as const;
 
 const OAuthCreatePayloadSchema = z
   .object({
@@ -68,25 +83,32 @@ const WechatVerificationCreateSchema = z
   })
   .strict();
 
+const OAuthVerificationCreateSchemas = createOAuthVerificationSchemaTuple((method) =>
+  z
+    .object({
+      method: z.literal(method),
+      payload: OAuthCreatePayloadSchema
+    })
+    .strict()
+);
+
 export const CreatePasswordVerificationBodySchema = z.discriminatedUnion('method', [
   CodeVerificationCreateSchema,
   OldPasswordVerificationCreateSchema,
   WechatVerificationCreateSchema,
-  ...OAuthVerificationMethods.map((method) =>
-    z
-      .object({
-        method: z.literal(method),
-        payload: OAuthCreatePayloadSchema
-      })
-      .strict()
-  )
-] as [
-  typeof CodeVerificationCreateSchema,
-  typeof OldPasswordVerificationCreateSchema,
-  typeof WechatVerificationCreateSchema,
-  ...any[]
+  ...OAuthVerificationCreateSchemas
 ]);
 export type CreatePasswordVerificationBody = z.infer<typeof CreatePasswordVerificationBodySchema>;
+
+const OAuthVerificationResponseSchemas = createOAuthVerificationSchemaTuple((method) =>
+  z
+    .object({
+      method: z.literal(method),
+      state: z.string().min(16),
+      url: z.url()
+    })
+    .strict()
+);
 
 export const CreatePasswordVerificationResponseSchema = z.discriminatedUnion('method', [
   z.object({ method: z.literal('code'), sent: z.literal(true), maskedTarget: z.string() }).strict(),
@@ -99,16 +121,8 @@ export const CreatePasswordVerificationResponseSchema = z.discriminatedUnion('me
       expiredAt: DateTimeSchema.optional()
     })
     .strict(),
-  ...OAuthVerificationMethods.map((method) =>
-    z
-      .object({
-        method: z.literal(method),
-        state: z.string().min(16),
-        url: z.url()
-      })
-      .strict()
-  )
-] as [any, any, any, ...any[]]);
+  ...OAuthVerificationResponseSchemas
+]);
 export type CreatePasswordVerificationResponse = z.infer<
   typeof CreatePasswordVerificationResponseSchema
 >;
@@ -139,30 +153,27 @@ const WechatVerificationConsumeSchema = z
   })
   .strict();
 
+const OAuthVerificationConsumeSchemas = createOAuthVerificationSchemaTuple((method) =>
+  z
+    .object({
+      method: z.literal(method),
+      payload: OAuthConsumePayloadSchema
+    })
+    .strict()
+);
+
 export const SensitiveAccountVerificationBodySchema = z.discriminatedUnion('method', [
   CodeVerificationConsumeSchema,
   OldPasswordVerificationConsumeSchema,
   WechatVerificationConsumeSchema,
-  ...OAuthVerificationMethods.map((method) =>
-    z
-      .object({
-        method: z.literal(method),
-        payload: OAuthConsumePayloadSchema
-      })
-      .strict()
-  )
-] as [
-  typeof CodeVerificationConsumeSchema,
-  typeof OldPasswordVerificationConsumeSchema,
-  typeof WechatVerificationConsumeSchema,
-  ...any[]
+  ...OAuthVerificationConsumeSchemas
 ]);
 export type SensitiveAccountVerificationBody = z.infer<
   typeof SensitiveAccountVerificationBodySchema
 >;
 
 export const PasswordAuthorizationBodySchema = z.discriminatedUnion('source', [
-  z.object({ source: z.literal('recentLogin') }).strict(),
+  z.object({ source: z.literal('verificationMethod') }).strict(),
   z
     .object({
       source: z.literal('accountVerification'),
@@ -215,13 +226,10 @@ export const CheckPswExpiredResponseSchema = z.boolean().meta({
 });
 export type CheckPswExpiredResponseType = z.infer<typeof CheckPswExpiredResponseSchema>;
 
-export const UpdatePasswordByCodeBodySchema = z
-  .object({
-    username: AccountContactUsernameSchema.meta({ description: '用户名（邮箱或手机号）' }),
-    code: z.string().length(6).meta({ description: '验证码' }),
-    password: z.string().trim().min(1).max(512).meta({ description: '新密码' }),
-    tmbId: z.string().optional().meta({ description: '团队成员 ID（可选）' }),
-    language: LanguageSchema.optional().meta({ description: '语言' })
-  })
-  .strict();
+export const UpdatePasswordByCodeBodySchema = z.object({
+  username: AccountContactUsernameSchema.meta({ description: '用户名（邮箱或手机号）' }),
+  code: ShortAuthStringSchema.meta({ description: '验证码' }),
+  password: AccountPasswordSchema.meta({ description: '新密码' }),
+  language: LanguageSchema.optional().meta({ description: '语言' })
+});
 export type UpdatePasswordByCodeBodyType = z.infer<typeof UpdatePasswordByCodeBodySchema>;

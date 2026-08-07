@@ -19,7 +19,7 @@ describe('PasswordChangeTokenService', () => {
     });
     const result = service.sign('user-1');
 
-    expect(result.expiredAt.toISOString()).toBe('2026-07-22T10:05:00.000Z');
+    expect(result.expiredAt).toBe('2026-07-22T10:05:00.000Z');
     expect(service.verify({ token: result.token, userId: 'user-1' })).toEqual({
       userId: 'user-1',
       purpose: 'changePassword',

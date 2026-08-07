@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import {
+  VerificationCodeTypeEnum,
   accountVerificationMethods,
-  recognizedAccountKinds,
-  VerificationCodeTypeEnum
+  oauthAccountVerificationProviders,
+  recognizedAccountKinds
 } from './constants';
 
 export const ACCOUNT_VERIFICATION_PURPOSES = [
@@ -34,8 +35,8 @@ export type VerificationType = (typeof VERIFICATION_TYPES)[number];
 
 export const VERIFICATION_SCENES_BY_TYPE = {
   password: ['login'],
-  code: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'],
-  captcha: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'],
+  code: ['register', 'forgetPassword', 'changePassword', 'unsubscribe', 'bindNotification'],
+  captcha: ['register', 'forgetPassword', 'changePassword', 'unsubscribe', 'bindNotification'],
   // The callback adapter discovers the scene from all active QR materials.
   wechat: ACCOUNT_VERIFICATION_PURPOSES,
   oauth: ['login']
@@ -83,6 +84,7 @@ export type VerificationMaterialMatch<T extends VerificationType> = Partial<{
 export const VERIFICATION_CODE_TYPES = [
   VerificationCodeTypeEnum.register,
   VerificationCodeTypeEnum.findPassword,
+  VerificationCodeTypeEnum.passwordChange,
   VerificationCodeTypeEnum.unsubscribe,
   VerificationCodeTypeEnum.bindNotification
 ] as const;
@@ -98,6 +100,7 @@ export type CodeVerificationPurpose = z.infer<typeof CodeVerificationPurposeSche
 export const VERIFICATION_CODE_PURPOSES_BY_TYPE = {
   [VerificationCodeTypeEnum.register]: 'register',
   [VerificationCodeTypeEnum.findPassword]: 'forgetPassword',
+  [VerificationCodeTypeEnum.passwordChange]: 'changePassword',
   [VerificationCodeTypeEnum.unsubscribe]: 'unsubscribe',
   [VerificationCodeTypeEnum.bindNotification]: 'bindNotification'
 } as const satisfies Record<VerificationCodeType, CodeVerificationPurpose>;
@@ -129,6 +132,7 @@ export type PasswordVerificationPurpose = z.infer<typeof PasswordVerificationPur
 
 export const WechatPurposeSchema = AccountVerificationPurposeSchema.extract([
   'login',
+  'changePassword',
   'unsubscribe'
 ]);
 export type WechatPurpose = z.infer<typeof WechatPurposeSchema>;
@@ -158,6 +162,7 @@ export type AccountVerificationMethod = z.infer<typeof AccountVerificationMethod
 export const AccountVerificationCapabilitiesSchema = z.object({
   emailCode: z.boolean(),
   phoneCode: z.boolean(),
+  accountCancellation: z.boolean().optional(),
   wechat: z.boolean(),
   oauth: z.object({
     github: z.boolean(),
@@ -172,6 +177,14 @@ export type AccountVerificationCapabilities = z.infer<typeof AccountVerification
 export const RecognizedAccountKindSchema = z.enum(recognizedAccountKinds);
 export type RecognizedAccountKind = z.infer<typeof RecognizedAccountKindSchema>;
 
+export const AccountKindSchema = z.union([RecognizedAccountKindSchema, z.literal('invalid')]);
+export type AccountKind = z.infer<typeof AccountKindSchema>;
+
+export const AccountVerificationUnsupportedReasonSchema = z.enum([
+  'empty_username',
+  'no_available_verification_method'
+]);
+
 export const AccountVerificationResolutionSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('supported'),
@@ -181,9 +194,33 @@ export const AccountVerificationResolutionSchema = z.discriminatedUnion('status'
   }),
   z.object({
     status: z.literal('unsupported'),
-    accountKind: z.literal('invalid'),
+    accountKind: AccountKindSchema,
     method: z.undefined().optional(),
-    unsupportedReason: z.literal('empty_username')
+    unsupportedReason: AccountVerificationUnsupportedReasonSchema
   })
 ]);
 export type AccountVerificationResolution = z.infer<typeof AccountVerificationResolutionSchema>;
+
+export type AccountVerificationPasswordPolicy =
+  | {
+      allowPasswordFallback: false;
+      oldPasswordAvailable?: never;
+    }
+  | {
+      allowPasswordFallback: true;
+      oldPasswordAvailable: boolean;
+    };
+
+export const CodeAccountVerificationSceneSchema = z.enum([
+  'register',
+  'findPassword',
+  'bindNotification',
+  'accountCancellation',
+  'passwordChange'
+]);
+export type CodeAccountVerificationScene = z.infer<typeof CodeAccountVerificationSceneSchema>;
+
+export const OAuthAccountVerificationProviderSchema = z.enum(oauthAccountVerificationProviders);
+export type OAuthAccountVerificationProvider = z.infer<
+  typeof OAuthAccountVerificationProviderSchema
+>;
