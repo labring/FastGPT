@@ -103,6 +103,28 @@ describe('handleS3ProxyDownload', () => {
     expect(getFileStream).not.toHaveBeenCalled();
   });
 
+  it('decodes an encoded object-key filename when metadata is unavailable', async () => {
+    const req = createRequest();
+    const res = createResponse();
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        getFileStream: vi.fn().mockResolvedValue(Readable.from([Buffer.from('image-data')])),
+        getFileMetadata: vi.fn().mockResolvedValue(undefined)
+      }
+    } as any;
+
+    await handleS3ProxyDownload({
+      req,
+      res: res as any,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/%E6%96%87%E6%A1%A3.png'
+      }
+    });
+
+    expect(res.headers['Content-Disposition']).toContain("filename*=UTF-8''%E6%96%87%E6%A1%A3.png");
+  });
+
   it('aborts an S3 request when the client disconnects before the stream is ready', async () => {
     const req = createRequest();
     const res = createResponse();
