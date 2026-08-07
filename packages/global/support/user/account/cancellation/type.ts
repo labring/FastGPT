@@ -33,7 +33,8 @@ export const AccountCancellationUnavailableReasonSchema = z.enum([
   AccountCancellationUnavailableReasonEnum.rootAccount,
   AccountCancellationUnavailableReasonEnum.accountForbidden,
   AccountCancellationUnavailableReasonEnum.emptyUsername,
-  AccountCancellationUnavailableReasonEnum.verificationUnavailable
+  AccountCancellationUnavailableReasonEnum.verificationUnavailable,
+  AccountCancellationUnavailableReasonEnum.passwordVerificationNotAllowed
 ]);
 export type AccountCancellationUnavailableReason = z.infer<
   typeof AccountCancellationUnavailableReasonSchema
@@ -95,7 +96,10 @@ export type AccountCancellationResolveResult =
       status: 'unsupported';
       method?: undefined;
       accountKind: 'invalid' | string;
-      unsupportedReason: 'empty_username' | 'verification_unavailable';
+      unsupportedReason:
+        | 'empty_username'
+        | 'password_verification_not_allowed'
+        | 'verification_unavailable';
     };
 
 export type AccountCancellationAccessPreset =

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UpdatePasswordBody } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { passwordChangeTokenService } from '@fastgpt/service/support/user/account/password/service';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -96,6 +97,10 @@ describe('password/update API', () => {
     );
 
     expect(response.code).toBe(500);
+    expect(response.error).toMatchObject({
+      name: 'UserError',
+      message: UserErrEnum.newPasswordSameAsOld
+    });
     const unchangedUser = await MongoUser.findById(testUser._id).lean();
     expect(unchangedUser?.passwordUpdateTime).toBeUndefined();
   });

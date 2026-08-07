@@ -1,13 +1,24 @@
-import { AccountEmailUsernameSchema, AccountPhoneUsernameSchema } from '../verification/type';
-import type { AccountCancellationResolveResult, AccountCancellationResolverInput } from './type';
+import { resolveAccountVerificationByUsername } from '../verification/utils';
+import type { AccountVerificationCapabilities } from '../verification/type';
+import type {
+  AccountCancellationAllowedMethod,
+  AccountCancellationResolveResult,
+  AccountCancellationResolverInput
+} from './type';
 
-/** 将统一 resolver 的结果收窄为注销允许的非密码验证方式。 */
+/**
+ * 将统一 resolver 的结果收窄为注销允许的非密码验证方式。
+ *
+ * 注销场景禁止走旧密码降级，因此以 `allowPasswordFallback: false` 调用通用 resolver，
+ * 并把它的失败原因映射回注销语义（`no_available_verification_method` → `password_verification_not_allowed`）。
+ * 由于禁用了密码降级，返回的 method 永远不会是 `oldPassword`，可安全收窄为注销允许的方法集合。
+ */
 export const resolveAccountCancellationByUsername = ({
   username,
   capabilities
 }: AccountCancellationResolverInput): AccountCancellationResolveResult => {
-  const account = username ?? '';
-  if (!account.trim()) {
+  const normalizedAccount = (username ?? '').trim();
+  if (!normalizedAccount) {
     return {
       status: 'unsupported',
       accountKind: 'invalid',
@@ -15,48 +26,24 @@ export const resolveAccountCancellationByUsername = ({
     };
   }
 
-  const normalizedAccount = account.trim();
-  const hasPrefix = (prefix: string) =>
-    normalizedAccount.startsWith(`${prefix}-`) && normalizedAccount.length > prefix.length + 1;
-  const firstSeparatorIndex = normalizedAccount.indexOf('-');
-  const hasSsoPrefix =
-    firstSeparatorIndex > 0 && firstSeparatorIndex < normalizedAccount.length - 1;
-  const accountKind = (() => {
-    if (AccountEmailUsernameSchema.safeParse(normalizedAccount).success) return 'email';
-    if (AccountPhoneUsernameSchema.safeParse(normalizedAccount).success) return 'phone';
-    if (hasPrefix('wechat')) return 'wechat';
-    if (hasPrefix('git')) return 'github';
-    if (hasPrefix('google')) return 'google';
-    if (hasPrefix('microsoft')) return 'microsoft';
-    if (hasPrefix('wecom')) return 'wecom';
-    if (capabilities.oauth.sso && hasSsoPrefix) return 'sso';
-    return 'local';
-  })();
+  const resolved = resolveAccountVerificationByUsername({
+    username: normalizedAccount,
+    capabilities: capabilities as AccountVerificationCapabilities,
+    allowPasswordFallback: false
+  });
 
-  const method = (() => {
-    if (accountKind === 'email' && capabilities.emailCode) return 'code';
-    if (accountKind === 'phone' && capabilities.phoneCode) return 'code';
-    if (accountKind === 'wechat' && capabilities.wechat) return 'wechat';
-    if (accountKind === 'github' && capabilities.oauth.github) return 'oauth/github';
-    if (accountKind === 'google' && capabilities.oauth.google) return 'oauth/google';
-    if (accountKind === 'microsoft' && capabilities.oauth.microsoft) return 'oauth/microsoft';
-    if (accountKind === 'wecom' && capabilities.oauth.sso) return 'oauth/sso';
-    if (accountKind === 'wecom' && capabilities.oauth.wecom) return 'oauth/wecom';
-    if (accountKind === 'sso' && capabilities.oauth.sso) return 'oauth/sso';
-    return undefined;
-  })();
-
-  if (!method) {
+  if (resolved.status === 'supported') {
     return {
-      status: 'unsupported',
-      accountKind,
-      unsupportedReason: 'password_verification_not_allowed'
+      status: 'supported',
+      accountKind: resolved.accountKind,
+      // allowPasswordFallback: false 保证不会返回 oldPassword，故可安全收窄为注销允许的方法。
+      method: resolved.method as AccountCancellationAllowedMethod
     };
   }
 
   return {
-    status: 'supported',
-    accountKind,
-    method
+    status: 'unsupported',
+    accountKind: resolved.accountKind,
+    unsupportedReason: 'password_verification_not_allowed'
   };
 };

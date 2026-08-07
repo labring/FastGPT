@@ -34,7 +34,8 @@ export enum AccountCancellationUnavailableReasonEnum {
   rootAccount = 'root_account',
   accountForbidden = 'account_forbidden',
   emptyUsername = 'empty_username',
-  verificationUnavailable = 'verification_unavailable'
+  verificationUnavailable = 'verification_unavailable',
+  passwordVerificationNotAllowed = 'password_verification_not_allowed'
 }
 
 export const accountCancellationStatusMap = {

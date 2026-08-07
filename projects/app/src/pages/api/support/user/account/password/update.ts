@@ -1,5 +1,4 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   UpdatePasswordBodySchema,
   UpdatePasswordResponseSchema,
@@ -7,10 +6,12 @@ import {
   type UpdatePasswordResponse
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { passwordChangeTokenService } from '@fastgpt/service/support/user/account/password/service';
+import {
+  assertNewPasswordDiffersFromCurrent,
+  passwordChangeTokenService
+} from '@fastgpt/service/support/user/account/password/service';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
@@ -23,16 +24,9 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<Update
 
   passwordChangeTokenService.verify({ token: body.passwordChangeToken, userId });
 
-  const user = await MongoUser.findById(userId).select('+password');
-  if (!user) throw new Error('Failed to update password');
+  await assertNewPasswordDiffersFromCurrent({ userId, newPassword: body.newPsw });
 
-  if (hasStoredPassword(user.password)) {
-    const isSamePassword = await MongoUser.exists({ _id: userId, password: body.newPsw });
-    if (isSamePassword) {
-      throw new Error(i18nT('common:user.Password has no change'));
-    }
-  }
-
+  // 用户是否存在由 matchedCount 收敛，避免一次仅用于 null 校验的额外 Mongo 往返。
   const updateResult = await MongoUser.updateOne(
     { _id: userId },
     {
