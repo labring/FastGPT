@@ -68,6 +68,23 @@ const isSameBrowserUrl = (nextUrl: string) => {
 const TOOL_GRID_TEMPLATE_COLUMNS =
   'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
+/**
+ * 触发一组独立的浏览器下载任务，保持每个 marketplace 插件仍下载为单独的 .pkg 文件。
+ */
+const startPkgDownloadTasks = (urls: string[]) => {
+  urls.forEach((url, index) => {
+    window.setTimeout(() => {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = '';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }, index * 120);
+  });
+};
+
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -206,6 +223,18 @@ const ToolkitMarketplace = () => {
     },
     [searchText, selectedTagIds, updateUrlParams]
   );
+  const handleTagSelect = useCallback(
+    (newTags: string[]) => {
+      setSelectedTagIds(newTags);
+    },
+    []
+  );
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setInputValue(value);
+    },
+    []
+  );
 
   const {
     data: tools,
@@ -307,14 +336,7 @@ const ToolkitMarketplace = () => {
     try {
       const url = await getDownloadURL(toolId, version);
       if (url) {
-        // Create download link
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = '';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        startPkgDownloadTasks([url]);
       }
     } catch (error) {
       console.error('Download failed:', error);
@@ -473,7 +495,7 @@ const ToolkitMarketplace = () => {
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => {
-                          setInputValue(e.target.value);
+                          handleSearchChange(e.target.value);
                         }}
                         autoFocus
                         onBlur={() => {
@@ -495,7 +517,7 @@ const ToolkitMarketplace = () => {
                           color={'myGray.500'}
                           cursor={'pointer'}
                           onClick={() => {
-                            setInputValue('');
+                            handleSearchChange('');
                             setSearchText('');
                             setIsSearchExpanded(false);
                           }}
@@ -530,7 +552,7 @@ const ToolkitMarketplace = () => {
                   <ToolTagFilterBox
                     tags={toolTags}
                     selectedTagIds={selectedTagIds}
-                    onTagSelect={setSelectedTagIds}
+                    onTagSelect={handleTagSelect}
                     selectedSource={selectedSource}
                     onSourceSelect={handleSourceSelect}
                     variant="marketplace"
@@ -598,7 +620,7 @@ const ToolkitMarketplace = () => {
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => {
-                    setInputValue(e.target.value);
+                    handleSearchChange(e.target.value);
                   }}
                   onBlur={handleSearchBlur}
                 />
@@ -618,7 +640,7 @@ const ToolkitMarketplace = () => {
                 <ToolTagFilterBox
                   tags={toolTags}
                   selectedTagIds={selectedTagIds}
-                  onTagSelect={setSelectedTagIds}
+                  onTagSelect={handleTagSelect}
                   selectedSource={selectedSource}
                   onSourceSelect={handleSourceSelect}
                   variant="marketplace"

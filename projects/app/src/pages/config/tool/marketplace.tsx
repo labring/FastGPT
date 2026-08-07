@@ -16,6 +16,7 @@ import ToolTagFilterBox, {
 } from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import BatchUpdateDrawer from '@fastgpt/web/components/core/plugin/tool/BatchUpdateDrawer';
+import BatchOperationBar from '@fastgpt/web/components/core/plugin/tool/BatchOperationBar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
@@ -159,6 +160,10 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const { searchText, tagIds, sourceFilter, updateParams } = useSearchParams();
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
+  const [selectedToolIds, setSelectedToolIds] = useState<Set<string>>(new Set());
+  const clearSelectedToolIds = useCallback(() => {
+    setSelectedToolIds(new Set());
+  }, []);
   const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
   const [updatingToolIds, updatingToolIdsDispatch] = useSet<string>();
   const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
@@ -190,9 +195,31 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   // Handle tag selection - update URL immediately
   const handleTagSelect = useCallback(
     (newTags: string[]) => {
+      clearSelectedToolIds();
       updateParams({ newTags });
     },
-    [updateParams]
+    [clearSelectedToolIds, updateParams]
+  );
+  const handleSourceSelect = useCallback(
+    (source?: MarketplaceSourceFilterValue) => {
+      clearSelectedToolIds();
+      updateParams({ newSource: source });
+    },
+    [clearSelectedToolIds, updateParams]
+  );
+  const handleInstalledFilterChange = useCallback(
+    (nextInstalledFilter: boolean) => {
+      clearSelectedToolIds();
+      setInstalledFilter(nextInstalledFilter);
+    },
+    [clearSelectedToolIds]
+  );
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      clearSelectedToolIds();
+      setInputValue(value);
+    },
+    [clearSelectedToolIds]
   );
 
   // Control search box expansion based on focus and input value
@@ -561,6 +588,106 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     return updatableList;
   }, [systemInstalledPlugins, marketplaceVersions, i18n.language]);
 
+  const selectedTools = useMemo(
+    () => displayTools.filter((tool) => selectedToolIds.has(tool.id)),
+    [displayTools, selectedToolIds]
+  );
+  const installableSelectedTools = useMemo(
+    () =>
+      selectedTools.filter((tool) => !tool.installed && !installingOrDeletingToolIds.has(tool.id)),
+    [installingOrDeletingToolIds, selectedTools]
+  );
+  const updatableSelectedTools = useMemo(
+    () =>
+      selectedTools.filter(
+        (tool) => tool.installed && tool.update && !updatingToolIds.has(tool.id)
+      ),
+    [selectedTools, updatingToolIds]
+  );
+  const batchOperableSelectedTools = useMemo(
+    () => [...installableSelectedTools, ...updatableSelectedTools],
+    [installableSelectedTools, updatableSelectedTools]
+  );
+  const batchOperationLabel = useMemo(() => {
+    const actionCount = batchOperableSelectedTools.length;
+
+    if (installableSelectedTools.length > 0 && updatableSelectedTools.length > 0) {
+      return `${t('app:toolkit_batch_install_update')} (${actionCount})`;
+    }
+
+    if (updatableSelectedTools.length > 0) {
+      return `${t('app:toolkit_batch_update')} (${actionCount})`;
+    }
+
+    return `${t('app:toolkit_batch_install')} (${actionCount})`;
+  }, [
+    batchOperableSelectedTools.length,
+    installableSelectedTools.length,
+    t,
+    updatableSelectedTools.length
+  ]);
+  const isAllSelected = displayTools.length > 0 && selectedTools.length === displayTools.length;
+  const isSelectIndeterminate = selectedTools.length > 0 && !isAllSelected;
+
+  const toggleSelectTool = useCallback((toolId: string) => {
+    setSelectedToolIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(toolId)) {
+        next.delete(toolId);
+      } else {
+        next.add(toolId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllTools = useCallback(() => {
+    setSelectedToolIds((prev) => {
+      const displayToolIds = displayTools.map((tool) => tool.id);
+      const selectedDisplayToolCount = displayToolIds.filter((id) => prev.has(id)).length;
+      const next = new Set(prev);
+
+      if (selectedDisplayToolCount === displayToolIds.length) {
+        displayToolIds.forEach((id) => next.delete(id));
+        return next;
+      }
+
+      displayToolIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [displayTools]);
+
+  const { runAsync: handleBatchInstallOrUpdate, loading: isBatchInstallingOrUpdating } = useRequest(
+    async () => {
+      if (batchOperableSelectedTools.length === 0) return;
+
+      const installToolIds = installableSelectedTools.map((tool) => tool.id);
+      const updateToolIds = updatableSelectedTools.map((tool) => tool.id);
+      const toolIds = [...installToolIds, ...updateToolIds];
+      installToolIds.forEach((toolId) => installingOrDeletingToolIdsDispatch.add(toolId));
+      updateToolIds.forEach((toolId) => updatingToolIdsDispatch.add(toolId));
+
+      try {
+        const downloadUrls = (await getMarketplaceDownloadURLs(toolIds)).filter(Boolean);
+        if (downloadUrls.length === 0) return;
+
+        await intallPluginWithUrl({ downloadUrls });
+        setSelectedToolIds(new Set());
+        setSelectedTool((prev) =>
+          prev && toolIds.includes(prev.id) ? { ...prev, installed: true, update: false } : prev
+        );
+        await refreshInstalledPlugins();
+      } finally {
+        installToolIds.forEach((toolId) => installingOrDeletingToolIdsDispatch.remove(toolId));
+        updateToolIds.forEach((toolId) => updatingToolIdsDispatch.remove(toolId));
+      }
+    },
+    {
+      manual: true,
+      successToast: t('common:Success')
+    }
+  );
+
   if (toolsError && !loadingTools) {
     return (
       <Box h={'full'} py={6} pr={6} position={'relative'}>
@@ -699,7 +826,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                         borderRadius={'md'}
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
                         onFocus={handleSearchFocus}
                         onBlur={handleSearchBlur}
                       />
@@ -715,7 +842,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                           color={'myGray.500'}
                           cursor={'pointer'}
                           onClick={() => {
-                            setInputValue('');
+                            handleSearchChange('');
                           }}
                         />
                       )}
@@ -746,7 +873,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     selectedTagIds={tagIds}
                     onTagSelect={handleTagSelect}
                     selectedSource={sourceFilter}
-                    onSourceSelect={(source) => updateParams({ newSource: source })}
+                    onSourceSelect={handleSourceSelect}
                     variant="marketplace"
                   />
                 </Box>
@@ -755,7 +882,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           </Box>
         </Box>
 
-        <ScrollData flex={1} pb={3}>
+        <ScrollData flex={1} pb={selectedTools.length > 0 ? 20 : 3}>
           <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}
@@ -811,7 +938,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                   borderRadius={'10px'}
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={handleSearchFocus}
                   onBlur={handleSearchBlur}
                 />
@@ -835,7 +962,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                   selectedTagIds={tagIds}
                   onTagSelect={handleTagSelect}
                   selectedSource={sourceFilter}
-                  onSourceSelect={(source) => updateParams({ newSource: source })}
+                  onSourceSelect={handleSourceSelect}
                   variant="marketplace"
                 />
               </Box>
@@ -854,12 +981,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                     children: [
                       {
                         label: t('common:All'),
-                        onClick: () => setInstalledFilter(false),
+                        onClick: () => handleInstalledFilterChange(false),
                         isActive: !installedFilter
                       },
                       {
                         label: t('app:toolkit_uninstalled'),
-                        onClick: () => setInstalledFilter(true),
+                        onClick: () => handleInstalledFilterChange(true),
                         isActive: installedFilter
                       }
                     ]
@@ -890,6 +1017,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                       onUpdate={() => handleUpdateTool(tool)}
                       onClickCard={() => setSelectedTool(tool)}
                       showActionButton={!tool.installed}
+                      showSelectCheckbox={selectedTools.length > 0}
+                      isSelected={selectedToolIds.has(tool.id)}
+                      onToggleSelect={() => toggleSelectTool(tool.id)}
                     />
                   );
                 })}
@@ -899,6 +1029,18 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             )}
           </Box>
         </ScrollData>
+        {selectedTools.length > 0 && (
+          <BatchOperationBar
+            selectedCount={selectedTools.length}
+            isAllSelected={isAllSelected}
+            isIndeterminate={isSelectIndeterminate}
+            actionLabel={batchOperationLabel}
+            onToggleSelectAll={toggleSelectAllTools}
+            onAction={handleBatchInstallOrUpdate}
+            isActionLoading={isBatchInstallingOrUpdating}
+            isActionDisabled={batchOperableSelectedTools.length === 0}
+          />
+        )}
       </MyBox>
 
       {!!selectedTool && (
