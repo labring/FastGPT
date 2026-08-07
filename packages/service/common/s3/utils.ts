@@ -16,6 +16,7 @@ import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import { encodeS3ObjectKey } from './keySanitizer';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
+import { assertStorageObjectKey } from '@fastgpt-sdk/storage';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -271,23 +272,18 @@ export const getFileS3Key = {
   },
 
   s3Key: (key: string) => {
-    const encodedKey = encodeS3ObjectKey(key);
+    assertStorageObjectKey(key);
     // 特殊处理，不包含/的key，认为是根级别的key
-    if (!encodedKey.includes('/')) {
+    if (!key.includes('/')) {
       return {
-        fileKey: encodedKey,
-        fileParsedPrefix: encodeS3ObjectKey(
-          `${path.basename(encodedKey, path.extname(encodedKey))}-parsed`
-        )
+        fileKey: key,
+        fileParsedPrefix: `${path.basename(key, path.extname(key))}-parsed`
       };
     }
 
-    const prefix = `${path.dirname(encodedKey)}/${path.basename(
-      encodedKey,
-      path.extname(encodedKey)
-    )}-parsed`;
+    const prefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
     return {
-      fileKey: encodedKey,
+      fileKey: key,
       fileParsedPrefix: prefix
     };
   },
