@@ -113,6 +113,7 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 
 defineIndex(OutLinkSchema, { key: { shareId: -1 } });
 defineIndex(OutLinkSchema, { key: { teamId: 1, tmbId: 1, appId: 1 } });
+defineIndex(OutLinkSchema, { key: { teamId: 1, appId: 1, type: 1 } });
 // Wechat polling recovery: find online channels on startup
 defineIndex(OutLinkSchema, {
   key: { type: 1, 'app.status': 1 },

@@ -3,6 +3,8 @@ import { DevApiTagsMap } from '../../tag';
 import {
   OutLinkCreateBodySchema,
   OutLinkCreateResponseSchema,
+  OutLinkCountQuerySchema,
+  OutLinkCountResponseSchema,
   OutLinkDeleteQuerySchema,
   OutLinkDeleteResponseSchema,
   OutLinkListQuerySchema,
@@ -18,6 +20,26 @@ import {
 } from './api';
 
 export const OutLinkPath: OpenAPIPath = {
+  '/support/outLink/count': {
+    get: {
+      summary: '获取应用的发布渠道连接数量',
+      description: '查询侧栏展示的六种发布渠道连接数量',
+      tags: [DevApiTagsMap.publishChannel],
+      requestParams: {
+        query: OutLinkCountQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回发布渠道连接数量',
+          content: {
+            'application/json': {
+              schema: OutLinkCountResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/support/outLink/list': {
     get: {
       summary: '获取应用的发布渠道列表',

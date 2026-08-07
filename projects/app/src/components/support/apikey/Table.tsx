@@ -78,6 +78,17 @@ type ApiKeyTableProps = {
   appId?: string;
 };
 
+const apiKeyTableFields = [
+  'name',
+  'apiKey',
+  'usagePoints',
+  'expiredTime',
+  'lastUsedTime',
+  'createTime',
+  'actions'
+] as const;
+type ApiKeyTableField = (typeof apiKeyTableFields)[number];
+
 const isSameTagIds = (left: string[], right: string[]) => {
   if (left.length !== right.length) return false;
 
@@ -284,6 +295,158 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
     }
   );
 
+  const tableHeaders: Record<ApiKeyTableField, { label: React.ReactNode; width?: string }> = {
+    name: { label: t('common:Name'), width: '240px' },
+    apiKey: { label: 'API KEY', width: '130px' },
+    usagePoints: { label: t('common:support.outlink.Usage points'), width: '150px' },
+    expiredTime: { label: t('common:expired_time'), width: '120px' },
+    lastUsedTime: { label: t('account_apikey:last_used_time'), width: '160px' },
+    createTime: { label: t('account_apikey:create_time'), width: '160px' },
+    actions: { label: t('common:Action'), width: '92px' }
+  };
+  const tableColumns = apiKeyTableFields
+    .filter((field) => {
+      if (field === 'usagePoints' || field === 'expiredTime') return hasUsagePlan;
+      return field !== 'createTime' || !isPublishMode;
+    })
+    .map((field) => ({ field, ...tableHeaders[field] }));
+
+  const renderTableCell = (field: ApiKeyTableField, item: (typeof apiKeys)[number]) => {
+    switch (field) {
+      case 'name':
+        return (
+          <Td key={field} maxW={'240px'}>
+            <Flex flexDirection={'column'} minW={0}>
+              <MyTooltip label={item.name} showOnlyWhenOverflow>
+                <Box
+                  maxW={'220px'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {item.name}
+                </Box>
+              </MyTooltip>
+              <ApiKeyTagEditor
+                key={`${item._id}-${(item.tagIds || []).join(',')}`}
+                apiKeyId={item._id}
+                appName={item.appName}
+                tagIds={item.tagIds || []}
+                allTags={openApiTags}
+                onSave={async (apiKeyId, tagIds) => {
+                  await onUpdateApiKeyTags({
+                    apiKeyId,
+                    tagIds
+                  });
+                }}
+                onManage={() => setShowTagManage(true)}
+                onCreateTag={onCreateTagFromSelect}
+                isLoading={isGettingTags || isUpdatingApiKeyTags}
+              />
+            </Flex>
+          </Td>
+        );
+      case 'apiKey':
+        return (
+          <Td key={field} maxW={'130px'}>
+            <Flex alignItems={'center'} gap={1} role={'group'} minW={0}>
+              <Box minW={0} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+                {maskApiKey(item.apiKey)}
+              </Box>
+              {item.canCopy && (
+                <MyIcon
+                  name={copyingApiKeyId === item._id ? 'common/loading' : 'copy'}
+                  w={'15px'}
+                  flexShrink={0}
+                  aria-label={t('common:Copy')}
+                  role={'button'}
+                  tabIndex={0}
+                  color={'myGray.600'}
+                  opacity={copyingApiKeyId === item._id ? 1 : 0}
+                  visibility={copyingApiKeyId === item._id ? 'visible' : 'hidden'}
+                  cursor={'pointer'}
+                  transition={'opacity 0.15s ease, color 0.15s ease'}
+                  _groupHover={{ opacity: 1, visibility: 'visible' }}
+                  _hover={{ color: 'primary.600' }}
+                  onClick={() => onCopyApiKey(item._id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onCopyApiKey(item._id);
+                    }
+                  }}
+                />
+              )}
+            </Flex>
+          </Td>
+        );
+      case 'usagePoints':
+        return (
+          <Td key={field} whiteSpace={'nowrap'}>
+            {Math.round(item.usagePoints)}/
+            {item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
+              ? `${item.limit.maxUsagePoints}`
+              : t('common:Unlimited')}
+          </Td>
+        );
+      case 'expiredTime':
+        return (
+          <Td key={field} whiteSpace={'pre-wrap'}>
+            {item.limit?.expiredTime
+              ? dayjs(item.limit.expiredTime).format('YYYY/MM/DD\nHH:mm')
+              : '-'}
+          </Td>
+        );
+      case 'lastUsedTime':
+        return (
+          <Td key={field} whiteSpace={'normal'}>
+            {item.lastUsedTime
+              ? dayjs(item.lastUsedTime).format('YYYY/MM/DD HH:mm:ss')
+              : t('common:un_used')}
+          </Td>
+        );
+      case 'createTime':
+        return (
+          <Td key={field} whiteSpace={'normal'}>
+            {dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss')}
+          </Td>
+        );
+      case 'actions':
+        return (
+          <Td key={field} w={'92px'}>
+            <Flex alignItems={'center'} gap={2}>
+              <MyTooltip label={t('common:Edit')}>
+                <IconButton
+                  icon={<MyIcon name={'edit'} w={4} />}
+                  variant={'whitePrimary'}
+                  size={'sm'}
+                  aria-label={t('common:Edit')}
+                  onClick={() =>
+                    setEditData({
+                      _id: item._id,
+                      name: item.name,
+                      limit: item.limit,
+                      authProxy: item.authProxy,
+                      tags: item.tagIds || []
+                    })
+                  }
+                />
+              </MyTooltip>
+              <MyTooltip label={t('common:Delete')}>
+                <IconButton
+                  icon={<MyIcon name={'delete'} w={4} />}
+                  variant={'whiteDanger'}
+                  size={'sm'}
+                  aria-label={t('common:Delete')}
+                  onClick={() => openConfirm({ onConfirm: () => onclickRemove(item._id) })()}
+                />
+              </MyTooltip>
+            </Flex>
+          </Td>
+        );
+    }
+  };
+
   return (
     <MyBox
       isLoading={isGetting}
@@ -291,14 +454,17 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       flexDirection={'column'}
       h={'100%'}
       position={'relative'}
-      pt={0}
-      px={0}
+      p={isPublishMode ? 6 : 0}
       minH={isPublishMode ? '50vh' : undefined}
     >
       <Flex flexDirection={'column'} alignItems={'stretch'} gap={3}>
         <Flex minW={0} alignItems={'center'}>
-          <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
-            {t('common:support.openapi.Api manager')}({apiKeys.length})
+          <Box
+            color={isPublishMode ? 'myGray.900' : undefined}
+            fontWeight={isPublishMode ? 'medium' : 'bold'}
+            fontSize={isPublishMode ? 'lg' : ['md', 'lg']}
+          >
+            {`${t('common:support.openapi.Api manager')}(${apiKeys.length})`}
           </Box>
           {feConfigs?.docUrl && (
             <Link
@@ -316,7 +482,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
           )}
         </Flex>
         <Flex
-          alignItems={['stretch', 'center']}
+          alignItems={['stretch', 'flex-end']}
           justifyContent={'space-between'}
           gap={3}
           minW={0}
@@ -435,158 +601,19 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
         <Table sx={{ tableLayout: 'fixed' }}>
           <Thead>
             <Tr>
-              <Th w={'240px'}>{t('common:Name')}</Th>
-              <Th w={'130px'}>API KEY</Th>
-              {hasUsagePlan && <Th w={'150px'}>{t('common:support.outlink.Usage points')}</Th>}
-              {hasUsagePlan && (
-                <>
-                  <Th w={'120px'}>{t('common:expired_time')}</Th>
-                </>
-              )}
-
-              <Th w={'160px'}>{t('account_apikey:last_used_time')}</Th>
-              <Th w={'160px'}>{t('account_apikey:create_time')}</Th>
-              <Th w={'92px'} />
+              {tableColumns.map(({ field, width, label }) => (
+                <Th key={field} w={width}>
+                  {label}
+                </Th>
+              ))}
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
-            {apiKeys.map(
-              ({
-                _id,
-                name,
-                limit,
-                usagePoints,
-                apiKey,
-                canCopy,
-                createTime,
-                lastUsedTime,
-                authProxy,
-                appName,
-                tagIds
-              }) => (
-                <Tr key={_id}>
-                  <Td maxW={'240px'}>
-                    <Flex flexDirection={'column'} minW={0}>
-                      <MyTooltip label={name} showOnlyWhenOverflow>
-                        <Box
-                          maxW={'220px'}
-                          overflow={'hidden'}
-                          textOverflow={'ellipsis'}
-                          whiteSpace={'nowrap'}
-                        >
-                          {name}
-                        </Box>
-                      </MyTooltip>
-                      <ApiKeyTagEditor
-                        key={`${_id}-${(tagIds || []).join(',')}`}
-                        apiKeyId={_id}
-                        appName={appName}
-                        tagIds={tagIds || []}
-                        allTags={openApiTags}
-                        onSave={async (apiKeyId, tagIds) => {
-                          await onUpdateApiKeyTags({
-                            apiKeyId,
-                            tagIds
-                          });
-                        }}
-                        onManage={() => setShowTagManage(true)}
-                        onCreateTag={onCreateTagFromSelect}
-                        isLoading={isGettingTags || isUpdatingApiKeyTags}
-                      />
-                    </Flex>
-                  </Td>
-                  <Td maxW={'130px'}>
-                    <Flex alignItems={'center'} gap={1} role={'group'} minW={0}>
-                      <Box
-                        minW={0}
-                        overflow={'hidden'}
-                        textOverflow={'ellipsis'}
-                        whiteSpace={'nowrap'}
-                      >
-                        {maskApiKey(apiKey)}
-                      </Box>
-                      {canCopy && (
-                        <MyIcon
-                          name={copyingApiKeyId === _id ? 'common/loading' : 'copy'}
-                          w={'15px'}
-                          flexShrink={0}
-                          aria-label={t('common:Copy')}
-                          role={'button'}
-                          tabIndex={0}
-                          color={'myGray.600'}
-                          opacity={copyingApiKeyId === _id ? 1 : 0}
-                          visibility={copyingApiKeyId === _id ? 'visible' : 'hidden'}
-                          cursor={'pointer'}
-                          transition={'opacity 0.15s ease, color 0.15s ease'}
-                          _groupHover={{ opacity: 1, visibility: 'visible' }}
-                          _hover={{ color: 'primary.600' }}
-                          onClick={() => onCopyApiKey(_id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              onCopyApiKey(_id);
-                            }
-                          }}
-                        />
-                      )}
-                    </Flex>
-                  </Td>
-                  {hasUsagePlan && (
-                    <Td whiteSpace={'nowrap'}>
-                      {Math.round(usagePoints)}/
-                      {limit?.maxUsagePoints && limit?.maxUsagePoints > -1
-                        ? `${limit?.maxUsagePoints}`
-                        : t('common:Unlimited')}
-                    </Td>
-                  )}
-                  {hasUsagePlan && (
-                    <>
-                      <Td whiteSpace={'pre-wrap'}>
-                        {limit?.expiredTime
-                          ? dayjs(limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
-                          : '-'}
-                      </Td>
-                    </>
-                  )}
-                  <Td whiteSpace={'normal'}>
-                    {lastUsedTime
-                      ? dayjs(lastUsedTime).format('YYYY/MM/DD HH:mm:ss')
-                      : t('common:un_used')}
-                  </Td>
-                  <Td whiteSpace={'normal'}>{dayjs(createTime).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                  <Td w={'92px'}>
-                    <Flex alignItems={'center'} gap={2}>
-                      <MyTooltip label={t('common:Edit')}>
-                        <IconButton
-                          icon={<MyIcon name={'edit'} w={4} />}
-                          variant={'whitePrimary'}
-                          size={'sm'}
-                          aria-label={t('common:Edit')}
-                          onClick={() =>
-                            setEditData({
-                              _id,
-                              name,
-                              limit,
-                              authProxy,
-                              tags: tagIds || []
-                            })
-                          }
-                        />
-                      </MyTooltip>
-                      <MyTooltip label={t('common:Delete')}>
-                        <IconButton
-                          icon={<MyIcon name={'delete'} w={4} />}
-                          variant={'whiteDanger'}
-                          size={'sm'}
-                          aria-label={t('common:Delete')}
-                          onClick={() => openConfirm({ onConfirm: () => onclickRemove(_id) })()}
-                        />
-                      </MyTooltip>
-                    </Flex>
-                  </Td>
-                </Tr>
-              )
-            )}
+            {apiKeys.map((item) => (
+              <Tr key={item._id}>
+                {tableColumns.map(({ field }) => renderTableCell(field, item))}
+              </Tr>
+            ))}
           </Tbody>
         </Table>
       </TableContainer>
@@ -733,7 +760,9 @@ function EditKeyModal({
     >
       <Flex flexDirection={'column'} gap={4}>
         <Flex alignItems={'center'} gap={4}>
-          <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
+          <FormLabel flex={'0 0 90px'} required>
+            {t('common:Name')}
+          </FormLabel>
           <Input
             placeholder={t('publish:key_alias') || 'key_alias'}
             maxLength={50}

@@ -61,7 +61,15 @@ const SimpleEdit = () => {
   );
 
   return (
-    <Flex h={'100%'} minH={0} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
+    <Flex
+      h={'100%'}
+      minH={0}
+      flexDirection={'column'}
+      px={[3, 0]}
+      pr={[3, 3]}
+      borderLeft={currentTab === TabEnum.publish ? '1px solid' : undefined}
+      borderColor={'myGray.200'}
+    >
       <Header
         appForm={appForm}
         forbiddenSaveSnapshot={forbiddenSaveSnapshot}

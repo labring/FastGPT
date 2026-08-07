@@ -5,7 +5,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useMount } from 'ahooks';
 import Header from './Header';
-import { Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { workflowBoxStyles } from '../constants';
 import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash-es';
@@ -44,15 +44,17 @@ const WorkflowEdit = () => {
           flexDirection={'column'}
           flex={1}
           minH={0}
-          mt={'72px'}
-          px={4}
-          pb={4}
+          mt={['8px', '72px']}
           bg={'white'}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
           {currentTab === TabEnum.publish && <PublishChannel />}
-          {currentTab === TabEnum.logs && <Logs />}
+          {currentTab === TabEnum.logs && (
+            <Box px={4} pb={4} h={'full'}>
+              <Logs />
+            </Box>
+          )}
         </Flex>
       )}
     </Flex>

@@ -200,7 +200,7 @@ const Header = ({
         </Flex>
       )}
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
-        <Box flex={'1'}>
+        <Box flex={'1'} ml={'16px'}>
           <FolderPath
             rootName={t('common:All')}
             paths={paths}
