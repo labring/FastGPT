@@ -3,6 +3,9 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { Types } from 'mongoose';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 import { authOpenApiKey, resolveOpenApiCredential } from '@fastgpt/service/support/openapi/auth';
 
@@ -96,7 +99,18 @@ describe('openapi auth', () => {
   });
 
   it('Bearer apiKey-appId 用真实 key 查库并返回 parsedAppId', async () => {
-    await MongoOpenApi.create(teamApiKey);
+    const user = await MongoUser.create({ username: 'api-key-user', password: 'password' });
+    const team = await MongoTeam.create({ name: 'API Key team', ownerId: user._id });
+    const member = await MongoTeamMember.create({
+      teamId: team._id,
+      userId: user._id,
+      status: 'active'
+    });
+    await MongoOpenApi.create({
+      ...teamApiKey,
+      teamId: String(team._id),
+      tmbId: String(member._id)
+    });
 
     const result = await parseHeaderCert({
       req: {
@@ -108,8 +122,8 @@ describe('openapi auth', () => {
     });
 
     expect(result).toMatchObject({
-      teamId,
-      tmbId,
+      teamId: String(team._id),
+      tmbId: String(member._id),
       appId: '',
       legacyAppId: '',
       parsedAppId,
@@ -206,6 +220,37 @@ describe('openapi auth', () => {
     await expect(authOpenApiKey({ apikey: 'fastgpt-community-expired' })).resolves.toMatchObject({
       apikey: 'fastgpt-community-expired'
     });
+    expect(updateApiKeyUsedTimeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('API Key 指向失效 member 时直接拒绝，不进入 Session fallback', async () => {
+    const user = await MongoUser.create({
+      username: 'inactive-api-key-user',
+      password: 'password'
+    });
+    const team = await MongoTeam.create({ name: 'Inactive API Key team', ownerId: user._id });
+    const member = await MongoTeamMember.create({
+      teamId: team._id,
+      userId: user._id,
+      status: 'leave'
+    });
+    await MongoOpenApi.create({
+      ...teamApiKey,
+      apiKey: 'fastgpt-inactive-member',
+      teamId: String(team._id),
+      tmbId: String(member._id)
+    });
+
+    await expect(
+      parseHeaderCert({
+        req: {
+          headers: {
+            authorization: 'Bearer fastgpt-inactive-member'
+          }
+        } as any,
+        authApiKey: true
+      })
+    ).rejects.toBe(ERROR_ENUM.unAuthorization);
     expect(updateApiKeyUsedTimeSpy).toHaveBeenCalledTimes(1);
   });
 

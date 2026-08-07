@@ -30,8 +30,8 @@ export type VerificationType = (typeof VERIFICATION_TYPES)[number];
 
 export const VERIFICATION_SCENES_BY_TYPE = {
   password: ['login'],
-  code: ['register', 'forgetPassword', 'bindNotification'],
-  captcha: ['register', 'forgetPassword', 'bindNotification'],
+  code: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'],
+  captcha: ['register', 'forgetPassword', 'unsubscribe', 'bindNotification'],
   // The callback adapter discovers the scene from all active QR materials.
   wechat: ACCOUNT_VERIFICATION_PURPOSES,
   oauth: ['login']
@@ -79,6 +79,7 @@ export type VerificationMaterialMatch<T extends VerificationType> = Partial<{
 export const VERIFICATION_CODE_TYPES = [
   VerificationCodeTypeEnum.register,
   VerificationCodeTypeEnum.findPassword,
+  VerificationCodeTypeEnum.unsubscribe,
   VerificationCodeTypeEnum.bindNotification
 ] as const;
 export const VerificationCodeTypeSchema = z.enum(VERIFICATION_CODE_TYPES);
@@ -89,10 +90,11 @@ export const CodeVerificationPurposeSchema = AccountVerificationPurposeSchema.ex
 );
 export type CodeVerificationPurpose = z.infer<typeof CodeVerificationPurposeSchema>;
 
-/** Each public code template has exactly one account-verification purpose. */
+/** Each verification code type has exactly one account-verification purpose. */
 export const VERIFICATION_CODE_PURPOSES_BY_TYPE = {
   [VerificationCodeTypeEnum.register]: 'register',
   [VerificationCodeTypeEnum.findPassword]: 'forgetPassword',
+  [VerificationCodeTypeEnum.unsubscribe]: 'unsubscribe',
   [VerificationCodeTypeEnum.bindNotification]: 'bindNotification'
 } as const satisfies Record<VerificationCodeType, CodeVerificationPurpose>;
 
@@ -121,7 +123,10 @@ export const PasswordVerificationPurposeSchema = AccountVerificationPurposeSchem
 );
 export type PasswordVerificationPurpose = z.infer<typeof PasswordVerificationPurposeSchema>;
 
-export const WechatPurposeSchema = AccountVerificationPurposeSchema.extract(['login']);
+export const WechatPurposeSchema = AccountVerificationPurposeSchema.extract([
+  'login',
+  'unsubscribe'
+]);
 export type WechatPurpose = z.infer<typeof WechatPurposeSchema>;
 
 export const ShortAuthStringSchema = z.string().trim().min(1).max(100);

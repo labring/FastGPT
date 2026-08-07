@@ -2,7 +2,8 @@ export { bullMQ, BullMQBinding } from './binding';
 export { getConfiguredRedisBullMQRuntime, getRedisBullMQRuntime } from './context';
 export { QueueNames } from './names';
 export { RedisBullMQRuntime } from './runtime';
-export { UnrecoverableError } from 'bullmq';
+export { addOrRequeueFailedJob } from './job-recovery';
+export { DelayedError, UnrecoverableError } from 'bullmq';
 export * from './services';
 export type {
   BullMQRuntimeState,

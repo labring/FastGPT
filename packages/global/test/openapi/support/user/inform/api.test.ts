@@ -33,8 +33,8 @@ describe('SendAuthCodeBodySchema', () => {
     expect(() =>
       SendAuthCodeBodySchema.parse({
         ...common,
-        type: 'login',
-        purpose: 'login'
+        type: VerificationCodeTypeEnum.unsubscribe,
+        purpose: 'unsubscribe'
       })
     ).toThrow();
   });
