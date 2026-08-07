@@ -314,13 +314,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         try {
           if (shouldReinstallOfflineTool && offlineTool) {
             await reinstallSystemTool(offlineTool.systemToolId);
-            toast({
-              title: t('app:custom_plugin_install_success'),
-              status: 'success'
-            });
           } else {
             const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
-            if (!downloadUrl) return;
+            if (!downloadUrl) throw new Error(t('common:request_error'));
 
             const installResult = await intallPluginWithUrl({
               downloadUrls: [downloadUrl]
@@ -376,11 +372,15 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     async (tool: ToolCardItemType, version?: string) => {
       try {
         await handleInstallTool(tool, version);
+        toast({
+          title: t('app:custom_plugin_install_success'),
+          status: 'success'
+        });
       } catch {
         // useRequest 已统一展示安装失败提示，这里只消费拒绝的 Promise。
       }
     },
-    [handleInstallTool]
+    [handleInstallTool, t, toast]
   );
 
   const handleUpdateTool = useCallback(
@@ -397,7 +397,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         try {
           // Get download URL
           const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
-          if (!downloadUrl) return;
+          if (!downloadUrl) throw new Error(t('common:request_error'));
 
           // 即使接口返回 200，也要检查 plugin-server 返回的单项失败结果。
           const installResult = await intallPluginWithUrl({
@@ -439,7 +439,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [i18n.language, refreshInstalledPlugins, selectedTool, updatingToolIdsDispatch]
+    [i18n.language, refreshInstalledPlugins, selectedTool, t, updatingToolIdsDispatch]
   );
 
   const handleUpdateToolWithErrorHandling = useCallback(
