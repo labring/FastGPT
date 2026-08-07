@@ -1179,18 +1179,8 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
     }
     if (status !== undefined && status !== PluginStatusEnum.Normal) {
       return (
-        <MyTooltip
-          label={
-            status === PluginStatusEnum.Offline
-              ? t('app:tool_offset_tips')
-              : t('app:tool_soon_offset_tips')
-          }
-        >
-          <MyTag
-            mr={2}
-            colorSchema={status === PluginStatusEnum.Offline ? 'red' : 'yellow'}
-            type="borderFill"
-          >
+        <MyTooltip label={t(PluginStatusMap[status].tooltip)}>
+          <MyTag mr={2} colorSchema={PluginStatusMap[status].tagColor} type="borderFill">
             {t(PluginStatusMap[status].label)}
           </MyTag>
         </MyTooltip>

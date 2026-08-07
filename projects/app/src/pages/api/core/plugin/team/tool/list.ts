@@ -13,7 +13,11 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { getTeamPluginSource, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getTeamPluginSource,
+  isDebugToolSource,
+  isTeamPluginSource
+} from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   getTeamPluginPolicyMap,
@@ -58,17 +62,21 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
     getUserDetail({ tmbId }),
     getTeamPluginPolicyMap(teamId)
   ]);
+  console.log('tools', tools.length, tools.map((item) => (`${item.id}, ${item.source}`)), policyMap)
   const userTags = userDetail.tags || [];
 
   return GetTeamPluginListResponseSchema.parse(
     resolveTeamPluginList({
       teamId,
-      tools: tools.filter((tool) => tool.status !== PluginStatusEnum.Offline),
+      tools: tools.filter(
+        (tool) =>
+          tool.status !== PluginStatusEnum.Hidden && tool.status !== PluginStatusEnum.Offline
+      ),
       policyMap,
       filter: query,
       canManage: permission.hasPluginManagePer || permission.hasManagePer || permission.isOwner
     })
-      .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
+      .sort((a, b) => getToolListSortOrder(a.source) - getToolListSortOrder(b.source))
       .filter((tool) => {
         if (hasMatchedUserTag({ userTags, targetTags: tool.hideTags })) return false;
         return true;
@@ -92,4 +100,11 @@ async function getActiveDebugSource(tmbId: string) {
   ) {
     return status.source;
   }
+}
+
+/** 团队安装插件优先展示，系统插件置于列表末尾。 */
+function getToolListSortOrder(source?: string) {
+  if (isTeamPluginSource(source)) return 0;
+  if (isDebugToolSource(source)) return 1;
+  return 2;
 }

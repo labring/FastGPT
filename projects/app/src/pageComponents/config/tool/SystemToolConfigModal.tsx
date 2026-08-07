@@ -348,9 +348,19 @@ const SystemToolConfigModal = ({
 
   const pluginStatusSelectList = useMemo(
     () => [
-      { label: t('app:toolkit_status_normal'), value: PluginStatusEnum.Normal },
+      {
+        label: t('app:toolkit_status_normal'),
+        description: t('app:toolkit_status_normal_description'),
+        value: PluginStatusEnum.Normal
+      },
+      {
+        label: t('app:toolkit_status_hidden'),
+        description: t('app:toolkit_status_hidden_description'),
+        value: PluginStatusEnum.Hidden
+      },
       {
         label: t('app:toolkit_status_soon_offline'),
+        description: t('app:toolkit_status_soon_offline_description'),
         value: PluginStatusEnum.SoonOffline
       }
     ],

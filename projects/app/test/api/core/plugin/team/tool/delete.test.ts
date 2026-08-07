@@ -5,7 +5,9 @@ const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   assertTeamPluginInstalled: vi.fn(),
   setTeamPluginDeleted: vi.fn(),
-  deletePluginFromSource: vi.fn()
+  pluginClient: {
+    deletePlugin: vi.fn()
+  }
 }));
 
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
@@ -20,7 +22,7 @@ vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', () => ({
 }));
 
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
-  deletePluginFromSource: mocks.deletePluginFromSource
+  pluginClient: mocks.pluginClient
 }));
 
 import handler from '@/pages/api/core/plugin/team/tool/delete';
@@ -37,7 +39,7 @@ describe('delete team plugin handler', () => {
       version: '1.0.0',
       status: 'installed'
     });
-    mocks.deletePluginFromSource.mockResolvedValue(undefined);
+    mocks.pluginClient.deletePlugin.mockResolvedValue(undefined);
     mocks.setTeamPluginDeleted.mockResolvedValue(undefined);
   });
 
@@ -53,7 +55,7 @@ describe('delete team plugin handler', () => {
       teamId: 'team-1',
       pluginId: 'weather'
     });
-    expect(mocks.deletePluginFromSource).toHaveBeenCalledWith({
+    expect(mocks.pluginClient.deletePlugin).toHaveBeenCalledWith({
       pluginId: 'weather',
       source: 'teamId:team-1',
       version: '1.0.0'
@@ -63,7 +65,7 @@ describe('delete team plugin handler', () => {
       tmbId: 'tmb-1',
       pluginId: 'weather'
     });
-    expect(mocks.deletePluginFromSource.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.pluginClient.deletePlugin.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.setTeamPluginDeleted.mock.invocationCallOrder[0]
     );
   });
@@ -81,7 +83,7 @@ describe('delete team plugin handler', () => {
     });
 
     expect(res.code).not.toBe(200);
-    expect(mocks.deletePluginFromSource).not.toHaveBeenCalled();
+    expect(mocks.pluginClient.deletePlugin).not.toHaveBeenCalled();
     expect(mocks.setTeamPluginDeleted).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import DebugToolTag from './DebugToolTag';
 import { normalizeToolCardTags } from './utils';
+import { isTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 
 const marketplaceOfficialSource = 'official';
 
@@ -27,7 +28,9 @@ export type ToolCardItemType = {
   downloadCount?: number;
   associatedPluginId?: string;
   source?: string;
+  registrySource?: 'system' | 'team';
   isDebug?: boolean;
+  teamInstallStatus?: string;
 };
 
 /**
@@ -47,6 +50,7 @@ const ToolCard = ({
   onUpdate,
   onClickCard,
   showActionButton = true,
+  showDeleteButton = false,
   variant = 'default'
 }: {
   item: ToolCardItemType;
@@ -55,21 +59,37 @@ const ToolCard = ({
   isUpdating?: boolean;
   mode: 'admin' | 'team' | 'marketplace';
   onInstall?: () => Promise<void>;
-  onDelete?: () => Promise<void>;
+  onDelete?: () => void | Promise<void>;
   onUpdate?: () => Promise<void>;
   onClickCard?: () => void;
   showActionButton?: boolean;
+  showDeleteButton?: boolean;
   variant?: 'default' | 'marketplace';
 }) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
   const displayTags = useMemo(() => normalizeToolCardTags(item.tags), [item.tags]);
-  const [visibleTagsCount, setVisibleTagsCount] = useState(displayTags.length);
+  const tagsKey = useMemo(() => displayTags.join('\u0000'), [displayTags]);
+  const [visibleTags, setVisibleTags] = useState({
+    key: tagsKey,
+    count: displayTags.length
+  });
+  const visibleTagsCount =
+    visibleTags.key === tagsKey
+      ? Math.min(visibleTags.count, displayTags.length)
+      : displayTags.length;
   const isMarketplaceVariant = variant === 'marketplace';
   const showOfficialBadge =
     isMarketplaceVariant && (!item.source || item.source === marketplaceOfficialSource);
+  const showRegistrySourceBadge = mode === 'team' && !!item.registrySource;
   const showMarketplaceUninstallButton =
     isMarketplaceVariant && mode === 'admin' && item.installed && !showActionButton;
+  const showTeamDeleteButton =
+    showDeleteButton &&
+    mode === 'team' &&
+    isTeamPluginSource(item.source) &&
+    item.teamInstallStatus === 'installed' &&
+    !!onDelete;
 
   useEffect(() => {
     if (displayTags.length === 0) return;
@@ -92,7 +112,12 @@ const ToolCard = ({
         count++;
       }
 
-      setVisibleTagsCount(Math.max(1, count));
+      const nextCount = Math.max(1, count);
+      setVisibleTags((previous) =>
+        previous.key === tagsKey && previous.count === nextCount
+          ? previous
+          : { key: tagsKey, count: nextCount }
+      );
     };
 
     const timer = setTimeout(calculate, 0);
@@ -103,7 +128,7 @@ const ToolCard = ({
       clearTimeout(timer);
       observer.disconnect();
     };
-  }, [displayTags]);
+  }, [displayTags, tagsKey]);
 
   const statusLabel = useMemo(() => {
     if (mode === 'marketplace') return null;
@@ -118,6 +143,10 @@ const ToolCard = ({
       [PluginStatusEnum.SoonOffline]: {
         label: t('app:toolkit_status_soon_offline'),
         color: 'yellow.600'
+      },
+      [PluginStatusEnum.Hidden]: {
+        label: t('app:toolkit_status_hidden'),
+        color: 'myGray.500'
       }
     };
 
@@ -176,7 +205,7 @@ const ToolCard = ({
       }}
       _hover={{
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
-        ...(showActionButton || showMarketplaceUninstallButton
+        ...(showActionButton || showMarketplaceUninstallButton || showTeamDeleteButton
           ? {
               '& .install-button': {
                 display: 'flex'
@@ -236,6 +265,22 @@ const ToolCard = ({
             flexShrink={0}
           >
             {t('app:toolkit_official')}
+          </Box>
+        )}
+        {showRegistrySourceBadge && item.registrySource === 'system' && (
+          <Box
+            px={'8px'}
+            py={'4px'}
+            borderRadius={'6px'}
+            bg={item.registrySource === 'system' ? '#F2F4F7' : '#F0F4FF'}
+            color={item.registrySource === 'system' ? '#667085' : '#3370FF'}
+            fontSize={'10px'}
+            lineHeight={'14px'}
+            fontWeight={'medium'}
+            letterSpacing={'0.2px'}
+            flexShrink={0}
+          >
+            {t('app:team_plugin_source_system')}
           </Box>
         )}
         {item.isDebug && <DebugToolTag />}
@@ -368,6 +413,20 @@ const ToolCard = ({
 
         <Flex gap={2} alignItems={'center'} ml={'auto'}>
           {showMarketplaceUninstallButton ? (
+            <Button
+              className="install-button"
+              size={'sm'}
+              variant={'dangerOutline'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
+              isLoading={isInstallingOrDeleting}
+              display={'none'}
+            >
+              {t('app:toolkit_uninstall')}
+            </Button>
+          ) : showTeamDeleteButton ? (
             <Button
               className="install-button"
               size={'sm'}

@@ -311,7 +311,7 @@ describe('get system tool templates handler', () => {
     });
   });
 
-  it('filters soon offline and offline tools from root system tool candidates', async () => {
+  it('filters hidden, soon offline and offline tools from root system tool candidates', async () => {
     mocks.getSystemToolList.mockResolvedValue([
       {
         id: 'normal-tool',
@@ -320,6 +320,15 @@ describe('get system tool templates handler', () => {
         toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
+        tags: []
+      },
+      {
+        id: 'hidden-tool',
+        name: 'Hidden Tool',
+        intro: '',
+        toolDescription: '',
+        isToolSet: false,
+        status: PluginStatusEnum.Hidden,
         tags: []
       },
       {
@@ -361,6 +370,14 @@ describe('get system tool templates handler', () => {
           id: 'normal-child',
           name: 'Normal Child',
           status: PluginStatusEnum.Normal,
+          description: '',
+          currentCost: 1,
+          systemKeyCost: 0
+        },
+        {
+          id: 'hidden-child',
+          name: 'Hidden Child',
+          status: PluginStatusEnum.Hidden,
           description: '',
           currentCost: 1,
           systemKeyCost: 0

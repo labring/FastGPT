@@ -359,12 +359,8 @@
   "team_plugin_install": "Install",
   "team_plugin_reinstall": "Reinstall",
   "team_plugin_delete": "Delete",
-  "team_plugin_source_system": "System",
-  "team_plugin_source_team": "Team",
   "team_plugin_install_source_marketplace": "Marketplace",
   "team_plugin_install_source_upload": "Upload",
-  "team_plugin_confirm_delete_title": "Delete team plugin?",
-  "team_plugin_confirm_delete_content": "This calls the plugin service to delete the package under the current team source and revokes future runtime access. Existing workflow / Agent nodes will fail when run again. To restore it, upload again or reinstall from Marketplace.",
   "team_plugin_no_permission": "Current member cannot manage team plugins",
   "team_plugin_upload_disabled": "Team plugin upload is disabled",
   "team_plugin_marketplace_search": "Search Marketplace plugins",
@@ -374,5 +370,7 @@
   "team_plugin_etag": "ETag",
   "team_plugin_upload_pending": "Pending install",
   "team_plugin_download_url_missing": "Plugin download URL is missing",
-  "team_plugin_upload_parse_failed": "Plugin package parse failed"
+  "team_plugin_upload_parse_failed": "Plugin package parse failed",
+  "team_plugin_add": "Add plugin",
+  "team_plugin_upload_preview": "Parse plugin package"
 }

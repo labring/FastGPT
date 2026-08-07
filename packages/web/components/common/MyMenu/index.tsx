@@ -30,6 +30,7 @@ export type MenuItemData = {
     label: string | React.ReactNode;
     description?: string;
     onClick?: () => any;
+    closeOnClick?: boolean;
     menuItemStyles?: MenuItemProps;
     iconStyles?: AvatarProps;
     disabled?: boolean;
@@ -310,7 +311,9 @@ const MyMenu = ({
                           return;
                         }
                         if (child.onClick) {
-                          setIsOpen(false);
+                          if (child.closeOnClick !== false) {
+                            setIsOpen(false);
+                          }
                           child.onClick();
                         }
                       }}

@@ -133,7 +133,87 @@ describe('team system plugin list handler', () => {
     });
   });
 
-  it('does not return uninstalled tools', async () => {
+  it('returns system and team installations independently for the same plugin', async () => {
+    mocks.getSystemToolList.mockResolvedValueOnce([
+      {
+        id: 'systemTool-same-plugin',
+        version: '1.0.0',
+        status: PluginStatusEnum.Normal,
+        source: 'system',
+        isToolSet: false,
+        avatar: '',
+        name: 'Same Plugin',
+        intro: '',
+        author: '',
+        tags: [],
+        toolDescription: '',
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: false
+      },
+      {
+        id: 'systemTool-same-plugin',
+        version: '1.0.0',
+        status: PluginStatusEnum.Normal,
+        source: 'teamId:team-1',
+        isToolSet: false,
+        avatar: '',
+        name: 'Same Plugin',
+        intro: '',
+        author: '',
+        tags: [],
+        toolDescription: '',
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: false
+      }
+    ]);
+    mocks.getTeamPluginPolicyMap.mockResolvedValueOnce(
+      new Map([
+        [
+          'same-plugin',
+          {
+            teamId: 'team-1',
+            pluginId: 'same-plugin',
+            pluginType: 'tool',
+            installSource: 'marketplace',
+            status: TeamPluginPolicyStatusEnum.installed,
+            installed: true,
+            version: '1.0.0',
+            etag: 'etag-1'
+          }
+        ]
+      ])
+    );
+
+    const res = await Call(handler, {
+      query: {},
+      auth: {
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toEqual([
+      expect.objectContaining({
+        id: 'systemTool-same-plugin',
+        source: 'teamId:team-1',
+        registrySource: 'team',
+        teamInstallStatus: TeamPluginPolicyStatusEnum.installed
+      }),
+      expect.objectContaining({
+        id: 'systemTool-same-plugin',
+        source: 'system',
+        registrySource: 'system',
+        teamInstallStatus: 'system'
+      })
+    ]);
+  });
+
+  it('does not return hidden or uninstalled system tools', async () => {
     mocks.getSystemToolList.mockResolvedValueOnce([
       {
         id: 'system-tool',
@@ -143,6 +223,23 @@ describe('team system plugin list handler', () => {
         isToolSet: false,
         avatar: '',
         name: 'System Tool',
+        intro: '',
+        author: '',
+        tags: [],
+        toolDescription: '',
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: false
+      },
+      {
+        id: 'hidden-system-tool',
+        version: '1.0.0',
+        status: PluginStatusEnum.Hidden,
+        source: 'system',
+        isToolSet: false,
+        avatar: '',
+        name: 'Hidden System Tool',
         intro: '',
         author: '',
         tags: [],

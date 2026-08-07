@@ -15,7 +15,7 @@ import {
   getRawPluginIdFromSystemToolId,
   setTeamPluginDeleted
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
-import { deletePluginFromSource } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 
@@ -43,16 +43,18 @@ async function handler(req: ApiRequestProps<DeleteTeamToolBody>): Promise<Delete
   const targetVersion = version ?? policy?.version;
   if (!targetVersion) return Promise.reject('plugin.version_required');
 
-  await deletePluginFromSource({
-    pluginId: rawPluginId,
-    source: getTeamPluginSource(teamId),
-    version: targetVersion
-  }).catch((error) => {
-    const errorText = typeof error === 'string' ? error : JSON.stringify(error);
-    if (!/not\s*found|404/i.test(errorText)) {
-      return Promise.reject(error);
-    }
-  });
+  await pluginClient
+    .deletePlugin({
+      pluginId: rawPluginId,
+      source: getTeamPluginSource(teamId),
+      version: targetVersion
+    })
+    .catch((error) => {
+      const errorText = typeof error === 'string' ? error : JSON.stringify(error);
+      if (!/not\s*found|404/i.test(errorText)) {
+        return Promise.reject(error);
+      }
+    });
 
   await setTeamPluginDeleted({
     teamId,

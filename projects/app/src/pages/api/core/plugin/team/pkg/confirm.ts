@@ -14,7 +14,7 @@ import {
   getRawPluginIdFromSystemToolId,
   upsertTeamInstalledPluginPolicy
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
-import { confirmPluginToSource } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 
@@ -41,7 +41,13 @@ async function handler(
     per: TeamPluginManagePermissionVal
   });
 
-  await confirmPluginToSource(toolIds, getTeamPluginSource(teamId));
+  await pluginClient.confirmPlugin(
+    toolIds.map((tool) => ({
+      ...tool,
+      pluginId: tool.pluginId.replace(/^systemTool-/, '')
+    })),
+    { source: getTeamPluginSource(teamId) }
+  );
   await assertTeamPluginSourceReady({
     teamId,
     tools: toolIds

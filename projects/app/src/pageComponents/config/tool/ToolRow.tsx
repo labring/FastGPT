@@ -116,14 +116,18 @@ const ToolRow = ({
               ? 'red.600'
               : tool.status === PluginStatusEnum.SoonOffline
                 ? 'yellow.500'
-                : 'myGray.600'
+                : tool.status === PluginStatusEnum.Hidden
+                  ? 'myGray.500'
+                  : 'myGray.600'
           }
         >
           {tool.status === PluginStatusEnum.Offline
             ? t('app:toolkit_status_offline')
             : tool.status === PluginStatusEnum.SoonOffline
               ? t('app:toolkit_status_soon_offline')
-              : t('app:toolkit_status_normal')}
+              : tool.status === PluginStatusEnum.Hidden
+                ? t('app:toolkit_status_hidden')
+                : t('app:toolkit_status_normal')}
         </Box>
       </Box>
       <Box w={1.1 / 10}>

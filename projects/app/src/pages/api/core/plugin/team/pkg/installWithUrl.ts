@@ -14,7 +14,7 @@ import {
   getRawPluginIdFromSystemToolId,
   upsertTeamInstalledPluginPolicy
 } from '@fastgpt/service/core/plugin/teamPluginPolicy';
-import { installPluginsToSource } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import crypto from 'node:crypto';
@@ -41,7 +41,9 @@ async function handler(
     per: TeamPluginManagePermissionVal
   });
 
-  const installResult = await installPluginsToSource(downloadUrls, getTeamPluginSource(teamId));
+  const installResult = await pluginClient.installPlugins(downloadUrls, {
+    source: getTeamPluginSource(teamId)
+  });
   const failed = (installResult as any)?.failed;
   if (Array.isArray(failed) && failed.length > 0) {
     return Promise.reject(JSON.stringify(failed));

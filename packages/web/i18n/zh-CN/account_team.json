@@ -359,12 +359,8 @@
   "team_plugin_install": "安装",
   "team_plugin_reinstall": "重新安装",
   "team_plugin_delete": "删除",
-  "team_plugin_source_system": "系统预装",
-  "team_plugin_source_team": "团队安装",
   "team_plugin_install_source_marketplace": "Marketplace",
   "team_plugin_install_source_upload": "上传安装",
-  "team_plugin_confirm_delete_title": "确认删除团队插件？",
-  "team_plugin_confirm_delete_content": "删除会调用插件服务删除当前团队 source 下的插件包，并撤销未来运行授权。已有 workflow / Agent 节点再次运行会失败；如需恢复，需要重新上传或从 Marketplace 重新安装。",
   "team_plugin_no_permission": "当前成员没有团队插件管理权限",
   "team_plugin_upload_disabled": "系统已关闭团队上传插件",
   "team_plugin_marketplace_search": "搜索 Marketplace 插件",
@@ -374,5 +370,7 @@
   "team_plugin_etag": "ETag",
   "team_plugin_upload_pending": "待确认安装",
   "team_plugin_download_url_missing": "未获取到插件下载地址",
-  "team_plugin_upload_parse_failed": "插件包解析失败"
+  "team_plugin_upload_parse_failed": "插件包解析失败",
+  "team_plugin_add": "添加插件",
+  "team_plugin_upload_preview": "解析插件包"
 }

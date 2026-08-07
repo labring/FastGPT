@@ -21,7 +21,6 @@ export enum TabEnum {
   'apikey' = 'apikey',
   'loginout' = 'loginout',
   'team' = 'team',
-  'teamPlugin' = 'teamPlugin',
   'model' = 'model',
   'customDomain' = 'customDomain'
 }
@@ -57,17 +56,6 @@ const AccountContainer = ({
             label: t('account:team'),
             value: TabEnum.team
           },
-          ...(userInfo?.team?.permission.hasPluginManagePer ||
-          userInfo?.team?.permission.hasManagePer ||
-          userInfo?.team?.permission.isOwner
-            ? [
-                {
-                  icon: 'common/model',
-                  label: t('account:team_plugin'),
-                  value: TabEnum.teamPlugin
-                }
-              ]
-            : []),
           {
             icon: 'support/usage/usageRecordLight',
             label: t('account:usage_records'),

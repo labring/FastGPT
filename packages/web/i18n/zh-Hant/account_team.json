@@ -359,12 +359,8 @@
   "team_plugin_install": "安裝",
   "team_plugin_reinstall": "重新安裝",
   "team_plugin_delete": "刪除",
-  "team_plugin_source_system": "系統預裝",
-  "team_plugin_source_team": "團隊安裝",
   "team_plugin_install_source_marketplace": "Marketplace",
   "team_plugin_install_source_upload": "上傳安裝",
-  "team_plugin_confirm_delete_title": "確認刪除團隊外掛？",
-  "team_plugin_confirm_delete_content": "刪除會調用外掛服務刪除目前團隊 source 下的外掛包，並撤銷未來執行授權。已有 workflow / Agent 節點再次執行會失敗；如需恢復，需要重新上傳或從 Marketplace 重新安裝。",
   "team_plugin_no_permission": "目前成員沒有團隊外掛管理權限",
   "team_plugin_upload_disabled": "系統已關閉團隊上傳外掛",
   "team_plugin_marketplace_search": "搜尋 Marketplace 外掛",
@@ -374,5 +370,7 @@
   "team_plugin_etag": "ETag",
   "team_plugin_upload_pending": "待確認安裝",
   "team_plugin_download_url_missing": "未取得外掛下載地址",
-  "team_plugin_upload_parse_failed": "外掛包解析失敗"
+  "team_plugin_upload_parse_failed": "外掛包解析失敗",
+  "team_plugin_add": "添加外掛",
+  "team_plugin_upload_preview": "解析外掛包"
 }
