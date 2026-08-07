@@ -22,12 +22,13 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dynamic from 'next/dynamic';
-import dayjs from 'dayjs';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import { POST } from '@/web/common/api/request';
+import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const WechatEditModal = dynamic(() => import('./WechatEditModal'));
 const QRLoginModal = dynamic(() => import('./QRLoginModal'));
@@ -57,6 +58,16 @@ const Wechat = ({
       refreshDeps: [appId]
     }
   );
+
+  const statusBadge = (status?: string) => {
+    const map: Record<string, { colorSchema: ColorSchemaType; label: string }> = {
+      online: { colorSchema: 'green', label: t('publish:wechat.status.online') },
+      offline: { colorSchema: 'gray', label: t('publish:wechat.status.offline') },
+      error: { colorSchema: 'red', label: t('publish:wechat.status.error') }
+    };
+    const cfg = map[status || 'offline'] ?? map['offline'];
+    return <MyTag colorSchema={cfg.colorSchema}>{cfg.label}</MyTag>;
+  };
 
   return (
     <Box position={'relative'} p={6} minH={'50vh'}>
@@ -101,8 +112,8 @@ const Wechat = ({
           <Thead>
             <Tr>
               <Th>{t('common:Name')}</Th>
+              <Th>{t('publish:wechat.status')}</Th>
               <Th>{t('common:support.outlink.Usage points')}</Th>
-              <Th>{t('common:expired_time')}</Th>
               <Th>{t('common:last_use_time')}</Th>
               <Th>{t('common:Action')}</Th>
             </Tr>
@@ -111,12 +122,8 @@ const Wechat = ({
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
+                <Td>{statusBadge(item.app?.status)}</Td>
                 <Td>{Math.round(item.usagePoints)}</Td>
-                <Td>
-                  {item.limit?.expiredTime
-                    ? dayjs(item.limit.expiredTime).format('YYYY/MM/DD\nHH:mm')
-                    : '-'}
-                </Td>
                 <Td>
                   {item.lastTime
                     ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
