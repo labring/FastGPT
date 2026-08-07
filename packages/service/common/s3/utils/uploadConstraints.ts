@@ -4,13 +4,13 @@ import {
   type FileExtensionKeyType
 } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import type { UploadConstraintsInput } from '../contracts/type';
+import type { UploadConstraintsInput, UploadConstraints } from '../contracts/type';
+import { createUploadExtensionRulesFromFileSelectConfig } from '../uploadPolicy/utils';
 import {
-  createUploadExtensionRulesFromFileSelectConfig,
   normalizeAllowedExtensions,
   normalizeFileExtension,
   parseAllowedExtensions
-} from '../uploadPolicy/utils';
+} from './extension';
 import { createUploadPolicy } from '../uploadPolicy/service';
 import type { UploadPolicy } from '../uploadPolicy/type';
 
@@ -22,7 +22,7 @@ const uploadConfigKeys: FileExtensionKeyType[] = [
   'canSelectCustomFileExtension'
 ];
 
-export { normalizeAllowedExtensions, normalizeFileExtension, parseAllowedExtensions };
+export { normalizeAllowedExtensions, normalizeFileExtension, parseAllowedExtensions } from './extension';
 
 export const avatarAllowedExtensions = normalizeAllowedExtensions(['.jpg', '.jpeg', '.png']);
 export const datasetAllowedExtensions = parseAllowedExtensions(documentFileType);

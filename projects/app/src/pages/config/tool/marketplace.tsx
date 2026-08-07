@@ -28,12 +28,19 @@ import {
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
 import {
+  getMarketplaceToolStateAfterInstall,
+  getBatchUpdateFailures,
+  shouldReinstallOfflineMarketplaceTool
+} from '@/web/core/plugin/marketplace/utils';
+import {
   getAdminSystemToolDetail,
+  getAdminSystemToolVersions,
   getAdminSystemTools,
   putAdminUpdateSystemTool
 } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
@@ -46,6 +53,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
+type MarketplaceToolCardItemType = ToolCardItemType & { installedVersion?: string };
 const TOOL_GRID_TEMPLATE_COLUMNS =
   'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
@@ -158,7 +166,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   // Use custom hook for URL params management
   const { searchText, tagIds, sourceFilter, updateParams } = useSearchParams();
 
-  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
+  const [selectedTool, setSelectedTool] = useState<MarketplaceToolCardItemType | null>(null);
   const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
   const [updatingToolIds, updatingToolIdsDispatch] = useSet<string>();
   const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
@@ -281,7 +289,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       }
 
       const offlineTool = systemInstalledPlugins?.allMap.get(tool.id);
-      const shouldReinstallOfflineTool = offlineTool?.status === PluginStatusEnum.Offline;
+      const targetVersion = version ?? tool.version;
+      const shouldReinstallOfflineTool = shouldReinstallOfflineMarketplaceTool({
+        isOffline: offlineTool?.status === PluginStatusEnum.Offline,
+        installedVersion: offlineTool?.version,
+        targetVersion
+      });
       const reinstallSystemTool = async (systemToolId: string) => {
         const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
 
@@ -301,25 +314,46 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         try {
           if (shouldReinstallOfflineTool && offlineTool) {
             await reinstallSystemTool(offlineTool.systemToolId);
-            toast({
-              title: t('app:custom_plugin_install_success'),
-              status: 'success'
-            });
           } else {
             const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
-            if (!downloadUrl) return;
+            if (!downloadUrl) throw new Error(t('common:request_error'));
 
-            await intallPluginWithUrl({
+            const installResult = await intallPluginWithUrl({
               downloadUrls: [downloadUrl]
             });
+            const failures = getBatchUpdateFailures({
+              toolIds: [tool.id],
+              downloadUrls: [downloadUrl],
+              installResult,
+              language: i18n.language
+            });
+            if (failures.length > 0) {
+              throw new Error(failures[0].reason);
+            }
+
+            if (offlineTool) {
+              await reinstallSystemTool(offlineTool.systemToolId);
+            }
           }
+
+          const refreshedInstalledPlugins = await refreshInstalledPlugins();
+          const refreshedInstalledTool = refreshedInstalledPlugins?.map.get(tool.id);
 
           if (selectedTool?.id === tool.id && shouldReinstallOfflineTool) {
             setSelectedTool(null);
           } else if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
+            setSelectedTool((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    ...getMarketplaceToolStateAfterInstall({
+                      targetVersion: version ?? tool.version,
+                      refreshedInstalledVersion: refreshedInstalledTool?.version
+                    })
+                  }
+                : null
+            );
           }
-          await refreshInstalledPlugins();
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
@@ -332,6 +366,21 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     {
       manual: true
     }
+  );
+
+  const handleInstallToolWithErrorHandling = useCallback(
+    async (tool: ToolCardItemType, version?: string) => {
+      try {
+        await handleInstallTool(tool, version);
+        toast({
+          title: t('app:custom_plugin_install_success'),
+          status: 'success'
+        });
+      } catch {
+        // useRequest 已统一展示安装失败提示，这里只消费拒绝的 Promise。
+      }
+    },
+    [handleInstallTool, t, toast]
   );
 
   const handleUpdateTool = useCallback(
@@ -348,18 +397,39 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
         try {
           // Get download URL
           const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
-          if (!downloadUrl) return;
+          if (!downloadUrl) throw new Error(t('common:request_error'));
 
-          // Call install interface for update
-          await intallPluginWithUrl({
+          // 即使接口返回 200，也要检查 plugin-server 返回的单项失败结果。
+          const installResult = await intallPluginWithUrl({
             downloadUrls: [downloadUrl]
           });
+          const failures = getBatchUpdateFailures({
+            toolIds: [tool.id],
+            downloadUrls: [downloadUrl],
+            installResult,
+            language: i18n.language
+          });
+          if (failures.length > 0) {
+            throw new Error(failures[0].reason);
+          }
+
+          const refreshedInstalledPlugins = await refreshInstalledPlugins();
+          const refreshedInstalledTool = refreshedInstalledPlugins?.map.get(tool.id);
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
+            setSelectedTool((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    ...getMarketplaceToolStateAfterInstall({
+                      targetVersion: version ?? tool.version,
+                      refreshedInstalledVersion: refreshedInstalledTool?.version
+                    })
+                  }
+                : null
+            );
           }
-          await refreshInstalledPlugins();
         } finally {
           updatingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
@@ -369,7 +439,25 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
+    [i18n.language, refreshInstalledPlugins, selectedTool, t, updatingToolIdsDispatch]
+  );
+
+  const handleUpdateToolWithErrorHandling = useCallback(
+    async (tool: ToolCardItemType, version?: string) => {
+      try {
+        await handleUpdateTool(tool, version);
+        toast({
+          title: t('common:update_success'),
+          status: 'success'
+        });
+      } catch (error) {
+        toast({
+          title: getErrText(error, t('app:toolkit_update_failed')),
+          status: 'error'
+        });
+      }
+    },
+    [handleUpdateTool, t, toast]
   );
 
   const { runAsync: handleUninstallTool } = useRequest(
@@ -400,7 +488,11 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           });
 
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, installed: false, update: false } : null));
+            setSelectedTool((prev) =>
+              prev
+                ? { ...prev, installed: false, installedVersion: undefined, update: false }
+                : null
+            );
           }
           await refreshInstalledPlugins();
         } finally {
@@ -436,24 +528,47 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
   const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
     async (toolIds: string[]) => {
-      if (toolIds.length === 0) return;
+      if (toolIds.length === 0) return [];
 
       // 1. Batch get download URLs
       const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
 
       // 2. Batch install (update)
-      await intallPluginWithUrl({ downloadUrls });
+      const installResult = await intallPluginWithUrl({ downloadUrls });
+
+      const failures = getBatchUpdateFailures({
+        toolIds,
+        downloadUrls,
+        installResult,
+        language: i18n.language
+      });
 
       // 3. Refresh installed plugins list
       await refreshInstalledPlugins();
 
-      // 4. Close Drawer
-      setShowBatchUpdateDrawer(false);
+      const successCount = toolIds.length - failures.length;
+      if (successCount > 0) {
+        toast({
+          title: t('app:toolkit_update_success_count', { count: successCount }),
+          status: 'success'
+        });
+      }
+
+      // 4. 保留部分失败项，用户可直接在 Drawer 内重试。
+      if (failures.length === 0) {
+        setShowBatchUpdateDrawer(false);
+      }
+
+      return failures;
     },
     {
-      manual: true,
-      successToast: t('common:Success')
+      manual: true
     }
+  );
+
+  const fetchInstalledToolVersions = useCallback(
+    (toolId: string) => getAdminSystemToolVersions({ toolId }),
+    []
   );
 
   const heroSectionRef = useRef<HTMLDivElement>(null);
@@ -479,7 +594,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     };
   }, []);
 
-  const displayTools: ToolCardItemType[] = useMemo(() => {
+  const displayTools: MarketplaceToolCardItemType[] = useMemo(() => {
     return (
       tools
         ?.map((tool) => {
@@ -506,6 +621,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
             }),
             installed: isInstalled,
+            installedVersion: installedTool?.version,
             update,
             version: tool.version,
             etag: tool.etag,
@@ -882,12 +998,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                       variant="marketplace"
                       isInstallingOrDeleting={installingOrDeletingToolIds.has(tool.id)}
                       isUpdating={updatingToolIds.has(tool.id)}
-                      onInstall={() => handleInstallTool(tool)}
+                      onInstall={() => handleInstallToolWithErrorHandling(tool)}
                       onDelete={() => {
                         openMarketplaceUninstallConfirm(tool);
                         return Promise.resolve();
                       }}
-                      onUpdate={() => handleUpdateTool(tool)}
+                      onUpdate={() => handleUpdateToolWithErrorHandling(tool)}
                       onClickCard={() => setSelectedTool(tool)}
                       showActionButton={!tool.installed}
                     />
@@ -906,22 +1022,25 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
           showPoint={false}
-          onToggleInstall={(_, version) => handleInstallTool(selectedTool, version)}
+          onToggleInstall={(_, version) =>
+            handleInstallToolWithErrorHandling(selectedTool, version)
+          }
           onDelete={() => {
             openMarketplaceUninstallConfirm(selectedTool);
             return Promise.resolve();
           }}
-          onUpdate={(version) => handleUpdateTool(selectedTool, version)}
+          onUpdate={(version) => handleUpdateToolWithErrorHandling(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
+          installedVersion={selectedTool.installedVersion}
           mode="admin"
-          showActionButton={!selectedTool.installed}
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
             await getMarketplaceToolDetail({ toolId, version })
           }
           onFetchVersions={getMarketplaceToolVersions}
+          onFetchInstalledVersions={fetchInstalledToolVersions}
         />
       )}
 
@@ -931,11 +1050,16 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onClose={() => setShowBatchUpdateDrawer(false)}
           updatableTools={updatableTools}
           onBatchUpdate={handleBatchUpdate}
+          onUpdate={handleUpdateTool}
+          onDelete={openMarketplaceUninstallConfirm}
           isBatchUpdating={isBatchUpdating}
+          singleUpdatingToolIds={updatingToolIds}
+          deletingToolIds={installingOrDeletingToolIds}
           //@ts-ignore
           onFetchDetail={async (toolId: string, version?: string) =>
             await getMarketplaceToolDetail({ toolId, version })
           }
+          onFetchVersions={getMarketplaceToolVersions}
         />
       )}
       <UninstallConfirmModal />
