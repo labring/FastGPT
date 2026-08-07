@@ -337,7 +337,9 @@ function EditLinkModal({
             {t('publish:basic_info')}
           </Box>
           <Flex alignItems={'center'} mt={4}>
-            <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
+            <FormLabel flex={'0 0 90px'} required>
+              {t('common:Name')}
+            </FormLabel>
             <Input
               placeholder={t('publish:link_name')}
               maxLength={100}

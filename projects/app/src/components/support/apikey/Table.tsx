@@ -760,7 +760,9 @@ function EditKeyModal({
     >
       <Flex flexDirection={'column'} gap={4}>
         <Flex alignItems={'center'} gap={4}>
-          <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
+          <FormLabel flex={'0 0 90px'} required>
+            {t('common:Name')}
+          </FormLabel>
           <Input
             placeholder={t('publish:key_alias') || 'key_alias'}
             maxLength={50}
