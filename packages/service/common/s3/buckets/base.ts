@@ -85,6 +85,16 @@ const withStorageKeyFallback = async <T>(
   }
 };
 
+/** Decode an encoded key basename for download links when the caller has no original filename. */
+const getDownloadFilenameFromKey = (key: string) => {
+  const filename = path.basename(key);
+  try {
+    return decodeURIComponent(filename) || 'file';
+  } catch {
+    return filename || 'file';
+  }
+};
+
 export class S3BaseBucket {
   constructor(
     private readonly _client: IStorage,
@@ -111,8 +121,8 @@ export class S3BaseBucket {
       key,
       body: Buffer.from('ok'),
       contentType: 'text/plain',
+      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
         originFilename: filename,
         uploadTime: new Date().toISOString()
       }
@@ -357,7 +367,8 @@ export class S3BaseBucket {
 
       const { url: previewUrl } = await this.createExternalUrl({
         key: parsedParams.rawKey,
-        expiredHours
+        expiredHours,
+        filename: resolvedFilename
       });
 
       return {
@@ -507,7 +518,8 @@ export class S3BaseBucket {
 
       const { url: previewUrl } = await this.createExternalUrl({
         key: parsedParams.rawKey,
-        expiredHours
+        expiredHours,
+        filename: resolvedFilename
       });
 
       return {
@@ -968,7 +980,7 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours, responseContentType } = parsed;
+    const { key, expiredHours, responseContentType, filename } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return {
@@ -978,7 +990,7 @@ export class S3BaseBucket {
         objectKey: key,
         bucketName: this.bucketName,
         expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
-        filename: path.basename(key),
+        filename: filename ?? getDownloadFilenameFromKey(key),
         responseContentType
       })
     };
@@ -1017,8 +1029,8 @@ export class S3BaseBucket {
       body,
       contentType: contentType ?? 'application/octet-stream',
       contentLength,
+      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
         originFilename: encodeURIComponent(filename),
         uploadTime: new Date().toISOString()
       }

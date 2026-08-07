@@ -44,8 +44,8 @@ export class S3RawTextSource extends S3PrivateBucket {
       key,
       body: buffer,
       contentType: 'text/plain',
+      contentDisposition: getContentDisposition({ filename: sourceName, type: 'attachment' }),
       metadata: {
-        contentDisposition: getContentDisposition({ filename: sourceName, type: 'attachment' }),
         originFilename: encodeURIComponent(sourceName),
         uploadTime: new Date().toISOString()
       }

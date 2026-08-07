@@ -1,7 +1,11 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable, Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { handleS3ProxyDownload, handleS3ProxyUploadPart } from '@/service/common/s3/proxy';
+import {
+  handleS3ProxyDownload,
+  handleS3ProxyUpload,
+  handleS3ProxyUploadPart
+} from '@/service/common/s3/proxy';
 
 const createRequest = (method = 'GET') =>
   Object.assign(new EventEmitter(), {
@@ -249,5 +253,55 @@ describe('handleS3ProxyUploadPart', () => {
 
     await expect(uploadPromise).rejects.toBeTruthy();
     expect(uploadStream?.destroyed).toBe(true);
+  });
+});
+
+describe('handleS3ProxyUpload', () => {
+  it('stores the original filename as the real Content-Disposition header', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': '5' },
+      aborted: false
+    });
+    const uploadObject = vi.fn().mockResolvedValue({});
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUpload({
+      req,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/%E6%96%87%E6%A1%A3.txt',
+        maxSize: 1024,
+        uploadPolicy: {
+          defaultContentType: 'text/plain',
+          allowedExtensions: ['.txt'],
+          allowedMimeTypes: ['text/plain'],
+          extensionRules: [{ extension: '.txt', source: 'builtin', verification: 'text' }],
+          fallbackExtension: '.txt',
+          allowMissingExtension: false
+        },
+        fileHint: {
+          filename: '文档.txt',
+          contentType: 'text/plain',
+          source: 'local-file'
+        },
+        metadata: {
+          originFilename: encodeURIComponent('文档.txt')
+        }
+      }
+    });
+
+    req.end(Buffer.from('hello'));
+    await uploadPromise;
+
+    expect(uploadObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentDisposition: expect.stringContaining("filename*=UTF-8''%E6%96%87%E6%A1%A3.txt")
+      })
+    );
   });
 });

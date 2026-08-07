@@ -237,12 +237,10 @@ export const buildS3UploadMetadata = ({
 }) => {
   if (!filename) return metadata;
 
+  const { contentDisposition: _contentDisposition, ...customMetadata } = metadata ?? {};
+
   return {
-    ...metadata,
-    contentDisposition: getContentDisposition({
-      filename,
-      type: 'attachment'
-    }),
+    ...customMetadata,
     originFilename: encodeURIComponent(filename)
   };
 };
@@ -443,6 +441,10 @@ export const handleS3ProxyUpload = async ({
     body: guardStream,
     contentType: validatedFile.contentType,
     contentLength,
+    contentDisposition: getContentDisposition({
+      filename: validatedFile.filename,
+      type: 'attachment'
+    }),
     metadata: buildS3UploadMetadata({
       metadata,
       filename: validatedFile.filename
