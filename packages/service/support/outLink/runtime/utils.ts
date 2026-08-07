@@ -46,6 +46,7 @@ import { MongoChat } from '../../../core/chat/chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from '../../../core/chat/source';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoChatItem } from '../../../core/chat/chatItemSchema';
+import { assertOutLinkTeamUsable } from '../guard';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
 
@@ -127,6 +128,10 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   onStreamChunk,
   streamId
 }: outLinkInvokeChatProps<T>) {
+  await assertOutLinkTeamUsable({
+    teamId: String(outLinkConfig.teamId),
+    tmbId: String(outLinkConfig.tmbId)
+  });
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: '',

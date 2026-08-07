@@ -16,7 +16,8 @@ describe('SessionCache', () => {
     deleteMany: vi.fn(),
     getHashAll: vi.fn(),
     iterateByPrefix: vi.fn(),
-    setHashWithTtl: vi.fn()
+    setHashWithTtl: vi.fn(),
+    updateHashFields: vi.fn()
   };
 
   beforeEach(() => {
@@ -33,6 +34,7 @@ describe('SessionCache', () => {
     });
     redis.iterateByPrefix.mockReturnValue(createKeyBatches([]));
     redis.setHashWithTtl.mockResolvedValue(undefined);
+    redis.updateHashFields.mockResolvedValue(undefined);
   });
 
   it('decodes a complete session hash and normalizes isRoot/createdAt', async () => {
@@ -188,6 +190,22 @@ describe('SessionCache', () => {
     ]);
   });
 
+  it('updates only the team context so the existing TTL is preserved', async () => {
+    const cache = new SessionCache({ redis: redis as any, logger });
+
+    await cache.updateTeam({
+      sessionId: 'user-1:token-1',
+      teamId: 'team-2',
+      tmbId: 'tmb-2'
+    });
+
+    expect(redis.updateHashFields).toHaveBeenCalledWith({
+      key: 'session:user-1:token-1',
+      fields: { teamId: 'team-2', tmbId: 'tmb-2' }
+    });
+    expect(redis.setHashWithTtl).not.toHaveBeenCalled();
+  });
+
   it('scans all user pages and returns only valid typed sessions', async () => {
     redis.iterateByPrefix.mockReturnValue(
       createKeyBatches([
@@ -252,6 +270,7 @@ describe('SessionCache adapter integration', () => {
         isRoot: '0',
         createdAt: '1000'
       }),
+      hmset: vi.fn().mockResolvedValue('OK'),
       multi: vi.fn(),
       scan: vi.fn(),
       set: vi.fn()
@@ -282,6 +301,11 @@ describe('SessionCache adapter integration', () => {
         createdAt: 1000
       }
     });
+    await cache.updateTeam({
+      sessionId: 'user-1:token-1',
+      teamId: 'team-2',
+      tmbId: 'tmb-2'
+    });
 
     expect(commandClient.hgetall).toHaveBeenCalledWith('fastgpt:session:user-1:token-1');
     expect(multi.hmset).toHaveBeenCalledWith('fastgpt:session:user-1:token-1', {
@@ -295,5 +319,9 @@ describe('SessionCache adapter integration', () => {
       'fastgpt:session:user-1:token-1',
       SESSION_TTL_SECONDS
     );
+    expect(commandClient.hmset).toHaveBeenCalledWith('fastgpt:session:user-1:token-1', {
+      teamId: 'team-2',
+      tmbId: 'tmb-2'
+    });
   });
 });

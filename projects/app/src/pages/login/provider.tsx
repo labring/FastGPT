@@ -4,6 +4,9 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
+import { submitAccountCancellation } from '@/web/support/user/account/cancellation/api';
+import { authorizePasswordChange } from '@/web/support/user/account/password/api';
+import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -39,7 +42,14 @@ const provider = () => {
     ? validateRedirectUrl(loginStore.lastRoute)
     : '/dashboard/agent';
   const lastTmbId = loginStore?.lastTmbId || '';
-  const errorRedirectPage = lastRoute.startsWith('/chat') ? lastRoute : '/login';
+  const errorRedirectPage =
+    loginStore?.flow === 'accountCancellation'
+      ? '/account/cancel?confirmed=1'
+      : loginStore?.flow === 'passwordChange'
+        ? lastRoute
+        : lastRoute.startsWith('/chat')
+          ? lastRoute
+          : '/login';
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -82,6 +92,61 @@ const provider = () => {
   const authProps = useCallback(
     async (props: Record<string, string>) => {
       try {
+        if (loginStore?.flow === 'accountCancellation') {
+          if (!props.code || !loginStore.callbackUrl) {
+            throw new Error('OAuth cancellation callback is incomplete');
+          }
+          const result = await submitAccountCancellation({
+            method: `oauth/${loginStore.provider}` as any,
+            payload: {
+              callbackUrl: loginStore.callbackUrl,
+              code: props.code,
+              ...(state ? { state } : {}),
+              props
+            }
+          });
+          if (result.status !== 'pending') {
+            throw new Error('Account cancellation verification is still pending');
+          }
+          toast({
+            status: 'success',
+            title: t('account_info:account_cancellation_submit_success', '注销提交成功')
+          });
+          setUserInfo(null);
+          setLoginStore(undefined);
+          await router.replace('/login?lastRoute=/account/cancel');
+          return;
+        }
+
+        if (loginStore?.flow === 'passwordChange') {
+          if (!props.code || !loginStore.callbackUrl) {
+            throw new Error('OAuth password change callback is incomplete');
+          }
+          const result = await authorizePasswordChange({
+            source: 'accountVerification',
+            verification: {
+              method: `oauth/${loginStore.provider}` as any,
+              payload: {
+                callbackUrl: loginStore.callbackUrl,
+                code: props.code,
+                ...(state ? { state } : {}),
+                props
+              }
+            }
+          });
+          if (result.status !== 'authorized') {
+            throw new Error('Password change verification is still pending');
+          }
+          usePasswordChangeStore.getState().setAuthorization({
+            token: result.token,
+            expiredAt: result.expiredAt,
+            required: loginStore.passwordChangeRequired === true
+          });
+          setLoginStore(undefined);
+          await router.replace(lastRoute);
+          return;
+        }
+
         const res = await oauthLogin({
           type: loginStore?.provider || OAuthEnum.sso,
           props,
@@ -106,8 +171,16 @@ const provider = () => {
         await onFastGPTLoginSuccess(loginSuccess, res);
       } catch (error) {
         toast({
-          status: 'warning',
-          title: getErrText(error, t('common:support.user.login.error'))
+          status:
+            loginStore?.flow === 'accountCancellation' || loginStore?.flow === 'passwordChange'
+              ? 'error'
+              : 'warning',
+          title:
+            loginStore?.flow === 'passwordChange'
+              ? t('common:password_verification_failed')
+              : loginStore?.flow === 'accountCancellation'
+                ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+                : getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
           router.replace(errorRedirectPage);
@@ -118,10 +191,12 @@ const provider = () => {
     [
       errorRedirectPage,
       i18n.language,
-      loginStore?.provider,
+      loginStore,
       loginSuccess,
       router,
       setLoginStore,
+      setUserInfo,
+      state,
       t,
       toast
     ]
@@ -130,8 +205,16 @@ const provider = () => {
   useEffect(() => {
     if (error) {
       toast({
-        status: 'warning',
-        title: t('common:support.user.login.Provider error')
+        status:
+          loginStore?.flow === 'accountCancellation' || loginStore?.flow === 'passwordChange'
+            ? 'error'
+            : 'warning',
+        title:
+          loginStore?.flow === 'passwordChange'
+            ? t('common:password_verification_failed')
+            : loginStore?.flow === 'accountCancellation'
+              ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+              : t('common:support.user.login.Provider error')
       });
       router.replace(errorRedirectPage);
       return;
@@ -144,12 +227,17 @@ const provider = () => {
     isOauthLogging = true;
 
     (async () => {
-      await retryFn(async () => clearToken());
+      if (!loginStore?.flow || loginStore.flow === 'login') {
+        await retryFn(async () => clearToken());
+      }
       router.prefetch('/dashboard/agent');
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({
-          status: 'warning',
-          title: t('common:support.user.login.security_failed')
+          status: loginStore?.flow === 'accountCancellation' ? 'error' : 'warning',
+          title:
+            loginStore?.flow === 'accountCancellation'
+              ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+              : t('common:support.user.login.security_failed')
         });
         setTimeout(() => {
           router.replace(errorRedirectPage);
@@ -169,7 +257,7 @@ export default provider;
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ...(await serviceSideProps(context, ['login']))
+      ...(await serviceSideProps(context, ['login', 'account_info']))
     }
   };
 }

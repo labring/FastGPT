@@ -22,7 +22,15 @@ import {
 } from '@fastgpt/global/core/ai/provider';
 import { getMyModels, getOperationalAd } from './api';
 
-type LoginStoreType = { provider: OAuthEnum; lastRoute: string; state: string; lastTmbId?: string };
+type LoginStoreType = {
+  provider: OAuthEnum;
+  lastRoute: string;
+  state: string;
+  lastTmbId?: string;
+  callbackUrl?: string;
+  flow?: 'login' | 'accountCancellation' | 'passwordChange';
+  passwordChangeRequired?: boolean;
+};
 
 export type NotSufficientModalType =
   | TeamErrEnum.datasetSizeNotEnough
