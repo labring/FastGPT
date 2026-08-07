@@ -25,6 +25,7 @@ import type {
 } from '@fastgpt/global/core/app/version/type';
 import type { SimpleAppSnapshotType } from './Edit/FormComponent/useSnapshots';
 import AppDetailPanelModal, {
+  APP_DETAIL_PANEL_WIDTH_PX,
   type AppDetailPanelModalProps
 } from './components/AppDetailPanelModal';
 
@@ -52,38 +53,33 @@ const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapsh
     <AppDetailPanelModal
       isOpen={isOpen}
       onClose={onClose}
-      width={['100%', '340px']}
+      width={['100%', `${APP_DETAIL_PANEL_WIDTH_PX}px`]}
       height={panelHeight ?? ['100vh', 'calc(100vh - 67px)']}
       top={topOffset ?? [0, '67px']}
       position={'fixed'}
       showMask={false}
       contentProps={{ border: 'base' }}
+      header={
+        <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Box flex={1} minW={0}>
+            <LightRowTabs
+              list={[
+                { label: t('workflow:workflow.My edit'), value: 'myEdit' },
+                { label: t('workflow:workflow.Team cloud'), value: 'teamCloud' }
+              ]}
+              value={currentTab}
+              onChange={setCurrentTab}
+              inlineStyles={{ px: 0.5, pb: 2 }}
+              gap={5}
+              py={0}
+              fontSize={'sm'}
+            />
+          </Box>
+          <CloseButton flexShrink={0} size={'sm'} onClick={onClose} />
+        </Flex>
+      }
     >
-      <Flex
-        alignItems={'center'}
-        minH={'48px'}
-        fontWeight={500}
-        bg={'#FBFBFC'}
-        borderBottom={'1px solid #F4F6F8'}
-        px={5}
-      >
-        <Box flex={1} minW={0}>
-          <LightRowTabs
-            list={[
-              { label: t('workflow:workflow.My edit'), value: 'myEdit' },
-              { label: t('workflow:workflow.Team cloud'), value: 'teamCloud' }
-            ]}
-            value={currentTab}
-            onChange={setCurrentTab}
-            inlineStyles={{ px: 0.5, pb: 2 }}
-            gap={5}
-            py={0}
-            fontSize={'sm'}
-          />
-        </Box>
-        <CloseButton flexShrink={0} size={'sm'} onClick={onClose} />
-      </Flex>
-      <Box display={'flex'} flex={'1 0 0'} minH={0} flexDirection={'column'} py={3}>
+      <Box display={'flex'} flex={'1 0 0'} minH={0} flexDirection={'column'}>
         {currentTab === 'myEdit' ? (
           <MyEdit past={past} onSwitchTmpVersion={onSwitchTmpVersion} />
         ) : (
@@ -107,7 +103,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   const { toast } = useToast();
 
   return (
-    <Flex px={5} flex={'1 0 0'} flexDirection={'column'}>
+    <Flex px={6} flex={'1 0 0'} flexDirection={'column'}>
       {past.length > 0 && (
         <Box py={2} px={3}>
           <Button
@@ -250,7 +246,7 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollData flex={'1 0 0'} px={5} isLoading={isLoadingVersion}>
+    <ScrollData flex={'1 0 0'} px={6} isLoading={isLoadingVersion}>
       {scrollDataList.map((item, index) => {
         const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 

@@ -216,98 +216,91 @@ const Header = ({
         )}
         {currentTab === TabEnum.appEdit && (
           <Flex alignItems={'center'}>
-            {!isShowHistories && (
-              <>
-                {isPc && (
-                  <MyTag
-                    mr={3}
-                    type={'borderFill'}
-                    showDot
-                    colorSchema={
-                      isSaved
-                        ? publishStatusStyle.published.colorSchema
-                        : publishStatusStyle.unPublish.colorSchema
-                    }
-                  >
-                    {t(
-                      isSaved
-                        ? publishStatusStyle.published.text
-                        : publishStatusStyle.unPublish.text
-                    )}
-                  </MyTag>
-                )}
-
-                <IconButton
-                  mr={[2, 4]}
-                  icon={<MyIcon name={'history'} w={'18px'} />}
-                  aria-label={''}
-                  size={'sm'}
-                  w={'34px'}
-                  h={'34px'}
-                  variant={'whitePrimary'}
-                  onClick={setIsShowHistories}
-                />
-                <SaveButton
-                  colorSchema="primary"
-                  isLoading={loading}
-                  onClickSave={onClickSave}
-                  checkData={() => {
-                    if (
-                      checkAgentSkillSandboxUnavailable({
-                        appForm,
-                        showSandbox,
-                        enableSandbox
-                      })
-                    ) {
-                      toast({
-                        title: t('skill:sandbox_skill_unavailable_toast'),
-                        status: 'warning'
-                      });
-                      return false;
-                    }
-
-                    if (appForm.aiSettings.useAgentSandbox) {
-                      if (!showSandbox) {
-                        toast({
-                          title: t('skill:sandbox_system_not_configured_toast'),
-                          status: 'warning'
-                        });
-                        return false;
-                      }
-                      if (!enableSandbox) {
-                        toast({
-                          title: t('app:sandbox_free_not_support'),
-                          status: 'warning'
-                        });
-                        return false;
-                      }
-                    }
-
-                    const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
-
-                    const toolNodeIds = new Set(
-                      storeEdges
-                        .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
-                        .map((edge) => edge.target)
-                    );
-                    const nodes = storeNodes.map((item) =>
-                      storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
-                    );
-                    const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
-
-                    const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });
-
-                    if (checkResults.hasError) {
-                      toast({
-                        title: t('app:app.error.publish_unExist_app'),
-                        status: 'warning'
-                      });
-                    }
-                    return !checkResults.hasError;
-                  }}
-                />
-              </>
+            {!isShowHistories && isPc && (
+              <MyTag
+                mr={3}
+                type={'borderFill'}
+                showDot
+                colorSchema={
+                  isSaved
+                    ? publishStatusStyle.published.colorSchema
+                    : publishStatusStyle.unPublish.colorSchema
+                }
+              >
+                {t(isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text)}
+              </MyTag>
             )}
+
+            <IconButton
+              mr={[2, 4]}
+              icon={<MyIcon name={'history'} w={'18px'} />}
+              aria-label={''}
+              size={'sm'}
+              w={'34px'}
+              h={'34px'}
+              variant={'whitePrimary'}
+              onClick={isShowHistories ? closeHistories : setIsShowHistories}
+            />
+            <SaveButton
+              colorSchema="primary"
+              isLoading={loading}
+              isDisabled={isShowHistories}
+              onClickSave={onClickSave}
+              checkData={() => {
+                if (
+                  checkAgentSkillSandboxUnavailable({
+                    appForm,
+                    showSandbox,
+                    enableSandbox
+                  })
+                ) {
+                  toast({
+                    title: t('skill:sandbox_skill_unavailable_toast'),
+                    status: 'warning'
+                  });
+                  return false;
+                }
+
+                if (appForm.aiSettings.useAgentSandbox) {
+                  if (!showSandbox) {
+                    toast({
+                      title: t('skill:sandbox_system_not_configured_toast'),
+                      status: 'warning'
+                    });
+                    return false;
+                  }
+                  if (!enableSandbox) {
+                    toast({
+                      title: t('app:sandbox_free_not_support'),
+                      status: 'warning'
+                    });
+                    return false;
+                  }
+                }
+
+                const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
+
+                const toolNodeIds = new Set(
+                  storeEdges
+                    .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+                    .map((edge) => edge.target)
+                );
+                const nodes = storeNodes.map((item) =>
+                  storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+                );
+                const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
+
+                const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });
+
+                if (checkResults.hasError) {
+                  toast({
+                    title: t('app:app.error.publish_unExist_app'),
+                    status: 'warning'
+                  });
+                }
+                return !checkResults.hasError;
+              }}
+            />
           </Flex>
         )}
       </Flex>

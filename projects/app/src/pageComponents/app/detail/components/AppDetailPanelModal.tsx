@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
-import { Box, type BoxProps } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type AppDetailPanelModalProps = {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  header: React.ReactNode;
+  footer?: React.ReactNode;
   width: BoxProps['w'];
   height: BoxProps['h'];
   top?: BoxProps['top'];
@@ -15,14 +17,19 @@ export type AppDetailPanelModalProps = {
   contentProps?: Omit<BoxProps, 'children'>;
 };
 
+export const APP_DETAIL_PANEL_WIDTH_PX = 400;
+
 /**
  * 应用详情页右侧弹窗，直接复用运行预览原有的宽高过渡和视觉样式。
- * 调用方只负责提供弹窗尺寸；无蒙层时，弹窗外区域仍可正常操作。
+ * 面板固定拆成顶部、主体、底部三段；调用方只负责提供各段内容和弹窗尺寸。
+ * 无蒙层时，弹窗外区域仍可正常操作。
  */
 const AppDetailPanelModal = ({
   isOpen,
   onClose,
   children,
+  header,
+  footer,
   width,
   height,
   top = 0,
@@ -78,7 +85,27 @@ const AppDetailPanelModal = ({
         transition={'.2s ease'}
         {...contentProps}
       >
-        {children}
+        <Flex
+          minH={'56px'}
+          flexShrink={0}
+          px={'24px'}
+          bg={'white'}
+          fontWeight={500}
+          fontSize={'md'}
+          color={'myGray.900'}
+          alignItems={'center'}
+          position={'relative'}
+        >
+          {header}
+        </Flex>
+        <Flex flex={'1 0 0'} minH={0} h={0} alignItems={'stretch'} flexDirection={'column'}>
+          {children}
+        </Flex>
+        {footer && (
+          <Flex minH={'56px'} flexShrink={0} px={'24px'} alignItems={'center'}>
+            {footer}
+          </Flex>
+        )}
       </MyBox>
     </>
   );

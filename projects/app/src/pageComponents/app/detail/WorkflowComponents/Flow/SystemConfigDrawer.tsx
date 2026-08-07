@@ -1,19 +1,26 @@
 import React, { useMemo } from 'react';
-import { Box, Button, Flex, Portal, Text, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, CloseButton, Flex, Portal, Text } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AppContext } from '../../context';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { SystemConfigForm } from './nodes/NodeSystemConfig';
-import AppDetailPanelModal from '../../components/AppDetailPanelModal';
+import AppDetailPanelModal, {
+  APP_DETAIL_PANEL_WIDTH_PX
+} from '../../components/AppDetailPanelModal';
 import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
-
-const SYSTEM_CONFIG_DRAWER_MAX_WIDTH_PX = 400;
+import { WorkflowModalContext } from '../context/workflowModalContext';
 
 const SystemConfigDrawer = () => {
   const { t } = useTranslation();
-  const { isOpen, onClose, onToggle } = useDisclosure();
+  const { activePanel, setActivePanel } = useContextSelector(WorkflowModalContext, (v) => ({
+    activePanel: v.activePanel,
+    setActivePanel: v.setActivePanel
+  }));
+  const isOpen = activePanel === 'system';
+  const onToggle = () => setActivePanel(isOpen ? null : 'system');
+  const onClose = () => setActivePanel(null);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
@@ -44,53 +51,39 @@ const SystemConfigDrawer = () => {
         <AppDetailPanelModal
           isOpen={isOpen}
           onClose={onClose}
-          width={['100%', `${SYSTEM_CONFIG_DRAWER_MAX_WIDTH_PX}px`]}
+          width={['100%', `${APP_DETAIL_PANEL_WIDTH_PX}px`]}
           height={['100vh', 'calc(100vh - 67px)']}
           top={[0, '67px']}
           position={'fixed'}
           showMask={false}
+          header={
+            <Flex w={'100%'} justifyContent={'space-between'} alignItems={'center'}>
+              <Text
+                color={'myGray.900'}
+                fontSize={'md'}
+                fontWeight={'medium'}
+                lineHeight={'24px'}
+                letterSpacing={0}
+              >
+                {t('workflow:template.system_config')}
+              </Text>
+              <CloseButton size={'sm'} onClick={onClose} />
+            </Flex>
+          }
         >
           <Flex
             w={'100%'}
             h={'100%'}
             minW={0}
             minH={0}
-            p={6}
+            px={6}
+            pb={6}
             flexDirection={'column'}
             alignItems={'flex-start'}
             overflow={'hidden'}
           >
-            <Box w={'100%'} flexShrink={0}>
-              <Flex h={'26px'} w={'100%'} justifyContent={'space-between'} alignItems={'center'}>
-                <Text
-                  color={'myGray.900'}
-                  fontSize={'lg'}
-                  fontWeight={'medium'}
-                  lineHeight={'26px'}
-                  letterSpacing={0}
-                >
-                  {t('workflow:template.system_config')}
-                </Text>
-                <Button
-                  variant={'transparentBase'}
-                  minW={0}
-                  w={5}
-                  h={5}
-                  p={0}
-                  color={'myGray.900'}
-                  _hover={{ bg: 'transparent' }}
-                  onClick={onClose}
-                  aria-label={t('common:Close')}
-                >
-                  <MyIcon name={'common/closeLight'} w={4} />
-                </Button>
-              </Flex>
-              <Box h={2} />
-              <Box h={'1px'} w={'100%'} bg={'myGray.200'} />
-            </Box>
             <Box
               w={'100%'}
-              pt={4}
               flex={'1 1 auto'}
               minH={0}
               overflowY={'auto'}
