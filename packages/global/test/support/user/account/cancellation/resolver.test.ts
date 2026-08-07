@@ -25,7 +25,7 @@ describe('resolveAccountCancellationByUsername', () => {
     ).toEqual({ status: 'supported', accountKind: 'email', method: 'code' });
   });
 
-  it('disables password fallback for a local account', () => {
+  it('turns the shared old-password fallback into an unsupported result', () => {
     expect(
       resolveAccountCancellationByUsername({
         username: 'local',
@@ -34,7 +34,7 @@ describe('resolveAccountCancellationByUsername', () => {
     ).toEqual({
       status: 'unsupported',
       accountKind: 'local',
-      unsupportedReason: 'verification_unavailable'
+      unsupportedReason: 'password_verification_not_allowed'
     });
   });
 
@@ -63,7 +63,7 @@ describe('resolveAccountCancellationByUsername', () => {
     ).toMatchObject({
       status: 'unsupported',
       accountKind: 'github',
-      unsupportedReason: 'verification_unavailable'
+      unsupportedReason: 'password_verification_not_allowed'
     });
   });
 });

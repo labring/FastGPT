@@ -2,10 +2,10 @@
 export enum VerificationCodeTypeEnum {
   register = 'register',
   findPassword = 'findPassword',
+  passwordChange = 'passwordChange',
   unsubscribe = 'unsubscribe',
   bindNotification = 'bindNotification'
 }
-
 export const accountVerificationMethods = [
   'code',
   'oldPassword',
@@ -22,6 +22,14 @@ export const recognizedAccountKinds = [
   'phone',
   'local',
   'wechat',
+  'github',
+  'google',
+  'microsoft',
+  'wecom',
+  'sso'
+] as const;
+
+export const oauthAccountVerificationProviders = [
   'github',
   'google',
   'microsoft',
