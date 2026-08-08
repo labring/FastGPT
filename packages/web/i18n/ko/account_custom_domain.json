@@ -1,0 +1,23 @@
+{
+  "custom_domain": "커스텀 도메인",
+  "DNS_record": "DNS 레코드",
+  "DNS_record.type": "유형",
+  "DNS_resolve_hint": "도메인 서비스 제공업체로 이동하여 이 도메인에 대해 <bold>{{domain}}</bold>으로의 CNAME 레코드를 추가해 주세요. 레코드가 적용된 후 커스텀 도메인을 연결할 수 있습니다.",
+  "delete_confirm": "이 커스텀 도메인을 삭제하시겠습니까?",
+  "dns_resolved": "확인됨",
+  "dns_resolving": "확인 중",
+  "domain": "도메인",
+  "domain_verify": "도메인 인증",
+  "domain_verify.content": "파일 내용",
+  "domain_verify.desc": "저장 후 {{domain}}/{{path}}에 접속하면 {{content}}가 반환됩니다",
+  "domain_verify.path": "파일 경로",
+  "provider": "도메인 제공업체",
+  "provider.aliyun": "알리바바 클라우드",
+  "provider.tencent": "텐센트 클라우드",
+  "provider.volcengine": "볼케이노 엔진",
+  "registration_hint": "본인의 도메인을 준비하시고 <bold>{{provider}}</bold>를 통해 ICP 등록을 완료한 후, 아래 입력란에 도메인을 입력해 주세요",
+  "status.active": "활성",
+  "status.inactive": "비활성",
+  "upgrade_to_use_custom_domain": "현재 플랜에서는 커스텀 도메인을 지원하지 않습니다. 먼저 업그레이드해 주세요",
+  "upgrade_plan": "플랜 업그레이드"
+}

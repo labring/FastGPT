@@ -63,6 +63,7 @@ export const iconPaths = {
   'common/inviteLight': () => import('./icons/common/inviteLight.svg'),
   'common/language/America': () => import('./icons/common/language/America.svg'),
   'common/language/China': () => import('./icons/common/language/China.svg'),
+  'common/language/Korea': () => import('./icons/common/language/Korea.svg'),
   'common/language/en': () => import('./icons/common/language/en.svg'),
   'common/language/translate': () => import('./icons/common/language/translate.svg'),
   'common/language/zh': () => import('./icons/common/language/zh.svg'),
