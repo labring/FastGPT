@@ -120,7 +120,8 @@ onlyBuiltDependencies:
   - vue-demi
 
 overrides:
-  '@swc/helpers': ^0.5.23
+  '@fastgpt/app>@swc/helpers': ^0.5.23
+  '@fastgpt/admin>@swc/helpers': ^0.5.23
   '@types/react': ^18
   '@types/react-dom': ^18
   react: ^18
