@@ -28,7 +28,6 @@ import type { OpenSandboxConfigType, OpenSandboxConnectionConfig } from './types
 
 const DEFAULT_REQUEST_TIMEOUT_SECONDS = 120;
 const DEFAULT_LIFECYCLE_TIMEOUT_MS = 120_000;
-const STOP_LIFECYCLE_TIMEOUT_MS = 10 * 60_000;
 const LIFECYCLE_POLL_INTERVAL_MS = 1_000;
 
 type ResolvedSandboxInfo = {
@@ -37,12 +36,6 @@ type ResolvedSandboxInfo = {
 };
 
 type SandboxInfoReader = () => Promise<SdkSandboxInfo | undefined>;
-
-type SandboxStopTarget = {
-  resolved: ResolvedSandboxInfo;
-  pause: () => Promise<void>;
-  readInfo: SandboxInfoReader;
-};
 
 const STATE_MAP: Record<string, SandboxState> = {
   running: 'Running',
@@ -260,70 +253,6 @@ export class OpenSandboxLifecycle {
     await this.create();
   }
 
-  /** Pause a resolved resource and converge retries onto the provider's stable stopped state. */
-  private async stopResolvedSandbox(target: SandboxStopTarget): Promise<void> {
-    let resolved = target.resolved;
-
-    if (resolved.status.state === 'Creating' || resolved.status.state === 'Starting') {
-      const ready = await this.waitUntilSandboxState({
-        sandboxId: resolved.info.id,
-        expectedStates: ['Running', 'Stopped', 'UnExist'],
-        readInfo: target.readInfo,
-        timeoutMs: STOP_LIFECYCLE_TIMEOUT_MS
-      });
-      if (!ready) {
-        this.setStatus({ state: 'UnExist' });
-        return;
-      }
-      resolved = ready;
-    }
-
-    switch (resolved.status.state) {
-      case 'Running': {
-        this.setStatus({ state: 'Stopping' });
-        await target.pause();
-        break;
-      }
-      case 'Stopping':
-        break;
-      case 'Stopped':
-        this.setStatus(resolved.status);
-        return;
-      case 'Deleting':
-        await this.waitUntilSandboxState({
-          sandboxId: resolved.info.id,
-          expectedStates: ['UnExist'],
-          readInfo: target.readInfo,
-          timeoutMs: STOP_LIFECYCLE_TIMEOUT_MS
-        });
-        this.setStatus({ state: 'UnExist' });
-        return;
-      case 'UnExist':
-        this.setStatus(resolved.status);
-        return;
-      case 'Error':
-        throw new ConnectionError(
-          `Sandbox ${resolved.info.id} cannot stop from error state: ${resolved.status.message ?? 'unknown error'}`,
-          this.connectionConfig.baseUrl
-        );
-      case 'Creating':
-      case 'Starting':
-        throw new SandboxStateError(
-          `Sandbox ${resolved.info.id} did not become stoppable`,
-          resolved.status.state,
-          'Running|Stopped'
-        );
-    }
-
-    const stopped = await this.waitUntilSandboxState({
-      sandboxId: resolved.info.id,
-      expectedStates: ['Stopped', 'UnExist'],
-      readInfo: target.readInfo,
-      timeoutMs: STOP_LIFECYCLE_TIMEOUT_MS
-    });
-    if (!stopped) this.setStatus({ state: 'UnExist' });
-  }
-
   private async ensureResolvedSandboxRunning(props: {
     resolved: ResolvedSandboxInfo;
     allowCreate: boolean;
@@ -497,48 +426,9 @@ export class OpenSandboxLifecycle {
     await this.ensureRunning({ allowCreate: false });
   }
 
-  /** Pause the remote OpenSandbox resource while preserving its identity and state. */
+  /** Delete the remote OpenSandbox resource while leaving external workspace storage intact. */
   async stop(): Promise<void> {
-    const boundSandbox = this.boundSandbox;
-    try {
-      if (boundSandbox) {
-        await this.stopResolvedSandbox({
-          resolved: this.resolveSandboxInfo(await boundSandbox.getInfo()),
-          pause: async () => boundSandbox.pause(),
-          readInfo: async () => boundSandbox.getInfo()
-        });
-        await this.releaseSandbox();
-        return;
-      }
-
-      await this.withSandboxManager(async (manager) => {
-        const resolved = await this.getSandboxBySessionId(manager);
-        if (!resolved) {
-          this.setStatus({ state: 'UnExist' });
-          return;
-        }
-        await this.stopResolvedSandbox({
-          resolved,
-          pause: async () => manager.pauseSandbox(resolved.info.id),
-          readInfo: async () =>
-            (await this.getSandboxById({ manager, sandboxId: resolved.info.id }))?.info
-        });
-      });
-    } catch (error) {
-      if (this.isNotFoundError(error)) {
-        await this.releaseSandbox();
-        this.setStatus({ state: 'UnExist' });
-        return;
-      }
-      if (this.getSdkErrorCode(error) === 'SANDBOX::API_NOT_SUPPORTED') {
-        throw new FeatureNotSupportedError(
-          'Stop/pause not supported by this runtime',
-          'stop',
-          'opensandbox'
-        );
-      }
-      throw new ConnectionError('Failed to stop sandbox', this.connectionConfig.baseUrl, error);
-    }
+    await this.delete();
   }
 
   /** Permanently delete a remote sandbox by id or stable session metadata. */

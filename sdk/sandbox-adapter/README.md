@@ -31,10 +31,10 @@ const result = await sandbox.execute('node --version');
 await sandbox.close();
 ```
 
-`stop()` reversibly pauses the provider resource and preserves its identity. A later
-`ensureRunning()` resumes that same resource. `delete()` permanently removes the provider resource;
-application-level deletion may additionally clean storage and archives. `close()` only releases
-local transports.
+`stop()` follows provider policy: OpenSandbox deletes the remote sandbox while preserving external
+workspace storage, whereas Sealos pauses the Devbox. `delete()` permanently removes the provider
+resource; application-level deletion may additionally clean storage and archives. `close()` only
+releases local transports.
 
 Batch `readFiles()` and `writeFiles()` remain available for small files. Use `readFileStream()` and
 `writeFileStream()` for large files. Byte ranges use `{ offset, length }`, and permission modes use
