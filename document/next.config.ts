@@ -5,6 +5,13 @@ const withMDX = createMDX();
 
 const config: NextConfig = {
   output: 'standalone',
+  outputFileTracingIncludes: {
+    // Node 24 resolves @swc/helpers through module-sync, but Next 15 does not trace all ESM helpers.
+    '*': [
+      './node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/esm/**/*',
+      '../node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/esm/**/*',
+    ],
+  },
   reactStrictMode: true,
   compress: true,
   skipTrailingSlashRedirect: true,
