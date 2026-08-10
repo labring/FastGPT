@@ -14,10 +14,12 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
     .lean();
 
   if (version) {
+    // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
+    // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
     const normalizedWorkflow = normalizeWorkflowConfig({
       nodes: version.nodes,
       edges: version.edges,
-      chatConfig: version.chatConfig ?? app?.chatConfig
+      chatConfig: version.chatConfig
     });
     return {
       versionId: String(version._id),
@@ -57,7 +59,7 @@ export const getAppVersionById = async ({
       const normalizedWorkflow = normalizeWorkflowConfig({
         nodes: version.nodes,
         edges: version.edges,
-        chatConfig: version.chatConfig ?? app?.chatConfig
+        chatConfig: version.chatConfig
       });
       return {
         versionId: String(version._id),

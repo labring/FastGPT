@@ -20,6 +20,8 @@ type DraggableInputListProps<T extends DraggableInputListItemType> = {
   items: T[];
   zoom?: number;
   placeholder?: string;
+  /** 指定新建后需要自动聚焦的项 key，仅对列表内真实输入项生效 */
+  autoFocusKey?: string;
   addText: string;
   /** 输入框最大字符数，超出后无法继续输入 */
   maxLength?: number;
@@ -40,6 +42,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
   items,
   zoom,
   placeholder,
+  autoFocusKey,
   addText,
   maxLength,
   multiline,
@@ -92,6 +95,7 @@ function DraggableInputList<T extends DraggableInputListItemType>({
                     placeholder={placeholder}
                     maxLength={maxLength}
                     multiline={multiline}
+                    autoFocusKey={autoFocusKey}
                     onChange={onChange}
                     onDelete={onDelete}
                     renderRight={renderRight}
@@ -135,6 +139,7 @@ function DraggableInputItem<T extends DraggableInputListItemType>({
   placeholder,
   maxLength,
   multiline,
+  autoFocusKey,
   onChange,
   onDelete,
   renderRight
@@ -146,6 +151,7 @@ function DraggableInputItem<T extends DraggableInputListItemType>({
   placeholder?: string;
   maxLength?: number;
   multiline?: boolean;
+  autoFocusKey?: string;
   onChange: (key: string, value: string) => void;
   onDelete: (key: string) => void;
   renderRight?: (item: T, snapshot: DraggableStateSnapshot) => React.ReactNode;
@@ -197,12 +203,18 @@ function DraggableInputItem<T extends DraggableInputListItemType>({
             py={'9px'}
             resize={'none'}
             overflow={'hidden'}
+            autoFocus={item.key === autoFocusKey}
             // 连续无空格的长串也要在框内换行，而不是横向撑出去
             sx={{ overflowWrap: 'anywhere' }}
             onChange={(e) => onChange(item.key, e.target.value)}
           />
         ) : (
-          <Input {...inputStyles} h={10} onChange={(e) => onChange(item.key, e.target.value)} />
+          <Input
+            {...inputStyles}
+            h={10}
+            autoFocus={item.key === autoFocusKey}
+            onChange={(e) => onChange(item.key, e.target.value)}
+          />
         )}
         {renderRight?.(item, snapshot)}
       </Box>

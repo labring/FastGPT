@@ -7,6 +7,7 @@ import type { ChatTypeEnum } from '../constants';
 import WelcomeBox from './WelcomeBox';
 import VariableInputForm from './VariableInputForm';
 import ChatRecordsList, { type ChatRecordsListProps } from './ChatRecordsList';
+import QuickQuestionButton from '@/components/core/chat/QuickQuestionButton';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useContextSelector } from 'use-context-selector';
 import { QuickReplyContext } from '../../context/quickReplyContext';
@@ -80,43 +81,27 @@ const AppChatMain = ({
         display={'flex'}
         flexDirection={'column'}
       >
-        {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
-        {visibleWelcomeQuestions.length > 0 && (
-          <Flex mt={3} mb={4} flexDirection={'column'} alignItems={'flex-start'} gap={2} w={'100%'}>
-            {visibleWelcomeQuestions.map((text) => (
-              <Flex
-                key={text}
-                alignItems={'flex-start'}
-                gap={2}
-                maxW={'100%'}
-                minW={0}
-                px={[4, 2]}
-                py={[2, 1]}
-                borderRadius={'md'}
-                border={'0.5px solid'}
-                borderColor={'myGray.250'}
-                bg={'transparent'}
-                color={'myGray.600'}
-                fontSize={'sm'}
-                lineHeight={5}
-                fontWeight={'medium'}
-                cursor={'pointer'}
-                _hover={{ bg: 'myGray.05' }}
-                onClick={() => {
-                  if (onQuickReplyClick) {
-                    onQuickReplyClick(text);
-                  } else {
-                    eventBus.emit(EventNameEnum.sendQuestion, { text });
-                  }
-                }}
-              >
-                <Box minW={0} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
+        <Box className="chat-box-card" w={'100%'} maxW={['calc(100% - 25px)', '700px']} mx={'auto'}>
+          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
+          {visibleWelcomeQuestions.length > 0 && (
+            <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>
+              {visibleWelcomeQuestions.map((text, index) => (
+                <QuickQuestionButton
+                  key={`${index}-${text}`}
+                  onClick={() => {
+                    if (onQuickReplyClick) {
+                      onQuickReplyClick(text);
+                    } else {
+                      eventBus.emit(EventNameEnum.sendQuestion, { text });
+                    }
+                  }}
+                >
                   {text}
-                </Box>
-              </Flex>
-            ))}
-          </Flex>
-        )}
+                </QuickQuestionButton>
+              ))}
+            </Flex>
+          )}
+        </Box>
 
         <Box id="variable-input">
           <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />

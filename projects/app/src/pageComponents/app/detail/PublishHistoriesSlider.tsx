@@ -80,11 +80,12 @@ const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapsh
       }
     >
       <Box display={'flex'} flex={'1 0 0'} minH={0} flexDirection={'column'}>
-        {currentTab === 'myEdit' ? (
-          <MyEdit past={past} onSwitchTmpVersion={onSwitchTmpVersion} />
-        ) : (
-          <TeamCloud onSwitchCloudVersion={onSwitchCloudVersion} />
-        )}
+        {isOpen &&
+          (currentTab === 'myEdit' ? (
+            <MyEdit past={past} onSwitchTmpVersion={onSwitchTmpVersion} />
+          ) : (
+            <TeamCloud onSwitchCloudVersion={onSwitchCloudVersion} />
+          ))}
       </Box>
     </AppDetailPanelModal>
   );

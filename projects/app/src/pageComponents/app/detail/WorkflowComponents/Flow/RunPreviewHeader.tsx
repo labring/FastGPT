@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, CloseButton, Flex, IconButton, type IconButtonProps } from '@chakra-ui/react';
+import { Box, Flex, IconButton, type IconButtonProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -53,7 +53,16 @@ const RunPreviewHeader = ({
           />
         </MyTooltip>
         <MyTooltip label={closeLabel}>
-          <CloseButton size={'sm'} aria-label={closeLabel} onClick={onClose} />
+          <IconButton
+            size="smSquare"
+            icon={<MyIcon name="common/closeLight" w="20px" />}
+            variant="ghost"
+            bg="transparent"
+            borderRadius="md"
+            _hover={{ bg: 'myGray.05' }}
+            aria-label={closeLabel}
+            onClick={onClose}
+          />
         </MyTooltip>
       </Flex>
     </>

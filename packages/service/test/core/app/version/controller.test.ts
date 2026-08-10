@@ -15,9 +15,12 @@ vi.mock('@fastgpt/service/core/app/version/schema', () => ({
   }
 }));
 
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import {
+  getAppLatestVersion,
+  getAppVersionById
+} from '@fastgpt/service/core/app/version/controller';
 
-describe('app version controller compatibility', () => {
+describe('getAppLatestVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -105,5 +108,91 @@ describe('app version controller compatibility', () => {
 
     expect(result.nodes).toEqual([]);
     expect(result.chatConfig.welcomeConfig?.welcomeText).toBe('Legacy welcome');
+  });
+
+  it('preserves a legacy version config when the current app config differs', async () => {
+    const version = {
+      _id: '507f1f77bcf86cd799439011',
+      versionName: 'Legacy version',
+      nodes: [
+        {
+          nodeId: 'userGuide',
+          name: 'System config',
+          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.welcomeText,
+              label: 'Welcome text',
+              value: 'Legacy welcome',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: undefined
+    };
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
+    });
+
+    const result = await getAppLatestVersion('app-id', {
+      chatConfig: {
+        welcomeConfig: {
+          welcomeText: 'Current welcome'
+        },
+        welcomeText: 'Current welcome'
+      }
+    } as any);
+
+    expect(result.nodes).toEqual([]);
+    expect(result.chatConfig.welcomeConfig?.welcomeText).toBe('Legacy welcome');
+    expect(result.chatConfig.welcomeText).toBe('Legacy welcome');
+  });
+});
+
+describe('getAppVersionById', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('preserves a legacy version config when the current app config differs', async () => {
+    const version = {
+      _id: '507f1f77bcf86cd799439011',
+      versionName: 'Legacy version',
+      nodes: [
+        {
+          nodeId: 'userGuide',
+          name: 'System config',
+          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.instruction,
+              label: 'Instruction',
+              value: 'Legacy instruction',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: undefined
+    };
+    findOneMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(version) });
+
+    const result = await getAppVersionById({
+      appId: 'app-id',
+      versionId: '507f1f77bcf86cd799439011',
+      app: {
+        chatConfig: {
+          instruction: 'Current instruction'
+        }
+      } as any
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.chatConfig.instruction).toBe('Legacy instruction');
   });
 });

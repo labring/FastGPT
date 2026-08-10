@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import DraggableInputList from './DraggableInputList';
 
@@ -14,6 +15,7 @@ type WelcomeQuestionsConfigProps = {
 function WelcomeQuestionsConfig({ value, zoom, onChange }: WelcomeQuestionsConfigProps) {
   const { t } = useTranslation();
   const questions = value ?? [];
+  const [autoFocusKey, setAutoFocusKey] = useState<string>();
 
   const updateQuestion = (key: string, text: string) => {
     const updateIndex = Number(key);
@@ -27,6 +29,12 @@ function WelcomeQuestionsConfig({ value, zoom, onChange }: WelcomeQuestionsConfi
     onChange(questions.filter((_, questionIndex) => questionIndex !== deleteIndex));
   };
 
+  const addQuestion = () => {
+    const newKey = String(questions.length);
+    setAutoFocusKey(newKey);
+    onChange([...questions, '']);
+  };
+
   return (
     <DraggableInputList
       items={questions.map((text, index) => ({
@@ -36,11 +44,12 @@ function WelcomeQuestionsConfig({ value, zoom, onChange }: WelcomeQuestionsConfi
       zoom={zoom}
       placeholder={t('workflow:welcome_question_placeholder')}
       addText={t('workflow:add_welcome_question')}
+      autoFocusKey={autoFocusKey}
       maxLength={100}
       multiline
       onDragEnd={(items) => onChange(items.map((item) => item.value))}
       onChange={updateQuestion}
-      onAdd={() => onChange([...questions, ''])}
+      onAdd={addQuestion}
       onDelete={deleteQuestion}
     />
   );
