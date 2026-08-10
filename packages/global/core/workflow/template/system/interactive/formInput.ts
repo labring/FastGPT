@@ -10,6 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
+import { createHideInContext } from '../../context';
 import { type FlowNodeTemplateType } from '../../../type/node';
 
 export const FormInputNode: FlowNodeTemplateType = {
@@ -24,6 +25,7 @@ export const FormInputNode: FlowNodeTemplateType = {
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
   isTool: true,
+  isShowInContext: createHideInContext([{ parentType: FlowNodeTypeEnum.parallelRun }]),
   inputs: [
     {
       key: NodeInputKeyEnum.description,
