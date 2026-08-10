@@ -1,5 +1,8 @@
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
-import { getActiveAccountCancellationsByTeamIds } from '../account/cancellation/read';
+import {
+  getActiveAccountCancellationByUserId,
+  getActiveAccountCancellationsByTeamIds
+} from '../account/cancellation/read';
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 import type { ClientSession } from '../../../common/mongo';
@@ -19,6 +22,37 @@ export const getUserFallbackTeam = async ({
   session?: ClientSession;
   allowAccountCancellationTeam?: boolean;
 }) => {
+  const ownerTeamQuery = MongoTeam.findOne(
+    {
+      ownerId: userId,
+      ...(excludedTeamId ? { _id: { $ne: excludedTeamId } } : {}),
+      $or: [{ deleteTime: { $exists: false } }, { deleteTime: null }]
+    },
+    { _id: 1 }
+  ).sort({ createTime: 1 });
+  if (session) ownerTeamQuery.session(session);
+  const ownerTeam = await ownerTeamQuery.lean();
+
+  if (ownerTeam) {
+    const ownerMemberQuery = MongoTeamMember.findOne(
+      {
+        teamId: ownerTeam._id,
+        userId,
+        status: TeamMemberStatusEnum.active
+      },
+      { _id: 1 }
+    );
+    if (session) ownerMemberQuery.session(session);
+
+    const [ownerMember, cancellation] = await Promise.all([
+      ownerMemberQuery.lean(),
+      allowAccountCancellationTeam ? null : getActiveAccountCancellationByUserId(userId)
+    ]);
+    if (ownerMember && !cancellation) {
+      return { teamId: String(ownerTeam._id), tmbId: String(ownerMember._id) };
+    }
+  }
+
   const memberQuery = MongoTeamMember.find(
     {
       userId,

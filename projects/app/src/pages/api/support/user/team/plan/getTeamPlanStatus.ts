@@ -28,7 +28,8 @@ async function handler(
     try {
       const { teamId } = await authCert({
         req,
-        authToken: true
+        authToken: true,
+        accountCancellationAccess: 'tokenLogin'
       });
 
       const [

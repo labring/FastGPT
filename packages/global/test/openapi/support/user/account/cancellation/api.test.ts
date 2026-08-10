@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CreateAccountCancellationVerificationBodySchema,
-  SubmitAccountCancellationBodySchema
+  SubmitAccountCancellationBodySchema,
+  SubmitAccountCancellationResponseSchema
 } from '@fastgpt/global/openapi/support/user/account/cancellation/api';
 
 describe('account cancellation API contracts', () => {
@@ -50,5 +51,11 @@ describe('account cancellation API contracts', () => {
         }
       })
     ).toThrow();
+  });
+
+  it('exposes WeChat verification expiry as a polling result', () => {
+    expect(
+      SubmitAccountCancellationResponseSchema.parse({ status: 'verificationExpired' })
+    ).toEqual({ status: 'verificationExpired' });
   });
 });

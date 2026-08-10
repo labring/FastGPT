@@ -2,5 +2,6 @@
 export enum VerificationCodeTypeEnum {
   register = 'register',
   findPassword = 'findPassword',
+  unsubscribe = 'unsubscribe',
   bindNotification = 'bindNotification'
 }

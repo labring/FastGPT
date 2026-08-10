@@ -156,6 +156,11 @@ export const VerificationPanel = ({
           method: 'wechat',
           payload: { code: wechatQR.code }
         });
+        if (!disposed && result.status === 'verificationExpired') {
+          setWechatQR(undefined);
+          await createWechatVerification();
+          return;
+        }
         if (!disposed && result.status === 'pending') {
           onSubmitted(result);
         }
@@ -172,7 +177,7 @@ export const VerificationPanel = ({
       disposed = true;
       window.clearInterval(timer);
     };
-  }, [onSubmitted, wechatExpired, wechatQR]);
+  }, [createWechatVerification, onSubmitted, wechatExpired, wechatQR]);
 
   const sendCode = async ({ captcha }: { username: string; captcha: string }) => {
     if (method !== 'code') return;

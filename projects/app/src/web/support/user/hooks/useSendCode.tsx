@@ -1,9 +1,6 @@
 import { useState, useMemo } from 'react';
 import { sendAuthCode } from '@/web/support/user/api';
-import type {
-  VerificationCodePurposeForType,
-  VerificationCodeType
-} from '@fastgpt/global/support/user/account/verification/type';
+import type { SendAuthCodeBodyType } from '@fastgpt/global/openapi/support/user/inform/api';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { Box, type BoxProps, useDisclosure } from '@chakra-ui/react';
@@ -13,13 +10,13 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 let timer: NodeJS.Timeout;
 
-type UseSendCodeParams = {
-  [T in VerificationCodeType]: {
-    type: T;
-    purpose: VerificationCodePurposeForType<T>;
-    validateBeforeSend?: (username: string) => true | string;
-  };
-}[VerificationCodeType];
+type UseSendCodeParams = SendAuthCodeBodyType extends infer Body
+  ? Body extends { type: unknown; purpose: unknown }
+    ? Pick<Body, 'type' | 'purpose'> & {
+        validateBeforeSend?: (username: string) => true | string;
+      }
+    : never
+  : never;
 
 export const useSendCode = (params: UseSendCodeParams) => {
   const { t, i18n } = useTranslation();

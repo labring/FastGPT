@@ -70,8 +70,8 @@ export const accountCancellationAccessPresets: Record<
   },
   tokenLogin: {
     apis: [
-      'GET /api/support/user/account/login/tokenLogin',
-      'GET /proApi/support/user/account/login/tokenLogin',
+      'GET /api/support/user/account/tokenLogin',
+      'GET /proApi/support/user/account/tokenLogin',
       'GET /api/support/user/team/plan/getTeamPlanStatus'
     ],
     options: {
