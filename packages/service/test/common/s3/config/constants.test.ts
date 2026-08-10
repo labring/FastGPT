@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createVitestStorageMock } from '@fastgpt-sdk/storage';
+import { MongoS3DownloadAlias } from '@fastgpt/service/common/s3/accessLink/downloadAlias/schema';
 
 const originalEnv = {
   STORAGE_VENDOR: process.env.STORAGE_VENDOR,
@@ -145,6 +146,28 @@ describe('s3 storage constants', () => {
     expect(result.url).toMatch(
       /\/api\/system\/file\/d\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
     );
+  });
+
+  it('stores a decoded filename in the short-link alias for encoded keys', async () => {
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
+
+    const { S3BaseBucket } = await vi.importActual<
+      typeof import('@fastgpt/service/common/s3/buckets/base')
+    >('@fastgpt/service/common/s3/buckets/base');
+    const storage = createVitestStorageMock({
+      vi,
+      bucketName: 'fastgpt-private',
+      baseUrl: 'https://s3.example.com'
+    });
+    const bucket = new S3BaseBucket(storage, undefined);
+    const key = 'chat/app/user/chat/%E6%96%87%E6%A1%A3.docx';
+
+    await bucket.createExternalUrl({ key });
+
+    await expect(MongoS3DownloadAlias.findOne({ objectKey: key }).lean()).resolves.toMatchObject({
+      filename: '文档.docx'
+    });
   });
 
   it('returns short download links by default even when an external endpoint is configured', async () => {

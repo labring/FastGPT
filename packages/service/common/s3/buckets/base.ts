@@ -46,13 +46,12 @@ import type {
   UploadMultipartPartResult,
   IStorage
 } from '@fastgpt-sdk/storage';
-import { isNoSuchMultipartUploadError } from '@fastgpt-sdk/storage';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { assertStorageObjectKey, isNoSuchMultipartUploadError } from '@fastgpt-sdk/storage';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import {
   createS3DownloadAccessUrl,
   createS3UploadAccessUrl,
-  deleteS3DownloadAliasByObject,
+  deleteS3DownloadAliasByObjects,
   markS3MultipartUploadAborted,
   markS3MultipartUploadCompleteFailed,
   markS3MultipartUploadCompleting,
@@ -65,6 +64,53 @@ import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/fil
 import { randomUUID } from 'node:crypto';
 
 const logger = getLogger(LogCategories.INFRA.S3);
+
+const getStorageKeyCandidates = (key: string): string[] => {
+  assertStorageObjectKey(key);
+  const decodedSegments = key.split('/').map((segment) => {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
+    }
+  });
+
+  // Legacy fallback 只能还原段内字符，不能让编码内容改变对象路径层级。
+  if (decodedSegments.some((segment) => segment.includes('/'))) return [key];
+
+  const legacyKey = decodedSegments.join('/');
+
+  if (legacyKey === key) return [key];
+  try {
+    assertStorageObjectKey(legacyKey, 'legacyKey');
+    return [key, legacyKey];
+  } catch {
+    return [key];
+  }
+};
+
+const withStorageKeyFallback = async <T>(
+  key: string,
+  operation: (candidate: string) => Promise<T>
+): Promise<T> => {
+  const candidates = getStorageKeyCandidates(key);
+  try {
+    return await operation(candidates[0]);
+  } catch (error) {
+    if (candidates.length === 1 || !isFileNotFoundError(error)) throw error;
+    return operation(candidates[1]);
+  }
+};
+
+/** Decode an encoded key basename for download links when the caller has no original filename. */
+const getDownloadFilenameFromKey = (key: string) => {
+  const filename = path.basename(key);
+  try {
+    return decodeURIComponent(filename) || 'file';
+  } catch {
+    return filename || 'file';
+  }
+};
 
 export class S3BaseBucket {
   constructor(
@@ -92,8 +138,8 @@ export class S3BaseBucket {
       key,
       body: Buffer.from('ok'),
       contentType: 'text/plain',
+      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
         originFilename: filename,
         uploadTime: new Date().toISOString()
       }
@@ -138,35 +184,41 @@ export class S3BaseBucket {
       temporary?: boolean;
     };
   }) {
+    assertStorageObjectKey(to, 'targetKey');
+    const targetKey = to;
     if (options?.temporary) {
       await MongoS3TTL.create({
-        minioKey: to,
+        minioKey: targetKey,
         bucketName: this.bucketName,
         expiredTime: addHours(new Date(), 24)
       });
     }
-    return this.client.copyObjectInSelfBucket({ sourceKey: from, targetKey: to });
+    return withStorageKeyFallback(from, (sourceKey) =>
+      this.client.copyObjectInSelfBucket({ sourceKey, targetKey })
+    );
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    await this.client.deleteObject({ key: objectKey }).catch((err) => {
-      if (isFileNotFoundError(err)) {
-        return Promise.resolve();
-      }
-      logger.error('S3 delete object failed', {
-        key: objectKey,
-        code: err?.code,
-        error: err
+    const resolvedKey = await this.resolveExistingObjectKey(objectKey);
+    if (resolvedKey) {
+      await this.client.deleteObject({ key: resolvedKey }).catch((err) => {
+        if (!isFileNotFoundError(err)) {
+          logger.error('S3 delete object failed', {
+            key: resolvedKey,
+            code: err?.code,
+            error: err
+          });
+          throw err;
+        }
       });
-      throw err;
-    });
+    }
 
-    deleteS3DownloadAliasByObject({
+    deleteS3DownloadAliasByObjects({
       bucketName: this.bucketName,
-      objectKey
+      objectKeys: resolvedKey ? [resolvedKey] : getStorageKeyCandidates(objectKey)
     }).catch((err) => {
       logger.warn('S3 download alias cleanup failed after object delete', {
-        key: objectKey,
+        key: resolvedKey ?? objectKey,
         bucketName: this.bucketName,
         error: err
       });
@@ -258,9 +310,16 @@ export class S3BaseBucket {
   }
 
   async isObjectExists(key: string) {
-    const { exists } = await this.client.checkObjectExists({ key });
+    return !!(await this.resolveExistingObjectKey(key));
+  }
 
-    return exists ?? false;
+  /** 返回实际存在的 canonical 或 legacy key，供后续操作复用同一次 fallback 决策。 */
+  async resolveExistingObjectKey(key: string): Promise<string | undefined> {
+    const candidates = getStorageKeyCandidates(key);
+    for (const candidate of candidates) {
+      const { exists } = await this.client.checkObjectExists({ key: candidate });
+      if (exists) return candidate;
+    }
   }
 
   /**
@@ -335,7 +394,8 @@ export class S3BaseBucket {
 
       const { url: previewUrl } = await this.createExternalUrl({
         key: parsedParams.rawKey,
-        expiredHours
+        expiredHours,
+        filename: resolvedFilename
       });
 
       return {
@@ -485,7 +545,8 @@ export class S3BaseBucket {
 
       const { url: previewUrl } = await this.createExternalUrl({
         key: parsedParams.rawKey,
-        expiredHours
+        expiredHours,
+        filename: resolvedFilename
       });
 
       return {
@@ -946,7 +1007,7 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours, responseContentType } = parsed;
+    const { key, expiredHours, responseContentType, filename } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return {
@@ -956,7 +1017,7 @@ export class S3BaseBucket {
         objectKey: key,
         bucketName: this.bucketName,
         expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
-        filename: path.basename(key),
+        filename: filename ?? getDownloadFilenameFromKey(key),
         responseContentType
       })
     };
@@ -984,6 +1045,7 @@ export class S3BaseBucket {
       contentLength,
       expiredTime = addHours(new Date(), 1)
     } = UploadFileByBodySchema.parse(params);
+    assertStorageObjectKey(key);
 
     await MongoS3TTL.create({
       minioKey: key,
@@ -996,8 +1058,8 @@ export class S3BaseBucket {
       body,
       contentType: contentType ?? 'application/octet-stream',
       contentLength,
+      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
         originFilename: encodeURIComponent(filename),
         uploadTime: new Date().toISOString()
       }
@@ -1013,7 +1075,9 @@ export class S3BaseBucket {
   }
 
   async getFileMetadata(key: string) {
-    const metadataResponse = await this.client.getObjectMetadata({ key }).catch((error) => {
+    const metadataResponse = await withStorageKeyFallback(key, (candidate) =>
+      this.client.getObjectMetadata({ key: candidate })
+    ).catch((error) => {
       if (isFileNotFoundError(error)) {
         throw CommonErrEnum.fileNotFound;
       }
@@ -1023,7 +1087,9 @@ export class S3BaseBucket {
 
     const contentLength = metadataResponse.contentLength;
     const filename: string = decodeURIComponent(metadataResponse.metadata.originFilename || '');
-    const extension = parseFileExtensionFromUrl(filename);
+    // originFilename 是解码后的纯文件名（不是 URL），直接用 path.extname 解析，
+    // 避免 # / ? 等文件名合法字符被当作 URL fragment/query 截断导致扩展名丢失。
+    const extension = path.extname(filename).replace(/^\./, '').toLowerCase();
     const contentType: string = metadataResponse.contentType || 'application/octet-stream';
 
     return {
@@ -1035,10 +1101,12 @@ export class S3BaseBucket {
   }
 
   async getFileStream(key: string, options?: { abortSignal?: AbortSignal }) {
-    const downloadResponse = await this.client.downloadObject({
-      key,
-      ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
-    });
+    const downloadResponse = await withStorageKeyFallback(key, (candidate) =>
+      this.client.downloadObject({
+        key: candidate,
+        ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
+      })
+    );
     if (!downloadResponse) return;
 
     return downloadResponse.body;

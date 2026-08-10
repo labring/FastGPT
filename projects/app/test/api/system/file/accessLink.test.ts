@@ -305,7 +305,7 @@ describe('s3 short access link api', () => {
         ]);
       const url = await createS3DownloadAccessUrl({
         bucketName: 'fastgpt-private',
-        objectKey: 'dataset/team/page.md',
+        objectKey: 'dataset/team/page%20one.md',
         expiredTime: getFutureDate(10),
         filename: 'page.md',
         responseContentType: 'text/markdown; charset=utf-8'
@@ -313,12 +313,12 @@ describe('s3 short access link api', () => {
       const signedAlias = extractLastPathSegment(url);
       const generatePresignedGetUrl = vi.fn().mockResolvedValue({
         bucket: 'fastgpt-private',
-        key: 'dataset/team/page.md',
-        url: 'https://s3.example.com/fastgpt-private/dataset/team/page.md?X-Amz-Signature=abc'
+        key: 'dataset/team/page one.md',
+        url: 'https://s3.example.com/fastgpt-private/dataset/team/page%20one.md?X-Amz-Signature=abc'
       });
       global.s3BucketMap = {
         'fastgpt-private': {
-          isObjectExists: vi.fn().mockResolvedValue(true),
+          resolveExistingObjectKey: vi.fn().mockResolvedValue('dataset/team/page one.md'),
           externalClient: {
             generatePresignedGetUrl
           }
@@ -331,10 +331,10 @@ describe('s3 short access link api', () => {
       expect(res.statusCode).toBe(302);
       expect(res.headers['Cache-Control']).toBe('no-store');
       expect(res.headers.Location).toBe(
-        'https://cdn.example.com/files/fastgpt-private/dataset/team/page.md?X-Amz-Signature=abc'
+        'https://cdn.example.com/files/fastgpt-private/dataset/team/page%20one.md?X-Amz-Signature=abc'
       );
       expect(generatePresignedGetUrl).toHaveBeenCalledWith({
-        key: 'dataset/team/page.md',
+        key: 'dataset/team/page one.md',
         expiredSeconds: 120,
         responseContentType: 'text/markdown; charset=utf-8'
       });
@@ -392,7 +392,7 @@ describe('s3 short access link api', () => {
       const generatePresignedGetUrl = vi.fn();
       global.s3BucketMap = {
         'fastgpt-private': {
-          isObjectExists: vi.fn().mockResolvedValue(true),
+          resolveExistingObjectKey: vi.fn().mockResolvedValue('dataset/team/page.md'),
           externalClient: {
             generatePresignedGetUrl
           }

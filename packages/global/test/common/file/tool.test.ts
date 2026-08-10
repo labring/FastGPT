@@ -7,7 +7,9 @@ import {
   isContinuationByte,
   isValidUtf8,
   getDetectSample,
-  getUtf8ValidateEnd
+  getUtf8ValidateEnd,
+  getContentDisposition,
+  parseContentDispositionFilename
 } from '@fastgpt/global/common/file/tools';
 
 describe('文件工具函数测试', () => {
@@ -428,6 +430,24 @@ describe('文件工具函数测试', () => {
       const buf = Buffer.from([0xc4, 0xe3, 0xba, 0xc3]);
       const encoding = detectFileEncoding(buf);
       expect(typeof encoding).toBe('string');
+    });
+  });
+
+  describe('getContentDisposition', () => {
+    it('sanitizes / and \\ in download filenames to keep cross-platform names consistent', () => {
+      const result = getContentDisposition({ filename: 'a//b\\c.pdf', type: 'attachment' });
+      expect(result).toBe('attachment; filename="a__b_c.pdf"; filename*=UTF-8\'\'a__b_c.pdf');
+      expect(parseContentDispositionFilename(result)).toBe('a__b_c.pdf');
+    });
+
+    it('keeps normal filenames unchanged', () => {
+      const result = getContentDisposition({ filename: 'report.pdf' });
+      expect(result).toBe('inline; filename="report.pdf"; filename*=UTF-8\'\'report.pdf');
+    });
+
+    it('keeps RFC 5987 encoding for non-ASCII filenames', () => {
+      const result = getContentDisposition({ filename: '报告.pdf' });
+      expect(result).toContain("filename*=UTF-8''%E6%8A%A5%E5%91%8A.pdf");
     });
   });
 });
