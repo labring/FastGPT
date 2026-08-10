@@ -3,13 +3,12 @@ import { type Node } from 'reactflow';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
-import { Box } from '@chakra-ui/react';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import { WorkflowActionsContext } from '../context/workflowActionsContext';
+import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -59,38 +58,30 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   });
 
   return (
-    <>
-      <Box
-        zIndex={2}
-        display={isOpen ? 'block' : 'none'}
-        position={'absolute'}
-        top={0}
-        left={0}
-        bottom={0}
-        w={`${sliderWidth}px`}
-        maxW={'100%'}
-        onClick={onClose}
-        fontSize={'sm'}
-      />
-      <MyBox
-        isLoading={templatesIsLoading}
-        display={'flex'}
-        zIndex={3}
-        flexDirection={'column'}
-        position={'absolute'}
-        top={20}
-        left={0}
-        pt={5}
-        pb={4}
-        h={isOpen ? 'calc(100% - 100px)' : '0'}
-        w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
-        bg={'white'}
-        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-        borderRadius={'0 20px 20px 0'}
-        transition={'.2s ease'}
-        userSelect={'none'}
-        overflow={isOpen ? 'none' : 'hidden'}
-      >
+    <AppDetailPanelModal
+      isOpen={isOpen}
+      onClose={onClose}
+      isLoading={templatesIsLoading}
+      width={['100%', `${sliderWidth}px`]}
+      height={['100vh', 'calc(100vh - 67px)']}
+      top={[0, '67px']}
+      position={'fixed'}
+      placement={'left'}
+      showMask={false}
+      headerProps={{
+        minH: 0,
+        px: 0,
+        pt: 5,
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        fontSize: 'sm'
+      }}
+      contentProps={{
+        pb: 4,
+        userSelect: 'none',
+        fontSize: 'sm'
+      }}
+      header={
         <NodeTemplateListHeader
           onClose={onClose}
           templateType={templateType}
@@ -104,14 +95,15 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           setSelectedTagIds={setSelectedTagIds}
           toolTags={toolTags}
         />
-        <NodeTemplateList
-          onAddNode={onAddNode}
-          templates={templates}
-          templateType={templateType}
-          onUpdateParentId={onUpdateParentId}
-        />
-      </MyBox>
-    </>
+      }
+    >
+      <NodeTemplateList
+        onAddNode={onAddNode}
+        templates={templates}
+        templateType={templateType}
+        onUpdateParentId={onUpdateParentId}
+      />
+    </AppDetailPanelModal>
   );
 };
 

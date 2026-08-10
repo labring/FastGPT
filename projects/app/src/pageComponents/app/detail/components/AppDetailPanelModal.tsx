@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Box, Flex, type BoxProps } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps, type FlexProps } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type AppDetailPanelModalProps = {
@@ -8,10 +8,13 @@ export type AppDetailPanelModalProps = {
   children: React.ReactNode;
   header: React.ReactNode;
   footer?: React.ReactNode;
+  isLoading?: boolean;
   width: BoxProps['w'];
   height: BoxProps['h'];
+  headerProps?: Omit<FlexProps, 'children'>;
   top?: BoxProps['top'];
   position?: BoxProps['position'];
+  placement?: 'left' | 'right';
   showMask?: boolean;
   closeOnMaskClick?: boolean;
   contentProps?: Omit<BoxProps, 'children'>;
@@ -20,7 +23,7 @@ export type AppDetailPanelModalProps = {
 export const APP_DETAIL_PANEL_WIDTH_PX = 400;
 
 /**
- * 应用详情页右侧弹窗，直接复用运行预览原有的宽高过渡和视觉样式。
+ * 应用详情页侧边弹窗，直接复用运行预览原有的宽高过渡和视觉样式。
  * 面板固定拆成顶部、主体、底部三段；调用方只负责提供各段内容和弹窗尺寸。
  * 无蒙层时，弹窗外区域仍可正常操作。
  */
@@ -30,10 +33,13 @@ const AppDetailPanelModal = ({
   children,
   header,
   footer,
+  isLoading = false,
   width,
   height,
+  headerProps,
   top = 0,
   position = 'absolute',
+  placement = 'right',
   showMask = true,
   closeOnMaskClick = true,
   contentProps
@@ -67,12 +73,14 @@ const AppDetailPanelModal = ({
         />
       )}
       <MyBox
+        isLoading={isLoading}
         zIndex={300}
         display={'flex'}
         flexDirection={'column'}
         position={position}
         top={top}
-        right={0}
+        left={placement === 'left' ? 0 : undefined}
+        right={placement === 'right' ? 0 : undefined}
         h={isOpen ? height : 0}
         w={isOpen ? width : 0}
         minW={0}
@@ -82,7 +90,8 @@ const AppDetailPanelModal = ({
         borderRadius={'md'}
         overflow={'hidden'}
         pointerEvents={isOpen ? 'auto' : 'none'}
-        transition={'.2s ease'}
+        transition={'width 0.2s ease, height 0.2s ease'}
+        willChange={'width, height'}
         {...contentProps}
       >
         <Flex
@@ -95,6 +104,7 @@ const AppDetailPanelModal = ({
           color={'myGray.900'}
           alignItems={'center'}
           position={'relative'}
+          {...headerProps}
         >
           {header}
         </Flex>

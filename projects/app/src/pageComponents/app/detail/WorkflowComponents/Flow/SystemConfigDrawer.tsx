@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Button, CloseButton, Flex, Portal, Text } from '@chakra-ui/react';
+import { Box, CloseButton, Flex, IconButton, Portal, Text, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -10,17 +10,11 @@ import AppDetailPanelModal, {
   APP_DETAIL_PANEL_WIDTH_PX
 } from '../../components/AppDetailPanelModal';
 import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
-import { WorkflowModalContext } from '../context/workflowModalContext';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const SystemConfigDrawer = () => {
   const { t } = useTranslation();
-  const { activePanel, setActivePanel } = useContextSelector(WorkflowModalContext, (v) => ({
-    activePanel: v.activePanel,
-    setActivePanel: v.setActivePanel
-  }));
-  const isOpen = activePanel === 'system';
-  const onToggle = () => setActivePanel(isOpen ? null : 'system');
-  const onClose = () => setActivePanel(null);
+  const { isOpen, onToggle, onClose } = useDisclosure();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
@@ -36,16 +30,24 @@ const SystemConfigDrawer = () => {
 
   return (
     <>
-      <Button
-        aria-label={t('workflow:template.system_config')}
-        title={t('workflow:template.system_config')}
-        size={'baseSquare'}
-        variant={'whitePrimary'}
-        flexShrink={0}
-        onClick={onToggle}
-      >
-        <MyIcon name={'core/app/configDrawerSetting'} w={'18px'} h={'18px'} />
-      </Button>
+      <Box position={'absolute'} top={'130px'} left={6} zIndex={1}>
+        <MyTooltip shouldWrapChildren={false} label={t('workflow:template.system_config')}>
+          <IconButton
+            icon={<MyIcon name={'core/app/configDrawerSetting'} boxSize={5} color={'myGray.400'} />}
+            w={9}
+            minW={9}
+            h={9}
+            p={1.5}
+            borderRadius={'50%'}
+            aria-label={t('workflow:template.system_config')}
+            variant={'whitePrimary'}
+            _hover={{ bg: 'myGray.50' }}
+            border={'none'}
+            boxShadow={'0 4px 5px rgba(19, 51, 107, 0.20), 0 0 0.5px rgba(19, 51, 107, 0.50)'}
+            onClick={onToggle}
+          />
+        </MyTooltip>
+      </Box>
 
       <Portal>
         <AppDetailPanelModal
@@ -55,6 +57,7 @@ const SystemConfigDrawer = () => {
           height={['100vh', 'calc(100vh - 67px)']}
           top={[0, '67px']}
           position={'fixed'}
+          placement={'left'}
           showMask={false}
           header={
             <Flex w={'100%'} justifyContent={'space-between'} alignItems={'center'}>

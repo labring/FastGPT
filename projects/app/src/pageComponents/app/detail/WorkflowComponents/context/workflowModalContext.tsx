@@ -13,7 +13,7 @@ export type handleParamsType = OnConnectStartParams & {
   addNodePosition: { x: number; y: number };
 };
 
-export type WorkflowActivePanel = 'history' | 'system' | 'run' | null;
+export type WorkflowActivePanel = 'history' | 'run' | null;
 
 type WorkflowTestData = {
   nodes: StoreNodeItemType[];
@@ -21,7 +21,7 @@ type WorkflowTestData = {
 };
 
 type WorkflowModalContextValue = {
-  /** 当前打开的工作流弹窗，多个弹窗通过单一状态互斥。 */
+  /** 当前打开的右侧工作流弹窗，历史版本与运行预览通过单一状态互斥。 */
   activePanel: WorkflowActivePanel;
 
   /** 切换当前工作流弹窗。 */
