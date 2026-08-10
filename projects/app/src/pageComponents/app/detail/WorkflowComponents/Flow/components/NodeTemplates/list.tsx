@@ -112,7 +112,6 @@ const NodeTemplateListItem = ({
               <Box fontWeight={'bold'} color={'myGray.900'} className="textEllipsis">
                 {template.name}
               </Box>
-              {isSystemSource && <SystemToolTag />}
               {isDebugTool && <DebugToolTag />}
             </Flex>
             {isSystemTool && (

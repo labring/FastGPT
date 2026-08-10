@@ -228,15 +228,32 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               >
                 {t('app:core.module.template.System Tools')}
               </Box>
-              <Button mr={4} variant={'whiteBase'} onClick={onOpenDebugModal}>
+              <Button mr={4} w={'90px'} h={'34px'} variant={'whiteBase'} onClick={onOpenDebugModal}>
                 {t('app:toolkit_debug_local')}
               </Button>
+              {feConfigs?.docUrl && (
+                <Button
+                  mr={4}
+                  w={'90px'}
+                  h={'34px'}
+                  variant={'whiteBase'}
+                  onClick={() =>
+                    window.open(getDocPath('/plugin/system-tool-development'), '_blank')
+                  }
+                >
+                  {t('app:toolkit_contribute_resource')}
+                </Button>
+              )}
               {canManageTeamPlugins && (
                 <Box mr={4}>
                   <MyMenu
                     trigger="hover"
                     Button={
-                      <Button leftIcon={<MyIcon name="common/addLight" w={'18px'} />}>
+                      <Button
+                        w={'114px'}
+                        h={'34px'}
+                        leftIcon={<MyIcon name="common/addLight" w={'18px'} />}
+                      >
                         {t('app:toolkit_add_resource')}
                       </Button>
                     }
@@ -270,15 +287,6 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   }}
                 >
                   {t('app:toolkit_marketplace_submit_request')}
-                </Button>
-              )}
-              {feConfigs?.docUrl && (
-                <Button
-                  onClick={() =>
-                    window.open(getDocPath('/plugin/system-tool-development'), '_blank')
-                  }
-                >
-                  {t('app:toolkit_contribute_resource')}
                 </Button>
               )}
             </Flex>
@@ -363,13 +371,13 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   )}
                 </Flex>
               )}
-              <Box flex={'1'} overflow={'auto'} mb={-1}>
+              <Flex flex={'1'} alignItems={'center'} overflow={'hidden'} mb={-1}>
                 <ToolTagFilterBox
                   tags={tags}
                   selectedTagIds={selectedTagIds}
                   onTagSelect={setSelectedTagIds}
                 />
-              </Box>
+              </Flex>
             </Flex>
           </Flex>
         </Box>

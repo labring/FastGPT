@@ -1,12 +1,11 @@
 'use client';
 
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useDebounce, useMount, useSet } from 'ahooks';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
@@ -341,10 +340,6 @@ export const ToolkitMarketplace = ({
             });
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await reinstallSystemTool(offlineTool.systemToolId);
-            toast({
-              title: t('app:custom_plugin_install_success'),
-              status: 'success'
-            });
           } else {
             const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
             if (!downloadUrl) return;
@@ -360,6 +355,10 @@ export const ToolkitMarketplace = ({
             setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
           }
           await refreshInstalledPlugins();
+          toast({
+            title: t('common:Success'),
+            status: 'success'
+          });
         } finally {
           installingOrDeletingToolIdsDispatch.remove(tool.id);
           operatingPromisesRef.current.delete(tool.id);
@@ -423,6 +422,14 @@ export const ToolkitMarketplace = ({
       await operationPromise;
     },
     [mode, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
+  );
+
+  const { runAsync: handleUpdateToolFromCard } = useRequest(
+    (tool: ToolCardItemType) => handleUpdateTool(tool),
+    {
+      manual: true,
+      successToast: t('common:update_success')
+    }
   );
 
   const { runAsync: handleUninstallTool } = useRequest(
@@ -907,33 +914,18 @@ export const ToolkitMarketplace = ({
                   variant="marketplace"
                 />
               </Box>
-              <MyMenu
-                trigger="hover"
-                Button={
-                  <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
-                    <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
-                    <Box fontSize={'12px'}>
-                      {installedFilter ? t('app:toolkit_uninstalled') : t('common:All')}
-                    </Box>
-                  </Flex>
-                }
-                menuList={[
-                  {
-                    children: [
-                      {
-                        label: t('common:All'),
-                        onClick: () => setInstalledFilter(false),
-                        isActive: !installedFilter
-                      },
-                      {
-                        label: t('app:toolkit_uninstalled'),
-                        onClick: () => setInstalledFilter(true),
-                        isActive: installedFilter
-                      }
-                    ]
-                  }
-                ]}
-              />
+              <Checkbox
+                size={'sm'}
+                isChecked={installedFilter}
+                onChange={(event) => setInstalledFilter(event.target.checked)}
+                whiteSpace={'nowrap'}
+                fontSize={'12px'}
+                lineHeight={'16px'}
+                fontWeight={'medium'}
+                letterSpacing={'0.5px'}
+              >
+                {t('app:toolkit_uninstalled_only')}
+              </Checkbox>
             </Flex>
             {displayTools.length > 0 ? (
               <Grid
@@ -955,7 +947,7 @@ export const ToolkitMarketplace = ({
                         openMarketplaceUninstallConfirm(tool);
                         return Promise.resolve();
                       }}
-                      onUpdate={() => handleUpdateTool(tool)}
+                      onUpdate={() => handleUpdateToolFromCard(tool)}
                       onClickCard={() => setSelectedTool(tool)}
                       showActionButton={!tool.installed}
                     />

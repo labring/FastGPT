@@ -62,7 +62,6 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
     getUserDetail({ tmbId }),
     getTeamPluginPolicyMap(teamId)
   ]);
-  console.log('tools', tools.length, tools.map((item) => (`${item.id}, ${item.source}`)), policyMap)
   const userTags = userDetail.tags || [];
 
   return GetTeamPluginListResponseSchema.parse(

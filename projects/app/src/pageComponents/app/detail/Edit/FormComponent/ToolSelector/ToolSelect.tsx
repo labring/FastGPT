@@ -78,7 +78,7 @@ const ToolSelect = ({
         {selectedTools.map((item) => {
           const toolError = formatToolError(item.pluginData?.error);
           // 即将下架/已下架
-          const status = item.status || item.pluginData?.status;
+          const status = item.pluginData?.status || item.status;
 
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);

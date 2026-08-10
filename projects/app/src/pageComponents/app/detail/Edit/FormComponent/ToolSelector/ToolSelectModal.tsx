@@ -382,7 +382,6 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
-                        {isSystemSource && <SystemToolTag />}
                         {isDebugTool && <DebugToolTag />}
                         {isSystemTool && (
                           <Box color={'myGray.500'}>

@@ -29,6 +29,8 @@ const SystemToolSchema = new Schema({
           return 2;
         case 'Offline':
           return 3;
+        case 'Hidden':
+          return 4;
         default:
           return 1;
       }
@@ -41,6 +43,8 @@ const SystemToolSchema = new Schema({
           return 'SoonOffline';
         case 3:
           return 'Offline';
+        case 4:
+          return 'Hidden';
         default:
           return 'Normal';
       }

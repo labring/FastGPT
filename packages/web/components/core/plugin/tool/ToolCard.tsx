@@ -7,6 +7,7 @@ import MyIcon from '../../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import DebugToolTag from './DebugToolTag';
+import SystemToolTag from './SystemToolTag';
 import { normalizeToolCardTags } from './utils';
 import { isTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 
@@ -227,17 +228,20 @@ const ToolCard = ({
           h={isMarketplaceVariant ? '24px' : undefined}
           flexShrink={0}
         />
-        <Box
-          color={isMarketplaceVariant ? '#111824' : 'myGray.900'}
-          fontSize={isMarketplaceVariant ? '16px' : undefined}
-          lineHeight={isMarketplaceVariant ? '24px' : undefined}
-          fontWeight={'medium'}
-          minW={0}
-          flex={1}
-          className={'textEllipsis'}
-        >
-          {parseI18nString(item.name, i18n.language)}
-        </Box>
+        <Flex alignItems={'center'} gap={2} flex={'1 1 auto'} minW={0}>
+          <Box
+            color={isMarketplaceVariant ? '#111824' : 'myGray.900'}
+            fontSize={isMarketplaceVariant ? '16px' : undefined}
+            lineHeight={isMarketplaceVariant ? '24px' : undefined}
+            fontWeight={'medium'}
+            minW={0}
+            flex={'0 1 auto'}
+            className={'textEllipsis'}
+          >
+            {parseI18nString(item.name, i18n.language)}
+          </Box>
+          {showRegistrySourceBadge && item.registrySource === 'system' && <SystemToolTag />}
+        </Flex>
         {showOfficialBadge && (
           <Box
             px={'8px'}
@@ -252,22 +256,6 @@ const ToolCard = ({
             flexShrink={0}
           >
             {t('app:toolkit_official')}
-          </Box>
-        )}
-        {showRegistrySourceBadge && item.registrySource === 'system' && (
-          <Box
-            px={'8px'}
-            py={'4px'}
-            borderRadius={'6px'}
-            bg={item.registrySource === 'system' ? '#F2F4F7' : '#F0F4FF'}
-            color={item.registrySource === 'system' ? '#667085' : '#3370FF'}
-            fontSize={'10px'}
-            lineHeight={'14px'}
-            fontWeight={'medium'}
-            letterSpacing={'0.2px'}
-            flexShrink={0}
-          >
-            {t('app:team_plugin_source_system')}
           </Box>
         )}
         {item.isDebug && <DebugToolTag />}
