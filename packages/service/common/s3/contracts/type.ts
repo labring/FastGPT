@@ -5,10 +5,29 @@ import {
   UploadFileHintSchema,
   UploadPolicySchema
 } from '../uploadPolicy/type';
-import type { MultipartUploadPart, StorageUploadBody } from '@fastgpt-sdk/storage';
+import {
+  assertStorageObjectKey,
+  InvalidStorageObjectKeyError,
+  type MultipartUploadPart,
+  type StorageUploadBody
+} from '@fastgpt-sdk/storage';
 
-/** FastGPT 入口与底层 Storage SDK 共用同一套对象 key 规范。 */
-export const StorageObjectKeySchema = z.string();
+/**
+ * FastGPT 边界保留 raw key，但仍拒绝会改变路径结构的非法值。
+ * provider 的字节长度限制延迟到实际存储操作，兼容历史 access-link 数据的读取。
+ */
+export const StorageObjectKeySchema = z.string().superRefine((key, context) => {
+  try {
+    assertStorageObjectKey(key);
+  } catch (error) {
+    if (error instanceof InvalidStorageObjectKeyError && error.reason === 'too_long') return;
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: error instanceof Error ? error.message : 'Invalid storage object key'
+    });
+  }
+});
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),

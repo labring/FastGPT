@@ -41,8 +41,10 @@ describe('FastGPT storage object key schemas', () => {
     expect(parseKey('team/folder # & + % ?/\u6587\u4ef6-\ud83d\ude00.txt').success).toBe(true);
   });
 
-  it.each(keySchemas)('%s keeps key values unchanged', (_name, parseKey) => {
-    expect(parseKey('team//file.txt').success).toBe(true);
+  it.each(keySchemas)('%s rejects structurally unsafe keys', (_name, parseKey) => {
+    for (const key of ['', '/file.txt', 'team//file.txt', 'team/../file.txt', 'team\\file.txt']) {
+      expect(parseKey(key).success).toBe(false);
+    }
   });
 
   it('does not transform the key by default', () => {

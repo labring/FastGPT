@@ -48,7 +48,7 @@ export class S3ChatSource extends S3PrivateBucket {
   static parseChatUrl(url: string | URL) {
     try {
       const parseUrl = new URL(url);
-      const pathname = decodeURIComponent(parseUrl.pathname);
+      const pathname = parseUrl.pathname;
       // 非 S3 key
       if (!pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`)) {
         return {
@@ -58,13 +58,24 @@ export class S3ChatSource extends S3PrivateBucket {
         };
       }
 
-      const filename = pathname.split('/').pop() || 'file';
+      const encodedFilename = pathname.split('/').pop() || 'file';
+      const filename = (() => {
+        try {
+          return decodeURIComponent(encodedFilename);
+        } catch {
+          return encodedFilename;
+        }
+      })();
       const extension = path.extname(filename);
+      const encodedExtension = path.extname(encodedFilename);
+      const pathnameWithoutExtension = encodedExtension
+        ? pathname.slice(0, -encodedExtension.length)
+        : pathname;
 
       return {
         filename,
         extension: extension.replace('.', ''),
-        imageParsePrefix: `${pathname.replace(`/${S3Buckets.private}/`, '').replace(extension, '')}-parsed`
+        imageParsePrefix: `${pathnameWithoutExtension.replace(`/${S3Buckets.private}/`, '')}-parsed`
       };
     } catch {
       return {

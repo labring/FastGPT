@@ -12,7 +12,7 @@ import { StorageObjectKeySchema } from '@fastgpt/service/common/s3/contracts/typ
 
 describe('uploadImage2S3Bucket', () => {
   it('does not transform the upload key schema value', () => {
-    const key = 'dataset//image.png';
+    const key = 'dataset/team/image #1.png';
     expect(StorageObjectKeySchema.parse(key)).toBe(key);
   });
 });
@@ -383,7 +383,7 @@ describe('getFormatedFilename', () => {
 describe('encodeS3ObjectKey', () => {
   it('encodes each path segment while preserving separators', () => {
     expect(encodeS3ObjectKey('team/user name/file (1).txt')).toBe(
-      'team/user%20name/file%20(1).txt'
+      'team/user%20name/file%20%281%29.txt'
     );
   });
 
@@ -791,7 +791,7 @@ describe('getFileS3Key', () => {
         filename: 'file(1).pdf'
       });
 
-      expect(result.fileKey).toBe('temp/team123/file(1)_abc123.pdf');
+      expect(result.fileKey).toBe('temp/team123/file%281%29_abc123.pdf');
     });
 
     it('should encode parentheses in avatar files', () => {
@@ -800,7 +800,7 @@ describe('getFileS3Key', () => {
         filename: 'avatar(copy).jpg'
       });
 
-      expect(result.fileKey).toBe('avatar/team123/avatar(copy)_abc123.jpg');
+      expect(result.fileKey).toBe('avatar/team123/avatar%28copy%29_abc123.jpg');
     });
 
     it('should encode parentheses in chat files', () => {
@@ -811,7 +811,7 @@ describe('getFileS3Key', () => {
         filename: 'image(final).png'
       });
 
-      expect(result.fileKey).toBe('chat/app123/user789/chat456/image(final)_abc123.png');
+      expect(result.fileKey).toBe('chat/app123/user789/chat456/image%28final%29_abc123.png');
     });
 
     it('should encode parentheses in dataset files', () => {
@@ -820,7 +820,7 @@ describe('getFileS3Key', () => {
         filename: 'data(v2).csv'
       });
 
-      expect(result.fileKey).toBe('dataset/dataset123/data(v2)_abc123.csv');
+      expect(result.fileKey).toBe('dataset/dataset123/data%28v2%29_abc123.csv');
     });
   });
 

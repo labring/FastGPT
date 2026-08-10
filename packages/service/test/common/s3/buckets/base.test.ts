@@ -783,7 +783,7 @@ describe('S3BaseBucket historical key compatibility', () => {
     expect(storage.getObjectMetadata).toHaveBeenNthCalledWith(2, { key: rawKey });
   });
 
-  it('uses the raw source as a copy fallback and deletes both key forms', async () => {
+  it('uses the raw source as a copy fallback and only deletes the canonical object when both exist', async () => {
     const { storage, bucket } = createBucket();
     const rawKey = 'legacy/user name/file.txt';
     const canonicalKey = 'legacy/user%20name/file.txt';
@@ -810,9 +810,45 @@ describe('S3BaseBucket historical key compatibility', () => {
       targetKey: 'archive/file.txt'
     });
 
+    vi.spyOn(storage, 'checkObjectExists').mockResolvedValueOnce({
+      bucket: storage.bucketName,
+      key: canonicalKey,
+      exists: true
+    });
     await bucket.removeObject(canonicalKey);
-    expect(storage.deleteObject).toHaveBeenNthCalledWith(1, { key: canonicalKey });
-    expect(storage.deleteObject).toHaveBeenNthCalledWith(2, { key: rawKey });
+    expect(storage.deleteObject).toHaveBeenCalledOnce();
+    expect(storage.deleteObject).toHaveBeenCalledWith({ key: canonicalKey });
+  });
+
+  it('deletes the legacy object only when the canonical object does not exist', async () => {
+    const { storage, bucket } = createBucket();
+    const rawKey = 'legacy/user name/file.txt';
+    const canonicalKey = 'legacy/user%20name/file.txt';
+    vi.spyOn(storage, 'checkObjectExists')
+      .mockResolvedValueOnce({ bucket: storage.bucketName, key: canonicalKey, exists: false })
+      .mockResolvedValueOnce({ bucket: storage.bucketName, key: rawKey, exists: true });
+
+    await bucket.removeObject(canonicalKey);
+
+    expect(storage.deleteObject).toHaveBeenCalledOnce();
+    expect(storage.deleteObject).toHaveBeenCalledWith({ key: rawKey });
+  });
+
+  it.each([
+    'legacy/user%2Fname/file.txt',
+    'legacy/user%5Cname/file.txt',
+    'legacy/user%00name/file.txt',
+    'legacy/%2E%2E/file.txt'
+  ])('does not use a decoded fallback that changes path safety: %s', async (key) => {
+    const { storage, bucket } = createBucket();
+    vi.spyOn(storage, 'checkObjectExists').mockResolvedValueOnce({
+      bucket: storage.bucketName,
+      key,
+      exists: false
+    });
+
+    await expect(bucket.resolveExistingObjectKey(key)).resolves.toBeUndefined();
+    expect(storage.checkObjectExists).toHaveBeenCalledOnce();
   });
 
   it('validates body-upload keys before creating a TTL record', async () => {

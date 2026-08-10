@@ -68,18 +68,26 @@ const logger = getLogger(LogCategories.INFRA.S3);
 
 const getStorageKeyCandidates = (key: string): string[] => {
   assertStorageObjectKey(key);
-  const legacyKey = key
-    .split('/')
-    .map((segment) => {
-      try {
-        return decodeURIComponent(segment);
-      } catch {
-        return segment;
-      }
-    })
-    .join('/');
+  const decodedSegments = key.split('/').map((segment) => {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
+    }
+  });
 
-  return legacyKey === key ? [key] : [key, legacyKey];
+  // Legacy fallback 只能还原段内字符，不能让编码内容改变对象路径层级。
+  if (decodedSegments.some((segment) => segment.includes('/'))) return [key];
+
+  const legacyKey = decodedSegments.join('/');
+
+  if (legacyKey === key) return [key];
+  try {
+    assertStorageObjectKey(legacyKey, 'legacyKey');
+    return [key, legacyKey];
+  } catch {
+    return [key];
+  }
 };
 
 const withStorageKeyFallback = async <T>(
@@ -192,21 +200,26 @@ export class S3BaseBucket {
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    const keys = getStorageKeyCandidates(objectKey);
-    for (const key of keys) {
-      await this.client.deleteObject({ key }).catch((err) => {
-        if (isFileNotFoundError(err)) return;
-        logger.error('S3 delete object failed', { key, code: err?.code, error: err });
-        throw err;
+    const resolvedKey = await this.resolveExistingObjectKey(objectKey);
+    if (resolvedKey) {
+      await this.client.deleteObject({ key: resolvedKey }).catch((err) => {
+        if (!isFileNotFoundError(err)) {
+          logger.error('S3 delete object failed', {
+            key: resolvedKey,
+            code: err?.code,
+            error: err
+          });
+          throw err;
+        }
       });
     }
 
     deleteS3DownloadAliasByObjects({
       bucketName: this.bucketName,
-      objectKeys: keys
+      objectKeys: resolvedKey ? [resolvedKey] : getStorageKeyCandidates(objectKey)
     }).catch((err) => {
       logger.warn('S3 download alias cleanup failed after object delete', {
-        key: keys,
+        key: resolvedKey ?? objectKey,
         bucketName: this.bucketName,
         error: err
       });
@@ -298,12 +311,16 @@ export class S3BaseBucket {
   }
 
   async isObjectExists(key: string) {
+    return !!(await this.resolveExistingObjectKey(key));
+  }
+
+  /** 返回实际存在的 canonical 或 legacy key，供后续操作复用同一次 fallback 决策。 */
+  async resolveExistingObjectKey(key: string): Promise<string | undefined> {
     const candidates = getStorageKeyCandidates(key);
-    const { exists } = await this.client.checkObjectExists({ key: candidates[0] });
-    if (exists) return true;
-    if (candidates.length === 1) return false;
-    const fallback = await this.client.checkObjectExists({ key: candidates[1] });
-    return fallback.exists ?? false;
+    for (const candidate of candidates) {
+      const { exists } = await this.client.checkObjectExists({ key: candidate });
+      if (exists) return candidate;
+    }
   }
 
   /**

@@ -445,4 +445,35 @@ describe('presignChatFilePostUrl', () => {
 
     expect(mocks.createUploadChatFileURL).not.toHaveBeenCalled();
   });
+
+  it('does not allow local uploads from a disabled published plugin input', async () => {
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      chatConfig: {
+        variables: []
+      },
+      nodes: [
+        {
+          flowNodeType: 'pluginInput',
+          inputs: [
+            {
+              renderTypeList: ['fileSelect', 'reference'],
+              canSelectImg: true,
+              canLocalUpload: false
+            }
+          ]
+        }
+      ]
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        contentType: 'image/png',
+        appId,
+        chatId
+      })
+    ).rejects.toBe(S3ErrEnum.fileUploadDisabled);
+
+    expect(mocks.createUploadChatFileURL).not.toHaveBeenCalled();
+  });
 });

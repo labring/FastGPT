@@ -386,13 +386,13 @@ export const handleS3RedirectDownload = async ({
     throw new Error('S3 bucket not found');
   }
 
-  const exists = await bucket.isObjectExists(objectKey);
-  if (!exists) {
+  const resolvedObjectKey = await bucket.resolveExistingObjectKey(objectKey);
+  if (!resolvedObjectKey) {
     throw CommonErrEnum.fileNotFound;
   }
 
   const result = await bucket.externalClient.generatePresignedGetUrl({
-    key: objectKey,
+    key: resolvedObjectKey,
     expiredSeconds: resolveS3RedirectExpiresSeconds({ expiresAt }),
     ...(payload.responseContentType ? { responseContentType: payload.responseContentType } : {})
   });
