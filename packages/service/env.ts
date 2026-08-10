@@ -120,12 +120,6 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: SandboxVolumeNameSchema.default(
       'fastgpt-session'
     ).meta({ description: 'OpenSandbox persistent volume claimName prefix' }),
-    AGENT_SANDBOX_OPENSANDBOX_DISABLE_NETWORK_POLICY: BoolSchema.default(false).meta({
-      description:
-        'Disable the default outbound network policy for OpenSandbox Docker runtime. ' +
-        'Set to true when the OpenSandbox server uses a user-defined Docker network (not bridge), ' +
-        'as networkPolicy is only supported with network_mode=bridge.'
-    }),
     AGENT_SANDBOX_SUSPEND_MINUTES: IntSchema.min(1).default(60).meta({
       description: 'Agent sandbox 持续未活跃多少分钟后自动暂停'
     }),
