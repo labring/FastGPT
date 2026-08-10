@@ -430,6 +430,9 @@ importers:
       ioredis:
         specifier: ^5.11.1
         version: 5.11.1
+      mongoose:
+        specifier: 'catalog:'
+        version: 8.24.2(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.9)
       zod:
         specifier: 'catalog:'
         version: 4.4.3
