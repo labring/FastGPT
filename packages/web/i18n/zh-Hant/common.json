@@ -691,6 +691,7 @@
   "core.workflow.tool.Select Tool": "選擇工具",
   "core.workflow.variable": "變數",
   "coupon_expired": "優惠券已過期",
+  "coupon_invalid": "兌換碼無效",
   "coupon_not_exist": "優惠券不存在",
   "coupon_not_start": "優惠券未生效",
   "coupon_redeem_failed": "優惠券核銷失敗",

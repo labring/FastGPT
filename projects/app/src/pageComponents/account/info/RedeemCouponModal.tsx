@@ -46,7 +46,7 @@ const RedeemCouponModal = ({
         <Button variant={'whiteBase'} onClick={onClose}>
           {t('account_info:cancel')}
         </Button>
-        <Button ml={2} isLoading={loading} onClick={() => redeemCouponAsync(couponCode)}>
+        <Button ml={2} isLoading={loading} onClick={() => redeemCouponAsync(couponCode.trim())}>
           {t('account_info:confirm')}
         </Button>
       </ModalFooter>

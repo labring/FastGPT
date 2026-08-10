@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { getCouponCode, removeCouponCode } from '@/web/support/marketing/utils';
 import { redeemCoupon } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { CouponErrEnum } from '@fastgpt/global/common/error/code/coupon';
 
 export const useCheckCoupon = () => {
   const { userInfo } = useUserStore();
@@ -15,7 +16,7 @@ export const useCheckCoupon = () => {
     redeemCoupon(couponCode)
       .then(removeCouponCode)
       .catch((err) => {
-        if (err?.message === 'Invalid coupon') {
+        if (err?.statusText === CouponErrEnum.invalid) {
           removeCouponCode();
         }
       });

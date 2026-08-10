@@ -121,7 +121,9 @@ export const initFastGPTSemSourceDomain = (sourceDomain?: string) => {
 
 export const setCouponCode = (couponCode?: string) => {
   if (!couponCode) return;
-  localStorage.setItem('couponCode', couponCode);
+  const normalizedCouponCode = couponCode.trim();
+  if (!normalizedCouponCode) return;
+  localStorage.setItem('couponCode', normalizedCouponCode);
 };
 
 export const getCouponCode = () => {

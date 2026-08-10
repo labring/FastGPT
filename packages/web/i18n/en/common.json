@@ -696,6 +696,7 @@
   "core.workflow.tool.Select Tool": "Select Tool",
   "core.workflow.variable": "Variable",
   "coupon_expired": "Coupon has expired",
+  "coupon_invalid": "Invalid coupon",
   "coupon_not_exist": "Coupon does not exist",
   "coupon_not_start": "Coupon is not yet effective",
   "coupon_redeem_failed": "Coupon redeemed failed",
