@@ -1,16 +1,13 @@
 import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import { Popover, PopoverBody, PopoverContent } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   EDGE_TYPE,
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import type {
-  FlowNodeItemType,
-  NodeTemplateContext
-} from '@fastgpt/global/core/workflow/type/node';
+import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template/context';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
@@ -38,23 +35,16 @@ const NodeTemplatesPopover = () => {
     (v) => v.onRefreshSingleNodeWorkflowCheckIssues
   );
 
-  const nodeTemplateContext = React.useMemo<NodeTemplateContext | null>(() => {
-    if (!handleParams?.nodeId) return null;
-    const sourceNode = getNodeById(handleParams.nodeId);
-    if (!sourceNode) return null;
-    const parentNode = sourceNode.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
-    return {
-      sourceNodeId: sourceNode.nodeId,
-      sourceType: sourceNode.flowNodeType,
-      sourceIsTool: !!sourceNode.isTool,
-      isConnectedTool: edges.some(
-        (edge) =>
-          edge.target === sourceNode.nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
-      ),
-      handleId: handleParams.handleId ?? null,
-      parentType: parentNode?.flowNodeType ?? null
-    };
-  }, [handleParams, edges, getNodeById]);
+  const nodeTemplateContext = React.useMemo(
+    () =>
+      buildNodeTemplateContext({
+        sourceNode: handleParams?.nodeId ? getNodeById(handleParams.nodeId) : undefined,
+        edges,
+        handleId: handleParams?.handleId,
+        getNodeById
+      }),
+    [handleParams, edges, getNodeById]
+  );
 
   const {
     templateType,
