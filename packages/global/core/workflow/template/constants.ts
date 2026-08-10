@@ -15,7 +15,7 @@ import { AgentNode } from './system/agent';
 import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
-import { AiQueryExtension } from './system/queryExtension';
+import { AiQueryExtension } from './system/abandoned/queryExtension';
 import { RunAppNode } from './system/runApp';
 import { RunPluginModule } from './system/runPlugin';
 
@@ -53,7 +53,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   AgentNode,
   ReadFilesNode,
   HttpNode468,
-  AiQueryExtension,
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
@@ -92,5 +91,6 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   LoopEndNode,
   LoopRunStartNode,
   RunToolNode,
-  RunToolSetNode
+  RunToolSetNode,
+  AiQueryExtension
 ];
