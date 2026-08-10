@@ -9,6 +9,7 @@ import {
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { WorkflowBufferDataContext } from './workflowInitContext';
@@ -296,27 +297,34 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
 
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
-      const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+      // 与 initData/导入一致：旧版残留的系统配置节点（欢迎语/变量/定时任务等）需先合并进
+      // chatConfig 再从节点列表过滤掉，否则云版本切换时这些配置不会进入 chatConfig，
+      // 还会作为孤立节点残留在画布上。
+      const normalizedWorkflow = normalizeWorkflowConfig({
+        nodes: appVersion.nodes,
+        edges: appVersion.edges,
+        chatConfig: appVersion.chatConfig
+      });
+      const edges = normalizedWorkflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
       const toolNodeIds = new Set(
-        appVersion.edges
+        normalizedWorkflow.edges
           .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
-      const nodes = appVersion.nodes.map((item) =>
+      const nodes = normalizedWorkflow.nodes.map((item) =>
         storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
       );
-      const chatConfig = appVersion.chatConfig;
 
       resetSnapshot({
         nodes,
         edges,
-        chatConfig
+        chatConfig: normalizedWorkflow.chatConfig
       });
 
       return pushPastSnapshot({
         pastNodes: nodes,
         pastEdges: edges,
-        chatConfig,
+        chatConfig: normalizedWorkflow.chatConfig,
         customTitle: `${t('app:version_copy')}-${appVersion.versionName}`
       });
     },

@@ -6,6 +6,7 @@ import {
   getGuideModule,
   splitGuideModule,
   getAppChatConfig,
+  normalizeWorkflowConfig,
   getOrInitModuleInputValue,
   getModuleInputUiField,
   pluginData2FlowNodeIO,
@@ -226,6 +227,25 @@ describe('splitGuideModule', () => {
     expect(result.welcomeText).toBe('Hello World');
   });
 
+  it('should extract welcomeQuestions from inputs', () => {
+    const guideModule: StoreNodeItemType = {
+      nodeId: 'guide',
+      flowNodeType: FlowNodeTypeEnum.systemConfig,
+      name: 'Guide',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.welcomeQuestions,
+          label: 'Welcome Questions',
+          value: ['Question 1'],
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      outputs: []
+    };
+    const result = splitGuideModule(guideModule);
+    expect(result.welcomeQuestions).toEqual(['Question 1']);
+  });
+
   it('should extract variables from inputs', () => {
     const variables = [{ key: 'var1', label: 'Variable 1', type: VariableInputEnum.input }];
     const guideModule: StoreNodeItemType = {
@@ -322,6 +342,183 @@ describe('splitGuideModule', () => {
     };
     const result = splitGuideModule(guideModule);
     expect(result.instruction).toBe('Test instruction');
+  });
+});
+
+describe('normalizeWorkflowConfig', () => {
+  const createSystemConfigNode = (
+    inputs: Array<[NodeInputKeyEnum, unknown]> = [],
+    nodeId = 'system'
+  ): StoreNodeItemType => ({
+    nodeId,
+    flowNodeType: FlowNodeTypeEnum.systemConfig,
+    name: 'System config',
+    inputs: inputs.map(([key, value]) => ({
+      key,
+      label: key,
+      value,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden]
+    })),
+    outputs: []
+  });
+
+  const legacyInputs: Array<[NodeInputKeyEnum, unknown]> = [
+    [NodeInputKeyEnum.welcomeText, 'Legacy welcome'],
+    [NodeInputKeyEnum.welcomeQuestions, ['Legacy question']],
+    [
+      NodeInputKeyEnum.variables,
+      [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }]
+    ],
+    [NodeInputKeyEnum.questionGuide, true],
+    [NodeInputKeyEnum.tts, { type: 'web' }],
+    [NodeInputKeyEnum.whisper, { open: true, autoSend: true, autoTTSResponse: false }],
+    [
+      NodeInputKeyEnum.scheduleTrigger,
+      { cronString: '0 0 * * *', timezone: 'UTC', defaultPrompt: 'Run' }
+    ],
+    [NodeInputKeyEnum.chatInputGuide, { open: true, customUrl: 'https://example.com' }],
+    [NodeInputKeyEnum.autoExecute, { open: true, defaultPrompt: 'Run automatically' }],
+    [NodeInputKeyEnum.instruction, 'Legacy instruction']
+  ];
+
+  it('should migrate every legacy system config field into chatConfig', () => {
+    const result = normalizeWorkflowConfig({
+      nodes: [createSystemConfigNode(legacyInputs)]
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.chatConfig).toMatchObject({
+      welcomeText: 'Legacy welcome',
+      welcomeConfig: {
+        welcomeText: 'Legacy welcome',
+        welcomeQuestions: ['Legacy question']
+      },
+      variables: [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }],
+      questionGuide: { ...defaultQGConfig, open: true },
+      ttsConfig: { type: 'web' },
+      whisperConfig: { open: true, autoSend: true, autoTTSResponse: false },
+      scheduledTriggerConfig: {
+        cronString: '0 0 * * *',
+        timezone: 'UTC',
+        defaultPrompt: 'Run'
+      },
+      chatInputGuide: { open: true, customUrl: 'https://example.com' },
+      autoExecute: { open: true, defaultPrompt: 'Run automatically' },
+      instruction: 'Legacy instruction'
+    });
+  });
+
+  it('should move workflow tool config instruction into chatConfig', () => {
+    const pluginConfigNode: StoreNodeItemType = {
+      ...createSystemConfigNode(
+        [[NodeInputKeyEnum.instruction, 'Plugin instruction']],
+        'plugin-config'
+      ),
+      flowNodeType: FlowNodeTypeEnum.pluginConfig
+    };
+
+    const result = normalizeWorkflowConfig({
+      nodes: [pluginConfigNode],
+      chatConfig: {}
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.chatConfig.instruction).toBe('Plugin instruction');
+  });
+
+  it('should preserve explicit current values instead of overwriting them', () => {
+    const result = normalizeWorkflowConfig({
+      nodes: [createSystemConfigNode(legacyInputs)],
+      chatConfig: {
+        welcomeConfig: {
+          welcomeText: '',
+          welcomeQuestions: []
+        },
+        variables: [],
+        questionGuide: { open: false },
+        scheduledTriggerConfig: {
+          cronString: '0 9 * * *',
+          timezone: 'Asia/Shanghai',
+          defaultPrompt: ''
+        },
+        instruction: ''
+      }
+    });
+
+    expect(result.chatConfig.welcomeConfig).toEqual({
+      welcomeText: '',
+      welcomeQuestions: []
+    });
+    expect(result.chatConfig.welcomeText).toBe('');
+    expect(result.chatConfig.variables).toEqual([]);
+    expect(result.chatConfig.questionGuide).toEqual({ open: false });
+    expect(result.chatConfig.scheduledTriggerConfig).toEqual({
+      cronString: '0 9 * * *',
+      timezone: 'Asia/Shanghai',
+      defaultPrompt: ''
+    });
+    expect(result.chatConfig.instruction).toBe('');
+  });
+
+  it('should remove all system config nodes and their connected edges', () => {
+    const nodes: StoreNodeItemType[] = [
+      createSystemConfigNode([], 'system-1'),
+      createSystemConfigNode([], 'system-2'),
+      {
+        nodeId: 'chat',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [],
+        outputs: []
+      }
+    ];
+
+    const edges = [
+      {
+        source: 'system-1',
+        sourceHandle: 'system-1-source-right',
+        target: 'chat',
+        targetHandle: 'chat-target-left'
+      },
+      {
+        source: 'chat',
+        sourceHandle: 'chat-source-right',
+        target: 'system-2',
+        targetHandle: 'system-2-target-left'
+      },
+      {
+        source: 'chat',
+        sourceHandle: 'chat-source-right',
+        target: 'answer',
+        targetHandle: 'answer-target-left'
+      }
+    ];
+
+    const result = normalizeWorkflowConfig({ nodes, edges });
+
+    expect(result.nodes).toEqual([nodes[2]]);
+    expect(result.edges).toEqual([edges[2]]);
+  });
+
+  it('should be pure and idempotent', () => {
+    const systemConfigNode = createSystemConfigNode([
+      [NodeInputKeyEnum.welcomeText, 'Legacy welcome']
+    ]);
+    const nodes = [systemConfigNode];
+    const chatConfig = {
+      welcomeConfig: {
+        welcomeQuestions: ['Current question']
+      }
+    };
+    const first = normalizeWorkflowConfig({ nodes, chatConfig });
+
+    expect(normalizeWorkflowConfig(first)).toEqual(first);
+    expect(nodes).toEqual([systemConfigNode]);
+    expect(chatConfig).toEqual({
+      welcomeConfig: {
+        welcomeQuestions: ['Current question']
+      }
+    });
   });
 });
 

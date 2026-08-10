@@ -11,11 +11,13 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 const SaveButton = ({
   colorSchema,
   isLoading,
+  isDisabled = false,
   onClickSave,
   checkData
 }: {
   colorSchema: 'primary' | 'black';
   isLoading: boolean;
+  isDisabled?: boolean;
   onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<void>;
   checkData?: () => boolean | undefined;
 }) => {
@@ -66,7 +68,19 @@ const SaveButton = ({
         onCloseFunc={() => setIsSave(false)}
         trigger={'hover'}
         Trigger={
-          <Button w={'95px'} h={'34px'} bg={bg} color={'white'}>
+          <Button
+            w={'95px'}
+            h={'34px'}
+            bg={bg}
+            color={'white'}
+            isDisabled={isDisabled}
+            _disabled={{
+              bg: 'black',
+              color: 'white',
+              opacity: 0.4,
+              cursor: 'not-allowed'
+            }}
+          >
             <Flex gap={2}>
               <Box>{t('common:Save')}</Box>
               <MyIcon

@@ -13,6 +13,7 @@ import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
 } from '@/web/core/workflow/workflowCheck';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
   FlowNodeOutputTypeEnum,
@@ -305,18 +306,26 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       },
       isInit?: boolean
     ) => {
-      adaptCatchError(e.nodes, e.edges);
+      const normalizedWorkflow = normalizeWorkflowConfig({
+        nodes: e.nodes,
+        edges: e.edges,
+        chatConfig: e.chatConfig ?? appDetail.chatConfig
+      });
+      const storeNodes = normalizedWorkflow.nodes;
+
+      adaptCatchError(storeNodes, normalizedWorkflow.edges);
 
       const toolNodeIds = new Set(
-        e.edges
+        normalizedWorkflow.edges
           ?.filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
       const nodes =
-        e.nodes?.map((item) =>
+        storeNodes?.map((item) =>
           storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
         ) || [];
-      const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
+      const edges =
+        normalizedWorkflow.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -334,7 +343,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             edges: edges,
             title: t('app:app.version_initial'),
             isSaved: true,
-            chatConfig: e.chatConfig || appDetail.chatConfig
+            chatConfig: normalizedWorkflow.chatConfig
           }
         ]);
       }
@@ -342,9 +351,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // Init memory data
       setNodes(nodes);
       setEdges(edges);
-      if (e.chatConfig) {
-        setAppDetail((state) => ({ ...state, chatConfig: e.chatConfig as AppChatConfigType }));
-      }
+      setAppDetail((state) => ({ ...state, chatConfig: normalizedWorkflow.chatConfig }));
     },
     [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
   );

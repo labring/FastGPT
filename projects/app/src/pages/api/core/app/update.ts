@@ -36,6 +36,7 @@ import {
   type UpdateAppBodyType,
   type UpdateAppQueryType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 // 更新应用接口
 // 包括如下功能：
@@ -129,11 +130,21 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     });
   }
 
+  const shouldNormalizeWorkflow =
+    nodes !== undefined || edges !== undefined || chatConfig !== undefined;
+  const normalizedWorkflow = shouldNormalizeWorkflow
+    ? normalizeWorkflowConfig({
+        nodes: nodes ?? app.modules ?? [],
+        edges: edges ?? app.edges ?? [],
+        chatConfig: chatConfig ?? app.chatConfig
+      })
+    : undefined;
+
   const onUpdate = async (session?: ClientSession) => {
     // format nodes data
     // 1. dataset search limit, less than model quoteMaxToken
     await beforeUpdateAppFormat({
-      nodes
+      nodes: nodes === undefined ? undefined : normalizedWorkflow?.nodes
     });
 
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
@@ -150,13 +161,11 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
         ...(type && { type }),
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
-        ...(nodes && {
-          modules: nodes
+        ...(normalizedWorkflow && {
+          modules: normalizedWorkflow.nodes,
+          edges: normalizedWorkflow.edges,
+          chatConfig: normalizedWorkflow.chatConfig
         }),
-        ...(edges && {
-          edges
-        }),
-        ...(chatConfig && { chatConfig }),
         ...(isMove && { inheritPermission: true }),
         updateTime: new Date()
       },

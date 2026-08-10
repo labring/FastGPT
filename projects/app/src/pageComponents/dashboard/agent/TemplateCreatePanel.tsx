@@ -26,6 +26,7 @@ import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/uti
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { appTypeTagMap } from '../constant';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { getAppDetailRoute, isWorkflowAppType } from '@/web/core/app/utils';
 
 const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
   const { t } = useTranslation();
@@ -82,26 +83,32 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         templateDetail.workflow = completeWorkflow;
       }
 
-      return postCreateApp({
+      const appType = templateDetail.type as AppTypeEnum;
+      const appId = await postCreateApp({
         avatar: templateDetail.avatar,
         name: templateDetail.name,
-        type: templateDetail.type as AppTypeEnum,
+        type: appType,
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig || {},
         templateId: templateDetail.templateId
-      }).then((res) => {
-        webPushTrack.useAppTemplate({
-          id: res,
-          name: templateDetail.name
-        });
-
-        return res;
       });
+
+      webPushTrack.useAppTemplate({
+        id: appId,
+        name: templateDetail.name
+      });
+
+      return { appId, appType };
     },
     {
-      onSuccess: (appId: string) => {
-        router.push(`/app/detail?appId=${appId}`);
+      onSuccess: ({ appId, appType }) => {
+        router.push(
+          getAppDetailRoute({
+            appId,
+            openSystemConfig: isWorkflowAppType(appType)
+          })
+        );
       },
       onFinally: () => {
         setCreatingTemplateId(null);

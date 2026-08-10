@@ -30,10 +30,14 @@ import {
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
+import WelcomeQuestionsConfig from '@/components/core/app/WelcomeQuestionsConfig';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
   setAppDetail: Dispatch<React.SetStateAction<AppDetailType>>;
+  mode?: 'node' | 'drawer';
+  isWelcomeTextFolded?: boolean;
+  onToggleWelcomeTextFold?: () => void;
 };
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -48,67 +52,156 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     });
   }, [data, appDetail.chatConfig]);
 
-  const componentsProps = useMemo(
-    () => ({
-      chatConfig,
-      setAppDetail
-    }),
-    [chatConfig, setAppDetail]
-  );
-
   return (
-    <>
-      <NodeCard
-        selected={selected}
-        menuForbid={{
-          debug: true,
-          copy: true,
-          delete: true
-        }}
-        {...data}
-      >
-        <Container>
-          <WelcomeText {...componentsProps} />
-          <Box mt={2} pt={2}>
-            <ChatStartVariable {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <FileSelectConfig {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <TTSGuide {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <WhisperGuide {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={4} borderTop={'base'} borderColor={'myGray.200'}>
-            <QuestionGuide {...componentsProps} />
-          </Box>
-          <Box mt={4} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <ScheduledTrigger {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <AutoExecute {...componentsProps} />
-          </Box>
-          <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
-            <QuestionInputGuide {...componentsProps} />
-          </Box>
-        </Container>
-      </NodeCard>
-    </>
+    <NodeCard
+      selected={selected}
+      menuForbid={{
+        debug: true,
+        copy: true,
+        delete: true
+      }}
+      {...data}
+    >
+      <Container>
+        <SystemConfigForm chatConfig={chatConfig} setAppDetail={setAppDetail} />
+      </Container>
+    </NodeCard>
   );
 };
 
 export default React.memo(NodeUserGuide);
 
-function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentProps) {
+export function SystemConfigForm(props: ComponentProps) {
+  const isDrawerMode = props.mode === 'drawer';
+  const configItems = (
+    <>
+      <ConfigSection isDrawerMode={isDrawerMode} mt={2} pt={2}>
+        <ChatStartVariable {...props} />
+      </ConfigSection>
+      <ConfigSection isDrawerMode={isDrawerMode} mt={3} pt={3} borderTop={'base'}>
+        <FileSelectConfig {...props} />
+      </ConfigSection>
+      <ConfigSection isDrawerMode={isDrawerMode} mt={3} pt={3} borderTop={'base'}>
+        <TTSGuide {...props} />
+      </ConfigSection>
+      <ConfigSection isDrawerMode={isDrawerMode} mt={3} pt={3} borderTop={'base'}>
+        <WhisperGuide {...props} />
+      </ConfigSection>
+      <ConfigSection isDrawerMode={isDrawerMode} mt={3} pt={4} borderTop={'base'}>
+        <QuestionGuide {...props} />
+      </ConfigSection>
+      <ConfigSection isDrawerMode={isDrawerMode} mt={4} pt={3} borderTop={'base'}>
+        <ScheduledTrigger {...props} />
+      </ConfigSection>
+      <ConfigSection isDrawerMode={isDrawerMode} mt={3} pt={3} borderTop={'base'}>
+        <QuestionInputGuide {...props} />
+      </ConfigSection>
+      <ConfigSection isDrawerMode={isDrawerMode} isLastDrawerItem mt={3} pt={3} borderTop={'base'}>
+        <AutoExecute {...props} />
+      </ConfigSection>
+    </>
+  );
+
+  if (isDrawerMode) {
+    return (
+      <Box display={'flex'} w={'100%'} flexDirection={'column'}>
+        <WelcomeText
+          {...props}
+          isFolded={props.isWelcomeTextFolded}
+          onToggleFold={props.onToggleWelcomeTextFold}
+        />
+        {!props.isWelcomeTextFolded && (
+          <Box mt={2}>
+            <WelcomeQuestions {...props} />
+          </Box>
+        )}
+        <Box mt={3} h={'1px'} w={'100%'} bg={'myGray.200'} flexShrink={0} />
+        {configItems}
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <WelcomeText {...props} />
+      <WelcomeQuestions {...props} />
+      {configItems}
+    </>
+  );
+}
+
+function ConfigSection({
+  isDrawerMode,
+  isLastDrawerItem = false,
+  children,
+  ...boxProps
+}: {
+  isDrawerMode: boolean;
+  isLastDrawerItem?: boolean;
+  children: React.ReactNode;
+} & React.ComponentProps<typeof Box>) {
+  if (isDrawerMode) {
+    return (
+      <Box
+        w={'100%'}
+        pt={3}
+        pb={3}
+        borderBottom={!isLastDrawerItem ? 'sm' : undefined}
+        borderColor={'myGray.200'}
+        sx={{
+          '& > .chakra-flex, & > .chakra-box > .chakra-flex:first-of-type': {
+            minH: 8,
+            width: '100%'
+          },
+          '& button.chakra-button': {
+            minH: 8,
+            height: 8,
+            fontSize: 'sm',
+            lineHeight: 5,
+            color: 'myGray.600',
+            fontWeight: 'medium',
+            letterSpacing: 0,
+            mr: 0,
+            py: 1.5,
+            px: 2
+          }
+        }}
+      >
+        {children}
+      </Box>
+    );
+  }
+
+  return (
+    <Box borderColor={'myGray.200'} {...boxProps}>
+      {children}
+    </Box>
+  );
+}
+
+function WelcomeText({
+  chatConfig: { welcomeConfig, welcomeText },
+  setAppDetail,
+  mode,
+  isFolded,
+  onToggleFold
+}: ComponentProps & {
+  isFolded?: boolean;
+  onToggleFold?: () => void;
+}) {
+  const resolvedWelcomeText = welcomeConfig?.welcomeText ?? welcomeText;
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
       setAppDetail((state) => ({
         ...state,
         chatConfig: {
           ...state.chatConfig,
-          welcomeText: e.target.value
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeText: value
+          },
+          welcomeText: value
         }
       }));
     },
@@ -116,8 +209,45 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
   );
 
   return (
-    <Box className="nodrag">
-      <WelcomeTextConfig resize={'both'} value={welcomeText} onChange={handleChange} />
+    <Box className="nodrag" w={'100%'}>
+      <WelcomeTextConfig
+        drawerMode={mode === 'drawer'}
+        isFolded={isFolded}
+        onToggleFold={onToggleFold}
+        resize={mode === 'drawer' ? 'none' : 'both'}
+        value={resolvedWelcomeText}
+        onChange={handleChange}
+      />
+    </Box>
+  );
+}
+
+function WelcomeQuestions({ chatConfig: { welcomeConfig }, setAppDetail, mode }: ComponentProps) {
+  const { zoom } = useViewport();
+
+  const updateWelcomeQuestions = useCallback(
+    (value: string[]) => {
+      setAppDetail((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          welcomeConfig: {
+            ...state.chatConfig.welcomeConfig,
+            welcomeQuestions: value
+          }
+        }
+      }));
+    },
+    [setAppDetail]
+  );
+
+  return (
+    <Box className="nodrag" w={'100%'} mt={mode === 'drawer' ? 0 : 2}>
+      <WelcomeQuestionsConfig
+        value={welcomeConfig?.welcomeQuestions}
+        zoom={zoom}
+        onChange={updateWelcomeQuestions}
+      />
     </Box>
   );
 }
@@ -137,7 +267,7 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
   );
   const { zoom } = useViewport();
 
-  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} zoom={zoom} />;
+  return <VariableEdit variables={variables} onChange={updateVariables} zoom={zoom} />;
 }
 
 function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentProps) {

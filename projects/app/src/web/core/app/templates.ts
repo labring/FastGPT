@@ -27,71 +27,6 @@ export const getEmptyAppsTemplate = (t: any) => {
       name: i18nT('app:template.simple_robot'),
       nodes: [
         {
-          nodeId: 'userGuide',
-          name: t(i18nT('common:core.module.template.system_config')),
-          intro: t(i18nT('common:core.module.template.config_params')),
-          avatar: 'core/workflow/template/systemConfig',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
-          position: {
-            x: 531.2422736065552,
-            y: -486.7611729549753
-          },
-          version: '481',
-          inputs: [
-            {
-              key: 'welcomeText',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: 'core.app.Welcome Text',
-              value: ''
-            },
-            {
-              key: 'variables',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: 'core.app.Chat Variable',
-              value: []
-            },
-            {
-              key: 'questionGuide',
-              valueType: WorkflowIOValueTypeEnum.object,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: 'core.app.Question Guide',
-              value: {
-                open: false
-              }
-            },
-            {
-              key: 'tts',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: '',
-              value: {
-                type: 'web'
-              }
-            },
-            {
-              key: 'whisper',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: '',
-              value: {
-                open: false,
-                autoSend: false,
-                autoTTSResponse: false
-              }
-            },
-            {
-              key: 'scheduleTrigger',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: '',
-              value: null
-            }
-          ],
-          outputs: []
-        },
-        {
           nodeId: '448745',
           name: t(i18nT('common:core.module.template.work_start')),
           intro: '',
@@ -256,77 +191,29 @@ export const getEmptyAppsTemplate = (t: any) => {
           targetHandle: 'loOvhld2ZTKa-target-left'
         }
       ],
-      chatConfig: {}
+      chatConfig: {
+        welcomeText: '',
+        welcomeConfig: {
+          welcomeText: ''
+        },
+        variables: [],
+        questionGuide: {
+          open: false
+        },
+        ttsConfig: {
+          type: 'web' as const
+        },
+        whisperConfig: {
+          open: false,
+          autoSend: false,
+          autoTTSResponse: false
+        }
+      }
     },
     [AppTypeEnum.workflow]: {
       avatar: 'core/app/type/workflowFill',
       name: i18nT('common:core.module.template.empty_workflow'),
       nodes: [
-        {
-          nodeId: 'userGuide',
-          name: t(i18nT('common:core.module.template.system_config')),
-          intro: t(i18nT('common:core.module.template.system_config_info')),
-          avatar: 'core/workflow/template/systemConfig',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
-          position: {
-            x: 262.2732338817093,
-            y: -476.00241136598146
-          },
-          version: '481',
-          inputs: [
-            {
-              key: 'welcomeText',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.string,
-              label: 'core.app.Welcome Text',
-              value: ''
-            },
-            {
-              key: 'variables',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: 'core.app.Chat Variable',
-              value: []
-            },
-            {
-              key: 'questionGuide',
-              valueType: WorkflowIOValueTypeEnum.any,
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              label: 'core.app.Question Guide',
-              value: {
-                open: false
-              }
-            },
-            {
-              key: 'tts',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: '',
-              value: {
-                type: 'web'
-              }
-            },
-            {
-              key: 'whisper',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: '',
-              value: {
-                open: false,
-                autoSend: false,
-                autoTTSResponse: false
-              }
-            },
-            {
-              key: 'scheduleTrigger',
-              renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              valueType: WorkflowIOValueTypeEnum.any,
-              label: '',
-              value: null
-            }
-          ],
-          outputs: []
-        },
         {
           nodeId: '448745',
           name: t(i18nT('common:core.module.template.work_start')),
@@ -360,7 +247,24 @@ export const getEmptyAppsTemplate = (t: any) => {
         }
       ],
       edges: [],
-      chatConfig: {}
+      chatConfig: {
+        welcomeText: '',
+        welcomeConfig: {
+          welcomeText: ''
+        },
+        variables: [],
+        questionGuide: {
+          open: false
+        },
+        ttsConfig: {
+          type: 'web' as const
+        },
+        whisperConfig: {
+          open: false,
+          autoSend: false,
+          autoTTSResponse: false
+        }
+      }
     },
     [AppTypeEnum.workflowTool]: {
       avatar: 'core/app/type/pluginFill',
@@ -391,20 +295,6 @@ export const getEmptyAppsTemplate = (t: any) => {
             y: -151.8669210746189
           },
           version: '481',
-          inputs: [],
-          outputs: []
-        },
-        {
-          nodeId: 'pluginConfig',
-          name: t(i18nT('common:core.module.template.system_config')),
-          intro: '',
-          avatar: 'core/workflow/template/systemConfig',
-          flowNodeType: FlowNodeTypeEnum.pluginConfig,
-          position: {
-            x: 184.66337662472682,
-            y: -216.05298493910115
-          },
-          version: '4811',
           inputs: [],
           outputs: []
         }
@@ -764,20 +654,6 @@ export const parsePluginFromCurlString = (
             valueDesc: ''
           }
         ]
-      },
-      {
-        nodeId: 'pluginConfig',
-        name: i18nT('common:core.module.template.system_config'),
-        intro: '',
-        avatar: 'core/workflow/template/systemConfig',
-        flowNodeType: FlowNodeTypeEnum.pluginConfig,
-        position: {
-          x: -88.12977161770735,
-          y: -235.2337531748973
-        },
-        version: '4811',
-        inputs: [],
-        outputs: []
       }
     ],
     edges: [

@@ -10,7 +10,7 @@ import { dispatchChatCompletion } from './ai/chat';
 import { dispatchCodeSandbox } from './tools/codeSandbox';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchDatasetSearch } from './dataset/search';
-import { dispatchSystemConfig } from './init/systemConfig';
+import { dispatchSystemConfig } from './abandoned/systemConfig';
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchUserSelect } from './interactive/userSelect';
@@ -81,7 +81,6 @@ export const callbackMap: Record<
   [internalRuntimeNodeType]: dispatchInternalRuntimeNode,
 
   // none
-  [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
   [FlowNodeTypeEnum.pluginConfig]: () => Promise.resolve(),
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
@@ -91,5 +90,7 @@ export const callbackMap: Record<
   /** @deprecated */
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
   /** @deprecated 已被 loopRun 替代 */
-  [FlowNodeTypeEnum.loop]: dispatchLoop
+  [FlowNodeTypeEnum.loop]: dispatchLoop,
+  /** @deprecated 系统配置已迁入 chatConfig */
+  [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig
 };
