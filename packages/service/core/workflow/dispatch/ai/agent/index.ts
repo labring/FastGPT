@@ -196,13 +196,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
 
     // 初始化 sandbox：初始化、注入 skills、files
+    // skill 鉴权以应用 owner 为准，发布应用被他人调用时不因调用者缺少 skill 权限而跳过注入。
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
       sourceType: runningAppInfo.sourceType,
       sourceId: runningAppInfo.sourceId,
       userId: uid,
       chatId,
       teamId: runningAppInfo.teamId,
-      tmbId: runningUserInfo.tmbId,
+      tmbId: runningAppInfo.tmbId,
       needSandboxRuntime: effectiveUseAgentSandbox,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds: effectiveSkillIds,

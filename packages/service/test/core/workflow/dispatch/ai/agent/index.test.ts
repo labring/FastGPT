@@ -530,6 +530,35 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
+  it('authenticates skill injection with the app owner tmbId for published apps', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+    props.runningAppInfo.tmbId = 'app_owner_tmb';
+    props.runningUserInfo.tmbId = 'external_user_tmb';
+
+    let result: any;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    expect(result.error).toBeUndefined();
+    expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team_1',
+        tmbId: 'app_owner_tmb',
+        skillIds: ['skill_1']
+      })
+    );
+  });
+
   it('streams upgrading and continues the same workflow after silent App sandbox migration', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
