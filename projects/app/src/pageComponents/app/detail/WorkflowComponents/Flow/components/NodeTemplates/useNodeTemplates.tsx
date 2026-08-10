@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type {
+  NodeTemplateContext,
+  NodeTemplateListItemType
+} from '@fastgpt/global/core/workflow/type/node';
+import { isTemplateVisible } from '@fastgpt/global/core/workflow/template/context';
 import { getTeamAppTemplates, getAppToolTemplates } from '@/web/core/app/api/tool';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
@@ -12,7 +15,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
-export const useNodeTemplates = () => {
+export const useNodeTemplates = (context: NodeTemplateContext | null = null) => {
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const [searchKey, setSearchKey] = useState('');
@@ -22,8 +25,10 @@ export const useNodeTemplates = () => {
   const [parentSource, setParentSource] = useState<string>();
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
-  const { basicNodeTemplates, hasToolNode, hasLoopRunNode, getNodeList, nodeAmount } =
-    useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { basicNodeTemplates, getNodeList, nodeAmount } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: toolTags = [] } = useRequest(getPluginToolTags, {
@@ -44,19 +49,7 @@ export const useNodeTemplates = () => {
                 return false;
               }
             }
-            // tool stop or tool params
-            if (
-              !hasToolNode &&
-              (item.flowNodeType === FlowNodeTypeEnum.stopTool ||
-                item.flowNodeType === FlowNodeTypeEnum.toolParams)
-            ) {
-              return false;
-            }
-            // loopRunBreak only shows when a loopRun node exists on the canvas
-            if (!hasLoopRunNode && item.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
-              return false;
-            }
-            return true;
+            return isTemplateVisible(item, context);
           })
           .map<NodeTemplateListItemType>((item) => ({
             id: item.id,
@@ -71,7 +64,7 @@ export const useNodeTemplates = () => {
     {
       manual: false,
       throttleWait: 100,
-      refreshDeps: [basicNodeTemplates, nodeAmount, hasToolNode, hasLoopRunNode, templateType]
+      refreshDeps: [basicNodeTemplates, nodeAmount, templateType, context]
     }
   );
 
