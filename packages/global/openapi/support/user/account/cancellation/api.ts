@@ -214,6 +214,7 @@ export type SubmitAccountCancellationBody = z.infer<typeof SubmitAccountCancella
 
 export const SubmitAccountCancellationResponseSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('verificationPending') }).strict(),
+  z.object({ status: z.literal('verificationExpired') }).strict(),
   z
     .object({
       status: z.literal('pending'),

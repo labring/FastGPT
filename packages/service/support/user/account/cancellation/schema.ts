@@ -3,7 +3,7 @@ import {
   accountCancellationStatusMap
 } from '@fastgpt/global/support/user/account/cancellation/constants';
 import type { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/type';
-import { connectionMongo, getMongoModel } from '../../../../common/mongo';
+import { connectionMongo, defineIndex, getMongoModel } from '../../../../common/mongo';
 import type { Types } from 'mongoose';
 import { userCollectionName } from '../../schema';
 
@@ -42,8 +42,14 @@ const AccountCancellationSchema = new Schema<AccountCancellationSchemaType>(
   }
 );
 
-AccountCancellationSchema.index({ userId: 1 }, { unique: true });
-AccountCancellationSchema.index({ status: 1, requestedAt: 1 });
+defineIndex(AccountCancellationSchema, {
+  key: { userId: 1 },
+  options: { unique: true }
+});
+
+defineIndex(AccountCancellationSchema, {
+  key: { status: 1, requestedAt: 1 }
+});
 
 export const MongoAccountCancellation = getMongoModel<AccountCancellationSchemaType>(
   accountCancellationCollectionName,

@@ -1,29 +1,32 @@
 import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { isAccountCancellationMethod } from '@fastgpt/global/support/user/account/cancellation/utils';
 import { deriveAccountCancellationSchedule } from '@fastgpt/global/support/user/account/cancellation/utils';
-import { checkTimerLock, deleteTimerLock } from '../../../../common/system/timerLock/utils';
+import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
+import { getLogger, LogCategories } from '../../../../common/logger';
 import { getAccountCancellationAuthKey } from './formatter';
 import { getActiveAccountCancellationByUserId } from './read';
 import { MongoAccountCancellation } from './schema';
 
-const accountCancellationLockMinutes = 10;
-const accountCancellationTeamLockMinutes = 10;
+const accountCancellationLockTtlMs = 10 * 60 * 1000;
+const accountCancellationTeamLockTtlMs = 10 * 60 * 1000;
+const leaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
 
 /**
  * 在注销用户维度串行化 submit、cancel、cron 和管理员删除，释放锁由 finally 保证。
  */
 export const withAccountCancellationUserLock = async <T>(userId: string, fn: () => Promise<T>) => {
-  const timerId = getAccountCancellationAuthKey(userId);
-  const locked = await checkTimerLock({
-    timerId,
-    lockMinuted: accountCancellationLockMinutes
-  });
-  if (!locked) throw new Error('Account cancellation operation is busy');
-
   try {
-    return await fn();
-  } finally {
-    await deleteTimerLock({ timerId }).catch(() => undefined);
+    return await leaseCache.withLease({
+      key: getAccountCancellationAuthKey(userId),
+      label: 'account-cancellation-user',
+      ttlMs: accountCancellationLockTtlMs,
+      fn: () => fn()
+    });
+  } catch (error) {
+    if (error instanceof RedisLeaseUnavailableError) {
+      throw new Error('Account cancellation operation is busy');
+    }
+    throw error;
   }
 };
 
@@ -32,17 +35,18 @@ export const withAccountCancellationUserLock = async <T>(userId: string, fn: () 
  * 团队锁独立于用户锁，调用方需遵循“用户锁后团队锁”的顺序避免交叉等待。
  */
 export const withAccountCancellationTeamLock = async <T>(teamId: string, fn: () => Promise<T>) => {
-  const timerId = `accountCancellation:team:${String(teamId)}`;
-  const locked = await checkTimerLock({
-    timerId,
-    lockMinuted: accountCancellationTeamLockMinutes
-  });
-  if (!locked) throw new Error('Account cancellation team operation is busy');
-
   try {
-    return await fn();
-  } finally {
-    await deleteTimerLock({ timerId }).catch(() => undefined);
+    return await leaseCache.withLease({
+      key: `accountCancellation:team:${String(teamId)}`,
+      label: 'account-cancellation-team',
+      ttlMs: accountCancellationTeamLockTtlMs,
+      fn: () => fn()
+    });
+  } catch (error) {
+    if (error instanceof RedisLeaseUnavailableError) {
+      throw new Error('Account cancellation team operation is busy');
+    }
+    throw error;
   }
 };
 

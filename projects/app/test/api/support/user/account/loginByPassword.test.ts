@@ -14,6 +14,8 @@ import type { LoginByPasswordBodyType } from '@fastgpt/global/openapi/support/us
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { Call } from '@test/utils/request';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
+import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/cancellation/schema';
+import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
 
 const saveLoginCode = (username: string, code = '123456') =>
   MongoTmpData.updateOne(
@@ -173,6 +175,54 @@ describe('loginByPassword API', () => {
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('Invalid account!');
+  });
+
+  it('should allow a pending cancellation user to recover a login session', async () => {
+    await MongoUser.findByIdAndUpdate(testUser._id, { $unset: { lastLoginTmbId: 1 } });
+    await MongoAccountCancellation.create({
+      userId: testUser._id,
+      status: AccountCancellationStatusEnum.pending,
+      requestedAt: new Date()
+    });
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456',
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.user.team.tmbId).toBe(String(testTmb._id));
+    expect(res.data.token).toEqual(expect.any(String));
+  });
+
+  it('should reject a finalizing user before profile updates and session creation', async () => {
+    await MongoAccountCancellation.create({
+      userId: testUser._id,
+      status: AccountCancellationStatusEnum.finalizing,
+      requestedAt: new Date()
+    });
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456',
+        language: 'en'
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toEqual(
+      expect.objectContaining({ message: UserErrEnum.accountCancellationPending })
+    );
+    await expect(MongoUser.findById(testUser._id).lean()).resolves.not.toMatchObject({
+      language: 'en'
+    });
+    expect(setCookie).not.toHaveBeenCalled();
   });
 
   it('should reject login when password is incorrect', async () => {
