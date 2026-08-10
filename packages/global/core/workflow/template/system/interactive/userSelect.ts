@@ -10,6 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
+import { createHideInContext } from '../../context';
 import { type FlowNodeTemplateType } from '../../../type/node';
 
 export const UserSelectNode: FlowNodeTemplateType = {
@@ -25,6 +26,7 @@ export const UserSelectNode: FlowNodeTemplateType = {
   name: i18nT('app:workflow.user_select'),
   intro: i18nT(`app:workflow.user_select_tip`),
   isTool: true,
+  isShowInContext: createHideInContext([{ parentType: FlowNodeTypeEnum.parallelRun }]),
   courseUrl: '/guide/build/workflow/nodes/user-selection',
   inputs: [
     {

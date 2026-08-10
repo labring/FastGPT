@@ -208,6 +208,9 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   forbidDelete: BoolSchema.optional(), // forbid delete
   unique: BoolSchema.optional(),
 
+  // 声明式展示控制：声明后在无上下文（侧边栏）或上下文不匹配时不展示
+  isShowInContext: z.custom<NodeTemplateContextPredicate>().optional(),
+
   diagram: z.string().optional(),
   courseUrl: z.string().optional(),
   readmeUrl: z.string().optional(),
@@ -222,6 +225,19 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   templateType: z.string().optional()
 });
 export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;
+
+/** 模板快捷添加的上下文：快捷面板触发时的源节点信息；侧边栏无上下文，传 null。 */
+export type NodeTemplateContext = {
+  sourceNodeId: string | null;
+  sourceType: FlowNodeTypeEnum | null;
+  sourceIsTool: boolean;
+  /** 源节点是否已被 selectedTools 边挂载到工具调用（工具子流程）。 */
+  isConnectedTool: boolean;
+  handleId: string | null;
+  /** 源节点所在容器（loopRun/parallelRun 等）的节点类型。 */
+  parentType: FlowNodeTypeEnum | null;
+};
+export type NodeTemplateContextPredicate = (ctx: NodeTemplateContext | null) => boolean;
 
 // Api response
 export const NodeTemplateListItemTypeSchema = z.object({

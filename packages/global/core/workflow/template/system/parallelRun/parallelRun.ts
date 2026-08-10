@@ -10,6 +10,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
+import { createHideInContext } from '../../context';
 import { i18nT } from '../../../../../common/i18n/utils';
 import {
   Input_Template_Children_Node_List,
@@ -30,6 +31,10 @@ export const ParallelRunNode: FlowNodeTemplateType = {
   name: i18nT('workflow:parallel_run'),
   intro: i18nT('workflow:intro_parallel_run'),
   showStatus: true,
+  isShowInContext: createHideInContext([
+    { parentType: FlowNodeTypeEnum.loopRun },
+    { parentType: FlowNodeTypeEnum.parallelRun }
+  ]),
   courseUrl: '/guide/build/workflow/nodes/parallel_run',
   inputs: [
     {
