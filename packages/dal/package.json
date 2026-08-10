@@ -4,9 +4,11 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
+    "./db": "./db/index.ts",
     "./domain": "./domain/index.ts",
     "./ports": "./ports/index.ts",
     "./mongodb": "./mongodb/index.ts",
+    "./mongodb/adapter": "./mongodb/adapter.ts",
     "./transaction": "./transaction/index.ts",
     "./redis": "./redis/index.ts",
     "./redis/adapter": "./redis/adapter.ts",

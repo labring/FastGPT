@@ -1,27 +1,67 @@
-import type { ClientSession, Connection } from 'mongoose';
-import mongoose from 'mongoose';
-import type { TransactionContext, ITransactionRunner } from '../transaction';
+import mongoose, { type ClientSession, type Mongoose } from 'mongoose';
+import type { TransactionContext, TransactionRunner } from '../transaction';
+import { isDatabaseOperationError, type DatabaseErrorAdapter } from '../db';
+import { MongoErrorAdapter, MongoInvalidArgumentError } from './errors';
 
 const sessions = new WeakMap<TransactionContext, ClientSession>();
 
-export const getSession = (context?: TransactionContext) => {
-  return context ? sessions.get(context) : undefined;
-};
-
-export class TransactionRunner implements ITransactionRunner {
-  constructor(private readonly connection: Connection = mongoose.connection) {}
-
-  async withTransaction<T>(handler: (context: TransactionContext) => Promise<T>): Promise<T> {
-    const session = await this.connection.startSession();
-    const context = Symbol('tx');
-    sessions.set(context, session);
-    try {
-      return await session.withTransaction(() => handler(context));
-    } finally {
-      sessions.delete(context);
-      await session.endSession();
-    }
+class TransactionHandlerError extends Error {
+  constructor(readonly originalError: unknown) {
+    super('Transaction handler failed');
   }
 }
 
-export const mtxr = new TransactionRunner();
+export const getMongoSession = (context?: TransactionContext) => {
+  if (!context) return undefined;
+
+  const session = sessions.get(context);
+  if (!session) throw new MongoInvalidArgumentError('Invalid MongoDB transaction context');
+  return session;
+};
+
+export class MongoTransactionRunner implements TransactionRunner {
+  constructor(
+    private readonly client: Mongoose = mongoose,
+    private readonly errorAdapter: DatabaseErrorAdapter = new MongoErrorAdapter()
+  ) {}
+
+  async withTransaction<T>(handler: (context: TransactionContext) => Promise<T>): Promise<T> {
+    const session = await this.errorAdapter.execute(() => this.client.startSession());
+    const context = Symbol('mongo-transaction');
+    sessions.set(context, session);
+    let operationError: unknown;
+
+    try {
+      try {
+        return await session.withTransaction(
+          async () => {
+            try {
+              return await handler(context);
+            } catch (error) {
+              if (isDatabaseOperationError(error) && error.cause !== undefined) {
+                throw error.cause;
+              }
+              throw new TransactionHandlerError(error);
+            }
+          },
+          { maxCommitTimeMS: 60000 }
+        );
+      } catch (error) {
+        operationError =
+          error instanceof TransactionHandlerError
+            ? error.originalError
+            : this.errorAdapter.adapt(error);
+        throw operationError;
+      }
+    } finally {
+      sessions.delete(context);
+      try {
+        await session.endSession();
+      } catch (error) {
+        if (operationError === undefined) {
+          throw this.errorAdapter.adapt(error);
+        }
+      }
+    }
+  }
+}

@@ -1,1 +1,1 @@
-export type { TransactionContext, ITransactionRunner } from './types';
+export type { TransactionContext, TransactionRunner } from './types';

@@ -1,5 +1,5 @@
 export type TransactionContext = symbol;
 
-export interface ITransactionRunner {
+export type TransactionRunner = {
   withTransaction<T>(handler: (context: TransactionContext) => Promise<T>): Promise<T>;
-}
+};
