@@ -1,3 +1,6 @@
-export { MongoUserRepository } from './repositories/user';
+export { createMongoUserRepository, MongoUserRepository } from './repositories/user';
 export { toUser } from './mappers/user';
-export { MongoTransactionRunner, mtxr as mongoTx } from './transaction';
+export { MongoAdapter } from './adapter';
+export type { MongoAdapterDependencies } from './adapter';
+export { MongoErrorAdapter } from './errors';
+export { MongoTransactionRunner } from './transaction';

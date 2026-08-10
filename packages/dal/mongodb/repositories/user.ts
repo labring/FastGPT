@@ -1,45 +1,69 @@
-import type { Model } from 'mongoose';
-import type { CreateUser, UpdateUser, User } from '../../domain/user';
+import mongoose, { type Model, type Mongoose, type Query } from 'mongoose';
+import type { DatabaseErrorAdapter } from '../../db';
+import type { CreateUser, UpdateUser, User, UserCredentials } from '../../domain/user';
 import type { EntityId } from '../../domain/types';
 import type { UserRepository } from '../../ports/user.repository';
 import type { TransactionContext } from '../../transaction';
 import { toUser } from '../mappers/user';
-import { UserModel, type UserDocument, type UserMongooseSchemaType } from '../models/user';
-import { getSession, mtxr } from '../transaction';
+import { MongoErrorAdapter } from '../errors';
+import { getUserModel, type UserDocument, type UserMongooseSchemaType } from '../models/user';
+import { getMongoSession } from '../transaction';
+import { toMongoObjectId } from '../utils';
 
 export class MongoUserRepository implements UserRepository {
-  constructor(private readonly model: Model<UserMongooseSchemaType> = UserModel) {}
+  constructor(
+    private readonly model: Model<UserMongooseSchemaType> = getUserModel(mongoose),
+    private readonly errorAdapter: DatabaseErrorAdapter = new MongoErrorAdapter()
+  ) {}
+
+  private execute<T>(handler: () => Promise<T>) {
+    return this.errorAdapter.execute(handler);
+  }
+
+  private withSession<T>(query: Query<T, UserMongooseSchemaType>, context?: TransactionContext) {
+    const session = getMongoSession(context);
+    return session ? query.session(session) : query;
+  }
 
   async findById(id: EntityId, context?: TransactionContext): Promise<User | null> {
-    const query = this.model.findById(id);
-    const session = getSession(context);
-    if (session) query.session(session);
-    const document = await query.lean<UserDocument>();
-
-    mtxr.withTransaction(async (ctx) => {
-      this.updateById('1', {}, ctx);
-      this.updateById('1', {}, ctx);
-      this.updateById('1', {}, ctx);
+    return this.execute(async () => {
+      const document = await this.withSession(
+        this.model.findById(toMongoObjectId(id)),
+        context
+      ).lean<UserDocument>();
+      return document ? toUser(document) : null;
     });
-
-    return document ? toUser(document) : null;
   }
 
   async findByUsername(username: string, context?: TransactionContext): Promise<User | null> {
-    const query = this.model.findOne({ username });
-    const session = getSession(context);
-    if (session) query.session(session);
-    const document = await query.lean<UserDocument>();
-    return document ? toUser(document) : null;
+    return this.execute(async () => {
+      const document = await this.withSession(
+        this.model.findOne({ username }),
+        context
+      ).lean<UserDocument>();
+      return document ? toUser(document) : null;
+    });
+  }
+
+  async findByCredentials(
+    { username, password }: UserCredentials,
+    context?: TransactionContext
+  ): Promise<User | null> {
+    return this.execute(async () => {
+      const document = await this.withSession(
+        this.model.findOne({ username, password }),
+        context
+      ).lean<UserDocument>();
+      return document ? toUser(document) : null;
+    });
   }
 
   async create(input: CreateUser, context?: TransactionContext): Promise<User> {
-    const session = getSession(context);
-    const [document] = await this.model.create(
-      [{ ...input, createTime: new Date() }],
-      session ? { session } : undefined
-    );
-    return toUser(document.toObject() as UserDocument);
+    return this.execute(async () => {
+      const session = getMongoSession(context);
+      const [document] = await this.model.create([input], session ? { session } : undefined);
+      return toUser(document.toObject() as UserDocument);
+    });
   }
 
   async updateById(
@@ -47,10 +71,17 @@ export class MongoUserRepository implements UserRepository {
     patch: UpdateUser,
     context?: TransactionContext
   ): Promise<User | null> {
-    const query = this.model.findByIdAndUpdate(id, { $set: patch }, { new: true });
-    const session = getSession(context);
-    if (session) query.session(session);
-    const document = await query.lean<UserDocument>();
-    return document ? toUser(document) : null;
+    return this.execute(async () => {
+      const document = await this.withSession(
+        this.model.findByIdAndUpdate(toMongoObjectId(id), { $set: patch }, { new: true }),
+        context
+      ).lean<UserDocument>();
+      return document ? toUser(document) : null;
+    });
   }
 }
+
+export const createMongoUserRepository = (
+  client: Mongoose,
+  errorAdapter: DatabaseErrorAdapter = new MongoErrorAdapter()
+) => new MongoUserRepository(getUserModel(client), errorAdapter);
