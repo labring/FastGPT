@@ -38,7 +38,7 @@ import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
+import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));

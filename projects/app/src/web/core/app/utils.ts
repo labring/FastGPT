@@ -9,6 +9,28 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+
+export const SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY = 'openSystemConfig';
+
+/** 生成应用详情页路由，并按需携带只在首次进入时消费的系统配置展开标记。 */
+export const getAppDetailRoute = ({
+  appId,
+  openSystemConfig = false
+}: {
+  appId: string;
+  openSystemConfig?: boolean;
+}) => ({
+  pathname: '/app/detail',
+  query: {
+    appId,
+    ...(openSystemConfig ? { [SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY]: '1' } : {})
+  }
+});
+
+/** 判断应用是否使用工作流画布编辑器。 */
+export const isWorkflowAppType = (appType: AppTypeEnum) =>
+  appType === AppTypeEnum.workflow || appType === AppTypeEnum.workflowTool;
 
 export function filterSensitiveFormData(appForm: AppFormEditFormType) {
   const defaultAppForm = getDefaultAppForm();

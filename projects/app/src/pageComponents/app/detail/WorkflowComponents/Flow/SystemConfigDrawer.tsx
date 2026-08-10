@@ -6,18 +6,33 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AppContext } from '../../context';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { SystemConfigForm } from './nodes/NodeSystemConfig';
+import { PluginConfigForm } from './nodes/NodePluginIO/PluginConfigForm';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import AppDetailPanelModal, {
   APP_DETAIL_PANEL_WIDTH_PX
 } from '../../components/AppDetailPanelModal';
-import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
+import { useAppEditorUIState } from '@/components/core/app/useAppEditorUIState';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useSystemConfigAutoOpen } from './hooks/useSystemConfigAutoOpen';
 
 const SystemConfigDrawer = () => {
   const { t } = useTranslation();
-  const { isOpen, onToggle, onClose } = useDisclosure();
+  const { isOpen, onOpen, onToggle, onClose } = useDisclosure();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const isWorkflowTool = appDetail.type === AppTypeEnum.workflowTool;
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
-  const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
+  const {
+    isWelcomeTextFolded,
+    toggleWelcomeTextFold,
+    hasCompletedSystemConfigFirstEntryGuide,
+    completeSystemConfigFirstEntryGuide
+  } = useAppEditorUIState(appDetail._id);
+  useSystemConfigAutoOpen({
+    appId: appDetail._id,
+    hasCompletedFirstEntryGuide: hasCompletedSystemConfigFirstEntryGuide,
+    onCompleteFirstEntryGuide: completeSystemConfigFirstEntryGuide,
+    onOpen
+  });
 
   const chatConfig = useMemo(
     () =>
@@ -74,30 +89,25 @@ const SystemConfigDrawer = () => {
             </Flex>
           }
         >
-          <Flex
+          <Box
             w={'100%'}
             h={'100%'}
-            minW={0}
+            minW={['100vw', `${APP_DETAIL_PANEL_WIDTH_PX}px`]}
             minH={0}
             px={6}
             pb={6}
-            flexDirection={'column'}
-            alignItems={'flex-start'}
-            overflow={'hidden'}
+            overflowY={'auto'}
+            overflowX={'hidden'}
+            sx={{
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': {
+                display: 'none'
+              }
+            }}
           >
-            <Box
-              w={'100%'}
-              flex={'1 1 auto'}
-              minH={0}
-              overflowY={'auto'}
-              overflowX={'hidden'}
-              sx={{
-                scrollbarWidth: 'none',
-                '&::-webkit-scrollbar': {
-                  display: 'none'
-                }
-              }}
-            >
+            {isWorkflowTool ? (
+              <PluginConfigForm chatConfig={chatConfig} setAppDetail={setAppDetail} />
+            ) : (
               <SystemConfigForm
                 chatConfig={chatConfig}
                 setAppDetail={setAppDetail}
@@ -105,8 +115,8 @@ const SystemConfigDrawer = () => {
                 isWelcomeTextFolded={isWelcomeTextFolded}
                 onToggleWelcomeTextFold={toggleWelcomeTextFold}
               />
-            </Box>
-          </Flex>
+            )}
+          </Box>
         </AppDetailPanelModal>
       </Portal>
     </>

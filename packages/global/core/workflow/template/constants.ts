@@ -6,7 +6,6 @@ import { DatasetConcatModule } from './system/datasetConcat';
 import { DatasetSearchModule } from './system/datasetSearch';
 import { EmptyNode } from './system/emptyNode';
 import { HttpNode468 } from './system/http468';
-import { PluginConfigNode } from './system/pluginConfig';
 import { WorkflowStart } from './system/workflowStart';
 
 import { StopToolNode } from './system/stopTool';
@@ -73,7 +72,6 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
-  PluginConfigNode,
   PluginInputModule,
   PluginOutputModule,
   ...systemNodes

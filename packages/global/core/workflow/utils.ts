@@ -186,7 +186,7 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
  * 将任意版本的工作流配置清洗为当前保存结构。
  *
  * 旧系统配置节点只补充 chatConfig 中缺失的字段，显式空值不会被覆盖。清洗结果不再包含
- * systemConfig 节点及其关联边，且函数无副作用、可重复执行。
+ * 系统配置节点及其关联边，且函数无副作用、可重复执行。
  */
 export const normalizeWorkflowConfig = ({
   nodes,
@@ -202,6 +202,9 @@ export const normalizeWorkflowConfig = ({
   chatConfig: AppChatConfigType;
 } => {
   const systemConfigNode = getGuideModule(nodes);
+  const pluginConfigNode = nodes.find(
+    (node) => node.flowNodeType === FlowNodeTypeEnum.pluginConfig
+  );
   const nextChatConfig: AppChatConfigType = { ...(chatConfig ?? {}) };
 
   const welcomeConfig: AppWelcomeConfigType = { ...(nextChatConfig.welcomeConfig ?? {}) };
@@ -297,13 +300,25 @@ export const normalizeWorkflowConfig = ({
     systemConfigNode,
     NodeInputKeyEnum.instruction
   );
-  if (isConfigMissing(nextChatConfig.instruction) && !isConfigMissing(instruction)) {
-    nextChatConfig.instruction = instruction;
+  const pluginInstruction = getSystemConfigInputValue<string>(
+    pluginConfigNode,
+    NodeInputKeyEnum.instruction
+  );
+  if (isConfigMissing(nextChatConfig.instruction)) {
+    if (!isConfigMissing(instruction)) {
+      nextChatConfig.instruction = instruction;
+    } else if (!isConfigMissing(pluginInstruction)) {
+      nextChatConfig.instruction = pluginInstruction;
+    }
   }
 
   const systemConfigNodeIds = new Set(
     nodes
-      .filter((node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig)
+      .filter(
+        (node) =>
+          node.flowNodeType === FlowNodeTypeEnum.systemConfig ||
+          node.flowNodeType === FlowNodeTypeEnum.pluginConfig
+      )
       .map((node) => node.nodeId)
   );
   return {

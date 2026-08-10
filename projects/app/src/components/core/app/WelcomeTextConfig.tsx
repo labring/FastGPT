@@ -88,8 +88,6 @@ const WelcomeTextConfig = ({
             lineHeight={5}
             letterSpacing={0}
             _placeholder={{ color: 'myGray.500' }}
-            _focus={{ boxShadow: 'none' }}
-            _focusVisible={{ boxShadow: 'none' }}
             value={value}
             onChange={onChange}
             {...props}

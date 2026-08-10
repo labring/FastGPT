@@ -35,7 +35,7 @@ import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
-import { useWelcomeTextFoldState } from '@/components/core/app/useWelcomeTextFoldState';
+import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));

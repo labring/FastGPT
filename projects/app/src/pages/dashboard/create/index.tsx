@@ -49,6 +49,7 @@ import {
   type HttpToolType,
   HttpToolTypeEnum
 } from '@fastgpt/global/core/app/tool/httpTool/constants';
+import { getAppDetailRoute, isWorkflowAppType } from '@/web/core/app/utils';
 
 type FormType = {
   avatar: string;
@@ -127,7 +128,7 @@ const CreateAppsPage = () => {
     async (
       { avatar, name, createType, mcpUrl, mcpHeaderSecret, mcpToolList }: FormType,
       templateId?: string
-    ): Promise<string> => {
+    ): Promise<{ appId: string; appType: CreateAppType }> => {
       if (templateId) {
         setCreatingTemplateId(templateId);
       }
@@ -139,49 +140,58 @@ const CreateAppsPage = () => {
         name: name?.trim() || t('app:unnamed_app')
       };
 
-      if (appType === AppTypeEnum.mcpToolSet) {
-        const headerSecret = headerValue2StoreHeader(mcpHeaderSecret || {});
-        return postCreateMCPTools({
-          ...baseParams,
-          url: mcpUrl || '',
-          headerSecret,
-          toolList: (mcpToolList || []) as McpToolConfigType[]
-        });
-      }
+      const appId = await (async () => {
+        if (appType === AppTypeEnum.mcpToolSet) {
+          const headerSecret = headerValue2StoreHeader(mcpHeaderSecret || {});
+          return postCreateMCPTools({
+            ...baseParams,
+            url: mcpUrl || '',
+            headerSecret,
+            toolList: (mcpToolList || []) as McpToolConfigType[]
+          });
+        }
 
-      if (appType === AppTypeEnum.httpToolSet) {
-        return postCreateHttpTools({
-          ...baseParams,
-          createType: createType || HttpToolTypeEnum.batch
-        });
-      }
+        if (appType === AppTypeEnum.httpToolSet) {
+          return postCreateHttpTools({
+            ...baseParams,
+            createType: createType || HttpToolTypeEnum.batch
+          });
+        }
 
-      if (templateId) {
-        const templateDetail = await getTemplateMarketItemDetail(templateId);
+        if (templateId) {
+          const templateDetail = await getTemplateMarketItemDetail(templateId);
+          return postCreateApp({
+            ...baseParams,
+            avatar: templateDetail.avatar,
+            name: templateDetail.name,
+            type: appType,
+            modules: templateDetail.workflow.nodes || [],
+            edges: templateDetail.workflow.edges || [],
+            chatConfig: templateDetail.workflow.chatConfig || {},
+            templateId: templateDetail.templateId
+          });
+        }
+
+        const emptyTemplate = getEmptyAppsTemplate(t);
         return postCreateApp({
           ...baseParams,
-          avatar: templateDetail.avatar,
-          name: templateDetail.name,
           type: appType,
-          modules: templateDetail.workflow.nodes || [],
-          edges: templateDetail.workflow.edges || [],
-          chatConfig: templateDetail.workflow.chatConfig || {},
-          templateId: templateDetail.templateId
+          modules: emptyTemplate[appType].nodes,
+          edges: emptyTemplate[appType].edges,
+          chatConfig: emptyTemplate[appType].chatConfig
         });
-      }
+      })();
 
-      const emptyTemplate = getEmptyAppsTemplate(t);
-      return postCreateApp({
-        ...baseParams,
-        type: appType,
-        modules: emptyTemplate[appType].nodes,
-        edges: emptyTemplate[appType].edges,
-        chatConfig: emptyTemplate[appType].chatConfig
-      });
+      return { appId, appType };
     },
     {
-      onSuccess(id) {
-        router.push(`/app/detail?appId=${id}`);
+      onSuccess({ appId, appType }) {
+        router.push(
+          getAppDetailRoute({
+            appId,
+            openSystemConfig: isWorkflowAppType(appType)
+          })
+        );
       },
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed')

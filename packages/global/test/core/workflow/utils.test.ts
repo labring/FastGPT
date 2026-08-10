@@ -408,6 +408,24 @@ describe('normalizeWorkflowConfig', () => {
     });
   });
 
+  it('should move workflow tool config instruction into chatConfig', () => {
+    const pluginConfigNode: StoreNodeItemType = {
+      ...createSystemConfigNode(
+        [[NodeInputKeyEnum.instruction, 'Plugin instruction']],
+        'plugin-config'
+      ),
+      flowNodeType: FlowNodeTypeEnum.pluginConfig
+    };
+
+    const result = normalizeWorkflowConfig({
+      nodes: [pluginConfigNode],
+      chatConfig: {}
+    });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.chatConfig.instruction).toBe('Plugin instruction');
+  });
+
   it('should preserve explicit current values instead of overwriting them', () => {
     const result = normalizeWorkflowConfig({
       nodes: [createSystemConfigNode(legacyInputs)],
