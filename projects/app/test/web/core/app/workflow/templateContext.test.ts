@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  buildNodeTemplateContext,
   createHideInContext,
   createShowInContext,
   isTemplateVisible
@@ -27,6 +28,60 @@ const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
 });
 
 describe('template context', () => {
+  it('buildNodeTemplateContext：源节点不存在返回 null，字段正确映射', () => {
+    const node = {
+      nodeId: 'n1',
+      flowNodeType: FlowNodeTypeEnum.toolParams,
+      isTool: true,
+      parentNodeId: 'loop1'
+    };
+    const loopNode = { nodeId: 'loop1', flowNodeType: FlowNodeTypeEnum.loopRun };
+    const edges = [
+      { target: 'n1', targetHandle: NodeOutputKeyEnum.selectedTools },
+      { target: 'other', targetHandle: 'x' }
+    ];
+
+    expect(
+      buildNodeTemplateContext({
+        sourceNode: undefined,
+        edges,
+        handleId: 'h',
+        getNodeById: () => undefined
+      })
+    ).toBeNull();
+
+    const result = buildNodeTemplateContext({
+      sourceNode: node,
+      edges,
+      handleId: 'h',
+      getNodeById: (id) => (id === 'loop1' ? (loopNode as any) : undefined)
+    });
+    expect(result).toEqual({
+      sourceNodeId: 'n1',
+      sourceType: FlowNodeTypeEnum.toolParams,
+      sourceIsTool: true,
+      isConnectedTool: true,
+      handleId: 'h',
+      parentType: FlowNodeTypeEnum.loopRun
+    });
+  });
+
+  it('buildNodeTemplateContext：未被工具调用挂载时 isConnectedTool 为 false', () => {
+    const result = buildNodeTemplateContext({
+      sourceNode: {
+        nodeId: 'n1',
+        flowNodeType: FlowNodeTypeEnum.aiChat,
+        isTool: false,
+        parentNodeId: undefined
+      },
+      edges: [{ target: 'n2', targetHandle: NodeOutputKeyEnum.selectedTools }],
+      handleId: null,
+      getNodeById: () => undefined
+    });
+    expect(result?.isConnectedTool).toBe(false);
+    expect(result?.parentType).toBeNull();
+  });
+
   it('工厂函数：白名单仅在匹配任一规则且上下文非空时可见', () => {
     const predicate = createShowInContext([
       { sourceType: FlowNodeTypeEnum.toolCall, handleId: NodeOutputKeyEnum.selectedTools },

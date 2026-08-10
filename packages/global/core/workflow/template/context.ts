@@ -1,6 +1,8 @@
 import type { FlowNodeTypeEnum } from '../node/constant';
+import { NodeOutputKeyEnum } from '../constants';
 import type {
   FlowNodeTemplateType,
+  FlowNodeItemType,
   NodeTemplateContext,
   NodeTemplateContextPredicate
 } from '../type/node';
@@ -47,4 +49,35 @@ export const isTemplateVisible = (
   ctx: NodeTemplateContext | null
 ): boolean => {
   return !template.isShowInContext || template.isShowInContext(ctx);
+};
+
+/**
+ * 由源节点信息构建快捷添加/连线共用的展示上下文；sourceNode 不存在时返回 null。
+ */
+export const buildNodeTemplateContext = ({
+  sourceNode,
+  edges,
+  handleId,
+  getNodeById
+}: {
+  sourceNode:
+    | Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>
+    | undefined;
+  edges: { target: string; targetHandle?: string | null }[];
+  handleId?: string | null;
+  getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
+}): NodeTemplateContext | null => {
+  if (!sourceNode) return null;
+  const parentNode = sourceNode.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
+  return {
+    sourceNodeId: sourceNode.nodeId,
+    sourceType: sourceNode.flowNodeType,
+    sourceIsTool: !!sourceNode.isTool,
+    isConnectedTool: edges.some(
+      (edge) =>
+        edge.target === sourceNode.nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+    ),
+    handleId: handleId ?? null,
+    parentType: parentNode?.flowNodeType ?? null
+  };
 };

@@ -3,6 +3,11 @@ import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import {
+  buildNodeTemplateContext,
+  isTemplateVisible
+} from '@fastgpt/global/core/workflow/template/context';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
@@ -129,6 +134,23 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
         ) {
           forbidConnect = true;
         }
+      }
+    }
+
+    // 目标节点模板在源节点添加上下文不可见时禁止连接（与快捷添加面板同规则）
+    const sourceNode = connectingEdge ? getNodeById(connectingEdge.nodeId) : undefined;
+    const targetTemplate = node
+      ? moduleTemplatesFlat.find((item) => item.id === node.flowNodeType)
+      : undefined;
+    if (targetTemplate && sourceNode && connectingEdge) {
+      const sourceCtx = buildNodeTemplateContext({
+        sourceNode,
+        edges,
+        handleId: connectingEdge.handleId,
+        getNodeById
+      });
+      if (sourceCtx && !isTemplateVisible(targetTemplate, sourceCtx)) {
+        forbidConnect = true;
       }
     }
 
