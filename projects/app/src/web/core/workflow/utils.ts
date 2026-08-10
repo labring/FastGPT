@@ -61,7 +61,7 @@ export const nodeTemplate2FlowNode = ({
 }): Node<FlowNodeItemType> => {
   const name = t(template.name as any);
 
-  // replace item data
+  // 用持久化节点数据覆盖模板默认值。
   const moduleItem: FlowNodeItemType = {
     ...template,
     name: formatName?.(name) ?? name,
@@ -115,88 +115,91 @@ export const storeNode2FlowNode = ({
   t
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
-  const template =
+  const nodeTemplate =
     moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
     EmptyNode;
 
-  const templateInputs = template.inputs.filter(
-    (input) => !input.canEdit && input.deprecated !== true
+  const storedInputs = storeNode.inputs;
+  // 废弃模板输入仅在存量节点已有该字段时，按模板顺序保留。
+  const orderedTemplateInputs = nodeTemplate.inputs.filter(
+    (input) =>
+      (!input.canEdit && input.deprecated !== true) ||
+      (input.deprecated === true && storedInputs.some((item) => item.key === input.key))
   );
-  const templateOutputs = template.outputs.filter(
+  const staticTemplateOutputs = nodeTemplate.outputs.filter(
     (output) => output.type !== FlowNodeOutputTypeEnum.dynamic
   );
-  const dynamicInput = template.inputs.find(
+  const dynamicInputTemplate = nodeTemplate.inputs.find(
     (input) => input.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
   );
-  const adaptedStoreInputs = storeNode.inputs;
-
   // replace item data
   const nodeItem: FlowNodeItemType = {
     parentNodeId,
-    ...template,
+    ...nodeTemplate,
     ...storeNode,
     name: t(storeNode.name as any),
     intro: storeNode.intro ? t(storeNode.intro as any) : storeNode.intro,
-    avatar: template.avatar ?? storeNode.avatar,
-    version: template.version || storeNode.version,
-    catchError: storeNode.catchError ?? template.catchError,
-    // template 中的输入必须都有
-    inputs: templateInputs
-      .map<FlowNodeInputItemType>((templateInput) => {
+    avatar: nodeTemplate.avatar ?? storeNode.avatar,
+    version: nodeTemplate.version || storeNode.version,
+    catchError: storeNode.catchError ?? nodeTemplate.catchError,
+    // 按模板顺序恢复当前输入及存量废弃输入。
+    inputs: orderedTemplateInputs
+      .map<FlowNodeInputItemType>((inputTemplate) => {
         const storeInput =
-          adaptedStoreInputs.find((item) => item.key === templateInput.key) || templateInput;
+          storedInputs.find((item) => item.key === inputTemplate.key) || inputTemplate;
+
         return {
           ...storeInput,
           // 迁移层不写入 locale 相关的展示字段；恢复画布时以当前模板为准，避免旧语言文本残留。
-          ...templateInput,
-          debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
-          toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-          selectedType: storeInput.selectedType ?? templateInput.selectedType,
+          ...inputTemplate,
+          debugLabel: t(inputTemplate.debugLabel ?? (storeInput.debugLabel as any)),
+          toolDescription: t(inputTemplate.toolDescription ?? (storeInput.toolDescription as any)),
+          selectedType: storeInput.selectedType ?? inputTemplate.selectedType,
           value: storeInput.value
         };
       })
       .concat(
-        // 合并 store 中有，template 中没有的输入
-        adaptedStoreInputs
-          .filter((item) => !templateInputs.find((input) => input.key === item.key))
+        // 追加未按模板顺序恢复的存量输入，例如自定义动态字段。
+        storedInputs
+          .filter((item) => !orderedTemplateInputs.find((input) => input.key === item.key))
           .map((item) => {
-            const templateInput = template.inputs.find((input) => input.key === item.key);
+            const inputTemplate = nodeTemplate.inputs.find((input) => input.key === item.key);
 
-            if (!dynamicInput) {
+            if (!dynamicInputTemplate) {
               return {
                 ...item,
-                deprecated: templateInput?.deprecated
+                deprecated: inputTemplate?.deprecated
               };
             }
 
             return {
               ...item,
-              ...getInputComponentProps(dynamicInput),
-              deprecated: templateInput?.deprecated
+              ...getInputComponentProps(dynamicInputTemplate),
+              deprecated: inputTemplate?.deprecated
             };
           })
       ),
-    outputs: templateOutputs
-      .map<FlowNodeOutputItemType>((templateOutput) => {
+    outputs: staticTemplateOutputs
+      .map<FlowNodeOutputItemType>((outputTemplate) => {
         const storeOutput =
-          storeNode.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+          storeNode.outputs.find((item) => item.key === outputTemplate.key) || outputTemplate;
 
         return {
           ...storeOutput,
-          ...templateOutput,
-          description: t(templateOutput.description ?? (storeOutput.description as any)),
-          id: storeOutput.id ?? templateOutput.id,
-          value: storeOutput.value ?? templateOutput.value
+          ...outputTemplate,
+          description: t(outputTemplate.description ?? (storeOutput.description as any)),
+          id: storeOutput.id ?? outputTemplate.id,
+          value: storeOutput.value ?? outputTemplate.value
         };
       })
       .concat(
         storeNode.outputs
-          .filter((item) => !templateOutputs.find((output) => output.key === item.key))
+          .filter((item) => !staticTemplateOutputs.find((output) => output.key === item.key))
           .map((item) => {
-            const templateOutput = template.outputs.find((output) => output.key === item.key);
+            const outputTemplate = nodeTemplate.outputs.find((output) => output.key === item.key);
             return {
               ...item,
-              deprecated: templateOutput?.deprecated
+              deprecated: outputTemplate?.deprecated
             };
           })
       )
