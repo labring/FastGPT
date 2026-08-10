@@ -39,7 +39,7 @@ export const HttpNode468: FlowNodeTemplateType = {
         showDescription: false,
         showDefaultValue: true
       },
-      deprecated: false
+      deprecated: true
     },
     {
       key: NodeInputKeyEnum.httpMethod,
