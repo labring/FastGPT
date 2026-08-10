@@ -755,6 +755,31 @@ describe('S3BaseBucket Multipart helpers', () => {
 });
 
 describe('S3BaseBucket historical key compatibility', () => {
+  it.each([
+    ['report#1.pdf', 'report#1.pdf', 'pdf'],
+    ['report?1.pdf', 'report?1.pdf', 'pdf'],
+    ['file name.txt', 'file name.txt', 'txt'],
+    ['file.pdf', 'file.pdf', 'pdf']
+  ])(
+    'parses extension from filename with special chars: %s',
+    async (origin, filename, extension) => {
+      const { storage, bucket } = createBucket();
+      const key = `dataset/team-1/${encodeURIComponent(origin)}`;
+      vi.spyOn(storage, 'getObjectMetadata').mockResolvedValue({
+        bucket: storage.bucketName,
+        key,
+        metadata: { originFilename: encodeURIComponent(origin) },
+        contentLength: 4,
+        contentType: 'application/octet-stream'
+      });
+
+      await expect(bucket.getFileMetadata(key)).resolves.toMatchObject({
+        filename,
+        extension
+      });
+    }
+  );
+
   it('falls back to the raw key for reads and existence checks', async () => {
     const { storage, bucket } = createBucket();
     const rawKey = 'legacy/user name/file.txt';

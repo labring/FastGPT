@@ -47,7 +47,6 @@ import type {
   IStorage
 } from '@fastgpt-sdk/storage';
 import { assertStorageObjectKey, isNoSuchMultipartUploadError } from '@fastgpt-sdk/storage';
-import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import {
   createS3DownloadAccessUrl,
@@ -1088,7 +1087,9 @@ export class S3BaseBucket {
 
     const contentLength = metadataResponse.contentLength;
     const filename: string = decodeURIComponent(metadataResponse.metadata.originFilename || '');
-    const extension = parseFileExtensionFromUrl(filename);
+    // originFilename 是解码后的纯文件名（不是 URL），直接用 path.extname 解析，
+    // 避免 # / ? 等文件名合法字符被当作 URL fragment/query 截断导致扩展名丢失。
+    const extension = path.extname(filename).replace(/^\./, '').toLowerCase();
     const contentType: string = metadataResponse.contentType || 'application/octet-stream';
 
     return {

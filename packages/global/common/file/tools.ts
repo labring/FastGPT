@@ -204,7 +204,13 @@ export const getContentDisposition = ({
   filename?: string;
   type?: 'inline' | 'attachment';
 }) => {
-  const normalizedFilename = `${filename || 'file'}`.replace(/[\r\n]/g, '').trim() || 'file';
+  // `/`、`\` 在所有主流操作系统文件名中都是非法字符（如 macOS 会把下载名里的 / 转成 :），
+  // 统一替换为 `_`，保证 `filename*` 与 ASCII fallback 在各平台下载出的文件名一致。
+  const normalizedFilename =
+    `${filename || 'file'}`
+      .replace(/[\r\n]/g, '')
+      .replace(/[\\/]/g, '_')
+      .trim() || 'file';
   const fallbackFilename = sanitizeHeaderFilename(normalizedFilename);
 
   return `${type}; filename="${fallbackFilename}"; filename*=UTF-8''${encodeRFC5987ValueChars(
