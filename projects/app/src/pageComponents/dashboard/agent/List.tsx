@@ -22,18 +22,13 @@ import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
-import {
-  deleteAppCollaborators,
-  getCollaboratorList,
-  postUpdateAppCollaborators
-} from '@/web/core/app/api/collaborator';
+import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/api/collaborator';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
@@ -490,17 +485,6 @@ const List = () => {
             roleList: AppRoleList,
             onUpdateCollaborators: (props) =>
               postUpdateAppCollaborators({
-                ...props,
-                appId: editPerApp._id
-              }),
-            onDelOneCollaborator: async (
-              props: RequireOnlyOne<{
-                tmbId?: string;
-                groupId?: string;
-                orgId?: string;
-              }>
-            ) =>
-              deleteAppCollaborators({
                 ...props,
                 appId: editPerApp._id
               }),

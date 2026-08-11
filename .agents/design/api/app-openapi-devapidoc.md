@@ -221,7 +221,6 @@
 - `/core/app/tool/path`
 - `/core/plugin/team/list`
 - `/core/plugin/team/toolDetail`
-- `/core/plugin/team/toggleInstall`
 
 这些接口主要服务应用构建页的工具选择、团队工具安装和系统工具查看，后续可以单独作为“系统工具/团队工具”模块处理。
 

@@ -91,3 +91,92 @@ export type McpDeleteQueryType = z.infer<typeof McpDeleteQuerySchema>;
 
 export const McpDeleteResponseSchema = z.undefined().meta({ description: '删除成功' });
 export type McpDeleteResponseType = z.infer<typeof McpDeleteResponseSchema>;
+
+/* ============================================================================
+ * API: 获取 MCP Server 工具列表
+ * Route: GET /api/support/mcp/server/toolList
+ * Method: GET
+ * Description: 通过 MCP Server 访问密钥获取当前发布的工具列表
+ * Tags: ['MCP 发布管理', 'Read']
+ * ============================================================================ */
+
+export const McpServerToolListQuerySchema = z.object({
+  key: z.string().min(1).meta({
+    example: 'abcDEF123...',
+    description: 'MCP Server 访问密钥'
+  })
+});
+export type McpServerToolListQuery = z.infer<typeof McpServerToolListQuerySchema>;
+
+const McpServerToolInputSchema = z
+  .object({
+    type: z.literal('object').meta({
+      example: 'object',
+      description: '工具输入 Schema 的根类型'
+    }),
+    properties: z
+      .record(z.string(), z.any())
+      .optional()
+      .meta({
+        example: { question: { type: 'string', description: 'Question from user' } },
+        description: '工具输入字段的 JSON Schema 定义'
+      }),
+    required: z
+      .array(z.string())
+      .optional()
+      .meta({
+        example: ['question'],
+        description: '必填输入字段名称列表'
+      })
+  })
+  .catchall(z.any())
+  .meta({ description: 'MCP 工具输入 JSON Schema' });
+
+export const McpServerToolSchema = z
+  .object({
+    name: z.string().meta({
+      example: 'search_knowledge',
+      description: 'MCP 工具名称'
+    }),
+    description: z.string().optional().meta({
+      example: '搜索指定知识库并返回相关内容',
+      description: 'MCP 工具能力描述'
+    }),
+    inputSchema: McpServerToolInputSchema
+  })
+  .catchall(z.any());
+
+export const McpServerToolListResponseSchema = z.array(McpServerToolSchema).meta({
+  description: '当前 MCP Server 发布的工具列表'
+});
+export type McpServerToolListResponse = z.infer<typeof McpServerToolListResponseSchema>;
+
+/* ============================================================================
+ * API: 调用 MCP Server 工具
+ * Route: POST /api/support/mcp/server/toolCall
+ * Method: POST
+ * Description: 通过 MCP Server 访问密钥调用指定工具并返回文本结果
+ * Tags: ['MCP 发布管理', 'Write']
+ * ============================================================================ */
+
+export const McpServerToolCallBodySchema = z.object({
+  key: z.string().min(1).meta({
+    example: 'abcDEF123...',
+    description: 'MCP Server 访问密钥'
+  }),
+  toolName: z.string().min(1).meta({
+    example: 'search_knowledge',
+    description: '需要调用的 MCP 工具名称'
+  }),
+  inputs: z.record(z.string(), z.any()).meta({
+    example: { question: 'FastGPT 如何创建知识库？' },
+    description: '传递给工具的输入参数，需符合工具 inputSchema'
+  })
+});
+export type McpServerToolCallBody = z.infer<typeof McpServerToolCallBodySchema>;
+
+export const McpServerToolCallResponseSchema = z.string().meta({
+  example: '可以在知识库页面点击“新建知识库”完成创建。',
+  description: 'MCP 工具执行后的文本结果'
+});
+export type McpServerToolCallResponse = z.infer<typeof McpServerToolCallResponseSchema>;

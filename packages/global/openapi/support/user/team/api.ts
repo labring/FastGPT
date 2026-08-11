@@ -1,5 +1,6 @@
 import z from 'zod';
 import { OpenaiAccountSchema } from '../../../../support/user/team/type';
+import { ClientTeamPlanStatusSchema } from '../../../../support/wallet/sub/type';
 
 export const TeamChangeOwnerBodySchema = z.object({
   userId: z.string().describe("the New Owner's UserId.")
@@ -12,7 +13,8 @@ export type TeamChangeOwnerResponseType = z.infer<typeof TeamChangeOwnerResponse
 
 /* ============================================================================
  * API: 更新团队信息
- * Route: POST /api/support/user/team/update
+ * Route: PUT /api/support/user/team/update
+ * Method: PUT
  * ============================================================================ */
 export const UpdateTeamBodySchema = z.object({
   name: z.string().max(100).optional().meta({
@@ -48,3 +50,21 @@ export type UpdateTeamBodyType = z.infer<typeof UpdateTeamBodySchema>;
 
 export const UpdateTeamResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type UpdateTeamResponseType = z.infer<typeof UpdateTeamResponseSchema>;
+
+/* ============================================================================
+ * API: 获取团队套餐状态
+ * Route: GET /api/support/user/team/plan/getTeamPlanStatus
+ * Method: GET
+ * Description: 获取当前团队的套餐额度及成员、应用、知识库等资源用量
+ * Tags: ['辅助-用户体系', '团队管理', 'Read']
+ * ============================================================================ */
+
+export const GetTeamPlanStatusQuerySchema = z.object({}).meta({
+  description: '该接口不需要查询参数'
+});
+export type GetTeamPlanStatusQuery = z.infer<typeof GetTeamPlanStatusQuerySchema>;
+
+export const GetTeamPlanStatusResponseSchema = ClientTeamPlanStatusSchema.optional().meta({
+  description: '鉴权或套餐状态查询失败时不返回业务数据'
+});
+export type GetTeamPlanStatusResponse = z.infer<typeof GetTeamPlanStatusResponseSchema>;

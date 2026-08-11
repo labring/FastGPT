@@ -21,7 +21,6 @@ import FolderSlideCard from '@/components/common/folder/SlideCard';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import {
   postUpdateDatasetCollaborators,
-  deleteDatasetCollaborators,
   getCollaboratorList
 } from '@/web/core/dataset/api/collaborator';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -280,11 +279,6 @@ const Dataset = () => {
                 roleList: DatasetRoleList,
                 onUpdateCollaborators: (params) =>
                   postUpdateDatasetCollaborators({
-                    ...params,
-                    datasetId: folderDetail._id
-                  }),
-                onDelOneCollaborator: async (params) =>
-                  deleteDatasetCollaborators({
                     ...params,
                     datasetId: folderDetail._id
                   }),

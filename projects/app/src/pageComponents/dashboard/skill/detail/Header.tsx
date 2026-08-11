@@ -22,8 +22,7 @@ import {
 } from '@/web/core/skill/api';
 import {
   getSkillCollaboratorList,
-  postUpdateSkillCollaborators,
-  deleteSkillCollaborator
+  postUpdateSkillCollaborators
 } from '@/web/core/skill/collaborator';
 import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
@@ -440,11 +439,6 @@ export const HeaderDialogs = () => {
             roleList: SkillRoleList,
             onUpdateCollaborators: (props) =>
               postUpdateSkillCollaborators({
-                ...props,
-                skillId: skillDetail._id
-              }),
-            onDelOneCollaborator: (props) =>
-              deleteSkillCollaborator({
                 ...props,
                 skillId: skillDetail._id
               }),

@@ -9,7 +9,7 @@ import {
 } from './api';
 
 export const SystemToolTagPath: OpenAPIPath = {
-  '/core/plugin/toolTag/config/create': {
+  '/core/plugin/admin/tool/tag/create': {
     post: {
       summary: '创建工具标签',
       description: '创建新的工具标签，需要系统管理员权限',
@@ -33,7 +33,7 @@ export const SystemToolTagPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/toolTag/config/delete': {
+  '/core/plugin/admin/tool/tag/delete': {
     delete: {
       summary: '删除工具标签',
       description: '根据标签ID删除工具标签，需要系统管理员权限',
@@ -53,7 +53,7 @@ export const SystemToolTagPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/toolTag/config/update': {
+  '/core/plugin/admin/tool/tag/update': {
     put: {
       summary: '更新工具标签',
       description: '更新工具标签的名称，需要系统管理员权限',
@@ -77,7 +77,7 @@ export const SystemToolTagPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/toolTag/config/updateOrder': {
+  '/core/plugin/admin/tool/tag/updateOrder': {
     put: {
       summary: '更新工具标签顺序',
       description: '批量更新工具标签的排序顺序，需要系统管理员权限',

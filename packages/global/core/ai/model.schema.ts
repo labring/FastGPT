@@ -99,7 +99,7 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
   type: z.literal(ModelTypeEnum.embedding),
   defaultToken: z.number(), // split text default token
   maxToken: z.number(), // model max token
-  weight: z.number(), // training weight
+  weight: z.number().default(0), // training weight
   hidden: z.boolean().optional(), // Disallow creation
   vision: z.boolean().optional(), // Support image embedding
   normalization: z.boolean().optional(), // normalization processing

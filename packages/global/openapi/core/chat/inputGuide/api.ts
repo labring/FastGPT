@@ -81,8 +81,8 @@ export type CreateChatInputGuideResponseType = z.infer<typeof CreateChatInputGui
 
 /* ============================================================================
  * API: 删除对话输入引导
- * Route: DELETE /api/core/chat/inputGuide/delete
- * Method: DELETE
+ * Route: POST /api/core/chat/inputGuide/delete
+ * Method: POST
  * Description: 批量删除指定的对话输入引导
  * Tags: ['Chat', 'InputGuide', 'Delete']
  * ============================================================================ */
@@ -104,8 +104,8 @@ export type DeleteChatInputGuideResponseType = z.infer<typeof DeleteChatInputGui
 
 /* ============================================================================
  * API: 删除所有对话输入引导
- * Route: DELETE /api/core/chat/inputGuide/deleteAll
- * Method: DELETE
+ * Route: POST /api/core/chat/inputGuide/deleteAll
+ * Method: POST
  * Description: 删除所有对话输入引导
  * Tags: ['Chat', 'InputGuide', 'Delete']
  * ============================================================================ */

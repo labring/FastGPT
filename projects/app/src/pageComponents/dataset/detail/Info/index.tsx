@@ -21,8 +21,7 @@ import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/cons
 import MemberManager from '../../MemberManager';
 import {
   getCollaboratorList,
-  postUpdateDatasetCollaborators,
-  deleteDatasetCollaborators
+  postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
@@ -415,25 +414,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   postUpdateDatasetCollaborators({
                     ...body,
                     datasetId
-                  }),
-                onDelOneCollaborator: async ({ groupId, tmbId, orgId }) => {
-                  if (tmbId) {
-                    return deleteDatasetCollaborators({
-                      datasetId,
-                      tmbId
-                    });
-                  } else if (groupId) {
-                    return deleteDatasetCollaborators({
-                      datasetId,
-                      groupId
-                    });
-                  } else if (orgId) {
-                    return deleteDatasetCollaborators({
-                      datasetId,
-                      orgId
-                    });
-                  }
-                }
+                  })
               }}
             />
           </Box>

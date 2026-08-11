@@ -1,67 +1,125 @@
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 // @ts-ignore
 import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-import { type ReadFileResponse, type ReadRawTextByBuffer } from '../../../type';
+import { type ParsedPage, type ReadFileResponse, type ReadRawTextByBuffer } from '../../../type';
+import { postprocessPdfPages } from '../pdfTextPostprocess';
 
-type TokenType = {
+type PdfJsTextToken = {
   str: string;
-  dir: string;
   width: number;
   height: number;
   transform: number[];
-  fontName: string;
-  hasEOL: boolean;
+  fontName?: string;
+  hasEOL?: boolean;
+};
+
+type PdfJsTokenToTextItemParams = {
+  token: PdfJsTextToken;
+  viewportTransform: number[];
 };
 
 /**
- * 使用 PDF.js 解析 PDF 文本。
+ * 将 PDF.js 的文本基线矩阵转换为统一的顶部原点文本框。
  *
- * PDF.js 不依赖 LiteParse 的 native 二进制包，用作 Alpine ARM64 等 LiteParse
- * 平台包缺失环境的兼容兜底。这里保留历史实现的页眉页脚过滤和 hasEOL 拼接逻辑，
- * 避免 fallback 路径改变既有文本输出特征。
+ * PDF.js token 使用 PDF 坐标与基线位置，LiteParse 后处理使用页面顶部原点的包围盒。
+ * 这里组合 viewport 矩阵，并用文字前进方向与字高方向计算四角包围盒，因此同时支持
+ * 页面旋转和文字旋转；空白 token 不参与坐标组行。
+ */
+export const convertPdfJsTokenToTextItem = ({
+  token,
+  viewportTransform
+}: PdfJsTokenToTextItemParams) => {
+  const text = String(token.str ?? '').trim();
+  if (!text) return;
+  if (token.transform?.length !== 6 || viewportTransform.length !== 6) return;
+
+  const transform = pdfjs.Util.transform(viewportTransform, token.transform);
+  if (!transform.every(Number.isFinite)) return;
+
+  const [scaleX, skewY, skewX, scaleY, originX, originY] = transform;
+  const horizontalScale = Math.hypot(scaleX, skewY);
+  const verticalScale = Math.hypot(skewX, scaleY);
+  const width = Math.max(0, Number(token.width) || 0);
+  const glyphHeight = Math.max(0, Number(token.height) || verticalScale);
+  const horizontalUnit = horizontalScale
+    ? { x: scaleX / horizontalScale, y: skewY / horizontalScale }
+    : { x: 1, y: 0 };
+  const verticalUnit = verticalScale
+    ? { x: skewX / verticalScale, y: scaleY / verticalScale }
+    : { x: 0, y: -1 };
+  const baselineEnd = {
+    x: originX + horizontalUnit.x * width,
+    y: originY + horizontalUnit.y * width
+  };
+  const topStart = {
+    x: originX + verticalUnit.x * glyphHeight,
+    y: originY + verticalUnit.y * glyphHeight
+  };
+  const topEnd = {
+    x: baselineEnd.x + verticalUnit.x * glyphHeight,
+    y: baselineEnd.y + verticalUnit.y * glyphHeight
+  };
+  const xCoordinates = [originX, baselineEnd.x, topStart.x, topEnd.x];
+  const yCoordinates = [originY, baselineEnd.y, topStart.y, topEnd.y];
+  const left = Math.min(...xCoordinates);
+  const right = Math.max(...xCoordinates);
+  const top = Math.min(...yCoordinates);
+  const bottom = Math.max(...yCoordinates);
+
+  return {
+    text,
+    x: left,
+    y: top,
+    width: right - left,
+    height: bottom - top,
+    fontName: token.fontName,
+    fontSize: verticalScale || glyphHeight
+  };
+};
+
+/**
+ * 使用 PDF.js 解析 PDF 文本，并复用 LiteParse 的统一文本后处理。
+ *
+ * PDF.js 仍作为 LiteParse WASM 依赖不可用时的兼容兜底，但两条解析路径会先各自
+ * 标准化为 ParsedPage，再共享页眉页脚识别、坐标组行与段落合并规则。
  */
 export const readPdfByPdfJs = async ({
   buffer
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
-  const readPDFPage = async (doc: any, pageNo: number) => {
+  const readPDFPage = async (doc: any, pageNo: number): Promise<ParsedPage> => {
+    let page: any;
+
     try {
-      const page = await doc.getPage(pageNo);
+      page = await doc.getPage(pageNo);
       const tokenizedText = await page.getTextContent();
-
       const viewport = page.getViewport({ scale: 1 });
-      const pageHeight = viewport.height;
-      const headerThreshold = pageHeight * 0.95;
-      const footerThreshold = pageHeight * 0.05;
+      const textItems = (tokenizedText.items as PdfJsTextToken[])
+        .map((token) =>
+          convertPdfJsTokenToTextItem({
+            token,
+            viewportTransform: viewport.transform
+          })
+        )
+        .filter((item) => item !== undefined);
 
-      const pageTexts: TokenType[] = tokenizedText.items.filter((token: TokenType) => {
-        return (
-          !token.transform ||
-          (token.transform[5] < headerThreshold && token.transform[5] > footerThreshold)
-        );
-      });
-
-      // PDF.js 会用空 token 携带换行状态，需要合并回前一个文本 token。
-      for (let i = 0; i < pageTexts.length; i++) {
-        const item = pageTexts[i];
-        if (item.str === '' && pageTexts[i - 1]) {
-          pageTexts[i - 1].hasEOL = item.hasEOL;
-          pageTexts.splice(i, 1);
-          i--;
-        }
-      }
-
-      page.cleanup();
-
-      return pageTexts
-        .map((token) => {
-          const paragraphEnd = token.hasEOL && /([。？！.?!\n\r]|(\r\n))$/.test(token.str);
-
-          return paragraphEnd ? `${token.str}\n` : token.str;
-        })
-        .join('');
+      return {
+        pageNum: pageNo,
+        width: viewport.width,
+        height: viewport.height,
+        text: textItems.map((item) => item.text).join(' '),
+        textItems
+      };
     } catch (error) {
       console.error('Failed to read pdf page', { pageNo, error });
-      return '';
+      return {
+        pageNum: pageNo,
+        width: 0,
+        height: 0,
+        text: '',
+        textItems: []
+      };
+    } finally {
+      page?.cleanup();
     }
   };
 
@@ -69,16 +127,16 @@ export const readPdfByPdfJs = async ({
   const uint8Array = new Uint8Array(buffer.byteLength);
   uint8Array.set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
   const loadingTask = pdfjs.getDocument({ data: uint8Array });
-  const doc = await loadingTask.promise;
 
-  const pageArr = Array.from({ length: doc.numPages }, (_, i) => i + 1);
-  const result = (
-    await Promise.all(pageArr.map(async (page) => await readPDFPage(doc, page)))
-  ).join('');
+  try {
+    const doc = await loadingTask.promise;
+    const pageArr = Array.from({ length: doc.numPages }, (_, i) => i + 1);
+    const pages = await Promise.all(pageArr.map(async (pageNo) => await readPDFPage(doc, pageNo)));
 
-  loadingTask.destroy();
-
-  return {
-    rawText: result
-  };
+    return {
+      rawText: postprocessPdfPages(pages)
+    };
+  } finally {
+    await loadingTask.destroy();
+  }
 };

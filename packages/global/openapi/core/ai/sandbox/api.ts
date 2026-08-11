@@ -2,6 +2,107 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
 import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../../chat/api';
 import { SandboxUnavailableReasonSchema } from '../../../../core/ai/sandbox/type';
+import { ChatSourceTypeEnum } from '../../../../core/chat/constants';
+import { IntSchema } from '../../../../common/zod';
+
+/* ============================================================================
+ * 共享：agent-sandbox-proxy 内部反向调用鉴权请求头
+ * ============================================================================ */
+
+export const SandboxProxyHeaderSchema = z.object({
+  'x-proxy-token': z.string().min(1).meta({
+    example: 'configured-agent-sandbox-proxy-secret',
+    description: 'agent-sandbox-proxy 与 FastGPT 主站之间的共享密钥'
+  })
+});
+
+/* ============================================================================
+ * API: 刷新沙盒会话活跃时间
+ * Route: POST /api/core/ai/sandbox/keepalive
+ * Method: POST
+ * Description: 供 agent-sandbox-proxy 内部调用，刷新指定沙盒会话的活跃时间
+ * Tags: ['Sandbox', 'Write']
+ * ============================================================================ */
+
+export const SandboxKeepaliveBodySchema = z.object({
+  sourceType: z.enum(ChatSourceTypeEnum).meta({
+    example: ChatSourceTypeEnum.app,
+    description: '沙盒所属的对话来源类型'
+  }),
+  sourceId: z.string().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '来源资源 ID，例如应用 ID 或技能 ID'
+  }),
+  userId: z.string().meta({
+    example: '68ad85a7463006c963799a06',
+    description: '沙盒所属用户 ID'
+  }),
+  chatId: z.string().meta({
+    example: 'bEdzC6PNupZrr1RoVutMF2DL',
+    description: '沙盒会话 ID'
+  }),
+  teamId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a07',
+    description: '代理携带的团队 ID；当前仅用于调用上下文，不参与沙盒寻址'
+  })
+});
+export type SandboxKeepaliveBody = z.infer<typeof SandboxKeepaliveBodySchema>;
+
+export const SandboxKeepaliveResponseSchema = z.undefined().meta({
+  description: '保活成功'
+});
+export type SandboxKeepaliveResponse = z.infer<typeof SandboxKeepaliveResponseSchema>;
+
+/* ============================================================================
+ * API: 校验沙盒 Ticket 或 Preview Session
+ * Route: GET /api/core/ai/sandbox/verifyTicket
+ * Method: GET
+ * Description: 供 agent-sandbox-proxy 内部调用，解析沙盒地址、Agent 口令和 WebSocket 限制
+ * Tags: ['Sandbox', 'Read']
+ * ============================================================================ */
+
+export const SandboxVerifyTicketQuerySchema = z.object({
+  ticket: z.string().meta({
+    example: 'eyJhbGciOiJIUzI1NiJ9...',
+    description: '沙盒 WebSocket 临时访问凭证'
+  })
+});
+export type SandboxVerifyTicketQuery = z.infer<typeof SandboxVerifyTicketQuerySchema>;
+
+export const SandboxVerifyTicketDocumentQuerySchema = z.object({
+  ticket: SandboxVerifyTicketQuerySchema.shape.ticket.optional().meta({
+    description: '沙盒 WebSocket 临时访问凭证；未传 Preview Session 请求头时必填'
+  })
+});
+
+export const SandboxVerifyTicketHeaderSchema = SandboxProxyHeaderSchema.extend({
+  'x-sandbox-preview-session': z.string().min(1).optional().meta({
+    example: 'preview-session-id',
+    description: '预览会话 ID；传入后无需 ticket 查询参数'
+  })
+});
+
+export const SandboxVerifyTicketResponseSchema = z.object({
+  sandbox_url: z.string().min(1).meta({
+    example: 'http://sandbox-provider.internal:1318',
+    description: 'IDE Agent 的代理连接地址'
+  }),
+  agent_token: z.string().meta({
+    example: 'temporary-agent-password',
+    description: '连接 IDE Agent 使用的临时口令'
+  }),
+  ws_limits: z.object({
+    max_message_bytes: IntSchema.min(1).meta({
+      example: 16777216,
+      description: '单条 WebSocket 消息的最大字节数'
+    }),
+    max_frame_bytes: IntSchema.min(1).meta({
+      example: 4194304,
+      description: '单个 WebSocket frame 的最大字节数'
+    })
+  })
+});
+export type SandboxVerifyTicketResponse = z.infer<typeof SandboxVerifyTicketResponseSchema>;
 
 const SandboxBaseShape = {
   chatId: z.string().meta({

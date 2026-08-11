@@ -2,11 +2,7 @@ import CollaboratorContextProvider from '@/components/support/permission/MemberM
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 import { AppContext } from './context';
 import { resumeInheritPer } from '@/web/core/app/api';
-import {
-  deleteAppCollaborators,
-  getCollaboratorList,
-  postUpdateAppCollaborators
-} from '@/web/core/app/api/collaborator';
+import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/api/collaborator';
 import {
   Box,
   Button,
@@ -17,7 +13,6 @@ import {
   ModalFooter,
   Textarea
 } from '@chakra-ui/react';
-import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -97,14 +92,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     [handleSubmit, onClose, saveSubmitError, saveSubmitSuccess]
   );
 
-  const onDelCollaborator = async (
-    props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
-  ) =>
-    deleteAppCollaborators({
-      appId: appDetail._id,
-      ...props
-    });
-
   const { runAsync: resumeInheritPermission } = useRequest(() => resumeInheritPer(appDetail._id), {
     errorToast: t('common:resume_failed'),
     onSuccess: () => {
@@ -173,7 +160,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                     appId: appDetail._id
                   })
                 }
-                onDelOneCollaborator={onDelCollaborator}
                 refreshDeps={[appDetail.inheritPermission]}
                 isInheritPermission={appDetail.inheritPermission}
                 hasParent={!!appDetail.parentId}

@@ -7,6 +7,8 @@ export const DevApiTagsMap = {
   appTemplate: '模板管理',
   appLog: '日志管理',
   publishChannel: '发布渠道',
+  appOther: '其他',
+  workflowDebug: '工作流调试',
 
   /* 核心-工具管理 */
   mcpTools: 'MCP 工具管理',
@@ -18,6 +20,10 @@ export const DevApiTagsMap = {
   aiSkill: 'AI技能管理',
   sandbox: 'AI 沙盒',
   aiCommon: 'AI 通用接口',
+
+  /* 核心-AI 辅助生成 */
+  aiAuxiliary: 'AI 辅助生成',
+  workflowHelper: '工作流辅助生成',
 
   /* 核心-对话模块配置 */
   chatSetting: '门户页配置',
@@ -38,7 +44,7 @@ export const DevApiTagsMap = {
   datasetData: '数据管理',
   datasetTraining: '训练管理',
   datasetApiDataset: 'API 数据集管理',
-  datasetFile: '文件管理',
+  datasetFile: '知识库文件管理',
 
   /* 核心-插件系统 */
   pluginToolTag: '工具标签',
@@ -48,6 +54,8 @@ export const DevApiTagsMap = {
   /* 辅助-用户体系 */
   userInform: '用户通知',
   userLogin: '用户账号',
+  userLimit: '限流检查',
+  enterpriseAuth: '企业认证',
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
 
@@ -58,7 +66,13 @@ export const DevApiTagsMap = {
   /* 通用-基础功能 */
   apiKey: 'API Key 管理',
   customDomain: '自定义域名',
-  chatAgentHelper: 'Chat Agent 辅助生成',
+  commonFile: '文件管理',
+  commonSystem: '系统接口',
+  commonOther: '基础功能其他',
+
+  /* 通用-反向调用 */
+  reverseInvokePlugin: '插件',
+  reverseInvokeSandbox: '沙盒',
 
   /* 辅助-团队管理 */
   teamManage: '团队管理',

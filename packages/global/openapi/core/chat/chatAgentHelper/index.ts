@@ -8,7 +8,7 @@ export const ChatAgentHelperPath: OpenAPIPath = {
     post: {
       summary: 'Chat Agent 辅助生成对话接口',
       description: 'Chat Agent 辅助生成对话接口',
-      tags: [DevApiTagsMap.chatAgentHelper],
+      tags: [DevApiTagsMap.aiAuxiliary],
       requestBody: {
         content: {
           'application/json': {

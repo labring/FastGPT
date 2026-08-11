@@ -20,7 +20,6 @@ import { DatasetsContext } from './context';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
-  deleteDatasetCollaborators,
   getCollaboratorList,
   postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
@@ -458,11 +457,6 @@ function List() {
             roleList: DatasetRoleList,
             onUpdateCollaborators: (props) =>
               postUpdateDatasetCollaborators({
-                ...props,
-                datasetId: editPerDataset._id
-              }),
-            onDelOneCollaborator: async (props) =>
-              deleteDatasetCollaborators({
                 ...props,
                 datasetId: editPerDataset._id
               }),

@@ -10,13 +10,13 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import {
+  OptimizeCodeBodySchema,
+  OptimizeCodeResponseSchema,
+  type OptimizeCodeBody
+} from '@fastgpt/global/openapi/core/workflow/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
-
-type OptimizeCodeBody = {
-  optimizerInput: string;
-  model: string;
-  conversationHistory?: Array<ChatCompletionMessageParam>;
-};
 
 const getPromptNodeCopilotSystemPrompt = () => {
   return `
@@ -84,9 +84,16 @@ function main({paramName, paramRefer, paramType}) {
 };
 
 async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseType) {
-  try {
-    const { optimizerInput, model, conversationHistory = [] } = req.body;
+  const {
+    optimizerInput,
+    model,
+    conversationHistory = []
+  } = parseApiInput({
+    req,
+    bodySchema: OptimizeCodeBodySchema
+  }).body;
 
+  try {
     const { teamId, tmbId } = await authCert({
       req,
       authToken: true,
@@ -122,15 +129,17 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
         responseWrite({
           res,
           event: SseResponseEventEnum.answer,
-          data: JSON.stringify({
-            choices: [
-              {
-                delta: {
-                  content: text
+          data: OptimizeCodeResponseSchema.parse(
+            JSON.stringify({
+              choices: [
+                {
+                  delta: {
+                    content: text
+                  }
                 }
-              }
-            ]
-          })
+              ]
+            })
+          )
         });
       }
     });
@@ -139,7 +148,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
-      data: '[DONE]'
+      data: OptimizeCodeResponseSchema.parse('[DONE]')
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({

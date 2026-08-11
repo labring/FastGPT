@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { type ReadFileResponse, type ReadRawTextByBuffer, type ParsedPage } from '../../type';
-import { postprocessLiteParsePages } from './pdfTextPostprocess';
+import { postprocessPdfPages } from '../pdf/pdfTextPostprocess';
 
 const LITE_PARSE_MAX_PAGES = 100000;
 const LITE_PARSE_BATCH_PAGES = 100;
@@ -71,7 +71,7 @@ export const readPdfByLiteParse = async ({
     pages.push(...result.pages);
   }
 
-  const rawText = postprocessLiteParsePages(pages);
+  const rawText = postprocessPdfPages(pages);
 
   return {
     rawText

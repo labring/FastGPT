@@ -11,57 +11,69 @@ import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorDB/control
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
+import {
+  GetTeamPlanStatusQuerySchema,
+  GetTeamPlanStatusResponseSchema,
+  type GetTeamPlanStatusResponse
+} from '@fastgpt/global/openapi/support/user/team/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<any>
-): Promise<ClientTeamPlanStatusType | undefined> {
-  try {
-    const { teamId } = await authCert({
-      req,
-      authToken: true
-    });
+  _res: NextApiResponse<any>
+): Promise<GetTeamPlanStatusResponse> {
+  parseApiInput({ req, querySchema: GetTeamPlanStatusQuerySchema });
 
-    const [
-      planStatus,
-      usedMember,
-      usedAppAmount,
-      usedDatasetSize,
-      usedDatasetIndexSize,
-      usedRegistrationCount
-    ] = await Promise.all([
-      getTeamPlanStatus({
-        teamId
-      }),
-      MongoTeamMember.countDocuments({
-        teamId,
-        status: { $ne: TeamMemberStatusEnum.leave }
-      }),
-      MongoApp.countDocuments({
-        teamId,
-        type: {
-          $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
-        }
-      }),
-      MongoDataset.countDocuments({
-        teamId,
-        type: { $ne: DatasetTypeEnum.folder }
-      }),
-      getVectorCountByTeamId(teamId),
-      MongoAppRegistration.countDocuments({
-        teamId
-      })
-    ]);
+  const planStatusResult: ClientTeamPlanStatusType | undefined = await (async () => {
+    try {
+      const { teamId } = await authCert({
+        req,
+        authToken: true
+      });
 
-    return {
-      ...planStatus,
-      usedMember,
-      usedAppAmount,
-      usedDatasetSize,
-      usedDatasetIndexSize,
-      usedRegistrationCount
-    };
-  } catch (error) {}
+      const [
+        planStatus,
+        usedMember,
+        usedAppAmount,
+        usedDatasetSize,
+        usedDatasetIndexSize,
+        usedRegistrationCount
+      ] = await Promise.all([
+        getTeamPlanStatus({
+          teamId
+        }),
+        MongoTeamMember.countDocuments({
+          teamId,
+          status: { $ne: TeamMemberStatusEnum.leave }
+        }),
+        MongoApp.countDocuments({
+          teamId,
+          type: {
+            $in: [AppTypeEnum.simple, AppTypeEnum.workflow]
+          }
+        }),
+        MongoDataset.countDocuments({
+          teamId,
+          type: { $ne: DatasetTypeEnum.folder }
+        }),
+        getVectorCountByTeamId(teamId),
+        MongoAppRegistration.countDocuments({
+          teamId
+        })
+      ]);
+
+      return {
+        ...planStatus,
+        usedMember,
+        usedAppAmount,
+        usedDatasetSize,
+        usedDatasetIndexSize,
+        usedRegistrationCount
+      };
+    } catch (error) {}
+  })();
+
+  return GetTeamPlanStatusResponseSchema.parse(planStatusResult);
 }
 
 export default NextAPI(handler);
