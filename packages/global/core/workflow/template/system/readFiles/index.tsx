@@ -26,7 +26,7 @@ export const ReadFilesNode: FlowNodeTemplateType = {
   intro: i18nT('app:workflow.read_files_tip'),
   showStatus: true,
   version: '4.9.2',
-  isTool: false,
+  isTool: true,
   courseUrl: '/guide/build/general/fileInput',
   inputs: [
     {
@@ -35,7 +35,9 @@ export const ReadFilesNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.arrayString,
       label: i18nT('app:workflow.file_url'),
       required: true,
-      value: []
+      value: [],
+      toolDescription: i18nT('app:workflow.file_url'),
+      defaultToAgentGenerated: true
     }
   ],
   outputs: [

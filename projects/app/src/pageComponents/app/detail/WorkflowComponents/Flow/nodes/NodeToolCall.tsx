@@ -28,11 +28,16 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs, catchError } = data;
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
   const splitOutput = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitOutput);
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
+  const { isTool, commonInputs } = useMemoEnhance(
+    () => splitToolInputs(inputs, nodeId),
+    [inputs, nodeId, splitToolInputs]
+  );
   const { successOutputs, errorOutputs } = useMemoEnhance(
     () => splitOutput(outputs),
     [outputs, splitOutput]
@@ -46,12 +51,12 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [inputs]
   );
   const { beforeSandboxInputs, afterSandboxInputs } = React.useMemo(() => {
-    const visibleInputs = inputs.filter(
+    const visibleInputs = commonInputs.filter(
       (input) =>
         input.key !== NodeInputKeyEnum.useAgentSandbox &&
         input.key !== NodeInputKeyEnum.sandboxEntrypoint
     );
-    const sandboxIndex = inputs.findIndex(
+    const sandboxIndex = commonInputs.findIndex(
       (input) => input.key === NodeInputKeyEnum.useAgentSandbox
     );
     if (sandboxIndex < 0) {
@@ -63,13 +68,13 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
     return {
       beforeSandboxInputs: visibleInputs.filter(
-        (input) => inputs.findIndex((item) => item.key === input.key) < sandboxIndex
+        (input) => commonInputs.findIndex((item) => item.key === input.key) < sandboxIndex
       ),
       afterSandboxInputs: visibleInputs.filter(
-        (input) => inputs.findIndex((item) => item.key === input.key) > sandboxIndex
+        (input) => commonInputs.findIndex((item) => item.key === input.key) > sandboxIndex
       )
     };
-  }, [inputs]);
+  }, [commonInputs]);
   const onChangeSandbox = React.useCallback(
     (checked: boolean) => {
       if (!sandboxInput) return;
@@ -107,7 +112,7 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     <NodeCard minW={'480px'} selected={selected} {...data}>
       <Container>
         <IOTitle text={t('common:Input')} />
-        <RenderInput nodeId={nodeId} flowInputList={beforeSandboxInputs} />
+        <RenderInput nodeId={nodeId} flowInputList={beforeSandboxInputs} isTool={isTool} />
         <WorkflowSandboxConfig
           nodeId={nodeId}
           sandboxInput={sandboxInput}
@@ -130,7 +135,7 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             });
           }}
         />
-        <RenderInput nodeId={nodeId} flowInputList={afterSandboxInputs} />
+        <RenderInput nodeId={nodeId} flowInputList={afterSandboxInputs} isTool={isTool} />
       </Container>
       <Container>
         <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} />

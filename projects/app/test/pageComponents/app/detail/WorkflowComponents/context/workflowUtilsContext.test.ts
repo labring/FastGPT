@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { splitToolInputsByMode } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowUtilsContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
+import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 
 describe('splitToolInputsByMode', () => {
   it('keeps Agent-generated editable inputs out of common inputs', () => {
@@ -68,5 +71,36 @@ describe('splitToolInputsByMode', () => {
 
     expect(result.toolInputs).toEqual([]);
     expect(result.commonInputs).toHaveLength(1);
+  });
+
+  it('adds AI-generated mode to fixed inputs when connected as a tool', () => {
+    const classifyInputs = splitToolInputsByMode(ClassifyQuestionModule.inputs, true).commonInputs;
+    const toolCallInputs = splitToolInputsByMode(ToolCallNode.inputs, true).commonInputs;
+
+    [
+      ...classifyInputs.filter((input) =>
+        [
+          NodeInputKeyEnum.aiSystemPrompt,
+          NodeInputKeyEnum.history,
+          NodeInputKeyEnum.userChatInput
+        ].includes(input.key as NodeInputKeyEnum)
+      ),
+      ...toolCallInputs.filter((input) =>
+        [
+          NodeInputKeyEnum.aiSystemPrompt,
+          NodeInputKeyEnum.history,
+          NodeInputKeyEnum.fileUrlList,
+          NodeInputKeyEnum.userChatInput
+        ].includes(input.key as NodeInputKeyEnum)
+      )
+    ].forEach((input) => {
+      expect(input.renderTypeList).toContain(FlowNodeInputTypeEnum.agentGenerated);
+    });
+    expect(
+      classifyInputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)?.selectedType
+    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(
+      toolCallInputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)?.selectedType
+    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
   });
 });

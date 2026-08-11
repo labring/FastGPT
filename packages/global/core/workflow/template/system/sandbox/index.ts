@@ -35,6 +35,7 @@ export const CodeNode: FlowNodeTemplateType = {
     {
       ...Input_Template_DynamicInput,
       description: i18nT('workflow:these_variables_will_be_input_parameters_for_code_execution'),
+      canAgentGenerated: false,
       customInputConfig: {
         selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
         showDescription: false,
@@ -45,6 +46,7 @@ export const CodeNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
       canEdit: true,
+      canAgentGenerated: false,
       key: 'data1',
       label: 'data1',
       customInputConfig: {
@@ -58,6 +60,7 @@ export const CodeNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.string,
       canEdit: true,
+      canAgentGenerated: false,
       key: 'data2',
       label: 'data2',
       customInputConfig: {

@@ -30,6 +30,7 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   name: i18nT('workflow:question_classification'),
   intro: i18nT('workflow:intro_question_classification'),
   showStatus: true,
+  isTool: true,
   version: '4.9.2',
   courseUrl: '/guide/build/workflow/nodes/question_classify',
   inputs: [
@@ -38,10 +39,14 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
       ...Input_Template_System_Prompt,
       label: i18nT('common:core.module.input.label.Background'),
       description: i18nT('common:core.module.input.description.Background'),
-      placeholder: i18nT('common:core.module.input.placeholder.Classify background')
+      placeholder: i18nT('common:core.module.input.placeholder.Classify background'),
+      toolDescription: i18nT('common:core.module.input.label.Background')
     },
-    Input_Template_History,
-    Input_Template_UserChatInput,
+    {
+      ...Input_Template_History,
+      toolDescription: i18nT('common:core.module.input.label.chat history')
+    },
+    { ...Input_Template_UserChatInput, defaultToAgentGenerated: true },
     {
       key: NodeInputKeyEnum.agents,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
