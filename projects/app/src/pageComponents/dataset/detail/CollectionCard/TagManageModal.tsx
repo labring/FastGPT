@@ -279,8 +279,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                                 .includes(currentEditTagContent)
                             ) {
                               onUpdateCollectionTag({
-                                tag: currentEditTagContent,
-                                _id: item._id
+                                ...item,
+                                tag: currentEditTagContent
                               });
                             }
                             setCurrentEditTag(undefined);

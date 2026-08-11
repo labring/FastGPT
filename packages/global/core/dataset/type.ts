@@ -26,6 +26,29 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
 
+/* ===== Tag Type ===== */
+/** 标签类型枚举 */
+export const DatasetCollectionTagTypeEnum = z.enum([
+  'string',
+  'number',
+  'datetime',
+  'array'
+] as const);
+export type DatasetCollectionTagType = z.infer<typeof DatasetCollectionTagTypeEnum>;
+
+/** 迁移常量：新建 array 标签记录的 tag 字段固定值，亦是旧格式过滤改写的条件 key */
+export const DEFAULT_TAG = 'default_tag';
+
+/** Collection 标签值类型（新格式） */
+export const CollectionTagValueSchema = z.object({
+  tagId: z.string().meta({ description: '引用 dataset_collection_tags_v2._id' }),
+  value: z.union([z.string(), z.number(), z.array(z.string())]).meta({
+    description:
+      '标签值。string/number 类型存对应值，datetime 类型存 UTC 毫秒时间戳，array 类型存 string 数组'
+  })
+});
+export type CollectionTagValueType = z.infer<typeof CollectionTagValueSchema>;
+
 /* ===== Chunk ===== */
 export const ChunkSettingsSchema = z.object({
   trainingType: z
@@ -129,7 +152,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   parentId: ParentIdSchema.meta({ description: '父级 ID' }),
   name: z.string().meta({ description: '名称' }),
   type: z.enum(DatasetCollectionTypeEnum).meta({ description: '集合类型' }),
-  tags: z.array(z.string()).optional().meta({ description: '标签' }),
+  tags: z
+    .array(z.union([z.string(), CollectionTagValueSchema]))
+    .optional()
+    .meta({ description: '标签。支持混合格式：String(ObjectId) 旧格式 | { tagId, value } 新格式' }),
 
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
@@ -160,7 +186,10 @@ export const DatasetCollectionTagsSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '标签 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
-  tag: z.string().meta({ description: '标签' })
+  tag: z.string().meta({ description: '标签' }),
+  tagType: DatasetCollectionTagTypeEnum.default('string').meta({
+    description: '标签类型：string(默认)/number/datetime/array'
+  })
 });
 export type DatasetCollectionTagsSchemaType = z.infer<typeof DatasetCollectionTagsSchema>;
 
@@ -329,7 +358,10 @@ export type DatasetItemType = z.infer<typeof DatasetItemSchema>;
 /* ================= tag ===================== */
 export const DatasetTagSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '标签 ID' }),
-  tag: z.string().meta({ description: '标签' })
+  tag: z.string().meta({ description: '标签' }),
+  tagType: DatasetCollectionTagTypeEnum.default('string').meta({
+    description: '标签类型：string(默认)/number/datetime/array'
+  })
 });
 export type DatasetTagType = z.infer<typeof DatasetTagSchema>;
 
@@ -341,6 +373,19 @@ export type TagUsageType = z.infer<typeof TagUsageSchema>;
 
 /* ================= collection ===================== */
 export const DatasetCollectionItemSchema = CollectionWithDatasetSchema.extend({
+  // 详情接口的 tags 由 collectionTagsToTagLabel 解析为标签名格式（string | { tag, value }），区别于存储格式（string | { tagId, value }）
+  tags: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          tag: z.string(),
+          value: z.union([z.string(), z.number()])
+        })
+      ])
+    )
+    .optional()
+    .meta({ description: '标签。string 为标签名；新格式为 { tag, value }' }),
   sourceName: z.string().meta({ description: '来源名称' }),
   sourceId: z.string().optional().meta({ description: '来源 ID' }),
   file: z

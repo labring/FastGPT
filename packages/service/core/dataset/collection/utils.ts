@@ -1,8 +1,14 @@
 import { MongoDatasetCollection } from './schema';
 import type { ClientSession } from '../../../common/mongo';
-import { MongoDatasetCollectionTags } from '../tag/schema';
+import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import {
+  DEFAULT_TAG,
+  type CollectionTagValueType,
+  type CollectionWithDatasetType,
+  type DatasetCollectionTagType
+} from '@fastgpt/global/core/dataset/type';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionSyncResultEnum,
@@ -10,7 +16,6 @@ import {
   DatasetSourceReadTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { readDatasetSourceRawText } from '../read';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
@@ -65,58 +70,158 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
   return new Date();
 }
 
+const normalizeDatasetTagValue = ({
+  tagType,
+  value
+}: {
+  tagType: DatasetCollectionTagType;
+  value: string | number | string[];
+}): { value: string | number | string[]; error?: DatasetErrEnum } => {
+  if (tagType !== 'number' && tagType !== 'datetime') return { value };
+
+  const numericValue =
+    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  if (typeof value === 'string' && value.trim() === '') {
+    return { value, error: DatasetErrEnum.tagValueInvalid };
+  }
+  if (!Number.isFinite(numericValue)) return { value, error: DatasetErrEnum.tagValueInvalid };
+  if (tagType === 'datetime' && Number.isNaN(new Date(numericValue).getTime())) {
+    return { value, error: DatasetErrEnum.tagValueDatetimeInvalid };
+  }
+
+  return { value: numericValue };
+};
+
+export const validateDatasetTagValue = ({
+  tagType,
+  value
+}: {
+  tagType?: DatasetCollectionTagType;
+  value: string | number | string[];
+}): DatasetErrEnum | undefined => {
+  const type = tagType || 'string';
+
+  if (type === 'string' && (typeof value !== 'string' || value.length > 256)) {
+    return DatasetErrEnum.tagValueInvalid;
+  }
+  if (type === 'array') {
+    if (
+      !Array.isArray(value) ||
+      value.length > 64 ||
+      value.some((item) => typeof item !== 'string' || item.length > 256)
+    ) {
+      return DatasetErrEnum.arrayTagValueInvalid;
+    }
+    return undefined;
+  }
+
+  return normalizeDatasetTagValue({ tagType: type, value }).error;
+};
+
+/**
+ * 统一解析 collection 创建时的 tags 入参：
+ * - string 元素（旧格式标签名）→ 归并到 v2 表 default_tag array 标签
+ * - {tag, value} 元素 → 查找 v2 表标签并校验值类型，返回 {tagId, value}
+ *
+ * 返回值可直接写入 collection.tags 字段存储
+ */
 export const createOrGetCollectionTags = async ({
   tags,
   datasetId,
   teamId,
   session
 }: {
-  tags?: string[];
+  tags?: (string | { tag: string; value: string | number | string[] })[];
   datasetId: string;
   teamId: string;
   session?: ClientSession;
-}) => {
+}): Promise<CollectionTagValueType[] | undefined> => {
   if (!tags) return undefined;
-
   if (tags.length === 0) return [];
 
-  const existingTags = await MongoDatasetCollectionTags.find(
-    {
-      teamId,
-      datasetId,
-      tag: { $in: tags }
-    },
-    undefined,
-    { session }
-  ).lean();
-
-  const existingTagContents = existingTags.map((tag) => tag.tag);
-  const newTagContents = tags.filter((tag) => !existingTagContents.includes(tag));
-
-  const newTags = await MongoDatasetCollectionTags.insertMany(
-    newTagContents.map((tagContent) => ({
-      teamId,
-      datasetId,
-      tag: tagContent
-    })),
-    { session, ordered: true }
+  const stringNames = tags.filter((item): item is string => typeof item === 'string');
+  const objectInputs = tags.filter(
+    (item): item is { tag: string; value: string | number | string[] } => typeof item !== 'string'
   );
 
-  return [...existingTags.map((tag) => tag._id), ...newTags.map((tag) => tag._id)];
+  const objectTagNames = objectInputs.map((item) => item.tag);
+  const objectTags = objectTagNames.length
+    ? await MongoDatasetCollectionTagsV2.find(
+        { teamId, datasetId, tag: { $in: objectTagNames } },
+        undefined,
+        { session }
+      ).lean()
+    : [];
+  const objectTagMap = new Map(objectTags.map((tag) => [tag.tag, tag]));
+
+  const normalizedObjectInputs = objectInputs.map((input) => {
+    const tagDoc = objectTagMap.get(input.tag);
+    if (!tagDoc) {
+      return { input, value: input.value, error: DatasetErrEnum.tagNotExist };
+    }
+    const tagType = tagDoc.tagType || 'string';
+    const normalized = normalizeDatasetTagValue({ tagType, value: input.value });
+    const validationError =
+      tagType === 'number' || tagType === 'datetime'
+        ? normalized.error
+        : validateDatasetTagValue({ tagType, value: input.value });
+    return {
+      input,
+      value: normalized.value,
+      error: validationError
+    };
+  });
+
+  for (const { error } of normalizedObjectInputs) {
+    if (error) return Promise.reject(error);
+  }
+
+  const result: CollectionTagValueType[] = [];
+
+  if (stringNames.length > 0) {
+    let defaultTag = await MongoDatasetCollectionTagsV2.findOne(
+      { teamId, datasetId, tag: DEFAULT_TAG },
+      undefined,
+      { session }
+    ).lean();
+    if (!defaultTag) {
+      const [created] = await MongoDatasetCollectionTagsV2.create(
+        [{ teamId, datasetId, tag: DEFAULT_TAG, tagType: 'array' }],
+        { session }
+      );
+      defaultTag = created.toObject ? created.toObject() : created;
+    }
+    result.push({ tagId: String(defaultTag._id), value: stringNames });
+  }
+
+  result.push(
+    ...normalizedObjectInputs.map(({ input, value }) => ({
+      tagId: String(objectTagMap.get(input.tag)!._id),
+      value
+    }))
+  );
+
+  return result;
 };
 
+/**
+ * 将 collection 的 tags（混合格式）解析为可重入的输入格式
+ * - 旧格式 ObjectId → 标签名（如 "safety"）
+ * - 新格式 {tagId, value} → {tag: 标签名, value}（如 {tag: "safety", value: "A"}）
+ *
+ * 输出结果可作为 createOrGetCollectionTags 的 tags 参数，用于同步、重建等场景
+ */
 export const collectionTagsToTagLabel = async ({
   datasetId,
   tags
 }: {
   datasetId: string;
-  tags?: string[];
-}) => {
+  tags?: (string | CollectionTagValueType)[];
+}): Promise<(string | { tag: string; value: string | number | string[] })[] | undefined> => {
   if (!tags) return undefined;
-  if (tags.length === 0) return;
+  if (tags.length === 0) return [];
 
-  // Get all the tags
-  const collectionTags = await MongoDatasetCollectionTags.find({ datasetId }, undefined, {
+  const collectionTags = await MongoDatasetCollectionTagsV2.find({ datasetId }, undefined, {
     ...readFromSecondary
   }).lean();
   const tagsMap = new Map<string, string>();
@@ -126,9 +231,16 @@ export const collectionTagsToTagLabel = async ({
 
   return tags
     .map((tag) => {
-      return tagsMap.get(tag) || '';
+      if (typeof tag === 'string') {
+        const tagName = tagsMap.get(tag);
+        return tagName ?? null;
+      }
+      const tagName = tagsMap.get(tag.tagId);
+      return tagName ? { tag: tagName, value: tag.value } : null;
     })
-    .filter(Boolean);
+    .filter(
+      (item): item is string | { tag: string; value: string | number | string[] } => item !== null
+    );
 };
 
 export const syncCollection = async (collection: CollectionWithDatasetType) => {

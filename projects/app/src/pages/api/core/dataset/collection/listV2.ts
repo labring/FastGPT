@@ -108,7 +108,11 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       : {
           parentId: parentId ? new Types.ObjectId(parentId) : null
         }),
-    ...(filterTags.length ? { tags: { $in: filterTags } } : {})
+    ...(filterTags.length
+      ? {
+          $or: [{ tags: { $in: filterTags } }, { 'tags.tagId': { $in: filterTags } }]
+        }
+      : {})
   };
 
   const selectField = {

@@ -128,6 +128,7 @@ export const getAgentDatasetParams = (
     datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
     datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
     datasetSearchExtensionBg: params[NodeInputKeyEnum.datasetSearchExtensionBg],
+    collectionFilterMatch: params[NodeInputKeyEnum.collectionFilterMatch],
     [NodeInputKeyEnum.authTmbId]: params[NodeInputKeyEnum.authTmbId]
   };
 };

@@ -2,7 +2,7 @@
 import type { NextApiRequest } from 'next';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -100,7 +100,8 @@ async function handler(req: NextApiRequest) {
     };
   }
 
-  const [collections, total]: [DatasetCollectionsListItemType[], number] = await Promise.all([
+  // aggregate 返回原始存储数据（tags 为存储格式），由 collectionTagsToTagLabel 解析后返回
+  const [collections, total]: [DatasetCollectionSchemaType[], number] = await Promise.all([
     MongoDatasetCollection.aggregate([
       {
         $match: match
