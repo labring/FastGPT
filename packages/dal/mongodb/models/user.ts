@@ -21,7 +21,6 @@ export const UserDocumentSchema = new Schema({
     type: String,
     required: true,
     set: (value: string) => hashStr(value),
-    get: (value: string) => hashStr(value),
     select: false
   },
   passwordUpdateTime: Date,
@@ -60,7 +59,7 @@ export const UserDocumentSchema = new Schema({
   contact: String,
   tags: {
     type: [String],
-    enum: UserTagsSchema.enum
+    enum: UserTagsSchema.options
   },
   meta: Object,
   avatar: String

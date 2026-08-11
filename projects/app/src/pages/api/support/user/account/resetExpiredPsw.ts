@@ -18,14 +18,14 @@ async function resetExpiredPswHandler(req: ApiRequestProps): Promise<ResetExpire
     bodySchema: ResetExpiredPswBodySchema
   }).body;
   const { userId, sessionId } = await authCert({ req, authToken: true });
-  const user = await userRepository.findById(userId);
+  const updateTime = await userRepository.findPasswordUpdateTimeById(userId);
 
-  if (!user) {
+  if (!updateTime) {
     return Promise.reject('The password has not expired');
   }
 
   // check if can reset password
-  const canReset = checkPswExpired({ updateTime: user.passwordUpdateTime });
+  const canReset = checkPswExpired({ updateTime: updateTime.passwordUpdateTime });
 
   if (!canReset) {
     return Promise.reject(i18nT('common:user.No_right_to_reset_password'));

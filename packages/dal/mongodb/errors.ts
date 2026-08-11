@@ -5,6 +5,7 @@ import {
   DatabaseTimeoutError,
   DatabaseUnavailableError,
   DatabaseUniqueConstraintError,
+  type DatabaseOperationError,
   isDatabaseOperationError,
   type DatabaseErrorAdapter
 } from '../db';
@@ -30,21 +31,24 @@ const getUniqueFields = (error: ErrorRecord) => {
   return Object.keys(error.keyPattern).sort();
 };
 
-const conflictCodes = new Set([112, 244, 251]);
+// 112 是 WriteConflict；244(NamespaceNotFound)/251(NoSuchTransaction) 不属于写冲突语义。
+const conflictCodes = new Set([112]);
 const timeoutCodes = new Set([50, 262]);
 const unavailableCodes = new Set([6, 7, 89, 91, 189, 9001, 11600, 11602]);
 const timeoutNames = new Set(['MongoNetworkTimeoutError', 'MongoOperationTimeoutError']);
 const unavailableNames = new Set(['MongoNetworkError', 'MongoServerSelectionError']);
 
 export class MongoErrorAdapter implements DatabaseErrorAdapter {
-  adapt(error: unknown) {
+  adapt(error: unknown): DatabaseOperationError {
     if (isDatabaseOperationError(error)) return error;
     if (error instanceof MongoInvalidArgumentError) {
       return new DatabaseInvalidArgumentError(error);
     }
 
     const record = toErrorRecord(error);
-    if (record.code === 11000 || record.code === 11001) {
+    // 序列化/包装后的驱动错误可能携带字符串 code，统一归一化为数字再比较。
+    const code = typeof record.code === 'number' ? record.code : Number(record.code);
+    if (code === 11000 || code === 11001) {
       return new DatabaseUniqueConstraintError({
         fields: getUniqueFields(record),
         cause: error
@@ -54,16 +58,16 @@ export class MongoErrorAdapter implements DatabaseErrorAdapter {
       return new DatabaseInvalidArgumentError(error);
     }
     if (
-      conflictCodes.has(record.code as number) ||
+      conflictCodes.has(code) ||
       record.codeName === 'WriteConflict' ||
       hasErrorLabel(record, 'TransientTransactionError')
     ) {
       return new DatabaseConflictError(error);
     }
-    if (timeoutCodes.has(record.code as number) || timeoutNames.has(String(record.name))) {
+    if (timeoutCodes.has(code) || timeoutNames.has(String(record.name))) {
       return new DatabaseTimeoutError(error);
     }
-    if (unavailableCodes.has(record.code as number) || unavailableNames.has(String(record.name))) {
+    if (unavailableCodes.has(code) || unavailableNames.has(String(record.name))) {
       return new DatabaseUnavailableError(error);
     }
 

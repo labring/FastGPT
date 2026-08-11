@@ -5,6 +5,11 @@ import type { TransactionContext } from '../transaction';
 export type UserRepository = {
   findById(id: EntityId, context?: TransactionContext): Promise<User | null>;
   findByUsername(username: string, context?: TransactionContext): Promise<User | null>;
+  findIdByUsername(username: string, context?: TransactionContext): Promise<string | null>;
+  findPasswordUpdateTimeById(
+    id: EntityId,
+    context?: TransactionContext
+  ): Promise<{ passwordUpdateTime?: Date } | null>;
   findByCredentials(
     credentials: UserCredentials,
     context?: TransactionContext

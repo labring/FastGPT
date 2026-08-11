@@ -1,11 +1,11 @@
 import { type UserType } from '@fastgpt/global/support/user/type';
+import { userDefaultFieldValues } from '@fastgpt/dal';
 import { MongoUser } from './schema';
 import { userRepository } from '../../common/dal';
 import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import type { ClientSession } from '../../common/mongo';
-import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -51,11 +51,11 @@ export async function getUserDetail({
     return {
       id: String(document._id),
       username: document.username,
-      timezone: document.timezone ?? 'Asia/Shanghai',
-      promotionRate: document.promotionRate ?? 0,
-      contact: document.contact,
-      language: document.language ?? LangEnum.zh_CN,
-      tags: document.tags ?? []
+      timezone: document.timezone ?? userDefaultFieldValues.timezone,
+      promotionRate: document.promotionRate ?? userDefaultFieldValues.promotionRate,
+      contact: document.contact ?? undefined,
+      language: document.language ?? userDefaultFieldValues.language,
+      tags: document.tags ?? userDefaultFieldValues.tags
     };
   })();
 

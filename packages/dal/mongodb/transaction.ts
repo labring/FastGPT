@@ -22,7 +22,8 @@ export const getMongoSession = (context?: TransactionContext) => {
 export class MongoTransactionRunner implements TransactionRunner {
   constructor(
     private readonly client: Mongoose = mongoose,
-    private readonly errorAdapter: DatabaseErrorAdapter = new MongoErrorAdapter()
+    private readonly errorAdapter: DatabaseErrorAdapter = new MongoErrorAdapter(),
+    private readonly commitTimeoutMS = 60000
   ) {}
 
   async withTransaction<T>(handler: (context: TransactionContext) => Promise<T>): Promise<T> {
@@ -44,7 +45,7 @@ export class MongoTransactionRunner implements TransactionRunner {
               throw new TransactionHandlerError(error);
             }
           },
-          { maxCommitTimeMS: 60000 }
+          { maxCommitTimeMS: this.commitTimeoutMS }
         );
       } catch (error) {
         operationError =
@@ -58,9 +59,8 @@ export class MongoTransactionRunner implements TransactionRunner {
       try {
         await session.endSession();
       } catch (error) {
-        if (operationError === undefined) {
-          throw this.errorAdapter.adapt(error);
-        }
+        // 事务已提交或已失败，session 清理失败不应覆盖原结果，记录日志避免静默丢失。
+        console.warn('MongoTransactionRunner: failed to end MongoDB session', error);
       }
     }
   }

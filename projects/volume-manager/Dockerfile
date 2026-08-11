@@ -1,7 +1,7 @@
 # Build from repository root:
 #   docker build -f projects/volume-manager/Dockerfile -t fastgpt-volume-manager:latest .
 
-FROM node:24.16.0-alpine AS builder
+FROM node:24.19.0-alpine AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN if [ -z "$proxy" ]; then \
 
 RUN cd /app/projects/volume-manager && pnpm build
 
-FROM node:24.16.0-alpine AS runner
+FROM node:24.19.0-alpine AS runner
 
 WORKDIR /app
 

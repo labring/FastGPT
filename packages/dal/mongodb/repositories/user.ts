@@ -8,7 +8,7 @@ import { toUser } from '../mappers/user';
 import { MongoErrorAdapter } from '../errors';
 import { getUserModel, type UserDocument, type UserMongooseSchemaType } from '../models/user';
 import { getMongoSession } from '../transaction';
-import { toMongoObjectId } from '../utils';
+import { toEntityId, toMongoObjectId } from '../utils';
 
 export class MongoUserRepository implements UserRepository {
   constructor(
@@ -45,6 +45,31 @@ export class MongoUserRepository implements UserRepository {
     });
   }
 
+  /** 仅投影 _id，用于鉴权热路径，避免全文档读取与严格映射。 */
+  async findIdByUsername(username: string, context?: TransactionContext): Promise<string | null> {
+    return this.execute(async () => {
+      const document = await this.withSession(
+        this.model.findOne({ username }).select('_id'),
+        context
+      ).lean<{ _id: unknown }>();
+      return document ? toEntityId(document._id) : null;
+    });
+  }
+
+  /** 仅投影 passwordUpdateTime，供密码过期检查使用；null 归一化为 undefined。 */
+  async findPasswordUpdateTimeById(
+    id: EntityId,
+    context?: TransactionContext
+  ): Promise<{ passwordUpdateTime?: Date } | null> {
+    return this.execute(async () => {
+      const document = await this.withSession(
+        this.model.findById(toMongoObjectId(id)).select('passwordUpdateTime'),
+        context
+      ).lean<{ passwordUpdateTime?: Date | null }>();
+      return document ? { passwordUpdateTime: document.passwordUpdateTime ?? undefined } : null;
+    });
+  }
+
   async findByCredentials(
     credentials: UserCredentials,
     context?: TransactionContext
@@ -76,8 +101,12 @@ export class MongoUserRepository implements UserRepository {
     context?: TransactionContext
   ): Promise<User | null> {
     return this.execute(async () => {
+      // 只更新显式提供的字段，避免 partial patch 中的 undefined 覆盖已存值。
+      const $set = Object.fromEntries(
+        Object.entries(patch).filter(([, value]) => value !== undefined)
+      );
       const document = await this.withSession(
-        this.model.findByIdAndUpdate(toMongoObjectId(id), { $set: patch }, { new: true }),
+        this.model.findByIdAndUpdate(toMongoObjectId(id), { $set }, { new: true }),
         context
       ).lean<UserDocument>();
       return document ? toUser(document) : null;
