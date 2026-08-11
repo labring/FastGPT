@@ -12,10 +12,12 @@ import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/typ
  */
 export const useAgentSkillManager = ({
   nodeId,
-  inputs
+  inputs,
+  onClickDatasetSearch
 }: {
   nodeId: string;
   inputs: FlowNodeInputItemType[];
+  onClickDatasetSearch?: () => void;
 }) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
@@ -88,7 +90,8 @@ export const useAgentSkillManager = ({
     onDeleteTool,
     canUploadFile,
     hasSelectedDataset,
-    useAgentSandbox
+    useAgentSandbox,
+    onClickDatasetSearch
   });
 
   return {

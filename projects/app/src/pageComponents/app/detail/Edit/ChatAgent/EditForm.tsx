@@ -130,7 +130,15 @@ const EditForm = ({
       appForm.chatConfig.fileSelectConfig?.canSelectCustomFileExtension
     ),
     hasSelectedDataset: (appForm.dataset.datasets?.length || 0) > 0,
-    useAgentSandbox: !!appForm.aiSettings.useAgentSandbox
+    useAgentSandbox: !!appForm.aiSettings.useAgentSandbox,
+    onClickDatasetSearch: () => {
+      if (appForm.dataset.datasets?.length > 0) {
+        onOpenDatasetParams();
+        return;
+      }
+
+      onOpenKbSelect();
+    }
   });
 
   const {
