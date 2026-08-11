@@ -189,7 +189,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'400px'} selected={selected} rtDoms={rtDoms} {...data}>
-      {isTool && hasDynamicToolInput(inputs) && (
+      {isTool && hasDynamicToolInput(data) && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>

@@ -27,6 +27,8 @@ export const CodeNode: FlowNodeTemplateType = {
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:code_sandbox_intro'),
   showStatus: true,
+  isTool: true,
+  hasToolInput: true,
   catchError: false,
   courseUrl: '/guide/build/workflow/nodes/sandbox-v2',
   inputs: [

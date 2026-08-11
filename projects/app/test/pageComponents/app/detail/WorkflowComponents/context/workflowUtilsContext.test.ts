@@ -24,6 +24,36 @@ describe('splitToolInputsByMode', () => {
     expect(result.commonInputs.map((input) => input.key)).toEqual(['url']);
   });
 
+  it('keeps manually configured editable tool params in tool inputs', () => {
+    const toolInput = {
+      key: 'query',
+      label: 'query',
+      canEdit: true,
+      isToolParam: true,
+      selectedType: FlowNodeInputTypeEnum.input,
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    };
+
+    const result = splitToolInputsByMode([toolInput], true);
+
+    expect(result.toolInputs).toEqual([toolInput]);
+    expect(result.commonInputs).toEqual([]);
+  });
+
+  it('keeps unmarked editable inputs as code custom variables', () => {
+    const customVariable = {
+      key: 'codeInput',
+      label: 'codeInput',
+      canEdit: true,
+      renderTypeList: [FlowNodeInputTypeEnum.reference]
+    };
+
+    const result = splitToolInputsByMode([customVariable], true);
+
+    expect(result.toolInputs).toEqual([]);
+    expect(result.commonInputs.map((input) => input.key)).toEqual(['codeInput']);
+  });
+
   it('keeps the same input in common inputs when it is not a tool', () => {
     const input = {
       key: 'query',

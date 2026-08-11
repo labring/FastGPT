@@ -139,7 +139,8 @@ const Reference = ({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any,
     // Container nodes (loopRun) need to reference outputs from their sub-workflow.
-    includeChildren: true
+    includeChildren: true,
+    excludeInputKey: inputChildren.key
   });
 
   const onlBlurLabel = useCallback(
