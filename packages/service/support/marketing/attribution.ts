@@ -12,11 +12,36 @@ type ReportCRMVisitorIdentityProps = {
   contact?: string;
 };
 
+export const CRMLifecycleEvent = {
+  Consumption: 'consumption',
+  Recharge: 'recharge',
+  EnterpriseVerification: 'enterprise_verification'
+} as const;
+
+export type CRMLifecycleEvent = (typeof CRMLifecycleEvent)[keyof typeof CRMLifecycleEvent];
+
+export type ReportCRMVisitorLifecycleProps = {
+  visitorId?: string;
+  event: CRMLifecycleEvent;
+  company?: string;
+  summary?: string;
+};
+
 const getContact = (username: string, contact?: string) => {
   const candidates = [contact, username].map((value) => value?.trim()).filter(Boolean) as string[];
   const email = candidates.find((value) => value.includes('@'));
   if (email) return email;
   return candidates.find((value) => /^\+?[\d\s()-]{6,20}$/.test(value));
+};
+
+const getCRMConfig = () => ({
+  apiUrl: serviceEnv.CRM_API_URL?.replace(/\/$/, ''),
+  apiKey: serviceEnv.CRM_API_KEY
+});
+
+export const isCRMReportingConfigured = () => {
+  const { apiUrl, apiKey } = getCRMConfig();
+  return !!apiUrl && !!apiKey;
 };
 
 export const resolveCRMVisitorId = ({
@@ -51,11 +76,11 @@ export const reportCRMVisitorIdentity = async ({
   username,
   contact
 }: ReportCRMVisitorIdentityProps): Promise<void> => {
-  const crmApiUrl = serviceEnv.CRM_API_URL?.replace(/\/$/, '');
+  const { apiUrl: crmApiUrl, apiKey } = getCRMConfig();
   const visitorId = rawVisitorId?.trim();
 
   if (!crmApiUrl || !visitorId) return;
-  if (!serviceEnv.CRM_API_KEY) {
+  if (!apiKey) {
     logger.warn('Skip CRM visitor identity report: CRM_API_KEY is not configured');
     return;
   }
@@ -71,7 +96,7 @@ export const reportCRMVisitorIdentity = async ({
       },
       {
         headers: {
-          'X-API-Key': serviceEnv.CRM_API_KEY
+          'X-API-Key': apiKey
         },
         timeout: 5000
       }
@@ -82,5 +107,43 @@ export const reportCRMVisitorIdentity = async ({
       visitorId,
       userId
     });
+  }
+};
+
+/** 上报单个 CRM 生命周期事件；返回值只表示本次 HTTP 上报是否成功。 */
+export const reportCRMVisitorLifecycle = async ({
+  visitorId: rawVisitorId,
+  event,
+  company,
+  summary
+}: ReportCRMVisitorLifecycleProps): Promise<boolean> => {
+  const { apiUrl, apiKey } = getCRMConfig();
+  const visitorId = rawVisitorId?.trim();
+
+  if (!apiUrl || !apiKey || !visitorId) return false;
+
+  try {
+    await axiosWithoutSSRF.post(
+      `${apiUrl}/contacts/visitor/${encodeURIComponent(visitorId)}/lifecycle`,
+      {
+        event,
+        ...(company?.trim() && { company: company.trim() }),
+        ...(summary?.trim() && { summary: summary.trim() })
+      },
+      {
+        headers: {
+          'X-API-Key': apiKey
+        },
+        timeout: 5000
+      }
+    );
+    return true;
+  } catch (error) {
+    logger.warn('CRM visitor lifecycle report failed', {
+      error,
+      visitorId,
+      event
+    });
+    return false;
   }
 };

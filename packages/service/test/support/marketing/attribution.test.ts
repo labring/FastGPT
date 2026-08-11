@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
+  post: vi.fn(),
   warn: vi.fn(),
   serviceEnv: {
     CRM_API_URL: undefined as string | undefined,
@@ -10,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axiosWithoutSSRF: { patch: mocks.patch }
+  axiosWithoutSSRF: { patch: mocks.patch, post: mocks.post }
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -23,7 +24,9 @@ vi.mock('@fastgpt/service/env', () => ({
 }));
 
 import {
+  CRMLifecycleEvent,
   reportCRMVisitorIdentity,
+  reportCRMVisitorLifecycle,
   resolveCRMVisitorId
 } from '@fastgpt/service/support/marketing/attribution';
 
@@ -52,6 +55,49 @@ describe('resolveCRMVisitorId', () => {
       shouldPersist: true,
       fastgptSem: { keyword: 'FastGPT', visitor_id: 'incoming-visitor' }
     });
+  });
+});
+
+describe('reportCRMVisitorLifecycle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.serviceEnv.CRM_API_URL = 'https://crm.example.com/api/v1/';
+    mocks.serviceEnv.CRM_API_KEY = 'crm-key';
+  });
+
+  it('reports a lifecycle event and optional opportunity details', async () => {
+    await expect(
+      reportCRMVisitorLifecycle({
+        visitorId: 'visitor/1',
+        event: CRMLifecycleEvent.EnterpriseVerification,
+        company: ' FastGPT ',
+        summary: ' AI platform '
+      })
+    ).resolves.toBe(true);
+
+    expect(mocks.post).toHaveBeenCalledWith(
+      'https://crm.example.com/api/v1/contacts/visitor/visitor%2F1/lifecycle',
+      {
+        event: 'enterprise_verification',
+        company: 'FastGPT',
+        summary: 'AI platform'
+      },
+      {
+        headers: { 'X-API-Key': 'crm-key' },
+        timeout: 5000
+      }
+    );
+  });
+
+  it('returns false so a failed event is not marked as reported', async () => {
+    mocks.post.mockRejectedValueOnce(new Error('CRM unavailable'));
+
+    await expect(
+      reportCRMVisitorLifecycle({
+        visitorId: 'visitor-1',
+        event: CRMLifecycleEvent.Consumption
+      })
+    ).resolves.toBe(false);
   });
 });
 
