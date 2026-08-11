@@ -25,8 +25,8 @@ export const UpdatePasswordByOldBodySchema = z
     }
   });
 export type UpdatePasswordByOldBodyType = z.infer<typeof UpdatePasswordByOldBodySchema>;
-export const UpdatePasswordByOldResponseSchema = z.any().meta({
-  description: '用户信息'
+export const UpdatePasswordByOldResponseSchema = z.undefined().meta({
+  description: '密码更新成功'
 });
 export type UpdatePasswordByOldResponseType = z.infer<typeof UpdatePasswordByOldResponseSchema>;
 

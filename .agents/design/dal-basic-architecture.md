@@ -53,12 +53,63 @@ transaction/  数据库无关的事务上下文和事务入口
 
 `null/false` 表示资源不存在，不使用异常。DAL 不决定 HTTP 状态码、用户文案或业务重试策略；原始驱动错误只保留在 `cause` 中供服务端日志使用。Mongo 事务会把已适配错误的原始 cause 交回 driver，由 `withTransaction` 在内部自行判断是否自动重试，该策略不进入公共错误合同。
 
+## 业务侧试接入
+
+`packages/service/common/dal/` 是业务侧的新 DAL 组装目录，不修改原有 `common/mongo`。Mongo DAL 在 service 层拥有**独立连接**，不复用 `connectionMongo`，连接生命周期由 dal/mongo 自己管理。
+
+目录结构：
+
+```text
+packages/service/common/dal/
+  index.ts        # 数据库无关出口：createRepositories() 按 DAL_DB_TYPE 组装 userRepository，导出 transactionRunner 及接口类型（DatabaseAdapter/UserRepository/TransactionRunner）；后续实体增加 team.ts、app.ts
+  mongo/
+    index.ts      # Mongo composition root：createMongoDal(client?)、mongoDal、transactionRunner，唯一接触 MongoAdapter 具体实现的模块
+    connection.ts # MongooseConnection 类 + connection 单例（client/connect/disconnect）
+    config.ts     # 连接参数配置（池大小、超时等）+ 连接事件监听注册 registerMongooseListeners
+```
+
+连接设计：
+
+- `connection.ts` 定义 `MongooseConnection` 类：`client` getter 暴露底层 `Mongoose` 实例（作为 adapter 的 client），`connect(url?)` 负责连接与失败重试，`disconnect()` 断开连接；连接事件监听由 `config.ts` 的 `registerMongooseListeners` 注册；导出单例 `connection`，不使用挂载到 `global` 的缓存模式。
+- dal/mongo 是自包含的 service 层连接模块，不依赖 `common/mongo` 与 `common/mongo/init.ts`：连接参数与监听注册由 `config.ts` 提供，连接与失败重试由 `connection.ts` 实现。
+- 生产接线在 `projects/app/src/instrumentation-node.ts` 增加 `connect-dal-mongo` 初始化步骤（调用 `connection.connect()`）；测试接线在 `test/setup.ts` 连接内存 MongoDB，`afterAll` 断开。
+- 测试 mock（`test/mocks/common/mongo.ts`）mock `connection.connect`，沿用按测试文件/实例隔离的数据库分配，并让 DAL 连接实例与 `connectionMongo` 共享同一测试库，保证迁移期旧 Model 写入的数据可被 DAL Repository 交叉读取；生产环境两者本就指向同一数据库。
+- 业务侧从 `@fastgpt/service/common/dal` 导入：`import { userRepository } from '@fastgpt/service/common/dal'`，调用 `userRepository.findById(...)`；事务入口从同一入口获取 `transactionRunner`，保证 repository 与事务 context 来自同一个 adapter。
+
+解耦约束：
+
+- 业务侧导入路径不带 `mongo`，`userRepository`/`transactionRunner` 的类型一律是 `@fastgpt/dal` 的接口（`UserRepository`/`TransactionRunner`/`DatabaseAdapter`），业务代码不感知具体数据库实现。
+- `common/dal/mongo` 是 service 层 composition root，只负责用独立连接组装 `MongoAdapter` 并导出单例；新增 SQL adapter 时仅替换 `mongo/index.ts` 内部的组装，`common/dal` 的出口和业务导入路径不变。
+- 数据库 adapter 选择由 `DAL_DB_TYPE`（`mongo`/`sql`，默认 `mongo`）决定，声明在 `packages/service/env.ts`；`common/dal/index.ts` 的 `createRepositories()` 按该变量组装 Repository，`sql` 接入前显式失败。
+
+独立连接的代价与边界：
+
+- 应用会存在第二个 Mongo 连接池（大小由 `DB_MAX_LINK` 控制），部署时需确认 Mongo 连接数上限。
+- DAL Model 与旧 Model 指向同一 `users` 集合，索引自动创建幂等；DAL Model 尚未接入业务侧 `addCommonMiddleware` 慢查询日志和 `MongoIndexManager` 统一管理，删除旧 Model 前必须补齐。
+
+首批只迁移不依赖旧 `ClientSession`、Mongoose Document 或字段投影的调用：
+
+- 系统管理员鉴权通过 `userRepository.findById` 查询 root 用户。
+- Chat Completion auth proxy 通过 `userRepository.findByUsername` 获取领域对象的 `id: string`。
+- `authUserExist` 以及不带 session 的 `getUserDetail` 已使用 DAL；`getUserDetail` 对旧 `ClientSession` 保留显式兼容分支。
+- 密码过期检查、过期密码重置、旧密码校验与密码更新已切换到 `UserRepository`。
+
+仍接收旧 `ClientSession` 的业务暂不迁移；这类调用需要先把事务边界整体切换到 DAL 的 `TransactionContext`，不能把两种事务上下文混用。当前明确延后的边界包括：
+
+- 验证码登录会在旧事务中返回并修改 Mongoose Document。
+- 用户资料更新同时修改 TeamMember 和头像资源。
+- root 用户初始化同时创建默认团队。
+- 日志导出中的 `users` `$lookup` 属于跨集合读模型，未下沉到 UserRepository。
+
+迁移期间旧 User Model 仍负责索引同步。DAL Model 尚未接入业务侧 `addCommonMiddleware` 的慢查询日志，也未被 `MongoIndexManager` 管理；在删除旧 Model 前必须补齐这两个生命周期能力。
+
 ## 后续 TODO
 
 - [x] 对齐生产 User Schema、默认值、密码行为与当前索引。
 - [x] 补齐 User 基础 Repository 操作和 Mongo 事务支持。
 - [x] 补齐 mapper、Schema、Repository、事务和索引局部测试。
 - [x] 增加数据库错误 Adapter 与 Mongo 错误映射。
-- 增加 SQL-like User adapter，并验证两种 adapter 的行为契约一致。
+- 增加 SQL-like User adapter（接入 `DAL_DB_TYPE=sql` 分支），并验证两种 adapter 的行为契约一致。
 - 统一 DAL 的分页、唯一约束错误和并发更新抽象。
 - 在确认领域字段后，将 `packages/service/support/user` 的调用逐步迁移到 Repository。
+- 接入独立 DAL 连接后，验证与主连接的索引同步、慢查询日志和生命周期管理。

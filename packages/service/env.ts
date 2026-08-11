@@ -14,6 +14,7 @@ import {
   validateS3Env
 } from './env.util';
 import {
+  DalDbTypeSchema,
   LogLevelSchema,
   StorageVendorSchema,
   StorageCosProtocolSchema,
@@ -31,6 +32,10 @@ export const serviceEnv = createEnv({
   server: {
     // ==================== 基础配置 ====================
     DB_MAX_LINK: IntSchema.min(1).default(5),
+
+    // ==================== 数据访问层（DAL） ====================
+    // 决定业务侧 Repository 使用哪个数据库 adapter；当前仅实现 mongo，sql 待接入
+    DAL_DB_TYPE: DalDbTypeSchema.default('mongo'),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z

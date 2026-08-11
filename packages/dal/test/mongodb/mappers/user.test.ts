@@ -1,4 +1,5 @@
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { Types } from 'mongoose';
 import { describe, expect, it } from 'vitest';
 import { toUser } from '../../../mongodb/mappers/user';
@@ -50,6 +51,26 @@ describe('toUser', () => {
 
     expect(user.lastLoginTmbId).toBeUndefined();
     expect(user.inviterId).toBeUndefined();
+  });
+
+  it('applies production defaults to historical documents with missing fields', () => {
+    const document = createDocument({
+      status: undefined,
+      createTime: undefined,
+      promotionRate: undefined,
+      timezone: undefined,
+      language: undefined,
+      tags: undefined
+    });
+
+    expect(toUser(document)).toMatchObject({
+      status: UserStatusEnum.active,
+      createTime: document._id.getTimestamp(),
+      promotionRate: 0,
+      timezone: 'Asia/Shanghai',
+      language: LangEnum.zh_CN,
+      tags: []
+    });
   });
 
   it('rejects invalid persisted domain values', () => {
