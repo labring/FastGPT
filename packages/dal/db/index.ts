@@ -13,3 +13,6 @@ export {
   isDatabaseOperationError
 } from './errors';
 export type { DatabaseErrorCode } from './errors';
+export { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, normalizePageParams } from './pagination';
+export type { NormalizedPageParams, PageParams, PageResult } from './pagination';
+export type { CasUpdate, ExpectedState } from './concurrency';
