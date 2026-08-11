@@ -180,6 +180,14 @@ describe('runCleanSystemModelConfigs', () => {
     ).resolves.toMatchObject({
       metadata: { defaultToken: 500, maxToken: 3000, weight: 0 }
     });
+
+    await expect(
+      runCleanSystemModelConfigs({ dryRun: false, sampleLimit: 10 })
+    ).resolves.toMatchObject({
+      dryRun: false,
+      updated: 0
+    });
+    expect(updatedReloadSystemModel).toHaveBeenCalledTimes(2);
   });
 
   it('uses dry-run defaults at the authenticated API boundary', async () => {

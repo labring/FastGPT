@@ -168,7 +168,7 @@ export const cleanSystemModelConfig = ({
   };
 };
 
-/** 扫描并按批次清洗历史系统模型配置，默认仅返回预览统计。 */
+/** 扫描并一次性清洗历史系统模型配置；正式执行后统一重载系统模型缓存。 */
 export const runCleanSystemModelConfigs = async ({
   dryRun,
   sampleLimit
@@ -225,7 +225,7 @@ export const runCleanSystemModelConfigs = async ({
     stats.updated = result.modifiedCount;
   }
 
-  if (!dryRun && stats.updated > 0) {
+  if (!dryRun) {
     await updatedReloadSystemModel();
   }
 

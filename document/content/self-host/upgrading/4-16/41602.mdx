@@ -27,7 +27,7 @@ curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' 
 
 清洗会将合法数字字符串转换为 number、将字符串形式的 `priceTiers` 转换为数组，并删除非法的可选数字。非法或缺失的必填数字使用系统默认值：LLM 的 `maxContext/maxResponse/quoteMaxToken` 分别为 `16000/16000/13000`，Embedding 的 `defaultToken/maxToken` 分别为 `500/3000`，价格为 `0`。`functionCall` 保持可选，Embedding 缺失的 `weight` 补为 `0`。
 
-正式执行会统一写入数据，并在存在实际更新时立即刷新系统模型缓存。接口可安全重复执行；再次 dry-run 时，`wouldUpdate` 应为 `0`。无法通过当前完整模型 Schema 的记录不会写入，详情会返回在 `invalidSamples` 中；`sampleLimit` 默认为 `20`，最大为 `100`。
+正式执行会统一写入数据并立即刷新系统模型缓存；即使没有记录需要更新，也会重新构建运行时缓存。接口可安全重复执行；再次 dry-run 时，`wouldUpdate` 应为 `0`。无法通过当前完整模型 Schema 的记录不会写入，详情会返回在 `invalidSamples` 中；`sampleLimit` 默认为 `20`，最大为 `100`。
 
 ## 🚀 新增内容
 

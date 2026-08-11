@@ -45,6 +45,24 @@ export const parsePersistedSystemModelConfig = ({
   return PersistedSystemModelItemSchema.parse(persistedMetadata);
 };
 
+/**
+ * 规范化插件与数据库配置合并后的运行时模型。
+ * 插件协议可能使用 null 表示未配置，最终对外模型统一使用字段缺失表示可选值不存在。
+ */
+export const normalizeRuntimeSystemModelConfig = <
+  T extends { type?: unknown; maxTemperature?: unknown }
+>(
+  model: T
+): T => {
+  if (model.type !== ModelTypeEnum.llm || model.maxTemperature !== null) {
+    return model;
+  }
+
+  const normalizedModel = { ...model };
+  delete normalizedModel.maxTemperature;
+  return normalizedModel;
+};
+
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
 
@@ -176,7 +194,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
             }
           : {})
       };
-      pushModel(modelData);
+      // 按合并后的最终类型处理插件协议空值，避免数据库覆盖类型时遗漏 LLM 规范化。
+      pushModel(normalizeRuntimeSystemModelConfig(modelData));
     });
 
     // Custom model(Not in system config)
