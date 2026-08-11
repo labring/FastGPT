@@ -155,7 +155,7 @@ export const valueMatchesSchema = (value: unknown, schema: Record<string, unknow
   return true;
 };
 
-/** 校验 Automation Metadata 提供的 JSON Schema 子集。 */
+/** 校验节点输入契约提供的 JSON Schema 子集。 */
 export const assertValueSchema = ({
   value,
   schema,

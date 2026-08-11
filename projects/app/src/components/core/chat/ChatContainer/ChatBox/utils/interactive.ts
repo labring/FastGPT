@@ -23,6 +23,14 @@ export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType)
   return finalInteractive.type === 'agentAsk' && !finalInteractive.params.submitted;
 };
 
+/** 判断当前是否正在等待 Workflow Builder 的 Mermaid 方案确认。 */
+export const isPendingWorkflowBuilderPreview = (interactive?: WorkflowInteractiveResponseType) => {
+  if (!interactive) return false;
+
+  const finalInteractive = extractDeepestInteractive(interactive);
+  return finalInteractive.type === 'workflowBuilderPreview' && !finalInteractive.params.answerValue;
+};
+
 /**
  * 判断同条 AI 消息中的 userInput 是否已提交。
  *
@@ -136,9 +144,10 @@ export const persistAgentAskAnswersToHistories = ({
               questions: [
                 {
                   question: val.interactive.params.content,
+                  // AgentPlanAskOption 同时支持纯字符串与带 label/inputMode 的对象形式
                   options: val.interactive.params.options.map((option) => ({
-                    summary: option,
-                    value: option
+                    summary: typeof option === 'string' ? option : option.label,
+                    value: typeof option === 'string' ? option : option.value
                   })),
                   answer: submittedAnswers[0] ?? ''
                 }
@@ -328,7 +337,7 @@ export const getInteractiveByHistories = (
   } else if (finalInteractive.type === 'workflowBuilderPreview') {
     return {
       interactive: finalInteractive,
-      canSendQuery: true
+      canSendQuery: !!finalInteractive.params.answerValue
     };
   }
 

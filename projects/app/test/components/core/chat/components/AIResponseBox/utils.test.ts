@@ -1,9 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import type { WorkflowBuilderPreviewAction } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
   adaptLegacyAgentPlanAskToReadonlyAgentAsk,
-  onSendPrompt
+  onSendPrompt,
+  resolveWorkflowBuilderPreviewAnswerAction
 } from '@/components/core/chat/components/AIResponseBox/utils';
+
+const actions: WorkflowBuilderPreviewAction[] = [
+  { value: 'confirm', label: '确认并开始搭建', inputMode: 'none' },
+  {
+    value: 'revise',
+    label: '修改方案',
+    inputMode: 'text',
+    inputPlaceholder: '请描述需要调整的地方'
+  },
+  { value: 'cancel', label: '取消本次搭建', inputMode: 'none' }
+];
 
 describe('AIResponseBox utils', () => {
   beforeEach(() => {
@@ -52,5 +65,35 @@ describe('AIResponseBox utils', () => {
         submitted: true
       }
     });
+  });
+
+  it('keeps option answers mapped to the selected Builder action', () => {
+    expect(
+      resolveWorkflowBuilderPreviewAnswerAction({
+        actions,
+        customAction: actions[1],
+        answerDetail: { kind: 'option', value: 'confirm' }
+      })
+    ).toEqual({ action: actions[0] });
+  });
+
+  it('keeps custom text answers mapped to the revise Builder action', () => {
+    expect(
+      resolveWorkflowBuilderPreviewAnswerAction({
+        actions,
+        customAction: actions[1],
+        answerDetail: { kind: 'custom', value: '  帮我减少节点  ' }
+      })
+    ).toEqual({ action: actions[1], text: '帮我减少节点' });
+  });
+
+  it('maps the Composer close/skip action to cancel Builder action', () => {
+    expect(
+      resolveWorkflowBuilderPreviewAnswerAction({
+        actions,
+        customAction: actions[1],
+        answerDetail: { kind: 'skip' }
+      })
+    ).toEqual({ action: actions[2] });
   });
 });

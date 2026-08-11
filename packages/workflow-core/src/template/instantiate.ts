@@ -148,6 +148,7 @@ export const instantiateNodeFromTemplate = async ({
         continue;
       }
       input.value = referenceDefault.value;
+      input.selectedType = FlowNodeInputTypeEnum.reference;
       input.selectedTypeIndex = referenceIndex;
     }
   }
