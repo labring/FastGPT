@@ -1,5 +1,5 @@
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { userRepository } from '@fastgpt/service/common/dal';
 
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -9,6 +9,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
 import {
   UpdatePasswordByOldBodySchema,
+  UpdatePasswordByOldResponseSchema,
   type UpdatePasswordByOldBodyType,
   type UpdatePasswordByOldResponseType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
@@ -31,8 +32,8 @@ async function handler(
   }
   const userId = tmb.userId;
   // auth old password
-  const user = await MongoUser.findOne({
-    _id: userId,
+  const user = await userRepository.findByCredentials({
+    id: String(userId),
     password: oldPsw
   });
 
@@ -45,7 +46,7 @@ async function handler(
   }
 
   // 更新对应的记录
-  await MongoUser.findByIdAndUpdate(userId, {
+  await userRepository.updateById(String(userId), {
     password: newPsw,
     passwordUpdateTime: new Date()
   });
@@ -60,7 +61,7 @@ async function handler(
       params: {}
     });
   })();
-  return user;
+  return UpdatePasswordByOldResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

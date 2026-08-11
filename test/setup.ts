@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vit
 import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
+import { connection } from '@fastgpt/service/common/dal/mongo/connection';
 import { loadVectorDBEnv } from './utils/env';
 import type { Mongoose } from '@fastgpt/service/common/mongo';
 
@@ -31,6 +32,7 @@ beforeAll(async () => {
   vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
   await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
   await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
+  await connection.connect(inject('MONGODB_URI'));
 
   initGlobalVariables();
   global.systemEnv = {} as any;
@@ -60,6 +62,7 @@ afterAll(async () => {
   await connectionLogMongo?.connection.db?.dropDatabase();
   await connectionMongo?.disconnect();
   await connectionLogMongo?.disconnect();
+  await connection.disconnect();
 });
 
 beforeEach(async () => {

@@ -1,16 +1,18 @@
 import { type UserType } from '@fastgpt/global/support/user/type';
 import { MongoUser } from './schema';
+import { userRepository } from '../../common/dal';
 import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import type { ClientSession } from '../../common/mongo';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
-    return MongoUser.findOne({ _id: userId });
+    return userRepository.findById(userId);
   }
   if (username) {
-    return MongoUser.findOne({ username });
+    return userRepository.findByUsername(username);
   }
   return null;
 }
@@ -38,9 +40,24 @@ export async function getUserDetail({
     }
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
-  const query = MongoUser.findById(tmb.userId);
-  if (session) query.session(session);
-  const user = await query;
+  const user = await (async () => {
+    if (!session) {
+      return userRepository.findById(String(tmb.userId));
+    }
+
+    // 登录事务仍使用旧 ClientSession；相关集合全部迁入 DAL 后再删除该兼容分支。
+    const document = await MongoUser.findById(tmb.userId).session(session);
+    if (!document) return null;
+    return {
+      id: String(document._id),
+      username: document.username,
+      timezone: document.timezone ?? 'Asia/Shanghai',
+      promotionRate: document.promotionRate ?? 0,
+      contact: document.contact,
+      language: document.language ?? LangEnum.zh_CN,
+      tags: document.tags ?? []
+    };
+  })();
 
   if (!user) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -53,7 +70,7 @@ export async function getUserDetail({
   };
 
   return {
-    _id: user._id,
+    _id: user.id,
     username: user.username,
     avatar: tmb.avatar,
     timezone: user.timezone,

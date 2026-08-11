@@ -5,9 +5,9 @@ import { type AuthModeType, type AuthResponseType } from '../type';
 import { NullPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { authCert, parseHeaderCert } from '../auth/common';
-import { MongoUser } from '../../user/schema';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { NodeHttpRequest } from '../../../types/http';
+import { userRepository } from '../../../common/dal';
 
 /* auth user role  */
 export async function authUserPer(props: AuthModeType): Promise<
@@ -41,9 +41,7 @@ export async function authUserPer(props: AuthModeType): Promise<
 export const authSystemAdmin = async ({ req }: { req: NodeHttpRequest }) => {
   try {
     const result = await authCert({ req, authToken: true });
-    const user = await MongoUser.findOne({
-      _id: result.userId
-    });
+    const user = await userRepository.findById(result.userId);
 
     if (!user || user.username !== 'root') {
       return Promise.reject(ERROR_ENUM.unAuthorization);

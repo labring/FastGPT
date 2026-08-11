@@ -99,6 +99,17 @@ describe('MongoUserRepository.findByCredentials', () => {
     });
   });
 
+  it('supports credential lookup by domain id', async () => {
+    const { repository, model } = createRepository();
+
+    await repository.findByCredentials({ id: userId, password: 'plain-password' });
+
+    expect(model.findOne).toHaveBeenCalledWith({
+      _id: new Types.ObjectId(userId),
+      password: 'plain-password'
+    });
+  });
+
   it('returns null for invalid credentials', async () => {
     const { repository, queries } = createRepository();
     queries.findOne.lean.mockResolvedValueOnce(null);

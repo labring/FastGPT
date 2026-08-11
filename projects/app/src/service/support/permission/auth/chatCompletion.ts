@@ -10,7 +10,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { userRepository } from '@fastgpt/service/common/dal';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -65,12 +65,12 @@ export const resolveChatCompletionEffectiveTmbId = async ({
       : null,
     username
       ? (async () => {
-          const user = await MongoUser.findOne({ username }).select('_id').lean();
+          const user = await userRepository.findByUsername(username);
           if (!user) return null;
 
           return MongoTeamMember.findOne({
             teamId,
-            userId: user._id,
+            userId: user.id,
             status: notLeaveStatus
           })
             .select('_id userId teamId')

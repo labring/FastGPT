@@ -46,12 +46,16 @@ export class MongoUserRepository implements UserRepository {
   }
 
   async findByCredentials(
-    { username, password }: UserCredentials,
+    credentials: UserCredentials,
     context?: TransactionContext
   ): Promise<User | null> {
     return this.execute(async () => {
       const document = await this.withSession(
-        this.model.findOne({ username, password }),
+        this.model.findOne(
+          'id' in credentials
+            ? { _id: toMongoObjectId(credentials.id), password: credentials.password }
+            : { username: credentials.username, password: credentials.password }
+        ),
         context
       ).lean<UserDocument>();
       return document ? toUser(document) : null;

@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { userRepository } from '@fastgpt/service/common/dal';
 import { NextAPI } from '@/service/middleware/entry';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { checkPswExpired } from '@/service/support/user/account/password';
@@ -18,7 +18,7 @@ async function resetExpiredPswHandler(req: ApiRequestProps): Promise<ResetExpire
     bodySchema: ResetExpiredPswBodySchema
   }).body;
   const { userId, sessionId } = await authCert({ req, authToken: true });
-  const user = await MongoUser.findById(userId, 'passwordUpdateTime').lean();
+  const user = await userRepository.findById(userId);
 
   if (!user) {
     return Promise.reject('The password has not expired');
@@ -32,15 +32,10 @@ async function resetExpiredPswHandler(req: ApiRequestProps): Promise<ResetExpire
   }
 
   // 更新对应的记录
-  await MongoUser.updateOne(
-    {
-      _id: userId
-    },
-    {
-      password: newPsw,
-      passwordUpdateTime: new Date()
-    }
-  );
+  await userRepository.updateById(userId, {
+    password: newPsw,
+    passwordUpdateTime: new Date()
+  });
 
   await delUserAllSession(userId, [sessionId]);
 

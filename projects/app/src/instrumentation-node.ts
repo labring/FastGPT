@@ -14,6 +14,7 @@ export async function registerNodeInstrumentation() {
 
     const [
       { connectMongo },
+      { connection },
       { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
@@ -39,6 +40,7 @@ export async function registerNodeInstrumentation() {
       { validateAgentSandboxProxyEnv }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
+      import('@fastgpt/service/common/dal/mongo/connection'),
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
@@ -142,6 +144,16 @@ export async function registerNodeInstrumentation() {
         getErrText,
         meta: {
           mongoLogUrl: MONGO_LOG_URL
+        }
+      }),
+      runInitializationStep({
+        step: 'connect-dal-mongo',
+        stage: InitialErrorEnum.MONGO_ERROR,
+        action: () => connection.connect(),
+        logger,
+        getErrText,
+        meta: {
+          mongoUrl: MONGO_URL
         }
       }),
       runInitializationStep({
