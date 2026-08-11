@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   Box,
   Button,
@@ -19,14 +21,21 @@ import { defaultEditFormData } from './EditFieldModal';
 import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 const EditFieldModal = dynamic(() => import('./EditFieldModal'));
 
-export const hasDynamicToolInput = (inputs: FlowNodeInputItemType[]) =>
-  inputs.some((item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam);
+export const hasDynamicToolInput = (
+  source: Pick<FlowNodeItemType, 'hasToolInput'> | FlowNodeInputItemType[]
+) =>
+  Array.isArray(source)
+    ? source.some(
+        (item) =>
+          item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
+          (item.canEdit === true && item.isToolParam === true)
+      )
+    : source.hasToolInput === true;
 
 const RenderToolInput = ({
   nodeId,
@@ -43,11 +52,7 @@ const RenderToolInput = ({
     [inputs, nodeId, splitToolInputs]
   );
 
-  const dynamicInput = useMemo(() => hasDynamicToolInput(inputs), [inputs]);
-
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
-
-  if (!dynamicInput) return null;
 
   return (
     <>

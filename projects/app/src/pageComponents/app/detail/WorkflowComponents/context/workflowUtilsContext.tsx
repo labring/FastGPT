@@ -30,7 +30,6 @@ import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import {
   canInputBeAgentGenerated,
-  isAgentGeneratedToolInput,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 
@@ -78,10 +77,9 @@ export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: b
 
   inputs.forEach((item) => {
     const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
-    const isAgentGeneratedInput =
-      isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
+    const isToolParamInput = item.canEdit === true && item.isToolParam === true;
 
-    if (isTool && isAgentGeneratedInput && item.canEdit) {
+    if (isTool && isToolParamInput && canInputBeAgentGenerated(normalizedInput)) {
       toolInputs.push(item);
       return;
     }

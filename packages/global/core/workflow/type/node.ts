@@ -203,6 +203,8 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
 
   // Info
   isTool: BoolSchema.optional(), // can be connected by tool
+  /** 是否展示可编辑的工具参数面板，与自定义变量动态输入相互独立。 */
+  hasToolInput: BoolSchema.optional(),
 
   // Action
   forbidDelete: BoolSchema.optional(), // forbid delete
@@ -252,6 +254,7 @@ export const NodeTemplateListItemTypeSchema = z.object({
   name: z.string(),
   intro: z.string().optional(), // template list intro
   isTool: BoolSchema.optional(),
+  hasToolInput: BoolSchema.optional(),
 
   authorAvatar: z.string().optional(),
   author: z.string().optional(),
