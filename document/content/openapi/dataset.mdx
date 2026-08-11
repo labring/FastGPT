@@ -856,7 +856,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
 ### 推送数据到训练队列
 
-注意，每次最多推送 200 组数据。
+注意，每次最多推送 200 组数据。训练账单会在接口调用时自动创建，无需手动传入 `billId`。
 
 <Tabs items={['请求示例','参数说明','响应示例']}>
 <Tab value="请求示例" >
@@ -866,11 +866,10 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "collectionId": "64663f451ba1676dbdef0499",
+    "collectionId": "64663f451ba1676dbdef0499",
     "trainingType": "chunk",
     "prompt": "可选。qa 拆分引导词，chunk 模式下忽略",
-    "billId": "可选。如果有这个值，本次的数据会被聚合到一个订单中，这个值可以重复使用。可以参考 [创建训练订单] 获取该值。",
-    "data": [
+    "data": [
         {
             "q": "你是谁？",
             "a": "我是FastGPT助手"

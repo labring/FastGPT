@@ -21,6 +21,11 @@ export const UpdateUserAccountBodySchema = z.object({
   language: LanguageSchema.optional().meta({
     example: 'zh-CN',
     description: '用户语言偏好'
+  }),
+  balance: z.number().optional().meta({
+    example: 0,
+    description: '已废弃的用户余额字段，仅为兼容旧客户端保留',
+    deprecated: true
   })
 });
 export type UpdateUserAccountBody = z.infer<typeof UpdateUserAccountBodySchema>;

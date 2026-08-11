@@ -1,9 +1,15 @@
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { ChatItemMiniSchema, UserChatItemValueItemSchema } from '../../../core/chat/type';
+import {
+  ChatItemMiniSchema,
+  UserChatItemValueItemSchema,
+  type ChatHistoryItemResType
+} from '../../../core/chat/type';
 import { AppChatConfigTypeSchema } from '../../../core/app/type';
 import { RuntimeEdgeItemTypeSchema } from '../../../core/workflow/type/edge';
+import type { RuntimeNodeItemType } from '../../../core/workflow/runtime/type';
+import type { InteractiveNodeResponseType } from '../../../core/workflow/template/system/interactive/type';
 
 /* ============================================================================
  * API: 调试工作流
@@ -27,9 +33,25 @@ const WorkflowDebugSkipNodeQueueItemSchema = z.object({
 // 调试状态可能携带前端连线的扩展字段，基础字段按业务 Schema 校验并保留其余字段。
 const WorkflowDebugRuntimeEdgeSchema = RuntimeEdgeItemTypeSchema.catchall(z.any());
 
+// 运行时节点和响应包含插件、自定义节点扩展。保留旧接口类型，但不在 API 边界误拦截动态字段。
+const DynamicObjectOpenApiMeta = {
+  override: {
+    type: 'object' as const,
+    additionalProperties: true
+  }
+};
+const WorkflowDebugRuntimeNodeSchema = z
+  .custom<RuntimeNodeItemType>()
+  .meta(DynamicObjectOpenApiMeta);
+const WorkflowDebugNodeResponseDataSchema = z
+  .custom<ChatHistoryItemResType>()
+  .meta(DynamicObjectOpenApiMeta);
+const WorkflowDebugInteractiveResponseSchema = z
+  .custom<InteractiveNodeResponseType>()
+  .meta(DynamicObjectOpenApiMeta);
+
 export const WorkflowDebugBodySchema = z.object({
-  // Runtime node 仍包含大量动态节点配置，此处保持兼容并约束顶层数组结构。
-  nodes: z.array(z.any()).default([]).meta({
+  nodes: z.array(WorkflowDebugRuntimeNodeSchema).default([]).meta({
     description: '待调试的运行时节点列表'
   }),
   edges: z.array(WorkflowDebugRuntimeEdgeSchema).default([]).meta({
@@ -74,10 +96,10 @@ const WorkflowDebugNodeResponseSchema = z.object({
     example: 'run',
     description: '节点本轮是执行还是跳过'
   }),
-  response: z.any().optional().meta({
+  response: WorkflowDebugNodeResponseDataSchema.optional().meta({
     description: '节点执行响应；结构随节点类型变化'
   }),
-  interactiveResponse: z.any().optional().meta({
+  interactiveResponse: WorkflowDebugInteractiveResponseSchema.optional().meta({
     description: '节点需要继续交互时返回的交互信息'
   })
 });
@@ -86,7 +108,7 @@ export const WorkflowDebugResponseSchema = z.object({
   memoryEdges: z.array(WorkflowDebugRuntimeEdgeSchema).meta({
     description: '本轮执行完成后的运行时连线状态'
   }),
-  memoryNodes: z.array(z.any()).meta({
+  memoryNodes: z.array(WorkflowDebugRuntimeNodeSchema).meta({
     description: '本轮执行完成后的运行时节点状态'
   }),
   entryNodeIds: z.array(z.string()).meta({

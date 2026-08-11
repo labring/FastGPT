@@ -68,7 +68,7 @@ export const DevApiTagsMap = {
   customDomain: '自定义域名',
   commonFile: '文件管理',
   commonSystem: '系统接口',
-  commonOther: '其他',
+  commonOther: '基础功能其他',
 
   /* 通用-反向调用 */
   reverseInvokePlugin: '插件',

@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   WorkflowDebugBodySchema,
-  WorkflowDebugResponseSchema
+  WorkflowDebugResponseSchema,
+  type WorkflowDebugBody,
+  type WorkflowDebugResponse
 } from '../../../openapi/core/workflow/api';
+import type { ChatHistoryItemResType } from '../../../core/chat/type';
+import type { RuntimeNodeItemType } from '../../../core/workflow/runtime/type';
+import type { InteractiveNodeResponseType } from '../../../core/workflow/template/system/interactive/type';
 import {
   McpServerToolCallBodySchema,
   McpServerToolListResponseSchema
@@ -62,6 +67,23 @@ describe('Workflow debug and MCP runtime OpenAPI contracts', () => {
     expect(result.nodeResponses.node1.response).toEqual({
       customNodeResult: { nested: true }
     });
+  });
+
+  it('keeps workflow debug dynamic fields compatible with their legacy types', () => {
+    type DebugNodeResponse = WorkflowDebugResponse['nodeResponses'][string];
+
+    expectTypeOf<
+      NonNullable<WorkflowDebugBody['nodes']>[number]
+    >().toEqualTypeOf<RuntimeNodeItemType>();
+    expectTypeOf<
+      WorkflowDebugResponse['memoryNodes'][number]
+    >().toEqualTypeOf<RuntimeNodeItemType>();
+    expectTypeOf<
+      NonNullable<DebugNodeResponse['response']>
+    >().toEqualTypeOf<ChatHistoryItemResType>();
+    expectTypeOf<
+      NonNullable<DebugNodeResponse['interactiveResponse']>
+    >().toEqualTypeOf<InteractiveNodeResponseType>();
   });
 
   it('validates MCP tool calls and preserves JSON Schema extensions', () => {

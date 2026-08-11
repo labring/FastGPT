@@ -871,7 +871,7 @@ Maximum 5 custom indexes per data group
 
 ### Push Data to Training Queue
 
-Note: Maximum 200 data groups per push.
+Each request can push up to 200 data groups. FastGPT automatically creates the training usage record, so you do not need to provide `billId`.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example" >
@@ -881,11 +881,10 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "collectionId": "64663f451ba1676dbdef0499",
+    "collectionId": "64663f451ba1676dbdef0499",
     "trainingType": "chunk",
     "prompt": "Optional. QA split guide prompt, ignored in chunk mode",
-    "billId": "可选。如果有这个值，本次的Data会被聚合到一个订单中，这个值可以重复使用。可以参考 [Create Training Order] 获取该值。",
-    "data": [
+    "data": [
         {
             "q": "Who are you?",
             "a": "I'm FastGPT Assistant"

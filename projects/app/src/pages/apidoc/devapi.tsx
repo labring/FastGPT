@@ -1,11 +1,12 @@
 import { ScalarOpenApiPage } from '@/pageComponents/apidoc/ScalarOpenApiPage';
+import { DevApiTagsMap } from '@fastgpt/global/openapi/tag';
 
 function DevApiDocPage() {
   return (
     <ScalarOpenApiPage
       documentUrl="/api/apidoc/devapi.json"
-      flattenedTagNames={['AI 辅助生成']}
-      tagNameAliases={{ 基础功能其他: '其他' }}
+      flattenedTagNames={[DevApiTagsMap.aiAuxiliary]}
+      tagNameAliases={{ [DevApiTagsMap.commonOther]: '其他' }}
     />
   );
 }

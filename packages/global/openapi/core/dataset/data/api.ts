@@ -272,7 +272,7 @@ export const PushDataBodySchema = z.object({
     description: '自定义提示词'
   }),
   billId: z.string().optional().meta({
-    description: '账单 ID'
+    description: '可选的训练账单 ID；不传时自动创建'
   }),
 
   trainingMode: z.enum(DatasetCollectionDataProcessModeEnum).optional().meta({

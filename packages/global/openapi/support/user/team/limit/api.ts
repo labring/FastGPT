@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IntSchema } from '../../../../../common/zod';
 
 /* ============================================================================
  * API: 检查团队知识库容量限制
@@ -9,7 +10,7 @@ import { z } from 'zod';
  * ============================================================================ */
 
 export const DatasetSizeLimitQuerySchema = z.object({
-  size: z.coerce.number().optional().meta({
+  size: IntSchema.optional().meta({
     example: 100,
     description: '预计新增的知识库索引数量；未传时直接返回检查通过'
   })
