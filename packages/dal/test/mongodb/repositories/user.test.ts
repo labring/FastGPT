@@ -151,6 +151,39 @@ describe('MongoUserRepository.findPasswordUpdateTimeById', () => {
   });
 });
 
+describe('MongoUserRepository.findSemById', () => {
+  it('projects only the fastgpt_sem field and returns the parsed value', async () => {
+    const { repository, model, queries } = createRepository();
+    queries.findById.lean.mockResolvedValueOnce({
+      fastgpt_sem: { keyword: 'FastGPT' }
+    } as unknown as UserDocument);
+
+    const result = await repository.findSemById(userId);
+
+    expect(model.findById).toHaveBeenCalledWith(new Types.ObjectId(userId));
+    expect(queries.findById.select).toHaveBeenCalledWith('fastgpt_sem');
+    expect(result).toEqual({ fastgpt_sem: { keyword: 'FastGPT' } });
+  });
+
+  it('normalizes an invalid fastgpt_sem value to undefined', async () => {
+    const { repository, queries } = createRepository();
+    queries.findById.lean.mockResolvedValueOnce({
+      fastgpt_sem: 'not-an-object'
+    } as unknown as UserDocument);
+
+    await expect(repository.findSemById(userId)).resolves.toEqual({
+      fastgpt_sem: undefined
+    });
+  });
+
+  it('returns null when the user does not exist', async () => {
+    const { repository, queries } = createRepository();
+    queries.findById.lean.mockResolvedValueOnce(null);
+
+    await expect(repository.findSemById(userId)).resolves.toBeNull();
+  });
+});
+
 describe('MongoUserRepository.findByCredentials', () => {
   it('passes raw credentials to the Mongoose schema setter', async () => {
     const { repository, model } = createRepository();

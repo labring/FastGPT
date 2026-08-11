@@ -1,8 +1,12 @@
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { verification, VerificationMaterialError } from '../../../../tmpData/verification';
-import { MongoUser } from '../../../schema';
+import {
+  verification,
+  VerificationMaterialError,
+  consumeInTransactionWithDal
+} from '../../../../tmpData/verification';
+import { userRepository } from '../../../../../common/dal';
 import { serviceEnv } from '../../../../../env';
 import {
   assertPasswordVerificationConsumeRateLimit,
@@ -38,12 +42,9 @@ const defaultDependencies: PasswordVerificationDependencies = {
       data: { preLoginCode: code },
       ttlPreset
     }),
-  findUserByCredentials: ({ username, password, session }) => {
-    const query = MongoUser.findOne({ username, password });
-    if (session) query.session(session);
-    return query;
-  },
-  consumeInTransaction: verification.consumeInTransaction
+  findUserByCredentials: ({ username, password }) =>
+    userRepository.findByCredentials({ username, password }),
+  consumeInTransaction: consumeInTransactionWithDal
 };
 
 /**
@@ -96,17 +97,16 @@ export class PasswordVerificationService {
           key: params.username,
           match: { preLoginCode: params.code }
         },
-        async ({ session }) => {
+        async ({ dalContext }) => {
           const user = await this.dependencies.findUserByCredentials({
             username: params.username,
-            password: params.password,
-            session
+            password: params.password
           });
           if (!user) {
             return Promise.reject(UserErrEnum.account_psw_error);
           }
 
-          return handler({ user, session });
+          return handler({ user, dalContext });
         }
       );
     } catch (error) {

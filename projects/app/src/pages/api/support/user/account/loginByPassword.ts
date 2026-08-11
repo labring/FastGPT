@@ -1,4 +1,5 @@
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
+import { userRepository } from '@fastgpt/service/common/dal';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
@@ -38,7 +39,7 @@ async function handler(
         code,
         purpose: 'login'
       },
-      async ({ user, session }) => {
+      async ({ user, dalContext }) => {
         if (user.status === UserStatusEnum.forbidden) {
           return Promise.reject('Invalid account!');
         }
@@ -49,28 +50,30 @@ async function handler(
 
         const userDetail = await getUserDetail({
           tmbId: user?.lastLoginTmbId,
-          userId: user._id,
-          isRoot: username === 'root',
-          session
+          userId: user.id,
+          isRoot: username === 'root'
         });
 
-        user.lastLoginTmbId = userDetail.team.tmbId;
-        user.language = language;
         const visitorIdentity = resolveCRMVisitorId({
           storedFastgptSem: user.fastgpt_sem,
           incomingVisitorId: fastgpt_sem?.visitor_id
         });
-        if (visitorIdentity.shouldPersist) {
-          user.fastgpt_sem = visitorIdentity.fastgptSem;
-        }
-        await user.save({ session });
+        await userRepository.updateById(
+          user.id,
+          {
+            lastLoginTmbId: userDetail.team.tmbId,
+            language,
+            ...(visitorIdentity.shouldPersist ? { fastgpt_sem: visitorIdentity.fastgptSem } : {})
+          },
+          dalContext
+        );
 
         return { user, userDetail, visitorIdentity };
       }
     );
 
   const token = await createUserSession({
-    userId: user._id,
+    userId: user.id,
     teamId: userDetail.team.teamId,
     tmbId: userDetail.team.tmbId,
     isRoot: username === 'root',
@@ -81,14 +84,14 @@ async function handler(
 
   void reportCRMVisitorIdentity({
     visitorId: visitorIdentity.visitorId,
-    userId: String(user._id),
+    userId: user.id,
     username: user.username,
     contact: user.contact
   });
 
   pushTrack.login({
     type: 'password',
-    uid: user._id,
+    uid: user.id,
     teamId: userDetail.team.teamId,
     tmbId: userDetail.team.tmbId
   });

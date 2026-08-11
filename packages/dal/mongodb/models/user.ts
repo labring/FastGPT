@@ -6,6 +6,7 @@ import mongoose, { Schema, type InferSchemaType, type Model, type Mongoose } fro
 import { tables } from '../../db';
 import { defineIndex } from '../indexes';
 import type { WithId__v } from '../types';
+import { getDalModel } from './helper';
 
 export const UserDocumentSchema = new Schema({
   status: {
@@ -75,6 +76,5 @@ export type UserMongooseSchemaType = InferSchemaType<typeof UserDocumentSchema>;
 export type UserDocument = WithId__v<UserMongooseSchemaType>;
 
 export const getUserModel = (client: Mongoose = mongoose): Model<UserMongooseSchemaType> => {
-  const model = client.models.User as Model<UserMongooseSchemaType> | undefined;
-  return model ?? client.model('User', UserDocumentSchema, tables.user);
+  return getDalModel<UserMongooseSchemaType>(client, 'User', UserDocumentSchema, tables.user);
 };

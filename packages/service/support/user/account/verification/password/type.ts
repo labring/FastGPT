@@ -1,17 +1,16 @@
-import type { HydratedDocument } from 'mongoose';
-import type { UserModelSchema } from '@fastgpt/global/support/user/type';
+import type { User } from '@fastgpt/dal';
+import type { TransactionContext } from '../../../../../common/dal';
 import type {
   PasswordVerificationPurpose,
   VerificationTtlPreset,
   VerificationType
 } from '@fastgpt/global/support/user/account/verification/type';
-import type { ClientSession } from '../../../../../common/mongo';
 import type {
-  VerificationConsumeContext,
+  VerificationConsumeDalContext,
   VerificationConsumeParams
 } from '../../../../tmpData/verification';
 
-export type PasswordVerificationUser = HydratedDocument<UserModelSchema>;
+export type PasswordVerificationUser = User;
 
 export type { PasswordVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 
@@ -33,7 +32,7 @@ export type VerifyPasswordCredentialsParams = {
 
 export type PasswordVerificationHandler<T> = (params: {
   user: PasswordVerificationUser;
-  session: ClientSession;
+  dalContext: TransactionContext;
 }) => Promise<T>;
 
 export type PasswordVerificationDependencies = {
@@ -55,10 +54,9 @@ export type PasswordVerificationDependencies = {
   findUserByCredentials: (params: {
     username: string;
     password: string;
-    session?: ClientSession;
   }) => Promise<PasswordVerificationUser | null>;
   consumeInTransaction: <T extends VerificationType, R>(
     params: VerificationConsumeParams<T>,
-    handler: (context: VerificationConsumeContext<T>) => Promise<R>
+    handler: (context: VerificationConsumeDalContext<T>) => Promise<R>
   ) => Promise<R>;
 };

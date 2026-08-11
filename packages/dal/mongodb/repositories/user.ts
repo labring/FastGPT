@@ -10,6 +10,7 @@ import { getUserModel, type UserDocument, type UserMongooseSchemaType } from '..
 import { casUpdateById } from '../concurrency';
 import { getMongoSession } from '../transaction';
 import { toEntityId, toMongoObjectId } from '../utils';
+import { FastGPT_SEM_Schema, type FastGPTSemType } from '@fastgpt/global/support/marketing/type';
 
 export class MongoUserRepository implements UserRepository {
   constructor(
@@ -85,6 +86,23 @@ export class MongoUserRepository implements UserRepository {
         context
       ).lean<UserDocument>();
       return document ? toUser(document) : null;
+    });
+  }
+
+  /** 仅投影 fastgpt_sem；非法形状归一化为 undefined，避免污染 CRM 归因。 */
+  async findSemById(
+    id: EntityId,
+    context?: TransactionContext
+  ): Promise<{ fastgpt_sem?: FastGPTSemType } | null> {
+    return this.execute(async () => {
+      const document = await this.withSession(
+        this.model.findById(toMongoObjectId(id)).select('fastgpt_sem'),
+        context
+      ).lean<{ fastgpt_sem?: unknown }>();
+      if (!document) return null;
+
+      const parsed = FastGPT_SEM_Schema.safeParse(document.fastgpt_sem);
+      return { fastgpt_sem: parsed.success ? parsed.data : undefined };
     });
   }
 

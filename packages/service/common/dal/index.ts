@@ -4,6 +4,8 @@ import { createMongoDal } from './mongo';
 
 export type { DatabaseAdapter } from '@fastgpt/dal/db';
 export type { UserRepository } from '@fastgpt/dal/ports';
+export type { TeamRepository } from '@fastgpt/dal/ports';
+export type { TmpDataRepository } from '@fastgpt/dal/ports';
 export type { TransactionContext, TransactionRunner } from '@fastgpt/dal/transaction';
 
 function selectDal(): DatabaseAdapter {
@@ -22,4 +24,4 @@ function selectDal(): DatabaseAdapter {
 // 只实例化一次 adapter，保证 userRepository 与 transactionRunner 来自同一个 adapter 实例。
 const dal = selectDal();
 
-export const { transactionRunner, userRepository } = dal;
+export const { transactionRunner, userRepository, teamRepository, tmpDataRepository } = dal;

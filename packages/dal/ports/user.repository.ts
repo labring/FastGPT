@@ -2,6 +2,7 @@ import type { ExpectedState } from '../db';
 import type { CreateUser, UpdateUser, User, UserCredentials } from '../domain/user';
 import type { EntityId } from '../domain/types';
 import type { TransactionContext } from '../transaction';
+import type { FastGPTSemType } from '@fastgpt/global/support/marketing/type';
 
 export type UserRepository = {
   findById(id: EntityId, context?: TransactionContext): Promise<User | null>;
@@ -11,6 +12,11 @@ export type UserRepository = {
     id: EntityId,
     context?: TransactionContext
   ): Promise<{ passwordUpdateTime?: Date } | null>;
+  /** 仅投影 fastgpt_sem，供 CRM 营销归因读取；不返回完整文档。 */
+  findSemById(
+    id: EntityId,
+    context?: TransactionContext
+  ): Promise<{ fastgpt_sem?: FastGPTSemType } | null>;
   findByCredentials(
     credentials: UserCredentials,
     context?: TransactionContext

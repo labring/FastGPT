@@ -3,6 +3,8 @@ import type { DatabaseAdapter } from '../db';
 import type { DatabaseErrorAdapter } from '../db';
 import { MongoErrorAdapter } from './errors';
 import { createMongoUserRepository } from './repositories/user';
+import { createMongoTeamRepository } from './repositories/team';
+import { createMongoTmpDataRepository } from './repositories/tmpData';
 import { MongoTransactionRunner } from './transaction';
 
 export type MongoAdapterDependencies = {
@@ -13,6 +15,8 @@ export type MongoAdapterDependencies = {
 /** MongoDB adapter，保证所有仓储和事务共享同一个 Mongoose client。 */
 export class MongoAdapter implements DatabaseAdapter {
   readonly userRepository;
+  readonly teamRepository;
+  readonly tmpDataRepository;
   readonly transactionRunner;
   readonly errorAdapter;
 
@@ -22,6 +26,8 @@ export class MongoAdapter implements DatabaseAdapter {
   }: MongoAdapterDependencies = {}) {
     this.errorAdapter = errorAdapter;
     this.userRepository = createMongoUserRepository(client, errorAdapter);
+    this.teamRepository = createMongoTeamRepository(client, errorAdapter);
+    this.tmpDataRepository = createMongoTmpDataRepository(client, errorAdapter);
     this.transactionRunner = new MongoTransactionRunner(client, errorAdapter);
   }
 }

@@ -1,7 +1,7 @@
 import { successMarkerCache, type SuccessMarkerParams } from '@fastgpt/dal/redis/caches';
 import { FastGPT_SEM_Schema } from '@fastgpt/global/support/marketing/type';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { MongoUser } from '../../user/schema';
+import { userRepository } from '../../../common/dal';
 import { MongoTeam } from '../../user/team/teamSchema';
 import {
   isCRMReportingConfigured,
@@ -84,7 +84,7 @@ const reportCRMTeamEventOnce = async ({
     const team = await MongoTeam.findById(teamId, 'ownerId name').lean();
     if (!team?.ownerId) return;
 
-    const user = await MongoUser.findById(team.ownerId, 'fastgpt_sem').lean();
+    const user = await userRepository.findSemById(String(team.ownerId));
     const visitorId = getVisitorId(user?.fastgpt_sem);
     const success = await report({
       cloudUserId: String(team.ownerId),

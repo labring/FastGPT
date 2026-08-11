@@ -11,6 +11,8 @@ import {
   type VerificationTtlPreset
 } from '@fastgpt/global/support/user/account/verification/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { transactionRunner, tmpDataRepository } from '../../common/dal';
+import type { TransactionContext } from '../../common/dal';
 
 export type Scene = AccountVerificationPurpose;
 export type Type = VerificationType;
@@ -56,6 +58,11 @@ export type VerificationConsumeParams<T extends Type> = {
 export type VerificationConsumeContext<T extends Type> = {
   material: VerificationMaterial<T>;
   session: ClientSession;
+};
+
+export type VerificationConsumeDalContext<T extends Type> = {
+  material: VerificationMaterial<T>;
+  dalContext: TransactionContext;
 };
 
 export class VerificationMaterialError extends Error {
@@ -243,4 +250,40 @@ export const verification = {
       return result;
     });
   }
+};
+
+const getActiveFilterParams = <T extends Type>(params: VerificationConsumeParams<T>) => ({
+  dataId: getDataId(params),
+  match: params.match as Record<string, unknown> | undefined
+});
+
+/**
+ * 在同一 DAL 事务内读取材料、执行业务回调，并在回调成功后消费材料。
+ *
+ * 与 consumeInTransaction 的差异：事务上下文是 DAL TransactionContext，
+ * 回调内只能使用 DAL Repository 访问数据库（旧 Model 无法参与 DAL 事务）。
+ */
+export const consumeInTransactionWithDal = async <T extends Type, R>(
+  params: VerificationConsumeParams<T>,
+  handler: (context: VerificationConsumeDalContext<T>) => Promise<R>
+): Promise<R> => {
+  return transactionRunner.withTransaction(async (dalContext) => {
+    const filter = getActiveFilterParams(params);
+    const record = await tmpDataRepository.findActiveMaterial(filter, dalContext);
+    if (!record) {
+      throw new VerificationMaterialError();
+    }
+
+    const result = await handler({
+      material: record.data as VerificationMaterial<T>,
+      dalContext
+    });
+
+    const deleted = await tmpDataRepository.deleteActiveMaterial(filter, dalContext);
+    if (!deleted) {
+      throw new VerificationMaterialError();
+    }
+
+    return result;
+  });
 };

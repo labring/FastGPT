@@ -9,7 +9,7 @@ import {
   getDataId,
   VerificationMaterialError
 } from '@fastgpt/service/support/tmpData/verification';
-import type { ClientSession } from '@fastgpt/service/common/mongo';
+import type { TransactionContext } from '@fastgpt/service/common/dal';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -24,7 +24,7 @@ const createDependencies = (
   consumeInTransaction: vi.fn(async (_params, handler) =>
     handler({
       material: { preLoginCode: 'ABC123' },
-      session: undefined as unknown as ClientSession
+      dalContext: Symbol('test-transaction') as TransactionContext
     })
   ),
   ...overrides
@@ -98,7 +98,7 @@ describe('PasswordVerificationService default adapters', () => {
         dataId: getDataId({ scene: 'login', type: 'password', key: username })
       })
     ).resolves.toBeNull();
-    expect(String(result._id)).toBe(String(storedUser._id));
+    expect(result.id).toBe(String(storedUser._id));
   });
 });
 
@@ -162,23 +162,23 @@ describe('PasswordVerificationService.withVerifiedCredentials', () => {
     expect(dependencies.findUserByCredentials).not.toHaveBeenCalled();
   });
 
-  it('passes the matched user and transaction session to the business callback', async () => {
-    const user = { _id: 'user-id' } as unknown as PasswordVerificationUser;
-    const session = {} as ClientSession;
+  it('passes the matched user and DAL transaction context to the business callback', async () => {
+    const user = { id: 'user-id' } as unknown as PasswordVerificationUser;
+    const dalContext = Symbol('test-transaction') as TransactionContext;
     const consumeInTransaction = vi.fn(async (_params, handler) =>
-      handler({ material: { preLoginCode: 'ABC123' }, session })
+      handler({ material: { preLoginCode: 'ABC123' }, dalContext })
     );
     const dependencies = createDependencies({
       findUserByCredentials: vi.fn(async (params) => {
-        expect(params.session).toBe(session);
+        expect(params).not.toHaveProperty('session');
         return user;
       }),
       consumeInTransaction
     });
     const service = new PasswordVerificationService(dependencies);
-    const handler = vi.fn(async ({ user: matchedUser, session: callbackSession }) => {
+    const handler = vi.fn(async ({ user: matchedUser, dalContext: callbackContext }) => {
       expect(matchedUser).toBe(user);
-      expect(callbackSession).toBe(session);
+      expect(callbackContext).toBe(dalContext);
       return 'completed';
     });
 

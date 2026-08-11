@@ -3,6 +3,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../logger';
 import { serviceEnv } from '../../../env';
 import { createDefaultMongooseConnectOptions, registerMongooseListeners } from './config';
+import { syncDalModelIndexes } from './lifecycle';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
@@ -32,6 +33,10 @@ export class MongooseConnection {
       const options = createDefaultMongooseConnectOptions();
       await db.connect(url, {
         ...options
+      });
+      // DAL Model 索引同步与旧 Model 同样为异步补偿：失败只记录日志，不阻塞启动。
+      void syncDalModelIndexes(db).catch((error) => {
+        logger.warn('DAL MongoDB index sync failed during connect', { error });
       });
       return db;
     } catch (error) {

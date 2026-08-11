@@ -111,5 +111,9 @@ packages/service/common/dal/
 - [x] 增加数据库错误 Adapter 与 Mongo 错误映射。
 - [ ] ~~增加 SQL-like User adapter（接入 `DAL_DB_TYPE=sql` 分支）~~ 已延后：整个 MongoDB 重构完成后再考虑，另起项目跟进。
 - [x] 统一 DAL 的分页、唯一约束错误和并发更新抽象。
-- 在确认领域字段后，将 `packages/service/support/user` 的调用逐步迁移到 Repository。
+- [x] 将 `packages/service/support/user` 的调用迁移到 Repository（M9：loginByPassword /
+  update.ts / initRootUser / crm.ts / getUserDetail 兼容分支，详见
+  [dal-m9-user-call-migration.md](./dal-m9-user-call-migration.md)）。
 - 接入独立 DAL 连接后，验证与主连接的索引同步、慢查询日志和生命周期管理。
+  （M10 代码接入完成：慢查询中间件 + MongoIndexManager 同步；运行时验证依赖 M11
+  连接池部署观测，详见 [dal-m10-model-lifecycle.md](./dal-m10-model-lifecycle.md)。）

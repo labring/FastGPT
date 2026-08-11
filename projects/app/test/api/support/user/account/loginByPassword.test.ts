@@ -92,7 +92,7 @@ describe('loginByPassword API', () => {
     expect(setCookie).toHaveBeenCalled();
     expect(pushTrack.login).toHaveBeenCalledWith({
       type: 'password',
-      uid: testUser._id,
+      uid: String(testUser._id),
       teamId: String(testTeam._id),
       tmbId: String(testTmb._id)
     });
