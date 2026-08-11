@@ -2,7 +2,7 @@ import { successMarkerCache, type SuccessMarkerParams } from '@fastgpt/dal/redis
 import { FastGPT_SEM_Schema } from '@fastgpt/global/support/marketing/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { MongoUser } from '../../user/schema';
-import { MongoTeamMember } from '../../user/team/teamMemberSchema';
+import { MongoTeam } from '../../user/team/teamSchema';
 import {
   isCRMReportingConfigured,
   reportCRMVisitorLifecycle,
@@ -90,24 +90,24 @@ export const reportCRMUserLifecycleOnce = async ({
   }
 };
 
-export const reportCRMTeamMemberLifecycleOnce = async ({
-  tmbId,
+export const reportCRMTeamLifecycleOnce = async ({
+  teamId,
   ...details
-}: LifecycleDetails & { tmbId: string }): Promise<void> => {
+}: LifecycleDetails & { teamId: string }): Promise<void> => {
   if (!isCRMReportingConfigured()) return;
 
   try {
-    const member = await MongoTeamMember.findById(tmbId, 'userId').lean();
-    if (!member?.userId) return;
+    const team = await MongoTeam.findById(teamId, 'ownerId').lean();
+    if (!team?.ownerId) return;
 
     return reportCRMUserLifecycleOnce({
-      userId: String(member.userId),
+      userId: String(team.ownerId),
       ...details
     });
   } catch (error) {
-    logger.warn('CRM team member lifecycle resolution failed', {
+    logger.warn('CRM team lifecycle resolution failed', {
       error,
-      tmbId,
+      teamId,
       event: details.event
     });
   }

@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   report: vi.fn(),
   configured: vi.fn(),
   findUser: vi.fn(),
-  findMember: vi.fn(),
+  findTeam: vi.fn(),
   warn: vi.fn()
 }));
 
@@ -28,9 +28,9 @@ vi.mock('@fastgpt/service/support/user/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: {
-    findById: (...args: unknown[]) => ({ lean: () => mocks.findMember(...args) })
+vi.mock('@fastgpt/service/support/user/team/teamSchema', () => ({
+  MongoTeam: {
+    findById: (...args: unknown[]) => ({ lean: () => mocks.findTeam(...args) })
   }
 }));
 
@@ -46,7 +46,7 @@ vi.mock('@fastgpt/service/support/marketing/attribution', async (importOriginal)
 
 import {
   CRMLifecycleEvent,
-  reportCRMTeamMemberLifecycleOnce,
+  reportCRMTeamLifecycleOnce,
   reportCRMVisitorLifecycleOnce
 } from '@fastgpt/service/support/marketing/interface';
 
@@ -113,12 +113,12 @@ describe('CRM lifecycle interface', () => {
     expect(mocks.warn).toHaveBeenCalled();
   });
 
-  it('resolves the visitor id from a team member through the stored user data', async () => {
-    mocks.findMember.mockResolvedValueOnce({ userId: 'user-1' });
+  it('resolves the visitor id from the team owner stored user data', async () => {
+    mocks.findTeam.mockResolvedValueOnce({ ownerId: 'user-1' });
     mocks.findUser.mockResolvedValueOnce({ fastgpt_sem: { visitor_id: 'stored-visitor' } });
 
-    await reportCRMTeamMemberLifecycleOnce({
-      tmbId: 'tmb-1',
+    await reportCRMTeamLifecycleOnce({
+      teamId: 'team-1',
       event: CRMLifecycleEvent.Consumption
     });
 
