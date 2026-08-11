@@ -1,7 +1,7 @@
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import {
   getActiveAccountCancellationByUserId,
-  getActiveAccountCancellationsByTeamIds
+  getActiveAccountCancellationsByTeams
 } from '../account/cancellation/read';
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
@@ -22,6 +22,7 @@ export const getUserFallbackTeam = async ({
   session?: ClientSession;
   allowAccountCancellationTeam?: boolean;
 }) => {
+  let ownerCancellation: Awaited<ReturnType<typeof getActiveAccountCancellationByUserId>> = null;
   const ownerTeamQuery = MongoTeam.findOne(
     {
       ownerId: userId,
@@ -48,7 +49,8 @@ export const getUserFallbackTeam = async ({
       ownerMemberQuery.lean(),
       allowAccountCancellationTeam ? null : getActiveAccountCancellationByUserId(userId)
     ]);
-    if (ownerMember && !cancellation) {
+    ownerCancellation = cancellation;
+    if (ownerMember && !ownerCancellation) {
       return { teamId: String(ownerTeam._id), tmbId: String(ownerMember._id) };
     }
   }
@@ -77,8 +79,9 @@ export const getUserFallbackTeam = async ({
   const teams = await teamQuery.lean();
   if (teams.length === 0) return null;
 
-  const cancellationTeams = await getActiveAccountCancellationsByTeamIds(
-    teams.map((team) => String(team._id))
+  const cancellationTeams = await getActiveAccountCancellationsByTeams(
+    teams,
+    ownerCancellation ? [ownerCancellation] : []
   );
   const blockedTeamIds = new Set(cancellationTeams.map(({ teamId }) => teamId));
   const validTeams = new Map(teams.map((team) => [String(team._id), team]));

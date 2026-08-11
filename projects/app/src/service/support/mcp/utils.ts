@@ -43,20 +43,16 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { assertAccountUsable } from '@fastgpt/service/support/user/account/cancellation/guard';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { resolveAuthContext } from '@fastgpt/service/support/permission/auth/context';
 
 const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
   if (!mcp.teamId || !mcp.tmbId) return;
-  const member = await MongoTeamMember.findOne(
-    { _id: mcp.tmbId, teamId: mcp.teamId, status: 'active' },
-    { userId: 1 }
-  ).lean();
-  if (!member) throw new Error('MCP team member is no longer active');
-  await assertAccountUsable({
-    userId: String(member.userId),
-    teamId: String(mcp.teamId),
-    tmbId: String(mcp.tmbId)
+  const authContext = await resolveAuthContext({
+    teamId: mcp.teamId,
+    tmbId: mcp.tmbId
   });
+  if (!authContext) throw new Error('MCP team member is no longer active');
+  await assertAccountUsable({ authContext });
 };
 
 const stringifyMcpPluginOutput = (pluginOutput: unknown) => {

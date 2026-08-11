@@ -1,8 +1,8 @@
 import {
-  AccountCancellationStatusEnum,
+  AccountCancellationStatus as AccountCancellationStatusValues,
   accountCancellationStatusMap
 } from '@fastgpt/global/support/user/account/cancellation/constants';
-import type { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/type';
+import type { AccountCancellationStatus as AccountCancellationStatusType } from '@fastgpt/global/support/user/account/cancellation/type';
 import { connectionMongo, defineIndex, getMongoModel } from '../../../../common/mongo';
 import type { Types } from 'mongoose';
 import { userCollectionName } from '../../schema';
@@ -14,7 +14,7 @@ export const accountCancellationCollectionName = 'account_cancellation';
 export type AccountCancellationSchemaType = {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
-  status: AccountCancellationStatus;
+  status: AccountCancellationStatusType;
   requestedAt: Date;
 };
 
@@ -56,4 +56,4 @@ export const MongoAccountCancellation = getMongoModel<AccountCancellationSchemaT
   AccountCancellationSchema
 );
 
-export { AccountCancellationStatusEnum };
+export { AccountCancellationStatusValues as AccountCancellationStatus };

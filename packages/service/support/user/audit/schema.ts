@@ -1,5 +1,5 @@
 import { defineIndex, Schema, getMongoLogModel } from '../../../common/mongo';
-import { type AuditSchemaType } from '@fastgpt/global/support/user/audit/type';
+import { type TeamAuditSchemaType } from '@fastgpt/global/support/user/audit/type';
 import { AdminAuditEventEnum, AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
   TeamCollectionName,
@@ -37,7 +37,7 @@ const TeamAuditSchema = new Schema({
 defineIndex(TeamAuditSchema, { key: { teamId: 1, tmbId: 1, event: 1 } });
 defineIndex(TeamAuditSchema, { key: { timestamp: 1, teamId: 1 } });
 
-export const MongoTeamAudit = getMongoLogModel<AuditSchemaType>(
+export const MongoTeamAudit = getMongoLogModel<TeamAuditSchemaType>(
   TeamAuditCollectionName,
   TeamAuditSchema
 );

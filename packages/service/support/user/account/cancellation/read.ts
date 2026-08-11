@@ -1,10 +1,10 @@
 import {
-  AccountCancellationStatusEnum,
+  AccountCancellationStatus,
   accountCancellationActiveStatuses
 } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { Types } from 'mongoose';
 import { MongoTeam } from '../../team/teamSchema';
-import { MongoAccountCancellation } from './schema';
+import { MongoAccountCancellation, type AccountCancellationSchemaType } from './schema';
 
 export const accountCancellationActiveStatusFilter = {
   $in: accountCancellationActiveStatuses
@@ -52,7 +52,43 @@ export const getActiveAccountCancellationByTeamId = async (teamId?: string) => {
   }).lean();
 };
 
-/** 批量读取团队 owner 的注销状态，避免团队列表产生逐条查询。 */
+/**
+ * 批量读取已查询团队 owner 的注销状态，避免 fallback 为了注销检查重复读取团队。
+ * knownCancellations 用于复用调用方已经读取的 owner 注销记录。
+ */
+export const getActiveAccountCancellationsByTeams = async (
+  teams: { _id: unknown; ownerId?: unknown }[],
+  knownCancellations: Pick<
+    AccountCancellationSchemaType,
+    'userId' | 'status' | 'requestedAt'
+  >[] = []
+) => {
+  const teamsWithOwners = teams.filter((team) => team.ownerId);
+  const ownerIds = Array.from(new Set(teamsWithOwners.map((team) => String(team.ownerId))));
+  const knownByOwnerId = new Map(
+    knownCancellations.map((record) => [String(record.userId), record])
+  );
+  const ownerIdsToQuery = ownerIds.filter((ownerId) => !knownByOwnerId.has(ownerId));
+
+  const records =
+    ownerIdsToQuery.length > 0
+      ? await MongoAccountCancellation.find({
+          userId: { $in: ownerIdsToQuery },
+          status: accountCancellationActiveStatusFilter
+        }).lean()
+      : [];
+  const recordsByOwnerId = new Map([
+    ...knownByOwnerId,
+    ...records.map((record) => [String(record.userId), record] as const)
+  ]);
+
+  return teamsWithOwners.flatMap((team) => {
+    const record = recordsByOwnerId.get(String(team.ownerId));
+    return record ? [{ teamId: String(team._id), record }] : [];
+  });
+};
+
+/** 批量读取团队 owner 的注销状态，供只持有团队 ID 的调用方使用。 */
 export const getActiveAccountCancellationsByTeamIds = async (teamIds: string[]) => {
   const uniqueTeamIds = Array.from(new Set(teamIds.filter(Boolean)));
   if (uniqueTeamIds.length === 0) return [];
@@ -61,22 +97,9 @@ export const getActiveAccountCancellationsByTeamIds = async (teamIds: string[]) 
     { _id: { $in: uniqueTeamIds } },
     { _id: 1, ownerId: 1 }
   ).lean();
-  const teamsWithOwners = teams.filter((team) => team.ownerId);
-  const ownerIds = Array.from(new Set(teamsWithOwners.map((team) => String(team.ownerId))));
-  if (ownerIds.length === 0) return [];
 
-  const records = await MongoAccountCancellation.find({
-    userId: { $in: ownerIds },
-    status: accountCancellationActiveStatusFilter
-  }).lean();
-  const recordsByOwnerId = new Map(records.map((record) => [String(record.userId), record]));
-
-  return teamsWithOwners.flatMap((team) => {
-    const record = recordsByOwnerId.get(String(team.ownerId));
-    return record ? [{ teamId: String(team._id), record }] : [];
-  });
+  return getActiveAccountCancellationsByTeams(teams);
 };
 
 export const isAccountCancellationActiveStatus = (status?: string) =>
-  status === AccountCancellationStatusEnum.pending ||
-  status === AccountCancellationStatusEnum.finalizing;
+  status === AccountCancellationStatus.pending || status === AccountCancellationStatus.finalizing;

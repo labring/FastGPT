@@ -1,9 +1,10 @@
 import {
   accountCancellationTimezone,
   accountCancellationWaitDays,
-  AccountCancellationReminderEnum
+  AccountCancellationReminder as AccountCancellationReminderValues,
+  accountCancellationAllowedMethods
 } from './constants';
-import type { AccountCancellationSchedule } from './type';
+import type { AccountCancellationReminder, AccountCancellationSchedule } from './type';
 
 const dayInMilliseconds = 24 * 60 * 60 * 1000;
 const accountCancellationAnonymizedUsernameReg = /-[a-z][a-zA-Z0-9]{7}-delete$/;
@@ -179,12 +180,12 @@ export const getAccountCancellationReminderAt = ({
   timeZone = accountCancellationTimezone
 }: {
   requestedAt: Date;
-  reminder: AccountCancellationReminderEnum;
+  reminder: AccountCancellationReminder;
   timeZone?: string;
 }) => {
   const schedule = deriveAccountCancellationSchedule(requestedAt, timeZone);
-  if (reminder === AccountCancellationReminderEnum.sevenDays) return schedule.sevenDayReminderAt;
-  if (reminder === AccountCancellationReminderEnum.oneDay) return schedule.oneDayReminderAt;
+  if (reminder === AccountCancellationReminderValues.sevenDays) return schedule.sevenDayReminderAt;
+  if (reminder === AccountCancellationReminderValues.oneDay) return schedule.oneDayReminderAt;
   return schedule.finalNoticeAt;
 };
 
@@ -198,12 +199,12 @@ export const getAccountCancellationReminderRequestedAtWindow = ({
   timeZone = accountCancellationTimezone
 }: {
   now: Date;
-  reminder: AccountCancellationReminderEnum;
+  reminder: AccountCancellationReminder;
   timeZone?: string;
 }) => {
   const reminderDaysBeforeCleanup = (() => {
-    if (reminder === AccountCancellationReminderEnum.sevenDays) return 7;
-    if (reminder === AccountCancellationReminderEnum.oneDay) return 1;
+    if (reminder === AccountCancellationReminderValues.sevenDays) return 7;
+    if (reminder === AccountCancellationReminderValues.oneDay) return 1;
     return 0;
   })();
   const cleanupDayWindow = getLocalDayWindow({
@@ -243,7 +244,7 @@ export const isAccountCancellationCancelable = (requestedAt: Date, now = new Dat
   now.getTime() < deriveAccountCancellationSchedule(requestedAt).scheduledCancelAt.getTime();
 
 export const isAccountCancellationMethod = (method: string) =>
-  method === 'code' || method === 'wechat' || method.startsWith('oauth/');
+  (accountCancellationAllowedMethods as readonly string[]).includes(method);
 
 /**
  * 判断用户名是否由账号注销流程生成，同时兼容已落库的历史匿名用户名格式。

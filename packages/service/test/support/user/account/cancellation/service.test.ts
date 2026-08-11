@@ -2,9 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 
 import {
+  assertAccountCancellationMethod,
   withAccountCancellationTeamLock,
   withAccountCancellationUserLock
 } from '@fastgpt/service/support/user/account/cancellation/service';
+import { accountCancellationAllowedMethods } from '@fastgpt/global/support/user/account/cancellation/constants';
+
+describe('assertAccountCancellationMethod', () => {
+  it.each(accountCancellationAllowedMethods)('accepts %s', (method) => {
+    expect(() => assertAccountCancellationMethod(method)).not.toThrow();
+  });
+
+  it.each(['oldPassword', 'oauth/unknown', '', 'CODE', 'oauth/Google', 'oauth', 'code '])(
+    'rejects invalid method %s',
+    (method) => {
+      expect(() => assertAccountCancellationMethod(method)).toThrow(
+        'Password verification is not allowed for account cancellation'
+      );
+    }
+  );
+});
 
 describe('account cancellation leases', () => {
   let withLease: ReturnType<typeof vi.spyOn>;
