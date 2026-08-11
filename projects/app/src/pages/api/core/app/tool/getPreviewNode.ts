@@ -31,13 +31,15 @@ async function handler(
     querySchema: GetPreviewNodeQuerySchema
   });
 
-  const { teamId } = await authCert({ req, authToken: true });
   const { authAppId } = splitCombineToolId(appId);
   if (authAppId) {
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }
   const previewSource =
     isDebugToolSource(source) || isTeamPluginSource(source) ? source : undefined;
+  const teamId = isTeamPluginSource(source)
+    ? (await authCert({ req, authToken: true })).teamId
+    : undefined;
 
   return GetPreviewNodeResponseSchema.parse(
     await getClientToolPreviewNode({
@@ -46,7 +48,7 @@ async function handler(
       getLatestVersion,
       lang: getLocale(req),
       source: previewSource,
-      teamId
+      ...(teamId ? { teamId } : {})
     })
   );
 }

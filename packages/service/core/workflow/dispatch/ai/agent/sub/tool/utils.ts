@@ -88,7 +88,15 @@ export const getAgentRuntimeTools = async ({
   tmbId: string;
   lang?: localeType;
 }): Promise<SubAppInitType[]> => {
-  const { teamId } = await getTmbInfoByTmbId({ tmbId });
+  let teamIdPromise: Promise<string> | undefined;
+  const getCurrentTeamId = async () => {
+    if (!teamIdPromise) {
+      teamIdPromise = getTmbInfoByTmbId({ tmbId }).then((team) => {
+        return team.teamId;
+      });
+    }
+    return teamIdPromise;
+  };
 
   // Agent 工具执行需要统一的错误输出口，方便 workflow runtime 收敛失败结果。
   const appendErrorOutput = (outputs: RuntimeNodeItemType['outputs'] = []) => {
@@ -146,7 +154,7 @@ export const getAgentRuntimeTools = async ({
       }
 
       await assertTeamPluginSourceAccess({
-        teamId,
+        teamId: await getCurrentTeamId(),
         source: runtimeSource,
         pluginId: getRawPluginIdFromSystemToolId(toolId)
       });
@@ -695,7 +703,7 @@ export const getAgentRuntimeTools = async ({
                 nodeId: pluginId,
                 version: toolNode.version
               },
-              teamId,
+              teamId: isTeamPluginSource(runtimeSource) ? await getCurrentTeamId() : undefined,
               lang
             });
 
