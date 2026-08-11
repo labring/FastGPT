@@ -109,7 +109,7 @@ packages/service/common/dal/
 - [x] 补齐 User 基础 Repository 操作和 Mongo 事务支持。
 - [x] 补齐 mapper、Schema、Repository、事务和索引局部测试。
 - [x] 增加数据库错误 Adapter 与 Mongo 错误映射。
-- 增加 SQL-like User adapter（接入 `DAL_DB_TYPE=sql` 分支），并验证两种 adapter 的行为契约一致。
+- [ ] ~~增加 SQL-like User adapter（接入 `DAL_DB_TYPE=sql` 分支）~~ 已延后：整个 MongoDB 重构完成后再考虑，另起项目跟进。
 - 统一 DAL 的分页、唯一约束错误和并发更新抽象。
 - 在确认领域字段后，将 `packages/service/support/user` 的调用逐步迁移到 Repository。
 - 接入独立 DAL 连接后，验证与主连接的索引同步、慢查询日志和生命周期管理。
