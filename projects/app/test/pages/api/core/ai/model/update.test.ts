@@ -92,7 +92,8 @@ describe('update model api', () => {
       }
     });
 
-    expect(res.code).toBe(500);
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
+    expect(res.error?.context).toEqual({ inputSource: 'body' });
     await expect(MongoSystemModel.countDocuments()).resolves.toBe(0);
   });
 

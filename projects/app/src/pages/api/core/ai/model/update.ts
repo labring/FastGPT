@@ -7,13 +7,17 @@ import {
   parsePersistedSystemModelConfig,
   updatedReloadSystemModel
 } from '@fastgpt/service/core/ai/config/utils';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  ApiRequestInputParseError,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateSystemModelBodySchema,
   UpdateSystemModelResponseSchema,
   type UpdateSystemModelBody,
   type UpdateSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import { ZodError } from 'zod';
 
 export type updateBody = UpdateSystemModelBody;
 
@@ -28,14 +32,24 @@ async function handler(req: ApiRequestProps<updateBody>): Promise<UpdateSystemMo
   const dbModel = await MongoSystemModel.findOne({ model }).lean();
   const modelData = findModelFromAlldata(model);
 
-  const persistedMetadata = parsePersistedSystemModelConfig({
-    model,
-    metadata: {
-      ...modelData, // system config
-      ...dbModel?.metadata, // db config
-      ...metadata // user config
+  const persistedMetadata = (() => {
+    try {
+      return parsePersistedSystemModelConfig({
+        model,
+        metadata: {
+          ...modelData, // system config
+          ...dbModel?.metadata, // db config
+          ...metadata // user config
+        }
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        // metadata 是宽松的增量配置，必须合并后才能校验；失败仍属于请求体错误。
+        throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+      }
+      throw error;
     }
-  });
+  })();
 
   await MongoSystemModel.updateOne(
     { model },

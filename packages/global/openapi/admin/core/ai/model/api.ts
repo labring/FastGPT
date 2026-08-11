@@ -69,7 +69,8 @@ const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
 
 export const UpdateSystemModelsWithJsonBodySchema = z.object({
   config: JsonSystemModelListSchema.pipe(ImportedSystemModelListSchema).meta({
-    example: '[{"model":"gpt-5","metadata":{"type":"llm"}}]',
+    example:
+      '[{"model":"gpt-5","metadata":{"type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true,"isActive":true}}]',
     description: '系统模型配置 JSON；解析后每条 metadata 必须符合完整模型 Schema'
   })
 });
