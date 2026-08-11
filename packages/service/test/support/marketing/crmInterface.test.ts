@@ -46,38 +46,47 @@ vi.mock('@fastgpt/service/support/marketing/attribution', async (importOriginal)
 
 import {
   CRMLifecycleEvent,
-  reportCRMTeamLifecycleOnce,
-  reportCRMVisitorLifecycleOnce
+  reportCRMTeamLifecycleOnce
 } from '@fastgpt/service/support/marketing/interface';
 
-describe('CRM lifecycle interface', () => {
+describe('CRM team lifecycle interface', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.configured.mockReturnValue(true);
     mocks.has.mockResolvedValue(false);
     mocks.mark.mockResolvedValue(undefined);
     mocks.report.mockResolvedValue(true);
+    mocks.findTeam.mockResolvedValue({ ownerId: 'user-1' });
+    mocks.findUser.mockResolvedValue({ fastgpt_sem: { visitor_id: 'stored-visitor' } });
   });
 
-  it('skips an event that already has a success marker', async () => {
+  it('checks the team marker before querying team or user', async () => {
     mocks.has.mockResolvedValueOnce(true);
 
-    await reportCRMVisitorLifecycleOnce({
-      visitorId: 'visitor-1',
+    await reportCRMTeamLifecycleOnce({
+      teamId: 'team-1',
       event: CRMLifecycleEvent.Consumption
     });
 
+    expect(mocks.has).toHaveBeenCalledWith({
+      scope: 'integration-report',
+      segments: ['crm', 'lifecycle', 'consumption', 'team', 'team-1']
+    });
+    expect(mocks.findTeam).not.toHaveBeenCalled();
+    expect(mocks.findUser).not.toHaveBeenCalled();
     expect(mocks.report).not.toHaveBeenCalled();
   });
 
-  it('writes the permanent marker only after CRM succeeds', async () => {
-    await reportCRMVisitorLifecycleOnce({
-      visitorId: 'visitor-1',
+  it('resolves the team owner visitor and marks the team only after CRM succeeds', async () => {
+    await reportCRMTeamLifecycleOnce({
+      teamId: 'team-1',
       event: CRMLifecycleEvent.Recharge
     });
 
+    expect(mocks.findTeam).toHaveBeenCalledWith('team-1', 'ownerId');
+    expect(mocks.findUser).toHaveBeenCalledWith('user-1', 'fastgpt_sem');
     expect(mocks.report).toHaveBeenCalledWith({
-      visitorId: 'visitor-1',
+      visitorId: 'stored-visitor',
       event: 'recharge',
       company: undefined,
       summary: undefined
@@ -85,7 +94,7 @@ describe('CRM lifecycle interface', () => {
     expect(mocks.mark).toHaveBeenCalledWith({
       params: {
         scope: 'integration-report',
-        segments: ['crm', 'lifecycle', 'recharge', 'visitor-1']
+        segments: ['crm', 'lifecycle', 'recharge', 'team', 'team-1']
       }
     });
   });
@@ -93,37 +102,36 @@ describe('CRM lifecycle interface', () => {
   it('does not mark a failed CRM request', async () => {
     mocks.report.mockResolvedValueOnce(false);
 
-    await reportCRMVisitorLifecycleOnce({
-      visitorId: 'visitor-1',
+    await reportCRMTeamLifecycleOnce({
+      teamId: 'team-1',
       event: CRMLifecycleEvent.Consumption
     });
 
     expect(mocks.mark).not.toHaveBeenCalled();
   });
 
-  it('fails open when Redis cannot read the marker', async () => {
+  it('fails open when Redis cannot read the team marker', async () => {
     mocks.has.mockRejectedValueOnce(new Error('redis unavailable'));
-
-    await reportCRMVisitorLifecycleOnce({
-      visitorId: 'visitor-1',
-      event: CRMLifecycleEvent.Consumption
-    });
-
-    expect(mocks.report).toHaveBeenCalledTimes(1);
-    expect(mocks.warn).toHaveBeenCalled();
-  });
-
-  it('resolves the visitor id from the team owner stored user data', async () => {
-    mocks.findTeam.mockResolvedValueOnce({ ownerId: 'user-1' });
-    mocks.findUser.mockResolvedValueOnce({ fastgpt_sem: { visitor_id: 'stored-visitor' } });
 
     await reportCRMTeamLifecycleOnce({
       teamId: 'team-1',
       event: CRMLifecycleEvent.Consumption
     });
 
-    expect(mocks.report).toHaveBeenCalledWith(
-      expect.objectContaining({ visitorId: 'stored-visitor', event: 'consumption' })
-    );
+    expect(mocks.findTeam).toHaveBeenCalledTimes(1);
+    expect(mocks.report).toHaveBeenCalledTimes(1);
+    expect(mocks.warn).toHaveBeenCalled();
+  });
+
+  it('does not mark when the owner has no visitor id', async () => {
+    mocks.findUser.mockResolvedValueOnce({ fastgpt_sem: {} });
+
+    await reportCRMTeamLifecycleOnce({
+      teamId: 'team-1',
+      event: CRMLifecycleEvent.Consumption
+    });
+
+    expect(mocks.report).not.toHaveBeenCalled();
+    expect(mocks.mark).not.toHaveBeenCalled();
   });
 });

@@ -17,15 +17,15 @@ type LifecycleDetails = {
   summary?: string;
 };
 
-const getMarkerParams = ({
-  visitorId,
+const getTeamMarkerParams = ({
+  teamId,
   event
 }: {
-  visitorId: string;
+  teamId: string;
   event: CRMLifecycleEvent;
 }): SuccessMarkerParams => ({
   scope: 'integration-report',
-  segments: ['crm', 'lifecycle', event, visitorId]
+  segments: ['crm', 'lifecycle', event, 'team', teamId]
 });
 
 const getVisitorId = (fastgptSem: unknown) => {
@@ -33,82 +33,57 @@ const getVisitorId = (fastgptSem: unknown) => {
   return parsed.success ? parsed.data.visitor_id : undefined;
 };
 
-/** CRM 生命周期公开接口：Redis 只减少重复请求，故障时 fail-open。 */
-export const reportCRMVisitorLifecycleOnce = async ({
-  visitorId,
+/** CRM 生命周期公开接口：先按 team 去重，再解析其 owner 对应的 visitor_id。 */
+export const reportCRMTeamLifecycleOnce = async ({
+  teamId: rawTeamId,
   event,
   company,
   summary
-}: LifecycleDetails & { visitorId?: string }): Promise<void> => {
-  const normalizedVisitorId = visitorId?.trim();
-  if (!isCRMReportingConfigured() || !normalizedVisitorId) return;
+}: LifecycleDetails & { teamId: string }): Promise<void> => {
+  const teamId = rawTeamId.trim();
+  if (!isCRMReportingConfigured() || !teamId) return;
 
-  const markerParams = getMarkerParams({ visitorId: normalizedVisitorId, event });
+  const markerParams = getTeamMarkerParams({ teamId, event });
   try {
     if (await successMarkerCache.has(markerParams)) return;
   } catch (error) {
-    logger.warn('CRM lifecycle success marker read failed; reporting anyway', {
+    logger.warn('CRM team lifecycle success marker read failed; reporting anyway', {
       error,
-      visitorId: normalizedVisitorId,
+      teamId,
       event
     });
   }
-
-  const success = await reportCRMVisitorLifecycle({
-    visitorId: normalizedVisitorId,
-    event,
-    company,
-    summary
-  });
-  if (!success) return;
-
-  try {
-    await successMarkerCache.mark({ params: markerParams });
-  } catch (error) {
-    logger.warn('CRM lifecycle success marker write failed', {
-      error,
-      visitorId: normalizedVisitorId,
-      event
-    });
-  }
-};
-
-export const reportCRMUserLifecycleOnce = async ({
-  userId,
-  ...details
-}: LifecycleDetails & { userId: string }): Promise<void> => {
-  if (!isCRMReportingConfigured()) return;
-
-  try {
-    const user = await MongoUser.findById(userId, 'fastgpt_sem').lean();
-    return reportCRMVisitorLifecycleOnce({
-      visitorId: getVisitorId(user?.fastgpt_sem),
-      ...details
-    });
-  } catch (error) {
-    logger.warn('CRM user lifecycle resolution failed', { error, userId, event: details.event });
-  }
-};
-
-export const reportCRMTeamLifecycleOnce = async ({
-  teamId,
-  ...details
-}: LifecycleDetails & { teamId: string }): Promise<void> => {
-  if (!isCRMReportingConfigured()) return;
 
   try {
     const team = await MongoTeam.findById(teamId, 'ownerId').lean();
     if (!team?.ownerId) return;
 
-    return reportCRMUserLifecycleOnce({
-      userId: String(team.ownerId),
-      ...details
+    const user = await MongoUser.findById(team.ownerId, 'fastgpt_sem').lean();
+    const visitorId = getVisitorId(user?.fastgpt_sem);
+    if (!visitorId) return;
+
+    const success = await reportCRMVisitorLifecycle({
+      visitorId,
+      event,
+      company,
+      summary
     });
+    if (!success) return;
+
+    try {
+      await successMarkerCache.mark({ params: markerParams });
+    } catch (error) {
+      logger.warn('CRM team lifecycle success marker write failed', {
+        error,
+        teamId,
+        event
+      });
+    }
   } catch (error) {
     logger.warn('CRM team lifecycle resolution failed', {
       error,
       teamId,
-      event: details.event
+      event
     });
   }
 };
