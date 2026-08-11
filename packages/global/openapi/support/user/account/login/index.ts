@@ -200,6 +200,16 @@ export const LoginPath: OpenAPIPath = {
           description: '退出登录成功'
         }
       }
+    },
+    post: {
+      summary: '退出登录',
+      description: '退出当前用户的所有会话并清除登录凭证（管理端兼容调用）',
+      tags: [DevApiTagsMap.userLogin],
+      responses: {
+        200: {
+          description: '退出登录成功'
+        }
+      }
     }
   }
 };

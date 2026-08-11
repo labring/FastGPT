@@ -1,8 +1,5 @@
-import type {
-  UpdateSkillCollaboratorBody,
-  SkillCollaboratorDeleteParams
-} from '@fastgpt/global/core/ai/skill/collaborator';
-import { DELETE, GET, POST } from '@/web/common/api/request';
+import type { UpdateSkillCollaboratorBody } from '@fastgpt/global/core/ai/skill/collaborator';
+import { GET, POST } from '@/web/common/api/request';
 import type { CollaboratorListType } from '@fastgpt/global/support/permission/collaborator';
 
 export const getSkillCollaboratorList = (skillId: string) =>
@@ -10,6 +7,3 @@ export const getSkillCollaboratorList = (skillId: string) =>
 
 export const postUpdateSkillCollaborators = (body: UpdateSkillCollaboratorBody) =>
   POST('/proApi/core/ai/skill/collaborator/update', body);
-
-export const deleteSkillCollaborator = (params: SkillCollaboratorDeleteParams) =>
-  DELETE('/proApi/core/ai/skill/collaborator/delete', params);

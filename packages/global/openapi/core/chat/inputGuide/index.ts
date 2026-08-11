@@ -91,7 +91,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     }
   },
   '/core/chat/inputGuide/delete': {
-    delete: {
+    post: {
       summary: '删除对话输入引导',
       description: '批量删除指定的对话输入引导',
       tags: [DevApiTagsMap.chatInputGuide],
@@ -115,7 +115,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     }
   },
   '/core/chat/inputGuide/deleteAll': {
-    delete: {
+    post: {
       summary: '删除所有对话输入引导',
       description: '删除所有对话输入引导',
       tags: [DevApiTagsMap.chatInputGuide],

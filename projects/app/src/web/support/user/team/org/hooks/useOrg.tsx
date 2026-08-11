@@ -7,7 +7,7 @@ import type {
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getOrgList, getOrgMembers } from '../api';
+import { getOrgList } from '../api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '../../api';
 import { useDebounce } from 'ahooks';

@@ -55,6 +55,7 @@ export const DevApiTagsMap = {
   userInform: '用户通知',
   userLogin: '用户账号',
   userLimit: '限流检查',
+  enterpriseAuth: '企业认证',
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
 
@@ -67,6 +68,7 @@ export const DevApiTagsMap = {
   customDomain: '自定义域名',
   commonFile: '文件管理',
   commonSystem: '系统接口',
+  commonOther: '其他',
 
   /* 通用-反向调用 */
   reverseInvokePlugin: '插件',

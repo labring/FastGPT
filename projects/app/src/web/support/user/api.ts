@@ -44,8 +44,6 @@ export const oauthLogin = (params: OauthLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth', params);
 export const postFastLogin = (params: FastLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
-export const ssoLogin = (params: any) =>
-  GET<LoginSuccessResponseType>('/proApi/support/user/account/sso', params);
 export const postLogin = ({ password, ...props }: LoginByPasswordBodyType) =>
   POST<LoginSuccessResponseType>('/support/user/account/loginByPassword', {
     ...props,

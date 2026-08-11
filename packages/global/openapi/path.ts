@@ -95,7 +95,9 @@ export const openAPITagGroups = [
       DevApiTagsMap.walletBill,
       DevApiTagsMap.walletDiscountCoupon,
       DevApiTagsMap.userLogin,
-      DevApiTagsMap.userLimit
+      DevApiTagsMap.userLimit,
+      DevApiTagsMap.enterpriseAuth,
+      DevApiTagsMap.teamManage
     ]
   },
   {
@@ -108,7 +110,8 @@ export const openAPITagGroups = [
       DevApiTagsMap.apiKey,
       DevApiTagsMap.customDomain,
       DevApiTagsMap.commonFile,
-      DevApiTagsMap.commonSystem
+      DevApiTagsMap.commonSystem,
+      DevApiTagsMap.commonOther
     ]
   },
   {
