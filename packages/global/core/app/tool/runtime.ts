@@ -1,6 +1,6 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
-import Ajv2019 from 'ajv/dist/2019';
-import Ajv2020 from 'ajv/dist/2020';
+import Ajv2019 from 'ajv/dist/2019.js';
+import Ajv2020 from 'ajv/dist/2020.js';
 import type { ChatCompletionTool } from '../../ai/llm/type';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
