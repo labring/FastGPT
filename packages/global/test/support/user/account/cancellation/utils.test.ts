@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AccountCancellationReminderEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountCancellationReminder } from '@fastgpt/global/support/user/account/cancellation/constants';
 import {
   deriveAccountCancellationSchedule,
   getAccountCancellationPendingDueCutoff,
@@ -37,7 +37,7 @@ describe('deriveAccountCancellationSchedule', () => {
     expect(
       getAccountCancellationReminderAt({
         requestedAt,
-        reminder: AccountCancellationReminderEnum.today
+        reminder: AccountCancellationReminder.today
       })
     ).toEqual(schedule.finalNoticeAt);
   });
@@ -48,7 +48,7 @@ describe('deriveAccountCancellationSchedule', () => {
     expect(
       getAccountCancellationReminderRequestedAtWindow({
         now,
-        reminder: AccountCancellationReminderEnum.sevenDays
+        reminder: AccountCancellationReminder.sevenDays
       })
     ).toEqual({
       start: new Date('2026-06-30T16:00:00.000Z'),
@@ -57,7 +57,7 @@ describe('deriveAccountCancellationSchedule', () => {
     expect(
       getAccountCancellationReminderRequestedAtWindow({
         now,
-        reminder: AccountCancellationReminderEnum.oneDay
+        reminder: AccountCancellationReminder.oneDay
       })
     ).toEqual({
       start: new Date('2026-06-24T16:00:00.000Z'),
@@ -66,7 +66,7 @@ describe('deriveAccountCancellationSchedule', () => {
     expect(
       getAccountCancellationReminderRequestedAtWindow({
         now,
-        reminder: AccountCancellationReminderEnum.today
+        reminder: AccountCancellationReminder.today
       })
     ).toEqual({
       start: new Date('2026-06-23T16:00:00.000Z'),
@@ -85,7 +85,7 @@ describe('deriveAccountCancellationSchedule', () => {
   it('keeps requestedAt query windows aligned with the fixed wait period across DST', () => {
     const window = getAccountCancellationReminderRequestedAtWindow({
       now: new Date('2026-03-09T14:00:00.000Z'),
-      reminder: AccountCancellationReminderEnum.today,
+      reminder: AccountCancellationReminder.today,
       timeZone: 'America/New_York'
     });
 

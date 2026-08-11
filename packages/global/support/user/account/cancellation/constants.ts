@@ -1,15 +1,15 @@
 export const accountCancellationWaitDays = 15;
 export const accountCancellationTimezone = 'Asia/Shanghai';
 
-export enum AccountCancellationStatusEnum {
-  pending = 'pending',
-  finalizing = 'finalizing',
-  completed = 'completed'
-}
+export const AccountCancellationStatus = {
+  pending: 'pending',
+  finalizing: 'finalizing',
+  completed: 'completed'
+} as const;
 
 export const accountCancellationActiveStatuses = [
-  AccountCancellationStatusEnum.pending,
-  AccountCancellationStatusEnum.finalizing
+  AccountCancellationStatus.pending,
+  AccountCancellationStatus.finalizing
 ] as const;
 
 export const accountCancellationAllowedMethods = [
@@ -22,24 +22,24 @@ export const accountCancellationAllowedMethods = [
   'oauth/sso'
 ] as const;
 
-export enum AccountCancellationReminderEnum {
-  sevenDays = '7d',
-  oneDay = '1d',
-  today = 'today'
-}
+export const AccountCancellationReminder = {
+  sevenDays: '7d',
+  oneDay: '1d',
+  today: 'today'
+} as const;
 
-export enum AccountCancellationUnavailableReasonEnum {
-  featureDisabled = 'feature_disabled',
-  unsupportedTeamMode = 'unsupported_team_mode',
-  rootAccount = 'root_account',
-  accountForbidden = 'account_forbidden',
-  emptyUsername = 'empty_username',
-  verificationUnavailable = 'verification_unavailable',
-  passwordVerificationNotAllowed = 'password_verification_not_allowed'
-}
+export const AccountCancellationUnavailableReason = {
+  featureDisabled: 'feature_disabled',
+  unsupportedTeamMode: 'unsupported_team_mode',
+  rootAccount: 'root_account',
+  accountForbidden: 'account_forbidden',
+  emptyUsername: 'empty_username',
+  verificationUnavailable: 'verification_unavailable',
+  passwordVerificationNotAllowed: 'password_verification_not_allowed'
+} as const;
 
 export const accountCancellationStatusMap = {
-  [AccountCancellationStatusEnum.pending]: { label: 'Pending' },
-  [AccountCancellationStatusEnum.finalizing]: { label: 'Finalizing' },
-  [AccountCancellationStatusEnum.completed]: { label: 'Completed' }
+  [AccountCancellationStatus.pending]: { label: 'Pending' },
+  [AccountCancellationStatus.finalizing]: { label: 'Finalizing' },
+  [AccountCancellationStatus.completed]: { label: 'Completed' }
 };

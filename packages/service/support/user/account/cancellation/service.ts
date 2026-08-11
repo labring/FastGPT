@@ -1,4 +1,4 @@
-import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { isAccountCancellationMethod } from '@fastgpt/global/support/user/account/cancellation/utils';
 import { deriveAccountCancellationSchedule } from '@fastgpt/global/support/user/account/cancellation/utils';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
@@ -51,7 +51,7 @@ export const withAccountCancellationTeamLock = async <T>(teamId: string, fn: () 
 };
 
 export const assertAccountCancellationMethod = (method: string) => {
-  if (!isAccountCancellationMethod(method) || method === 'oldPassword') {
+  if (!isAccountCancellationMethod(method)) {
     throw new Error('Password verification is not allowed for account cancellation');
   }
 };
@@ -67,7 +67,7 @@ export const cancelPendingAccountCancellation = async ({
   withAccountCancellationUserLock(userId, async () => {
     const record = await getActiveAccountCancellationByUserId(userId);
     if (!record) return { cancelled: false as const, record: null };
-    if (record.status !== AccountCancellationStatusEnum.pending) {
+    if (record.status !== AccountCancellationStatus.pending) {
       throw new Error('Account cancellation is already finalizing');
     }
 
@@ -80,7 +80,7 @@ export const cancelPendingAccountCancellation = async ({
     const result = await MongoAccountCancellation.deleteOne({
       _id: record._id,
       userId,
-      status: AccountCancellationStatusEnum.pending
+      status: AccountCancellationStatus.pending
     });
     return {
       cancelled: result.deletedCount === 1,

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { resolveAccountCancellationAccess } from '@fastgpt/service/support/user/account/cancellation/access';
 import { Types } from '@fastgpt/service/common/mongo';
 import { assertAccountUsable } from '@fastgpt/service/support/user/account/cancellation/guard';
@@ -36,7 +36,7 @@ describe('assertAccountUsable', () => {
     await MongoAccountCancellation.create([
       {
         userId,
-        status: AccountCancellationStatusEnum.pending,
+        status: AccountCancellationStatus.pending,
         requestedAt: new Date()
       }
     ]);
@@ -49,7 +49,7 @@ describe('assertAccountUsable', () => {
     ).rejects.toThrow(UserErrEnum.accountCancellationPending);
   });
 
-  it.each([AccountCancellationStatusEnum.pending, AccountCancellationStatusEnum.finalizing])(
+  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
     'blocks the current user %s cancellation under normal access',
     async (status) => {
       const userId = new Types.ObjectId();
@@ -81,14 +81,14 @@ describe('assertAccountUsable', () => {
     await expect(
       assertAccountUsable({
         authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatusEnum.pending }],
+        cancellations: [{ userId, status: AccountCancellationStatus.pending }],
         allowUserAccountCancellationPending: true
       })
     ).resolves.toBeUndefined();
     await expect(
       assertAccountUsable({
         authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatusEnum.finalizing }],
+        cancellations: [{ userId, status: AccountCancellationStatus.finalizing }],
         allowUserAccountCancellationPending: true
       })
     ).rejects.toThrow(UserErrEnum.accountCancellationPending);
@@ -111,20 +111,20 @@ describe('assertAccountUsable', () => {
     await expect(
       assertAccountUsable({
         authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatusEnum.pending }],
+        cancellations: [{ userId, status: AccountCancellationStatus.pending }],
         ...tokenLoginOptions
       })
     ).resolves.toBeUndefined();
     await expect(
       assertAccountUsable({
         authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatusEnum.finalizing }],
+        cancellations: [{ userId, status: AccountCancellationStatus.finalizing }],
         ...tokenLoginOptions
       })
     ).rejects.toThrow(UserErrEnum.accountCancellationPending);
     for (const status of [
-      AccountCancellationStatusEnum.pending,
-      AccountCancellationStatusEnum.finalizing
+      AccountCancellationStatus.pending,
+      AccountCancellationStatus.finalizing
     ]) {
       await expect(
         assertAccountUsable({
@@ -136,7 +136,7 @@ describe('assertAccountUsable', () => {
     }
   });
 
-  it.each([AccountCancellationStatusEnum.pending, AccountCancellationStatusEnum.finalizing])(
+  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
     'allows a member to inspect another owner cancellation through team escape: %s',
     async (status) => {
       const ownerId = new Types.ObjectId();

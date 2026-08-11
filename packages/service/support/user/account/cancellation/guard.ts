@@ -1,7 +1,8 @@
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
+import type { AccountCancellationStatus as AccountCancellationStatusType } from '@fastgpt/global/support/user/account/cancellation/type';
 import type { AuthContext } from '../../../permission/auth/context';
 import { resolveAuthContext } from '../../../permission/auth/context';
 import type { AccountCancellationSchemaType } from './schema';
@@ -82,12 +83,12 @@ export const assertAccountUsable = async ({
     allowPending,
     allowFinalizing
   }: {
-    status: AccountCancellationStatusEnum;
+    status: AccountCancellationStatusType;
     allowPending: boolean;
     allowFinalizing: boolean;
   }) =>
-    (status === AccountCancellationStatusEnum.pending && allowPending) ||
-    (status === AccountCancellationStatusEnum.finalizing && allowFinalizing);
+    (status === AccountCancellationStatus.pending && allowPending) ||
+    (status === AccountCancellationStatus.finalizing && allowFinalizing);
 
   if (
     userCancellation &&
@@ -123,7 +124,7 @@ export const assertAccountUsable = async ({
 /** 登录前只允许本人处于 pending；finalizing 用户不能更新偏好或创建新的 Session。 */
 export const assertUserCanLogin = async (userId: string) => {
   const cancellation = await getActiveAccountCancellationByUserId(userId);
-  if (cancellation?.status === AccountCancellationStatusEnum.finalizing) {
+  if (cancellation?.status === AccountCancellationStatus.finalizing) {
     throw new Error(UserErrEnum.accountCancellationPending);
   }
 };

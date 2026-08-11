@@ -1,4 +1,4 @@
-import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { deriveAccountCancellationSchedule } from '@fastgpt/global/support/user/account/cancellation/utils';
 import type { TeamAccountCancellationSummary } from '@fastgpt/global/support/user/account/cancellation/type';
 import type { AccountCancellationSchemaType } from './schema';
@@ -22,15 +22,14 @@ export const formatAccountCancellationPendingResponse = (
 ) => {
   if (
     !record.requestedAt ||
-    ![AccountCancellationStatusEnum.pending, AccountCancellationStatusEnum.finalizing].includes(
-      record.status
-    )
+    (record.status !== AccountCancellationStatus.pending &&
+      record.status !== AccountCancellationStatus.finalizing)
   ) {
     throw new Error('Invalid account cancellation active record');
   }
 
   const schedule = deriveAccountCancellationSchedule(record.requestedAt);
-  const isPending = record.status === AccountCancellationStatusEnum.pending;
+  const isPending = record.status === AccountCancellationStatus.pending;
   return {
     status: 'pending' as const,
     requestedAt: record.requestedAt,
@@ -46,16 +45,16 @@ export const formatTeamAccountCancellationSummary = (
 ): TeamAccountCancellationSummary => {
   formatAccountCancellationPendingResponse(record);
 
-  if (record.status === AccountCancellationStatusEnum.pending) {
+  if (record.status === AccountCancellationStatus.pending) {
     return {
-      status: AccountCancellationStatusEnum.pending,
+      status: AccountCancellationStatus.pending,
       scheduledCancelAt: deriveAccountCancellationSchedule(record.requestedAt).scheduledCancelAt
     };
   }
 
-  if (record.status === AccountCancellationStatusEnum.finalizing) {
+  if (record.status === AccountCancellationStatus.finalizing) {
     return {
-      status: AccountCancellationStatusEnum.finalizing
+      status: AccountCancellationStatus.finalizing
     };
   }
 

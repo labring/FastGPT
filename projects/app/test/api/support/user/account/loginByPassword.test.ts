@@ -15,7 +15,7 @@ import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestPa
 import { Call } from '@test/utils/request';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/cancellation/schema';
-import { AccountCancellationStatusEnum } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 
 const saveLoginCode = (username: string, code = '123456') =>
   MongoTmpData.updateOne(
@@ -181,7 +181,7 @@ describe('loginByPassword API', () => {
     await MongoUser.findByIdAndUpdate(testUser._id, { $unset: { lastLoginTmbId: 1 } });
     await MongoAccountCancellation.create({
       userId: testUser._id,
-      status: AccountCancellationStatusEnum.pending,
+      status: AccountCancellationStatus.pending,
       requestedAt: new Date()
     });
 
@@ -202,7 +202,7 @@ describe('loginByPassword API', () => {
   it('should reject a finalizing user before profile updates and session creation', async () => {
     await MongoAccountCancellation.create({
       userId: testUser._id,
-      status: AccountCancellationStatusEnum.finalizing,
+      status: AccountCancellationStatus.finalizing,
       requestedAt: new Date()
     });
 

@@ -1,24 +1,16 @@
 import { z } from 'zod';
 import {
-  AccountCancellationStatusEnum,
-  AccountCancellationUnavailableReasonEnum,
-  accountCancellationActiveStatuses,
-  accountCancellationAllowedMethods,
-  accountCancellationTimezone
+  AccountCancellationStatus as AccountCancellationStatusValues,
+  AccountCancellationReminder as AccountCancellationReminderValues,
+  AccountCancellationUnavailableReason as AccountCancellationUnavailableReasonValues,
+  accountCancellationAllowedMethods
 } from './constants';
 
-export const AccountCancellationStatusSchema = z.enum([
-  AccountCancellationStatusEnum.pending,
-  AccountCancellationStatusEnum.finalizing,
-  AccountCancellationStatusEnum.completed
-]);
+export const AccountCancellationStatusSchema = z.enum(AccountCancellationStatusValues);
 export type AccountCancellationStatus = z.infer<typeof AccountCancellationStatusSchema>;
 
-export const AccountCancellationPublicStatusSchema = z.enum(['none', 'pending']);
-export type AccountCancellationPublicStatus = z.infer<typeof AccountCancellationPublicStatusSchema>;
-
 export const TeamAccountCancellationStatusSchema = AccountCancellationStatusSchema.exclude([
-  AccountCancellationStatusEnum.completed
+  AccountCancellationStatusValues.completed
 ]);
 export type TeamAccountCancellationStatus = z.infer<typeof TeamAccountCancellationStatusSchema>;
 
@@ -27,15 +19,12 @@ export type AccountCancellationAllowedMethod = z.infer<
   typeof AccountCancellationAllowedMethodSchema
 >;
 
-export const AccountCancellationUnavailableReasonSchema = z.enum([
-  AccountCancellationUnavailableReasonEnum.featureDisabled,
-  AccountCancellationUnavailableReasonEnum.unsupportedTeamMode,
-  AccountCancellationUnavailableReasonEnum.rootAccount,
-  AccountCancellationUnavailableReasonEnum.accountForbidden,
-  AccountCancellationUnavailableReasonEnum.emptyUsername,
-  AccountCancellationUnavailableReasonEnum.verificationUnavailable,
-  AccountCancellationUnavailableReasonEnum.passwordVerificationNotAllowed
-]);
+export const AccountCancellationReminderSchema = z.enum(AccountCancellationReminderValues);
+export type AccountCancellationReminder = z.infer<typeof AccountCancellationReminderSchema>;
+
+export const AccountCancellationUnavailableReasonSchema = z.enum(
+  AccountCancellationUnavailableReasonValues
+);
 export type AccountCancellationUnavailableReason = z.infer<
   typeof AccountCancellationUnavailableReasonSchema
 >;
@@ -109,6 +98,3 @@ export type AccountCancellationAccessPreset =
   | 'tokenLogin';
 
 export type AccountCancellationVerificationMethod = AccountCancellationAllowedMethod;
-
-export const accountCancellationDefaultTimezone = accountCancellationTimezone;
-export const accountCancellationActiveStatusValues = accountCancellationActiveStatuses;
