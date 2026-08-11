@@ -6,6 +6,7 @@ import { teamQPM } from '../../support/wallet/sub/utils';
 import z from 'zod';
 import { getLogger, LogCategories } from '../logger';
 import { consumeTeamChatRateLimit } from '../rateLimit/interface/team';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.HTTP.RESPONSE);
 
@@ -75,7 +76,7 @@ export const teamFrequencyLimit = async ({
     logger.error('Team QPM rate limit failed closed', { teamId, type, error });
     jsonRes(res, {
       code: 429,
-      error: 'Rate limit service unavailable. Please try again later.'
+      error: new UserError('Rate limit service unavailable. Please try again later.')
     });
     return false;
   }
@@ -89,7 +90,9 @@ export const teamFrequencyLimit = async ({
     });
     jsonRes(res, {
       code: 429,
-      error: `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
+      error: new UserError(
+        `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
+      )
     });
     return false;
   }

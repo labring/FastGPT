@@ -10,6 +10,32 @@ import {
   DatasetSizeLimitQuerySchema,
   type DatasetSizeLimitQuery
 } from '../../../openapi/support/user/team/limit/api';
+import { GetTeamPlanStatusResponseSchema } from '../../../openapi/support/user/team/api';
+import {
+  StandardSubLevelEnum,
+  SubModeEnum,
+  SubTypeEnum
+} from '../../../support/wallet/sub/constants';
+
+const normalizedStandardPlan = {
+  _id: '68ad85a7463006c963799a05',
+  teamId: '68ad85a7463006c963799a06',
+  type: SubTypeEnum.standard,
+  startTime: new Date('2026-01-01T00:00:00.000Z'),
+  expiredTime: new Date('2027-01-01T00:00:00.000Z'),
+  currentMode: SubModeEnum.month,
+  nextMode: SubModeEnum.month,
+  currentSubLevel: StandardSubLevelEnum.basic,
+  nextSubLevel: StandardSubLevelEnum.basic,
+  totalPoints: 1000,
+  surplusPoints: 99.5,
+  currentExtraDatasetSize: 0,
+  maxTeamMember: 10,
+  maxAppAmount: 20,
+  maxDatasetAmount: 30,
+  maxDatasetSize: 10000,
+  chatHistoryStoreDuration: 30
+};
 
 describe('common and team OpenAPI contracts', () => {
   it('registers third-party usage and team plan status in their requested groups', () => {
@@ -48,5 +74,49 @@ describe('common and team OpenAPI contracts', () => {
 
     expectTypeOf<UpdateUserAccountBody['balance']>().toEqualTypeOf<number | undefined>();
     expectTypeOf<DatasetSizeLimitQuery['size']>().toEqualTypeOf<number | undefined>();
+  });
+
+  it('accepts a normalized plan response with fractional point usage', () => {
+    expect(
+      GetTeamPlanStatusResponseSchema.parse({
+        standard: normalizedStandardPlan,
+        totalPoints: 1000,
+        usedPoints: 900.5,
+        datasetMaxSize: 10000,
+        usedMember: 1,
+        usedAppAmount: 2,
+        usedDatasetSize: 3,
+        usedDatasetIndexSize: 4,
+        usedRegistrationCount: 5
+      })
+    ).toMatchObject({ standard: normalizedStandardPlan, usedPoints: 900.5 });
+  });
+
+  it('uses null for unlimited plan values in the client response', () => {
+    expect(
+      GetTeamPlanStatusResponseSchema.parse({
+        standard: {
+          ...normalizedStandardPlan,
+          totalPoints: null,
+          surplusPoints: null
+        },
+        totalPoints: null,
+        usedPoints: null,
+        datasetMaxSize: null,
+        usedMember: 1,
+        usedAppAmount: 2,
+        usedDatasetSize: 3,
+        usedDatasetIndexSize: 4,
+        usedRegistrationCount: 5
+      })
+    ).toMatchObject({
+      totalPoints: null,
+      usedPoints: null,
+      datasetMaxSize: null,
+      standard: {
+        totalPoints: null,
+        surplusPoints: null
+      }
+    });
   });
 });

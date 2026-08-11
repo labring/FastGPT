@@ -216,7 +216,6 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         defaultSystemChatPrompt: undefined,
         fieldMap: undefined,
         defaultConfig: undefined,
-        weight: undefined,
         dbConfig: undefined,
         queryConfig: undefined,
         requestUrl: undefined,

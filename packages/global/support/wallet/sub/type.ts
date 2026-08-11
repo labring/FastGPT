@@ -86,18 +86,18 @@ export const TeamSubSchema = z.object({
   startTime: z.date(),
   expiredTime: z.date(),
 
-  currentMode: z.enum(SubModeEnum),
-  nextMode: z.enum(SubModeEnum),
+  currentMode: z.enum(SubModeEnum).optional(),
+  nextMode: z.enum(SubModeEnum).optional(),
   currentSubLevel: z.enum(StandardSubLevelEnum),
-  nextSubLevel: z.enum(StandardSubLevelEnum),
+  nextSubLevel: z.enum(StandardSubLevelEnum).optional(),
 
   maxTeamMember: z.int().optional(),
   maxApp: z.int().optional(),
   maxDataset: z.int().optional(),
   totalPoints: z.int(),
   annualBonusPoints: z.int().optional(),
-  surplusPoints: z.int(),
-  currentExtraDatasetSize: z.int(),
+  surplusPoints: z.number(),
+  currentExtraDatasetSize: z.int().optional(),
 
   // 定制版特有属性
   requestsPerMinute: z.int().optional(),
@@ -122,7 +122,8 @@ export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
  * - pointPrice from TeamStandardSubPlanItemSchema: 避免与 price 字段冲突
  *
  * Field priority: TeamStandardSubPlanItemSchema fields override TeamSubSchema fields when both exist
- */ export const TeamPlanStandardSchema = z.object({
+ */
+export const TeamPlanStandardSchema = z.object({
   ...TeamSubSchema.omit({
     maxApp: true,
     maxDataset: true
@@ -131,6 +132,12 @@ export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
     pointPrice: true,
     price: true
   }).shape,
+  currentMode: z.enum(SubModeEnum),
+  nextMode: z.enum(SubModeEnum),
+  nextSubLevel: z.enum(StandardSubLevelEnum),
+  totalPoints: z.number().nullable(),
+  surplusPoints: z.number().nullable(),
+  currentExtraDatasetSize: z.int(),
   price: z.number().optional()
 });
 
@@ -138,9 +145,9 @@ export type TeamPlanStandardType = z.infer<typeof TeamPlanStandardSchema>;
 
 export const TeamPlanStatusSchema = z.object({
   [SubTypeEnum.standard]: TeamPlanStandardSchema.optional(),
-  totalPoints: z.int(),
-  usedPoints: z.int(),
-  datasetMaxSize: z.int()
+  totalPoints: z.number().nullable(),
+  usedPoints: z.number().nullable(),
+  datasetMaxSize: z.number().nullable()
 });
 export type TeamPlanStatusType = z.infer<typeof TeamPlanStatusSchema>;
 

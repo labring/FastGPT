@@ -241,7 +241,7 @@ export const DatasetTrainingSchema = z.object({
   expireAt: z.coerce.date().meta({ description: '过期时间' }),
   lockTime: z.coerce.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
-  dataId: z.string().optional().meta({ description: '数据 ID' }),
+  dataId: ObjectIdSchema.optional().meta({ description: '数据 ID' }),
   q: z.string().meta({ description: '问题/主文本' }),
   a: z.string().meta({ description: '回答/补充文本' }),
   imageId: z.string().optional().meta({ description: '图片 ID' }),

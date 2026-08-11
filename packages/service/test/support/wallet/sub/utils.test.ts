@@ -18,8 +18,7 @@ import {
   getTeamStandPlan,
   getTeamPlanStatus,
   teamPoint,
-  teamQPM,
-  clearTeamPlanCache
+  teamQPM
 } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 
@@ -465,6 +464,44 @@ describe('buildStandardPlan', () => {
       expect(result.currentExtraDatasetSize).toBe(0);
     });
 
+    it('将旧套餐缺失的续订字段归一化为完整的新格式', () => {
+      const result = buildStandardPlan(
+        {
+          ...baseStandard,
+          currentMode: undefined,
+          nextMode: undefined,
+          nextSubLevel: undefined,
+          currentExtraDatasetSize: undefined
+        },
+        baseConstants
+      );
+
+      expect(result.currentMode).toBe(SubModeEnum.month);
+      expect(result.nextMode).toBe(SubModeEnum.month);
+      expect(result.nextSubLevel).toBe(StandardSubLevelEnum.basic);
+      expect(result.currentExtraDatasetSize).toBe(0);
+    });
+
+    it('保留实际计费产生的小数剩余积分', () => {
+      const result = buildStandardPlan({ ...baseStandard, surplusPoints: 499.5 }, baseConstants);
+
+      expect(result.surplusPoints).toBe(499.5);
+    });
+
+    it('将历史套餐中的无限积分归一化为 null', () => {
+      const result = buildStandardPlan(
+        {
+          ...baseStandard,
+          totalPoints: Infinity,
+          surplusPoints: Infinity
+        },
+        baseConstants
+      );
+
+      expect(result.totalPoints).toBeNull();
+      expect(result.surplusPoints).toBeNull();
+    });
+
     it('annualBonusPoints 来自 standard', () => {
       const standard: TeamSubSchemaType = { ...baseStandard, annualBonusPoints: 200 };
       const result = buildStandardPlan(standard, baseConstants);
@@ -764,6 +801,49 @@ describe('getTeamPlanStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete (global as any).subPlans;
+  });
+
+  it('未启用套餐限制时统一返回 null 而不是 Infinity', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          currentSubLevel: StandardSubLevelEnum.basic
+        }
+      ])
+    } as any);
+
+    const result = await getTeamPlanStatus({ teamId: mockTeamId });
+
+    expect(result.totalPoints).toBeNull();
+    expect(result.usedPoints).toBeNull();
+    expect(result.datasetMaxSize).toBeNull();
+  });
+
+  it('将历史套餐中的无限计算结果统一归一化为 null', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          totalPoints: Infinity,
+          surplusPoints: Infinity,
+          maxDatasetSize: Infinity
+        }
+      ])
+    } as any);
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: baseConstants
+      }
+    };
+
+    const result = await getTeamPlanStatus({ teamId: mockTeamId });
+
+    expect(result.totalPoints).toBeNull();
+    expect(result.usedPoints).toBeNull();
+    expect(result.datasetMaxSize).toBeNull();
+    expect(result.standard?.totalPoints).toBeNull();
+    expect(result.standard?.surplusPoints).toBeNull();
   });
 
   it('返回团队套餐状态（包含标准套餐）', async () => {

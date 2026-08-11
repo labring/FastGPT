@@ -32,7 +32,7 @@ const FastGPTFeConfigsSchema = z.looseObject({
 }) as z.ZodType<FastGPTFeConfigsType>;
 
 const SystemModelSchema = z
-  .union([
+  .discriminatedUnion('type', [
     LLMModelItemSchema,
     EmbeddingModelItemSchema,
     TTSModelItemSchema,

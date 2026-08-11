@@ -470,8 +470,12 @@ const PlanUsage = () => {
   const isFreeTeam = useMemo(() => {
     if (!teamPlanStatus || !teamPlanStatus?.standard) return false;
     const hasExtraDatasetSize =
+      teamPlanStatus.datasetMaxSize !== null &&
       teamPlanStatus.datasetMaxSize > teamPlanStatus.standard.maxDatasetSize;
-    const hasExtraPoints = teamPlanStatus.totalPoints > teamPlanStatus.standard.totalPoints;
+    const hasExtraPoints =
+      teamPlanStatus.totalPoints !== null &&
+      teamPlanStatus.standard.totalPoints !== null &&
+      teamPlanStatus.totalPoints > teamPlanStatus.standard.totalPoints;
     if (
       teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.free &&
       !hasExtraDatasetSize &&
@@ -508,9 +512,10 @@ const PlanUsage = () => {
       };
     }
 
-    const rate = teamPlanStatus.totalPoints
-      ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
-      : 0;
+    const rate =
+      teamPlanStatus.totalPoints && teamPlanStatus.usedPoints !== null
+        ? (teamPlanStatus.usedPoints / teamPlanStatus.totalPoints) * 100
+        : 0;
 
     return {
       total: teamPlanStatus.totalPoints ?? t('account_info:unlimited'),
@@ -688,7 +693,10 @@ const PlanUsage = () => {
             </Box>
             <QuestionTip label={t('account_info:ai_points_usage_tip')} />
             <Box ml={4} fontSize={'14px'} fontWeight={'medium'} color={'myGray.600'}>
-              {Math.round(teamPlanStatus?.usedPoints || 0)} / {aiPointsUsageMap.total}
+              {teamPlanStatus?.usedPoints === null
+                ? t('account_info:unlimited')
+                : Math.round(teamPlanStatus?.usedPoints ?? 0)}{' '}
+              / {aiPointsUsageMap.total}
             </Box>
           </Flex>
           <Flex h={2} w={'full'} p={0.5} bg={'primary.50'} borderRadius={'md'}>

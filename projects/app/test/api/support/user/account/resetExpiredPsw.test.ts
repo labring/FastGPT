@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import resetExpiredPswHandler from '@/pages/api/support/user/account/resetExpiredPsw';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -53,7 +54,7 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: twoMonthsAgo
     });
 
-    const res = await Call<ResetExpiredPswBodyType, {}, any>(resetExpiredPswApi.default, {
+    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
       body: { newPsw: 'newhashedpassword' },
       auth: {
         userId: String(testUser._id),
@@ -84,7 +85,7 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: new Date()
     });
 
-    const res = await Call<ResetExpiredPswBodyType, {}, any>(resetExpiredPswApi.default, {
+    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
       body: { newPsw: 'newhashedpassword' },
       auth: {
         userId: String(testUser._id),
@@ -108,7 +109,7 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: new Date()
     });
 
-    const res = await Call<ResetExpiredPswBodyType, {}, any>(resetExpiredPswApi.default, {
+    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
       body: { newPsw: 'newhashedpassword' },
       auth: {
         userId: String(testUser._id),
@@ -124,9 +125,7 @@ describe('resetExpiredPsw API', () => {
 
   it('should reject when newPsw is missing', async () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
-    const resetExpiredPswApi = await loadResetExpiredPswApi();
-
-    const res = await Call<any, {}, any>(resetExpiredPswApi.default, {
+    const res = await Call<any, object, any>(resetExpiredPswHandler, {
       body: {},
       auth: {
         userId: String(testUser._id),
@@ -138,6 +137,7 @@ describe('resetExpiredPsw API', () => {
     });
 
     expect(res.code).toBe(500);
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
   });
 
   it('should reject when user is not found', async () => {
@@ -146,7 +146,7 @@ describe('resetExpiredPsw API', () => {
 
     const nonExistentId = '000000000000000000000001';
 
-    const res = await Call<ResetExpiredPswBodyType, {}, any>(resetExpiredPswApi.default, {
+    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
       body: { newPsw: 'newhashedpassword' },
       auth: {
         userId: nonExistentId,
@@ -163,7 +163,7 @@ describe('resetExpiredPsw API', () => {
 
   it('should reject request without authentication', async () => {
     const resetExpiredPswApi = await loadResetExpiredPswApi();
-    const res = await Call<ResetExpiredPswBodyType, {}, any>(resetExpiredPswApi.default, {
+    const res = await Call<ResetExpiredPswBodyType, object, any>(resetExpiredPswApi.default, {
       body: { newPsw: 'newhashedpassword' }
     });
 
@@ -172,7 +172,6 @@ describe('resetExpiredPsw API', () => {
 
   it('should reject newPsw as non-string (injection guard)', async () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
-    const resetExpiredPswApi = await loadResetExpiredPswApi();
 
     const twoMonthsAgo = new Date();
     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
@@ -180,7 +179,7 @@ describe('resetExpiredPsw API', () => {
       passwordUpdateTime: twoMonthsAgo
     });
 
-    const res = await Call<any, {}, any>(resetExpiredPswApi.default, {
+    const res = await Call<any, object, any>(resetExpiredPswHandler, {
       body: { newPsw: { $ne: '' } },
       auth: {
         userId: String(testUser._id),
@@ -192,5 +191,24 @@ describe('resetExpiredPsw API', () => {
     });
 
     expect(res.code).toBe(500);
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
+  });
+
+  it('should reject string body as input parse error', async () => {
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+
+    const res = await Call<any, object, any>(resetExpiredPswHandler, {
+      body: 'newhashedpassword',
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
   });
 });

@@ -10,6 +10,7 @@ import { DatasetTrainingErrorPaginationLimits } from '@fastgpt/global/openapi/co
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -79,7 +80,8 @@ describe('dataset training error list test', () => {
         mode: TrainingModeEnum.parse,
         retryCount: 0,
         errorMsg: 'file parse error',
-        chunkIndex: 1
+        chunkIndex: 1,
+        dataId: new Types.ObjectId()
       },
       {
         teamId: root.teamId,
@@ -138,6 +140,7 @@ describe('dataset training error list test', () => {
     expect(firstPageRes.data.list[0].hasMoreItems).toBe(true);
     expect(firstPageRes.data.list[0].items).toHaveLength(1);
     expect(firstPageRes.data.list[0].items[0].mode).toBe(TrainingModeEnum.parse);
+    expect(typeof firstPageRes.data.list[0].items[0].dataId).toBe('string');
 
     const secondPageRes = await Call<
       getDatasetTrainingErrorBody,
