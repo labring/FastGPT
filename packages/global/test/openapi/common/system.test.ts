@@ -2,7 +2,8 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ModelTypeEnum } from '../../../core/ai/constants';
 import {
   EmbeddingModelItemSchema,
-  type EmbeddingModelItemType
+  type EmbeddingModelItemType,
+  LLMModelItemSchema
 } from '../../../core/ai/model.schema';
 import { GetSystemInitDataResponseSchema } from '../../../openapi/common/system/api';
 
@@ -39,5 +40,19 @@ describe('system initialization OpenAPI contract', () => {
       ...desensitizedEmbeddingModel,
       weight: 2
     });
+  });
+
+  it('accepts an LLM model without functionCall', () => {
+    expect(
+      LLMModelItemSchema.parse({
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        model: 'gpt-5',
+        name: 'GPT-5',
+        maxContext: 128000,
+        maxResponse: 16000,
+        quoteMaxToken: 12000
+      })
+    ).not.toHaveProperty('functionCall');
   });
 });

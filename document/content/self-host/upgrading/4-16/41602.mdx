@@ -3,6 +3,32 @@ title: 'V4.16.0-beta2（进行中）'
 description: 'FastGPT V4.16.0-beta2 更新说明'
 ---
 
+## ⚠️ 升级说明
+
+### 清洗历史系统模型配置
+
+本版本开始在系统模型初始化及保存时使用严格 Schema。此前版本保存的数字字符串、字符串形式的价格梯度或缺失字段可能导致初始化校验失败。升级后请先执行 dry-run，查看需要处理的模型配置；dry-run 不会修改数据或刷新缓存：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true,"sampleLimit":20}'
+```
+
+确认 `invalidSamples` 中没有需要人工处理的数据后，执行正式清洗：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false,"sampleLimit":20}'
+```
+
+清洗会将合法数字字符串转换为 number、将字符串形式的 `priceTiers` 转换为数组，并删除非法的可选数字。非法或缺失的必填数字使用系统默认值：LLM 的 `maxContext/maxResponse/quoteMaxToken` 分别为 `16000/16000/13000`，Embedding 的 `defaultToken/maxToken` 分别为 `500/3000`，价格为 `0`。`functionCall` 保持可选，Embedding 缺失的 `weight` 补为 `0`。
+
+正式执行会统一写入数据，并在存在实际更新时立即刷新系统模型缓存。接口可安全重复执行；再次 dry-run 时，`wouldUpdate` 应为 `0`。无法通过当前完整模型 Schema 的记录不会写入，详情会返回在 `invalidSamples` 中；`sampleLimit` 默认为 `20`，最大为 `100`。
+
 ## 🚀 新增内容
 
 1. 工作流应用的系统配置移至画布左侧工具栏中的独立配置面板，新建工作流应用时会自动打开。

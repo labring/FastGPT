@@ -6,7 +6,8 @@ import {
   type EmbeddingModelItemType,
   type TTSModelType,
   type STTModelType,
-  type RerankModelItemType
+  type RerankModelItemType,
+  PersistedSystemModelItemSchema
 } from '@fastgpt/global/core/ai/model.schema';
 import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
@@ -23,6 +24,26 @@ import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+
+/**
+ * 生成允许持久化的严格模型配置。运行时字段和废弃字段会被移除，明确默认值由统一 Schema 填充。
+ */
+export const parsePersistedSystemModelConfig = ({
+  model,
+  metadata
+}: {
+  model: string;
+  metadata: Record<string, unknown>;
+}): SystemModelItemType => {
+  const normalizedModel = model.trim();
+  const persistedMetadata = {
+    ...metadata,
+    model: normalizedModel,
+    name: typeof metadata.name === 'string' ? metadata.name.trim() : metadata.name
+  };
+
+  return PersistedSystemModelItemSchema.parse(persistedMetadata);
+};
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -134,6 +155,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
         ...(model.type === ModelTypeEnum.llm && {
           maxResponse: model.maxTokens ?? 16000,
+          maxTemperature: dbLlmMetadata?.maxTemperature ?? model.maxTemperature ?? undefined,
           reasoning: dbLlmMetadata?.reasoning ?? model.reasoning ?? false,
           reasoningEffort: dbLlmMetadata?.reasoningEffort ?? model.reasoningEffort ?? false
         }),

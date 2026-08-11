@@ -34,9 +34,9 @@ const PriceTypeSchema = z.object({
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 const BaseModelItemSchema = z.object({
-  provider: z.string(),
-  model: z.string(),
-  name: z.string(),
+  provider: z.string().trim().min(1),
+  model: z.string().trim().min(1),
+  name: z.string().trim().min(1),
   avatar: z.string().optional(), // model icon, from provider
 
   isActive: z.boolean().optional(),
@@ -70,8 +70,8 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   reasoning: z.boolean().optional(),
   reasoningEffort: z.boolean().optional(),
 
-  functionCall: z.boolean(),
-  toolChoice: z.boolean(),
+  functionCall: z.boolean().optional(),
+  toolChoice: z.boolean().optional(),
 
   defaultSystemChatPrompt: z.string().optional(),
   defaultConfig: z.record(z.string(), z.any()).optional(),
@@ -127,3 +127,36 @@ export const STTModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   type: z.literal(ModelTypeEnum.stt)
 });
 export type STTModelType = z.infer<typeof STTModelItemSchema>;
+
+export const SystemModelItemSchema = z.discriminatedUnion('type', [
+  LLMModelItemSchema,
+  EmbeddingModelItemSchema,
+  TTSModelItemSchema,
+  STTModelItemSchema,
+  RerankModelItemSchema
+]);
+export type SystemModelItemType = z.infer<typeof SystemModelItemSchema>;
+
+export const PersistedSystemModelItemSchema = SystemModelItemSchema.transform((metadata) => {
+  const persistedMetadata = { ...metadata } as Record<string, unknown>;
+
+  delete persistedMetadata.avatar;
+  delete persistedMetadata.isCustom;
+  delete persistedMetadata.datasetProcess;
+  delete persistedMetadata.usedInClassify;
+  delete persistedMetadata.usedInExtractFields;
+  delete persistedMetadata.usedInToolCall;
+  delete persistedMetadata.useInEvaluation;
+
+  for (const [key, value] of Object.entries(persistedMetadata)) {
+    if (value === undefined) delete persistedMetadata[key];
+  }
+
+  if (Array.isArray(persistedMetadata.priceTiers)) {
+    delete persistedMetadata.charsPointsPrice;
+    delete persistedMetadata.inputPrice;
+    delete persistedMetadata.outputPrice;
+  }
+
+  return persistedMetadata as SystemModelItemType;
+});
