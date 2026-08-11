@@ -24,6 +24,7 @@ export const IfElseNode: FlowNodeTemplateType = {
   name: i18nT('workflow:condition_checker'),
   intro: i18nT('workflow:execute_different_branches_based_on_conditions'),
   showStatus: true,
+  isTool: true,
   courseUrl: '/guide/build/workflow/nodes/tfswitch',
   inputs: [
     {
@@ -31,6 +32,7 @@ export const IfElseNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
       label: '',
+      canAgentGenerated: false,
       value: [
         {
           condition: 'AND', // AND, OR
