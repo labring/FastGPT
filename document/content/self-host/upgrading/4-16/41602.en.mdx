@@ -1,12 +1,24 @@
 ---
-title: 'V4.16.0-beta2 (Publish Channel UI Update)'
-description: 'FastGPT V4.16.0-beta2 release notes for the Publish Channel UI update'
+title: 'V4.16.0-beta2 (In Progress)'
+description: 'FastGPT V4.16.0-beta2 release notes'
 ---
 
 ## 🚀 New
 
+1. Moved Workflow app system settings to a dedicated panel in the canvas toolbar. The panel opens automatically when a new Workflow app is created.
+2. Added support for configuring multiple preset questions separately, with drag-and-drop reordering.
+
 ## ⚙️ Improvements
 
-1. Publish Channel UI/UX
+1. Redesigned the Publish Channels page with separate native and third-party channel groups and a count of configured connections for each channel.
+2. Improved batch updates in the Tool Marketplace. Partially failed updates now remain visible and can be retried or uninstalled individually, with clearer installed-version and update-status information.
+3. Limited portal quick apps to three while preserving compatibility with existing configurations that exceed the limit.
 
 ## 🐛 Fixes
+
+1. Fixed legacy Workflow HTTP tools not restoring the correct default input mode for dynamic parameters.
+2. Fixed incorrect initial configuration labels caused by Workflow translations not being preloaded when an app was created.
+3. Fixed duplicate rendering of Workflow tool parameters.
+4. Fixed file variables not accepting uploads after an app was published.
+5. Fixed file uploads failing for shared Workflow tool parameters.
+6. Fixed upload, parsing, preview, or download failures when S3 object keys or filenames contained spaces or special characters such as `%`, `#`, `?`, or slashes.
