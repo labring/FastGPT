@@ -10,6 +10,7 @@ export function toEntityId(value: unknown) {
 }
 
 export const toMongoObjectId = (id: EntityId) => {
-  if (Types.ObjectId.isValid(id)) return new Types.ObjectId(id);
+  // ObjectId.isValid 对任意 12 字符字符串也返回 true，这里用严格 24 位十六进制校验。
+  if (/^[0-9a-fA-F]{24}$/.test(id)) return new Types.ObjectId(id);
   throw new MongoInvalidArgumentError('Invalid MongoDB entity id');
 };

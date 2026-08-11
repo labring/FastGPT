@@ -25,6 +25,7 @@ export const createDefaultMongooseConnectOptions = (): ConnectOptions => {
 
 export const registerMongooseListeners = (db: Mongoose) => {
   db.connection.removeAllListeners('error');
+  db.connection.removeAllListeners('connected');
   db.connection.removeAllListeners('disconnected');
 
   db.connection.on('error', (error) => {

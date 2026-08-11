@@ -63,7 +63,7 @@ describe('MongoTransactionRunner', () => {
     expect(session.endSession).toHaveBeenCalledOnce();
   });
 
-  it('maps start, commit and end driver errors', async () => {
+  it('maps start and commit driver errors and keeps session cleanup best-effort', async () => {
     const startClient = {
       startSession: vi.fn(async () => {
         throw { name: 'MongoServerSelectionError' };
@@ -79,11 +79,12 @@ describe('MongoTransactionRunner', () => {
       new MongoTransactionRunner(commitClient).withTransaction(async () => undefined)
     ).rejects.toBeInstanceOf(DatabaseTimeoutError);
 
+    // 事务已提交后 endSession 失败不应让调用方误以为事务失败（记录日志即可）。
     const { client: endClient, session: endSession } = createRuntime();
     vi.mocked(endSession.endSession).mockRejectedValueOnce({ name: 'MongoNetworkError' });
     await expect(
       new MongoTransactionRunner(endClient).withTransaction(async () => undefined)
-    ).rejects.toBeInstanceOf(DatabaseUnavailableError);
+    ).resolves.toBeUndefined();
   });
 
   it('preserves the handler error when session cleanup also fails', async () => {

@@ -149,7 +149,7 @@ export async function registerNodeInstrumentation() {
       runInitializationStep({
         step: 'connect-dal-mongo',
         stage: InitialErrorEnum.MONGO_ERROR,
-        action: () => connection.connect(),
+        action: () => connection.connect(MONGO_URL),
         logger,
         getErrText,
         meta: {

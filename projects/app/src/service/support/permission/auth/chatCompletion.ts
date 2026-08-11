@@ -65,12 +65,12 @@ export const resolveChatCompletionEffectiveTmbId = async ({
       : null,
     username
       ? (async () => {
-          const user = await userRepository.findByUsername(username);
-          if (!user) return null;
+          const userId = await userRepository.findIdByUsername(username);
+          if (!userId) return null;
 
           return MongoTeamMember.findOne({
             teamId,
-            userId: user.id,
+            userId,
             status: notLeaveStatus
           })
             .select('_id userId teamId')

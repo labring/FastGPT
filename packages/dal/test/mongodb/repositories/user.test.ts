@@ -26,6 +26,7 @@ const document: UserDocument = {
 
 const createQuery = <T>(value: T) => ({
   session: vi.fn().mockReturnThis(),
+  select: vi.fn().mockReturnThis(),
   lean: vi.fn(async () => value)
 });
 
@@ -81,6 +82,62 @@ describe('MongoUserRepository.findByUsername', () => {
     queries.findOne.lean.mockResolvedValueOnce(null);
 
     await expect(repository.findByUsername('missing@example.com')).resolves.toBeNull();
+  });
+});
+
+describe('MongoUserRepository.findIdByUsername', () => {
+  it('projects only the entity id', async () => {
+    const { repository, model, queries } = createRepository();
+    queries.findOne.lean.mockResolvedValueOnce({
+      _id: new Types.ObjectId(userId)
+    } as unknown as UserDocument);
+
+    const id = await repository.findIdByUsername('user@example.com');
+
+    expect(model.findOne).toHaveBeenCalledWith({ username: 'user@example.com' });
+    expect(queries.findOne.select).toHaveBeenCalledWith('_id');
+    expect(id).toBe(userId);
+  });
+
+  it('returns null when no user exists', async () => {
+    const { repository, queries } = createRepository();
+    queries.findOne.lean.mockResolvedValueOnce(null);
+
+    await expect(repository.findIdByUsername('missing@example.com')).resolves.toBeNull();
+  });
+});
+
+describe('MongoUserRepository.findPasswordUpdateTimeById', () => {
+  it('projects only the password update time', async () => {
+    const { repository, model, queries } = createRepository();
+    const updateTime = new Date('2026-02-01T00:00:00.000Z');
+    queries.findById.lean.mockResolvedValueOnce({
+      passwordUpdateTime: updateTime
+    } as unknown as UserDocument);
+
+    const result = await repository.findPasswordUpdateTimeById(userId);
+
+    expect(model.findById).toHaveBeenCalledWith(new Types.ObjectId(userId));
+    expect(queries.findById.select).toHaveBeenCalledWith('passwordUpdateTime');
+    expect(result).toEqual({ passwordUpdateTime: updateTime });
+  });
+
+  it('normalizes an explicit null update time to undefined', async () => {
+    const { repository, queries } = createRepository();
+    queries.findById.lean.mockResolvedValueOnce({
+      passwordUpdateTime: null
+    } as unknown as UserDocument);
+
+    await expect(repository.findPasswordUpdateTimeById(userId)).resolves.toEqual({
+      passwordUpdateTime: undefined
+    });
+  });
+
+  it('returns null when the user does not exist', async () => {
+    const { repository, queries } = createRepository();
+    queries.findById.lean.mockResolvedValueOnce(null);
+
+    await expect(repository.findPasswordUpdateTimeById(userId)).resolves.toBeNull();
   });
 });
 
@@ -155,6 +212,18 @@ describe('MongoUserRepository.updateById', () => {
     queries.update.lean.mockResolvedValueOnce(null);
 
     await expect(repository.updateById(userId, { timezone: 'UTC' })).resolves.toBeNull();
+  });
+
+  it('drops undefined patch fields before updating', async () => {
+    const { repository, model } = createRepository();
+
+    await repository.updateById(userId, { timezone: 'UTC', contact: undefined });
+
+    expect(model.findByIdAndUpdate).toHaveBeenCalledWith(
+      new Types.ObjectId(userId),
+      { $set: { timezone: 'UTC' } },
+      { new: true }
+    );
   });
 });
 

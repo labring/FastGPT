@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import type { Mongoose } from '@fastgpt/service/common/mongo';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { connection } from '@fastgpt/service/common/dal/mongo/connection';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const fileDbPrefix = `fastgpt_test_${process.env.VITEST_WORKER_ID ?? '0'}_${randomUUID().replaceAll(
   '-',
@@ -80,7 +81,7 @@ vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any
  */
 vi.mock(import('@fastgpt/service/common/dal/mongo/connection'), async (importOriginal: any) => {
   const mod = await importOriginal();
-  mod.connection.connect = async (url: string) =>
+  mod.connection.connect = async (url: string = serviceEnv.MONGODB_URI) =>
     connectTestMongo({ db: mod.connection.client, url });
   return mod;
 });

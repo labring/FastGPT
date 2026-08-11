@@ -24,6 +24,10 @@ export const defineIndex = (
   schema: Schema,
   { key, options, deprecated }: DefineMongoIndexOptions
 ) => {
+  if (Object.keys(key).length === 0) {
+    throw new Error('defineIndex: key must not be empty');
+  }
+
   if (deprecated !== true) {
     schema.index(key, options);
     return;
@@ -63,5 +67,6 @@ export const defineIndex = (
 
 export const getDeprecatedIndexes = (schema: Schema): readonly DeprecatedMongoIndexDefinition[] => {
   const indexes: unknown = Reflect.get(schema, deprecatedMongoIndexesKey);
-  return Array.isArray(indexes) ? indexes : [];
+  // 返回副本，防止外部直接修改 schema 上登记的内部元数据。
+  return Array.isArray(indexes) ? [...indexes] : [];
 };

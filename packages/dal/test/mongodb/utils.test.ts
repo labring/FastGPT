@@ -27,4 +27,8 @@ describe('toMongoObjectId', () => {
     expect(() => toMongoObjectId('sql-id')).toThrow(MongoInvalidArgumentError);
     expect(() => toMongoObjectId('sql-id')).toThrow('Invalid MongoDB entity id');
   });
+
+  it('rejects short hex-like strings that ObjectId.isValid accepts', () => {
+    expect(() => toMongoObjectId('abcdefghijkl')).toThrow(MongoInvalidArgumentError);
+  });
 });

@@ -11,13 +11,13 @@ async function handler(
 ): Promise<CheckPswExpiredResponseType> {
   const { userId } = await authCert({ req, authToken: true });
 
-  const user = await userRepository.findById(userId);
+  const updateTime = await userRepository.findPasswordUpdateTimeById(userId);
 
-  if (!user) {
+  if (!updateTime) {
     return false;
   }
 
-  return checkPswExpired({ updateTime: user.passwordUpdateTime });
+  return checkPswExpired({ updateTime: updateTime.passwordUpdateTime });
 }
 
 export default NextAPI(handler);

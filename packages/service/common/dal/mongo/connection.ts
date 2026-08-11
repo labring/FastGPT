@@ -36,7 +36,11 @@ export class MongooseConnection {
       return db;
     } catch (error) {
       logger.error('DAL MongoDB connection failed, will retry', { error });
-      await db.disconnect();
+      try {
+        await db.disconnect();
+      } catch (disconnectError) {
+        logger.warn('DAL MongoDB disconnect failed during retry', { error: disconnectError });
+      }
       await delay(1000);
       return this.connect(url);
     }

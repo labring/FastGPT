@@ -53,6 +53,28 @@ describe('toUser', () => {
     expect(user.inviterId).toBeUndefined();
   });
 
+  it('normalizes legacy explicit null values to undefined', () => {
+    const user = toUser(
+      createDocument({
+        passwordUpdateTime: null,
+        openaiAccount: null,
+        fastgpt_sem: null,
+        phonePrefix: null,
+        contact: null,
+        meta: null,
+        avatar: null
+      } as unknown as Partial<UserDocument>)
+    );
+
+    expect(user.passwordUpdateTime).toBeUndefined();
+    expect(user.openaiAccount).toBeUndefined();
+    expect(user.fastgpt_sem).toBeUndefined();
+    expect(user.phonePrefix).toBeUndefined();
+    expect(user.contact).toBeUndefined();
+    expect(user.meta).toBeUndefined();
+    expect(user.avatar).toBeUndefined();
+  });
+
   it('applies production defaults to historical documents with missing fields', () => {
     const document = createDocument({
       status: undefined,

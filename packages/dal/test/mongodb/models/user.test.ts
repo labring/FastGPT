@@ -17,7 +17,7 @@ describe('UserDocumentSchema', () => {
     expect(document.language).toBe(LangEnum.zh_CN);
     expect(document.tags).toEqual([]);
     expect(document.get('password', null, { getters: false })).toBe(hashStr('password'));
-    expect(document.password).toBe(hashStr(hashStr('password')));
+    expect(document.password).toBe(hashStr('password'));
     expect(UserDocumentSchema.path('password').options.select).toBe(false);
   });
 
