@@ -12,12 +12,12 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../../../../context/workflowInitContext';
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
+} from '@fastgpt/global/core/workflow/node/constant';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
@@ -56,12 +56,15 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 export const useReference = ({
   nodeId,
   valueType = WorkflowIOValueTypeEnum.any,
-  includeChildren
+  includeChildren,
+  excludeInputKey
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
   // Include the container's own children as reference sources.
   includeChildren?: boolean;
+  /** 代码自定义变量不能引用自身，避免形成直接循环。 */
+  excludeInputKey?: string;
 }) => {
   const { t } = useSafeTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -111,7 +114,33 @@ export const useReference = ({
       })
       .filter((item) => item.children.length > 0);
 
-    return list;
+    const currentNode = getNodeById(nodeId);
+    if (currentNode?.flowNodeType !== FlowNodeTypeEnum.code) return list;
+
+    const toolInputs = currentNode.inputs.filter(
+      (input) =>
+        input.canEdit === true && input.isToolParam === true && input.key !== excludeInputKey
+    );
+    if (toolInputs.length === 0) return list;
+
+    return [
+      ...list,
+      // References to user-defined tool call params of the node.
+      {
+        label: (
+          <Flex alignItems={'center'}>
+            <Avatar src={currentNode.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
+            <Box ml={1}>{currentNode.name}</Box>
+          </Flex>
+        ),
+        value: currentNode.nodeId,
+        children: toolInputs.map((input) => ({
+          label: t(input.label as any),
+          value: input.key,
+          valueType: input.valueType
+        }))
+      }
+    ];
   }, [
     nodeId,
     getNodeById,
@@ -120,6 +149,7 @@ export const useReference = ({
     t,
     valueType,
     includeChildren,
+    excludeInputKey,
     childrenNodeIdListMap
   ]);
 

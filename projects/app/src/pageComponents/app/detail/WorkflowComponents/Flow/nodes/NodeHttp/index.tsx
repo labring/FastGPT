@@ -835,7 +835,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   // console.log(inputs);
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      {isTool && hasDynamicToolInput(inputs) && (
+      {isTool && hasDynamicToolInput(data) && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />
