@@ -5,6 +5,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { decodeWorkflowNodesFromStorage, encodeWorkflowNodesForStorage } from './jsonSchemaStorage';
 
 export const AppCollectionName = 'apps';
 
@@ -71,6 +72,8 @@ const AppSchema = new Schema(
     // Workflow data
     modules: {
       type: Array,
+      set: encodeWorkflowNodesForStorage,
+      get: decodeWorkflowNodesFromStorage,
       default: []
     },
     edges: {
@@ -134,6 +137,16 @@ const AppSchema = new Schema(
     minimize: false
   }
 );
+
+AppSchema.post(/^find/, (docs) => {
+  if (Array.isArray(docs)) {
+    docs.forEach((doc) => {
+      doc.modules = decodeWorkflowNodesFromStorage(doc.modules);
+    });
+  } else if (docs) {
+    docs.modules = decodeWorkflowNodesFromStorage(docs.modules);
+  }
+});
 
 defineIndex(AppSchema, { key: { teamId: 1, updateTime: -1 } });
 defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
