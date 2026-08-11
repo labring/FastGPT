@@ -1,11 +1,15 @@
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { areWorkflowValueTypesCompatible } from '@fastgpt/global/core/workflow/utils';
+import {
+  areWorkflowValueTypesCompatible,
+  getSelectedInputRenderType
+} from '@fastgpt/global/core/workflow/utils';
 import type { WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '../template/automationMeta';
+import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
 import { assertValueSchema, inputValueNeedsSchema } from '../template/valueSchema';
 
 const getInput = ({
@@ -29,16 +33,18 @@ const getInput = ({
       { code: 'WORKFLOW_INPUT_NOT_FOUND', severity: 'error', nodeId, inputKey }
     ]);
   }
-  if (
-    input.canEdit === false ||
-    getInputAutomationMeta(node.flowNodeType, inputKey)?.configurable === false
-  ) {
+  const automationMeta = getInputAutomationMeta(node.flowNodeType, inputKey);
+  const capability = getNodeInputCapability({ input, automationMeta });
+  if (!capability.configurable) {
     throw new WorkflowCommandError([
       { code: 'WORKFLOW_INPUT_NOT_CONFIGURABLE', severity: 'error', nodeId, inputKey }
     ]);
   }
-  return input;
+  return { input, inputModes: capability.inputModes };
 };
+
+const isLiteralInputRenderType = (type: FlowNodeInputTypeEnum) =>
+  type !== FlowNodeInputTypeEnum.reference && type !== FlowNodeInputTypeEnum.agentGenerated;
 
 export const valueMatchesType = (value: unknown, valueType?: string): boolean => {
   if (valueType === undefined || valueType === WorkflowIOValueTypeEnum.any) return true;
@@ -69,32 +75,39 @@ export const valueMatchesType = (value: unknown, valueType?: string): boolean =>
 };
 
 const assertInputMode = ({
-  input,
+  inputKey,
+  inputModes,
   nodeId,
   mode
 }: {
-  input: FlowNodeInputItemType;
+  inputKey: string;
+  inputModes: NodeParameterInputMode[];
   nodeId: string;
   mode: 'literal' | 'reference';
 }) => {
-  const hasMode =
-    mode === 'reference'
-      ? input.renderTypeList.includes(FlowNodeInputTypeEnum.reference)
-      : input.renderTypeList.some((type) => type !== FlowNodeInputTypeEnum.reference);
-  if (!hasMode) {
+  if (!inputModes.includes(mode)) {
     throw new WorkflowCommandError([
       {
         code: 'WORKFLOW_INPUT_MODE_NOT_ALLOWED',
         severity: 'error',
         nodeId,
-        inputKey: input.key,
+        inputKey,
         params: { mode }
       }
     ]);
   }
 };
 
-/** 更新固定值，并同步 Web 使用的 selectedTypeIndex。 */
+/** 同步新旧输入模式字段，避免 selectedType 覆盖 selectedTypeIndex 造成值与控件不一致。 */
+const setSelectedInputRenderType = (
+  input: FlowNodeInputItemType,
+  selectedType: FlowNodeInputTypeEnum
+) => {
+  input.selectedType = selectedType;
+  input.selectedTypeIndex = input.renderTypeList.indexOf(selectedType);
+};
+
+/** 更新固定值，并同步 Web 使用的新旧输入模式字段。 */
 export const setInputValue = ({
   document,
   nodeId,
@@ -106,8 +119,8 @@ export const setInputValue = ({
   inputKey: string;
   value: unknown;
 }) => {
-  const input = getInput({ document, nodeId, inputKey });
-  assertInputMode({ input, nodeId, mode: 'literal' });
+  const { input, inputModes } = getInput({ document, nodeId, inputKey });
+  assertInputMode({ inputKey, inputModes, nodeId, mode: 'literal' });
   if (!valueMatchesType(value, input.valueType)) {
     throw new WorkflowCommandError([
       {
@@ -119,10 +132,11 @@ export const setInputValue = ({
       }
     ]);
   }
-  const valueSchema = getInputAutomationMeta(
-    document.nodes.find((item) => item.nodeId === nodeId)!.flowNodeType,
-    inputKey
-  )?.valueSchema;
+  const valueSchema =
+    getInputAutomationMeta(
+      document.nodes.find((item) => item.nodeId === nodeId)!.flowNodeType,
+      inputKey
+    )?.valueSchema ?? input.customJsonSchema;
   const needsSchema = inputValueNeedsSchema({ value, valueType: input.valueType });
   if (needsSchema && !valueSchema) {
     throw new WorkflowCommandError([
@@ -137,10 +151,14 @@ export const setInputValue = ({
   if (valueSchema) assertValueSchema({ value, schema: valueSchema, nodeId, inputKey });
 
   input.value = structuredClone(value);
-  const literalIndex = input.renderTypeList.findIndex(
-    (type) => type !== FlowNodeInputTypeEnum.reference
-  );
-  input.selectedTypeIndex = literalIndex >= 0 ? literalIndex : undefined;
+  const currentSelectedType = getSelectedInputRenderType(input);
+  const literalType =
+    currentSelectedType &&
+    input.renderTypeList.includes(currentSelectedType) &&
+    isLiteralInputRenderType(currentSelectedType)
+      ? currentSelectedType
+      : input.renderTypeList.find(isLiteralInputRenderType)!;
+  setSelectedInputRenderType(input, literalType);
 };
 
 /** 设置基础节点输出引用，WorkflowDocument 使用稳定的 `[nodeId, outputKey]` 语义格式。 */
@@ -155,8 +173,8 @@ export const setInputReference = ({
   inputKey: string;
   ref: VariableRef;
 }) => {
-  const input = getInput({ document, nodeId, inputKey });
-  assertInputMode({ input, nodeId, mode: 'reference' });
+  const { input, inputModes } = getInput({ document, nodeId, inputKey });
+  assertInputMode({ inputKey, inputModes, nodeId, mode: 'reference' });
 
   if (ref.nodeId === VARIABLE_NODE_ID) {
     const variable = document.chatConfig.variables?.find((item) => item.key === ref.outputKey);
@@ -188,7 +206,7 @@ export const setInputReference = ({
       ]);
     }
     input.value = [ref.nodeId, ref.outputKey];
-    input.selectedTypeIndex = input.renderTypeList.indexOf(FlowNodeInputTypeEnum.reference);
+    setSelectedInputRenderType(input, FlowNodeInputTypeEnum.reference);
     return;
   }
 
@@ -246,7 +264,7 @@ export const setInputReference = ({
   }
 
   input.value = [ref.nodeId, ref.outputKey];
-  input.selectedTypeIndex = input.renderTypeList.indexOf(FlowNodeInputTypeEnum.reference);
+  setSelectedInputRenderType(input, FlowNodeInputTypeEnum.reference);
 };
 
 /** 清空可选且可配置的节点输入。 */
@@ -259,7 +277,7 @@ export const unsetInput = ({
   nodeId: string;
   inputKey: string;
 }) => {
-  const input = getInput({ document, nodeId, inputKey });
+  const { input } = getInput({ document, nodeId, inputKey });
   if (input.required === true) {
     throw new WorkflowCommandError([
       { code: 'WORKFLOW_REQUIRED_INPUT_UNSET_FORBIDDEN', severity: 'error', nodeId, inputKey }
@@ -278,8 +296,8 @@ export const getAvailableInputReferences = ({
   nodeId: string;
   inputKey: string;
 }) => {
-  const input = getInput({ document, nodeId, inputKey });
-  assertInputMode({ input, nodeId, mode: 'reference' });
+  const { input, inputModes } = getInput({ document, nodeId, inputKey });
+  assertInputMode({ inputKey, inputModes, nodeId, mode: 'reference' });
   const upstreamNodeIds = new Set<string>();
   const pending = document.executionEdges
     .filter((edge) => edge.target.nodeId === nodeId)

@@ -2,11 +2,14 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowReferenceSourceValueTypes } from '@fastgpt/global/core/workflow/utils';
 import type {
   NodeTemplateAutomationMeta,
+  NodeInputAutomationMeta,
   NodeTemplateRef,
   WorkflowInputDefaultPolicy,
   WorkflowResourceKind
@@ -67,12 +70,12 @@ export type NodeTemplateDescriptor = {
   effects: NodeRuntimeContract['effects'];
 };
 
-const getInputModes = (renderTypes: FlowNodeInputTypeEnum[]): NodeParameterInputMode[] => {
+const getInferredInputModes = (renderTypes: FlowNodeInputTypeEnum[]): NodeParameterInputMode[] => {
   const literalRenderTypes = renderTypes.filter(
     (type) =>
       type !== FlowNodeInputTypeEnum.reference &&
-      type !== FlowNodeInputTypeEnum.hidden &&
-      type !== FlowNodeInputTypeEnum.addInputParam
+      type !== FlowNodeInputTypeEnum.addInputParam &&
+      type !== FlowNodeInputTypeEnum.agentGenerated
   );
   const modes = [
     literalRenderTypes.length > 0 ? 'literal' : undefined,
@@ -80,6 +83,49 @@ const getInputModes = (renderTypes: FlowNodeInputTypeEnum[]): NodeParameterInput
     renderTypes.includes(FlowNodeInputTypeEnum.password) ? 'secret' : undefined
   ].filter((item): item is NodeParameterInputMode => item !== undefined);
   return [...new Set(modes)];
+};
+
+/**
+ * 计算 Builder 对单个节点输入的可操作能力。
+ * hidden 输入在 FastGPT 中也用于高级/弹窗设置，因此仍按字面量输入处理；
+ * system_input_config、addInputParam 和 agentGenerated-only 不属于 Builder 配置面。
+ */
+export const getNodeInputCapability = ({
+  input,
+  automationMeta
+}: {
+  input: FlowNodeInputItemType;
+  automationMeta?: NodeInputAutomationMeta;
+}): { configurable: boolean; inputModes: NodeParameterInputMode[] } => {
+  const inferredInputModes = getInferredInputModes(input.renderTypeList);
+  const isAgentGeneratedOnly =
+    input.renderTypeList.length > 0 &&
+    input.renderTypeList.every((type) => type === FlowNodeInputTypeEnum.agentGenerated);
+  if (
+    input.canEdit === false ||
+    automationMeta?.configurable === false ||
+    input.key === NodeInputKeyEnum.systemInputConfig ||
+    input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
+    isAgentGeneratedOnly
+  ) {
+    return { configurable: false, inputModes: [] };
+  }
+
+  const requestedInputModes = automationMeta?.inputModes ?? inferredInputModes;
+  const inputModes = requestedInputModes.filter((mode) => {
+    if (mode === 'literal') {
+      return (
+        inferredInputModes.includes('literal') ||
+        (automationMeta?.configurable === true &&
+          automationMeta.inputModes?.includes('literal') === true)
+      );
+    }
+    if (mode === 'reference') return inferredInputModes.includes('reference');
+    return inferredInputModes.includes('secret');
+  });
+  const configurable = (automationMeta?.configurable ?? true) && inputModes.length > 0;
+
+  return { configurable, inputModes: configurable ? inputModes : [] };
 };
 
 /** 将现有模板实时归一化为 CLI/Agent 可读取的参数契约。 */
@@ -105,13 +151,16 @@ export const normalizeNodeTemplateDescriptor = ({
       .filter((input) => input.deprecated !== true)
       .map((input) => {
         const meta = automationMeta?.inputs?.[input.key];
-        const inputModes = meta?.inputModes ?? getInputModes(input.renderTypeList);
+        const { configurable, inputModes } = getNodeInputCapability({
+          input,
+          automationMeta: meta
+        });
         const constraints = {
           min: input.min,
           max: input.max,
           minLength: input.minLength,
           maxLength: input.maxLength,
-          valueSchema: meta?.valueSchema
+          valueSchema: meta?.valueSchema ?? input.customJsonSchema
         };
         return {
           key: input.key,
@@ -131,11 +180,7 @@ export const normalizeNodeTemplateDescriptor = ({
           defaultPolicy: meta?.defaultPolicy ?? 'template',
           resourceKind: meta?.resourceKind,
           bindingRequired: meta?.bindingRequired ?? false,
-          configurable:
-            meta?.configurable ??
-            (input.canEdit !== false &&
-              !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden) &&
-              !input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam)),
+          configurable,
           inputModes,
           referencePolicy: inputModes.includes('reference')
             ? {

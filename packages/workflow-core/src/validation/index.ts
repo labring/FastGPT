@@ -6,7 +6,10 @@ import {
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { areWorkflowValueTypesCompatible } from '@fastgpt/global/core/workflow/utils';
+import {
+  areWorkflowValueTypesCompatible,
+  getSelectedInputRenderType
+} from '@fastgpt/global/core/workflow/utils';
 import { WorkflowDocumentSchema, type WorkflowDocument } from '../domain/document';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
 import { assertExecutionEdge } from '../edge/service';
@@ -191,8 +194,7 @@ const validateNodeIO = ({
     }
     inputKeys.add(input.key);
 
-    const selectedTypeIndex = input.selectedTypeIndex ?? 0;
-    const selectedType = input.renderTypeList[selectedTypeIndex];
+    const selectedType = getSelectedInputRenderType(input);
     if (selectedType === undefined) {
       diagnostics.push({
         code: 'WORKFLOW_INPUT_MODE_INVALID',
@@ -238,7 +240,8 @@ const validateNodeIO = ({
         params: { expected: input.valueType }
       });
     } else {
-      const valueSchema = getInputAutomationMeta(node.flowNodeType, input.key)?.valueSchema;
+      const valueSchema =
+        getInputAutomationMeta(node.flowNodeType, input.key)?.valueSchema ?? input.customJsonSchema;
       if (valueSchema && !valueMatchesSchema(input.value, valueSchema)) {
         diagnostics.push({
           code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',

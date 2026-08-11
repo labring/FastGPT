@@ -45,7 +45,7 @@ const WorkflowBuilder = () => {
   );
   const [isOpen, setIsOpen] = useState(false);
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
-  const panelWidth = useBreakpointValue({ base: '100%', md: '420px' }) || '420px';
+  const panelWidth = useBreakpointValue({ base: '100%', md: '33vw' }) || '33.333vw';
 
   const enabled =
     !!feConfigs?.isPlus &&

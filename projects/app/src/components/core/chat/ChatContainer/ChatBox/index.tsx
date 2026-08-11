@@ -23,7 +23,11 @@ import {
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
-import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
+import {
+  getInteractiveByHistories,
+  isPendingAgentAsk,
+  isPendingWorkflowBuilderPreview
+} from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatInputWrapperStyle,
@@ -55,6 +59,7 @@ import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
 import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
+import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/RenderWorkflowBuilderPreviewInteractive';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -476,8 +481,10 @@ const ChatBox = ({
     ? extractDeepestInteractive(lastInteractive)
     : undefined;
   const isAgentAskPending = isPendingAgentAsk(lastInteractive);
+  const isWorkflowBuilderPreviewPending = isPendingWorkflowBuilderPreview(lastInteractive);
+  const isBlockingInteractivePending = isAgentAskPending || isWorkflowBuilderPreviewPending;
   const canRenderChatInput =
-    onStartChat && chatStarted && active && (canSendQuery || isAgentAskPending);
+    onStartChat && chatStarted && active && (canSendQuery || isBlockingInteractivePending);
   const canSendPrompt = canRenderChatInput && !isRoundPending;
   const canRenderScrollToBottomButton =
     (chatType === ChatTypeEnum.chat ||
@@ -730,7 +737,7 @@ const ChatBox = ({
                   onClick={() => scrollToBottom('smooth')}
                 />
 
-                <Box display={isAgentAskPending ? 'none' : undefined}>
+                <Box display={isBlockingInteractivePending ? 'none' : undefined}>
                   <ChatInput
                     onSendMessage={sendPromptWithDisabledGuard}
                     lastInteractive={lastInteractive}
@@ -763,6 +770,17 @@ const ChatBox = ({
                     />
                   </Box>
                 )}
+                {isWorkflowBuilderPreviewPending &&
+                  activeInteractive?.type === 'workflowBuilderPreview' && (
+                    <Box
+                      w={'100%'}
+                      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                    >
+                      <WorkflowBuilderPreviewComposer interactive={activeInteractive} />
+                    </Box>
+                  )}
               </Box>
             </Box>
           )}

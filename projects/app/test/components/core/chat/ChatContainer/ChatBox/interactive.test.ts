@@ -7,6 +7,7 @@ import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/Chat
 import {
   getInteractiveByHistories,
   isPendingAgentAsk,
+  isPendingWorkflowBuilderPreview,
   isUserInputInteractiveSubmitted,
   persistAgentAskAnswersToHistories,
   resolveInteractiveResponseChatItemId,
@@ -175,6 +176,38 @@ describe('getInteractiveByHistories', () => {
       canSendQuery: true
     });
     expect(isPendingAgentAsk(result.interactive)).toBe(true);
+  });
+
+  it('blocks the normal input while a workflow builder preview awaits confirmation', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'workflowBuilderPreview',
+      previewId: 'preview-1',
+      params: {
+        title: 'Confirm workflow',
+        mermaid: 'flowchart LR\n  A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+          { value: 'revise', label: 'Revise', inputMode: 'text' },
+          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+
+    const pending = getInteractiveByHistories([createAiRecord(interactive)]);
+    expect(pending).toEqual({ interactive, canSendQuery: false });
+    expect(isPendingWorkflowBuilderPreview(pending.interactive)).toBe(true);
+
+    const answered = {
+      ...interactive,
+      params: { ...interactive.params, answerValue: 'confirm' as const }
+    };
+    expect(getInteractiveByHistories([createAiRecord(answered)])).toEqual({
+      interactive: undefined,
+      canSendQuery: true
+    });
+    expect(isPendingWorkflowBuilderPreview(answered)).toBe(false);
   });
 });
 

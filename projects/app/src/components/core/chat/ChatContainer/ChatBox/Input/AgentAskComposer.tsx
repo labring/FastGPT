@@ -14,6 +14,34 @@ import {
 type Answers = Record<string, string>;
 type AgentAskOption = AgentAskQuestionInteractive['options'][number];
 
+export type AgentAskAnswerDetail =
+  | { kind: 'option'; value: string }
+  | { kind: 'custom'; value: string }
+  | { kind: 'skip' };
+
+/** 将 Composer 内部答案状态转换为保留提交来源的结果，供需要区分选项和文本的调用方使用。 */
+export const getAgentAskAnswerDetails = ({
+  questions,
+  answers,
+  selectedOptionIndexes
+}: {
+  questions: AgentAskQuestionInteractive[];
+  answers: Answers;
+  selectedOptionIndexes: Record<string, number>;
+}): AgentAskAnswerDetail[] =>
+  questions.map((_, index) => {
+    const questionKey = String(index);
+    const value = answers[questionKey] ?? '';
+
+    if (selectedOptionIndexes[questionKey] !== undefined) {
+      return { kind: 'option', value };
+    }
+    if (value) {
+      return { kind: 'custom', value };
+    }
+    return { kind: 'skip' };
+  });
+
 type AgentAskNavigationProps = {
   questionIndex: number;
   questionCount: number;
@@ -160,6 +188,7 @@ type AgentAskOptionButtonProps = {
   index: number;
   isSelected: boolean;
   isDisabled: boolean;
+  showOptionValue: boolean;
   optionRef: (element: HTMLButtonElement | null) => void;
   isTemporarilyFocused: boolean;
   onMouseEnter: () => void;
@@ -174,6 +203,7 @@ const AgentAskOptionButton = ({
   index,
   isSelected,
   isDisabled,
+  showOptionValue,
   optionRef,
   isTemporarilyFocused,
   onMouseEnter,
@@ -246,7 +276,7 @@ const AgentAskOptionButton = ({
           <Box as={'span'} fontWeight={500} color={'myGray.900'}>
             {option.summary}
           </Box>
-          {option.summary !== option.value && (
+          {showOptionValue && option.summary !== option.value && (
             <Box as={'span'} color={'myGray.600'} fontWeight={400}>
               {` ${option.value}`}
             </Box>
@@ -270,10 +300,27 @@ const AgentAskOptionButton = ({
 /** 渲染统一的 Agent Ask 问题，并按题目顺序提交回答值。 */
 const AgentAskComposer = ({
   questions,
-  onSubmit
+  onSubmit,
+  customOptionLabel,
+  customOptionPlaceholder,
+  customAnswerRequired = false,
+  showOptionValue = true
 }: {
   questions: AgentAskQuestionInteractive[];
-  onSubmit: (answers: string[]) => void;
+  onSubmit: (answers: string[], details: AgentAskAnswerDetail[]) => void;
+  /**
+   * 自定义答案行的展示文案与输入占位符（默认取 i18n 的 custom_answer）。
+   * 供 workflow-builder 预览确认等场景把「文本输入动作」（如 revise）定制为自定义答案行。
+   */
+  customOptionLabel?: string;
+  customOptionPlaceholder?: string;
+  /**
+   * 自定义答案为必填时，提交按钮恒为「提交」且空文本不可提交（默认允许跳过）。
+   * 与 customAnswerRequired 组合保证必填意见场景不会提交空值。
+   */
+  customAnswerRequired?: boolean;
+  /** 是否在选项文案后显示提交协议值，Workflow Builder 等内部枚举选项应关闭。 */
+  showOptionValue?: boolean;
 }) => {
   const { t } = useTranslation();
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -380,11 +427,18 @@ const AgentAskComposer = ({
     startTransition();
   };
 
-  const submit = (nextAnswers = answers) => {
+  const submit = (nextAnswers = answers, nextSelectedOptionIndexes = selectedOptionIndexes) => {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
-    onSubmit(questions.map((_, index) => nextAnswers[String(index)] ?? ''));
+    onSubmit(
+      questions.map((_, index) => nextAnswers[String(index)] ?? ''),
+      getAgentAskAnswerDetails({
+        questions,
+        answers: nextAnswers,
+        selectedOptionIndexes: nextSelectedOptionIndexes
+      })
+    );
   };
   const goNext = (
     nextAnswer: string,
@@ -401,19 +455,17 @@ const AgentAskComposer = ({
     if (nextSelectedOptionIndex === undefined && shouldTrimCustomAnswer) {
       setCustomValues((values) => ({ ...values, [questionKey]: normalizedAnswer }));
     }
-    setSelectedOptionIndexes((indexes) => {
-      const nextIndexes = { ...indexes };
-      if (nextSelectedOptionIndex === undefined) {
-        delete nextIndexes[questionKey];
-      } else {
-        nextIndexes[questionKey] = nextSelectedOptionIndex;
-      }
-      return nextIndexes;
-    });
+    const nextSelectedOptionIndexes = { ...selectedOptionIndexes };
+    if (nextSelectedOptionIndex === undefined) {
+      delete nextSelectedOptionIndexes[questionKey];
+    } else {
+      nextSelectedOptionIndexes[questionKey] = nextSelectedOptionIndex;
+    }
+    setSelectedOptionIndexes(nextSelectedOptionIndexes);
     setEditingQuestionIndex(undefined);
 
     if (isLastQuestion) {
-      submit(nextAnswers);
+      submit(nextAnswers, nextSelectedOptionIndexes);
       return;
     }
     changeQuestion(questionIndex + 1, delayTransition);
@@ -421,7 +473,7 @@ const AgentAskComposer = ({
   const skipOrAdvance = () => goNext(shouldTrimCustomAnswer ? customValue : '');
   const skipAll = () => {
     clearTemporaryInitialFocus();
-    submit({});
+    submit({}, {});
   };
   const selectCustom = () => {
     clearTemporaryInitialFocus();
@@ -447,13 +499,17 @@ const AgentAskComposer = ({
       ? isLastQuestion
         ? t('common:Submit')
         : t('common:next_step')
-      : t('chat:interactive.agent_ask.skip');
+      : customAnswerRequired
+        ? t('common:Submit')
+        : t('chat:interactive.agent_ask.skip');
   const isInputDisabled = isSubmitting || isQuestionTransitioning;
+  // 必填自定义答案场景：无论是否处于 custom 编辑态，文本为空都禁止提交，避免提交空意见
+  const isAdvanceDisabled = isInputDisabled || (customAnswerRequired && !customValue.trim());
   const advanceButton = (
     <AgentAskAdvanceButton
       label={actionLabel}
       isLoading={isSubmitting}
-      isDisabled={isInputDisabled}
+      isDisabled={isAdvanceDisabled}
       onClick={skipOrAdvance}
     />
   );
@@ -532,6 +588,7 @@ const AgentAskComposer = ({
               index={index}
               isSelected={isSelected}
               isDisabled={isInputDisabled}
+              showOptionValue={showOptionValue}
               isTemporarilyFocused={isInitialFocusActive && questionIndex === 0 && index === 0}
               optionRef={(element) => {
                 optionRefs.current[index] = element;
@@ -585,7 +642,7 @@ const AgentAskComposer = ({
                 bg={'primary.600'}
                 color={'myGray.100'}
               >
-                <MyIcon name={'common/edit-filled'} w={'11px'} h={'11px'} />
+                <MyIcon name={'common/edit'} w={'14px'} h={'14px'} />
               </Flex>
               <Textarea
                 autoFocus
@@ -604,7 +661,8 @@ const AgentAskComposer = ({
                 fontSize={'sm'}
                 lineHeight={5}
                 value={customValue}
-                aria-label={t('chat:interactive.agent_ask.custom_answer')}
+                placeholder={customOptionPlaceholder}
+                aria-label={customOptionLabel || t('chat:interactive.agent_ask.custom_answer')}
                 onChange={(event) => {
                   resizeCustomTextarea(event.currentTarget);
                   const value = event.currentTarget.value;
@@ -693,7 +751,9 @@ const AgentAskComposer = ({
                     WebkitLineClamp: 1
                   }}
                 >
-                  {customValue || t('chat:interactive.agent_ask.custom_answer')}
+                  {customValue ||
+                    customOptionLabel ||
+                    t('chat:interactive.agent_ask.custom_answer')}
                 </Box>
               </Flex>
             </Button>

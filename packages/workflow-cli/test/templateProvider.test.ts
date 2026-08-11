@@ -31,6 +31,17 @@ describe('request-scoped CLI template provider', () => {
               unique: false,
               name: 'Weather forecast',
               source,
+              inputs: [
+                {
+                  key: 'userChatInput',
+                  label: 'Query',
+                  valueType: 'string',
+                  renderTypeList: ['input', 'reference'],
+                  selectedType: 'input',
+                  required: true
+                }
+              ],
+              outputs: [],
               toolConfig: { systemTool: { toolId, source } }
             }
           }
@@ -91,14 +102,22 @@ describe('request-scoped CLI template provider', () => {
       ]);
       expect(add.exitCode).toBe(0);
       const workflow = JSON.parse(await readFile(join(workflowDirectory, 'workflow.json'), 'utf8'));
-      expect(workflow.nodes).toContainEqual(
-        expect.objectContaining({
-          nodeId: 'weather',
-          flowNodeType: 'tool',
-          pluginId: toolId,
-          source
-        })
+      const weatherNode = workflow.nodes.find(
+        (node: { nodeId: string }) => node.nodeId === 'weather'
       );
+      expect(weatherNode).toMatchObject({
+        flowNodeType: 'tool',
+        pluginId: toolId,
+        source,
+        inputs: [
+          {
+            key: 'userChatInput',
+            value: ['start', 'userChatInput'],
+            selectedType: 'reference',
+            selectedTypeIndex: 1
+          }
+        ]
+      });
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

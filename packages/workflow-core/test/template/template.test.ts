@@ -55,6 +55,66 @@ describe('builtinTemplateProvider', () => {
     expect(
       descriptor.inputs.find((input) => input.key === 'system_addInputParam')?.configurable
     ).toBe(false);
+    expect(descriptor.inputs.find((input) => input.key === 'system_httpReqUrl')).toMatchObject({
+      configurable: true,
+      inputModes: ['literal']
+    });
+  });
+
+  it('exposes only builder-editable modes for agent-generated inputs', async () => {
+    const ref = parseNodeTemplateRef('builtin:ai-chat');
+    const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+    const getDescriptorInput = (renderTypeList: FlowNodeInputTypeEnum[], canEdit = true) => {
+      const template = structuredClone(resolved.template);
+      const automationMeta = structuredClone(resolved.automationMeta);
+      const input = template.inputs.find((item) => item.key === 'systemPrompt')!;
+      input.renderTypeList = renderTypeList;
+      input.canEdit = canEdit;
+      delete automationMeta?.inputs?.systemPrompt;
+      return normalizeNodeTemplateDescriptor({
+        template,
+        automationMeta,
+        templateRef: ref
+      }).inputs.find((item) => item.key === 'systemPrompt');
+    };
+
+    expect(getDescriptorInput([FlowNodeInputTypeEnum.agentGenerated])).toMatchObject({
+      configurable: false,
+      inputModes: []
+    });
+    expect(
+      getDescriptorInput([
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ])
+    ).toMatchObject({
+      configurable: true,
+      inputModes: ['literal', 'reference']
+    });
+    expect(getDescriptorInput([FlowNodeInputTypeEnum.hidden])).toMatchObject({
+      configurable: true,
+      inputModes: ['literal']
+    });
+    expect(getDescriptorInput([FlowNodeInputTypeEnum.input], false)).toMatchObject({
+      configurable: false,
+      inputModes: []
+    });
+  });
+
+  it('publishes customJsonSchema for dynamic system-tool input validation', async () => {
+    const ref = parseNodeTemplateRef('builtin:ai-chat');
+    const resolved = await builtinTemplateProvider.resolve(ref, { locale: 'en' });
+    const template = structuredClone(resolved.template);
+    template.inputs.find((input) => input.key === 'systemPrompt')!.customJsonSchema = {
+      type: 'string',
+      minLength: 3
+    };
+    const descriptor = normalizeNodeTemplateDescriptor({ ...resolved, template, templateRef: ref });
+
+    expect(
+      descriptor.inputs.find((input) => input.key === 'systemPrompt')?.constraints?.valueSchema
+    ).toEqual({ type: 'string', minLength: 3 });
   });
 
   it('documents distinct text and node-reference formats for text editor inputs', async () => {
@@ -120,6 +180,7 @@ describe('builtinTemplateProvider', () => {
       WorkflowIOValueTypeEnum.dynamic
     ]);
     const systemInputKeys = new Set([
+      'system_input_config',
       'system_addInputParam',
       'childrenNodeIdList',
       'nodeWidth',
@@ -323,6 +384,44 @@ describe('instantiateNodeFromTemplate', () => {
     ]);
     expect(JSON.stringify(ai.node)).not.toContain('agentHint');
     expect(JSON.stringify(ai.node)).not.toContain('examples');
+  });
+
+  it('overrides a template literal selectedType when applying the start-node reference', async () => {
+    const start = await instantiateNodeFromTemplate({
+      document: createWorkflowDocument(),
+      templateRef: parseNodeTemplateRef('builtin:workflow-start'),
+      nodeId: 'start',
+      provider: builtinTemplateProvider,
+      locale: 'en'
+    });
+    const provider = {
+      list: builtinTemplateProvider.list,
+      resolve: async () => {
+        const resolved = await builtinTemplateProvider.resolve(
+          parseNodeTemplateRef('builtin:ai-chat'),
+          { locale: 'en' }
+        );
+        const template = structuredClone(resolved.template);
+        template.inputs.find((input) => input.key === 'userChatInput')!.selectedType =
+          FlowNodeInputTypeEnum.textarea;
+        return { ...resolved, template };
+      }
+    };
+
+    const ai = await instantiateNodeFromTemplate({
+      document: createWorkflowDocument({ nodes: [start.node] }),
+      templateRef: parseNodeTemplateRef('builtin:ai-chat'),
+      nodeId: 'ai',
+      provider,
+      locale: 'en'
+    });
+    const userInput = ai.node.inputs.find((input) => input.key === 'userChatInput')!;
+
+    expect(userInput.value).toEqual(['start', 'userChatInput']);
+    expect(userInput.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(userInput.renderTypeList[userInput.selectedTypeIndex!]).toBe(
+      FlowNodeInputTypeEnum.reference
+    );
   });
 
   it('uses validated remote defaults and clears unverified resource template values', async () => {
