@@ -1,6 +1,9 @@
 export { DailyActiveDedupeCache } from './dailyActiveDedupe';
 export type { DailyActiveDedupeCacheOptions } from './dailyActiveDedupe';
 
+export { SuccessMarkerCache, successMarkerCache } from './successMarker';
+export type { SuccessMarkerCacheOptions, SuccessMarkerParams } from './successMarker';
+
 export { DingtalkAccessTokenCache } from './dingtalkAccessToken';
 export type { DingtalkAccessTokenCacheOptions } from './dingtalkAccessToken';
 
