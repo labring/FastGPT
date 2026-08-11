@@ -71,12 +71,12 @@ ${originalPrompt}
 };
 
 async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiResponseType) {
-  try {
-    const { originalPrompt, optimizerInput, model } = parseApiInput({
-      req,
-      bodySchema: OptimizePromptBodySchema
-    }).body;
+  const { originalPrompt, optimizerInput, model } = parseApiInput({
+    req,
+    bodySchema: OptimizePromptBodySchema
+  }).body;
 
+  try {
     const { teamId, tmbId } = await authCert({
       req,
       authToken: true,

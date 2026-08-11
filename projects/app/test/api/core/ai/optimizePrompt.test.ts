@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -89,5 +90,30 @@ describe('optimizePrompt SSE error handling', () => {
     expect(output.match(/data:/g)).toHaveLength(1);
     expect(output).toContain('Invalid optimizer input');
     expect(output).not.toContain('errorType');
+  });
+
+  it('lets NextAPI handle request validation errors before starting SSE', async () => {
+    const res = {
+      setHeader: vi.fn(),
+      write: vi.fn(),
+      end: vi.fn()
+    };
+
+    await expect(
+      handler(
+        {
+          body: {
+            originalPrompt: 'Original prompt',
+            optimizerInput: 'Improve it'
+          }
+        } as any,
+        res as any
+      )
+    ).rejects.toBeInstanceOf(ApiRequestInputParseError);
+
+    expect(mocks.authCert).not.toHaveBeenCalled();
+    expect(res.setHeader).not.toHaveBeenCalled();
+    expect(res.write).not.toHaveBeenCalled();
+    expect(res.end).not.toHaveBeenCalled();
   });
 });

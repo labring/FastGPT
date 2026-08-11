@@ -11,7 +11,9 @@ const scalarApiReferenceCss = `
   --fastgpt-api-sidebar-item-color: #929495;
 }
 
-.scalar-app [data-sidebar-id*='/tag-group/'] > [aria-selected] {
+.scalar-app
+  [data-sidebar-id*='/tag-group/']:not([data-sidebar-id*='/tag/'])
+  > [aria-selected] {
   color: var(--fastgpt-api-sidebar-title-color);
   margin-top: 4px;
   font-weight: 700;
