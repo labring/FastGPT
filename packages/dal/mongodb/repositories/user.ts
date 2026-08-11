@@ -1,5 +1,5 @@
 import mongoose, { type Model, type Mongoose, type Query } from 'mongoose';
-import type { DatabaseErrorAdapter } from '../../db';
+import { DatabaseConflictError, type DatabaseErrorAdapter } from '../../db';
 import type { CreateUser, UpdateUser, User, UserCredentials } from '../../domain/user';
 import type { EntityId } from '../../domain/types';
 import type { UserRepository } from '../../ports/user.repository';
@@ -7,6 +7,7 @@ import type { TransactionContext } from '../../transaction';
 import { toUser } from '../mappers/user';
 import { MongoErrorAdapter } from '../errors';
 import { getUserModel, type UserDocument, type UserMongooseSchemaType } from '../models/user';
+import { casUpdateById } from '../concurrency';
 import { getMongoSession } from '../transaction';
 import { toEntityId, toMongoObjectId } from '../utils';
 
@@ -110,6 +111,35 @@ export class MongoUserRepository implements UserRepository {
         context
       ).lean<UserDocument>();
       return document ? toUser(document) : null;
+    });
+  }
+
+  async updateByIdIfState(
+    id: EntityId,
+    expected: Partial<User>,
+    patch: UpdateUser,
+    context?: TransactionContext
+  ): Promise<User | null> {
+    return this.execute(async () => {
+      // 低层 helper 返回文档形状，此处映射为带 _id/__v 的 UserDocument 再走领域转换。
+      const document = (await casUpdateById({
+        model: this.model,
+        id,
+        expected,
+        patch,
+        session: getMongoSession(context)
+      })) as UserDocument | null;
+      if (document) return toUser(document);
+
+      // CAS 未命中时区分「文档不存在」与「并发冲突」：先确认文档是否仍存在。
+      const exists = await this.withSession(
+        this.model.exists({ _id: toMongoObjectId(id) }),
+        context
+      );
+      if (exists) {
+        throw new DatabaseConflictError();
+      }
+      return null;
     });
   }
 }

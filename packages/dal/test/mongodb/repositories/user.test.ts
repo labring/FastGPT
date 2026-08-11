@@ -5,6 +5,7 @@ import type { UserDocument, UserMongooseSchemaType } from '../../../mongodb/mode
 import { MongoUserRepository } from '../../../mongodb/repositories/user';
 import { MongoTransactionRunner } from '../../../mongodb/transaction';
 import {
+  DatabaseConflictError,
   DatabaseInvalidArgumentError,
   DatabaseUnavailableError,
   DatabaseUniqueConstraintError
@@ -30,21 +31,30 @@ const createQuery = <T>(value: T) => ({
   lean: vi.fn(async () => value)
 });
 
+const createExistsQuery = (value: unknown) => ({
+  session: vi.fn().mockReturnThis(),
+  then: (onFulfilled: (v: unknown) => void) => Promise.resolve(onFulfilled(value))
+});
+
 const createRepository = () => {
   const queries = {
     findById: createQuery<UserDocument | null>(document),
     findOne: createQuery<UserDocument | null>(document),
-    update: createQuery<UserDocument | null>(document)
+    update: createQuery<UserDocument | null>(document),
+    casUpdate: createQuery<UserDocument | null>(document)
   };
+  const exists = vi.fn(() => createExistsQuery(true));
   const createdDocument = { toObject: vi.fn(() => document) };
   const model = {
     findById: vi.fn(() => queries.findById),
     findOne: vi.fn(() => queries.findOne),
     create: vi.fn(async () => [createdDocument]),
-    findByIdAndUpdate: vi.fn(() => queries.update)
+    findByIdAndUpdate: vi.fn(() => queries.update),
+    findOneAndUpdate: vi.fn(() => queries.casUpdate),
+    exists
   } as unknown as Model<UserMongooseSchemaType>;
 
-  return { repository: new MongoUserRepository(model), model, queries, createdDocument };
+  return { repository: new MongoUserRepository(model), model, queries, createdDocument, exists };
 };
 
 describe('MongoUserRepository.findById', () => {
@@ -280,5 +290,63 @@ describe('MongoUserRepository error adapter', () => {
     expect(error).toBeInstanceOf(DatabaseUniqueConstraintError);
     expect(error).toMatchObject({ fields: ['username'] });
     expect(error.message).not.toContain('secret@example.com');
+  });
+});
+
+describe('MongoUserRepository.updateByIdIfState', () => {
+  it('updates atomically when the expected state matches', async () => {
+    const { repository, model, queries } = createRepository();
+    queries.casUpdate.lean.mockResolvedValueOnce({
+      ...document,
+      timezone: 'UTC'
+    } as UserDocument);
+
+    const user = await repository.updateByIdIfState(
+      userId,
+      { timezone: 'Asia/Shanghai' },
+      { timezone: 'UTC' }
+    );
+
+    expect(model.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: new Types.ObjectId(userId), timezone: 'Asia/Shanghai' },
+      { $set: { timezone: 'UTC' } },
+      { new: true }
+    );
+    expect(queries.casUpdate.lean).toHaveBeenCalledOnce();
+    expect(user?.timezone).toBe('UTC');
+  });
+
+  it('throws DB_CONFLICT when the document exists but the expected state mismatches', async () => {
+    const { repository, queries } = createRepository();
+    queries.casUpdate.lean.mockResolvedValueOnce(null);
+
+    const error = await repository
+      .updateByIdIfState(userId, { timezone: 'UTC' }, { timezone: 'Asia/Shanghai' })
+      .catch((err) => err);
+
+    expect(error).toBeInstanceOf(DatabaseConflictError);
+    expect(error).toMatchObject({ code: 'DB_CONFLICT' });
+  });
+
+  it('returns null when the document does not exist', async () => {
+    const { repository, queries, exists } = createRepository();
+    queries.casUpdate.lean.mockResolvedValueOnce(null);
+    exists.mockReturnValueOnce(createExistsQuery(null));
+
+    await expect(
+      repository.updateByIdIfState(userId, { timezone: 'UTC' }, { timezone: 'Asia/Shanghai' })
+    ).resolves.toBeNull();
+  });
+
+  it('rejects ids that cannot be represented by MongoDB', async () => {
+    const { repository, model } = createRepository();
+
+    const error = await repository
+      .updateByIdIfState('sql-id', {}, { timezone: 'UTC' })
+      .catch((err) => err);
+
+    expect(error).toBeInstanceOf(DatabaseInvalidArgumentError);
+    expect(error).toMatchObject({ code: 'DB_INVALID_ARGUMENT' });
+    expect(model.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });

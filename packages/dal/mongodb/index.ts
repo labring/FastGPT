@@ -4,3 +4,7 @@ export { MongoAdapter } from './adapter';
 export type { MongoAdapterDependencies } from './adapter';
 export { MongoErrorAdapter } from './errors';
 export { MongoTransactionRunner } from './transaction';
+export { paginate } from './pagination';
+export type { PaginateParams } from './pagination';
+export { casUpdateById } from './concurrency';
+export type { CasUpdateByIdParams } from './concurrency';
