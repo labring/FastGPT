@@ -92,7 +92,8 @@ export const useSkillManager = ({
   onAddAgentSkill,
   canUploadFile,
   hasSelectedDataset,
-  useAgentSandbox
+  useAgentSandbox,
+  onClickDatasetSearch
 }: {
   selectedTools: SelectedToolItemType[];
   selectedAgentSkills?: SelectedAgentSkillItemType[];
@@ -102,6 +103,7 @@ export const useSkillManager = ({
   canUploadFile: boolean;
   hasSelectedDataset: boolean;
   useAgentSandbox: boolean;
+  onClickDatasetSearch?: () => void;
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -309,7 +311,10 @@ export const useSkillManager = ({
       // Check tool exists, if exists, not update/add tool
       const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
       if (existsTool) {
-        const skill = toSkillLabelItem(existsTool, getToolConfigStatus({ tool: existsTool }).status);
+        const skill = toSkillLabelItem(
+          existsTool,
+          getToolConfigStatus({ tool: existsTool }).status
+        );
 
         return {
           id: skill.id,
@@ -325,7 +330,7 @@ export const useSkillManager = ({
 
         const configStatus: SkillLabelItemType['configStatus'] = (() => {
           if (toolId === SubAppIds.datasetSearch) {
-            return hasSelectedDataset ? 'configured' : 'invalid';
+            return hasSelectedDataset ? 'configured' : 'waitingForConfig';
           }
 
           if (toolId === SubAppIds.readFiles) {
@@ -493,7 +498,7 @@ export const useSkillManager = ({
           return 'invalid';
         }
         if (tool.pluginId === SubAppIds.datasetSearch) {
-          return hasSelectedDataset ? 'configured' : 'invalid';
+          return hasSelectedDataset ? 'configured' : 'waitingForConfig';
         }
         return getToolConfigStatus({ tool }).status;
       })();
@@ -518,7 +523,7 @@ export const useSkillManager = ({
         templateType: FlowNodeTemplateTypeEnum.tools,
         inputs: [],
         outputs: [],
-        configStatus: hasSelectedDataset ? 'configured' : 'invalid'
+        configStatus: hasSelectedDataset ? 'configured' : 'waitingForConfig'
       });
     }
 
@@ -572,6 +577,11 @@ export const useSkillManager = ({
         return;
       }
 
+      if (id === SubAppIds.datasetSearch) {
+        onClickDatasetSearch?.();
+        return;
+      }
+
       const tool = selectedTools.find((tool) => tool.pluginId === id);
       if (!tool) return;
 
@@ -579,7 +589,7 @@ export const useSkillManager = ({
         setConfigTool(tool);
       }
     },
-    [selectedAgentSkills, selectedTools]
+    [onClickDatasetSearch, selectedAgentSkills, selectedTools]
   );
   const onRemoveSkill = useCallback(() => {}, []);
 

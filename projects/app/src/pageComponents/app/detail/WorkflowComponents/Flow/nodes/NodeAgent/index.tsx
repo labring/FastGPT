@@ -121,18 +121,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [splitOutput, outputs]
   );
 
-  // Skill manager (for PromptEditor @ integration)
-  const {
-    selectedTools,
-    skillOption,
-    selectedSkills,
-    onClickSkill,
-    onRemoveSkill,
-    onUpdateOrAddTool,
-    onDeleteTool,
-    SkillModal
-  } = useAgentSkillManager({ nodeId, inputs });
-
   // Editor variables for PromptEditor
   const editorVariables = useMemoEnhance(
     () =>
@@ -262,6 +250,25 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => (Array.isArray(datasetSelectInput?.value) ? datasetSelectInput!.value : []),
     [datasetSelectInput]
   );
+  const onClickDatasetSearch = useCallback(() => {
+    if (selectedDatasets.length > 0) {
+      onOpenDatasetParams();
+      return;
+    }
+
+    onOpenDatasetSelect();
+  }, [onOpenDatasetParams, onOpenDatasetSelect, selectedDatasets.length]);
+  // Skill manager (for PromptEditor @ integration)
+  const {
+    selectedTools,
+    skillOption,
+    selectedSkills,
+    onClickSkill,
+    onRemoveSkill,
+    onUpdateOrAddTool,
+    onDeleteTool,
+    SkillModal
+  } = useAgentSkillManager({ nodeId, inputs, onClickDatasetSearch });
   const datasetOtherInputs = useMemo(
     () =>
       datasetInputs.filter(
