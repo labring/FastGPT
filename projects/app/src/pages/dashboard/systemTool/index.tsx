@@ -174,6 +174,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         ),
         status: tool.status,
         version: tool.version,
+        installedVersion: tool.installedVersion,
         source: tool.source,
         registrySource: tool.registrySource,
         isDebug: isDebugToolSource(tool.source),
@@ -184,7 +185,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const { runAsync: deleteTeamTool, loading: deletingTeamTool } = useRequest(
     async (tool: ToolCardItemType) => {
-      await deleteTeamPlugin({ pluginId: tool.id, version: tool.version });
+      await deleteTeamPlugin({ pluginId: tool.id, version: tool.installedVersion });
       setSelectedTool((selected) =>
         selected && getToolListItemKey(selected) === getToolListItemKey(tool) ? null : selected
       );

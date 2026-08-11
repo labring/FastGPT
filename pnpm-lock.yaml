@@ -453,8 +453,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
-        specifier: '@fastgpt-plugin/sdk-client@0.1.0-alpha.3'
-        version: link:@fastgpt-plugin/sdk-client@0.1.0-alpha.3
+        specifier: 0.1.0-alpha.3
+        version: 0.1.0-alpha.3(zod@4.1.12)
       '@fastgpt-sdk/sandbox-adapter':
         specifier: workspace:*
         version: link:../../sdk/sandbox-adapter
@@ -3749,6 +3749,11 @@ packages:
   '@faker-js/faker@9.9.0':
     resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
+
+  '@fastgpt-plugin/sdk-client@0.1.0-alpha.3':
+    resolution: {integrity: sha512-NP7fmtl5YFGU+v8aRDg2p1kHMpHT+vK0ZCgNE+5ZYyCNTpe1J1I8ouzgpYXmbleVkY/Ks8vYy0120ceXvjk1Bw==}
+    peerDependencies:
+      zod: ^4
 
   '@fidm/asn1@1.0.4':
     resolution: {integrity: sha512-esd1jyNvRb2HVaQGq2Gg8Z0kbQPXzV9Tq5Z14KNIov6KfFD6PTaRIO8UpcsYiTNzOqJpmyzWgVTrUwFV3UF4TQ==}
@@ -17901,6 +17906,10 @@ snapshots:
       levn: 0.4.1
 
   '@faker-js/faker@9.9.0': {}
+
+  '@fastgpt-plugin/sdk-client@0.1.0-alpha.3(zod@4.1.12)':
+    dependencies:
+      zod: 4.1.12
 
   '@fidm/asn1@1.0.4': {}
 

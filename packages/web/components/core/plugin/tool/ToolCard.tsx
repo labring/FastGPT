@@ -25,6 +25,7 @@ export type ToolCardItemType = {
   installed?: boolean;
   update?: boolean;
   version?: string;
+  installedVersion?: string;
   etag?: string;
   downloadCount?: number;
   associatedPluginId?: string;

@@ -221,4 +221,4 @@ type TeamPluginListQuery = {
 - [x] 增加 `teamId:<teamId>` source helper 并迁移安装、列表、详情和运行时。
 - [x] 在 admin 后台功能清单增加“团队上传插件”开关。
 - [x] 更新团队插件相关测试。
-- [ ] 与 plugin service 联调 `teamId:<teamId>` source 的安装、读回、运行和删除。
+- [x] 与 plugin service 联调 `teamId:<teamId>` source 的安装、读回、运行和删除。
