@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  createSandbox: vi.fn(
-    (config: { provider: string; connectionConfig: unknown; createConfig?: unknown }) => config
-  )
-}));
-
-vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
     AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://mock-opensandbox.local',
@@ -17,7 +11,17 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sealos.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-sealos-token',
     AGENT_SANDBOX_STORAGE_SIZE_GI: 1
-  }
+  },
+  createSandbox: vi.fn(
+    (config: { provider: string; connectionConfig: unknown; createConfig?: unknown }) => ({
+      ...config,
+      close: vi.fn(async () => undefined)
+    })
+  )
+}));
+
+vi.mock('@fastgpt/service/env', () => ({
+  serviceEnv: mocks.serviceEnv
 }));
 
 vi.mock('@fastgpt-sdk/sandbox-adapter', async (importOriginal) => ({

@@ -58,27 +58,21 @@ export const runAgentSkillVersionEntrypoints = async ({
     if (executedVersionIds.has(version.versionId)) continue;
 
     const entrypointPath = joinSandboxPath(version.targetDir, ENTRYPOINT_FILE_NAME);
-    const existsResult = await sandbox
-      .execute(`[ -f ${shellQuote(entrypointPath)} ]`, {
-        timeoutMs: 5_000,
-        maxOutputBytes: 1024
-      })
-      .catch((error) => {
-        logger.warn('[Agent Skills] Failed to check skill entrypoint file', {
-          versionId: version.versionId,
-          entrypointPath,
-          error
-        });
-        return undefined;
+    const entrypointInfo = await sandbox.getFileInfo([entrypointPath]).catch((error) => {
+      logger.warn('[Agent Skills] Failed to check skill entrypoint file', {
+        versionId: version.versionId,
+        entrypointPath,
+        error
       });
-    if (!existsResult || existsResult.exitCode !== 0) continue;
+      return new Map();
+    });
+    if (!entrypointInfo.get(entrypointPath)?.isFile) continue;
 
     const result = await executeEntrypointCommand({
       sandbox,
-      command: `cd ${shellQuote(version.targetDir)} && ${buildLimitedOutputShellCommand(
-        `/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`
-      )}`,
-      label: `skill:${version.versionId}`
+      command: buildLimitedOutputShellCommand(`/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`),
+      label: `skill:${version.versionId}`,
+      workingDirectory: version.targetDir
     });
 
     if (!result) continue;

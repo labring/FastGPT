@@ -5,7 +5,6 @@
  */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
   SandboxNotFoundError,
@@ -52,7 +51,7 @@ import { migrateSandboxProviderBeforeUse } from '../providerMigration';
 import { withSandboxLifecycleLease, withSandboxSourceMutationLease } from '../lease';
 import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '../lifecycle/runner';
 import { assertSandboxSourceActive } from '../sourceGuard';
-import { createAgentSandboxInitializingError } from '../../error';
+import { createAgentSandboxInitializingError, SandboxRuntimeNotRunningError } from '../../error';
 import { SANDBOX_PROVISIONING_STALE_MS } from './constants';
 import { resolveSandboxRuntimeImage } from './image';
 
@@ -100,6 +99,8 @@ export class SandboxClient {
   private runtimePaths: SandboxRuntimePaths;
   private workspaceClaimName?: string;
   private runtimeProvider: ISandbox;
+  private ensureAvailablePromise?: Promise<void>;
+  private preparedWorkDirectory?: { provider: ISandbox; promise: Promise<void> };
 
   constructor(
     private readonly props: SandboxClientProps,
@@ -125,6 +126,38 @@ export class SandboxClient {
     return this.runtimeProvider;
   }
 
+  /** 用新的 volume generation 重建当前 client 独占的 adapter，并释放旧 SDK 连接。 */
+  private async replaceRuntimeProvider(vmConfig = this.opts.vmConfig) {
+    const previousProvider = this.runtimeProvider;
+    this.runtimeProvider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, {
+      ...this.opts,
+      vmConfig
+    });
+    this.preparedWorkDirectory = undefined;
+    await previousProvider.close().catch(() => undefined);
+  }
+
+  /** 为 App 会话准备一次工作目录；provider 被替换后会自动重新准备。 */
+  private prepareWorkDirectory() {
+    if (this.sourceType !== ChatSourceTypeEnum.app) return Promise.resolve();
+
+    const provider = this.provider;
+    if (this.preparedWorkDirectory?.provider === provider) {
+      return this.preparedWorkDirectory.promise;
+    }
+
+    const promise = provider
+      .createDirectories([this.runtimePaths.sessionWorkDirectory])
+      .catch((error) => {
+        if (this.preparedWorkDirectory?.provider === provider) {
+          this.preparedWorkDirectory = undefined;
+        }
+        throw error;
+      });
+    this.preparedWorkDirectory = { provider, promise };
+    return promise;
+  }
+
   /**
    * 确保当前运行态 sandbox 可用，并刷新实例活跃时间。
    *
@@ -132,6 +165,18 @@ export class SandboxClient {
    * 历史资源 stop/delete 必须走 resource service，避免误创建已失效资源。
    */
   async ensureAvailable() {
+    if (this.ensureAvailablePromise) return this.ensureAvailablePromise;
+
+    const promise = this.ensureAvailableInternal();
+    this.ensureAvailablePromise = promise;
+    try {
+      await promise;
+    } finally {
+      if (this.ensureAvailablePromise === promise) this.ensureAvailablePromise = undefined;
+    }
+  }
+
+  private async ensureAvailableInternal() {
     const sourceGuard = this.opts.sourceGuard ?? assertSandboxSourceActive;
     await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
     const runtimeImage = resolveSandboxRuntimeImage({
@@ -175,6 +220,7 @@ export class SandboxClient {
         return;
       } catch (error) {
         if (!(error instanceof SandboxNotFoundError)) throw error;
+        await this.replaceRuntimeProvider();
         repairMissingProvider = true;
       }
     }
@@ -184,7 +230,7 @@ export class SandboxClient {
         provider: this.providerName,
         sandboxId: this.sandboxId
       });
-      throw new Error('Sandbox runtime instance is not running');
+      throw new SandboxRuntimeNotRunningError(this.sandboxId);
     }
 
     const runProvisioning = async (lease: RedisLeaseContext, allowRecordCreate: boolean) => {
@@ -220,10 +266,7 @@ export class SandboxClient {
         if (workspaceClaimName !== this.workspaceClaimName) {
           // lease 内数据库记录是 generation 真值；旧 client 必须切换 adapter 后才能继续自愈。
           const vmConfig = buildVolumeConfig(workspaceClaimName);
-          this.runtimeProvider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, {
-            ...this.opts,
-            vmConfig
-          });
+          await this.replaceRuntimeProvider(vmConfig);
           this.workspaceClaimName = workspaceClaimName;
         }
       }
@@ -384,17 +427,15 @@ export class SandboxClient {
       };
     }
 
-    const runtimeCommand =
-      this.sourceType === ChatSourceTypeEnum.app
-        ? `mkdir -p ${shellQuote(this.runtimePaths.sessionWorkDirectory)} && cd ${shellQuote(
-            this.runtimePaths.sessionWorkDirectory
-          )} && ${command}`
-        : command;
-
-    return await this.provider
-      .execute(runtimeCommand, {
-        timeoutMs: timeout ? timeout * 1000 : undefined
-      })
+    return await this.prepareWorkDirectory()
+      .then(() =>
+        this.provider.execute(command, {
+          timeoutMs: timeout ? timeout * 1000 : undefined,
+          ...(this.sourceType === ChatSourceTypeEnum.app
+            ? { workingDirectory: this.runtimePaths.sessionWorkDirectory }
+            : {})
+        })
+      )
       .catch((err: unknown) => {
         logger.error('Failed to execute sandbox', { sandboxId: this.sandboxId, error: err });
         return {
@@ -409,6 +450,7 @@ export class SandboxClient {
    * 删除当前运行态 client 对应的资源记录和远端资源。
    */
   async delete() {
+    await this.provider.close().catch(() => undefined);
     await deleteSandboxResource({
       provider: this.providerName,
       sandboxId: this.sandboxId
@@ -417,6 +459,7 @@ export class SandboxClient {
 
   /** 按 provider stop 策略停止远端资源，并把本地实例状态标记为 stopped。 */
   async stop() {
+    await this.provider.close().catch(() => undefined);
     await stopSandboxResource({
       provider: this.providerName,
       sandboxId: this.sandboxId

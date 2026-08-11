@@ -2,7 +2,7 @@
 
 状态：当前实现
 
-最后核对：2026-07-27
+最后核对：2026-08-12
 
 用户级实例、生命周期、Legacy 迁移以及本分支后续变更的最终契约统一见
 [用户级 Sandbox 最终方案](./user-level-sandbox.md)。本文只维护当前代码入口和运行行为索引。
@@ -113,7 +113,7 @@ Sandbox 初始化使用 `prepareSandbox(context, ...steps)` 顺序组合步骤�
 - 同步内置 Skill。
 - 注入已发布 Skill 版本。
 - 执行 Sandbox 和 Skill entrypoint。
-- 扫描 `SKILL.md` 和读取当前工作目录。
+- 扫描 `SKILL.md`。
 
 具体场景只组合需要的 step，不在通用 prepare 层读取业务数据库。
 
@@ -123,6 +123,15 @@ App Agent 和 ToolCall 在实际使用 Sandbox 前调用 `ensureAppSandboxRuntim
 同一次 Workflow 先通过标准 archive/provider migration 收敛配置，再继续恢复 runtime；前端只消费
 `upgrading -> lazyInit` 粗粒度状态。Skill Edit 保留显式确认和轮询升级。
 
+### 命令、文件与连接
+
+- OpenSandbox 命令统一消费 SSE，在 `execution_complete` 或 `error` 终态立即结束内部流；无终态 EOF、
+  iterator 异常和调用方取消进入对应错误边界，不再等待 Provider 延迟关闭响应体。
+- 目录、文件读写、枚举、删除和移动优先使用 `ISandbox` 文件 API；只在解压、递归扫描等需要 shell
+  语义时执行命令，并通过 `workingDirectory` 传入已知工作目录。
+- 每个 `SandboxClient` 独占 provider adapter，每次请求检查 Provider readiness；同一 client 内的并发
+  检查复用 Promise。当前不使用跨请求 `ready` cache，避免连接被关闭后仍复用过期状态。
+
 ## Entrypoint
 
 ### Sandbox entrypoint
@@ -131,6 +140,8 @@ App Agent 和 ToolCall 在实际使用 Sandbox 前调用 `ensureAppSandboxRuntim
 - 在工作目录执行。
 - 按脚本 hash 记录成功状态；内容不变时不重复执行。
 - 状态保存在 Sandbox HOME 的 runtime state，不写入用户工作区。
+- runtime state 统一使用 `values: Record<string, string | string[]>`，让 hash、etag 和版本列表共享读写、
+  校验、去重与空值清理逻辑。
 - 失败、超时或状态写入失败记录日志但不阻断 Agent 主流程。
 
 ### Skill entrypoint
@@ -182,7 +193,8 @@ Skill Edit 复用编辑器 Sandbox 中的当前工作区，不把编辑中的内
 - App 删除清理该 source 下全部用户级 v2 与 Legacy Sandbox，包括 Provider 实例、Mongo 记录、可选 volume 和 S3 归档。
 - Skill 删除清理 Skill Edit 相关 Sandbox；普通编辑聊天删除不直接删除共享 edit-debug Sandbox。
 - stopped 实例可进入冷归档；恢复时通过 archive 状态机避免与归档、删除并发。
-- 保活和只读存在性检查不能意外拉起 archived Sandbox。
+- keepalive 只刷新 running 实例；stopped、stopping、不存在或 archived 状态均幂等结束，不创建、恢复或
+  返回生命周期错误。只读存在性检查同样不能拉起 archived Sandbox。
 
 ## 可用性降级
 

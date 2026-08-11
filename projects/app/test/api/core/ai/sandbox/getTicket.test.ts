@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   getSandboxClient: vi.fn(),
-  execute: vi.fn()
+  createDirectories: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -47,10 +47,10 @@ describe('sandbox getTicket API', () => {
       userId: 'user-1',
       chatId: 'chat-1'
     });
-    mocks.execute.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
+    mocks.createDirectories.mockResolvedValue(undefined);
     mocks.getSandboxClient.mockResolvedValue({
       provider: {
-        execute: mocks.execute
+        createDirectories: mocks.createDirectories
       },
       getRuntimePaths: () => ({
         workspaceRoot: '/workspace',
@@ -79,17 +79,11 @@ describe('sandbox getTicket API', () => {
     expect(mocks.getSandboxClient).toHaveBeenCalledWith(
       expect.objectContaining({ sandboxId: 'user-sandbox-1', chatId: 'chat-1' })
     );
-    expect(mocks.execute).toHaveBeenCalledWith("mkdir -p '/workspace/sessions/chat-1'", {
-      timeoutMs: 30_000
-    });
+    expect(mocks.createDirectories).toHaveBeenCalledWith(['/workspace/sessions/chat-1']);
   });
 
   it('does not issue a ticket when the current Chat directory cannot be prepared', async () => {
-    mocks.execute.mockResolvedValueOnce({
-      stdout: '',
-      stderr: 'mkdir failed',
-      exitCode: 1
-    });
+    mocks.createDirectories.mockRejectedValueOnce(new Error('mkdir failed'));
 
     await expect(
       handler({

@@ -8,7 +8,6 @@ import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';
 import jwt from 'jsonwebtoken';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   SandboxGetTicketBodySchema,
@@ -61,17 +60,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   const { workspaceRoot, sessionWorkDirectory } = sandbox.getRuntimePaths();
 
   // 用户级 Sandbox 可能由其它 Chat 创建，签发 Ticket 前确保当前 Chat 的 IDE 根目录存在。
-  const prepareDirectoryResult = await sandbox.provider.execute(
-    `mkdir -p ${shellQuote(sessionWorkDirectory)}`,
-    { timeoutMs: 30 * 1000 }
-  );
-  if (prepareDirectoryResult.exitCode !== 0) {
-    throw new Error(
-      prepareDirectoryResult.stderr ||
-        prepareDirectoryResult.stdout ||
-        'Failed to prepare sandbox session directory'
-    );
-  }
+  await sandbox.provider.createDirectories([sessionWorkDirectory]);
 
   // 签发短期 HMAC 凭证，内含租户元数据，不包含任何物理寻址信息。
   const ticket = jwt.sign(

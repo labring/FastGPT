@@ -11,7 +11,6 @@ import {
   prepareAgentSandboxRuntime,
   preparePackageMirrors,
   prepareSandbox,
-  readCurrentWorkingDirectory,
   resolveSandboxHome,
   runAgentSkillVersionEntrypoints,
   runSandboxEntrypoint,
@@ -31,9 +30,7 @@ export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   skillScanDirectories: string[];
 };
 
-export type AgentSandboxPrepareAction = (
-  context: AgentSandboxPrepareContext
-) => Promise<AgentSandboxPrepareContext>;
+export type AgentSandboxPrepareAction = SandboxPrepareStep<AgentSandboxPrepareContext>;
 
 type EnsureAgentSandboxRuntimeParams = {
   sourceType: ChatSourceTypeEnum;
@@ -107,7 +104,6 @@ export async function ensureAgentSandboxRuntime({
             preparePackageMirrors(),
             injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
-            readCurrentWorkingDirectory(),
             scanEditDebugSkillInfos()
           )
         : prepareSandbox(
@@ -116,7 +112,6 @@ export async function ensureAgentSandboxRuntime({
             injectSelectedSkillFiles({ teamId, tmbId, skillIds, selectedSkills }),
             injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
-            readCurrentWorkingDirectory(),
             runSandboxEntrypoint({ sandboxEntrypoint }),
             runSelectedSkillEntrypoints(),
             scanSelectedSkillInfos()
@@ -126,7 +121,7 @@ export async function ensureAgentSandboxRuntime({
 
   return {
     sandboxClient: sandboxContext.sandboxClient,
-    currentWorkingDirectory: preparedContext.currentWorkingDirectory,
+    currentWorkingDirectory: sandboxContext.workDirectory,
     skillInfos: preparedContext.skillInfos
   };
 }

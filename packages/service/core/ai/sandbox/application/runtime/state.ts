@@ -4,7 +4,7 @@
  * 只记录轻量执行标记，不承担数据库状态或 provider 生命周期管理。
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
+import { posix } from 'node:path';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { resolveSandboxHome } from './home';
 import { joinSandboxPath } from '../../utils';
@@ -102,6 +102,19 @@ export const writeSandboxRuntimeState = async (
   if (!statePath) return;
 
   const normalizedState = normalizeRuntimeState(state);
+  const stateDirectory = posix.dirname(statePath);
+  const directoryPrepared = await sandbox
+    .createDirectories([stateDirectory])
+    .then(() => true)
+    .catch((error) => {
+      logger.warn('[Sandbox Runtime] Failed to prepare runtime state directory', {
+        stateDirectory,
+        error
+      });
+      return false;
+    });
+  if (!directoryPrepared) return;
+
   const writeResult = await sandbox
     .writeFiles([
       {
@@ -164,22 +177,6 @@ const resolveRuntimeStateLocation = async ({
   const stateDir = joinSandboxPath(homeDir, RUNTIME_STATE_DIR_RELATIVE_PATH);
   const statePath = joinSandboxPath(stateDir, RUNTIME_STATE_FILE_NAME);
 
-  const prepareResult = await sandbox
-    .execute(`mkdir -p ${shellQuote(stateDir)}`, {
-      timeoutMs: 5_000,
-      maxOutputBytes: 1024
-    })
-    .catch((error) => {
-      logger.warn('[Sandbox Runtime] Failed to prepare runtime state directory', {
-        stateDir,
-        error
-      });
-      return undefined;
-    });
-  if (!prepareResult || prepareResult.exitCode !== 0) {
-    return {};
-  }
-
   return {
     statePath
   };
@@ -188,35 +185,9 @@ const resolveRuntimeStateLocation = async ({
 const normalizeRuntimeState = (value: unknown): SandboxRuntimeState => {
   if (!value || typeof value !== 'object') return {};
   const raw = value as SandboxRuntimeState;
-  const values = {
-    ...normalizeStringRecord((raw as { hashes?: unknown }).hashes),
-    ...normalizeStringListRecord((raw as { lists?: unknown }).lists),
-    ...normalizeRuntimeStateValueRecord(raw.values)
-  };
+  const values = normalizeRuntimeStateValueRecord(raw.values);
 
-  return Object.keys(values).length > 0 ? { values } : {};
-};
-
-const normalizeStringRecord = (value: unknown): Record<string, string> | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
-
-  const entries = Object.entries(value).filter(
-    (entry): entry is [string, string] =>
-      typeof entry[0] === 'string' && typeof entry[1] === 'string'
-  );
-  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
-};
-
-const normalizeStringListRecord = (value: unknown): Record<string, string[]> | undefined => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
-
-  const entries = Object.entries(value).flatMap(([key, list]) => {
-    if (!Array.isArray(list)) return [];
-
-    const values = Array.from(new Set(list.filter((item) => typeof item === 'string')));
-    return values.length > 0 ? [[key, values] as const] : [];
-  });
-  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+  return values ? { values } : {};
 };
 
 const normalizeRuntimeStateValueRecord = (

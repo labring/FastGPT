@@ -36,8 +36,7 @@ export {
 export {
   injectCurrentInputFiles,
   preparePackageMirrors,
-  prepareSandbox,
-  readCurrentWorkingDirectory
+  prepareSandbox
 } from '../application/runtime/prepare';
 export type { SandboxPrepareContext, SandboxPrepareStep } from '../application/runtime/prepare';
 export { resolveSandboxHome } from '../application/runtime/home';

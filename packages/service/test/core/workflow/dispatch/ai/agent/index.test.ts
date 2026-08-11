@@ -35,6 +35,7 @@ const {
   getSandboxClientMock,
   sandboxCreateDirectoriesMock,
   sandboxWriteFilesMock,
+  sandboxGetFileInfoMock,
   sandboxClientExecMock,
   axiosGetMock,
   getAgentRuntimeToolsMock,
@@ -60,6 +61,7 @@ const {
   getSandboxClientMock: vi.fn(),
   sandboxCreateDirectoriesMock: vi.fn(),
   sandboxWriteFilesMock: vi.fn(),
+  sandboxGetFileInfoMock: vi.fn(),
   sandboxClientExecMock: vi.fn(),
   axiosGetMock: vi.fn(),
   getAgentRuntimeToolsMock: vi.fn(),
@@ -285,6 +287,7 @@ describe('dispatchRunAgent user context', () => {
       show_agent_sandbox: true
     };
     sandboxWriteFilesMock.mockResolvedValue([]);
+    sandboxGetFileInfoMock.mockResolvedValue(new Map());
     sandboxClientExecMock.mockResolvedValue({
       exitCode: 0,
       stdout: '/workspace\n',
@@ -299,6 +302,7 @@ describe('dispatchRunAgent user context', () => {
       provider: {
         createDirectories: sandboxCreateDirectoriesMock,
         writeFiles: sandboxWriteFilesMock,
+        getFileInfo: sandboxGetFileInfoMock,
         readFiles: vi.fn(async () => []),
         execute: sandboxClientExecMock
       },
@@ -637,33 +641,6 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
     expect(result.error?.system_error_text).toContain('archive upload failed');
-  });
-
-  it('omits pwd reminder when sandbox pwd cannot be resolved', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    const props = createProps();
-    props.params.useAgentSandbox = true;
-    sandboxClientExecMock.mockResolvedValueOnce({
-      exitCode: 1,
-      stdout: '',
-      stderr: 'pwd failed'
-    });
-
-    let result: any;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        result = dispatchRunAgent(props);
-      }
-    );
-    await result;
-
-    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
-    expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).not.toContain(
-      '当前沙盒的工作目录'
-    );
   });
 
   it('scans edit skill infos without requiring selected skills', async () => {

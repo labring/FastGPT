@@ -12,6 +12,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => previewMoc
 import { sandboxGetFileUrlTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/getFileUrl.tool';
 
 const getFileInfo = vi.fn();
+const ensureAvailable = vi.fn(async () => undefined);
 const resolveRuntimePath = vi.fn((filePath: string) =>
   filePath.startsWith('/') ? filePath : `/workspace/sessions/chat-1/${filePath}`
 );
@@ -26,6 +27,7 @@ const createSandboxInstance = () =>
       chatId: 'chat'
     }),
     resolveRuntimePath,
+    ensureAvailable,
     provider: {
       getFileInfo
     }

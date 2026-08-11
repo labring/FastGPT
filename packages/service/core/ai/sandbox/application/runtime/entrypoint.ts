@@ -80,11 +80,12 @@ export const runAgentSandboxEntrypoint = async ({
     return;
   }
 
-  const command = buildBashScriptCommand(script, workDirectory);
+  const command = buildBashScriptCommand(script);
   const result = await executeEntrypointCommand({
     sandbox,
     command,
-    label: 'sandbox'
+    label: 'sandbox',
+    workingDirectory: workDirectory
   });
 
   if (!result) return;
@@ -112,17 +113,20 @@ export const runSandboxEntrypoint =
 export const executeEntrypointCommand = async ({
   sandbox,
   command,
-  label
+  label,
+  workingDirectory
 }: {
   sandbox: ISandbox;
   command: string;
   label: string;
+  workingDirectory?: string;
 }): Promise<boolean> => {
   const timeoutSeconds = getEntrypointTimeoutSeconds();
   const result = await sandbox
     .execute(command, {
       timeoutMs: timeoutSeconds * 1000,
-      maxOutputBytes: MAX_ENTRYPOINT_OUTPUT_BYTES
+      maxOutputBytes: MAX_ENTRYPOINT_OUTPUT_BYTES,
+      workingDirectory
     })
     .catch((error) => {
       logger.warn('[Agent Skills] Entrypoint execution threw', {
@@ -160,14 +164,9 @@ export const buildLimitedOutputShellCommand = (scriptCommand: string): string =>
     `${scriptCommand} > >(tail -c ${MAX_ENTRYPOINT_OUTPUT_BYTES}) 2> >(tail -c ${MAX_ENTRYPOINT_OUTPUT_BYTES} >&2)`
   )}`;
 
-const buildBashScriptCommand = (script: string, workDirectory?: string): string => {
+const buildBashScriptCommand = (script: string): string => {
   const encoded = Buffer.from(script, 'utf-8').toString('base64');
-  const runScriptCommand = buildLimitedOutputShellCommand(
-    `printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`
-  );
-  return workDirectory
-    ? `cd ${shellQuote(workDirectory)} && ${runScriptCommand}`
-    : runScriptCommand;
+  return buildLimitedOutputShellCommand(`printf %s ${shellQuote(encoded)} | base64 -d | /bin/bash`);
 };
 
 const getEntrypointTimeoutSeconds = (): number =>

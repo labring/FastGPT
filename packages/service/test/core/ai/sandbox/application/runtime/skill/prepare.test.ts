@@ -28,10 +28,21 @@ describe('skill package streaming prepare', () => {
     mocks.downloadSkillPackageStream.mockResolvedValue(source);
     let uploaded = Buffer.alloc(0);
     const sandbox = {
+      createDirectories: vi.fn().mockResolvedValue(undefined),
+      deleteFiles: vi.fn(async (paths: string[]) =>
+        paths.map((path) => ({ path, success: true, error: null }))
+      ),
+      getFileInfo: vi.fn(async () => new Map()),
       execute: vi.fn().mockResolvedValue(successResult),
-      writeFiles: vi.fn(async ([entry]: Array<{ path: string; data: ReadableStream }>) => {
+      writeFiles: vi.fn(async ([entry]: Array<{ path: string; data: ReadableStream | string }>) => {
+        if (entry.path === '/workspace/.gitignore') {
+          return [{ path: entry.path, bytesWritten: String(entry.data).length, error: null }];
+        }
+
         expect(entry.path).toBe('/workspace/skills/package.zip');
-        expect(entry.data).toBeInstanceOf(ReadableStream);
+        if (!(entry.data instanceof ReadableStream)) {
+          throw new Error('Expected package upload to use a ReadableStream');
+        }
 
         const chunks: Buffer[] = [];
         for await (const chunk of entry.data) {
@@ -55,13 +66,25 @@ describe('skill package streaming prepare', () => {
     expect(mocks.downloadSkillPackageStream).toHaveBeenCalledWith({ storageKey: 'version.zip' });
     expect(uploaded.toString()).toBe('chunk-1chunk-2');
     expect(source.destroyed).toBe(true);
-    expect(sandbox.execute.mock.calls.at(-1)?.[0]).toContain('unzip -Z1');
+    expect(sandbox.createDirectories).toHaveBeenCalledWith(['/workspace/skills']);
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining('unzip -Z1'), {
+      workingDirectory: '/workspace'
+    });
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith(['/workspace/skills/package.zip']);
+    expect(sandbox.getFileInfo).toHaveBeenCalledWith(['/workspace/.gitignore']);
+    expect(sandbox.writeFiles).toHaveBeenLastCalledWith([
+      {
+        path: '/workspace/.gitignore',
+        data: expect.stringContaining('node_modules')
+      }
+    ]);
   });
 
   it('destroys an unconsumed S3 stream when sandbox upload fails', async () => {
     const source = Readable.from([Buffer.from('content')]);
     mocks.downloadSkillPackageStream.mockResolvedValue(source);
     const sandbox = {
+      createDirectories: vi.fn().mockResolvedValue(undefined),
       execute: vi.fn().mockResolvedValue(successResult),
       writeFiles: vi.fn().mockResolvedValue([
         {

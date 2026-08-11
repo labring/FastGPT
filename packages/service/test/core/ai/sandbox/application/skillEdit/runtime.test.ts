@@ -185,6 +185,14 @@ const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error |
     }
     return { stdout: '', stderr: '', exitCode: 0 };
   }),
+  getFileInfo: vi.fn(
+    async (paths: string[]) =>
+      new Map(paths.map((path) => [path, { path, isDirectory: true, isFile: false }]))
+  ),
+  createDirectories: vi.fn(async () => undefined),
+  deleteFiles: vi.fn(async (paths: string[]) =>
+    paths.map((path) => ({ path, success: true, error: null }))
+  ),
   readFiles: vi.fn(async (paths: string[]) => {
     if (paths[0]?.endsWith('.gitignore')) return [];
     return [
@@ -223,9 +231,15 @@ describe('packageSkillInSandbox', () => {
       Buffer.from([1, 2, 3]),
       expect.any(Object)
     );
-    expect(sandbox.execute).toHaveBeenCalledWith(
-      expect.stringMatching(/^rm -f '\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/)
-    );
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/)
+    ]);
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("awk '{s+=$7}"), {
+      workingDirectory: '/workspace'
+    });
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringMatching(/^zip -r -y /), {
+      workingDirectory: '/workspace'
+    });
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 

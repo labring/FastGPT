@@ -32,6 +32,36 @@ import { BoundedOutputBuffer } from '@/utils/outputBuffer';
 const GET_INFO_RETRY_TIMEOUT_MS = 30_000;
 const GET_INFO_RETRY_INTERVAL_MS = 1_000;
 const LIFECYCLE_TIMEOUT_MS = 120_000;
+const COMMAND_READY_TIMEOUT_MS = 300_000;
+const COMMAND_READY_INTERVAL_MS = 1_000;
+const COMMAND_READY_PROBE_TIMEOUT_MS = 5_000;
+
+const isCommandChannelNotReadyError = (error: unknown): boolean => {
+  const pending: unknown[] = [error];
+
+  while (pending.length > 0) {
+    const current = pending.shift();
+    if (!(current instanceof Error)) continue;
+
+    const errorLike = current as Error & {
+      commandError?: unknown;
+      cause?: unknown;
+    };
+    const message = errorLike.message.toLowerCase();
+
+    if (
+      message.includes('pod is not running') ||
+      message.includes('exec command timeout') ||
+      message.includes('command execution failed: exec command timeout')
+    ) {
+      return true;
+    }
+
+    pending.push(errorLike.commandError, errorLike.cause);
+  }
+
+  return false;
+};
 
 /**
  * Configuration for Sealos Devbox Adapter.
@@ -190,6 +220,49 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     );
   }
 
+  private createCommandReadyError(error: unknown): ConnectionError {
+    const message = error instanceof Error ? error.message : String(error);
+    return new ConnectionError(
+      `Sandbox command channel is not ready: ${message}`,
+      this.config.baseUrl,
+      error
+    );
+  }
+
+  /**
+   * Devbox can report Running before its exec channel is usable.
+   * Keep this provider-specific readiness probe inside the SDK adapter.
+   */
+  private async waitUntilCommandReady(): Promise<void> {
+    const startTime = Date.now();
+    let lastError: unknown;
+
+    while (Date.now() - startTime < COMMAND_READY_TIMEOUT_MS) {
+      try {
+        const result = await this.execute('true', {
+          timeoutMs: COMMAND_READY_PROBE_TIMEOUT_MS
+        });
+        if (result.exitCode === 0) return;
+
+        const error = new Error(result.stderr || result.stdout || 'Sandbox command probe failed');
+        lastError = error;
+        if (!isCommandChannelNotReadyError(error)) {
+          throw this.createCommandReadyError(error);
+        }
+      } catch (error) {
+        lastError = error;
+        if (error instanceof ConnectionError) throw error;
+        if (!isCommandChannelNotReadyError(error)) {
+          throw this.createCommandReadyError(error);
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, COMMAND_READY_INTERVAL_MS));
+    }
+
+    throw this.createCommandReadyError(lastError ?? new Error('Sandbox command probe timed out'));
+  }
+
   private isRetryableGetInfoError(error: unknown): boolean {
     let current: unknown = error;
 
@@ -299,10 +372,12 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
         const status = sandbox.status.state;
         switch (status) {
           case 'Running':
+            await this.waitUntilCommandReady();
             return;
           case 'Creating':
           case 'Starting':
             await this.waitUntilReady();
+            await this.waitUntilCommandReady();
             return;
           case 'Stopping':
           case 'Stopped':
@@ -343,6 +418,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       const res = await this.api.create(this.buildCreateRequest());
       this.assertMutationSuccess({ response: res, action: 'create' });
       await this.waitUntilReady();
+      await this.waitUntilCommandReady();
       this._status = { state: 'Running' };
     } catch (error) {
       throw new ConnectionError('Failed to create sandbox', this.config.baseUrl, error);
@@ -371,6 +447,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       const res = await this.api.resume(this._id);
       this.assertMutationSuccess({ response: res, action: 'resume' });
       await this.waitUntilReady();
+      await this.waitUntilCommandReady();
       this._status = { state: 'Running' };
     } catch (error) {
       throw new ConnectionError('Failed to resume sandbox', this.config.baseUrl, error);
