@@ -321,4 +321,45 @@ describe('team system plugin list handler', () => {
       })
     ]);
   });
+
+  it('does not mix deleted team placeholders into system source list', async () => {
+    mocks.getTeamPluginPolicyMap.mockResolvedValueOnce(
+      new Map([
+        [
+          'team-tool',
+          {
+            teamId: 'team-1',
+            pluginId: 'team-tool',
+            pluginType: 'tool',
+            installSource: 'marketplace',
+            status: TeamPluginPolicyStatusEnum.deleted,
+            installed: false,
+            version: '1.0.0',
+            etag: 'etag-1'
+          }
+        ]
+      ])
+    );
+
+    const res = await Call(handler, {
+      query: {
+        includeDeleted: true,
+        source: 'system'
+      },
+      auth: {
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toHaveLength(1);
+    expect(res.data[0]).toEqual(
+      expect.objectContaining({
+        id: 'system-tool',
+        registrySource: 'system',
+        source: 'system'
+      })
+    );
+  });
 });

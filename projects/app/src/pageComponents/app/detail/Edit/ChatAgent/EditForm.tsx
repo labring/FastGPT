@@ -22,6 +22,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -455,10 +456,15 @@ const EditForm = ({
                   []
               }));
             }}
-            onRemoveTool={(id) => {
+            onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+                selectedTools:
+                  state.selectedTools?.filter(
+                    (item) =>
+                      getToolIdentityKey(item.pluginId, item.source) !==
+                      getToolIdentityKey(id, source)
+                  ) || []
               }));
             }}
           />

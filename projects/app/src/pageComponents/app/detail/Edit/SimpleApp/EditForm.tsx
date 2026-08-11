@@ -28,6 +28,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
@@ -325,10 +326,15 @@ const EditForm = ({
                   state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
               }));
             }}
-            onRemoveTool={(id) => {
+            onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+                selectedTools:
+                  state.selectedTools?.filter(
+                    (item) =>
+                      getToolIdentityKey(item.pluginId, item.source) !==
+                      getToolIdentityKey(id, source)
+                  ) || []
               }));
             }}
           />

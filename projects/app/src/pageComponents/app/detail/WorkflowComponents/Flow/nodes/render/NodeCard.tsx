@@ -1178,10 +1178,20 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
       );
     }
     if (status !== undefined && status !== PluginStatusEnum.Normal) {
+      const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
+        [PluginStatusEnum.Hidden]: t('app:toolkit_status_hidden'),
+        [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
+        [PluginStatusEnum.Offline]: t('app:toolkit_status_offline')
+      };
+      const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
+        [PluginStatusEnum.Hidden]: t('app:tool_hidden_tips'),
+        [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips'),
+        [PluginStatusEnum.Offline]: t('app:tool_offset_tips')
+      };
       return (
-        <MyTooltip label={t(PluginStatusMap[status].tooltip)}>
+        <MyTooltip label={statusTooltipMap[status]}>
           <MyTag mr={2} colorSchema={PluginStatusMap[status].tagColor} type="borderFill">
-            {t(PluginStatusMap[status].label)}
+            {statusLabelMap[status]}
           </MyTag>
         </MyTooltip>
       );

@@ -31,6 +31,7 @@ import {
   getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
 import { getBatchUpdateFailures } from '@/web/core/plugin/marketplace/utils';
+import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import {
   getAdminSystemToolDetail,
   getAdminSystemTools,
@@ -147,6 +148,16 @@ const getSystemToolRawPluginId = (toolId: string) => {
   try {
     const { source, pluginId } = splitCombineToolId(toolId);
     return source === AppToolSourceEnum.systemTool ? pluginId : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | undefined => {
+  if (typeof error !== 'string') return;
+  try {
+    const parsed = JSON.parse(error);
+    return Array.isArray(parsed) ? (parsed as PluginInstallFailureType[]) : undefined;
   } catch {
     return undefined;
   }
@@ -501,36 +512,6 @@ export const ToolkitMarketplace = ({
     [handleUninstallTool, i18n.language, openUninstallConfirm, t]
   );
 
-  const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
-    async (toolIds: string[]) => {
-      if (toolIds.length === 0) return [];
-
-      // 1. Batch get download URLs
-      const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
-
-      // 2. Batch install (update)
-      const installResult = await intallPluginWithUrl({ downloadUrls });
-      const failures = getBatchUpdateFailures({
-        toolIds,
-        downloadUrls,
-        installResult,
-        language: i18n.language
-      });
-
-      // 3. Refresh installed plugins list
-      await refreshInstalledPlugins();
-
-      // 4. Close Drawer
-      setShowBatchUpdateDrawer(false);
-
-      return failures;
-    },
-    {
-      manual: true,
-      successToast: t('common:Success')
-    }
-  );
-
   const heroSectionRef = useRef<HTMLDivElement>(null);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
   useEffect(() => {
@@ -635,6 +616,61 @@ export const ToolkitMarketplace = ({
 
     return updatableList;
   }, [systemInstalledPlugins, marketplaceVersions, i18n.language]);
+
+  const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
+    async (toolIds: string[]) => {
+      if (toolIds.length === 0) return [];
+
+      // 1. Batch get download URLs
+      const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
+      const selectedTools = updatableTools.filter((tool) => toolIds.includes(tool.id));
+
+      // 2. Batch install (update)
+      let failures: ReturnType<typeof getBatchUpdateFailures> = [];
+      if (mode === 'team') {
+        try {
+          await installTeamPluginWithUrl({
+            downloadUrls,
+            plugins: selectedTools.map((tool) => ({
+              pluginId: tool.id,
+              version: tool.version || '',
+              etag: tool.etag || '',
+              marketplaceToolId: tool.id
+            }))
+          });
+        } catch (error) {
+          const failed = parseTeamInstallFailure(error);
+          if (!failed) throw error;
+          failures = getBatchUpdateFailures({
+            toolIds,
+            downloadUrls,
+            installResult: { failed },
+            language: i18n.language
+          });
+        }
+      } else {
+        const installResult = await intallPluginWithUrl({ downloadUrls });
+        failures = getBatchUpdateFailures({
+          toolIds,
+          downloadUrls,
+          installResult,
+          language: i18n.language
+        });
+      }
+
+      // 3. Refresh installed plugins list
+      await refreshInstalledPlugins();
+
+      // 4. Close Drawer
+      setShowBatchUpdateDrawer(false);
+
+      return failures;
+    },
+    {
+      manual: true,
+      successToast: t('common:Success')
+    }
+  );
 
   if (toolsError && !loadingTools) {
     return (

@@ -3,6 +3,7 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   DeleteTeamToolBodySchema,
   GetTeamPluginListResponseSchema,
+  GetTeamSystemPluginListQuerySchema,
   GetTeamToolDetailQuerySchema,
   GetTeamToolVersionsQuerySchema,
   GetTeamToolVersionsResponseSchema,
@@ -23,6 +24,9 @@ export const PluginTeamPath: OpenAPIPath = {
       summary: '获取团队插件列表',
       description: '获取团队插件列表',
       tags: [DevApiTagsMap.pluginTeam],
+      requestParams: {
+        query: GetTeamSystemPluginListQuerySchema
+      },
       responses: {
         200: {
           description: '获取团队插件列表成功',

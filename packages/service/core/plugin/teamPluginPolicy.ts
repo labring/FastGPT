@@ -8,10 +8,10 @@ import {
   parseTeamPluginSource
 } from '@fastgpt/global/core/app/tool/utils';
 import {
-  TeamPluginInstallSourceEnum,
   TeamPluginPolicyStatusEnum,
   TeamPluginRegistrySourceEnum,
-  type TeamInstalledPluginSchemaType
+  type TeamInstalledPluginSchemaType,
+  type TeamPluginInstallSourceEnum
 } from '@fastgpt/global/core/plugin/schema/type';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { MongoTeamInstalledPlugin } from './schema/teamInstalledPluginSchema';
@@ -327,7 +327,8 @@ export const resolveTeamPluginList = ({
     policyMap.forEach((policy) => {
       if (
         getTeamPluginPolicyStatus(policy) !== TeamPluginPolicyStatusEnum.deleted ||
-        seenTeamPluginIds.has(policy.pluginId)
+        seenTeamPluginIds.has(policy.pluginId) ||
+        (filter.source && filter.source !== TeamPluginRegistrySourceEnum.team)
       ) {
         return;
       }

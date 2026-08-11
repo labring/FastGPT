@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getTeamPluginSource,
+  getToolIdentityKey,
   getToolNameCandidates,
   getToolRawId,
   hasDebugToolInNodes,
@@ -171,6 +172,22 @@ describe('team plugin source', () => {
     expect(parseTeamPluginSource('team')).toBeUndefined();
     expect(parseTeamPluginSource('teamId:team-1:extra')).toBeUndefined();
     expect(parseTeamPluginSource('system')).toBeUndefined();
+  });
+});
+
+describe('getToolIdentityKey', () => {
+  it('keeps system and team tools with the same id distinct', () => {
+    const id = 'systemTool-weather';
+    const systemKey = getToolIdentityKey(id, 'system');
+    const teamKey = getToolIdentityKey(id, 'teamId:team-1');
+
+    expect(systemKey).not.toBe(teamKey);
+  });
+
+  it('treats missing source as system source', () => {
+    expect(getToolIdentityKey('systemTool-weather', undefined)).toBe(
+      getToolIdentityKey('systemTool-weather', 'system')
+    );
   });
 });
 

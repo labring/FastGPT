@@ -14,11 +14,15 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from '../../component/ConfigToolModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
-import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/type';
+import {
+  PluginStatusEnum,
+  PluginStatusMap,
+  type PluginStatusType
+} from '@fastgpt/global/core/plugin/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 const ToolSelect = ({
@@ -36,9 +40,20 @@ const ToolSelect = ({
   fileSelectConfig?: AppFileSelectConfigType;
   onAddTool: (tool: SelectedToolItemType) => void;
   onUpdateTool: (tool: SelectedToolItemType) => void;
-  onRemoveTool: (id: string) => void;
+  onRemoveTool: (id: string, source?: string) => void;
 }) => {
   const { t } = useTranslation();
+
+  const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
+    [PluginStatusEnum.Hidden]: t('app:toolkit_status_hidden'),
+    [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
+    [PluginStatusEnum.Offline]: t('app:toolkit_status_offline')
+  };
+  const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
+    [PluginStatusEnum.Hidden]: t('app:tool_hidden_tips'),
+    [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips'),
+    [PluginStatusEnum.Offline]: t('app:tool_offset_tips')
+  };
 
   const [configTool, setConfigTool] = useState<AppFormEditFormType['selectedTools'][number] | null>(
     null
@@ -84,7 +99,10 @@ const ToolSelect = ({
           const isDebugTool = isDebugToolSource(item.source);
 
           return (
-            <MyTooltip key={item.id} label={item.intro}>
+            <MyTooltip
+              key={getToolIdentityKey(item.pluginId || item.id, item.source)}
+              label={item.intro}
+            >
               <Grid
                 overflow={'hidden'}
                 alignItems={'center'}
@@ -119,14 +137,14 @@ const ToolSelect = ({
 
                 <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
                   {status !== undefined && status !== PluginStatusEnum.Normal && (
-                    <MyTooltip label={t(PluginStatusMap[status].tooltip)}>
+                    <MyTooltip label={statusTooltipMap[status]}>
                       <MyTag
                         display={'block'}
                         className="unHoverStyle"
                         colorSchema={PluginStatusMap[status].tagColor}
                         type="borderFill"
                       >
-                        {t(PluginStatusMap[status].label)}
+                        {statusLabelMap[status]}
                       </MyTag>
                     </MyTooltip>
                   )}
@@ -160,7 +178,7 @@ const ToolSelect = ({
                       hoverColor="red.600"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onRemoveTool(item.pluginId!);
+                        onRemoveTool(item.pluginId!, item.source);
                       }}
                     />
                   </Box>
@@ -179,7 +197,7 @@ const ToolSelect = ({
           selectedModel={selectedModel}
           onAddTool={onAddTool}
           onRemoveTool={(e) => {
-            onRemoveTool(e.id);
+            onRemoveTool(e.id, e.source);
           }}
           onClose={onCloseToolsSelect}
         />
