@@ -1,10 +1,11 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import {
-  PresignFileUploadParamsSchema,
-  type CreatePostPresignedUrlResponseType,
-  type PresignFileUploadParams
-} from '@fastgpt/global/common/file/s3/type';
+  PresignTempFilePostUrlBodySchema,
+  PresignTempFilePostUrlResponseSchema,
+  type PresignTempFilePostUrlBody,
+  type PresignTempFilePostUrlResponse
+} from '@fastgpt/global/openapi/common/file/api';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
@@ -13,14 +14,12 @@ import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interfa
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type PresignTempFilePostUrlParams = PresignFileUploadParams;
-
 async function handler(
-  req: ApiRequestProps<PresignTempFilePostUrlParams>
-): Promise<CreatePostPresignedUrlResponseType> {
+  req: ApiRequestProps<PresignTempFilePostUrlBody>
+): Promise<PresignTempFilePostUrlResponse> {
   const { filename, size } = parseApiInput({
     req,
-    bodySchema: PresignFileUploadParamsSchema
+    bodySchema: PresignTempFilePostUrlBodySchema
   }).body;
 
   const { teamId, tmbId } = await authUserPer({
@@ -39,12 +38,14 @@ async function handler(
   const bucket = new S3PrivateBucket();
   const { fileKey } = getFileS3Key.temp({ teamId, filename });
 
-  return await bucket.createUploadAccessUrl(
-    { rawKey: fileKey, filename, ...(size !== undefined ? { size } : {}) },
-    {
-      expiredHours: 1,
-      maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
-    }
+  return PresignTempFilePostUrlResponseSchema.parse(
+    await bucket.createUploadAccessUrl(
+      { rawKey: fileKey, filename, ...(size !== undefined ? { size } : {}) },
+      {
+        expiredHours: 1,
+        maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
+      }
+    )
   );
 }
 

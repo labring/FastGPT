@@ -9,10 +9,13 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
-import { IntSchema } from '@fastgpt/global/common/zod';
 import {
   SandboxChannelSchema,
-  SandboxTicketPermissionSchema
+  SandboxTicketPermissionSchema,
+  SandboxVerifyTicketQuerySchema,
+  SandboxVerifyTicketResponseSchema,
+  type SandboxVerifyTicketQuery,
+  type SandboxVerifyTicketResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { serviceEnv } from '@fastgpt/service/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -22,20 +25,7 @@ const IDE_AGENT_PORT = 1318;
 const IDE_AGENT_PREVIEW_PORT = 1319;
 const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-password"';
 
-const VerifyTicketQuerySchema = z.object({
-  ticket: z.string()
-});
 const SANDBOX_PREVIEW_SESSION_HEADER = 'x-sandbox-preview-session';
-
-const SandboxVerifyTicketResponseSchema = z.object({
-  sandbox_url: z.string().min(1),
-  agent_token: z.string(),
-  ws_limits: z.object({
-    max_message_bytes: IntSchema.min(1),
-    max_frame_bytes: IntSchema.min(1)
-  })
-});
-type SandboxVerifyTicketResponse = z.infer<typeof SandboxVerifyTicketResponseSchema>;
 
 const BaseSandboxTicketClaimsSchema = z.object({
   userId: z.string(),
@@ -79,7 +69,9 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
 /**
  * 校验 WebSocket ticket 或 Preview session，并返回 IDE Agent 的代理连接地址和 agent 口令。
  */
-async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketResponse> {
+async function handler(
+  req: ApiRequestProps<Record<string, never>, SandboxVerifyTicketQuery>
+): Promise<SandboxVerifyTicketResponse> {
   const secret = authAgentSandboxProxy(req);
 
   const headerPreviewSession = req.headers[SANDBOX_PREVIEW_SESSION_HEADER];
@@ -94,7 +86,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketRespons
 
     const { ticket } = parseApiInput({
       req,
-      querySchema: VerifyTicketQuerySchema
+      querySchema: SandboxVerifyTicketQuerySchema
     }).query;
 
     try {

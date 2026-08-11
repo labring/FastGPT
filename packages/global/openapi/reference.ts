@@ -111,6 +111,7 @@ export const getScalarOpenApiReferenceConfig = (
   url: string,
   options?: {
     defaultOpenAllTags?: boolean;
+    onLoaded?: (slug: string) => void | Promise<void>;
   }
 ) =>
   ({
@@ -121,6 +122,7 @@ export const getScalarOpenApiReferenceConfig = (
     localization: {
       locale: 'zh-CN'
     },
+    onLoaded: options?.onLoaded,
     showToolbar: 'never',
     theme: 'default',
     url

@@ -3,6 +3,8 @@ import { DevApiTagsMap } from '../../tag';
 import {
   GetLLMRequestRecordParamsSchema,
   LLMRequestRecordSchema,
+  OptimizePromptBodySchema,
+  OptimizePromptResponseSchema,
   ResumeStreamParamsRawSchema,
   StreamNoNeedToBeResumeSchema
 } from './api';
@@ -14,6 +16,31 @@ import { getErrorResponse } from '../../type';
 export const AIPath: OpenAPIPath = {
   ...SandboxPath,
   ...AgentPath,
+
+  '/core/ai/optimizePrompt': {
+    post: {
+      summary: '优化 Prompt',
+      description: '根据优化要求调用指定模型，以 SSE 流式返回结构化的优化结果',
+      tags: [DevApiTagsMap.aiAuxiliary],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: OptimizePromptBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '返回 Prompt 优化结果事件流',
+          content: {
+            'text/event-stream': {
+              schema: OptimizePromptResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
 
   '/core/ai/record/getRecord': {
     get: {

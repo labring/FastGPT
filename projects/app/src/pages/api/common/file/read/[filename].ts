@@ -8,6 +8,9 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import { pipeline } from 'node:stream/promises';
 import { createS3DownloadAbortContext } from '@/service/common/s3/proxy';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ReadCommonFileRequestQuerySchema } from '@fastgpt/global/openapi/common/file/api';
+import { NextAPI } from '@/service/middleware/entry';
 
 const previewableExtensions = [
   'jpg',
@@ -22,13 +25,16 @@ const previewableExtensions = [
   'md',
   'json'
 ];
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  const { token, filename } = parseApiInput({
+    req,
+    querySchema: ReadCommonFileRequestQuerySchema
+  }).query;
+
   const abortContext = createS3DownloadAbortContext({ req, res });
   let fileStream: Awaited<ReturnType<ReturnType<typeof getS3DatasetSource>['getFileStream']>>;
 
   try {
-    const { token, filename } = req.query as { token: string; filename: string };
-
     const { fileId } = await authFileToken(token);
 
     if (!fileId || !isS3ObjectKey(fileId, 'dataset')) {
@@ -73,6 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       res.setHeader('Content-Length', file.contentLength);
     }
 
+    // 文件流直接写入原始响应，无法在不缓存完整文件的前提下执行普通 JSON 出参解析。
     await pipeline(stream, res, { signal: abortContext.signal });
   } catch (error) {
     if (abortContext.isClientAborted()) return;
@@ -89,6 +96,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     abortContext.cleanup();
   }
 }
+
+export default NextAPI(handler);
+
 export const config = {
   api: {
     responseLimit: '100mb'

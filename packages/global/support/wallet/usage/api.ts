@@ -1,11 +1,6 @@
 import type { UsageItemTypeEnum, UsageSourceEnum } from './constants';
 import type { UsageItemCountType, UsageItemType, UsageListItemType, UsageSchemaType } from './type';
 
-export type CreateTrainingUsageProps = {
-  name: string;
-  datasetId: string;
-};
-
 export type GetUsageProps = {
   dateStart: string;
   dateEnd: string;

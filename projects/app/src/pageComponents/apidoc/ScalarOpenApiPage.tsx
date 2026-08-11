@@ -9,16 +9,69 @@ const ApiReferenceReact = dynamic(
   { ssr: false }
 );
 
+type ScalarNavigationEntry = {
+  type: string;
+  title?: string;
+  isGroup?: boolean;
+  children?: ScalarNavigationEntry[];
+};
+
+type ScalarWorkspaceStore = {
+  workspace: {
+    activeDocument?: {
+      'x-scalar-navigation'?: {
+        children?: ScalarNavigationEntry[];
+      };
+    };
+  };
+};
+
+/**
+ * Scalar 的 tag group 只能包含 tag。这里在文档加载后移除指定的中间 tag，
+ * 将其接口直接提升到上级标题下，同时保留其他需要折叠的目录。
+ */
+const flattenScalarNavigationTags = (tagNames: string[]) => {
+  const workspaceStore = (
+    window as typeof window & {
+      dataDumpWorkspace?: () => ScalarWorkspaceStore;
+    }
+  ).dataDumpWorkspace?.();
+  const navigation = workspaceStore?.workspace.activeDocument?.['x-scalar-navigation'];
+
+  if (!navigation?.children?.length) return;
+
+  const flattenedTagNames = new Set(tagNames);
+  const flattenEntries = (entries: ScalarNavigationEntry[]): ScalarNavigationEntry[] =>
+    entries.flatMap((entry) => {
+      const children = entry.children ? flattenEntries(entry.children) : undefined;
+
+      if (entry.type === 'tag' && !entry.isGroup && entry.title) {
+        if (flattenedTagNames.has(entry.title)) return children ?? [];
+      }
+
+      return [children ? { ...entry, children } : entry];
+    });
+
+  navigation.children = flattenEntries(navigation.children);
+};
+
 export const ScalarOpenApiPage = ({
   documentUrl,
-  defaultOpenAllTags
+  defaultOpenAllTags,
+  flattenedTagNames
 }: {
   documentUrl: string;
   defaultOpenAllTags?: boolean;
+  flattenedTagNames?: string[];
 }) => (
   <Box w="100vw" h="100vh" overflow="auto">
     <ApiReferenceReact
-      configuration={getScalarOpenApiReferenceConfig(documentUrl, { defaultOpenAllTags })}
+      configuration={getScalarOpenApiReferenceConfig(documentUrl, {
+        defaultOpenAllTags,
+        onLoaded: flattenedTagNames?.length
+          ? () => flattenScalarNavigationTags(flattenedTagNames)
+          : undefined
+      })}
     />
   </Box>
 );

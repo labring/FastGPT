@@ -1,5 +1,5 @@
 import { GET } from '@/web/common/api/request';
-import type { SanndboxPackagesResponse } from '@fastgpt/service/thirdProvider/codeSandbox';
+import type { GetSandboxPackagesResponse } from '@fastgpt/global/openapi/core/workflow/api';
 
 export const getSandboxPackages = async () =>
-  GET<SanndboxPackagesResponse>('/core/workflow/getSandboxPackages', {}, { deduplicate: true });
+  GET<GetSandboxPackagesResponse>('/core/workflow/getSandboxPackages', {}, { deduplicate: true });

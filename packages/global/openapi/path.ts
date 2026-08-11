@@ -4,18 +4,24 @@ import { AppPath } from './core/app';
 import { ChatPath } from './core/chat';
 import { DatasetPath } from './core/dataset';
 import { PluginPath } from './core/plugin';
+import { WorkflowPath } from './core/workflow';
 import { SupportPath } from './support';
 import { AdminCorePath } from './admin/core';
 import { AdminSupportPath } from './admin/support';
 import { DevApiTagsMap } from './tag';
 import type { OpenAPIPath } from './type';
+import { CommonPath } from './common';
+import { InvokePath } from './plugin';
 
 export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...AppPath,
   ...ChatPath,
   ...DatasetPath,
   ...PluginPath,
+  ...WorkflowPath,
   ...SupportPath,
+  ...CommonPath,
+  ...InvokePath,
   ...AIPath,
   ...SkillPath
 };
@@ -30,7 +36,9 @@ export const openAPITagGroups = [
       DevApiTagsMap.appVersion,
       DevApiTagsMap.appTemplate,
       DevApiTagsMap.appLog,
-      DevApiTagsMap.publishChannel
+      DevApiTagsMap.publishChannel,
+      DevApiTagsMap.workflowDebug,
+      DevApiTagsMap.appOther
     ]
   },
   {
@@ -45,6 +53,10 @@ export const openAPITagGroups = [
   {
     name: '核心-AI 相关',
     tags: [DevApiTagsMap.aiSkill, DevApiTagsMap.sandbox, DevApiTagsMap.aiCommon]
+  },
+  {
+    name: '核心 - AI 辅助生成',
+    tags: [DevApiTagsMap.aiAuxiliary, DevApiTagsMap.workflowHelper]
   },
   {
     name: '核心-对话模块配置',
@@ -82,7 +94,8 @@ export const openAPITagGroups = [
       DevApiTagsMap.userInform,
       DevApiTagsMap.walletBill,
       DevApiTagsMap.walletDiscountCoupon,
-      DevApiTagsMap.userLogin
+      DevApiTagsMap.userLogin,
+      DevApiTagsMap.userLimit
     ]
   },
   {
@@ -91,7 +104,16 @@ export const openAPITagGroups = [
   },
   {
     name: '通用-基础功能',
-    tags: [DevApiTagsMap.apiKey, DevApiTagsMap.customDomain]
+    tags: [
+      DevApiTagsMap.apiKey,
+      DevApiTagsMap.customDomain,
+      DevApiTagsMap.commonFile,
+      DevApiTagsMap.commonSystem
+    ]
+  },
+  {
+    name: '通用-反向调用',
+    tags: [DevApiTagsMap.reverseInvokePlugin, DevApiTagsMap.reverseInvokeSandbox]
   },
   {
     name: '管理员-插件管理',
@@ -100,10 +122,6 @@ export const openAPITagGroups = [
       DevApiTagsMap.pluginMarketplace,
       DevApiTagsMap.pluginToolAdmin
     ]
-  },
-  {
-    name: '系统接口',
-    tags: [DevApiTagsMap.chatAgentHelper]
   }
 ];
 

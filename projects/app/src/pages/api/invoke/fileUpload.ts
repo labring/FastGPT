@@ -2,9 +2,14 @@ import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { InvokeProcessor } from '@fastgpt/service/support/invoke/invoke';
-import { InvokeFileUploadResponseSchema } from '@fastgpt/global/openapi/plugin/invoke';
-import type { InvokeFileUploadResponseType } from '@fastgpt/global/openapi/plugin/invoke';
+import {
+  InvokeFileUploadBodySchema,
+  InvokeFileUploadResponseSchema,
+  type InvokeFileUploadBodyType,
+  type InvokeFileUploadResponseType
+} from '@fastgpt/global/openapi/plugin/invoke';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseType> {
   if (req.method !== 'POST') {
@@ -20,14 +25,19 @@ async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseTyp
   const filepaths: string[] = [];
 
   try {
-    const result = await multer.resolveFormData<Record<string, never>>({
+    const result = await multer.resolveFormData<InvokeFileUploadBodyType>({
       request: req,
       maxFileSize: global.feConfigs?.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
 
+    const { body } = parseApiInput({
+      req: { body: result.data },
+      bodySchema: InvokeFileUploadBodySchema
+    });
+
     const filename =
-      req.body.fileName ??
+      body.fileName ??
       (decodeURIComponent(result.fileMetadata.originalname) || `file-${getNanoid()}`);
 
     const uploadResult = await InvokeProcessor.getInstanceFromToken(token).handleFileUpload({

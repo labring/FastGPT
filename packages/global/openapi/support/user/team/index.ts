@@ -2,9 +2,11 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import { UpdateTeamBodySchema } from './api';
 import { EnterpriseAuthPath } from './enterpriseAuth';
+import { TeamLimitPath } from './limit';
 
 export const TeamPath: OpenAPIPath = {
   ...EnterpriseAuthPath,
+  ...TeamLimitPath,
   '/support/user/team/update': {
     post: {
       summary: '更新团队信息',

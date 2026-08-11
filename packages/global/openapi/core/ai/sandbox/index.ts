@@ -11,10 +11,67 @@ import {
   SandboxGetTicketBodyRawSchema,
   SandboxGetTicketResponseSchema,
   SandboxGetHtmlPreviewLinkBodyRawSchema,
-  SandboxGetHtmlPreviewLinkResponseSchema
+  SandboxGetHtmlPreviewLinkResponseSchema,
+  SandboxKeepaliveBodySchema,
+  SandboxKeepaliveResponseSchema,
+  SandboxProxyHeaderSchema,
+  SandboxVerifyTicketDocumentQuerySchema,
+  SandboxVerifyTicketHeaderSchema,
+  SandboxVerifyTicketResponseSchema
 } from './api';
 
 export const SandboxPath: OpenAPIPath = {
+  '/core/ai/sandbox/keepalive': {
+    post: {
+      summary: '刷新沙盒会话活跃时间',
+      description: '仅供 agent-sandbox-proxy 内部调用，刷新指定沙盒实例的活跃时间',
+      tags: [DevApiTagsMap.reverseInvokeSandbox],
+      requestParams: {
+        header: SandboxProxyHeaderSchema
+      },
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxKeepaliveBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功刷新沙盒会话活跃时间',
+          content: {
+            'application/json': {
+              schema: SandboxKeepaliveResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/verifyTicket': {
+    get: {
+      summary: '校验沙盒访问凭证',
+      description:
+        '仅供 agent-sandbox-proxy 内部调用。ticket 查询参数与 x-sandbox-preview-session 请求头二选一，并且必须携带 x-proxy-token。',
+      tags: [DevApiTagsMap.reverseInvokeSandbox],
+      requestParams: {
+        query: SandboxVerifyTicketDocumentQuerySchema,
+        header: SandboxVerifyTicketHeaderSchema
+      },
+      responses: {
+        200: {
+          description: '成功返回沙盒连接信息和 WebSocket 限制',
+          content: {
+            'application/json': {
+              schema: SandboxVerifyTicketResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
   '/core/ai/sandbox/download': {
     post: {
       summary: '下载沙盒文件或目录',

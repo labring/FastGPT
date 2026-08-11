@@ -26,7 +26,11 @@ import {
   SkillRuntimeInitEventSchema,
   SwitchSkillVersionBodySchema,
   UpdateSkillBodySchema,
-  UpdateSkillVersionBodySchema
+  UpdateSkillVersionBodySchema,
+  CopySkillBodySchema,
+  CopySkillResponseSchema,
+  ResumeSkillInheritPermissionQuerySchema,
+  ResumeSkillInheritPermissionResponseSchema
 } from './api';
 import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
 
@@ -114,6 +118,50 @@ export const SkillPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功更新技能'
+        }
+      }
+    }
+  },
+  '/core/ai/skill/copy': {
+    post: {
+      summary: '复制技能',
+      description: '复制指定技能、当前版本包和权限信息，并返回新技能 ID',
+      tags: [DevApiTagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CopySkillBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功复制技能',
+          content: {
+            'application/json': {
+              schema: CopySkillResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/ai/skill/resumeInheritPermission': {
+    get: {
+      summary: '恢复技能继承权限',
+      description: '恢复指定技能或技能文件夹的权限继承',
+      tags: [DevApiTagsMap.aiSkill],
+      requestParams: {
+        query: ResumeSkillInheritPermissionQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功恢复技能继承权限',
+          content: {
+            'application/json': {
+              schema: ResumeSkillInheritPermissionResponseSchema
+            }
+          }
         }
       }
     }

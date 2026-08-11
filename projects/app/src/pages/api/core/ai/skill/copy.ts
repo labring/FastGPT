@@ -21,6 +21,7 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
   CopySkillBodySchema,
+  CopySkillResponseSchema,
   type CopySkillBody,
   type CopySkillResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
@@ -158,7 +159,7 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
     });
   })();
 
-  return { skillId: newSkillId };
+  return CopySkillResponseSchema.parse({ skillId: newSkillId });
 }
 
 export default NextAPI(handler);

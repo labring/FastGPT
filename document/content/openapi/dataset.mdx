@@ -7,24 +7,7 @@ description: FastGPT OpenAPI 知识库接口
 | --------------------------------------- | -------------------------------------- |
 | ![](../../public/imgs/getDatasetId.jpg) | ![](../../public/imgs/getfile_id.webp) |
 
-## 创建训练订单
-
-<Tabs items={['请求示例','响应示例']}>
-<Tab value="请求示例" >
-
-**新例子**
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/support/wallet/usage/createTrainingUsage' \
---header 'Authorization: Bearer {{apikey}}' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "datasetId": "知识库 ID",
-    "name": "可选，自定义订单名称，例如：文档训练-fastgpt.docx"
-}'
-```
-
-</Tab>
+<Tabs>
 <Tab value="响应示例" >
 
 data 为 billId，可用于添加知识库数据时进行账单聚合。

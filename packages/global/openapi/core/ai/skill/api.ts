@@ -86,13 +86,27 @@ export type UpdateSkillBody = z.infer<typeof UpdateSkillBodySchema>;
 export const UpdateSkillResponseSchema = z.void();
 export type UpdateSkillResponse = z.infer<typeof UpdateSkillResponseSchema>;
 
+/* ============================================================================
+ * API: 复制技能
+ * Route: POST /api/core/ai/skill/copy
+ * Method: POST
+ * Description: 复制指定技能及其当前版本，并返回新技能 ID
+ * Tags: ['AI技能管理', 'Write']
+ * ============================================================================ */
+
 export const CopySkillBodySchema = z.object({
-  skillId: IdSchema
+  skillId: IdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '需要复制的技能 ID'
+  })
 });
 export type CopySkillBody = z.infer<typeof CopySkillBodySchema>;
 
 export const CopySkillResponseSchema = z.object({
-  skillId: z.string()
+  skillId: z.string().meta({
+    example: '68ad85a7463006c963799a06',
+    description: '复制后生成的新技能 ID'
+  })
 });
 export type CopySkillResponse = z.infer<typeof CopySkillResponseSchema>;
 
@@ -109,11 +123,29 @@ export const GetSkillDetailQuerySchema = z.object({
 });
 export type GetSkillDetailQuery = z.infer<typeof GetSkillDetailQuerySchema>;
 
+/* ============================================================================
+ * API: 恢复技能继承权限
+ * Route: GET /api/core/ai/skill/resumeInheritPermission
+ * Method: GET
+ * Description: 恢复指定技能或技能文件夹的权限继承
+ * Tags: ['AI技能管理', 'Write']
+ * ============================================================================ */
+
 export const ResumeSkillInheritPermissionQuerySchema = z.object({
-  skillId: IdSchema
+  skillId: IdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '需要恢复权限继承的技能或技能文件夹 ID'
+  })
 });
 export type ResumeSkillInheritPermissionQuery = z.infer<
   typeof ResumeSkillInheritPermissionQuerySchema
+>;
+
+export const ResumeSkillInheritPermissionResponseSchema = z.undefined().meta({
+  description: '恢复权限继承成功'
+});
+export type ResumeSkillInheritPermissionResponse = z.infer<
+  typeof ResumeSkillInheritPermissionResponseSchema
 >;
 
 export const GetSkillDetailResponseSchema = z.object({

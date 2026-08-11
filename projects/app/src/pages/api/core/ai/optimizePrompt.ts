@@ -10,12 +10,12 @@ import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
-
-type OptimizePromptBody = {
-  originalPrompt: string;
-  optimizerInput: string;
-  model: string;
-};
+import {
+  OptimizePromptBodySchema,
+  OptimizePromptResponseSchema,
+  type OptimizePromptBody
+} from '@fastgpt/global/openapi/core/ai/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const getPromptOptimizerSystemPrompt = () => {
   return `# Role
@@ -72,7 +72,10 @@ ${originalPrompt}
 
 async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiResponseType) {
   try {
-    const { originalPrompt, optimizerInput, model } = req.body;
+    const { originalPrompt, optimizerInput, model } = parseApiInput({
+      req,
+      bodySchema: OptimizePromptBodySchema
+    }).body;
 
     const { teamId, tmbId } = await authCert({
       req,
@@ -109,15 +112,17 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
         responseWrite({
           res,
           event: SseResponseEventEnum.answer,
-          data: JSON.stringify({
-            choices: [
-              {
-                delta: {
-                  content: text
+          data: OptimizePromptResponseSchema.parse(
+            JSON.stringify({
+              choices: [
+                {
+                  delta: {
+                    content: text
+                  }
                 }
-              }
-            ]
-          })
+              ]
+            })
+          )
         });
       }
     });
@@ -125,7 +130,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
-      data: '[DONE]'
+      data: OptimizePromptResponseSchema.parse('[DONE]')
     });
 
     const { totalPoints, modelName } = formatModelChars2Points({
