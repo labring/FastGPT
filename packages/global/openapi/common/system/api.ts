@@ -6,7 +6,8 @@ import {
   LLMModelItemSchema,
   RerankModelItemSchema,
   STTModelItemSchema,
-  TTSModelItemSchema
+  TTSModelItemSchema,
+  SystemModelItemSchema
 } from '../../../core/ai/model.schema';
 import { ModelTypeEnum } from '../../../core/ai/constants';
 
@@ -31,17 +32,9 @@ const FastGPTFeConfigsSchema = z.looseObject({
   uploadFileMaxSize: z.number()
 }) as z.ZodType<FastGPTFeConfigsType>;
 
-const SystemModelSchema = z
-  .union([
-    LLMModelItemSchema,
-    EmbeddingModelItemSchema,
-    TTSModelItemSchema,
-    STTModelItemSchema,
-    RerankModelItemSchema
-  ])
-  .meta({
-    description: '脱敏后的系统模型配置'
-  });
+const SystemModelSchema = SystemModelItemSchema.meta({
+  description: '脱敏后的系统模型配置'
+});
 
 const I18nStringStrictSchema = z.object({
   en: z.string(),

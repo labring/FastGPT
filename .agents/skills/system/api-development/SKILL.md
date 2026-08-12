@@ -20,10 +20,28 @@ description: FastGPT API 开发规范。重点强调使用 zod schema 定义入�
 
 1. **所有 API 必须使用 zod schema 定义入参和出参**
 2. **必须导出 schema 的 TypeScript 类型**
-3. **必须在 schema 文件头部声明 API 信息(路由、方法、描述、标签)**
+3. **必须在 schema 文件头部声明 API 信息(路由、方法、描述、标签)，一次性管理员升级/清洗能力除外**
 4. **入参必须使用 schema.parse() 验证**
 5. **函数返回值必须使用 schema.parse() 验证**
-6. **必须编写完整的 OpenAPI 文档**
+6. **必须编写完整的 OpenAPI 文档，一次性管理员升级/清洗能力除外**
+
+### 管理员升级与清洗能力的文档豁免
+
+仅供系统管理员执行、用于一次性升级、迁移、修复或数据清洗的内部接口和脚本，不属于产品 API，不要求：
+
+- 在 `packages/global/openapi/` 声明接口文档；
+- 注册 OpenAPI Path；
+- 编写 API 头部路由、方法、描述和标签信息。
+
+豁免只针对文档，不豁免安全和校验要求：
+
+- 管理员接口必须使用 `authSystemAdmin` 鉴权；
+- API 入参必须使用 Zod Schema 和 `parseApiInput`；
+- 返回值必须使用 Zod Schema 校验，空成功响应使用 `z.undefined()`；
+- 数据清洗默认使用 dry-run，显式确认后才能写入，并输出成功、跳过和失败统计；
+- 清洗逻辑应可重复执行，无法安全修复的数据必须跳过并报告，不得静默填入猜测值。
+
+常规管理员产品接口（例如模型配置 CRUD、用户管理和系统配置）不因仅管理员可用而获得豁免，仍需按标准 API 流程维护文档。
 
 ## 开发流程
 
@@ -464,6 +482,7 @@ export default NextAPI(handler);
 ### 🔴 必须检查项 (阻塞性)
 
 **Schema 文件** (`packages/global/openapi/.../api.ts`):
+- [ ] **文档豁免判断**: 仅一次性管理员升级/清洗能力可跳过 OpenAPI 文档
 - [ ] **API 声明**: 文件头部有 API 信息(路由、方法、描述、标签)
 - [ ] **Schema 定义**: 入参和出参都使用 zod 定义
 - [ ] **类型导出**: 导出 `z.infer<typeof Schema>` 类型

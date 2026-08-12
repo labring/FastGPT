@@ -3,6 +3,32 @@ title: 'V4.16.0-beta2（进行中）'
 description: 'FastGPT V4.16.0-beta2 更新说明'
 ---
 
+## 📦 升级指南
+
+### 1. 清洗历史系统模型配置
+
+本版本开始在系统模型初始化及保存时使用严格 Schema。此前版本保存的数字字符串、字符串形式的价格梯度或缺失字段可能导致初始化校验失败。升级后请先执行 dry-run，查看需要处理的模型配置；dry-run 不会修改数据或刷新缓存：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+确认 `invalidSamples` 中没有需要人工处理的数据后，执行正式清洗：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+清洗会将合法数字字符串转换为 number、将字符串形式的 `priceTiers` 转换为数组，并删除非法的可选数字。非法或缺失的必填数字使用系统默认值：LLM 的 `maxContext/maxResponse/quoteMaxToken` 分别为 `16000/16000/13000`，Embedding 的 `defaultToken/maxToken` 分别为 `500/3000`，价格为 `0`。`functionCall` 保持可选，Embedding 缺失的 `weight` 补为 `0`。
+
+正式执行会统一写入数据并立即刷新系统模型缓存；即使没有记录需要更新，也会重新构建运行时缓存。接口可安全重复执行；再次 dry-run 时，`wouldUpdate` 应为 `0`。无法通过当前完整模型 Schema 的记录不会写入，详情会全部返回在 `invalidSamples` 中。
+
 ## 🚀 新增内容
 
 1. 工作流应用的系统配置移至画布左侧工具栏中的独立配置面板，新建工作流应用时会自动打开。
@@ -23,3 +49,8 @@ description: 'FastGPT V4.16.0-beta2 更新说明'
 4. 修复应用发布后，文件变量无法上传文件的问题。
 5. 修复共享工作流工具的文件参数无法上传文件的问题。
 6. 修复 S3 对象键和文件名包含空格、`%`、`#`、`?`、斜杠等特殊字符时，可能导致上传、解析、预览或下载异常的问题。
+
+## 🛠️ 代码优化
+
+1. 审计日志归档，不再删除，改成转存到 S3 冷归档。
+2. 增加对 admin 配置的数据校验和清洗。

@@ -18,15 +18,23 @@ import { readFromSecondary } from '../../../common/mongo/utils';
 import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
+import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
 const teamPointCache = new TeamPointCache({ logger });
+
+/** 将非有限套餐数值归一化为 null，统一表示无限或不限制。 */
+const normalizeUnlimitedValue = (value: number): number | null =>
+  Number.isFinite(value) ? value : null;
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
 };
 export const getStandardPlanConfig = (level: `${StandardSubLevelEnum}`) => {
-  return global.subPlans?.standard?.[level];
+  return getRuntimeStandardPlanConfig({
+    plans: global.subPlans?.standard,
+    level
+  });
 };
 
 export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
@@ -35,11 +43,22 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight
   );
 };
+
+/**
+ * 将标准套餐的历史数据库记录与当前静态配置合并为完整的客户端格式。
+ * 缺失的续订字段仅在读取结果中按当前套餐补齐，不回写原始订阅记录。
+ */
 export const buildStandardPlan = (
   standard: TeamSubSchemaType,
   standardConstants: TeamStandardSubPlanItemType
 ): TeamPlanStandardType => ({
   ...standard,
+  currentMode: standard.currentMode ?? SubModeEnum.month,
+  nextMode: standard.nextMode ?? standard.currentMode ?? SubModeEnum.month,
+  nextSubLevel: standard.nextSubLevel ?? standard.currentSubLevel,
+  totalPoints: normalizeUnlimitedValue(standard.totalPoints),
+  surplusPoints: normalizeUnlimitedValue(standard.surplusPoints),
+  currentExtraDatasetSize: standard.currentExtraDatasetSize ?? 0,
   name: standardConstants.name,
   desc: standardConstants.desc,
   price: standardConstants.price,
@@ -74,7 +93,7 @@ export const initTeamFreePlan = async ({
   session?: ClientSession;
 }) => {
   const freePoints = isWecomTeam
-    ? Math.round((global.subPlans?.standard?.basic.totalPoints ?? 4000) / 2)
+    ? Math.round((global.subPlans?.standard?.basic?.totalPoints ?? 4000) / 2)
     : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({
@@ -169,14 +188,9 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
 
   const standard = plans[0];
 
-  const standardConstants =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[
-          standard.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standard.currentSubLevel
-        ]
-      : undefined;
+  const standardConstants = standard?.currentSubLevel
+    ? getStandardPlanConfig(standard.currentSubLevel)
+    : undefined;
 
   return {
     [SubTypeEnum.standard]:
@@ -220,38 +234,45 @@ export const getTeamPlanStatus = async ({
   }
 
   const totalPoints = standardPlans
-    ? (standardPlan?.totalPoints || 0) +
-      extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0)
-    : Infinity;
-  const surplusPoints =
-    (standardPlan?.surplusPoints || 0) +
-    extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0);
+    ? normalizeUnlimitedValue(
+        (standardPlan?.totalPoints || 0) +
+          extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0)
+      )
+    : null;
+  const surplusPoints = standardPlans
+    ? normalizeUnlimitedValue(
+        (standardPlan?.surplusPoints || 0) +
+          extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0)
+      )
+    : null;
 
-  const standardMaxDatasetSize =
+  const configuredStandardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
-      ? standardPlan?.maxDatasetSize ||
-        standardPlans[
-          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standardPlan.currentSubLevel
-        ]?.maxDatasetSize ||
-        Infinity
-      : Infinity;
-  const totalDatasetSize =
-    standardMaxDatasetSize +
-    extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0);
-
-  /** 静态的套餐配置，如果是 custom 则返回 advanced */
-  const standardConstants =
-    standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[
-          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standardPlan.currentSubLevel
-        ]
+      ? (standardPlan?.maxDatasetSize ??
+        getStandardPlanConfig(standardPlan.currentSubLevel)?.maxDatasetSize)
       : undefined;
+  const standardMaxDatasetSize =
+    configuredStandardMaxDatasetSize === undefined
+      ? null
+      : normalizeUnlimitedValue(configuredStandardMaxDatasetSize);
+  const totalDatasetSize =
+    standardMaxDatasetSize === null
+      ? null
+      : normalizeUnlimitedValue(
+          standardMaxDatasetSize +
+            extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0)
+        );
 
-  teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
+  const standardConstants = standardPlan?.currentSubLevel
+    ? getStandardPlanConfig(standardPlan.currentSubLevel)
+    : undefined;
+
+  // Redis 只承担积分读取加速，刷新失败或变慢都不应阻塞套餐主流程。
+  if (totalPoints === null || surplusPoints === null) {
+    void teamPointCache.clear(teamId);
+  } else {
+    void teamPointCache.set({ teamId, totalPoints, surplusPoints });
+  }
 
   return {
     [SubTypeEnum.standard]: standardConstants
@@ -259,7 +280,7 @@ export const getTeamPlanStatus = async ({
       : undefined,
 
     totalPoints,
-    usedPoints: totalPoints - surplusPoints,
+    usedPoints: totalPoints === null || surplusPoints === null ? null : totalPoints - surplusPoints,
 
     datasetMaxSize: totalDatasetSize
   };
@@ -282,7 +303,10 @@ export const teamPoint = {
     const planStatus = await getTeamPlanStatus({ teamId });
     return {
       totalPoints: planStatus.totalPoints,
-      surplusPoints: planStatus.totalPoints - planStatus.usedPoints,
+      surplusPoints:
+        planStatus.totalPoints === null || planStatus.usedPoints === null
+          ? null
+          : planStatus.totalPoints - planStatus.usedPoints,
       usedPoints: planStatus.usedPoints
     };
   },

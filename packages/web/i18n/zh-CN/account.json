@@ -13,7 +13,7 @@
   "third_party": "第三方账号",
   "usage_records": "使用记录",
   "app_registration_count": "应用备案数",
-  "audit_log_store_duration": "团队操作日志记录时长",
+  "audit_log_store_duration": "审计日志时长",
   "bill_detail": "账单详情",
   "chat_history_store_duration": "对话记录保留时长",
   "custom_config_details": "定制配置详情",

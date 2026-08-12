@@ -58,6 +58,27 @@ describe('checkTeamAIPoints', () => {
     });
   });
 
+  it('积分额度为 null 时不限制', async () => {
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {
+          totalPoints: 2000
+        }
+      }
+    };
+
+    vi.spyOn(walletUtils.teamPoint, 'getTeamPoints').mockResolvedValue({
+      totalPoints: null,
+      surplusPoints: null,
+      usedPoints: null
+    });
+
+    await expect(checkTeamAIPoints(mockTeamId)).resolves.toEqual({
+      totalPoints: null,
+      usedPoints: null
+    });
+  });
+
   it('当积分不足时抛出错误', async () => {
     (global as any).subPlans = {
       standard: {
@@ -500,6 +521,25 @@ describe('checkDatasetIndexLimit', () => {
     };
     vi.spyOn(walletUtils, 'getTeamPlanStatus').mockResolvedValue(mockPlanStatus as any);
     vi.spyOn(vectorController, 'getVectorCountByTeamId').mockResolvedValue(5000);
+
+    await expect(
+      checkDatasetIndexLimit({
+        teamId: mockTeamId,
+        insertLen: 1000
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('积分和知识库额度为 null 时不限制', async () => {
+    vi.spyOn(walletUtils, 'getTeamPlanStatus').mockResolvedValue({
+      standard: {
+        maxDatasetSize: 10000
+      },
+      totalPoints: null,
+      usedPoints: null,
+      datasetMaxSize: null
+    } as any);
+    vi.spyOn(vectorController, 'getVectorCountByTeamId').mockResolvedValue(50000);
 
     await expect(
       checkDatasetIndexLimit({

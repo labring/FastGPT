@@ -844,7 +844,7 @@ export const ModelEditModal = ({
       for (const key of Object.keys(modelData)) {
         const val = modelData[key];
         if (val === null || val === undefined || Number.isNaN(val)) {
-          modelData[key] = '';
+          delete modelData[key];
         }
       }
 

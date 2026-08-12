@@ -2,9 +2,11 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ModelTypeEnum } from '../../../core/ai/constants';
 import {
   EmbeddingModelItemSchema,
-  type EmbeddingModelItemType
+  type EmbeddingModelItemType,
+  LLMModelItemSchema
 } from '../../../core/ai/model.schema';
 import { GetSystemInitDataResponseSchema } from '../../../openapi/common/system/api';
+import { StandardSubLevelEnum } from '../../../support/wallet/sub/constants';
 
 const desensitizedEmbeddingModel = {
   type: ModelTypeEnum.embedding,
@@ -16,6 +18,73 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
+  it('accepts legacy partial standard plans with a stored activity expiration date', () => {
+    const activityExpirationTime = new Date('2026-08-31T16:00:00.000Z');
+    const plan = {
+      price: 0,
+      totalPoints: 100,
+      maxTeamMember: 1,
+      maxAppAmount: 10,
+      maxDatasetAmount: 3,
+      maxDatasetSize: 600,
+      chatHistoryStoreDuration: 30
+    };
+
+    const result = GetSystemInitDataResponseSchema.parse({
+      subPlans: {
+        standard: {
+          [StandardSubLevelEnum.free]: plan,
+          [StandardSubLevelEnum.basic]: plan,
+          [StandardSubLevelEnum.advanced]: plan,
+          [StandardSubLevelEnum.custom]: {
+            name: 'Custom Plan',
+            customFormUrl: 'https://example.com/contact'
+          }
+        },
+        activityExpirationTime
+      }
+    });
+
+    expect(result.subPlans?.standard).toEqual({
+      [StandardSubLevelEnum.free]: plan,
+      [StandardSubLevelEnum.basic]: plan,
+      [StandardSubLevelEnum.advanced]: plan,
+      [StandardSubLevelEnum.custom]: {
+        name: 'Custom Plan',
+        customFormUrl: 'https://example.com/contact'
+      }
+    });
+    expect(result.subPlans?.activityExpirationTime).toEqual(new Date(activityExpirationTime));
+  });
+
+  it.each(['', null, '2026-08-31T16:00:00.000Z'])(
+    'rejects a non-Date activity expiration value at read time',
+    (value) => {
+      expect(() =>
+        GetSystemInitDataResponseSchema.parse({
+          subPlans: { activityExpirationTime: value }
+        })
+      ).toThrow();
+    }
+  );
+
+  it('rejects dirty subscription values at read time', () => {
+    expect(() =>
+      GetSystemInitDataResponseSchema.parse({
+        subPlans: {
+          standard: {
+            [StandardSubLevelEnum.custom]: {
+              priceDesc: '定制化计费',
+              customDescriptions: ['专属客户经理'],
+              customFormUrl: 'https://example.com/contact'
+            }
+          },
+          extraDatasetSize: { price: '4' }
+        }
+      })
+    ).toThrow();
+  });
+
   it('fills the default weight for an embedding model without weight', () => {
     expect(
       GetSystemInitDataResponseSchema.parse({
@@ -39,5 +108,19 @@ describe('system initialization OpenAPI contract', () => {
       ...desensitizedEmbeddingModel,
       weight: 2
     });
+  });
+
+  it('accepts an LLM model without functionCall', () => {
+    expect(
+      LLMModelItemSchema.parse({
+        type: ModelTypeEnum.llm,
+        provider: 'OpenAI',
+        model: 'gpt-5',
+        name: 'GPT-5',
+        maxContext: 128000,
+        maxResponse: 16000,
+        quoteMaxToken: 12000
+      })
+    ).not.toHaveProperty('functionCall');
   });
 });
