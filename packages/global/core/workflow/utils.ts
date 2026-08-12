@@ -410,6 +410,15 @@ export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
   return {};
 };
 
+const agentGeneratedExternalVariableValueTypes = new Set<WorkflowIOValueTypeEnum>([
+  WorkflowIOValueTypeEnum.string,
+  WorkflowIOValueTypeEnum.number,
+  WorkflowIOValueTypeEnum.boolean,
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean
+]);
+
 /**
  * 将子工作流外部变量投影为父工作流可配置的节点输入。
  * customVariable 只描述子工作流的外部注入语义；进入父工作流后由引用或类型匹配的手动控件提供值。
@@ -432,11 +441,9 @@ export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(in
     }
     return FlowNodeInputTypeEnum.JSONEditor;
   })();
-  const canAgentGenerated = [
-    WorkflowIOValueTypeEnum.string,
-    WorkflowIOValueTypeEnum.number,
-    WorkflowIOValueTypeEnum.boolean
-  ].includes(input.valueType as WorkflowIOValueTypeEnum);
+  const canAgentGenerated = agentGeneratedExternalVariableValueTypes.has(
+    input.valueType as WorkflowIOValueTypeEnum
+  );
   const projectedRenderTypeList = Array.from(
     new Set(
       input.renderTypeList.flatMap((type) => {
@@ -462,13 +469,15 @@ export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(in
   if (!projectedRenderTypeList.includes(manualRenderType)) {
     projectedRenderTypeList.push(manualRenderType);
   }
-  const selectedType =
-    input.selectedType && projectedRenderTypeList.includes(input.selectedType)
+  const selectedType = canAgentGenerated
+    ? FlowNodeInputTypeEnum.agentGenerated
+    : input.selectedType && projectedRenderTypeList.includes(input.selectedType)
       ? input.selectedType
       : FlowNodeInputTypeEnum.reference;
   const projectedInput = {
     ...input,
     canAgentGenerated,
+    ...(canAgentGenerated ? { isToolParam: true } : {}),
     renderTypeList: projectedRenderTypeList,
     selectedType
   } as T;
@@ -608,7 +617,17 @@ export const appData2FlowNodeIO = ({
       chatConfig?.fileSelectConfig?.canSelectVideo ||
       chatConfig?.fileSelectConfig?.canSelectAudio ||
       chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
-        ? [Input_Template_File_Link]
+        ? [
+            {
+              ...Input_Template_File_Link,
+              renderTypeList: [
+                ...Input_Template_File_Link.renderTypeList,
+                FlowNodeInputTypeEnum.agentGenerated
+              ],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated,
+              isToolParam: true
+            }
+          ]
         : []),
       {
         ...Input_Template_UserChatInput,

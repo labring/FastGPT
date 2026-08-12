@@ -42,6 +42,33 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
 describe('rewriteAppWorkflowToDetail - legacy HTTP workflow tool inputs', () => {
+  it('普通节点不投影 customVariable 输入', async () => {
+    const input = {
+      key: 'externalVariable',
+      label: 'External variable',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+      selectedType: FlowNodeInputTypeEnum.customVariable
+    };
+    const nodes = [
+      {
+        nodeId: 'ordinary-node',
+        flowNodeType: FlowNodeTypeEnum.textEditor,
+        inputs: [input],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toEqual(input);
+  });
+
   it('恢复旧版 HTTP 动态工具参数并保留显式手动配置', async () => {
     const nodes = [
       {
@@ -258,12 +285,73 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
       value: 'saved-value',
       defaultValue: 'fallback',
       canAgentGenerated: true,
+      isToolParam: true,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.reference,
         FlowNodeInputTypeEnum.input
       ],
-      selectedType: FlowNodeInputTypeEnum.reference
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+    expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
+  });
+
+  it.each([
+    ['工作流工具', FlowNodeTypeEnum.pluginModule],
+    ['嵌套工作流', FlowNodeTypeEnum.appModule]
+  ])('将固定版本%s保存的外部变量投影为父工作流可配置输入', async (_, flowNodeType) => {
+    const toolAppId = '507f1f77bcf86cd799439012';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      pluginId: toolAppId,
+      flowNodeType,
+      name: 'Fixed workflow',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'fixed-version-id',
+      isLatestVersion: false
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+    const nodes = [
+      {
+        nodeId: 'fixed-workflow',
+        flowNodeType,
+        pluginId: toolAppId,
+        version: 'fixed-version-id',
+        inputs: [
+          {
+            key: 'externalVariable',
+            label: 'External variable',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: 'saved-value',
+            renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+            selectedType: FlowNodeInputTypeEnum.customVariable,
+            selectedTypeIndex: 0
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      value: 'saved-value',
+      canAgentGenerated: true,
+      isToolParam: true,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.input
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
     expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });

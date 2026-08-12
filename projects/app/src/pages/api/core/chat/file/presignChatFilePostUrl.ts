@@ -13,7 +13,7 @@ import { createAuthorizedChatFileUploadUrl } from '@/service/core/chat/file/uplo
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
 import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -41,10 +41,13 @@ const getPublishedFileSelectConfig = ({
     inputs?: FlowNodeInputItemType[];
   }>;
 }): AppFileSelectConfigType | undefined => {
-  const fileVariables = chatConfig?.variables?.filter(
-    (item) => item.type === VariableInputEnum.file && item.canLocalUpload !== false
-  );
-  const pluginFileInputs = nodes
+  type FileInputConfig = AppFileSelectConfigType & { canLocalUpload?: boolean };
+
+  const fileVariables: FileInputConfig[] =
+    chatConfig?.variables?.filter(
+      (item) => item.type === VariableInputEnum.file && item.canLocalUpload !== false
+    ) ?? [];
+  const pluginFileInputs: FileInputConfig[] = nodes
     .filter((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
     .flatMap((node) => node.inputs ?? [])
     .filter(
@@ -52,35 +55,42 @@ const getPublishedFileSelectConfig = ({
         input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
         input.canLocalUpload !== false
     );
+  const formFileInputs: FileInputConfig[] = nodes
+    .filter((node) => node.flowNodeType === FlowNodeTypeEnum.formInput)
+    .flatMap((node) => node.inputs ?? [])
+    .filter((input) => input.key === NodeInputKeyEnum.userInputForms && Array.isArray(input.value))
+    .flatMap((input) => input.value as unknown[])
+    .filter(
+      (input): input is FileInputConfig & { type: FlowNodeInputTypeEnum } =>
+        !!input &&
+        typeof input === 'object' &&
+        (input as { type?: unknown }).type === FlowNodeInputTypeEnum.fileSelect &&
+        (input as FileInputConfig).canLocalUpload !== false
+    );
+  const localFileInputs = [...fileVariables, ...pluginFileInputs, ...formFileInputs];
 
-  if (!fileVariables?.length && !pluginFileInputs.length) return chatConfig?.fileSelectConfig;
+  if (!localFileInputs.length) return chatConfig?.fileSelectConfig;
 
   return {
     ...chatConfig?.fileSelectConfig,
     canSelectFile:
       !!chatConfig?.fileSelectConfig?.canSelectFile ||
-      fileVariables?.some((item) => item.canSelectFile) ||
-      pluginFileInputs.some((item) => item.canSelectFile),
+      localFileInputs.some((item) => item.canSelectFile ?? true),
     canSelectImg:
       !!chatConfig?.fileSelectConfig?.canSelectImg ||
-      fileVariables?.some((item) => item.canSelectImg) ||
-      pluginFileInputs.some((item) => item.canSelectImg),
+      localFileInputs.some((item) => item.canSelectImg),
     canSelectVideo:
       !!chatConfig?.fileSelectConfig?.canSelectVideo ||
-      fileVariables?.some((item) => item.canSelectVideo) ||
-      pluginFileInputs.some((item) => item.canSelectVideo),
+      localFileInputs.some((item) => item.canSelectVideo),
     canSelectAudio:
       !!chatConfig?.fileSelectConfig?.canSelectAudio ||
-      fileVariables?.some((item) => item.canSelectAudio) ||
-      pluginFileInputs.some((item) => item.canSelectAudio),
+      localFileInputs.some((item) => item.canSelectAudio),
     canSelectCustomFileExtension:
       !!chatConfig?.fileSelectConfig?.canSelectCustomFileExtension ||
-      fileVariables?.some((item) => item.canSelectCustomFileExtension) ||
-      pluginFileInputs.some((item) => item.canSelectCustomFileExtension),
+      localFileInputs.some((item) => item.canSelectCustomFileExtension),
     customFileExtensionList: [
       ...(chatConfig?.fileSelectConfig?.customFileExtensionList ?? []),
-      ...(fileVariables?.flatMap((item) => item.customFileExtensionList ?? []) ?? []),
-      ...pluginFileInputs.flatMap((item) => item.customFileExtensionList ?? [])
+      ...localFileInputs.flatMap((item) => item.customFileExtensionList ?? [])
     ]
   };
 };

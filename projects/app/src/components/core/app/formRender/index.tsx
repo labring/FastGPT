@@ -17,6 +17,7 @@ import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/comm
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getFileSelectRenderProps } from './utils';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -222,21 +223,22 @@ const InputRender = (props: InputRenderProps) => {
 
   if (inputType === InputTypeEnum.fileSelect) {
     const files = Array.isArray(value) ? value : [];
+    const fileSelectProps = getFileSelectRenderProps(props);
     return (
       <FileSelector
         value={files}
         onChange={onChange}
         isDisabled={isDisabled}
         isInvalid={isInvalid}
-        maxFiles={props.maxFiles}
-        canSelectFile={props.canSelectFile}
-        canSelectImg={props.canSelectImg}
-        canSelectVideo={props.canSelectVideo}
-        canSelectAudio={props.canSelectAudio}
-        canSelectCustomFileExtension={props.canSelectCustomFileExtension}
-        customFileExtensionList={props.customFileExtensionList}
-        canLocalUpload={props.canLocalUpload}
-        canUrlUpload={props.canUrlUpload}
+        maxFiles={fileSelectProps.maxFiles}
+        canSelectFile={fileSelectProps.canSelectFile}
+        canSelectImg={fileSelectProps.canSelectImg}
+        canSelectVideo={fileSelectProps.canSelectVideo}
+        canSelectAudio={fileSelectProps.canSelectAudio}
+        canSelectCustomFileExtension={fileSelectProps.canSelectCustomFileExtension}
+        customFileExtensionList={fileSelectProps.customFileExtensionList}
+        canLocalUpload={fileSelectProps.canLocalUpload}
+        canUrlUpload={fileSelectProps.canUrlUpload}
         onFileErrorChange={props.onFileErrorChange}
       />
     );

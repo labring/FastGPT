@@ -1,7 +1,11 @@
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -418,6 +422,145 @@ describe('presignChatFilePostUrl', () => {
         allowedExtensions: expect.arrayContaining(['.jpg', '.jpeg', '.png'])
       })
     );
+  });
+
+  it('keeps the legacy ordinary-file default for a published file variable', async () => {
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      chatConfig: {
+        fileSelectConfig: {},
+        variables: [
+          {
+            type: VariableInputEnum.file
+          }
+        ]
+      }
+    });
+
+    await expect(
+      callHandler({
+        filename: 'legacy.txt',
+        contentType: 'text/plain',
+        appId,
+        chatId
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedExtensions: expect.arrayContaining(['.txt', '.pdf'])
+      })
+    );
+  });
+
+  it('keeps the legacy ordinary-file default for a published plugin input', async () => {
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      chatConfig: {
+        variables: []
+      },
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          inputs: [
+            {
+              renderTypeList: [FlowNodeInputTypeEnum.fileSelect]
+            }
+          ]
+        }
+      ]
+    });
+
+    await expect(
+      callHandler({
+        filename: 'legacy.txt',
+        contentType: 'text/plain',
+        appId,
+        chatId
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+  });
+
+  it('allows uploads enabled by a file field nested in a form input node', async () => {
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      chatConfig: {
+        fileSelectConfig: {},
+        variables: []
+      },
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.formInput,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.userInputForms,
+              renderTypeList: [FlowNodeInputTypeEnum.custom],
+              value: [
+                {
+                  type: FlowNodeInputTypeEnum.fileSelect,
+                  canSelectImg: true,
+                  canLocalUpload: true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        contentType: 'image/png',
+        appId,
+        chatId
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedExtensions: expect.arrayContaining(['.jpg', '.jpeg', '.png'])
+      })
+    );
+  });
+
+  it('does not allow local uploads from a disabled file field nested in a form input node', async () => {
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      chatConfig: {
+        fileSelectConfig: {},
+        variables: []
+      },
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.formInput,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.userInputForms,
+              renderTypeList: [FlowNodeInputTypeEnum.custom],
+              value: [
+                {
+                  type: FlowNodeInputTypeEnum.fileSelect,
+                  canSelectImg: true,
+                  canLocalUpload: false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        contentType: 'image/png',
+        appId,
+        chatId
+      })
+    ).rejects.toBe(S3ErrEnum.fileUploadDisabled);
   });
 
   it('does not allow local uploads from a disabled published file variable', async () => {

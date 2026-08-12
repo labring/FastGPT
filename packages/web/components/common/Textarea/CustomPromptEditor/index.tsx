@@ -1,18 +1,9 @@
-import {
-  Box,
-  Button,
-  Flex,
-  Textarea,
-  ModalFooter,
-  HStack,
-  Icon,
-  ModalBody
-} from '@chakra-ui/react';
+import { Box, Button, Textarea, HStack, Icon } from '@chakra-ui/react';
 import MyIcon from '../../Icon/index';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import MyModal from '../../MyModal';
+import MyModal from '../../../v2/common/MyModal';
 
 const CustomLightTip = () => {
   const { t } = useTranslation();
@@ -80,63 +71,13 @@ const CustomPromptEditor = ({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc="modal/edit"
       title={t('app:core.dataset.import.Custom prompt')}
-      w={'100%'}
-      h={'85vh'}
+      size={'md'}
+      h={'80vh'}
       isCentered
-    >
-      <ModalBody flex={'1 0 0'} display={'flex'} flexDirection={'column'}>
-        <CustomLightTip />
-
-        <HStack my={3} justifyContent={'space-between'}>
-          <Box fontWeight={'bold'} color={'myGray.600'}>
-            {t('common:core.ai.Prompt')}
-          </Box>
-
-          <Button
-            variant={'grayGhost'}
-            size={'sm'}
-            leftIcon={<MyIcon name={'common/retryLight'} w={'14px'} />}
-            px={2}
-            onClick={() => setValue(defaultPrompt)}
-          >
-            {t('common:Reset')}
-          </Button>
-        </HStack>
-
-        <Box
-          flex={'1 0 0'}
-          overflow={'auto'}
-          border="1px solid"
-          borderColor="borderColor.base"
-          borderRadius="md"
-          bg={'myGray.50'}
-          whiteSpace="pre-wrap"
-          fontSize="sm"
-          p={3}
-        >
-          <Textarea
-            ref={ref}
-            value={value}
-            placeholder={t('common:prompt_input_placeholder')}
-            onChange={(e) => setValue(e.target.value)}
-            resize="none"
-            bg="transparent"
-            border="none"
-            p={0}
-            mb={2}
-            rounded={'none'}
-            _focus={{
-              border: 'none',
-              boxShadow: 'none'
-            }}
-          />
-          {footerPrompt && <FixBox>{footerPrompt}</FixBox>}
-        </Box>
-      </ModalBody>
-      <ModalFooter>
-        <Flex gap={3}>
+      bodyStyles={{ flex: '1 0 0', minH: 0 }}
+      footer={
+        <>
           <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>
             {t('common:Close')}
           </Button>
@@ -150,8 +91,57 @@ const CustomPromptEditor = ({
           >
             {t('common:Confirm')}
           </Button>
-        </Flex>
-      </ModalFooter>
+        </>
+      }
+    >
+      <CustomLightTip />
+
+      <HStack my={3} justifyContent={'space-between'}>
+        <Box fontWeight={'bold'} color={'myGray.600'}>
+          {t('common:core.ai.Prompt')}
+        </Box>
+
+        <Button
+          variant={'grayGhost'}
+          size={'sm'}
+          leftIcon={<MyIcon name={'common/retryLight'} w={'14px'} />}
+          px={2}
+          onClick={() => setValue(defaultPrompt)}
+        >
+          {t('common:Reset')}
+        </Button>
+      </HStack>
+
+      <Box
+        flex={'1 0 0'}
+        minH={0}
+        overflow={'auto'}
+        border="1px solid"
+        borderColor="borderColor.base"
+        borderRadius="md"
+        bg={'myGray.50'}
+        whiteSpace="pre-wrap"
+        fontSize="sm"
+        p={3}
+      >
+        <Textarea
+          ref={ref}
+          value={value}
+          placeholder={t('common:prompt_input_placeholder')}
+          onChange={(e) => setValue(e.target.value)}
+          resize="none"
+          bg="transparent"
+          border="none"
+          p={0}
+          mb={2}
+          rounded={'none'}
+          _focus={{
+            border: 'none',
+            boxShadow: 'none'
+          }}
+        />
+        {footerPrompt && <FixBox>{footerPrompt}</FixBox>}
+      </Box>
     </MyModal>
   );
 };

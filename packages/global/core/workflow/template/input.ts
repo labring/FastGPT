@@ -79,7 +79,7 @@ export const Input_Template_Text_Quote: FlowNodeInputItemType = {
 
 export const Input_Template_File_Link: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.fileUrlList,
-  renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+  renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
   label: i18nT('app:workflow.user_file_input'),
   debugLabel: i18nT('app:workflow.user_file_input'),
   description: i18nT('app:workflow.user_file_input_desc'),
@@ -119,6 +119,7 @@ export const Input_Template_Stream_MODE: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.forbidStream,
   renderTypeList: [FlowNodeInputTypeEnum.switch],
   valueType: WorkflowIOValueTypeEnum.boolean,
+  canAgentGenerated: false,
   label: i18nT('workflow:template.forbid_stream'),
   description: i18nT('workflow:template.forbid_stream_desc'),
   value: false

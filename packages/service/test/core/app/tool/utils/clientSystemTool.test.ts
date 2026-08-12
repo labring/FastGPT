@@ -232,8 +232,9 @@ describe('getClientSystemToolPreviewNode', () => {
       valueType: 'string',
       defaultValue: 'fallback',
       canAgentGenerated: true,
+      isToolParam: true,
       renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, 'reference', 'input'],
-      selectedType: 'reference'
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
     expect(input).not.toHaveProperty('selectedTypeIndex');
   });

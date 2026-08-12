@@ -51,6 +51,32 @@ import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app
  * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
  */
 export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
+  if (
+    storeNode.flowNodeType === FlowNodeTypeEnum.chatNode ||
+    storeNode.flowNodeType === FlowNodeTypeEnum.toolCall
+  ) {
+    return storeNode.inputs.map((input) => {
+      if (
+        input.key !== NodeInputKeyEnum.fileUrlList ||
+        !input.renderTypeList.includes(FlowNodeInputTypeEnum.input)
+      ) {
+        return input;
+      }
+
+      // 文件链接实际值为字符串数组，旧版本的手动 input 类型需要迁移为 JSONEditor。
+      return {
+        ...input,
+        renderTypeList: input.renderTypeList.map((type) =>
+          type === FlowNodeInputTypeEnum.input ? FlowNodeInputTypeEnum.JSONEditor : type
+        ),
+        selectedType:
+          input.selectedType === FlowNodeInputTypeEnum.input
+            ? FlowNodeInputTypeEnum.JSONEditor
+            : input.selectedType
+      };
+    });
+  }
+
   if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
     return storeNode.inputs.map((input) => {
       if (input.key !== NodeInputKeyEnum.ifElseList) return input;

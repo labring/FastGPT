@@ -110,6 +110,30 @@ describe('adaptStoreNodeInputs', () => {
     outputs: []
   });
 
+  it('should migrate legacy file URL manual input to JSON editor', () => {
+    const node: StoreNodeItemType = {
+      nodeId: 'chat-node',
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      name: 'AI chat',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.fileUrlList,
+          label: 'File links',
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+          selectedType: FlowNodeInputTypeEnum.input,
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          value: []
+        }
+      ],
+      outputs: []
+    };
+
+    expect(adaptStoreNodeInputs(node)[0]).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+      selectedType: FlowNodeInputTypeEnum.JSONEditor
+    });
+  });
+
   it('should reset legacy Agent resource references to manual selection', () => {
     const inputs: StoreNodeItemType['inputs'] = [
       {
@@ -1532,7 +1556,7 @@ describe('checkWorkflowNodeIssues', () => {
         key: NodeInputKeyEnum.fileUrlList,
         label: 'app:workflow.user_file_input',
         valueType: WorkflowIOValueTypeEnum.arrayString,
-        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
         value: [['start', NodeOutputKeyEnum.userFiles]]
       });
       expect(fileLinkInput.required).toBeUndefined();
@@ -2170,6 +2194,44 @@ describe('storeNode2FlowNode', () => {
     ]);
     expect(userQuestion?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(userQuestion).not.toHaveProperty('selectedTypeIndex');
+  });
+
+  it('should restore an existing AI chat file link as JSON editor', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'chat-node',
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          key: NodeInputKeyEnum.fileUrlList,
+          label: 'File links',
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+          selectedType: FlowNodeInputTypeEnum.input,
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          value: []
+        }
+      ],
+      outputs: [],
+      name: 'Chat node',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+    const fileLinkInput = result.data.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.fileUrlList
+    );
+
+    expect(fileLinkInput).toMatchObject({
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.JSONEditor
+      ],
+      selectedType: FlowNodeInputTypeEnum.JSONEditor
+    });
   });
 
   it('should restore legacy workflow tool defaults in tool context', () => {
