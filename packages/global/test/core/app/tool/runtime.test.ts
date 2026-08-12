@@ -6,9 +6,47 @@ import {
   validateToolRuntimeParams
 } from '@fastgpt/global/core/app/tool/runtime';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
+import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 describe('compileToolRuntime', () => {
+  it('uses ToolCallNode default agent-generated inputs for its model schema', () => {
+    const toolInputs = ToolCallNode.inputs
+      .filter((input) =>
+        [
+          NodeInputKeyEnum.aiSystemPrompt,
+          NodeInputKeyEnum.history,
+          NodeInputKeyEnum.fileUrlList,
+          NodeInputKeyEnum.userChatInput
+        ].includes(input.key as NodeInputKeyEnum)
+      )
+      .map((input) => normalizeFlowNodeInputType(input, { isTool: true }));
+    const compiled = compileToolRuntime({
+      toolId: 'agent',
+      name: 'Agent',
+      inputs: toolInputs
+    });
+
+    expect(compiled.agentGeneratedKeys).toEqual([
+      NodeInputKeyEnum.aiSystemPrompt,
+      NodeInputKeyEnum.history,
+      NodeInputKeyEnum.fileUrlList,
+      NodeInputKeyEnum.userChatInput
+    ]);
+
+    const manualInputs = toolInputs.map((input) => ({
+      ...input,
+      selectedType: input.renderTypeList.find(
+        (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+      )
+    }));
+    expect(
+      compileToolRuntime({ toolId: 'agent', name: 'Agent', inputs: manualInputs })
+        .agentGeneratedKeys
+    ).toEqual([]);
+  });
+
   it('separates model parameters from configured values and defaults', () => {
     const compiled = compileToolRuntime({
       toolId: 'search',

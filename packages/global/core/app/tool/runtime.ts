@@ -48,7 +48,7 @@ const createToolInputDefinitions = ({
   jsonSchema?: JSONSchemaInputType;
 }): ToolInputDefinition[] =>
   inputs.map((input) => {
-    const canAgentGenerate = canInputBeAgentGenerated(input);
+    const canAgentGenerate = input.canEdit !== true && canInputBeAgentGenerated(input);
     // reference 在工作流执行前已解析为固定值，不受 Agent 配置页手动控件范围限制。
     const canUseFixedBinding =
       canInputBeManuallyConfigured({ renderTypeList: input.renderTypeList ?? [] }) ||
