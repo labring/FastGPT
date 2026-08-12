@@ -51,4 +51,37 @@ describe('getRuntimeSubPlansConfig', () => {
 
     expect(getRuntimeSubPlansConfig(source)).toBe(source);
   });
+
+  it('treats legacy null and empty custom values as missing overrides', () => {
+    const source = {
+      standard: {
+        [StandardSubLevelEnum.advanced]: {
+          name: 'Advanced',
+          price: 599,
+          totalPoints: 25000,
+          maxTeamMember: 50,
+          maxAppAmount: 200,
+          maxDatasetAmount: 100,
+          maxDatasetSize: 36000,
+          chatHistoryStoreDuration: 360,
+          priceDescription: 'Advanced price'
+        },
+        [StandardSubLevelEnum.custom]: {
+          name: '',
+          maxTeamMember: null,
+          priceDescription: null,
+          customFormUrl: 'https://example.com/contact'
+        }
+      }
+    } as unknown as SubPlanType;
+
+    const result = getRuntimeSubPlansConfig(source);
+
+    expect(result?.standard?.custom).toMatchObject({
+      name: 'Advanced',
+      maxTeamMember: 50,
+      priceDescription: 'Advanced price',
+      customFormUrl: 'https://example.com/contact'
+    });
+  });
 });

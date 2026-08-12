@@ -18,8 +18,11 @@ export const getRuntimeStandardPlanConfig = ({
   const advancedPlan = plans?.[StandardSubLevelEnum.advanced];
   if (!plan || !advancedPlan) return;
 
+  // 兼容旧版 Pro 配置中由表单空值写入的 null/空字符串，避免覆盖高级版的有效默认值。
   const configuredOverrides = Object.fromEntries(
-    Object.entries(plan).filter(([, value]) => value !== undefined)
+    Object.entries(plan).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ''
+    )
   );
   return { ...advancedPlan, ...configuredOverrides };
 };

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { UpdateConfigBodySchema } from '../../../../openapi/admin/routes/settings/api';
+import {
+  UpdateConfigBodySchema,
+  UpdateConfigResponseSchema
+} from '../../../../openapi/admin/routes/settings/api';
 import { StandardSubLevelEnum, SubTypeEnum } from '../../../../support/wallet/sub/constants';
 
 const createBody = (subPlans: unknown) => ({
@@ -61,5 +64,9 @@ describe('UpdateConfigBodySchema', () => {
         createBody({ standard: { [StandardSubLevelEnum.basic]: { price: '99' } } })
       )
     ).toThrow();
+  });
+
+  it('uses an empty success response contract', () => {
+    expect(UpdateConfigResponseSchema.parse(undefined)).toBeUndefined();
   });
 });

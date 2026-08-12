@@ -21,6 +21,7 @@ import {
   teamQPM
 } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
+import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 
 // Valid ObjectId for testing
 const mockTeamId = '507f1f77bcf86cd799439011';
@@ -956,6 +957,49 @@ describe('getTeamPlanStatus', () => {
     expect(result.usedPoints).toBe(500); // 2000 - 1500
     expect(result.datasetMaxSize).toBe(100);
     expect(result[SubTypeEnum.standard]).toBeDefined();
+  });
+
+  it('does not wait for a finite point cache refresh', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([baseStandard])
+    } as any);
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: baseConstants
+      }
+    };
+    const setPairSpy = vi
+      .spyOn(redisCacheAdapter, 'setPair')
+      .mockReturnValueOnce(new Promise<void>(() => {}));
+    const timeout = Symbol('timeout');
+
+    const result = await Promise.race([
+      getTeamPlanStatus({ teamId: mockTeamId }),
+      new Promise<typeof timeout>((resolve) => setTimeout(() => resolve(timeout), 100))
+    ]);
+
+    expect(result).not.toBe(timeout);
+    expect(setPairSpy).toHaveBeenCalledOnce();
+    setPairSpy.mockRestore();
+  });
+
+  it('does not wait for an unlimited point cache cleanup', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([baseStandard])
+    } as any);
+    const deleteManySpy = vi
+      .spyOn(redisCacheAdapter, 'deleteMany')
+      .mockReturnValueOnce(new Promise<void>(() => {}));
+    const timeout = Symbol('timeout');
+
+    const result = await Promise.race([
+      getTeamPlanStatus({ teamId: mockTeamId }),
+      new Promise<typeof timeout>((resolve) => setTimeout(() => resolve(timeout), 100))
+    ]);
+
+    expect(result).not.toBe(timeout);
+    expect(deleteManySpy).toHaveBeenCalledOnce();
+    deleteManySpy.mockRestore();
   });
 
   it.each([

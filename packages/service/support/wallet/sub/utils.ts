@@ -267,10 +267,11 @@ export const getTeamPlanStatus = async ({
     ? getStandardPlanConfig(standardPlan.currentSubLevel)
     : undefined;
 
+  // Redis 只承担积分读取加速，刷新失败或变慢都不应阻塞套餐主流程。
   if (totalPoints === null || surplusPoints === null) {
-    await teamPointCache.clear(teamId);
+    void teamPointCache.clear(teamId);
   } else {
-    await teamPointCache.set({ teamId, totalPoints, surplusPoints });
+    void teamPointCache.set({ teamId, totalPoints, surplusPoints });
   }
 
   return {
