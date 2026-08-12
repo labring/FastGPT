@@ -295,7 +295,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         systemPrompt: agentSystemPrompt,
         activePlan,
         providerState: runtimeProviderState,
-        userAnswer: isAskResume ? queryInput || userChatInput : undefined,
+        continuation: isAskResume
+          ? {
+              type: 'ask',
+              answer: queryInput || userChatInput
+            }
+          : undefined,
         childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
           lastInteractive
         })

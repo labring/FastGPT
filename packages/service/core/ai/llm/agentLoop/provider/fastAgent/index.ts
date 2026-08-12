@@ -128,7 +128,7 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
       systemPrompt: input.systemPrompt,
       activePlan: input.activePlan,
       pendingMainContext: providerState.pendingMainContext,
-      userAnswer: input.userAnswer,
+      continuation: input.continuation,
       childrenInteractiveParams: input.childrenInteractiveParams
     }
   });
@@ -141,10 +141,10 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
         }
       : undefined;
 
-  if (input.userAnswer !== undefined) {
+  if (input.continuation?.type === 'ask') {
     runtime.emitEvent?.({
       type: 'ask_resume',
-      answer: input.userAnswer
+      answer: input.continuation.answer
     });
   }
 

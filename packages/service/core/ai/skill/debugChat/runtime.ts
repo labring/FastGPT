@@ -1,142 +1,83 @@
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+  getAgentSkillInfos,
+  prepareAgentSandboxRuntime,
+  preparePackageMirrors,
+  prepareSandbox,
+  readCurrentWorkingDirectory,
+  withAgentSandboxInitLease,
+  type DeployedSkillInfo,
+  type DeployedSkillVersion,
+  type SandboxClient,
+  type SandboxPrepareContext,
+  type SandboxPrepareStep
+} from '../../sandbox/interface/runtime';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '../edit/config';
 
-const START_NODE_ID = 'skill-debug-start';
-const AGENT_NODE_ID = 'skill-debug-agent';
+export type SkillDebugSandboxPrepareContext = SandboxPrepareContext & {
+  sandboxClient: SandboxClient;
+  deployedSkillVersions: DeployedSkillVersion[];
+  skillInfos: DeployedSkillInfo[];
+  skillScanDirectories: string[];
+};
+
+export type SkillDebugSandboxPrepareAction = SandboxPrepareStep<SkillDebugSandboxPrepareContext>;
+
+export type SkillDebugRuntime = {
+  sandboxClient: SandboxClient;
+  currentWorkingDirectory?: string;
+  skillInfos: DeployedSkillInfo[];
+};
 
 /**
- * 构造 Skill 调试对话使用的最小 workflow。
+ * 准备 Skill Debug 使用的 edit sandbox runtime。
  *
- * 运行态只包含 workflowStart -> agent 两个节点；agent 通过 editSkillId 进入当前
- * Skill 的编辑沙盒，避免调试链路依赖真实应用配置。
+ * 公共层只执行调用方传入的 prepare actions；内置 Skill 的来源和注入策略由 Pro/API 层决定。
  */
-export function buildDebugRuntimeNodes(
-  skillId: string,
-  model: string,
-  systemPrompt: string
-): {
-  runtimeNodes: RuntimeNodeItemType[];
-  runtimeEdges: RuntimeEdgeItemType[];
-} {
-  const runtimeNodes: RuntimeNodeItemType[] = [
-    {
-      nodeId: START_NODE_ID,
-      name: 'Workflow Start',
-      avatar: '',
-      intro: '',
-      flowNodeType: FlowNodeTypeEnum.workflowStart,
-      showStatus: false,
-      isEntry: true,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userChatInput,
-          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-          valueType: WorkflowIOValueTypeEnum.string,
-          label: 'User Question',
-          toolDescription: 'user question',
-          required: true,
-          value: ''
-        }
-      ],
-      outputs: [
-        {
-          id: NodeOutputKeyEnum.userChatInput,
-          key: NodeOutputKeyEnum.userChatInput,
-          label: 'User Question',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.string
-        }
-      ]
-    },
-    {
-      nodeId: AGENT_NODE_ID,
-      name: 'Agent',
-      avatar: '',
-      intro: '',
-      flowNodeType: FlowNodeTypeEnum.agent,
-      showStatus: true,
-      isEntry: false,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userChatInput,
-          renderTypeList: [FlowNodeInputTypeEnum.reference],
-          valueType: WorkflowIOValueTypeEnum.string,
-          label: 'User Question',
-          required: true,
-          value: [START_NODE_ID, NodeOutputKeyEnum.userChatInput]
-        },
-        {
-          key: NodeInputKeyEnum.history,
-          renderTypeList: [FlowNodeInputTypeEnum.numberInput],
-          valueType: WorkflowIOValueTypeEnum.chatHistory,
-          label: 'Chat History',
-          required: true,
-          min: 0,
-          max: 50,
-          value: 20
-        },
-        {
-          key: NodeInputKeyEnum.aiModel,
-          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
-          label: 'AI Model',
-          required: true,
-          valueType: WorkflowIOValueTypeEnum.string,
-          value: model
-        },
-        {
-          key: NodeInputKeyEnum.aiSystemPrompt,
-          renderTypeList: [FlowNodeInputTypeEnum.textarea],
-          valueType: WorkflowIOValueTypeEnum.string,
-          label: 'System Prompt',
-          value: systemPrompt
-        },
-        {
-          key: NodeInputKeyEnum.aiChatVision,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          valueType: WorkflowIOValueTypeEnum.boolean,
-          label: '',
-          value: true
-        },
-        {
-          key: NodeInputKeyEnum.editSkillId,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          valueType: WorkflowIOValueTypeEnum.string,
-          label: 'Edit Skill ID',
-          value: skillId
-        }
-      ],
-      outputs: [
-        {
-          id: NodeOutputKeyEnum.answerText,
-          key: NodeOutputKeyEnum.answerText,
-          label: 'Answer',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.string
-        }
-      ]
-    }
-  ];
+export const prepareSkillDebugRuntime = async ({
+  skillId,
+  userId,
+  prepareActions = []
+}: {
+  skillId: string;
+  userId: string;
+  prepareActions?: SkillDebugSandboxPrepareAction[];
+}): Promise<SkillDebugRuntime> => {
+  const sandboxContext = await prepareAgentSandboxRuntime({
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: skillId,
+    userId,
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+  });
 
-  const runtimeEdges: RuntimeEdgeItemType[] = [
-    {
-      source: START_NODE_ID,
-      sourceHandle: getHandleId(START_NODE_ID, 'source', 'right'),
-      target: AGENT_NODE_ID,
-      targetHandle: getHandleId(AGENT_NODE_ID, 'target', 'left'),
-      status: 'waiting'
-    }
-  ];
+  const scanSkillInfos = (): SkillDebugSandboxPrepareAction => async (context) => ({
+    ...context,
+    skillInfos: await getAgentSkillInfos({
+      sandbox: context.sandbox,
+      skillDirectories: [context.workDirectory, ...context.skillScanDirectories]
+    })
+  });
+  const preparedContext = await withAgentSandboxInitLease({
+    sandboxId: sandboxContext.sandboxClient.getSandboxId(),
+    fn: () =>
+      prepareSandbox<SkillDebugSandboxPrepareContext>(
+        {
+          ...sandboxContext,
+          sandbox: sandboxContext.sandboxClient.provider,
+          deployedSkillVersions: [],
+          skillInfos: [],
+          skillScanDirectories: []
+        },
+        preparePackageMirrors(),
+        ...prepareActions,
+        readCurrentWorkingDirectory(),
+        scanSkillInfos()
+      )
+  });
 
-  return { runtimeNodes, runtimeEdges };
-}
+  return {
+    sandboxClient: preparedContext.sandboxClient,
+    currentWorkingDirectory: preparedContext.currentWorkingDirectory,
+    skillInfos: preparedContext.skillInfos
+  };
+};
