@@ -1,4 +1,4 @@
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   applyWorkflowCommand,
   builtinTemplateProvider,
@@ -91,6 +91,39 @@ describe('fileSelectConfig output synchronization', () => {
         .find((node) => node.nodeId === 'start')
         ?.outputs.filter((output) => output.key === NodeOutputKeyEnum.userFiles)
     ).toHaveLength(1);
+  });
+
+  it('keeps file output available when configuration is applied before Start creation', async () => {
+    let document = createWorkflowDocument();
+    document = (
+      await apply(document, {
+        type: 'config.set',
+        path: 'fileSelectConfig',
+        value: { canSelectFile: true, maxFiles: 1 }
+      })
+    ).document;
+    document = (
+      await apply(document, {
+        type: 'node.add',
+        nodeId: 'start',
+        template: parseNodeTemplateRef('builtin:workflow-start')
+      })
+    ).document;
+    document = (
+      await apply(document, {
+        type: 'node.add',
+        nodeId: 'read',
+        template: parseNodeTemplateRef('builtin:read-files'),
+        connectFrom: { kind: 'next', nodeId: 'start' }
+      })
+    ).document;
+
+    const start = document.nodes.find((node) => node.nodeId === 'start');
+    const readFiles = document.nodes.find((node) => node.nodeId === 'read');
+    expect(start?.outputs.some((output) => output.key === NodeOutputKeyEnum.userFiles)).toBe(true);
+    expect(
+      readFiles?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value
+    ).toEqual([['start', NodeOutputKeyEnum.userFiles]]);
   });
 
   it('removes an unreferenced userFiles output when file upload is disabled or unset', async () => {

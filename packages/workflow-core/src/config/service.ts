@@ -38,7 +38,7 @@ const referencesOutput = (value: unknown, nodeId: string, outputKey: string): bo
 };
 
 /** 根据文件选择配置同步 Start 的文件输出，避免上传能力与图引用契约分离。 */
-const syncWorkflowStartFileOutput = ({
+export const syncWorkflowStartFileOutput = ({
   document,
   fileSelectConfig
 }: {
