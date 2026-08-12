@@ -345,7 +345,8 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
     const resolvedQuery = resolveQuery
       ? await resolveQuery({
           maxFileAmount: queryMaxFileAmount,
-          maxBytesPerFile: workflowFileLimits.maxBytesPerFile
+          maxBytesPerFile: workflowFileLimits.maxBytesPerFile,
+          fileSelectConfig: chatConfig.fileSelectConfig ?? {}
         })
       : query;
     const workflowQuery = filterWorkflowQueryFiles({

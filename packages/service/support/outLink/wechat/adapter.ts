@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isChatFileAllowedBySelectConfig } from '@fastgpt/global/core/app/constants';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
@@ -153,8 +155,12 @@ export const createWechatOutlinkAdapter = ({
   const resolveResource = async ({
     item,
     fileType,
-    maxBytes
-  }: WechatMediaResource & { maxBytes: number }): Promise<UserChatItemValueItemType> => {
+    maxBytes,
+    fileSelectConfig
+  }: WechatMediaResource & {
+    maxBytes: number;
+    fileSelectConfig?: AppFileSelectConfigType;
+  }): Promise<UserChatItemValueItemType> => {
     try {
       const media = item.image_item?.media ?? item.file_item?.media;
       if (!media) throw new Error('Wechat media is missing');
@@ -181,6 +187,17 @@ export const createWechatOutlinkAdapter = ({
         return `image${resolveMimeExtension(contentType) || '.jpg'}`;
       })();
       const resolvedContentType = contentType || resolveMimeType([filename]);
+      if (
+        fileSelectConfig &&
+        !isChatFileAllowedBySelectConfig({
+          filename,
+          contentType: resolvedContentType,
+          fileType,
+          fileSelectConfig
+        })
+      ) {
+        throw new UserError('文件类型不支持');
+      }
       const { key } = await uploadOutLinkFile({
         source: fileBuffer,
         maxBytes,
@@ -200,6 +217,7 @@ export const createWechatOutlinkAdapter = ({
         }
       };
     } catch (error) {
+      if (error instanceof UserError) throw error;
       logger.error('Failed to resolve Wechat media', {
         shareId: jobData.shareId,
         messageId: jobData.lastMsgId,
@@ -221,13 +239,19 @@ export const createWechatOutlinkAdapter = ({
       messageId: jobData.lastMsgId,
       chatUserId: jobData.userId,
       query,
-      resolveQuery: async ({ maxFileAmount, maxBytesPerFile }: OutlinkQueryResolveOptions) => {
+      resolveQuery: async ({
+        maxFileAmount,
+        maxBytesPerFile,
+        fileSelectConfig
+      }: OutlinkQueryResolveOptions) => {
         const fileLimit = Math.max(0, Math.floor(maxFileAmount));
         const currentResources = current.resources.slice(0, fileLimit);
 
         const currentFiles = [] as UserChatItemValueItemType[];
         for (const resource of currentResources) {
-          currentFiles.push(await resolveResource({ ...resource, maxBytes: maxBytesPerFile }));
+          currentFiles.push(
+            await resolveResource({ ...resource, maxBytes: maxBytesPerFile, fileSelectConfig })
+          );
         }
         return composeOutLinkQuery(current.query, currentFiles);
       }

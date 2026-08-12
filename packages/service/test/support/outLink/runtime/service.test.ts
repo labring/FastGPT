@@ -191,7 +191,8 @@ describe('runOutlinkRuntime', () => {
 
     expect(resolveQuery).toHaveBeenCalledWith({
       maxFileAmount: 2,
-      maxBytesPerFile: 4 * 1024 * 1024
+      maxBytesPerFile: 4 * 1024 * 1024,
+      fileSelectConfig: { maxFiles: 2 }
     });
     expect(vi.mocked(authOutLinkLimit).mock.invocationCallOrder[0]).toBeLessThan(
       startHandled.mock.invocationCallOrder[0]

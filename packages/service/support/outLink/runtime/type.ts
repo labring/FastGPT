@@ -1,4 +1,5 @@
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 
 export type OutlinkMessage = {
@@ -6,14 +7,13 @@ export type OutlinkMessage = {
   messageId: string;
   chatUserId: string;
   query: UserChatItemValueItemType[];
-  resolveQuery?: (
-    options: OutlinkQueryResolveOptions
-  ) => Promise<UserChatItemValueItemType[]>;
+  resolveQuery?: (options: OutlinkQueryResolveOptions) => Promise<UserChatItemValueItemType[]>;
 };
 
 export type OutlinkQueryResolveOptions = {
   maxFileAmount: number;
   maxBytesPerFile: number;
+  fileSelectConfig?: AppFileSelectConfigType;
 };
 
 export type OutlinkResponseEvent =
