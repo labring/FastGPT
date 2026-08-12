@@ -22,13 +22,15 @@
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",
+    "@types/crypto-js": "catalog:",
+    "crypto-js": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "@vitest/coverage-v8": "catalog:"
+    "vitest": "catalog:"
   }
 }

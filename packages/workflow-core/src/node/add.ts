@@ -5,6 +5,7 @@ import {
 import type { WorkflowDocument } from '../domain/document';
 import { createWorkflowDocument } from '../domain/document';
 import type { WorkflowDiagnostic } from '../domain/diagnostic';
+import { syncWorkflowStartFileOutput } from '../config/service';
 import { assertParentAssignment, syncContainerChildren } from '../nesting/service';
 import { instantiateNodeFromTemplate } from '../template/instantiate';
 import type { NodeTemplateRef, WorkflowTemplateProvider } from '../template/type';
@@ -113,6 +114,13 @@ export const addNodeFromTemplate = async ({
   });
   assertParentAssignment({ document, node: instantiated.node, parentNodeId });
   document.nodes.push(instantiated.node);
+  // 配置可能先于 Start 创建，插入后重新同步动态文件输出，避免命令顺序影响最终文档。
+  if (instantiated.node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+    syncWorkflowStartFileOutput({
+      document,
+      fileSelectConfig: document.chatConfig.fileSelectConfig
+    });
+  }
 
   const nodeIds = [nodeId];
   const warnings = [...instantiated.warnings];
