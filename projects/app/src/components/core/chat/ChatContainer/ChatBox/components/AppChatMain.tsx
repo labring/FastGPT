@@ -56,6 +56,7 @@ const AppChatMain = ({
   EmptyState
 }: AppChatMainProps) => {
   const visibleWelcomeQuestions = welcomeQuestions.map((text) => text.trim()).filter(Boolean);
+  const hasEmptyState = recordsListProps.records.length === 0 && !!EmptyState;
   // 复用快捷回复的发送通道：它不受 canSendPrompt 限制，开场白阶段的预设问题也能直接发送，
   // 由 sendPrompt 内部校验变量，行为与旧版 welcomeText 内嵌的 quick-replies 一致。
   const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
@@ -107,13 +108,17 @@ const AppChatMain = ({
           <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
         </Box>
 
-        <Box mt={visibleWelcomeQuestions.length > 0 && recordsListProps.records.length > 0 ? 4 : 0}>
-          {recordsListProps.records.length === 0 && EmptyState ? (
-            EmptyState
-          ) : (
+        {hasEmptyState ? (
+          <Flex flex={1} alignItems="center" justifyContent="center" textAlign="center">
+            {EmptyState}
+          </Flex>
+        ) : (
+          <Box
+            mt={visibleWelcomeQuestions.length > 0 && recordsListProps.records.length > 0 ? 4 : 0}
+          >
             <ChatRecordsList {...recordsListProps} />
-          )}
-        </Box>
+          </Box>
+        )}
       </Box>
     </ScrollData>
   );
