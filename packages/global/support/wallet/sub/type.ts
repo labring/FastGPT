@@ -50,7 +50,7 @@ export const TeamStandardSubPlanItemSchema = z.object({
 });
 export type TeamStandardSubPlanItemType = z.infer<typeof TeamStandardSubPlanItemSchema>;
 
-export const StandSubPlanLevelMapSchema = z.record(
+export const StandSubPlanLevelMapSchema = z.partialRecord(
   z.enum(StandardSubLevelEnum),
   TeamStandardSubPlanItemSchema
 );
@@ -64,6 +64,11 @@ export const PointsPackageItemSchema = z.object({
 });
 export type PointsPackageItem = z.infer<typeof PointsPackageItemSchema>;
 
+const OptionalConfigDateSchema = z.preprocess(
+  (value) => (value === '' || value === null ? undefined : value),
+  z.coerce.date().optional()
+);
+
 export const SubPlanSchema = z.object({
   [SubTypeEnum.standard]: StandSubPlanLevelMapSchema.optional(),
   [SubTypeEnum.extraDatasetSize]: z.object({ price: z.number() }).optional(),
@@ -71,7 +76,7 @@ export const SubPlanSchema = z.object({
   planDescriptionUrl: z.string().optional(),
   appRegistrationUrl: z.string().optional(),
   communitySupportTip: z.string().optional(),
-  activityExpirationTime: z.date().optional()
+  activityExpirationTime: OptionalConfigDateSchema
 });
 export type SubPlanType = z.infer<typeof SubPlanSchema>;
 

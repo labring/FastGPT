@@ -6,6 +6,7 @@ import {
   LLMModelItemSchema
 } from '../../../core/ai/model.schema';
 import { GetSystemInitDataResponseSchema } from '../../../openapi/common/system/api';
+import { StandardSubLevelEnum } from '../../../support/wallet/sub/constants';
 
 const desensitizedEmbeddingModel = {
   type: ModelTypeEnum.embedding,
@@ -17,6 +18,55 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
+  it('accepts legacy partial standard plans and coerces a serialized activity expiration date', () => {
+    const activityExpirationTime = '2026-08-31T16:00:00.000Z';
+    const plan = {
+      price: 0,
+      totalPoints: 100,
+      maxTeamMember: 1,
+      maxAppAmount: 10,
+      maxDatasetAmount: 3,
+      maxDatasetSize: 600,
+      chatHistoryStoreDuration: 30
+    };
+
+    const result = GetSystemInitDataResponseSchema.parse({
+      subPlans: {
+        standard: {
+          [StandardSubLevelEnum.free]: plan,
+          [StandardSubLevelEnum.basic]: plan,
+          [StandardSubLevelEnum.advanced]: plan,
+          [StandardSubLevelEnum.custom]: plan
+        },
+        activityExpirationTime
+      }
+    });
+
+    expect(result.subPlans?.standard).toEqual({
+      [StandardSubLevelEnum.free]: plan,
+      [StandardSubLevelEnum.basic]: plan,
+      [StandardSubLevelEnum.advanced]: plan,
+      [StandardSubLevelEnum.custom]: plan
+    });
+    expect(result.subPlans?.activityExpirationTime).toEqual(new Date(activityExpirationTime));
+  });
+
+  it.each(['', null])('treats an empty activity expiration value as unset', (value) => {
+    expect(
+      GetSystemInitDataResponseSchema.parse({
+        subPlans: { activityExpirationTime: value }
+      })
+    ).toEqual({ subPlans: {} });
+  });
+
+  it('rejects an invalid activity expiration date', () => {
+    expect(() =>
+      GetSystemInitDataResponseSchema.parse({
+        subPlans: { activityExpirationTime: 'invalid-date' }
+      })
+    ).toThrow();
+  });
+
   it('fills the default weight for an embedding model without weight', () => {
     expect(
       GetSystemInitDataResponseSchema.parse({
