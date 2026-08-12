@@ -455,7 +455,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       h={'100%'}
       position={'relative'}
       p={isPublishMode ? 6 : 0}
-      minH={isPublishMode ? '50vh' : undefined}
+      minH={isPublishMode ? 0 : undefined}
     >
       <Flex flexDirection={'column'} alignItems={'stretch'} gap={3}>
         <Flex minW={0} alignItems={'center'}>
@@ -597,7 +597,14 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
           </Flex>
         </Flex>
       </Flex>
-      <TableContainer mt={3} position={'relative'} minH={'300px'}>
+      <TableContainer
+        mt={3}
+        position={'relative'}
+        flex={isPublishMode ? '1 0 0' : undefined}
+        h={isPublishMode ? 0 : undefined}
+        minH={isPublishMode ? 0 : '300px'}
+        overflowY={isPublishMode ? 'auto' : undefined}
+      >
         <Table sx={{ tableLayout: 'fixed' }}>
           <Thead>
             <Tr>
