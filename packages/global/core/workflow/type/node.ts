@@ -228,8 +228,10 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
 });
 export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;
 
-/** 模板快捷添加的上下文：快捷面板触发时的源节点信息；侧边栏无上下文，传 null。 */
+/** 模板快捷添加和侧边栏过滤使用的画布上下文。 */
 export type NodeTemplateContext = {
+  /** 是否来自画布左侧节点侧边栏，而不是快捷添加/连线上下文。 */
+  isSidebar: boolean;
   sourceNodeId: string | null;
   sourceType: FlowNodeTypeEnum | null;
   sourceIsTool: boolean;
@@ -238,6 +240,10 @@ export type NodeTemplateContext = {
   handleId: string | null;
   /** 源节点所在容器（loopRun/parallelRun 等）的节点类型。 */
   parentType: FlowNodeTypeEnum | null;
+  /** 画布上是否已有工具调用节点。 */
+  hasToolNode: boolean;
+  /** 画布上是否已有循环执行节点。 */
+  hasLoopRunNode: boolean;
 };
 export type NodeTemplateContextPredicate = (ctx: NodeTemplateContext | null) => boolean;
 

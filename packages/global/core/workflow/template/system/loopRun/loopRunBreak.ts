@@ -1,7 +1,6 @@
 import { FlowNodeTypeEnum } from '../../../node/constant';
 import { type FlowNodeTemplateType } from '../../../type/node';
 import { FlowNodeTemplateTypeEnum } from '../../../constants';
-import { createShowInContext } from '../../context';
 import { i18nT } from '../../../../../common/i18n/utils';
 
 export const LoopRunBreakNode: FlowNodeTemplateType = {
@@ -16,7 +15,8 @@ export const LoopRunBreakNode: FlowNodeTemplateType = {
   name: i18nT('workflow:loop_run_break'),
   intro: i18nT('workflow:loop_run_break_tip'),
   showStatus: false,
-  isShowInContext: createShowInContext([{ parentType: FlowNodeTypeEnum.loopRun }]),
+  isShowInContext: (ctx) =>
+    !!ctx && (ctx.isSidebar ? ctx.hasLoopRunNode : ctx.parentType === FlowNodeTypeEnum.loopRun),
   inputs: [],
   outputs: []
 };

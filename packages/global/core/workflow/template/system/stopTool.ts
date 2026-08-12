@@ -14,7 +14,7 @@ export const StopToolNode: FlowNodeTemplateType = {
   colorSchema: 'violet',
   name: i18nT('workflow:tool_call_termination'),
   intro: i18nT('workflow:intro_tool_call_termination'),
-  isShowInContext: (ctx) => !!ctx?.isConnectedTool,
+  isShowInContext: (ctx) => !!ctx && (ctx.isSidebar ? ctx.hasToolNode : !!ctx.isConnectedTool),
   inputs: [],
   outputs: []
 };
