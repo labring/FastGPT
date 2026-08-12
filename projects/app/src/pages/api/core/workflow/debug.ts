@@ -34,7 +34,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     query = [],
     history = [],
     chatConfig,
-    usageId
+    usageId,
+    chatId: debugChatId
   } = parseApiInput({ req, bodySchema: WorkflowDebugBodySchema }).body;
 
   /* user auth */
@@ -84,7 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
       tmbId: app.tmbId
     },
     runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
-    chatId: getNanoid(),
+    chatId: debugChatId ?? getNanoid(),
     responseChatItemId,
     runtimeNodes: nodes,
     runtimeEdges: edges,

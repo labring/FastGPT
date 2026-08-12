@@ -83,6 +83,10 @@ export const WorkflowDebugBodySchema = z.object({
   usageId: z.string().optional().meta({
     example: 'usage_debug_123',
     description: '连续调试复用的用量记录 ID；不传时自动创建'
+  }),
+  chatId: z.string().min(1).optional().meta({
+    example: 'debug-session-chat-id',
+    description: '调试会话内文件上传使用的 chatId；调试运行会沿用该值，保证上传文件归属校验通过'
   })
 });
 export type WorkflowDebugBody = z.input<typeof WorkflowDebugBodySchema>;
