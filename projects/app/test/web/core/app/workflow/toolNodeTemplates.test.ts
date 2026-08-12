@@ -34,9 +34,15 @@ describe('workflow tool node templates', () => {
   });
 
   it('keeps requested AI-generated defaults explicit', () => {
-    expect(
-      ClassifyQuestionModule.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
-    ).toMatchObject({ defaultToAgentGenerated: true });
+    [
+      NodeInputKeyEnum.aiSystemPrompt,
+      NodeInputKeyEnum.history,
+      NodeInputKeyEnum.userChatInput
+    ].forEach((key) => {
+      expect(ClassifyQuestionModule.inputs.find((input) => input.key === key)).toMatchObject({
+        defaultToAgentGenerated: true
+      });
+    });
     expect(
       ReadFilesNode.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)
     ).toMatchObject({ defaultToAgentGenerated: true });
@@ -45,7 +51,7 @@ describe('workflow tool node templates', () => {
     ).toMatchObject({ defaultToAgentGenerated: true });
     expect(
       CustomFeedbackNode.inputs.find((input) => input.key === NodeInputKeyEnum.textareaInput)
-    ).toMatchObject({ defaultToAgentGenerated: false });
+    ).toMatchObject({ defaultToAgentGenerated: true });
   });
 
   it('allows AI-generated mode for every requested tool input', () => {

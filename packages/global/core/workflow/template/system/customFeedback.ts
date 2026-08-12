@@ -28,7 +28,7 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
       required: true,
       label: i18nT('workflow:feedback_text'),
       toolDescription: i18nT('workflow:feedback_text'),
-      defaultToAgentGenerated: false
+      defaultToAgentGenerated: true
     }
   ],
   outputs: []
