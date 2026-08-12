@@ -150,11 +150,16 @@ export const AiChatModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string
     },
     // settings modal ---
-    Input_Template_System_Prompt,
-    Input_Template_History,
+    { ...Input_Template_System_Prompt, isToolParam: true },
+    { ...Input_Template_History, isToolParam: true },
     Input_Template_Dataset_Quote,
-    Input_Template_File_Link,
-    { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
+    { ...Input_Template_File_Link, isToolParam: true },
+    {
+      ...Input_Template_UserChatInput,
+      toolDescription: i18nT('workflow:user_question'),
+      isToolParam: true,
+      defaultAgentGenerated: true
+    }
   ],
   outputs: [
     {
