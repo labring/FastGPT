@@ -1,5 +1,5 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import { getSelectedInputRenderType } from '../../workflow/utils';
@@ -101,10 +101,11 @@ export const isAgentGeneratedToolInput = (input: InputRenderTypeState) =>
  * 服务端 runtime schema 的安全边界：即使持久化数据被篡改，也只允许普通可生成字段进入模型 schema。
  */
 export const canInputBeAgentGenerated = (
-  input: Pick<FlowNodeInputItemType, 'key'> & {
+  input: Pick<FlowNodeInputItemType, 'key' | 'canAgentGenerated'> & {
     renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   }
 ) => {
+  if (input.canAgentGenerated === false) return false;
   if (input.key === NodeInputKeyEnum.systemInputConfig) return false;
   if (!Array.isArray(input.renderTypeList)) return false;
   return !input.renderTypeList.some((type) => agentGeneratedDenyRenderTypes.has(type));
@@ -596,17 +597,18 @@ export const isToolInputValueConfigured = ({
 };
 
 /**
- * 校验工具是否能够加入父级工作流或 Agent。
- * 普通工作流的特殊输入由子工作流默认值初始化；工作流工具、插件和系统工具仍拒绝不支持的输入。
+ * 校验工具是否能够加入应用级工具列表。
+ * 应用级工具无法渲染模型、知识库等特殊输入；普通工作流工具节点由画布渲染这些输入。
  */
 export const validateToolConfiguration = ({
   toolTemplate,
-  canUploadFile
+  canUploadFile,
+  isAppTool = false
 }: {
-  toolTemplate: FlowNodeTemplateType;
+  toolTemplate: Pick<FlowNodeTemplateType, 'flowNodeType' | 'inputs'>;
   canUploadFile?: boolean;
+  isAppTool?: boolean;
 }): boolean => {
-  const isWorkflowApp = toolTemplate.flowNodeType === FlowNodeTypeEnum.appModule;
   // 检查文件上传配置
   const oneFileInput =
     toolTemplate.inputs.filter((input) =>
@@ -632,7 +634,7 @@ export const validateToolConfiguration = ({
 
     // 文件选择但配置无效
     if (
-      !isWorkflowApp &&
+      isAppTool &&
       input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
       !hasValidFileInput
     ) {
@@ -641,7 +643,7 @@ export const validateToolConfiguration = ({
 
     // 包含特殊输入类型
     if (
-      !isWorkflowApp &&
+      isAppTool &&
       input.renderTypeList.some((type) => unsupportedToolInputRenderTypes.has(type))
     ) {
       return true;

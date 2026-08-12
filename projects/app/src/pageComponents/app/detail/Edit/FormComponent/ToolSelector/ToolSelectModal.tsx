@@ -39,7 +39,6 @@ import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilter
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getToolConfigStatus,
   validateToolConfiguration
@@ -310,25 +309,22 @@ const RenderList = React.memo(function RenderList({
         getLatestVersion: true,
         source: template.source
       });
-      const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
-
-      if (!isToolSetTemplate) {
-        const toolValid = validateToolConfiguration({
-          toolTemplate: res,
-          canUploadFile: !!(
-            fileSelectConfig?.canSelectFile ||
-            fileSelectConfig?.canSelectImg ||
-            fileSelectConfig?.canSelectVideo ||
-            fileSelectConfig?.canSelectAudio ||
-            fileSelectConfig?.canSelectCustomFileExtension
-          )
+      const toolValid = validateToolConfiguration({
+        toolTemplate: res,
+        isAppTool: true,
+        canUploadFile: !!(
+          fileSelectConfig?.canSelectFile ||
+          fileSelectConfig?.canSelectImg ||
+          fileSelectConfig?.canSelectVideo ||
+          fileSelectConfig?.canSelectAudio ||
+          fileSelectConfig?.canSelectCustomFileExtension
+        )
+      });
+      if (!toolValid) {
+        return toast({
+          title: t('app:simple_tool_tips'),
+          status: 'warning'
         });
-        if (!toolValid) {
-          return toast({
-            title: t('app:simple_tool_tips'),
-            status: 'warning'
-          });
-        }
       }
 
       // 添加与已生成工具相同的配置

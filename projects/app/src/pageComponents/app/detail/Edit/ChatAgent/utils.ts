@@ -437,6 +437,7 @@ export const loadGeneratedTools = async ({
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
+          isAppTool: true,
           canUploadFile: !!(
             fileSelectConfig?.canSelectFile ||
             fileSelectConfig?.canSelectImg ||

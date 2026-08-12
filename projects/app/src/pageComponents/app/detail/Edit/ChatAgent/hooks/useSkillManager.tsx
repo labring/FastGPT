@@ -370,7 +370,8 @@ export const useSkillManager = ({
 
       const toolValid = validateToolConfiguration({
         toolTemplate,
-        canUploadFile
+        canUploadFile,
+        isAppTool: true
       });
       if (!toolValid) {
         toast({

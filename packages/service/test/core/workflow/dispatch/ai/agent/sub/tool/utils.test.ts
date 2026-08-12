@@ -4,7 +4,11 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
@@ -411,6 +415,38 @@ describe('getAgentRuntimeTools schema loading', () => {
     ]
   };
 
+  appMap.workflow_with_model_input = {
+    ...createPersonalApp({ id: 'workflow_with_model_input', type: AppTypeEnum.workflow }),
+    chatConfig: {
+      variables: [
+        {
+          key: 'model',
+          label: 'Model',
+          type: VariableInputEnum.llmSelect,
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          description: ''
+        }
+      ]
+    }
+  };
+
+  appMap.workflow_with_external_variable = {
+    ...createPersonalApp({ id: 'workflow_with_external_variable', type: AppTypeEnum.workflow }),
+    chatConfig: {
+      variables: [
+        {
+          key: 'external',
+          label: 'External',
+          type: VariableInputEnum.custom,
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          description: ''
+        }
+      ]
+    }
+  };
+
   it.each(['simple_app', 'chat_agent_app', 'workflow_app'] as const)(
     'loads %s as a callable tool with agent-generated user input',
     async (appId) => {
@@ -429,6 +465,39 @@ describe('getAgentRuntimeTools schema loading', () => {
       expect(tools[0].agentGeneratedInputKeys).toContain(NodeInputKeyEnum.userChatInput);
     }
   );
+
+  it('skips saved Agent tools with unsupported special inputs', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'workflow_with_model_input', config: {} }]
+    });
+
+    expect(tools).toEqual([]);
+  });
+
+  it('keeps external variables that project to supported manual inputs', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'workflow_with_external_variable',
+          inputs: [{ key: 'external', mode: 'manual' }],
+          config: { external: 'configured value' }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'external',
+          selectedType: FlowNodeInputTypeEnum.input,
+          value: 'configured value'
+        })
+      ])
+    );
+  });
 
   it('falls back to saved agent-generated inputs when the runtime schema has no properties', async () => {
     const tools = await getAgentRuntimeTools({
@@ -1058,6 +1127,76 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect((tools[0].requestSchema.function.parameters as any).properties.internal).toBeUndefined();
     expect(tools[0].agentGeneratedInputKeys).not.toContain('internal');
     expect(tools[0].params).toMatchObject({ internal: 7 });
+  });
+
+  it('projects system workflow external variables to Agent manual inputs', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.png',
+      intro: 'Workflow tool',
+      toolDescription: 'Workflow tool',
+      status: 'active',
+      source: 'system',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      associatedPluginId: 'workflow_app',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          externalVariable: {
+            type: 'string',
+            default: 'fallback',
+            'x-fastgpt-node-input': {
+              valueType: 'string',
+              defaultValue: 'fallback',
+              renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+              selectedType: FlowNodeInputTypeEnum.customVariable,
+              selectedTypeIndex: 0
+            }
+          }
+        },
+        required: ['externalVariable']
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'commercial-workflow-tool',
+          source: 'system',
+          inputs: [{ key: 'externalVariable', mode: 'manual' }],
+          config: { externalVariable: 'configured value' }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'externalVariable',
+          canAgentGenerated: true,
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.reference,
+            FlowNodeInputTypeEnum.input
+          ],
+          selectedType: FlowNodeInputTypeEnum.input,
+          value: 'configured value'
+        })
+      ])
+    );
+    expect(tools[0].requestSchema.function.parameters.properties).not.toHaveProperty(
+      'externalVariable'
+    );
+    expect(tools[0].agentGeneratedInputKeys).not.toContain('externalVariable');
+    expect(tools[0].params).toMatchObject({ externalVariable: 'configured value' });
   });
 
   it('keeps debug source in selected system tool config', async () => {

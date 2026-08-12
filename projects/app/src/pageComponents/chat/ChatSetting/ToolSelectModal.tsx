@@ -23,10 +23,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { workflowStartNodeId } from '@/web/core/app/constants';
@@ -225,25 +222,22 @@ const RenderList = React.memo(function RenderList({
         versionId: '',
         source: template.source
       });
-      const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
-
-      if (!isToolSetTemplate) {
-        const toolValid = validateToolConfiguration({
-          toolTemplate: res,
-          canUploadFile: !!(
-            chatConfig?.fileSelectConfig?.canSelectFile ||
-            chatConfig?.fileSelectConfig?.canSelectImg ||
-            chatConfig?.fileSelectConfig?.canSelectVideo ||
-            chatConfig?.fileSelectConfig?.canSelectAudio ||
-            chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
-          )
+      const toolValid = validateToolConfiguration({
+        toolTemplate: res,
+        isAppTool: true,
+        canUploadFile: !!(
+          chatConfig?.fileSelectConfig?.canSelectFile ||
+          chatConfig?.fileSelectConfig?.canSelectImg ||
+          chatConfig?.fileSelectConfig?.canSelectVideo ||
+          chatConfig?.fileSelectConfig?.canSelectAudio ||
+          chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
+        )
+      });
+      if (!toolValid) {
+        return toast({
+          title: t('app:simple_tool_tips'),
+          status: 'warning'
         });
-        if (!toolValid) {
-          return toast({
-            title: t('app:simple_tool_tips'),
-            status: 'warning'
-          });
-        }
       }
 
       const hasInputForm = checkNeedsUserConfiguration(res);

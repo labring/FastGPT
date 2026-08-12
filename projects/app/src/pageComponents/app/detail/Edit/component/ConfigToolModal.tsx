@@ -262,11 +262,10 @@ const mergeConfiguredTool = ({
 };
 
 const getOutputValueTypeText = (output: FlowNodeTemplateType['outputs'][number]) => {
-  if (output.valueDesc) return output.valueDesc;
   if (output.valueType && FlowValueTypeMap[output.valueType]) {
     return FlowValueTypeMap[output.valueType].label;
   }
-  return output.type || '';
+  return output.valueDesc || output.type || '';
 };
 
 const hasToolSetConfig = (tool: FlowNodeTemplateType) =>
@@ -601,7 +600,7 @@ const ConfigOutputRow = ({ output }: { output: FlowNodeTemplateType['outputs'][n
       </Flex>
       {!!valueTypeText && (
         <MyTag colorSchema="gray" type="borderFill">
-          {valueTypeText}
+          {t(valueTypeText as any)}
         </MyTag>
       )}
     </Flex>

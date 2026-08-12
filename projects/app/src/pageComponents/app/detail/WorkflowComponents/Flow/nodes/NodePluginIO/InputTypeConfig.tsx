@@ -386,14 +386,22 @@ const InputTypeConfig = ({
   );
 
   return (
-    <Stack flex={1} borderLeft={'1px solid #F0F1F6'} justifyContent={'space-between'}>
+    <Stack
+      flex={1}
+      minH={0}
+      overflow={'hidden'}
+      borderLeft={'1px solid #F0F1F6'}
+      justifyContent={'space-between'}
+    >
       <Grid
         gridTemplateColumns={inputFormGridTemplateColumns}
         columnGap={4}
         rowGap={4}
         alignItems={'center'}
+        alignContent={'start'}
+        textAlign={'left'}
         p={8}
-        flex={'1 0 0'}
+        flex={'0 1 auto'}
         overflow={'auto'}
       >
         <Grid display={'contents'}>

@@ -410,6 +410,73 @@ export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
   return {};
 };
 
+/**
+ * 将子工作流外部变量投影为父工作流可配置的节点输入。
+ * customVariable 只描述子工作流的外部注入语义；进入父工作流后由引用或类型匹配的手动控件提供值。
+ */
+export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(input: T): T => {
+  const isExternalVariable =
+    input.renderTypeList.includes(FlowNodeInputTypeEnum.customVariable) ||
+    input.selectedType === FlowNodeInputTypeEnum.customVariable;
+  if (!isExternalVariable) return input;
+
+  const manualRenderType = (() => {
+    if (input.valueType === WorkflowIOValueTypeEnum.number) {
+      return FlowNodeInputTypeEnum.numberInput;
+    }
+    if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
+      return FlowNodeInputTypeEnum.switch;
+    }
+    if (input.valueType === WorkflowIOValueTypeEnum.string) {
+      return FlowNodeInputTypeEnum.input;
+    }
+    return FlowNodeInputTypeEnum.JSONEditor;
+  })();
+  const canAgentGenerated = [
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.number,
+    WorkflowIOValueTypeEnum.boolean
+  ].includes(input.valueType as WorkflowIOValueTypeEnum);
+  const projectedRenderTypeList = Array.from(
+    new Set(
+      input.renderTypeList.flatMap((type) => {
+        if (type === FlowNodeInputTypeEnum.customVariable) {
+          return [FlowNodeInputTypeEnum.reference, manualRenderType];
+        }
+        if (type === FlowNodeInputTypeEnum.agentGenerated) {
+          return canAgentGenerated ? [type] : [];
+        }
+        return [type];
+      })
+    )
+  );
+  if (
+    canAgentGenerated &&
+    !projectedRenderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
+  ) {
+    projectedRenderTypeList.unshift(FlowNodeInputTypeEnum.agentGenerated);
+  }
+  if (!projectedRenderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
+    projectedRenderTypeList.push(FlowNodeInputTypeEnum.reference);
+  }
+  if (!projectedRenderTypeList.includes(manualRenderType)) {
+    projectedRenderTypeList.push(manualRenderType);
+  }
+  const selectedType =
+    input.selectedType && projectedRenderTypeList.includes(input.selectedType)
+      ? input.selectedType
+      : FlowNodeInputTypeEnum.reference;
+  const projectedInput = {
+    ...input,
+    canAgentGenerated,
+    renderTypeList: projectedRenderTypeList,
+    selectedType
+  } as T;
+  delete projectedInput.selectedTypeIndex;
+
+  return projectedInput;
+};
+
 export const pluginData2FlowNodeIO = ({
   nodes
 }: {
@@ -425,16 +492,14 @@ export const pluginData2FlowNodeIO = ({
     inputs: pluginInput
       ? [
           Input_Template_Stream_MODE,
-          ...pluginInput?.inputs.map((item) => ({
-            ...item,
-            ...getModuleInputUiField(item),
-            value: getOrInitModuleInputValue(item),
-            canEdit: false,
-            renderTypeList:
-              item.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable
-                ? [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
-                : item.renderTypeList
-          }))
+          ...pluginInput?.inputs.map((item) =>
+            projectExternalVariableInput({
+              ...item,
+              ...getModuleInputUiField(item),
+              value: getOrInitModuleInputValue(item),
+              canEdit: false
+            })
+          )
         ]
       : [],
     outputs: pluginOutput
@@ -508,7 +573,7 @@ export const appData2FlowNodeIO = ({
           VariableInputEnum.select,
           VariableInputEnum.multipleSelect
         ].includes(item.type);
-        return {
+        return projectExternalVariableInput({
           key: item.key,
           renderTypeList: getAppVariableRenderTypeList({
             type: item.type,
@@ -531,7 +596,7 @@ export const appData2FlowNodeIO = ({
                   .filter((enumItem) => String(enumItem.value ?? '').trim().length > 0)
               }
             : {})
-        };
+        });
       });
 
   return {
