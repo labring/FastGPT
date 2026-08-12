@@ -89,7 +89,7 @@ export const initTeamFreePlan = async ({
   session?: ClientSession;
 }) => {
   const freePoints = isWecomTeam
-    ? Math.round((global.subPlans?.standard?.basic.totalPoints ?? 4000) / 2)
+    ? Math.round((global.subPlans?.standard?.basic?.totalPoints ?? 4000) / 2)
     : global?.subPlans?.standard?.[StandardSubLevelEnum.free]?.totalPoints || 100;
 
   const freePlan = await MongoTeamSub.findOne({

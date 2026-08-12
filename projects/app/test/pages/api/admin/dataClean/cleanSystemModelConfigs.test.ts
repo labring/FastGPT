@@ -119,6 +119,30 @@ describe('cleanSystemModelConfig', () => {
     }
   });
 
+  it('removes empty price tiers and coerces TTS price strings', () => {
+    const result = cleanSystemModelConfig({
+      model: 'speech-model',
+      metadata: {
+        type: ModelTypeEnum.tts,
+        provider: 'MiniMax',
+        model: 'speech-model',
+        name: 'Speech Model',
+        charsPointsPrice: '20.00',
+        priceTiers: '',
+        voices: []
+      }
+    });
+
+    expect(result).toMatchObject({
+      status: 'valid',
+      changed: true,
+      metadata: { charsPointsPrice: 20 }
+    });
+    if (result.status === 'valid') {
+      expect(result.metadata).not.toHaveProperty('priceTiers');
+    }
+  });
+
   it('rejects records without a usable model and metadata object', () => {
     expect(cleanSystemModelConfig({ model: null, metadata: null })).toEqual({
       status: 'invalid',

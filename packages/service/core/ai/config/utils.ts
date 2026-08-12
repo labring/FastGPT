@@ -194,7 +194,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
             }
           : {})
       };
-      // 按合并后的最终类型处理插件协议空值，避免数据库覆盖类型时遗漏 LLM 规范化。
+      // 仅兼容插件协议使用 null 表示不支持温度的历史数据。
       pushModel(normalizeRuntimeSystemModelConfig(modelData));
     });
 
