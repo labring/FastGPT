@@ -75,45 +75,45 @@ describe('getHandleId', () => {
 
 describe('projectExternalVariableInput', () => {
   it.each([
-    [WorkflowIOValueTypeEnum.string, FlowNodeInputTypeEnum.input],
-    [WorkflowIOValueTypeEnum.number, FlowNodeInputTypeEnum.numberInput],
-    [WorkflowIOValueTypeEnum.boolean, FlowNodeInputTypeEnum.switch],
-    [WorkflowIOValueTypeEnum.object, FlowNodeInputTypeEnum.JSONEditor],
-    [WorkflowIOValueTypeEnum.arrayString, FlowNodeInputTypeEnum.JSONEditor],
-    [WorkflowIOValueTypeEnum.any, FlowNodeInputTypeEnum.JSONEditor]
-  ])('should project %s external variables to a reference and manual input', (valueType, type) => {
-    const result = projectExternalVariableInput({
-      key: 'externalVariable',
-      label: 'External variable',
-      valueType,
-      renderTypeList: [FlowNodeInputTypeEnum.customVariable],
-      selectedType: FlowNodeInputTypeEnum.customVariable,
-      selectedTypeIndex: 0,
-      defaultValue: 'default-value'
-    });
+    [WorkflowIOValueTypeEnum.string, FlowNodeInputTypeEnum.input, true],
+    [WorkflowIOValueTypeEnum.number, FlowNodeInputTypeEnum.numberInput, true],
+    [WorkflowIOValueTypeEnum.boolean, FlowNodeInputTypeEnum.switch, true],
+    [WorkflowIOValueTypeEnum.arrayString, FlowNodeInputTypeEnum.JSONEditor, true],
+    [WorkflowIOValueTypeEnum.arrayNumber, FlowNodeInputTypeEnum.JSONEditor, true],
+    [WorkflowIOValueTypeEnum.arrayBoolean, FlowNodeInputTypeEnum.JSONEditor, true],
+    [WorkflowIOValueTypeEnum.object, FlowNodeInputTypeEnum.JSONEditor, false],
+    [WorkflowIOValueTypeEnum.arrayObject, FlowNodeInputTypeEnum.JSONEditor, false],
+    [WorkflowIOValueTypeEnum.arrayAny, FlowNodeInputTypeEnum.JSONEditor, false],
+    [WorkflowIOValueTypeEnum.any, FlowNodeInputTypeEnum.JSONEditor, false]
+  ])(
+    'should project %s external variables to a reference and manual input',
+    (valueType, type, canAgentGenerated) => {
+      const result = projectExternalVariableInput({
+        key: 'externalVariable',
+        label: 'External variable',
+        valueType,
+        renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+        selectedType: FlowNodeInputTypeEnum.customVariable,
+        selectedTypeIndex: 0,
+        defaultValue: 'default-value'
+      });
 
-    expect(result).toMatchObject({
-      canAgentGenerated: [
-        WorkflowIOValueTypeEnum.string,
-        WorkflowIOValueTypeEnum.number,
-        WorkflowIOValueTypeEnum.boolean
-      ].includes(valueType),
-      renderTypeList: [
-        ...([
-          WorkflowIOValueTypeEnum.string,
-          WorkflowIOValueTypeEnum.number,
-          WorkflowIOValueTypeEnum.boolean
-        ].includes(valueType)
-          ? [FlowNodeInputTypeEnum.agentGenerated]
-          : []),
-        FlowNodeInputTypeEnum.reference,
-        type
-      ],
-      selectedType: FlowNodeInputTypeEnum.reference,
-      defaultValue: 'default-value'
-    });
-    expect(result).not.toHaveProperty('selectedTypeIndex');
-  });
+      expect(result).toMatchObject({
+        canAgentGenerated,
+        ...(canAgentGenerated ? { isToolParam: true } : {}),
+        renderTypeList: [
+          ...(canAgentGenerated ? [FlowNodeInputTypeEnum.agentGenerated] : []),
+          FlowNodeInputTypeEnum.reference,
+          type
+        ],
+        selectedType: canAgentGenerated
+          ? FlowNodeInputTypeEnum.agentGenerated
+          : FlowNodeInputTypeEnum.reference,
+        defaultValue: 'default-value'
+      });
+      expect(result).not.toHaveProperty('selectedTypeIndex');
+    }
+  );
 
   it('should leave regular inputs unchanged', () => {
     const input: FlowNodeInputItemType = {
@@ -143,6 +143,23 @@ describe('projectExternalVariableInput', () => {
       ],
       selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
+  });
+
+  it('should select AI generation by default without changing its existing position', () => {
+    const result = projectExternalVariableInput({
+      key: 'externalVariable',
+      label: 'External variable',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.customVariable, FlowNodeInputTypeEnum.agentGenerated],
+      selectedType: FlowNodeInputTypeEnum.customVariable
+    });
+
+    expect(result.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.reference,
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.agentGenerated
+    ]);
+    expect(result.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
   });
 
   it('should keep complex external variables manual-only', () => {
@@ -876,7 +893,7 @@ describe('pluginData2FlowNodeIO', () => {
     expect(result.outputs[0].type).toBe(FlowNodeOutputTypeEnum.static);
   });
 
-  it('should convert customVariable renderType and legacy selection to reference and input', () => {
+  it('should convert customVariable renderType and default to AI generation', () => {
     const nodes: StoreNodeItemType[] = [
       {
         nodeId: 'pluginInput1',
@@ -902,7 +919,7 @@ describe('pluginData2FlowNodeIO', () => {
       FlowNodeInputTypeEnum.reference,
       FlowNodeInputTypeEnum.input
     ]);
-    expect(customVarInput?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(customVarInput?.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
     expect(customVarInput).not.toHaveProperty('selectedTypeIndex');
   });
 
@@ -938,6 +955,18 @@ describe('appData2FlowNodeIO', () => {
     ).toMatchObject({
       required: true,
       isToolParam: true
+    });
+  });
+
+  it('should keep forbid stream as a manual-only switch', () => {
+    const result = appData2FlowNodeIO({});
+
+    expect(
+      result.inputs.find((input) => input.key === NodeInputKeyEnum.forbidStream)
+    ).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.switch],
+      canAgentGenerated: false,
+      value: false
     });
   });
 
@@ -1028,7 +1057,15 @@ describe('appData2FlowNodeIO', () => {
       }
     });
     const fileLinkInput = result.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
-    expect(fileLinkInput).toBeDefined();
+    expect(fileLinkInput).toMatchObject({
+      renderTypeList: [
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.JSONEditor,
+        FlowNodeInputTypeEnum.agentGenerated
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      isToolParam: true
+    });
   });
 
   it('should include file link input when fileSelectConfig allows image selection', () => {

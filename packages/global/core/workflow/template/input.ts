@@ -119,6 +119,7 @@ export const Input_Template_Stream_MODE: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.forbidStream,
   renderTypeList: [FlowNodeInputTypeEnum.switch],
   valueType: WorkflowIOValueTypeEnum.boolean,
+  canAgentGenerated: false,
   label: i18nT('workflow:template.forbid_stream'),
   description: i18nT('workflow:template.forbid_stream_desc'),
   value: false

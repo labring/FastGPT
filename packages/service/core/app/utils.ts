@@ -296,6 +296,13 @@ export async function rewriteAppWorkflowToDetail({
           };
         }
       }
+      // 只有子应用节点消费外部变量；当前工作流入口和其他节点保留原始输入定义。
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.appModule ||
+        node.flowNodeType === FlowNodeTypeEnum.pluginModule
+      ) {
+        node.inputs = node.inputs.map(projectExternalVariableInput);
+      }
       // Agent, parse subapp
       if (node.flowNodeType === FlowNodeTypeEnum.agent) {
         // Tool load
