@@ -31,7 +31,6 @@ export const TextEditorNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.textarea],
       valueType: WorkflowIOValueTypeEnum.string,
       required: true,
-      canAgentGenerated: false,
       label: i18nT('workflow:concatenation_text'),
       placeholder: i18nT('workflow:input_variable_list')
     }

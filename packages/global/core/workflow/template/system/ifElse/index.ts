@@ -32,7 +32,6 @@ export const IfElseNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
       label: '',
-      canAgentGenerated: false,
       value: [
         {
           condition: 'AND', // AND, OR

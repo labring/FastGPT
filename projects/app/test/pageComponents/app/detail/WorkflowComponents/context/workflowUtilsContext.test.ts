@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { splitToolInputsByMode } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowUtilsContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 
 describe('splitToolInputsByMode', () => {
@@ -43,6 +42,21 @@ describe('splitToolInputsByMode', () => {
     expect(result.commonInputs).toEqual([]);
   });
 
+  it('does not expose AI mode for an input that is not a tool parameter', () => {
+    const input = {
+      key: 'query',
+      label: 'query',
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    };
+
+    const result = splitToolInputsByMode([input], true);
+
+    expect(result.commonInputs[0].renderTypeList).not.toContain(
+      FlowNodeInputTypeEnum.agentGenerated
+    );
+    expect(result.commonInputs[0].selectedType).toBe(FlowNodeInputTypeEnum.input);
+  });
+
   it('keeps unmarked editable inputs as code custom variables', () => {
     const customVariable = {
       key: 'codeInput',
@@ -73,19 +87,11 @@ describe('splitToolInputsByMode', () => {
     expect(result.commonInputs).toHaveLength(1);
   });
 
-  it('adds AI-generated mode to fixed inputs when connected as a tool', () => {
-    const classifyInputs = splitToolInputsByMode(ClassifyQuestionModule.inputs, true).commonInputs;
+  it('keeps fixed tool inputs in the node and defaults the marked inputs to AI generation', () => {
     const toolCallInputs = splitToolInputsByMode(ToolCallNode.inputs, true).commonInputs;
 
-    [
-      ...classifyInputs.filter((input) =>
-        [
-          NodeInputKeyEnum.aiSystemPrompt,
-          NodeInputKeyEnum.history,
-          NodeInputKeyEnum.userChatInput
-        ].includes(input.key as NodeInputKeyEnum)
-      ),
-      ...toolCallInputs.filter((input) =>
+    toolCallInputs
+      .filter((input) =>
         [
           NodeInputKeyEnum.aiSystemPrompt,
           NodeInputKeyEnum.history,
@@ -93,12 +99,9 @@ describe('splitToolInputsByMode', () => {
           NodeInputKeyEnum.userChatInput
         ].includes(input.key as NodeInputKeyEnum)
       )
-    ].forEach((input) => {
-      expect(input.renderTypeList).toContain(FlowNodeInputTypeEnum.agentGenerated);
-    });
-    expect(
-      classifyInputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)?.selectedType
-    ).toBe(FlowNodeInputTypeEnum.agentGenerated);
+      .forEach((input) => {
+        expect(input.renderTypeList).toContain(FlowNodeInputTypeEnum.agentGenerated);
+      });
     expect(
       toolCallInputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)?.selectedType
     ).toBe(FlowNodeInputTypeEnum.agentGenerated);

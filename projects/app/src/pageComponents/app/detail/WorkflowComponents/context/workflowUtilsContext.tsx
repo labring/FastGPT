@@ -77,9 +77,9 @@ export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: b
 
   inputs.forEach((item) => {
     const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
-    const isToolParamInput = item.canEdit === true && item.isToolParam === true;
+    const isToolParamInput = item.canEdit === true && canInputBeAgentGenerated(item);
 
-    if (isTool && isToolParamInput && canInputBeAgentGenerated(normalizedInput)) {
+    if (isTool && isToolParamInput) {
       toolInputs.push(item);
       return;
     }
