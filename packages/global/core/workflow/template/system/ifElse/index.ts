@@ -31,6 +31,7 @@ export const IfElseNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.ifElseList,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
+      canAgentGenerated: false,
       label: '',
       value: [
         {
