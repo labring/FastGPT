@@ -795,6 +795,52 @@ describe('getTeamStandPlan', () => {
 
     expect(result[SubTypeEnum.standard]).toBeUndefined();
   });
+
+  it.each([
+    [StandardSubLevelEnum.experience, 'Experience Plan', 5],
+    [StandardSubLevelEnum.team, 'Team Plan', 20],
+    [StandardSubLevelEnum.enterprise, 'Enterprise Plan', 100]
+  ])('未过期旧套餐 %s 使用自身配置，不映射套餐等级', async (level, name, maxTeamMember) => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          currentSubLevel: level,
+          nextSubLevel: level,
+          expiredTime: new Date('2099-01-01')
+        }
+      ])
+    } as any);
+
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {
+          ...baseConstants,
+          name: 'Basic Plan',
+          maxTeamMember: 1
+        },
+        [StandardSubLevelEnum.advanced]: {
+          ...baseConstants,
+          name: 'Advanced Plan',
+          maxTeamMember: 2
+        },
+        [level]: {
+          ...baseConstants,
+          name,
+          maxTeamMember
+        }
+      }
+    };
+
+    const result = await getTeamStandPlan({ teamId: mockTeamId });
+
+    expect(result.standard).toMatchObject({
+      currentSubLevel: level,
+      nextSubLevel: level,
+      name,
+      maxTeamMember
+    });
+  });
 });
 
 describe('getTeamPlanStatus', () => {
@@ -891,6 +937,46 @@ describe('getTeamPlanStatus', () => {
     expect(result.usedPoints).toBe(500); // 2000 - 1500
     expect(result.datasetMaxSize).toBe(100);
     expect(result[SubTypeEnum.standard]).toBeDefined();
+  });
+
+  it.each([
+    [StandardSubLevelEnum.experience, 60],
+    [StandardSubLevelEnum.team, 600],
+    [StandardSubLevelEnum.enterprise, 6000]
+  ])('未过期旧套餐 %s 的额度使用自身配置', async (level, maxDatasetSize) => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          ...baseStandard,
+          currentSubLevel: level,
+          nextSubLevel: level,
+          expiredTime: new Date('2099-01-01')
+        }
+      ])
+    } as any);
+
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {
+          ...baseConstants,
+          maxDatasetSize: 1
+        },
+        [StandardSubLevelEnum.advanced]: {
+          ...baseConstants,
+          maxDatasetSize: 2
+        },
+        [level]: {
+          ...baseConstants,
+          maxDatasetSize
+        }
+      }
+    };
+
+    const result = await getTeamPlanStatus({ teamId: mockTeamId });
+
+    expect(result.standard?.currentSubLevel).toBe(level);
+    expect(result.standard?.maxDatasetSize).toBe(maxDatasetSize);
+    expect(result.datasetMaxSize).toBe(maxDatasetSize);
   });
 
   it('包含额外积分套餐', async () => {
