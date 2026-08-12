@@ -1,13 +1,13 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Box, Button, Flex, ModalBody, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure, HStack } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySlider from '@/components/Slider';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
@@ -165,46 +165,15 @@ const TTSSelect = ({
         </Button>
       </MyTooltip>
       <MyModal
-        iconSrc="core/app/simpleMode/tts"
         title={t('common:core.app.TTS')}
         isOpen={isOpen}
         onClose={onCloseTTSModal}
         w={'500px'}
-      >
-        <ModalBody px={[5, 16]} py={[4, 8]}>
-          <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <FormLabel>{t('common:core.app.tts.Speech model')}</FormLabel>
-            <MultipleRowSelect
-              rowMinWidth="160px"
-              label={<Box minW={'150px'}>{formLabel}</Box>}
-              value={formatValue}
-              list={selectorList}
-              onSelect={onclickChange}
-            />
-          </Flex>
-          <Flex mt={8} justifyContent={'space-between'}>
-            <FormLabel>{t('common:core.app.tts.Speech speed')}</FormLabel>
-            <MySlider
-              markList={[
-                { label: '0.3', value: 0.3 },
-                { label: '2', value: 2 }
-              ]}
-              width={'220px'}
-              min={0.3}
-              max={2}
-              step={0.1}
-              value={value.speed || 1}
-              onChange={(e) => {
-                onChange({
-                  ...value,
-                  speed: e
-                });
-              }}
-            />
-          </Flex>
-          {formatValue[0] !== TTSTypeEnum.none && (
-            <Flex mt={10} justifyContent={'end'}>
-              {audioPlaying ? (
+        isCentered
+        footer={
+          <>
+            {formatValue[0] !== TTSTypeEnum.none &&
+              (audioPlaying ? (
                 <Flex>
                   <MyImage src="/icon/speaking.gif" w={'24px'} alt={''} />
                   <Button
@@ -220,6 +189,7 @@ const TTSSelect = ({
                 </Flex>
               ) : (
                 <Button
+                  variant={'whiteBase'}
                   isLoading={audioLoading}
                   leftIcon={<MyIcon name={'core/app/headphones'} w={'16px'} />}
                   onClick={() => {
@@ -230,10 +200,41 @@ const TTSSelect = ({
                 >
                   {t('common:core.app.tts.Test Listen')}
                 </Button>
-              )}
-            </Flex>
-          )}
-        </ModalBody>
+              ))}
+            <Button onClick={onCloseTTSModal}>{t('common:Confirm')}</Button>
+          </>
+        }
+      >
+        <Flex justifyContent={'space-between'} alignItems={'center'}>
+          <FormLabel>{t('common:core.app.tts.Speech model')}</FormLabel>
+          <MultipleRowSelect
+            rowMinWidth="160px"
+            label={<Box minW={'150px'}>{formLabel}</Box>}
+            value={formatValue}
+            list={selectorList}
+            onSelect={onclickChange}
+          />
+        </Flex>
+        <Flex mt={8} justifyContent={'space-between'}>
+          <FormLabel>{t('common:core.app.tts.Speech speed')}</FormLabel>
+          <MySlider
+            markList={[
+              { label: '0.3', value: 0.3 },
+              { label: '2', value: 2 }
+            ]}
+            width={'220px'}
+            min={0.3}
+            max={2}
+            step={0.1}
+            value={value.speed || 1}
+            onChange={(e) => {
+              onChange({
+                ...value,
+                speed: e
+              });
+            }}
+          />
+        </Flex>
       </MyModal>
     </Flex>
   );

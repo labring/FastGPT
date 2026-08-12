@@ -1,10 +1,10 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Box, Button, Flex, ModalBody, useDisclosure, Switch } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure, Switch } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -48,63 +48,62 @@ const WhisperConfig = ({
       </MyTooltip>
       <MyModal
         title={t('common:core.app.Whisper config')}
-        iconSrc="core/app/simpleMode/whisper"
         isOpen={isOpen}
         onClose={onClose}
+        isCentered
+        footer={<Button onClick={onClose}>{t('common:Confirm')}</Button>}
       >
-        <ModalBody px={[5, 16]} py={[4, 8]}>
-          <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <FormLabel>{t('common:core.app.whisper.Switch')}</FormLabel>
+        <Flex justifyContent={'space-between'} alignItems={'center'}>
+          <FormLabel>{t('common:core.app.whisper.Switch')}</FormLabel>
+          <Switch
+            isChecked={isOpenWhisper}
+            onChange={(e) => {
+              onChange({
+                ...value,
+                open: e.target.checked
+              });
+            }}
+          />
+        </Flex>
+        {isOpenWhisper && (
+          <Flex mt={8} alignItems={'center'}>
+            <FormLabel>{t('common:core.app.whisper.Auto send')}</FormLabel>
+            <QuestionTip label={t('common:core.app.whisper.Auto send tip')} />
+            <Box flex={'1 0 0'} />
             <Switch
-              isChecked={isOpenWhisper}
+              isChecked={value.autoSend}
               onChange={(e) => {
                 onChange({
                   ...value,
-                  open: e.target.checked
+                  autoSend: e.target.checked
                 });
               }}
             />
           </Flex>
-          {isOpenWhisper && (
+        )}
+        {isOpenWhisper && isAutoSend && (
+          <>
             <Flex mt={8} alignItems={'center'}>
-              <FormLabel>{t('common:core.app.whisper.Auto send')}</FormLabel>
-              <QuestionTip label={t('common:core.app.whisper.Auto send tip')} />
+              <FormLabel>{t('common:core.app.whisper.Auto tts response')}</FormLabel>
+              <QuestionTip label={t('common:core.app.whisper.Auto tts response tip')} />
               <Box flex={'1 0 0'} />
               <Switch
-                isChecked={value.autoSend}
+                isChecked={value.autoTTSResponse}
                 onChange={(e) => {
                   onChange({
                     ...value,
-                    autoSend: e.target.checked
+                    autoTTSResponse: e.target.checked
                   });
                 }}
               />
             </Flex>
-          )}
-          {isOpenWhisper && isAutoSend && (
-            <>
-              <Flex mt={8} alignItems={'center'}>
-                <FormLabel>{t('common:core.app.whisper.Auto tts response')}</FormLabel>
-                <QuestionTip label={t('common:core.app.whisper.Auto tts response tip')} />
-                <Box flex={'1 0 0'} />
-                <Switch
-                  isChecked={value.autoTTSResponse}
-                  onChange={(e) => {
-                    onChange({
-                      ...value,
-                      autoTTSResponse: e.target.checked
-                    });
-                  }}
-                />
-              </Flex>
-              {!isOpenAudio && (
-                <Box mt={1} color={'myGray.600'} fontSize={'sm'}>
-                  {t('common:core.app.whisper.Not tts tip')}
-                </Box>
-              )}
-            </>
-          )}
-        </ModalBody>
+            {!isOpenAudio && (
+              <Box mt={1} color={'myGray.600'} fontSize={'sm'}>
+                {t('common:core.app.whisper.Not tts tip')}
+              </Box>
+            )}
+          </>
+        )}
       </MyModal>
     </Flex>
   );

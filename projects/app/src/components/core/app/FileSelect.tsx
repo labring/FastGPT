@@ -4,10 +4,8 @@ import {
   Box,
   Button,
   Flex,
-  ModalBody,
   useDisclosure,
   HStack,
-  ModalFooter,
   type BoxProps,
   Checkbox,
   VStack
@@ -15,7 +13,7 @@ import {
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -80,96 +78,98 @@ const FileSelect = ({
         </Button>
       </MyTooltip>
       <MyModal
-        iconSrc="core/app/simpleMode/file"
         title={t('app:file_upload')}
         isOpen={isOpen}
         onClose={onClose}
         w={'500px'}
-      >
-        <ModalBody>
-          <Box>
-            <HStack spacing={1}>
-              <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
-              <QuestionTip label={t('app:upload_file_max_amount_tip')} />
-            </HStack>
-
-            <Box mt={2} alignItems={'center'} gap={5}>
-              <InputSlider
-                min={1}
-                max={maxSelectFiles}
-                step={1}
-                value={localValue.maxFiles ?? 5}
-                onChange={(e) => {
-                  setLocalValue((state) => ({
-                    ...state,
-                    maxFiles: e
-                  }));
-                }}
-              />
-            </Box>
-          </Box>
-
-          <VStack spacing={2} alignItems={'flex-start'} mt={6}>
-            <FormLabel>{t('app:upload_file_extension_types')}</FormLabel>
-
-            <VStack
-              w="full"
-              spacing={3}
-              alignItems={'flex-start'}
-              border="1px solid"
-              borderColor="myGray.200"
-              borderRadius="md"
-              p={4}
+        isCentered
+        footer={
+          <>
+            <Button variant={'whiteBase'} onClick={onClose}>
+              {t('common:Cancel')}
+            </Button>
+            <Button
+              onClick={() => {
+                onChange(localValue);
+                onClose();
+              }}
             >
-              <FileTypeSelectorPanel value={localValue} onChange={setLocalValue} />
-            </VStack>
-          </VStack>
+              {t('common:Confirm')}
+            </Button>
+          </>
+        }
+      >
+        <Box>
+          <HStack spacing={1}>
+            <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
+            <QuestionTip label={t('app:upload_file_max_amount_tip')} />
+          </HStack>
 
-          {localValue.canSelectFile && feConfigs?.showCustomPdfParse && (
-            <HStack justifyContent={'flex-start'} spacing={1} mt={2}>
-              <Checkbox
-                isChecked={localValue.customPdfParse}
-                onChange={(e) => {
-                  setLocalValue((state) => ({
-                    ...state,
-                    customPdfParse: e.target.checked
-                  }));
-                }}
-              >
-                <FormLabel>{t('app:pdf_enhance_parse')}</FormLabel>
-              </Checkbox>
-              <QuestionTip label={t('app:pdf_enhance_parse_tips')} />
-              {feConfigs?.show_pay && (
-                <MyTag
-                  type={'borderSolid'}
-                  borderColor={'myGray.200'}
-                  bg={'myGray.100'}
-                  color={'primary.600'}
-                  py={1.5}
-                  borderRadius={'md'}
-                  px={3}
-                  whiteSpace={'wrap'}
-                  ml={1}
-                >
-                  {t('app:pdf_enhance_parse_price', {
-                    price: feConfigs.customPdfParsePrice || 0
-                  })}
-                </MyTag>
-              )}
-            </HStack>
-          )}
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            onClick={() => {
-              onChange(localValue);
-              onClose();
-            }}
-            px={8}
+          <Box mt={2} alignItems={'center'} gap={5}>
+            <InputSlider
+              min={1}
+              max={maxSelectFiles}
+              step={1}
+              value={localValue.maxFiles ?? 5}
+              onChange={(e) => {
+                setLocalValue((state) => ({
+                  ...state,
+                  maxFiles: e
+                }));
+              }}
+            />
+          </Box>
+        </Box>
+
+        <VStack spacing={2} alignItems={'flex-start'} mt={6}>
+          <FormLabel>{t('app:upload_file_extension_types')}</FormLabel>
+
+          <VStack
+            w="full"
+            spacing={3}
+            alignItems={'flex-start'}
+            border="1px solid"
+            borderColor="myGray.200"
+            borderRadius="md"
+            p={4}
           >
-            {t('common:Confirm')}
-          </Button>
-        </ModalFooter>
+            <FileTypeSelectorPanel value={localValue} onChange={setLocalValue} />
+          </VStack>
+        </VStack>
+
+        {localValue.canSelectFile && feConfigs?.showCustomPdfParse && (
+          <HStack justifyContent={'flex-start'} spacing={1} mt={2}>
+            <Checkbox
+              isChecked={localValue.customPdfParse}
+              onChange={(e) => {
+                setLocalValue((state) => ({
+                  ...state,
+                  customPdfParse: e.target.checked
+                }));
+              }}
+            >
+              <FormLabel>{t('app:pdf_enhance_parse')}</FormLabel>
+            </Checkbox>
+            <QuestionTip label={t('app:pdf_enhance_parse_tips')} />
+            {feConfigs?.show_pay && (
+              <MyTag
+                type={'borderSolid'}
+                borderColor={'myGray.200'}
+                bg={'myGray.100'}
+                color={'primary.600'}
+                py={1.5}
+                borderRadius={'md'}
+                px={3}
+                whiteSpace={'wrap'}
+                ml={1}
+              >
+                {t('app:pdf_enhance_parse_price', {
+                  price: feConfigs.customPdfParsePrice || 0
+                })}
+              </MyTag>
+            )}
+          </HStack>
+        )}
       </MyModal>
     </Flex>
   );
