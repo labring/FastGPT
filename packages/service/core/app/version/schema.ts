@@ -57,9 +57,11 @@ const AppVersionSchema = new Schema(
 AppVersionSchema.post(/^find/, (docs) => {
   if (Array.isArray(docs)) {
     docs.forEach((doc) => {
-      doc.nodes = decodeWorkflowNodesFromStorage(doc.nodes);
+      if (!doc.$__) {
+        doc.nodes = decodeWorkflowNodesFromStorage(doc.nodes);
+      }
     });
-  } else if (docs) {
+  } else if (docs && !docs.$__) {
     docs.nodes = decodeWorkflowNodesFromStorage(docs.nodes);
   }
 });

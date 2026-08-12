@@ -141,9 +141,11 @@ const AppSchema = new Schema(
 AppSchema.post(/^find/, (docs) => {
   if (Array.isArray(docs)) {
     docs.forEach((doc) => {
-      doc.modules = decodeWorkflowNodesFromStorage(doc.modules);
+      if (!doc.$__) {
+        doc.modules = decodeWorkflowNodesFromStorage(doc.modules);
+      }
     });
-  } else if (docs) {
+  } else if (docs && !docs.$__) {
     docs.modules = decodeWorkflowNodesFromStorage(docs.modules);
   }
 });

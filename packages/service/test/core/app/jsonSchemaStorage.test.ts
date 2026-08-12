@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cleanWorkflowToolJsonSchemasForStorage,
   decodeWorkflowNodesFromStorage,
   encodeWorkflowNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
@@ -41,16 +42,13 @@ describe('workflow JSON Schema storage codec', () => {
     expect(encoded[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toContain('$schema');
   });
 
-  it('decodes new strings and preserves historical objects', () => {
+  it('decodes stored strings', () => {
     const historicalSchema = { type: 'object', properties: { id: { type: 'string' } } };
     const stored = [
       {
         toolConfig: {
           mcpToolSet: {
             toolList: [{ inputSchema: JSON.stringify(historicalSchema) }]
-          },
-          httpToolSet: {
-            toolList: [{ inputSchema: historicalSchema }]
           }
         }
       }
@@ -61,12 +59,89 @@ describe('workflow JSON Schema storage codec', () => {
         toolConfig: {
           mcpToolSet: {
             toolList: [{ inputSchema: historicalSchema }]
-          },
-          httpToolSet: {
-            toolList: [{ inputSchema: historicalSchema }]
           }
         }
       }
     ]);
+  });
+
+  it('rejects historical object schemas during runtime reads', () => {
+    expect(() =>
+      decodeWorkflowNodesFromStorage([
+        {
+          toolConfig: {
+            mcpToolSet: {
+              toolList: [{ inputSchema: { type: 'object' } }]
+            }
+          }
+        }
+      ])
+    ).toThrow('Stored tool JSON Schema must be a string');
+  });
+
+  it('cleans historical object schemas for upgrade scripts', () => {
+    const nodes = [
+      {
+        toolConfig: {
+          mcpToolSet: {
+            toolList: [{ inputSchema: { type: 'object' } }]
+          },
+          httpToolSet: {
+            toolList: [
+              {
+                inputSchema: { type: 'object' },
+                outputSchema: { type: 'object' },
+                requestSchema: JSON.stringify({ type: 'object' })
+              }
+            ]
+          }
+        }
+      }
+    ];
+
+    const result = cleanWorkflowToolJsonSchemasForStorage(nodes);
+
+    expect(result.changed).toBe(true);
+    expect(result.convertedSchemaCount).toBe(3);
+    expect(result.nodes).not.toBe(nodes);
+    expect((result.nodes as any[])[0].toolConfig.httpToolSet.toolList[0].requestSchema).toBe(
+      JSON.stringify({ type: 'object' })
+    );
+    expect(decodeWorkflowNodesFromStorage(result.nodes)).toEqual([
+      {
+        toolConfig: {
+          mcpToolSet: {
+            toolList: [{ inputSchema: { type: 'object' } }]
+          },
+          httpToolSet: {
+            toolList: [
+              {
+                inputSchema: { type: 'object' },
+                outputSchema: { type: 'object' },
+                requestSchema: { type: 'object' }
+              }
+            ]
+          }
+        }
+      }
+    ]);
+  });
+
+  it('preserves the nodes reference when cleanup is unnecessary', () => {
+    const nodes = [
+      {
+        toolConfig: {
+          mcpToolSet: {
+            toolList: [{ inputSchema: JSON.stringify({ type: 'object' }) }]
+          }
+        }
+      }
+    ];
+
+    expect(cleanWorkflowToolJsonSchemasForStorage(nodes)).toEqual({
+      nodes,
+      changed: false,
+      convertedSchemaCount: 0
+    });
   });
 });
