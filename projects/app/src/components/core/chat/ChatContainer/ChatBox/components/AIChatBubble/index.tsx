@@ -13,7 +13,8 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import AIChatLoading from '../AIChatLoading';
 import { hasAiProcessingContent, shouldShowNoOutputTip } from './utils';
 import { useTranslation } from 'next-i18next';
-import { ChatGenerateStatusEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatBoxContentMaxWidth } from '../../constants';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
@@ -101,7 +102,7 @@ const AIChatBubble = ({
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
       <Box
         w={'100%'}
-        maxW={'700px'}
+        maxW={ChatBoxContentMaxWidth}
         color={'myGray.900'}
         textAlign={'left'}
         minW={isPlanCard ? ['100%', '50%'] : undefined}

@@ -20,7 +20,7 @@ import { useTranslation } from 'next-i18next';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
-import { Box } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 
@@ -28,12 +28,14 @@ export const useChatTest = ({
   nodes,
   edges,
   chatConfig = {},
-  isReady
+  isReady,
+  boxBodyProps
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
   isReady: boolean;
+  boxBodyProps?: BoxProps;
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
@@ -194,7 +196,7 @@ export const useChatTest = ({
         isReady={isReady}
         sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
         chatId={chatId}
-        boxBodyProps={{ maxW: '100%' }}
+        boxBodyProps={boxBodyProps}
         features={{
           mark: true,
           autoResume: true,

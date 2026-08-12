@@ -3,7 +3,7 @@ import { Box, Flex, type BoxProps } from '@chakra-ui/react';
 import type { RefObject } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { ChatBoxInputFormType } from '../type';
-import type { ChatTypeEnum } from '../constants';
+import { ChatBoxContentMaxWidth, type ChatTypeEnum } from '../constants';
 import WelcomeBox from './WelcomeBox';
 import VariableInputForm from './VariableInputForm';
 import ChatRecordsList, { type ChatRecordsListProps } from './ChatRecordsList';
@@ -51,11 +51,12 @@ const AppChatMain = ({
   chatForm,
   chatType,
   recordsListProps,
-  maxW = ['100%', '92%'],
+  maxW = ['100%', ChatBoxContentMaxWidth],
   boxBodyProps,
   EmptyState
 }: AppChatMainProps) => {
   const visibleWelcomeQuestions = welcomeQuestions.map((text) => text.trim()).filter(Boolean);
+  const hasEmptyState = recordsListProps.records.length === 0 && !!EmptyState;
   // 复用快捷回复的发送通道：它不受 canSendPrompt 限制，开场白阶段的预设问题也能直接发送，
   // 由 sendPrompt 内部校验变量，行为与旧版 welcomeText 内嵌的 quick-replies 一致。
   const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
@@ -81,7 +82,12 @@ const AppChatMain = ({
         display={'flex'}
         flexDirection={'column'}
       >
-        <Box className="chat-box-card" w={'100%'} maxW={['calc(100% - 25px)', '700px']} mx={'auto'}>
+        <Box
+          className="chat-box-card"
+          w={'100%'}
+          maxW={['calc(100% - 25px)', ChatBoxContentMaxWidth]}
+          mx={'auto'}
+        >
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {visibleWelcomeQuestions.length > 0 && (
             <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>
@@ -107,13 +113,17 @@ const AppChatMain = ({
           <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
         </Box>
 
-        <Box mt={visibleWelcomeQuestions.length > 0 && recordsListProps.records.length > 0 ? 4 : 0}>
-          {recordsListProps.records.length === 0 && EmptyState ? (
-            EmptyState
-          ) : (
+        {hasEmptyState ? (
+          <Flex flex={1} alignItems="center" justifyContent="center" textAlign="center">
+            {EmptyState}
+          </Flex>
+        ) : (
+          <Box
+            mt={visibleWelcomeQuestions.length > 0 && recordsListProps.records.length > 0 ? 4 : 0}
+          >
             <ChatRecordsList {...recordsListProps} />
-          )}
-        </Box>
+          </Box>
+        )}
       </Box>
     </ScrollData>
   );
