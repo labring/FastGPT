@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import type { ChatBoxInputFormType } from '../type';
-import { ChatTypeEnum } from '../constants';
+import { ChatBoxContentMaxWidth, ChatTypeEnum } from '../constants';
 
 export type VariableGroups = {
   commonVariableList: VariableItemType[];
@@ -224,7 +224,12 @@ const ChatVariableForm = ({
 
   return showAvatar ? (
     <Box py={showAvatar ? 3 : 0}>
-      <Box className="chat-box-card" w={'100%'} maxW={['calc(100% - 25px)', '700px']} mx={'auto'}>
+      <Box
+        className="chat-box-card"
+        w={'100%'}
+        maxW={['calc(100% - 25px)', ChatBoxContentMaxWidth]}
+        mx={'auto'}
+      >
         <Box textAlign={'left'}>{renderFormCard()}</Box>
       </Box>
     </Box>

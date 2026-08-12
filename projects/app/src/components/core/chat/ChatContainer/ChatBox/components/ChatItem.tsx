@@ -25,6 +25,7 @@ import { hasAiAnswerContent } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
 import { toChatAuthApiTarget } from '@/web/core/chat/utils';
+import { ChatBoxContentMaxWidth } from '../constants';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -305,7 +306,7 @@ const ChatItem = (props: Props) => {
               key={i}
               className="chat-box-card"
               w={'100%'}
-              maxW={boxBodyProps?.maxW ?? (isPc ? '700px' : 'calc(100% - 25px)')}
+              maxW={boxBodyProps?.maxW ?? (isPc ? ChatBoxContentMaxWidth : 'calc(100% - 25px)')}
               mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
               textAlign={styleMap.textAlign}
             >
@@ -326,7 +327,7 @@ const ChatItem = (props: Props) => {
             key={i}
             className="chat-box-card"
             w={'100%'}
-            maxW={boxBodyProps?.maxW ?? (isPc ? '700px' : 'calc(100% - 25px)')}
+            maxW={boxBodyProps?.maxW ?? (isPc ? ChatBoxContentMaxWidth : 'calc(100% - 25px)')}
             mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
             textAlign={styleMap.textAlign}
           >

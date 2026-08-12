@@ -51,7 +51,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
     nodes,
     edges,
     chatConfig: chatConfigForDebug,
-    isReady: isOpen
+    isReady: isOpen,
+    boxBodyProps: { maxW: '100%' }
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);

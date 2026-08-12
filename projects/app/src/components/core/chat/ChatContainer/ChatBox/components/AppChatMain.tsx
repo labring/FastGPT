@@ -3,7 +3,7 @@ import { Box, Flex, type BoxProps } from '@chakra-ui/react';
 import type { RefObject } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { ChatBoxInputFormType } from '../type';
-import type { ChatTypeEnum } from '../constants';
+import { ChatBoxContentMaxWidth, type ChatTypeEnum } from '../constants';
 import WelcomeBox from './WelcomeBox';
 import VariableInputForm from './VariableInputForm';
 import ChatRecordsList, { type ChatRecordsListProps } from './ChatRecordsList';
@@ -51,7 +51,7 @@ const AppChatMain = ({
   chatForm,
   chatType,
   recordsListProps,
-  maxW = ['100%', '92%'],
+  maxW = ['100%', ChatBoxContentMaxWidth],
   boxBodyProps,
   EmptyState
 }: AppChatMainProps) => {
@@ -82,7 +82,12 @@ const AppChatMain = ({
         display={'flex'}
         flexDirection={'column'}
       >
-        <Box className="chat-box-card" w={'100%'} maxW={['calc(100% - 25px)', '700px']} mx={'auto'}>
+        <Box
+          className="chat-box-card"
+          w={'100%'}
+          maxW={['calc(100% - 25px)', ChatBoxContentMaxWidth]}
+          mx={'auto'}
+        >
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {visibleWelcomeQuestions.length > 0 && (
             <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>
