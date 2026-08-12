@@ -16,9 +16,13 @@ export const ToolParamsNode: FlowNodeTemplateType = {
   name: i18nT('workflow:tool_custom_field'),
   intro: i18nT('workflow:intro_tool_params_config'),
   isTool: true,
-  isShowInContext: createShowInContext([
-    { sourceType: FlowNodeTypeEnum.toolCall, handleId: NodeOutputKeyEnum.selectedTools }
-  ]),
+  isShowInContext: (ctx) =>
+    !!ctx &&
+    (ctx.isSidebar
+      ? ctx.hasToolNode
+      : createShowInContext([
+          { sourceType: FlowNodeTypeEnum.toolCall, handleId: NodeOutputKeyEnum.selectedTools }
+        ])(ctx)),
   inputs: [],
   outputs: []
 };

@@ -25,10 +25,8 @@ const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const { edges, setNodes, setEdges, workflowStartNode, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { edges, setNodes, setEdges, workflowStartNode, getNodeById, hasToolNode, hasLoopRunNode } =
+    useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
     WorkflowActionsContext,
@@ -41,9 +39,11 @@ const NodeTemplatesPopover = () => {
         sourceNode: handleParams?.nodeId ? getNodeById(handleParams.nodeId) : undefined,
         edges,
         handleId: handleParams?.handleId,
-        getNodeById
+        getNodeById,
+        hasToolNode,
+        hasLoopRunNode
       }),
-    [handleParams, edges, getNodeById]
+    [handleParams, edges, getNodeById, hasToolNode, hasLoopRunNode]
   );
 
   const {
@@ -62,6 +62,18 @@ const NodeTemplatesPopover = () => {
   } = useNodeTemplates(nodeTemplateContext);
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
+    const isToolHandle = handleParams?.handleId === 'selectedTools';
+    const validNewNodes = newNodes.filter((node) => {
+      if (!isToolHandle && node.data.flowNodeType === FlowNodeTypeEnum.toolSet) return false;
+      if (isToolHandle && !node.data.isTool) return false;
+      return true;
+    });
+
+    if (validNewNodes.length === 0) {
+      setHandleParams(null);
+      return;
+    }
+
     setNodes((state) => {
       const newState = state
         .map((node) => ({
@@ -69,33 +81,14 @@ const NodeTemplatesPopover = () => {
           selected: false
         }))
         // @ts-ignore
-        .concat(newNodes);
+        .concat(validNewNodes);
       return newState;
     });
 
     if (!handleParams) return;
-    const isToolHandle = handleParams?.handleId === 'selectedTools';
 
-    const newEdges = newNodes
-      .filter((node) => {
-        // Exclude nodes that don't meet the conditions
-        // 1. Tool set nodes must be connected through tool handle
-        if (!isToolHandle && node.data.flowNodeType === FlowNodeTypeEnum.toolSet) {
-          return false;
-        }
-
-        // 2. Exclude loop start and end nodes
-        if (isNestedChildSystemNodeType(node.data.flowNodeType)) {
-          return false;
-        }
-
-        // 3. Tool handle can only connect to tool nodes
-        if (isToolHandle && !node.data.isTool) {
-          return false;
-        }
-
-        return true;
-      })
+    const newEdges = validNewNodes
+      .filter((node) => !isNestedChildSystemNodeType(node.data.flowNodeType))
       .map((node) => ({
         id: getNanoid(),
         source: handleParams.nodeId as string,
@@ -112,7 +105,7 @@ const NodeTemplatesPopover = () => {
 
     if (workflowStartNode) {
       const patches = collectWorkflowStartInputAutoFillPatches({
-        nodes: nodes.concat(newNodes),
+        nodes: nodes.concat(validNewNodes),
         edges: edges.concat(newEdges),
         workflowStartNode
       });
@@ -125,7 +118,7 @@ const NodeTemplatesPopover = () => {
     setHandleParams(null);
 
     setTimeout(() => {
-      newNodes.forEach((node) => {
+      validNewNodes.forEach((node) => {
         onRefreshSingleNodeWorkflowCheckIssues(node.data.nodeId);
       });
     }, 0);

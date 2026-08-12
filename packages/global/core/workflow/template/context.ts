@@ -24,7 +24,7 @@ const matchRule = (rule: NodeTemplateContextRule, ctx: NodeTemplateContext): boo
 };
 
 /**
- * 白名单工厂：上下文非空且匹配任一规则时才展示；ctx 为 null（侧边栏）时不展示。
+ * 白名单工厂：上下文存在且匹配任一规则时展示。
  */
 export const createShowInContext = (
   rules: NodeTemplateContextRule[]
@@ -33,7 +33,7 @@ export const createShowInContext = (
 };
 
 /**
- * 黑名单工厂：匹配任一规则时隐藏；ctx 为 null（侧边栏）时正常展示。
+ * 黑名单工厂：匹配任一规则时隐藏；无上下文时展示。
  */
 export const createHideInContext = (
   rules: NodeTemplateContextRule[]
@@ -58,7 +58,10 @@ export const buildNodeTemplateContext = ({
   sourceNode,
   edges,
   handleId,
-  getNodeById
+  getNodeById,
+  isSidebar = false,
+  hasToolNode = false,
+  hasLoopRunNode = false
 }: {
   sourceNode:
     | Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>
@@ -66,18 +69,24 @@ export const buildNodeTemplateContext = ({
   edges: { target: string; targetHandle?: string | null }[];
   handleId?: string | null;
   getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
+  isSidebar?: boolean;
+  hasToolNode?: boolean;
+  hasLoopRunNode?: boolean;
 }): NodeTemplateContext | null => {
-  if (!sourceNode) return null;
-  const parentNode = sourceNode.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
+  if (!sourceNode && !isSidebar) return null;
+  const parentNode = sourceNode?.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
   return {
-    sourceNodeId: sourceNode.nodeId,
-    sourceType: sourceNode.flowNodeType,
-    sourceIsTool: !!sourceNode.isTool,
+    isSidebar,
+    sourceNodeId: sourceNode?.nodeId ?? null,
+    sourceType: sourceNode?.flowNodeType ?? null,
+    sourceIsTool: !!sourceNode?.isTool,
     isConnectedTool: edges.some(
       (edge) =>
-        edge.target === sourceNode.nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+        edge.target === sourceNode?.nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
     ),
     handleId: handleId ?? null,
-    parentType: parentNode?.flowNodeType ?? null
+    parentType: parentNode?.flowNodeType ?? null,
+    hasToolNode,
+    hasLoopRunNode
   };
 };

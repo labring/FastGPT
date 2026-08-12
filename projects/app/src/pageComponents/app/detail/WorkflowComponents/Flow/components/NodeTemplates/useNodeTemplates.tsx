@@ -14,6 +14,8 @@ import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const useNodeTemplates = (context: NodeTemplateContext | null = null) => {
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
@@ -40,6 +42,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
       if (templateType === TemplateTypeEnum.basic) {
         return basicNodeTemplates
           .filter((item) => {
+            if (item.flowNodeType === FlowNodeTypeEnum.queryExtension) return false;
             // unique node filter
             if (item.unique) {
               const nodeExist = getNodeList().some(
@@ -57,7 +60,8 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
             templateType: item.templateType,
             avatar: item.avatar,
             name: item.name,
-            intro: item.intro
+            intro: item.intro,
+            isTool: item.isTool
           }));
       }
     },
@@ -186,10 +190,14 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
 
   const templates = useMemo(() => {
     if (templateType === TemplateTypeEnum.basic) {
-      return basicNodes || [];
+      return (basicNodes || []).filter((item) =>
+        context?.handleId === NodeOutputKeyEnum.selectedTools ? item.isTool === true : true
+      );
     }
-    return teamAndSystemTools || [];
-  }, [basicNodes, teamAndSystemTools, templateType]);
+    return (teamAndSystemTools || []).filter((item) =>
+      context?.handleId === NodeOutputKeyEnum.selectedTools ? item.isTool === true : true
+    );
+  }, [basicNodes, teamAndSystemTools, templateType, context?.handleId]);
 
   return {
     templateType,

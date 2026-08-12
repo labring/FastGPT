@@ -18,12 +18,15 @@ import { UserSelectNode } from '@fastgpt/global/core/workflow/template/system/in
 import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
 const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
+  isSidebar: false,
   sourceNodeId: 'n1',
   sourceType: null,
   sourceIsTool: false,
   isConnectedTool: false,
   handleId: null,
   parentType: null,
+  hasToolNode: false,
+  hasLoopRunNode: false,
   ...patch
 });
 
@@ -57,12 +60,15 @@ describe('template context', () => {
       getNodeById: (id) => (id === 'loop1' ? (loopNode as any) : undefined)
     });
     expect(result).toEqual({
+      isSidebar: false,
       sourceNodeId: 'n1',
       sourceType: FlowNodeTypeEnum.toolParams,
       sourceIsTool: true,
       isConnectedTool: true,
       handleId: 'h',
-      parentType: FlowNodeTypeEnum.loopRun
+      parentType: FlowNodeTypeEnum.loopRun,
+      hasToolNode: false,
+      hasLoopRunNode: false
     });
   });
 
@@ -130,6 +136,19 @@ describe('template context', () => {
     expect(isTemplateVisible(ToolParamsNode, ctx({ sourceType: FlowNodeTypeEnum.toolCall }))).toBe(
       false
     );
+  });
+
+  it('侧边栏按画布状态显示工具参数、工具终止和循环终止', () => {
+    expect(isTemplateVisible(ToolParamsNode, ctx({ isSidebar: true }))).toBe(false);
+    expect(isTemplateVisible(ToolParamsNode, ctx({ isSidebar: true, hasToolNode: true }))).toBe(
+      true
+    );
+    expect(isTemplateVisible(StopToolNode, ctx({ isSidebar: true }))).toBe(false);
+    expect(isTemplateVisible(StopToolNode, ctx({ isSidebar: true, hasToolNode: true }))).toBe(true);
+    expect(isTemplateVisible(LoopRunBreakNode, ctx({ isSidebar: true }))).toBe(false);
+    expect(
+      isTemplateVisible(LoopRunBreakNode, ctx({ isSidebar: true, hasLoopRunNode: true }))
+    ).toBe(true);
   });
 
   it('stopTool 仅在已挂载工具节点（工具子流程）可见', () => {
