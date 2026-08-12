@@ -157,8 +157,7 @@ export const AiChatModule: FlowNodeTemplateType = {
     {
       ...Input_Template_UserChatInput,
       toolDescription: i18nT('workflow:user_question'),
-      isToolParam: true,
-      defaultAgentGenerated: true
+      defaultToAgentGenerated: true
     }
   ],
   outputs: [

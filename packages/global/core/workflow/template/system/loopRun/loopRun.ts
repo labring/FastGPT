@@ -48,6 +48,7 @@ export const LoopRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.loopRunMode,
       renderTypeList: [FlowNodeInputTypeEnum.select],
       valueType: WorkflowIOValueTypeEnum.string,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:loop_run_mode'),
       description: i18nT('workflow:loop_run_mode_tip'),
@@ -71,6 +72,7 @@ export const LoopRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.loopRunInputArray,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayAny,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:loop_run_input_array'),
       value: []
@@ -79,6 +81,7 @@ export const LoopRunNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.loopCustomOutputs,
       renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
       valueType: WorkflowIOValueTypeEnum.dynamic,
+      canAgentGenerated: false,
       label: i18nT('workflow:loop_custom_outputs'),
       description: i18nT('workflow:loop_custom_outputs_tip'),
       required: false,
