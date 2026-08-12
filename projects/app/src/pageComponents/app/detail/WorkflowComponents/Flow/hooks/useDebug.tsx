@@ -17,7 +17,6 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
 import { useTranslation } from 'next-i18next';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -31,11 +30,16 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import {
   checkInputShouldRenderInDebug,
+  debugNodeShouldShowAllInputs,
+  getDebugGlobalVariableFormProps,
   getDebugInputFormProps,
   getDebugInputFormValue,
-  getDebugRuntimeInputs
+  getDebugRuntimeInputs,
+  getWorkflowStartDebugFileInput,
+  getWorkflowStartDebugQuery
 } from './useDebugInput';
 
 const MyRightDrawer = dynamic(
@@ -196,6 +200,7 @@ export const useDebug = () => {
     if (!runtimeNodes || !runtimeEdges) return <></>;
 
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
+    const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
@@ -209,12 +214,19 @@ export const useDebug = () => {
       t: workflowT,
       childrenNodeIdListMap
     });
-    const renderInputs = runtimeNode.inputs.filter((input) => {
-      return checkInputShouldRenderInDebug(input, {
-        showAllInputs: runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput,
-        referenceSourceNodes
-      });
+    const workflowStartFileInput = getWorkflowStartDebugFileInput({
+      flowNodeType: runtimeNode.flowNodeType,
+      fileSelectConfig: appDetail.chatConfig?.fileSelectConfig
     });
+    const renderInputs = [
+      ...runtimeNode.inputs.filter((input) => {
+        return checkInputShouldRenderInDebug(input, {
+          showAllInputs: debugNodeShouldShowAllInputs(runtimeNode.flowNodeType),
+          referenceSourceNodes
+        });
+      }),
+      ...(workflowStartFileInput ? [workflowStartFileInput] : [])
+    ];
 
     const variablesForm = useForm<Record<string, any>>({
       defaultValues: {
@@ -248,7 +260,11 @@ export const useDebug = () => {
             : node
         ),
         runtimeEdges: runtimeEdges,
-        variables: data.variables
+        variables: data.variables,
+        query: getWorkflowStartDebugQuery({
+          flowNodeType: runtimeNode.flowNodeType,
+          nodeVariables: data.nodeVariables
+        })
       });
 
       // Filter global variables and set them as default global variable values
@@ -344,7 +360,7 @@ export const useDebug = () => {
             ))}
             {filteredVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getDebugGlobalVariableFormProps(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -358,7 +374,9 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>{t('common:Run')}</Button>
+          <Button isDisabled={fileUploading} onClick={handleSubmit(onClickRun, onCheckRunError)}>
+            {t('common:Run')}
+          </Button>
         </Flex>
       </MyRightDrawer>
     );

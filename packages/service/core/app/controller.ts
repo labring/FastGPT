@@ -59,9 +59,12 @@ export const beforeUpdateAppFormat = async ({ nodes }: { nodes?: StoreNodeItemTy
   /**
    * 格式化数据集选择值，保存阶段只保留 datasetId，移除编辑态快照字段。
    * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
+   * 未配置的草稿节点按空数组保存，仍由发布/运行前的工作流校验提示必填。
    * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
    */
   const formatDatasetSelectValue = (value: unknown) => {
+    if (value === undefined || value === null) return [];
+
     const datasets = z
       .union([StoredSelectedDatasetSchema, z.array(StoredSelectedDatasetSchema)])
       .parse(value);

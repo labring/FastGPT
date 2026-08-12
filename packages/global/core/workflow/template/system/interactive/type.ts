@@ -155,7 +155,10 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   minLength: z.number().optional(), // password
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
-  list: z.array(z.object({ label: z.string(), value: z.string() })).optional() // select
+  list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
+
+  canLocalUpload: z.boolean().optional(),
+  canUrlUpload: z.boolean().optional()
 });
 export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({

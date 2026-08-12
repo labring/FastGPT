@@ -8,9 +8,34 @@ import {
   variableInputTypeToInputType,
   valueTypeToInputType,
   nodeInputTypeToInputType,
-  secretInputTypeToInputType
+  secretInputTypeToInputType,
+  getFileSelectRenderProps
 } from '@/components/core/app/formRender/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+
+describe('getFileSelectRenderProps', () => {
+  it('applies legacy defaults for ordinary files and local upload', () => {
+    expect(getFileSelectRenderProps({ canSelectImg: true })).toEqual({
+      canSelectImg: true,
+      canSelectFile: true,
+      canLocalUpload: true
+    });
+  });
+
+  it('preserves explicit file and upload restrictions', () => {
+    expect(
+      getFileSelectRenderProps({
+        canSelectFile: false,
+        canLocalUpload: false,
+        canSelectImg: true
+      })
+    ).toEqual({
+      canSelectFile: false,
+      canLocalUpload: false,
+      canSelectImg: true
+    });
+  });
+});
 
 describe('variableInputTypeToInputType', () => {
   it('input + string → input', () => {

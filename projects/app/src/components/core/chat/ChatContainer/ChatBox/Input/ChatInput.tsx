@@ -80,6 +80,7 @@ const ChatInput = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const formFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const inputBodyProps = useContextSelector(ChatBoxContext, (v) => v.inputBodyProps);
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
@@ -139,7 +140,7 @@ const ChatInput = ({
     chatId
   });
   const havInput = !!inputValue || fileList.length > 0;
-  const canSendMessage = havInput && !hasFileUploading && !disableSend;
+  const canSendMessage = havInput && !hasFileUploading && !formFileUploading && !disableSend;
   const canUploadFile =
     showSelectFile ||
     showSelectImg ||
@@ -155,7 +156,8 @@ const ChatInput = ({
     sourceTarget.sourceType === ChatSourceTypeEnum.app &&
     !!sourceTarget.sourceId &&
     !!chatInputGuide.open;
-  const canUseVoiceInput = enableVoiceInput && !!sourceTarget.sourceId && !!whisperConfig?.open;
+  const canUseVoiceInput =
+    enableVoiceInput && !!sourceTarget.sourceId && !!whisperConfig?.open && !formFileUploading;
   const isDefaultInputHeight =
     !mobilePreSpeak && !inputValue && fileList.length === 0 && !canUseInputGuide;
 

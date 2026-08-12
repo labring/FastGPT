@@ -316,6 +316,26 @@ describe('beforeUpdateAppFormat', () => {
     expect(nodes[0].inputs[0].value).toBe(referenceValue);
   });
 
+  it('允许保存尚未选择知识库的工作流草稿', async () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.selectDataset,
+            value: undefined
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    expect(nodes[0].inputs[0].value).toEqual([]);
+  });
+
   it('保存前遇到非法知识库选择项时抛错，避免清空后继续保存', async () => {
     const nodes = [
       {
