@@ -56,6 +56,17 @@ export enum StandardSubLevelEnum {
   enterprise = 'enterprise'
 }
 
+/** 各套餐的审计日志默认配置值；清理任务缺少配置时统一按免费版天数兜底。 */
+export const defaultAuditLogRetentionDays: Record<StandardSubLevelEnum, number> = {
+  [StandardSubLevelEnum.free]: 90,
+  [StandardSubLevelEnum.basic]: 360,
+  [StandardSubLevelEnum.advanced]: 1080,
+  [StandardSubLevelEnum.custom]: 1080,
+  [StandardSubLevelEnum.experience]: 360,
+  [StandardSubLevelEnum.team]: 1080,
+  [StandardSubLevelEnum.enterprise]: 1080
+};
+
 export const standardSubLevelMap = {
   [StandardSubLevelEnum.free]: {
     label: i18nT('common:support.wallet.subscription.standardSubLevel.free'),
