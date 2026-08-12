@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import type { AnyBulkWriteOperation, Model } from '@fastgpt/service/common/mongo';
+import type { Model, Types } from '@fastgpt/service/common/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { cleanWorkflowToolJsonSchemasForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -11,7 +11,7 @@ import z from 'zod';
 
 type WorkflowFieldName = 'modules' | 'nodes';
 type WorkflowDocument = {
-  _id: unknown;
+  _id: Types.ObjectId;
   modules?: unknown;
   nodes?: unknown;
 };
@@ -72,7 +72,7 @@ const migrateCollection = async ({
   let documents: WorkflowDocument[] = [];
 
   const migrateBatch = async () => {
-    const operations: AnyBulkWriteOperation<any>[] = [];
+    const operations: Array<Parameters<typeof model.collection.bulkWrite>[0][number]> = [];
     stats.scannedDocumentCount += documents.length;
 
     for (const document of documents) {
