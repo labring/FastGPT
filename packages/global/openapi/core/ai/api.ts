@@ -16,9 +16,9 @@ import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
  * ============================================================================ */
 
 export const OptimizePromptBodySchema = z.object({
-  originalPrompt: z.string().meta({
+  originalPrompt: z.string().default('').meta({
     example: '你是一个客服助手，请回答用户问题。',
-    description: '需要优化的原始 Prompt'
+    description: '需要优化的原始 Prompt；未传时按空字符串处理'
   }),
   optimizerInput: z.string().meta({
     example: '增强角色约束，并补充清晰的输出格式。',

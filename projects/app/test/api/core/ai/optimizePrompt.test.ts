@@ -7,6 +7,7 @@ vi.unmock('@fastgpt/service/common/response');
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
   createLLMResponse: vi.fn(),
+  formatModelChars2Points: vi.fn(),
   loggerInfo: vi.fn(),
   loggerError: vi.fn()
 }));
@@ -37,7 +38,7 @@ vi.mock('@fastgpt/service/common/logger', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
-  formatModelChars2Points: vi.fn()
+  formatModelChars2Points: mocks.formatModelChars2Points
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
@@ -50,6 +51,42 @@ describe('optimizePrompt SSE error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1' });
+    mocks.formatModelChars2Points.mockReturnValue({ totalPoints: 0, modelName: 'gpt-4o' });
+  });
+
+  it('treats a missing original prompt as an empty string', async () => {
+    mocks.createLLMResponse.mockResolvedValue({
+      usage: { inputTokens: 1, outputTokens: 1 }
+    });
+    const res = {
+      setHeader: vi.fn(),
+      write: vi.fn(),
+      end: vi.fn()
+    };
+
+    await handler(
+      {
+        body: {
+          optimizerInput: 'Create a customer support prompt',
+          model: 'gpt-4o'
+        }
+      } as any,
+      res as any
+    );
+
+    expect(mocks.createLLMResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              role: 'user',
+              content: expect.stringContaining('<OriginalPrompt>\n\n</OriginalPrompt>')
+            })
+          ])
+        })
+      })
+    );
+    expect(res.end).toHaveBeenCalledTimes(1);
   });
 
   it('logs a UserError once at info level and ends the SSE response once', async () => {
