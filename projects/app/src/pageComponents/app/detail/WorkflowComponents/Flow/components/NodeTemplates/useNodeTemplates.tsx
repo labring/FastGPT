@@ -191,11 +191,15 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
   const templates = useMemo(() => {
     if (templateType === TemplateTypeEnum.basic) {
       return (basicNodes || []).filter((item) =>
-        context?.handleId === NodeOutputKeyEnum.selectedTools ? item.isTool === true : true
+        context?.handleId === NodeOutputKeyEnum.selectedTools
+          ? 'isTool' in item && item.isTool === true
+          : true
       );
     }
     return (teamAndSystemTools || []).filter((item) =>
-      context?.handleId === NodeOutputKeyEnum.selectedTools ? item.isTool === true : true
+      context?.handleId === NodeOutputKeyEnum.selectedTools
+        ? 'isTool' in item && item.isTool === true
+        : true
     );
   }, [basicNodes, teamAndSystemTools, templateType, context?.handleId]);
 
