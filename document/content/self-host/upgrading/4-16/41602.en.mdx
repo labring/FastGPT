@@ -13,7 +13,7 @@ This release applies strict schemas when system models are initialized or saved.
 curl -X POST 'https://your-domain/api/admin/dataClean/cleanSystemModelConfigs' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":true,"sampleLimit":20}'
+  -d '{"dryRun":true}'
 ```
 
 After confirming that `invalidSamples` contains no records that require manual correction, run the cleanup:
@@ -22,12 +22,12 @@ After confirming that `invalidSamples` contains no records that require manual c
 curl -X POST 'https://your-domain/api/admin/dataClean/cleanSystemModelConfigs' \
   -H 'Content-Type: application/json' \
   -H 'rootkey: YOUR_ROOT_KEY' \
-  -d '{"dryRun":false,"sampleLimit":20}'
+  -d '{"dryRun":false}'
 ```
 
 The cleanup converts valid numeric strings to numbers, parses serialized `priceTiers` arrays, and removes invalid optional numeric fields. Invalid or missing required numeric fields use system defaults: LLM `maxContext/maxResponse/quoteMaxToken` default to `16000/16000/13000`, Embedding `defaultToken/maxToken` default to `500/3000`, and price fields default to `0`. `functionCall` remains optional, and a missing Embedding `weight` defaults to `0`.
 
-The write operation updates all matching records in one operation and immediately reloads the system model cache. The runtime cache is rebuilt even when no database record needs an update. The endpoint is safe to run repeatedly; a follow-up dry run should report `wouldUpdate` as `0`. Records that still fail the complete current model schema are not written and are listed in `invalidSamples`. `sampleLimit` defaults to `20` and has a maximum of `100`.
+The write operation updates all matching records in one operation and immediately reloads the system model cache. The runtime cache is rebuilt even when no database record needs an update. The endpoint is safe to run repeatedly; a follow-up dry run should report `wouldUpdate` as `0`. Records that still fail the complete current model schema are not written, and all of them are listed in `invalidSamples`.
 
 ## 🚀 New
 

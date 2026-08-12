@@ -176,9 +176,7 @@ describe('runCleanSystemModelConfigs', () => {
       }
     ]);
 
-    await expect(
-      runCleanSystemModelConfigs({ dryRun: true, sampleLimit: 10 })
-    ).resolves.toMatchObject({
+    await expect(runCleanSystemModelConfigs({ dryRun: true })).resolves.toMatchObject({
       dryRun: true,
       scanned: 2,
       invalid: 1,
@@ -191,9 +189,7 @@ describe('runCleanSystemModelConfigs', () => {
       MongoSystemModel.collection.findOne({ model: 'embedding-model' })
     ).resolves.toMatchObject({ metadata: { defaultToken: '500' } });
 
-    await expect(
-      runCleanSystemModelConfigs({ dryRun: false, sampleLimit: 10 })
-    ).resolves.toMatchObject({
+    await expect(runCleanSystemModelConfigs({ dryRun: false })).resolves.toMatchObject({
       dryRun: false,
       invalid: 1,
       updated: 1
@@ -205,13 +201,25 @@ describe('runCleanSystemModelConfigs', () => {
       metadata: { defaultToken: 500, maxToken: 3000, weight: 0 }
     });
 
-    await expect(
-      runCleanSystemModelConfigs({ dryRun: false, sampleLimit: 10 })
-    ).resolves.toMatchObject({
+    await expect(runCleanSystemModelConfigs({ dryRun: false })).resolves.toMatchObject({
       dryRun: false,
       updated: 0
     });
     expect(updatedReloadSystemModel).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns all invalid records without a sample limit', async () => {
+    await MongoSystemModel.collection.insertMany(
+      Array.from({ length: 25 }, (_, index) => ({
+        model: `invalid-model-${index}`,
+        metadata: { ...baseLlmModel, model: `invalid-model-${index}`, type: 'unknown' }
+      }))
+    );
+
+    const result = await runCleanSystemModelConfigs({ dryRun: true });
+
+    expect(result.invalid).toBe(25);
+    expect(result.invalidSamples).toHaveLength(25);
   });
 
   it('uses dry-run defaults at the authenticated API boundary', async () => {

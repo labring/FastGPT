@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
+import { BoolSchema } from '@fastgpt/global/common/zod';
 import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/constants';
 import {
   EmbeddingModelItemSchema,
@@ -19,11 +19,8 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { isDeepStrictEqual } from 'node:util';
 import z from 'zod';
 
-const DEFAULT_SAMPLE_LIMIT = 20;
-
 const CleanSystemModelConfigsBodySchema = z.object({
-  dryRun: BoolSchema.optional().default(true),
-  sampleLimit: IntSchema.max(100).optional().default(DEFAULT_SAMPLE_LIMIT)
+  dryRun: BoolSchema.optional().default(true)
 });
 export type CleanSystemModelConfigsBody = z.infer<typeof CleanSystemModelConfigsBodySchema>;
 
@@ -170,8 +167,7 @@ export const cleanSystemModelConfig = ({
 
 /** 扫描并一次性清洗历史系统模型配置；正式执行后统一重载系统模型缓存。 */
 export const runCleanSystemModelConfigs = async ({
-  dryRun,
-  sampleLimit
+  dryRun
 }: CleanSystemModelConfigsBody): Promise<CleanSystemModelConfigsResponse> => {
   const stats: CleanSystemModelConfigsResponse = {
     dryRun,
@@ -195,12 +191,10 @@ export const runCleanSystemModelConfigs = async ({
 
     if (cleaned.status === 'invalid') {
       stats.invalid += 1;
-      if (stats.invalidSamples.length < sampleLimit) {
-        stats.invalidSamples.push({
-          model: typeof record.model === 'string' ? record.model : String(record._id),
-          issues: cleaned.issues
-        });
-      }
+      stats.invalidSamples.push({
+        model: typeof record.model === 'string' ? record.model : String(record._id),
+        issues: cleaned.issues
+      });
       continue;
     }
     if (!cleaned.changed) {
