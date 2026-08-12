@@ -18,6 +18,7 @@ import { readFromSecondary } from '../../../common/mongo/utils';
 import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
+import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
 const teamPointCache = new TeamPointCache({ logger });
@@ -30,7 +31,10 @@ export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
 };
 export const getStandardPlanConfig = (level: `${StandardSubLevelEnum}`) => {
-  return global.subPlans?.standard?.[level];
+  return getRuntimeStandardPlanConfig({
+    plans: global.subPlans?.standard,
+    level
+  });
 };
 
 export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
@@ -184,14 +188,9 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
 
   const standard = plans[0];
 
-  const standardConstants =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[
-          standard.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standard.currentSubLevel
-        ]
-      : undefined;
+  const standardConstants = standard?.currentSubLevel
+    ? getStandardPlanConfig(standard.currentSubLevel)
+    : undefined;
 
   return {
     [SubTypeEnum.standard]:
@@ -250,11 +249,7 @@ export const getTeamPlanStatus = async ({
   const configuredStandardMaxDatasetSize =
     standardPlan?.currentSubLevel && standardPlans
       ? (standardPlan?.maxDatasetSize ??
-        standardPlans[
-          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standardPlan.currentSubLevel
-        ]?.maxDatasetSize)
+        getStandardPlanConfig(standardPlan.currentSubLevel)?.maxDatasetSize)
       : undefined;
   const standardMaxDatasetSize =
     configuredStandardMaxDatasetSize === undefined
@@ -268,15 +263,9 @@ export const getTeamPlanStatus = async ({
             extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0)
         );
 
-  /** 静态的套餐配置，如果是 custom 则返回 advanced */
-  const standardConstants =
-    standardPlan?.currentSubLevel && standardPlans
-      ? standardPlans[
-          standardPlan.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standardPlan.currentSubLevel
-        ]
-      : undefined;
+  const standardConstants = standardPlan?.currentSubLevel
+    ? getStandardPlanConfig(standardPlan.currentSubLevel)
+    : undefined;
 
   if (totalPoints === null || surplusPoints === null) {
     await teamPointCache.clear(teamId);

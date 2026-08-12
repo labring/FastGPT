@@ -8,6 +8,7 @@ import {
   GetSystemInitDataResponseSchema,
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
+import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
 
 async function handler(
   req: ApiRequestProps,
@@ -17,6 +18,7 @@ async function handler(
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
+  const subPlans = getRuntimeSubPlansConfig(global.subPlans);
 
   const response = await (async () => {
     try {
@@ -33,7 +35,7 @@ async function handler(
       return {
         bufferId: global.systemInitBufferId,
         feConfigs: global.feConfigs,
-        subPlans: global.subPlans,
+        subPlans,
         systemVersion: global.systemVersion,
         activeModelList: global.systemActiveDesensitizedModels,
         defaultModels: global.systemDefaultModel,
@@ -45,7 +47,7 @@ async function handler(
       if (referer?.includes('/price')) {
         return {
           feConfigs: global.feConfigs,
-          subPlans: global.subPlans,
+          subPlans,
           modelProviders: global.ModelProviderRawCache,
           aiproxyChannels: global.aiproxyChannelsCache,
           activeModelList: global.systemActiveDesensitizedModels

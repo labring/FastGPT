@@ -18,8 +18,8 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
-  it('accepts legacy partial standard plans and coerces a serialized activity expiration date', () => {
-    const activityExpirationTime = '2026-08-31T16:00:00.000Z';
+  it('accepts legacy partial standard plans with a stored activity expiration date', () => {
+    const activityExpirationTime = new Date('2026-08-31T16:00:00.000Z');
     const plan = {
       price: 0,
       totalPoints: 100,
@@ -36,7 +36,10 @@ describe('system initialization OpenAPI contract', () => {
           [StandardSubLevelEnum.free]: plan,
           [StandardSubLevelEnum.basic]: plan,
           [StandardSubLevelEnum.advanced]: plan,
-          [StandardSubLevelEnum.custom]: plan
+          [StandardSubLevelEnum.custom]: {
+            name: 'Custom Plan',
+            customFormUrl: 'https://example.com/contact'
+          }
         },
         activityExpirationTime
       }
@@ -46,23 +49,38 @@ describe('system initialization OpenAPI contract', () => {
       [StandardSubLevelEnum.free]: plan,
       [StandardSubLevelEnum.basic]: plan,
       [StandardSubLevelEnum.advanced]: plan,
-      [StandardSubLevelEnum.custom]: plan
+      [StandardSubLevelEnum.custom]: {
+        name: 'Custom Plan',
+        customFormUrl: 'https://example.com/contact'
+      }
     });
     expect(result.subPlans?.activityExpirationTime).toEqual(new Date(activityExpirationTime));
   });
 
-  it.each(['', null])('treats an empty activity expiration value as unset', (value) => {
-    expect(
-      GetSystemInitDataResponseSchema.parse({
-        subPlans: { activityExpirationTime: value }
-      })
-    ).toEqual({ subPlans: {} });
-  });
+  it.each(['', null, '2026-08-31T16:00:00.000Z'])(
+    'rejects a non-Date activity expiration value at read time',
+    (value) => {
+      expect(() =>
+        GetSystemInitDataResponseSchema.parse({
+          subPlans: { activityExpirationTime: value }
+        })
+      ).toThrow();
+    }
+  );
 
-  it('rejects an invalid activity expiration date', () => {
+  it('rejects dirty subscription values at read time', () => {
     expect(() =>
       GetSystemInitDataResponseSchema.parse({
-        subPlans: { activityExpirationTime: 'invalid-date' }
+        subPlans: {
+          standard: {
+            [StandardSubLevelEnum.custom]: {
+              priceDesc: '定制化计费',
+              customDescriptions: ['专属客户经理'],
+              customFormUrl: 'https://example.com/contact'
+            }
+          },
+          extraDatasetSize: { price: '4' }
+        }
       })
     ).toThrow();
   });

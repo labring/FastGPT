@@ -56,7 +56,7 @@ export enum StandardSubLevelEnum {
   enterprise = 'enterprise'
 }
 
-/** 各套餐的审计日志默认配置值；清理任务缺少配置时统一按免费版天数兜底。 */
+/** 各套餐等级的审计日志默认保留天数。 */
 export const defaultAuditLogRetentionDays: Record<StandardSubLevelEnum, number> = {
   [StandardSubLevelEnum.free]: 90,
   [StandardSubLevelEnum.basic]: 360,

@@ -219,25 +219,44 @@ describe('getStandardPlanConfig', () => {
     expect(result).toBe(mockAdvancedPlan);
   });
 
-  it('返回 custom 级别配置', () => {
-    const mockCustomPlan: TeamStandardSubPlanItemType = {
-      price: 999,
-      totalPoints: 50000,
+  it('custom 级别缺失字段时继承 advanced，并保留自身覆盖字段', () => {
+    const mockAdvancedPlan: TeamStandardSubPlanItemType = {
+      ...baseConstants,
+      name: 'Advanced Plan',
+      totalPoints: 25000,
+      maxTeamMember: 50
+    };
+    const mockCustomPlan = {
+      name: 'Custom Plan',
+      customFormUrl: 'https://example.com/contact',
       maxTeamMember: 200,
-      maxAppAmount: 1000,
-      maxDatasetAmount: 500,
-      chatHistoryStoreDuration: 365,
-      maxDatasetSize: 2000
+      maxDatasetSize: undefined
     };
 
     (global as any).subPlans = {
       standard: {
+        [StandardSubLevelEnum.advanced]: mockAdvancedPlan,
         [StandardSubLevelEnum.custom]: mockCustomPlan
       }
     };
 
     const result = getStandardPlanConfig(StandardSubLevelEnum.custom);
-    expect(result).toBe(mockCustomPlan);
+    expect(result).toEqual({
+      ...mockAdvancedPlan,
+      name: mockCustomPlan.name,
+      customFormUrl: mockCustomPlan.customFormUrl,
+      maxTeamMember: mockCustomPlan.maxTeamMember
+    });
+  });
+
+  it('缺少 advanced 配置时不构造 custom 运行时套餐', () => {
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.custom]: { customFormUrl: 'https://example.com/contact' }
+      }
+    };
+
+    expect(getStandardPlanConfig(StandardSubLevelEnum.custom)).toBeUndefined();
   });
 
   it('global.subPlans 不存在时返回 undefined', () => {
