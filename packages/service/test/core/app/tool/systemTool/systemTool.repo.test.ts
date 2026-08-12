@@ -341,7 +341,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
         internal: {
           type: 'string',
           title: 'Internal',
-          description: '',
+          description: 'Internal',
           default: 'internal default',
           'x-fastgpt-node-input': {
             valueType: WorkflowIOValueTypeEnum.string,

@@ -91,7 +91,7 @@ describe('compileToolRuntime', () => {
     expect(compiled.modelTool.function.parameters).toEqual({
       type: 'object',
       properties: {
-        var_ref2: { type: 'string', description: '' }
+        var_ref2: { type: 'string', description: 'var_ref2' }
       }
     });
     expect(compiled.agentGeneratedKeys).toEqual(['var_ref2']);
@@ -198,7 +198,7 @@ describe('compileToolRuntime', () => {
     expect(compiled.modelTool.function.parameters).toEqual({
       type: 'object',
       properties: {
-        query: { type: 'string', description: '' }
+        query: { type: 'string', description: 'Query' }
       }
     });
     expect(compiled.fixedInputBindings).toEqual({ limit: 5 });
