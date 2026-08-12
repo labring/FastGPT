@@ -46,6 +46,7 @@ describe('splitToolInputsByMode', () => {
     const input = {
       key: 'query',
       label: 'query',
+      canEdit: true,
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
     };
 
