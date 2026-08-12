@@ -947,7 +947,7 @@ describe('nodeInputs2JsonSchema', () => {
 
     expect(result.properties).toEqual({
       query: { type: 'string' },
-      schemaOnly: { type: 'string', isToolParam: true }
+      schemaOnly: { type: 'string' }
     });
     expect(result.required).toEqual(['query', 'schemaOnly']);
   });
