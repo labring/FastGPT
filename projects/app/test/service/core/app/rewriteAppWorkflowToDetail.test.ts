@@ -257,7 +257,12 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
     expect(nodes[0].inputs[0]).toMatchObject({
       value: 'saved-value',
       defaultValue: 'fallback',
-      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+      canAgentGenerated: true,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.input
+      ],
       selectedType: FlowNodeInputTypeEnum.reference
     });
     expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
