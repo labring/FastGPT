@@ -10,6 +10,7 @@ import {
   getModuleInputUiField,
   pluginData2FlowNodeIO,
   appData2FlowNodeIO,
+  projectExternalVariableInput,
   toolData2FlowNodeIO,
   toolSetData2FlowNodeIO,
   formatEditorVariablePickerIcon,
@@ -68,6 +69,95 @@ describe('getHandleId', () => {
   it('should handle empty strings', () => {
     const result = getHandleId('', 'source', '');
     expect(result).toBe('-source-');
+  });
+});
+
+describe('projectExternalVariableInput', () => {
+  it.each([
+    [WorkflowIOValueTypeEnum.string, FlowNodeInputTypeEnum.input],
+    [WorkflowIOValueTypeEnum.number, FlowNodeInputTypeEnum.numberInput],
+    [WorkflowIOValueTypeEnum.boolean, FlowNodeInputTypeEnum.switch],
+    [WorkflowIOValueTypeEnum.object, FlowNodeInputTypeEnum.JSONEditor],
+    [WorkflowIOValueTypeEnum.arrayString, FlowNodeInputTypeEnum.JSONEditor],
+    [WorkflowIOValueTypeEnum.any, FlowNodeInputTypeEnum.JSONEditor]
+  ])('should project %s external variables to a reference and manual input', (valueType, type) => {
+    const result = projectExternalVariableInput({
+      key: 'externalVariable',
+      label: 'External variable',
+      valueType,
+      renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+      selectedType: FlowNodeInputTypeEnum.customVariable,
+      selectedTypeIndex: 0,
+      defaultValue: 'default-value'
+    });
+
+    expect(result).toMatchObject({
+      canAgentGenerated: [
+        WorkflowIOValueTypeEnum.string,
+        WorkflowIOValueTypeEnum.number,
+        WorkflowIOValueTypeEnum.boolean
+      ].includes(valueType),
+      renderTypeList: [
+        ...([
+          WorkflowIOValueTypeEnum.string,
+          WorkflowIOValueTypeEnum.number,
+          WorkflowIOValueTypeEnum.boolean
+        ].includes(valueType)
+          ? [FlowNodeInputTypeEnum.agentGenerated]
+          : []),
+        FlowNodeInputTypeEnum.reference,
+        type
+      ],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      defaultValue: 'default-value'
+    });
+    expect(result).not.toHaveProperty('selectedTypeIndex');
+  });
+
+  it('should leave regular inputs unchanged', () => {
+    const input: FlowNodeInputItemType = {
+      key: 'query',
+      label: 'Query',
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+    };
+
+    expect(projectExternalVariableInput(input)).toBe(input);
+  });
+
+  it('should allow AI generation for primitive external variables', () => {
+    const result = projectExternalVariableInput({
+      key: 'externalVariable',
+      label: 'External variable',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.customVariable],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+
+    expect(result).toMatchObject({
+      canAgentGenerated: true,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.input
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+  });
+
+  it('should keep complex external variables manual-only', () => {
+    const result = projectExternalVariableInput({
+      key: 'externalVariable',
+      label: 'External variable',
+      valueType: WorkflowIOValueTypeEnum.object,
+      renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+      selectedType: FlowNodeInputTypeEnum.customVariable
+    });
+
+    expect(result).toMatchObject({
+      canAgentGenerated: false,
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+      selectedType: FlowNodeInputTypeEnum.reference
+    });
   });
 });
 
@@ -589,7 +679,7 @@ describe('pluginData2FlowNodeIO', () => {
     expect(result.outputs[0].type).toBe(FlowNodeOutputTypeEnum.static);
   });
 
-  it('should convert customVariable renderType to reference and input', () => {
+  it('should convert customVariable renderType and legacy selection to reference and input', () => {
     const nodes: StoreNodeItemType[] = [
       {
         nodeId: 'pluginInput1',
@@ -600,7 +690,9 @@ describe('pluginData2FlowNodeIO', () => {
             key: 'customVar',
             label: 'Custom Variable',
             valueType: WorkflowIOValueTypeEnum.string,
-            renderTypeList: [FlowNodeInputTypeEnum.customVariable]
+            renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+            selectedType: FlowNodeInputTypeEnum.customVariable,
+            selectedTypeIndex: 0
           }
         ],
         outputs: []
@@ -609,9 +701,12 @@ describe('pluginData2FlowNodeIO', () => {
     const result = pluginData2FlowNodeIO({ nodes });
     const customVarInput = result.inputs.find((i) => i.key === 'customVar');
     expect(customVarInput?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
       FlowNodeInputTypeEnum.reference,
       FlowNodeInputTypeEnum.input
     ]);
+    expect(customVarInput?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(customVarInput).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('should set canEdit to false for all inputs', () => {
@@ -691,7 +786,7 @@ describe('appData2FlowNodeIO', () => {
     });
   });
 
-  it('should keep external variables as non-configurable dynamic inputs', () => {
+  it('should project external variables to configurable parent workflow inputs', () => {
     const result = appData2FlowNodeIO({
       chatConfig: {
         variables: [
@@ -708,7 +803,11 @@ describe('appData2FlowNodeIO', () => {
     });
 
     expect(result.inputs.find((input) => input.key === 'externalToken')).toMatchObject({
-      renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.input
+      ],
       defaultValue: 'fallback-token',
       value: 'fallback-token'
     });

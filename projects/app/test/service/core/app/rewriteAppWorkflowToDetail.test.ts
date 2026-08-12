@@ -202,6 +202,67 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
     expect(nodes[0].inputs[1]).not.toHaveProperty('selectedTypeIndex');
   });
 
+  it('将已有节点保存的外部变量类型投影为父工作流可配置输入', async () => {
+    const toolAppId = '507f1f77bcf86cd799439011';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      pluginId: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
+      name: 'Workflow tool',
+      avatar: '',
+      intro: '',
+      inputs: [
+        {
+          key: 'externalVariable',
+          label: 'External variable',
+          valueType: WorkflowIOValueTypeEnum.string,
+          defaultValue: 'fallback',
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+          selectedType: FlowNodeInputTypeEnum.reference
+        }
+      ],
+      outputs: [],
+      version: '',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+    const nodes = [
+      {
+        nodeId: 'workflow-tool',
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        pluginId: toolAppId,
+        version: '',
+        inputs: [
+          {
+            key: 'externalVariable',
+            label: 'External variable',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: 'saved-value',
+            renderTypeList: [FlowNodeInputTypeEnum.customVariable],
+            selectedType: FlowNodeInputTypeEnum.customVariable,
+            selectedTypeIndex: 0
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      value: 'saved-value',
+      defaultValue: 'fallback',
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+      selectedType: FlowNodeInputTypeEnum.reference
+    });
+    expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
+  });
+
   it('保留固定版本旧系统工具的 toolDescription AI 参数兼容', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'systemTool-bocha',

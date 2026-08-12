@@ -41,7 +41,8 @@ import {
   pluginData2FlowNodeIO,
   toolSetData2FlowNodeIO,
   toolData2FlowNodeIO,
-  appData2FlowNodeIO
+  appData2FlowNodeIO,
+  projectExternalVariableInput
 } from '@fastgpt/global/core/workflow/utils';
 import { Types } from 'mongoose';
 import { getMCPChildren } from '../../mcp';
@@ -154,6 +155,7 @@ export async function getClientSystemToolPreviewNode({
     schemaType: 'systemTool'
   });
   const schemaOutputs = jsonSchema2NodeOutput({ jsonSchema: toolDetail.outputSchema });
+  const isWorkflowTool = !!toolDetail.associatedPluginId;
 
   const inputs = [
     ...(secrets?.length
@@ -166,9 +168,8 @@ export async function getClientSystemToolPreviewNode({
           }
         ]
       : []),
-    ...schemaInputs
+    ...(isWorkflowTool ? schemaInputs.map(projectExternalVariableInput) : schemaInputs)
   ];
-  const isWorkflowTool = !!toolDetail.associatedPluginId;
   const toolConfigSource = isDebugToolSource(toolSource) ? toolSource : undefined;
 
   return {

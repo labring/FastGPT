@@ -36,7 +36,8 @@ import {
   filterToolConfiguredParams,
   getToolConfigStatus,
   initAgentToolInputType,
-  initToolInputsTypeByDefaultMode
+  initToolInputsTypeByDefaultMode,
+  validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
@@ -45,6 +46,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import {
   appData2FlowNodeIO,
   pluginData2FlowNodeIO,
+  projectExternalVariableInput,
   toolData2FlowNodeIO
 } from '@fastgpt/global/core/workflow/utils';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
@@ -150,7 +152,7 @@ export const getAgentRuntimeTools = async ({
             } satisfies FlowNodeInputItemType
           ]
         : []),
-      ...schemaInputs
+      ...(isWorkflowTool ? schemaInputs.map(projectExternalVariableInput) : schemaInputs)
     ];
 
     return {
@@ -533,6 +535,18 @@ export const getAgentRuntimeTools = async ({
           )
         ]);
         const authApp = authResult?.app;
+        if (
+          !validateToolConfiguration({
+            toolTemplate: toolNode,
+            isAppTool: true
+          })
+        ) {
+          getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Agent] tool has unsupported inputs`, {
+            toolId: tool.id,
+            toolName: toolNode.name
+          });
+          return [];
+        }
         if (tool.toolConfig) {
           toolNode.toolConfig = tool.toolConfig;
         }

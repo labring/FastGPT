@@ -4,7 +4,10 @@ import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/co
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  nodeInputIsReference,
+  projectExternalVariableInput
+} from '@fastgpt/global/core/workflow/utils';
 import {
   initAgentToolInputType,
   normalizeLegacyWorkflowHttpToolInputsDefaultMode,
@@ -165,10 +168,10 @@ export async function rewriteAppWorkflowToDetail({
       { deferDefaultSelection: true }
     );
 
-    return {
+    return projectExternalVariableInput({
       ...normalizedInput,
       value: hasSavedValue ? savedInput.value : normalizedInput.value
-    };
+    });
   };
   const formatSelectedDatasetValue = async (
     value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot

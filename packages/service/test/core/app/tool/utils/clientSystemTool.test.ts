@@ -184,6 +184,60 @@ describe('getClientSystemToolPreviewNode', () => {
     });
   });
 
+  it('projects workflow tool external variables to configurable parent inputs', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-workflow',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      associatedPluginId: 'workflow-app',
+      avatar: 'workflow.svg',
+      name: 'Workflow tool',
+      intro: 'Workflow tool',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Workflow tool',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          externalVariable: {
+            type: 'string',
+            title: 'External variable',
+            default: 'fallback',
+            'x-fastgpt-node-input': {
+              valueType: 'string',
+              defaultValue: 'fallback',
+              renderTypeList: ['customVariable'],
+              selectedType: 'customVariable',
+              selectedTypeIndex: 0
+            }
+          }
+        }
+      }
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-workflow',
+      versionId: '1.0.0',
+      lang: 'en'
+    });
+
+    const input = result.inputs.find((item) => item.key === 'externalVariable');
+    expect(input).toMatchObject({
+      valueType: 'string',
+      defaultValue: 'fallback',
+      canAgentGenerated: true,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, 'reference', 'input'],
+      selectedType: 'reference'
+    });
+    expect(input).not.toHaveProperty('selectedTypeIndex');
+  });
+
   it('returns latest version id when requested explicitly', async () => {
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-weather',

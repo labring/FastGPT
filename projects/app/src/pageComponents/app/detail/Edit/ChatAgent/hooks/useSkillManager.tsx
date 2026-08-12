@@ -309,7 +309,10 @@ export const useSkillManager = ({
       // Check tool exists, if exists, not update/add tool
       const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
       if (existsTool) {
-        const skill = toSkillLabelItem(existsTool, getToolConfigStatus({ tool: existsTool }).status);
+        const skill = toSkillLabelItem(
+          existsTool,
+          getToolConfigStatus({ tool: existsTool }).status
+        );
 
         return {
           id: skill.id,
@@ -365,7 +368,8 @@ export const useSkillManager = ({
 
       const toolValid = validateToolConfiguration({
         toolTemplate,
-        canUploadFile
+        canUploadFile,
+        isAppTool: true
       });
       if (!toolValid) {
         toast({

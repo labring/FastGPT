@@ -50,7 +50,7 @@ describe('validateToolConfiguration', () => {
   describe('valid configurations', () => {
     it('should return true for empty inputs', () => {
       const toolTemplate = createMockToolTemplate([]);
-      const result = validateToolConfiguration({ toolTemplate });
+      const result = validateToolConfiguration({ toolTemplate, isAppTool: true });
       expect(result).toBe(true);
     });
 
@@ -101,7 +101,7 @@ describe('validateToolConfiguration', () => {
       const toolTemplate = createMockToolTemplate([
         createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
       ]);
-      const result = validateToolConfiguration({ toolTemplate });
+      const result = validateToolConfiguration({ toolTemplate, isAppTool: true });
       expect(result).toBe(false);
     });
 
@@ -109,7 +109,11 @@ describe('validateToolConfiguration', () => {
       const toolTemplate = createMockToolTemplate([
         createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
       ]);
-      const result = validateToolConfiguration({ toolTemplate, canUploadFile: false });
+      const result = validateToolConfiguration({
+        toolTemplate,
+        canUploadFile: false,
+        isAppTool: true
+      });
       expect(result).toBe(false);
     });
 
@@ -118,7 +122,11 @@ describe('validateToolConfiguration', () => {
         createMockInput({ key: 'file1', renderTypeList: [FlowNodeInputTypeEnum.fileSelect] }),
         createMockInput({ key: 'file2', renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
       ]);
-      const result = validateToolConfiguration({ toolTemplate, canUploadFile: true });
+      const result = validateToolConfiguration({
+        toolTemplate,
+        canUploadFile: true,
+        isAppTool: true
+      });
       expect(result).toBe(false);
     });
 
@@ -135,7 +143,7 @@ describe('validateToolConfiguration', () => {
         createMockInput({ renderTypeList: [renderType] })
       ]);
 
-      expect(validateToolConfiguration({ toolTemplate })).toBe(false);
+      expect(validateToolConfiguration({ toolTemplate, isAppTool: true })).toBe(false);
     });
 
     it('should return false for fileSelect input type (always invalid as special type)', () => {
@@ -143,7 +151,11 @@ describe('validateToolConfiguration', () => {
         createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
       ]);
       // fileSelect is in the special input types list, so it's always invalid
-      const result = validateToolConfiguration({ toolTemplate, canUploadFile: true });
+      const result = validateToolConfiguration({
+        toolTemplate,
+        canUploadFile: true,
+        isAppTool: true
+      });
       expect(result).toBe(false);
     });
 
@@ -157,7 +169,7 @@ describe('validateToolConfiguration', () => {
         })
       ]);
 
-      expect(validateToolConfiguration({ toolTemplate })).toBe(false);
+      expect(validateToolConfiguration({ toolTemplate, isAppTool: true })).toBe(false);
     });
 
     it('should allow workflow apps with hidden or unsupported inputs to use their defaults', () => {
@@ -177,6 +189,39 @@ describe('validateToolConfiguration', () => {
 
       expect(validateToolConfiguration({ toolTemplate })).toBe(true);
     });
+
+    it('should reject special inputs for Agent tools even when the workflow app can use defaults', () => {
+      const toolTemplate = createMockToolTemplate([
+        createMockInput({
+          key: 'dataset',
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+          defaultValue: []
+        })
+      ]);
+      toolTemplate.flowNodeType = FlowNodeTypeEnum.appModule;
+
+      expect(validateToolConfiguration({ toolTemplate, isAppTool: true })).toBe(false);
+    });
+
+    it('should allow projected external variables with supported manual inputs for Agent tools', () => {
+      const toolTemplate = createMockToolTemplate([
+        createMockInput({
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input]
+        })
+      ]);
+
+      expect(validateToolConfiguration({ toolTemplate, isAppTool: true })).toBe(true);
+    });
+
+    it('should allow special inputs in workflow tool nodes', () => {
+      const toolTemplate = createMockToolTemplate([
+        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel] }),
+        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.selectDataset] }),
+        createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.fileSelect] })
+      ]);
+
+      expect(validateToolConfiguration({ toolTemplate })).toBe(true);
+    });
   });
 
   describe('edge cases', () => {
@@ -186,7 +231,7 @@ describe('validateToolConfiguration', () => {
         createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.selectDataset] }),
         createMockInput({ renderTypeList: [FlowNodeInputTypeEnum.textarea] })
       ]);
-      const result = validateToolConfiguration({ toolTemplate });
+      const result = validateToolConfiguration({ toolTemplate, isAppTool: true });
       expect(result).toBe(false);
     });
 
@@ -1058,6 +1103,17 @@ describe('agent generated tool input helpers', () => {
         })
       )
     ).toBe(true);
+  });
+
+  it('should respect an explicit AI generation denial', () => {
+    expect(
+      canInputBeAgentGenerated(
+        createMockInput({
+          canAgentGenerated: false,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+        })
+      )
+    ).toBe(false);
   });
 
   it('should identify reference-only inputs as agent-only configuration', () => {
