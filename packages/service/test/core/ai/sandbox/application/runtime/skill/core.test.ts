@@ -254,16 +254,20 @@ description: Zeta skill
       expect(unzipCommands[0]).toContain(`unzip -o -q '${zipPath}'`);
     }
     expect(sandbox.deleteFiles).toHaveBeenCalledWith(writtenFilePaths);
-    expect(sandbox.moveFiles).toHaveBeenCalledWith([
-      expect.objectContaining({
-        source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
-        destination: skill1TargetDir
-      }),
-      expect.objectContaining({
-        source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`),
-        destination: skill2TargetDir
-      })
-    ]);
+    const [moveEntries] = sandbox.moveFiles.mock.calls[0];
+    expect(moveEntries).toHaveLength(2);
+    expect(moveEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
+          destination: skill1TargetDir
+        }),
+        expect.objectContaining({
+          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`),
+          destination: skill2TargetDir
+        })
+      ])
+    );
 
     const findSkillCommands = sandbox.execute.mock.calls
       .map(([command]) => command)

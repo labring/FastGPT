@@ -23,6 +23,7 @@
     "test:global": "turbo run test --filter=@fastgpt/global",
     "test:service": "turbo run test --filter=@fastgpt/service",
     "test:service:integration": "turbo run test:integration --filter=@fastgpt/service",
+    "test:service:integration:sandbox": "pnpm --dir packages/service test:integration:sandbox",
     "test:vector": "turbo run test:integration --filter=@fastgpt/service",
     "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build"
   },
