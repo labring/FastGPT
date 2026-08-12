@@ -18,6 +18,7 @@ import {
 import { i18nT } from '../../../../../common/i18n/utils';
 import { PluginStatusEnum } from '../../../../plugin/type';
 
+/** @deprecated Retained for existing workflow compatibility; hidden from new-node templates. */
 export const AiQueryExtension: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.queryExtension,
   templateType: FlowNodeTemplateTypeEnum.other,
