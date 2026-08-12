@@ -72,6 +72,19 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
   systemKeyCost?: number;
 };
 
+/** 为隔离 source 生成独立且可读的模型工具 ID，避免同 pluginId 在 Agent runtime 中互相覆盖。 */
+const getAgentRuntimeToolId = ({ pluginId, source }: { pluginId: string; source?: string }) => {
+  const normalizedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const sourcePrefix = (() => {
+    if (isTeamPluginSource(source)) return 'systemTool-team-';
+    if (isDebugToolSource(source)) return 'systemTool-debug-';
+  })();
+  if (!sourcePrefix) return normalizedPluginId;
+
+  const rawPluginId = normalizedPluginId.replace(/^systemTool-/, '');
+  return `${sourcePrefix}${rawPluginId.slice(0, 64 - sourcePrefix.length)}`;
+};
+
 /**
  * 将 Agent 选择的工具配置转换成 LLM function calling 与 runtime 执行共用的工具描述。
  *
@@ -654,6 +667,7 @@ export const getAgentRuntimeTools = async ({
           name: toolNode.name
         };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
+          const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const inputs = initToolInputsTypeByDefaultMode(
             child.inputs.map((input) => ({
               ...input,
@@ -662,7 +676,7 @@ export const getAgentRuntimeTools = async ({
             { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
           );
           const compiledRuntime = compileRuntimeTool({
-            toolId: id,
+            toolId: runtimeId,
             inputs,
             name: child.name,
             toolDescription: child.toolDescription,
@@ -673,7 +687,7 @@ export const getAgentRuntimeTools = async ({
 
           return {
             type: 'tool',
-            id,
+            id: runtimeId,
             name: child.name,
             avatar: child.avatar,
             // MCP/HTTP 子工具节点默认 version 为空；固定版本由父工具集决定。
@@ -746,13 +760,13 @@ export const getAgentRuntimeTools = async ({
 
           return [];
         } else {
-          // OpenAI function name 不能包含斜杠等字符，runtime map 也使用同一份清洗后的 id。
-          const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+          // 模型 schema、runtime map 和 dispatch 共用 source-aware ID。
+          const runtimeToolId = getAgentRuntimeToolId({ pluginId, source: runtimeSource });
           const inputs = initToolInputsTypeByDefaultMode(toolNode.inputs, {
             allowUserChatInputAgentGenerated: true
           });
           const compiledRuntime = compileRuntimeTool({
-            toolId: cleanedPluginId,
+            toolId: runtimeToolId,
             inputs,
             name: toolNode.name,
             toolDescription: toolNode.toolDescription,
@@ -764,7 +778,7 @@ export const getAgentRuntimeTools = async ({
           return [
             {
               type: toolType,
-              id: cleanedPluginId,
+              id: runtimeToolId,
               name: toolNode.name,
               avatar: toolNode.avatar,
               version: toolNode.version,

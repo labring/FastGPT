@@ -97,7 +97,7 @@ export const useSkillManager = ({
 }: {
   selectedTools: SelectedToolItemType[];
   selectedAgentSkills?: SelectedAgentSkillItemType[];
-  onDeleteTool: (id: string) => void;
+  onDeleteTool: (id: string, source?: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
   onAddAgentSkill?: (skill: SelectedAgentSkillItemType) => boolean;
   canUploadFile: boolean;

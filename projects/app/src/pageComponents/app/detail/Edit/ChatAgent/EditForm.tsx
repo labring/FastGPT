@@ -97,15 +97,22 @@ const EditForm = ({
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
     selectedTools: appForm.selectedTools,
     selectedAgentSkills,
-    onDeleteTool: (id) => {
+    onDeleteTool: (id, source) => {
       setAppForm((state) => ({
         ...state,
-        selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+        selectedTools:
+          state.selectedTools?.filter(
+            (item) =>
+              getToolIdentityKey(item.pluginId, item.source) !== getToolIdentityKey(id, source)
+          ) || []
       }));
     },
     onUpdateOrAddTool: (tool) => {
       setAppForm((state) => {
-        const index = state.selectedTools.findIndex((item) => item.pluginId === tool.pluginId);
+        const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
+        const index = state.selectedTools.findIndex(
+          (item) => getToolIdentityKey(item.pluginId, item.source) === toolKey
+        );
 
         if (index === -1) {
           return {
@@ -116,8 +123,9 @@ const EditForm = ({
           return {
             ...state,
             selectedTools:
-              state.selectedTools?.map((item) => (item.pluginId === tool.pluginId ? tool : item)) ||
-              []
+              state.selectedTools?.map((item) =>
+                getToolIdentityKey(item.pluginId, item.source) === toolKey ? tool : item
+              ) || []
           };
         }
       });
@@ -449,11 +457,13 @@ const EditForm = ({
               }));
             }}
             onUpdateTool={(e) => {
+              const toolKey = getToolIdentityKey(e.pluginId, e.source);
               setAppForm((state) => ({
                 ...state,
                 selectedTools:
-                  state.selectedTools?.map((item) => (item.pluginId === e.pluginId ? e : item)) ||
-                  []
+                  state.selectedTools?.map((item) =>
+                    getToolIdentityKey(item.pluginId, item.source) === toolKey ? e : item
+                  ) || []
               }));
             }}
             onRemoveTool={(id, source) => {

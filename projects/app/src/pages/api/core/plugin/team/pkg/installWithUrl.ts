@@ -44,18 +44,28 @@ async function handler(
   const installResult = await pluginClient.installPlugins(downloadUrls, {
     source: getTeamPluginSource(teamId)
   });
-  const failed = (installResult as any)?.failed;
-  if (Array.isArray(failed) && failed.length > 0) {
-    return Promise.reject(JSON.stringify(failed));
-  }
-  await assertTeamPluginSourceReady({
-    teamId,
-    tools: plugins
+  const failed = installResult.failed ?? [];
+  const failedUrlCount = failed.reduce((map, item) => {
+    map.set(item.url, (map.get(item.url) ?? 0) + 1);
+    return map;
+  }, new Map<string, number>());
+  const installedPluginEntries = plugins.flatMap((plugin, index) => {
+    const downloadUrl = downloadUrls[index];
+    const failedCount = failedUrlCount.get(downloadUrl) ?? 0;
+    if (failedCount === 0) return [{ plugin, downloadUrl }];
+
+    failedUrlCount.set(downloadUrl, failedCount - 1);
+    return [];
   });
 
   await Promise.all(
-    plugins.map((plugin, index) =>
-      upsertTeamInstalledPluginPolicy({
+    installedPluginEntries.map(async ({ plugin, downloadUrl }) => {
+      await assertTeamPluginSourceReady({
+        teamId,
+        tools: [plugin]
+      });
+
+      return upsertTeamInstalledPluginPolicy({
         teamId,
         tmbId,
         pluginId: getRawPluginIdFromSystemToolId(plugin.pluginId),
@@ -66,11 +76,15 @@ async function handler(
         packageSource: {
           marketplaceToolId: plugin.marketplaceToolId ?? plugin.pluginId,
           marketplaceSource: plugin.marketplaceSource,
-          downloadUrlHash: getDownloadUrlHash(downloadUrls[index])
+          downloadUrlHash: getDownloadUrlHash(downloadUrl)
         }
-      })
-    )
+      });
+    })
   );
+
+  if (failed.length > 0) {
+    return Promise.reject(JSON.stringify(failed));
+  }
 
   return TeamPkgEmptyResponseSchema.parse(undefined);
 }

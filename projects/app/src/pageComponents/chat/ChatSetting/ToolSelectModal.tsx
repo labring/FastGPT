@@ -33,7 +33,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import {
   checkNeedsUserConfiguration,
@@ -282,12 +282,16 @@ const RenderList = React.memo(function RenderList({
         pt={3}
       >
         {templates.map((template) => {
-          const selected = selectedTools.some((tool) => tool.pluginId === template.id);
+          const selected = selectedTools.some(
+            (tool) =>
+              getToolIdentityKey(tool.pluginId, tool.source) ===
+              getToolIdentityKey(template.id, template.source)
+          );
           const isDebugTool = isDebugToolSource(template.source);
 
           return (
             <MyTooltip
-              key={template.id}
+              key={getToolIdentityKey(template.id, template.source)}
               isDisabled={!isTooltipEnabled}
               placement={'right'}
               label={
