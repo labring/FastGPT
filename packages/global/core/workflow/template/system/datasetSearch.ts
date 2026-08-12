@@ -129,7 +129,8 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       label: i18nT('workflow:search_query'),
       key: NodeInputKeyEnum.datasetSearchInput,
       valueType: WorkflowIOValueTypeEnum.arrayString,
-      toolDescription: i18nT('workflow:content_to_search')
+      toolDescription: i18nT('workflow:content_to_search'),
+      isToolParam: true
     },
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
@@ -138,7 +139,8 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
 
       valueType: WorkflowIOValueTypeEnum.string,
       isPro: true,
-      description: i18nT('workflow:filter_description')
+      description: i18nT('workflow:filter_description'),
+      isToolParam: true
     }
   ],
   outputs: [
