@@ -1116,6 +1116,34 @@ describe('agent generated tool input helpers', () => {
     ).toBe(false);
   });
 
+  it('should apply the projected external variable AI default when creating a tool node', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.reference,
+          FlowNodeInputTypeEnum.input
+        ],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        isToolParam: true
+      }),
+      { forceDefaultMode: true }
+    );
+
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+  });
+
+  it('should never allow the forbid stream input to be agent generated', () => {
+    expect(
+      canInputBeAgentGenerated(
+        createMockInput({
+          key: NodeInputKeyEnum.forbidStream,
+          renderTypeList: [FlowNodeInputTypeEnum.switch]
+        })
+      )
+    ).toBe(false);
+  });
+
   it('should identify reference-only inputs as agent-only configuration', () => {
     const input = createMockInput({
       renderTypeList: [FlowNodeInputTypeEnum.reference]
