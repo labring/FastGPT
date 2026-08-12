@@ -901,7 +901,7 @@
   "n_max_upload_file_count": "单次可上传 {{amount}} 个文件",
   "n_max_upload_file_limit": "单次可上传 {{count}} 个 {{size}} 的文件",
   "n_max_upload_file_size": "单个文件最大 {{amount}}MB",
-  "n_team_audit_day": "{{amount}} 天团队操作日志记录",
+  "n_team_audit_day": "{{amount}} 天审计日志",
   "n_team_members": "{{amount}} 个团队成员",
   "n_team_qpm": "{{amount}} QPM",
   "n_website_sync_max_pages": "站点同步最大 {{amount}} 页",
