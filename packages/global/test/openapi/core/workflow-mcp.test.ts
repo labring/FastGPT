@@ -49,6 +49,15 @@ describe('Workflow debug and MCP runtime OpenAPI contracts', () => {
       history: []
     });
 
+    expect(
+      WorkflowDebugBodySchema.parse({
+        appId: '68ad85a7463006c963799a05',
+        chatId: 'debug-session-chat-id'
+      })
+    ).toMatchObject({
+      chatId: 'debug-session-chat-id'
+    });
+
     const result = WorkflowDebugResponseSchema.parse({
       memoryEdges: [],
       memoryNodes: [],

@@ -30,6 +30,7 @@ import {
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   checkInputShouldRenderInDebug,
   getDebugInputFormProps,
@@ -66,6 +67,7 @@ export const useDebug = () => {
     (v) => v
   );
   const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
+  const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
@@ -150,6 +152,9 @@ export const useDebug = () => {
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
+      // 每次打开调试弹窗生成独立的会话 chatId，文件上传与调试运行共用，保证文件归属校验通过
+      setDebugChatId(getNanoid());
+
       setNodes((state) =>
         state.map((node) => ({
           ...node,
@@ -184,7 +189,7 @@ export const useDebug = () => {
       setRuntimeNodes(runtimeNodes);
       setRuntimeEdges(runtimeEdges);
     },
-    [flowData2StoreDataAndCheck, setNodes]
+    [flowData2StoreDataAndCheck, setNodes, setDebugChatId]
   );
 
   const DebugInputModal = useCallback(() => {
