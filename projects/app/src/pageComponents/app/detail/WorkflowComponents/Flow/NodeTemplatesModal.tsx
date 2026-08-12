@@ -3,6 +3,7 @@ import { type Node } from 'reactflow';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
+import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template/context';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
@@ -18,7 +19,10 @@ type ModuleTemplateListProps = {
 export const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
-  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
+  const { setNodes, edges, getNodeById, hasToolNode, hasLoopRunNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
     WorkflowActionsContext,
     (v) => v.onRefreshSingleNodeWorkflowCheckIssues
@@ -37,7 +41,20 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     selectedTagIds,
     setSelectedTagIds,
     toolTags
-  } = useNodeTemplates();
+  } = useNodeTemplates(
+    React.useMemo(
+      () =>
+        buildNodeTemplateContext({
+          sourceNode: undefined,
+          edges,
+          getNodeById,
+          isSidebar: true,
+          hasToolNode,
+          hasLoopRunNode
+        }),
+      [edges, getNodeById, hasToolNode, hasLoopRunNode]
+    )
+  );
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
     setNodes((state) => {
