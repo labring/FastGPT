@@ -12,6 +12,7 @@ import {
   initAgentToolInputType,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import type { LegacyFlowNodeInputItemType } from '@fastgpt/global/core/workflow/migration';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -136,8 +137,8 @@ export async function rewriteAppWorkflowToDetail({
       };
     }
   };
-  type ToolInputSnapshot = Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
-    Partial<FlowNodeInputItemType>;
+  type ToolInputSnapshot = Pick<LegacyFlowNodeInputItemType, 'key' | 'renderTypeList'> &
+    Partial<LegacyFlowNodeInputItemType>;
 
   const mergeToolInputDetail = ({
     previewInput,
@@ -155,8 +156,15 @@ export async function rewriteAppWorkflowToDetail({
         ...previewInput,
         renderTypeList,
         selectedType: savedInput?.selectedType,
-        defaultToAgentGenerated:
-          savedInput?.defaultToAgentGenerated ?? previewInput.defaultToAgentGenerated,
+        // Add `selectedTypeIndex` if this is legacy data. This allows the adoption afterwards.
+        ...(savedInput?.selectedTypeIndex === undefined
+          ? {}
+          : ({ selectedTypeIndex: savedInput.selectedTypeIndex } satisfies Pick<
+              LegacyFlowNodeInputItemType,
+              'selectedTypeIndex'
+            >)),
+        isToolParam:
+          savedInput?.isToolParam ?? (legacyDefaultMode ? true : previewInput.isToolParam),
         toolDescription: savedInput?.toolDescription ?? previewInput.toolDescription
       },
       { deferDefaultSelection: true }

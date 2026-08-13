@@ -44,6 +44,7 @@ import {
   initNewIfElseList
 } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { LegacyFlowNodeInputItemType } from '@fastgpt/global/core/workflow/migration';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -110,7 +111,7 @@ describe('projectExternalVariableInput', () => {
   );
 
   it('should leave regular inputs unchanged', () => {
-    const input: FlowNodeInputItemType = {
+    const input: LegacyFlowNodeInputItemType = {
       key: 'query',
       label: 'Query',
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
@@ -209,12 +210,32 @@ describe('projectExternalVariableInput', () => {
 });
 
 describe('nodeInputIsReference', () => {
-  it('should use the canonical selectedType', () => {
-    const input: FlowNodeInputItemType = {
+  it('should return true when renderTypeList first item is reference', () => {
+    const input: LegacyFlowNodeInputItemType = {
+      key: 'test',
+      label: 'Test',
+      renderTypeList: [FlowNodeInputTypeEnum.reference]
+    };
+    expect(nodeInputIsReference(input)).toBe(true);
+  });
+
+  it('should return true when selectedTypeIndex points to reference', () => {
+    const input: LegacyFlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-      selectedType: FlowNodeInputTypeEnum.reference
+      selectedTypeIndex: 1
+    };
+    expect(nodeInputIsReference(input)).toBe(true);
+  });
+
+  it('should prefer selectedType over selectedTypeIndex', () => {
+    const input: LegacyFlowNodeInputItemType = {
+      key: 'test',
+      label: 'Test',
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      selectedTypeIndex: 0
     };
 
     expect(getSelectedInputRenderType(input)).toBe(FlowNodeInputTypeEnum.reference);
@@ -222,7 +243,7 @@ describe('nodeInputIsReference', () => {
   });
 
   it('should return false when renderTypeList first item is not reference', () => {
-    const input: FlowNodeInputItemType = {
+    const input: LegacyFlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.input]
@@ -230,8 +251,8 @@ describe('nodeInputIsReference', () => {
     expect(nodeInputIsReference(input)).toBe(false);
   });
 
-  it('should return false when the current selected type is not a reference', () => {
-    const input: FlowNodeInputItemType = {
+  it('should return false when selectedTypeIndex is 0 and first item is not reference', () => {
+    const input: LegacyFlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],

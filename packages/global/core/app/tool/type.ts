@@ -3,7 +3,7 @@ import type { StoreEdgeItemType } from '../../workflow/type/edge';
 import type { StoreNodeItemType } from '../../workflow/type/node';
 import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import type { AppChatConfigType } from '../type';
-import { CanonicalAgentToolInputConfigSchema } from '../../workflow/migration';
+import { LegacyAgentToolInputConfigSchema } from '../../workflow/migration';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -29,9 +29,9 @@ export type AppToolRuntimeType = {
  *
  * 数据位于 Agent 节点 `inputs[selectedTools].value[*].inputs`，随工作流草稿或版本快照保存。
  * 当前格式只保存字段关联和输入来源：`key` 标识工具输入，`mode` 决定由模型生成还是使用
- * `AgentTool.config[key]` 中的固定值。历史完整 NodeIO 快照只在 workflow migration 边界预处理。
+ * `AgentTool.config[key]` 中的固定值。历史完整 NodeIO 快照由 Legacy schema 预处理后收敛到此格式。
  */
-export const AgentToolInputConfigSchema = CanonicalAgentToolInputConfigSchema;
+export const AgentToolInputConfigSchema = LegacyAgentToolInputConfigSchema;
 export type AgentToolInputConfigType = z.infer<typeof AgentToolInputConfigSchema>;
 
 const AgentToolBaseSchema = z.object({

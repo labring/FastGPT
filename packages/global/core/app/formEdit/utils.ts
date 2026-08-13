@@ -1,6 +1,7 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
+import type { LegacyFlowNodeInputItemType } from '../../workflow/migration';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
 import { getSelectedInputRenderType } from '../../workflow/utils';
@@ -56,7 +57,10 @@ type InputRenderTypeState = {
   selectedType?: FlowNodeInputItemType['selectedType'];
 };
 
-type SavedToolInputTypeState = InputRenderTypeState;
+type SavedToolInputTypeState = InputRenderTypeState &
+  // Legacy workflow nodes uses `selectedTypeIndex`
+  Pick<Partial<LegacyFlowNodeInputItemType>, 'selectedTypeIndex'> &
+  Pick<Partial<FlowNodeInputItemType>, 'isToolParam' | 'toolDescription'>;
 
 type ToolInputTypeState = InputRenderTypeState &
   Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
@@ -138,7 +142,7 @@ export const canInputBeAgentGenerated = (
  * 所有支持 AI 生成的输入都会补充 agentGenerated；工具上下文才允许选中该类型，
  * 并在没有明确选择时按 defaultToAgentGenerated 应用默认值。
  */
-export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>(
+export const normalizeFlowNodeInputType = <T extends LegacyFlowNodeInputItemType>(
   input: T,
   {
     isTool = false,

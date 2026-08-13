@@ -19,6 +19,7 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
+import type { LegacyFlowNodeInputItemType } from './migration';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
 import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';
@@ -55,11 +56,13 @@ export const getHandleId = (
 export const getSelectedInputRenderType = (input: {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
-}) => input.selectedType ?? input.renderTypeList?.[0];
+  selectedTypeIndex?: LegacyFlowNodeInputItemType['selectedTypeIndex'];
+}) => input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
 
 export const getSelectedInputRenderTypeIndex = (input: {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
+  selectedTypeIndex?: LegacyFlowNodeInputItemType['selectedTypeIndex'];
 }) => {
   const selectedRenderType = getSelectedInputRenderType(input);
   const selectedRenderTypePosition = selectedRenderType
@@ -76,7 +79,7 @@ export const getSelectedInputRenderTypeIndex = (input: {
  * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，
  * 但它的值仍是 [nodeId, outputId]，运行时必须解析成知识库检索结果。
  */
-export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
+export const nodeInputIsReference = (input: LegacyFlowNodeInputItemType) => {
   const renderType = getSelectedInputRenderType(input);
 
   if (
@@ -233,8 +236,11 @@ export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(in
     : canAgentGenerated
       ? FlowNodeInputTypeEnum.agentGenerated
       : FlowNodeInputTypeEnum.reference;
+  // removes `selectedTypeIndex`.
+  const { selectedTypeIndex: _legacySelectedTypeIndex, ...canonicalInput } =
+    input as LegacyFlowNodeInputItemType;
   const projectedInput = {
-    ...input,
+    ...canonicalInput,
     canAgentGenerated,
     ...(canAgentGenerated ? { defaultToAgentGenerated: true } : {}),
     renderTypeList: projectedRenderTypeList,

@@ -4,7 +4,11 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
+import {
+  adaptCatchError,
+  legacyStoreNode2FlowNode,
+  storeEdge2RenderEdge
+} from '@/web/core/workflow/utils';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
@@ -315,7 +319,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       );
       const nodes =
         storeNodes?.map((item) =>
-          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+          legacyStoreNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
         ) || [];
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 

@@ -6,7 +6,7 @@ import type { Node, Edge } from 'reactflow';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import {
   compareSnapshot,
-  storeNode2FlowNode,
+  legacyStoreNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
@@ -302,8 +302,8 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
           .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
-      const nodes = appVersion.nodes.map((item) =>
-        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+      const nodes = normalizedWorkflow.nodes.map((item) =>
+        legacyStoreNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
       );
 
       resetSnapshot({

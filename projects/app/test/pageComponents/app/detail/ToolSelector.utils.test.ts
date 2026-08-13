@@ -78,7 +78,7 @@ describe('ToolSelector utils', () => {
           label: 'Query',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           selectedType: FlowNodeInputTypeEnum.input,
-          defaultToAgentGenerated: true
+          isToolParam: true
         }
       ]);
 
@@ -98,7 +98,7 @@ describe('ToolSelector utils', () => {
             label: 'Query',
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
             selectedType: FlowNodeInputTypeEnum.input,
-            defaultToAgentGenerated: false,
+            isToolParam: false,
             toolDescription: 'Search query'
           }
         ]),
