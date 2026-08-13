@@ -1,7 +1,12 @@
 import { useTranslation } from 'next-i18next';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import ClientI18nErrorFallback from './ClientI18nErrorFallback';
-import { getLangMapping, getPersistedLang, setLangToStorage } from './utils';
+import {
+  getLangMapping,
+  getPersistedLang,
+  getRequiredI18nLanguages,
+  setLangToStorage
+} from './utils';
 import { ClientI18nLoadError } from './ClientI18nLoadError';
 
 const BASE_NAMESPACE = 'common';
@@ -25,7 +30,12 @@ const ClientI18nGate = ({
       (typeof navigator === 'undefined' ? undefined : navigator.language) ||
       defaultLanguage
   );
-  const ready = i18n.language === language && i18n.hasResourceBundle(language, BASE_NAMESPACE);
+  const requiredLanguages = useMemo(() => getRequiredI18nLanguages(language), [language]);
+  const ready =
+    i18n.language === language &&
+    requiredLanguages.every((requiredLanguage) =>
+      i18n.hasResourceBundle(requiredLanguage, BASE_NAMESPACE)
+    );
   const [, setLoadedLanguage] = useState<string>();
   const [loadError, setLoadError] = useState<{ language: string; error: unknown }>();
 
@@ -39,7 +49,12 @@ const ClientI18nGate = ({
 
     let failedError: unknown;
     const onFailedLoading = (failedLanguage: string, namespace: string, error: unknown) => {
-      if (failedLanguage === language && namespace === BASE_NAMESPACE) failedError = error;
+      if (
+        requiredLanguages.includes(getLangMapping(failedLanguage)) &&
+        namespace === BASE_NAMESPACE
+      ) {
+        failedError = error;
+      }
     };
     i18n.on('failedLoading', onFailedLoading);
 
@@ -53,9 +68,12 @@ const ClientI18nGate = ({
             cause: failedError ?? new Error('Language change failed')
           });
         }
-        if (!i18n.hasResourceBundle(language, BASE_NAMESPACE)) {
+        const missingLanguage = requiredLanguages.find(
+          (requiredLanguage) => !i18n.hasResourceBundle(requiredLanguage, BASE_NAMESPACE)
+        );
+        if (missingLanguage) {
           throw new ClientI18nLoadError({
-            language,
+            language: missingLanguage,
             namespace: BASE_NAMESPACE,
             cause: new Error('Resource bundle was not registered')
           });
@@ -79,7 +97,7 @@ const ClientI18nGate = ({
       active = false;
       i18n.off('failedLoading', onFailedLoading);
     };
-  }, [i18n, language, ready, storageKey]);
+  }, [i18n, language, ready, requiredLanguages, storageKey]);
 
   if (ready) return children;
   if (loadError?.language === language) {

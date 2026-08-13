@@ -24,5 +24,7 @@ export const serviceSideProps = async (
   // 预加载同级语言资源，首次自动初始化语言时可以直接完成客户端切换。
   const extraLng = content.locales?.filter((locale: string) => locale !== lang);
 
-  return serverSideTranslations(lang, ['common', ...ns], undefined, extraLng);
+  const namespaces = Array.from(new Set<I18nNsType[number]>(['common', 'price', ...ns]));
+
+  return serverSideTranslations(lang, namespaces, undefined, extraLng);
 };

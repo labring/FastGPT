@@ -30,9 +30,9 @@ export const useI18nLng = () => {
     const prevLang = getPersistedLang(storageKey);
     const currentLang = getLangMapping(i18n?.language || prevLang || lang);
 
-    setLangToStorage(lang, storageKey);
-
     await i18n?.changeLanguage?.(lang);
+
+    setLangToStorage(lang, storageKey);
 
     if (options?.reloadOnChange && (prevLang !== lang || currentLang !== lang)) {
       if (typeof window !== 'undefined') {

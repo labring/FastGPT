@@ -3,7 +3,7 @@ import { createSafeTranslation } from '../hooks/useSafeTranslation';
 import type { I18nNamespaces } from './i18next';
 import { getLocaleResourceError, getLocaleResourceStatus } from './resourceLoaders';
 import { ClientI18nLoadError } from './ClientI18nLoadError';
-import { getLangMapping } from './utils';
+import { getLangMapping, getRequiredI18nLanguages } from './utils';
 
 type ClientNamespace = Exclude<keyof I18nNamespaces, 'common'>;
 type ClientNamespaceInput = ClientNamespace | readonly ClientNamespace[];
@@ -21,16 +21,20 @@ export const useClientTranslation = (namespace?: ClientNamespaceInput) => {
 
   const { t: originalT, ...rest } = useTranslation(namespaces, { useSuspense: true });
   const language = getLangMapping(rest.i18n.language);
+  const requiredLanguages = getRequiredI18nLanguages(language);
+  const requiredNamespaces = Array.isArray(namespaces) ? namespaces : [namespaces];
 
-  const failedNamespace = (Array.isArray(namespaces) ? namespaces : [namespaces]).find(
-    (item) => getLocaleResourceStatus(language, item) === 'failed'
-  );
-  if (failedNamespace) {
+  const failedResource = requiredLanguages
+    .flatMap((requiredLanguage) =>
+      requiredNamespaces.map((namespace) => ({ language: requiredLanguage, namespace }))
+    )
+    .find(({ language, namespace }) => getLocaleResourceStatus(language, namespace) === 'failed');
+  if (failedResource) {
     throw new ClientI18nLoadError({
-      language,
-      namespace: failedNamespace,
+      language: failedResource.language,
+      namespace: failedResource.namespace,
       cause:
-        getLocaleResourceError(language, failedNamespace) ??
+        getLocaleResourceError(failedResource.language, failedResource.namespace) ??
         new Error('Language resource failed to load')
     });
   }
