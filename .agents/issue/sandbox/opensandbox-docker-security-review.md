@@ -1,12 +1,12 @@
-# OpenSandbox Docker 沙盒安全审查与修复报告
+# OpenSandbox 沙盒安全审查与修复报告
 
 审查日期：2026-05-23
 
 ## 文档定位
 
-这是当前 OpenSandbox Docker 沙盒安全工作的唯一文档。原 TDD 方案已合并到本报告中，不再单独维护，避免“方案文档”和“审查报告”结论不一致。
+这是当前 OpenSandbox 沙盒安全工作的唯一文档。原 TDD 方案已合并到本报告中，不再单独维护，避免“方案文档”和“审查报告”结论不一致。
 
-当前范围只覆盖 Docker runtime，不覆盖 Kubernetes/Helm。Kubernetes 的 RBAC、ServiceAccount、PodSecurity、NetworkPolicy、Pool/BatchSandbox 需要后续单独审查。
+本文同时覆盖 Docker runtime 和 Kubernetes/Helm；两种 runtime 的隔离方式不同，不能混用部署结论。
 
 ## 当前真实状态
 
@@ -19,6 +19,8 @@
 - shell tool 服务端限制 timeout 为 1 到 600 秒。
 - agent sandbox 镜像改为非 root 用户 `sandbox` 运行，并确保 `/workspace` 可写。
 - SDK 文件 API 不保留危险路径黑名单，报告明确它不是安全边界。
+- Kubernetes runtime 改由 Helm 创建的 CiliumNetworkPolicy 负责 egress 隔离，不再向 OpenSandbox
+  传入 `networkPolicy`。
 - 增加了单元测试、集成测试和真实 OpenSandbox Docker 安全集成测试。
 
 已经撤销、当前没有落地的修复：
@@ -28,9 +30,25 @@
 - 当前部署 YAML 尚未强制 OpenSandbox-created sandbox 使用 Docker `bridge`。
 - 当前部署 YAML 尚未加入 OpenSandbox server / volume-manager 的 CPU、内存、PIDs 限制。
 - 当前部署 YAML 尚未把 dev 的 OpenSandbox/volume-manager 宿主机端口收紧到 `127.0.0.1`。
-- 当前部署 YAML 尚未启用 OpenSandbox egress `dns+nft`。
+- Docker runtime 继续使用 OpenSandbox egress；Kubernetes Helm 不再配置 egress sidecar。
 
 因此当前结论是：代码层安全修复已有一部分完成，但 Docker 部署层仍未闭环。部署层没有落地前，不能认为生产 Docker 沙盒已经完成安全部署。
+
+## Kubernetes runtime：Cilium 隔离
+
+Kubernetes runtime 不再发送 OpenSandbox `networkPolicy`，因此不会注入需要
+`NET_ADMIN` 的 egress sidecar，也不会触发 `execd-installer` 的 privileged IPv6 初始化。
+Docker runtime 的 OpenSandbox egress 行为保持不变。
+
+Pro Helm Chart 在 release namespace 创建一条 `CiliumNetworkPolicy`，通过
+`k8s:opensandbox.io/id` 选择当前及后续动态 Sandbox Pod。策略允许公网 IPv4/IPv6 和 DNS，
+拒绝私网、集群内部端点、link-local、CGNAT、组播和 metadata 地址。默认允许带
+`k8s-app=kube-dns` 的 CoreDNS；使用 NodeLocal DNS 时，必须在 values 中配置实际的
+`/32` 或 `/128` DNS 地址。
+
+这部分要求集群预先安装 Cilium 及 `cilium.io/v2` CRD，Chart 不负责安装 Cilium。集群级
+`policyCIDRMatchMode` 应保持默认值，不能启用 `nodes`，否则 CIDR allow 可能匹配节点地址。
+已经运行的旧 Sandbox 不会被原地移除 sidecar，重建后才完全采用新的 Pod 配置。
 
 ## 威胁模型
 
@@ -391,23 +409,6 @@ pnpm -C sdk/sandbox-adapter exec vitest run tests/integration/OpenSandbox.test.t
 - 固定基础镜像 digest。
 - 固定 Node/Bun 版本和校验。
 - 发布前做镜像漏洞扫描、SBOM、签名。
-
-### P2：Kubernetes 未审查
-
-现状：
-
-- 本轮只处理 Docker runtime。
-
-风险：
-
-- Kubernetes 下可能存在 ServiceAccount token、RBAC、PodSecurity、NetworkPolicy、Pool 资源限制等独立风险。
-
-建议：
-
-- 单独做 Kubernetes/Helm 安全审查。
-- 检查 sandbox Pod 默认不挂载 SA token。
-- 检查 Pod securityContext、capabilities、runAsNonRoot、seccomp。
-- 检查 NetworkPolicy 和资源 requests/limits。
 
 ## 后续部署方案
 

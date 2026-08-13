@@ -76,6 +76,9 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
     buildConfig(input = {}) {
       // OpenSandbox create 必须带镜像；调用方显式传入的镜像优先，其次才使用运行态默认镜像。
       const createConfig = input.createConfig ?? {};
+      const isKubernetesRuntime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'kubernetes';
+      const { networkPolicy: requestedNetworkPolicy, ...createConfigWithoutNetworkPolicy } =
+        createConfig;
       const image = input.image ?? createConfig.image ?? defaultImage;
       if (!image?.repository) {
         throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE is required for opensandbox provider');
@@ -106,11 +109,14 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       // volume 既可能来自 volume manager，也可能来自调用方透传的 createConfig；运行态 VM 配置优先。
       const volumes = input.volumes ?? input.vmConfig?.volumes ?? createConfig.volumes;
-      // Docker/Kubernetes 均启用 nftables 层的内部网段拒绝；未命中规则的公网地址保持放行。
-      const networkPolicy = buildOpenSandboxNetworkPolicy(createConfig.networkPolicy);
+      // Kubernetes Sandbox Pod 由 Helm 管理的 CiliumNetworkPolicy 隔离；不能向 OpenSandbox
+      // 透传 networkPolicy，否则会重新注入需要额外权限的 egress sidecar。
+      const networkPolicy = isKubernetesRuntime
+        ? undefined
+        : buildOpenSandboxNetworkPolicy(requestedNetworkPolicy);
 
       return {
-        ...createConfig,
+        ...createConfigWithoutNetworkPolicy,
         image,
         resourceLimits,
         readyTimeoutSeconds: createConfig.readyTimeoutSeconds ?? 120,
