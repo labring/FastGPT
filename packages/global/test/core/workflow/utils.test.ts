@@ -162,6 +162,41 @@ describe('projectExternalVariableInput', () => {
     expect(result.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
   });
 
+  it.each([FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input])(
+    'should preserve an explicit %s selection when projecting an external variable',
+    (selectedType) => {
+      const result = projectExternalVariableInput({
+        key: 'externalVariable',
+        label: 'External variable',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.customVariable,
+          FlowNodeInputTypeEnum.reference,
+          FlowNodeInputTypeEnum.input
+        ],
+        selectedType
+      });
+
+      expect(result.renderTypeList).toEqual([
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.input
+      ]);
+      expect(result.selectedType).toBe(selectedType);
+    }
+  );
+
+  it('should default a projected external variable without a saved selection to AI generation', () => {
+    const result = projectExternalVariableInput({
+      key: 'externalVariable',
+      label: 'External variable',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.customVariable]
+    });
+
+    expect(result.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+  });
+
   it('should keep complex external variables manual-only', () => {
     const result = projectExternalVariableInput({
       key: 'externalVariable',

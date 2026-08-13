@@ -422,6 +422,7 @@ const agentGeneratedExternalVariableValueTypes = new Set<WorkflowIOValueTypeEnum
 /**
  * 将子工作流外部变量投影为父工作流可配置的节点输入。
  * customVariable 只描述子工作流的外部注入语义；进入父工作流后由引用或类型匹配的手动控件提供值。
+ * 已保存且投影后仍有效的输入方式必须保留，只有未选择或仍为 customVariable 时才应用 Agent 默认值。
  */
 export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(input: T): T => {
   const isExternalVariable =
@@ -469,10 +470,14 @@ export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(in
   if (!projectedRenderTypeList.includes(manualRenderType)) {
     projectedRenderTypeList.push(manualRenderType);
   }
-  const selectedType = canAgentGenerated
-    ? FlowNodeInputTypeEnum.agentGenerated
-    : input.selectedType && projectedRenderTypeList.includes(input.selectedType)
-      ? input.selectedType
+  const hasExplicitProjectedSelection =
+    input.selectedType !== undefined &&
+    input.selectedType !== FlowNodeInputTypeEnum.customVariable &&
+    projectedRenderTypeList.includes(input.selectedType);
+  const selectedType = hasExplicitProjectedSelection
+    ? input.selectedType
+    : canAgentGenerated
+      ? FlowNodeInputTypeEnum.agentGenerated
       : FlowNodeInputTypeEnum.reference;
   const projectedInput = {
     ...input,

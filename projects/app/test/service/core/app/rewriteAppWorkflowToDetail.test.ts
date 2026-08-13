@@ -296,6 +296,75 @@ describe('rewriteAppWorkflowToDetail - legacy workflow tool inputs', () => {
     expect(nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
+  it.each([FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input])(
+    '投影外部变量时保留旧节点显式选择的 %s 类型',
+    async (selectedType) => {
+      const toolAppId = '507f1f77bcf86cd799439011';
+      getClientToolPreviewNodeMock.mockResolvedValue({
+        id: toolAppId,
+        pluginId: toolAppId,
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        name: 'Workflow tool',
+        avatar: '',
+        intro: '',
+        inputs: [
+          {
+            key: 'externalVariable',
+            label: 'External variable',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.customVariable]
+          }
+        ],
+        outputs: [],
+        version: '',
+        isLatestVersion: true
+      });
+      authAppByTmbIdMock.mockResolvedValue({});
+      const nodes = [
+        {
+          nodeId: 'workflow-tool',
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          pluginId: toolAppId,
+          version: '',
+          inputs: [
+            {
+              key: 'externalVariable',
+              label: 'External variable',
+              valueType: WorkflowIOValueTypeEnum.string,
+              value:
+                selectedType === FlowNodeInputTypeEnum.reference
+                  ? ['workflowStart', 'userChatInput']
+                  : 'fixed value',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.customVariable,
+                FlowNodeInputTypeEnum.reference,
+                FlowNodeInputTypeEnum.input
+              ],
+              selectedType
+            }
+          ],
+          outputs: []
+        } as StoreNodeItemType
+      ];
+
+      await rewriteAppWorkflowToDetail({
+        nodes,
+        teamId: 'team-1',
+        ownerTmbId: 'tmb-1',
+        isRoot: false
+      });
+
+      expect(nodes[0].inputs[0]).toMatchObject({
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.reference,
+          FlowNodeInputTypeEnum.input
+        ],
+        selectedType
+      });
+    }
+  );
+
   it.each([
     ['工作流工具', FlowNodeTypeEnum.pluginModule],
     ['嵌套工作流', FlowNodeTypeEnum.appModule]
