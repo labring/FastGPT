@@ -27,4 +27,32 @@ describe('groupMessagesByUser', () => {
       expect.objectContaining({ userId: 'user-b', lastMsgId: '9007199254740993' })
     ]);
   });
+
+  it('keeps downloadable video items for the reply job', () => {
+    expect(
+      groupMessagesByUser([
+        {
+          message_id: '1',
+          message_type: WechatMessageType.USER,
+          from_user_id: 'user-a',
+          item_list: [
+            {
+              type: WechatMessageItemType.VIDEO,
+              video_item: {
+                media: {
+                  aes_key: 'MTIzNDU2Nzg5MDEyMzQ1Ng==',
+                  full_url: 'https://example.com/video'
+                }
+              }
+            }
+          ]
+        }
+      ])
+    ).toEqual([
+      expect.objectContaining({
+        userId: 'user-a',
+        items: [expect.objectContaining({ type: WechatMessageItemType.VIDEO })]
+      })
+    ]);
+  });
 });

@@ -23,6 +23,9 @@ export const isSupportedMessageItem = (item: MessageItem) => {
   if (item.type === WechatMessageItemType.FILE) {
     return Boolean(item.file_item?.media?.aes_key && hasDownloadUrl(item.file_item.media));
   }
+  if (item.type === WechatMessageItemType.VIDEO) {
+    return Boolean(item.video_item?.media?.aes_key && hasDownloadUrl(item.video_item.media));
+  }
   return false;
 };
 

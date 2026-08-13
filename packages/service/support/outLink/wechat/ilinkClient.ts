@@ -82,6 +82,11 @@ export type FileItem = {
   len?: string;
 };
 
+export type VideoItem = {
+  media?: CDNMedia;
+  file_name?: string;
+};
+
 export type RefMessage = {
   title?: string;
   message_item?: MessageItem;
@@ -94,6 +99,7 @@ export type MessageItem = {
   voice_item?: { text?: string; media?: CDNMedia };
   image_item?: ImageItem;
   file_item?: FileItem;
+  video_item?: VideoItem;
   ref_msg?: RefMessage;
 };
 

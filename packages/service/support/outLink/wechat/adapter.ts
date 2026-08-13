@@ -37,7 +37,7 @@ const WECHAT_MEDIA_TIMEOUT_MS = 30_000;
 
 type WechatMediaResource = {
   item: MessageItem;
-  fileType: ChatFileTypeEnum.image | ChatFileTypeEnum.file;
+  fileType: ChatFileTypeEnum.image | ChatFileTypeEnum.file | ChatFileTypeEnum.video;
 };
 
 type ParsedWechatItems = {
@@ -138,6 +138,8 @@ export const createWechatOutlinkAdapter = ({
         resources.push({ item, fileType: ChatFileTypeEnum.image });
       } else if (item.type === WechatMessageItemType.FILE && item.file_item?.media?.aes_key) {
         resources.push({ item, fileType: ChatFileTypeEnum.file });
+      } else if (item.type === WechatMessageItemType.VIDEO && item.video_item?.media?.aes_key) {
+        resources.push({ item, fileType: ChatFileTypeEnum.video });
       }
     }
 
@@ -162,7 +164,7 @@ export const createWechatOutlinkAdapter = ({
     fileSelectConfig?: AppFileSelectConfigType;
   }): Promise<UserChatItemValueItemType> => {
     try {
-      const media = item.image_item?.media ?? item.file_item?.media;
+      const media = item.image_item?.media ?? item.file_item?.media ?? item.video_item?.media;
       if (!media) throw new Error('Wechat media is missing');
 
       const imageAesKey = item.image_item?.aeskey;
@@ -184,6 +186,11 @@ export const createWechatOutlinkAdapter = ({
 
       const filename = (() => {
         if (fileType === ChatFileTypeEnum.file) return item.file_item?.file_name || 'file';
+        if (fileType === ChatFileTypeEnum.video) {
+          return (
+            item.video_item?.file_name || `video${resolveMimeExtension(contentType) || '.mp4'}`
+          );
+        }
         return `image${resolveMimeExtension(contentType) || '.jpg'}`;
       })();
       const resolvedContentType = contentType || resolveMimeType([filename]);
