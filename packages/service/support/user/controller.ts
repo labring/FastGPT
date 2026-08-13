@@ -17,20 +17,18 @@ export async function authUserExist({ userId, username }: { userId?: string; use
 }
 
 /**
- * 加载用户及团队详情。登录恢复可显式允许注销中的团队作为 fallback，便于用户进入等待页取消注销。
+ * 加载用户及团队详情；tmb 失效时回退到用户可用团队。
  */
 export async function getUserDetail({
   tmbId,
   userId,
   isRoot = false,
-  session,
-  allowAccountCancellationTeamFallback = false
+  session
 }: {
   tmbId?: string;
   userId?: string;
   isRoot?: boolean;
   session?: ClientSession;
-  allowAccountCancellationTeamFallback?: boolean;
 }): Promise<UserType> {
   const tmb = await (async () => {
     if (tmbId) {
@@ -42,8 +40,7 @@ export async function getUserDetail({
     if (userId) {
       const fallback = await getUserFallbackTeam({
         userId,
-        session,
-        allowAccountCancellationTeam: allowAccountCancellationTeamFallback
+        session
       });
       if (fallback) return getTmbInfoByTmbId({ tmbId: fallback.tmbId, session });
     }

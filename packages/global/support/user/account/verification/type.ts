@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { VerificationCodeTypeEnum } from './constants';
+import {
+  accountVerificationMethods,
+  recognizedAccountKinds,
+  VerificationCodeTypeEnum
+} from './constants';
 
 export const ACCOUNT_VERIFICATION_PURPOSES = [
   'login',
@@ -147,3 +151,39 @@ export const AccountLoginUsernameSchema = z.union([
   AccountContactUsernameSchema,
   AccountUsernameSchema
 ]);
+
+export const AccountVerificationMethodSchema = z.enum(accountVerificationMethods);
+export type AccountVerificationMethod = z.infer<typeof AccountVerificationMethodSchema>;
+
+export const AccountVerificationCapabilitiesSchema = z.object({
+  emailCode: z.boolean(),
+  phoneCode: z.boolean(),
+  wechat: z.boolean(),
+  oauth: z.object({
+    github: z.boolean(),
+    google: z.boolean(),
+    microsoft: z.boolean(),
+    wecom: z.boolean(),
+    sso: z.boolean()
+  })
+});
+export type AccountVerificationCapabilities = z.infer<typeof AccountVerificationCapabilitiesSchema>;
+
+export const RecognizedAccountKindSchema = z.enum(recognizedAccountKinds);
+export type RecognizedAccountKind = z.infer<typeof RecognizedAccountKindSchema>;
+
+export const AccountVerificationResolutionSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('supported'),
+    accountKind: RecognizedAccountKindSchema,
+    method: AccountVerificationMethodSchema,
+    unsupportedReason: z.undefined().optional()
+  }),
+  z.object({
+    status: z.literal('unsupported'),
+    accountKind: z.literal('invalid'),
+    method: z.undefined().optional(),
+    unsupportedReason: z.literal('empty_username')
+  })
+]);
+export type AccountVerificationResolution = z.infer<typeof AccountVerificationResolutionSchema>;

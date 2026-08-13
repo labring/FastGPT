@@ -30,7 +30,7 @@ export {
 export type { WechatQrLoginCacheOptions, WechatQrLoginData } from './wechatQrLogin';
 
 export { SESSION_TTL_SECONDS, SessionCache, SessionDataSchema } from './session';
-export type { SessionCacheOptions, SessionData, SessionRecord } from './session';
+export type { SessionCacheOptions, SessionData, SessionDataInput, SessionRecord } from './session';
 
 export {
   LeaseCache,

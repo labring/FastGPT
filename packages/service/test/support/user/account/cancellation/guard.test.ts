@@ -1,14 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
-import { resolveAccountCancellationAccess } from '@fastgpt/service/support/user/account/cancellation/access';
 import { Types } from '@fastgpt/service/common/mongo';
-import { assertAccountUsable } from '@fastgpt/service/support/user/account/cancellation/guard';
+import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/cancellation/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
-describe('assertAccountUsable', () => {
+describe('assertCancellation', () => {
   beforeEach(async () => {
     await Promise.all([
       MongoAccountCancellation.deleteMany({}),
@@ -17,174 +18,56 @@ describe('assertAccountUsable', () => {
     ]);
   });
 
-  it('resolves the actual API Key member from tmbId when teamId is already present', async () => {
-    const userId = new Types.ObjectId();
-    const [team] = await MongoTeam.create([
-      {
-        name: 'API Key cancellation team',
+  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
+    'blocks a team whose owner cancellation is %s',
+    async (status) => {
+      const ownerId = new Types.ObjectId();
+      const team = await MongoTeam.create({ name: 'Cancelling team', ownerId });
+      await MongoAccountCancellation.create({ userId: ownerId, status, requestedAt: new Date() });
+
+      await expect(assertCancellation({ teamId: String(team._id) })).rejects.toThrow(
+        TeamErrEnum.accountCancellationPending
+      );
+    }
+  );
+
+  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
+    'blocks a member whose user cancellation is %s',
+    async (status) => {
+      const userId = new Types.ObjectId();
+      const team = await MongoTeam.create({
+        name: 'Member cancellation team',
         ownerId: new Types.ObjectId()
-      }
-    ]);
-    const [member] = await MongoTeamMember.create([
-      {
+      });
+      const member = await MongoTeamMember.create({
         teamId: team._id,
         userId,
         name: 'Member',
         status: 'active'
-      }
-    ]);
-    await MongoAccountCancellation.create([
-      {
-        userId,
-        status: AccountCancellationStatus.pending,
-        requestedAt: new Date()
-      }
-    ]);
-
-    await expect(
-      assertAccountUsable({
-        teamId: String(team._id),
-        tmbId: String(member._id)
-      })
-    ).rejects.toThrow(UserErrEnum.accountCancellationPending);
-  });
-
-  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
-    'blocks the current user %s cancellation under normal access',
-    async (status) => {
-      const userId = new Types.ObjectId();
-      const ownerId = new Types.ObjectId();
-      const context = {
-        userId: String(userId),
-        teamId: new Types.ObjectId().toString(),
-        tmbId: new Types.ObjectId().toString(),
-        ownerId: String(ownerId)
-      };
+      });
+      await MongoAccountCancellation.create({ userId, status, requestedAt: new Date() });
 
       await expect(
-        assertAccountUsable({
-          authContext: context,
-          cancellations: [{ userId, status }]
-        })
+        assertCancellation({ teamId: String(team._id), tmbId: String(member._id) })
       ).rejects.toThrow(UserErrEnum.accountCancellationPending);
     }
   );
 
-  it('allows pending recovery but never allows finalizing recovery through the pending flag', async () => {
-    const userId = new Types.ObjectId();
-    const context = {
-      userId: String(userId),
-      teamId: new Types.ObjectId().toString(),
-      tmbId: new Types.ObjectId().toString()
-    };
+  it('rejects an unknown member and allows a member without cancellation', async () => {
+    const team = await MongoTeam.create({ name: 'Usable team', ownerId: new Types.ObjectId() });
 
     await expect(
-      assertAccountUsable({
-        authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatus.pending }],
-        allowUserAccountCancellationPending: true
-      })
-    ).resolves.toBeUndefined();
-    await expect(
-      assertAccountUsable({
-        authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatus.finalizing }],
-        allowUserAccountCancellationPending: true
-      })
-    ).rejects.toThrow(UserErrEnum.accountCancellationPending);
-  });
+      assertCancellation({ teamId: String(team._id), tmbId: new Types.ObjectId().toString() })
+    ).rejects.toThrow(ERROR_ENUM.unAuthorization);
 
-  it('applies tokenLogin flags independently to user and owner-team cancellation states', async () => {
-    const userId = new Types.ObjectId();
-    const ownerId = new Types.ObjectId();
-    const context = {
-      userId: String(userId),
-      teamId: new Types.ObjectId().toString(),
-      tmbId: new Types.ObjectId().toString(),
-      ownerId: String(ownerId)
-    };
-    const tokenLoginOptions = resolveAccountCancellationAccess({
-      req: { method: 'GET', url: '/api/support/user/account/tokenLogin' },
-      accountCancellationAccess: 'tokenLogin'
+    const member = await MongoTeamMember.create({
+      teamId: team._id,
+      userId: new Types.ObjectId(),
+      name: 'Member',
+      status: 'active'
     });
-
     await expect(
-      assertAccountUsable({
-        authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatus.pending }],
-        ...tokenLoginOptions
-      })
+      assertCancellation({ teamId: String(team._id), tmbId: String(member._id) })
     ).resolves.toBeUndefined();
-    await expect(
-      assertAccountUsable({
-        authContext: context,
-        cancellations: [{ userId, status: AccountCancellationStatus.finalizing }],
-        ...tokenLoginOptions
-      })
-    ).rejects.toThrow(UserErrEnum.accountCancellationPending);
-    for (const status of [
-      AccountCancellationStatus.pending,
-      AccountCancellationStatus.finalizing
-    ]) {
-      await expect(
-        assertAccountUsable({
-          authContext: context,
-          cancellations: [{ userId: ownerId, status }],
-          ...tokenLoginOptions
-        })
-      ).resolves.toBeUndefined();
-    }
-  });
-
-  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
-    'allows a member to inspect another owner cancellation through team escape: %s',
-    async (status) => {
-      const ownerId = new Types.ObjectId();
-      const context = {
-        userId: new Types.ObjectId().toString(),
-        teamId: new Types.ObjectId().toString(),
-        tmbId: new Types.ObjectId().toString(),
-        ownerId: String(ownerId)
-      };
-
-      await expect(
-        assertAccountUsable({
-          authContext: context,
-          cancellations: [{ userId: ownerId, status }],
-          allowCurrentSessionTeamAccountCancellationPending: status === 'pending',
-          allowCurrentSessionTeamAccountCancellationFinalizing: status === 'finalizing'
-        })
-      ).resolves.toBeUndefined();
-    }
-  );
-
-  it('uses one auth-context aggregation and one cancellation query on the normal path', async () => {
-    const userId = new Types.ObjectId();
-    const [team] = await MongoTeam.create([
-      { name: 'Query count team', ownerId: new Types.ObjectId() }
-    ]);
-    const [member] = await MongoTeamMember.create([
-      {
-        teamId: team._id,
-        userId,
-        name: 'Member',
-        status: 'active'
-      }
-    ]);
-    const aggregateSpy = vi.spyOn(MongoTeamMember, 'aggregate');
-    const cancellationFindSpy = vi.spyOn(MongoAccountCancellation, 'find');
-
-    await assertAccountUsable({
-      userId: String(userId),
-      teamId: String(team._id),
-      tmbId: String(member._id)
-    });
-
-    expect(aggregateSpy).toHaveBeenCalledTimes(1);
-    expect(cancellationFindSpy).toHaveBeenCalledTimes(1);
-    const [query] = cancellationFindSpy.mock.calls[0];
-    expect(query).toMatchObject({ status: { $in: ['pending', 'finalizing'] } });
-    aggregateSpy.mockRestore();
-    cancellationFindSpy.mockRestore();
   });
 });

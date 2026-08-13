@@ -9,6 +9,7 @@ import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import Icon from '@fastgpt/web/components/common/Icon';
+import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
 
 type FormType = {
   newPsw: string;
@@ -19,6 +20,10 @@ const ResetPswModal = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
+  const isAccountCancellationPending = accountCancellationActiveStatuses.includes(
+    userInfo?.team?.accountCancellation
+      ?.status as (typeof accountCancellationActiveStatuses)[number]
+  );
 
   const { register, handleSubmit, getValues } = useForm<FormType>({
     defaultValues: {
@@ -36,11 +41,14 @@ const ResetPswModal = () => {
       if (!userInfo?._id) {
         return false;
       }
+      if (isAccountCancellationPending) {
+        return false;
+      }
       return getCheckPswExpired();
     },
     {
       manual: false,
-      refreshDeps: [userInfo?._id]
+      refreshDeps: [userInfo?._id, isAccountCancellationPending]
     }
   );
 

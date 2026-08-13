@@ -1,11 +1,18 @@
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../adapter';
-import { RedisInvalidArgumentError } from '../runtime/errors';
+import { RedisInvalidArgumentError, RedisInvalidResponseError } from '../runtime/errors';
 import { z } from 'zod';
 import { NonNegativeSafeIntegerSchema } from '../runtime/schema';
 import type { RedisCacheLogger } from '../types';
 
 const SESSION_KEY_PREFIX = 'session:';
 export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+const UPDATE_EXISTING_SESSION_FIELD_SCRIPT = `
+if redis.call("exists", KEYS[1]) == 0 then
+  return 0
+end
+redis.call("hset", KEYS[1], ARGV[1], ARGV[2])
+return 1
+`;
 
 /** Session 业务数据的类型和写入校验合同。 */
 export const SessionDataSchema = z.object({
@@ -13,16 +20,23 @@ export const SessionDataSchema = z.object({
   teamId: z.string().min(1),
   tmbId: z.string().min(1),
   isRoot: z.boolean(),
+  isCancelling: z.boolean().default(false),
   createdAt: NonNegativeSafeIntegerSchema,
   ip: z.string().nullable().optional()
 });
 export type SessionData = z.infer<typeof SessionDataSchema>;
+export type SessionDataInput = z.input<typeof SessionDataSchema>;
 
 const SessionHashSchema = z.object({
   userId: z.string().min(1),
   teamId: z.string().min(1),
   tmbId: z.string().min(1),
   isRoot: z.enum(['0', '1']).transform((value) => value === '1'),
+  isCancelling: z
+    .enum(['0', '1'])
+    .optional()
+    .default('0')
+    .transform((value) => value === '1'),
   createdAt: z.string().regex(/^\d+$/).transform(Number).pipe(NonNegativeSafeIntegerSchema),
   ip: z.string().optional()
 });
@@ -94,7 +108,7 @@ export class SessionCache {
     this.readByLogicalKey({ logicalKey: this.getKey(sessionId), sessionId });
 
   /** 原子写入历史 session hash 并设置 7 天 TTL。 */
-  async set({ sessionId, data }: { sessionId: string; data: SessionData }) {
+  async set({ sessionId, data }: { sessionId: string; data: SessionDataInput }) {
     const parsedData = SessionDataSchema.safeParse(data);
     if (!parsedData.success) {
       throw new RedisInvalidArgumentError({
@@ -103,7 +117,7 @@ export class SessionCache {
       });
     }
 
-    const { userId, teamId, tmbId, isRoot, createdAt, ip } = parsedData.data;
+    const { userId, teamId, tmbId, isRoot, isCancelling, createdAt, ip } = parsedData.data;
     await this.redis.setHashWithTtl({
       key: this.getKey(sessionId),
       fields: {
@@ -111,6 +125,7 @@ export class SessionCache {
         teamId,
         tmbId,
         isRoot: isRoot ? '1' : '0',
+        isCancelling: isCancelling ? '1' : '0',
         createdAt: String(createdAt),
         ...(ip === undefined || ip === null ? {} : { ip })
       },
@@ -137,6 +152,28 @@ export class SessionCache {
       key: this.getKey(sessionId),
       fields: { teamId, tmbId }
     });
+
+  /** 更新 Session 的注销状态快照，不刷新原有过期时间。 */
+  async updateCancellation({
+    sessionId,
+    isCancelling
+  }: {
+    sessionId: string;
+    isCancelling: boolean;
+  }) {
+    const result = await this.redis.evalScript({
+      script: UPDATE_EXISTING_SESSION_FIELD_SCRIPT,
+      keys: [this.getKey(sessionId)],
+      args: ['isCancelling', isCancelling ? '1' : '0']
+    });
+    if (result !== 0 && result !== 1) {
+      throw new RedisInvalidResponseError({
+        operation: 'session.updateCancellation',
+        message: 'Redis session cancellation update returned an unsupported response'
+      });
+    }
+    return result === 1;
+  }
 
   /** 分页扫描某个用户的全部 typed session，损坏记录会被尽力清理。 */
   async listByUser(userId: string): Promise<SessionRecord[]> {

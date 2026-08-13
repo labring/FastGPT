@@ -1,5 +1,4 @@
 export const accountCancellationWaitDays = 15;
-export const accountCancellationTimezone = 'Asia/Shanghai';
 
 export const AccountCancellationStatus = {
   pending: 'pending',

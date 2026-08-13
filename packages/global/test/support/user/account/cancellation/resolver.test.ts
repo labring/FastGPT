@@ -38,6 +38,19 @@ describe('resolveAccountCancellationByUsername', () => {
     });
   });
 
+  it.each(['  ', null])('preserves the shared empty-username result for %s', (username) => {
+    expect(
+      resolveAccountCancellationByUsername({
+        username,
+        capabilities
+      })
+    ).toEqual({
+      status: 'unsupported',
+      accountKind: 'invalid',
+      unsupportedReason: 'empty_username'
+    });
+  });
+
   it('does not expose a provider that is unavailable', () => {
     expect(
       resolveAccountCancellationByUsername({

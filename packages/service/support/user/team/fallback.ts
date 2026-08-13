@@ -1,28 +1,20 @@
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
-import {
-  getActiveAccountCancellationByUserId,
-  getActiveAccountCancellationsByTeams
-} from '../account/cancellation/read';
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 import type { ClientSession } from '../../../common/mongo';
 
 /**
- * 找到用户可继续使用的团队。默认排除已删除团队、无效成员关系和注销中的 owner 团队；
- * 登录恢复场景可显式允许注销中的团队作为受限 Session 上下文，后续访问仍由注销 guard 控制。
+ * 找到用户可继续使用的团队，排除已删除团队和无效成员关系。
  */
 export const getUserFallbackTeam = async ({
   userId,
   excludedTeamId,
-  session,
-  allowAccountCancellationTeam = false
+  session
 }: {
   userId: string;
   excludedTeamId?: string;
   session?: ClientSession;
-  allowAccountCancellationTeam?: boolean;
 }) => {
-  let ownerCancellation: Awaited<ReturnType<typeof getActiveAccountCancellationByUserId>> = null;
   const ownerTeamQuery = MongoTeam.findOne(
     {
       ownerId: userId,
@@ -45,12 +37,8 @@ export const getUserFallbackTeam = async ({
     );
     if (session) ownerMemberQuery.session(session);
 
-    const [ownerMember, cancellation] = await Promise.all([
-      ownerMemberQuery.lean(),
-      allowAccountCancellationTeam ? null : getActiveAccountCancellationByUserId(userId)
-    ]);
-    ownerCancellation = cancellation;
-    if (ownerMember && !ownerCancellation) {
+    const ownerMember = await ownerMemberQuery.lean();
+    if (ownerMember) {
       return { teamId: String(ownerTeam._id), tmbId: String(ownerMember._id) };
     }
   }
@@ -79,20 +67,11 @@ export const getUserFallbackTeam = async ({
   const teams = await teamQuery.lean();
   if (teams.length === 0) return null;
 
-  const cancellationTeams = await getActiveAccountCancellationsByTeams(
-    teams,
-    ownerCancellation ? [ownerCancellation] : []
-  );
-  const blockedTeamIds = new Set(cancellationTeams.map(({ teamId }) => teamId));
   const validTeams = new Map(teams.map((team) => [String(team._id), team]));
   const candidates = members.flatMap((member) => {
     const teamId = String(member.teamId);
     return validTeams.has(teamId) ? [{ teamId, tmbId: String(member._id) }] : [];
   });
 
-  return (
-    candidates.find(({ teamId }) => !blockedTeamIds.has(teamId)) ??
-    (allowAccountCancellationTeam ? candidates[0] : undefined) ??
-    null
-  );
+  return candidates[0] ?? null;
 };

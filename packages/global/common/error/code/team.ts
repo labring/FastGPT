@@ -50,7 +50,8 @@ const teamErr = [
   },
   {
     statusText: TeamErrEnum.accountCancellationPending,
-    message: i18nT('common:code_error.team_error.account_cancellation_pending')
+    message: i18nT('common:code_error.team_error.account_cancellation_pending'),
+    httpStatus: 403
   },
   {
     statusText: TeamErrEnum.teamOverSize,

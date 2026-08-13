@@ -5,8 +5,7 @@ import {
   getAccountCancellationPendingDueCutoff,
   getAccountCancellationReminderAt,
   getAccountCancellationReminderRequestedAtWindow,
-  isAccountCancellationAnonymizedUsername,
-  isAccountCancellationCancelable
+  isAccountCancellationAnonymizedUsername
 } from '@fastgpt/global/support/user/account/cancellation/utils';
 
 describe('deriveAccountCancellationSchedule', () => {
@@ -15,20 +14,21 @@ describe('deriveAccountCancellationSchedule', () => {
     const schedule = deriveAccountCancellationSchedule(requestedAt);
 
     expect(schedule.waitEndsAt.toISOString()).toBe('2026-07-16T10:20:00.000Z');
-    expect(schedule.cleanupLocalDate).toBe('2026-07-16');
+    expect(schedule.cleanupDate).toBe('2026-07-16');
     expect(schedule.sevenDayReminderAt.toISOString()).toBe('2026-07-09T02:00:00.000Z');
     expect(schedule.oneDayReminderAt.toISOString()).toBe('2026-07-15T02:00:00.000Z');
     expect(schedule.finalNoticeAt.toISOString()).toBe('2026-07-16T02:00:00.000Z');
     expect(schedule.scheduledCancelAt.toISOString()).toBe('2026-07-16T16:00:00.000Z');
   });
 
-  it('uses the configured timezone for a DST transition', () => {
-    const requestedAt = new Date('2026-03-01T17:00:00.000Z');
-    const schedule = deriveAccountCancellationSchedule(requestedAt, 'America/New_York');
+  it('defers finalization to the next UTC cron when the wait period ends after 16:00', () => {
+    const requestedAt = new Date('2026-07-01T20:20:00.000Z');
+    const schedule = deriveAccountCancellationSchedule(requestedAt);
 
-    expect(schedule.cleanupLocalDate).toBe('2026-03-16');
-    expect(schedule.finalNoticeAt.toISOString()).toBe('2026-03-16T14:00:00.000Z');
-    expect(schedule.scheduledCancelAt.toISOString()).toBe('2026-03-17T04:00:00.000Z');
+    expect(schedule.waitEndsAt.toISOString()).toBe('2026-07-16T20:20:00.000Z');
+    expect(schedule.cleanupDate).toBe('2026-07-17');
+    expect(schedule.finalNoticeAt.toISOString()).toBe('2026-07-17T02:00:00.000Z');
+    expect(schedule.scheduledCancelAt.toISOString()).toBe('2026-07-17T16:00:00.000Z');
   });
 
   it('shares reminder calculation with the schedule helper', () => {
@@ -42,7 +42,7 @@ describe('deriveAccountCancellationSchedule', () => {
     ).toEqual(schedule.finalNoticeAt);
   });
 
-  it('derives requestedAt query windows for reminders from the configured local day', () => {
+  it('derives requestedAt query windows from UTC execution days', () => {
     const now = new Date('2026-07-09T02:00:00.000Z');
 
     expect(
@@ -74,7 +74,7 @@ describe('deriveAccountCancellationSchedule', () => {
     });
   });
 
-  it('derives the exclusive pending due cutoff from the configured local day', () => {
+  it('derives the exclusive pending due cutoff from the UTC execution time', () => {
     expect(
       getAccountCancellationPendingDueCutoff({
         now: new Date('2026-07-16T16:00:00.000Z')
@@ -82,34 +82,8 @@ describe('deriveAccountCancellationSchedule', () => {
     ).toEqual(new Date('2026-07-01T16:00:00.000Z'));
   });
 
-  it('keeps requestedAt query windows aligned with the fixed wait period across DST', () => {
-    const window = getAccountCancellationReminderRequestedAtWindow({
-      now: new Date('2026-03-09T14:00:00.000Z'),
-      reminder: AccountCancellationReminder.today,
-      timeZone: 'America/New_York'
-    });
-
-    expect(window).toEqual({
-      start: new Date('2026-02-22T04:00:00.000Z'),
-      end: new Date('2026-02-23T04:00:00.000Z')
-    });
-    expect(
-      deriveAccountCancellationSchedule(window.start, 'America/New_York').finalNoticeAt
-    ).toEqual(new Date('2026-03-09T14:00:00.000Z'));
-  });
-
-  it('allows cancellation only before the derived local midnight', () => {
-    const requestedAt = new Date('2026-07-01T10:20:00.000Z');
-    const schedule = deriveAccountCancellationSchedule(requestedAt);
-    expect(isAccountCancellationCancelable(requestedAt, new Date('2026-07-16T15:59:59.999Z'))).toBe(
-      true
-    );
-    expect(isAccountCancellationCancelable(requestedAt, schedule.scheduledCancelAt)).toBe(false);
-  });
-
-  it('rejects invalid dates and timezones', () => {
+  it('rejects invalid dates', () => {
     expect(() => deriveAccountCancellationSchedule(new Date('invalid'))).toThrow();
-    expect(() => deriveAccountCancellationSchedule(new Date(), 'invalid/zone')).toThrow();
   });
 });
 

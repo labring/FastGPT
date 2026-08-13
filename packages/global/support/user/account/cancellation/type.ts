@@ -25,35 +25,16 @@ export type AccountCancellationReminder = z.infer<typeof AccountCancellationRemi
 export const AccountCancellationUnavailableReasonSchema = z.enum(
   AccountCancellationUnavailableReasonValues
 );
-export type AccountCancellationUnavailableReason = z.infer<
-  typeof AccountCancellationUnavailableReasonSchema
->;
-
-export type AccountCancellationRecordType = {
-  _id: string;
-  userId: string;
-  status: AccountCancellationStatus;
-  requestedAt: Date;
-};
 
 export type AccountCancellationSchedule = {
   requestedAt: Date;
   waitEndsAt: Date;
-  cleanupLocalDate: string;
+  cleanupDate: string;
   sevenDayReminderAt: Date;
   oneDayReminderAt: Date;
   finalNoticeAt: Date;
   scheduledCancelAt: Date;
-  timezone: string;
 };
-
-export type AccountCancellationUserState = {
-  status: 'pending';
-  requestedAt: Date;
-  scheduledCancelAt?: Date;
-  canCancelCancellation: boolean;
-};
-
 export type TeamAccountCancellationSummary = {
   status: TeamAccountCancellationStatus;
   scheduledCancelAt?: Date | string;
@@ -90,11 +71,5 @@ export type AccountCancellationResolveResult =
         | 'password_verification_not_allowed'
         | 'verification_unavailable';
     };
-
-export type AccountCancellationAccessPreset =
-  | 'normal'
-  | 'selfCancellation'
-  | 'teamEscape'
-  | 'tokenLogin';
 
 export type AccountCancellationVerificationMethod = AccountCancellationAllowedMethod;

@@ -4,14 +4,11 @@ import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { authUserSession, resolveUserSessionTeam } from '../../../support/user/session';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { authUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
-import { resolveAccountCancellationAccess } from '../../user/account/cancellation/access';
-import { getActiveAccountCancellationsByUserIds } from '../../user/account/cancellation/read';
-import { assertAccountUsable } from '../../user/account/cancellation/guard';
-import { resolveAuthContext } from './context';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
@@ -35,7 +32,7 @@ export async function parseHeaderCert({
   authToken = false,
   authRoot = false,
   authApiKey = false,
-  accountCancellationAccess = 'normal'
+  allowAccountCancellation = false
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
@@ -105,6 +102,7 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
+    isCancelling,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy
@@ -137,7 +135,8 @@ export async function parseHeaderCert({
         openApiKey: '',
         authType: AuthUserTypeEnum.token,
         isRoot: res.isRoot,
-        sessionId: res.sessionId
+        sessionId: res.sessionId,
+        isCancelling: res.isCancelling
       };
     }
     if (authRoot && rootkey) {
@@ -157,62 +156,23 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
 
-  const authContext = await (async () => {
-    if (authRoot) return undefined;
-    if (!teamId || !tmbId) return null;
+  if (
+    !authRoot &&
+    authType === AuthUserTypeEnum.token &&
+    !allowAccountCancellation &&
+    isCancelling
+  ) {
+    return Promise.reject(UserErrEnum.accountCancellationPending);
+  }
 
-    const currentContext = await resolveAuthContext({
-      userId: uid ? String(uid) : undefined,
-      teamId: String(teamId),
-      tmbId: String(tmbId)
-    });
-    if (currentContext) return currentContext;
-
-    // 只对已有 Session 保留团队失效后的原地 fallback；API Key 失效必须直接拒绝。
-    if (authType === AuthUserTypeEnum.token && uid && sessionId) {
-      const sessionTeam = await resolveUserSessionTeam({
-        userId: String(uid),
-        teamId: String(teamId),
-        tmbId: String(tmbId),
-        sessionId
-      });
-      return resolveAuthContext({
-        userId: String(uid),
-        teamId: sessionTeam.teamId,
-        tmbId: sessionTeam.tmbId
-      });
-    }
-    return null;
-  })();
-
-  if (!authRoot && !authContext) {
+  if (!authRoot && (!teamId || !tmbId)) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 
-  const accountCancellationGuard = resolveAccountCancellationAccess({
-    req,
-    accountCancellationAccess
-  });
-  const cancellations = authContext
-    ? await getActiveAccountCancellationsByUserIds({
-        userId: authContext.userId,
-        ownerId: authContext.ownerId
-      })
-    : undefined;
-  await assertAccountUsable({
-    authContext: authContext ?? undefined,
-    cancellations,
-    ...accountCancellationGuard
-  });
-
-  const resolvedUserId = authContext?.userId ?? String(uid);
-  const resolvedTeamId = authContext?.teamId ?? '';
-  const resolvedTmbId = authContext?.tmbId ?? '';
-
   return {
-    userId: resolvedUserId,
-    teamId: String(resolvedTeamId),
-    tmbId: String(resolvedTmbId),
+    userId: String(uid),
+    teamId: String(teamId),
+    tmbId: String(tmbId),
     appId,
     authType,
     sourceName,
