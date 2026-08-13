@@ -8,10 +8,21 @@ export const resolveAccountCancellationByUsername = ({
 }: AccountCancellationResolverInput): AccountCancellationResolveResult => {
   const result = resolveAccountVerificationByUsername({
     username: username ?? '',
-    capabilities
+    capabilities,
+    allowPasswordFallback: true,
+    oldPasswordAvailable: true
   });
 
-  if (result.status === 'unsupported') return result;
+  if (result.status === 'unsupported') {
+    return {
+      status: 'unsupported',
+      accountKind: result.accountKind,
+      unsupportedReason:
+        result.unsupportedReason === 'empty_username'
+          ? 'empty_username'
+          : 'verification_unavailable'
+    };
+  }
 
   if (result.method === 'oldPassword') {
     return {
