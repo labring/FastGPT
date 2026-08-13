@@ -3,28 +3,42 @@ import { IntSchema } from '../../../common/zod';
 import { FlowNodeInputItemTypeSchema } from '../type/io';
 import { FlowNodeInputTypeEnum } from '../node/constant';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
+import { StoreNodeItemTypeSchema } from '../type/node';
+import { StoreEdgeItemTypeSchema } from '../type/edge';
+import { AppChatConfigTypeSchema } from '../../app/type';
 
 /**
  * 历史工作流输入。旧索引只允许在外部数据迁移阶段出现。
  */
-export const LegacyFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.extend({
+export const LegacyFlowNodeInputItemSchema = FlowNodeInputItemTypeSchema.omit({
+  renderTypeList: true
+}).extend({
+  renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)).optional(),
   selectedTypeIndex: IntSchema.optional().meta({
     description: '历史工作流输入类型索引',
     deprecated: true
   })
 });
-export type LegacyFlowNodeInputItem = z.infer<typeof LegacyFlowNodeInputItemTypeSchema>;
+export type LegacyFlowNodeInputItem = z.infer<typeof LegacyFlowNodeInputItemSchema>;
 
 /**
  * 当前工作流输入。该类型不包含任何历史字段。
  */
-export const CanonicalFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema;
-export type CanonicalFlowNodeInputItem = z.infer<typeof CanonicalFlowNodeInputItemTypeSchema>;
+export const CanonicalFlowNodeInputItemSchema = FlowNodeInputItemTypeSchema;
+export type CanonicalFlowNodeInputItem = z.infer<typeof CanonicalFlowNodeInputItemSchema>;
 
 /**
- * Agent 工具输入配置在应用内部使用的当前形态。
+ * 历史工作流节点，输入允许携带 selectedTypeIndex。
  */
-const CanonicalAgentToolInputConfigValueSchema = z.object({
+export const LegacyStoreNodeItemSchema = StoreNodeItemTypeSchema.extend({
+  inputs: z.array(LegacyFlowNodeInputItemSchema)
+});
+export type LegacyStoreNodeItem = z.infer<typeof LegacyStoreNodeItemSchema>;
+
+/**
+ * 当前版本的 Agent 工具输入配置。
+ */
+export const CanonicalAgentToolInputConfigSchema = z.object({
   key: z.string().meta({
     description: '工具输入字段的稳定 key，对应当前工具定义中的 NodeIO key'
   }),
@@ -32,9 +46,11 @@ const CanonicalAgentToolInputConfigValueSchema = z.object({
     description: '该输入的值来源：agentGenerated 由模型生成，manual 使用 Agent 配置中的固定值'
   })
 });
+export type CanonicalAgentToolInputConfig = z.infer<typeof CanonicalAgentToolInputConfigSchema>;
 
 /**
- * Agent 工具输入配置的 Legacy schema。
+ * 历史版本的 Agent 工具输入配置。
+ * 使用预处理将历史数据转换为当前版本。
  *
  * 持久化位置：Agent 节点 `inputs[selectedTools].value[*].inputs[*]`。
  *
@@ -68,5 +84,25 @@ export const LegacyAgentToolInputConfigSchema = z.preprocess((value) => {
         ? AgentToolInputModeEnum.agentGenerated
         : AgentToolInputModeEnum.manual
   };
-}, CanonicalAgentToolInputConfigValueSchema);
+}, CanonicalAgentToolInputConfigSchema);
 export type LegacyAgentToolInputConfig = z.infer<typeof LegacyAgentToolInputConfigSchema>;
+
+/**
+ * 迁移所用的工作流数据。
+ */
+export const LegacyWorkflowDataSchema = z.object({
+  nodes: z.array(LegacyStoreNodeItemSchema),
+  edges: z.array(StoreEdgeItemTypeSchema).default([]),
+  chatConfig: AppChatConfigTypeSchema.optional()
+});
+export type LegacyWorkflowData = z.infer<typeof LegacyWorkflowDataSchema>;
+
+/**
+ * 当前版本的工作流数据。
+ */
+export const CanonicalWorkflowDataSchema = z.object({
+  nodes: z.array(StoreNodeItemTypeSchema),
+  edges: z.array(StoreEdgeItemTypeSchema),
+  chatConfig: AppChatConfigTypeSchema.optional()
+});
+export type CanonicalWorkflowData = z.infer<typeof CanonicalWorkflowDataSchema>;
