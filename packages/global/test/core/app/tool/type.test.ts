@@ -31,6 +31,23 @@ describe('AgentToolSchema', () => {
     expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]);
   });
 
+  it('preserves a transitional manual workflow input snapshot', () => {
+    const result = AgentToolSchema.parse({
+      id: 'workflow-tool',
+      inputs: [
+        {
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 0,
+          toolDescription: 'Search query'
+        }
+      ],
+      config: { query: 'fixed query' }
+    });
+
+    expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.manual }]);
+  });
+
   it('preserves missing inputs as the legacy Agent marker', () => {
     const result = AgentToolSchema.parse({
       id: 'systemTool-search',
