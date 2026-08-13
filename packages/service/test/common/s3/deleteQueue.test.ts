@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { InvalidStorageObjectKeyError } from '@fastgpt-sdk/storage';
 
 vi.unmock('@fastgpt/service/common/s3/queue/delete');
 
@@ -75,5 +76,56 @@ describe('executeS3DeleteJob', () => {
         keys: ['dataset/team/deleted.txt', 'dataset/team/failed.txt']
       })
     ).rejects.toThrow('Failed to delete 1 S3 object');
+  });
+
+  it('falls back to raw key deletion for legacy keys rejected by validation', async () => {
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    const deleteObjectsByMultiKeys = vi.fn().mockRejectedValue(
+      new InvalidStorageObjectKeyError({
+        field: 'keys[0]',
+        reason: 'control_character'
+      })
+    );
+    const deleteObjectsByRawKeys = vi.fn().mockResolvedValue({ keys: [] });
+    const deleteObjectsByPrefix = vi.fn().mockRejectedValue(
+      new InvalidStorageObjectKeyError({
+        field: 'prefix',
+        reason: 'control_character'
+      })
+    );
+
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { deleteObjectsByMultiKeys, deleteObjectsByRawKeys, deleteObjectsByPrefix }
+      }
+    } as any;
+
+    await expect(
+      executeS3DeleteJob({ bucketName: 'fastgpt-private', keys: [legacyKey] })
+    ).resolves.toBeUndefined();
+
+    expect(deleteObjectsByRawKeys).toHaveBeenCalledWith({ keys: [legacyKey] });
+    expect(deleteObjectsByPrefix).toHaveBeenCalled();
+  });
+
+  it('does not bypass validation for non-legacy key errors', async () => {
+    const deleteObjectsByMultiKeys = vi.fn().mockRejectedValue(
+      new InvalidStorageObjectKeyError({
+        field: 'keys[0]',
+        reason: 'dot_path_segment'
+      })
+    );
+    const deleteObjectsByRawKeys = vi.fn();
+
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { deleteObjectsByMultiKeys, deleteObjectsByRawKeys }
+      }
+    } as any;
+
+    await expect(
+      executeS3DeleteJob({ bucketName: 'fastgpt-private', keys: ['../escape.txt'] })
+    ).rejects.toBeInstanceOf(InvalidStorageObjectKeyError);
+    expect(deleteObjectsByRawKeys).not.toHaveBeenCalled();
   });
 });

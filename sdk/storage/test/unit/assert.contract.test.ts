@@ -201,3 +201,36 @@ describe('IStorage object key preflight contract', () => {
     }
   );
 });
+
+describe('IStorage raw key deletion contract', () => {
+  it.each([
+    ['AWS S3', createAwsStorage],
+    ['MinIO', createMinioStorage],
+    ['OSS', createOssStorage],
+    ['COS', createCosStorage]
+  ] as const)(
+    '%s dispatches deleteObjectsByRawKeys without key preflight',
+    async (_, createStorage) => {
+      const { storage, remoteCall } = createStorage();
+      const legacyKey = 'chat/app/legacy\r\nname.svg';
+
+      // 各厂商 remote mock 被调用时直接抛错，证明 raw 通道确实绕过了格式断言并触达远端。
+      await expect(storage.deleteObjectsByRawKeys({ keys: [legacyKey] })).rejects.toThrow(
+        'Object key was not validated before the remote SDK call'
+      );
+      expect(remoteCall).toHaveBeenCalled();
+    }
+  );
+
+  it('Vitest mock deletes raw legacy keys without validation', async () => {
+    const storage = createVitestStorageMock({ vi, bucketName: 'test-bucket' });
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    storage.__putObject(legacyKey, { body: Buffer.from('svg') });
+
+    await expect(storage.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+      bucket: 'test-bucket',
+      keys: []
+    });
+    expect(storage.__objects.has(legacyKey)).toBe(false);
+  });
+});
