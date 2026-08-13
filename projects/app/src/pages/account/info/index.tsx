@@ -40,7 +40,6 @@ import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
@@ -78,13 +77,9 @@ const ModelPriceModal = dynamic(() =>
 
 const Info = () => {
   const { isPc } = useSystem();
-  const { teamPlanStatus, initUserInfo } = useUserStore();
+  const { teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
-
-  useMount(() => {
-    initUserInfo();
-  });
 
   return (
     <AccountContainer>
