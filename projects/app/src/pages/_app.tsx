@@ -1,96 +1,32 @@
 import type { AppProps } from 'next/app';
-import Script from 'next/script';
-
-import Layout from '@/components/Layout';
+import dynamic from 'next/dynamic';
 import { appWithTranslation } from 'next-i18next';
-
-import QueryClientContext from '@/web/context/QueryClient';
-import ChakraUIContext from '@/web/context/ChakraUI';
-import { useInitApp } from '@/web/context/useInitApp';
-import { useTranslation } from 'next-i18next';
+import { clientI18nConfig } from '@fastgpt/web/i18n/clientConfig';
+import AppShell from '@/web/context/AppShell';
 import '@/web/styles/reset.scss';
-import NextHead from '@/components/common/NextHead';
-import { type ReactElement, useEffect } from 'react';
-import { type NextPage } from 'next';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
-import { useRouter } from 'next/router';
-import { errorLogger } from '@/web/common/utils/errorLogger';
-import { appClientEnv } from '@/web/common/system/env';
-
 import '@scalar/api-reference-react/style.css';
 
-type NextPageWithLayout = NextPage & {
-  setLayout?: (page: ReactElement) => JSX.Element;
-};
-type AppPropsWithLayout = AppProps & {
-  Component: NextPageWithLayout;
-};
-
-const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/detail'];
-const openAPIReferenceRoutes = ['/apidoc/devapi', '/apidoc/systemopenapi'];
-// 哪些路由不需要 Layout
-const routesWithoutLayout = openAPIReferenceRoutes;
-
-function App({ Component, pageProps }: AppPropsWithLayout) {
-  const { feConfigs, scripts, title } = useInitApp();
-  const { t } = useTranslation();
-
-  // Forbid touch scale
-  useEffect(() => {
-    document.addEventListener(
-      'wheel',
-      function (e) {
-        if (e.ctrlKey && Math.abs(e.deltaY) !== 0) {
-          e.preventDefault();
-        }
-      },
-      { passive: false }
-    );
-
-    // Initialize error logger
-    errorLogger.init();
-  }, []);
-
-  const setLayout = Component.setLayout || ((page) => <>{page}</>);
-
-  const router = useRouter();
-  const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
-  const shouldUseLayout = !router?.pathname || !routesWithoutLayout.includes(router.pathname);
-  const headDesc = appClientEnv.systemDescription || t('common:system_intro', { title });
-  const headIcon = getWebReqUrl(feConfigs?.favicon || appClientEnv.systemFavicon);
-
-  if (openAPIReferenceRoutes.includes(router.pathname)) {
-    return (
-      <>
-        {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
-        {setLayout(<Component {...pageProps} />)}
-      </>
-    );
+const clientOnlyRoutes = new Set([
+  '/account/apikey',
+  '/account/inform',
+  '/account/setting',
+  '/account/thirdParty',
+  '/account/customDomain',
+  '/account/bill',
+  '/account/team',
+  '/account/info',
+  '/account/usage',
+  '/account/model',
+  '/price'
+]);
+const ClientOnlyAppShell = dynamic(() => import('@/web/context/ClientOnlyAppShell'), {
+  ssr: false
+});
+const AppRouter = (props: AppProps) => {
+  if (clientOnlyRoutes.has(props.router.pathname)) {
+    return <ClientOnlyAppShell {...props} />;
   }
+  return <AppShell {...props} />;
+};
 
-  return (
-    <>
-      {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
-
-      {scripts?.map((item, i) => (
-        <Script key={i} strategy="lazyOnload" {...item}></Script>
-      ))}
-
-      <QueryClientContext>
-        <SystemStoreContextProvider device={pageProps.deviceSize}>
-          <ChakraUIContext>
-            {shouldUseLayout ? (
-              <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
-            ) : (
-              setLayout(<Component {...pageProps} />)
-            )}
-          </ChakraUIContext>
-        </SystemStoreContextProvider>
-      </QueryClientContext>
-    </>
-  );
-}
-
-// @ts-ignore
-export default appWithTranslation(App);
+export default appWithTranslation(AppRouter, clientI18nConfig);

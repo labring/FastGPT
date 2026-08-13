@@ -20,7 +20,8 @@ import {
   Link
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation, Trans } from 'next-i18next';
+import { Trans } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import Icon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import { useEffect, useMemo, useState } from 'react';
@@ -89,7 +90,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
       }
     : undefined;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_custom_domain');
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
 

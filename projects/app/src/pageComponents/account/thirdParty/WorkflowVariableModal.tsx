@@ -2,7 +2,7 @@ import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/rea
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React from 'react';
 import { type ThirdPartyAccountType } from '../../../pages/account/thirdParty/index';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useForm } from 'react-hook-form';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { putUpdateTeam } from '@/web/support/user/team/api';
@@ -15,7 +15,7 @@ const WorkflowVariableModal = ({
   defaultData: ThirdPartyAccountType;
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_thirdParty');
   const { userInfo, initUserInfo } = useUserStore();
 
   const { register, handleSubmit } = useForm({

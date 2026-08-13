@@ -1,50 +1,50 @@
 import React from 'react';
 import { Box, Flex, Grid } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 const FAQ = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('price');
   const faqs = [
     {
-      title: t('common:FAQ.switch_package_q'),
-      desc: t('common:FAQ.switch_package_a')
+      title: t('price:FAQ.switch_package_q'),
+      desc: t('price:FAQ.switch_package_a')
     },
     {
-      title: t('common:FAQ.check_subscription_q'),
-      desc: t('common:FAQ.check_subscription_a')
+      title: t('price:FAQ.check_subscription_q'),
+      desc: t('price:FAQ.check_subscription_a')
     },
     {
-      title: t('common:FAQ.ai_point_q'),
-      desc: t('common:FAQ.ai_point_a')
+      title: t('price:FAQ.ai_point_q'),
+      desc: t('price:FAQ.ai_point_a')
     },
     {
-      title: t('common:FAQ.ai_point_expire_q'),
-      desc: t('common:FAQ.ai_point_expire_a')
+      title: t('price:FAQ.ai_point_expire_q'),
+      desc: t('price:FAQ.ai_point_expire_a')
     },
     {
-      title: t('common:FAQ.dataset_compute_q'),
-      desc: t('common:FAQ.dataset_compute_a')
+      title: t('price:FAQ.dataset_compute_q'),
+      desc: t('price:FAQ.dataset_compute_a')
     },
 
     {
-      title: t('common:FAQ.index_del_q'),
-      desc: t('common:FAQ.index_del_a')
+      title: t('price:FAQ.index_del_q'),
+      desc: t('price:FAQ.index_del_a')
     },
     {
-      title: t('common:FAQ.package_overlay_q'),
-      desc: t('common:FAQ.package_overlay_a')
+      title: t('price:FAQ.package_overlay_q'),
+      desc: t('price:FAQ.package_overlay_a')
     },
     {
-      title: t('common:FAQ.qpm_q'),
-      desc: t('common:FAQ.qpm_a')
+      title: t('price:FAQ.qpm_q'),
+      desc: t('price:FAQ.qpm_a')
     },
     {
-      title: t('common:FAQ.year_day_q'),
-      desc: t('common:FAQ.year_day_a')
+      title: t('price:FAQ.year_day_q'),
+      desc: t('price:FAQ.year_day_a')
     },
     {
-      title: t('common:FAQ.free_user_clean_q'),
-      desc: t('common:FAQ.free_user_clean_a')
+      title: t('price:FAQ.free_user_clean_q'),
+      desc: t('price:FAQ.free_user_clean_a')
     }
   ];
 
@@ -57,7 +57,7 @@ const FAQ = () => {
       position={'relative'}
     >
       <Box fontWeight={'bold'} fontSize={['24px', '36px']} color={'myGray.900'}>
-        {t('common:support.wallet.subscription.FAQ')}
+        {t('price:support.wallet.subscription.FAQ')}
       </Box>
       <Grid mt={12} gridTemplateColumns={['1fr', '1fr 1fr']} gap={4} w={'100%'}>
         {faqs.map((item, i) => (

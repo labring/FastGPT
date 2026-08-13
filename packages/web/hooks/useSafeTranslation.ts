@@ -1,9 +1,11 @@
 import { useTranslation as useNextTranslation } from 'next-i18next';
 import { I18N_NAMESPACES_MAP } from '../i18n/constants';
 
-export function useSafeTranslation() {
-  const { t: originalT, ...rest } = useNextTranslation();
-
+/**
+ * 为 i18next 翻译函数增加动态 key 兜底：未知 namespace 或空 key 原样返回，避免业务数据中的
+ * 未注册翻译 key 触发异常或渲染为空字符串。
+ */
+export const createSafeTranslation = <T extends (...args: any[]) => any>(originalT: T): T => {
   const t = (key: any, ...args: any[]): string => {
     if (key === null || key === undefined) return '';
     if (typeof key !== 'string') return String(key);
@@ -18,8 +20,14 @@ export function useSafeTranslation() {
     return originalT(key, ...args);
   };
 
+  return t as T;
+};
+
+export function useSafeTranslation() {
+  const { t: originalT, ...rest } = useNextTranslation();
+
   return {
-    t,
+    t: createSafeTranslation(originalT),
     ...rest
   };
 }

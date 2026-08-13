@@ -25,5 +25,10 @@
   "tag_total": "共{{total}}个标签",
   "tags": "标签",
   "time": "时间",
-  "tutorial": "教程"
+  "tutorial": "教程",
+  "create_api_key": "创建新 key",
+  "edit_api_key": "编辑 key 信息",
+  "key_alias": "key 的别名，仅用于展示",
+  "create_link_error": "创建链接异常",
+  "update_link_error": "更新链接异常"
 }

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';
@@ -8,7 +7,7 @@ import StandardPlan, { BillingModeSwitch } from '@/pageComponents/price/Standard
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
 import PointsCard from '@/pageComponents/price/Points';
 import FAQ from '@/pageComponents/price/FAQ';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -20,7 +19,7 @@ import { isPriceTabType, type PriceTabType } from '@/web/support/wallet/sub/cons
 
 const PriceBox = () => {
   const { initUserInfo } = useUserStore();
-  const { t } = useTranslation(['common', 'user']);
+  const { t } = useClientTranslation('price');
   const { subPlans } = useSystemStore();
   const router = useRouter();
 
@@ -106,11 +105,11 @@ const PriceBox = () => {
   const tabList = useMemo<Array<{ label: string; value: PriceTabType }>>(
     () => [
       {
-        label: t('common:support.wallet.subscription.Basic plan tab'),
+        label: t('price:support.wallet.subscription.Basic plan tab'),
         value: 'standard'
       },
       {
-        label: t('common:support.wallet.subscription.Extra points and dataset tab'),
+        label: t('price:support.wallet.subscription.Extra points and dataset tab'),
         value: 'extra'
       }
     ],
@@ -170,7 +169,7 @@ const PriceBox = () => {
 
             <Flex flexDir={'column'} alignItems={'center'} w={'100%'}>
               <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>
-                {t('common:support.wallet.subscription.Purchase plan')}
+                {t('price:support.wallet.subscription.Purchase plan')}
               </Box>
 
               <Box mt={'32px'}>
@@ -195,7 +194,7 @@ const PriceBox = () => {
                   lineHeight={'24px'}
                   textAlign={'center'}
                 >
-                  {t('common:support.wallet.subscription.Extra plan tip')}
+                  {t('price:support.wallet.subscription.Extra plan tip')}
                 </Box>
               )}
             </Flex>
@@ -212,7 +211,7 @@ const PriceBox = () => {
                 <HStack mt={8} color={'blue.700'} justifyContent={'center'} w={'100%'}>
                   <MyIcon name={'infoRounded'} w={'1rem'} />
                   <Box fontSize={'sm'} fontWeight={'500'}>
-                    {t('user:bill.standard_valid_tip')}
+                    {t('price:bill.standard_valid_tip')}
                   </Box>
                 </HStack>
               </Box>
@@ -237,9 +236,3 @@ const PriceBox = () => {
 };
 
 export default PriceBox;
-
-export async function getServerSideProps(context: any) {
-  return {
-    props: { ...(await serviceSideProps(context, ['user'])) }
-  };
-}

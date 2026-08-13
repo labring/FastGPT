@@ -61,7 +61,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/account/apikey',
           '/account/setting',
           '/account/inform',
-          '/account/promotion',
           '/account/model'
         ],
         unread

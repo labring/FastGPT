@@ -5,12 +5,11 @@ import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
-import { addDays, startOfMonth, startOfWeek } from 'date-fns';
-import { useTranslation } from 'next-i18next';
+import { addDays } from 'date-fns';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -22,7 +21,6 @@ import dynamic from 'next/dynamic';
 
 import UsageTableList from '@/pageComponents/account/usage/UsageTable';
 import { type UnitType } from '@/pageComponents/account/usage/type';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const UsageDashboard = dynamic(() => import('@/pageComponents/account/usage/Dashboard'));
 
 export enum UsageTabEnum {
@@ -31,9 +29,8 @@ export enum UsageTabEnum {
 }
 
 const UsageTable = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_usage');
   const { userInfo } = useUserStore();
-  const { isPc } = useSystem();
   const router = useRouter();
   const { usageTab = UsageTabEnum.detail } = router.query as { usageTab: `${UsageTabEnum}` };
 
@@ -43,7 +40,7 @@ const UsageTable = () => {
     to: new Date()
   });
 
-  const { data: members, ScrollData, total: memberTotal } = useScrollPagination(getTeamMembers, {});
+  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
   const {
     value: selectTmbIds,
     setValue: setSelectTmbIds,
@@ -250,13 +247,5 @@ const UsageTable = () => {
     </AccountContainer>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account_usage', 'account']))
-    }
-  };
-}
 
 export default React.memo(UsageTable);

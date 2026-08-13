@@ -14,7 +14,7 @@ import {
   useDisclosure,
   Checkbox
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useMemo, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -37,7 +37,7 @@ import ModelCapabilityTags from '../ModelCapabilityTags';
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('account_model');
   const { getModelProviders, getModelProvider } = useSystemStore();
   const { userInfo } = useUserStore();
   const modelPermissionConfigHint = permissionConfig
@@ -421,7 +421,7 @@ export const ModelPriceModal = ({
 }: {
   children: ({ onOpen }: { onOpen: () => void }) => React.ReactNode;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_model');
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (

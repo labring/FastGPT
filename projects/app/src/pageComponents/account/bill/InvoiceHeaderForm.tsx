@@ -13,7 +13,7 @@ import {
 import { type TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { type UseFormReturn, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
@@ -24,7 +24,7 @@ export const InvoiceHeaderSingleForm = ({
   inputForm: UseFormReturn<TeamInvoiceHeaderType, any>;
   required?: boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_bill', 'user']);
 
   const { watch, register } = inputForm;
   const needSpecialInvoice = watch('needSpecialInvoice');
@@ -217,7 +217,7 @@ const InvoiceHeaderForm = () => {
     }
   });
 
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_bill', 'user']);
 
   const { loading: isSubmitting, runAsync: onUpdateHeader } = useRequest(
     (data: TeamInvoiceHeaderType) => updateTeamInvoiceHeader(data),

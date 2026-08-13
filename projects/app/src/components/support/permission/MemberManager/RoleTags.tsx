@@ -4,7 +4,7 @@ import Tag from '@fastgpt/web/components/common/Tag';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 export type PermissionTagsProp = {
   permission?: PermissionValueType;
@@ -12,7 +12,7 @@ export type PermissionTagsProp = {
 
 function RoleTags({ permission }: PermissionTagsProp) {
   const { getRoleLabelList } = useContextSelector(CollaboratorContext, (v) => v);
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['user']);
 
   if (permission === undefined) return null;
 

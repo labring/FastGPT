@@ -3,7 +3,7 @@ import { Button, Input, VStack, Text, ModalBody, Box, ModalFooter } from '@chakr
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React from 'react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 const RedeemCouponModal = ({
   onClose,
@@ -12,7 +12,7 @@ const RedeemCouponModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
 
   const [couponCode, setCouponCode] = React.useState('');
 

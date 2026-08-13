@@ -15,7 +15,7 @@ import {
   Grid,
   GridItem
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
@@ -46,7 +46,7 @@ export const AddModelButton = ({
   onCreate,
   ...props
 }: { onCreate: (type: ModelTypeEnum) => void } & ButtonProps) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_model');
 
   return (
     <MyMenu
@@ -745,7 +745,7 @@ export const ModelEditModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('account_model');
   const { feConfigs, getModelProviders } = useSystemStore();
 
   const { control, register, getValues, setValue, handleSubmit, reset } =

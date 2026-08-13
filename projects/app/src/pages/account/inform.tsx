@@ -5,16 +5,15 @@ import { getInforms, readInform } from '@/web/support/user/inform/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import Markdown from '@/components/Markdown';
 import NotificationDetailsModal from '@/pageComponents/account/NotificationDetailsModal';
 
 const InformTable = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_inform');
   const theme = useTheme();
   const { Loading } = useLoading();
   const [selectedInform, setSelectedInform] = useState<any>(null);
@@ -159,13 +158,5 @@ const InformTable = () => {
     </AccountContainer>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account_inform', 'account']))
-    }
-  };
-}
 
 export default InformTable;

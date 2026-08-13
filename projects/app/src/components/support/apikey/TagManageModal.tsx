@@ -8,7 +8,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { createOpenApiTag, deleteOpenApiTag, updateOpenApiTag } from '@/web/support/openapi/api';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
 const ApiKeyTagBox = ({ name }: { name: string }) => (
@@ -41,7 +41,7 @@ const TagManageModal = ({
   onRefreshTags: () => void;
   onRefreshKeys?: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('apikey');
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const [orderedTags, setOrderedTags] = useState<OpenApiTagType[] | undefined>(undefined);
@@ -169,7 +169,7 @@ const TagManageModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      title={t('account_apikey:tag_manage')}
+      title={t('apikey:tag_manage')}
       w={'580px'}
       h={'600px'}
       closeOnOverlayClick={false}
@@ -190,7 +190,7 @@ const TagManageModal = ({
       >
         <MyIcon name="menu" w={5} />
         <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>
-          {t('account_apikey:tag_total', {
+          {t('apikey:tag_total', {
             total: localTags.length
           })}
         </Box>
@@ -221,7 +221,7 @@ const TagManageModal = ({
         {newTag !== undefined && (
           <Flex py={3} px={2} w={'full'} borderBottom={'1px solid #E8EBF0'}>
             <Input
-              placeholder={t('account_apikey:tag_name')}
+              placeholder={t('apikey:tag_name')}
               value={newTag}
               maxLength={50}
               isRequired
@@ -248,7 +248,7 @@ const TagManageModal = ({
       >
         {filteredTags.length === 0 ? (
           <Box py={8} textAlign={'center'} color={'myGray.500'}>
-            {t('account_apikey:no_tags')}
+            {t('apikey:no_tags')}
           </Box>
         ) : (
           <DndDrag<OpenApiTagType>
@@ -303,7 +303,7 @@ const TagManageModal = ({
                               <ApiKeyTagBox name={tag.name} />
                             ) : (
                               <Input
-                                placeholder={t('account_apikey:edit_tag')}
+                                placeholder={t('apikey:edit_tag')}
                                 value={
                                   currentEditTagContent !== undefined
                                     ? currentEditTagContent
@@ -347,7 +347,7 @@ const TagManageModal = ({
                             </Box>
                             <PopoverConfirm
                               showCancel
-                              content={t('account_apikey:delete_tag_confirm')}
+                              content={t('apikey:delete_tag_confirm')}
                               type="delete"
                               Trigger={
                                 <Box

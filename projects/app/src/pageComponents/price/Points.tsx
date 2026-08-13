@@ -1,11 +1,11 @@
 import React from 'react';
 import { Box, Flex, Grid, Link } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ModelTable from '@/components/core/ai/ModelTable';
 
 const Points = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('price');
 
   return (
     <Flex
@@ -18,7 +18,7 @@ const Points = () => {
         {t('common:support.wallet.subscription.Ai points')}
       </Box>
       <Link href="https://tiktokenizer.vercel.app/" target="_blank" mb={['30px', 10]}>
-        {t('common:support.wallet.subscription.token_compute')}
+        {t('price:support.wallet.subscription.token_compute')}
       </Link>
       <Box
         p={[3, 5]}
@@ -38,7 +38,7 @@ const Points = () => {
 export default React.memo(Points);
 
 export const AiPointsTable = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('price');
   const { llmModelList, ttsModelList, embeddingModelList, sttModelList } = useSystemStore();
 
   return (
@@ -61,7 +61,7 @@ export const AiPointsTable = () => {
           fontWeight={'bold'}
           color={'myGray.900'}
         >
-          {t('common:support.wallet.subscription.ai_model')}
+          {t('price:support.wallet.subscription.ai_model')}
         </Box>
         <Box flex={4} textAlign={'center'}>
           {llmModelList?.map((item, i) => (
@@ -89,7 +89,7 @@ export const AiPointsTable = () => {
             {t('common:core.ai.model.Vector Model')}
           </Box>
           <Box fontSize={'sm'} mt={1} color={'myGray.600'}>
-            {t('common:core.ai.model.doc_index_and_dialog')}
+            {t('price:core.ai.model.doc_index_and_dialog')}
           </Box>
         </Box>
         <Box flex={4} textAlign={'center'}>

@@ -42,8 +42,8 @@ const buildUser = (language: UserType['language']): UserType =>
     username: 'user@example.com',
     avatar: '',
     timezone: 'Asia/Shanghai',
-    language,
     promotionRate: 0,
+    language,
     team: {
       userId: 'user-id',
       tmbId: 'tmb-id',

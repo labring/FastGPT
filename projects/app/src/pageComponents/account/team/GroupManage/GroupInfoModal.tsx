@@ -2,7 +2,7 @@ import { Input, HStack, ModalBody, Button, ModalFooter } from '@chakra-ui/react'
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
@@ -26,7 +26,7 @@ function GroupInfoModal({
   editGroup?: MemberGroupListItemType<true>;
   onSuccess: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('user');
 
   const {
     Component: AvatarUploader,

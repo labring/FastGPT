@@ -1,4 +1,3 @@
-import type { UserType } from '@fastgpt/global/support/user/type';
 import type { PromotionRecordSchema } from '@fastgpt/global/support/activity/type';
 
 export interface PromotionRecordType {

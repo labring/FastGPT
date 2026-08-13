@@ -18,7 +18,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -36,7 +36,6 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
@@ -117,20 +116,12 @@ const Info = () => {
   );
 };
 
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'account_team', 'user']))
-    }
-  };
-}
-
 export default React.memo(Info);
 
 const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs, initd } = useSystemStore();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
   const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
@@ -431,7 +422,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
 const PlanUsage = () => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
 
@@ -805,7 +796,7 @@ const ButtonStyles = {
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
   const { isPc } = useSystem();
 
   const { runAsync: onFeedback } = useRequest(

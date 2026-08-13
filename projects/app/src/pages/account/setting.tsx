@@ -2,7 +2,7 @@
 import { Box, Card, Flex } from '@chakra-ui/react';
 import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type UserType } from '@fastgpt/global/support/user/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -11,10 +11,9 @@ import { type UserUpdateParams } from '@/types/user';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 
 const Individuation = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_setting');
   const { userInfo, updateUserInfo } = useUserStore();
   const { toast } = useToast();
 
@@ -66,13 +65,5 @@ const Individuation = () => {
     </AccountContainer>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account', 'account_setting']))
-    }
-  };
-}
 
 export default Individuation;

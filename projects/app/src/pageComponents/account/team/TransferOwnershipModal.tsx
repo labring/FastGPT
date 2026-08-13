@@ -12,7 +12,7 @@ import {
   AlertIcon,
   AlertDescription
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -31,7 +31,7 @@ export function TransferOwnershipModal({
   onSuccess: () => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_team');
   const { userInfo, initUserInfo } = useUserStore();
   const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 

@@ -19,7 +19,7 @@ import {
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AddModelButton } from '../AddModelBox';
@@ -57,7 +57,7 @@ const EditChannelModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('account_model');
   const { defaultModels, aiproxyChannels, getModelProvider } = useSystemStore();
   const isEdit = defaultConfig.id !== 0;
 
@@ -331,7 +331,7 @@ const MultipleSelect = ({ value = [], list = [], onSelect }: SelectProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const BoxRef = useRef<HTMLDivElement>(null);
 
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_model');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { copyData } = useCopyData();
 

@@ -67,7 +67,6 @@ export type FastGPTFeConfigsType = {
   show_git?: boolean;
   show_pay?: boolean;
   show_openai_account?: boolean;
-  show_promotion?: boolean;
   show_compliance_copywriting?: boolean;
   show_aiproxy?: boolean;
   show_coupon?: boolean;
