@@ -28,7 +28,7 @@ const AppRouter = (props: AppProps) => {
   return (
     <AppShell
       {...props}
-      waitForSystemSize={isClientOnlyRoute}
+      clientOnly={isClientOnlyRoute}
       renderPage={isClientOnlyRoute ? () => <ClientOnlyPage {...props} /> : undefined}
     />
   );
