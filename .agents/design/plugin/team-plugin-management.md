@@ -190,7 +190,7 @@ type TeamPluginListQuery = {
 - 只有团队管理员可以安装、上传和删除团队插件。
 - team owner 和 manage 权限包含插件管理能力。
 - admin 后台“功能清单”中的“团队上传插件”开关写入
-  `enable_team_plugin_upload`，控制上传入口、上传 API 和确认 API；旧配置缺少该字段时默认开启。
+  `enable_team_plugin_upload`，控制上传入口、上传 API 和确认 API；旧配置缺少该字段时默认关闭。
 - Marketplace 安装不受上传开关影响。
 
 ## 测试计划

@@ -96,7 +96,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
   submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
-  enable_team_plugin_upload: true,
+  enable_team_plugin_upload: false,
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
   systemTitle: 'FastGPT',

@@ -243,7 +243,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   {t('app:toolkit_contribute_resource')}
                 </Button>
               )}
-              {canManageTeamPlugins && (
+              {canManageTeamPlugins && feConfigs?.enable_team_plugin_upload !== false && (
                 <Box mr={4}>
                   <MyMenu
                     trigger="hover"
