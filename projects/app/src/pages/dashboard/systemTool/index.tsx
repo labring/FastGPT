@@ -439,7 +439,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           showPoint={false}
           showActionButton={false}
           onDelete={
-            isTeamPluginSource(selectedTool.source)
+            canManageTeamPlugins && isTeamPluginSource(selectedTool.source)
               ? () => onDeleteTeamTool(selectedTool)
               : undefined
           }
