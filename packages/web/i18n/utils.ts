@@ -3,7 +3,9 @@ import Cookies from 'js-cookie';
 
 export const LANG_KEY = 'NEXT_LOCALE';
 export const SHARE_LANG_KEY = 'FASTGPT_SHARE_LOCALE';
-const PERSISTENT_LANG_COOKIE_EXPIRES_DAYS = 36500;
+// 浏览器对持久 Cookie 的有效期通常限制为最多约 400 天；语言确认成功时会再次写入以滑动续期。
+const PERSISTENT_LANG_COOKIE_EXPIRES_DAYS = 400;
+const LANGUAGE_COOKIE_PATH = '/';
 
 export type LanguageStorageKind = 'cookie' | 'localStorage' | 'memory';
 
@@ -114,6 +116,7 @@ export const persistLanguagePreference = (
   if (kind === 'cookie') {
     Cookies.set(key, lang, {
       expires: PERSISTENT_LANG_COOKIE_EXPIRES_DAYS,
+      path: LANGUAGE_COOKIE_PATH,
       ...(isInIframe() && key === SHARE_LANG_KEY && window.location.protocol === 'https:'
         ? { sameSite: 'none' as const, secure: true }
         : {})

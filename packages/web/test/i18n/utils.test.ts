@@ -26,11 +26,14 @@ const createLocalStorage = () => {
 
 const installCookieDocument = () => {
   const values = new Map<string, string>();
+  const writes: string[] = [];
   const cookieDocument = {
+    writes,
     get cookie() {
       return [...values].map(([key, value]) => `${key}=${value}`).join('; ');
     },
     set cookie(value: string) {
+      writes.push(value);
       const [pair, ...attributes] = value.split(';').map((item) => item.trim());
       const [key, cookieValue] = pair.split('=');
       const maxAge = attributes.find((item) => item.toLowerCase().startsWith('max-age='));
@@ -39,6 +42,7 @@ const installCookieDocument = () => {
     }
   } as unknown as Document;
   vi.stubGlobal('document', cookieDocument);
+  return cookieDocument;
 };
 
 const installBlockedCookieDocument = () => {
@@ -85,12 +89,15 @@ describe('language storage capability and persistence', () => {
   });
 
   it('uses a real cookie when it can be written and read back', () => {
-    installCookieDocument();
+    const cookieDocument = installCookieDocument();
     expect(canUseLanguageCookie()).toBe(true);
     expect(getLanguageStorageKind()).toBe('cookie');
 
     persistLanguagePreference(LangEnum.en, 'cookie-language', 'cookie');
     expect(readLanguagePreference('cookie-language', 'cookie')).toBe(LangEnum.en);
+    expect(cookieDocument.writes.some((value: string) => /path=\//i.test(value))).toBe(true);
+    expect(cookieDocument.writes.some((value: string) => /expires=/i.test(value))).toBe(true);
+    expect(cookieDocument.writes.some((value: string) => /max-age=/i.test(value))).toBe(false);
   });
 
   it('uses Cookie as the authority when localStorage is unavailable', () => {
