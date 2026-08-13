@@ -2,123 +2,19 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
-import type { AccountCancellationStatus as AccountCancellationStatusType } from '@fastgpt/global/support/user/account/cancellation/type';
-import type { AuthContext } from '../../../permission/auth/context';
-import { resolveAuthContext } from '../../../permission/auth/context';
-import type { AccountCancellationSchemaType } from './schema';
-import {
-  getActiveAccountCancellationByTeamId,
-  getActiveAccountCancellationByUserId,
-  getActiveAccountCancellationsByUserIds
-} from './read';
+import { MongoTeamMember } from '../../team/teamMemberSchema';
+import { getActiveAccountCancellationByTeamId, getActiveAccountCancellationByUserId } from './read';
 
-export type AssertAccountUsableProps = {
-  userId?: string;
-  teamId?: string;
-  tmbId?: string;
-  authContext?: AuthContext;
-  cancellations?: Pick<AccountCancellationSchemaType, 'userId' | 'status'>[];
-  allowUserAccountCancellationPending?: boolean;
-  allowUserAccountCancellationFinalizing?: boolean;
-  allowCurrentUserOwnedTeamAccountCancellationPending?: boolean;
-  allowCurrentUserOwnedTeamAccountCancellationFinalizing?: boolean;
-  allowCurrentSessionTeamAccountCancellationPending?: boolean;
-  allowCurrentSessionTeamAccountCancellationFinalizing?: boolean;
-};
+/** 校验用户或团队是否处于注销流程；任一存在 active 注销记录即拒绝访问。 */
+export const assertCancellation = async ({ teamId, tmbId }: { teamId: string; tmbId?: string }) => {
+  const teamCancellation = await getActiveAccountCancellationByTeamId(teamId);
+  if (teamCancellation) throw new Error(TeamErrEnum.accountCancellationPending);
 
-/**
- * 按用户和团队注销生命周期阻断业务访问。中心鉴权传入已验证的 auth-context 和注销记录时，
- * 本函数不再查询 member/team；保留无上下文调用给邀请链接等只知道目标 team 的业务。
- */
-export const assertAccountUsable = async ({
-  userId,
-  teamId,
-  tmbId,
-  authContext,
-  cancellations,
-  allowUserAccountCancellationPending = false,
-  allowUserAccountCancellationFinalizing = false,
-  allowCurrentUserOwnedTeamAccountCancellationPending = false,
-  allowCurrentUserOwnedTeamAccountCancellationFinalizing = false,
-  allowCurrentSessionTeamAccountCancellationPending = false,
-  allowCurrentSessionTeamAccountCancellationFinalizing = false
-}: AssertAccountUsableProps) => {
-  const context =
-    authContext ??
-    (tmbId && teamId
-      ? await resolveAuthContext({
-          userId,
-          teamId,
-          tmbId
-        })
-      : undefined);
-
-  if (tmbId && teamId && !context) {
-    throw new Error(ERROR_ENUM.unAuthorization);
-  }
-
-  const currentUserId = context?.userId ?? userId;
-  const records = context
-    ? (cancellations ??
-      (await getActiveAccountCancellationsByUserIds({
-        userId: context.userId,
-        ownerId: context.ownerId
-      })))
-    : [];
-  const userCancellation = context
-    ? records.find((record) => String(record.userId) === String(context.userId))
-    : userId
-      ? await getActiveAccountCancellationByUserId(userId)
-      : undefined;
-  const teamCancellation = context
-    ? context.ownerId
-      ? records.find((record) => String(record.userId) === String(context.ownerId))
-      : undefined
-    : teamId
-      ? await getActiveAccountCancellationByTeamId(teamId)
-      : undefined;
-
-  const isAllowedStatus = ({
-    status,
-    allowPending,
-    allowFinalizing
-  }: {
-    status: AccountCancellationStatusType;
-    allowPending: boolean;
-    allowFinalizing: boolean;
-  }) =>
-    (status === AccountCancellationStatus.pending && allowPending) ||
-    (status === AccountCancellationStatus.finalizing && allowFinalizing);
-
-  if (
-    userCancellation &&
-    !isAllowedStatus({
-      status: userCancellation.status,
-      allowPending: allowUserAccountCancellationPending,
-      allowFinalizing: allowUserAccountCancellationFinalizing
-    })
-  ) {
-    throw new Error(UserErrEnum.accountCancellationPending);
-  }
-
-  if (!teamCancellation) return;
-
-  const isOwnTeam =
-    !!currentUserId &&
-    String(teamCancellation.userId) === String(currentUserId) &&
-    isAllowedStatus({
-      status: teamCancellation.status,
-      allowPending: allowCurrentUserOwnedTeamAccountCancellationPending,
-      allowFinalizing: allowCurrentUserOwnedTeamAccountCancellationFinalizing
-    });
-  const isCurrentSessionTeam = isAllowedStatus({
-    status: teamCancellation.status,
-    allowPending: allowCurrentSessionTeamAccountCancellationPending,
-    allowFinalizing: allowCurrentSessionTeamAccountCancellationFinalizing
-  });
-  if (!isOwnTeam && !isCurrentSessionTeam) {
-    throw new Error(TeamErrEnum.accountCancellationPending);
-  }
+  if (!tmbId) return;
+  const member = await MongoTeamMember.findById(tmbId, { userId: 1, teamId: 1 }).lean();
+  if (!member) throw new Error(ERROR_ENUM.unAuthorization);
+  const userCancellation = await getActiveAccountCancellationByUserId(String(member.userId));
+  if (userCancellation) throw new Error(UserErrEnum.accountCancellationPending);
 };
 
 /** 登录前只允许本人处于 pending；finalizing 用户不能更新偏好或创建新的 Session。 */

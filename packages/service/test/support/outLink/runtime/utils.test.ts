@@ -90,7 +90,7 @@ vi.mock('@fastgpt/service/support/outLink/tools', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/user/account/cancellation/guard', () => ({
-  assertAccountUsable: vi.fn()
+  assertCancellation: vi.fn()
 }));
 
 vi.mock('@fastgpt/global/core/workflow/runtime/utils', async (importOriginal) => {

@@ -29,7 +29,7 @@ async function handler(
       const { teamId } = await authCert({
         req,
         authToken: true,
-        accountCancellationAccess: 'tokenLogin'
+        allowAccountCancellation: true
       });
 
       const [

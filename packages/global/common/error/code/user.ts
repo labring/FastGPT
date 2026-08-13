@@ -52,7 +52,8 @@ const errList = [
   },
   {
     statusText: UserErrEnum.accountCancellationPending,
-    message: i18nT('common:code_error.account_cancellation_pending')
+    message: i18nT('common:code_error.account_cancellation_pending'),
+    httpStatus: 403
   },
   {
     statusText: UserErrEnum.registrationMethodNotSupported,

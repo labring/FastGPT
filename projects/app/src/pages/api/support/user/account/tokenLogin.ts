@@ -9,7 +9,7 @@ async function handler(req: ApiRequestProps): Promise<UserType> {
   const { tmbId, userId, teamId, isRoot } = await authCert({
     req,
     authToken: true,
-    accountCancellationAccess: 'tokenLogin'
+    allowAccountCancellation: true
   });
   const user = await getUserDetail({ tmbId, isRoot });
 

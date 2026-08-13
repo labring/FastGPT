@@ -223,7 +223,7 @@ describe('openapi auth', () => {
     expect(updateApiKeyUsedTimeSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('API Key 指向失效 member 时直接拒绝，不进入 Session fallback', async () => {
+  it('API Key 鉴权只解析凭证，成员状态由具体业务入口校验', async () => {
     const user = await MongoUser.create({
       username: 'inactive-api-key-user',
       password: 'password'
@@ -250,7 +250,11 @@ describe('openapi auth', () => {
         } as any,
         authApiKey: true
       })
-    ).rejects.toBe(ERROR_ENUM.unAuthorization);
+    ).resolves.toMatchObject({
+      teamId: String(team._id),
+      tmbId: String(member._id),
+      authType: AuthUserTypeEnum.apikey
+    });
     expect(updateApiKeyUsedTimeSpy).toHaveBeenCalledTimes(1);
   });
 

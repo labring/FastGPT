@@ -1,5 +1,4 @@
 import {
-  accountCancellationTimezone,
   accountCancellationWaitDays,
   AccountCancellationReminder as AccountCancellationReminderValues,
   accountCancellationAllowedMethods
@@ -7,100 +6,26 @@ import {
 import type { AccountCancellationReminder, AccountCancellationSchedule } from './type';
 
 const dayInMilliseconds = 24 * 60 * 60 * 1000;
+const reminderUtcHour = 2;
+const finalizeUtcHour = 16;
 const accountCancellationAnonymizedUsernameReg = /-[a-z][a-zA-Z0-9]{7}-delete$/;
 const legacyAccountCancellationUsernameRegs = [/-deleted$/, /^deleted-[a-f0-9]{32}$/];
 
-type LocalDateParts = {
+type UtcDateParts = {
   year: number;
   month: number;
   day: number;
-  hour: number;
-  minute: number;
-  second: number;
 };
 
-const getFormatter = (timeZone: string) =>
-  new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    calendar: 'gregory',
-    numberingSystem: 'latn',
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-
-const parseDateParts = (date: Date, timeZone: string): LocalDateParts => {
-  const values = Object.fromEntries(
-    getFormatter(timeZone)
-      .formatToParts(date)
-      .filter(({ type }) => type !== 'literal')
-      .map(({ type, value }) => [type, Number(value)])
-  ) as Record<string, number>;
-
+const getUtcDateParts = (date: Date): UtcDateParts => {
   return {
-    year: values.year,
-    month: values.month,
-    day: values.day,
-    hour: values.hour === 24 ? 0 : values.hour,
-    minute: values.minute,
-    second: values.second
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate()
   };
 };
 
-const assertValidTimeZone = (timeZone: string) => {
-  try {
-    getFormatter(timeZone).format();
-  } catch {
-    throw new Error(`Invalid account cancellation timezone: ${timeZone}`);
-  }
-};
-
-const getTimeZoneOffset = (date: Date, timeZone: string) => {
-  const parts = parseDateParts(date, timeZone);
-  const localAsUtc = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second
-  );
-  return localAsUtc - Math.floor(date.getTime() / 1000) * 1000;
-};
-
-/** 将指定时区的墙上时间转换为 UTC，避免依赖进程机器时区。 */
-const localDateTimeToUtc = (
-  parts: Omit<LocalDateParts, 'second'> & { second?: number },
-  timeZone: string
-) => {
-  const localAsUtc = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second ?? 0
-  );
-  let candidate = localAsUtc;
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const offset = getTimeZoneOffset(new Date(candidate), timeZone);
-    const next = localAsUtc - offset;
-    if (next === candidate) break;
-    candidate = next;
-  }
-
-  return new Date(candidate);
-};
-
-const addLocalDays = (
-  { year, month, day }: Pick<LocalDateParts, 'year' | 'month' | 'day'>,
-  days: number
-) => {
+const addUtcDays = ({ year, month, day }: UtcDateParts, days: number): UtcDateParts => {
   const date = new Date(Date.UTC(year, month - 1, day + days));
   return {
     year: date.getUTCFullYear(),
@@ -109,81 +34,65 @@ const addLocalDays = (
   };
 };
 
-const formatLocalDate = ({ year, month, day }: LocalDateParts) =>
+const formatUtcDate = ({ year, month, day }: UtcDateParts) =>
   `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-const atLocalTime = (date: ReturnType<typeof addLocalDays>, hour: number, timeZone: string) =>
-  localDateTimeToUtc({ ...date, hour, minute: 0, second: 0 }, timeZone);
+const atUtcHour = ({ year, month, day }: UtcDateParts, hour: number) =>
+  new Date(Date.UTC(year, month - 1, day, hour));
 
-/** 返回目标时区指定相对日期的 UTC 半开区间。 */
-const getLocalDayWindow = ({
-  now,
-  daysFromToday,
-  timeZone
-}: {
-  now: Date;
-  daysFromToday: number;
-  timeZone: string;
-}) => {
+/** 返回目标注销执行日对应的 requestedAt UTC 半开区间。 */
+const getFinalizeWindow = ({ now, daysFromToday }: { now: Date; daysFromToday: number }) => {
   if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
     throw new Error('Invalid account cancellation current time');
   }
-  assertValidTimeZone(timeZone);
 
-  const targetDate = addLocalDays(parseDateParts(now, timeZone), daysFromToday);
+  const targetDate = addUtcDays(getUtcDateParts(now), daysFromToday);
   return {
-    start: atLocalTime(targetDate, 0, timeZone),
-    end: atLocalTime(addLocalDays(targetDate, 1), 0, timeZone)
+    start: atUtcHour(addUtcDays(targetDate, -1), finalizeUtcHour),
+    end: atUtcHour(targetDate, finalizeUtcHour)
   };
 };
 
 /**
  * 从唯一持久化时间推导注销等待期的全部时间点。
- * waitEndsAt 使用完整的 UTC 24 小时周期，提醒和最终清理则使用显式配置时区的自然日。
+ * 等待期使用完整的 UTC 24 小时周期，提醒和最终清理由固定 UTC Cron 时间驱动。
  */
 export const deriveAccountCancellationSchedule = (
-  requestedAt: Date,
-  timeZone = accountCancellationTimezone
+  requestedAt: Date
 ): AccountCancellationSchedule => {
   if (!(requestedAt instanceof Date) || Number.isNaN(requestedAt.getTime())) {
     throw new Error('Invalid account cancellation requestedAt');
   }
-  assertValidTimeZone(timeZone);
 
   const normalizedRequestedAt = new Date(requestedAt.getTime());
   const waitEndsAt = new Date(
     normalizedRequestedAt.getTime() + accountCancellationWaitDays * dayInMilliseconds
   );
-  const waitEndsLocal = parseDateParts(waitEndsAt, timeZone);
-  const cleanupDate = {
-    year: waitEndsLocal.year,
-    month: waitEndsLocal.month,
-    day: waitEndsLocal.day
-  };
-  const cleanupLocalDate = formatLocalDate(waitEndsLocal);
+  const waitEndsDate = getUtcDateParts(waitEndsAt);
+  const sameDayFinalizeAt = atUtcHour(waitEndsDate, finalizeUtcHour);
+  // 等待期结束时间命中或超过当天执行点时，顺延到下一次 Cron。
+  const cleanupDate =
+    waitEndsAt.getTime() < sameDayFinalizeAt.getTime() ? waitEndsDate : addUtcDays(waitEndsDate, 1);
 
   return {
     requestedAt: normalizedRequestedAt,
     waitEndsAt,
-    cleanupLocalDate,
-    sevenDayReminderAt: atLocalTime(addLocalDays(waitEndsLocal, -7), 10, timeZone),
-    oneDayReminderAt: atLocalTime(addLocalDays(waitEndsLocal, -1), 10, timeZone),
-    finalNoticeAt: atLocalTime(cleanupDate, 10, timeZone),
-    scheduledCancelAt: atLocalTime(addLocalDays(waitEndsLocal, 1), 0, timeZone),
-    timezone: timeZone
+    cleanupDate: formatUtcDate(cleanupDate),
+    sevenDayReminderAt: atUtcHour(addUtcDays(cleanupDate, -7), reminderUtcHour),
+    oneDayReminderAt: atUtcHour(addUtcDays(cleanupDate, -1), reminderUtcHour),
+    finalNoticeAt: atUtcHour(cleanupDate, reminderUtcHour),
+    scheduledCancelAt: atUtcHour(cleanupDate, finalizeUtcHour)
   };
 };
 
 export const getAccountCancellationReminderAt = ({
   requestedAt,
-  reminder,
-  timeZone = accountCancellationTimezone
+  reminder
 }: {
   requestedAt: Date;
   reminder: AccountCancellationReminder;
-  timeZone?: string;
 }) => {
-  const schedule = deriveAccountCancellationSchedule(requestedAt, timeZone);
+  const schedule = deriveAccountCancellationSchedule(requestedAt);
   if (reminder === AccountCancellationReminderValues.sevenDays) return schedule.sevenDayReminderAt;
   if (reminder === AccountCancellationReminderValues.oneDay) return schedule.oneDayReminderAt;
   return schedule.finalNoticeAt;
@@ -191,26 +100,23 @@ export const getAccountCancellationReminderAt = ({
 
 /**
  * 反推出指定自然日应发送某类提醒的 requestedAt 半开区间，供数据库范围查询使用。
- * 区间按配置时区的自然日计算，避免受服务进程时区影响。
+ * 区间与每日 16:00 UTC 的最终注销执行点保持一致。
  */
 export const getAccountCancellationReminderRequestedAtWindow = ({
   now,
-  reminder,
-  timeZone = accountCancellationTimezone
+  reminder
 }: {
   now: Date;
   reminder: AccountCancellationReminder;
-  timeZone?: string;
 }) => {
   const reminderDaysBeforeCleanup = (() => {
     if (reminder === AccountCancellationReminderValues.sevenDays) return 7;
     if (reminder === AccountCancellationReminderValues.oneDay) return 1;
     return 0;
   })();
-  const cleanupDayWindow = getLocalDayWindow({
+  const cleanupDayWindow = getFinalizeWindow({
     now,
-    daysFromToday: reminderDaysBeforeCleanup,
-    timeZone
+    daysFromToday: reminderDaysBeforeCleanup
   });
   const waitPeriodMs = accountCancellationWaitDays * dayInMilliseconds;
 
@@ -224,24 +130,14 @@ export const getAccountCancellationReminderRequestedAtWindow = ({
  * 返回到期 pending 的 requestedAt 排他上界。
  * 当前自然日开始前已进入计划清理时间的记录满足 requestedAt < cutoff。
  */
-export const getAccountCancellationPendingDueCutoff = ({
-  now,
-  timeZone = accountCancellationTimezone
-}: {
-  now: Date;
-  timeZone?: string;
-}) => {
-  const todayStart = getLocalDayWindow({
+export const getAccountCancellationPendingDueCutoff = ({ now }: { now: Date }) => {
+  const finalizeWindowEnd = getFinalizeWindow({
     now,
-    daysFromToday: 0,
-    timeZone
-  }).start;
+    daysFromToday: 0
+  }).end;
 
-  return new Date(todayStart.getTime() - accountCancellationWaitDays * dayInMilliseconds);
+  return new Date(finalizeWindowEnd.getTime() - accountCancellationWaitDays * dayInMilliseconds);
 };
-
-export const isAccountCancellationCancelable = (requestedAt: Date, now = new Date()) =>
-  now.getTime() < deriveAccountCancellationSchedule(requestedAt).scheduledCancelAt.getTime();
 
 export const isAccountCancellationMethod = (method: string) =>
   (accountCancellationAllowedMethods as readonly string[]).includes(method);

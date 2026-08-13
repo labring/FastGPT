@@ -5,7 +5,6 @@ export {
   accountCancellationActiveStatuses,
   accountCancellationAllowedMethods,
   accountCancellationStatusMap,
-  accountCancellationTimezone,
   accountCancellationWaitDays
 } from './constants';
 export * from './type';

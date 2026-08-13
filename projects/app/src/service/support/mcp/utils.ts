@@ -42,17 +42,11 @@ import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
-import { assertAccountUsable } from '@fastgpt/service/support/user/account/cancellation/guard';
-import { resolveAuthContext } from '@fastgpt/service/support/permission/auth/context';
+import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 
 const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
   if (!mcp.teamId || !mcp.tmbId) return;
-  const authContext = await resolveAuthContext({
-    teamId: mcp.teamId,
-    tmbId: mcp.tmbId
-  });
-  if (!authContext) throw new Error('MCP team member is no longer active');
-  await assertAccountUsable({ authContext });
+  await assertCancellation({ teamId: mcp.teamId, tmbId: mcp.tmbId });
 };
 
 const stringifyMcpPluginOutput = (pluginOutput: unknown) => {

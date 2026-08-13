@@ -54,8 +54,7 @@ async function handler(
           tmbId: user?.lastLoginTmbId,
           userId: user._id,
           isRoot: username === 'root',
-          session,
-          allowAccountCancellationTeamFallback: true
+          session
         });
 
         user.lastLoginTmbId = userDetail.team.tmbId;

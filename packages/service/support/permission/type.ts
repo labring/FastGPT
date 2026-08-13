@@ -3,7 +3,6 @@ import type { PermissionValueType } from '@fastgpt/global/support/permission/typ
 import type { RequireAtLeastOne } from '@fastgpt/global/common/type/utils';
 import type { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { NodeHttpRequest } from '../../types/http';
-import type { AccountCancellationAccessPreset } from '@fastgpt/global/support/user/account/cancellation/type';
 
 export type ReqHeaderAuthType = {
   cookie?: string;
@@ -20,7 +19,7 @@ type authModeType = {
   authRoot?: boolean;
   authApiKey?: boolean;
   per?: PermissionValueType;
-  accountCancellationAccess?: AccountCancellationAccessPreset;
+  allowAccountCancellation?: boolean;
 };
 
 export type AuthModeType = RequireAtLeastOne<authModeType, 'authApiKey' | 'authRoot' | 'authToken'>;
