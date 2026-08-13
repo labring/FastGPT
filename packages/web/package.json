@@ -1,6 +1,9 @@
 {
   "name": "@fastgpt/web",
   "version": "1.0.0",
+  "scripts": {
+    "test": "node ../../scripts/check-i18n-resource-loaders.mjs && vitest run -c vitest.config.ts"
+  },
   "engines": {
     "node": ">=20.19.0",
     "pnpm": "10.x"

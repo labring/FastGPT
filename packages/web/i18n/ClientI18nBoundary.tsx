@@ -22,6 +22,12 @@ class ClientI18nErrorBoundary extends React.Component<
     return { error };
   }
 
+  componentDidUpdate(previousProps: ClientI18nErrorBoundaryProps) {
+    if (previousProps.language !== this.props.language && this.state.error !== undefined) {
+      this.setState({ error: undefined });
+    }
+  }
+
   render() {
     if (this.state.error === undefined) return this.props.children;
     if (!isClientI18nLoadError(this.state.error)) throw this.state.error;

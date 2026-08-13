@@ -7,6 +7,8 @@ export const clientI18nConfig: UserConfig = {
     locales: ['en', 'zh-CN', 'zh-Hant'],
     localeDetection: false
   },
+  supportedLngs: ['en', 'zh-CN', 'zh-Hant'],
+  load: 'currentOnly',
   defaultNS: 'common',
   fallbackLng: 'en',
   localePath: null,
