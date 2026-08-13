@@ -21,13 +21,19 @@ type NextPageWithLayout = NextPage & {
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
   waitForSystemSize?: boolean;
+  renderPage?: () => ReactElement;
 };
 
 const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/detail'];
 const openAPIReferenceRoutes = ['/apidoc/devapi', '/apidoc/systemopenapi'];
 const routesWithoutLayout = openAPIReferenceRoutes;
 
-const AppShell = ({ Component, pageProps, waitForSystemSize = false }: AppPropsWithLayout) => {
+const AppShell = ({
+  Component,
+  pageProps,
+  waitForSystemSize = false,
+  renderPage
+}: AppPropsWithLayout) => {
   const { feConfigs, scripts, title } = useInitApp();
   const { t } = useTranslation();
 
@@ -48,12 +54,13 @@ const AppShell = ({ Component, pageProps, waitForSystemSize = false }: AppPropsW
   const shouldUseLayout = !router?.pathname || !routesWithoutLayout.includes(router.pathname);
   const headDesc = appClientEnv.systemDescription || t('common:system_intro', { title });
   const headIcon = getWebReqUrl(feConfigs?.favicon || appClientEnv.systemFavicon);
+  const page = renderPage ? renderPage() : setLayout(<Component {...pageProps} />);
 
   if (openAPIReferenceRoutes.includes(router.pathname)) {
     return (
       <>
         {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
-        {setLayout(<Component {...pageProps} />)}
+        {page}
       </>
     );
   }
@@ -69,13 +76,7 @@ const AppShell = ({ Component, pageProps, waitForSystemSize = false }: AppPropsW
           waitForReady={waitForSystemSize}
           fallback={<ClientBootLoading />}
         >
-          <ChakraUIContext>
-            {shouldUseLayout ? (
-              <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
-            ) : (
-              setLayout(<Component {...pageProps} />)
-            )}
-          </ChakraUIContext>
+          <ChakraUIContext>{shouldUseLayout ? <Layout>{page}</Layout> : page}</ChakraUIContext>
         </SystemStoreContextProvider>
       </QueryClientContext>
     </>

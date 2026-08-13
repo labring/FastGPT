@@ -19,14 +19,19 @@ const clientOnlyRoutes = new Set([
   '/account/model',
   '/price'
 ]);
-const ClientOnlyAppShell = dynamic(() => import('@/web/context/ClientOnlyAppShell'), {
+const ClientOnlyPage = dynamic(() => import('@/web/context/ClientOnlyPage'), {
   ssr: false
 });
 const AppRouter = (props: AppProps) => {
-  if (clientOnlyRoutes.has(props.router.pathname)) {
-    return <ClientOnlyAppShell {...props} />;
-  }
-  return <AppShell {...props} />;
+  const isClientOnlyRoute = clientOnlyRoutes.has(props.router.pathname);
+
+  return (
+    <AppShell
+      {...props}
+      waitForSystemSize={isClientOnlyRoute}
+      renderPage={isClientOnlyRoute ? () => <ClientOnlyPage {...props} /> : undefined}
+    />
+  );
 };
 
 export default appWithTranslation(AppRouter, clientI18nConfig);
