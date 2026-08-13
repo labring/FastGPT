@@ -64,10 +64,10 @@ export const canUseLanguageCookie = (key = LANG_KEY) => {
 };
 
 /** 检测 localStorage 是否可以实际写入和读回。 */
-export const canUseLanguageLocalStorage = (_key = LANG_KEY) => {
+export const canUseLanguageLocalStorage = (key = LANG_KEY) => {
   if (typeof localStorage === 'undefined') return false;
 
-  const probeKey = `__fastgpt_local_storage_probe_${Math.random().toString(36).slice(2)}`;
+  const probeKey = `__fastgpt_local_storage_probe_${key}_${Math.random().toString(36).slice(2)}`;
   try {
     localStorage.setItem(probeKey, '1');
     const success = localStorage.getItem(probeKey) === '1';
@@ -179,8 +179,12 @@ export const setLangToStorage = (value: string, key = LANG_KEY) => {
  * 读取服务端和客户端共享的语言 Cookie。
  */
 export const getLangFromCookie = (key = LANG_KEY) => {
-  const lang = Cookies.get(key);
-  return lang ? getLangMapping(lang) : undefined;
+  try {
+    const lang = Cookies.get(key);
+    return lang ? getLangMapping(lang) : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 /**
@@ -189,8 +193,12 @@ export const getLangFromCookie = (key = LANG_KEY) => {
 export const getLangFromLocalStorage = (key = LANG_KEY) => {
   if (typeof localStorage === 'undefined') return undefined;
 
-  const lang = localStorage.getItem(key);
-  return lang ? getLangMapping(lang) : undefined;
+  try {
+    const lang = localStorage.getItem(key);
+    return lang ? getLangMapping(lang) : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 /**

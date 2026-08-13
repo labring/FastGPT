@@ -33,6 +33,22 @@ const createI18n = () => {
   };
 };
 
+const installCookieDocument = () => {
+  const values = new Map<string, string>();
+  vi.stubGlobal('document', {
+    get cookie() {
+      return [...values].map(([key, value]) => `${key}=${value}`).join('; ');
+    },
+    set cookie(value: string) {
+      const [pair, ...attributes] = value.split(';').map((item) => item.trim());
+      const [key, cookieValue] = pair.split('=');
+      const maxAge = attributes.find((item) => item.toLowerCase().startsWith('max-age='));
+      if (maxAge?.split('=')[1] === '0') values.delete(key);
+      else values.set(key, cookieValue);
+    }
+  } as unknown as Document);
+};
+
 beforeEach(() => {
   vi.stubGlobal('document', undefined);
   vi.stubGlobal('localStorage', {
@@ -65,5 +81,21 @@ describe('atomic language change integration', () => {
     expect(localStorage.getItem('integration-language')).toBe(LangEnum.zh_CN);
     expect(i18n.changeLanguage).toHaveBeenCalledWith(LangEnum.zh_CN);
     expect(await loadLocaleResource(LangEnum.zh_CN, 'common')).toHaveProperty('Confirm');
+  });
+
+  it('commits atomically to Cookie when localStorage is unavailable', async () => {
+    installCookieDocument();
+    vi.stubGlobal('localStorage', undefined);
+    const i18n = createI18n();
+
+    await changeLanguageAtomically({
+      i18n,
+      language: LangEnum.zh_Hant,
+      storageKey: 'cookie-only-integration-language'
+    });
+
+    expect(i18n.language).toBe(LangEnum.zh_Hant);
+    expect(i18n.hasResourceBundle(LangEnum.zh_Hant, 'common')).toBe(true);
+    expect(i18n.hasResourceBundle(LangEnum.en, 'common')).toBe(true);
   });
 });

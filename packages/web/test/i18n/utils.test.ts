@@ -41,6 +41,17 @@ const installCookieDocument = () => {
   vi.stubGlobal('document', cookieDocument);
 };
 
+const installBlockedCookieDocument = () => {
+  vi.stubGlobal('document', {
+    get cookie() {
+      return '';
+    },
+    set cookie(_value: string) {
+      // Simulate browser policy silently rejecting cookie writes.
+    }
+  } as unknown as Document);
+};
+
 beforeEach(() => {
   vi.stubGlobal('localStorage', createLocalStorage());
 });
@@ -80,6 +91,44 @@ describe('language storage capability and persistence', () => {
 
     persistLanguagePreference(LangEnum.en, 'cookie-language', 'cookie');
     expect(readLanguagePreference('cookie-language', 'cookie')).toBe(LangEnum.en);
+  });
+
+  it('uses Cookie as the authority when localStorage is unavailable', () => {
+    installCookieDocument();
+    vi.stubGlobal('localStorage', undefined);
+
+    expect(getLanguageStorageKind('cookie-only-language')).toBe('cookie');
+    persistLanguagePreference(LangEnum.zh_Hant, 'cookie-only-language');
+    expect(readLanguagePreference('cookie-only-language', 'cookie')).toBe(LangEnum.zh_Hant);
+  });
+
+  it('falls back to localStorage when Cookie writes are blocked', () => {
+    installBlockedCookieDocument();
+
+    expect(canUseLanguageCookie()).toBe(false);
+    expect(getLanguageStorageKind()).toBe('localStorage');
+    persistLanguagePreference(LangEnum.zh_CN, 'blocked-cookie-language');
+    expect(readLanguagePreference('blocked-cookie-language', 'localStorage')).toBe(LangEnum.zh_CN);
+  });
+
+  it('falls back to memory when localStorage access throws', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('localStorage blocked');
+      },
+      setItem: () => {
+        throw new Error('localStorage blocked');
+      },
+      removeItem: () => {
+        throw new Error('localStorage blocked');
+      }
+    });
+
+    expect(canUseLanguageLocalStorage()).toBe(false);
+    expect(getLanguageStorageKind()).toBe('memory');
+    expect(getLangFromLocalStorage()).toBeUndefined();
+    persistLanguagePreference(LangEnum.en, 'throwing-local-storage');
+    expect(readLanguagePreference('throwing-local-storage', 'memory')).toBe(LangEnum.en);
   });
 
   it('falls back to memory when both browser stores are unavailable', () => {
