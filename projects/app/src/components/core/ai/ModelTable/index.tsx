@@ -421,7 +421,7 @@ export const ModelPriceModal = ({
 }: {
   children: ({ onOpen }: { onOpen: () => void }) => React.ReactNode;
 }) => {
-  const { t } = useClientTranslation('account_model');
+  const { t } = useClientTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (

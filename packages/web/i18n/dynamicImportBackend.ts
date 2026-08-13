@@ -1,6 +1,7 @@
 import type { I18nNsType } from './i18next';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { loadLocaleResource } from './resourceLoaders';
+import { ClientI18nLoadError } from './ClientI18nLoadError';
 
 const pendingLoads = new Map<string, Promise<Record<string, unknown>>>();
 
@@ -27,7 +28,7 @@ const dynamicImportBackend = {
 
     pending.then(
       (resource) => callback(null, resource),
-      (error) => callback(error)
+      (error) => callback(new ClientI18nLoadError({ language, namespace, cause: error }))
     );
   }
 };

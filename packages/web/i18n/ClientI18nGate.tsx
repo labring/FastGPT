@@ -1,5 +1,6 @@
 import { useTranslation } from 'next-i18next';
 import { useEffect, useState, type ReactNode } from 'react';
+import ClientI18nErrorFallback from './ClientI18nErrorFallback';
 import { getLangMapping, getPersistedLang, setLangToStorage } from './utils';
 
 const BASE_NAMESPACE = 'common';
@@ -23,20 +24,17 @@ const ClientI18nGate = ({
       (typeof navigator === 'undefined' ? undefined : navigator.language) ||
       defaultLanguage
   );
-  const [ready, setReady] = useState(
-    () => i18n.language === language && i18n.hasResourceBundle(language, BASE_NAMESPACE)
-  );
+  const ready = i18n.language === language && i18n.hasResourceBundle(language, BASE_NAMESPACE);
+  const [, setLoadedLanguage] = useState<string>();
+  const [loadError, setLoadError] = useState<{ language: string; error: unknown }>();
 
   useEffect(() => {
     let active = true;
 
-    if (i18n.language === language && i18n.hasResourceBundle(language, BASE_NAMESPACE)) {
+    if (ready) {
       setLangToStorage(language, storageKey);
-      setReady(true);
       return;
     }
-
-    setReady(false);
 
     i18n
       .loadNamespaces(BASE_NAMESPACE)
@@ -44,18 +42,24 @@ const ClientI18nGate = ({
       .then(() => {
         if (!active) return;
         setLangToStorage(language, storageKey);
-        setReady(true);
+        // changeLanguage 通常会触发重渲染；额外记录完成语言以兼容未派发事件的实现。
+        setLoadedLanguage(language);
       })
-      .catch(() => {
-        if (active) setReady(false);
+      .catch((error) => {
+        if (!active) return;
+        setLoadError({ language, error });
       });
 
     return () => {
       active = false;
     };
-  }, [i18n, language, storageKey]);
+  }, [i18n, language, ready, storageKey]);
 
-  return ready ? children : fallback;
+  if (ready) return children;
+  if (loadError?.language === language) {
+    return <ClientI18nErrorFallback language={language} error={loadError.error} />;
+  }
+  return fallback;
 };
 
 export default ClientI18nGate;
