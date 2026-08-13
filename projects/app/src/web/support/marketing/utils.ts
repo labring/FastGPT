@@ -6,17 +6,6 @@ import {
 
 const fastgptSemSourceDomainInitedKey = 'fastgpt_sem_sourceDomain_inited';
 
-export const getInviterId = () => {
-  return localStorage.getItem('inviterId') || undefined;
-};
-export const setInviterId = (inviterId?: string) => {
-  if (!inviterId) return;
-  localStorage.setItem('inviterId', inviterId);
-};
-export const removeInviterId = () => {
-  localStorage.removeItem('inviterId');
-};
-
 export const getBdVId = () => {
   return sessionStorage.getItem('bd_vid') || undefined;
 };

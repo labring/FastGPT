@@ -11,7 +11,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getBdVId,
   getFastGPTSem,
-  getInviterId,
   getMsclkid,
   onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
@@ -78,7 +77,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         username,
         code,
         password,
-        inviterId: getInviterId(),
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),
         fastgpt_sem: getFastGPTSem(),

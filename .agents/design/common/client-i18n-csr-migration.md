@@ -492,8 +492,8 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 优先迁移 `getServerSideProps` 只调用 `serviceSideProps` 的页面，按业务域小批提交：
 
-1. 账户页面：`/account/bill`、`/account/inform`、`/account/promotion`、
-   `/account/setting`、`/account/customDomain`、`/account/thirdParty`。
+1. 账户页面：`/account/bill`、`/account/inform`、`/account/setting`、
+   `/account/customDomain`、`/account/thirdParty`。
 2. 账户复杂页面：`/account/info`、`/account/team`、`/account/model`、`/account/usage`。
 3. Dashboard 列表页：`/dashboard/agent`、`/dashboard/tool`、
    `/dashboard/templateMarket`、`/dashboard/systemTool`、`/dashboard/mcpServer`、
@@ -667,6 +667,14 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [ ] 为第三阶段带服务端 props 页面分别补充设计
 - [ ] 完成特殊页面审查和默认 CSR 收尾
 - [ ] 最终扫描并确认仅 `/chat/share` 保留业务页面 SSR；任何新增豁免必须单独评审
+
+### 邀请返佣功能清理
+
+- [x] 删除 `/account/promotion` 页面、前端请求和翻译资源
+- [x] 删除返佣查询接口、注册奖励和支付返佣写入逻辑
+- [x] 删除 PromotionRecord 类型、Mongoose Schema 和关联图标
+- [x] 删除仅用于返佣的 `inviterId`、`promotionRate` 请求及用户字段
+- [x] 保留独立的 CRM/SEM 营销归因链路和历史 MongoDB 数据
 
 ## 10. 参考资料
 

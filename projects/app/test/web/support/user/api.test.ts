@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '@/web/support/user/api';
 import { POST } from '@/web/common/api/request';
 import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 
 vi.mock('@/web/common/api/request', () => ({
   GET: vi.fn(),
@@ -55,7 +54,6 @@ describe('user api', () => {
       username: 'test@test.com',
       password: 'password123',
       code: '123456',
-      inviterId: 'inviter123',
       bd_vid: 'vid123',
       msclkid: 'click123',
       fastgpt_sem: {
