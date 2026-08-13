@@ -1256,7 +1256,6 @@ describe('nodeInputs2JsonSchema', () => {
         FlowNodeInputTypeEnum.reference
       ],
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       valueDesc: 'Generated count',
       min: 1,
       max: 10,
@@ -1287,7 +1286,6 @@ describe('nodeInputs2JsonSchema', () => {
           FlowNodeInputTypeEnum.reference
         ],
         selectedType: FlowNodeInputTypeEnum.agentGenerated,
-        selectedTypeIndex: 0,
         valueDesc: 'Generated count',
         min: 1,
         max: 10,
@@ -1310,7 +1308,6 @@ describe('nodeInputs2JsonSchema', () => {
         FlowNodeInputTypeEnum.reference
       ],
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
       defaultValue: 2,
       valueDesc: 'Generated count',
       min: 1,

@@ -56,7 +56,6 @@ const nodeInputJsonSchemaMetadataKeys = [
   'timeRangeEnd',
   'enums',
   'selectedType',
-  'selectedTypeIndex',
   'renderTypeList',
   'valueDesc',
   'debugLabel',

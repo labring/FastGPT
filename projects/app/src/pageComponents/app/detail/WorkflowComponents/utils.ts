@@ -30,7 +30,6 @@ const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isT
     ...inputWithSelectedType,
     selectedType: getSelectedInputRenderType(inputWithSelectedType)
   };
-  delete normalizedInput.selectedTypeIndex;
 
   return normalizedInput;
 };

@@ -44,6 +44,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import type { LegacyFlowNodeInputItemType } from '@fastgpt/global/core/workflow/migration';
 
 /* ====== node ======= */
 /**
@@ -51,11 +52,23 @@ import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app
  * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
  */
 export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
+  const inputs = (storeNode.inputs as LegacyFlowNodeInputItemType[]).map((input) => {
+    const { selectedTypeIndex, ...canonicalInput } = input;
+    const selectedType =
+      input.selectedType ??
+      (selectedTypeIndex === undefined ? undefined : input.renderTypeList[selectedTypeIndex]);
+
+    return {
+      ...canonicalInput,
+      ...(selectedType === undefined ? {} : { selectedType })
+    };
+  });
+
   if (
     storeNode.flowNodeType === FlowNodeTypeEnum.chatNode ||
     storeNode.flowNodeType === FlowNodeTypeEnum.toolCall
   ) {
-    return storeNode.inputs.map((input) => {
+    return inputs.map((input) => {
       if (
         input.key !== NodeInputKeyEnum.fileUrlList ||
         !input.renderTypeList.includes(FlowNodeInputTypeEnum.input)
@@ -78,7 +91,7 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
   }
 
   if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-    return storeNode.inputs.map((input) => {
+    return inputs.map((input) => {
       if (input.key !== NodeInputKeyEnum.ifElseList) return input;
 
       return {
@@ -89,7 +102,7 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
   }
 
   if (storeNode.flowNodeType === FlowNodeTypeEnum.agent) {
-    return storeNode.inputs.map((input) => {
+    return inputs.map((input) => {
       const isManualSelectionInput = [
         NodeInputKeyEnum.skills,
         NodeInputKeyEnum.selectedTools,
@@ -100,17 +113,17 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
       // Agent 资源已取消变量引用；旧引用值无法转为资源对象，加载时清空并切回手动选择。
       return {
         ...input,
-        selectedTypeIndex: 0,
+        selectedType: input.renderTypeList[0],
         value: nodeInputIsReference(input) ? [] : input.value
       };
     });
   }
 
   if (storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
-    return storeNode.inputs;
+    return inputs;
   }
 
-  return storeNode.inputs.map((input) => {
+  return inputs.map((input) => {
     if (input.key !== NodeInputKeyEnum.userChatInput) return input;
 
     const isReferenceValue = isValidReferenceValueFormat(input.value);
@@ -121,10 +134,7 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
       label: i18nT('workflow:search_query'),
       value: isReferenceValue ? [input.value] : input.value,
       valueType: WorkflowIOValueTypeEnum.arrayString,
-      selectedType: isReferenceValue
-        ? FlowNodeInputTypeEnum.reference
-        : FlowNodeInputTypeEnum.input,
-      selectedTypeIndex: isReferenceValue ? 0 : 1
+      selectedType: isReferenceValue ? FlowNodeInputTypeEnum.reference : FlowNodeInputTypeEnum.input
     };
   });
 };
@@ -181,9 +191,21 @@ export const nodeTemplate2FlowNode = ({
   };
 };
 
+type StoreNode2FlowNodeProps = {
+  item: StoreNodeItemType;
+  selected?: boolean;
+  zIndex?: number;
+  parentNodeId?: string;
+  isTool?: boolean;
+  t: TFunction;
+};
+
 /**
  * 将持久化节点恢复为画布节点，并在加载时实体化历史 i18n 文本。
  * 名称或描述命中翻译 key 时使用当前语言文本，后续保存会写回实体文本。
+ *
+ * TODO(workflow-migration): 当前仍包含输入字段兼容；统一迁移器接入后只保留模板合并、
+ * i18n 实体化和 React Flow 节点构造。
  */
 export const storeNode2FlowNode = ({
   item: storeNode,
@@ -192,14 +214,7 @@ export const storeNode2FlowNode = ({
   parentNodeId,
   isTool = false,
   t
-}: {
-  item: StoreNodeItemType;
-  selected?: boolean;
-  zIndex?: number;
-  parentNodeId?: string;
-  isTool?: boolean;
-  t: TFunction;
-}): Node<FlowNodeItemType> => {
+}: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
   const template =
     moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
@@ -231,14 +246,12 @@ export const storeNode2FlowNode = ({
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
           adaptedStoreInputs.find((item) => item.key === templateInput.key) || templateInput;
-
         return {
           ...storeInput,
           ...templateInput,
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
           selectedType: storeInput.selectedType ?? templateInput.selectedType,
-          selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value
         };
       })
@@ -289,16 +302,16 @@ export const storeNode2FlowNode = ({
       )
   };
 
-  const inputsWithLegacyDefaults =
-    nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
-      ? normalizeWorkflowToolInputsDefaultMode(nodeItem.inputs)
-      : nodeItem.inputs;
   const allowLegacyToolDescriptionFallback =
     isTool &&
     (nodeItem.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       !!nodeItem.toolConfig?.systemTool ||
       !!nodeItem.pluginId?.startsWith('systemTool-') ||
       !!nodeItem.pluginId?.startsWith('commercial-'));
+  const inputsWithLegacyDefaults =
+    nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
+      ? normalizeWorkflowToolInputsDefaultMode(nodeItem.inputs)
+      : nodeItem.inputs;
   nodeItem.inputs =
     nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
       ? inputsWithLegacyDefaults.map((input) => {
@@ -342,6 +355,37 @@ export const storeNode2FlowNode = ({
     position: storeNode.position || { x: 0, y: 0 },
     zIndex
   };
+};
+
+/**
+ * 外部或持久化工作流进入前端画布时使用的临时兼容入口。
+ *
+ * API 详情、JSON 导入、历史快照和云版本数据目前都可能是隐式 v0。本 wrapper 在模板合并前
+ * 复用现有输入归一规则，将 `selectedTypeIndex` 和旧工具默认语义转换为当前字段，再调用
+ * `storeNode2FlowNode`。转换顺序与拆分前一致。
+ *
+ * TODO(workflow-migration): 实现统一的 `migrateWorkflowToV1` 后在此先迁移为隐式 v1，再调用
+ * `storeNode2FlowNode`；随后删除 `storeNode2FlowNode` 内部的历史字段兼容。
+ */
+export const legacyStoreNode2FlowNode = (props: StoreNode2FlowNodeProps) => {
+  const { item, isTool = false } = props;
+  const allowLegacyToolDescriptionFallback =
+    isTool &&
+    (item.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+      !!item.toolConfig?.systemTool ||
+      !!item.pluginId?.startsWith('systemTool-') ||
+      !!item.pluginId?.startsWith('commercial-'));
+  const inputs = (item.inputs as LegacyFlowNodeInputItemType[]).map((input) =>
+    normalizeFlowNodeInputType(input, { isTool, allowLegacyToolDescriptionFallback })
+  );
+
+  return storeNode2FlowNode({
+    ...props,
+    item: {
+      ...item,
+      inputs
+    }
+  });
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
@@ -808,7 +852,6 @@ export const compareSnapshot = (
           inputs: node.data.inputs.map((input: FlowNodeInputItemType) => ({
             key: input.key,
             selectedType: getSelectedInputRenderType(input),
-            selectedTypeIndex: input.selectedTypeIndex ?? 0,
             renderTypeLis: input.renderTypeList,
             // set to arrayAny for nestedInputArray to skip valueType comparison
             // valueType: input.key === NodeInputKeyEnum.nestedInputArray ? 'arrayAny' : input.valueType,

@@ -6,7 +6,7 @@ import type { Node, Edge } from 'reactflow';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import {
   compareSnapshot,
-  storeNode2FlowNode,
+  legacyStoreNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
 import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
@@ -312,7 +312,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
           .map((edge) => edge.target)
       );
       const nodes = normalizedWorkflow.nodes.map((item) =>
-        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+        legacyStoreNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
       );
 
       resetSnapshot({

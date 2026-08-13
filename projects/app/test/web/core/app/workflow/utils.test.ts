@@ -16,6 +16,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import {
   adaptStoreNodeInputs,
+  legacyStoreNode2FlowNode,
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   getNodeAllSource,
@@ -163,8 +164,10 @@ describe('adaptStoreNodeInputs', () => {
 
     expect(result).toEqual(
       inputs.map((input) => ({
-        ...input,
-        selectedTypeIndex: 0,
+        key: input.key,
+        label: input.label,
+        renderTypeList: input.renderTypeList,
+        selectedType: input.renderTypeList[0],
         value: []
       }))
     );
@@ -192,8 +195,16 @@ describe('adaptStoreNodeInputs', () => {
 
     const result = adaptStoreNodeInputs(createAgentNode(inputs));
 
-    expect(result[0]).toMatchObject({ selectedTypeIndex: 0, value: selectedSkills });
-    expect(result[1]).toBe(inputs[1]);
+    expect(result[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.selectSkill,
+      value: selectedSkills
+    });
+    expect(result[1]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: promptReference
+    });
+    expect(result[0]).not.toHaveProperty('selectedTypeIndex');
+    expect(result[1]).not.toHaveProperty('selectedTypeIndex');
   });
 });
 
@@ -2179,7 +2190,7 @@ describe('storeNode2FlowNode', () => {
       version: '1.0'
     };
 
-    const result = storeNode2FlowNode({
+    const result = legacyStoreNode2FlowNode({
       item: storeNode,
       t: ((key: string) => key) as any
     });
@@ -2252,7 +2263,7 @@ describe('storeNode2FlowNode', () => {
       version: '1.0'
     };
 
-    const result = storeNode2FlowNode({
+    const result = legacyStoreNode2FlowNode({
       item: storeNode,
       isTool: true,
       t: ((key: string) => key) as any

@@ -210,7 +210,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             <Box ml={2}>
               <NodeInputSelect
                 renderTypeList={[inputType, FlowNodeInputTypeEnum.reference]}
-                renderTypeIndex={updateItem.renderType === FlowNodeInputTypeEnum.reference ? 1 : 0}
+                selectedType={updateItem.renderType}
                 onChange={(e) => {
                   const nt =
                     e === FlowNodeInputTypeEnum.reference

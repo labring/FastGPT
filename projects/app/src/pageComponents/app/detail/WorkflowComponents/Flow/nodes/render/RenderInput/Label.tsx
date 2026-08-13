@@ -40,8 +40,6 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
       }),
     [input, isTool]
   );
-  const displayRenderTypeIndex = displayRenderTypeList.findIndex((item) => item === renderType);
-
   const onChangeRenderType = useCallback(
     (e: string) => {
       const nextInput = {
@@ -81,7 +79,7 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
         <Box ml={2} className="nodrag">
           <NodeInputSelect
             renderTypeList={displayRenderTypeList}
-            renderTypeIndex={displayRenderTypeIndex >= 0 ? displayRenderTypeIndex : 0}
+            selectedType={renderType}
             onChange={onChangeRenderType}
             isAgentGeneratedMode={displayRenderTypeList.includes(
               FlowNodeInputTypeEnum.agentGenerated

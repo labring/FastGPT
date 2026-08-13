@@ -319,7 +319,6 @@ const convertV1WorkflowToV2 = ({
           const newInput: Record<string, unknown> = {
             ...input,
             selectedType: renderTypeList[0],
-            selectedTypeIndex: 0,
             renderTypeList,
             key: input.key,
             value: input.value,

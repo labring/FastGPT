@@ -1,6 +1,7 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
+import type { LegacyFlowNodeInputItemType } from '../../workflow/migration';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import { getSelectedInputRenderType } from '../../workflow/utils';
 import type { SelectedToolItemType } from './type';
@@ -53,10 +54,11 @@ const unsupportedToolInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
 type InputRenderTypeState = {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
-  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
 };
 
 type SavedToolInputTypeState = InputRenderTypeState &
+  // Legacy workflow nodes uses `selectedTypeIndex`
+  Pick<Partial<LegacyFlowNodeInputItemType>, 'selectedTypeIndex'> &
   Pick<Partial<FlowNodeInputItemType>, 'isToolParam' | 'toolDescription'>;
 
 type ToolInputTypeState = InputRenderTypeState &
@@ -145,7 +147,7 @@ export const normalizeLegacyWorkflowHttpToolInputsDefaultMode = <T extends FlowN
  * 并在没有明确选择时按 isToolParam 应用默认值。
  * 返回值始终移除 deprecated selectedTypeIndex，供画布兼容层和 runtime 边界共用。
  */
-export const normalizeFlowNodeInputType = <T extends FlowNodeInputItemType>(
+export const normalizeFlowNodeInputType = <T extends LegacyFlowNodeInputItemType>(
   input: T,
   {
     isTool = false,
@@ -360,8 +362,7 @@ export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
 }): T => {
   const inputWithoutSelection = {
     ...input,
-    selectedType: undefined,
-    selectedTypeIndex: undefined
+    selectedType: undefined
   } as T;
   const shouldUseLegacyAgentGenerated =
     mode === undefined &&
