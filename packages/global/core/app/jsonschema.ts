@@ -819,7 +819,7 @@ export const nodeInput2JsonSchemaProperty = (
   return {
     ...schema,
     title: input.label || input.key,
-    description: input.toolDescription || input.description || '',
+    description: input.toolDescription || input.description || input.label || input.key,
     ...(input.defaultValue !== undefined ? { default: input.defaultValue } : {}),
     ...(typeof input.min === 'number' ? { minimum: input.min } : {}),
     ...(typeof input.max === 'number' ? { maximum: input.max } : {}),

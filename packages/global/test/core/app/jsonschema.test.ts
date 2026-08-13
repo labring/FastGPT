@@ -888,6 +888,31 @@ describe('jsonSchema2NodeOutput', () => {
 });
 
 describe('nodeInputs2JsonSchema', () => {
+  it.each([
+    ['tool description', 'Tool description', 'UI description', 'Field label', 'Tool description'],
+    ['UI description', undefined, 'UI description', 'Field label', 'UI description'],
+    ['field label', undefined, undefined, 'Field label', 'Field label'],
+    ['field key', undefined, undefined, '', 'fieldKey']
+  ])(
+    'should fall back to the %s for the property description',
+    (_case, toolDescription, description, label, expected) => {
+      const result = nodeInputs2JsonSchema({
+        inputs: [
+          {
+            key: 'fieldKey',
+            label,
+            valueType: WorkflowIOValueTypeEnum.string,
+            toolDescription,
+            description,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
+        ]
+      });
+
+      expect(result.properties?.fieldKey?.description).toBe(expected);
+    }
+  );
+
   it('should expose only agent generated and schema-only tool parameters to the model', () => {
     const generatedInput: FlowNodeInputItemType = {
       key: 'query',
@@ -1185,31 +1210,31 @@ describe('nodeInputs2JsonSchema', () => {
         type: 'array',
         items: { type: 'object' },
         title: 'Items',
-        description: ''
+        description: 'Items'
       },
       history: {
         type: 'array',
         items: { type: 'object' },
         title: 'History',
-        description: ''
+        description: 'History'
       },
       quote: {
         type: 'array',
         items: { type: 'object' },
         title: 'Quote',
-        description: ''
+        description: 'Quote'
       },
       dynamic: {
         title: 'Dynamic',
-        description: ''
+        description: 'Dynamic'
       },
       dataset: {
         title: 'Dataset',
-        description: ''
+        description: 'Dataset'
       },
       app: {
         title: 'App',
-        description: ''
+        description: 'App'
       }
     });
   });
