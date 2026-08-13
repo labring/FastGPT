@@ -5,6 +5,7 @@ import { deleteS3DownloadAliasByObjects } from '../accessLink';
 import { s3FileDeleteMQService, type S3MQJobData } from '@fastgpt/dal/redis/bullmq';
 import {
   InvalidStorageObjectKeyError,
+  assertStorageObjectKey,
   type InvalidStorageObjectKeyReason
 } from '@fastgpt-sdk/storage';
 
@@ -35,8 +36,32 @@ const LEGACY_DELETE_FALLBACK_REASONS: ReadonlySet<InvalidStorageObjectKeyReason>
 ]);
 
 /** 判断错误是否属于可降级为原始 key 直删的 legacy 断言失败。 */
-const isLegacyStorageKeyError = (error: unknown) =>
+const isLegacyStorageKeyError = (error: unknown): error is InvalidStorageObjectKeyError =>
   error instanceof InvalidStorageObjectKeyError && LEGACY_DELETE_FALLBACK_REASONS.has(error.reason);
+
+/** 判断源 key 本身是否为 legacy 非规范 key（断言失败且原因在白名单内）。 */
+const isLegacySourceKey = (key: string) => {
+  try {
+    assertStorageObjectKey(key);
+    return false;
+  } catch (error) {
+    return isLegacyStorageKeyError(error);
+  }
+};
+
+/**
+ * 批量降级前逐个校验每个 key：合法的或白名单 legacy 的允许进入原始直删；
+ * 任何 key 违反其余安全相关断言则抛出对应错误，避免混合批次整批绕过校验。
+ */
+const assertAllKeysLegacyRawEligible = (keys: string[]) => {
+  for (const key of keys) {
+    try {
+      assertStorageObjectKey(key);
+    } catch (error) {
+      if (!isLegacyStorageKeyError(error)) throw error;
+    }
+  }
+};
 
 export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQJobData) => {
   const bucket = global.s3BucketMap?.[bucketName];
@@ -54,6 +79,7 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
     const result = (await bucket.client.deleteObjectsByMultiKeys({ keys }).catch((error) => {
       if (!isLegacyStorageKeyError(error)) throw error;
       // 旧数据 key 含控制字符等非规范字符，校验失败但对象确实存在，降级为原始 key 直删。
+      assertAllKeysLegacyRawEligible(keys);
       logger.warn('Legacy S3 key rejected by validation, falling back to raw key deletion', {
         bucketName,
         count: keys.length,
@@ -80,8 +106,9 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
       const result = (await bucket.client
         .deleteObjectsByPrefix({ prefix: fileParsedPrefix })
         .catch((error) => {
-          if (!isLegacyStorageKeyError(error)) throw error;
-          // legacy 原始 key 派生出的 parsed 前缀同样无法通过校验，跳过即可，不影响主对象删除。
+          // 只有源 key 本身是 legacy 时才跳过派生前缀删除；
+          // 合法 key 的派生前缀超长等问题仍按原有方式抛出，避免静默遗留孤儿对象。
+          if (!isLegacyStorageKeyError(error) || !isLegacySourceKey(key)) throw error;
           logger.warn('Skip parsed prefix deletion for legacy key', {
             bucketName,
             prefix: fileParsedPrefix,

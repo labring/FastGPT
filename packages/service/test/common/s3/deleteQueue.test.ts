@@ -128,4 +128,54 @@ describe('executeS3DeleteJob', () => {
     ).rejects.toBeInstanceOf(InvalidStorageObjectKeyError);
     expect(deleteObjectsByRawKeys).not.toHaveBeenCalled();
   });
+
+  it('rejects a mixed batch instead of bypassing non-legacy validation', async () => {
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    const deleteObjectsByMultiKeys = vi.fn().mockRejectedValue(
+      new InvalidStorageObjectKeyError({
+        field: 'keys[0]',
+        reason: 'control_character'
+      })
+    );
+    const deleteObjectsByRawKeys = vi.fn();
+
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { deleteObjectsByMultiKeys, deleteObjectsByRawKeys }
+      }
+    } as any;
+
+    await expect(
+      executeS3DeleteJob({
+        bucketName: 'fastgpt-private',
+        keys: [legacyKey, '../escape.txt']
+      })
+    ).rejects.toMatchObject({
+      name: InvalidStorageObjectKeyError.name,
+      reason: 'dot_path_segment'
+    });
+    expect(deleteObjectsByRawKeys).not.toHaveBeenCalled();
+  });
+
+  it('does not silently skip parsed-prefix deletion for a valid key', async () => {
+    const longValidKey = `dataset/team/${'a'.repeat(782)}.txt`;
+    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
+    const deleteObjectsByPrefix = vi.fn().mockRejectedValue(
+      new InvalidStorageObjectKeyError({
+        field: 'prefix',
+        reason: 'too_long'
+      })
+    );
+
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { deleteObjectsByMultiKeys, deleteObjectsByPrefix }
+      }
+    } as any;
+
+    await expect(
+      executeS3DeleteJob({ bucketName: 'fastgpt-private', keys: [longValidKey] })
+    ).rejects.toBeInstanceOf(InvalidStorageObjectKeyError);
+    expect(deleteObjectsByPrefix).toHaveBeenCalled();
+  });
 });
