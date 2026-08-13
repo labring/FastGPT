@@ -130,6 +130,7 @@ export const persistLanguagePreference = (
     } catch {
       // Cookie is authoritative; localStorage is only a client-side mirror.
     }
+    memoryLanguage.set(key, lang);
     return;
   }
 
@@ -138,23 +139,45 @@ export const persistLanguagePreference = (
     if (readLanguageStorage(key, kind) !== lang) {
       throw new Error(`Failed to persist language preference in localStorage: ${key}`);
     }
+    memoryLanguage.set(key, lang);
     return;
   }
 
   memoryLanguage.set(key, lang);
 };
 
+/**
+ * 读取不会随请求自动发送的客户端语言偏好。
+ * Cookie 由浏览器自动携带，因此请求头按 localStorage → memory → navigator.language 读取。
+ */
+export const getClientLanguagePreference = (): localeType | undefined => {
+  return (
+    getLangFromLocalStorage(LANG_KEY) ||
+    memoryLanguage.get(LANG_KEY) ||
+    (typeof navigator !== 'undefined' && navigator.language
+      ? getLangMapping(navigator.language)
+      : undefined)
+  );
+};
+
 /** 恢复语言偏好事务快照。 */
 export const restoreLanguagePreference = (snapshot: LanguageStorageSnapshot, key = LANG_KEY) => {
   if (snapshot.kind === 'cookie') {
-    if (snapshot.value === undefined) Cookies.remove(key, { path: '/' });
-    else persistLanguagePreference(snapshot.value, key, snapshot.kind);
+    if (snapshot.value === undefined) {
+      Cookies.remove(key, { path: '/' });
+      memoryLanguage.delete(key);
+    } else persistLanguagePreference(snapshot.value, key, snapshot.kind);
     return;
   }
 
   if (snapshot.kind === 'localStorage') {
-    if (snapshot.value === undefined) localStorage.removeItem(key);
-    else localStorage.setItem(key, snapshot.value);
+    if (snapshot.value === undefined) {
+      localStorage.removeItem(key);
+      memoryLanguage.delete(key);
+    } else {
+      localStorage.setItem(key, snapshot.value);
+      memoryLanguage.set(key, snapshot.value);
+    }
     return;
   }
 

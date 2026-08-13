@@ -12,3 +12,5 @@ export const isTestEnv = process.env.NODE_ENV === 'test';
 export const isPhaseProductionBuild = process.env.NEXT_PHASE === 'phase-production-build';
 
 export const FASTGPT_PRO_TOKEN_HEADER = 'x-fastgpt-pro-token';
+/** 客户端语言偏好请求头；Cookie 不可用时供服务端恢复用户语言。 */
+export const FASTGPT_LANGUAGE_HEADER = 'x-fastgpt-language';

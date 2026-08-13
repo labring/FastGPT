@@ -3,6 +3,7 @@ import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import {
   canUseLanguageCookie,
   canUseLanguageLocalStorage,
+  getClientLanguagePreference,
   getLanguageStorageKind,
   getRequiredI18nLanguages,
   getLangFromLocalStorage,
@@ -14,6 +15,7 @@ import {
 
 const originalLocalStorage = globalThis.localStorage;
 const originalDocument = globalThis.document;
+const originalNavigator = globalThis.navigator;
 
 const createLocalStorage = () => {
   const values = new Map<string, string>();
@@ -65,6 +67,8 @@ afterEach(() => {
   else vi.stubGlobal('localStorage', originalLocalStorage);
   if (originalDocument === undefined) vi.stubGlobal('document', undefined);
   else vi.stubGlobal('document', originalDocument);
+  if (originalNavigator === undefined) vi.stubGlobal('navigator', undefined);
+  else vi.stubGlobal('navigator', originalNavigator);
 });
 
 describe('getRequiredI18nLanguages', () => {
@@ -153,5 +157,31 @@ describe('language storage capability and persistence', () => {
 
     restoreLanguagePreference(snapshot, 'rollback-language');
     expect(readLanguagePreference('rollback-language', 'localStorage')).toBe(LangEnum.en);
+  });
+
+  it('reads the request language from localStorage before memory and navigator.language', () => {
+    persistLanguagePreference(LangEnum.zh_Hant, 'request-language', 'memory');
+    const storage = createLocalStorage();
+    storage.getItem.mockReturnValue(LangEnum.zh_CN);
+    vi.stubGlobal('localStorage', storage);
+    vi.stubGlobal('navigator', { language: 'en-US' });
+
+    expect(getClientLanguagePreference()).toBe(LangEnum.zh_CN);
+  });
+
+  it('falls back to memory when localStorage is unavailable', () => {
+    persistLanguagePreference(LangEnum.zh_Hant, undefined, 'memory');
+    vi.stubGlobal('localStorage', undefined);
+    vi.stubGlobal('navigator', { language: 'en-US' });
+
+    expect(getClientLanguagePreference()).toBe(LangEnum.zh_Hant);
+  });
+
+  it('falls back to navigator.language when browser storage is unavailable', () => {
+    restoreLanguagePreference({ kind: 'memory' });
+    vi.stubGlobal('localStorage', undefined);
+    vi.stubGlobal('navigator', { language: 'zh-TW' });
+
+    expect(getClientLanguagePreference()).toBe(LangEnum.zh_Hant);
   });
 });
