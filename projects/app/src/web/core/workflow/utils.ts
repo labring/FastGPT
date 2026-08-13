@@ -38,7 +38,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
-import type { LegacyFlowNodeInputItemType } from '@fastgpt/global/core/workflow/migration';
+import type { LegacyFlowNodeInputItem } from '@fastgpt/global/core/workflow/migration';
 
 /* ====== node ======= */
 /**
@@ -46,7 +46,7 @@ import type { LegacyFlowNodeInputItemType } from '@fastgpt/global/core/workflow/
  * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
  */
 export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
-  const inputs = (storeNode.inputs as LegacyFlowNodeInputItemType[]).map((input) => {
+  const inputs = (storeNode.inputs as LegacyFlowNodeInputItem[]).map((input) => {
     const { selectedTypeIndex, ...canonicalInput } = input;
     const selectedType =
       input.selectedType ??
@@ -356,7 +356,7 @@ export const storeNode2FlowNode = ({
  * 复用现有输入归一规则，将 `selectedTypeIndex` 和旧工具默认语义转换为当前字段，再调用
  * `storeNode2FlowNode`。转换顺序与拆分前一致。
  *
- * TODO(workflow-migration): 实现统一的 `migrateWorkflowToV1` 后在此先迁移为隐式 v1，再调用
+ * TODO(workflow-migration): 接入统一的 `migrateWorkflowToCurrent` 后在此先迁移为隐式 v1，再调用
  * `storeNode2FlowNode`；随后删除 `storeNode2FlowNode` 内部的历史字段兼容。
  */
 export const legacyStoreNode2FlowNode = (props: StoreNode2FlowNodeProps) => {
@@ -367,7 +367,7 @@ export const legacyStoreNode2FlowNode = (props: StoreNode2FlowNodeProps) => {
       !!item.toolConfig?.systemTool ||
       !!item.pluginId?.startsWith('systemTool-') ||
       !!item.pluginId?.startsWith('commercial-'));
-  const inputs = (item.inputs as LegacyFlowNodeInputItemType[]).map((input) =>
+  const inputs = (item.inputs as LegacyFlowNodeInputItem[]).map((input) =>
     normalizeFlowNodeInputType(input, { isTool, allowLegacyToolDescriptionFallback })
   );
 
