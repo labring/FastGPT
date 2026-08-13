@@ -4,10 +4,10 @@ import {
   getLangMapping,
   getPersistedLang,
   LANG_KEY,
-  SHARE_LANG_KEY,
-  setLangToStorage
+  SHARE_LANG_KEY
 } from '../i18n/utils';
 import { useTranslation } from 'next-i18next';
+import { changeLanguageAtomically } from '../i18n/atomicLanguageChange';
 
 type ChangeLngOptions = {
   reloadOnChange?: boolean;
@@ -30,9 +30,13 @@ export const useI18nLng = () => {
     const prevLang = getPersistedLang(storageKey);
     const currentLang = getLangMapping(i18n?.language || prevLang || lang);
 
-    await i18n?.changeLanguage?.(lang);
+    if (!i18n?.changeLanguage) return;
 
-    setLangToStorage(lang, storageKey);
+    await changeLanguageAtomically({
+      i18n,
+      language: lang,
+      storageKey
+    });
 
     if (options?.reloadOnChange && (prevLang !== lang || currentLang !== lang)) {
       if (typeof window !== 'undefined') {
@@ -42,7 +46,7 @@ export const useI18nLng = () => {
   };
 
   const setUserDefaultLng = () => {
-    if (typeof navigator === 'undefined' || typeof localStorage === 'undefined') return;
+    if (typeof navigator === 'undefined') return;
     // 有 Cookie 时以服务端渲染语言为准；没有 Cookie 时先迁移旧的本地偏好。
     if (getLangFromCookie(LANG_KEY)) return;
 
@@ -53,7 +57,7 @@ export const useI18nLng = () => {
    * 分享页使用独立语言 Cookie；首次没有分享页偏好时，继承 NEXT_LOCALE 作为初始值。
    */
   const setShareDefaultLng = () => {
-    if (typeof navigator === 'undefined' || typeof localStorage === 'undefined') return;
+    if (typeof navigator === 'undefined') return;
 
     return onChangeLng(
       getLangFromCookie(SHARE_LANG_KEY) ||

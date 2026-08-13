@@ -5,9 +5,9 @@ import {
   getLangMapping,
   getPersistedLang,
   getRequiredI18nLanguages,
-  setLangToStorage
+  persistLanguagePreference
 } from './utils';
-import { ClientI18nLoadError } from './ClientI18nLoadError';
+import { changeLanguageAtomically } from './atomicLanguageChange';
 
 const BASE_NAMESPACE = 'common';
 
@@ -43,66 +43,40 @@ const ClientI18nGate = ({
     let active = true;
 
     if (ready) {
-      setLangToStorage(language, storageKey);
+      // SSR 已经提供完整资源时无需再次切换，但仍要把首次访问语言提交到权威存储。
+      Promise.resolve()
+        .then(() => persistLanguagePreference(language, storageKey))
+        .catch((error) => {
+          if (active) setLoadError({ language, error });
+        });
       return;
     }
 
-    let failedError: unknown;
-    const onFailedLoading = (failedLanguage: string, namespace: string, error: unknown) => {
-      if (
-        requiredLanguages.includes(getLangMapping(failedLanguage)) &&
-        namespace === BASE_NAMESPACE
-      ) {
-        failedError = error;
-      }
-    };
-    i18n.on('failedLoading', onFailedLoading);
-
-    i18n
-      .changeLanguage(language)
-      .then(() => {
-        if (failedError || i18n.language !== language) {
-          throw new ClientI18nLoadError({
-            language,
-            namespace: BASE_NAMESPACE,
-            cause: failedError ?? new Error('Language change failed')
-          });
-        }
-        const missingLanguage = requiredLanguages.find(
-          (requiredLanguage) => !i18n.hasResourceBundle(requiredLanguage, BASE_NAMESPACE)
-        );
-        if (missingLanguage) {
-          throw new ClientI18nLoadError({
-            language: missingLanguage,
-            namespace: BASE_NAMESPACE,
-            cause: new Error('Resource bundle was not registered')
-          });
-        }
-      })
+    changeLanguageAtomically({
+      i18n,
+      language,
+      storageKey,
+      namespaces: [BASE_NAMESPACE]
+    })
       .then(() => {
         if (!active) return;
-        setLangToStorage(language, storageKey);
         // changeLanguage 通常会触发重渲染；额外记录完成语言以兼容未派发事件的实现。
         setLoadedLanguage(language);
       })
       .catch((error) => {
         if (!active) return;
         setLoadError({ language, error });
-      })
-      .finally(() => {
-        i18n.off('failedLoading', onFailedLoading);
       });
 
     return () => {
       active = false;
-      i18n.off('failedLoading', onFailedLoading);
     };
   }, [i18n, language, ready, requiredLanguages, storageKey]);
 
-  if (ready) return children;
   if (loadError?.language === language) {
     return <ClientI18nErrorFallback language={language} error={loadError.error} />;
   }
+  if (ready) return children;
   return fallback;
 };
 

@@ -5,6 +5,15 @@ export const LANG_KEY = 'NEXT_LOCALE';
 export const SHARE_LANG_KEY = 'FASTGPT_SHARE_LOCALE';
 const PERSISTENT_LANG_COOKIE_EXPIRES_DAYS = 36500;
 
+export type LanguageStorageKind = 'cookie' | 'localStorage' | 'memory';
+
+type LanguageStorageSnapshot = {
+  kind: LanguageStorageKind;
+  value?: localeType;
+};
+
+const memoryLanguage = new Map<string, localeType>();
+
 const languageMap: Record<string, localeType> = {
   zh: LangEnum.zh_CN,
   'zh-CN': LangEnum.zh_CN,
@@ -26,28 +35,144 @@ const isInIframe = () => {
   }
 };
 
+const isCookieAllowedForKey = (key: string) => {
+  // 普通页面在 iframe 内不会写平台语言 Cookie；分享页使用独立 Cookie。
+  return !isInIframe() || key === SHARE_LANG_KEY;
+};
+
+/**
+ * 通过真实的写入和读回检测 Cookie，而不是仅依赖 navigator.cookieEnabled。
+ * 这能覆盖隐私模式、第三方 Cookie 限制和沙盒 iframe 等场景。
+ */
+export const canUseLanguageCookie = (key = LANG_KEY) => {
+  if (typeof document === 'undefined' || !isCookieAllowedForKey(key)) return false;
+
+  const probeKey = `__fastgpt_cookie_probe_${Math.random().toString(36).slice(2)}`;
+  try {
+    Cookies.set(probeKey, '1', { path: '/' });
+    const success = Cookies.get(probeKey) === '1';
+    Cookies.remove(probeKey, { path: '/' });
+    return success;
+  } catch {
+    try {
+      Cookies.remove(probeKey, { path: '/' });
+    } catch {
+      // Ignore cleanup failures. The capability check itself already failed.
+    }
+    return false;
+  }
+};
+
+/** 检测 localStorage 是否可以实际写入和读回。 */
+export const canUseLanguageLocalStorage = (_key = LANG_KEY) => {
+  if (typeof localStorage === 'undefined') return false;
+
+  const probeKey = `__fastgpt_local_storage_probe_${Math.random().toString(36).slice(2)}`;
+  try {
+    localStorage.setItem(probeKey, '1');
+    const success = localStorage.getItem(probeKey) === '1';
+    localStorage.removeItem(probeKey);
+    return success;
+  } catch {
+    try {
+      localStorage.removeItem(probeKey);
+    } catch {
+      // Ignore cleanup failures. The capability check itself already failed.
+    }
+    return false;
+  }
+};
+
+/** 选择当前页面可用的语言偏好权威存储。 */
+export const getLanguageStorageKind = (key = LANG_KEY): LanguageStorageKind => {
+  if (canUseLanguageCookie(key)) return 'cookie';
+  if (canUseLanguageLocalStorage(key)) return 'localStorage';
+  return 'memory';
+};
+
+const readLanguageStorage = (key: string, kind: LanguageStorageKind) => {
+  if (kind === 'cookie') return getLangFromCookie(key);
+  if (kind === 'localStorage') return getLangFromLocalStorage(key);
+  return memoryLanguage.get(key);
+};
+
+/** 读取指定权威存储中的语言值，用于事务快照和提交后校验。 */
+export const readLanguagePreference = (key = LANG_KEY, kind = getLanguageStorageKind(key)) =>
+  readLanguageStorage(key, kind);
+
+/**
+ * 写入语言偏好并立即读回校验。Cookie 作为权威存储时，localStorage 只做尽力镜像，
+ * 镜像失败不会破坏已经成功提交的 Cookie。
+ */
+export const persistLanguagePreference = (
+  value: string,
+  key = LANG_KEY,
+  kind = getLanguageStorageKind(key)
+) => {
+  const lang = getLangMapping(value);
+
+  if (kind === 'cookie') {
+    Cookies.set(key, lang, {
+      expires: PERSISTENT_LANG_COOKIE_EXPIRES_DAYS,
+      ...(isInIframe() && key === SHARE_LANG_KEY && window.location.protocol === 'https:'
+        ? { sameSite: 'none' as const, secure: true }
+        : {})
+    });
+    if (readLanguageStorage(key, kind) !== lang) {
+      throw new Error(`Failed to persist language preference in Cookie: ${key}`);
+    }
+
+    try {
+      localStorage.setItem(key, lang);
+    } catch {
+      // Cookie is authoritative; localStorage is only a client-side mirror.
+    }
+    return;
+  }
+
+  if (kind === 'localStorage') {
+    localStorage.setItem(key, lang);
+    if (readLanguageStorage(key, kind) !== lang) {
+      throw new Error(`Failed to persist language preference in localStorage: ${key}`);
+    }
+    return;
+  }
+
+  memoryLanguage.set(key, lang);
+};
+
+/** 恢复语言偏好事务快照。 */
+export const restoreLanguagePreference = (snapshot: LanguageStorageSnapshot, key = LANG_KEY) => {
+  if (snapshot.kind === 'cookie') {
+    if (snapshot.value === undefined) Cookies.remove(key, { path: '/' });
+    else persistLanguagePreference(snapshot.value, key, snapshot.kind);
+    return;
+  }
+
+  if (snapshot.kind === 'localStorage') {
+    if (snapshot.value === undefined) localStorage.removeItem(key);
+    else localStorage.setItem(key, snapshot.value);
+    return;
+  }
+
+  if (snapshot.value === undefined) memoryLanguage.delete(key);
+  else memoryLanguage.set(key, snapshot.value);
+};
+
+/** 捕获指定语言偏好的旧值，供原子切换失败时回滚。 */
+export const snapshotLanguagePreference = (
+  key = LANG_KEY,
+  kind = getLanguageStorageKind(key)
+): LanguageStorageSnapshot => {
+  return { kind, value: readLanguageStorage(key, kind) };
+};
+
 /**
  * 持久化语言偏好。
  * 普通页面写统一语言 Cookie；分享页使用专用 Cookie，避免覆盖平台登录态语言。
  */
 export const setLangToStorage = (value: string, key = LANG_KEY) => {
-  const lang = getLangMapping(value);
-  const inIframe = isInIframe();
-  const isShareLang = key === SHARE_LANG_KEY;
-
-  if (!inIframe || isShareLang) {
-    // 语言偏好按长期设置处理；iframe 内仅允许分享页专用 Cookie，避免污染平台登录态语言。
-    Cookies.set(key, lang, {
-      expires: PERSISTENT_LANG_COOKIE_EXPIRES_DAYS,
-      ...(inIframe && isShareLang && window.location.protocol === 'https:'
-        ? { sameSite: 'none' as const, secure: true }
-        : {})
-    });
-  }
-
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(key, lang);
-  }
+  persistLanguagePreference(value, key);
 };
 
 /**
