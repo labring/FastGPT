@@ -1,79 +1,61 @@
-import type { CanonicalWorkflowData } from './schema';
-import { CanonicalSelectedToolsValueSchema, CanonicalWorkflowDataSchema } from './schema';
-import type { LegacyWorkflowDataInput } from './legacy/schema';
-import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
-import { migrateLegacyWorkflowStructureData } from './legacy/structure';
-import { FlowNodeTypeEnum } from '../node/constant';
-import { NodeInputKeyEnum } from '../constants';
-import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { isToolInputValueConfigured } from '../../app/formEdit/utils';
+import type {
+  CanonicalAgentToolInputConfig,
+  CanonicalFlowNodeInputItem,
+  CanonicalWorkflowData,
+  LegacyAgentToolInputConfig,
+  LegacyFlowNodeInputItem,
+  LegacyWorkflowData
+} from './schema';
+import {
+  CanonicalAgentToolInputConfigSchema,
+  CanonicalWorkflowDataSchema,
+  LegacyAgentToolInputConfigSchema,
+  LegacyWorkflowDataSchema
+} from './schema';
+
+// [TODO] add an explicit version field and dispatch migrations by version.
 
 /**
- * 将外部 workflow 迁移为严格 canonical 数据。
- *
- * 工具输入只信任 JSON 中保存的 key/mode；工具 definition、权限和 schema 水合由边界层处理。
+ * 将单个历史输入收敛为当前 selectedType 协议，并移除旧索引。
  */
-export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData => {
-  // V1 工作流已不再支持，普通入口只接受 V2/current 数据。
-  const hasLegacyV1Node = input.nodes.some(
-    (node) =>
-      !!node &&
-      typeof node === 'object' &&
-      typeof (node as Record<string, unknown>).flowType === 'string' &&
-      (typeof (node as Record<string, unknown>).moduleId === 'string' ||
-        typeof (node as Record<string, unknown>).nodeId !== 'string')
-  );
-  if (hasLegacyV1Node) {
-    throw new Error('V1 workflows are no longer supported');
-  }
+export const migrateFlowNodeInputToCurrent = (
+  input: LegacyFlowNodeInputItem
+): CanonicalFlowNodeInputItem => {
+  const { selectedTypeIndex: _selectedTypeIndex, ...canonicalInput } = input;
+  const selectedType =
+    input.selectedType ??
+    (input.selectedTypeIndex === undefined
+      ? undefined
+      : input.renderTypeList?.[input.selectedTypeIndex]);
 
-  const workflow = migrateLegacyWorkflowStructureToCurrent(
-    migrateLegacyWorkflowStructureData({
-      nodes: input.nodes,
-      edges: input.edges,
-      chatConfig: input.chatConfig
-    })
-  );
+  return {
+    ...canonicalInput,
+    renderTypeList: input.renderTypeList ?? [],
+    ...(selectedType === undefined ? {} : { selectedType })
+  } as CanonicalFlowNodeInputItem;
+};
 
-  const nodes = workflow.nodes.map((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.agent) return node;
+/**
+ * 将 Agent 工具的完整历史 NodeIO 或当前配置统一为 `{ key, mode }`。
+ */
+export const migrateAgentToolInputConfigToCurrent = (
+  input: LegacyAgentToolInputConfig
+): CanonicalAgentToolInputConfig =>
+  CanonicalAgentToolInputConfigSchema.parse(LegacyAgentToolInputConfigSchema.parse(input));
 
-    return {
+/**
+ * 将工作流迁移为当前版本。
+ * 迁移只处理可由结构稳定推导的字段；工具定义、权限和 Schema 水合留给边界层。
+ */
+export const migrateWorkflowToCurrent = (input: LegacyWorkflowData): CanonicalWorkflowData => {
+  const legacy = LegacyWorkflowDataSchema.parse(input);
+  const migrated = {
+    ...legacy,
+    nodes: legacy.nodes.map((node) => ({
       ...node,
-      inputs: node.inputs.map((input) => {
-        if (input.key !== NodeInputKeyEnum.selectedTools || !Array.isArray(input.value)) {
-          return input;
-        }
+      inputs: node.inputs.map(migrateFlowNodeInputToCurrent)
+    }))
+  };
 
-        const value = input.value.map((tool) => {
-          if (!tool || typeof tool !== 'object' || Array.isArray(tool)) return tool;
-
-          const { config: rawConfig, ...availableTool } = tool;
-          const config =
-            rawConfig && typeof rawConfig === 'object' && !Array.isArray(rawConfig)
-              ? rawConfig
-              : {};
-          const inputs = Array.isArray(tool.inputs)
-            ? tool.inputs
-            : Object.entries(config).map(([key, value]) => ({
-                key,
-                mode: isToolInputValueConfigured({
-                  input: { renderTypeList: [], value, defaultValue: undefined }
-                })
-                  ? AgentToolInputModeEnum.manual
-                  : AgentToolInputModeEnum.agentGenerated
-              }));
-
-          return { ...availableTool, inputs, config };
-        });
-
-        return {
-          ...input,
-          value: CanonicalSelectedToolsValueSchema.parse(value)
-        };
-      })
-    };
-  });
-
-  return CanonicalWorkflowDataSchema.parse({ ...workflow, nodes });
+  return CanonicalWorkflowDataSchema.parse(migrated);
 };
