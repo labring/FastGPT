@@ -98,12 +98,16 @@ When upgrading from an earlier Volume Manager release, set `AGENT_SANDBOX_OPENSA
 
 ### Custom Package Registries
 
-Configure package registries in both `fastgpt-app` and `fastgpt-pro` when sandboxes need to install npm or Python dependencies:
+Configure package registries in both `fastgpt-app` and `fastgpt-pro` when sandboxes need to install npm, Python, or apt dependencies:
 
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
+
+`AGENT_SANDBOX_APT_MIRROR` is handled by the shared sandbox initialization flow and works with both OpenSandbox and Sealos Devbox. FastGPT writes a separate deb822 source file for the detected Ubuntu release without replacing the image's existing sources. If the URL is invalid, the runtime image is not Ubuntu, or the file cannot be written, FastGPT skips the custom source and keeps the original official sources. Initialization does not run `apt-get update`.
+For arm64 runtime images, configure a mirror URL that provides `ubuntu-ports`.
 
 ### Resource and Lifecycle Settings
 
