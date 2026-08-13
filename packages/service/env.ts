@@ -144,6 +144,9 @@ export const serviceEnv = createEnv({
       }),
     AGENT_SANDBOX_NPM_REGISTRY: z.string().optional(),
     AGENT_SANDBOX_PYPI_INDEX_URL: z.string().optional(),
+    AGENT_SANDBOX_APT_MIRROR: z.string().optional().meta({
+      description: 'Ubuntu Agent Sandbox 使用的 apt 镜像仓库 URL；配置失败时保留镜像原有官方源'
+    }),
 
     // PDF 增强解析
     CUSTOM_PDF_PARSE_URL: UrlSchema.optional().meta({

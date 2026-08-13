@@ -1,9 +1,9 @@
 /**
  * 沙盒业务层：为运行态 sandbox 准备包管理器镜像源。
  *
- * 负责根据环境配置写入 npm/pip/uv 等镜像文件，不处理 Skill 包部署。
+ * 负责根据环境配置写入 npm/pip/uv/apt 等镜像文件，不处理 Skill 包部署。
  */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { buildRuntimeHash, joinSandboxPath } from '../../utils';
@@ -19,17 +19,19 @@ import { prepareSandboxFileParentDirectories } from '../file';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 const SANDBOX_MIRRORS_STATE_HASH_KEY = 'sandboxPackageMirrors';
+const APT_MIRROR_SOURCE_PATH = '/etc/apt/sources.list.d/00-fastgpt-mirror.sources';
 
 export type SandboxRuntimeMirrorsConfig = {
   npmRegistry?: string;
   pypiIndexUrl?: string;
+  aptMirror?: string;
 };
 
-export const getSandboxRuntimeMirrorsConfig = (): SandboxRuntimeMirrorsConfig =>
-  normalizeMirrorsConfig({
-    npmRegistry: serviceEnv.AGENT_SANDBOX_NPM_REGISTRY,
-    pypiIndexUrl: serviceEnv.AGENT_SANDBOX_PYPI_INDEX_URL
-  });
+export const getSandboxRuntimeMirrorsConfig = (): SandboxRuntimeMirrorsConfig => ({
+  npmRegistry: serviceEnv.AGENT_SANDBOX_NPM_REGISTRY,
+  pypiIndexUrl: serviceEnv.AGENT_SANDBOX_PYPI_INDEX_URL,
+  aptMirror: serviceEnv.AGENT_SANDBOX_APT_MIRROR
+});
 
 export const prepareSandboxRuntimeMirrors = async ({
   sandbox,
@@ -38,8 +40,9 @@ export const prepareSandboxRuntimeMirrors = async ({
   sandbox: ISandbox;
   config?: SandboxRuntimeMirrorsConfig;
 }): Promise<void> => {
-  const files = buildSandboxRuntimeMirrorFiles(config);
-  if (files.length === 0) return;
+  const normalizedConfig = normalizeMirrorsConfig(config);
+  const { aptMirror } = normalizedConfig;
+  const ubuntuCodename = aptMirror ? await resolveSandboxUbuntuCodename(sandbox) : undefined;
 
   const homeDirectory = await resolveSandboxHome(sandbox);
   if (!homeDirectory) return;
@@ -47,20 +50,32 @@ export const prepareSandboxRuntimeMirrors = async ({
   const stateContext = await readSandboxRuntimeState({ sandbox, homeDirectory });
   if (!stateContext.statePath) return;
 
-  const writeEntries = files.map((file) => ({
-    path: joinSandboxPath(homeDirectory, file.path),
-    data: file.content
-  }));
-  const filesHash = buildRuntimeHash(JSON.stringify(writeEntries));
-  if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY) === filesHash) {
+  const files = buildSandboxRuntimeMirrorFiles({
+    config: normalizedConfig,
+    homeDirectory,
+    ubuntuCodename
+  });
+  if (files.length === 0) {
+    if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY)) {
+      setRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY, []);
+      await writeSandboxRuntimeState(sandbox, stateContext);
+    }
     return;
   }
 
-  const writeResults = await prepareSandboxFileParentDirectories(
-    sandbox,
-    writeEntries.map(({ path }) => path)
-  )
-    .then(() => sandbox.writeFiles(writeEntries))
+  const relativeWritePaths = files
+    .filter(({ path }) => path !== APT_MIRROR_SOURCE_PATH)
+    .map(({ path }) => path);
+  const filesHash = buildRuntimeHash(JSON.stringify(files));
+  if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY) === filesHash) {
+    const aptSource = files.find(({ path }) => path === APT_MIRROR_SOURCE_PATH);
+    if (!aptSource || (await isManagedAptMirrorSourceCurrent(sandbox, aptSource.data.toString()))) {
+      return;
+    }
+  }
+
+  const writeResults = await prepareSandboxFileParentDirectories(sandbox, relativeWritePaths)
+    .then(() => sandbox.writeFiles(files))
     .catch((error) => {
       logger.warn('[Sandbox Runtime] Failed to write mirror config files', { error });
       return undefined;
@@ -78,55 +93,115 @@ export const prepareSandboxRuntimeMirrors = async ({
   await writeSandboxRuntimeState(sandbox, stateContext);
 };
 
-const buildSandboxRuntimeMirrorFiles = (config: SandboxRuntimeMirrorsConfig) => {
-  const normalized = normalizeMirrorsConfig(config);
-  const files: Array<{ path: string; content: string }> = [];
+/** hash 命中时确认受管 apt source 仍存在，避免清理后被旧状态误判为已写入。 */
+const isManagedAptMirrorSourceCurrent = async (
+  sandbox: ISandbox,
+  expectedContent: string
+): Promise<boolean> => {
+  const [source] = await sandbox.readFiles([APT_MIRROR_SOURCE_PATH]).catch((error) => {
+    logger.warn('[Sandbox Runtime] Failed to verify managed apt mirror source', { error });
+    return [];
+  });
 
-  if (normalized.npmRegistry) {
+  if (!source || source.error) return false;
+  return Buffer.from(source.content).toString('utf-8') === expectedContent;
+};
+
+/**
+ * 读取 Ubuntu 代号以生成与运行镜像版本匹配的 apt source。
+ * 无法识别 Ubuntu 时跳过自定义 apt source，镜像原有官方源保持不变。
+ */
+const resolveSandboxUbuntuCodename = async (sandbox: ISandbox): Promise<string | undefined> => {
+  const [osRelease] = await sandbox.readFiles(['/etc/os-release']).catch((error) => {
+    logger.warn('[Sandbox Runtime] Failed to read sandbox OS release', { error });
+    return [];
+  });
+
+  if (!osRelease || osRelease.error) {
+    logger.warn('[Sandbox Runtime] Cannot configure apt mirror; official sources remain active', {
+      error: osRelease?.error
+    });
+    return undefined;
+  }
+
+  const content = Buffer.from(osRelease.content).toString('utf-8');
+  const readField = (key: string) =>
+    content
+      .split('\n')
+      .find((line) => line.startsWith(`${key}=`))
+      ?.slice(key.length + 1)
+      .trim()
+      .replace(/^(['"])(.*)\1$/, '$2');
+  const osId = readField('ID');
+  const codename = readField('UBUNTU_CODENAME') ?? readField('VERSION_CODENAME');
+
+  if (osId !== 'ubuntu' || !codename) {
+    logger.warn('[Sandbox Runtime] Cannot configure apt mirror for a non-Ubuntu sandbox', {
+      osId,
+      codename
+    });
+    return undefined;
+  }
+
+  return codename;
+};
+
+const buildSandboxRuntimeMirrorFiles = ({
+  config,
+  homeDirectory,
+  ubuntuCodename
+}: {
+  config: SandboxRuntimeMirrorsConfig;
+  homeDirectory: string;
+  ubuntuCodename?: string;
+}): FileWriteEntry[] => {
+  const files: FileWriteEntry[] = [];
+
+  if (config.npmRegistry) {
     files.push({
-      path: '.npmrc',
-      content: `registry=${normalized.npmRegistry}\n`
+      path: joinSandboxPath(homeDirectory, '.npmrc'),
+      data: `registry=${config.npmRegistry}\n`
     });
     files.push({
-      path: '.yarnrc',
-      content: `registry "${normalized.npmRegistry}"\n`
+      path: joinSandboxPath(homeDirectory, '.yarnrc'),
+      data: `registry "${config.npmRegistry}"\n`
     });
     files.push({
-      path: '.yarnrc.yml',
-      content: `npmRegistryServer: "${escapeYamlString(normalized.npmRegistry)}"\n`
+      path: joinSandboxPath(homeDirectory, '.yarnrc.yml'),
+      data: `npmRegistryServer: "${escapeYamlString(config.npmRegistry)}"\n`
     });
     files.push({
-      path: '.bunfig.toml',
-      content: `[install]\nregistry = "${escapeTomlString(normalized.npmRegistry)}"\n`
+      path: joinSandboxPath(homeDirectory, '.bunfig.toml'),
+      data: `[install]\nregistry = "${escapeTomlString(config.npmRegistry)}"\n`
     });
   }
 
   let pypiTrustedHost: string | undefined;
-  if (normalized.pypiIndexUrl) {
+  if (config.pypiIndexUrl) {
     try {
-      pypiTrustedHost = new URL(normalized.pypiIndexUrl).host || undefined;
+      pypiTrustedHost = new URL(config.pypiIndexUrl).host || undefined;
     } catch {
       pypiTrustedHost = undefined;
     }
   }
   const pipConfig = [
     '[global]',
-    ...(normalized.pypiIndexUrl ? [`index-url = ${normalized.pypiIndexUrl}`] : []),
+    ...(config.pypiIndexUrl ? [`index-url = ${config.pypiIndexUrl}`] : []),
     ...(pypiTrustedHost ? [`trusted-host = ${pypiTrustedHost}`] : [])
   ];
   if (pipConfig.length > 1) {
     files.push({
-      path: '.pip/pip.conf',
-      content: `${pipConfig.join('\n')}\n`
+      path: joinSandboxPath(homeDirectory, '.pip/pip.conf'),
+      data: `${pipConfig.join('\n')}\n`
     });
     files.push({
-      path: '.config/pip/pip.conf',
-      content: `${pipConfig.join('\n')}\n`
+      path: joinSandboxPath(homeDirectory, '.config/pip/pip.conf'),
+      data: `${pipConfig.join('\n')}\n`
     });
     files.push({
-      path: '.config/uv/uv.toml',
-      content: `${[
-        `default-index = "${escapeTomlString(normalized.pypiIndexUrl!)}"`,
+      path: joinSandboxPath(homeDirectory, '.config/uv/uv.toml'),
+      data: `${[
+        `default-index = "${escapeTomlString(config.pypiIndexUrl!)}"`,
         ...(pypiTrustedHost
           ? [`allow-insecure-host = ["${escapeTomlString(pypiTrustedHost)}"]`]
           : [])
@@ -134,9 +209,23 @@ const buildSandboxRuntimeMirrorFiles = (config: SandboxRuntimeMirrorsConfig) => 
     });
   }
 
+  if (config.aptMirror && ubuntuCodename) {
+    files.push({
+      path: APT_MIRROR_SOURCE_PATH,
+      data: `${[
+        'Types: deb',
+        `URIs: ${config.aptMirror}`,
+        `Suites: ${ubuntuCodename} ${ubuntuCodename}-updates ${ubuntuCodename}-backports ${ubuntuCodename}-security`,
+        'Components: main restricted universe multiverse',
+        'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg'
+      ].join('\n')}\n`
+    });
+  }
+
   return files;
 };
 
+/** 统一清理镜像配置，空值不生成对应的运行时文件。 */
 const normalizeMirrorsConfig = (config: SandboxRuntimeMirrorsConfig): SandboxRuntimeMirrorsConfig =>
   Object.fromEntries(
     Object.entries(config).flatMap(([key, value]) => {

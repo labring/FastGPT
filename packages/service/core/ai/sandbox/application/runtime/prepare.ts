@@ -33,7 +33,7 @@ export const prepareSandbox = async <Context extends SandboxPrepareContext>(
   return currentContext;
 };
 
-/** 在 sandbox 内写入 npm/pnpm/yarn/bun/pip/uv 镜像源配置。 */
+/** 在 sandbox 内写入 npm/pnpm/yarn/bun/pip/uv/apt 镜像源配置。 */
 export const preparePackageMirrors =
   <Context extends SandboxPrepareContext>(): SandboxPrepareStep<Context> =>
   async (context) => {

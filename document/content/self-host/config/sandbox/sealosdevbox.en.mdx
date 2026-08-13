@@ -38,6 +38,19 @@ AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
 ```
 
+## Custom Package Registries
+
+OpenSandbox and Sealos Devbox use the same package registry settings:
+
+```dotenv
+AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
+AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+```
+
+For apt, FastGPT writes a separate deb822 source file for the detected Ubuntu release without replacing the runtime image's existing sources. If the image is not Ubuntu, the Devbox runtime user cannot write to `/etc/apt`, the URL is invalid, or the file cannot be written, FastGPT skips the custom source and keeps the original official sources. Initialization does not run `apt-get update`.
+For arm64 runtime images, configure a mirror URL that provides `ubuntu-ports`.
+
 ## FAQ
 
 ### AGENT_SANDBOX_PROXY_URL or AGENT_SANDBOX_PREVIEW_PROXY_URL is required
