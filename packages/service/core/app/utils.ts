@@ -13,7 +13,7 @@ import {
   normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import type { LegacyFlowNodeInputItemType } from '@fastgpt/global/core/workflow/migration';
+import type { LegacyFlowNodeInputItem } from '@fastgpt/global/core/workflow/migration';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -136,8 +136,8 @@ export async function rewriteAppWorkflowToDetail({
       };
     }
   };
-  type ToolInputSnapshot = Pick<LegacyFlowNodeInputItemType, 'key' | 'renderTypeList'> &
-    Partial<LegacyFlowNodeInputItemType>;
+  type ToolInputSnapshot = Pick<LegacyFlowNodeInputItem, 'key' | 'renderTypeList'> &
+    Partial<LegacyFlowNodeInputItem>;
 
   const mergeToolInputDetail = ({
     previewInput,
@@ -165,7 +165,7 @@ export async function rewriteAppWorkflowToDetail({
         ...(savedInput?.selectedTypeIndex === undefined
           ? {}
           : ({ selectedTypeIndex: savedInput.selectedTypeIndex } satisfies Pick<
-              LegacyFlowNodeInputItemType,
+              LegacyFlowNodeInputItem,
               'selectedTypeIndex'
             >)),
         isToolParam:

@@ -1,24 +1,24 @@
 export {
   CanonicalWorkflowDataSchema,
   CanonicalAgentToolInputConfigSchema,
-  CanonicalFlowNodeInputItemSchema as CanonicalFlowNodeInputItemTypeSchema,
-  LegacyStoreNodeItemSchema as LegacyStoreNodeItemTypeSchema,
+  CanonicalFlowNodeInputItemSchema,
+  LegacyStoreNodeItemSchema,
   LegacyWorkflowDataSchema,
-  LegacyFlowNodeInputItemSchema as LegacyFlowNodeInputItemTypeSchema,
+  LegacyFlowNodeInputItemSchema,
   LegacyAgentToolInputConfigSchema,
   type CanonicalWorkflowData,
   type CanonicalAgentToolInputConfig,
-  type CanonicalFlowNodeInputItem as CanonicalFlowNodeInputItemType,
-  type LegacyStoreNodeItem as LegacyStoreNodeItemType,
-  type LegacyFlowNodeInputItem as LegacyFlowNodeInputItemType,
+  type CanonicalFlowNodeInputItem,
+  type LegacyStoreNodeItem,
+  type LegacyFlowNodeInputItem,
   type LegacyWorkflowData,
-  type LegacyAgentToolInputConfig as LegacyAgentToolInputConfigType
+  type LegacyAgentToolInputConfig
 } from './schema';
 
 export {
-  migrateAgentToolInputConfigToCurrent as migrateAgentToolInputConfigToV1,
-  migrateFlowNodeInputToCurrent as migrateFlowNodeInputToV1,
-  migrateWorkflowToCurrent as migrateWorkflowToV1
+  migrateAgentToolInputConfigToCurrent,
+  migrateFlowNodeInputToCurrent,
+  migrateWorkflowToCurrent
 } from './migrate';
 
 // [TODO] add an explicit version field and dispatch migrations by version.

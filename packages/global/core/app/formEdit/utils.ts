@@ -1,7 +1,7 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
-import type { LegacyFlowNodeInputItemType } from '../../workflow/migration';
+import type { LegacyFlowNodeInputItem } from '../../workflow/migration';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import { getSelectedInputRenderType } from '../../workflow/utils';
 import type { SelectedToolItemType } from './type';
@@ -58,7 +58,7 @@ type InputRenderTypeState = {
 
 type SavedToolInputTypeState = InputRenderTypeState &
   // Legacy workflow nodes uses `selectedTypeIndex`
-  Pick<Partial<LegacyFlowNodeInputItemType>, 'selectedTypeIndex'> &
+  Pick<Partial<LegacyFlowNodeInputItem>, 'selectedTypeIndex'> &
   Pick<Partial<FlowNodeInputItemType>, 'isToolParam' | 'toolDescription'>;
 
 type ToolInputTypeState = InputRenderTypeState &
@@ -147,7 +147,7 @@ export const normalizeLegacyWorkflowHttpToolInputsDefaultMode = <T extends FlowN
  * 并在没有明确选择时按 isToolParam 应用默认值。
  * 返回值始终移除 deprecated selectedTypeIndex，供画布兼容层和 runtime 边界共用。
  */
-export const normalizeFlowNodeInputType = <T extends LegacyFlowNodeInputItemType>(
+export const normalizeFlowNodeInputType = <T extends LegacyFlowNodeInputItem>(
   input: T,
   {
     isTool = false,
