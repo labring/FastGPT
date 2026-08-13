@@ -5,7 +5,9 @@ import type { Translations } from 'fumadocs-ui/i18n';
 import CustomSearchDialog from '@/components/CustomSearchDialog';
 import Script from 'next/script';
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { i18n } from '@/lib/i18n';
 
 const zh_CN: Partial<Translations> = {
   search: '搜索',
@@ -47,6 +49,8 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  if (!i18n.languages.includes(lang)) notFound();
+
   const domain = getFastGPTDocsOrigin();
 
   const title = lang === 'zh-CN' ? 'FastGPT 文档 - 快速开始' : 'FastGPT Documentation - Getting Started';
@@ -130,6 +134,7 @@ export default async function Layout({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
+  if (!i18n.languages.includes(lang)) notFound();
 
   // Get tracking config from env (site ID is injected per-build by CI)
   const trackSrc = process.env.NEXT_PUBLIC_DOC_TRACK_SRC;
