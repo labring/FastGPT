@@ -73,7 +73,7 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
       ),
       policyMap,
       filter: query,
-      canManage: permission.hasPluginManagePer || permission.hasManagePer || permission.isOwner
+      canManage: permission.hasManagePer || permission.isOwner
     })
       .sort((a, b) => getToolListSortOrder(a.source) - getToolListSortOrder(b.source))
       .filter((tool) => {

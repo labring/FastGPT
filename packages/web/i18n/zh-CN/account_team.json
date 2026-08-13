@@ -361,7 +361,6 @@
   "team_plugin_delete": "删除",
   "team_plugin_install_source_marketplace": "Marketplace",
   "team_plugin_install_source_upload": "上传安装",
-  "team_plugin_no_permission": "当前成员没有团队插件管理权限",
   "team_plugin_upload_disabled": "系统已关闭团队上传插件",
   "team_plugin_marketplace_search": "搜索 Marketplace 插件",
   "team_plugin_empty": "暂无插件",

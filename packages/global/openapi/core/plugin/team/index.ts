@@ -107,7 +107,7 @@ export const PluginTeamPath: OpenAPIPath = {
   '/core/plugin/team/pkg/upload': {
     post: {
       summary: '上传团队插件包',
-      description: '上传 .pkg 或包含多个 .pkg 的 .zip 文件，需要团队插件管理权限',
+      description: '上传 .pkg 或包含多个 .pkg 的 .zip 文件，需要团队管理员权限',
       tags: [DevApiTagsMap.pluginTeam],
       requestBody: {
         required: true,

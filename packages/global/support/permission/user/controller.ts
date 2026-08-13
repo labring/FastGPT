@@ -3,7 +3,6 @@ import {
   TeamApikeyCreateRoleVal,
   TeamAppCreateRoleVal,
   TeamDatasetCreateRoleVal,
-  TeamPluginManageRoleVal,
   TeamSkillCreateRoleVal,
   TeamDefaultRoleVal,
   TeamPerList,
@@ -16,12 +15,10 @@ export class TeamPermission extends Permission {
   hasDatasetCreateRole: boolean = false;
   hasApikeyCreateRole: boolean = false;
   hasSkillCreateRole: boolean = false;
-  hasPluginManageRole: boolean = false;
   hasAppCreatePer: boolean = false;
   hasDatasetCreatePer: boolean = false;
   hasApikeyCreatePer: boolean = false;
   hasSkillCreatePer: boolean = false;
-  hasPluginManagePer: boolean = false;
 
   constructor(props?: PerConstructPros) {
     if (!props) {
@@ -41,12 +38,10 @@ export class TeamPermission extends Permission {
       this.hasDatasetCreateRole = this.checkRole(TeamDatasetCreateRoleVal);
       this.hasApikeyCreateRole = this.checkRole(TeamApikeyCreateRoleVal);
       this.hasSkillCreateRole = this.checkRole(TeamSkillCreateRoleVal);
-      this.hasPluginManageRole = this.checkRole(TeamPluginManageRoleVal);
       this.hasAppCreatePer = this.checkPer(TeamAppCreateRoleVal);
       this.hasDatasetCreatePer = this.checkPer(TeamDatasetCreateRoleVal);
       this.hasApikeyCreatePer = this.checkPer(TeamApikeyCreateRoleVal);
       this.hasSkillCreatePer = this.checkPer(TeamSkillCreateRoleVal);
-      this.hasPluginManagePer = this.checkPer(TeamPluginManageRoleVal);
     });
   }
 }

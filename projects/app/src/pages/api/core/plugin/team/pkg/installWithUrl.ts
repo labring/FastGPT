@@ -7,7 +7,7 @@ import {
 } from '@fastgpt/global/openapi/core/plugin/team/pkg/api';
 import { TeamPluginInstallSourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
-import { TeamPluginManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   assertTeamPluginSourceReady,
@@ -38,7 +38,7 @@ async function handler(
   const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
-    per: TeamPluginManagePermissionVal
+    per: TeamManagePermissionVal
   });
 
   const installResult = await pluginClient.installPlugins(downloadUrls, {

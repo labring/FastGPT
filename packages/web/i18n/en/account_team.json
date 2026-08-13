@@ -361,7 +361,6 @@
   "team_plugin_delete": "Delete",
   "team_plugin_install_source_marketplace": "Marketplace",
   "team_plugin_install_source_upload": "Upload",
-  "team_plugin_no_permission": "Current member cannot manage team plugins",
   "team_plugin_upload_disabled": "Team plugin upload is disabled",
   "team_plugin_marketplace_search": "Search Marketplace plugins",
   "team_plugin_empty": "No plugins",

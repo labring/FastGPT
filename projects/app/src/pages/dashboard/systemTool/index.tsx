@@ -72,9 +72,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { userInfo } = useUserStore();
   const { toast } = useToast();
   const canManageTeamPlugins =
-    !!userInfo?.team?.permission.hasPluginManagePer ||
-    !!userInfo?.team?.permission.hasManagePer ||
-    !!userInfo?.team?.permission.isOwner;
+    !!userInfo?.team?.permission.hasManagePer || !!userInfo?.team?.permission.isOwner;
 
   const [searchText, setSearchText] = useState('');
 

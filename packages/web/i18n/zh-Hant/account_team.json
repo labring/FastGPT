@@ -361,7 +361,6 @@
   "team_plugin_delete": "刪除",
   "team_plugin_install_source_marketplace": "Marketplace",
   "team_plugin_install_source_upload": "上傳安裝",
-  "team_plugin_no_permission": "目前成員沒有團隊外掛管理權限",
   "team_plugin_upload_disabled": "系統已關閉團隊上傳外掛",
   "team_plugin_marketplace_search": "搜尋 Marketplace 外掛",
   "team_plugin_empty": "暫無外掛",

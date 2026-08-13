@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
+import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
@@ -51,6 +52,12 @@ describe('delete team plugin handler', () => {
     });
 
     expect(res.code).toBe(200);
+    expect(mocks.authUserPer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authToken: true,
+        per: TeamManagePermissionVal
+      })
+    );
     expect(mocks.assertTeamPluginInstalled).toHaveBeenCalledWith({
       teamId: 'team-1',
       pluginId: 'weather'

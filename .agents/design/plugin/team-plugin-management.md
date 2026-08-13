@@ -9,7 +9,7 @@ status: IMPLEMENTED
 
 ## 任务概述
 
-FastGPT 允许拥有团队 `pluginManage` 权限的成员从 Marketplace 安装插件，或上传
+FastGPT 允许团队管理员从 Marketplace 安装插件，或上传
 `.pkg` / `.zip` 安装到当前团队。团队插件可以删除和重新安装，系统预装插件继续由
 系统管理员统一管理。
 
@@ -107,14 +107,14 @@ type TeamPluginInstallSource = 'marketplace' | 'upload';
 
 安装流程：
 
-1. 使用 `pluginManage` 权限鉴权。
+1. 使用团队管理员权限鉴权。
 2. 调用 plugin service 安装或确认到 `teamId:<teamId>`。
 3. 从同一 source 读回插件，确认插件真实可用。
 4. upsert 团队安装 policy 为 `installed`。
 
 删除流程：
 
-1. 使用 `pluginManage` 权限鉴权。
+1. 使用团队管理员权限鉴权。
 2. 校验团队安装 policy 存在且为 `installed`。
 3. 调用 plugin service 删除 `teamId:<teamId>` 下的插件。
 4. 将 policy 更新为 `deleted`。
@@ -187,7 +187,7 @@ type TeamPluginListQuery = {
 
 ## 配置与权限
 
-- `pluginManage` 是独立团队权限。
+- 只有团队管理员可以安装、上传和删除团队插件。
 - team owner 和 manage 权限包含插件管理能力。
 - admin 后台“功能清单”中的“团队上传插件”开关写入
   `enable_team_plugin_upload`，控制上传入口、上传 API 和确认 API；旧配置缺少该字段时默认开启。

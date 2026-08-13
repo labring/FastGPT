@@ -8,7 +8,7 @@ import {
   type TeamPluginEmptyResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/common';
 import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
-import { TeamPluginManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   assertTeamPluginInstalled,
@@ -33,7 +33,7 @@ async function handler(req: ApiRequestProps<DeleteTeamToolBody>): Promise<Delete
   const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
-    per: TeamPluginManagePermissionVal
+    per: TeamManagePermissionVal
   });
   const rawPluginId = getRawPluginIdFromSystemToolId(pluginId);
   const policy = await assertTeamPluginInstalled({

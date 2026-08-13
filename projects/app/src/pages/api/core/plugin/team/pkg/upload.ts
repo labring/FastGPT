@@ -5,7 +5,7 @@ import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { UploadTeamPkgPluginResponseSchema } from '@fastgpt/global/openapi/core/plugin/team/pkg/api';
-import { TeamPluginManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import fs from 'node:fs';
 
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authUserPer({
       req,
       authToken: true,
-      per: TeamPluginManagePermissionVal
+      per: TeamManagePermissionVal
     });
 
     const result = await multer.resolveMultipleFormData<Record<string, never>>({

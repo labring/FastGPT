@@ -51,7 +51,6 @@ describe('team system plugin list handler', () => {
       teamId: 'team-1',
       tmbId: 'tmb-1',
       permission: {
-        hasPluginManagePer: false,
         hasManagePer: false,
         isOwner: false
       }
