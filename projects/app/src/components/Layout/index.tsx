@@ -11,7 +11,7 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useDebounceEffect, useMount } from 'ahooks';
+import { useDebounceEffect } from 'ahooks';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCheckCoupon } from './hooks/checkCoupon';
@@ -121,14 +121,13 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     !userInfo?.contact &&
     !!userInfo?.team.permission.isOwner;
 
-  useMount(() => {
+  useEffect(() => {
     if (router.pathname === '/chat/share') {
-      setShareDefaultLng();
-      return;
+      return void setShareDefaultLng();
     }
 
-    setUserDefaultLng();
-  });
+    void setUserDefaultLng();
+  }, [router.pathname, setShareDefaultLng, setUserDefaultLng]);
 
   // Check model invalid
   useDebounceEffect(
