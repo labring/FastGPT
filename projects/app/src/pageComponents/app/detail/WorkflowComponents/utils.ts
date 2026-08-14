@@ -1,5 +1,6 @@
 import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -62,29 +63,8 @@ export const uiWorkflow2StoreWorkflow = ({
       .map((edge) => edge.target)
   );
 
-  const formatNodes = nodes.map((item) => {
-    const inputs =
-      item.data.flowNodeType === FlowNodeTypeEnum.pluginInput
-        ? item.data.inputs
-        : item.data.inputs.map((input) =>
-            normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
-          );
-    const selectedToolsInput = inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools);
-    if (
-      item.data.flowNodeType === FlowNodeTypeEnum.agent &&
-      selectedToolsInput &&
-      !nodeInputIsReference(selectedToolsInput) &&
-      Array.isArray(selectedToolsInput.value)
-    ) {
-      const serializedTools: any[] = [];
-      for (const tool of selectedToolsInput.value as any[]) {
-        const parsed = SelectedToolItemTypeSchema.safeParse(tool);
-        if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
-      }
-      selectedToolsInput.value = serializedTools as any;
-    }
-
-    return {
+  const { nodes: formatNodes } = migrateSystemConfigToChatConfig({
+    nodes: nodes.map((item) => ({
       nodeId: item.data.nodeId,
       parentNodeId: item.data.parentNodeId,
       name: item.data.name,

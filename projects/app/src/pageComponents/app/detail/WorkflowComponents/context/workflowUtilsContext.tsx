@@ -311,13 +311,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         edges: e.edges,
         chatConfig: e.chatConfig ?? appDetail.chatConfig
       });
-      const normalizedWorkflow = normalizeWorkflowConfig(migratedWorkflow);
-      const storeNodes = normalizedWorkflow.nodes;
+      const storeNodes = migratedWorkflow.nodes;
 
-      adaptCatchError(storeNodes, normalizedWorkflow.edges);
+      adaptCatchError(storeNodes, migratedWorkflow.edges);
 
       const toolNodeIds = new Set(
-        normalizedWorkflow.edges
+        migratedWorkflow.edges
           .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
@@ -325,7 +324,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         storeNodes?.map((item) =>
           storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
         ) || [];
-      const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+      const edges = migratedWorkflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -343,7 +342,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             edges: edges,
             title: t('app:app.version_initial'),
             isSaved: true,
-            chatConfig: workflow.chatConfig
+            chatConfig: migratedWorkflow.chatConfig
           }
         ]);
       }
@@ -351,7 +350,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // Init memory data
       setNodes(nodes);
       setEdges(edges);
-      setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
+      setAppDetail((state) => ({ ...state, chatConfig: migratedWorkflow.chatConfig }));
     },
     [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
   );

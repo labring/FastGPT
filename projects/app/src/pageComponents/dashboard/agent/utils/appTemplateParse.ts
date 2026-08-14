@@ -191,7 +191,9 @@ const parseSimpleImportWorkflow = ({
   const form = normalizeSimpleImportForm(config);
   const workflow = form2AppWorkflow(form, t);
 
-  return workflow;
+  const workflow = form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
+
+  return migrateWorkflowToCurrent(workflow);
 };
 
 const parseWorkflowLikeImportConfig = async ({
@@ -221,7 +223,7 @@ const parseWorkflowLikeImportConfig = async ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  const workflow = {
+  return migrateWorkflowToCurrent({
     nodes: config.nodes as StoreNodeItemType[],
     edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
     chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
