@@ -291,7 +291,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.15.7
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.15.8
     ports:
       - 3000:3000
     networks:
