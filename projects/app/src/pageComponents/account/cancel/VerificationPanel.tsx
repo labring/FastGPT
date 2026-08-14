@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type {
-  AccountCancellationVerificationMethod,
+  AccountCancellationAllowedMethod,
   AccountCancellationOAuthProvider
 } from '@fastgpt/global/support/user/account/cancellation/type';
 import { resolveAccountCancellationByUsername } from '@fastgpt/global/support/user/account/cancellation';
@@ -52,8 +52,8 @@ const getCapabilities = (feConfigs: FastGPTFeConfigsType) => ({
 });
 
 const isOAuthMethod = (
-  method: AccountCancellationVerificationMethod
-): method is Extract<AccountCancellationVerificationMethod, `oauth/${string}`> =>
+  method: AccountCancellationAllowedMethod
+): method is Extract<AccountCancellationAllowedMethod, `oauth/${string}`> =>
   method.startsWith('oauth/');
 
 /** 按统一 resolver 只渲染一种非密码验证方式，并承接各方式的加载与失败状态。 */
@@ -237,7 +237,6 @@ export const VerificationPanel = ({
         provider: provider as OAuthEnum,
         lastRoute: '/account/cancel?confirmed=1',
         state: result.state,
-        callbackUrl,
         flow: 'accountCancellation'
       });
       await router.replace(result.url);
