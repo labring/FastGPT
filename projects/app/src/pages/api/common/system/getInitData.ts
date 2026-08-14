@@ -9,6 +9,7 @@ import {
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
+import { desensitizeSystemDefaultModels } from '@fastgpt/service/core/ai/config/utils';
 
 async function handler(
   req: ApiRequestProps,
@@ -23,12 +24,14 @@ async function handler(
   const response = await (async () => {
     try {
       await authCert({ req, authToken: true });
+
       // If bufferId is the same as the current bufferId, return directly
       if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
         return {
           bufferId: global.systemInitBufferId,
           feConfigs: global.feConfigs,
-          systemVersion: global.systemVersion
+          systemVersion: global.systemVersion,
+          defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel)
         };
       }
 
@@ -38,7 +41,7 @@ async function handler(
         subPlans,
         systemVersion: global.systemVersion,
         activeModelList: global.systemActiveDesensitizedModels,
-        defaultModels: global.systemDefaultModel,
+        defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel),
         modelProviders: global.ModelProviderRawCache,
         aiproxyChannels: global.aiproxyChannelsCache
       };

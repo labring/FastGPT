@@ -49,6 +49,7 @@ The write operation updates all matching records in one operation and immediatel
 4. Fixed file variables not accepting uploads after an app was published.
 5. Fixed file uploads failing for shared Workflow tool parameters.
 6. Fixed upload, parsing, preview, or download failures when S3 object keys or filenames contained spaces or special characters such as `%`, `#`, `?`, or slashes.
+7. Fixed missing sensitive-data filtering for system default models, preventing model API keys, request URLs, and internal configuration from being returned in system initialization responses.
 
 ## 🛠️ Code optimizations
 
