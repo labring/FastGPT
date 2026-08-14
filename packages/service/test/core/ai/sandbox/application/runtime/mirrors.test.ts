@@ -68,6 +68,23 @@ const createSandbox = ({
 };
 
 describe('sandbox runtime mirrors', () => {
+  it('skips sandbox calls when no package mirror is configured', async () => {
+    const sandbox = createSandbox();
+
+    await prepareSandboxRuntimeMirrors({
+      sandbox: sandbox as any,
+      config: {
+        npmRegistry: ' ',
+        pypiIndexUrl: '\t',
+        aptMirror: ''
+      }
+    });
+
+    expect(sandbox.execute).not.toHaveBeenCalled();
+    expect(sandbox.readFiles).not.toHaveBeenCalled();
+    expect(sandbox.writeFiles).not.toHaveBeenCalled();
+  });
+
   it('writes all package mirror files once per hash', async () => {
     const sandbox = createSandbox();
     const expectedWriteEntries = [
@@ -136,6 +153,31 @@ describe('sandbox runtime mirrors', () => {
     );
   });
 
+  it('writes Debian apt sources with Debian suites and keyring', async () => {
+    const sandbox = createSandbox({ osRelease: 'ID=debian\nVERSION_CODENAME=bookworm\n' });
+
+    await prepareSandboxRuntimeMirrors({
+      sandbox: sandbox as any,
+      config: { aptMirror: 'https://mirror.example.com/debian/' }
+    });
+
+    expect(sandbox.getMirrorWrites()).toEqual([
+      [
+        {
+          path: '/etc/apt/sources.list.d/00-fastgpt-mirror.sources',
+          data: [
+            'Types: deb',
+            'URIs: https://mirror.example.com/debian/',
+            'Suites: bookworm bookworm-updates bookworm-backports bookworm-security',
+            'Components: main contrib non-free non-free-firmware',
+            'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
+            ''
+          ].join('\n')
+        }
+      ]
+    ]);
+  });
+
   it('does not commit the mirror hash when one file write fails', async () => {
     const sandbox = createSandbox();
     sandbox.writeFiles.mockResolvedValueOnce([
@@ -154,8 +196,8 @@ describe('sandbox runtime mirrors', () => {
     expect(sandbox.getState()).toBeUndefined();
   });
 
-  it('keeps official apt sources when the sandbox image is not Ubuntu', async () => {
-    const sandbox = createSandbox({ osRelease: 'ID=debian\nVERSION_CODENAME=bookworm\n' });
+  it('keeps official apt sources when the sandbox image is not Ubuntu or Debian', async () => {
+    const sandbox = createSandbox({ osRelease: 'ID=alpine\nVERSION_CODENAME=\n' });
 
     await prepareSandboxRuntimeMirrors({
       sandbox: sandbox as any,

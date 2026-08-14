@@ -29,6 +29,12 @@ import {
   deleteSandboxResource,
   retryStaleStoppingSandboxes
 } from '@fastgpt/service/core/ai/sandbox/application/resource';
+import { prepareSandboxRuntimeMirrors } from '@fastgpt/service/core/ai/sandbox/application/runtime/mirrors';
+import {
+  getRuntimeStateValue,
+  readSandboxRuntimeState
+} from '@fastgpt/service/core/ai/sandbox/application/runtime/state';
+import { resolveSandboxHome } from '@fastgpt/service/core/ai/sandbox/application/runtime/home';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { buildSandboxResourceAdapter } from '@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter';
 import {
@@ -752,6 +758,83 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
           userId: query.userId
         })
       ).toBe(1);
+    });
+  });
+
+  it('rewrites package mirror files when the configuration changes', async () => {
+    await withSandboxFixture(provider, 'mirror-config-change', async ({ sandbox }) => {
+      const homeDirectory = await resolveSandboxHome(sandbox.provider);
+      if (!homeDirectory) throw new Error('Sandbox HOME is unavailable');
+
+      const readTextFile = async (path: string): Promise<string> => {
+        const [file] = await sandbox.provider.readFiles([path]);
+        if (!file || file.error) {
+          throw new Error(`Failed to read integration file ${path}`);
+        }
+        return Buffer.from(file.content).toString('utf-8');
+      };
+      const readOptionalTextFile = async (path: string): Promise<string | undefined> => {
+        const [file] = await sandbox.provider.readFiles([path]);
+        if (!file || file.error) return;
+        return Buffer.from(file.content).toString('utf-8');
+      };
+      const readMirrorHash = async (): Promise<string> => {
+        const runtimeState = await readSandboxRuntimeState({
+          sandbox: sandbox.provider,
+          homeDirectory
+        });
+        const mirrorHash = getRuntimeStateValue(runtimeState.state, 'sandboxPackageMirrors');
+        if (typeof mirrorHash !== 'string') {
+          throw new Error('Sandbox mirror hash is unavailable');
+        }
+        return mirrorHash;
+      };
+      const npmConfigPath = `${homeDirectory}/.npmrc`;
+      const aptSourcePath = '/etc/apt/sources.list.d/00-fastgpt-mirror.sources';
+      const osRelease = await readTextFile('/etc/os-release');
+      const osId = osRelease.match(/^ID=(.*)$/m)?.[1].replace(/^['"]|['"]$/g, '');
+      const supportsAptMirror = osId === 'ubuntu' || osId === 'debian';
+      const aptMirrorA = `https://apt-a.example.com/${osId === 'debian' ? 'debian' : 'ubuntu'}/`;
+      const aptMirrorB = `https://apt-b.example.com/${osId === 'debian' ? 'debian' : 'ubuntu'}/`;
+
+      await measureOperation('runtime.prepare-mirrors.config-a', timingBudgets.lifecycleMs, () =>
+        prepareSandboxRuntimeMirrors({
+          sandbox: sandbox.provider,
+          config: {
+            npmRegistry: 'https://npm-a.example.com',
+            aptMirror: aptMirrorA
+          }
+        })
+      );
+      const firstContent = await readTextFile(npmConfigPath);
+      const firstAptSource = await readOptionalTextFile(aptSourcePath);
+      const firstHash = await readMirrorHash();
+
+      await measureOperation('runtime.prepare-mirrors.config-b', timingBudgets.lifecycleMs, () =>
+        prepareSandboxRuntimeMirrors({
+          sandbox: sandbox.provider,
+          config: {
+            npmRegistry: 'https://npm-b.example.com',
+            aptMirror: aptMirrorB
+          }
+        })
+      );
+      const secondContent = await readTextFile(npmConfigPath);
+      const secondAptSource = await readOptionalTextFile(aptSourcePath);
+      const secondHash = await readMirrorHash();
+
+      expect(firstContent).toBe('registry=https://npm-a.example.com\n');
+      expect(secondContent).toBe('registry=https://npm-b.example.com\n');
+      if (supportsAptMirror) {
+        expect(firstAptSource).toContain(`URIs: ${aptMirrorA}`);
+        expect(secondAptSource).toContain(`URIs: ${aptMirrorB}`);
+      } else {
+        expect(firstAptSource).toBeUndefined();
+        expect(secondAptSource).toBeUndefined();
+      }
+      expect(firstHash).toMatch(/^sha256:/);
+      expect(secondHash).toMatch(/^sha256:/);
+      expect(secondHash).not.toBe(firstHash);
     });
   });
 });

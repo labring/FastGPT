@@ -42,7 +42,7 @@ RUN touch src/main.rs && \
     cp target/"$TARGET"/release/fastgpt-ide-agent dist/fastgpt-ide-agent
 
 # Stage 2: 运行时环境配置
-FROM ubuntu:24.04
+FROM ubuntu:24.04 AS runtime-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV BUN_INSTALL=/usr/local
@@ -75,14 +75,19 @@ RUN useradd --create-home --shell /bin/bash --uid 10001 sandbox \
     && mkdir -p /workspace \
     && chown -R sandbox:sandbox /home/sandbox /workspace
 
-# 拷贝 Rust Agent 二进制文件
+# 拷贝 Rust Agent 二进制文件和启动脚本
 COPY --from=builder /usr/src/fastgpt-ide-agent/dist/fastgpt-ide-agent /usr/local/bin/fastgpt-ide-agent
 RUN chmod +x /usr/local/bin/fastgpt-ide-agent
-
-USER sandbox
-WORKDIR /home/sandbox
-
 COPY --chown=sandbox:sandbox projects/agent-sandbox/entrypoint.sh /home/sandbox/entrypoint.sh
 RUN chmod +x /home/sandbox/entrypoint.sh
 
+# root 权限镜像，用于需要写入系统目录（例如 /etc/apt）的场景。
+FROM runtime-base AS root
+WORKDIR /home/sandbox
+ENTRYPOINT ["/home/sandbox/entrypoint.sh"]
+
+# 默认镜像保持非特权运行，兼容现有 fastgpt-agent-sandbox 用法。
+FROM runtime-base AS nonroot
+USER sandbox
+WORKDIR /home/sandbox
 ENTRYPOINT ["/home/sandbox/entrypoint.sh"]

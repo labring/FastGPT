@@ -39,15 +39,15 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 
 ## 自定义依赖源
 
-OpenSandbox 和 Sealos Devbox 共用同一套依赖源配置：
+OpenSandbox 和 Sealos Devbox 共用同一套依赖源配置；其中 apt 镜像仅对 root 权限的 Agent 沙箱有效：
 
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ```
 
-对于 apt，FastGPT 会根据 Ubuntu 版本写入一份独立的 deb822 source 文件，不覆盖运行镜像原有 source。运行镜像不是 Ubuntu、Devbox 运行用户无权写入 `/etc/apt`、地址无效或文件写入失败时，会跳过自定义 source，继续使用原有官方源。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供 `ubuntu-ports` 的镜像地址。
+对于 root 权限的 Agent 沙箱，FastGPT 会根据 Ubuntu 或 Debian 版本写入一份独立的 deb822 source 文件，不覆盖运行镜像原有 source。请自行保证配置的镜像地址有效，并确保镜像提供对应发行版的 suite。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供对应架构软件包的镜像地址。
 
 ## 常见问题
 

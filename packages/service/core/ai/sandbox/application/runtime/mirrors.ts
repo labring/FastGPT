@@ -20,6 +20,12 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 const SANDBOX_MIRRORS_STATE_HASH_KEY = 'sandboxPackageMirrors';
 const APT_MIRROR_SOURCE_PATH = '/etc/apt/sources.list.d/00-fastgpt-mirror.sources';
+type SandboxAptDistribution = 'ubuntu' | 'debian';
+
+type SandboxAptPlatform = {
+  distribution: SandboxAptDistribution;
+  codename: string;
+};
 
 export type SandboxRuntimeMirrorsConfig = {
   npmRegistry?: string;
@@ -41,8 +47,10 @@ export const prepareSandboxRuntimeMirrors = async ({
   config?: SandboxRuntimeMirrorsConfig;
 }): Promise<void> => {
   const normalizedConfig = normalizeMirrorsConfig(config);
+  if (Object.keys(normalizedConfig).length === 0) return;
+
   const { aptMirror } = normalizedConfig;
-  const ubuntuCodename = aptMirror ? await resolveSandboxUbuntuCodename(sandbox) : undefined;
+  const aptPlatform = aptMirror ? await resolveSandboxAptPlatform(sandbox) : undefined;
 
   const homeDirectory = await resolveSandboxHome(sandbox);
   if (!homeDirectory) return;
@@ -53,7 +61,7 @@ export const prepareSandboxRuntimeMirrors = async ({
   const files = buildSandboxRuntimeMirrorFiles({
     config: normalizedConfig,
     homeDirectory,
-    ubuntuCodename
+    aptPlatform
   });
   if (files.length === 0) {
     if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY)) {
@@ -108,10 +116,12 @@ const isManagedAptMirrorSourceCurrent = async (
 };
 
 /**
- * 读取 Ubuntu 代号以生成与运行镜像版本匹配的 apt source。
- * 无法识别 Ubuntu 时跳过自定义 apt source，镜像原有官方源保持不变。
+ * 读取 Ubuntu 或 Debian 代号，以生成与运行镜像版本匹配的 apt source。
+ * 无法识别支持的发行版时跳过自定义 apt source，镜像原有官方源保持不变。
  */
-const resolveSandboxUbuntuCodename = async (sandbox: ISandbox): Promise<string | undefined> => {
+const resolveSandboxAptPlatform = async (
+  sandbox: ISandbox
+): Promise<SandboxAptPlatform | undefined> => {
   const [osRelease] = await sandbox.readFiles(['/etc/os-release']).catch((error) => {
     logger.warn('[Sandbox Runtime] Failed to read sandbox OS release', { error });
     return [];
@@ -135,25 +145,28 @@ const resolveSandboxUbuntuCodename = async (sandbox: ISandbox): Promise<string |
   const osId = readField('ID');
   const codename = readField('UBUNTU_CODENAME') ?? readField('VERSION_CODENAME');
 
-  if (osId !== 'ubuntu' || !codename) {
-    logger.warn('[Sandbox Runtime] Cannot configure apt mirror for a non-Ubuntu sandbox', {
+  if ((osId !== 'ubuntu' && osId !== 'debian') || !codename) {
+    logger.warn('[Sandbox Runtime] Cannot configure apt mirror for an unsupported sandbox', {
       osId,
       codename
     });
     return undefined;
   }
 
-  return codename;
+  return {
+    distribution: osId,
+    codename
+  };
 };
 
 const buildSandboxRuntimeMirrorFiles = ({
   config,
   homeDirectory,
-  ubuntuCodename
+  aptPlatform
 }: {
   config: SandboxRuntimeMirrorsConfig;
   homeDirectory: string;
-  ubuntuCodename?: string;
+  aptPlatform?: SandboxAptPlatform;
 }): FileWriteEntry[] => {
   const files: FileWriteEntry[] = [];
 
@@ -209,15 +222,26 @@ const buildSandboxRuntimeMirrorFiles = ({
     });
   }
 
-  if (config.aptMirror && ubuntuCodename) {
+  if (config.aptMirror && aptPlatform) {
+    const aptSource =
+      aptPlatform.distribution === 'ubuntu'
+        ? {
+            components: 'main restricted universe multiverse',
+            signedBy: '/usr/share/keyrings/ubuntu-archive-keyring.gpg'
+          }
+        : {
+            components: 'main contrib non-free non-free-firmware',
+            signedBy: '/usr/share/keyrings/debian-archive-keyring.gpg'
+          };
+
     files.push({
       path: APT_MIRROR_SOURCE_PATH,
       data: `${[
         'Types: deb',
         `URIs: ${config.aptMirror}`,
-        `Suites: ${ubuntuCodename} ${ubuntuCodename}-updates ${ubuntuCodename}-backports ${ubuntuCodename}-security`,
-        'Components: main restricted universe multiverse',
-        'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg'
+        `Suites: ${aptPlatform.codename} ${aptPlatform.codename}-updates ${aptPlatform.codename}-backports ${aptPlatform.codename}-security`,
+        `Components: ${aptSource.components}`,
+        `Signed-By: ${aptSource.signedBy}`
       ].join('\n')}\n`
     });
   }
