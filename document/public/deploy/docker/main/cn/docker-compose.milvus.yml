@@ -238,7 +238,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.16.0-beta1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.16.0-beta2
     ports:
       - 3000:3000
     networks:
@@ -424,7 +424,7 @@ services:
 
   # OpenSandbox Server 和 Volume Manager 仅需在 app 内网中访问。
   fastgpt-opensandbox-server:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.2.1
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.2.2
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
@@ -485,7 +485,7 @@ services:
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.4
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5
     profiles:
       - prepull
 
@@ -592,7 +592,7 @@ configs:
       execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21"
 
       [egress]
-      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.4"
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5"
 
       [docker]
       network_mode = "bridge"
