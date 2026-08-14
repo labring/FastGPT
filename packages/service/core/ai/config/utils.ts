@@ -23,6 +23,7 @@ import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+import { desensitizeSystemModel } from './desensitize';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -219,17 +220,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       global.sttModelMap = _sttModelMap;
       global.reRankModelMap = _reRankModelMap;
       global.systemDefaultModel = _systemDefaultModel;
-      global.systemActiveDesensitizedModels = _systemActiveModelList.map((model) => ({
-        ...model,
-        defaultSystemChatPrompt: undefined,
-        fieldMap: undefined,
-        defaultConfig: undefined,
-        weight: undefined,
-        dbConfig: undefined,
-        queryConfig: undefined,
-        requestUrl: undefined,
-        requestAuth: undefined
-      })) as SystemModelItemType[];
+      global.systemActiveDesensitizedModels = _systemActiveModelList.map(desensitizeSystemModel);
     }
 
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);

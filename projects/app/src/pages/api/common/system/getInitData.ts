@@ -6,6 +6,7 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { desensitizeSystemDefaultModels } from '@fastgpt/service/core/ai/config/desensitize';
 
 export type InitDateResponse = {
   bufferId?: string;
@@ -42,7 +43,7 @@ async function handler(
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
       activeModelList: global.systemActiveDesensitizedModels,
-      defaultModels: global.systemDefaultModel,
+      defaultModels: desensitizeSystemDefaultModels(global.systemDefaultModel),
       modelProviders: global.ModelProviderRawCache,
       aiproxyChannels: global.aiproxyChannelsCache
     };
