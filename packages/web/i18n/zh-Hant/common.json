@@ -457,7 +457,7 @@
   "core.dataset.import.Link name placeholder": "僅支援靜態連結。如果上傳後資料為空，可能該連結無法被讀取\n每行一個，每次最多 10 個連結",
   "core.dataset.import.Local file": "本機檔案",
   "core.dataset.import.Local file desc": "上傳 PDF、TXT、DOCX 等格式的檔案",
-  "core.dataset.import.QA Import Tip": "依照特定規則，將文字拆分為較大的段落，呼叫 AI 為該段落產生問答。具有非常高的檢索準確度，但可能會遺失許多內容細節。",
+  "core.dataset.import.QA Import Tip": "透過文本理解模型，為文件內容生成問答對。具有較高的檢索精度，但會遺失許多內容細節。",
   "core.dataset.import.Select source": "選擇來源",
   "core.dataset.import.Source name": "來源名稱",
   "core.dataset.import.Start upload": "開始上傳",

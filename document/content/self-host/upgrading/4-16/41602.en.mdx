@@ -49,3 +49,9 @@ The write operation updates all matching records in one operation and immediatel
 4. Fixed file variables not accepting uploads after an app was published.
 5. Fixed file uploads failing for shared Workflow tool parameters.
 6. Fixed upload, parsing, preview, or download failures when S3 object keys or filenames contained spaces or special characters such as `%`, `#`, `?`, or slashes.
+
+## 🛠️ Code optimizations
+
+1. Changed audit log retention from deletion to cold archival in S3.
+2. Added validation and cleanup for admin configuration data.
+3. Removed SSR from `account/*` pages.
