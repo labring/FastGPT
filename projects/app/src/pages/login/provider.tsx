@@ -88,13 +88,13 @@ const provider = () => {
     async (props: Record<string, string>) => {
       try {
         if (loginStore?.flow === 'accountCancellation') {
-          if (!props.code || !loginStore.callbackUrl) {
+          if (!props.code) {
             throw new Error('OAuth cancellation callback is incomplete');
           }
           const result = await submitAccountCancellation({
             method: `oauth/${loginStore.provider}` as any,
             payload: {
-              callbackUrl: loginStore.callbackUrl,
+              callbackUrl: `${window.location.origin}/login/provider`,
               code: props.code,
               ...(state ? { state } : {}),
               props

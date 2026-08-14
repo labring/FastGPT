@@ -138,21 +138,6 @@ export class SessionCache {
     await this.redis.delete(this.getKey(sessionId));
   }
 
-  /** 更新 Session 的团队上下文，不刷新原有过期时间。 */
-  updateTeam = ({
-    sessionId,
-    teamId,
-    tmbId
-  }: {
-    sessionId: string;
-    teamId: string;
-    tmbId: string;
-  }) =>
-    this.redis.updateHashFields({
-      key: this.getKey(sessionId),
-      fields: { teamId, tmbId }
-    });
-
   /** 更新 Session 的注销状态快照，不刷新原有过期时间。 */
   async updateCancellation({
     sessionId,

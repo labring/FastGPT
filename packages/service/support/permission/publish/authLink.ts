@@ -6,7 +6,7 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { authAppByTmbId } from '../app/auth';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { parseHeaderCert } from '../auth/common';
-import { assertOutLinkTeamUsable } from '../../outLink/guard';
+import { assertCancellation } from '../../user/account/cancellation/guard';
 
 /* crud outlink permission */
 export async function authOutLinkCrud({
@@ -69,7 +69,8 @@ export async function authOutLinkValid<T extends OutlinkAppType = any>({
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
 
-  await assertOutLinkTeamUsable({
+  // 分享链接没有用户 Session，使用发布链接绑定的 tmb/team 校验账号可用性
+  await assertCancellation({
     teamId: String(outLinkConfig.teamId),
     tmbId: String(outLinkConfig.tmbId)
   });

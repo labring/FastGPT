@@ -71,5 +71,3 @@ export type AccountCancellationResolveResult =
         | 'password_verification_not_allowed'
         | 'verification_unavailable';
     };
-
-export type AccountCancellationVerificationMethod = AccountCancellationAllowedMethod;

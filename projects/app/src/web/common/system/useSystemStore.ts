@@ -27,7 +27,6 @@ type LoginStoreType = {
   lastRoute: string;
   state: string;
   lastTmbId?: string;
-  callbackUrl?: string;
   flow?: 'login' | 'accountCancellation';
 };
 

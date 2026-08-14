@@ -9,7 +9,7 @@ import { MongoMemberGroupModel } from '../../../permission/memberGroup/memberGro
 import { MongoOrgMemberModel } from '../../../permission/org/orgMemberSchema';
 import { MongoOrgModel } from '../../../permission/org/orgSchema';
 import { MongoResourcePermission } from '../../../permission/schema';
-import { migrateUserSessionsFromTeam } from '../../session';
+import { delUserAllSession } from '../../session';
 import { MongoTeamMember } from '../teamMemberSchema';
 import { MongoTeam } from '../teamSchema';
 import { MongoMcpKey } from '../../../mcp/schema';
@@ -22,8 +22,6 @@ import { onDelAllApp } from './utils';
 import { deleteEvaluationsByTeamId } from '../../../../core/app/evaluation/delete';
 import { MongoTeamSub } from '../../../../support/wallet/sub/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { getUserFallbackTeam } from '../fallback';
-import { MongoUser } from '../../schema';
 import { withAccountCancellationTeamLock } from '../../account/cancellation';
 import { MongoOutLink } from '../../../outLink/schema';
 
@@ -141,35 +139,8 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
         teamId
       });
 
-      // 仅迁移/删除指向本团队的会话，保留成员在其它团队的登录态。
-      await Promise.all(
-        members.map(async (member) => {
-          try {
-            const fallback = await getUserFallbackTeam({
-              userId: String(member.userId),
-              excludedTeamId: teamId
-            });
-            await migrateUserSessionsFromTeam({
-              userId: String(member.userId),
-              deletedTeamId: teamId,
-              fallback: fallback ?? undefined
-            });
-            await MongoUser.updateOne(
-              { _id: member.userId, lastLoginTmbId: member._id },
-              fallback
-                ? { $set: { lastLoginTmbId: fallback.tmbId } }
-                : { $unset: { lastLoginTmbId: 1 } }
-            );
-          } catch (error) {
-            // Session 迁移失败不阻塞团队删除；旧会话由下次鉴权的 fallback 收口。
-            logger.warn('Team delete session fallback failed', {
-              teamId,
-              userId: String(member.userId),
-              error
-            });
-          }
-        })
-      );
+      // 删除所有成员的 session
+      await Promise.all(members.map((member) => delUserAllSession(member.userId)));
 
       await MongoTeamMember.deleteMany({
         teamId

@@ -755,40 +755,6 @@ export class RedisCacheAdapter {
       }
     });
 
-  /** 局部更新 hash 字段且保留现有 TTL。 */
-  updateHashFields = ({
-    key,
-    fields
-  }: {
-    key: RedisLogicalKey;
-    fields: Record<string, string>;
-  }) => {
-    const operation = 'hash.updateFields';
-    if (
-      !fields ||
-      Object.keys(fields).length === 0 ||
-      Object.values(fields).some((value) => typeof value !== 'string')
-    ) {
-      throw new RedisInvalidArgumentError({
-        operation,
-        message: 'hash fields must contain at least one string value'
-      });
-    }
-
-    return this.operationExecutor.uncertainWrite({
-      operation,
-      execute: async () => {
-        const result = await this.getCommandClient().hmset(toPhysicalRedisKey(key), fields);
-        if (result !== 'OK') {
-          throw new RedisInvalidResponseError({
-            operation,
-            message: 'Redis HMSET returned an unsupported response'
-          });
-        }
-      }
-    });
-  };
-
   /** 在一个事务中写入 hash 并设置 TTL，避免 hash 无过期时间。 */
   setHashWithTtl = ({
     key,
