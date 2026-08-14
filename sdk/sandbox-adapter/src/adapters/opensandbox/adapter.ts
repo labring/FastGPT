@@ -1,4 +1,11 @@
-import type { Execution, ExecutionHandlers, WriteEntry } from '@alibaba-group/opensandbox';
+import {
+  ExecutionEventDispatcher,
+  type Execution,
+  type ExecutionHandlers,
+  type RunCommandOpts,
+  type ServerStreamEvent,
+  type WriteEntry
+} from '@alibaba-group/opensandbox';
 import { CommandExecutionError, FeatureNotSupportedError, SandboxStateError } from '../../errors';
 import type {
   BackgroundExecution,
@@ -336,6 +343,65 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     return Math.ceil(timeoutMs / 1000);
   }
 
+  /**
+   * 消费 OpenSandbox 命令事件直到业务终态，并主动终止仍未关闭的 SSE 响应。
+   *
+   * execd 会先发送 execution_complete/error，再延迟关闭 HTTP body。等待 EOF 会给每条命令
+   * 增加固定尾延迟，因此这里以协议终态为完成条件，同时保留 SDK dispatcher 的事件聚合语义。
+   */
+  private async runCommand(
+    command: string,
+    options: RunCommandOpts,
+    handlers: ExecutionHandlers,
+    signal?: AbortSignal
+  ): Promise<Execution> {
+    const execution: Execution = {
+      logs: { stdout: [], stderr: [] },
+      result: []
+    };
+    const dispatcher = new ExecutionEventDispatcher(execution, handlers);
+    const streamController = new AbortController();
+    const abortFromCaller = () => streamController.abort(signal?.reason);
+
+    if (signal?.aborted) {
+      abortFromCaller();
+      throw signal.reason instanceof Error ? signal.reason : new Error('Command execution aborted');
+    }
+    signal?.addEventListener('abort', abortFromCaller, { once: true });
+
+    let terminalEvent: ServerStreamEvent | undefined;
+    try {
+      const stream = this.lifecycle.sandbox.commands.runStream(
+        command,
+        options,
+        streamController.signal
+      );
+      for await (const event of stream) {
+        await dispatcher.dispatch(event);
+        if (event.type === 'execution_complete' || event.type === 'error') {
+          terminalEvent = event;
+          // 终态已经携带完整结果，立即取消仍保持打开的 HTTP body。
+          streamController.abort();
+          break;
+        }
+      }
+    } finally {
+      signal?.removeEventListener('abort', abortFromCaller);
+      if (!streamController.signal.aborted) streamController.abort();
+    }
+
+    if (!terminalEvent) {
+      throw new Error('OpenSandbox command stream ended without a terminal event');
+    }
+
+    const errorValue = execution.error?.value.trim();
+    execution.exitCode = (() => {
+      if (!execution.error) return execution.complete ? 0 : null;
+      return errorValue && /^-?\d+$/.test(errorValue) ? Number(errorValue) : null;
+    })();
+    return execution;
+  }
+
   private toExecuteResult(
     execution: Execution,
     buffers: { stdout: BoundedOutputBuffer; stderr: BoundedOutputBuffer }
@@ -357,7 +423,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     };
 
     try {
-      const execution = await this.lifecycle.sandbox.commands.run(
+      const execution = await this.runCommand(
         command,
         {
           workingDirectory: this.normalizePath(options?.workingDirectory),
@@ -423,7 +489,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
           : {})
       };
 
-      const execution = await this.lifecycle.sandbox.commands.run(
+      const execution = await this.runCommand(
         command,
         {
           workingDirectory: this.normalizePath(options.workingDirectory),
@@ -449,7 +515,7 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
 
   async executeBackground(command: string, options?: ExecuteOptions): Promise<BackgroundExecution> {
     try {
-      const execution = await this.lifecycle.sandbox.commands.run(
+      const execution = await this.runCommand(
         command,
         {
           workingDirectory: this.normalizePath(options?.workingDirectory),

@@ -4,11 +4,8 @@
  * 只组合工作目录、输入文件、镜像源等 prepare step，不直接操作 Mongo 或 provider 配置。
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 import {
   injectInputFilesToSandbox,
-  readSandboxPwd,
-  type SandboxCommandClient,
   type SandboxInputFile,
   type SandboxInputFileReader
 } from './files';
@@ -16,10 +13,8 @@ import { prepareSandboxRuntimeMirrors } from './mirrors';
 
 export type SandboxPrepareContext = {
   sandbox: ISandbox;
-  sandboxClient?: SandboxCommandClient;
   workDirectory: string;
   workspaceRoot?: string;
-  currentWorkingDirectory?: string;
 };
 
 export type SandboxPrepareStep<Context extends SandboxPrepareContext> = (
@@ -50,10 +45,7 @@ export const preparePackageMirrors =
 export const prepareWorkDirectory =
   <Context extends SandboxPrepareContext>(): SandboxPrepareStep<Context> =>
   async (context) => {
-    const result = await context.sandbox.execute(`mkdir -p ${shellQuote(context.workDirectory)}`);
-    if (result.exitCode !== 0) {
-      throw new Error(`Failed to prepare workspace directory: ${result.stderr}`);
-    }
+    await context.sandbox.createDirectories([context.workDirectory]);
 
     return context;
   };
@@ -64,37 +56,34 @@ export const inspectWorkDirectoryContent =
     Context extends SandboxPrepareContext & { workspaceHasContent?: boolean }
   >(): SandboxPrepareStep<Context> =>
   async (context) => {
-    const quotedWorkDirectory = shellQuote(context.workDirectory);
-    const result = await context.sandbox.execute(
-      `mkdir -p ${quotedWorkDirectory} && test -n "$(find ${quotedWorkDirectory} -mindepth 1 -print -quit 2>/dev/null)"`
-    );
+    await context.sandbox.createDirectories([context.workDirectory]);
+    const entries = await context.sandbox.listDirectory(context.workDirectory);
 
-    if (result.exitCode === 0) {
-      return {
-        ...context,
-        workspaceHasContent: true
-      };
-    }
-    if (result.exitCode === 1) {
-      return {
-        ...context,
-        workspaceHasContent: false
-      };
-    }
-
-    throw new Error(`Failed to inspect workspace content: ${result.stderr || result.stdout}`);
+    return {
+      ...context,
+      workspaceHasContent: entries.length > 0
+    };
   };
 
 /** 清空工作目录内容但保留目录本身，避免 volume 根目录权限和挂载点问题。 */
 export const emptyWorkDirectory =
   <Context extends SandboxPrepareContext>(): SandboxPrepareStep<Context> =>
   async (context) => {
-    // 已有实例重部署时先清空工作区；保留挂载点本身，避免 volume 根目录权限问题。
-    const cleanCmd = `find ${shellQuote(context.workDirectory)} -mindepth 1 -delete || (rm -rf ${shellQuote(context.workDirectory)}/* && rm -rf ${shellQuote(context.workDirectory)}/.[!.]*)`;
+    const entries = await context.sandbox.listDirectory(context.workDirectory);
+    const filePaths = entries.filter((entry) => !entry.isDirectory).map((entry) => entry.path);
+    const directoryPaths = entries.filter((entry) => entry.isDirectory).map((entry) => entry.path);
 
-    const result = await context.sandbox.execute(cleanCmd);
-    if (result.exitCode !== 0) {
-      throw new Error(`Failed to clean workspace processes and files: ${result.stderr}`);
+    if (filePaths.length > 0) {
+      const deleteResults = await context.sandbox.deleteFiles(filePaths);
+      const failedDelete = deleteResults.find((result) => result.error || !result.success);
+      if (failedDelete) {
+        throw new Error(
+          `Failed to clean workspace file ${failedDelete.path}: ${failedDelete.error?.message ?? 'delete failed'}`
+        );
+      }
+    }
+    if (directoryPaths.length > 0) {
+      await context.sandbox.deleteDirectories(directoryPaths);
     }
 
     return context;
@@ -115,13 +104,3 @@ export const injectCurrentInputFiles =
     );
     return context;
   };
-
-/** 读取 sandbox 当前目录，失败时返回 undefined，由上层决定是否展示提示。 */
-export const readCurrentWorkingDirectory =
-  <
-    Context extends SandboxPrepareContext & { sandboxClient: SandboxCommandClient }
-  >(): SandboxPrepareStep<Context> =>
-  async (context) => ({
-    ...context,
-    currentWorkingDirectory: await readSandboxPwd(context.sandboxClient)
-  });

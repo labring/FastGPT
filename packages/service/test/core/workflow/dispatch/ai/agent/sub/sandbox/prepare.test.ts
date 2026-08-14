@@ -6,7 +6,6 @@ const {
   withAgentSandboxInitLeaseMock,
   injectInputFilesToSandboxMock,
   prepareSandboxRuntimeMirrorsMock,
-  readSandboxPwdMock,
   runAgentSandboxEntrypointMock,
   resolveSandboxHomeMock,
   injectAgentSkillFilesToSandboxMock,
@@ -20,7 +19,6 @@ const {
   withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn()),
   injectInputFilesToSandboxMock: vi.fn(),
   prepareSandboxRuntimeMirrorsMock: vi.fn(),
-  readSandboxPwdMock: vi.fn(),
   runAgentSandboxEntrypointMock: vi.fn(),
   resolveSandboxHomeMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
@@ -50,10 +48,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
     });
     return context;
   },
-  readCurrentWorkingDirectory: () => async (context: { sandboxClient: unknown }) => ({
-    ...context,
-    currentWorkingDirectory: await readSandboxPwdMock(context.sandboxClient)
-  }),
   runSandboxEntrypoint:
     ({ sandboxEntrypoint }: { sandboxEntrypoint?: string }) =>
     async (context: { sandbox: unknown; workDirectory: string }) => {
@@ -89,7 +83,6 @@ describe('ensureAgentSandboxRuntime', () => {
       sandboxClient: sandboxClientMock,
       workDirectory: '/workspace'
     });
-    readSandboxPwdMock.mockResolvedValue('/workspace');
     resolveSandboxHomeMock.mockResolvedValue('/home/sandbox');
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
@@ -155,7 +148,6 @@ describe('ensureAgentSandboxRuntime', () => {
       currentFiles,
       expect.any(Function)
     );
-    expect(readSandboxPwdMock).toHaveBeenCalledWith(sandboxClientMock);
     expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
       sandboxEntrypoint: 'pip install -r requirements.txt',

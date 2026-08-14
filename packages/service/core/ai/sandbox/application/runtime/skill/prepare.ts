@@ -27,12 +27,7 @@ export const deploySkillPackage =
     onProgress?: (phase: SandboxStatusPhase) => void;
   }): SandboxPrepareStep<SkillPackagePrepareContext> =>
   async (context) => {
-    const prepareSkillsRootResult = await context.sandbox.execute(
-      `mkdir -p ${shellQuote(skillsRootPath)}`
-    );
-    if (prepareSkillsRootResult.exitCode !== 0) {
-      throw new Error(`Failed to prepare skill directory: ${prepareSkillsRootResult.stderr}`);
-    }
+    await context.sandbox.createDirectories([skillsRootPath]);
 
     const zipPath = joinSandboxPath(skillsRootPath, 'package.zip');
     const maxPackageBytes = getAgentSandboxSkillMaxBytes();
@@ -60,17 +55,36 @@ export const deploySkillPackage =
     onProgress?.('extractingPackage');
 
     const unzipCmd = [
-      `cd ${shellQuote(context.workDirectory)}`,
       `unzip -Z -t ${shellQuote(zipPath)} | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
       `unzip -Z1 ${shellQuote(zipPath)} | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
-      `unzip -o -q ${shellQuote(zipPath)} -d .`,
-      `rm -f ${shellQuote(zipPath)}`,
-      `if [ ! -f .gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > .gitignore; fi`
+      `unzip -o -q ${shellQuote(zipPath)} -d .`
     ].join(' && ');
 
-    const extractResult = await context.sandbox.execute(unzipCmd);
+    const extractResult = await context.sandbox.execute(unzipCmd, {
+      workingDirectory: context.workDirectory
+    });
     if (extractResult.exitCode !== 0) {
       throw new Error(`Failed to decompress package inside sandbox: ${extractResult.stderr}`);
+    }
+
+    const [deleteResult] = await context.sandbox.deleteFiles([zipPath]);
+    if (!deleteResult?.success || deleteResult.error) {
+      throw new Error(
+        `Failed to remove extracted skill package ZIP: ${deleteResult?.error?.message ?? 'delete failed'}`
+      );
+    }
+
+    const gitignorePath = joinSandboxPath(context.workDirectory, '.gitignore');
+    const gitignoreInfo = await context.sandbox.getFileInfo([gitignorePath]);
+    if (!gitignoreInfo.get(gitignorePath)?.isFile) {
+      const [writeGitignoreResult] = await context.sandbox.writeFiles([
+        { path: gitignorePath, data: DEFAULT_GITIGNORE_CONTENT }
+      ]);
+      if (writeGitignoreResult?.error) {
+        throw new Error(
+          `Failed to write default .gitignore: ${writeGitignoreResult.error.message}`
+        );
+      }
     }
 
     return context;

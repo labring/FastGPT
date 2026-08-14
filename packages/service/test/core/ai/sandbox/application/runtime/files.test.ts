@@ -14,13 +14,21 @@ vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
 });
 
 describe('sandbox runtime files', () => {
+  const createSandbox = () => ({
+    createDirectories: vi.fn(async () => undefined),
+    writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+      entries.map((entry) => ({
+        path: entry.path,
+        bytesWritten: entry.data.length,
+        error: null as Error | null
+      }))
+    )
+  });
+
   it('writes input files with safe unique filenames', async () => {
     const { injectInputFilesToSandbox } =
       await import('@fastgpt/service/core/ai/sandbox/application/runtime/files');
-    const sandbox = {
-      createDirectories: vi.fn(),
-      writeFiles: vi.fn()
-    };
+    const sandbox = createSandbox();
 
     axiosGetMock.mockImplementation(async () => ({
       data: Readable.from([Buffer.from('a')]),
@@ -73,10 +81,7 @@ describe('sandbox runtime files', () => {
   it('uses an injected file reader without downloading the URL', async () => {
     const { injectInputFilesToSandbox } =
       await import('@fastgpt/service/core/ai/sandbox/application/runtime/files');
-    const sandbox = {
-      createDirectories: vi.fn(),
-      writeFiles: vi.fn()
-    };
+    const sandbox = createSandbox();
     const readInputFile = vi.fn().mockResolvedValue(Buffer.from('private file'));
     axiosGetMock.mockClear();
 
@@ -103,5 +108,29 @@ describe('sandbox runtime files', () => {
         data: Buffer.from('private file')
       }
     ]);
+  });
+
+  it('rejects input injection when any sandbox file write fails', async () => {
+    const { injectInputFilesToSandbox } =
+      await import('@fastgpt/service/core/ai/sandbox/application/runtime/files');
+    const sandbox = createSandbox();
+    sandbox.writeFiles.mockResolvedValueOnce([
+      {
+        path: '/workspace/user_files/broken.pdf',
+        bytesWritten: 0,
+        error: new Error('disk full')
+      }
+    ]);
+
+    await expect(
+      injectInputFilesToSandbox(
+        sandbox as any,
+        [{ name: 'broken.pdf', url: 'https://files.example.com/broken.pdf' }],
+        '/workspace',
+        async () => Buffer.from('content')
+      )
+    ).rejects.toThrow(
+      'Failed to write sandbox input file /workspace/user_files/broken.pdf: disk full'
+    );
   });
 });

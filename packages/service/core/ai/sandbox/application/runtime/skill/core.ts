@@ -146,36 +146,31 @@ export const injectAgentSkillFilesToSandbox = async ({
   workDirectory: string;
 }): Promise<DeployedSkillVersion[]> => {
   const skillsRootPath = getRuntimeSkillsRootPath(workDirectory);
-  const prepareSkillsRootResult = await sandbox.execute(`mkdir -p ${shellQuote(skillsRootPath)}`);
-  if (prepareSkillsRootResult.exitCode !== 0) {
-    throw new Error(`Failed to prepare skill directory: ${prepareSkillsRootResult.stderr}`);
-  }
+  await sandbox.createDirectories([skillsRootPath]);
+  const listedEntries = await sandbox.listDirectory(skillsRootPath);
+  const listedDirs = listedEntries.filter((entry) => entry.isDirectory).map((entry) => entry.path);
+  const existingDirs = listedDirs.filter((dir) => isSafeDirectSkillVersionDir(dir, skillsRootPath));
+  const staleTempDirs = listedDirs.filter((dir) => isSafeDirectSkillTempDir(dir, skillsRootPath));
 
-  const existingDirResult = await sandbox.execute(
-    `find ${shellQuote(skillsRootPath)} -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null`
-  );
-  const listedDirs =
-    existingDirResult.exitCode === 0 ? parseCommandOutputNulls(existingDirResult.stdout) : [];
-  if (existingDirResult.exitCode !== 0) {
-    logger.warn('[Agent Skills] Failed to list deployed skill version directories', {
-      skillsRootPath,
-      stderr: existingDirResult.stderr
+  if (staleTempDirs.length > 0) {
+    await sandbox.deleteDirectories(staleTempDirs).catch((error) => {
+      logger.warn('[Agent Skills] Failed to cleanup stale temporary skill directories', {
+        staleTempDirs,
+        error
+      });
     });
   }
-  const existingDirs = listedDirs.filter((dir) => isSafeDirectSkillVersionDir(dir, skillsRootPath));
 
   const cleanupStaleDirs = async (expectedTargetDirs: Set<string>) => {
     const staleDirs = existingDirs.filter((dir) => !expectedTargetDirs.has(dir));
     if (staleDirs.length === 0) return;
 
-    await sandbox
-      .execute(`rm -rf ${staleDirs.map((dir) => shellQuote(dir)).join(' ')}`)
-      .catch((error) => {
-        logger.warn('[Agent Skills] Failed to cleanup stale skill version directories', {
-          staleDirs,
-          error
-        });
+    await sandbox.deleteDirectories(staleDirs).catch((error) => {
+      logger.warn('[Agent Skills] Failed to cleanup stale skill version directories', {
+        staleDirs,
+        error
       });
+    });
   };
 
   if (skillIds.length === 0) {
@@ -278,16 +273,11 @@ export const injectAgentSkillFilesToSandbox = async ({
         .slice(2)}`
     );
     const zipPath = joinSandboxPath(tempDir, 'package.zip');
-    const quotedTempDir = shellQuote(tempDir);
-    const quotedTargetDir = shellQuote(targetDir);
+    const quotedZipPath = shellQuote(zipPath);
     const unzipCommand = `(${[
-      `cd ${quotedTempDir}`,
-      `unzip -Z -t package.zip | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
-      `unzip -Z1 package.zip | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
-      `unzip -o -q package.zip`,
-      `rm -f package.zip`,
-      `rm -rf ${quotedTargetDir}`,
-      `mv ${quotedTempDir} ${quotedTargetDir}`
+      `unzip -Z -t ${quotedZipPath} | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
+      `unzip -Z1 ${quotedZipPath} | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
+      `unzip -o -q ${quotedZipPath} -d ${shellQuote(tempDir)}`
     ].join(' && ')})`;
 
     return {
@@ -302,18 +292,8 @@ export const injectAgentSkillFilesToSandbox = async ({
   // 1. Stream each ZIP package directly to its temporary directory.
   if (results.length > 0) {
     const tempDirs = results.map(({ tempDir }) => tempDir);
-    const cleanupTempDirs = () =>
-      Promise.all(
-        tempDirs.map((tempDir) => sandbox.execute(`rm -rf ${shellQuote(tempDir)}`).catch(() => {}))
-      );
-    const mkdirTempResult = await sandbox.execute(
-      `mkdir -p ${tempDirs.map((dir) => shellQuote(dir)).join(' ')}`
-    );
-    if (mkdirTempResult.exitCode !== 0) {
-      throw new Error(
-        `Failed to create skill temp directories inside sandbox: ${mkdirTempResult.stderr}`
-      );
-    }
+    const cleanupTempDirs = () => sandbox.deleteDirectories(tempDirs).catch(() => undefined);
+    await sandbox.createDirectories(tempDirs);
 
     try {
       for (const { storageKey, zipPath } of results) {
@@ -345,6 +325,27 @@ export const injectAgentSkillFilesToSandbox = async ({
       throw new Error(
         `Failed to decompress skill packages inside sandbox: ${extractResult.stderr}`
       );
+    }
+
+    const deleteResults = await sandbox.deleteFiles(results.map(({ zipPath }) => zipPath));
+    const failedDelete = deleteResults.find((result) => result.error || !result.success);
+    if (failedDelete) {
+      await cleanupTempDirs();
+      throw new Error(
+        `Failed to remove extracted skill ZIP ${failedDelete.path}: ${failedDelete.error?.message ?? 'delete failed'}`
+      );
+    }
+
+    try {
+      await sandbox.moveFiles(
+        results.map(({ tempDir, targetDir }) => ({ source: tempDir, destination: targetDir }))
+      );
+    } catch (error) {
+      await Promise.all([
+        cleanupTempDirs(),
+        sandbox.deleteDirectories(results.map(({ targetDir }) => targetDir)).catch(() => undefined)
+      ]);
+      throw error;
     }
   }
 
@@ -387,4 +388,13 @@ const isSafeDirectSkillVersionDir = (dir: string, skillsRootPath: string): boole
 
   const name = dir.slice(prefix.length);
   return /^[a-fA-F0-9]{24}$/.test(name);
+};
+
+const isSafeDirectSkillTempDir = (dir: string, skillsRootPath: string): boolean => {
+  const root = skillsRootPath === '/' ? '' : skillsRootPath.replace(/\/+$/, '');
+  const prefix = `${root}/`;
+  if (!dir.startsWith(prefix)) return false;
+
+  const name = dir.slice(prefix.length);
+  return /^\.tmp-[a-zA-Z0-9_-]+$/.test(name);
 };

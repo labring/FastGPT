@@ -4,22 +4,16 @@ import { buildRuntimeHash } from '@fastgpt/service/core/ai/sandbox/utils';
 
 const createSandbox = () => {
   let stateContent: string | undefined;
-  const executedCommands: string[] = [];
+  const mirrorWrites: Array<Array<{ path: string; data: string }>> = [];
 
   const sandbox = {
     execute: vi.fn(async (command: string) => {
       if (command === 'printf "%s" "$HOME"') {
         return { exitCode: 0, stdout: '/home/test', stderr: '' };
       }
-      if (command.startsWith("mkdir -p '/home/test/.fastgpt/runtime'")) {
-        return { exitCode: 0, stdout: '', stderr: '' };
-      }
-      if (command.includes("base64 -d > '/home/test/")) {
-        executedCommands.push(command);
-        return { exitCode: 0, stdout: '', stderr: '' };
-      }
       throw new Error(`Unexpected command: ${command}`);
     }),
+    createDirectories: vi.fn(async () => undefined),
     readFiles: vi.fn(async (paths: string[]) =>
       paths.map((path) => ({
         path,
@@ -27,20 +21,26 @@ const createSandbox = () => {
         error: stateContent ? null : new Error('not found')
       }))
     ),
-    writeFiles: vi.fn(async (entries: Array<{ path: string; data: string }>) => {
-      const stateEntry = entries.find((entry) =>
-        entry.path.endsWith('/.fastgpt/runtime/state.json')
-      );
-      if (stateEntry) {
-        stateContent = stateEntry.data;
+    writeFiles: vi.fn(
+      async (
+        entries: Array<{ path: string; data: string }>
+      ): Promise<Array<{ path: string; bytesWritten: number; error: Error | null }>> => {
+        const stateEntry = entries.find((entry) =>
+          entry.path.endsWith('/.fastgpt/runtime/state.json')
+        );
+        if (stateEntry) {
+          stateContent = stateEntry.data;
+        } else {
+          mirrorWrites.push(entries);
+        }
+        return entries.map((entry) => ({
+          path: entry.path,
+          bytesWritten: entry.data.length,
+          error: null
+        }));
       }
-      return entries.map((entry) => ({
-        path: entry.path,
-        bytesWritten: entry.data.length,
-        error: null
-      }));
-    }),
-    getExecutedCommands: () => executedCommands,
+    ),
+    getMirrorWrites: () => mirrorWrites,
     getState: () => (stateContent ? JSON.parse(stateContent) : undefined)
   };
 
@@ -48,7 +48,7 @@ const createSandbox = () => {
 };
 
 describe('sandbox runtime mirrors', () => {
-  it('executes npm, yarn, pnpm, bun, pip and uv mirror script once per hash', async () => {
+  it('writes npm, yarn, pnpm, bun, pip and uv mirror files once per hash', async () => {
     const sandbox = createSandbox();
     const expectedMirrorFiles = [
       {
@@ -83,13 +83,10 @@ describe('sandbox runtime mirrors', () => {
           'default-index = "https://pypi.example.com/simple"\nallow-insecure-host = ["pypi.example.com"]\n'
       }
     ];
-    const expectedScript = [
-      "mkdir -p '/home/test' '/home/test/.pip' '/home/test/.config/pip' '/home/test/.config/uv'",
-      ...expectedMirrorFiles.map(({ path, content }) => {
-        const encodedContent = Buffer.from(content, 'utf-8').toString('base64');
-        return `printf %s '${encodedContent}' | base64 -d > '/home/test/${path}'`;
-      })
-    ].join('\n');
+    const expectedWriteEntries = expectedMirrorFiles.map(({ path, content }) => ({
+      path: `/home/test/${path}`,
+      data: content
+    }));
 
     await prepareSandboxRuntimeMirrors({
       sandbox: sandbox as any,
@@ -106,10 +103,27 @@ describe('sandbox runtime mirrors', () => {
       }
     });
 
-    expect(sandbox.getExecutedCommands()).toEqual([expectedScript]);
-
+    expect(sandbox.getMirrorWrites()).toEqual([expectedWriteEntries]);
     expect(sandbox.getState()?.values?.sandboxPackageMirrors).toBe(
-      buildRuntimeHash(expectedScript)
+      buildRuntimeHash(JSON.stringify(expectedWriteEntries))
     );
+  });
+
+  it('does not commit the mirror hash when one file write fails', async () => {
+    const sandbox = createSandbox();
+    sandbox.writeFiles.mockResolvedValueOnce([
+      {
+        path: '/home/test/.npmrc',
+        bytesWritten: 0,
+        error: new Error('write failed')
+      }
+    ]);
+
+    await prepareSandboxRuntimeMirrors({
+      sandbox: sandbox as any,
+      config: { npmRegistry: 'https://npm.example.com' }
+    });
+
+    expect(sandbox.getState()).toBeUndefined();
   });
 });

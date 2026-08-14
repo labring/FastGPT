@@ -6,6 +6,14 @@
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 
+/** 表示 keepalive 等禁止创建的路径没有可继续使用的 running sandbox。 */
+export class SandboxRuntimeNotRunningError extends Error {
+  constructor(readonly sandboxId: string) {
+    super('Sandbox runtime instance is not running');
+    this.name = 'SandboxRuntimeNotRunningError';
+  }
+}
+
 /**
  * 生成 Agent 虚拟机权限错误。
  *

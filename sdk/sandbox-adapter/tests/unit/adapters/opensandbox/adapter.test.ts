@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Sandbox,
   SandboxManager,
-  type ExecutionHandlers,
   type SandboxInfo as SdkSandboxInfo,
+  type ServerStreamEvent,
   type WriteEntry
 } from '@alibaba-group/opensandbox';
 import { OpenSandboxAdapter, type OpenSandboxConnectionConfig } from '@/adapters/opensandbox';
@@ -52,17 +52,12 @@ const createSdkSandbox = (
   });
   const writeFiles = vi.fn(async (_entries: WriteEntry[]) => undefined);
   const getFileInfo = vi.fn(async () => ({}));
-  const commandRun = vi.fn(
-    async (
-      _command: string,
-      _options?: unknown,
-      _handlers?: ExecutionHandlers,
-      _signal?: AbortSignal
-    ) => ({
-      id: 'execution-1',
-      exitCode: 0,
-      complete: { executionTimeMs: 4 }
-    })
+  const commandInterrupt = vi.fn(async (_sessionId: string) => undefined);
+  const commandRunStream = vi.fn((_command: string, _options?: unknown, _signal?: AbortSignal) =>
+    createCommandStream([
+      { type: 'init', text: 'execution-1', timestamp: Date.now() },
+      { type: 'execution_complete', execution_time: 4, timestamp: Date.now() }
+    ])
   );
 
   const sandbox = {
@@ -71,7 +66,8 @@ const createSdkSandbox = (
     close: vi.fn(async () => undefined),
     kill: vi.fn(async () => undefined),
     commands: {
-      run: commandRun
+      runStream: commandRunStream,
+      interrupt: commandInterrupt
     },
     files: {
       readBytes,
@@ -81,7 +77,20 @@ const createSdkSandbox = (
     }
   } as unknown as Sandbox;
 
-  return { sandbox, getInfo, readBytes, readBytesStream, writeFiles, getFileInfo, commandRun };
+  return {
+    sandbox,
+    getInfo,
+    readBytes,
+    readBytesStream,
+    writeFiles,
+    getFileInfo,
+    commandInterrupt,
+    commandRunStream
+  };
+};
+
+const createCommandStream = async function* (events: ServerStreamEvent[]) {
+  for (const event of events) yield event;
 };
 
 const bindSandbox = (adapter: OpenSandboxAdapter, sandbox: Sandbox): void => {
@@ -275,26 +284,140 @@ describe('OpenSandboxAdapter', () => {
     ]);
   });
 
-  it('streams command output without SDK accumulation', async () => {
+  it('stops consuming and aborts the provider stream immediately after execution_complete', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
     const bound = createSdkSandbox();
-    bound.commandRun.mockImplementation(
-      async (_command, _options, handlers?: ExecutionHandlers) => {
-        await handlers?.onStdout?.({ text: 'hello', timestamp: Date.now() });
-        return { id: 'execution-1', exitCode: 0, complete: { executionTimeMs: 2 } };
-      }
+    let consumedAfterTerminal = false;
+    let providerSignal: AbortSignal | undefined;
+    bound.commandRunStream.mockImplementation((_command, _options, signal) =>
+      (async function* () {
+        providerSignal = signal;
+        yield { type: 'init', text: 'execution-1', timestamp: Date.now() };
+        yield { type: 'stdout', text: 'hello', timestamp: Date.now() };
+        yield { type: 'execution_complete', execution_time: 2, timestamp: Date.now() };
+        consumedAfterTerminal = true;
+        yield { type: 'stdout', text: 'late output', timestamp: Date.now() };
+      })()
     );
     bindSandbox(adapter, bound.sandbox);
     const chunks: string[] = [];
+    const onComplete = vi.fn();
 
     await adapter.executeStream('echo hello', {
-      onStdout: (message) => {
-        chunks.push(message.text);
-      }
+      onStdout: (message) => chunks.push(message.text),
+      onComplete
     });
 
     expect(chunks).toEqual(['hello']);
-    expect(bound.commandRun.mock.calls[0]?.[2]).toMatchObject({ skipAccumulation: true });
+    expect(onComplete).toHaveBeenCalledWith({
+      stdout: 'hello',
+      stderr: '',
+      exitCode: 0,
+      durationMs: 2,
+      truncated: false
+    });
+    expect(consumedAfterTerminal).toBe(false);
+    expect(providerSignal?.aborted).toBe(true);
+  });
+
+  it('maps a provider error terminal event to a non-zero command result', async () => {
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    const bound = createSdkSandbox();
+    bound.commandRunStream.mockReturnValue(
+      createCommandStream([
+        { type: 'init', text: 'execution-1', timestamp: Date.now() },
+        {
+          type: 'error',
+          error: { ename: 'ProcessExitError', evalue: '7', traceback: [] },
+          timestamp: Date.now()
+        }
+      ])
+    );
+    bindSandbox(adapter, bound.sandbox);
+
+    await expect(adapter.execute('exit 7')).resolves.toMatchObject({ exitCode: 7 });
+  });
+
+  it('returns a background session as soon as its terminal event arrives', async () => {
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    const bound = createSdkSandbox();
+    bound.commandRunStream.mockReturnValue(
+      createCommandStream([
+        { type: 'init', text: 'background-1', timestamp: Date.now() },
+        { type: 'execution_complete', execution_time: 3, timestamp: Date.now() }
+      ])
+    );
+    bindSandbox(adapter, bound.sandbox);
+
+    const execution = await adapter.executeBackground('sleep 30');
+    await execution.kill();
+
+    expect(execution.sessionId).toBe('background-1');
+    expect(bound.commandRunStream).toHaveBeenCalledWith(
+      'sleep 30',
+      expect.objectContaining({ background: true }),
+      expect.any(AbortSignal)
+    );
+    expect(bound.commandInterrupt).toHaveBeenCalledWith('background-1');
+  });
+
+  it('rejects a command stream that reaches EOF without a terminal event', async () => {
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    const bound = createSdkSandbox();
+    bound.commandRunStream.mockReturnValue(
+      createCommandStream([{ type: 'init', text: 'execution-1', timestamp: Date.now() }])
+    );
+    bindSandbox(adapter, bound.sandbox);
+
+    await expect(adapter.execute('true')).rejects.toMatchObject({
+      cause: expect.objectContaining({
+        message: 'OpenSandbox command stream ended without a terminal event'
+      })
+    });
+  });
+
+  it('preserves iterator failures as the command execution cause', async () => {
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    const bound = createSdkSandbox();
+    bound.commandRunStream.mockReturnValue(
+      (async function* () {
+        yield { type: 'init', text: 'execution-1', timestamp: Date.now() } as ServerStreamEvent;
+        throw new Error('provider iterator failed');
+      })()
+    );
+    bindSandbox(adapter, bound.sandbox);
+
+    await expect(adapter.execute('true')).rejects.toMatchObject({
+      cause: expect.objectContaining({ message: 'provider iterator failed' })
+    });
+  });
+
+  it('propagates caller cancellation while consuming the command stream', async () => {
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+    const bound = createSdkSandbox();
+    bound.commandRunStream.mockImplementation((_command, _options, signal) =>
+      (async function* () {
+        yield { type: 'init', text: 'execution-1', timestamp: Date.now() };
+        if (signal?.aborted) throw signal.reason ?? new Error('provider stream aborted');
+        await new Promise<void>((_resolve, reject) => {
+          signal?.addEventListener(
+            'abort',
+            () => reject(signal.reason ?? new Error('provider stream aborted')),
+            { once: true }
+          );
+        });
+      })()
+    );
+    bindSandbox(adapter, bound.sandbox);
+    const controller = new AbortController();
+
+    const execution = adapter.execute('sleep 30', { signal: controller.signal });
+    await vi.waitFor(() => expect(bound.commandRunStream).toHaveBeenCalledOnce());
+    controller.abort(new Error('caller cancelled while running'));
+
+    await expect(execution).rejects.toMatchObject({
+      cause: expect.objectContaining({ message: 'caller cancelled while running' })
+    });
   });
 
   it('fails provider operations before a client is bound', async () => {

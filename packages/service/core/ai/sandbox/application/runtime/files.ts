@@ -1,5 +1,5 @@
 /**
- * 沙盒业务层：处理运行态输入文件注入和当前目录提示。
+ * 沙盒业务层：处理运行态输入文件注入。
  *
  * 只封装运行态文件写入辅助，不负责 workspace 打包或编辑器文件下载。
  */
@@ -17,28 +17,6 @@ export type { SandboxInputFileReader } from '../file';
 export type SandboxInputFile = {
   name: string;
   url: string;
-};
-
-export type SandboxCommandClient = {
-  exec: (command: string) => Promise<{
-    exitCode: number | null;
-    stdout: string;
-  }>;
-};
-
-/**
- * 读取 sandbox 当前目录，仅作为 user reminder 的提示增强。
- * 如果命令失败或没有输出，返回 undefined，让提示词侧完全跳过 pwd 区块。
- */
-export const readSandboxPwd = async (sandboxClient: SandboxCommandClient) => {
-  try {
-    const result = await sandboxClient.exec('pwd');
-    if (result.exitCode === 0 && result.stdout.trim()) {
-      return result.stdout.trim();
-    }
-  } catch {
-    return;
-  }
 };
 
 /**
@@ -74,5 +52,11 @@ export const injectInputFilesToSandbox = async (
     sandbox,
     writeEntries.map(({ path }) => path)
   );
-  await sandbox.writeFiles(writeEntries);
+  const writeResults = await sandbox.writeFiles(writeEntries);
+  const failedWrite = writeResults.find((result) => result.error);
+  if (failedWrite) {
+    throw new Error(
+      `Failed to write sandbox input file ${failedWrite.path}: ${failedWrite.error?.message}`
+    );
+  }
 };
