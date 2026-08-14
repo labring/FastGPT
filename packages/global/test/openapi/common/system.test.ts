@@ -18,6 +18,34 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
+  it('strips sensitive fields from active and default model responses', () => {
+    const modelWithSecrets = {
+      ...desensitizedEmbeddingModel,
+      requestUrl: 'https://provider.example/v1',
+      requestAuth: 'model-secret',
+      defaultConfig: { secret: 'default-config' },
+      dbConfig: { secret: 'db-config' },
+      queryConfig: { secret: 'query-config' }
+    };
+
+    const result = GetSystemInitDataResponseSchema.parse({
+      activeModelList: [modelWithSecrets],
+      defaultModels: { embedding: modelWithSecrets }
+    });
+
+    expect(result.activeModelList?.[0]).not.toHaveProperty('requestUrl');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('requestAuth');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('defaultConfig');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('dbConfig');
+    expect(result.activeModelList?.[0]).not.toHaveProperty('queryConfig');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('requestUrl');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('requestAuth');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('defaultConfig');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('dbConfig');
+    expect(result.defaultModels?.embedding).not.toHaveProperty('queryConfig');
+    expect(JSON.stringify(result)).not.toContain('model-secret');
+  });
+
   it('accepts legacy partial standard plans with a stored activity expiration date', () => {
     const activityExpirationTime = new Date('2026-08-31T16:00:00.000Z');
     const plan = {
