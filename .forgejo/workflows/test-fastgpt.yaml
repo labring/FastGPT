@@ -17,6 +17,7 @@ on:
       - 'eslint.config.mjs'
       - '.npmrc'
       - '.github/workflows/test-fastgpt.yaml'
+      - '.forgejo/workflows/test-fastgpt.yaml'
   workflow_dispatch:
 
     # Only one build per PR branch at a time
@@ -170,9 +171,40 @@ jobs:
             projects/app/coverage/coverage-final.json
             projects/app/coverage/coverage-summary.json
 
+  test-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 'Install Deps'
+        run: pnpm install --frozen-lockfile
+
+      - name: 'Test Web'
+        run: pnpm --filter=@fastgpt/web test
+
+      - name: 'Upload Coverage (Web)'
+        if: always() && hashFiles('packages/web/coverage/coverage-summary.json') != ''
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: coverage-web
+          path: |
+            packages/web/coverage/coverage-final.json
+            packages/web/coverage/coverage-summary.json
+
   report-coverage:
     runs-on: ubuntu-latest
-    needs: [test-global, test-service, test-app]
+    needs: [test-global, test-service, test-web, test-app]
     if: ${{ always() }}
     permissions:
       contents: read
@@ -194,6 +226,13 @@ jobs:
       - name: 'Download Coverage Artifacts'
         uses: forgejo/download-artifact@v4
         with:
+          name: coverage-web
+          path: coverage-artifacts/coverage-web
+        continue-on-error: true
+
+      - name: 'Download Coverage Artifacts'
+        uses: forgejo/download-artifact@v4
+        with:
           name: coverage-app
           path: coverage-artifacts/coverage-app
         continue-on-error: true
@@ -208,6 +247,7 @@ jobs:
           const packages = [
             { name: 'Global', dir: 'coverage-global' },
             { name: 'Service', dir: 'coverage-service' },
+            { name: 'Web', dir: 'coverage-web' },
             { name: 'App', dir: 'coverage-app' }
           ];
           const formatPct = (value) => {

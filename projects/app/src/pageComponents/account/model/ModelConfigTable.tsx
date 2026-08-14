@@ -15,7 +15,7 @@ import {
   Button,
   useDisclosure
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useMemo, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -56,7 +56,7 @@ const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
 
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('account_model');
   const { userInfo } = useUserStore();
   const { defaultModels, feConfigs, getModelProviders, getModelProvider } = useSystemStore();
 
@@ -494,7 +494,7 @@ const JsonConfigModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_model');
 
   const [data, setData] = useState<string>('');
   const { loading } = useRequest(getModelConfigJson, {
@@ -557,7 +557,7 @@ const DefaultModelModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_model');
   const {
     defaultModels,
     llmModelList,

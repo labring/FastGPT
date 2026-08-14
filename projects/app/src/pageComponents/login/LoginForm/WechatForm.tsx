@@ -13,7 +13,6 @@ import {
   getBdVId,
   getFastGPTSem,
   getMsclkid,
-  getInviterId,
   onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
 import PolicyTip from './PolicyTip';
@@ -51,7 +50,6 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
     ['getWXLoginResult', wechatInfo?.code, i18n.language],
     () =>
       getWXLoginResult({
-        inviterId: getInviterId(),
         code: wechatInfo?.code || '',
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),

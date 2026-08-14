@@ -25,5 +25,10 @@
   "tag_total": "Total {{total}} tags",
   "tags": "Tags",
   "time": "Time",
-  "tutorial": "Tutorial"
+  "tutorial": "Tutorial",
+  "create_api_key": "Create New Key",
+  "edit_api_key": "Edit Key Details",
+  "key_alias": "Key alias, for display only",
+  "create_link_error": "Error creating link",
+  "update_link_error": "Error updating link"
 }

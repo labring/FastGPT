@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
@@ -15,7 +15,7 @@ import { useRouter } from 'next/router';
 import { subRoute } from '@fastgpt/web/common/system/utils';
 
 const NotSufficientModal = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const router = useRouter();
   const { notSufficientModalType: type, setNotSufficientModalType } = useSystemStore();
   const { isTeamAdmin, userInfo } = useUserStore();
@@ -86,7 +86,7 @@ export const RechargeModal = ({
   onClose: () => void;
   onPaySuccess: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const router = useRouter();
   const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans } = useSystemStore();

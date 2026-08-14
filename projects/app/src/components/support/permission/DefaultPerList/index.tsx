@@ -5,7 +5,7 @@ import type { PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 export enum defaultPermissionEnum {
   private = 'private',
@@ -34,7 +34,7 @@ const DefaultPermissionList = ({
   ...styles
 }: Props) => {
   const { ConfirmModal, openConfirm } = useConfirm({});
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['user']);
   const defaultPermissionSelectList = [
     { label: t('user:permission.only_collaborators'), value: defaultPer },
     { label: t('user:permission.team_read'), value: readPer },

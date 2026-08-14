@@ -18,7 +18,7 @@ import MemberListCard, { type MemberListCardProps } from './MemberListCard';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { CommonRoleList, NullRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import LightTip from '@fastgpt/web/components/common/LightTip';
@@ -98,7 +98,7 @@ const CollaboratorContextProvider = ({
   addPermissionOnly?: boolean;
   selectedHint?: string;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['user']);
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);
     refetchCollaboratorList();

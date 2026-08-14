@@ -8,7 +8,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useState } from 'react';
 
 export type ChangeOwnerModalProps = {
@@ -23,7 +23,7 @@ export function ChangeOwnerModal({
   name,
   onChangeOwner
 }: ChangeOwnerModalProps & { onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const [inputValue, setInputValue] = React.useState('');
 
   const { data: teamMembers, ScrollData } = useScrollPagination(getTeamMembers, {

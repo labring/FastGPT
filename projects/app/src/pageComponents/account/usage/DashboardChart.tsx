@@ -3,7 +3,7 @@ import { Box, Flex, Skeleton } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import type { TooltipProps } from 'recharts';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 export type usageFormType = {
   date: string;
@@ -22,7 +22,7 @@ type RechartsComponents = {
 
 const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
   const data = payload?.[0]?.payload as usageFormType;
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_usage');
   if (active && data) {
     return (
       <Box
@@ -54,7 +54,7 @@ const DashboardChart = ({
   totalPoints: usageFormType[];
   totalUsage: number;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_usage');
   const [recharts, setRecharts] = useState<RechartsComponents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');

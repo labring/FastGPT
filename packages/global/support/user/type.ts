@@ -18,8 +18,6 @@ export type UserModelSchema = {
   _id: string;
   username: string;
   password: string;
-  promotionRate: number;
-  inviterId?: string;
   openaiKey: string;
   createTime: number;
   timezone: string;
@@ -39,7 +37,6 @@ export const UserSchema = z.object({
   avatar: z.string(),
   timezone: z.string(),
   language: LanguageSchema.optional(),
-  promotionRate: z.number(),
   team: TeamTmbItemSchema,
   permission: z.instanceof(TeamPermission),
   contact: z.string().optional(),

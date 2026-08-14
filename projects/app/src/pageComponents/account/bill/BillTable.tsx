@@ -21,7 +21,7 @@ import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import type { BillPayWayEnum, BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import {
   BillStatusEnum,
@@ -38,7 +38,7 @@ import BillDetailModal from './BillDetailModal';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 
 const BillTable = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_bill');
   const { toast } = useToast();
   const [billType, setBillType] = useState<BillTypeEnum | undefined>(undefined);
   const [billDetailId, setBillDetailId] = useState<string>();

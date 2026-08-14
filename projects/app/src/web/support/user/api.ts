@@ -64,7 +64,6 @@ export const postRegister = ({
   username,
   password,
   code,
-  inviterId,
   bd_vid,
   msclkid,
   fastgpt_sem,
@@ -73,7 +72,6 @@ export const postRegister = ({
   POST<LoginSuccessResponseType>(`/proApi/support/user/account/register/emailAndPhone`, {
     username,
     code,
-    inviterId,
     bd_vid,
     msclkid,
     fastgpt_sem,

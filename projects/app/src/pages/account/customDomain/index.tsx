@@ -1,5 +1,4 @@
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { deleteCustomDomain, listCustomDomain } from '@/web/support/customDomain/api';
 import {
   Box,
@@ -14,7 +13,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import dynamic from 'next/dynamic';
 import { providerMap, customDomainStatusMap } from '@/web/support/customDomain/const';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -27,7 +26,8 @@ import { useRouter } from 'next/router';
 import Tag from '@fastgpt/web/components/common/Tag';
 
 const CreateCustomDomainModal = dynamic(
-  () => import('@/pageComponents/account/customDomain/createModal')
+  () => import('@/pageComponents/account/customDomain/createModal'),
+  { ssr: false }
 );
 
 /** unimplemented */
@@ -36,7 +36,7 @@ const CreateCustomDomainModal = dynamic(
 // );
 
 const CustomDomain = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_custom_domain']);
   const router = useRouter();
   const { teamPlanStatus } = useUserStore();
 
@@ -84,13 +84,13 @@ const CustomDomain = () => {
     <>
       <AccountContainer>
         <Flex flexDirection="column" h="100%" padding="24px">
-          <TableContainer flex="1" display="flex" flexDirection="column">
-            {loadingCustomDomainList ? <MyLoading /> : null}
+          <TableContainer flex="1" display="flex" flexDirection="column" position="relative">
+            {loadingCustomDomainList ? <MyLoading fixed={false} /> : null}
             <Flex justifyContent="space-between" alignItems="center" w="100%">
               <Box fontSize="20px" fontWeight="500">
                 {t('account_custom_domain:custom_domain')}
                 {customDomainList?.length ? (
-                  `: (${customDomainList.length}/${teamPlanStatus?.standard?.customDomain})`
+                  `: (${customDomainList.length}/${teamPlanStatus?.standard?.customDomain ?? 0})`
                 ) : (
                   <></>
                 )}
@@ -234,11 +234,3 @@ const CustomDomain = () => {
 };
 
 export default CustomDomain;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account', 'account_custom_domain']))
-    }
-  };
-}

@@ -72,7 +72,6 @@ vi.mock('@/web/support/user/api', () => ({
 vi.mock('@/web/support/marketing/utils', () => ({
   getBdVId: vi.fn(),
   getFastGPTSem: vi.fn(),
-  getInviterId: vi.fn(),
   getMsclkid: vi.fn(),
   onFastGPTLoginSuccess: vi.fn()
 }));

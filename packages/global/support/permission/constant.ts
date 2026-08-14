@@ -25,11 +25,11 @@ export const OwnerPermissionVal = ~0 >>> 0;
 export const PermissionTypeMap = {
   [PermissionTypeEnum.private]: {
     iconLight: 'support/permission/privateLight',
-    label: 'permission.Private'
+    label: 'common:permission.Private'
   },
   [PermissionTypeEnum.public]: {
     iconLight: 'support/permission/publicLight',
-    label: 'permission.Public'
+    label: 'common:permission.Public'
   },
   [PermissionTypeEnum.publicRead]: {
     iconLight: 'support/permission/publicLight',

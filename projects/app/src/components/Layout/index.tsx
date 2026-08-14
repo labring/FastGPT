@@ -11,8 +11,8 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useDebounceEffect, useMount } from 'ahooks';
-import { useTranslation } from 'next-i18next';
+import { useDebounceEffect } from 'ahooks';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCheckCoupon } from './hooks/checkCoupon';
 import SupportBot from './SupportBot';
@@ -82,7 +82,7 @@ export const navbarWidth = '64px';
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('price');
   const { Loading } = useLoading();
   const {
     setLastRoute,
@@ -121,14 +121,12 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     !userInfo?.contact &&
     !!userInfo?.team.permission.isOwner;
 
-  useMount(() => {
-    if (router.pathname === '/chat/share') {
-      setShareDefaultLng();
-      return;
-    }
+  const syncDefaultLanguage =
+    router.pathname === '/chat/share' ? setShareDefaultLng : setUserDefaultLng;
 
-    setUserDefaultLng();
-  });
+  useEffect(() => {
+    void syncDefaultLanguage();
+  }, [syncDefaultLanguage]);
 
   // Check model invalid
   useDebounceEffect(

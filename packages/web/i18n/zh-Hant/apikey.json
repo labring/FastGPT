@@ -17,13 +17,18 @@
   "select_tag": "選擇標籤",
   "sort_label": "排序",
   "sort_by_create_time": "按建立時間",
-  "sort_by_last_used_time": "按最後使用時間",
-  "sort_by_remaining_points": "按剩餘積分",
+  "sort_by_last_used_time": "最後使用時間",
+  "sort_by_remaining_points": "剩餘積分",
   "tag_filter": "按標籤篩選",
   "tag_manage": "標籤管理",
   "tag_name": "標籤名稱",
   "tag_total": "共 {{total}} 個標籤",
   "tags": "標籤",
   "time": "時間",
-  "tutorial": "教程"
+  "tutorial": "教程",
+  "create_api_key": "建立新金鑰",
+  "edit_api_key": "編輯金鑰細節",
+  "key_alias": "金鑰別名，僅供顯示",
+  "create_link_error": "建立連結發生錯誤",
+  "update_link_error": "更新連結發生錯誤"
 }

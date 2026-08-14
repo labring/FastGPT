@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ModalBody, Box, Button, VStack, HStack, Link } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import Icon from '@fastgpt/web/components/common/Icon';
 import Tag from '@fastgpt/web/components/common/Tag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -18,7 +18,7 @@ const ConversionModal = ({
   onClose: () => void;
   onOpenContact: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_info');
   const { userInfo } = useUserStore();
   const router = useRouter();
 

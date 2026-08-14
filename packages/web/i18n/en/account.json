@@ -29,7 +29,6 @@
   "order_type": "Order type",
   "payment_method": "Payment method",
   "personal_information": "Personal",
-  "promotion_records": "Promotions",
   "requests_per_minute": "Requests per minute",
   "status": "state",
   "subscription_mode_month": "Duration",

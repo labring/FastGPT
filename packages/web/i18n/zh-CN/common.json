@@ -462,7 +462,7 @@
   "core.dataset.import.Link name placeholder": "仅支持静态链接，如果上传后数据为空，可能该链接无法被读取\n每行一个，每次最多 10 个链接",
   "core.dataset.import.Local file": "本地文件",
   "core.dataset.import.Local file desc": "上传 PDF、TXT、DOCX 等格式的文件",
-  "core.dataset.import.QA Import Tip": "根据一定规则，将文本拆成一段较大的段落，调用 AI 为该段落生成问答对。有非常高的检索精度，但是会丢失很多内容细节。",
+  "core.dataset.import.QA Import Tip": "通过文本理解模型，为文件内容生成问答对。有较高的检索精度，但是会丢失很多内容细节。",
   "core.dataset.import.Select source": "选择来源",
   "core.dataset.import.Source name": "来源名",
   "core.dataset.import.Start upload": "开始上传",

@@ -1,7 +1,7 @@
 import React from 'react';
 import MyRadio from '@/components/common/MyRadio';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 const PermissionRadio = ({
   value,
@@ -10,7 +10,7 @@ const PermissionRadio = ({
   value: `${PermissionTypeEnum}`;
   onChange: (e: `${PermissionTypeEnum}`) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
 
   return (
     <MyRadio

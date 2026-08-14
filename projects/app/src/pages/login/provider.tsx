@@ -13,7 +13,6 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
   getBdVId,
   getFastGPTSem,
-  getInviterId,
   getMsclkid,
   onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
@@ -86,7 +85,6 @@ const provider = () => {
           type: loginStore?.provider || OAuthEnum.sso,
           props,
           callbackUrl: `${location.origin}/login/provider`,
-          inviterId: getInviterId(),
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),

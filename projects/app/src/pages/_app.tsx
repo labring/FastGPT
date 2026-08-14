@@ -1,96 +1,65 @@
 import type { AppProps } from 'next/app';
-import Script from 'next/script';
-
-import Layout from '@/components/Layout';
+import dynamic from 'next/dynamic';
 import { appWithTranslation } from 'next-i18next';
-
-import QueryClientContext from '@/web/context/QueryClient';
-import ChakraUIContext from '@/web/context/ChakraUI';
-import { useInitApp } from '@/web/context/useInitApp';
-import { useTranslation } from 'next-i18next';
+import { clientI18nConfig } from '@fastgpt/web/i18n/clientConfig';
+import { getLangFromCookie, LANG_KEY } from '@fastgpt/web/i18n/utils';
+import AppShell from '@/web/context/AppShell';
 import '@/web/styles/reset.scss';
-import NextHead from '@/components/common/NextHead';
-import { type ReactElement, useEffect } from 'react';
-import { type NextPage } from 'next';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
-import { useRouter } from 'next/router';
-import { errorLogger } from '@/web/common/utils/errorLogger';
-import { appClientEnv } from '@/web/common/system/env';
-
 import '@scalar/api-reference-react/style.css';
 
-type NextPageWithLayout = NextPage & {
-  setLayout?: (page: ReactElement) => JSX.Element;
-};
-type AppPropsWithLayout = AppProps & {
-  Component: NextPageWithLayout;
-};
-
-const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/detail'];
-const openAPIReferenceRoutes = ['/apidoc/devapi', '/apidoc/systemopenapi'];
-// 哪些路由不需要 Layout
-const routesWithoutLayout = openAPIReferenceRoutes;
-
-function App({ Component, pageProps }: AppPropsWithLayout) {
-  const { feConfigs, scripts, title } = useInitApp();
-  const { t } = useTranslation();
-
-  // Forbid touch scale
-  useEffect(() => {
-    document.addEventListener(
-      'wheel',
-      function (e) {
-        if (e.ctrlKey && Math.abs(e.deltaY) !== 0) {
-          e.preventDefault();
-        }
-      },
-      { passive: false }
-    );
-
-    // Initialize error logger
-    errorLogger.init();
-  }, []);
-
-  const setLayout = Component.setLayout || ((page) => <>{page}</>);
-
-  const router = useRouter();
-  const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
-  const shouldUseLayout = !router?.pathname || !routesWithoutLayout.includes(router.pathname);
-  const headDesc = appClientEnv.systemDescription || t('common:system_intro', { title });
-  const headIcon = getWebReqUrl(feConfigs?.favicon || appClientEnv.systemFavicon);
-
-  if (openAPIReferenceRoutes.includes(router.pathname)) {
-    return (
-      <>
-        {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
-        {setLayout(<Component {...pageProps} />)}
-      </>
-    );
-  }
+const clientOnlyRoutes = new Set([
+  '/account/apikey',
+  '/account/inform',
+  '/account/setting',
+  '/account/thirdParty',
+  '/account/customDomain',
+  '/account/bill',
+  '/account/team',
+  '/account/info',
+  '/account/usage',
+  '/account/model',
+  '/price'
+]);
+const ClientOnlyPage = dynamic(() => import('@/web/context/ClientOnlyPage'), {
+  ssr: false
+});
+const AppRouter = (props: AppProps) => {
+  const isClientOnlyRoute = clientOnlyRoutes.has(props.router.pathname);
 
   return (
-    <>
-      {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
-
-      {scripts?.map((item, i) => (
-        <Script key={i} strategy="lazyOnload" {...item}></Script>
-      ))}
-
-      <QueryClientContext>
-        <SystemStoreContextProvider device={pageProps.deviceSize}>
-          <ChakraUIContext>
-            {shouldUseLayout ? (
-              <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
-            ) : (
-              setLayout(<Component {...pageProps} />)
-            )}
-          </ChakraUIContext>
-        </SystemStoreContextProvider>
-      </QueryClientContext>
-    </>
+    <AppShell
+      {...props}
+      clientOnly={isClientOnlyRoute}
+      renderPage={isClientOnlyRoute ? () => <ClientOnlyPage {...props} /> : undefined}
+    />
   );
-}
+};
 
-// @ts-ignore
-export default appWithTranslation(App);
+const TranslatedAppRouter = appWithTranslation(AppRouter, clientI18nConfig);
+
+/**
+ * client-only 页面没有 SSR 翻译 props；有语言 Cookie 时在 Provider 初始化前注入。
+ * 没有 Cookie 时允许先使用默认语言，挂载后再由客户端 effect 恢复本地或浏览器语言。
+ */
+const App = (props: AppProps) => {
+  const isClientOnlyRoute = clientOnlyRoutes.has(props.router.pathname);
+  if (!isClientOnlyRoute || typeof window === 'undefined') {
+    return <TranslatedAppRouter {...props} />;
+  }
+
+  const initialLocale = getLangFromCookie(LANG_KEY);
+  if (!initialLocale) {
+    return <TranslatedAppRouter {...props} />;
+  }
+  const pageProps = {
+    ...props.pageProps,
+    _nextI18Next: {
+      ...props.pageProps?._nextI18Next,
+      initialLocale
+    }
+  };
+
+  return <TranslatedAppRouter {...props} pageProps={pageProps} />;
+};
+
+export default App;

@@ -462,7 +462,7 @@
   "core.dataset.import.Link name placeholder": "Only supports static links. If the data is empty after uploading, the link may not be readable\nEach line one, up to 10 links at a time",
   "core.dataset.import.Local file": "Local File",
   "core.dataset.import.Local file desc": "Upload files in PDF, TXT, DOCX, etc. formats",
-  "core.dataset.import.QA Import Tip": "According to certain rules, split the text into larger paragraphs and call AI to generate Q&A pairs for the paragraph. It has very high retrieval accuracy but may lose a lot of content details.",
+  "core.dataset.import.QA Import Tip": "Uses a text understanding model to generate Q&A pairs from file content. It offers high retrieval accuracy but may lose many content details.",
   "core.dataset.import.Select source": "Select Source",
   "core.dataset.import.Source name": "Source Name",
   "core.dataset.import.Start upload": "Start Upload",

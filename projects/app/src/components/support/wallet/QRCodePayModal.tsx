@@ -1,6 +1,7 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation, Trans } from 'next-i18next';
+import { Trans } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, ModalBody, Flex, Button, Link } from '@chakra-ui/react';
 import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
@@ -40,7 +41,7 @@ const QRCodePayModal = ({
   onSuccess?: () => any;
   onClose?: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const { feConfigs } = useSystemStore();
@@ -208,7 +209,7 @@ const QRCodePayModal = ({
         </Box>
         {discountCouponName && (
           <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'500'} mb={6}>
-            {t('common:discount_coupon_used') + t(discountCouponName)}
+            {t('common:discount_coupon_used') + t(discountCouponName as any)}
           </Box>
         )}
 

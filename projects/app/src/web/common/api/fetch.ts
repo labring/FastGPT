@@ -25,6 +25,7 @@ import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/Opt
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
+import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 
 type StreamFetchProps = {
   url?: string;
@@ -309,7 +310,10 @@ function $ssefetch(params: SSEFetchParams) {
     try {
       const fetchEventSourceOptions: FetchEventSourceInit = {
         ...restRequestInit,
-        headers: headersInitToRecord(initHeaders),
+        headers: {
+          ...getLanguageRequestHeaders(),
+          ...headersInitToRecord(initHeaders)
+        },
         signal,
         async onopen(res) {
           clearTimeout(timer);
@@ -476,6 +480,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
       const req = new Request(getWebReqUrl(url));
 
       await fetchEventSource(req, {
+        headers: getLanguageRequestHeaders(),
         signal: signal,
         async onopen(res) {
           clearTimeout(timer);
@@ -595,6 +600,7 @@ export const streamFetch = ({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getLanguageRequestHeaders(),
         ...(shouldEnableStreamResume && {
           [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
         })

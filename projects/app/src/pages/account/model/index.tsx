@@ -1,12 +1,10 @@
-'use client';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import React, { useMemo, useState } from 'react';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import ModelTable from '@/components/core/ai/ModelTable';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
@@ -18,7 +16,7 @@ const ModelDashboard = dynamic(() => import('@/pageComponents/account/model/Mode
 type TabType = 'model' | 'config' | 'channel' | 'channel_log' | 'account_model';
 
 const ModelProvider = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_model');
   const { feConfigs } = useSystemStore();
 
   const [tab, setTab] = useState<TabType>('model');
@@ -57,14 +55,6 @@ const ModelProvider = () => {
     </AccountContainer>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account', 'account_model', 'user']))
-    }
-  };
-}
 
 export default ModelProvider;
 

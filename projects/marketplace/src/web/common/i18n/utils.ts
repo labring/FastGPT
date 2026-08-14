@@ -7,11 +7,5 @@ export const serviceSideProps = async (content: any, ns: I18nNsType = []) => {
   const lang = getLangMapping(cookieLang || content.locale || '');
   const extraLng = content.req?.cookies?.NEXT_LOCALE ? undefined : content.locales;
 
-  // Device size
-  const deviceSize = content.req?.cookies?.NEXT_DEVICE_SIZE || null;
-
-  return {
-    ...(await serverSideTranslations(lang, ['common', ...ns], undefined, extraLng)),
-    deviceSize
-  };
+  return serverSideTranslations(lang, ['common', ...ns], undefined, extraLng);
 };

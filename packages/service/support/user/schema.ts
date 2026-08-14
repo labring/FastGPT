@@ -31,10 +31,6 @@ const UserSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  promotionRate: {
-    type: Number,
-    default: 0
-  },
   openaiAccount: {
     type: {
       key: String,
@@ -54,11 +50,6 @@ const UserSchema = new Schema({
     ref: TeamMemberCollectionName
   },
 
-  inviterId: {
-    // 谁邀请注册的
-    type: Schema.Types.ObjectId,
-    ref: userCollectionName
-  },
   fastgpt_sem: Object,
 
   phonePrefix: Number,
