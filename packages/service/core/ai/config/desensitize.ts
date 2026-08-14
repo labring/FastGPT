@@ -27,7 +27,6 @@ export const desensitizeSystemDefaultModels = (
     defaultModels.datasetTextLLM && desensitizeSystemModel(defaultModels.datasetTextLLM),
   datasetImageLLM:
     defaultModels.datasetImageLLM && desensitizeSystemModel(defaultModels.datasetImageLLM),
-  chatTitleLLM: defaultModels.chatTitleLLM && desensitizeSystemModel(defaultModels.chatTitleLLM),
   embedding: defaultModels.embedding && desensitizeSystemModel(defaultModels.embedding),
   tts: defaultModels.tts && desensitizeSystemModel(defaultModels.tts),
   stt: defaultModels.stt && desensitizeSystemModel(defaultModels.stt),
