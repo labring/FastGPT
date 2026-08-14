@@ -1,9 +1,9 @@
 ---
-title: 'V4.16.0-beta2 (In Progress)'
+title: 'V4.16.0-beta2'
 description: 'FastGPT V4.16.0-beta2 release notes'
 ---
 
-## ⚠️ Upgrade notes
+## 📦 Upgrade Guide
 
 ### Clean up legacy system model configurations
 
@@ -25,9 +25,9 @@ curl -X POST 'https://your-domain/api/admin/dataClean/cleanSystemModelConfigs' \
   -d '{"dryRun":false}'
 ```
 
-The cleanup converts valid numeric strings to numbers, parses serialized `priceTiers` arrays, and removes invalid optional numeric fields. Invalid or missing required numeric fields use system defaults: LLM `maxContext/maxResponse/quoteMaxToken` default to `16000/16000/13000`, Embedding `defaultToken/maxToken` default to `500/3000`, and price fields default to `0`. `functionCall` remains optional, and a missing Embedding `weight` defaults to `0`.
+The cleanup converts valid numeric strings to numbers, converts serialized `priceTiers` values to arrays, and removes invalid optional numeric fields. Invalid or missing required numeric fields use system defaults: LLM `maxContext/maxResponse/quoteMaxToken` default to `16000/16000/13000`, Embedding `defaultToken/maxToken` default to `500/3000`, and price fields default to `0`. `functionCall` remains optional, and a missing Embedding `weight` defaults to `0`.
 
-The write operation updates all matching records in one operation and immediately reloads the system model cache. The runtime cache is rebuilt even when no database record needs an update. The endpoint is safe to run repeatedly; a follow-up dry run should report `wouldUpdate` as `0`. Records that still fail the complete current model schema are not written, and all of them are listed in `invalidSamples`.
+The cleanup writes the updated data consistently and immediately reloads the system model cache. The runtime cache is rebuilt even when no database record needs an update. The endpoint is safe to run repeatedly; a follow-up dry run should report `wouldUpdate` as `0`. Records that still fail the complete current model schema are not written, and all of them are listed in `invalidSamples`.
 
 ## 🚀 New
 
@@ -56,3 +56,4 @@ The write operation updates all matching records in one operation and immediatel
 1. Changed audit log retention from deletion to cold archival in S3.
 2. Added validation and cleanup for admin configuration data.
 3. Removed SSR from `account/*` pages.
+4. Built and published images through CI/CD.
