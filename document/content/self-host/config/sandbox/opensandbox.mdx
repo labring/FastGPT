@@ -96,15 +96,12 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 
 ### 自定义依赖源
 
-如果沙盒内需要安装 npm、Python 或 apt 依赖，可以在 `fastgpt-app` 和 `fastgpt-pro` 中配置依赖源：
+如果沙盒内需要安装 npm 或 Python 依赖，可以在 `fastgpt-app` 和 `fastgpt-pro` 中配置依赖源：
 
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
-
-`AGENT_SANDBOX_APT_MIRROR` 由通用的沙盒初始化链路处理，OpenSandbox 和 Sealos Devbox 都支持。FastGPT 会根据 Ubuntu 版本写入一份独立的 deb822 source 文件，不覆盖镜像原有 source；地址无效、运行镜像不是 Ubuntu 或文件写入失败时，会跳过自定义 source，继续使用原有官方源。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供 `ubuntu-ports` 的镜像地址。
 
 ### 资源与生命周期
 
