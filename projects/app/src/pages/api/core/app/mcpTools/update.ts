@@ -9,6 +9,7 @@ import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { prepareWorkflowForPersistence } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateMcpToolsBodySchema,
@@ -42,12 +43,14 @@ async function handler(
     avatar: app.avatar
   });
 
+  const workflow = await prepareWorkflowForPersistence({ nodes: [toolSetRuntimeNode] });
+
   await mongoSessionRun(async (session) => {
     // update app and app version
     await MongoApp.updateOne(
       { _id: appId },
       {
-        modules: [toolSetRuntimeNode],
+        modules: workflow.nodes,
         updateTime: new Date()
       },
       { session }
@@ -57,7 +60,7 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: [toolSetRuntimeNode]
+          nodes: workflow.nodes
         }
       },
       { session }

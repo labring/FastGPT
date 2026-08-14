@@ -5,6 +5,7 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { onCreateApp } from './create';
+import { prepareWorkflowForPersistence } from '@fastgpt/service/core/app/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -15,7 +16,6 @@ import {
   type TransitionWorkflowBodyType,
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -63,7 +63,7 @@ async function handler(
     return TransitionWorkflowResponseSchema.parse({ id: appId });
   }
 
-  const normalizedWorkflow = normalizeWorkflowConfig({
+  const normalizedWorkflow = await prepareWorkflowForPersistence({
     nodes: app.modules,
     edges: app.edges,
     chatConfig: app.chatConfig

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   beforeUpdateAppFormat,
+  prepareWorkflowForPersistence,
+  prepareWorkflowForRead,
   validatePublishAppAgentSkillReadPermissions
 } from '@fastgpt/service/core/app/controller';
 import {
@@ -21,6 +23,68 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
+
+describe('workflow preparation boundaries', () => {
+  const legacyWorkflow = {
+    nodes: [
+      {
+        nodeId: 'system',
+        flowNodeType: FlowNodeTypeEnum.systemConfig,
+        name: 'System',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.welcomeText,
+            label: 'Welcome',
+            value: 'Hello',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'start',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        name: 'Start',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 1
+          }
+        ],
+        outputs: []
+      }
+    ],
+    edges: [
+      {
+        source: 'system',
+        sourceHandle: 'system-source',
+        target: 'start',
+        targetHandle: 'start-target'
+      }
+    ]
+  } as any;
+
+  it('迁移读取数据并移除所有已消费的 Legacy 字段', () => {
+    const workflow = prepareWorkflowForRead(legacyWorkflow);
+
+    expect(workflow.nodes).toHaveLength(1);
+    expect(workflow.edges).toEqual([]);
+    expect(workflow.chatConfig?.welcomeText).toBe('Hello');
+    expect(workflow.nodes[0].inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference
+    });
+    expect(workflow.nodes[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
+  });
+
+  it('持久化准备在迁移后返回独立的 canonical workflow', async () => {
+    const workflow = await prepareWorkflowForPersistence(legacyWorkflow);
+
+    expect(workflow).toEqual(prepareWorkflowForRead(legacyWorkflow));
+    expect(legacyWorkflow.nodes).toHaveLength(2);
+  });
+});
 
 describe('beforeUpdateAppFormat', () => {
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
@@ -159,10 +223,13 @@ describe('beforeUpdateAppFormat', () => {
   it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', async () => {
     const nodes = [
       {
+        nodeId: 'dataset-node',
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset',
         inputs: [
           {
             key: NodeInputKeyEnum.datasetSelectList,
+            label: 'Datasets',
             renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
             selectedTypeIndex: 0,
             value: [
@@ -177,7 +244,8 @@ describe('beforeUpdateAppFormat', () => {
               }
             ]
           }
-        ]
+        ],
+        outputs: []
       } as StoreNodeItemType
     ];
 
@@ -299,21 +367,26 @@ describe('beforeUpdateAppFormat', () => {
     const referenceValue = ['sourceNode', 'datasets'];
     const nodes = [
       {
+        nodeId: 'dataset-node',
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        name: 'Dataset',
         inputs: [
           {
             key: NodeInputKeyEnum.datasetSelectList,
+            label: 'Datasets',
             renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
             selectedTypeIndex: 1,
             value: referenceValue
           }
-        ]
+        ],
+        outputs: []
       } as StoreNodeItemType
     ];
 
-    await beforeUpdateAppFormat({ nodes });
+    const workflow = prepareWorkflowForRead({ nodes, edges: [] });
+    await beforeUpdateAppFormat({ nodes: workflow.nodes });
 
-    expect(nodes[0].inputs[0].value).toBe(referenceValue);
+    expect(workflow.nodes[0].inputs[0].value).toBe(referenceValue);
   });
 
   it('允许保存尚未选择知识库的工作流草稿', async () => {

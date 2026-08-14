@@ -30,13 +30,13 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
-import { normalizeWorkflowConfig, removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
+import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import {
-  beforeUpdateAppFormat,
+  prepareWorkflowForPersistence,
   validatePublishAppAgentSkillReadPermissions,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
@@ -182,13 +182,11 @@ export const onCreateApp = async ({
     }
   }
 
-  const normalizedWorkflow = normalizeWorkflowConfig({
+  const normalizedWorkflow = await prepareWorkflowForPersistence({
     nodes: modules ?? [],
     edges: edges ?? [],
     chatConfig
   });
-
-  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

@@ -39,11 +39,14 @@ import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/u
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
-  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  migrateLegacyFlowNodeInputToCurrent,
+  migrateLegacyWorkflowHttpToolInputsDefaultMode,
+  migrateLegacyWorkflowToolInputsDefaultMode
+} from '@fastgpt/global/core/workflow/migration';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
-import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -775,19 +778,22 @@ export const rewriteRuntimeWorkFlow = async ({
     );
     const inputsWithLegacyDefaults = (() => {
       if (node.flowNodeType === FlowNodeTypeEnum.pluginModule && isTool) {
-        return normalizeWorkflowToolInputsDefaultMode(node.inputs);
+        return migrateLegacyWorkflowToolInputsDefaultMode(node.inputs);
       }
       if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468 && isTool) {
-        return normalizeLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
+        return migrateLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
       }
       return node.inputs;
     })();
 
     node.inputs = inputsWithLegacyDefaults.map((input) =>
-      normalizeFlowNodeInputType(input, {
-        isTool,
-        allowLegacyToolDescriptionFallback: isTool && allowLegacySystemToolInputMode
-      })
+      normalizeFlowNodeInputType(
+        migrateLegacyFlowNodeInputToCurrent(input, {
+          isTool,
+          allowLegacyToolDescriptionFallback: isTool && allowLegacySystemToolInputMode
+        }),
+        { isTool }
+      )
     );
   });
 };

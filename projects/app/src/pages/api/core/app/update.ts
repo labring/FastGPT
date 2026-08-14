@@ -1,6 +1,6 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import { prepareWorkflowForPersistence } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
@@ -36,7 +36,6 @@ import {
   type UpdateAppBodyType,
   type UpdateAppQueryType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 // 更新应用接口
 // 包括如下功能：
@@ -133,7 +132,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
   const shouldNormalizeWorkflow =
     nodes !== undefined || edges !== undefined || chatConfig !== undefined;
   const normalizedWorkflow = shouldNormalizeWorkflow
-    ? normalizeWorkflowConfig({
+    ? await prepareWorkflowForPersistence({
         nodes: nodes ?? app.modules ?? [],
         edges: edges ?? app.edges ?? [],
         chatConfig: chatConfig ?? app.chatConfig
@@ -141,12 +140,6 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     : undefined;
 
   const onUpdate = async (session?: ClientSession) => {
-    // format nodes data
-    // 1. dataset search limit, less than model quoteMaxToken
-    await beforeUpdateAppFormat({
-      nodes: nodes === undefined ? undefined : normalizedWorkflow?.nodes
-    });
-
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
     }

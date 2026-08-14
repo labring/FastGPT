@@ -4,7 +4,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import {
-  beforeUpdateAppFormat,
+  prepareWorkflowForPersistence,
   validatePublishAppAgentSkillReadPermissions
 } from '@fastgpt/service/core/app/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
@@ -23,7 +23,6 @@ import {
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -42,11 +41,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
-  const normalizedWorkflow = normalizeWorkflowConfig({ nodes, edges, chatConfig });
-
-  await beforeUpdateAppFormat({
-    nodes: normalizedWorkflow.nodes
-  });
+  const normalizedWorkflow = await prepareWorkflowForPersistence({ nodes, edges, chatConfig });
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
