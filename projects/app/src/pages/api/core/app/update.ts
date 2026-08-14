@@ -1,5 +1,6 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { prepareWorkflowForPersistence } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
@@ -126,6 +127,16 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
       isFolderType
     });
   }
+
+  const shouldNormalizeWorkflow =
+    nodes !== undefined || edges !== undefined || chatConfig !== undefined;
+  const normalizedWorkflow = shouldNormalizeWorkflow
+    ? await prepareWorkflowForPersistence({
+        nodes: nodes ?? app.modules ?? [],
+        edges: edges ?? app.edges ?? [],
+        chatConfig: chatConfig ?? app.chatConfig
+      })
+    : undefined;
 
   const onUpdate = async (session?: ClientSession) => {
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {

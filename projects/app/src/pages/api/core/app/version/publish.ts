@@ -4,7 +4,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import {
-  beforeUpdateAppFormat,
+  prepareWorkflowForPersistence,
   validatePublishAppAgentSkillReadPermissions
 } from '@fastgpt/service/core/app/controller';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
@@ -42,11 +42,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     authToken: true
   });
 
-  const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
-  await beforeUpdateAppFormat({
-    nodes: normalizedWorkflow.nodes,
-    teamId
-  });
+  const normalizedWorkflow = await prepareWorkflowForPersistence({ nodes, edges, chatConfig });
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

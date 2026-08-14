@@ -5,6 +5,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { formatToolInputSecrets } from './tool/secretConfig';
 import { MongoEvaluation } from './evaluation/evalSchema';
@@ -161,6 +164,29 @@ export const beforeUpdateAppFormat = async ({
       );
     })
   );
+};
+
+type WorkflowDataForPreparation = {
+  nodes: StoreNodeItemType[];
+  edges?: StoreEdgeItemType[];
+  chatConfig?: AppChatConfigType;
+};
+
+/**
+ * 将持久化或外部读取的工作流统一升级为当前结构。
+ * 该函数只做同步结构迁移；权限、工具 Schema 和详情水合由调用方后续处理。
+ */
+export const prepareWorkflowForRead = (workflow: WorkflowDataForPreparation) =>
+  migrateWorkflowToCurrent(workflow);
+
+/**
+ * 写入前先完成结构迁移，再执行数据压缩和密钥加密。
+ * 迁移返回新对象，避免格式化过程改写 route 持有的请求对象。
+ */
+export const prepareWorkflowForPersistence = async (workflow: WorkflowDataForPreparation) => {
+  const preparedWorkflow = prepareWorkflowForRead(workflow);
+  await beforeUpdateAppFormat({ nodes: preparedWorkflow.nodes });
+  return preparedWorkflow;
 };
 
 /**

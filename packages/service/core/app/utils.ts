@@ -12,7 +12,6 @@ import {
   initAgentToolInputType,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import type { LegacyFlowNodeInputItem } from '@fastgpt/global/core/workflow/migration';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -22,6 +21,11 @@ import {
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
+import {
+  migrateLegacyWorkflowHttpToolInputsDefaultMode,
+  migrateLegacyFlowNodeInputToCurrent,
+  migrateLegacyWorkflowToolInputsDefaultMode
+} from '@fastgpt/global/core/workflow/migration';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
@@ -137,8 +141,8 @@ export async function rewriteAppWorkflowToDetail({
       };
     }
   };
-  type ToolInputSnapshot = Pick<LegacyFlowNodeInputItem, 'key' | 'renderTypeList'> &
-    Partial<LegacyFlowNodeInputItem>;
+  type ToolInputSnapshot = Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
+    Partial<FlowNodeInputItemType>;
 
   const mergeToolInputDetail = ({
     previewInput,
@@ -156,15 +160,7 @@ export async function rewriteAppWorkflowToDetail({
         ...previewInput,
         renderTypeList,
         selectedType: savedInput?.selectedType,
-        // Add `selectedTypeIndex` if this is legacy data. This allows the adoption afterwards.
-        ...(savedInput?.selectedTypeIndex === undefined
-          ? {}
-          : ({ selectedTypeIndex: savedInput.selectedTypeIndex } satisfies Pick<
-              LegacyFlowNodeInputItem,
-              'selectedTypeIndex'
-            >)),
-        isToolParam:
-          savedInput?.isToolParam ?? (legacyDefaultMode ? true : previewInput.isToolParam),
+        isToolParam: savedInput?.isToolParam ?? previewInput.isToolParam,
         toolDescription: savedInput?.toolDescription ?? previewInput.toolDescription
       },
       { deferDefaultSelection: true }
@@ -214,9 +210,31 @@ export async function rewriteAppWorkflowToDetail({
 
   await Promise.all(
     nodes.map(async (node) => {
+      const allowLegacyToolDescriptionFallback = node.pluginId
+        ? shouldUseLegacyToolDescriptionFallback({
+            toolId: node.pluginId,
+            flowNodeType: node.flowNodeType
+          })
+        : false;
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.pluginInput ||
+        allowLegacyToolDescriptionFallback
+      ) {
+        node.inputs = migrateLegacyWorkflowToolInputsDefaultMode(node.inputs).map((input) =>
+          migrateLegacyFlowNodeInputToCurrent(input, { deferDefaultSelection: true })
+        );
+      }
+      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
+        node.inputs = migrateLegacyWorkflowHttpToolInputsDefaultMode(node.inputs).map((input) =>
+          migrateLegacyFlowNodeInputToCurrent(input, { deferDefaultSelection: true })
+        );
+      }
       if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
         node.inputs = node.inputs.map((input) =>
-          normalizeFlowNodeInputType(input, { deferDefaultSelection: true })
+          normalizeFlowNodeInputType(
+            migrateLegacyFlowNodeInputToCurrent(input, { deferDefaultSelection: true }),
+            { deferDefaultSelection: true }
+          )
         );
       }
 
@@ -315,14 +333,9 @@ export async function rewriteAppWorkflowToDetail({
                   savedToolInputs.map((input) => [input.key, input])
                 );
                 const mergedInputs = data.inputs.map((input) => {
-                  const savedMode = toolInputConfigMap.get(input.key)?.mode;
                   const mode =
-                    (Object.values(AgentToolInputModeEnum).includes(
-                      savedMode as AgentToolInputModeEnum
-                    )
-                      ? (savedMode as AgentToolInputModeEnum)
-                      : undefined) ??
-                    (hasMissingToolInputs &&
+                    toolInputConfigMap.get(input.key)?.mode ??
+                    (tool.inputs === undefined &&
                     (isSystemOrCommercialToolId(tool.id) ||
                       (data.flowNodeType === FlowNodeTypeEnum.pluginModule &&
                         !!input.toolDescription))

@@ -43,7 +43,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   appData2FlowNodeIO,
@@ -648,8 +648,12 @@ export const getAgentRuntimeTools = async ({
         toolNode.inputs = toolNode.inputs.map((input) =>
           initAgentToolInputType({
             input,
-            mode: savedInputConfigMap.get(input.key)?.mode,
-            legacyDefaultMode
+            mode:
+              savedInputConfigMap.get(input.key)?.mode ??
+              (legacyDefaultMode === 'allAgentGenerated' ||
+              (legacyDefaultMode === 'toolDescription' && input.toolDescription)
+                ? AgentToolInputModeEnum.agentGenerated
+                : undefined)
           })
         );
         const configuredParams = filterToolConfiguredParams({

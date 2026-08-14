@@ -44,6 +44,11 @@ import {
   initToolInputsTypeByDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  migrateLegacyFlowNodeInputToCurrent,
+  migrateLegacyWorkflowHttpToolInputsDefaultMode,
+  migrateLegacyWorkflowToolInputsDefaultMode
+} from '@fastgpt/global/core/workflow/migration';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 
 /**
@@ -831,7 +836,30 @@ export const rewriteRuntimeWorkFlow = async ({
   // runtime 内部只消费 selectedType；所有存量协议兼容都在执行入口一次完成。
   nodes.forEach((node) => {
     const isTool = toolNodeIds.has(node.nodeId) || node.flowNodeType === FlowNodeTypeEnum.tool;
-    node.inputs = node.inputs.map((input) => normalizeFlowNodeInputType(input, { isTool }));
+    const allowLegacySystemToolInputMode = Boolean(
+      node.toolConfig?.systemTool ||
+      node.pluginId?.startsWith('systemTool-') ||
+      node.pluginId?.startsWith('commercial-')
+    );
+    const inputsWithLegacyDefaults = (() => {
+      if (node.flowNodeType === FlowNodeTypeEnum.pluginModule && isTool) {
+        return migrateLegacyWorkflowToolInputsDefaultMode(node.inputs);
+      }
+      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468 && isTool) {
+        return migrateLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
+      }
+      return node.inputs;
+    })();
+
+    node.inputs = inputsWithLegacyDefaults.map((input) =>
+      normalizeFlowNodeInputType(
+        migrateLegacyFlowNodeInputToCurrent(input, {
+          isTool,
+          allowLegacyToolDescriptionFallback: isTool && allowLegacySystemToolInputMode
+        }),
+        { isTool }
+      )
+    );
   });
 };
 

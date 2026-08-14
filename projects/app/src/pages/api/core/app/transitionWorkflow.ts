@@ -3,7 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { onCreateApp, onUpdateAppWorkflow } from './create';
+import { onCreateApp } from './create';
+import { prepareWorkflowForPersistence } from '@fastgpt/service/core/app/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -14,7 +15,6 @@ import {
   type TransitionWorkflowBodyType,
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -62,15 +62,16 @@ async function handler(
     return TransitionWorkflowResponseSchema.parse({ id: appId });
   }
 
-  await mongoSessionRun(async (session) => {
-    await onUpdateAppWorkflow({
-      appId,
-      modules: decodeToolSetNodesFromStorage(app.modules),
-      edges: app.edges,
-      chatConfig: app.chatConfig,
-      teamId,
-      session
-    });
+  const normalizedWorkflow = await prepareWorkflowForPersistence({
+    nodes: app.modules,
+    edges: app.edges,
+    chatConfig: app.chatConfig
+  });
+  await MongoApp.findByIdAndUpdate(appId, {
+    type: AppTypeEnum.workflow,
+    modules: normalizedWorkflow.nodes,
+    edges: normalizedWorkflow.edges,
+    chatConfig: normalizedWorkflow.chatConfig
   });
 
   return TransitionWorkflowResponseSchema.parse(undefined);

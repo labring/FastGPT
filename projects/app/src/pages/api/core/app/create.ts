@@ -35,7 +35,7 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import {
-  beforeUpdateAppFormat,
+  prepareWorkflowForPersistence,
   validatePublishAppAgentSkillReadPermissions,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
@@ -182,19 +182,11 @@ export const onCreateApp = async ({
     }
   }
 
-  // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
-  const normalizedWorkflow = migrateWorkflowToCurrent({
+  const normalizedWorkflow = await prepareWorkflowForPersistence({
     nodes: modules ?? [],
     edges: edges ?? [],
     chatConfig
   });
-  if (allowedModels) {
-    await removeUnauthModels({
-      modules: normalizedWorkflow.nodes,
-      allowedModels
-    });
-  }
-  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,
