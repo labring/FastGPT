@@ -47,6 +47,11 @@ export const getSubapps = async ({
   formatTools.forEach((tool) => {
     if (tool.promptReference) {
       promptToolReferenceInfoMap.set(tool.promptReference.id, tool.promptReference.name);
+      // 兼容旧版 PromptEditor 持久化的原始工具 ID。
+      promptToolReferenceInfoMap.set(
+        tool.promptReference.legacyId || tool.promptReference.id,
+        tool.promptReference.name
+      );
     }
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {

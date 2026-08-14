@@ -1,6 +1,7 @@
 import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import {
   getToolNameCandidates,
+  getToolIdentityKey,
   isSystemOrCommercialToolId,
   isDebugToolSource,
   isTeamPluginSource,
@@ -662,10 +663,16 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
-        const promptReference = {
-          id: tool.id,
-          name: toolNode.name
-        };
+        const promptReference = runtimeSource
+          ? {
+              id: getToolIdentityKey(tool.id, runtimeSource),
+              legacyId: tool.id,
+              name: toolNode.name
+            }
+          : {
+              id: tool.id,
+              name: toolNode.name
+            };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const inputs = initToolInputsTypeByDefaultMode(

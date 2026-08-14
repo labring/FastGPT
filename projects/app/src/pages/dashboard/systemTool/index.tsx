@@ -263,14 +263,10 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                             label: t('app:toolkit_open_marketplace'),
                             onClick: () => router.push('/dashboard/systemTool/marketplace')
                           },
-                          ...(feConfigs?.enable_team_plugin_upload === false
-                            ? []
-                            : [
-                                {
-                                  label: t('app:toolkit_import_resource'),
-                                  onClick: onOpenImportModal
-                                }
-                              ])
+                          {
+                            label: t('app:toolkit_import_resource'),
+                            onClick: onOpenImportModal
+                          }
                         ]
                       }
                     ]}

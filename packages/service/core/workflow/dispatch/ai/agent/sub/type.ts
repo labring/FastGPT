@@ -17,6 +17,7 @@ export type SubAppInitType = {
   requestSchema: ChatCompletionTool;
   promptReference?: {
     id: string;
+    legacyId?: string;
     name: string;
   };
   params: {

@@ -26,6 +26,7 @@ import { useRequest } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
 import type { SkillLabelItemType } from '../SkillLabelPlugin';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 
 /* 
   两列渲染器
@@ -35,7 +36,7 @@ export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
-  onClick?: (id: string) => Promise<SkillClickResult | undefined>;
+  onClick?: (id: string, source?: string) => Promise<SkillClickResult | undefined>;
   onFolderLoad?: (id: string) => Promise<SkillItemType[]>;
 };
 
@@ -47,6 +48,7 @@ export type SkillClickResult = {
 export type SkillItemType = {
   parentId?: ParentIdType;
   id: string;
+  source?: string;
   label: string;
   icon?: string;
   description?: string;
@@ -62,8 +64,12 @@ export type SkillItemType = {
   tools?: {
     id: string;
     name: string;
+    source?: string;
   }[];
 };
+
+const getSkillItemKey = (item: Pick<SkillItemType, 'id' | 'source'>) =>
+  getToolIdentityKey(item.id, item.source);
 
 export default function SkillPickerPlugin({
   skillOption,
@@ -260,7 +266,7 @@ export default function SkillPickerPlugin({
       setIsItemClickLoading(true);
       try {
         // Step 1: Execute async onClick to get skillId (outside editor.update)
-        const result = await option.onClick(item.id);
+        const result = await option.onClick(item.id, item.source);
 
         // Step 2: Update editor with the skillId (inside a fresh editor.update)
         if (result) {
@@ -303,7 +309,7 @@ export default function SkillPickerPlugin({
         const toggleFolderOpen = (items: SkillItemType[]): SkillItemType[] => {
           return items.map((item) => {
             // Found the target folder, toggle its open state
-            if (item.id === currentFolder.id) {
+            if (getSkillItemKey(item) === getSkillItemKey(currentFolder)) {
               return { ...item, open: !currentFolder.open };
             }
             // Recursively search in nested folders
@@ -336,7 +342,7 @@ export default function SkillPickerPlugin({
 
             const addFolderChildren = (items: SkillItemType[]): SkillItemType[] => {
               return items.map((item) => {
-                if (item.id === currentFolder.id) {
+                if (getSkillItemKey(item) === getSkillItemKey(currentFolder)) {
                   return {
                     ...item,
                     folderChildren: result
@@ -659,7 +665,7 @@ export default function SkillPickerPlugin({
 
           result.push(
             <MyBox
-              key={item.id}
+              key={getSkillItemKey(item)}
               ref={(el) => {
                 if (el) {
                   itemRefs.current.set(`${columnIndex}-${flatIndex}`, el as HTMLDivElement);
@@ -829,7 +835,7 @@ export default function SkillPickerPlugin({
   const menuOptions = useMemo(() => {
     return skillOptions.flatMap((item) =>
       item.list.map((item) => ({
-        key: item.id,
+        key: getSkillItemKey(item),
         ...item
       }))
     );
@@ -844,7 +850,7 @@ export default function SkillPickerPlugin({
       void nodeToRemove;
 
       // Step 1: Call async onClick handler (outside editor.update)
-      const result = await selectedOption.onClick?.(selectedOption.id);
+      const result = await selectedOption.onClick?.(selectedOption.id, selectedOption.source);
 
       // Step 2: Update editor with the skill (inside a fresh editor.update)
       if (result) {
@@ -889,7 +895,7 @@ export default function SkillPickerPlugin({
               return renderColumn(column, index, (item, option) => {
                 if (!option.onClick) return;
                 selectOptionAndCleanUp({
-                  key: item.id,
+                  key: getSkillItemKey(item),
                   ...item,
                   onClick: option.onClick
                 } as any);
