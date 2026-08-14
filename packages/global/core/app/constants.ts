@@ -162,6 +162,8 @@ export const isChatFileAllowedBySelectConfig = ({
     );
   }
 
+  if (contentType?.trim()) return false;
+
   return fileType === 'image'
     ? fileSelectConfig.canSelectImg === true
     : fileType === 'video'
