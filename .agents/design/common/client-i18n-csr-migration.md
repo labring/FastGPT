@@ -34,7 +34,8 @@ FastGPT 主应用当前使用 Next.js Pages Router。`pages/_app.tsx` 通过
 4. 同一浏览器会话内，相同 `language + namespace` 不重复解析和注册。
 5. 页面刷新和后续访问尽量命中浏览器 HTTP 缓存，不自行维护翻译正文的
    `localStorage` 缓存。
-6. namespace 加载完成前不渲染依赖翻译的页面树，避免短暂展示翻译 key。
+6. `common` namespace 加载完成前不渲染应用树；业务 namespace 异步加载期间允许暂时展示翻译 key，
+   避免客户端路由切换进入全页 loading。
 7. 首个试点失败时可以只恢复一个页面的 SSR，不影响 `/chat/share` 和其他页面。
 
 ### 2.2 非目标
@@ -79,7 +80,7 @@ export default appWithTranslation(App, clientI18nConfig);
 - `defaultNS: 'common'`
 - `fallbackLng: 'en'`，与当前默认行为一致
 - `localePath: null`
-- `react.useSuspense: false` 作为未迁移组件的全局默认值；已迁移组件显式开启 Suspense
+- `react.useSuspense: false` 作为全局默认值；已迁移组件也使用非 Suspense 加载
 - `partialBundledLanguages: true`，允许 SSR 注入资源与客户端 backend 增量加载并存
 - 通过 `use` 注册浏览器安全的 dynamic-import backend
 - 不在公共 bundle 中静态注入全部翻译资源
@@ -163,7 +164,7 @@ namespace 的正确性来源改为实际使用翻译的组件，而不是中央�
 
 ```tsx
 const { t } = useTranslation(['apikey'] as const, {
-  useSuspense: true
+  useSuspense: false
 });
 ```
 
@@ -175,13 +176,12 @@ const { t } = useTranslation(['apikey'] as const, {
 
 1. 每个已迁移组件必须声明自己直接调用 `t`、`Trans` 所使用的全部 namespace；不能依赖祖先组件
    “碰巧已经加载”。
-2. 页面根组件可以再次声明首屏组件需要的 namespace 合集，作为并行预加载提示，减少多个 Suspense
-   重试形成的加载瀑布；子组件声明仍是正确性来源，页面合集漏项不影响后续按需加载。
-3. 动态弹窗、抽屉和懒加载组件声明自己的 namespace，资源在组件真正挂载时加载，并在功能入口附近
-   放局部 Suspense fallback，避免打开弹窗时整个应用退回全页 loading；首屏必须可立即打开的弹窗可以
-   同时加入页面根组件的预加载合集。
+2. 页面根组件可以再次声明首屏组件需要的 namespace 合集，使资源尽早并行加载；子组件声明仍是
+   正确性来源，页面合集漏项不影响后续按需加载。
+3. 动态弹窗、抽屉和懒加载组件声明自己的 namespace，资源在组件真正挂载时加载；加载期间允许暂时
+   展示翻译 key。首屏必须可立即打开的弹窗可以同时加入页面根组件的预加载合集。
 4. `common` 由 CSR 初始化门禁先加载，保证 `NextHead`、`Layout` 和尚未迁移的公共组件不会展示 key；
-   已迁移组件统一使用 `useClientTranslation(namespace)`，hook 内置 `common` 和 Suspense。仅使用
+   已迁移组件统一使用 `useClientTranslation(namespace)`，hook 内置 `common` 并关闭 Suspense。仅使用
    `common` 的组件调用 `useClientTranslation()`。
    `Layout` 根部声明 `price`，而 `serviceSideProps` 统一预加载 `price`，因此 SSR 页面无需再逐页声明该 namespace。
 5. 原 `serviceSideProps(context, namespaces)` 数组只能作为迁移扫描起点，必须检查页面实际组件树中的
@@ -253,7 +253,7 @@ dynamic import，防止初始化或实例切换边界重复执行。加载失败
 `localStorage`/Cookie 仅继续存语言偏好，不存翻译正文。
 
 已迁移组件使用 `useClientTranslation('业务 namespace')`。该共享 hook 内部组合
-`['common', namespace]` 并启用 Suspense，调用方不重复声明 `common`，同时保留带 namespace 前缀的
+`['common', namespace]` 并关闭 Suspense，调用方不重复声明 `common`，同时保留带 namespace 前缀的
 翻译 key 类型检查。
 
 ### 3.5 页面渲染门禁
@@ -285,24 +285,23 @@ flowchart TD
   B -->|"/chat/share"| C["使用 SSR 注入资源并直接渲染"]
   B -->|"CSR 页面"| D["解析 Cookie、本地偏好和浏览器语言"]
   D --> E["加载目标语言 common 并切换语言"]
-  E --> F["挂载 Suspense 内的应用树"]
+  E --> F["挂载应用树"]
   F --> G["useTranslation 声明组件 namespace"]
-  G --> H["backend 加载缺失资源"]
-  H --> I["资源就绪后渲染组件"]
-  H -->|"失败"| J["展示错误态并确认刷新"]
+  G --> H["先渲染组件，业务 key 可暂时显示"]
+  G --> I["backend 加载缺失资源"]
+  I --> J["资源就绪后自动更新翻译"]
+  I -->|"失败"| K["展示错误态并确认刷新"]
 ```
 
 初始化门禁先加载当前语言和 fallback 所需的 `common`，再挂载整个普通页面树，包括 `_app` 中的
-`NextHead`、`Layout` 和页面组件，保证未改造的应用壳不会先显示 `common:*` key。应用树外层再放统一
-Suspense fallback；组件通过显式 `useTranslation` 按需加载业务 namespace。页面首次资源加载使用顶层
-fallback，交互后挂载的弹窗、抽屉等异步区域优先使用局部 Suspense boundary。
+`NextHead`、`Layout` 和页面组件，保证应用壳不会先显示 `common:*` key。组件通过显式
+`useTranslation` 按需加载业务 namespace，但不触发 Suspense；资源未就绪时先展示 key，加载完成后
+由 i18next 自动更新组件。
 
-直接访问 client-only 页面时使用稳定的全页 loading，不渲染尚未取得翻译的组件。从工作台进入账号首页
-时，导航动作先预加载页面代码和首屏 namespace，加载期间保留工作台，完成后再切换路由。路由切换时：
+直接访问 client-only 页面时，只在 `common` 未就绪期间使用稳定的全页 loading。路由切换时：
 
-- 如果下一页所需资源全部已经存在，不显示额外 loading。
-- 工作台进入账号首页时不显示 loading，也不提前卸载当前页面。
-- 只有新挂载组件声明了缺失 namespace 时才进入 Suspense fallback。
+- `common` 已存在时不显示额外 loading。
+- 新挂载组件声明了缺失的业务 namespace 时继续渲染页面，允许短暂显示翻译 key。
 - 已离开页面的请求可以正常写入 resource store，但不能改变当前页面错误状态；错误状态必须绑定
   `language + namespace`，而不是用单个全局 ready 布尔值。
 - 加载失败不能标记为成功；展示刷新提示并保留 `language`、`namespace` 错误上下文。
@@ -440,7 +439,7 @@ client-only boundary 后会等待真实宽度确认，不会把这次调整暴�
 | `packages/web/i18n/dynamicImportBackend.ts` | 把 i18next backend `read` 接到生成的 loader map |
 | `packages/web/i18n/resourceLoaders.ts` | dynamic import、pending Promise 去重和资源错误状态 |
 | `packages/web/i18n/ClientI18nGate.tsx` | 参数化解析语言，加载初始 namespace 并完成首次语言切换 |
-| `packages/web/i18n/ClientI18nBoundary.tsx` | 提供 Suspense、可注入 loading/error UI 和刷新提示 |
+| `packages/web/i18n/ClientI18nBoundary.tsx` | 捕获 namespace 加载错误并提供刷新提示 |
 | `projects/app/src/web/context/AppShell.tsx` | 从 `_app` 抽出的现有应用布局与初始化逻辑，SSR/CSR 共用 |
 | `projects/app/src/web/context/ClientOnlyPage.tsx` | 无 SSR 动态入口，给共享 Gate 注入 app 参数后挂载页面 |
 | `scripts/generate-i18n-resource-loaders.mjs` | 扫描共享包支持语言和 namespace，生成 loader map |
@@ -602,7 +601,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 | 删除 `serviceSideProps` 后 Provider 不创建 | 给 `appWithTranslation` 传入稳定客户端配置并测试无 `_nextI18Next` 页面 |
 | 有语言 Cookie 时仍停留在默认语言 | CSR 门禁不复用 SSR 的 Cookie 短路，始终显式加载并切换目标语言 |
 | SSR/CSR 路由切换时短暂使用 Router 默认语言 | 有 Cookie 时在 Provider 初始化前注入；无 Cookie 时接受一次闪烁并由 effect 恢复 |
-| 工作台首次进入账号页出现全屏 loading | 导航前预加载账号首页代码和首屏 namespace，完成前保留工作台 |
+| client-only 路由切换因业务 namespace 出现全屏 loading | `common` 就绪后业务 namespace 使用非 Suspense 加载，允许短暂显示翻译 key |
 | 组件漏声明 namespace | 类型约束、静态扫描、missingKey/failedLoading 监控和完整页面操作验收 |
 | 同时请求导致重复加载 | `pendingLoads` 按 `language + namespace` 复用 Promise，并补并发测试 |
 | 语言切换时出现混合语言 | 先加载目标语言全部资源，成功后再 changeLanguage |
@@ -631,16 +630,16 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 实现动态 import、并发去重、资源注册和失败状态底层能力
 - [x] 在 `packages/web` 实现参数化 `ClientI18nGate`，不依赖 app/admin 路由和业务状态
 - [x] 实现类型安全的 `clientOnlyRoutes`，只承担已迁移页面的 CSR 分流
-- [x] 实现 `common` 初始化门禁及应用树 Suspense
+- [x] 实现 `common` 初始化门禁；业务 namespace 使用非 Suspense 加载
 - [x] 实现迁移路由限定的 client-only boundary
 - [x] 调整迁移页面初始化为“先加载、再切换、再持久化”
 - [x] client-only 路由在 Provider 初始化前只注入语言 Cookie；无 Cookie 时由 effect 恢复
-- [x] 工作台进入账号首页前预加载页面和首屏 namespace，避免首次导航全屏 loading
+- [x] 移除账号首页专用预加载，统一依赖 `common` 门禁与业务 namespace 后台加载
 - [x] 为上述能力补充自动化单元测试（loader、backend、原子切换、语言映射和服务端请求解析）
 
 ### 第一批：账户页面与 `/price`（代码已完成，浏览器验收待发布）
 
-- [x] 将迁移可达组件改为显式 `useTranslation(namespace, { useSuspense: true })`
+- [x] 将迁移可达组件改为显式 `useTranslation(namespace, { useSuspense: false })`
 - [x] API key 组件声明 `common`、`apikey`，账户容器声明 `common`、`account`
 - [x] 删除迁移页面的 `serviceSideProps` 和 `getServerSideProps`
 - [x] 将 `/account/apikey`、`/account/bill`、`/account/inform`、`/account/setting`、`/account/thirdParty`、`/account/customDomain`、`/account/team`、`/account/info`、`/account/model`、`/account/usage`、`/price` 加入 client-only 路由集合
@@ -681,7 +680,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 页面、列表、详情与图表显式声明 `common`、`account_usage`
 - [x] 删除页面的 `serviceSideProps` 和 `getServerSideProps`
 - [x] 将 `/account/usage` 加入 client-only 路由集合
-- [x] 充值弹窗仅在打开时延迟加载 `user` namespace，并使用局部 Suspense
+- [x] 充值弹窗仅在打开时延迟加载 `user` namespace，加载期间不阻塞页面
 - [x] 补齐繁体 `account_usage` 缺失的翻译 key
 - [ ] 验证列表筛选、导出、详情、Dashboard 与充值弹窗
 

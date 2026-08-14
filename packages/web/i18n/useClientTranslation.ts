@@ -10,7 +10,7 @@ type ClientNamespaceInput = ClientNamespace | readonly ClientNamespace[];
 
 /**
  * 加载客户端页面的业务 namespace，并隐式包含启动阶段已就绪的 common namespace。
- * 支持单个 namespace 或 namespace 数组，组件只需声明自己直接使用的业务资源。
+ * 业务资源使用非 Suspense 加载，缺失期间允许先显示 key，避免路由切换触发全页 loading。
  */
 export const useClientTranslation = (namespace?: ClientNamespaceInput) => {
   const namespaces = namespace
@@ -19,7 +19,7 @@ export const useClientTranslation = (namespace?: ClientNamespaceInput) => {
       : (['common', namespace] as const)
     : 'common';
 
-  const { t: originalT, ...rest } = useTranslation(namespaces, { useSuspense: true });
+  const { t: originalT, ...rest } = useTranslation(namespaces, { useSuspense: false });
   const language = getLangMapping(rest.i18n.language);
   const requiredLanguages = getRequiredI18nLanguages(language);
   const requiredNamespaces = Array.isArray(namespaces) ? namespaces : [namespaces];

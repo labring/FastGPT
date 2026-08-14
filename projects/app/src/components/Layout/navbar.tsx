@@ -13,7 +13,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { useAccountNavigation } from './hooks/useAccountNavigation';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -44,7 +43,6 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { userInfo } = useUserStore();
   const { gitStar, feConfigs } = useSystemStore();
   const { lastChatAppId, lastPane } = useChatStore();
-  const navigateToAccount = useAccountNavigation();
 
   const navbarList = useMemo(
     () => [
@@ -164,10 +162,6 @@ const Navbar = ({ unread }: { unread: number }) => {
                         window.open(getWebReqUrl(item.link), '_blank', 'noopener,noreferrer');
                         return;
                       }
-                      if (item.link === '/account/info') {
-                        void navigateToAccount();
-                        return;
-                      }
                       router.push(item.link);
                     }
                   }
@@ -255,7 +249,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         </MyTooltip>
       )}
 
-      <Box flex={'0 0 auto'} mb={4} cursor={'pointer'} onClick={() => void navigateToAccount()}>
+      <Box flex={'0 0 auto'} mb={4} cursor={'pointer'} onClick={() => router.push('/account/info')}>
         <Avatar w={9} src={userInfo?.avatar} borderRadius={'50%'} />
       </Box>
     </Flex>
