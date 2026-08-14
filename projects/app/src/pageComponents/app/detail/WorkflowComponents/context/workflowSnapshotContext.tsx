@@ -9,7 +9,6 @@ import {
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { WorkflowBufferDataContext } from './workflowInitContext';
@@ -306,27 +305,26 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
         edges: appVersion.edges,
         chatConfig: appVersion.chatConfig
       });
-      const normalizedWorkflow = normalizeWorkflowConfig(migratedWorkflow);
-      const edges = normalizedWorkflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+      const edges = migratedWorkflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
       const toolNodeIds = new Set(
-        normalizedWorkflow.edges
+        migratedWorkflow.edges
           .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
-      const nodes = normalizedWorkflow.nodes.map((item) =>
+      const nodes = migratedWorkflow.nodes.map((item) =>
         storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
       );
 
       resetSnapshot({
         nodes,
         edges,
-        chatConfig: normalizedWorkflow.chatConfig
+        chatConfig: migratedWorkflow.chatConfig
       });
 
       return pushPastSnapshot({
         pastNodes: nodes,
         pastEdges: edges,
-        chatConfig: normalizedWorkflow.chatConfig,
+        chatConfig: migratedWorkflow.chatConfig,
         customTitle: `${t('app:version_copy')}-${appVersion.versionName}`
       });
     },

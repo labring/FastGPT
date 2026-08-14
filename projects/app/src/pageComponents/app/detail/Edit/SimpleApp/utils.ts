@@ -37,7 +37,8 @@ import {
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getAppChatConfig, normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
@@ -54,7 +55,7 @@ export const appWorkflow2Form = ({
   chatConfig: AppChatConfigType;
 }) => {
   const defaultAppForm = getDefaultAppForm();
-  const normalizedWorkflow = normalizeWorkflowConfig({ nodes, chatConfig });
+  const normalizedWorkflow = migrateSystemConfigToChatConfig({ nodes, edges: [], chatConfig });
   defaultAppForm.chatConfig = getAppChatConfig({
     chatConfig: normalizedWorkflow.chatConfig,
     isPublicFetch: true

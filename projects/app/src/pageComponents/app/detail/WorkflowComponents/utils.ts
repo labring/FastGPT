@@ -1,6 +1,6 @@
 import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -61,7 +61,7 @@ export const uiWorkflow2StoreWorkflow = ({
       .map((edge) => edge.target)
   );
 
-  const { nodes: formatNodes } = normalizeWorkflowConfig({
+  const { nodes: formatNodes } = migrateSystemConfigToChatConfig({
     nodes: nodes.map((item) => ({
       nodeId: item.data.nodeId,
       parentNodeId: item.data.parentNodeId,
