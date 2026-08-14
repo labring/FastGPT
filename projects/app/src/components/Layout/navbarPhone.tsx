@@ -6,12 +6,14 @@ import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAccountNavigation } from './hooks/useAccountNavigation';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { t } = useTranslation();
   const { lastChatAppId, lastPane } = useChatStore();
+  const navigateToAccount = useAccountNavigation();
 
   const navbarList = useMemo(
     () => [
@@ -77,7 +79,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           ]
         : [])
     ],
-    [lastChatAppId, lastPane, t, userInfo?.username]
+    [lastChatAppId, lastPane, t, unread, userInfo?.username]
   );
 
   return (
@@ -113,6 +115,10 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
               if (item.link === router.asPath) return;
               if (item.link.startsWith('/chat')) {
                 window.open(item.link, '_blank');
+                return;
+              }
+              if (item.link === '/account/info') {
+                void navigateToAccount();
                 return;
               }
               router.push(item.link);

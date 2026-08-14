@@ -297,9 +297,11 @@ flowchart TD
 Suspense fallback；组件通过显式 `useTranslation` 按需加载业务 namespace。页面首次资源加载使用顶层
 fallback，交互后挂载的弹窗、抽屉等异步区域优先使用局部 Suspense boundary。
 
-加载状态使用稳定的全页 loading，不渲染尚未取得翻译的组件。路由切换时：
+直接访问 client-only 页面时使用稳定的全页 loading，不渲染尚未取得翻译的组件。从工作台进入账号首页
+时，导航动作先预加载页面代码和首屏 namespace，加载期间保留工作台，完成后再切换路由。路由切换时：
 
 - 如果下一页所需资源全部已经存在，不显示额外 loading。
+- 工作台进入账号首页时不显示 loading，也不提前卸载当前页面。
 - 只有新挂载组件声明了缺失 namespace 时才进入 Suspense fallback。
 - 已离开页面的请求可以正常写入 resource store，但不能改变当前页面错误状态；错误状态必须绑定
   `language + namespace`，而不是用单个全局 ready 布尔值。
@@ -600,6 +602,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 | 删除 `serviceSideProps` 后 Provider 不创建 | 给 `appWithTranslation` 传入稳定客户端配置并测试无 `_nextI18Next` 页面 |
 | 有语言 Cookie 时仍停留在默认语言 | CSR 门禁不复用 SSR 的 Cookie 短路，始终显式加载并切换目标语言 |
 | SSR/CSR 路由切换时短暂使用 Router 默认语言 | 有 Cookie 时在 Provider 初始化前注入；无 Cookie 时接受一次闪烁并由 effect 恢复 |
+| 工作台首次进入账号页出现全屏 loading | 导航前预加载账号首页代码和首屏 namespace，完成前保留工作台 |
 | 组件漏声明 namespace | 类型约束、静态扫描、missingKey/failedLoading 监控和完整页面操作验收 |
 | 同时请求导致重复加载 | `pendingLoads` 按 `language + namespace` 复用 Promise，并补并发测试 |
 | 语言切换时出现混合语言 | 先加载目标语言全部资源，成功后再 changeLanguage |
@@ -632,6 +635,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 实现迁移路由限定的 client-only boundary
 - [x] 调整迁移页面初始化为“先加载、再切换、再持久化”
 - [x] client-only 路由在 Provider 初始化前只注入语言 Cookie；无 Cookie 时由 effect 恢复
+- [x] 工作台进入账号首页前预加载页面和首屏 namespace，避免首次导航全屏 loading
 - [x] 为上述能力补充自动化单元测试（loader、backend、原子切换、语言映射和服务端请求解析）
 
 ### 第一批：账户页面与 `/price`（代码已完成，浏览器验收待发布）
