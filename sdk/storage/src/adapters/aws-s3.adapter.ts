@@ -322,9 +322,15 @@ export class AwsS3StorageAdapter implements IStorage {
   async deleteObjectsByMultiKeys(
     params: Storage.DeleteObjectsParams
   ): Promise<Storage.DeleteObjectsResult> {
-    const { keys } = params;
-    assertStorageObjectKeys(keys);
+    assertStorageObjectKeys(params.keys);
+    return this.deleteObjectsByRawKeys(params);
+  }
 
+  /** legacy 原始 key 直删：跳过格式断言，仅保留分块与失败 key 上报。 */
+  async deleteObjectsByRawKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
+    const { keys } = params;
     if (keys.length === 0) {
       return {
         bucket: this.options.bucket,

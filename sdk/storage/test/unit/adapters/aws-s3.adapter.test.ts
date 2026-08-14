@@ -371,6 +371,39 @@ describe('AwsS3StorageAdapter.deleteObjectsByPrefix', () => {
   });
 });
 
+describe('AwsS3StorageAdapter.deleteObjectsByRawKeys', () => {
+  it('passes legacy keys through to S3 unchanged', async () => {
+    const adapter = createAdapter();
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    const send = vi.fn().mockResolvedValue({ Errors: [] });
+    (adapter as any).client.send = send;
+
+    await expect(adapter.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: []
+    });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          Bucket: 'fastgpt-private',
+          Delete: { Objects: [{ Key: legacyKey }], Quiet: true }
+        }
+      })
+    );
+  });
+
+  it('still rejects control-character keys through the validated path', async () => {
+    const adapter = createAdapter();
+    const send = vi.fn();
+    (adapter as any).client.send = send;
+
+    await expect(
+      adapter.deleteObjectsByMultiKeys({ keys: ['chat/app/legacy\r\nname.svg'] })
+    ).rejects.toThrow('must not contain ASCII control characters');
+    expect(send).not.toHaveBeenCalled();
+  });
+});
+
 describe('AwsS3StorageAdapter.generatePublicGetUrl', () => {
   it.each([
     [

@@ -340,6 +340,20 @@ export interface IStorage {
   ): Promise<Storage.DeleteObjectsResult>;
 
   /**
+   * 根据多个 key 批量删除对象（legacy 原始 key 直删通道）。
+   *
+   * 与 `deleteObjectsByMultiKeys` 的远端行为一致（按厂商限制分批、回传失败 key），
+   * 但**不执行对象 key 格式断言**，只用于删除历史遗留的非规范 key
+   * （例如文件名包含 ASCII 控制字符或反斜线的旧聊天文件）。
+   *
+   * 安全约束：
+   * - 只允许删除业务侧已确认存在的精确对象 key，不要用于删除可受外部输入影响的 key。
+   * - keys 为空数组时直接返回成功，保持幂等。
+   * - 前缀删除（`deleteObjectsByPrefix`）不受影响，仍强制非空前缀校验。
+   */
+  deleteObjectsByRawKeys(params: Storage.DeleteObjectsParams): Promise<Storage.DeleteObjectsResult>;
+
+  /**
    * 根据前缀批量删除对象（危险操作）。
    *
    * 安全建议：

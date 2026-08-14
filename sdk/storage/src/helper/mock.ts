@@ -245,6 +245,13 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
     }
   );
 
+  const deleteObjectsByRawKeys = vi.fn(
+    async (p: Storage.DeleteObjectsParams): Promise<Storage.DeleteObjectsResult> => {
+      for (const key of p.keys) objects.delete(key);
+      return { bucket: bucketName, keys: [] };
+    }
+  );
+
   const deleteObjectsByPrefix = vi.fn(
     async (p: Storage.DeleteObjectsByPrefixParams): Promise<Storage.DeleteObjectsResult> => {
       assertRequiredStorageObjectPrefix(p.prefix);
@@ -342,6 +349,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
     downloadObject,
     deleteObject,
     deleteObjectsByMultiKeys,
+    deleteObjectsByRawKeys,
     deleteObjectsByPrefix,
     generatePresignedPutUrl,
     generatePresignedGetUrl,

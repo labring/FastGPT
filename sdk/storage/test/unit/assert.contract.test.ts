@@ -201,3 +201,79 @@ describe('IStorage object key preflight contract', () => {
     }
   );
 });
+
+describe('IStorage raw key deletion contract', () => {
+  it.each([
+    ['AWS S3', createAwsStorage],
+    ['MinIO', createMinioStorage]
+  ] as const)(
+    '%s dispatches deleteObjectsByRawKeys without key preflight',
+    async (_, createStorage) => {
+      const { storage, remoteCall } = createStorage();
+      const legacyKey = 'chat/app/legacy\r\nname.svg';
+
+      // remote mock 被调用时直接抛错，证明 raw 通道确实绕过了格式断言并触达远端。
+      await expect(storage.deleteObjectsByRawKeys({ keys: [legacyKey] })).rejects.toThrow(
+        'Object key was not validated before the remote SDK call'
+      );
+      expect(remoteCall).toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['OSS', createOssStorage],
+    ['COS', createCosStorage]
+  ] as const)(
+    '%s dispatches raw control-character keys through single-object delete and reports failures',
+    async (_, createStorage) => {
+      const { storage, remoteCall } = createStorage();
+      const legacyKey = 'chat/app/legacy\r\nname.svg';
+
+      // 含控制字符的 key 走单对象 DELETE（URL 路径）；remote mock 抛错时收集为失败 key，不抛出。
+      await expect(storage.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+        bucket: 'test-bucket',
+        keys: [legacyKey]
+      });
+      expect(remoteCall).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('Vitest mock deletes raw legacy keys without validation', async () => {
+    const storage = createVitestStorageMock({ vi, bucketName: 'test-bucket' });
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    storage.__putObject(legacyKey, { body: Buffer.from('svg') });
+
+    await expect(storage.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+      bucket: 'test-bucket',
+      keys: []
+    });
+    expect(storage.__objects.has(legacyKey)).toBe(false);
+  });
+
+  it('OSS routes raw control-character keys through the single-object delete URL path', async () => {
+    const { storage, remoteCall } = createOssStorage();
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+
+    await expect(storage.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+      bucket: 'test-bucket',
+      keys: [legacyKey]
+    });
+    expect(remoteCall).toHaveBeenCalledTimes(1);
+    expect(remoteCall).toHaveBeenCalledWith(legacyKey);
+  });
+
+  it('COS routes raw control-character keys through the single-object delete URL path', async () => {
+    const { storage, remoteCall } = createCosStorage();
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+
+    await expect(storage.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+      bucket: 'test-bucket',
+      keys: [legacyKey]
+    });
+    expect(remoteCall).toHaveBeenCalledTimes(1);
+    expect(remoteCall).toHaveBeenCalledWith(
+      expect.objectContaining({ Bucket: 'test-bucket', Region: 'ap-guangzhou', Key: legacyKey }),
+      expect.any(Function)
+    );
+  });
+});
