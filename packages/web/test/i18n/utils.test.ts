@@ -5,6 +5,7 @@ import {
   canUseLanguageLocalStorage,
   getClientLanguagePreference,
   getLanguageStorageKind,
+  getLangFromAcceptLanguage,
   getLangMapping,
   getPersistedLang,
   getRequiredI18nLanguages,
@@ -89,6 +90,21 @@ describe('getLangMapping', () => {
     expect(getLangMapping('zh-Hant-TW')).toBe(LangEnum.zh_Hant);
     expect(getLangMapping('zh-Hant-HK')).toBe(LangEnum.zh_Hant);
     expect(getLangMapping(' zh_hant_tw ')).toBe(LangEnum.zh_Hant);
+  });
+});
+
+describe('getLangFromAcceptLanguage', () => {
+  it('uses the highest-quality supported browser language', () => {
+    expect(getLangFromAcceptLanguage('en-US;q=0.5, zh-CN;q=0.9')).toBe(LangEnum.zh_CN);
+  });
+
+  it('maps Traditional Chinese browser locales to zh-Hant', () => {
+    expect(getLangFromAcceptLanguage('zh-Hant-TW, en-US;q=0.8')).toBe(LangEnum.zh_Hant);
+  });
+
+  it('skips unsupported languages and keeps supported fallbacks', () => {
+    expect(getLangFromAcceptLanguage('fr-FR, en-US;q=0.8')).toBe(LangEnum.en);
+    expect(getLangFromAcceptLanguage('fr-FR')).toBeUndefined();
   });
 });
 
