@@ -8,6 +8,7 @@ import { UploadTeamPkgPluginResponseSchema } from '@fastgpt/global/openapi/core/
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import fs from 'node:fs';
+import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
 
 /* ============================================================================
  * API: 上传团队插件包
@@ -50,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return jsonRes(res, { code: 403, error: 'Team plugin upload is disabled' });
     }
 
-    await authUserPer({
+    const { teamId } = await authUserPer({
       req,
       authToken: true,
       per: TeamManagePermissionVal
@@ -75,7 +76,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     try {
-      const uploadResult = await pluginClient.uploadPlugin(uploadFiles);
+      const uploadResult = await pluginClient.uploadPlugin(uploadFiles, {
+        source: getTeamPluginSource(teamId)
+      });
       return jsonRes(res, {
         code: 200,
         data: UploadTeamPkgPluginResponseSchema.parse(uploadResult)
