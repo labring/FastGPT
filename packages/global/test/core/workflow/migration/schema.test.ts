@@ -4,6 +4,7 @@ import {
   LegacyFlowNodeInputItemSchema,
   migrateAgentToolInputConfigToCurrent,
   migrateFlowNodeInputToCurrent,
+  migrateLegacyWorkflowHttpToolInputsDefaultMode,
   migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -79,6 +80,60 @@ describe('workflow v0 to v1 migration', () => {
     ).toEqual({ key: 'query', mode: 'agentGenerated' });
   });
 
+  it('restores legacy toolDescription defaults for tool nodes', () => {
+    const [input] = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'tool-1',
+          flowNodeType: 'pluginModule',
+          pluginId: 'commercial-test-tool',
+          name: 'Tool',
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              toolDescription: 'Query from user',
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+              selectedTypeIndex: 0
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'agent-1',
+          target: 'tool-1',
+          sourceHandle: '',
+          targetHandle: 'selectedTools'
+        }
+      ]
+    } as any).nodes[0].inputs;
+
+    expect(input).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+  });
+
+  it('restores legacy HTTP tool input default mode', () => {
+    const [input] = migrateLegacyWorkflowHttpToolInputsDefaultMode([
+      {
+        key: 'query',
+        label: 'Query',
+        canEdit: true,
+        toolDescription: 'Query from user',
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+      }
+    ]);
+
+    expect(input.isToolParam).toBe(true);
+  });
+
   it('is idempotent for workflow data', () => {
     const input = {
       nodes: [
@@ -94,5 +149,31 @@ describe('workflow v0 to v1 migration', () => {
     } as any;
     const first = migrateWorkflowToCurrent(input);
     expect(migrateWorkflowToCurrent(first as any)).toEqual(first);
+  });
+
+  it('does not change an already canonical Agent resource selection', () => {
+    const input = {
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: 'selectedTools',
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool, FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              value: ['source-node', 'tools']
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    };
+
+    expect(migrateWorkflowToCurrent(input as any)).toEqual(input);
   });
 });

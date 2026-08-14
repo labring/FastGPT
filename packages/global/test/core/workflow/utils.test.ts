@@ -6,7 +6,6 @@ import {
   getGuideModule,
   splitGuideModule,
   getAppChatConfig,
-  normalizeWorkflowConfig,
   getOrInitModuleInputValue,
   getModuleInputUiField,
   pluginData2FlowNodeIO,
@@ -22,6 +21,10 @@ import {
   clientGetWorkflowToolRunUserQuery,
   removeUnauthModels
 } from '@fastgpt/global/core/workflow/utils';
+import {
+  migrateFlowNodeInputToCurrent,
+  migrateWorkflowToCurrent
+} from '@fastgpt/global/core/workflow/migration';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -221,7 +224,7 @@ describe('nodeInputIsReference', () => {
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.reference]
     };
-    expect(nodeInputIsReference(input)).toBe(true);
+    expect(nodeInputIsReference(migrateFlowNodeInputToCurrent(input))).toBe(true);
   });
 
   it('should return true when selectedTypeIndex points to reference', () => {
@@ -231,7 +234,7 @@ describe('nodeInputIsReference', () => {
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedTypeIndex: 1
     };
-    expect(nodeInputIsReference(input)).toBe(true);
+    expect(nodeInputIsReference(migrateFlowNodeInputToCurrent(input))).toBe(true);
   });
 
   it('should prefer selectedType over selectedTypeIndex', () => {
@@ -487,7 +490,7 @@ describe('splitGuideModule', () => {
   });
 });
 
-describe('normalizeWorkflowConfig', () => {
+describe('migrateWorkflowToCurrent system config migration', () => {
   const createSystemConfigNode = (
     inputs: Array<[NodeInputKeyEnum, unknown]> = [],
     nodeId = 'system'
@@ -524,7 +527,7 @@ describe('normalizeWorkflowConfig', () => {
   ];
 
   it('should migrate every legacy system config field into chatConfig', () => {
-    const result = normalizeWorkflowConfig({
+    const result = migrateWorkflowToCurrent({
       nodes: [createSystemConfigNode(legacyInputs)]
     });
 
@@ -559,7 +562,7 @@ describe('normalizeWorkflowConfig', () => {
       flowNodeType: FlowNodeTypeEnum.pluginConfig
     };
 
-    const result = normalizeWorkflowConfig({
+    const result = migrateWorkflowToCurrent({
       nodes: [pluginConfigNode],
       chatConfig: {}
     });
@@ -569,7 +572,7 @@ describe('normalizeWorkflowConfig', () => {
   });
 
   it('should preserve explicit current values instead of overwriting them', () => {
-    const result = normalizeWorkflowConfig({
+    const result = migrateWorkflowToCurrent({
       nodes: [createSystemConfigNode(legacyInputs)],
       chatConfig: {
         welcomeConfig: {
@@ -636,7 +639,7 @@ describe('normalizeWorkflowConfig', () => {
       }
     ];
 
-    const result = normalizeWorkflowConfig({ nodes, edges });
+    const result = migrateWorkflowToCurrent({ nodes, edges });
 
     expect(result.nodes).toEqual([nodes[2]]);
     expect(result.edges).toEqual([edges[2]]);
@@ -652,9 +655,9 @@ describe('normalizeWorkflowConfig', () => {
         welcomeQuestions: ['Current question']
       }
     };
-    const first = normalizeWorkflowConfig({ nodes, chatConfig });
+    const first = migrateWorkflowToCurrent({ nodes, chatConfig });
 
-    expect(normalizeWorkflowConfig(first)).toEqual(first);
+    expect(migrateWorkflowToCurrent(first)).toEqual(first);
     expect(nodes).toEqual([systemConfigNode]);
     expect(chatConfig).toEqual({
       welcomeConfig: {
@@ -1799,7 +1802,8 @@ describe('removeUnauthModels', () => {
     ];
     const allowedModels = new Set(['gpt-4', 'gpt-3.5-turbo']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const migratedModules = migrateWorkflowToCurrent({ nodes: modules, edges: [] }).nodes;
+    const result = await removeUnauthModels({ modules: migratedModules, allowedModels });
     expect(result?.[0].inputs[0].value).toBe('gpt-4');
   });
 
@@ -1823,7 +1827,8 @@ describe('removeUnauthModels', () => {
     ];
     const allowedModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const migratedModules = migrateWorkflowToCurrent({ nodes: modules, edges: [] }).nodes;
+    const result = await removeUnauthModels({ modules: migratedModules, allowedModels });
     expect(result?.[0].inputs[0].value).toBeUndefined();
   });
 
@@ -1847,7 +1852,8 @@ describe('removeUnauthModels', () => {
     ];
     const allowedModels = new Set(['gpt-4']);
 
-    const result = await removeUnauthModels({ modules, allowedModels });
+    const migratedModules = migrateWorkflowToCurrent({ nodes: modules, edges: [] }).nodes;
+    const result = await removeUnauthModels({ modules: migratedModules, allowedModels });
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
   });
 

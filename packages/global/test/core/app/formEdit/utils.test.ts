@@ -7,16 +7,18 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
-  getSavedToolInputSelectedType,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
-  normalizeLegacyWorkflowHttpToolInputsDefaultMode,
-  normalizeFlowNodeInputType,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  getLegacySavedToolInputSelectedType as getSavedToolInputSelectedType,
+  migrateLegacyFlowNodeInputToCurrent as normalizeFlowNodeInputType,
+  migrateLegacyWorkflowHttpToolInputsDefaultMode as normalizeLegacyWorkflowHttpToolInputsDefaultMode
+} from '@fastgpt/global/core/workflow/migration';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -1175,7 +1177,8 @@ describe('agent generated tool input helpers', () => {
         renderTypeList: [FlowNodeInputTypeEnum.reference],
         selectedType: FlowNodeInputTypeEnum.reference,
         selectedTypeIndex: 0
-      })
+      }),
+      { isTool: true }
     );
 
     expect(input.renderTypeList).toEqual([
@@ -1775,13 +1778,14 @@ describe('agent generated tool input helpers', () => {
   });
 
   it('should preserve legacy selectedTypeIndex developer mode before applying isToolParam default', () => {
-    const input = initToolInputTypeByDefaultMode(
+    const input = normalizeFlowNodeInputType(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
         selectedTypeIndex: 1,
         toolDescription: 'Prompt to model',
         isToolParam: true
-      })
+      }),
+      { isTool: true }
     );
 
     expect(input.renderTypeList).toEqual([
@@ -1848,7 +1852,7 @@ describe('agent generated tool input helpers', () => {
         createMockInput({
           key: 'indexOnly',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         }),
         createMockInput({
           key: 'manualText',
