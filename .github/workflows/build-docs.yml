@@ -66,6 +66,7 @@ jobs:
   build-images:
     needs: generate-timestamp
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     strategy:
       matrix:
         domain_config:
@@ -90,6 +91,14 @@ jobs:
           find document/content/docs -name "*.mdx" -type f | while read file; do
             sed -i 's|doc\.fastgpt\.io|doc.fastgpt.cn|g' "$file"
           done
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          version: v0.35.0
+          driver-opts: |
+            image=moby/buildkit:v0.31.2
+            network=host
 
       - name: Docker meta
         id: meta

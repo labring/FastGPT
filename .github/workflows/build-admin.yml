@@ -20,13 +20,12 @@ jobs:
             base_url: ""
           - repo: fastgpt-pro-sub-route
             base_url: "/fastaipro"
-          - repo: fastgpt-pro-sub-route-gchat
-            base_url: "/gchat-admin"
         archs:
           - arch: amd64
           - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.archs.runs-on || 'ubuntu-24.04' }}
+    timeout-minutes: 120
     steps:
       # install env
       - name: Checkout
@@ -50,7 +49,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: network=host
+          version: v0.35.0
+          driver-opts: |
+            image=moby/buildkit:v0.31.2
+            network=host
 
       - name: Cache Docker layers
         uses: actions/cache@v4
@@ -113,8 +115,8 @@ jobs:
         sub_routes:
           - repo: fastgpt-pro
           - repo: fastgpt-pro-sub-route
-          - repo: fastgpt-pro-sub-route-gchat
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -138,6 +140,10 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          version: v0.35.0
+          driver-opts: |
+            image=moby/buildkit:v0.31.2
 
       - name: Set image name and tag
         run: |
