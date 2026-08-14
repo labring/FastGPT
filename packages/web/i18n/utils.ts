@@ -290,44 +290,6 @@ export const getLangMapping = (lng: string): localeType => {
   return lang || LangEnum.zh_CN;
 };
 
-/**
- * 从 Accept-Language 中选择系统支持且权重最高的语言。
- * 不支持的浏览器语言返回 undefined，由调用方继续使用项目默认语言。
- */
-export const getLangFromAcceptLanguage = (
-  acceptLanguage?: string | string[]
-): localeType | undefined => {
-  const rawValue = Array.isArray(acceptLanguage) ? acceptLanguage.join(',') : acceptLanguage;
-  if (!rawValue) return;
-
-  const candidates = rawValue
-    .split(',')
-    .map((item, index) => {
-      const [languageTag, ...parameters] = item.trim().split(';');
-      const qualityParameter = parameters.find((parameter) =>
-        parameter.trim().toLowerCase().startsWith('q=')
-      );
-      const parsedQuality = qualityParameter
-        ? Number.parseFloat(qualityParameter.split('=')[1])
-        : 1;
-
-      return {
-        languageTag: languageTag.trim(),
-        quality: Number.isFinite(parsedQuality) ? parsedQuality : 0,
-        index
-      };
-    })
-    .filter(({ languageTag, quality }) => languageTag && quality > 0)
-    .sort((first, second) => second.quality - first.quality || first.index - second.index);
-
-  for (const { languageTag } of candidates) {
-    const languagePrefix = languageTag.replaceAll('_', '-').split('-')[0].toLowerCase();
-    if (languagePrefix === 'zh' || languagePrefix === 'en') {
-      return getLangMapping(languageTag);
-    }
-  }
-};
-
 /** 返回资源加载必须满足的语言链；非英文语言同时依赖英文 fallback。 */
 export const getRequiredI18nLanguages = (language: localeType): localeType[] =>
   language === LangEnum.en ? [LangEnum.en] : [language, LangEnum.en];

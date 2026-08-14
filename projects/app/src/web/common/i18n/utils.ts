@@ -1,5 +1,5 @@
 import { type I18nNsType } from '@fastgpt/web/i18n/i18next';
-import { getLangFromAcceptLanguage, getLangMapping, LANG_KEY } from '@fastgpt/web/i18n/utils';
+import { getLangMapping, LANG_KEY } from '@fastgpt/web/i18n/utils';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 type ServiceSidePropsOptions = {
@@ -18,7 +18,6 @@ export const serviceSideProps = async (
       (options.fallbackLangCookieKey
         ? content.req?.cookies?.[options.fallbackLangCookieKey]
         : undefined) ||
-      getLangFromAcceptLanguage(content.req?.headers?.['accept-language']) ||
       content.locale ||
       ''
   );

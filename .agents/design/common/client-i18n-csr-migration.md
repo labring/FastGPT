@@ -92,11 +92,10 @@ export default appWithTranslation(App, clientI18nConfig);
 `i18n.changeLanguage` 后才允许渲染页面。
 
 混合迁移期间 `appWithTranslation` 在没有 `_nextI18Next.initialLocale` 时会使用 Next Router 的默认
-locale（当前通常为 `en`）。client-only 路由必须在进入 `appWithTranslation` 前同步解析
-`Cookie -> localStorage -> memory -> navigator.language`，并把结果注入 `_nextI18Next.initialLocale`，使
-Provider 第一帧就使用最终语言，不能先渲染英文再由 effect 切回。client-only boundary 仍负责在资源
-未就绪时阻止业务页面渲染。稳定 config 的另一个作用是避免 SSR/CSR 路由切换时 Provider 在
-“存在/不存在”之间切换并导致整棵应用卸载重建。
+locale（当前通常为 `en`）。client-only 路由在进入 `appWithTranslation` 前只读取语言 Cookie，并把结果
+注入 `_nextI18Next.initialLocale`。没有 Cookie 时允许先使用默认语言，挂载后再由 effect 从 localStorage、
+内存或 `navigator.language` 恢复。client-only boundary 仍负责在资源未就绪时阻止业务页面渲染。稳定
+config 的另一个作用是避免 SSR/CSR 路由切换时 Provider 在“存在/不存在”之间切换并导致整棵应用卸载重建。
 
 ### 3.2 资源按 `language + namespace` 动态导入
 
@@ -325,11 +324,10 @@ i18next 的 namespace 集合会包含当前会话访问过的组件，因此切�
 如果加载失败，保留原语言，不写入新的语言偏好，避免页面进入“语言已切换但资源不完整”的状态；
 全局错误态要求用户确认刷新，刷新后重新读取 Cookie、本地存储和浏览器语言。
 
-SSR 页面按“Cookie → `Accept-Language` → Next 默认语言”解析；没有用户偏好且浏览器系统语言为中文时，
-首屏直接使用对应中文资源。客户端成功写入语言时还会写入 localStorage 镜像，普通 CSR 页面可在 Cookie
-到期后从该镜像恢复原语言并重新续写 Cookie。Cookie 和 localStorage 都不可用时，才退回内存值或
-`navigator.language`。API 请求继续由客户端发送 `x-fastgpt-language`，服务端按请求头与 Cookie 解析，
-不直接访问浏览器存储。
+SSR 页面只按语言 Cookie 选择首屏语言；没有 Cookie 时使用 Next 默认语言，并允许客户端 effect 挂载后
+再从 localStorage、内存或 `navigator.language` 恢复，因此首次无 Cookie 的语言闪烁属于可接受行为。
+客户端成功写入语言时还会写入 localStorage 镜像，普通 CSR 页面可在 Cookie 到期后恢复原语言并重新
+续写 Cookie。API 请求继续由客户端发送 `x-fastgpt-language`，服务端不直接访问浏览器存储。
 
 分享页使用独立的 `FASTGPT_SHARE_LOCALE`。分享页的 Axios、SSE 和 Skill 流式请求从该 key 读取
 Cookie/localStorage/内存，并发送独立的 `x-fastgpt-share-language` 请求头；服务端让该请求头优先于主站
@@ -601,7 +599,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 | --- | --- |
 | 删除 `serviceSideProps` 后 Provider 不创建 | 给 `appWithTranslation` 传入稳定客户端配置并测试无 `_nextI18Next` 页面 |
 | 有语言 Cookie 时仍停留在默认语言 | CSR 门禁不复用 SSR 的 Cookie 短路，始终显式加载并切换目标语言 |
-| SSR/CSR 路由切换时短暂使用 Router 默认语言 | client-only 路由在 Provider 初始化前注入客户端语言，门禁只在资源未 ready 时阻止渲染 |
+| SSR/CSR 路由切换时短暂使用 Router 默认语言 | 有 Cookie 时在 Provider 初始化前注入；无 Cookie 时接受一次闪烁并由 effect 恢复 |
 | 组件漏声明 namespace | 类型约束、静态扫描、missingKey/failedLoading 监控和完整页面操作验收 |
 | 同时请求导致重复加载 | `pendingLoads` 按 `language + namespace` 复用 Promise，并补并发测试 |
 | 语言切换时出现混合语言 | 先加载目标语言全部资源，成功后再 changeLanguage |
@@ -633,8 +631,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 实现 `common` 初始化门禁及应用树 Suspense
 - [x] 实现迁移路由限定的 client-only boundary
 - [x] 调整迁移页面初始化为“先加载、再切换、再持久化”
-- [x] client-only 路由在 Provider 初始化前注入持久化语言或浏览器语言，避免账号页闪现英文
-- [x] SSR 无语言 Cookie 时按 `Accept-Language` 选择中文或英文资源
+- [x] client-only 路由在 Provider 初始化前只注入语言 Cookie；无 Cookie 时由 effect 恢复
 - [x] 为上述能力补充自动化单元测试（loader、backend、原子切换、语言映射和服务端请求解析）
 
 ### 第一批：账户页面与 `/price`（代码已完成，浏览器验收待发布）
