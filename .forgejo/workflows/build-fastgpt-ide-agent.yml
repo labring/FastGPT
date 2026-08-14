@@ -47,6 +47,7 @@ jobs:
             arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 120
     steps:
       # install env
       - name: Checkout
@@ -164,6 +165,7 @@ jobs:
           - image: fastgpt-agent-sandbox-proxy
             tag: ${{ inputs.agent_sandbox_proxy_tag || 'latest' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - name: Set platform variables
         run: |
@@ -221,7 +223,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
-            network=host
             env.GODEBUG=madvdontneed=0
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
