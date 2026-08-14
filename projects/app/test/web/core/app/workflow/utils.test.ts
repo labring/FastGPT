@@ -16,7 +16,6 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import {
   adaptStoreNodeInputs,
-  legacyStoreNode2FlowNode,
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   getNodeAllSource,
@@ -48,6 +47,7 @@ import {
   getOneQuoteInputTemplate
 } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
@@ -55,6 +55,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import type { LegacyStoreNodeItem } from '@fastgpt/global/core/workflow/migration';
 describe('nodeTemplate2FlowNode', () => {
   it('should initialize template text once before formatting the instance name', () => {
     const template: FlowNodeTemplateType = {
@@ -103,7 +104,7 @@ describe('nodeTemplate2FlowNode', () => {
 });
 
 describe('adaptStoreNodeInputs', () => {
-  const createAgentNode = (inputs: StoreNodeItemType['inputs']): StoreNodeItemType => ({
+  const createAgentNode = (inputs: LegacyStoreNodeItem['inputs']): LegacyStoreNodeItem => ({
     nodeId: 'agent-node',
     flowNodeType: FlowNodeTypeEnum.agent,
     name: 'Agent',
@@ -136,7 +137,7 @@ describe('adaptStoreNodeInputs', () => {
   });
 
   it('should reset legacy Agent resource references to manual selection', () => {
-    const inputs: StoreNodeItemType['inputs'] = [
+    const inputs: LegacyStoreNodeItem['inputs'] = [
       {
         key: NodeInputKeyEnum.skills,
         label: 'Skills',
@@ -160,14 +161,14 @@ describe('adaptStoreNodeInputs', () => {
       }
     ];
 
-    const result = adaptStoreNodeInputs(createAgentNode(inputs));
+    const result = adaptStoreNodeInputs(
+      migrateWorkflowToCurrent({ nodes: [createAgentNode(inputs)], edges: [] }).nodes[0]
+    );
 
     expect(result).toEqual(
-      inputs.map((input) => ({
-        key: input.key,
-        label: input.label,
-        renderTypeList: input.renderTypeList,
-        selectedType: input.renderTypeList[0],
+      inputs.map(({ selectedTypeIndex: _selectedTypeIndex, ...input }) => ({
+        ...input,
+        selectedType: input.renderTypeList?.[0],
         value: []
       }))
     );
@@ -176,7 +177,7 @@ describe('adaptStoreNodeInputs', () => {
   it('should preserve manually selected Agent resources and unrelated inputs', () => {
     const selectedSkills = [{ skillId: 'skill-1', name: 'Skill 1' }];
     const promptReference = ['source-node', 'prompt'];
-    const inputs: StoreNodeItemType['inputs'] = [
+    const inputs: LegacyStoreNodeItem['inputs'] = [
       {
         key: NodeInputKeyEnum.skills,
         label: 'Skills',
@@ -193,7 +194,9 @@ describe('adaptStoreNodeInputs', () => {
       }
     ];
 
-    const result = adaptStoreNodeInputs(createAgentNode(inputs));
+    const result = adaptStoreNodeInputs(
+      migrateWorkflowToCurrent({ nodes: [createAgentNode(inputs)], edges: [] }).nodes[0]
+    );
 
     expect(result[0]).toMatchObject({
       selectedType: FlowNodeInputTypeEnum.selectSkill,
@@ -930,7 +933,7 @@ describe('checkWorkflowNodeIssues', () => {
       );
     });
 
-    it('uses selectedType in required validation', () => {
+    it('uses selectedType before deprecated selectedTypeIndex in required validation', () => {
       const node = makeNodeWithTemplateInputs('hidden-selected', FlowNodeTypeEnum.formInput, [
         {
           key: 'internal',
@@ -2194,8 +2197,8 @@ describe('storeNode2FlowNode', () => {
     expect(result.data.outputs).toHaveLength(2);
   });
 
-  it('should preserve the canonical selection while restoring canvas nodes', () => {
-    const storeNode: StoreNodeItemType = {
+  it('should migrate selectedTypeIndex while restoring canvas nodes', () => {
+    const storeNode: LegacyStoreNodeItem = {
       nodeId: 'chat-node',
       flowNodeType: FlowNodeTypeEnum.chatNode,
       position: { x: 0, y: 0 },
@@ -2212,8 +2215,12 @@ describe('storeNode2FlowNode', () => {
       version: '1.0'
     };
 
-    const result = legacyStoreNode2FlowNode({
-      item: storeNode,
+    const [migratedNode] = migrateWorkflowToCurrent({
+      nodes: [{ ...storeNode, inputs: [{ ...storeNode.inputs[0], label: 'User question' }] }],
+      edges: []
+    }).nodes;
+    const result = storeNode2FlowNode({
+      item: migratedNode,
       isTool: true,
       t: ((key: string) => key) as any
     });
@@ -2311,8 +2318,8 @@ describe('storeNode2FlowNode', () => {
     });
   });
 
-  it('should preserve the canonical agent mode in tool context', () => {
-    const storeNode: StoreNodeItemType = {
+  it('should restore legacy workflow tool defaults in tool context', () => {
+    const storeNode: LegacyStoreNodeItem = {
       nodeId: 'workflow-tool',
       flowNodeType: FlowNodeTypeEnum.pluginModule,
       position: { x: 0, y: 0 },
@@ -2320,13 +2327,9 @@ describe('storeNode2FlowNode', () => {
         {
           key: 'query',
           label: 'Search query',
-          renderTypeList: [
-            FlowNodeInputTypeEnum.agentGenerated,
-            FlowNodeInputTypeEnum.input,
-            FlowNodeInputTypeEnum.reference
-          ],
-          selectedType: FlowNodeInputTypeEnum.agentGenerated,
-          defaultToAgentGenerated: true
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0,
+          toolDescription: 'Search query'
         }
       ],
       outputs: [],
@@ -2334,8 +2337,19 @@ describe('storeNode2FlowNode', () => {
       version: '1.0'
     };
 
-    const result = legacyStoreNode2FlowNode({
-      item: storeNode,
+    const [migratedNode] = migrateWorkflowToCurrent({
+      nodes: [{ ...storeNode, inputs: [{ ...storeNode.inputs[0], label: 'Search query' }] }],
+      edges: [
+        {
+          source: 'agent',
+          target: 'workflow-tool',
+          sourceHandle: '',
+          targetHandle: 'selectedTools'
+        }
+      ]
+    }).nodes;
+    const result = storeNode2FlowNode({
+      item: migratedNode,
       isTool: true,
       t: ((key: string) => key) as any
     });

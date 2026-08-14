@@ -6,7 +6,7 @@ import type { Node, Edge } from 'reactflow';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import {
   compareSnapshot,
-  legacyStoreNode2FlowNode,
+  storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
@@ -15,6 +15,7 @@ import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import type { WorkflowStateType } from './type';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type WorkflowSnapshotsType = WorkflowStateType & {
@@ -296,14 +297,23 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
 
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
-      const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+      // 与 initData/导入一致：旧版残留的系统配置节点（欢迎语/变量/定时任务等）需先合并进
+      // chatConfig 再从节点列表过滤掉，否则云版本切换时这些配置不会进入 chatConfig，
+      // 还会作为孤立节点残留在画布上。
+      const migratedWorkflow = migrateWorkflowToCurrent({
+        nodes: appVersion.nodes,
+        edges: appVersion.edges,
+        chatConfig: appVersion.chatConfig
+      });
+      const normalizedWorkflow = normalizeWorkflowConfig(migratedWorkflow);
+      const edges = normalizedWorkflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
       const toolNodeIds = new Set(
         appVersion.edges
           .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
       const nodes = normalizedWorkflow.nodes.map((item) =>
-        legacyStoreNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+        storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
       );
 
       resetSnapshot({

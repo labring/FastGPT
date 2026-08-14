@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   adaptCatchError,
-  legacyStoreNode2FlowNode,
+  storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
 import {
@@ -37,6 +37,7 @@ import {
   isAgentGeneratedToolInput,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -305,21 +306,24 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       },
       isInit?: boolean
     ) => {
-      const workflow = {
+      const migratedWorkflow = migrateWorkflowToCurrent({
         nodes: e.nodes,
         edges: e.edges,
         chatConfig: e.chatConfig ?? appDetail.chatConfig
-      };
-      const storeNodes = workflow.nodes;
+      });
+      const normalizedWorkflow = normalizeWorkflowConfig(migratedWorkflow);
+      const storeNodes = normalizedWorkflow.nodes;
+
+      adaptCatchError(storeNodes, normalizedWorkflow.edges);
 
       const toolNodeIds = new Set(
-        workflow.edges
+        normalizedWorkflow.edges
           .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
       const nodes =
         storeNodes?.map((item) =>
-          legacyStoreNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
+          storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
         ) || [];
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
