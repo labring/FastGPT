@@ -1,8 +1,40 @@
-import type { CanonicalFlowNodeInputItem } from '../schema';
-import type { LegacyFlowNodeInputItem } from './schema';
-import { canInputBeAgentGenerated } from '../../../app/formEdit/utils';
+import type {
+  CanonicalAgentToolInputConfig,
+  CanonicalFlowNodeInputItem,
+  LegacyAgentToolInputConfig,
+  LegacyFlowNodeInputItem
+} from '../schema';
+import { CanonicalAgentToolInputConfigSchema, LegacyAgentToolInputConfigSchema } from '../schema';
+import {
+  canInputBeAgentGenerated,
+  canInputBeManuallyConfigured
+} from '../../../app/formEdit/utils';
 import { FlowNodeInputTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum } from '../../constants';
+
+/** 将单个历史输入收敛为当前 selectedType 协议，并移除旧索引。 */
+export const migrateFlowNodeInputToCurrent = (
+  input: LegacyFlowNodeInputItem
+): CanonicalFlowNodeInputItem => {
+  const { selectedTypeIndex: _selectedTypeIndex, ...canonicalInput } = input;
+  const selectedType =
+    input.selectedType ??
+    (input.selectedTypeIndex === undefined
+      ? undefined
+      : input.renderTypeList?.[input.selectedTypeIndex]);
+
+  return {
+    ...canonicalInput,
+    renderTypeList: input.renderTypeList ?? [],
+    ...(selectedType === undefined ? {} : { selectedType })
+  } as CanonicalFlowNodeInputItem;
+};
+
+/** 将 Agent 工具的完整历史 NodeIO 或当前配置统一为 `{ key, mode }`。 */
+export const migrateAgentToolInputConfigToCurrent = (
+  input: LegacyAgentToolInputConfig
+): CanonicalAgentToolInputConfig =>
+  CanonicalAgentToolInputConfigSchema.parse(LegacyAgentToolInputConfigSchema.parse(input));
 
 type MigrateFlowNodeInputOptions = {
   isTool?: boolean;
@@ -26,12 +58,11 @@ export const migrateLegacyFlowNodeInputToCurrent = (
     input.selectedTypeIndex === undefined
       ? undefined
       : inputRenderTypeList[input.selectedTypeIndex];
-  const defaultToAgentGenerated = input.defaultToAgentGenerated ?? input.isToolParam;
   const recommendsAgentGenerated =
-    defaultToAgentGenerated === true ||
-    (defaultToAgentGenerated !== false && isTool && input.key === NodeInputKeyEnum.userChatInput) ||
+    input.isToolParam === true ||
+    (input.isToolParam !== false && isTool && input.key === NodeInputKeyEnum.userChatInput) ||
     (allowLegacyToolDescriptionFallback &&
-      defaultToAgentGenerated === undefined &&
+      input.isToolParam === undefined &&
       !!input.toolDescription);
   const isLegacyDefaultSelection =
     input.selectedType === undefined &&
@@ -69,19 +100,12 @@ export const migrateLegacyFlowNodeInputToCurrent = (
           ? FlowNodeInputTypeEnum.agentGenerated
           : defaultManualType;
 
-  const {
-    selectedTypeIndex: _selectedTypeIndex,
-    isToolParam: _legacyDefaultToAgentGenerated,
-    ...canonicalInput
-  } = input;
-  // 旧数据用 selectedTypeIndex 保存 renderTypeList 下标；canonical 数据只保留解析后的 selectedType。
-  // 同时始终输出 renderTypeList，避免历史输入缺少该字段时把 undefined 带入后续 schema。
-  return {
+  const { selectedTypeIndex: _selectedTypeIndex, ...canonicalInput } = input;
+  return migrateFlowNodeInputToCurrent({
     ...canonicalInput,
     renderTypeList,
-    ...(defaultToAgentGenerated === undefined ? {} : { defaultToAgentGenerated }),
     ...(selectedType === undefined ? {} : { selectedType })
-  } as CanonicalFlowNodeInputItem;
+  });
 };
 
 /** 恢复旧 HTTP 468 工具输入的默认 AI 来源。 */
@@ -89,7 +113,6 @@ export const migrateLegacyHttpToolInputDefaultMode = (input: LegacyFlowNodeInput
   if (
     input.canEdit !== true ||
     !input.toolDescription ||
-    input.defaultToAgentGenerated !== undefined ||
     input.isToolParam !== undefined ||
     input.selectedType !== undefined ||
     !canInputBeAgentGenerated({ ...input, renderTypeList: input.renderTypeList ?? [] })
@@ -100,10 +123,76 @@ export const migrateLegacyHttpToolInputDefaultMode = (input: LegacyFlowNodeInput
   return { ...input, isToolParam: true };
 };
 
+/** 批量恢复旧工作流 HTTP 工具输入的默认 AI 来源。 */
+export const migrateLegacyWorkflowHttpToolInputsDefaultMode = <T extends LegacyFlowNodeInputItem>(
+  inputs: T[]
+) => inputs.map(migrateLegacyHttpToolInputDefaultMode);
+
+const getLegacySelectedInputRenderType = (input: LegacyFlowNodeInputItem) =>
+  input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+
+/** 读取历史工具快照的最终输入来源，供迁移和 runtime 边界使用。 */
+export const getLegacySavedToolInputSelectedType = ({
+  savedInput,
+  defaultInput,
+  allowUserChatInputAgentGenerated = false,
+  allowLegacyToolDescriptionFallback = false
+}: {
+  savedInput?: LegacyFlowNodeInputItem;
+  defaultInput: CanonicalFlowNodeInputItem;
+  allowUserChatInputAgentGenerated?: boolean;
+  allowLegacyToolDescriptionFallback?: boolean;
+}) => {
+  if (!savedInput) {
+    if (
+      allowLegacyToolDescriptionFallback &&
+      defaultInput.isToolParam === undefined &&
+      defaultInput.toolDescription &&
+      canInputBeAgentGenerated(defaultInput)
+    ) {
+      return FlowNodeInputTypeEnum.agentGenerated;
+    }
+    return;
+  }
+  const supportsOnlyAgentGenerated =
+    defaultInput.renderTypeList.length > 0 &&
+    canInputBeAgentGenerated(defaultInput) &&
+    !canInputBeManuallyConfigured(defaultInput);
+  if (
+    (allowUserChatInputAgentGenerated || defaultInput.key !== NodeInputKeyEnum.userChatInput) &&
+    supportsOnlyAgentGenerated
+  ) {
+    return FlowNodeInputTypeEnum.agentGenerated;
+  }
+  if (savedInput.selectedType) return savedInput.selectedType;
+
+  const selectedType =
+    savedInput.selectedTypeIndex === undefined
+      ? undefined
+      : getLegacySelectedInputRenderType(savedInput);
+  const isLegacyToolDescriptionSelection =
+    allowLegacyToolDescriptionFallback &&
+    savedInput.isToolParam === undefined &&
+    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated);
+  if (isLegacyToolDescriptionSelection) {
+    if (savedInput.toolDescription && canInputBeAgentGenerated(defaultInput)) {
+      return FlowNodeInputTypeEnum.agentGenerated;
+    }
+    return getLegacySelectedInputRenderType(savedInput);
+  }
+  if (savedInput.selectedTypeIndex === undefined) return;
+
+  const isLegacyDefaultManualType =
+    defaultInput.isToolParam === true &&
+    savedInput.selectedTypeIndex === 0 &&
+    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated) &&
+    selectedType !== FlowNodeInputTypeEnum.reference;
+  return isLegacyDefaultManualType ? undefined : selectedType;
+};
+
 /** 恢复旧工作流工具由 toolDescription 表示的默认 AI 来源。 */
 export const migrateLegacyWorkflowToolInputDefaultMode = (input: LegacyFlowNodeInputItem) => {
   if (
-    input.defaultToAgentGenerated !== undefined ||
     input.isToolParam !== undefined ||
     !input.toolDescription ||
     !canInputBeAgentGenerated({ ...input, renderTypeList: input.renderTypeList ?? [] })
@@ -113,3 +202,8 @@ export const migrateLegacyWorkflowToolInputDefaultMode = (input: LegacyFlowNodeI
 
   return { ...input, isToolParam: true };
 };
+
+/** 批量恢复旧工作流工具由 toolDescription 表示的默认 AI 来源。 */
+export const migrateLegacyWorkflowToolInputsDefaultMode = <T extends LegacyFlowNodeInputItem>(
+  inputs: T[]
+) => inputs.map(migrateLegacyWorkflowToolInputDefaultMode);

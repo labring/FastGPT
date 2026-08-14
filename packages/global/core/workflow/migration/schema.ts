@@ -96,6 +96,7 @@ export const LegacyWorkflowDataSchema = z.object({
   chatConfig: AppChatConfigTypeSchema.optional()
 });
 export type LegacyWorkflowData = z.infer<typeof LegacyWorkflowDataSchema>;
+export type LegacyWorkflowDataInput = z.input<typeof LegacyWorkflowDataSchema>;
 
 /**
  * 当前版本的工作流数据。
@@ -103,6 +104,6 @@ export type LegacyWorkflowData = z.infer<typeof LegacyWorkflowDataSchema>;
 export const CanonicalWorkflowDataSchema = z.object({
   nodes: z.array(StoreNodeItemTypeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
-  chatConfig: AppChatConfigTypeSchema.optional()
+  chatConfig: AppChatConfigTypeSchema.default({})
 });
 export type CanonicalWorkflowData = z.infer<typeof CanonicalWorkflowDataSchema>;

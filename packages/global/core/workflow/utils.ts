@@ -19,11 +19,19 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
-import type { LegacyFlowNodeInputItem } from './migration';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import type { AppChatConfigType, AppSchemaType, AppWelcomeConfigType } from '../app/type';
-import type { VariableItemType } from '../app/variable/type';
-import { normalizeAndParseVariableList } from '../app/variable/utils';
+import type {
+  VariableItemType,
+  AppTTSConfigType,
+  AppWhisperConfigType,
+  AppScheduledTriggerConfigType,
+  ChatInputGuideConfigType,
+  AppChatConfigType,
+  AppAutoExecuteConfigType,
+  AppQGConfigType,
+  AppSchemaType,
+  AppWelcomeConfigType
+} from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
   defaultAutoExecuteConfig,
@@ -56,13 +64,11 @@ export const getHandleId = (
 export const getSelectedInputRenderType = (input: {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
-  selectedTypeIndex?: LegacyFlowNodeInputItem['selectedTypeIndex'];
-}) => input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+}) => input.selectedType ?? input.renderTypeList?.[0];
 
 export const getSelectedInputRenderTypeIndex = (input: {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
   selectedType?: FlowNodeInputItemType['selectedType'];
-  selectedTypeIndex?: LegacyFlowNodeInputItem['selectedTypeIndex'];
 }) => {
   const selectedRenderType = getSelectedInputRenderType(input);
   const selectedRenderTypePosition = selectedRenderType
@@ -79,7 +85,7 @@ export const getSelectedInputRenderTypeIndex = (input: {
  * settingDatasetQuotePrompt 内部渲染 Reference 选择器，虽然 renderType 不是 reference，
  * 但它的值仍是 [nodeId, outputId]，运行时必须解析成知识库检索结果。
  */
-export const nodeInputIsReference = (input: LegacyFlowNodeInputItem) => {
+export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
   const renderType = getSelectedInputRenderType(input);
 
   if (
@@ -103,11 +109,75 @@ export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
       )
   );
 
-/**
- * 合并应用配置与会话快照，并返回运行时对话配置。
- *
- * 会话变量会在这里统一补齐 valueType 并通过变量 schema 校验；读取历史会话和保存新快照共用该边界。
- */
+const isConfigMissing = (value: unknown) => value === undefined || value === null;
+
+const getSystemConfigInputValue = <T>(guideModules: StoreNodeItemType | undefined, key: string) =>
+  guideModules?.inputs?.find((item) => item.key === key)?.value as T | undefined;
+
+export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
+  const welcomeText: string =
+    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.welcomeText) ?? '';
+
+  const welcomeQuestions: string[] =
+    getSystemConfigInputValue<string[]>(guideModules, NodeInputKeyEnum.welcomeQuestions) ?? [];
+
+  const variables: VariableItemType[] =
+    getSystemConfigInputValue<VariableItemType[]>(guideModules, NodeInputKeyEnum.variables) ?? [];
+
+  // Adapt old version
+  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
+    guideModules,
+    NodeInputKeyEnum.questionGuide
+  );
+  const questionGuide: AppQGConfigType =
+    typeof questionGuideVal === 'boolean'
+      ? { ...defaultQGConfig, open: questionGuideVal }
+      : (questionGuideVal ?? defaultQGConfig);
+
+  const ttsConfig: AppTTSConfigType =
+    getSystemConfigInputValue<AppTTSConfigType>(guideModules, NodeInputKeyEnum.tts) ??
+    defaultTTSConfig;
+
+  const whisperConfig: AppWhisperConfigType =
+    getSystemConfigInputValue<AppWhisperConfigType>(guideModules, NodeInputKeyEnum.whisper) ??
+    defaultWhisperConfig;
+
+  const scheduledTriggerConfig: AppScheduledTriggerConfigType | undefined =
+    getSystemConfigInputValue<AppScheduledTriggerConfigType>(
+      guideModules,
+      NodeInputKeyEnum.scheduleTrigger
+    ) ?? undefined;
+
+  const chatInputGuide: ChatInputGuideConfigType =
+    getSystemConfigInputValue<ChatInputGuideConfigType>(
+      guideModules,
+      NodeInputKeyEnum.chatInputGuide
+    ) ?? defaultChatInputGuideConfig;
+
+  const instruction: string =
+    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.instruction) ?? '';
+
+  const autoExecute: AppAutoExecuteConfigType =
+    getSystemConfigInputValue<AppAutoExecuteConfigType>(
+      guideModules,
+      NodeInputKeyEnum.autoExecute
+    ) ?? defaultAutoExecuteConfig;
+
+  return {
+    welcomeText,
+    welcomeQuestions,
+    variables,
+    questionGuide,
+    ttsConfig,
+    whisperConfig,
+    scheduledTriggerConfig,
+    chatInputGuide,
+    instruction,
+    autoExecute
+  };
+};
+
+// Get app chat config: db > nodes
 export const getAppChatConfig = ({
   chatConfig,
   storeVariables,
@@ -236,11 +306,8 @@ export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(in
     : canAgentGenerated
       ? FlowNodeInputTypeEnum.agentGenerated
       : FlowNodeInputTypeEnum.reference;
-  // removes `selectedTypeIndex`.
-  const { selectedTypeIndex: _legacySelectedTypeIndex, ...canonicalInput } =
-    input as LegacyFlowNodeInputItem;
   const projectedInput = {
-    ...canonicalInput,
+    ...input,
     canAgentGenerated,
     ...(canAgentGenerated ? { defaultToAgentGenerated: true } : {}),
     renderTypeList: projectedRenderTypeList,

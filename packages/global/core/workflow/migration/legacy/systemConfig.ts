@@ -6,23 +6,15 @@ import type {
   AppTTSConfigType,
   AppWelcomeConfigType,
   AppWhisperConfigType,
-  ChatInputGuideConfigType
+  ChatInputGuideConfigType,
+  VariableItemType
 } from '../../../app/type';
-import type { VariableItemType } from '../../../app/variable/type';
 import { defaultQGConfig } from '../../../app/constants';
+import { FlowNodeTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum } from '../../constants';
 import type { StoreEdgeItemType } from '../../type/edge';
 import type { StoreNodeItemType } from '../../type/node';
-import type { LegacyStoreNodeItem, LegacyWorkflowData, LegacyWorkflowDataInput } from './schema';
-
-/**
- * Legacy `FlowNodeTypeEnum.systemConfig`.
- */
-const legacySystemConfigNodeType = 'userGuide';
-/**
- * Legacy `FlowNodeTypeEnum.pluginConfig`.
- */
-const legacyPluginConfigNodeType = 'pluginConfig';
+import type { LegacyStoreNodeItem, LegacyWorkflowData, LegacyWorkflowDataInput } from '../schema';
 
 type CurrentWorkflowData = {
   nodes: StoreNodeItemType[];
@@ -51,21 +43,12 @@ export function migrateSystemConfigToChatConfig(input: LegacyWorkflowDataInput):
 export function migrateSystemConfigToChatConfig(input: LegacyWorkflowDataInput) {
   const legacyInput = input as LegacyWorkflowData;
   const systemConfigNode = legacyInput.nodes.find(
-    (node) => node.flowNodeType === legacySystemConfigNodeType
+    (node) => node.flowNodeType === FlowNodeTypeEnum.systemConfig
   );
   const pluginConfigNode = legacyInput.nodes.find(
-    (node) => node.flowNodeType === legacyPluginConfigNodeType
+    (node) => node.flowNodeType === FlowNodeTypeEnum.pluginConfig
   );
-  // 旧 chatConfig 可能直接保存 questionGuide 布尔值；canonical 结构要求配置对象。
-  // 保留默认配置，仅用历史布尔值覆盖 open 字段。
-  const { questionGuide: legacyQuestionGuide, ...legacyChatConfig } = legacyInput.chatConfig ?? {};
-  const chatConfig: AppChatConfigType = {
-    ...legacyChatConfig,
-    questionGuide:
-      typeof legacyQuestionGuide === 'boolean'
-        ? { ...defaultQGConfig, open: legacyQuestionGuide }
-        : legacyQuestionGuide
-  };
+  const chatConfig: AppChatConfigType = { ...(legacyInput.chatConfig ?? {}) };
   const welcomeConfig: AppWelcomeConfigType = { ...(chatConfig.welcomeConfig ?? {}) };
   const welcomeText = getSystemConfigInputValue<string>(
     systemConfigNode,
@@ -159,19 +142,16 @@ export function migrateSystemConfigToChatConfig(input: LegacyWorkflowDataInput) 
     pluginConfigNode,
     NodeInputKeyEnum.instruction
   );
-  // 旧 instruction 可能位于 userGuide 或 pluginConfig 节点；优先 userGuide，当前值优先保留。
-  // 两个旧节点均无值时跳过赋值，避免把 undefined 写入 canonical chatConfig。
-  const legacyInstruction = instruction ?? pluginInstruction;
-  if (isConfigMissing(chatConfig.instruction) && !isConfigMissing(legacyInstruction)) {
-    chatConfig.instruction = legacyInstruction;
+  if (isConfigMissing(chatConfig.instruction)) {
+    chatConfig.instruction = instruction ?? pluginInstruction;
   }
 
   const removedNodeIds = new Set(
     legacyInput.nodes
       .filter(
         (node) =>
-          node.flowNodeType === legacySystemConfigNodeType ||
-          node.flowNodeType === legacyPluginConfigNodeType
+          node.flowNodeType === FlowNodeTypeEnum.systemConfig ||
+          node.flowNodeType === FlowNodeTypeEnum.pluginConfig
       )
       .map((node) => node.nodeId)
   );

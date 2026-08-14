@@ -7,17 +7,19 @@ import {
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
   filterToolConfiguredParams,
-  formatJsonEditorValue,
   getToolInputDisplayRenderTypeList,
   getToolInputManualRenderType,
   getToolConfigStatus,
   initAgentToolInputType,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
-  normalizeFlowNodeInputType,
-  parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  getLegacySavedToolInputSelectedType as getSavedToolInputSelectedType,
+  migrateLegacyFlowNodeInputToCurrent as normalizeFlowNodeInputType,
+  migrateLegacyWorkflowHttpToolInputsDefaultMode as normalizeLegacyWorkflowHttpToolInputsDefaultMode
+} from '@fastgpt/global/core/workflow/migration';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -1172,7 +1174,8 @@ describe('agent generated tool input helpers', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.reference],
-        selectedType: FlowNodeInputTypeEnum.reference
+        selectedType: FlowNodeInputTypeEnum.reference,
+        selectedTypeIndex: 0
       }),
       { isTool: true }
     );
@@ -1593,12 +1596,13 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
-  it('should preserve a canonical developer mode before applying defaults', () => {
+  it('should preserve legacy selectedTypeIndex developer mode before applying isToolParam default', () => {
     const input = normalizeFlowNodeInputType(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-        selectedType: FlowNodeInputTypeEnum.input,
-        defaultToAgentGenerated: true
+        selectedTypeIndex: 1,
+        toolDescription: 'Prompt to model',
+        isToolParam: true
       }),
       { isTool: true }
     );
