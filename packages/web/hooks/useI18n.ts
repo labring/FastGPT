@@ -67,13 +67,15 @@ export const useI18nLng = () => {
   const setShareDefaultLng = useCallback(() => {
     if (typeof navigator === 'undefined') return;
 
-    return onChangeLng(
-      getClientLanguagePreference(SHARE_LANG_KEY, LANG_KEY) || navigator.language,
-      {
-        storageKey: SHARE_LANG_KEY
-      }
+    const preferredLanguage = getLangMapping(
+      getClientLanguagePreference(SHARE_LANG_KEY, LANG_KEY) || navigator.language
     );
-  }, [onChangeLng]);
+    if (getLangMapping(i18n?.language || '') === preferredLanguage) return;
+
+    return onChangeLng(preferredLanguage, {
+      storageKey: SHARE_LANG_KEY
+    });
+  }, [i18n?.language, onChangeLng]);
 
   return {
     onChangeLng,

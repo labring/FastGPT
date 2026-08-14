@@ -121,13 +121,12 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     !userInfo?.contact &&
     !!userInfo?.team.permission.isOwner;
 
-  useEffect(() => {
-    if (router.pathname === '/chat/share') {
-      return void setShareDefaultLng();
-    }
+  const syncDefaultLanguage =
+    router.pathname === '/chat/share' ? setShareDefaultLng : setUserDefaultLng;
 
-    void setUserDefaultLng();
-  }, [router.pathname, setShareDefaultLng, setUserDefaultLng]);
+  useEffect(() => {
+    void syncDefaultLanguage();
+  }, [syncDefaultLanguage]);
 
   // Check model invalid
   useDebounceEffect(
