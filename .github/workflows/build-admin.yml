@@ -49,9 +49,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          version: v0.35.0
           driver-opts: |
-            image=moby/buildkit:v0.31.2
             network=host
 
       - name: Cache Docker layers
@@ -63,7 +61,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.archs.arch }}-${{ matrix.sub_routes.repo }}-buildx-
 
-      # login docker (GHCR only; Ali tags are pushed in release job via imagetools)
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -71,8 +68,15 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Login to Ali Hub
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
       - name: Build for ${{ matrix.archs.arch }}
-        id: build
+        id: build-ghcr
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -88,18 +92,47 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
+      - name: Build for Ali Hub ${{ matrix.archs.arch }}
+        id: build-aliyun
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: pro/admin/Dockerfile
+          platforms: linux/${{ matrix.archs.arch }}
+          build-args: |
+            ${{ matrix.sub_routes.base_url && format('base_url={0}', matrix.sub_routes.base_url) || '' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=${{ matrix.sub_routes.repo }} image
+          provenance: false
+          sbom: false
+          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+
       - name: Export digest
         run: |
-          mkdir -p ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/${digest#sha256:}"
+          mkdir -p ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/ghcr
+          mkdir -p ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/aliyun
+          ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
+          aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/ghcr/${ghcr_digest#sha256:}"
+          touch "${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/aliyun/${aliyun_digest#sha256:}"
 
-      - name: Upload digest
+      - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-${{
+          name: ghcr-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-${{
             matrix.archs.arch }}
-          path: ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/*
+          path: ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/ghcr/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Ali Hub digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: aliyun-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-${{
+            matrix.archs.arch }}
+          path: ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/aliyun/*
           if-no-files-found: error
           retention-days: 1
 
@@ -135,15 +168,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-*
+          pattern: ghcr-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-*
+          merge-multiple: true
+
+      - name: Download Ali Hub digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests/aliyun
+          pattern: aliyun-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          version: v0.35.0
-          driver-opts: |
-            image=moby/buildkit:v0.31.2
 
       - name: Set image name and tag
         run: |
@@ -162,9 +198,35 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}")"
-          for TAG in $TAGS; do
-            docker buildx imagetools create -t $TAG \
-              $(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}@sha256:%s ' *)
+          set -euo pipefail
+          GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}"
+          ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}"
+          GHCR_SOURCES=()
+          for digest_file in ./*; do
+            [[ -f "$digest_file" ]] || continue
+            GHCR_SOURCES+=("${GHCR_IMAGE}@sha256:$(basename "$digest_file")")
+          done
+          ALI_SOURCES=()
+          for digest_file in aliyun/*; do
+            [[ -f "$digest_file" ]] || continue
+            ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
+          done
+          if [[ "${#GHCR_SOURCES[@]}" -ne 2 || "${#ALI_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two GHCR and two Ali Hub digests"
+            exit 1
+          fi
+
+          for TAG in "${Git_Tag}" "${Git_Latest}"; do
+            docker buildx imagetools create -t "$TAG" "${GHCR_SOURCES[@]}"
             sleep 5
           done
+          for TAG in "${Ali_Tag}" "${Ali_Latest}"; do
+            docker buildx imagetools create -t "$TAG" "${ALI_SOURCES[@]}"
+            sleep 5
+          done
+
+          manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
+          jq -e '
+            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length > 0) and
+            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length > 0)
+          ' <<<"$manifest" >/dev/null

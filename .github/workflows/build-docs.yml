@@ -65,7 +65,7 @@ jobs:
 
   build-images:
     needs: generate-timestamp
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.arch.runs-on || 'ubuntu-latest' }}
     timeout-minutes: 120
     strategy:
       matrix:
@@ -74,6 +74,10 @@ jobs:
             suffix: 'io'
           - domain: 'https://fastgpt.cn'
             suffix: 'cn'
+        arch:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -95,9 +99,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          version: v0.35.0
           driver-opts: |
-            image=moby/buildkit:v0.31.2
             network=host
 
       - name: Docker meta
@@ -120,14 +122,16 @@ jobs:
 
       - name: Build and push Docker images (CN)
         if: matrix.domain_config.suffix == 'cn'
-        uses: docker/build-push-action@v5
+        id: build-cn
+        uses: docker/build-push-action@v6
         with:
           context: ./document
           file: ./document/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/${{ matrix.arch.arch }}
+          provenance: false
+          sbom: false
+          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs",push-by-digest=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64
           build-args: |
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
             DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
@@ -135,21 +139,89 @@ jobs:
 
       - name: Build and push Docker images (IO)
         if: matrix.domain_config.suffix == 'io'
-        uses: docker/build-push-action@v5
+        id: build-io
+        uses: docker/build-push-action@v6
         with:
           context: ./document
           file: ./document/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/${{ matrix.arch.arch }}
+          provenance: false
+          sbom: false
+          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs",push-by-digest=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64
           build-args: |
             FASTGPT_HOME_DOMAIN=${{ matrix.domain_config.domain }}
             DOC_TRACK_SRC=${{ secrets.DOC_TRACK_SRC }}
             DOC_TRACK_SITE_ID=${{ secrets.DOC_TRACK_IO }}
 
-  update-images:
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.build-cn.outputs.digest || steps.build-io.outputs.digest }}
+        run: |
+          mkdir -p "${{ runner.temp }}/digests/aliyun"
+          touch "${{ runner.temp }}/digests/aliyun/${DIGEST#sha256:}"
+
+      - name: Upload Ali Hub digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: aliyun-digests-fastgpt-docs-${{ matrix.domain_config.suffix }}-${{ github.sha }}-${{ matrix.arch.arch }}
+          path: ${{ runner.temp }}/digests/aliyun/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-images:
     needs: [generate-timestamp, build-images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      matrix:
+        domain_config:
+          - suffix: 'io'
+          - suffix: 'cn'
+    steps:
+      - name: Login to Aliyun
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
+      - name: Download Ali Hub digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests/aliyun
+          pattern: aliyun-digests-fastgpt-docs-${{ matrix.domain_config.suffix }}-${{ github.sha }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push
+        env:
+          ALI_TAG: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs"
+          ALI_SOURCES=()
+          for digest_file in aliyun/*; do
+            [[ -f "$digest_file" ]] || continue
+            ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
+          done
+          if [[ "${#ALI_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two Ali Hub digests"
+            exit 1
+          fi
+          docker buildx imagetools create -t "${ALI_TAG}" "${ALI_SOURCES[@]}"
+
+          manifest="$(docker buildx imagetools inspect --raw "${ALI_TAG}")"
+          jq -e '
+            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length > 0) and
+            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length > 0)
+          ' <<<"$manifest" >/dev/null
+
+  update-images:
+    needs: [generate-timestamp, release-images]
     runs-on: ubuntu-24.04
     strategy:
       matrix:
