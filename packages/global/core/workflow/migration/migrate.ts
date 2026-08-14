@@ -12,6 +12,12 @@ import {
   LegacyAgentToolInputConfigSchema,
   LegacyWorkflowDataSchema
 } from './schema';
+import { normalizeFlowNodeInputType } from '../../app/formEdit/utils';
+import { normalizeWorkflowToolInputsDefaultMode } from '../../app/tool/workflowTool/utils';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
+import { NodeOutputKeyEnum } from '../constants';
+import { NodeInputKeyEnum } from '../constants';
+import { nodeInputIsReference } from '../utils';
 
 // [TODO] add an explicit version field and dispatch migrations by version.
 
@@ -49,12 +55,69 @@ export const migrateAgentToolInputConfigToCurrent = (
  */
 export const migrateWorkflowToCurrent = (input: LegacyWorkflowData): CanonicalWorkflowData => {
   const legacy = LegacyWorkflowDataSchema.parse(input);
+  const toolNodeIds = new Set(
+    legacy.edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
   const migrated = {
     ...legacy,
-    nodes: legacy.nodes.map((node) => ({
-      ...node,
-      inputs: node.inputs.map(migrateFlowNodeInputToCurrent)
-    }))
+    nodes: legacy.nodes.map((node) => {
+      const isTool = toolNodeIds.has(node.nodeId);
+      const allowLegacyToolDescriptionFallback =
+        isTool &&
+        (node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
+          !!node.toolConfig?.systemTool ||
+          !!node.pluginId?.startsWith('systemTool-') ||
+          !!node.pluginId?.startsWith('commercial-'));
+      const inputs = node.inputs.map((input) =>
+        migrateFlowNodeInputToCurrent(
+          normalizeFlowNodeInputType(input, {
+            isTool,
+            allowLegacyToolDescriptionFallback
+          })
+        )
+      );
+
+      const migratedInputs =
+        node.flowNodeType === FlowNodeTypeEnum.agent
+          ? inputs.map((input) => {
+              const isManualSelectionInput = [
+                NodeInputKeyEnum.skills,
+                NodeInputKeyEnum.selectedTools,
+                NodeInputKeyEnum.datasetSelectList
+              ].includes(input.key as NodeInputKeyEnum);
+              if (!isManualSelectionInput) return input;
+              return {
+                ...input,
+                selectedType: input.renderTypeList[0],
+                value: nodeInputIsReference(input) ? [] : input.value
+              };
+            })
+          : inputs;
+
+      if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
+        return { ...node, inputs: migratedInputs };
+      }
+
+      const normalizedInputs = normalizeWorkflowToolInputsDefaultMode(migratedInputs).map(
+        (input) => {
+          const renderTypeList = input.renderTypeList.filter(
+            (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+          );
+          return {
+            ...input,
+            renderTypeList,
+            selectedType:
+              input.selectedType === FlowNodeInputTypeEnum.agentGenerated
+                ? renderTypeList[0]
+                : input.selectedType
+          };
+        }
+      );
+
+      return { ...node, inputs: normalizedInputs };
+    })
   };
 
   return CanonicalWorkflowDataSchema.parse(migrated);

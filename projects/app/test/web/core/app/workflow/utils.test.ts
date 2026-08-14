@@ -16,7 +16,6 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import {
   adaptStoreNodeInputs,
-  legacyStoreNode2FlowNode,
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   getNodeAllSource,
@@ -48,6 +47,7 @@ import {
   getOneQuoteInputTemplate
 } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
@@ -55,6 +55,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import type { LegacyStoreNodeItem } from '@fastgpt/global/core/workflow/migration';
 describe('nodeTemplate2FlowNode', () => {
   it('should initialize template text once before formatting the instance name', () => {
     const template: FlowNodeTemplateType = {
@@ -103,7 +104,7 @@ describe('nodeTemplate2FlowNode', () => {
 });
 
 describe('adaptStoreNodeInputs', () => {
-  const createAgentNode = (inputs: StoreNodeItemType['inputs']): StoreNodeItemType => ({
+  const createAgentNode = (inputs: LegacyStoreNodeItem['inputs']): LegacyStoreNodeItem => ({
     nodeId: 'agent-node',
     flowNodeType: FlowNodeTypeEnum.agent,
     name: 'Agent',
@@ -136,7 +137,7 @@ describe('adaptStoreNodeInputs', () => {
   });
 
   it('should reset legacy Agent resource references to manual selection', () => {
-    const inputs: StoreNodeItemType['inputs'] = [
+    const inputs: LegacyStoreNodeItem['inputs'] = [
       {
         key: NodeInputKeyEnum.skills,
         label: 'Skills',
@@ -160,14 +161,14 @@ describe('adaptStoreNodeInputs', () => {
       }
     ];
 
-    const result = adaptStoreNodeInputs(createAgentNode(inputs));
+    const result = adaptStoreNodeInputs(
+      migrateWorkflowToCurrent({ nodes: [createAgentNode(inputs)], edges: [] }).nodes[0]
+    );
 
     expect(result).toEqual(
-      inputs.map((input) => ({
-        key: input.key,
-        label: input.label,
-        renderTypeList: input.renderTypeList,
-        selectedType: input.renderTypeList[0],
+      inputs.map(({ selectedTypeIndex: _selectedTypeIndex, ...input }) => ({
+        ...input,
+        selectedType: input.renderTypeList?.[0],
         value: []
       }))
     );
@@ -176,7 +177,7 @@ describe('adaptStoreNodeInputs', () => {
   it('should preserve manually selected Agent resources and unrelated inputs', () => {
     const selectedSkills = [{ skillId: 'skill-1', name: 'Skill 1' }];
     const promptReference = ['source-node', 'prompt'];
-    const inputs: StoreNodeItemType['inputs'] = [
+    const inputs: LegacyStoreNodeItem['inputs'] = [
       {
         key: NodeInputKeyEnum.skills,
         label: 'Skills',
@@ -193,7 +194,9 @@ describe('adaptStoreNodeInputs', () => {
       }
     ];
 
-    const result = adaptStoreNodeInputs(createAgentNode(inputs));
+    const result = adaptStoreNodeInputs(
+      migrateWorkflowToCurrent({ nodes: [createAgentNode(inputs)], edges: [] }).nodes[0]
+    );
 
     expect(result[0]).toMatchObject({
       selectedType: FlowNodeInputTypeEnum.selectSkill,
@@ -257,6 +260,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.userInputForms,
+          label: 'Form fields',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: []
         }
@@ -281,6 +285,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: [{ value: '' }]
         },
@@ -409,8 +414,9 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: 'query',
+          label: 'Query',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          selectedTypeIndex: 1
+          selectedType: FlowNodeInputTypeEnum.reference
         }
       ]
     });
@@ -539,8 +545,12 @@ describe('checkWorkflowNodeIssues', () => {
           label: '用户问题',
           required: true,
           valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-          selectedTypeIndex: 0,
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.reference,
+            FlowNodeInputTypeEnum.textarea
+          ],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
           value: undefined
         }
       ]
@@ -570,6 +580,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.systemInputConfig,
+          label: 'System input config',
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           value: { type: 'system' }
         },
@@ -608,6 +619,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.systemInputConfig,
+          label: 'System input config',
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           value: { type: 'system' }
         },
@@ -649,6 +661,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.systemInputConfig,
+          label: 'System input config',
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           value: undefined
         }
@@ -691,6 +704,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.httpReqUrl,
+          label: 'Request URL',
           renderTypeList: [FlowNodeInputTypeEnum.input],
           value: ''
         }
@@ -700,6 +714,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.useAgentSandbox,
+          label: 'Agent sandbox',
           renderTypeList: [FlowNodeInputTypeEnum.switch],
           value: false
         }
@@ -920,14 +935,13 @@ describe('checkWorkflowNodeIssues', () => {
     });
 
     it('uses selectedType before deprecated selectedTypeIndex in required validation', () => {
-      const node = makeNodeWithTemplateInputs('hidden-selected', FlowNodeTypeEnum.userInput, [
+      const node = makeNodeWithTemplateInputs('hidden-selected', FlowNodeTypeEnum.formInput, [
         {
           key: 'internal',
           label: 'Internal',
           valueType: WorkflowIOValueTypeEnum.string,
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.hidden],
           selectedType: FlowNodeInputTypeEnum.hidden,
-          selectedTypeIndex: 0,
           required: true
         }
       ]);
@@ -972,7 +986,7 @@ describe('checkWorkflowNodeIssues', () => {
             required: true,
             valueType: WorkflowIOValueTypeEnum.string,
             renderTypeList: [FlowNodeInputTypeEnum.reference],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.reference,
             value
           }
         ]
@@ -1109,7 +1123,7 @@ describe('checkWorkflowNodeIssues', () => {
 
       const patches = collectWorkflowStartInputAutoFillPatches({
         nodes: [startNodeWithFiles, targetNode],
-        edges: [{ id: 'e-start-ai-chat', source: 'start', target: 'ai-chat', type: EDGE_TYPE }],
+        edges: [{ source: 'start', target: 'ai-chat' }],
         workflowStartNode: startNodeWithFiles.data
       });
 
@@ -1196,8 +1210,8 @@ describe('checkWorkflowNodeIssues', () => {
       const patches = collectWorkflowStartInputAutoFillPatches({
         nodes: [startNode, aiNode, toolNode],
         edges: [
-          { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
-          { id: 'e-ai-tool', source: 'ai-chat', target: 'tool-call', type: EDGE_TYPE }
+          { source: 'start', target: 'ai-chat' },
+          { source: 'ai-chat', target: 'tool-call' }
         ],
         workflowStartNode: startNode.data
       });
@@ -1455,7 +1469,7 @@ describe('checkWorkflowNodeIssues', () => {
             label: 'app:workflow.user_file_input',
             valueType: WorkflowIOValueTypeEnum.arrayString,
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.reference,
             value: buildAutoFilledInputs(AiChatModule, NodeInputKeyEnum.fileUrlList)
           }
         ]
@@ -1479,7 +1493,7 @@ describe('checkWorkflowNodeIssues', () => {
             label: 'app:workflow.user_file_input',
             valueType: WorkflowIOValueTypeEnum.arrayString,
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.reference,
             value: buildAutoFilledInputs(ToolCallNode, NodeInputKeyEnum.fileUrlList)
           }
         ]
@@ -1503,7 +1517,7 @@ describe('checkWorkflowNodeIssues', () => {
             label: 'workflow:search_query',
             valueType: WorkflowIOValueTypeEnum.arrayString,
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.reference,
             value: buildAutoFilledInputs(DatasetSearchModule, NodeInputKeyEnum.datasetSearchInput)
           }
         ]
@@ -1571,7 +1585,7 @@ describe('checkWorkflowNodeIssues', () => {
         value: [['start', NodeOutputKeyEnum.userFiles]]
       });
       expect(fileLinkInput.required).toBeUndefined();
-      expect(fileLinkInput.selectedTypeIndex).toBeUndefined();
+      expect(fileLinkInput.selectedType).toBeUndefined();
 
       const result = checkWorkflowNodeIssues({
         nodes: [startNode, importedToolCall],
@@ -1763,7 +1777,7 @@ describe('checkWorkflowNodeIssues', () => {
           required: true,
           valueType: WorkflowIOValueTypeEnum.string,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
-          selectedTypeIndex: 0,
+          selectedType: FlowNodeInputTypeEnum.reference,
           value: ['deleted-node-id', NodeOutputKeyEnum.userChatInput]
         }
       ]
@@ -1776,7 +1790,7 @@ describe('checkWorkflowNodeIssues', () => {
           required: true,
           valueType: WorkflowIOValueTypeEnum.string,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
-          selectedTypeIndex: 0,
+          selectedType: FlowNodeInputTypeEnum.reference,
           value: ['start', 'deleted-output-id']
         }
       ]
@@ -1849,6 +1863,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.userInputForms,
+          label: 'Form fields',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: []
         }
@@ -1871,6 +1886,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.ifElseList,
+          label: 'Conditions',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: [
             {
@@ -1884,6 +1900,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.agents,
+          label: 'Agents',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: []
         }
@@ -1905,6 +1922,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.extractKeys,
+          label: 'Extract keys',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: []
         }
@@ -1968,6 +1986,7 @@ describe('checkWorkflowNodeIssues', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.userInputForms,
+          label: 'Form fields',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: []
         }
@@ -2046,6 +2065,7 @@ describe('workflow check helpers', () => {
       inputs: [
         {
           key: NodeInputKeyEnum.httpReqUrl,
+          label: 'Request URL',
           renderTypeList: [FlowNodeInputTypeEnum.input],
           value: ''
         }
@@ -2071,11 +2091,14 @@ describe('workflow check helpers', () => {
       type: FlowNodeTypeEnum.httpRequest468,
       position: { x: 0, y: 0 },
       data: {
+        id: 'http',
         nodeId: 'http',
         flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        name: 'HTTP request',
         inputs: [
           {
             key: NodeInputKeyEnum.httpReqUrl,
+            label: 'Request URL',
             renderTypeList: [FlowNodeInputTypeEnum.input],
             value: ''
           }
@@ -2088,8 +2111,10 @@ describe('workflow check helpers', () => {
       type: FlowNodeTypeEnum.workflowStart,
       position: { x: 0, y: 0 },
       data: {
+        id: 'start',
         nodeId: 'start',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
+        name: 'Workflow start',
         inputs: [],
         outputs: []
       }
@@ -2174,13 +2199,14 @@ describe('storeNode2FlowNode', () => {
   });
 
   it('should migrate selectedTypeIndex while restoring canvas nodes', () => {
-    const storeNode: StoreNodeItemType = {
+    const storeNode: LegacyStoreNodeItem = {
       nodeId: 'chat-node',
       flowNodeType: FlowNodeTypeEnum.chatNode,
       position: { x: 0, y: 0 },
       inputs: [
         {
           key: NodeInputKeyEnum.userChatInput,
+          label: 'User question',
           renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
           selectedTypeIndex: 0
         }
@@ -2190,8 +2216,13 @@ describe('storeNode2FlowNode', () => {
       version: '1.0'
     };
 
-    const result = legacyStoreNode2FlowNode({
-      item: storeNode,
+    const [migratedNode] = migrateWorkflowToCurrent({
+      nodes: [{ ...storeNode, inputs: [{ ...storeNode.inputs[0], label: 'User question' }] }],
+      edges: []
+    }).nodes;
+    const result = storeNode2FlowNode({
+      item: migratedNode,
+      isTool: true,
       t: ((key: string) => key) as any
     });
     const userQuestion = result.data.inputs.find(
@@ -2246,13 +2277,14 @@ describe('storeNode2FlowNode', () => {
   });
 
   it('should restore legacy workflow tool defaults in tool context', () => {
-    const storeNode: StoreNodeItemType = {
+    const storeNode: LegacyStoreNodeItem = {
       nodeId: 'workflow-tool',
       flowNodeType: FlowNodeTypeEnum.pluginModule,
       position: { x: 0, y: 0 },
       inputs: [
         {
           key: 'query',
+          label: 'Search query',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           selectedTypeIndex: 0,
           toolDescription: 'Search query'
@@ -2263,8 +2295,19 @@ describe('storeNode2FlowNode', () => {
       version: '1.0'
     };
 
-    const result = legacyStoreNode2FlowNode({
-      item: storeNode,
+    const [migratedNode] = migrateWorkflowToCurrent({
+      nodes: [{ ...storeNode, inputs: [{ ...storeNode.inputs[0], label: 'Search query' }] }],
+      edges: [
+        {
+          source: 'agent',
+          target: 'workflow-tool',
+          sourceHandle: '',
+          targetHandle: 'selectedTools'
+        }
+      ]
+    }).nodes;
+    const result = storeNode2FlowNode({
+      item: migratedNode,
       isTool: true,
       t: ((key: string) => key) as any
     });
@@ -2552,6 +2595,7 @@ describe('workflowReferenceValueIsSelectable', () => {
 describe('getNodeAllSource', () => {
   const makeNode = (nodeId: string, parentNodeId?: string): FlowNodeItemType =>
     ({
+      id: nodeId,
       nodeId,
       parentNodeId,
       name: nodeId,
@@ -2702,11 +2746,14 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         id: 'node1',
         type: FlowNodeTypeEnum.formInput,
         data: {
+          id: 'node1',
           nodeId: 'node1',
           flowNodeType: FlowNodeTypeEnum.formInput,
+          name: 'Form input',
           inputs: [
             {
               key: NodeInputKeyEnum.aiChatDatasetQuote,
+              label: 'Dataset quote',
               required: true,
               value: undefined,
               renderTypeList: [FlowNodeInputTypeEnum.input]
