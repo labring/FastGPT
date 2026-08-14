@@ -12,8 +12,16 @@ import {
   instance,
   startInterceptors
 } from '../../../../src/web/common/api/request';
-import { FASTGPT_LANGUAGE_HEADER } from '@fastgpt/global/common/system/constants';
-import { persistLanguagePreference, restoreLanguagePreference } from '@fastgpt/web/i18n/utils';
+import {
+  FASTGPT_LANGUAGE_HEADER,
+  FASTGPT_SHARE_LANGUAGE_HEADER
+} from '@fastgpt/global/common/system/constants';
+import {
+  LANG_KEY,
+  persistLanguagePreference,
+  restoreLanguagePreference,
+  SHARE_LANG_KEY
+} from '@fastgpt/web/i18n/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { clearToken } from '@/web/support/user/auth';
@@ -162,6 +170,32 @@ describe('request utils', () => {
       const config = startInterceptors({ headers: {} } as any);
 
       expect(config.headers?.[FASTGPT_LANGUAGE_HEADER]).toBe('zh-Hant');
+    });
+
+    it('uses the share language preference on share pages', () => {
+      mockLocation.pathname = '/chat/share';
+      vi.stubGlobal('localStorage', {
+        getItem: vi.fn((key: string) => (key === SHARE_LANG_KEY ? 'zh-Hant' : 'en'))
+      });
+      vi.stubGlobal('navigator', { language: 'en-US' });
+
+      const config = startInterceptors({ headers: {} } as any);
+
+      expect(config.headers?.[FASTGPT_SHARE_LANGUAGE_HEADER]).toBe('zh-Hant');
+      expect(config.headers?.[FASTGPT_LANGUAGE_HEADER]).toBeUndefined();
+    });
+
+    it('uses share memory language before main-site memory language', () => {
+      mockLocation.pathname = '/chat/share';
+      persistLanguagePreference('zh-CN', LANG_KEY, 'memory');
+      persistLanguagePreference('en', SHARE_LANG_KEY, 'memory');
+      vi.stubGlobal('localStorage', undefined);
+      vi.stubGlobal('navigator', { language: 'zh-TW' });
+
+      const config = startInterceptors({ headers: {} } as any);
+
+      expect(config.headers?.[FASTGPT_SHARE_LANGUAGE_HEADER]).toBe('en');
+      expect(config.headers?.[FASTGPT_LANGUAGE_HEADER]).toBeUndefined();
     });
   });
 

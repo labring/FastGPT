@@ -1,4 +1,8 @@
 import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
+import {
+  FASTGPT_LANGUAGE_HEADER,
+  FASTGPT_SHARE_LANGUAGE_HEADER
+} from '@fastgpt/global/common/system/constants';
 import Cookies from 'js-cookie';
 
 export const LANG_KEY = 'NEXT_LOCALE';
@@ -23,8 +27,16 @@ const languageMap: Record<string, localeType> = {
   'zh-HK': LangEnum.zh_Hant,
   'zh-TW': LangEnum.zh_Hant,
   'zh-Hant': LangEnum.zh_Hant,
+  'zh-Hant-TW': LangEnum.zh_Hant,
+  'zh-Hant-HK': LangEnum.zh_Hant,
+  'zh-hk': LangEnum.zh_Hant,
+  'zh-tw': LangEnum.zh_Hant,
+  'zh-hant': LangEnum.zh_Hant,
+  'zh-hant-tw': LangEnum.zh_Hant,
+  'zh-hant-hk': LangEnum.zh_Hant,
   en: LangEnum.en,
-  'en-US': LangEnum.en
+  'en-US': LangEnum.en,
+  'en-us': LangEnum.en
 };
 
 const isInIframe = () => {
@@ -148,16 +160,38 @@ export const persistLanguagePreference = (
 
 /**
  * 读取不会随请求自动发送的客户端语言偏好。
- * Cookie 由浏览器自动携带，因此请求头按 localStorage → memory → navigator.language 读取。
+ * 按指定 key 读取 Cookie、localStorage 和内存值；可选 fallbackKey 用于分享页继承主站语言。
  */
-export const getClientLanguagePreference = (): localeType | undefined => {
+export const getClientLanguagePreference = (
+  key = LANG_KEY,
+  fallbackKey?: string
+): localeType | undefined => {
   return (
-    getLangFromLocalStorage(LANG_KEY) ||
-    memoryLanguage.get(LANG_KEY) ||
+    getPersistedLang(key) ||
+    memoryLanguage.get(key) ||
+    (fallbackKey && (getPersistedLang(fallbackKey) || memoryLanguage.get(fallbackKey))) ||
     (typeof navigator !== 'undefined' && navigator.language
       ? getLangMapping(navigator.language)
       : undefined)
   );
+};
+
+/**
+ * 生成当前页面 API 请求使用的语言头。
+ * 分享页优先使用独立语言偏好，并在没有独立偏好时继承主站偏好。
+ */
+export const getLanguageRequestHeaders = (pathname?: string): Record<string, string> => {
+  const currentPathname =
+    pathname ?? (typeof window !== 'undefined' ? window.location.pathname : undefined);
+  const isSharePage =
+    currentPathname === '/chat/share' || currentPathname?.endsWith('/chat/share') === true;
+  const language = isSharePage
+    ? getClientLanguagePreference(SHARE_LANG_KEY, LANG_KEY)
+    : getClientLanguagePreference(LANG_KEY);
+
+  return language
+    ? { [isSharePage ? FASTGPT_SHARE_LANGUAGE_HEADER : FASTGPT_LANGUAGE_HEADER]: language }
+    : {};
 };
 
 /** 恢复语言偏好事务快照。 */
@@ -238,11 +272,12 @@ export const getPersistedLang = (key = LANG_KEY) => {
  * 将浏览器语言或历史存储值归一化成系统支持的 locale。
  */
 export const getLangMapping = (lng: string): localeType => {
-  let lang = languageMap[lng];
+  const normalizedLng = lng.trim().replaceAll('_', '-');
+  let lang = languageMap[normalizedLng] || languageMap[normalizedLng.toLowerCase()];
 
   // 如果没有直接映射，尝试智能回退
   if (!lang) {
-    const langPrefix = lng.split('-')[0];
+    const langPrefix = normalizedLng.split('-')[0].toLowerCase();
     // 中文相关语言优先回退到简体中文
     if (langPrefix === 'zh') {
       lang = LangEnum.zh_CN;

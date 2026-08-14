@@ -3,6 +3,7 @@ import { streamFetch, type StreamResponseType } from '@/web/common/api/fetch';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { EventStreamContentType, fetchEventSource } from '@fortaine/fetch-event-source';
+import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
@@ -113,7 +114,10 @@ export const streamInitSkillRuntime = ({
 
     fetchEventSource(getWebReqUrl('/api/core/ai/skill/runtime/init'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...getLanguageRequestHeaders()
+      },
       body: JSON.stringify(data),
       signal: abortCtrl.signal,
       async onopen(res) {

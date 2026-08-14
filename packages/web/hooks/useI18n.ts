@@ -1,6 +1,6 @@
 import {
+  getClientLanguagePreference,
   getLangFromCookie,
-  getLangFromLocalStorage,
   getLangMapping,
   getPersistedLang,
   LANG_KEY,
@@ -50,7 +50,7 @@ export const useI18nLng = () => {
     // 有 Cookie 时以服务端渲染语言为准；没有 Cookie 时先迁移旧的本地偏好。
     if (getLangFromCookie(LANG_KEY)) return;
 
-    return onChangeLng(getLangFromLocalStorage(LANG_KEY) || navigator.language);
+    return onChangeLng(getClientLanguagePreference(LANG_KEY) || navigator.language);
   };
 
   /**
@@ -60,11 +60,7 @@ export const useI18nLng = () => {
     if (typeof navigator === 'undefined') return;
 
     return onChangeLng(
-      getLangFromCookie(SHARE_LANG_KEY) ||
-        getLangFromCookie(LANG_KEY) ||
-        getLangFromLocalStorage(SHARE_LANG_KEY) ||
-        getLangFromLocalStorage(LANG_KEY) ||
-        navigator.language,
+      getClientLanguagePreference(SHARE_LANG_KEY, LANG_KEY) || navigator.language,
       {
         storageKey: SHARE_LANG_KEY
       }

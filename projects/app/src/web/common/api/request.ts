@@ -13,8 +13,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
 import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
-import { FASTGPT_LANGUAGE_HEADER } from '@fastgpt/global/common/system/constants';
-import { getClientLanguagePreference } from '@fastgpt/web/i18n/utils';
+import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 
 type ConfigType = {
   headers?: { [key: string]: string };
@@ -133,10 +132,10 @@ function requestFinish({ signId, url }: { signId?: string; url: string }) {
  * 请求开始
  */
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
-  const language = getClientLanguagePreference();
-  if (language) {
+  const languageHeaders = getLanguageRequestHeaders();
+  if (Object.keys(languageHeaders).length > 0) {
     config.headers ??= {} as InternalAxiosRequestConfig['headers'];
-    config.headers[FASTGPT_LANGUAGE_HEADER] = language;
+    Object.assign(config.headers, languageHeaders);
   }
 
   return config;

@@ -5,8 +5,11 @@ import {
   canUseLanguageLocalStorage,
   getClientLanguagePreference,
   getLanguageStorageKind,
+  getLangMapping,
+  getPersistedLang,
   getRequiredI18nLanguages,
   getLangFromLocalStorage,
+  LANG_KEY,
   persistLanguagePreference,
   readLanguagePreference,
   restoreLanguagePreference,
@@ -78,6 +81,14 @@ describe('getRequiredI18nLanguages', () => {
 
   it.each([LangEnum.zh_CN, LangEnum.zh_Hant])('appends English fallback for %s', (language) => {
     expect(getRequiredI18nLanguages(language)).toEqual([language, LangEnum.en]);
+  });
+});
+
+describe('getLangMapping', () => {
+  it('maps script-specific Traditional Chinese locales to zh-Hant', () => {
+    expect(getLangMapping('zh-Hant-TW')).toBe(LangEnum.zh_Hant);
+    expect(getLangMapping('zh-Hant-HK')).toBe(LangEnum.zh_Hant);
+    expect(getLangMapping(' zh_hant_tw ')).toBe(LangEnum.zh_Hant);
   });
 });
 
@@ -183,5 +194,14 @@ describe('language storage capability and persistence', () => {
     vi.stubGlobal('navigator', { language: 'zh-TW' });
 
     expect(getClientLanguagePreference()).toBe(LangEnum.zh_Hant);
+  });
+
+  it('keeps the localStorage mirror when the language Cookie has expired', () => {
+    installCookieDocument();
+    const storage = createLocalStorage();
+    storage.setItem(LANG_KEY, LangEnum.zh_Hant);
+    vi.stubGlobal('localStorage', storage);
+
+    expect(getPersistedLang()).toBe(LangEnum.zh_Hant);
   });
 });

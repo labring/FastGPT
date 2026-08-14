@@ -3,7 +3,7 @@
 ## 1. 背景
 
 FastGPT 主应用当前使用 Next.js Pages Router。`pages/_app.tsx` 通过
-`appWithTranslation(App)` 提供 i18n 上下文，各页面再通过
+`appWithTranslation(AppRouter, clientI18nConfig)` 提供稳定的 i18n 上下文，各页面再通过
 `getServerSideProps -> serviceSideProps -> serverSideTranslations` 注入页面需要的翻译资源。
 
 现状包括：
@@ -11,7 +11,7 @@ FastGPT 主应用当前使用 Next.js Pages Router。`pages/_app.tsx` 通过
 - `/chat/share` 需要保留 SSR，用于首屏页面内容、分享应用名称、简介、头像和 Head 信息。
 - 其他页面目标是逐步迁移到纯客户端渲染（CSR），不再依赖每次请求执行
   `getServerSideProps`。
-- 当前共有 36 个页面声明 `getServerSideProps`。绝大多数只返回
+- 当前仍有 24 个页面声明 `getServerSideProps`。绝大多数只返回
   `serviceSideProps`，但 `/chat`、`/dataset/detail`、`/login/fastlogin`、
   `/config/tool/marketplace` 等页面还返回查询参数或服务端业务数据，不能机械删除。
 - 历史上 `serviceSideProps` 还从 `NEXT_DEVICE_SIZE` Cookie 读取 `deviceSize`，仅用于给
@@ -21,8 +21,8 @@ FastGPT 主应用当前使用 Next.js Pages Router。`pages/_app.tsx` 通过
   25 个 namespace，原始 JSON 总量约 680 KB；一次性把全部语言和 namespace 注入首屏
   会放大 HTML、JS 和内存开销。
 
-本方案采用“小步试点、验证后扩面”：先建立客户端 i18n 基础能力并只迁移
-`/account/apikey`，确认行为和指标达标后，再按风险分批迁移其他页面。
+本方案采用“小步试点、验证后扩面”：先以 `/account/apikey` 验证客户端 i18n 基础能力，随后扩展到
+账户页面和 `/price`。当前代码已经完成这一批迁移，剩余页面仍按风险分批推进。
 
 ## 2. 目标与非目标
 
@@ -40,7 +40,7 @@ FastGPT 主应用当前使用 Next.js Pages Router。`pages/_app.tsx` 通过
 ### 2.2 非目标
 
 1. 本轮不切换到 Next.js App Router。
-2. 本轮不修改翻译 key、翻译内容或 namespace 的业务划分。
+2. 本轮不修改既有翻译内容；只整理已迁移页面实际使用的 namespace，不做全量 namespace 重划分。
 3. 本轮不一次性迁移所有页面。
 4. 本轮不迁移 `projects/marketplace`；它共享翻译源目录，但保持现有 SSR 读取方式。
 5. 本轮不把翻译正文写入 IndexedDB 或 `localStorage`。
@@ -183,11 +183,12 @@ const { t } = useTranslation(['apikey'] as const, {
 4. `common` 由 CSR 初始化门禁先加载，保证 `NextHead`、`Layout` 和尚未迁移的公共组件不会展示 key；
    已迁移组件统一使用 `useClientTranslation(namespace)`，hook 内置 `common` 和 Suspense。仅使用
    `common` 的组件调用 `useClientTranslation()`。
+   `Layout` 根部声明 `price`，而 `serviceSideProps` 统一预加载 `price`，因此 SSR 页面无需再逐页声明该 namespace。
 5. 原 `serviceSideProps(context, namespaces)` 数组只能作为迁移扫描起点，必须检查页面实际组件树中的
    `useTranslation`、`Trans` 和带 namespace 前缀的 key。
 6. 不允许页面自行 `fetch` 或 `import` 翻译文件，所有声明统一经过 i18next backend。
 
-试点页面根组件的首屏预加载声明为：
+页面根组件的首屏预加载声明为：
 
 ```tsx
 useClientTranslation('apikey');
@@ -196,10 +197,14 @@ useClientTranslation('apikey');
 API key 专属文案统一收敛到 `apikey`，`AccountContainer`、`ApiKeyTable`、`TagMultiSelect` 和
 `TagManageModal` 等试点可达组件分别显式声明自己的直接依赖。
 
-CSR 路由集合与翻译依赖解耦，只负责渲染模式：
+CSR 路由集合与翻译依赖解耦，只负责渲染模式。当前 app 的集合为：
 
 ```ts
-const clientOnlyRoutes = new Set(['/account/apikey'] as const);
+const clientOnlyRoutes = new Set([
+  '/account/apikey', '/account/inform', '/account/setting', '/account/thirdParty',
+  '/account/customDomain', '/account/bill', '/account/team', '/account/info',
+  '/account/usage', '/account/model', '/price'
+] as const);
 ```
 
 页面只有在组件 namespace 改造和验收完成后才加入该集合，但集合本身不再复制 namespace 数据。
@@ -229,15 +234,15 @@ const pendingLoads = new Map<string, Promise<void>>();
    中已有的资源。
 3. `pendingLoads` 已存在相同 key 时复用同一个 dynamic import Promise。
 4. 否则执行生成的 loader，并把 JSON 返回给 backend connector 注册。
-5. Promise 完成后从 `pendingLoads` 删除；成功资源由 i18next store 缓存，失败项允许重试。
+5. Promise 完成后从 `pendingLoads` 删除；成功资源由 i18next store 缓存，失败项由刷新后的新实例重新加载。
 
 同一 i18n 实例内，backend connector 本身也会合并相同资源的并发请求；`pendingLoads` 再保护底层
-dynamic import，防止初始化、重试或实例切换边界重复执行。加载失败写入按
-`language + namespace` 记录的 failure registry，并触发 `failedLoading`。顶层
-`ClientI18nBoundary` 必须读取该状态并展示可重试错误页，不能仅依赖 react-i18next 的 Suspense Promise：
+dynamic import，防止初始化或实例切换边界重复执行。加载失败写入按
+`language + namespace` 记录的资源错误状态，并触发 `failedLoading`。顶层
+`ClientI18nBoundary` 将这类错误转换成独立错误态，不能仅依赖 react-i18next 的 Suspense Promise：
 该 Promise 在 backend 回调结束时会 resolve，即使底层加载失败，单独使用它可能继续渲染翻译 key。
-重试入口直接重新执行 `loadLocaleResource`，成功后调用 `addResourceBundle` 并清理失败记录；不能依赖
-失败后的 `loadNamespaces` 自动重试，因为当前 i18next backend connector 会把最终失败状态记为 `-1`。
+错误态要求用户确认刷新页面，利用整页重新初始化 i18n 和静态 chunk；当前产品不在错误态内继续重试或
+渲染不完整翻译。
 
 不额外把翻译正文存入 `localStorage`，原因是：
 
@@ -284,7 +289,7 @@ flowchart TD
   F --> G["useTranslation 声明组件 namespace"]
   G --> H["backend 加载缺失资源"]
   H --> I["资源就绪后渲染组件"]
-  H -->|"失败"| J["展示错误态并允许重试"]
+  H -->|"失败"| J["展示错误态并确认刷新"]
 ```
 
 初始化门禁先加载当前语言和 fallback 所需的 `common`，再挂载整个普通页面树，包括 `_app` 中的
@@ -296,9 +301,9 @@ fallback，交互后挂载的弹窗、抽屉等异步区域优先使用局部 Su
 
 - 如果下一页所需资源全部已经存在，不显示额外 loading。
 - 只有新挂载组件声明了缺失 namespace 时才进入 Suspense fallback。
-- 已离开页面的请求可以正常写入 resource store，但不能改变当前页面错误状态；失败记录必须绑定
+- 已离开页面的请求可以正常写入 resource store，但不能改变当前页面错误状态；错误状态必须绑定
   `language + namespace`，而不是用单个全局 ready 布尔值。
-- 加载失败不能标记为成功；提供重试入口并记录 `language`、`namespace`、`pathname`。
+- 加载失败不能标记为成功；展示刷新提示并保留 `language`、`namespace` 错误上下文。
 
 ### 3.6 语言切换
 
@@ -316,14 +321,27 @@ i18next 的 namespace 集合会包含当前会话访问过的组件，因此切�
 子组件逐个发现资源而出现混合语言。若试点指标表明该增量明显，再增加活动 namespace 引用计数，
 不在首版维护第二份路由清单。
 
-如果加载失败，保留原语言，不写入新的语言偏好，避免页面进入“语言已切换但资源不完整”的状态。
+如果加载失败，保留原语言，不写入新的语言偏好，避免页面进入“语言已切换但资源不完整”的状态；
+全局错误态要求用户确认刷新，刷新后重新读取 Cookie、本地存储和浏览器语言。
+
+Cookie 到期时，SSR 请求只按“Cookie → `x-fastgpt-language` → 英文”解析，因此没有有效 Cookie 或请求头
+时会回到英文；客户端成功写入语言时还会写入 localStorage 镜像，普通 CSR 页面可在 Cookie 到期后从该
+镜像恢复原语言并重新续写 Cookie。Cookie 和 localStorage 都不可用时，才退回内存值或
+`navigator.language`。
+
+分享页使用独立的 `FASTGPT_SHARE_LOCALE`。分享页的 Axios、SSE 和 Skill 流式请求从该 key 读取
+Cookie/localStorage/内存，并发送独立的 `x-fastgpt-share-language` 请求头；服务端让该请求头优先于主站
+`NEXT_LOCALE`，避免分享页语言被主站语言覆盖。普通页面仍只发送 `x-fastgpt-language`，两条语言链路互不污染。
+服务端 API 只有在请求带有分享语言头时才读取 `FASTGPT_SHARE_LOCALE` Cookie（该 Cookie 的 Path 为 `/`，
+普通页面也可能携带它）；未标记的普通请求会忽略分享 Cookie。分享页 SSR 则由 `serviceSideProps` 显式选择
+分享 Cookie，再回退主站 Cookie。
 
 首次初始化也遵循相同顺序：即使已经存在 `NEXT_LOCALE` Cookie，也必须为 CSR 页面显式加载该语言
 并执行 `changeLanguage`。只有没有 Cookie 时才使用旧版 `localStorage` 偏好或浏览器语言，并在加载
 成功后写回标准化后的 `NEXT_LOCALE`。
 
 `/chat/share` 本阶段保持现有 `FASTGPT_SHARE_LOCALE`、SSR 资源注入与 reload 行为，不与普通页面的
-试点同时修改。
+本轮迁移同时修改。
 
 ### 3.7 CSR 边界
 
@@ -341,30 +359,27 @@ i18next 的 namespace 集合会包含当前会话访问过的组件，因此切�
 const isClientOnlyRoute = (pathname: string) => clientOnlyRoutes.has(pathname);
 ```
 
-`_app` 的目标结构如下，现有 `App` 内容抽成 `AppShell`：
+当前 `_app` 的结构是：全局 Provider 和 `AppShell` 始终挂载，已迁移路由只把页面内容交给
+`ssr: false` 的 `ClientOnlyPage`；未迁移页面和 `/chat/share` 继续由同一个 `AppShell` 渲染。
 
 ```tsx
-const ClientOnlyAppShell = dynamic(() => import('@/web/context/ClientOnlyAppShell'), {
+const ClientOnlyPage = dynamic(() => import('@/web/context/ClientOnlyPage'), {
   ssr: false
 });
 
 function AppRouter(props: AppPropsWithLayout) {
-  if (isClientOnlyRoute(props.router.pathname)) {
-    return <ClientOnlyAppShell {...props} />;
-  }
-
-  return <AppShell {...props} />;
+  const isClientOnlyRoute = clientOnlyRoutes.has(props.router.pathname);
+  return <AppShell {...props} clientOnly={isClientOnlyRoute}
+    renderPage={isClientOnlyRoute ? () => <ClientOnlyPage {...props} /> : undefined} />;
 }
 
 export default appWithTranslation(AppRouter, clientI18nConfig);
 ```
 
-`ClientOnlyAppShell` 本身不调用依赖翻译或浏览器业务状态的初始化 hook，只负责组合
-`@fastgpt/web` 的 `ClientI18nGate`；基础语言和 `common` ready 后，再在
-`ClientI18nBoundary + Suspense` 内挂载
-`AppShell`。因此试点路由在服务端最多输出 Next 的静态应用骨架和
-dynamic loading 占位，不输出页面业务 HTML，也不会提前运行 `useInitApp`、Layout 或页面 effect。
-未迁移页面和 `/chat/share` 仍直接渲染同一个 `AppShell`，避免维护两份应用布局。
+`AppShell` 内部只在 `clientOnly` 路由包裹 `ClientI18nGate`、`ClientI18nBoundary` 和
+`SystemStoreContextProvider.waitForReady`，基础语言、`common` 和设备信息 ready 后才渲染页面内容。
+因此已迁移路由不输出页面业务 HTML；Layout 仍是常驻应用壳，且其可能打开的充值弹窗由全局 `price`
+namespace 预加载覆盖。
 
 当全部非分享页面迁移完成后，再切换为“除 `/chat/share` 外默认 client-only”，并删除过渡兼容分支。
 
@@ -385,7 +400,7 @@ client-only boundary 后会等待真实宽度确认，不会把这次调整暴�
 缓存值可能来自旧窗口或旧设备，只能作为提示，不能作为当前布局依据。该取舍消除了有状态设备 Cookie、
 过期尺寸和 i18n helper 混入设备职责的问题。
 
-## 4. 试点页面
+## 4. 本轮迁移范围与实现
 
 ### 4.1 选择 `/account/apikey`
 
@@ -398,36 +413,40 @@ client-only boundary 后会等待真实宽度确认，不会把这次调整暴�
   的加载和缓存。
 - 回滚只需恢复该页面 `getServerSideProps`，影响范围小。
 
-### 4.2 试点改动范围
+### 4.2 本轮实现范围
 
 1. 建立客户端 i18n 配置与动态资源 loader。
 2. 建立生成并校验 locale loader map 的脚本。
-3. 接入 dynamic-import backend，并把试点组件改为显式 `useTranslation(namespace)`。
-4. 在 `_app` 增加 i18n ready 门禁和仅针对试点路由的 client-only boundary。
-5. 从 `/account/apikey` 删除 `serviceSideProps` import 和 `getServerSideProps`。
+3. 接入 dynamic-import backend，并把迁移组件改为显式 `useTranslation(namespace)`。
+4. 在 `_app` 增加 i18n ready 门禁和针对已迁移路由的 client-only boundary，保持 `AppShell` 常驻。
+5. 删除账户页面和 `/price` 的 `serviceSideProps` import 与 `getServerSideProps`。
 6. 保持 `/chat/share` 代码和 SSR 输出不变。
-7. 增加 loader、缓存、路由门禁和语言切换测试。
+7. 将 `price` 作为 `serviceSideProps` 的全局预加载 namespace，因为常驻 `Layout` 中的充值弹窗可能在任意页面打开。
+8. 增加 loader、缓存、路由门禁、语言切换和语言格式归一化测试。
+9. 删除 PromotionRecord 历史索引、模型、接口和前端返佣功能。
+10. 区分普通页与分享页语言请求头，避免 request interceptor 直接用主站 localStorage 覆盖分享语言。
+11. GitHub/Forgejo workflow 增加 Web 测试和覆盖率任务；合并后再验证新 workflow 的门禁效果。
 
-### 4.3 预计代码落点
+### 4.3 实际代码落点
 
-实际文件名可以在编码时按现有目录语义微调，但职责边界保持如下：
+当前实现的职责边界如下：
 
 | 位置 | 职责 |
 | --- | --- |
 | `packages/web/i18n/clientConfig.ts` | 创建可由 app/admin 覆盖 `defaultLocale` 的稳定客户端公共配置 |
 | `packages/web/i18n/resourceLoaders.generated.ts` | 由脚本生成的 `language + namespace -> dynamic import` 映射 |
 | `packages/web/i18n/dynamicImportBackend.ts` | 把 i18next backend `read` 接到生成的 loader map |
-| `packages/web/i18n/loadLocaleResource.ts` | dynamic import、pending Promise 去重、失败记录与重试 |
+| `packages/web/i18n/resourceLoaders.ts` | dynamic import、pending Promise 去重和资源错误状态 |
 | `packages/web/i18n/ClientI18nGate.tsx` | 参数化解析语言，加载初始 namespace 并完成首次语言切换 |
-| `packages/web/i18n/ClientI18nBoundary.tsx` | 提供 Suspense、可注入 loading/error UI 和重试能力 |
-| `projects/app/src/web/common/i18n/clientOnlyRoutes.ts` | 只维护已迁移 CSR 路由集合，不记录 namespace |
+| `packages/web/i18n/ClientI18nBoundary.tsx` | 提供 Suspense、可注入 loading/error UI 和刷新提示 |
 | `projects/app/src/web/context/AppShell.tsx` | 从 `_app` 抽出的现有应用布局与初始化逻辑，SSR/CSR 共用 |
-| `projects/app/src/web/context/ClientOnlyAppShell.tsx` | 无 SSR 动态入口，给共享 Gate 注入 app 参数后挂载 `AppShell` |
-| `packages/web/scripts/generate-i18n-resource-loaders.ts` | 扫描共享包支持语言和 namespace，生成 loader map |
+| `projects/app/src/web/context/ClientOnlyPage.tsx` | 无 SSR 动态入口，给共享 Gate 注入 app 参数后挂载页面 |
+| `scripts/generate-i18n-resource-loaders.mjs` | 扫描共享包支持语言和 namespace，生成 loader map |
+| `scripts/check-i18n-resource-loaders.mjs` | 校验生成结果与翻译资源一致 |
 | `projects/app/src/pages/_app.tsx` | Provider 配置、SSR/CSR 分流及整个应用壳的翻译门禁 |
-| `packages/web/hooks/useI18n.ts` | 组合已登记 namespace 的预加载、语言切换、持久化及 SSR/share 兼容路径 |
-| `projects/app/src/pages/account/apikey.tsx` | 删除试点页 `getServerSideProps` |
-| `projects/app/test/web/common/i18n/*.test.ts` | backend、loader 缓存、组件声明、失败重试及语言切换测试 |
+| `packages/web/i18n/utils.ts` | 语言偏好、语言映射和 namespace 预加载工具 |
+| `projects/app/src/pages/account/*.tsx`、`projects/app/src/pages/price.tsx` | 删除已迁移页面的 `getServerSideProps` |
+| `packages/web/test/i18n/*.test.ts`、`packages/service/test/common/middle/i18n.test.ts` | loader、缓存、语言映射和请求语言解析测试 |
 
 生成脚本需要接入 app/admin 的开发和构建前置步骤，且 CI 中增加“生成结果没有 diff”的检查，避免开发者
 新增 namespace 后只在本地生成但未提交。`resourceLoaders.generated.ts` 只承载机械映射，不写业务逻辑。
@@ -436,12 +455,12 @@ client-only boundary 后会等待真实宽度确认，不会把这次调整暴�
 client-only boundary 和默认语言配置组合共享能力。admin 本轮不跟随试点迁移，只要求共享 API 的设计
 能支持其后续接入，并通过一个最小 Gate 单元测试覆盖 `defaultLanguage="zh-CN"` 的参数化行为。
 
-### 4.4 试点验收条件
+### 4.4 本轮验收条件
 
 功能验收：
 
-- 直接访问 `/account/apikey` 能正常完成登录态校验和页面展示。
-- 页面加载过程中不出现 `common:*`、`account:*` 或 `apikey:*` 原始 key。
+- 直接访问当前 client-only 路由能正常完成登录态校验和页面展示。
+- 页面加载过程中不出现 `common:*`、业务 namespace 原始 key。
 - API key 列表、创建、编辑、删除、标签管理、复制、排序和搜索可正常使用。
 - 桌面与移动布局正确，首次访问不发生明显布局跳变。
 - 从其他页面进入 `/account/apikey` 和从试点页返回其他页面均正常。
@@ -453,7 +472,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 - 请求 `/account/apikey` 返回的服务端 HTML 中不包含 API key 页面业务文案或表格结构。
 - 请求 `/chat/share?shareId=...` 返回的服务端 HTML 仍包含分享页对应 Head 信息。
-- `/account/apikey` 不再出现在 `getServerSideProps` 页面清单中。
+- 当前 11 个 client-only 路由不再出现在 `getServerSideProps` 页面清单中。
 
 缓存验收：
 
@@ -465,7 +484,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 质量门槛：
 
-- 试点页没有新增 hydration、missingKey、failedLoading 或未处理 Promise 错误。
+- namespace 加载失败时进入明确错误态并提示用户刷新，不继续渲染不完整翻译；该行为是有意的全局兜底。
 - i18n 门禁不会让 API、WebSocket、轮询或业务 effect 在翻译就绪前重复启动。
 - TypeScript、lint、相关单元测试和应用构建通过。
 
@@ -480,27 +499,30 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - 语言切换失败率。
 - `/chat/share` SSR 请求和页面行为是否保持原有水平。
 
-只有在上述验收全部通过且观察期没有阻断问题后，才开始第二批迁移。
+本轮实现已完成代码迁移；直接访问、弹窗、三种语言和 basePath 等浏览器验收仍属于发布后的观察项。
 
 ## 5. 分批迁移计划
 
-### 第一阶段：基础能力与单页试点
+### 第一阶段：基础能力与单页试点（已完成实现）
 
-只迁移 `/account/apikey`，不顺手迁移同目录页面。目标是验证架构假设、构建产物、缓存和回滚链路。
+先迁移 `/account/apikey` 验证架构假设、构建产物、缓存和回滚链路，随后在同一实现上扩展账户页面和价格页。
 
-### 第二阶段：纯 i18n 页面
+### 第二阶段：纯 i18n 页面（账户/价格批次已完成）
 
-优先迁移 `getServerSideProps` 只调用 `serviceSideProps` 的页面，按业务域小批提交：
+已完成的账户/价格批次包括：
 
-1. 账户页面：`/account/bill`、`/account/inform`、`/account/setting`、
+1. `/account/apikey`、`/account/bill`、`/account/inform`、`/account/setting`、
    `/account/customDomain`、`/account/thirdParty`。
-2. 账户复杂页面：`/account/info`、`/account/team`、`/account/model`、`/account/usage`。
-3. Dashboard 列表页：`/dashboard/agent`、`/dashboard/tool`、
+2. `/account/info`、`/account/team`、`/account/model`、`/account/usage`、`/price`。
+
+仍待迁移的纯 i18n 页面包括：
+
+1. Dashboard 列表页：`/dashboard/agent`、`/dashboard/tool`、
    `/dashboard/templateMarket`、`/dashboard/systemTool`、`/dashboard/mcpServer`、
    `/dashboard/evaluation`、`/dashboard/evaluation/create`、`/dashboard/create`、
    `/dashboard/skill`。
-4. 数据集、应用和其他页面：`/dataset/list`、`/config/tool`、`/app/detail`、
-   `/skill/detail`、`/price`、`/login`、`/login/provider`。
+2. 数据集、应用和其他页面：`/dataset/list`、`/config/tool`、`/app/detail`、
+   `/skill/detail`、`/login`、`/login/provider`。
 
 每批都需要：把可达组件改为显式 `useTranslation(namespace)`、删除对应 `getServerSideProps`、验证
 冷/热缓存和语言切换，不能只依赖原 `serviceSideProps` 数组。
@@ -535,7 +557,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 3. backend 对 `useTranslation` 声明的新 namespace 发起加载，已有 resource bundle 不重复加载。
 4. 并发请求相同资源复用同一个 Promise，只执行一次 loader。
 5. 不同语言的同名 namespace 分别加载。
-6. namespace 加载失败时进入可定位、可重试的错误态，不渲染原始 key。
+6. namespace 加载失败时进入可定位的错误态，确认后刷新，不渲染原始 key。
 7. 试点组件的 namespace 参数均受类型约束，页面根预加载合集覆盖首屏直接依赖。
 8. 语言切换在资源成功后才更新语言和存储；失败时不改变当前语言。
 
@@ -543,7 +565,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 1. 模拟首次访问 `/account/apikey`，断言 loading 后再出现已翻译内容。
 2. 模拟客户端路由重复进入，断言不重复加载。
-3. 模拟加载失败和重试。
+3. 模拟加载失败并确认刷新提示。
 4. 模拟在加载过程中切换路由或语言，断言旧页面失败状态不会污染新页面。
 5. 断言 `/chat/share` 不经过 CSR i18n 门禁，仍使用 SSR 注入资源。
 6. 从中文 SSR 页面导航到试点 CSR 页面，断言门禁完成后保持中文且不闪现英文内容。
@@ -562,10 +584,10 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 ## 7. 回滚方案
 
-试点回滚按以下顺序：
+当前批次回滚按以下顺序：
 
-1. 恢复 `/account/apikey` 的 `serviceSideProps` 与 `getServerSideProps`。
-2. 从 `clientOnlyRoutes` 移除 `/account/apikey`，使其不再进入 client-only 分支。
+1. 恢复目标页面的 `serviceSideProps` 与 `getServerSideProps`。
+2. 从 `_app.tsx` 的 `clientOnlyRoutes` 移除对应页面，使其不再进入 client-only 分支。
 3. 保留未被试点使用的客户端 i18n 基础代码时，必须确认它不改变现有 SSR 页行为；否则整体回滚基础代码。
 4. `/chat/share` 始终不参与试点回滚，因为试点不修改其 SSR 方案。
 
@@ -583,7 +605,7 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 | 语言切换时出现混合语言 | 先加载目标语言全部资源，成功后再 changeLanguage |
 | 动态 import 被打入公共首包 | production build 检查 chunks 和首屏资源清单 |
 | basePath 下资源 404 | 使用 Next 管理的 hashed chunk，并验证 `/fastai` 部署 |
-| 路由快速切换污染错误态 | failure registry 按 `language + namespace` 记录，页面只消费当前挂载依赖 |
+| namespace 加载失败 | `ClientI18nErrorFallback` 统一提示“加载失败，请刷新”，确认后执行全局刷新，避免继续渲染不完整翻译 |
 | 试点页面仍被静态预渲染 | 使用显式 client-only boundary，并检查返回 HTML |
 | SSR 分享页回归 | `/chat/share` 独立路径和回归测试，保持 serverSideTranslations 注入 |
 | 翻译发布后旧缓存不失效 | 使用内容 hash 的构建产物 URL，不使用固定 URL + immutable |
@@ -599,23 +621,28 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 明确 `/chat/share` 保持 SSR
 - [x] 评审并确认本方案后开始编码
 
-### 第一阶段：基础能力
+### 第一阶段：基础能力（代码已完成）
 
 - [x] 实现客户端 i18n 稳定配置，使无 `_nextI18Next` pageProps 的页面也有 Provider
-- [x] 实现 locale loader map（试点 namespace）和动态 import backend
-- [x] 实现动态 import、并发去重、资源注册和重试底层能力
+- [x] 实现 locale loader map（已迁移 namespace）和动态 import backend
+- [x] 实现动态 import、并发去重、资源注册和失败状态底层能力
 - [x] 在 `packages/web` 实现参数化 `ClientI18nGate`，不依赖 app/admin 路由和业务状态
-- [x] 实现类型安全的 `clientOnlyRoutes`，只承担试点 CSR 分流
+- [x] 实现类型安全的 `clientOnlyRoutes`，只承担已迁移页面的 CSR 分流
 - [x] 实现 `common` 初始化门禁及应用树 Suspense
 - [x] 实现迁移路由限定的 client-only boundary
-- [x] 调整试点页面初始化为“先加载、再切换、再持久化”
-- [ ] 为上述能力补充自动化单元测试
+- [x] 调整迁移页面初始化为“先加载、再切换、再持久化”
+- [x] 为上述能力补充自动化单元测试（loader、backend、原子切换、语言映射和服务端请求解析）
 
-### 第一阶段：`/account/apikey` 试点
+### 第一批：账户页面与 `/price`（代码已完成，浏览器验收待发布）
 
-- [x] 将试点可达组件改为显式 `useTranslation(namespace, { useSuspense: true })`
+- [x] 将迁移可达组件改为显式 `useTranslation(namespace, { useSuspense: true })`
 - [x] API key 组件声明 `common`、`apikey`，账户容器声明 `common`、`account`
-- [x] 删除试点页面的 `serviceSideProps` 和 `getServerSideProps`
+- [x] 删除迁移页面的 `serviceSideProps` 和 `getServerSideProps`
+- [x] 将 `/account/apikey`、`/account/bill`、`/account/inform`、`/account/setting`、`/account/thirdParty`、`/account/customDomain`、`/account/team`、`/account/info`、`/account/model`、`/account/usage`、`/price` 加入 client-only 路由集合
+- [x] Layout 常驻时全局预加载 `price` namespace，覆盖任意页面打开充值弹窗的场景
+- [x] `zh-Hant-TW` 等脚本/地区格式统一归一化为 `zh-Hant`
+- [x] 分享页从 `FASTGPT_SHARE_LOCALE` 读取语言并发送独立请求头，不读取主站语言覆盖分享语言
+- [x] 加载失败展示独立错误态，确认按钮执行刷新
 - [ ] 验证试点页直接访问、客户端导航、桌面端和移动端
 - [ ] 验证 API key 完整操作路径与登录态跳转
 - [ ] 验证三种语言及切换失败行为
@@ -653,17 +680,23 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 - [x] 补齐繁体 `account_usage` 缺失的翻译 key
 - [ ] 验证列表筛选、导出、详情、Dashboard 与充值弹窗
 
-- [x] 验证试点页服务端 HTML 不含业务页面内容
+- [x] 验证已迁移页面服务端 HTML 不含业务页面内容
 - [x] 验证 `/chat/share` SSR、Head 与语言隔离无回归
+- [x] 运行 Web 测试、typecheck、生成资源校验和 diff check；Service 定向测试在本地受 MongoMemoryServer sandbox 限制，CI 已通过
 - [ ] 验证 root 和 `/fastai` basePath 构建与运行
-- [ ] 运行局部测试、typecheck、lint、production build，最后运行全量测试
+- [ ] 运行 production build 和全量本地测试
+
+### CI（合并后验证）
+
+- [x] GitHub/Forgejo workflow 已增加 `test-web`、覆盖率上传及生成资源校验
+- [ ] 合并后确认新 workflow 已成为实际分支门禁；当前分支不提前修改 workflow 逻辑
 
 ### 观察与扩面
 
-- [ ] 记录试点发布前后的首屏、错误率、资源体积与缓存命中基线
+- [ ] 记录本轮发布前后的首屏、错误率、资源体积与缓存命中基线
 - [ ] 完成至少一个发布周期观察
 - [ ] 根据观察结果确认继续、调整或回滚
-- [ ] 按第二阶段列表逐批迁移纯 i18n 页面
+- [ ] 按剩余页面列表逐批迁移纯 i18n 页面
 - [ ] 为第三阶段带服务端 props 页面分别补充设计
 - [ ] 完成特殊页面审查和默认 CSR 收尾
 - [ ] 最终扫描并确认仅 `/chat/share` 保留业务页面 SSR；任何新增豁免必须单独评审

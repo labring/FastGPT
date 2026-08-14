@@ -2,8 +2,8 @@ import { useTranslation } from 'next-i18next';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import ClientI18nErrorFallback from './ClientI18nErrorFallback';
 import {
+  getClientLanguagePreference,
   getLangMapping,
-  getPersistedLang,
   getRequiredI18nLanguages,
   persistLanguagePreference
 } from './utils';
@@ -25,11 +25,7 @@ const ClientI18nGate = ({
   children
 }: ClientI18nGateProps) => {
   const { i18n } = useTranslation();
-  const language = getLangMapping(
-    getPersistedLang(storageKey) ||
-      (typeof navigator === 'undefined' ? undefined : navigator.language) ||
-      defaultLanguage
-  );
+  const language = getLangMapping(getClientLanguagePreference(storageKey) || defaultLanguage);
   const requiredLanguages = useMemo(() => getRequiredI18nLanguages(language), [language]);
   const ready =
     i18n.language === language &&
