@@ -39,45 +39,55 @@ function isWellFormedUnicode(value: string): boolean {
   return true;
 }
 
-/**
- * 按 SDK 统一规范预检对象 key；失败时不会把原始 key 写入错误消息。
- * 该规范取 AWS S3、MinIO、OSS、COS 可稳定处理范围的交集。
- */
-export function assertStorageObjectKey(value: unknown, field = 'key'): asserts value is string {
-  if (typeof value !== 'string') {
-    throwInvalidStorageObjectKey({ field, reason: 'invalid_type' });
-  }
-  if (value.length === 0) {
-    throwInvalidStorageObjectKey({ field, reason: 'empty' });
-  }
-  if (!isWellFormedUnicode(value)) {
-    throwInvalidStorageObjectKey({ field, reason: 'invalid_unicode' });
-  }
+/** ASCII 控制字符（C0 控制符 + DEL），XML 序列化时无法安全直传。 */
+export const STORAGE_OBJECT_CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/u;
 
-  const actualBytes = Buffer.byteLength(value, 'utf8');
-  if (actualBytes > MAX_STORAGE_OBJECT_KEY_UTF8_BYTES) {
-    throwInvalidStorageObjectKey({ field, reason: 'too_long', actualBytes });
+/** 判断字符串是否包含 ASCII 控制字符。 */
+export const containsStorageObjectControlCharacter = (value: string): boolean =>
+  STORAGE_OBJECT_CONTROL_CHARACTER_PATTERN.test(value);
+
+/**
+ * 收集对象 key 的全部格式违规原因（按 SDK 统一规范的固定顺序）。
+ * 返回空数组表示 key 完全合规；`invalid_type`/`empty`/`invalid_unicode`
+ * 属于不可继续度量的基础违规，命中后立即返回。
+ * 用于需要判断"是否只存在白名单内违规"等聚合场景，避免首个违规遮蔽后续原因。
+ */
+export function collectStorageObjectKeyViolations(value: unknown): InvalidStorageObjectKeyReason[] {
+  if (typeof value !== 'string') return ['invalid_type'];
+  if (value.length === 0) return ['empty'];
+  if (!isWellFormedUnicode(value)) return ['invalid_unicode'];
+
+  const reasons: InvalidStorageObjectKeyReason[] = [];
+  if (Buffer.byteLength(value, 'utf8') > MAX_STORAGE_OBJECT_KEY_UTF8_BYTES) {
+    reasons.push('too_long');
   }
-  if (value.startsWith('/')) {
-    throwInvalidStorageObjectKey({ field, reason: 'leading_slash' });
-  }
-  if (value.includes('\\')) {
-    throwInvalidStorageObjectKey({ field, reason: 'backslash' });
-  }
-  if (value.includes('//')) {
-    throwInvalidStorageObjectKey({ field, reason: 'empty_path_segment' });
-  }
-  if (/[\u0000-\u001f\u007f]/u.test(value)) {
-    throwInvalidStorageObjectKey({ field, reason: 'control_character' });
-  }
+  if (value.startsWith('/')) reasons.push('leading_slash');
+  if (value.includes('\\')) reasons.push('backslash');
+  if (value.includes('//')) reasons.push('empty_path_segment');
+  if (containsStorageObjectControlCharacter(value)) reasons.push('control_character');
   if (
     value.split('/').some((segment) => {
       const trimmedSegment = segment.trim();
       return trimmedSegment === '.' || trimmedSegment === '..';
     })
   ) {
-    throwInvalidStorageObjectKey({ field, reason: 'dot_path_segment' });
+    reasons.push('dot_path_segment');
   }
+  return reasons;
+}
+
+/**
+ * 按 SDK 统一规范预检对象 key；失败时不会把原始 key 写入错误消息。
+ * 该规范取 AWS S3、MinIO、OSS、COS 可稳定处理范围的交集。
+ */
+export function assertStorageObjectKey(value: unknown, field = 'key'): asserts value is string {
+  const reason = collectStorageObjectKeyViolations(value)[0];
+  if (reason === undefined) return;
+  throwInvalidStorageObjectKey({
+    field,
+    reason,
+    actualBytes: reason === 'too_long' ? Buffer.byteLength(value as string, 'utf8') : undefined
+  });
 }
 
 /** 批量方法必须完整预检数组后，调用方才能开始分块或产生远端副作用。 */

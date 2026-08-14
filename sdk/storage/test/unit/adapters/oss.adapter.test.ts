@@ -270,6 +270,43 @@ describe('OssStorageAdapter deletion boundaries', () => {
   });
 });
 
+describe('OssStorageAdapter.deleteObjectsByRawKeys', () => {
+  it('routes control-character keys through single-object delete and the rest through XML batch delete', async () => {
+    const adapter = createAdapter();
+    const deleteObject = vi.fn().mockResolvedValue({});
+    const deleteMulti = vi.fn().mockResolvedValue({ deleted: ['dataset/team/file.txt'] });
+    Object.assign((adapter as any).client, { delete: deleteObject, deleteMulti });
+
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    const safeKey = 'dataset/team/file.txt';
+
+    await expect(adapter.deleteObjectsByRawKeys({ keys: [legacyKey, safeKey] })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: []
+    });
+
+    expect(deleteObject).toHaveBeenCalledTimes(1);
+    expect(deleteObject).toHaveBeenCalledWith(legacyKey);
+    expect(deleteMulti).toHaveBeenCalledTimes(1);
+    expect(deleteMulti).toHaveBeenCalledWith([safeKey], { quiet: false });
+  });
+
+  it('reports control-character keys whose single-object delete fails', async () => {
+    const adapter = createAdapter();
+    const deleteObject = vi.fn().mockRejectedValue(new Error('delete denied'));
+    const deleteMulti = vi.fn();
+    Object.assign((adapter as any).client, { delete: deleteObject, deleteMulti });
+
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    await expect(adapter.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: [legacyKey]
+    });
+    expect(deleteObject).toHaveBeenCalledTimes(1);
+    expect(deleteMulti).not.toHaveBeenCalled();
+  });
+});
+
 describe('OssStorageAdapter.generatePublicGetUrl', () => {
   it.each([
     [

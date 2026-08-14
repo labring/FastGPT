@@ -57,7 +57,9 @@ export {
   assertStorageObjectKey,
   assertStorageObjectKeys,
   assertStorageObjectPrefix,
-  isNoSuchMultipartUploadError
+  isNoSuchMultipartUploadError,
+  containsStorageObjectControlCharacter,
+  collectStorageObjectKeyViolations
 } from './assert';
 export { AwsS3StorageAdapter } from './adapters/aws-s3.adapter';
 export { R2StorageAdapter } from './adapters/r2.adapter';

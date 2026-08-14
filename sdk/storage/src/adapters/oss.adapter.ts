@@ -18,6 +18,7 @@ import {
   assertMultipartPartNumber,
   assertMultipartUploadId,
   assertMultipartUploadParts,
+  containsStorageObjectControlCharacter,
   isNoSuchMultipartUploadError
 } from '../assert';
 
@@ -300,9 +301,22 @@ export class OssStorageAdapter implements IStorage {
       };
     }
 
-    // OSS 单次 DeleteMultipleObjects 最多接受 1000 个 key；verbose 模式会返回成功删除的 key。
     const failedKeys: Storage.StorageObjectKey[] = [];
-    for (const keyChunk of chunk(keys, 1000)) {
+    // 含 ASCII 控制字符的 key 不能放进 XML 请求体（XML 1.0 会把字面 CR/CRLF 规范化成 LF），
+    // 改走单对象 DELETE：key 经 URL 编码后与对象真实名称一致。
+    const controlCharacterKeys = keys.filter((key) => containsStorageObjectControlCharacter(key));
+    const xmlSafeKeys = keys.filter((key) => !containsStorageObjectControlCharacter(key));
+
+    for (const key of controlCharacterKeys) {
+      try {
+        await this.client.delete(key);
+      } catch {
+        failedKeys.push(key);
+      }
+    }
+
+    // OSS 单次 DeleteMultipleObjects 最多接受 1000 个 key；verbose 模式会返回成功删除的 key。
+    for (const keyChunk of chunk(xmlSafeKeys, 1000)) {
       const result = await this.client.deleteMulti(keyChunk, { quiet: false });
       const deletedKeys = (() => {
         const deletedItems: unknown = result.deleted;

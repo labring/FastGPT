@@ -157,6 +157,54 @@ describe('executeS3DeleteJob', () => {
     expect(deleteObjectsByRawKeys).not.toHaveBeenCalled();
   });
 
+  it('does not bypass validation when a single key mixes legacy and non-legacy violations', async () => {
+    const deleteObjectsByMultiKeys = vi.fn().mockRejectedValue(
+      new InvalidStorageObjectKeyError({
+        field: 'keys[0]',
+        reason: 'backslash'
+      })
+    );
+    const deleteObjectsByRawKeys = vi.fn();
+
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { deleteObjectsByMultiKeys, deleteObjectsByRawKeys }
+      }
+    } as any;
+
+    await expect(
+      executeS3DeleteJob({ bucketName: 'fastgpt-private', keys: ['chat\\legacy/../escape.txt'] })
+    ).rejects.toMatchObject({
+      name: InvalidStorageObjectKeyError.name,
+      reason: 'dot_path_segment'
+    });
+    expect(deleteObjectsByRawKeys).not.toHaveBeenCalled();
+  });
+
+  it('does not skip parsed-prefix deletion when a legacy source key also violates non-legacy rules', async () => {
+    const key = 'chat\\legacy/../escape.txt';
+    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
+    const deleteObjectsByPrefix = vi.fn().mockRejectedValue(
+      new InvalidStorageObjectKeyError({
+        field: 'prefix',
+        reason: 'backslash'
+      })
+    );
+
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { deleteObjectsByMultiKeys, deleteObjectsByPrefix }
+      }
+    } as any;
+
+    await expect(
+      executeS3DeleteJob({ bucketName: 'fastgpt-private', keys: [key] })
+    ).rejects.toMatchObject({
+      name: InvalidStorageObjectKeyError.name,
+      reason: 'backslash'
+    });
+  });
+
   it('does not silently skip parsed-prefix deletion for a valid key', async () => {
     const longValidKey = `dataset/team/${'a'.repeat(782)}.txt`;
     const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });

@@ -1,11 +1,12 @@
 import { getLogger, LogCategories } from '../../logger';
 import path from 'path';
+import { createHash } from 'node:crypto';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { deleteS3DownloadAliasByObjects } from '../accessLink';
 import { s3FileDeleteMQService, type S3MQJobData } from '@fastgpt/dal/redis/bullmq';
 import {
   InvalidStorageObjectKeyError,
-  assertStorageObjectKey,
+  collectStorageObjectKeyViolations,
   type InvalidStorageObjectKeyReason
 } from '@fastgpt-sdk/storage';
 
@@ -39,26 +40,28 @@ const LEGACY_DELETE_FALLBACK_REASONS: ReadonlySet<InvalidStorageObjectKeyReason>
 const isLegacyStorageKeyError = (error: unknown): error is InvalidStorageObjectKeyError =>
   error instanceof InvalidStorageObjectKeyError && LEGACY_DELETE_FALLBACK_REASONS.has(error.reason);
 
-/** 判断源 key 本身是否为 legacy 非规范 key（断言失败且原因在白名单内）。 */
+/** 判断源 key 本身是否为 legacy 非规范 key（全部违规原因都在白名单内）。 */
 const isLegacySourceKey = (key: string) => {
-  try {
-    assertStorageObjectKey(key);
-    return false;
-  } catch (error) {
-    return isLegacyStorageKeyError(error);
-  }
+  const violations = collectStorageObjectKeyViolations(key);
+  return (
+    violations.length > 0 &&
+    violations.every((reason) => LEGACY_DELETE_FALLBACK_REASONS.has(reason))
+  );
 };
 
 /**
  * 批量降级前逐个校验每个 key：合法的或白名单 legacy 的允许进入原始直删；
  * 任何 key 违反其余安全相关断言则抛出对应错误，避免混合批次整批绕过校验。
+ * 使用全量违规收集而不是首个违规，防止 backslash/control_character 等白名单原因
+ * 遮蔽同一 key 上的 dot_path_segment 等安全违规。
  */
 const assertAllKeysLegacyRawEligible = (keys: string[]) => {
   for (const key of keys) {
-    try {
-      assertStorageObjectKey(key);
-    } catch (error) {
-      if (!isLegacyStorageKeyError(error)) throw error;
+    const blockingReason = collectStorageObjectKeyViolations(key).find(
+      (reason) => !LEGACY_DELETE_FALLBACK_REASONS.has(reason)
+    );
+    if (blockingReason) {
+      throw new InvalidStorageObjectKeyError({ field: 'key', reason: blockingReason });
     }
   }
 };
@@ -109,9 +112,11 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
           // 只有源 key 本身是 legacy 时才跳过派生前缀删除；
           // 合法 key 的派生前缀超长等问题仍按原有方式抛出，避免静默遗留孤儿对象。
           if (!isLegacyStorageKeyError(error) || !isLegacySourceKey(key)) throw error;
+          // 前缀可能来自文件名/内容片段，只记录 hash 与长度，避免敏感内容进入日志。
           logger.warn('Skip parsed prefix deletion for legacy key', {
             bucketName,
-            prefix: fileParsedPrefix,
+            prefixHash: createHash('sha256').update(fileParsedPrefix).digest('hex').slice(0, 16),
+            prefixLength: fileParsedPrefix.length,
             reason: error.reason
           });
           return undefined;

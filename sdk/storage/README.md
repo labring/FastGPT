@@ -139,6 +139,7 @@ const storage = createStorage({
 - **`downloadObject({ key })`**: 下载对象（返回 `Readable`）。
 - **`deleteObject({ key })`**: 删除单个对象。
 - **`deleteObjectsByMultiKeys({ keys })`**: 按 key 列表批量删除（返回失败 key 列表）。
+- **`deleteObjectsByRawKeys({ keys })`**: 按 key 列表批量删除**原始遗留 key**（跳过格式断言，仅供删除业务侧已确认存在的历史非规范 key；含 ASCII 控制字符的 key 在 OSS/COS 上走单对象删除，避免 XML 序列化改写 key）。
 - **`deleteObjectsByPrefix({ prefix })`**: 按前缀批量删除（高危，务必使用非空 prefix；返回失败 key 列表）。
 - **`generatePresignedPutUrl({ key, expiredSeconds?, metadata? })`**: 生成 **PUT** 预签名 URL（用于前端直传）。
 - **`generatePresignedGetUrl({ key, expiredSeconds? })`**: 生成 **GET** 预签名 URL（用于临时授权下载）。
