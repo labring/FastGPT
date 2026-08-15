@@ -4,9 +4,10 @@ on:
   pull_request:
     paths:
       - 'document/**'
+      - 'pnpm-workspace.yaml'
     types: [opened, synchronize, reopened]
 
-# Only one build per PR branch at a time
+# Only one build per PR branch at a time.
 concurrency:
   group: 'preview-docs-build-${{ github.head_ref }}'
   cancel-in-progress: true
@@ -24,6 +25,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -39,26 +41,20 @@ jobs:
           platforms: linux/amd64
           push: false
           tags: fastgpt-docs-pr:${{ github.event.pull_request.head.sha }}
+          provenance: false
+          sbom: false
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=FastGPT Docs Preview
           build-args: |
             FASTGPT_HOME_DOMAIN=https://fastgpt.io
           outputs: type=docker,dest=/tmp/docs-image.tar
-          cache-from: type=gha,scope=docs
-          cache-to: type=gha,mode=max,scope=docs
-
-      - name: Save PR metadata
-        run: |
-          echo "${{ github.event.pull_request.number }}" > /tmp/pr-number.txt
-          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-sha.txt
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
         with:
           name: preview-docs-image
-          path: |
-            /tmp/docs-image.tar
-            /tmp/pr-number.txt
-            /tmp/pr-sha.txt
+          path: /tmp/docs-image.tar
+          compression-level: 0
+          if-no-files-found: error
           retention-days: 1

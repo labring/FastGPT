@@ -398,7 +398,7 @@ importers:
         specifier: ^18
         version: 18.3.0
       postcss:
-        specifier: 'catalog:'
+        specifier: ^8.5.12
         version: 8.5.22
       tailwindcss:
         specifier: ^4.1.11
