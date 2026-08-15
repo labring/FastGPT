@@ -31,7 +31,7 @@ You can also download tools one by one from the plugin marketplace. Before the s
 
 1. Reworked the plugin system architecture.
 2. Reworked the chatbox UI.
-3. Added virtual list rendering for apps and Knowledge Bases.
+3. Added virtual list rendering for apps and Datasets.
 4. Added separate OpenAPI documentation to distinguish it from the dev API documentation.
 5. Workflow template export now includes the name and description.
 
@@ -42,7 +42,7 @@ You can also download tools one by one from the plugin marketplace. Before the s
 3. Plugin entry files can now be pulled from object storage and cached in the local file directory.
 4. Added validation to input guide configuration to avoid invalid custom lexicon URLs.
 5. Enhanced validation for Workflow array reference types to avoid conflicts with two-dimensional data.
-6. Apps now show a graceful prompt during orchestration when a Knowledge Base has been deleted.
+6. Apps now show a graceful prompt during orchestration when a Dataset has been deleted.
 7. Replaced PDFJs with `liteparse` for PDF parsing, improving parsing speed by 3x.
 8. Optimized Workflow execution by storing nodeResponse in a flattened format, avoiding failures when saving large nested Workflows.
 9. XLSX parsing now automatically removes empty rows and columns and supplements merged cells.
@@ -50,7 +50,7 @@ You can also download tools one by one from the plugin marketplace. Before the s
 ## 🐛 Bug Fixes
 
 1. Fixed abnormal multimodal file link retrieval for models.
-2. Fixed a potential unauthorized access risk in training APIs.
+2. Fixed a potential unauthorized access risk in indexing APIs.
 3. Fixed an SSRF risk in HTTP tool parsing.
 4. Fixed abnormal MCP tool expansion after tool calls following an interaction node.
 

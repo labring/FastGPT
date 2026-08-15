@@ -35,14 +35,14 @@ function Error() {
     if (llmModelList.length === 0) {
       modelError = true;
       toast({
-        title: '未配置语言模型',
+        title: t('common:llm_model_not_config'),
         status: 'error'
       });
     }
     if (embeddingModelList.length === 0) {
       modelError = true;
       toast({
-        title: '未配置索引模型',
+        title: t('common:error_embedding_not_config'),
         status: 'error'
       });
     }

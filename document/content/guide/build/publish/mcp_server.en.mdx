@@ -9,7 +9,7 @@ MCP (Model Context Protocol) was released by Anthropic in early November 2024. I
 
 MCP has two main components: Client and Server. The Client is the AI model consumer — it uses MCP Client to give the model the ability to call external systems. The Server provides and runs those external system integrations.
 
-FastGPT's MCP Server feature lets you select `multiple` applications built on FastGPT and expose them via MCP protocol for external consumption.
+FastGPT's MCP Server feature lets you select `multiple` apps built on FastGPT and expose them via MCP protocol for external consumption.
 
 Currently, FastGPT's MCP Server uses the SSE transport protocol, with plans to migrate to `HTTP Streamable` in the future.
 
@@ -17,11 +17,11 @@ Currently, FastGPT's MCP Server uses the SSE transport protocol, with plans to m
 
 ### 1. Create an MCP Server
 
-After logging into FastGPT, open `Workspace` and click `MCP Server` to access the management page. Here you can see all your MCP Servers and the number of applications each one manages.
+After logging into FastGPT, open `Studio` and click `MCP Server` to access the management page. Here you can see all your MCP Servers and the number of apps each one manages.
 
 ![Create MCP server](/imgs/mcp_server1.png)
 
-You can customize the MCP Server name and select which applications to associate.
+You can customize the MCP Server name and select which apps to associate.
 
 |                            |                            |
 | -------------------------- | -------------------------- |
@@ -37,7 +37,7 @@ After creating an MCP Server, click `Start Using` to get the access URL.
 
 #### 3. Use the MCP Server
 
-Use the URL in any MCP-compatible client to call your FastGPT applications — for example, `Cursor` or `Cherry Studio`. Here's how to set it up in Cursor.
+Use the URL in any MCP-compatible client to call your FastGPT apps — for example, `Cursor` or `Cherry Studio`. Here's how to set it up in Cursor.
 
 Open Cursor's settings page and click MCP to enter the MCP configuration page. Click the new MCP Server button to open a JSON configuration file. Paste the `integration script` from step 2 into the `JSON file` and save.
 
@@ -48,7 +48,7 @@ Return to Cursor's MCP management page and you'll see your MCP Server listed. Ma
 | ![](/imgs/mcp_server6.png) | ![](/imgs/mcp_server7.png) | ![](/imgs/mcp_server8.png) |
 
 Open Cursor's chat panel and switch to `Agent` mode — only this mode triggers MCP Server calls.
-After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (described as: query fastgpt knowledge base), which calls the FastGPT application to process the question and return results.
+After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (described as: query fastgpt Dataset), which calls the FastGPT app to process the question and return results.
 
 |                            |                             |
 | -------------------------- | --------------------------- |
@@ -93,4 +93,4 @@ docker-compose down
 docker-compose up -d
 ```
 
-After restarting, the MCP Server option will appear in the Workspace.
+After restarting, the MCP Server option will appear in Studio.

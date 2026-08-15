@@ -1,18 +1,18 @@
 ---
-title: Application API
-description: FastGPT OpenAPI Application Interface
+title: App API
+description: FastGPT OpenAPI App Interface
 ---
 
 ## Prerequisites
 
 1. Prepare your API Key: You can use the global API Key directly
-2. Get your application's AppId
+2. Get your app's AppId
 
 ![alt text](../../public/imgs/image-120.png)
 
 ## Log API
 
-### Get Application Overall Statistics
+### Get App Overall Statistics
 
 <Tabs items={["Request Example","Response Example","Parameters"]}>
 
@@ -46,19 +46,19 @@ curl --location --request GET 'https://cloud.fastgpt.cn/api/proApi/core/app/logs
 
 **Request Parameters:**
 
-- appId: Application ID
+- appId: App ID
 
 **Response Parameters:**
 
 - totalUsers: Total number of users
-- totalChats: Total number of conversations
+- totalChats: Total number of chats
 - totalPoints: Total points consumed
 
 </Tab>
 
 </Tabs>
 
-### Get Application Chart Data
+### Get App Chart Data
 
 <Tabs items={["Request Example","Response Example","Parameters"]}>
 
@@ -156,14 +156,14 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
 
 **Request Parameters:**
 
-- appId: Application ID
+- appId: App ID
 - dateStart: Start time
 - dateEnd: End time
 - source: Log source
 - offset: User retention offset. The unit follows userTimespan
 - userTimespan: User data timespan //day|week|month|quarter
 - chatTimespan: Chat data timespan //day|week|month|quarter
-- appTimespan: Application data timespan //day|week|month|quarter
+- appTimespan: App data timespan //day|week|month|quarter
 
 **Response Parameters:**
 
@@ -182,7 +182,7 @@ curl --location --request POST 'https://cloud.fastgpt.cn/api/proApi/core/app/log
     - chatCount: Session count
     - errorCount: Error count
     - points: Total points consumed
-- appData: Application data array
+- appData: App data array
   - timestamp: Timestamp
   - summary: Summary data object
     - goodFeedBackCount: Positive feedback count

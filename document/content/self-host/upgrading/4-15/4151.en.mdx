@@ -69,7 +69,7 @@ The script only fills missing `appName` values. It does not overwrite existing v
 2. The chat page did not automatically show the login component after credentials expired.
 3. Fixed an issue where workflow tools did not initialize variables from the tool app's global variable configuration when running a sub-workflow, causing runtime variables such as default variables and system variables to be read incorrectly.
 4. Fixed an issue where updates to global variables or outputs from nodes outside the container through **Variable Update** inside loop nodes and parallel execution nodes were not synchronized back to the main workflow by round or task completion. Successful rounds or tasks now write back their changes, while failed rounds or tasks do not commit their changes.
-5. The component did not refresh immediately when retrying all Knowledge Base collections.
+5. The component did not refresh immediately when retrying all Dataset collections.
 6. Fixed repeated shallow route updates in the embedded FastGPT Marketplace when filters did not change, which could keep the top progress bar loading.
 
 ## 🛠️ Code Improvements

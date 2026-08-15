@@ -1,6 +1,6 @@
 {
   "Image_Preview": "Picture preview",
-  "Image_dataset_requires_VLM_model_to_be_configured": "Image datasets require an image understanding model or a multimodal index model. Please configure a matching model first.",
+  "Image_dataset_requires_VLM_model_to_be_configured": "Image collections require an image understanding model or a multimodal embedding model. Please configure a matching model first.",
   "file_name": "Filename",
   "file_size": "Filesize",
   "image": "picture",
@@ -13,7 +13,7 @@
   "some_file_count_exceeds_limit": "Exceeded {{maxCount}} files, automatically truncated",
   "some_file_size_exceeds_limit": "Some files exceed {{maxSize}}, filtered out",
   "support_file_type": "Supports {{fileType}} file types",
-  "template_csv_file_select_tip": "Only support {{fileType}} files that are strictly in accordance with template format</highlight>",
+  "template_csv_file_select_tip": "Only {{fileType}} files completed <highlight>exactly according to the template</highlight> are supported",
   "upload_error_description": "Only multiple files or a single folder can be uploaded at a time",
   "upload_failed": "Upload Failed"
 }

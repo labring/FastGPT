@@ -1,0 +1,17 @@
+---
+title: 'V4.14.17'
+description: 'FastGPT V4.14.17 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Image Tags
+
+- Update the `fastgpt-app` (FastGPT main service) image tag to `v4.14.17`.
+- Update the `fastgpt-pro` (FastGPT Commercial Edition) image tag to `v4.14.17`.
+
+## 🐛 Bug Fixes
+
+1. Fixed an API Dataset `parentId` type validation error.
+2. Fixed file uploads in Portal chats.
+3. Fixed file parsing failures in Commercial Edition when the internal file parsing API was unavailable and no S3 External Endpoint was configured.

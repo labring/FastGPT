@@ -32,6 +32,17 @@ vi.mock('@fastgpt/web/common/system/utils', () => ({
   subRoute: '/test-route' // Add subRoute mock
 }));
 
+vi.mock('@fastgpt/global/common/i18n/utils', () => ({
+  i18nT: vi.fn((key: string) => {
+    const translations: Record<string, string> = {
+      'common:server_error': '服务器异常',
+      'common:error.unKnow': '出现了点意外~'
+    };
+
+    return translations[key] ?? key;
+  })
+}));
+
 vi.mock('@/web/support/user/auth', () => ({
   clearToken: vi.fn()
 }));
@@ -375,7 +386,7 @@ describe('request utils', () => {
     });
 
     it('should handle undefined error', async () => {
-      await expect(responseError(undefined)).rejects.toEqual({ message: '未知错误' });
+      await expect(responseError(undefined)).rejects.toEqual({ message: '出现了点意外~' });
     });
 
     it('should handle string data error', async () => {

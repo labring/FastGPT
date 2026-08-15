@@ -1,3 +1,5 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+
 export type CompressImgProps = {
   maxW?: number;
   maxH?: number;
@@ -40,7 +42,7 @@ export const compressBase64Img = ({
       const ctx = canvas.getContext('2d');
 
       if (!ctx) {
-        return reject('压缩图片异常');
+        return reject(i18nT('common:image_compression_failed'));
       }
 
       ctx.drawImage(img, 0, 0, width, height);
@@ -49,7 +51,7 @@ export const compressBase64Img = ({
       canvas.remove();
 
       if (compressedDataUrl.length > maxSize) {
-        return reject('图片太大了');
+        return reject(i18nT('common:image_too_large'));
       }
 
       resolve(compressedDataUrl);

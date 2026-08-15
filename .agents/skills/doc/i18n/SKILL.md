@@ -7,6 +7,13 @@ description: 将 FastGPT 文档从中文翻译为面向北美用户的英文。�
 
 FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标语言。你的任务是将中文文档翻译为自然流畅的北美英文，而非逐字直译。
 
+开始翻译前，必须完整阅读并遵守以下共享规则：
+
+- [FastGPT 产品翻译规范](../../system/i18n-translate/references/translation-guidelines.md)
+- [FastGPT 专有名词库](../../system/i18n-translate/references/fastgpt-glossary.json)
+
+共享词库是产品术语的唯一事实来源，优先级高于现有英文文档、同类产品用词和通用技术习惯。不要在本 Skill 中维护第二套产品词表。
+
 ## 文件结构
 
 文档位于 `document/content/` 目录下，可能分布在 `docs/`、`self-host/` 等子目录：
@@ -32,6 +39,8 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 ### 2. 翻译内容文件（.mdx → .en.mdx）
 
 对每个中文 `.mdx` 文件，生成或更新对应的 `.en.mdx` 文件。
+
+翻译前先按最长中文词组匹配共享词库。例如，`知识库引用` 必须整体匹配为 `Dataset citation(s)`，不能拆成 `知识库` 和 `引用` 分别处理。根据文档语法调整大小写和单复数，但不得改用词库列出的禁用译法。
 
 **保持不变的部分**：
 - MDX import 语句（如 `import { Alert } from '@/components/docs/Alert'`）
@@ -66,6 +75,10 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 
 ### 4. 翻译完成后
 
+- 对照中文源文和共享词库复核所有产品术语；发现禁用译法时必须修正
+- 搜索英文文件中的残留汉字，并逐项确认是品牌名、代码示例还是漏译
+- 对词库中的语境词进行人工复核，例如 `训练` 应按功能使用 `Indexing`、`Processing` 或 `Reindex`
+- 如果遇到词库未收录且会影响产品概念一致性的术语，先向用户报告并确认推荐译法，不要自行固化新术语
 - 列出所有已翻译的文件
 - 列出所有已更新或确认无需更新的 `meta.json` / `meta.en.json`
 - 如果发现中文文件有对应英文文件缺失的情况，提醒用户
@@ -105,18 +118,17 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 
 ### 技术术语
 
-保持业界通用的英文术语，不要生造翻译：
+FastGPT 产品概念必须使用共享专有名词库，不得因为现有文档或竞品采用其他叫法而替换。例如：
 
-| 中文 | 英文 |
-|------|------|
-| 知识库 | Knowledge Base |
-| 工作流 | Workflow |
-| 大语言模型 | LLM / Large Language Model |
-| 向量存储 | Vector Store |
-| 可视化编排 | Visual Orchestration |
-| 低代码 | Low-code |
-| 节点 | Node |
-| 插件 | Plugin |
+- `知识库` → `Dataset`，不是 `Knowledge Base`
+- `数据集` → `Collection`，不是 `Dataset`
+- `节点`、`模块` → `Node`，不是 `Module`
+- `调试` → `Debug`；`试运行` → `Test Run`
+- `引用` → `Citation`；`知识库引用` → `Dataset citation(s)`
+- `问题优化` → `Query rewriting`
+- `索引模型` → `Embedding model`
+
+词库未覆盖的纯技术概念使用业界通用术语，例如 `LLM`、`Vector Store`、`Low-code`。如需参考 n8n 或 Dify，只能比较底层产品含义；FastGPT 共享词库始终优先。
 
 ### 语气
 

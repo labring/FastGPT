@@ -3,7 +3,6 @@ title: 'V4.14.3 (Upgrade Script)'
 description: 'FastGPT V4.14.3 Release Notes'
 ---
 
-
 ## Upgrade Guide
 
 ### 1. Update Images:
@@ -25,11 +24,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4143' \
 --header 'Content-Type: application/json'
 ```
 
-This will migrate all knowledge base files from MongoDB GridFS to S3, including text datasets and image datasets, but not images extracted from documents (e.g., .docx files).
+This will migrate all Dataset files from MongoDB GridFS to S3, including text Collections and image Collections, but not images extracted from documents (e.g., .docx files).
 
 ## New Features
 
-1. Knowledge base files migrated to S3 (all file-related functionality has been migrated).
+1. Dataset files migrated to S3 (all file-related functionality has been migrated).
 2. Global variables now support file upload.
 3. Form input node now supports password, toggle, time point, time range, file upload, and chat model selection.
 4. Plugin input now supports multi-select, time point, time range, and internal variables.
@@ -49,7 +48,7 @@ This will migrate all knowledge base files from MongoDB GridFS to S3, including 
 ## Plugin Updates
 
 1. Updated tool versioning logic with a computed version value for update detection.
-2. WeChat Official Account toolset: now allows uploading multiple documents to the draft box at once.
+2. WeChat Official Account toolkit: now allows uploading multiple documents to the draft box at once.
 3. Fixed tool cache not being refreshed correctly.
 4. Fixed static files being re-uploaded when refreshing cache in development mode.
 5. Fixed images not being uploaded correctly after uploading a .pkg file.

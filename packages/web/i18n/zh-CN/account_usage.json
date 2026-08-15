@@ -7,6 +7,8 @@
   "auto_index": "索引增强",
   "billing_module": "扣费模块",
   "check_left_points": "查看剩余积分",
+  "chart_library_load_failed": "图表库加载失败",
+  "chart_load_failed": "图表加载失败",
   "llm_compress_text": "文件内容压缩",
   "tool_response_compress": "工具响应压缩",
   "compress_llm_messages": "AI 历史记录压缩",

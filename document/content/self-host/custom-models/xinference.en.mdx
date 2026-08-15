@@ -3,7 +3,7 @@ title: Integrating Local Models with Xinference
 description: One-stop local LLM private deployment
 ---
 
-[Xinference](https://github.com/xorbitsai/inference) is an open-source model inference platform. Beyond LLMs, it can also deploy Embedding and ReRank models, which are critical for enterprise-grade RAG. Xinference also provides advanced features like Function Calling and supports distributed deployment, meaning it can scale horizontally as your application usage grows.
+[Xinference](https://github.com/xorbitsai/inference) is an open-source model inference platform. Beyond LLMs, it can also deploy Embedding and Rerank models, which are critical for enterprise-grade RAG. Xinference also provides advanced features like Function Calling and supports distributed deployment, meaning it can scale horizontally as your workload grows.
 
 ## Installing Xinference
 
@@ -131,7 +131,7 @@ Add the qwen-chat model to the `llmModels` section of FastGPT's `config.json`:
       "avatar": "/imgs/model/Qwen.svg", // Model logo
       "maxContext": 125000, // Max context length
       "maxResponse": 4000, // Max response length
-      "quoteMaxToken": 120000, // Max quote content tokens
+      "quoteMaxToken": 120000, // Max citation content tokens
       "maxTemperature": 1.2, // Max temperature
       "charsPointsPrice": 0, // n points/1k tokens (Commercial Edition)
       "censor": false, // Enable content moderation (Commercial Edition)

@@ -1,0 +1,348 @@
+{
+  "version": 1,
+  "instructions": [
+    "Treat this glossary as authoritative over existing locale text and competitor terminology.",
+    "Match the longest Chinese term first so a compound term overrides its component words.",
+    "Use canonical product spelling while adapting capitalization and singular or plural form to the sentence.",
+    "A forbidden English term is an error when its Chinese source term appears in the same value."
+  ],
+  "contextOverrides": [
+    {
+      "namespace": "app",
+      "path": "apply_code",
+      "source": "应用",
+      "en": ["Apply"],
+      "forbidden": [],
+      "note": "Here 应用 is the Apply action for generated code, not the FastGPT App entity."
+    }
+  ],
+  "terms": [
+    {
+      "zh": ["额外积分/知识库索引量"],
+      "en": ["Add-on", "Additional points / Dataset index capacity"],
+      "forbidden": ["Extra Points / Dataset Index"],
+      "note": "This is the combined add-ons tab for AI points and Dataset index capacity."
+    },
+    {
+      "zh": ["执行人"],
+      "en": ["Executor", "Assignee"],
+      "forbidden": []
+    },
+    {
+      "zh": ["应用代码", "代码应用"],
+      "en": ["Apply code", "Code applied"],
+      "forbidden": [],
+      "note": "Here 应用 is a verb meaning apply, not the FastGPT App entity."
+    },
+    {
+      "zh": ["知识库引用"],
+      "en": ["Dataset citation"],
+      "forbidden": ["Dataset reference", "Knowledge Base citation", "Knowledge Base reference"],
+      "note": "Use Dataset citations for the plural UI label."
+    },
+    {
+      "zh": ["知识库搜索"],
+      "en": ["Dataset search", "Dataset searches"],
+      "forbidden": ["Knowledge retrieval", "Knowledge Base search"]
+    },
+    {
+      "zh": ["知识库索引量"],
+      "en": ["Dataset index capacity"],
+      "forbidden": ["Knowledge Base Index", "Knowledge Base capacity"]
+    },
+    {
+      "zh": ["额外资源包"],
+      "en": ["Add-on", "Add-on pack"],
+      "forbidden": ["Extra package", "Extra resource pack"]
+    },
+    {
+      "zh": ["额外套餐"],
+      "en": ["Add-on"],
+      "forbidden": ["Extra plan", "Extra package"]
+    },
+    {
+      "zh": ["系统提示词"],
+      "en": ["System prompt"],
+      "forbidden": ["System prompt words", "System guide words"]
+    },
+    {
+      "zh": ["团队成员"],
+      "en": ["Team member"],
+      "forbidden": ["Team user"]
+    },
+    {
+      "zh": ["插件市场"],
+      "en": ["Marketplace", "Plugin Marketplace"],
+      "forbidden": ["Plugin Market"]
+    },
+    {
+      "zh": ["发布渠道"],
+      "en": ["Publishing channel", "Channel"],
+      "forbidden": ["Release channel"]
+    },
+    {
+      "zh": ["全文检索"],
+      "en": ["Full-text search"],
+      "forbidden": ["Full Text Recall", "Full Text Search"]
+    },
+    {
+      "zh": ["混合检索"],
+      "en": ["Hybrid search"],
+      "forbidden": ["Mixed search", "Mixed recall"]
+    },
+    {
+      "zh": ["语义检索"],
+      "en": ["Semantic search"],
+      "forbidden": ["Embedding search", "Semantic retrieval"]
+    },
+    {
+      "zh": ["结果重排"],
+      "en": ["Reranking"],
+      "forbidden": ["Result rearrangement", "Result reorder"]
+    },
+    {
+      "zh": ["重排模型"],
+      "en": ["Rerank model"],
+      "forbidden": ["Re-rank model", "Re-ranking model"]
+    },
+    {
+      "zh": ["问题优化"],
+      "en": ["Query rewriting"],
+      "forbidden": ["Query extension", "Query optimization", "Question optimization"]
+    },
+    {
+      "zh": ["索引模型"],
+      "en": ["Embedding model"],
+      "forbidden": ["Index model", "Indexing model"]
+    },
+    {
+      "zh": ["模型渠道"],
+      "en": ["Model provider"],
+      "forbidden": ["Model channel"]
+    },
+    {
+      "zh": ["对话记录"],
+      "en": ["Chat history", "Chat record"],
+      "forbidden": ["Dialogue record"]
+    },
+    {
+      "zh": ["对话日志"],
+      "en": ["Chat log"],
+      "forbidden": ["Dialogue log"]
+    },
+    {
+      "zh": ["工具调用"],
+      "en": ["Tool call", "Tool calling"],
+      "forbidden": ["Tool invocation"]
+    },
+    {
+      "zh": ["工具集"],
+      "en": ["Toolkit"],
+      "forbidden": ["Toolset", "Tool set"]
+    },
+    {
+      "zh": ["AI积分", "AI 积分"],
+      "en": ["AI points"],
+      "forbidden": ["AI credits", "AI integral"]
+    },
+    {
+      "zh": ["试运行"],
+      "en": ["Test Run"],
+      "forbidden": ["Debug"]
+    },
+    {
+      "zh": ["工作台"],
+      "en": ["Studio"],
+      "forbidden": ["Workbench"]
+    },
+    {
+      "zh": ["工作流"],
+      "en": ["Workflow"],
+      "forbidden": ["Flow"]
+    },
+    {
+      "zh": ["知识库"],
+      "en": ["Dataset"],
+      "forbidden": ["Knowledge Base", "KB"]
+    },
+    {
+      "zh": ["数据集"],
+      "en": ["Collection"],
+      "forbidden": ["Dataset"],
+      "note": "FastGPT uses 数据集 for a collection inside a Dataset."
+    },
+    {
+      "zh": ["索引量"],
+      "en": ["Index capacity"],
+      "forbidden": ["Index amount", "Index quantity"]
+    },
+    {
+      "zh": ["智能体"],
+      "en": ["Agent"],
+      "forbidden": ["Bot", "Assistant"]
+    },
+    {
+      "zh": ["应用"],
+      "en": ["App"],
+      "forbidden": ["Application"],
+      "note": "App is the umbrella product entity; Agent is a specific App type."
+    },
+    {
+      "zh": ["技能"],
+      "en": ["Skill"],
+      "forbidden": ["Capability"]
+    },
+    {
+      "zh": ["节点", "模块"],
+      "en": ["Node"],
+      "forbidden": ["Module"],
+      "note": "FastGPT product UI has Nodes, not Modules."
+    },
+    {
+      "zh": ["工具"],
+      "en": ["Tool"],
+      "forbidden": ["Utility"]
+    },
+    {
+      "zh": ["插件"],
+      "en": ["Plugin"],
+      "forbidden": ["Plug-in"]
+    },
+    {
+      "zh": ["团队"],
+      "en": ["Team"],
+      "forbidden": ["Workspace"]
+    },
+    {
+      "zh": ["协作者"],
+      "en": ["Collaborator"],
+      "forbidden": ["Partner"]
+    },
+    {
+      "zh": ["权限"],
+      "en": ["Permission"],
+      "forbidden": ["Authority"]
+    },
+    {
+      "zh": ["沙盒"],
+      "en": ["Sandbox"],
+      "forbidden": ["Virtual environment"]
+    },
+    {
+      "zh": ["触发器"],
+      "en": ["Trigger"],
+      "forbidden": ["Launcher"]
+    },
+    {
+      "zh": ["变量"],
+      "en": ["Variable"],
+      "forbidden": []
+    },
+    {
+      "zh": ["提示词"],
+      "en": ["Prompt"],
+      "forbidden": ["Prompt words", "Guide words"]
+    },
+    {
+      "zh": ["数据源"],
+      "en": ["Data source"],
+      "forbidden": ["Datasource"]
+    },
+    {
+      "zh": ["分块"],
+      "en": ["Chunk", "Chunking"],
+      "forbidden": ["Segment"]
+    },
+    {
+      "zh": ["集合"],
+      "en": ["Collection"],
+      "forbidden": ["Set"]
+    },
+    {
+      "zh": ["训练"],
+      "en": ["Indexing", "Processing", "Reindex", "Reindexed", "Reindexing"],
+      "forbidden": ["Training"],
+      "note": "Use Indexing for Dataset status and Reindex for rebuilding indexes; use Processing for the full parse, chunk, and index pipeline."
+    },
+    {
+      "zh": ["调试"],
+      "en": ["Debug", "Debugging"],
+      "forbidden": ["Test Run"]
+    },
+    {
+      "zh": ["引用"],
+      "en": ["Citation", "Cite", "Cited"],
+      "forbidden": ["Reference", "Quote"]
+    },
+    {
+      "zh": ["标注"],
+      "en": ["Annotation", "Image captioning"],
+      "forbidden": ["Mark", "Tagging"],
+      "note": "Use Annotation for expected-answer data and Image captioning when generating descriptions for images."
+    },
+    {
+      "zh": ["运行"],
+      "en": ["Run", "Ran", "Running", "Runtime"],
+      "forbidden": [],
+      "note": "Use Run for actions and records, Running for status, and Runtime only for an execution environment or duration."
+    },
+    {
+      "zh": ["执行"],
+      "en": ["Run", "Ran", "Running"],
+      "forbidden": [],
+      "note": "Prefer Run in product UI. Use Execution only in low-level technical prose when Run would change the meaning."
+    },
+    {
+      "zh": ["发布"],
+      "en": ["Publish", "Published", "Publishing"],
+      "forbidden": ["Release"]
+    },
+    {
+      "zh": ["部署"],
+      "en": ["Deploy", "Deployed", "Deploying", "Deployment"],
+      "forbidden": []
+    },
+    {
+      "zh": ["调用"],
+      "en": ["Call", "Called", "Calling"],
+      "forbidden": [],
+      "note": "Prefer Call in user-facing copy; Invoke is acceptable only in API-level technical prose."
+    },
+    {
+      "zh": ["对话"],
+      "en": ["Chat", "Conversation"],
+      "forbidden": ["Dialogue"],
+      "note": "Prefer Chat in UI labels; Conversation is acceptable for one complete interaction object or natural prose."
+    },
+    {
+      "zh": ["会话"],
+      "en": ["Session"],
+      "forbidden": ["Conversation"]
+    },
+    {
+      "zh": ["套餐"],
+      "en": ["Plan"],
+      "forbidden": ["Package"]
+    },
+    {
+      "zh": ["资源包"],
+      "en": ["Add-on", "Add-on pack"],
+      "forbidden": ["Resource pack"]
+    },
+    {
+      "zh": ["积分"],
+      "en": ["Points"],
+      "forbidden": ["Credits", "Integral"]
+    },
+    {
+      "zh": ["用量"],
+      "en": ["Usage"],
+      "forbidden": ["Usages"]
+    },
+    {
+      "zh": ["订阅"],
+      "en": ["Subscription", "Subscribe", "Subscribed", "Subscribing"],
+      "forbidden": []
+    }
+  ]
+}

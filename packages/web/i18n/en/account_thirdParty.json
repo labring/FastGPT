@@ -1,15 +1,16 @@
 {
   "configured": "Configured",
+  "configuration_title": "{{name}} settings",
   "error.no_permission": "Please contact the administrator to configure",
   "no_intro": "No explanation yet",
   "not_configured": "Not configured",
-  "open_api_notice": "You can fill in the relevant key of OpenAI/OneAPI. \nIf you fill in this content, the online platform using [AI Dialogue], [Problem Classification] and [Content Extraction] will use the Key you filled in, and there will be no charge. \nPlease pay attention to whether your Key has permission to access the corresponding model. \nGPT models can choose FastAI.",
+  "open_api_notice": "Enter an OpenAI or OneAPI key to use it for AI Chat, Question Classification, and Content Extraction on the hosted platform without incurring FastGPT charges. Make sure the key has permission to access the selected models. GPT models can use FastAI.",
   "openai_account_configuration": "OpenAI/OneAPI account",
-  "request_address_notice": "Request address, default is openai official. \nThe forwarding address can be filled in, but \\\"v1\\\" is not automatically completed.",
+  "request_address_notice": "The request URL defaults to the official OpenAI endpoint. You can enter a proxy URL; FastGPT does not append \"v1\" automatically.",
   "third_party_account": "Third-party account",
   "third_party_account_desc": "The administrator can configure third-party accounts or variables here, and the account will be used by all team members.",
   "unavailable": "Get usage exception",
   "usage": "Usage",
   "value_not_return_tip": "After the parameters are configured, they will not return to the front end again and do not need to be leaked to other members.",
-  "value_placeholder": "Enter parameter values. \nEntering a null value means deleting the configuration."
+  "value_placeholder": "Enter a parameter value. Leave it empty to delete this configuration."
 }

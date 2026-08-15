@@ -1,9 +1,10 @@
 {
   "configured": "已設定",
+  "configuration_title": "{{name}} 設定",
   "error.no_permission": "請聯絡管理員設定",
   "no_intro": "暫無說明",
   "not_configured": "未設定",
-  "open_api_notice": "可以填寫 OpenAI/OneAPI 的相關金鑰。\n如果你填寫了該內容，在線上平臺使用【AI 對話】、【問題分類】和【內容提取】將會走你填寫的 Key，不會計費用。\n請注意你的 Key 是否有存取對應模型的權限。 \nGPT 模型可以選擇 FastAI。",
+  "open_api_notice": "您可以填寫 OpenAI 或 OneAPI 金鑰。在雲端平台使用「AI 對話」、「問題分類」和「內容提取」時，系統將使用此金鑰，FastGPT 不會計費。請確認金鑰有權存取所選模型。GPT 模型可選擇 FastAI。",
   "openai_account_configuration": "OpenAI/OneAPI 帳號",
   "request_address_notice": "請求地址，預設為 openai 官方。可填中轉位址，未自動補全 \"v1\"",
   "third_party_account": "第三方賬號",
@@ -11,5 +12,5 @@
   "unavailable": "取得使用量異常",
   "usage": "使用量：",
   "value_not_return_tip": "參數設定後，不會再次返回前端，無需洩漏給其他成員",
-  "value_placeholder": "輸入參數值。\n輸入空值表示刪除該設定。"
+  "value_placeholder": "輸入參數值。留空表示刪除此設定。"
 }

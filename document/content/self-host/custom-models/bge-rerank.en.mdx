@@ -1,16 +1,15 @@
 ---
-title: Integrating bge-rerank Reranking Model
-description: Integrating bge-rerank reranking model with FastGPT
+title: Integrating the bge-rerank Rerank Model
+description: Integrating the bge-rerank Rerank model with FastGPT
 ---
 
 ## Recommended Configuration by Model
 
-| Model Name | RAM | VRAM | Disk Space | Start Command |
-|------|---------|---------|----------|--------------------------|
-| bge-reranker-base | >=4GB | >=4GB | >=8GB | python app.py |
-| bge-reranker-large | >=8GB | >=8GB | >=8GB | python app.py |
-| bge-reranker-v2-m3 | >=8GB | >=8GB | >=8GB | python app.py |
-
+| Model Name         | RAM   | VRAM  | Disk Space | Start Command |
+| ------------------ | ----- | ----- | ---------- | ------------- |
+| bge-reranker-base  | >=4GB | >=4GB | >=8GB      | python app.py |
+| bge-reranker-large | >=8GB | >=8GB | >=8GB      | python app.py |
+| bge-reranker-v2-m3 | >=8GB | >=8GB | >=8GB      | python app.py |
 
 ## Source Code Deployment
 
@@ -89,6 +88,7 @@ docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all re
 ```
 
 **docker-compose.yml Example**
+
 ```
 version: "3"
 services:
@@ -109,9 +109,10 @@ services:
       - ACCESS_TOKEN=mytoken
 
 ```
+
 ## Integrate with FastGPT
 
-1. Open the FastGPT model configuration and add a new reranking model.
+1. Open the FastGPT model configuration and add a new Rerank model.
 2. Fill in the model configuration form: set the Model ID to `bge-reranker-base` and the address to `{{host}}/v1/rerank`, where host is your deployed domain or IP:Port.
 
 ![alt text](../../../public/imgs/image-102.png)

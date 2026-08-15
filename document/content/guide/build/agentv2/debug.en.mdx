@@ -1,6 +1,6 @@
 ---
 title: Assisted Generation and Debugging
-description: Detailed guide to generating Prompts via the AI Helper Bot and testing and debugging the Agent using the Chat Preview window and runtime details.
+description: Detailed guide to generating Prompts via the AI Helper Bot and testing and debugging the Agent using the Chat Preview window and run details.
 ---
 
 ## Assisted generation
@@ -25,7 +25,7 @@ Once the Helper Bot generates the optimized scheme, the system will automaticall
 
 ## Chat Preview
 
-The "Chat Preview" tab provides a real-time conversational testing environment, allowing you to interact with the Agent as a real user and verify the application's effectiveness before publishing.
+The "Chat Preview" tab provides a real-time conversational testing environment, allowing you to interact with the Agent as a real user and verify the app's effectiveness before publishing.
 
 ### 1. General Debugging
 
@@ -34,12 +34,12 @@ Regardless of whether the virtual machine is enabled, you can use the following 
 ![General Debugging](/imgs/agent_chat_debug.png)
 
 - **Restart**: Click the "Restart" button in the upper right corner of the chat preview window to clear the current chat history and state, allowing you to start a fresh round of testing.
-- **Bubble Action Bar and Runtime Details**: Below each generated AI chat bubble, a row of auxiliary debugging tools is provided:
+- **Bubble Action Bar and Run Details**: Below each generated AI chat bubble, a row of auxiliary debugging tools is provided:
   - **Copy**: Click to copy the text content of this AI response.
   - **Read Aloud**: Click to convert the response text into speech and play it back.
-  - **Mark**: Allows developers to mark the question and expected answer, saving it to a designated dataset to correct and guide the model's future responses.
+  - **Annotation**: Lets developers annotate the question and expected answer, saving them to a designated Dataset to improve future responses.
   - **Retry**: Triggers the AI to regenerate the response for the last user input.
-  - **Runtime Details**: Click to expand the tree-structured decision-making chain. This logs the complete LLM reasoning process, internal plan updates, and tool execution logs. It also shows the unique Request ID, model model, response duration, and precise points consumption for performance auditing and cost control.
+  - **Run Details**: Click to expand the tree-structured decision-making chain. This logs the complete LLM reasoning process, internal plan updates, and tool call logs. It also shows the unique Request ID, model name, response duration, and precise points consumed for performance auditing and cost control.
   - **Response Duration** (e.g., `34.07 s`): Displays the total time in seconds spent from sending the request to receiving the full response.
 - **Plan Card**: If the Agent initiates planning for a complex task, the chat interface will stream a visual "Plan Card." Color-coded steps and animations indicate the progress of each step (In Progress, Completed, Pending, Blocked). If a step is blocked, the card displays the cause of the blockage, helping you optimize your System Prompt or troubleshoot tool configurations.
 

@@ -3,7 +3,7 @@ title: Workflows & Plugins
 description: A quick overview of FastGPT Workflows and Plugins
 ---
 
-Starting from V4.0, FastGPT adopted a new approach to building AI applications. It uses Flow node orchestration (Workflows) to implement complex processes, improving flexibility and extensibility. This does raise the learning curve — users with development experience will find it easier to pick up.
+Starting from V4.0, FastGPT adopted a new approach to building AI apps. It uses Workflow node orchestration to implement complex processes, improving flexibility and extensibility. This does raise the learning curve — users with development experience will find it easier to pick up.
 
 [Watch the video tutorial](https://www.bilibili.com/video/BV1is421u7bQ/)
 
@@ -28,7 +28,7 @@ Execution flow:
 Functionally, nodes fall into 2 categories:
 
 1. **System Nodes**: User guidance (configures dialog information) and user question (workflow entry point).
-2. **Function Nodes**: Knowledge Base search, AI Chat, and all other nodes. These have inputs and outputs and can be freely combined.
+2. **Function Nodes**: Dataset search, AI Chat, and all other nodes. These have inputs and outputs and can be freely combined.
 
 ### Node Components
 
@@ -36,7 +36,7 @@ Each node has 3 core parts: inputs, outputs, and triggers.
 
 ![](/imgs/flow-intro3.png)
 
-- AI model, prompt, chat history, user question, and Knowledge Base citation are inputs. Inputs can be manual entries or variable references, which include "global variables" and outputs from any previous node.
+- AI model, Prompt, chat history, user question, and Dataset citation are inputs. Inputs can be manual entries or variable references, which include "global variables" and outputs from any previous node.
 - New context and AI reply content are outputs. Outputs can be referenced by any subsequent node.
 - Each node has four "triggers" (top, bottom, left, right) for connections. Connected nodes execute sequentially based on conditions.
 
@@ -48,7 +48,7 @@ Let's look at how workflows execute and when each node is triggered.
 
 ![](/imgs/flow-intro1.png)
 
-As shown above, nodes can "be connected to" and "connect to other nodes." We call incoming connections "predecessor lines" and outgoing connections "successor lines." In the example, the [Knowledge Base Search] node has one predecessor line on the left and one successor line on the right. The [AI Chat] node only has a predecessor line on the left.
+As shown above, nodes can "be connected to" and "connect to other nodes." We call incoming connections "predecessor lines" and outgoing connections "successor lines." In the example, the [Dataset search] node has one predecessor line on the left and one successor line on the right. The [AI Chat] node only has a predecessor line on the left.
 
 Lines in FastGPT Workflows have these states:
 
@@ -66,7 +66,7 @@ Node execution rules:
 Walking through the example:
 
 1. [Workflow Start] completes and sets its successor line to `active`.
-2. [Knowledge Base Search] sees its predecessor line is `active`, executes, then sets its successor line to `active` and predecessor line to `waiting`.
+2. [Dataset search] sees its predecessor line is `active`, executes, then sets its successor line to `active` and predecessor line to `waiting`.
 3. [AI Chat] sees its predecessor line is `active` and executes. The workflow ends.
 
 ## How to Connect Nodes
@@ -86,5 +86,5 @@ Walking through the example:
 ### How do I merge multiple outputs?
 
 1. Text Processing: can merge strings together.
-2. Knowledge Base Search Merge: can combine multiple Knowledge Base search results.
+2. Dataset search Merge: can combine multiple Dataset search results.
 3. Other results: cannot be merged directly. Consider passing them to an `HTTP` node and merging them in your own service.

@@ -47,11 +47,11 @@ S3_PLUGIN_BUCKET=fastgpt-plugin # Bucket for system plugin hot-install files. Pr
 
 ## New Features
 
-1. New HTTP Toolset type for apps, replacing the previous HTTP Plugin.
+1. New HTTP Toolkit type for apps, replacing the previous HTTP Plugin.
 2. System administrators can now quickly install system tools via file upload.
 3. Team administrators can assign model permissions.
 4. Code execution node supports AI-assisted code generation.
-5. Knowledge base file parsing now supports configuring maximum concurrency. (Open-source edition: configure via `systemEnv.datasetParseMaxProcess` in config.json. Commercial edition: configure via the admin dashboard.)
+5. Dataset file parsing now supports configuring maximum concurrency. (Open-source edition: configure via `systemEnv.datasetParseMaxProcess` in config.json. Commercial edition: configure via the admin dashboard.)
 
 ## Improvements
 
@@ -60,7 +60,7 @@ S3_PLUGIN_BUCKET=fastgpt-plugin # Bucket for system plugin hot-install files. Pr
 3. Node details in chat history are now stored in a separate table.
 4. Removed invalid `dataId` index from `chat_items`.
 5. Workflow UI performance improvements to reduce unnecessary re-renders.
-6. Knowledge base citation authentication in chats now applies to the entire conversation instead of individual messages.
+6. Dataset citation authentication in chats now applies to the entire conversation instead of individual messages.
 7. Improved UX for dynamic input/output variables in workflows.
 
 ## Bug Fixes
@@ -71,9 +71,9 @@ S3_PLUGIN_BUCKET=fastgpt-plugin # Bucket for system plugin hot-install files. Pr
 4. Auto voice reply not working.
 5. Error capture configuration lost when copying nodes.
 6. "Suggested Questions" custom prompt: previous values were cleared on save.
-7. Knowledge base image URLs assembled incorrectly when a secondary route was configured.
+7. Dataset image URLs assembled incorrectly when a secondary route was configured.
 8. Prompt editor cleared Markdown formatting during keyboard input.
-9. Knowledge base collection page did not auto-refresh when training data was present.
+9. Dataset Collection page did not auto-refresh while data was being processed.
 10. Workflow quick-add node popup showed empty toolbox on second open.
 11. PPTX file parsing order was incorrect.
 

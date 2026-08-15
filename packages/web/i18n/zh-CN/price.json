@@ -22,6 +22,8 @@
   "button.extra_dataset_size_tip": "您正在购买【额外知识库索引量】",
   "button.extra_points_tip": "您正在购买【额外 AI 积分】",
   "contact_business": "联系商务",
+  "coupon_discount_rate": "{{discount}} 折",
+  "coupon_percent_off": "立减 {{discount}}%",
   "core.ai.model.doc_index_and_dialog": "文档索引 & 对话索引",
   "core.dataset.data.group": "组",
   "custom_plan_feature_1": "优先深度技术支持",
