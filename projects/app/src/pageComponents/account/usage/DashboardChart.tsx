@@ -119,11 +119,9 @@ const DashboardChart = ({
         </Flex>
         <Box minH={'424px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
           <Box color={'red.600'} fontSize={'sm'}>
-            {t(
-              chartLibraryLoadFailed
-                ? 'account_usage:chart_library_load_failed'
-                : 'account_usage:chart_load_failed'
-            )}
+            {chartLibraryLoadFailed
+              ? t('account_usage:chart_library_load_failed')
+              : t('account_usage:chart_load_failed')}
           </Box>
         </Box>
       </Box>
