@@ -7,10 +7,10 @@ on:
   issue_comment:
     types: [created]
 
-# The deployment target is shared by all PRs, so keep preview deployments serialized.
+# A newer automatic preview cancels an older deployment; untrusted comments cannot cancel a running publish.
 concurrency:
   group: 'preview-docs-push'
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
 
 permissions:
   contents: read
@@ -87,7 +87,7 @@ jobs:
             };
 
             const findBuildRun = async (sha) => {
-              const { data } = await github.rest.actions.listWorkflowRuns({
+              const workflowRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'preview-docs-build.yml',
@@ -95,7 +95,7 @@ jobs:
                 status: 'completed',
                 per_page: 100
               });
-              return data.workflow_runs.find((run) =>
+              return workflowRuns.find((run) =>
                 run.head_sha === sha && run.conclusion === 'success'
               );
             };
@@ -153,6 +153,10 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: prNumber
               });
+              if (pullRequest.state !== 'open' || pullRequest.head.sha !== sha) {
+                core.info(`Skipping stale docs preview build ${sha}; the current PR head is ${pullRequest.head.sha}.`);
+                return;
+              }
               if (!await hasPublishPermission(pullRequest.user.login)) {
                 await upsertComment(prNumber, `${manualMarker}
             ✅ Docs preview image built successfully for \`${sha}\`.

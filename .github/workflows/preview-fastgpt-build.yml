@@ -7,7 +7,7 @@ on:
 
 # Only one build per PR branch at a time.
 concurrency:
-  group: 'preview-fastgpt-build-${{ github.head_ref }}'
+  group: 'preview-fastgpt-build-${{ github.event.pull_request.number }}'
   cancel-in-progress: true
 
 permissions:

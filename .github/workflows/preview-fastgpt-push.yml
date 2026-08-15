@@ -7,10 +7,10 @@ on:
   issue_comment:
     types: [created]
 
-# Keep publication order stable across PR updates; matrix jobs within one run stay parallel.
+# A newer automatic preview cancels an older publication; untrusted comments cannot cancel a running publish.
 concurrency:
-  group: 'preview-fastgpt-push'
-  cancel-in-progress: false
+  group: 'preview-fastgpt-push-${{ github.event.issue.number || github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.head_branch || github.run_id }}'
+  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
 
 permissions:
   contents: read
@@ -96,7 +96,7 @@ jobs:
             };
 
             const findBuildRun = async (sha) => {
-              const { data } = await github.rest.actions.listWorkflowRuns({
+              const workflowRuns = await github.paginate(github.rest.actions.listWorkflowRuns, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'preview-fastgpt-build.yml',
@@ -104,7 +104,7 @@ jobs:
                 status: 'completed',
                 per_page: 100
               });
-              return data.workflow_runs.find((run) =>
+              return workflowRuns.find((run) =>
                 run.head_sha === sha && run.conclusion === 'success'
               );
             };
@@ -163,6 +163,10 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: prNumber
               });
+              if (pullRequest.state !== 'open' || pullRequest.head.sha !== sha) {
+                core.info(`Skipping stale preview build ${sha}; the current PR head is ${pullRequest.head.sha}.`);
+                return;
+              }
               if (!await hasPublishPermission(pullRequest.user.login)) {
                 await upsertComment(prNumber, '<!-- fastgpt-preview-manual -->', `<!-- fastgpt-preview-manual -->
             ✅ Preview images built successfully for \`${sha}\`.
