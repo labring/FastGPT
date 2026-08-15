@@ -27,7 +27,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ### PgVector Version
 
-Very lightweight, suitable for knowledge base indexes under 50 million.
+Very lightweight, suitable for a Dataset index capacity below 50 million.
 
 | Environment                        | Minimum (Single Node) | Recommended  |
 | ---------------------------------- | --------------------- | ------------ |
@@ -69,7 +69,7 @@ SeekDB uses MySQL protocol, fully compatible with OceanBase:
 
 - Supports 1536-dimensional vector retrieval
 - Built-in HNSW index algorithm
-- Batch insert and query optimization
+- Batch insert and query rewriting
 - Automatic retry and connection pool management
 
 </Alert>
@@ -156,7 +156,7 @@ The script automatically:
 
 After the script finishes, the terminal prints the generated `root` login password. Keep the generated `docker-compose.yml` safe. For future upgrades, start from this file so you do not lose the generated passwords and keys.
 
-To use an existing local `docker-compose.yml` file, for example when testing a version that has not been published to the docs site yet, choose `本地 docker-compose.yml` (local docker-compose.yml) in the deployment version step and enter the local file path. You can also pass the path with an environment variable:
+To use an existing local `docker-compose.yml` file, for example when testing a version that has not been published to the docs site yet, choose `Local docker-compose.yml` in the deployment version step and enter the local file path. You can also pass the path with an environment variable:
 
 ```bash
 FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
@@ -268,7 +268,7 @@ If you deploy with the interactive script, it randomly generates `DEFAULT_ROOT_P
 
 ### 6. Configure Models
 
-- After first login, the system prompts that `Language Model` and `Index Model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
+- After first login, the system prompts that `Language Model` and `Embedding model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
 - If the redirect doesn't happen, go to `Account - Model Providers` to configure models. [View tutorial](../config/model/intro.en.mdx)
 - Known issue: after first entering the system, the browser tab may become unresponsive. Close the tab and reopen it.
 
@@ -451,7 +451,7 @@ Possible causes:
 
 Logs will show error messages. Most likely Mongo replica set mode wasn't started.
 
-### Can't Export Knowledge Base / Can't Use Voice Input or Playback
+### Can't Export Dataset / Can't Use Voice Input or Playback
 
 SSL certificate not configured — some features require it.
 

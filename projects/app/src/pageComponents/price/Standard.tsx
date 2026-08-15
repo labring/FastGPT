@@ -133,8 +133,9 @@ const Standard = ({
   onSelectSubModeChange?: (mode: `${SubModeEnum}`) => void;
   hideBillingToggle?: boolean;
 }) => {
-  const { t } = useClientTranslation('price');
+  const { t, i18n } = useClientTranslation('price');
   const { userInfo } = useUserStore();
+  const isChinese = i18n.language.startsWith('zh');
 
   const packagePayTextMap = {
     [PackageChangeStatusEnum.buy]: t('price:pay.package_tip.buy'),
@@ -457,7 +458,13 @@ const Standard = ({
                             fontWeight={'500'}
                             whiteSpace={'nowrap'}
                           >
-                            {`${(matchedCoupon.discount * 10).toFixed(0)} 折`}
+                            {isChinese
+                              ? t('price:coupon_discount_rate', {
+                                  discount: (matchedCoupon.discount * 10).toFixed(0)
+                                })
+                              : t('price:coupon_percent_off', {
+                                  discount: ((1 - matchedCoupon.discount) * 100).toFixed(0)
+                                })}
                           </Box>
                         )}
                       </Flex>

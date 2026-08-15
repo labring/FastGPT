@@ -81,7 +81,7 @@ If Agent Sandbox is enabled, also update the following images:
 
 ### 1. Team isolation added to LLM request traces
 
-LLM request traces (`llm_request_records`) now include a `teamId` field. `GET /api/core/ai/record/getRecord` queries records by `{ requestId, teamId }` for the current team, preventing a `requestId` from being used to read another team's request body, retrieved Knowledge Base chunks, or model response.
+LLM request traces (`llm_request_records`) now include a `teamId` field. `GET /api/core/ai/record/getRecord` queries records by `{ requestId, teamId }` for the current team, preventing a `requestId` from being used to read another team's request body, retrieved Dataset chunks, or model response.
 
 The unique index on `llm_request_records` has also changed from the single `requestId` field to the compound unique index `{ teamId: 1, requestId: 1 }`. If your self-hosted deployment has `SYNC_INDEX` disabled, run an index sync after upgrading so the old `requestId_1` unique index is removed.
 

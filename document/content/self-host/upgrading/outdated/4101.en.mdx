@@ -26,12 +26,12 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4101' \
 --header 'Content-Type: application/json'
 ```
 
-- Adds new scheduled tasks for auto-synced knowledge bases.
+- Adds new scheduled tasks for auto-synced datasets.
 
 ## New Features
 
 1. System tools now support streaming output.
-2. Commercial edition: scheduled sync for third-party knowledge bases now supports full sync, including entire directories.
+2. Commercial edition: scheduled sync for third-party datasets now supports full sync, including entire directories.
 
 ## Improvements
 
@@ -44,12 +44,12 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4101' \
 1. Search-type system tools were not displaying correctly.
 2. Backward compatibility issues with some system tools.
 3. AI node: manually selecting chat history caused duplicate system records.
-4. Knowledge base tags could not scroll to the bottom.
-5. When importing files via API to an API-based knowledge base, custom API parsing parameters were not applied.
+4. Dataset tags could not scroll to the bottom.
+5. When importing files via API to an API-based Dataset, custom API parsing parameters were not applied.
 
 ## Tool Updates
 
 1. New: Flux official image generation tool.
-2. New: JinaAI toolset.
+2. New: JinaAI toolkit.
 3. New: Alibaba Cloud Bailian Flux and Tongyi Wanxiang image generation.
 4. Fixed incorrect output value type for SiliconFlow image generation tool.

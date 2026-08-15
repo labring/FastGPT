@@ -33,7 +33,7 @@ There are many ways to use files in Workflows. The simplest approach, shown belo
 | ---------------------- | ---------------------- |
 | ![](/imgs/image-5.png) | ![](/imgs/image-6.png) |
 
-You can also use Workflows to extract or analyze document content, then pass the results to HTTP requests or other modules to build a document processing pipeline.
+You can also use Workflows to extract or analyze document content, then pass the results to HTTP requests or other nodes to build a document processing pipeline.
 
 ![Document parsing](/imgs/image-7.png)
 
@@ -90,7 +90,7 @@ ${content}
 
 ### How to use document parsing in AI nodes
 
-AI nodes (AI Chat / Tool Calling) have a document URL input that lets you reference document addresses directly.
+AI nodes (AI Chat / Tool Calling) have a document URL input that lets you cite documents by URL.
 
 It accepts an `Array<string>` input. The URLs are parsed and injected into a system message using this prompt template:
 
@@ -107,8 +107,8 @@ There are some differences from version 4.8.9. We've maintained backward compati
 
 1. Basic Mode now forces file parsing instead of letting the model decide, ensuring documents are always referenced.
 2. Document parsing: no longer parses files from chat history.
-3. Tool Calling: supports direct document reference selection — no need to attach a document parsing tool. Automatically parses files from chat history.
-4. AI Chat: supports direct document reference selection — no need to go through the document parsing node. Automatically parses files from chat history.
+3. Tool Calling: supports direct document citation selection — no need to attach a document parsing tool. Automatically parses files from chat history.
+4. AI Chat: supports direct document citation selection — no need to go through the document parsing node. Automatically parses files from chat history.
 5. Standalone plugin execution: no longer supports global files. Plugin inputs now support file-type configuration as a replacement for global file upload.
 6. **Workflow calling plugins: uploaded files are no longer automatically passed to plugins. You must manually specify the variable for plugin input.**
 7. **Workflow calling sub-workflows: uploaded files are no longer automatically passed to sub-workflows. You can manually select which file URLs to pass.**

@@ -153,7 +153,7 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
     console.log('error->', data, 'data is empty');
-    return Promise.reject('服务器异常');
+    return Promise.reject(i18nT('common:server_error'));
   } else if (data.code < 200 || data.code >= 400) {
     return Promise.reject(data);
   }
@@ -164,7 +164,7 @@ function checkRes(data: ResponseDataType) {
  * 响应错误
  */
 function responseError(err: any) {
-  console.log('error->', '请求错误', err);
+  console.log('error->', 'Request failed', err);
   const pathname = window.location.pathname;
   const isOutlinkPage = {
     [`${subRoute}/chat/share`]: true,
@@ -175,7 +175,7 @@ function responseError(err: any) {
   const data = err?.response?.data || err;
 
   if (!err) {
-    return Promise.reject({ message: '未知错误' });
+    return Promise.reject({ message: i18nT('common:error.unKnow') });
   }
   if (typeof err === 'string') {
     return Promise.reject({ message: err });

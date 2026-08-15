@@ -110,8 +110,7 @@ export const SecretInputForm = ({
     onTypeChange?.(type);
   };
 
-  const isCardExpanded = (type: SystemToolSecretInputTypeEnum) =>
-    configType === type && isExpanded;
+  const isCardExpanded = (type: SystemToolSecretInputTypeEnum) => configType === type && isExpanded;
 
   const expandCard = (type: SystemToolSecretInputTypeEnum) => {
     if (configType !== type) {
@@ -185,9 +184,7 @@ export const SecretInputForm = ({
         {isFolder ? (
           <HStack flex={1} minW={0}>
             <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
-            <Box fontSize={'sm'}>
-              {t('app:tool_active_system_config_price_desc_folder')}
-            </Box>
+            <Box fontSize={'sm'}>{t('app:tool_active_system_config_price_desc_folder')}</Box>
           </HStack>
         ) : (
           <HStack flex={1} minW={0}>
@@ -216,7 +213,8 @@ export const SecretInputForm = ({
         <Box fontSize={'sm'} pl={6} mt={2}>
           {childTools.map((tool) => (
             <Box key={tool.id} fontSize={'sm'} mb={1}>
-              {t(tool.name as any)}: {tool.systemKeyCost || 0} 积分/次
+              {t(tool.name as any)}:{' '}
+              {t('app:plugin_cost_per_times', { cost: tool.systemKeyCost || 0 })}
             </Box>
           ))}
         </Box>

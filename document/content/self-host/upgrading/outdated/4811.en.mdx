@@ -62,7 +62,7 @@ To add the OpenAI o1 model, add the following configuration:
 }
 ```
 
--------
+---
 
 ### 3. Update image tags and restart
 
@@ -92,7 +92,7 @@ This initializes team member groups.
 6. New - Workflow adds a trackpad-priority mode, toggled via the button in the bottom-right corner.
 7. New - Sandbox adds a string-to-Base64 global method (global variable `strToBase64`).
 8. New - Support for OpenAI o1 models. Requires adding `defaultConfig` to the model configuration to override `temperature`, `max_tokens`, and `stream` settings, as o1 does not support stream mode.
-9. New - AI chat node Knowledge Base references now support configuring `role=system` and `role=user`. Nodes with custom prompts already configured will keep `user` mode; all others will switch to `system` mode.
+9. New - AI chat node Dataset citations now support configuring `role=system` and `role=user`. Nodes with custom prompts already configured will keep `user` mode; all others will switch to `system` mode.
 10. New - Plugins support uploading system files.
 11. New - Plugin outputs support designating specific fields as tool responses.
 12. New - When nesting child apps in workflows, you can now set "non-stream mode". Simple Mode can also select workflows as plugins. Simple Mode always forces non-stream mode when calling child apps.
@@ -103,7 +103,7 @@ This initializes team member groups.
 17. New - Jest unit testing framework.
 18. New - Tool call parameter node for fully custom parameter declarations with tool calls.
 19. New - BI chart plugin.
-20. New - Surya OCR recognition module example.
+20. New - Surya OCR recognition node example.
 21. New - Right-click to add comments in workflows.
 22. Commercial - Team member groups.
 23. Improved - Workflow nesting limited to 20 levels to prevent infinite loops from improper configurations.
@@ -111,7 +111,7 @@ This initializes team member groups.
 25. Improved - Workflow shortcuts no longer trigger copy and undo during debug testing.
 26. Improved - Removed extra "#" from names when copying workflow nodes.
 27. Improved - Stream output continues even after switching browser tabs.
-28. Improved - Enhanced external file Knowledge Base APIs.
+28. Improved - Enhanced external file Dataset APIs.
 29. Improved - Updated config.json path.
 30. Improved - Properly handle hyperlinks starting with `//`.
 31. Improved - Workflow Textarea scrolls normally instead of zooming.
@@ -123,8 +123,8 @@ This initializes team member groups.
 37. Improved - Auto-complete tool descriptions.
 38. Improved - Updated configuration.md documentation.
 39. Improved - iOS Safari voice input accuracy.
-40. Fixed - Knowledge Base selection permission issue.
-41. Fixed - Starting a conversation with an empty chatId caused errors when the first message included user selections.
+40. Fixed - Dataset selection permission issue.
+41. Fixed - Starting a session with an empty chatId caused errors when the first message included user selections.
 42. Fixed - `createDataset` API not assigning `intro`.
 43. Fixed - Chat dialog rendering performance issue.
 44. Fixed - Rerank documentation URL.

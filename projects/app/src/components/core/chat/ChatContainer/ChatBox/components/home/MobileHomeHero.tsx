@@ -1,12 +1,14 @@
 import { DEFAULT_LOGO_BANNER_COLLAPSED_URL } from '@/pageComponents/chat/constants';
 import { Box, Flex, Image } from '@chakra-ui/react';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
 
 const MobileHomeHero = () => {
+  const { t } = useClientTranslation('chat');
   const squareLogo = useContextSelector(ChatBoxContext, (v) => v.squareLogo);
   const slogan = useContextSelector(ChatBoxContext, (v) => v.slogan);
-  const displaySlogan = slogan || '今天想做点什么？';
+  const displaySlogan = slogan || t('chat:setting.home.slogan.default');
 
   return (
     <Flex flexDir="column" alignItems="flex-start" gap={4} pt="107px">

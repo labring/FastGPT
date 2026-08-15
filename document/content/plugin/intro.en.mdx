@@ -12,7 +12,7 @@ FastGPT capabilities were previously maintained inside the FastGPT main service 
 As the number of system tools and community contributions grew, the old structure exposed several problems:
 
 1. System plugins had to be released together with the FastGPT main service, which slowed plugin iteration.
-2. Community contributors needed to run the full FastGPT application and submit PRs directly to the main repository.
+2. Community contributors needed to run the full FastGPT stack and submit PRs directly to the main repository.
 3. Custom plugins required maintaining a FastGPT fork and manually handling upgrades and merges.
 4. The Next.js/webpack build model was not suitable for mounting new plugins at runtime.
 
@@ -34,15 +34,15 @@ The main goals of FastGPT Plugin are:
 
 ## Core Concepts
 
-| Name | Description |
-| --- | --- |
-| Plugin | An independent, reusable capability module. Plugins can have different types, such as tools, model presets, and dataset sources. |
-| Plugin package | The packaged `.pkg` file for a plugin. All plugin types are installed, updated, and managed through plugin packages. |
-| Tool | A plugin type that usually wraps third-party services, internal APIs, or local computation and can be called by workflows and Agents. |
-| Tool suite | A plugin that exposes multiple related child tools while sharing plugin metadata and secret configuration. |
-| Plugin Marketplace | A centralized platform where users can search, download, and install plugins. |
-| Runtime | The backend implementation responsible for executing plugin code. The current default runtime is `local-pool`. |
-| Pod | A single plugin child process in the local process pool. One plugin service can own multiple Pods. |
+| Name               | Description                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Plugin             | An independent, reusable feature component. Plugins can have different types, such as tools, model presets, and Dataset sources.      |
+| Plugin package     | The packaged `.pkg` file for a plugin. All plugin types are installed, updated, and managed through plugin packages.                  |
+| Tool               | A plugin type that usually wraps third-party services, internal APIs, or local computation and can be called by workflows and Agents. |
+| Toolkit            | A plugin that exposes multiple related child tools while sharing plugin metadata and secret configuration.                            |
+| Plugin Marketplace | A centralized platform where users can search, download, and install plugins.                                                         |
+| Runtime            | The backend implementation responsible for executing plugin code. The current default runtime is `local-pool`.                        |
+| Pod                | A single plugin child process in the local process pool. One plugin service can own multiple Pods.                                    |
 
 ## Repository Structure
 
@@ -82,12 +82,12 @@ For system tool development, see [System Tool Development Guide](./system-tool-d
 
 The FastGPT Plugin ecosystem mainly involves these repositories:
 
-| Repository | Purpose |
-| --- | --- |
-| `labring/fastgpt-plugin` | Plugin service, SDK, CLI, debug monitor, and infrastructure code. |
-| `fastgpt-official-plugins` | Plugins maintained or reviewed by FastGPT officials. |
-| `fastgpt-community-plugins` | Community third-party plugins. |
-| `fastgpt-business-plugins` | Private plugins, customer-customized plugins, and commercial delivery. |
+| Repository                  | Purpose                                                                |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `labring/fastgpt-plugin`    | Plugin service, SDK, CLI, debug monitor, and infrastructure code.      |
+| `fastgpt-official-plugins`  | Plugins maintained or reviewed by FastGPT officials.                   |
+| `fastgpt-community-plugins` | Community third-party plugins.                                         |
+| `fastgpt-business-plugins`  | Private plugins, customer-customized plugins, and commercial delivery. |
 
 The `fastgpt-plugin` repository only provides development, build, check, packaging, and server runtime capabilities. Specific plugin source code is usually placed in the official, community, or business plugin repositories.
 
@@ -147,29 +147,29 @@ After a plugin call enters a service, scheduling proceeds as follows:
 
 Each tool plugin can configure four runtime parameters:
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| Minimum worker nodes | `0` | Values above `0` warm up Pods and try to keep at least this many Pods available. |
-| Maximum worker nodes | `5` | The service can scale out to this limit when no Pod is available. |
-| Node timeout | `120000ms` | Timeout for one plugin call inside a Pod. |
-| Maximum concurrent requests per node | `10` | Maximum concurrent requests one Pod can process. |
+| Parameter                            | Default    | Description                                                                      |
+| ------------------------------------ | ---------- | -------------------------------------------------------------------------------- |
+| Minimum worker nodes                 | `0`        | Values above `0` warm up Pods and try to keep at least this many Pods available. |
+| Maximum worker nodes                 | `5`        | The service can scale out to this limit when no Pod is available.                |
+| Node timeout                         | `120000ms` | Timeout for one plugin call inside a Pod.                                        |
+| Maximum concurrent requests per node | `10`       | Maximum concurrent requests one Pod can process.                                 |
 
 Environment variables provide default runtime parameters and global limits:
 
-| Environment variable | Description |
-| --- | --- |
-| `POOL_HEALTH_CHECK_INTERVAL` | Health check interval in milliseconds. |
-| `POOL_MAX_TOTAL_PODS` | Total limit for all plugin Pods in the current server process. |
-| `POOL_SERVICE_MIN_PODS` | Default minimum worker nodes for one plugin. |
-| `POOL_SERVICE_MAX_PODS` | Default maximum worker nodes for one plugin. |
-| `POOL_SERVICE_IDLE_TIMEOUT` | Pod idle recycle time in milliseconds. |
-| `POOL_SERVICE_POD_TIMEOUT` | Execution timeout for one plugin call in milliseconds. |
-| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | Default maximum concurrent requests for one Pod. |
-| `POOL_SERVICE_MAX_REQUESTS_PER_POD` | Maximum requests one Pod can process before replacement. |
-| `POOL_SERVICE_MAX_QUEUE_SIZE` | Maximum request queue capacity for one plugin service. |
-| `POOL_SERVICE_QUEUE_TIMEOUT` | Maximum time a request can wait in queue for an available Pod, in milliseconds. |
-| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY` | Base delay for exponential backoff after Pod startup timeout, in milliseconds. |
-| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY` | Maximum delay for exponential backoff after Pod startup timeout, in milliseconds. |
+| Environment variable                           | Description                                                                       |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| `POOL_HEALTH_CHECK_INTERVAL`                   | Health check interval in milliseconds.                                            |
+| `POOL_MAX_TOTAL_PODS`                          | Total limit for all plugin Pods in the current server process.                    |
+| `POOL_SERVICE_MIN_PODS`                        | Default minimum worker nodes for one plugin.                                      |
+| `POOL_SERVICE_MAX_PODS`                        | Default maximum worker nodes for one plugin.                                      |
+| `POOL_SERVICE_IDLE_TIMEOUT`                    | Pod idle recycle time in milliseconds.                                            |
+| `POOL_SERVICE_POD_TIMEOUT`                     | Execution timeout for one plugin call in milliseconds.                            |
+| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | Default maximum concurrent requests for one Pod.                                  |
+| `POOL_SERVICE_MAX_REQUESTS_PER_POD`            | Maximum requests one Pod can process before replacement.                          |
+| `POOL_SERVICE_MAX_QUEUE_SIZE`                  | Maximum request queue capacity for one plugin service.                            |
+| `POOL_SERVICE_QUEUE_TIMEOUT`                   | Maximum time a request can wait in queue for an available Pod, in milliseconds.   |
+| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY`        | Base delay for exponential backoff after Pod startup timeout, in milliseconds.    |
+| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY`         | Maximum delay for exponential backoff after Pod startup timeout, in milliseconds. |
 
 Pod startup errors are recorded and classified. Consecutive non-timeout startup failures trigger startup circuit breaking after the threshold is reached, preventing more Pods from being created. Startup timeouts are usually treated as resource pressure, enter exponential backoff, and retry later.
 

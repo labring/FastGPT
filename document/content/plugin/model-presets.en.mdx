@@ -116,7 +116,7 @@ Common fields:
 | `name`               | Optional display name; defaults to `model` when omitted                        |
 | `maxContext`         | Maximum LLM context length                                                     |
 | `maxTokens`          | Maximum LLM output length                                                      |
-| `quoteMaxToken`      | Maximum token budget FastGPT can use for quoted Knowledge Base content         |
+| `quoteMaxToken`      | Maximum token budget FastGPT can use for cited Dataset content                 |
 | `maxTemperature`     | Maximum temperature; use `null` when the model does not support temperature    |
 | `responseFormatList` | Supported response formats, such as `text`, `json_object`, and `json_schema`   |
 | `vision`             | Whether vision input is supported                                              |
@@ -134,7 +134,7 @@ Common fields:
 
 - `provider`: from the current provider config.
 - `name`: defaults to `model` when not explicitly set.
-- Some default LLM capability switches, such as Knowledge Base processing, classification, extraction, tool calling, and evaluation.
+- Some default LLM capability switches, such as Dataset processing, classification, extraction, tool calling, and evaluation.
 
 ### 3. Do not rely on model names alone
 

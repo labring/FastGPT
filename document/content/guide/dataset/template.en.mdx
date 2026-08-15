@@ -1,9 +1,9 @@
 ---
 title: Template Import
-description: Batch-import knowledge base data from a CSV or Excel template
+description: Batch-import Dataset data from a CSV or Excel template
 ---
 
-Template import lets you add prepared content or question-answer pairs to a knowledge base in batches. FastGPT accepts `.csv` and `.xlsx` files and creates knowledge base entries from the questions, answers, indexes, and metadata in the template.
+Template import lets you add prepared content or question-answer pairs to a Dataset in batches. FastGPT accepts `.csv` and `.xlsx` files and creates Dataset entries from the questions, answers, indexes, and metadata in the template.
 
 ## File Structure
 
@@ -16,14 +16,14 @@ The first row must contain the headers. The following columns are supported:
 | `index`    | No       | Repeatable | A custom index. A row can contain multiple indexes              |
 | `metadata` | No       | At most 1  | A JSON object for custom information such as source or category |
 
-Each row represents one knowledge base entry. `q` and `a` should not both be empty. Headers can appear in any order, but do not add unsupported headers.
+Each row represents one Dataset entry. `q` and `a` should not both be empty. Headers can appear in any order, but do not add unsupported headers.
 
 ### CSV Example
 
 ```csv
 q,a,index,index,metadata
 "What is FastGPT?","FastGPT is an AI agent development platform.","FastGPT overview","AI agent platform","{""source"":""product-doc"",""category"":""overview""}"
-"How do I import knowledge base data?","Use a CSV or Excel template.","knowledge base import","template import","{""source"":""help-center""}"
+"How do I import Dataset data?","Use a CSV or Excel template.","Dataset import","template import","{""source"":""help-center""}"
 ```
 
 Use UTF-8 encoding for CSV files. Cells that contain commas, line breaks, or double quotes must be escaped according to CSV rules.
@@ -32,10 +32,10 @@ Use UTF-8 encoding for CSV files. Cells that contain commas, line breaks, or dou
 
 Excel files use the same headers and data structure as CSV files:
 
-| q                                    | a                                            | index                 | index             | metadata                                         |
-| ------------------------------------ | -------------------------------------------- | --------------------- | ----------------- | ------------------------------------------------ |
-| What is FastGPT?                     | FastGPT is an AI agent development platform. | FastGPT overview      | AI agent platform | `{"source":"product-doc","category":"overview"}` |
-| How do I import knowledge base data? | Use a CSV or Excel template.                 | knowledge base import | template import   | `{"source":"help-center"}`                       |
+| q                             | a                                            | index            | index             | metadata                                         |
+| ----------------------------- | -------------------------------------------- | ---------------- | ----------------- | ------------------------------------------------ |
+| What is FastGPT?              | FastGPT is an AI agent development platform. | FastGPT overview | AI agent platform | `{"source":"product-doc","category":"overview"}` |
+| How do I import Dataset data? | Use a CSV or Excel template.                 | Dataset import   | template import   | `{"source":"help-center"}`                       |
 
 Excel files must meet these requirements:
 
@@ -46,16 +46,16 @@ Excel files must meet these requirements:
 
 ## Import a Template
 
-1. Open the target knowledge base and select **Template Import** from the import menu.
+1. Open the target Dataset and select **Template Import** from the import menu.
 
    ![Template Import dialog](/imgs/template-import-dialog.png)
 
 2. Select **Download CSV Template** for an example, or prepare an `.xlsx` file with the same structure.
 3. Add your data and verify the headers, cell contents, and file format.
 4. Select the file and confirm the import. You can import one file at a time.
-5. After the import finishes, review the data and training status in the knowledge base collection.
+5. After the import finishes, review the data and indexing status in the Dataset Collection.
 
-   ![Knowledge base collection after a template import](/imgs/template-import-result.png)
+   ![Dataset collection after a template import](/imgs/template-import-result.png)
 
 ## Metadata
 

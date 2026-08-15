@@ -21,7 +21,7 @@ const CommunityModal = ({ onClose }: { onClose: () => void }) => {
     >
       <ModalBody textAlign={'center'}>
         {isWecomTeam ? (
-          '邮箱联系: archer@fastgpt.io'
+          t('common:contact_email', { email: 'archer@fastgpt.io' })
         ) : (
           <Markdown source={feConfigs?.concatMd || ''} />
         )}

@@ -1,9 +1,9 @@
 ---
-title: DingTalk Knowledge Base
-description: How to connect DingTalk Knowledge Base to FastGPT
+title: DingTalk Dataset
+description: How to connect DingTalk Dataset to FastGPT
 ---
 
-FastGPT supports connecting DingTalk Knowledge Base through a DingTalk internal enterprise app. When creating the dataset, enter `App Key`, `App Secret`, and `User ID`. After creation, open the dataset detail page, click `Add file`, and select the DingTalk workspace, online documents, or folders to import.
+FastGPT supports connecting DingTalk Dataset through a DingTalk internal enterprise app. When creating the dataset, enter `App Key`, `App Secret`, and `User ID`. After creation, open the dataset detail page, click `Add file`, and select the DingTalk workspace, online documents, or folders to import.
 
 Only DingTalk online document text is supported. Binary files such as PDF, Word, Excel, and PPT are not supported.
 
@@ -19,11 +19,11 @@ If you do not have an app yet, create an internal enterprise app from `Applicati
 
 ![Get App Key and App Secret](/imgs/image-dd4.png)
 
-| FastGPT field | Where to get it in DingTalk |
-| --- | --- |
-| `App Key` | Open `Credentials and Basic Information` in the app detail page, then copy `Client ID (formerly AppKey and SuiteKey)`. |
-| `App Secret` | Copy `Client Secret (formerly AppSecret and SuiteSecret)` from the same page. |
-| `User ID` | Ask the organization contact administrator to open DingTalk admin. Path: [oa.dingtalk.com](https://oa.dingtalk.com/) -> `Contacts` -> `Member Management` -> select the operator member -> copy the member `User ID` from the detail page. |
+| FastGPT field | Where to get it in DingTalk                                                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `App Key`     | Open `Credentials and Basic Information` in the app detail page, then copy `Client ID (formerly AppKey and SuiteKey)`.                                                                                                                     |
+| `App Secret`  | Copy `Client Secret (formerly AppSecret and SuiteSecret)` from the same page.                                                                                                                                                              |
+| `User ID`     | Ask the organization contact administrator to open DingTalk admin. Path: [oa.dingtalk.com](https://oa.dingtalk.com/) -> `Contacts` -> `Member Management` -> select the operator member -> copy the member `User ID` from the detail page. |
 
 Notes:
 
@@ -39,19 +39,19 @@ Notes:
 
 Open `Permissions` in the DingTalk app detail page, then search for and enable:
 
-| Permission | Purpose |
-| --- | --- |
-| `qyapi_get_member` | Get the operator ID from `User ID`. |
+| Permission            | Purpose                                              |
+| --------------------- | ---------------------------------------------------- |
+| `qyapi_get_member`    | Get the operator ID from `User ID`.                  |
 | `Wiki.Workspace.Read` | List DingTalk workspaces accessible to the operator. |
-| `Wiki.Node.Read` | List folders and documents under a workspace. |
-| `Storage.File.Read` | Read DingTalk online document content. |
+| `Wiki.Node.Read`      | List folders and documents under a workspace.        |
+| `Storage.File.Read`   | Read DingTalk online document content.               |
 
 Save and publish the app configuration after enabling permissions. If an error contains `requiredScopes`, enable the permissions listed there.
 
 ## 4. Create a DingTalk dataset in FastGPT
 
 1. Open the FastGPT dataset list and click `New`.
-2. Select `DingTalk Knowledge Base` under external document sources.
+2. Select `DingTalk Dataset` under external document sources.
 3. Enter:
    - `App Key`
    - `App Secret`

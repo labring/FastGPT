@@ -18,7 +18,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv451' \
 What the initialization does:
 
 1. Renames database fields.
-2. Initializes knowledge base-related fields in the Mongo APP collection.
+2. Initializes Dataset-related fields in the Mongo APP collection.
 3. Initializes PG and Mongo content — creates a collection in Mongo for each file and assigns the references back to PG.
 
 **This initialization endpoint may be very slow. If the request times out, don't worry — just check the logs.**
@@ -27,6 +27,6 @@ What the initialization does:
 
 ### Fast GPT V4.5.1
 
-1. New - Knowledge base folder management.
+1. New - Dataset folder management.
 2. Fixed - OpenAI 4.x SDK incompatibility with OneAPI's Zhipu and Alibaba interfaces.
 3. Fixed - Some nodes failing to trigger completion events.

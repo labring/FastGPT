@@ -38,8 +38,8 @@ FastGPT uses the `AI Proxy` service to connect to different model providers. AI 
 
 - Model ID: The value of the `model` field in the API request body. Must be globally unique.
 - Model Name: The display name of the model, which can be customized.
-- Model Channel: The protocol of different model providers, such as OpenAI, Anthropic, Google, etc. Most self-hosted channels follow the OpenAI protocol. A single model can be configured across multiple channels to enable load balancing.
-- Custom Request URL / Key: Allows you to bypass Model Channels and send requests directly to a custom endpoint. You need to provide the full request URL and token. Generally not needed (not recommended as it's harder to manage).
+- Model Channel: A connection configured for a model provider and API protocol, such as OpenAI, Anthropic, or Google. Most self-hosted channels use the OpenAI protocol. You can configure the same model in multiple channels to enable load balancing.
+- Custom Request URL / Key: Allows you to bypass Model Channels and send requests directly to a custom endpoint. You need to provide the full request URL and token. This is generally unnecessary and harder to manage.
 
 ## Adding Channels and Models
 
@@ -152,7 +152,7 @@ If you find it tedious to configure models through the UI, you can use a configu
     "maxResponse": 16000, // Maximum response length
     "quoteMaxToken": 120000, // Maximum citation content tokens
     "maxTemperature": 1.2, // Maximum temperature
-    "charsPointsPrice": 0, // Credits per 1k tokens (commercial edition)
+    "charsPointsPrice": 0, // Points per 1k tokens (commercial edition)
     "censor": false, // Enable content moderation (commercial edition)
     "vision": true, // Supports image input
     "toolChoice": true, // Supports tool selection (used in classification, extraction, and tool calls)
@@ -178,7 +178,7 @@ If you find it tedious to configure models through the UI, you can use a configu
     "provider": "OpenAI", // Model provider
     "model": "text-embedding-3-small", // Model ID
     "name": "text-embedding-3-small", // Display name
-    "charsPointsPrice": 0, // Credits per 1k tokens
+    "charsPointsPrice": 0, // Points per 1k tokens
     "defaultToken": 512, // Default token count for text splitting
     "maxToken": 3000 // Maximum token count
   }
@@ -230,7 +230,7 @@ If you find it tedious to configure models through the UI, you can use a configu
         "value": "fishaudio/fish-speech-1.5:anna" // Voice ID
       }
     ],
-    "charsPointsPrice": 0 // Credits per 1k tokens
+    "charsPointsPrice": 0 // Points per 1k tokens
   }
 }
 ```
@@ -248,7 +248,7 @@ If you find it tedious to configure models through the UI, you can use a configu
     "provider": "OpenAI", // Model provider
     "model": "whisper-1", // Model ID
     "name": "whisper-1", // Display name
-    "charsPointsPrice": 0, // Credits per 1k tokens
+    "charsPointsPrice": 0, // Points per 1k tokens
     "type": "stt" // Model type
   }
 }

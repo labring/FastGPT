@@ -44,7 +44,11 @@ const WorkflowVariableModal = ({
   );
 
   return (
-    <MyModal title={`${defaultData.name} 配置`} iconSrc={'edit'} iconColor={'primary.600'}>
+    <MyModal
+      title={t('account_thirdParty:configuration_title', { name: defaultData.name })}
+      iconSrc={'edit'}
+      iconColor={'primary.600'}
+    >
       <ModalBody w={'420px'}>
         <Box fontSize={'14px'} color={'myGray.900'}>
           {defaultData.intro}

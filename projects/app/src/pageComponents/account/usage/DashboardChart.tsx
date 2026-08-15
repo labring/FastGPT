@@ -57,7 +57,7 @@ const DashboardChart = ({
   const { t } = useClientTranslation('account_usage');
   const [recharts, setRecharts] = useState<RechartsComponents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [chartLibraryLoadFailed, setChartLibraryLoadFailed] = useState(false);
 
   // 动态导入 recharts
   useEffect(() => {
@@ -80,7 +80,7 @@ const DashboardChart = ({
       })
       .catch((error) => {
         console.error('Failed to load recharts:', error);
-        setError('加载图表库失败');
+        setChartLibraryLoadFailed(true);
         setIsLoading(false);
       });
 
@@ -108,7 +108,7 @@ const DashboardChart = ({
   }
 
   // 错误状态
-  if (error || !recharts) {
+  if (chartLibraryLoadFailed || !recharts) {
     return (
       <Box>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
@@ -119,7 +119,11 @@ const DashboardChart = ({
         </Flex>
         <Box minH={'424px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
           <Box color={'red.600'} fontSize={'sm'}>
-            {error || '图表加载失败'}
+            {t(
+              chartLibraryLoadFailed
+                ? 'account_usage:chart_library_load_failed'
+                : 'account_usage:chart_load_failed'
+            )}
           </Box>
         </Box>
       </Box>

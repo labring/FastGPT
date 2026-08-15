@@ -82,7 +82,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 5. Added model-generated chat titles. Configure the `CHAT_TITLE_MODEL` variable to enable this feature.
 6. Adjusted the Skill Edit editing experience.
 7. The HTTP node now supports returning the complete error object.
-8. Knowledge Base search in agent mode now supports permission filtering.
+8. Dataset search in agent mode now supports permission filtering.
 9. Optimized API key logic by unifying APIKey management and requiring requests to explicitly pass the app context.
 10. Optimized agent context compression.
 11. Added output syntax for quick replies.
@@ -90,10 +90,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 ## ⚙️ Improvements
 
 1. HTML output now automatically switches to preview mode after generation, reducing the need to open the preview manually.
-2. Improved long-name display for apps, Knowledge Bases, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
+2. Improved long-name display for apps, Datasets, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
 3. Removed `temperature` and `max_tokens` from all built-in LLM requests to avoid incompatibility with some models.
-4. Improved error prompts for Knowledge Base training failures, including one-click retry for all failed items.
-5. Filtered out invalid Knowledge Base citation markers.
+4. Improved error prompts for Dataset indexing failures, including one-click retry for all failed items.
+5. Filtered out invalid Dataset citation markers.
 6. When a tool returns an empty response, FastGPT now automatically fills in `"none"` to avoid errors from some models.
 7. Added a second permission check before system tools run.
 8. Optimized SSRF checks after redirects.

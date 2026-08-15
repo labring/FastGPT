@@ -23,7 +23,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4818' \
 
 This migrates the full-text search table. The migration takes a while — full-text search will be unavailable during the process. The log will print the amount of data already migrated.
 
-
 ## Full Release Notes
 
 1. New - Support creating apps directly via JSON configuration.
@@ -35,7 +34,7 @@ This migrates the full-text search table. The migration takes a while — full-t
 7. Improved - Share links generate random user avatars.
 8. Improved - Image upload security validation. Added unique avatar image storage to prevent cumulative storage.
 9. Improved - Separated MongoDB full-text index table.
-10. Improved - Merged Knowledge Base search queries to reduce database calls.
+10. Improved - Merged Dataset search queries to reduce database calls.
 11. Improved - File encoding detection to reduce CSV file garbled text.
 12. Improved - Asynchronous file content reading to reduce process blocking.
 13. Improved - File viewer: HTML files are now downloaded directly instead of being viewable online.

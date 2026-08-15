@@ -1,6 +1,6 @@
 ---
-title: Dataset Design
-description: FastGPT dataset file and data design
+title: Collection Design
+description: How FastGPT stores files and data in Collections
 ---
 
 ## Relationship Between Files and Data
@@ -18,4 +18,4 @@ Note: `file_id` is only written at data insertion time and cannot be modified af
 2. The browser parses the file to extract text and chunks.
 3. Each chunk is tagged with the `file_id`.
 4. Click upload: the file status changes to `used`, and the data is pushed to the mongo `training` collection to await processing.
-5. The training thread pulls data from mongo, generates vectors, and inserts them into PG.
+5. The processing worker pulls data from MongoDB, generates vectors, and inserts them into PG.

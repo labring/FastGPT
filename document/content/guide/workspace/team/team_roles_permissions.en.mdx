@@ -7,7 +7,7 @@ description: How to manage FastGPT teams, member groups, and permission settings
 
 ## Permission System Overview
 
-FastGPT's permission system combines **attribute-based** and **role-based** access control, providing fine-grained permission management for team collaboration. Through **members, departments, and groups**, you can flexibly configure access to teams, apps, and knowledge bases.
+FastGPT's permission system combines **attribute-based** and **role-based** access control, providing fine-grained permission management for team collaboration. Through **members, departments, and groups**, you can flexibly configure access to teams, apps, and datasets.
 
 ## Teams
 
@@ -37,64 +37,64 @@ Authorization logic:
 
 Different **resources** have different permissions.
 
-Resources refer to concepts like apps, knowledge bases, teams, etc.
+Resources refer to concepts like apps, datasets, teams, etc.
 
 The table below shows the manageable permissions for different resources.
 
-  <table>
-    <thead>
-      <tr>
-        <th>Resource</th>
-        <th>Manageable Permissions</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td rowSpan="4">Team</td>
-        <td>Create Apps</td>
-        <td>Create, delete, and other basic operations</td>
-      </tr>
-      <tr>
-        <td>Create Knowledge Bases</td>
-        <td>Create, delete, and other basic operations</td>
-      </tr>
-      <tr>
-        <td>Create Team APIKey</td>
-        <td>Create, delete, and other basic operations</td>
-      </tr>
-      <tr>
-        <td>Manage Members</td>
-        <td>Invite/remove users, create groups, etc.</td>
-      </tr>
-      <tr>
-        <td rowSpan="3">App</td>
-        <td>Can Use</td>
-        <td>Allows conversation interaction</td>
-      </tr>
-      <tr>
-        <td>Can Edit</td>
-        <td>Modify basic info, workflow orchestration, etc.</td>
-      </tr>
-      <tr>
-        <td>Can Manage</td>
-        <td>Add or remove collaborators</td>
-      </tr>
-      <tr>
-        <td rowSpan="3">Knowledge Base</td>
-        <td>Can Use</td>
-        <td>Can call this knowledge base in apps</td>
-      </tr>
-      <tr>
-        <td>Can Edit</td>
-        <td>Modify knowledge base content</td>
-      </tr>
-      <tr>
-        <td>Can Manage</td>
-        <td>Add or remove collaborators</td>
-      </tr>
-    </tbody>
-  </table>
+<table>
+  <thead>
+    <tr>
+      <th>Resource</th>
+      <th>Manageable Permissions</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td rowSpan="4">Team</td>
+      <td>Create Apps</td>
+      <td>Create, delete, and other basic operations</td>
+    </tr>
+    <tr>
+      <td>Create Datasets</td>
+      <td>Create, delete, and other basic operations</td>
+    </tr>
+    <tr>
+      <td>Create Team APIKey</td>
+      <td>Create, delete, and other basic operations</td>
+    </tr>
+    <tr>
+      <td>Manage Members</td>
+      <td>Invite/remove users, create groups, etc.</td>
+    </tr>
+    <tr>
+      <td rowSpan="3">App</td>
+      <td>Can Use</td>
+      <td>Allows conversation interaction</td>
+    </tr>
+    <tr>
+      <td>Can Edit</td>
+      <td>Modify basic info, workflow orchestration, etc.</td>
+    </tr>
+    <tr>
+      <td>Can Manage</td>
+      <td>Add or remove collaborators</td>
+    </tr>
+    <tr>
+      <td rowSpan="3">Dataset</td>
+      <td>Can Use</td>
+      <td>Can call this Dataset in apps</td>
+    </tr>
+    <tr>
+      <td>Can Edit</td>
+      <td>Modify Dataset content</td>
+    </tr>
+    <tr>
+      <td>Can Manage</td>
+      <td>Add or remove collaborators</td>
+    </tr>
+  </tbody>
+</table>
 
 ### Collaborators
 
@@ -106,7 +106,7 @@ When managing team permissions, first select members/organizations/groups, then 
 
 ![](/imgs/guide/team_permissions/team_roles_permissions/image3.png)
 
-For resources like apps and knowledge bases, you can directly modify member permissions.
+For resources like apps and datasets, you can directly modify member permissions.
 
 ![](/imgs/guide/team_permissions/team_roles_permissions/image4.png)
 
@@ -145,6 +145,7 @@ Use the "All Members Group" to quickly set baseline permissions for the entire t
 Create groups or organizations to efficiently manage permissions for multiple users. Add users to a group, then grant permissions to the entire group.
 
 ### Developer Reference
+
 > The following content is for developers. Skip if you're not doing custom development.
 
 #### Permission Design Principles
