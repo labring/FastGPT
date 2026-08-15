@@ -17,7 +17,7 @@ on:
       - ".github/workflows/preview-admin-push.yml"
 
 concurrency:
-  group: 'preview-admin-build-${{ github.head_ref || github.ref }}'
+  group: 'preview-admin-build-${{ github.event.pull_request.number || github.run_id }}'
   cancel-in-progress: true
 
 permissions:
@@ -35,6 +35,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           allow-unsafe-pr-checkout: true
+          persist-credentials: false
           fetch-depth: 1
 
       - name: Update submodules
@@ -67,9 +68,9 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt-pro admin image
             org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
+          provenance: false
+          sbom: false
           outputs: type=docker,dest=/tmp/fastgpt-pro-image.tar
-          cache-from: type=gha,scope=fastgpt-pro
-          cache-to: type=gha,mode=max,scope=fastgpt-pro,ignore-error=true
 
       - name: Save PR metadata
         run: |
@@ -84,4 +85,6 @@ jobs:
             /tmp/fastgpt-pro-image.tar
             /tmp/pr-number.txt
             /tmp/pr-sha.txt
+          compression-level: 0
+          if-no-files-found: error
           retention-days: 1
