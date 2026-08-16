@@ -22,11 +22,13 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
   const labels = isEnglish
     ? {
         count: 'versions',
+        latest: 'Latest release',
         inProgress: 'In progress',
         description: 'A chronological record of FastGPT self-hosted releases.'
       }
     : {
         count: '个版本',
+        latest: '最新发布',
         inProgress: '进行中',
         description: 'FastGPT 自部署版本的发布时间记录。'
       };
@@ -37,6 +39,7 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
     if (!a.releaseTime && !b.releaseTime) return b.title.localeCompare(a.title);
     return b.releaseTime!.localeCompare(a.releaseTime!);
   });
+  const latestReleaseUrl = sortedItems.find((item) => item.releaseTime)?.url;
 
   return (
     <section className="not-prose my-10 overflow-hidden rounded-2xl border border-fd-border bg-fd-card">
@@ -62,10 +65,13 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
         <div className="divide-y divide-fd-border">
           {sortedItems.map((item) => {
             const isInProgress = !item.releaseTime;
+            const isLatest = item.url === latestReleaseUrl;
 
             return (
               <a
-                className="group relative grid grid-cols-[5.5rem_1rem_minmax(0,1fr)] gap-3 py-4 transition-colors hover:bg-fd-accent/50 sm:grid-cols-[6rem_1rem_minmax(0,1fr)]"
+                className={`group relative grid grid-cols-[5.5rem_1rem_minmax(0,1fr)] gap-3 py-4 transition-colors sm:grid-cols-[6rem_1rem_minmax(0,1fr)] ${
+                  isLatest ? 'bg-fd-primary/5 hover:bg-fd-primary/10' : 'hover:bg-fd-accent/50'
+                }`}
                 href={item.url}
                 key={item.url}
               >
@@ -87,14 +93,27 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
                 <div className="relative flex justify-center">
                   <span
                     className={`z-10 mt-1.5 size-2.5 rounded-full border-2 border-fd-card ${
-                      isInProgress ? 'bg-fd-primary' : 'bg-fd-muted-foreground/50'
+                      isLatest
+                        ? 'bg-fd-primary ring-4 ring-fd-primary/15'
+                        : isInProgress
+                          ? 'bg-fd-primary'
+                          : 'bg-fd-muted-foreground/50'
                     }`}
                   />
                 </div>
 
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1 text-sm font-medium text-fd-card-foreground group-hover:text-fd-primary">
+                  <div
+                    className={`flex items-center gap-1 text-sm font-medium group-hover:text-fd-primary ${
+                      isLatest ? 'text-fd-primary' : 'text-fd-card-foreground'
+                    }`}
+                  >
                     <span className="truncate">{item.title}</span>
+                    {isLatest && (
+                      <span className="shrink-0 rounded-full border border-fd-primary/30 bg-fd-primary/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-fd-primary">
+                        {labels.latest}
+                      </span>
+                    )}
                     <ArrowUpRight
                       aria-hidden="true"
                       className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
