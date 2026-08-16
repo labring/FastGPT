@@ -12,25 +12,21 @@ type UpgradeVersionTimelineProps = {
   language: string;
 };
 
-const inProgressPattern = /(?:alpha|beta|rc|dev|canary|preview|nightly)/i;
-
 /**
  * 展示升级文档的版本时间轴。
  * 没有 releaseTime 的版本放在最前面；其余版本按发布时间倒序排列。
- * 预览版本根据版本名补充“进行中”状态，但不改变时间排序规则。
+ * 没有 releaseTime 的版本视为进行中的版本，并使用强调色标识。
  */
 export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimelineProps) {
   const isEnglish = language === 'en';
   const labels = isEnglish
     ? {
         count: 'versions',
-        pending: 'Release date pending',
         inProgress: 'In progress',
         description: 'A chronological record of FastGPT self-hosted releases.'
       }
     : {
         count: '个版本',
-        pending: '发布时间待补充',
         inProgress: '进行中',
         description: 'FastGPT 自部署版本的发布时间记录。'
       };
@@ -65,7 +61,7 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
         />
         <div className="divide-y divide-fd-border">
           {sortedItems.map((item) => {
-            const isInProgress = inProgressPattern.test(item.title);
+            const isInProgress = !item.releaseTime;
 
             return (
               <a
@@ -82,11 +78,6 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
                       {item.releaseTime}
                     </time>
                   ) : (
-                    <span className="text-right text-xs leading-4 text-fd-muted-foreground">
-                      {labels.pending}
-                    </span>
-                  )}
-                  {isInProgress && (
                     <span className="rounded-full border border-fd-primary/30 bg-fd-primary/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-fd-primary">
                       {labels.inProgress}
                     </span>
