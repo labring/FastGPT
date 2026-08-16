@@ -70,7 +70,11 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
             return (
               <a
                 className={`group relative grid grid-cols-[5.5rem_1rem_minmax(0,1fr)] gap-3 py-4 transition-colors sm:grid-cols-[6rem_1rem_minmax(0,1fr)] ${
-                  isLatest ? 'bg-fd-primary/5 hover:bg-fd-primary/10' : 'hover:bg-fd-accent/50'
+                  isLatest
+                    ? 'bg-blue-500/5 hover:bg-blue-500/10 dark:bg-blue-400/5 dark:hover:bg-blue-400/10'
+                    : isInProgress
+                      ? 'bg-amber-500/5 hover:bg-amber-500/10'
+                      : 'hover:bg-emerald-500/5'
                 }`}
                 href={item.url}
                 key={item.url}
@@ -78,13 +82,17 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
                 <div className="flex min-w-0 flex-col items-end gap-1 pt-0.5 sm:items-start">
                   {item.releaseTime ? (
                     <time
-                      className="whitespace-nowrap font-mono text-xs tabular-nums text-fd-muted-foreground"
+                      className={`whitespace-nowrap font-mono text-xs tabular-nums ${
+                        isLatest
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                      }`}
                       dateTime={item.releaseTime}
                     >
                       {item.releaseTime}
                     </time>
                   ) : (
-                    <span className="rounded-full border border-fd-primary/30 bg-fd-primary/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-fd-primary">
+                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-600 dark:text-amber-300">
                       {labels.inProgress}
                     </span>
                   )}
@@ -94,23 +102,27 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
                   <span
                     className={`z-10 mt-1.5 size-2.5 rounded-full border-2 border-fd-card ${
                       isLatest
-                        ? 'bg-fd-primary ring-4 ring-fd-primary/15'
+                        ? 'bg-blue-500 ring-4 ring-blue-500/20 dark:bg-blue-400 dark:ring-blue-400/20'
                         : isInProgress
-                          ? 'bg-fd-primary'
-                          : 'bg-fd-muted-foreground/50'
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
                     }`}
                   />
                 </div>
 
                 <div className="min-w-0">
                   <div
-                    className={`flex items-center gap-1 text-sm font-medium group-hover:text-fd-primary ${
-                      isLatest ? 'text-fd-primary' : 'text-fd-card-foreground'
+                    className={`flex items-center gap-1 text-sm font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 ${
+                      isLatest
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : isInProgress
+                          ? 'text-amber-700 dark:text-amber-300'
+                          : 'text-fd-card-foreground'
                     }`}
                   >
                     <span className="truncate">{item.title}</span>
                     {isLatest && (
-                      <span className="shrink-0 rounded-full border border-fd-primary/30 bg-fd-primary/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-fd-primary">
+                      <span className="shrink-0 rounded-full border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-blue-600 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300">
                         {labels.latest}
                       </span>
                     )}
