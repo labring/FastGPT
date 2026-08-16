@@ -1,8 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { Types } from 'mongoose';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/cancellation/schema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -131,6 +135,82 @@ describe('openapi auth', () => {
       authType: AuthUserTypeEnum.apikey
     });
   });
+
+  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
+    'API Key 会拦截成员本人处于 %s 的请求',
+    async (status) => {
+      const owner = await MongoUser.create({
+        username: `api-key-member-cancellation-owner-${new Types.ObjectId()}`,
+        password: 'password'
+      });
+      const user = await MongoUser.create({
+        username: `api-key-member-cancellation-user-${new Types.ObjectId()}`,
+        password: 'password'
+      });
+      const team = await MongoTeam.create({
+        name: `API Key member cancellation ${status}`,
+        ownerId: owner._id
+      });
+      const member = await MongoTeamMember.create({
+        teamId: team._id,
+        userId: user._id,
+        status: 'active'
+      });
+      const apiKey = `fastgpt-member-cancellation-${status}`;
+      await MongoOpenApi.create({
+        ...teamApiKey,
+        apiKey,
+        teamId: String(team._id),
+        tmbId: String(member._id)
+      });
+      await MongoAccountCancellation.create({ userId: user._id, status, requestedAt: new Date() });
+
+      await expect(
+        parseHeaderCert({
+          req: { headers: { authorization: `Bearer ${apiKey}` } } as any,
+          authApiKey: true
+        })
+      ).rejects.toThrow(UserErrEnum.accountCancellationPending);
+    }
+  );
+
+  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
+    'API Key 会拦截团队 owner 处于 %s 的请求',
+    async (status) => {
+      const owner = await MongoUser.create({
+        username: `api-key-owner-cancellation-${new Types.ObjectId()}`,
+        password: 'password'
+      });
+      const user = await MongoUser.create({
+        username: `api-key-owner-cancellation-member-${new Types.ObjectId()}`,
+        password: 'password'
+      });
+      const team = await MongoTeam.create({
+        name: `API Key owner cancellation ${status}`,
+        ownerId: owner._id
+      });
+      const member = await MongoTeamMember.create({
+        teamId: team._id,
+        userId: user._id,
+        status: 'active'
+      });
+      const apiKey = `fastgpt-owner-cancellation-${status}`;
+      await MongoOpenApi.create({
+        ...teamApiKey,
+        apiKey,
+        teamId: String(team._id),
+        tmbId: String(member._id)
+      });
+      await MongoAccountCancellation.create({ userId: owner._id, status, requestedAt: new Date() });
+
+      await expect(
+        parseHeaderCert({
+          req: { headers: { authorization: `Bearer ${apiKey}` } } as any,
+          authApiKey: true
+        })
+      ).rejects.toThrow(TeamErrEnum.accountCancellationPending);
+    }
+  );
 
   it('Bearer apiKey-appId 仍把限额和 lastUsedTime 更新到真实 key', async () => {
     const openApi = await MongoOpenApi.create(teamApiKey);
