@@ -21,7 +21,8 @@ export const docs = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       title: z.string().optional().default('Untitled'),
-      sidebarTag: z.string().optional()
+      sidebarTag: z.string().optional(),
+      upgradeTags: z.array(z.string()).optional()
     })
   },
   meta: {

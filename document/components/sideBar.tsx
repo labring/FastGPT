@@ -25,9 +25,16 @@ const NestingLevelContext = createContext(0);
 
 type TaggedPageTreeItem = PageTree.Item & {
   sidebarTag?: string;
+  upgradeTags?: string[];
 };
 
-const getSidebarItemTag = (item: PageTree.Item) => (item as TaggedPageTreeItem).sidebarTag;
+const getSidebarItemTags = (item: PageTree.Item) => {
+  const { sidebarTag, upgradeTags } = item as TaggedPageTreeItem;
+  return {
+    tags: upgradeTags ?? (sidebarTag ? [sidebarTag] : []),
+    isUpgradeTag: upgradeTags !== undefined
+  };
+};
 
 const isInFolder = (folder: PageTree.Folder, pathname: string): boolean => {
   const check = (item: PageTree.Item | PageTree.Folder): boolean => {
@@ -47,7 +54,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   const pathname = usePathname();
   const level = useContext(NestingLevelContext);
   const isActive = pathname === item.url;
-  const tag = getSidebarItemTag(item);
+  const { tags, isUpgradeTag } = getSidebarItemTags(item);
 
   useEffect(() => {
     if (isActive) {
@@ -74,16 +81,28 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
       {item.icon}
       <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         <span className="min-w-0 break-words leading-5">{item.name}</span>
-        {tag && (
-          <span
-            className={cn(
-              'shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-none',
-              isActive
-                ? 'bg-[#3370FF] text-white dark:bg-blue-400 dark:text-slate-950'
-                : 'bg-blue-50 text-[#3370FF] dark:bg-blue-400/10 dark:text-blue-300'
-            )}
-          >
-            {tag}
+        {tags.length > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-1">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className={cn(
+                  'shrink-0 leading-none',
+                  isUpgradeTag
+                    ? 'rounded border px-1 py-0.5 font-mono text-[9px] font-bold tracking-[0.04em]'
+                    : 'rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
+                  isUpgradeTag
+                    ? isActive
+                      ? 'border-[#3370FF]/20 bg-white/60 text-[#245BDB] dark:border-blue-300/20 dark:bg-blue-300/10 dark:text-blue-200'
+                      : 'border-fd-border bg-fd-muted/50 text-fd-muted-foreground'
+                    : isActive
+                      ? 'bg-[#3370FF] text-white dark:bg-blue-400 dark:text-slate-950'
+                      : 'bg-blue-50 text-[#3370FF] dark:bg-blue-400/10 dark:text-blue-300'
+                )}
+              >
+                {tag}
+              </span>
+            ))}
           </span>
         )}
         {item.external && (

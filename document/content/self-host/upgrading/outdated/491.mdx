@@ -1,6 +1,8 @@
 ---
-title: V4.9.1（升级脚本）
+title: V4.9.1
 description: FastGPT V4.9.1 更新说明
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 更新指南
@@ -16,7 +18,7 @@ description: FastGPT V4.9.1 更新说明
 
 ### 3. 执行升级脚本
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv491' \
@@ -35,7 +37,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv491' \
 3. API 知识库支持 PDF 增强解析。
 4. 邀请团队成员，改为邀请链接模式。
 5. 支持混合检索权重设置。
-6. 支持重排模型选择和权重设置，同时调整了知识库搜索权重计算方式，改成 搜索权重 + 重排权重，而不是向量检索权重+全文检索权重+重排权重。会对检索结果有一定影响，可以通过调整相关权重来进行数据适配。
+6. 支持重排模型选择和权重设置，同时调整了知识库搜索权重计算方式，改成搜索权重 + 重排权重，而不是向量检索权重+全文检索权重+重排权重。会对检索结果有一定影响，可以通过调整相关权重来进行数据适配。
 
 ## ⚙️ 优化
 
@@ -49,7 +51,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv491' \
 ## 🐛 修复
 
 1. 最大响应 tokens 提示显示错误的问题。
-2. HTTP Node 中，字符串包含换行符时，会解析失败。
+2. HTTP Node.js 中，字符串包含换行符时，会解析失败。
 3. 知识库问题优化中，未传递历史记录。
 4. 错误提示翻译缺失。
 5. 内容提取节点，array 类型 schema 错误。

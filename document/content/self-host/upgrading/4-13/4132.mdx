@@ -1,14 +1,17 @@
 ---
-title: 'V4.13.2（环境变量变更、升级脚本）'
+title: 'V4.13.2'
 description: 'FastGPT V4.13.2 更新说明'
+upgradeTags:
+  - 配置变更
+  - 升级脚本
 ---
 
 ## 更新指南
 
 ### 1. 更新镜像：
 
-- 更新 FastGPT 镜像tag: v4.13.2
-- 更新 FastGPT 商业版镜像tag: v4.13.2
+- 更新 FastGPT 镜像 tag: v4.13.2
+- 更新 FastGPT 商业版镜像 tag: v4.13.2
 - 更新 fastgpt-plugin 镜像 tag: v0.2.4
 - mcp_server 无需更新
 - Sandbox 无需更新
@@ -28,7 +31,7 @@ S3_PRIVATE_BUCKET=fastgpt-private #（私有读私有写桶名称，对应原来
 
 ### 4. 执行升级脚本
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
@@ -37,7 +40,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
 ```
 
 会删除原先 S3 的 circleLife 策略。如果使用的是外部 S3，可能会因为不支持 circleLife 操作导致该脚本错误，可以忽略（因为设置策略也会失败）。
-
 
 ## 🚀 新增内容
 
@@ -63,14 +65,14 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
 ## 🔨 插件更新
 
 1. 新增：Perplexity search 工具。
-2. 新增：Base64转文件工具。
+2. 新增：Base64 转文件工具。
 3. 新增：MiniMax TTS 文件生成工具。
 4. 新增：Openrouter nano banana 绘图工具。
 5. 新增：Redis 缓存操作工具。
 6. 新增：Tavily search 工具。
 7. 新增：硅基流动 qwen-image 和 qwen-image-edit 工具。
 8. 新增：飞书多维表格操作套件。
-9. 新增：Youtube 字幕提取。
+9. 新增：YouTube 字幕提取。
 10. 新增：阿里百炼 qwen image edit。
 11. 新增：Markdown 转 PPT 工具。
 12. 新增：whisper 语音转文字工具。

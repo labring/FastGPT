@@ -1,6 +1,9 @@
 ---
-title: 'V4.14.5（环境变量变更、升级脚本）'
+title: 'V4.14.5'
 description: 'FastGPT V4.14.5 更新说明'
+upgradeTags:
+  - 配置变更
+  - 升级脚本
 ---
 
 ## 更新指南
@@ -12,7 +15,7 @@ description: 'FastGPT V4.14.5 更新说明'
 **新增变量**
 
 ```
-STORAGE_VENDOR=minio 
+STORAGE_VENDOR=minio
 STORAGE_REGION=us-east-1
 STORAGE_ACCESS_KEY_ID=minioadmin
 STORAGE_SECRET_ACCESS_KEY=minioadmin
@@ -24,19 +27,19 @@ STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
 
 **移除旧的变量**
 
-* S3_EXTERNAL_BASE_URL  
-* S3_ENDPOINT  
-* S3_PORT  
-* S3_USE_SSL  
-* S3_ACCESS_KEY  
-* S3_SECRET_KEY  
-* S3_PUBLIC_BUCKET  
-* S3_PRIVATE_BUCKET  
+- S3_EXTERNAL_BASE_URL
+- S3_ENDPOINT
+- S3_PORT
+- S3_USE_SSL
+- S3_ACCESS_KEY
+- S3_SECRET_KEY
+- S3_PUBLIC_BUCKET
+- S3_PRIVATE_BUCKET
 
 ### 2. 更新镜像：
 
-- 更新 FastGPT 镜像tag: v4.14.5-fix
-- 更新 FastGPT 商业版镜像tag: v4.14.5
+- 更新 FastGPT 镜像 tag: v4.14.5-fix
+- 更新 FastGPT 商业版镜像 tag: v4.14.5
 - 更新 fastgpt-plugin 镜像 tag: v0.4.0
 - mcp_server 无需更新
 - Sandbox 无需更新
@@ -45,7 +48,7 @@ STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # 协议://域名(IP):端口
 
 ### 3. 执行升级脚本
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
@@ -56,10 +59,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
 1. 重试所有失败的 S3 删除任务
 2. 为所有 share 类型的 OutLink 记录添加 showFullText 字段
 3. 重命名字段：
-  - showNodeStatus -> showRunningStatus
-  - responseDetail -> showCite
-  - showRawSource -> canDownloadSource
 
+- showNodeStatus -> showRunningStatus
+- responseDetail -> showCite
+- showRawSource -> canDownloadSource
 
 ## 🚀 新增内容
 
@@ -67,12 +70,12 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
 2. 工作流增加嵌套应用快速跳转按钮。
 3. 工作流导出支持选择过滤/不过滤敏感信息。
 4. 对话记录使用侧改成软删除，增加从日志管理里删除对话记录。
-5. 更新Agent/工具时，会更新其上层所有目录的更新时间，以便其会排在列表前面。
+5. 更新 Agent/工具时，会更新其上层所有目录的更新时间，以便其会排在列表前面。
 6. 门户页支持配置单个应用运行可见度。
 7. 导出单个知识库集合分块接口。
-8. 升级 Mongo5.x 至 5.0.32 解决CVE-2025-14847。
+8. 升级 Mongo5.x 至 5.0.32 解决 CVE-2025-14847。
 9. 邮箱配置，支持配置安全模式以及端口号。
-    
+
 ## ⚙️ 优化
 
 1. 优化获取 redis 所有 key 的逻辑，避免大量获取时导致阻塞。
