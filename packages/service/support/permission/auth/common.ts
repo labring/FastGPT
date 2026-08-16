@@ -7,6 +7,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { authUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
+import { assertCancellation } from '../../../support/user/account/cancellation/guard';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
 
@@ -167,6 +168,10 @@ export async function parseHeaderCert({
 
   if (!authRoot && (!teamId || !tmbId)) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
+
+  if (authType === AuthUserTypeEnum.apikey) {
+    await assertCancellation({ teamId: String(teamId), tmbId: String(tmbId) });
   }
 
   return {
