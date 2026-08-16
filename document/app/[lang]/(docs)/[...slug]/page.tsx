@@ -8,6 +8,10 @@ import { i18n } from '@/lib/i18n';
 import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
 import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
+import {
+  UpgradeVersionTimeline,
+  type UpgradeVersionTimelineItem
+} from '@/components/docs/UpgradeVersionTimeline';
 
 // 在构建时导入静态数据
 import docLastModifiedData from '@/data/doc-last-modified.json';
@@ -34,6 +38,23 @@ export default async function Page({
 
   const MDXContent = page.data.body;
   const releaseTime = page.data.releaseTime;
+  const isUpgradeIntroduction = page.path.includes('self-host/upgrading/upgrade-intruction');
+  const upgradeVersionTimeline: UpgradeVersionTimelineItem[] = isUpgradeIntroduction
+    ? source
+        .getPages(lang)
+        .filter(
+          (item) =>
+            item.path.startsWith('self-host/upgrading/') &&
+            !item.path.includes('upgrade-intruction') &&
+            /^V\d/.test(item.data.title)
+        )
+        .map((item) => ({
+          title: item.data.title,
+          url: item.url,
+          releaseTime: item.data.releaseTime,
+          upgradeTags: item.data.upgradeTags ?? []
+        }))
+    : [];
 
   // 使用构建时导入的静态数据
   const filePath = `content/${page.file.path}`;
@@ -109,6 +130,9 @@ export default async function Page({
               a: createRelativeLink(source, page)
             })}
           />
+          {isUpgradeIntroduction && (
+            <UpgradeVersionTimeline items={upgradeVersionTimeline} language={lang} />
+          )}
         </DocsBody>
       </DocsPage>
     </>
