@@ -1,19 +1,21 @@
 ---
-title: V4.9.2（环境变量变更）
+title: V4.9.2
 description: FastGPT V4.9.2 更新说明
+upgradeTags:
+  - 配置变更
 ---
 
 ## 更新指南
 
-可直接升级v4.9.3，v4.9.2存在一个工作流数据类型转化错误。
+可直接升级 v4.9.3，v4.9.2 存在一个工作流数据类型转化错误。
 
 ### 1. 做好数据库备份
 
 ### 2. SSO 迁移
 
-使用了 SSO 或成员同步的商业版用户，并且是对接`钉钉`、`企微`的，需要迁移已有的 SSO 相关配置:
+使用了 SSO 或成员同步的商业版用户，并且是对接 `钉钉`、`企微` 的，需要迁移已有的 SSO 相关配置:
 
-参考：[SSO & 外部成员同步](../../../guide/admin/sso.mdx)中的配置进行`sso-service`的部署和配置。
+参考：[SSO & 外部成员同步](../../../guide/admin/sso.mdx)中的配置进行 `sso-service` 的部署和配置。
 
 1. 先将原商业版后台中的相关配置项复制备份出来（以企微为例，将 AppId, Secret 等复制出来）再进行镜像升级。
 2. 参考上述文档，部署 SSO 服务，配置相关的环境变量
@@ -21,8 +23,8 @@ description: FastGPT V4.9.2 更新说明
 
 ### 3. 配置参数变更
 
-修改`config.json`文件中`systemEnv.pgHNSWEfSearch`参数名，改成`hnswEfSearch`。  
-商业版用户升级镜像后，直接在后台`系统配置-基础配置`中进行变更。
+修改 `config.json` 文件中 `systemEnv.pgHNSWEfSearch` 参数名，改成 `hnswEfSearch`。  
+商业版用户升级镜像后，直接在后台 `系统配置-基础配置` 中进行变更。
 
 ### 4. 更新镜像
 
@@ -33,16 +35,16 @@ description: FastGPT V4.9.2 更新说明
 
 ## 重要更新
 
-- 知识库导入数据 API 变更，增加`chunkSettingMode`,`chunkSplitMode`,`indexSize`可选参数，具体可参考 [知识库导入数据 API](../../../openapi/dataset.mdx) 文档。
+- 知识库导入数据 API 变更，增加 `chunkSettingMode` , `chunkSplitMode` , `indexSize` 可选参数，具体可参考 [知识库导入数据 API](../../../openapi/dataset.mdx) 文档。
 
 ## 🚀 新增内容
 
 1. 知识库分块优化：支持单独配置分块大小和索引大小，允许进行超大分块，以更大的输入 Tokens 换取完整分块。
 2. 知识库分块增加自定义分隔符预设值，同时支持自定义换行符分割。
-3. 外部变量改名：自定义变量。 并且支持在测试时调试，在分享链接中，该变量直接隐藏。
+3. 外部变量改名：自定义变量。并且支持在测试时调试，在分享链接中，该变量直接隐藏。
 4. 集合同步时，支持同步修改标题。
 5. 团队成员管理重构，抽离主流 IM SSO（企微、飞书、钉钉），并支持通过自定义 SSO 接入 FastGPT。同时完善与外部系统的成员同步。
-6. 支持 `oceanbase` 向量数据库。填写环境变量`OCEANBASE_URL`即可。
+6. 支持 `oceanbase` 向量数据库。填写环境变量 `OCEANBASE_URL` 即可。
 7. 基于 mistral-ocr 的 PDF 解析示例。
 8. 基于 miner-u 的 PDF 解析示例。
 

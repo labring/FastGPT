@@ -1,6 +1,8 @@
 ---
-title: V4.5 (Complex Update Required)
+title: V4.5
 description: FastGPT V4.5 Update
+upgradeTags:
+  - MANUAL UPGRADE
 ---
 
 FastGPT V4.5 introduces PgVector 0.5's HNSW index, which dramatically improves Dataset search performance — roughly 3x to 10x faster than the `IVFFlat` index, easily achieving millisecond-level searches across millions of records. The downside is that index building is very slow: on a 4C16G machine with 5 million records, a `parallel build` took about 48 hours. For detailed parameter configuration, refer to the [PgVector official documentation](https://github.com/pgvector/pgvector).

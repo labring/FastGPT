@@ -1,6 +1,8 @@
 ---
-title: V4.8.22（升级脚本）
+title: V4.8.22
 description: FastGPT V4.8.22 更新说明
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 🌟更新指南
@@ -15,9 +17,9 @@ description: FastGPT V4.8.22 更新说明
 
 ### 3. 运行升级脚本
 
-仅商业版，并提供 Saas 服务的用户需要运行该升级脚本。
+仅商业版，并提供 SaaS 服务的用户需要运行该升级脚本。
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**:
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**:
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4822' \
@@ -50,7 +52,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4822' \
 5. 免登录窗口无法正常判断语言识别是否开启。
 6. 对话日志导出，未兼容 sub path。
 7. 切换团队时未刷新成员列表
-8. list 接口在联查 member 时，存在空指针可能性。 
+8. list 接口在联查 member 时，存在空指针可能性。
 9. 工作流基础节点无法升级。
 10. 向量检索结果未去重。
 11. 用户选择节点无法正常连线。

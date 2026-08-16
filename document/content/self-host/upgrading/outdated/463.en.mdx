@@ -1,6 +1,8 @@
 ---
-title: V4.6.3 (Upgrade Script)
+title: V4.6.3
 description: FastGPT V4.6.3
+upgradeTags:
+  - MIGRATION
 ---
 
 ## 1. Run the Initialization API
@@ -16,6 +18,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv463' \
 ```
 
 What the initialization does:
+
 1. Initializes certain fields in the Mongo dataset, collection, and data documents.
 
 ## V4.6.3 New Features

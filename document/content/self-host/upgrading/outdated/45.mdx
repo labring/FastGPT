@@ -1,6 +1,8 @@
 ---
-title: V4.5(需进行较为复杂更新)
+title: V4.5
 description: FastGPT V4.5 更新
+upgradeTags:
+  - 手动升级
 ---
 
 FastGPT V4.5 引入 PgVector0.5 版本的 HNSW 索引，极大的提高了知识库检索的速度，比起 `IVFFlat` 索引大致有 3~10 倍的性能提升，可轻松实现百万数据毫秒级搜索。缺点在于构建索引的速度非常慢，4c16g 500w 组数据使用 `并行构建` 大约花了 48 小时。具体参数配置可参考 [PgVector 官方](https://github.com/pgvector/pgvector)
