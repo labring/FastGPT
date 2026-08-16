@@ -57,10 +57,10 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
         <p className="mb-0 mt-1.5 text-sm text-fd-muted-foreground">{labels.description}</p>
       </div>
 
-      <div className="relative mx-5 sm:mx-6">
+      <div className="relative">
         <div
           aria-hidden="true"
-          className="absolute bottom-5 left-[6.75rem] top-5 w-px bg-fd-border sm:left-[7.25rem]"
+          className="absolute bottom-5 left-[8rem] top-5 w-px bg-fd-border sm:left-[8.75rem]"
         />
         <div className="divide-y divide-fd-border">
           {sortedItems.map((item) => {
@@ -69,7 +69,7 @@ export function UpgradeVersionTimeline({ items, language }: UpgradeVersionTimeli
 
             return (
               <a
-                className={`group relative grid grid-cols-[5.5rem_1rem_minmax(0,1fr)] gap-3 py-4 transition-colors sm:grid-cols-[6rem_1rem_minmax(0,1fr)] ${
+                className={`group relative grid grid-cols-[5.5rem_1rem_minmax(0,1fr)] gap-3 px-5 py-4 transition-colors sm:grid-cols-[6rem_1rem_minmax(0,1fr)] sm:px-6 ${
                   isLatest
                     ? 'bg-blue-500/5 hover:bg-blue-500/10 dark:bg-blue-400/5 dark:hover:bg-blue-400/10'
                     : isInProgress
