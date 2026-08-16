@@ -38,8 +38,8 @@ export default async function Page({
 
   const MDXContent = page.data.body;
   const releaseTime = page.data.releaseTime;
-  const isUpgradeIntroduction = page.path.includes('self-host/upgrading/upgrade-intruction');
-  const upgradeVersionTimeline: UpgradeVersionTimelineItem[] = isUpgradeIntroduction
+  const isUpgradeTimeline = page.path.includes('self-host/upgrading/version-timeline');
+  const upgradeVersionTimeline: UpgradeVersionTimelineItem[] = isUpgradeTimeline
     ? source
         .getPages(lang)
         .filter(
@@ -130,7 +130,7 @@ export default async function Page({
               a: createRelativeLink(source, page)
             })}
           />
-          {isUpgradeIntroduction && (
+          {isUpgradeTimeline && (
             <UpgradeVersionTimeline items={upgradeVersionTimeline} language={lang} />
           )}
         </DocsBody>
