@@ -111,7 +111,6 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             ghcr.io/${{ github.repository_owner }}/fastgpt-docs
-            ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs
           tags: |
             ${{ matrix.domain_config.suffix }}-${{ needs.generate-timestamp.outputs.datetime }}
           flavor: latest=false
@@ -122,13 +121,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to Aliyun Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
       - name: Build and push Docker images (CN)
         if: matrix.domain_config.suffix == 'cn'
@@ -194,13 +186,8 @@ jobs:
           DOMAIN_SUFFIX: ${{ matrix.domain_config.suffix }}
           IMAGE_TAG: ${{ needs.generate-timestamp.outputs.datetime }}
           GHCR_IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
-          ALI_IMAGE_PREFIX: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}
         run: |
-          IMAGE_PREFIX="$ALI_IMAGE_PREFIX"
-          if [[ "$DOMAIN_SUFFIX" == "io" ]]; then
-            IMAGE_PREFIX="$GHCR_IMAGE_PREFIX"
-          fi
-          IMAGE="${IMAGE_PREFIX}/fastgpt-docs:${DOMAIN_SUFFIX}-${IMAGE_TAG}"
+          IMAGE="${GHCR_IMAGE_PREFIX}/fastgpt-docs:${DOMAIN_SUFFIX}-${IMAGE_TAG}"
           kubectl set image deployment/${{ matrix.domain_config.deployment }} ${{ matrix.domain_config.deployment }}="$IMAGE"
 
       - name: Annotate deployment
@@ -208,11 +195,6 @@ jobs:
           DOMAIN_SUFFIX: ${{ matrix.domain_config.suffix }}
           IMAGE_TAG: ${{ needs.generate-timestamp.outputs.datetime }}
           GHCR_IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
-          ALI_IMAGE_PREFIX: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}
         run: |
-          IMAGE_PREFIX="$ALI_IMAGE_PREFIX"
-          if [[ "$DOMAIN_SUFFIX" == "io" ]]; then
-            IMAGE_PREFIX="$GHCR_IMAGE_PREFIX"
-          fi
-          IMAGE="${IMAGE_PREFIX}/fastgpt-docs:${DOMAIN_SUFFIX}-${IMAGE_TAG}"
+          IMAGE="${GHCR_IMAGE_PREFIX}/fastgpt-docs:${DOMAIN_SUFFIX}-${IMAGE_TAG}"
           kubectl annotate deployment/${{ matrix.domain_config.deployment }} originImageName="$IMAGE" --overwrite
