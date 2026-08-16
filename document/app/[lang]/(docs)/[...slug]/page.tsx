@@ -7,6 +7,7 @@ import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
 import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
 import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { CalendarDays } from 'lucide-react';
 
 // 在构建时导入静态数据
 import docLastModifiedData from '@/data/doc-last-modified.json';
@@ -32,11 +33,12 @@ export default async function Page({
   }
 
   const MDXContent = page.data.body;
+  const releaseTime = page.data.releaseTime;
 
   // 使用构建时导入的静态数据
-  const filePath = `document/content/${page.file.path}`;
-  // @ts-ignore
-  const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
+  const filePath = `content/${page.file.path}`;
+  const lastModifiedData = docLastModifiedData as Record<string, string>;
+  const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
   const domain = getFastGPTDocsOrigin();
   const url = `${domain}${page.url}`;
@@ -58,6 +60,7 @@ export default async function Page({
     title: page.data.title,
     description: page.data.description || '',
     url,
+    datePublished: releaseTime ? new Date(`${releaseTime}T00:00:00.000+08:00`) : undefined,
     dateModified: lastModified ? new Date(lastModified) : undefined,
     lang
   });
@@ -77,30 +80,38 @@ export default async function Page({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       <DocsPage
-      toc={page.data.toc}
-      full={page.data.full}
-      tableOfContent={{
-        style: 'clerk'
-      }}
-      editOnGithub={{
-        owner: 'labring',
-        repo: 'FastGPT',
-        sha: 'main',
-        path: `document/content/${page.file.path}`
-      }}
-      lastUpdate={lastModified ? new Date(lastModified) : undefined}
-    >
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody>
-        <MDXContent
-          components={getMDXComponents({
-            a: createRelativeLink(source, page)
-          })}
-        />
-      </DocsBody>
-    </DocsPage>
-  </>
+        toc={page.data.toc}
+        full={page.data.full}
+        tableOfContent={{
+          style: 'clerk'
+        }}
+        editOnGithub={{
+          owner: 'labring',
+          repo: 'FastGPT',
+          sha: 'main',
+          path: `document/content/${page.file.path}`
+        }}
+        lastUpdate={lastModified ? new Date(lastModified) : undefined}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <DocsTitle>{page.data.title}</DocsTitle>
+          {releaseTime && (
+            <div className="mt-2 flex shrink-0 items-center gap-1.5 text-sm tabular-nums text-fd-muted-foreground">
+              <CalendarDays aria-hidden="true" className="size-3.5" />
+              <time dateTime={releaseTime}>{releaseTime}</time>
+            </div>
+          )}
+        </div>
+        <DocsDescription>{page.data.description}</DocsDescription>
+        <DocsBody>
+          <MDXContent
+            components={getMDXComponents({
+              a: createRelativeLink(source, page)
+            })}
+          />
+        </DocsBody>
+      </DocsPage>
+    </>
   );
 }
 
@@ -140,7 +151,10 @@ export async function generateMetadata(props: {
       url,
       siteName: 'FastGPT',
       locale: lang,
-      type: 'article'
+      type: 'article',
+      publishedTime: page.data.releaseTime
+        ? new Date(`${page.data.releaseTime}T00:00:00.000+08:00`).toISOString()
+        : undefined
     }
   };
 }
