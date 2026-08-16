@@ -1,6 +1,6 @@
 ---
-title: 'V4.16.0-beta1 (Environment Variable Changes and Upgrade Scripts)'
-description: 'FastGPT V4.16.0-beta1 release notes'
+title: 'V4.16.0 (In Progress)'
+description: 'FastGPT V4.16.0 release notes'
 ---
 
 ## 📦 Upgrade Guide
@@ -20,7 +20,7 @@ The access URL must start with `http://` or `https://`. With a single-port deplo
 
 Visit `https://{{host}}/health` to verify that the service is accessible.
 
-### 2. Update the fastgpt-app environment variables (required when Sandbox is enabled)
+### 2. Update the fastgpt environment variables (required when Sandbox is enabled)
 
 Update the variables in both `fastgpt-app` and `fastgpt-pro`.
 
@@ -53,13 +53,61 @@ The E2B Sandbox Provider has been removed. Environments previously configured fo
 
 ### 3. Update images
 
-- Update the fastgpt-app (FastGPT main service) image tag to `v4.16.0-beta1`
-- Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.16.0-beta1`
-- Update the fastgpt-plugin image tag to `v1.1.0-beta1`
-- Update the agent-sandbox-volumn image tag to `v0.3.0-beta4` (for OpenSandbox only)
-- Update the agent-sandbox-proxy image tag to `v0.3.0-beta4` (for Sandbox only)
+- Update the fastgpt-app (FastGPT main service) image tag to `v4.16.0`
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.16.0`
+- Update the fastgpt-plugin image tag to `v1.1.0`
+- Update the agent-sandbox-volumn image tag to `v0.3.0` (for OpenSandbox only)
+- Update the agent-sandbox-proxy image tag to `v0.3.0` (for Sandbox only)
 
-### 4. Migrate Agent Sandbox data
+### 4. Clean up legacy system model configurations
+
+This release applies strict schemas when system models are initialized or saved. Numeric strings, serialized price tiers, and missing fields saved by earlier releases may fail initialization validation. After upgrading, run a dry run first to inspect the model configurations that require cleanup. A dry run does not modify data or reload the model cache:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After confirming that `invalidSamples` contains no records that require manual correction, run the cleanup:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+The cleanup converts valid numeric strings to numbers, converts serialized `priceTiers` values to arrays, and removes invalid optional numeric fields. Invalid or missing required numeric fields use system defaults: LLM `maxContext/maxResponse/quoteMaxToken` default to `16000/16000/13000`, Embedding `defaultToken/maxToken` default to `500/3000`, and price fields default to `0`. `functionCall` remains optional, and a missing Embedding `weight` defaults to `0`.
+
+The cleanup writes the updated data consistently and immediately reloads the system model cache. The runtime cache is rebuilt even when no database record needs an update. The endpoint is safe to run repeatedly; a follow-up dry run should report `wouldUpdate` as `0`. Records that still fail the complete current model schema are not written, and all of them are listed in `invalidSamples`.
+
+### 5. Migrate HTTP tool data
+
+This release changes array parameters in manually configured HTTP tools to standard JSON Schema. Environments with manual HTTP tools created before the upgrade must run this migration. OpenAPI-mode HTTP tools do not require migration and are skipped automatically.
+
+Run a dry run first to inspect pending data in current Apps and historical versions. The dry run does not modify data:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After confirming the result, run the migration:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+The script first filters Apps by HTTP tool type, then migrates historical versions associated with those `appId` values. Only manual-mode tools without `apiSchemaStr` are processed; other Apps and OpenAPI-mode tools are left unchanged. The migration runs in batches and is safe to retry. `total.changedDocumentCount` in the response shows how many documents require processing. Run another dry run after the migration and confirm that this value is `0`.
+
+### 6. Migrate Agent Sandbox data (slow)
 
 This release changes App Chat's Agent Sandbox from “one instance per session” to “one shared instance per App and user.” Files from different sessions remain isolated under `sessions/<chatId>`. Published Skills are stored in the shared `projects` directory.
 
@@ -92,39 +140,11 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
   -d '{"dryRun":false,"skipError":true}'
 ```
 
-`skipError` defaults to `false`, so omitting it preserves strict migration behavior. The switch only skips an entire source group when that source is missing or soft-deleted. Sandboxes in the group are not archived, deleted, or migrated, and are reported through `skippedCount` and `skipped`. Archive, object storage, provider, concurrency-control, and all other errors remain blocking.
+`skipError` defaults to `false`, so omitting it preserves strict migration behavior. The switch only skips an entire source group when that source is missing or soft-deleted. Sandboxes in the group are not archived, deleted, or migrated, and are reported through `skippedCount` and `skipped`. Archive, object storage, Provider, concurrency-control, and all other errors remain blocking.
 
 The migration first runs all V4.15.0-beta6 normalization steps. It fills in `sourceType/sourceId` for legacy Sandboxes, removes obsolete fields, deletes orphaned resources that cannot be associated, and cleans up the three legacy Skill Debug Chat collections and old private/public Bucket prefixes when `sourceType` is missing. A Skill whose ID matches an App ID is excluded from Chat cleanup. After recounting, the two categories are combined into `normalization.pendingCount`; Workspace archiving does not begin while the count is non-zero. Once normalization is complete, all legacy Workspaces are archived, old compute resources are cleaned up, Skills are migrated, and records are aggregated into user-level Sandboxes by App and user. Installation does not start if any archive operation fails. New Sandboxes are suspended after Workspace installation and start normally on first use. The script is safe to retry: completed archive and migration operations are not repeated. Old archives and MongoDB records are retained as backups after migration.
 
 Check `normalization.pendingCount`, `normalizationBlocked`, `failedCount`, `failures`, `skippedCount`, and `skipped` in the response. When both `normalization.pendingCount` and `failedCount` are `0` and `normalizationBlocked` is `false`, every non-skipped Sandbox has been migrated. Legacy records listed in `skipped` remain in place and are not migrated.
-
-### 5. Migrate HTTP tool data
-
-This release changes array parameters in manually configured HTTP tools to standard JSON Schema. Environments with manual HTTP tools created before the upgrade must run this migration. OpenAPI-mode HTTP tools do not require migration and are skipped automatically.
-
-Run a dry run first to inspect pending data in current Apps and historical versions. The dry run does not modify data:
-
-```bash
-curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":true}'
-```
-
-After confirming the result, run the migration:
-
-```bash
-curl -X POST 'https://你的域名/api/admin/4160/initHttpToolSchema' \
-  -H 'Content-Type: application/json' \
-  -H 'rootkey: 你的ROOT_KEY' \
-  -d '{"dryRun":false}'
-```
-
-The script first filters Apps by HTTP tool type, then migrates historical versions associated with those `appId` values. Only manual-mode tools without `apiSchemaStr` are processed; other Apps and OpenAPI-mode tools are left unchanged. The migration runs in batches and is safe to retry. `total.changedDocumentCount` in the response shows how many documents require processing. Run another dry run after the migration and confirm that this value is `0`.
-
-### 6. Other changes (optional)
-
-1. `PASSWORD_LOGIN_LOCK_SECONDS` is deprecated. Use `PASSWORD_LOGIN_MINUTE_LIMIT_COUNT` to control the maximum number of password login attempts allowed per account per minute.
 
 ## 🚀 New
 
@@ -137,6 +157,8 @@ The script first filters Apps by HTTP tool type, then migrates historical versio
 7. Large-file chunked uploads.
 8. System tool keys configured by administrators are now encrypted, with backward compatibility for existing keys.
 9. Added empty-state guidance to the Skill list and linked Skill creation from the Skill selector.
+10. Moved Workflow app system settings to a dedicated panel in the canvas toolbar. The panel opens automatically when a new Workflow app is created.
+11. Added support for configuring multiple preset questions separately, with drag-and-drop reordering.
 
 ## ⚙️ Improvements
 
@@ -147,6 +169,10 @@ The script first filters Apps by HTTP tool type, then migrates historical versio
 5. Sandbox file writes now create parent directories automatically, preventing failures when writing to nested paths.
 6. Improved compatibility handling for legacy Workflow data and tool parameters.
 7. Updated the Agent Ask UI.
+8. Redesigned the Publish Channels page with separate native and third-party channel groups and a count of configured connections for each channel.
+9. Improved batch updates in the Tool Marketplace. Partially failed updates now remain visible and can be retried or uninstalled individually, with clearer installed-version and update-status information.
+10. Limited portal quick apps to three while preserving compatibility with existing configurations that exceed the limit.
+11. Replaced fixed PDF edge cropping with dynamic edge detection to prevent valid content near page boundaries from being removed.
 
 ## 🐛 Fixes
 
@@ -162,10 +188,17 @@ The script first filters Apps by HTTP tool type, then migrates historical versio
 10. Fixed images embedded in S3-hosted files with spaces failing to parse because of malformed keys and returning 404 errors.
 11. Fixed duplicate headers in MCP SSE mode.
 12. Fixed unencrypted Agent V2 system tool keys.
+13. Fixed legacy Workflow HTTP tools not restoring the correct default input mode for dynamic parameters.
+14. Fixed incorrect initial configuration labels caused by Workflow translations not being preloaded when an app was created.
+15. Fixed duplicate rendering of Workflow tool parameters.
+16. Fixed file variables not accepting uploads after an app was published.
+17. Fixed file uploads failing for shared Workflow tool parameters.
+18. Fixed upload, parsing, preview, or download failures when S3 object keys or filenames contained spaces or special characters such as `%`, `#`, `?`, or slashes.
+19. Fixed missing sensitive-data filtering for system default models, preventing model API keys, request URLs, and internal configuration from being returned in system initialization responses.
 
 ## 🛠️ Code Improvements
 
-1. Split Sandbox Adapter by lifecycle, filesystem, command execution, and Provider contracts, and removed the E2B Adapter.
+1. Split the Sandbox Adapter by lifecycle, filesystem, command execution, and Provider contracts, and removed the E2B Adapter.
 2. Added direct Workspace preview, Range requests, path traversal protection, and session authentication to Agent Sandbox Proxy and IDE Agent.
 3. Optimized Workflow schemas and unified tool calls with form rendering.
 4. Extended tool JSON Schema support for additional data types.
@@ -173,3 +206,7 @@ The script first filters Apps by HTTP tool type, then migrates historical versio
 6. Hardened system tool permissions in multi-process deployments.
 7. Refactored login and authentication code.
 8. Refactored the rate-limiting module.
+9. Changed audit log retention from deletion to cold archival in S3.
+10. Added validation and cleanup for admin configuration data.
+11. Removed SSR from `account/*` pages.
+12. Built and published images through CI/CD.

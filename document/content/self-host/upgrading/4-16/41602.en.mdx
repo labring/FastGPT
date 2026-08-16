@@ -1,27 +1,32 @@
 ---
-title: 'V4.16.0-beta2 (Environment Variable Changes and Upgrade Scripts)'
-description: 'FastGPT V4.16.0-beta2 release notes'
+title: 'V4.16.0-beta2 (Upgrade Scripts)'
+description: 'FastGPT V4.16.0 release notes'
 ---
 
 ## 📦 Upgrade Guide
 
-### Clean up legacy system model configurations
+### 1. Update images
+
+- Update the fastgpt-app (FastGPT main service) image tag to `v4.16.0-beta2`
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.16.0-beta2`
+
+### 2. Clean up legacy system model configurations
 
 This release applies strict schemas when system models are initialized or saved. Numeric strings, serialized price tiers, and missing fields saved by earlier releases may fail initialization validation. After upgrading, run a dry run first to inspect the model configurations that require cleanup. A dry run does not modify data or reload the model cache:
 
 ```bash
-curl -X POST 'https://your-domain/api/admin/dataClean/cleanSystemModelConfigs' \
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
   -H 'Content-Type: application/json' \
-  -H 'rootkey: YOUR_ROOT_KEY' \
+  -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":true}'
 ```
 
 After confirming that `invalidSamples` contains no records that require manual correction, run the cleanup:
 
 ```bash
-curl -X POST 'https://your-domain/api/admin/dataClean/cleanSystemModelConfigs' \
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanSystemModelConfigs' \
   -H 'Content-Type: application/json' \
-  -H 'rootkey: YOUR_ROOT_KEY' \
+  -H 'rootkey: 你的ROOT_KEY' \
   -d '{"dryRun":false}'
 ```
 

@@ -1,11 +1,16 @@
 ---
-title: 'V4.16.0-beta2（环境变量变更、升级脚本）'
-description: 'FastGPT V4.16.0-beta2 更新说明'
+title: 'V4.16.0-beta2（升级脚本）'
+description: 'FastGPT V4.16.0 更新说明'
 ---
 
 ## 📦 升级指南
 
-### 1. 清洗历史系统模型配置
+### 1. 镜像更新
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.16.0-beta2
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.16.0-beta2
+
+### 2. 清洗历史系统模型配置
 
 本版本开始在系统模型初始化及保存时使用严格 Schema。此前版本保存的数字字符串、字符串形式的价格梯度或缺失字段可能导致初始化校验失败。升级后请先执行 dry-run，查看需要处理的模型配置；dry-run 不会修改数据或刷新缓存：
 

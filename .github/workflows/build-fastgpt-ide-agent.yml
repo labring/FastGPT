@@ -169,7 +169,7 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          path: ${{ runner.temp }}/digests
+          path: ${{ runner.temp }}/digests/ghcr
           pattern: ghcr-digests-${{ matrix.image }}-${{ github.sha }}-*
           merge-multiple: true
 
