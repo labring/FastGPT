@@ -25,6 +25,7 @@ vi.mock('@fastgpt/service/env', () => ({
 
 import {
   CRMLifecycleEvent,
+  reportCRMEnterpriseVerification,
   reportCRMVisitorIdentity,
   reportCRMVisitorLifecycle,
   resolveCRMVisitorId
@@ -98,6 +99,45 @@ describe('reportCRMVisitorLifecycle', () => {
         event: CRMLifecycleEvent.Consumption
       })
     ).resolves.toBe(false);
+  });
+});
+
+describe('reportCRMEnterpriseVerification', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.serviceEnv.CRM_API_URL = 'https://crm.example.com/api/v1/';
+    mocks.serviceEnv.CRM_API_KEY = 'crm-key';
+  });
+
+  it('reports without a visitor id using cloud user and submission ids', async () => {
+    await expect(
+      reportCRMEnterpriseVerification({
+        cloudUserId: 'cloud-user-1',
+        submissionId: 'enterprise-task-1',
+        company: '认证企业',
+        summary: '企业认证需求',
+        name: '联系人',
+        contact: '13800138000',
+        position: 'CTO',
+        consultationTopic: 'SaaS 版',
+        details: {
+          unified_credit_code: '91310000MA1K000006',
+          legal_person_name: '法人',
+          bank_name: '开户银行',
+          bank_account: '4111111111111111'
+        }
+      })
+    ).resolves.toBe(true);
+
+    expect(mocks.post).toHaveBeenCalledWith(
+      'https://crm.example.com/api/v1/contacts/opportunities/lifecycle',
+      expect.objectContaining({
+        event: 'enterprise_verification',
+        cloud_user_id: 'cloud-user-1',
+        submission_id: 'enterprise-task-1'
+      }),
+      expect.any(Object)
+    );
   });
 });
 
