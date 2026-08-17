@@ -34,6 +34,11 @@ export type RunOutlinkRuntimeProps<T extends OutlinkAppType> = {
   respond: OutlinkResponder;
 };
 
+export type OutlinkMessageHandleResult = {
+  /** `duplicate` 表示消息已持久化且本次没有再次启动平台输出。 */
+  status: 'handled' | 'duplicate';
+};
+
 export type OutlinkProviderMessageHandler<T extends OutlinkAppType> = (
   context: RunOutlinkRuntimeProps<T>
-) => Promise<void>;
+) => Promise<OutlinkMessageHandleResult>;

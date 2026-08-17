@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const DEFAULT_BASE_URL = 'https://ilinkai.weixin.qq.com';
 const CHANNEL_VERSION = '1.0.0';
@@ -7,6 +8,7 @@ const ILINK_APP_CLIENT_VERSION = String(1 << 16);
 const BOT_TYPE = '3';
 const LONG_POLL_TIMEOUT_MS = 35_000;
 const SEND_TIMEOUT_MS = 15_000;
+const SEND_RETRY_ATTEMPTS = 1;
 
 export const WechatMessageType = {
   USER: 1,
@@ -247,6 +249,7 @@ export class ILinkClient {
     text: string;
     context_token: string;
   }): Promise<void> {
+    // 重试时复用 client_id，避免请求已送达但响应丢失时产生重复消息。
     const clientId = `fastgpt:${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const body = JSON.stringify({
       msg: {
@@ -260,10 +263,12 @@ export class ILinkClient {
       },
       base_info: { channel_version: CHANNEL_VERSION }
     });
-    const raw = await this.post('ilink/bot/sendmessage', body, SEND_TIMEOUT_MS);
-    const resp = JSON.parse(raw) as Pick<GetUpdatesResponse, 'ret' | 'errmsg'>;
-    if (resp.ret && resp.ret !== 0) {
-      throw new Error(`sendMessage ret=${resp.ret} errmsg=${resp.errmsg ?? '(none)'}`);
-    }
+    await retryFn(async () => {
+      const raw = await this.post('ilink/bot/sendmessage', body, SEND_TIMEOUT_MS);
+      const resp = JSON.parse(raw) as Pick<GetUpdatesResponse, 'ret' | 'errmsg'>;
+      if (resp.ret && resp.ret !== 0) {
+        throw new Error(`sendMessage ret=${resp.ret} errmsg=${resp.errmsg ?? '(none)'}`);
+      }
+    }, SEND_RETRY_ATTEMPTS);
   }
 }

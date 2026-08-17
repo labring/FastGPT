@@ -183,11 +183,13 @@ describe('runOutlinkRuntime', () => {
       }
     });
 
-    await runOutlinkRuntime({
-      outLinkConfig,
-      message: { ...message, resolveQuery },
-      respond
-    });
+    await expect(
+      runOutlinkRuntime({
+        outLinkConfig,
+        message: { ...message, resolveQuery },
+        respond
+      })
+    ).resolves.toEqual({ status: 'handled' });
 
     expect(resolveQuery).toHaveBeenCalledWith({
       maxFileAmount: 2,
@@ -221,11 +223,13 @@ describe('runOutlinkRuntime', () => {
     const resolveQuery = vi.fn();
     const { respond } = createResponder();
 
-    await runOutlinkRuntime({
-      outLinkConfig,
-      message: { ...message, resolveQuery },
-      respond
-    });
+    await expect(
+      runOutlinkRuntime({
+        outLinkConfig,
+        message: { ...message, resolveQuery },
+        respond
+      })
+    ).resolves.toEqual({ status: 'duplicate' });
 
     expect(respond).not.toHaveBeenCalled();
     expect(resolveQuery).not.toHaveBeenCalled();
@@ -339,7 +343,7 @@ describe('runOutlinkRuntime', () => {
       await vi.advanceTimersByTimeAsync(0);
       await vi.advanceTimersByTimeAsync(1000);
 
-      await expect(result).resolves.toBeUndefined();
+      await expect(result).resolves.toEqual({ status: 'handled' });
       expect(resolveQuery).not.toHaveBeenCalled();
       expect(preChatRound).not.toHaveBeenCalled();
     } finally {
@@ -389,5 +393,22 @@ describe('dispatchOutlinkProviderMessage', () => {
     });
     expect(onProcessingError).toHaveBeenCalledWith(expect.any(Error));
     expect(onResponseError).not.toHaveBeenCalled();
+  });
+
+  it('forwards the runtime result to the provider callback', async () => {
+    const onMessageResult = vi.fn();
+    dispatchOutlinkProviderMessage({
+      onMessage: vi.fn().mockResolvedValue({ status: 'duplicate' }),
+      outLinkConfig: outLinkConfig as any,
+      message,
+      respond: vi.fn(),
+      onProcessingError: vi.fn(),
+      onResponseError: vi.fn(),
+      onMessageResult
+    });
+
+    await vi.waitFor(() => {
+      expect(onMessageResult).toHaveBeenCalledWith({ status: 'duplicate' });
+    });
   });
 });

@@ -50,6 +50,7 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { authOutLinkLimit } from './auth';
 import type {
+  OutlinkMessageHandleResult,
   OutlinkProviderMessageHandler,
   OutlinkMessage,
   OutlinkResponder,
@@ -221,19 +222,22 @@ export const dispatchOutlinkProviderMessage = <T extends OutlinkAppType>({
   respond,
   errorContent = '文件处理失败，请稍后重试',
   onProcessingError,
-  onResponseError
+  onResponseError,
+  onMessageResult
 }: Omit<RunOutlinkRuntimeProps<T>, 'message'> & {
   onMessage: OutlinkProviderMessageHandler<T>;
   message: OutlinkMessage | undefined | Promise<OutlinkMessage | undefined>;
   errorContent?: string;
   onProcessingError: (error: unknown) => void;
   onResponseError: (error: unknown) => void;
+  onMessageResult?: (result: OutlinkMessageHandleResult) => void | Promise<void>;
 }) => {
   void (async () => {
     try {
       const normalizedMessage = await message;
       if (!normalizedMessage) return;
-      await onMessage({ outLinkConfig, message: normalizedMessage, respond });
+      const result = await onMessage({ outLinkConfig, message: normalizedMessage, respond });
+      await onMessageResult?.(result);
     } catch (error) {
       onProcessingError(error);
       await respond(Readable.from([{ type: 'error', content: errorContent }]));
@@ -249,7 +253,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
   outLinkConfig,
   message: { chatId, query, messageId, chatUserId, resolveQuery },
   respond
-}: RunOutlinkRuntimeProps<T>) {
+}: RunOutlinkRuntimeProps<T>): Promise<OutlinkMessageHandleResult> {
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: '',
@@ -292,7 +296,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
           error: getErrResponse(result.error)
         });
       }
-      return;
+      return { status: 'handled' };
     }
 
     // Load chat history and stored global variables in parallel.
@@ -311,7 +315,9 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
     ]);
 
     // Ignore provider retries before consuming limits or starting platform output.
-    if (histories.find((item) => item.dataId === messageId)) return;
+    if (histories.find((item) => item.dataId === messageId)) {
+      return { status: 'duplicate' };
+    }
 
     await authOutLinkLimit({
       outLinkUid: chatUserId,
@@ -462,6 +468,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
 
     const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
     addOutLinkUsage({ shareId: outLinkConfig.shareId, totalPoints });
+    return { status: 'handled' };
   } catch (error) {
     const { preparedRound } = roundState;
     if (!roundState.finalized && preparedRound?.shouldPersistChatRound && roundState.sourceId) {
@@ -517,5 +524,6 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
         error: getErrResponse(result.error)
       });
     }
+    return { status: 'handled' };
   }
 }
