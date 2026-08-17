@@ -74,6 +74,45 @@ html.dark [data-rmiz-modal-overlay='visible'] {
   background-color: rgba(0, 0, 0, 0.75) !important;
 }
 
+/* Commercial contact dialog */
+.docs-contact-dialog {
+  position: fixed;
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1040px, calc(100vw - 32px));
+  height: min(820px, calc(100vh - 32px));
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 16px;
+  background: var(--color-fd-background);
+  color: var(--color-fd-foreground);
+  box-shadow: 0 24px 80px rgb(15 23 42 / 24%);
+}
+
+.docs-contact-dialog::backdrop {
+  background: rgb(15 23 42 / 58%);
+  backdrop-filter: blur(4px);
+}
+
+@media (max-width: 640px) {
+  .docs-contact-dialog {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100vw;
+    height: 100vh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 /* Content */
 
 /* img */
