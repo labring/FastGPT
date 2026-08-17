@@ -13,6 +13,11 @@ import {
 } from '../../../../core/ai/skill/type';
 import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
+import {
+  CollaboratorItemSchema,
+  CollaboratorListSchema
+} from '../../../../support/permission/collaborator.schema';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -147,6 +152,91 @@ export const ResumeSkillInheritPermissionResponseSchema = z.undefined().meta({
 export type ResumeSkillInheritPermissionResponse = z.infer<
   typeof ResumeSkillInheritPermissionResponseSchema
 >;
+
+/* ============================================================================
+ * API: 转让技能所有权
+ * Route: POST /api/proApi/core/ai/skill/changeOwner
+ * Method: POST
+ * Description: 将技能所有权转让给指定团队成员。
+ * Tags: ['资源权限', 'AI技能管理']
+ * ============================================================================ */
+
+export const ChangeSkillOwnerBodySchema = z
+  .object({
+    skillId: IdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '技能 ID'
+    }),
+    ownerId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a06',
+      description: '新的所有者团队成员 ID'
+    })
+  })
+  .meta({
+    example: {
+      skillId: '68ad85a7463006c963799a05',
+      ownerId: '68ad85a7463006c963799a06'
+    }
+  });
+export type ChangeSkillOwnerBody = z.infer<typeof ChangeSkillOwnerBodySchema>;
+
+export const ChangeSkillOwnerResponseSchema = z.undefined().meta({ description: '转让成功' });
+export type ChangeSkillOwnerResponse = z.infer<typeof ChangeSkillOwnerResponseSchema>;
+
+/* ============================================================================
+ * API: 获取技能协作者列表
+ * Route: GET /api/proApi/core/ai/skill/collaborator/list
+ * Method: GET
+ * Description: 获取技能协作者列表，包含继承权限场景下的父级协作者信息。
+ * Tags: ['协作者管理', 'AI技能管理']
+ * ============================================================================ */
+
+export const GetSkillCollaboratorListQuerySchema = z.object({
+  skillId: IdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '技能 ID'
+  })
+});
+export type GetSkillCollaboratorListQuery = z.infer<typeof GetSkillCollaboratorListQuerySchema>;
+
+export const GetSkillCollaboratorListResponseSchema = CollaboratorListSchema;
+export type GetSkillCollaboratorListResponse = z.infer<
+  typeof GetSkillCollaboratorListResponseSchema
+>;
+
+/* ============================================================================
+ * API: 更新技能协作者
+ * Route: POST /api/proApi/core/ai/skill/collaborator/update
+ * Method: POST
+ * Description: 覆盖更新技能的协作者权限。
+ * Tags: ['协作者管理', 'AI技能管理']
+ * ============================================================================ */
+
+export const UpdateSkillCollaboratorBodySchema = z
+  .object({
+    skillId: IdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '技能 ID'
+    }),
+    collaborators: z.array(CollaboratorItemSchema).meta({ description: '更新后的协作者权限列表' })
+  })
+  .meta({
+    example: {
+      skillId: '68ad85a7463006c963799a05',
+      collaborators: [
+        {
+          tmbId: '68ad85a7463006c963799a06',
+          permission: 4
+        }
+      ]
+    }
+  });
+export type UpdateSkillCollaboratorBody = z.infer<typeof UpdateSkillCollaboratorBodySchema>;
+
+export const UpdateSkillCollaboratorResponseSchema = z.undefined().meta({
+  description: '操作成功'
+});
+export type UpdateSkillCollaboratorResponse = z.infer<typeof UpdateSkillCollaboratorResponseSchema>;
 
 export const GetSkillDetailResponseSchema = z.object({
   _id: z.string(),

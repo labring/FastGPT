@@ -9,6 +9,9 @@ const expectedPaths = {
   '/core/ai/sandbox/verifyTicket': 'get',
   '/core/ai/skill/copy': 'post',
   '/core/ai/skill/resumeInheritPermission': 'get',
+  '/proApi/core/ai/skill/changeOwner': 'post',
+  '/proApi/core/ai/skill/collaborator/list': 'get',
+  '/proApi/core/ai/skill/collaborator/update': 'post',
   '/core/workflow/optimizeCode': 'post',
   '/core/workflow/getSandboxPackages': 'get'
 } as const;
@@ -55,5 +58,19 @@ describe('AI OpenAPI contracts', () => {
     expect(openAPITagGroups.find(({ name }) => name === '核心-应用管理')?.tags).toContain(
       DevApiTagsMap.appOther
     );
+  });
+
+  it('groups Skill permission APIs with resource and collaborator tags', () => {
+    expect(openAPIDocument.paths?.['/proApi/core/ai/skill/changeOwner']?.post?.tags).toEqual([
+      DevApiTagsMap.permissionResource,
+      DevApiTagsMap.aiSkill
+    ]);
+    expect(openAPIDocument.paths?.['/proApi/core/ai/skill/collaborator/list']?.get?.tags).toEqual([
+      DevApiTagsMap.permissionCollaborator,
+      DevApiTagsMap.aiSkill
+    ]);
+    expect(
+      openAPIDocument.paths?.['/proApi/core/ai/skill/collaborator/update']?.post?.tags
+    ).toEqual([DevApiTagsMap.permissionCollaborator, DevApiTagsMap.aiSkill]);
   });
 });

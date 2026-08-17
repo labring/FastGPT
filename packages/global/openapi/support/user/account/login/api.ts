@@ -106,13 +106,40 @@ export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.ext
 });
 export type LoginByPasswordBodyType = z.infer<typeof LoginByPasswordBodySchema>;
 
-/* ===== Wecom Login ===== */
-export const WecomGetRedirectURLBodySchema = z.object({
-  redirectUri: ExternalAuthStringSchema,
-  state: ShortAuthStringSchema,
-  isWecomWorkTerminal: z.boolean()
+/* ============================================================================
+ * API: 获取企业微信登录跳转地址
+ * Route: POST /api/proApi/support/user/account/login/wecom/getRedirectUrl
+ * Method: POST
+ * Description: 根据登录回调地址和当前终端环境生成企业微信 OAuth 跳转地址。
+ * Tags: ['用户账号', 'Write']
+ * ============================================================================ */
+
+export const WecomGetRedirectURLBodySchema = z
+  .object({
+    redirectUri: ExternalAuthStringSchema.meta({
+      example: 'https://fastgpt.example.com/login/provider',
+      description: '企业微信登录完成后的回调地址'
+    }),
+    state: ShortAuthStringSchema.meta({
+      example: 'a1b2c3d4',
+      description: '登录流程状态值，用于校验回调请求'
+    }),
+    isWecomWorkTerminal: z.boolean().meta({
+      example: false,
+      description: '当前是否为企业微信工作台环境'
+    })
+  })
+  .meta({
+    example: {
+      redirectUri: 'https://fastgpt.example.com/login/provider',
+      state: 'a1b2c3d4',
+      isWecomWorkTerminal: false
+    }
+  });
+export const WecomGetRedirectURLResponseSchema = z.string().meta({
+  example: 'https://open.weixin.qq.com/connect/oauth2/authorize?...',
+  description: '企业微信 OAuth 授权跳转地址'
 });
-export const WecomGetRedirectURLResponseSchema = z.string();
 export type WecomGetRedirectURLBodyType = z.infer<typeof WecomGetRedirectURLBodySchema>;
 export type WecomGetRedirectURLResponseType = z.infer<typeof WecomGetRedirectURLResponseSchema>;
 

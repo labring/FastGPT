@@ -158,6 +158,15 @@ export const CompletionsResponseSchema = z.object({
 });
 export type CompletionsResponseType = z.infer<typeof CompletionsResponseSchema>;
 
+/* =============== Shared workflow SSE response =============== */
+
+export const ChatWorkflowSseResponseSchema = z.string().meta({
+  example: 'event: answer\ndata: {"choices":[...]}\n\n',
+  description:
+    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束'
+});
+export type ChatWorkflowSseResponseType = z.infer<typeof ChatWorkflowSseResponseSchema>;
+
 export const AuthResponseSchema = z.object({
   teamId: ObjectIdSchema.meta({ description: '团队ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员ID' }),
@@ -199,3 +208,61 @@ export const ChatTestPropsSchema = z.object({
   chatId: z.string().meta({ description: '聊天ID' })
 });
 export type ChatTestPropsType = z.infer<typeof ChatTestPropsSchema>;
+
+/* ============================================================================
+ * API: 应用聊天及工作流执行
+ * Route: POST /api/proApi/core/chat/chatHome
+ * Method: POST
+ * Description: 使用主页聊天配置和临时工作流执行一次应用对话，返回 SSE 流。
+ * Tags: ['会话操作', 'Write']
+ * ============================================================================ */
+
+export const ChatHomeBodySchema = ChatTestPropsSchema.extend({
+  messages: ChatTestPropsSchema.shape.messages.meta({
+    example: [{ role: 'user', content: '你好' }],
+    description: '消息列表，最后一条消息作为本次用户问题'
+  }),
+  responseChatItemId: ChatTestPropsSchema.shape.responseChatItemId.meta({
+    example: 'response-chat-item-id',
+    description: '自定义响应消息 ID，不传时自动生成'
+  }),
+  nodes: ChatTestPropsSchema.shape.nodes.meta({
+    example: [],
+    description: '临时执行的工作流节点列表'
+  }),
+  edges: ChatTestPropsSchema.shape.edges.meta({
+    example: [],
+    description: '临时执行的工作流连线列表'
+  }),
+  chatConfig: ChatTestPropsSchema.shape.chatConfig.meta({
+    example: {},
+    description: '应用聊天配置'
+  }),
+  variables: ChatTestPropsSchema.shape.variables.meta({
+    example: {},
+    description: '全局变量或插件输入'
+  }),
+  appId: ChatTestPropsSchema.shape.appId.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '应用 ID'
+  }),
+  appName: ChatTestPropsSchema.shape.appName.meta({
+    example: '主页助手',
+    description: '应用名称'
+  }),
+  chatId: ChatTestPropsSchema.shape.chatId.meta({
+    example: 'chat-id',
+    description: '会话 ID'
+  }),
+  retainDatasetCite: z.boolean().optional().meta({
+    example: true,
+    description: '是否保留知识库引用信息'
+  }),
+  showSkillReferences: z.boolean().optional().meta({
+    example: true,
+    description: '是否返回技能引用信息'
+  })
+}).meta({
+  description: '主页聊天使用的应用工作流和运行参数'
+});
+export type ChatHomeBodyType = z.infer<typeof ChatHomeBodySchema>;

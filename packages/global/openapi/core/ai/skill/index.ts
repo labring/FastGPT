@@ -30,7 +30,13 @@ import {
   CopySkillBodySchema,
   CopySkillResponseSchema,
   ResumeSkillInheritPermissionQuerySchema,
-  ResumeSkillInheritPermissionResponseSchema
+  ResumeSkillInheritPermissionResponseSchema,
+  ChangeSkillOwnerBodySchema,
+  ChangeSkillOwnerResponseSchema,
+  GetSkillCollaboratorListQuerySchema,
+  GetSkillCollaboratorListResponseSchema,
+  UpdateSkillCollaboratorBodySchema,
+  UpdateSkillCollaboratorResponseSchema
 } from './api';
 import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
 
@@ -160,6 +166,74 @@ export const SkillPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: ResumeSkillInheritPermissionResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/ai/skill/changeOwner': {
+    post: {
+      summary: '转让技能所有权',
+      description: '将技能所有权转让给指定团队成员',
+      tags: [DevApiTagsMap.permissionResource, DevApiTagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ChangeSkillOwnerBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功转让技能所有权',
+          content: {
+            'application/json': {
+              schema: ChangeSkillOwnerResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/ai/skill/collaborator/list': {
+    get: {
+      summary: '获取技能协作者列表',
+      description: '获取技能协作者列表，包含继承权限场景下的父级协作者信息',
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.aiSkill],
+      requestParams: {
+        query: GetSkillCollaboratorListQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功获取技能协作者列表',
+          content: {
+            'application/json': {
+              schema: GetSkillCollaboratorListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/ai/skill/collaborator/update': {
+    post: {
+      summary: '更新技能协作者',
+      description: '覆盖更新技能的协作者权限',
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateSkillCollaboratorBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新技能协作者',
+          content: {
+            'application/json': {
+              schema: UpdateSkillCollaboratorResponseSchema
             }
           }
         }

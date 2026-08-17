@@ -1,6 +1,12 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
-import { ChatTestPropsSchema, CompletionsPropsSchema, CompletionsResponseSchema } from './api';
+import {
+  ChatHomeBodySchema,
+  ChatWorkflowSseResponseSchema,
+  ChatTestPropsSchema,
+  CompletionsPropsSchema,
+  CompletionsResponseSchema
+} from './api';
 
 /* =============== Request examples =============== */
 
@@ -464,6 +470,7 @@ ${interactiveStreamExample}
               }
             },
             'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema,
               examples: {}
             }
           }
@@ -627,6 +634,7 @@ ${interactiveStreamExample}
               }
             },
             'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema,
               examples: {}
             }
           }
@@ -653,7 +661,32 @@ ${interactiveStreamExample}
           description: 'SSE 流式响应',
           content: {
             'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema,
               examples: {}
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/chat/chatHome': {
+    post: {
+      tags: [DevApiTagsMap.chatController],
+      summary: '应用聊天及工作流执行',
+      description: '使用主页聊天配置和临时工作流执行一次应用对话，返回 SSE 流',
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ChatHomeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'SSE 流式响应',
+          content: {
+            'text/event-stream': {
+              schema: ChatWorkflowSseResponseSchema
             }
           }
         }

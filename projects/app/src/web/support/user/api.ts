@@ -21,6 +21,7 @@ import type {
   UpdatePasswordByCodeBodyType,
   UpdatePasswordByOldBodyType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
+import type { UpdateContactBodyType } from '@fastgpt/global/openapi/support/user/account/update/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 
@@ -107,7 +108,7 @@ export const getCheckPswExpired = () => GET<boolean>('/support/user/account/chec
 /* ===== notification account ===== */
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
   PUT('/proApi/support/user/team/updateNotificationAccount', data);
-export const updateContact = (data: { contact: string; verifyCode: string }) => {
+export const updateContact = (data: UpdateContactBodyType) => {
   return PUT('/proApi/support/user/account/updateContact', data);
 };
 

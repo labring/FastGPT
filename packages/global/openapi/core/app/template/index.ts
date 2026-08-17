@@ -3,6 +3,7 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   GetAppTemplateDetailQuerySchema,
   GetAppTemplateDetailResponseSchema,
+  GetTemplateTypesResponseSchema,
   ListAppTemplateQuerySchema,
   ListAppTemplateResponseSchema
 } from './api';
@@ -42,6 +43,23 @@ export const AppTemplatePath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetAppTemplateDetailResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/app/template/getTemplateTypes': {
+    get: {
+      summary: '获取应用模板类型',
+      description: '获取应用模板分类列表，用于模板市场筛选',
+      tags: [DevApiTagsMap.appTemplate],
+      responses: {
+        200: {
+          description: '成功获取应用模板类型',
+          content: {
+            'application/json': {
+              schema: GetTemplateTypesResponseSchema
             }
           }
         }
