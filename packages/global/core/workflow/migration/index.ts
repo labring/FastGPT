@@ -27,6 +27,6 @@ export {
 
 export { migrateSystemConfigToChatConfig } from './legacy/systemConfig';
 
-export { migrateWorkflowToCurrent } from './migrate';
+export { migrateWorkflowToCurrent, migrateWorkflowDetailNodesToCurrent } from './migrate';
 
 // [TODO] add an explicit version field and dispatch migrations by version.

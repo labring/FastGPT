@@ -21,11 +21,7 @@ import {
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
-import {
-  migrateLegacyWorkflowHttpToolInputsDefaultMode,
-  migrateLegacyFlowNodeInputToCurrent,
-  migrateLegacyWorkflowToolInputsDefaultMode
-} from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowDetailNodesToCurrent } from '@fastgpt/global/core/workflow/migration';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
@@ -61,6 +57,10 @@ export async function rewriteAppWorkflowToDetail({
   ownerTmbId: string;
   lang?: localeType;
 }) {
+  const migratedNodes = migrateWorkflowDetailNodesToCurrent(nodes);
+  nodes.forEach((node, index) => {
+    node.inputs = migratedNodes[index].inputs;
+  });
   type SelectedDatasetSnapshot = Pick<SelectedDatasetType, 'datasetId'> &
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
@@ -210,31 +210,9 @@ export async function rewriteAppWorkflowToDetail({
 
   await Promise.all(
     nodes.map(async (node) => {
-      const allowLegacyToolDescriptionFallback = node.pluginId
-        ? shouldUseLegacyToolDescriptionFallback({
-            toolId: node.pluginId,
-            flowNodeType: node.flowNodeType
-          })
-        : false;
-      if (
-        node.flowNodeType === FlowNodeTypeEnum.pluginInput ||
-        allowLegacyToolDescriptionFallback
-      ) {
-        node.inputs = migrateLegacyWorkflowToolInputsDefaultMode(node.inputs).map((input) =>
-          migrateLegacyFlowNodeInputToCurrent(input, { deferDefaultSelection: true })
-        );
-      }
-      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
-        node.inputs = migrateLegacyWorkflowHttpToolInputsDefaultMode(node.inputs).map((input) =>
-          migrateLegacyFlowNodeInputToCurrent(input, { deferDefaultSelection: true })
-        );
-      }
       if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
         node.inputs = node.inputs.map((input) =>
-          normalizeFlowNodeInputType(
-            migrateLegacyFlowNodeInputToCurrent(input, { deferDefaultSelection: true }),
-            { deferDefaultSelection: true }
-          )
+          normalizeFlowNodeInputType(input, { deferDefaultSelection: true })
         );
       }
 

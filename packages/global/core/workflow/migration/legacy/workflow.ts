@@ -1,12 +1,52 @@
 import type { CanonicalWorkflowData, LegacyWorkflowDataInput } from '../schema';
 import { CanonicalWorkflowDataSchema, LegacyWorkflowDataSchema } from '../schema';
-import { migrateLegacyFlowNodeInputToCurrent } from './input';
-import { migrateLegacyHttpToolInputDefaultMode } from './input';
-import { migrateLegacyWorkflowToolInputDefaultMode } from './input';
+import {
+  migrateLegacyFlowNodeInputToCurrent,
+  migrateLegacyHttpToolInputDefaultMode,
+  migrateLegacyWorkflowHttpToolInputsDefaultMode,
+  migrateLegacyWorkflowToolInputDefaultMode,
+  migrateLegacyWorkflowToolInputsDefaultMode
+} from './input';
 import { migrateSystemConfigToChatConfig } from './systemConfig';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../../constants';
 import { nodeInputIsReference } from '../../utils';
+import type { StoreNodeItemType } from '../../type/node';
+import { shouldUseLegacyToolDescriptionFallback } from '../../../app/tool/utils';
+
+/**
+ * 详情水合前统一迁移节点的历史输入协议。
+ *
+ * 仅处理可由节点快照稳定推导的 legacy 字段；工具预览、权限和资源水合仍由服务层负责。
+ */
+export const migrateWorkflowDetailNodesToCurrent = (nodes: StoreNodeItemType[]) =>
+  nodes.map((node) => {
+    const allowLegacyToolDescriptionFallback = node.pluginId
+      ? shouldUseLegacyToolDescriptionFallback({
+          toolId: node.pluginId,
+          flowNodeType: node.flowNodeType
+        })
+      : false;
+    const inputs = (() => {
+      if (
+        node.flowNodeType === FlowNodeTypeEnum.pluginInput ||
+        allowLegacyToolDescriptionFallback
+      ) {
+        return migrateLegacyWorkflowToolInputsDefaultMode(node.inputs);
+      }
+      if (node.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
+        return migrateLegacyWorkflowHttpToolInputsDefaultMode(node.inputs);
+      }
+      return node.inputs;
+    })();
+
+    return {
+      ...node,
+      inputs: inputs.map((input) =>
+        migrateLegacyFlowNodeInputToCurrent(input, { deferDefaultSelection: true })
+      )
+    };
+  });
 
 /**
  * 将工作流按固定 phase 迁移为当前版本：
