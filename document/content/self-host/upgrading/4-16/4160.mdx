@@ -148,7 +148,14 @@ curl -X POST 'https://你的域名/api/admin/4160/initUserSandbox' \
 
 迁移会先执行 V4.15.0-beta6 的完整前置逻辑：补齐旧 Sandbox 的 `sourceType/sourceId`、清理遗留字段、删除无法归属的孤立资源，并清理缺失 `sourceType` 的旧 Skill Debug Chat 三表数据及私有、公开 Bucket 旧前缀。与 App 同 ID 的 Skill 会跳过 Chat 清理。两类数据重新统计后合计为 `normalization.pendingCount`；数量不为 `0` 时不会进入 Workspace 归档。归零后直接归档全部旧 Workspace 并清理旧计算资源，再迁移 Skill，最后按 App、用户聚合到用户级 Sandbox。只要归档阶段存在失败，安装阶段就不会开始。新的 Sandbox 会在 Workspace 安装完成后暂停，首次使用时再按正常流程启动。脚本可安全重试，已完成的归档和迁移不会重复执行；迁移完成后会保留旧归档和旧 MongoDB 记录作为备份。
 
-请检查返回结果中的 `normalization.pendingCount`、`normalizationBlocked`、`failedCount`、`failures`、`skippedCount` 和 `skipped`。只有 `normalization.pendingCount` 和 `failedCount` 均为 `0`，且 `normalizationBlocked` 为 `false` 时，才表示所有未跳过的 Sandbox 迁移完成；`skipped` 中的 Legacy 记录会保留且不会迁移。
+请按执行阶段检查返回结果中的字段：
+
+- **执行正式迁移前（`dryRun: true`）**：重点关注 `normalization.pendingCount`。该字段表示字段归一化和旧 Skill Debug Chat 清理后仍待处理的数据总数，必须为 `0` 才能开始正式迁移。如果大于 `0`，再通过 `normalization.sandboxPendingCount`、`normalization.legacyDebugChatCleanup.pendingChatCount` 和 `normalization.legacyDebugChatCleanup.list` 定位待处理数据；此时 `normalizationBlocked` 应为 `true`，不会进入 Workspace 归档和后续迁移。dry-run 只做前置清洗统计，返回的 `failedCount`、`failures` 和 `skipped` 不用于判断此前或其他请求中的正式迁移状态。
+- **执行升级后（`dryRun: false`）**：先确认前置清洗成功，即 `normalization.pendingCount` 为 `0` 且 `normalizationBlocked` 为 `false`；再确认正式迁移成功，即 `failedCount` 为 `0`。同时满足这三个条件时，表示所有未跳过的 Sandbox 已迁移完成，这是迁移成功的明确判定条件。
+- **未完成和失败字段**：`normalizationBlocked: true` 或 `normalization.pendingCount > 0` 表示前置清洗未完成，未进入后续迁移；这表示迁移被阻断，不等同于正式迁移失败。正式迁移失败时，`failedCount > 0`，具体记录查看 `failures`；如果失败发生在前置清洗阶段，也可查看 `normalization.failures`。
+- **跳过字段**：仅在使用 `skipError: true` 且源 App 或 Skill 已缺失或软删除时，相关记录才会进入 `skipped`，数量由 `skippedCount` 表示。这些记录会保留且不会迁移，因此 `skippedCount > 0` 不属于迁移失败，但也不表示所有 Legacy 记录都已完成迁移；如需确认没有任何记录被跳过，应额外确认 `skippedCount` 为 `0`。
+
+如果接口返回超时错误，不代表迁移一定失败。正式迁移使用全局任务锁并支持安全重试；请等待原请求对应的任务结束后，再重复执行 `dryRun: false` 获取最新结果。若重试时提示任务锁仍被占用，说明上一轮迁移仍在执行，请稍后再试。已完成的归档和迁移不会重复执行。`dryRun: true` 只能用于检查前置清洗状态，不能用于判断上一轮正式迁移的 `failedCount`、`failures` 或 `skipped`。
 
 ## 🚀 新增内容
 
