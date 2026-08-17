@@ -61,7 +61,7 @@ const CancelAccountPage = () => {
         status: 'success',
         title: t('account_info:account_cancellation_cancel_success', '已取消注销')
       });
-      await router.replace('/account/info');
+      window.location.replace('/account/info');
     } catch {
       toast({
         status: 'warning',
