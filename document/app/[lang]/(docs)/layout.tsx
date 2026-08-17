@@ -48,7 +48,7 @@ export default async function Layout({
     {
       icon: <Handshake className={iconClass} />,
       title: t('common:businessConsultation', lang),
-      url: `https://fastgpt.cn/${lang === 'en' ? 'en' : 'zh'}/contact?utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation`
+      url: `https://fastgpt.cn/${lang === 'en' ? 'en' : 'zh'}/contact?source=docs&utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation`
     }
   ];
 
