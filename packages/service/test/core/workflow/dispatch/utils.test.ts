@@ -956,6 +956,168 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(edges.length).toBe(originalEdgesLen);
   });
 
+  it('should restore legacy workflow tool params before runtime configuration checks', async () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const workflowToolNode = makeNode('workflow-tool', FlowNodeTypeEnum.pluginModule, {
+      pluginId: '507f1f77bcf86cd799439011',
+      name: 'Legacy workflow tool',
+      inputs: [
+        {
+          key: 'text',
+          label: 'text',
+          valueType: 'string',
+          required: true,
+          value: '',
+          selectedTypeIndex: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          toolDescription: 'text'
+        },
+        {
+          key: 'text2',
+          label: 'text2',
+          valueType: 'string',
+          value: '',
+          selectedTypeIndex: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    });
+    const nodes = [toolCallNode, workflowToolNode];
+    const edges = [
+      makeEdge('tool-call', 'workflow-tool', {
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    const tools = useToolNodeList({
+      nodeId: 'tool-call',
+      runtimeNodes: nodes,
+      runtimeEdges: edges
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs.find((input) => input.key === 'text')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(workflowToolNode.inputs.find((input) => input.key === 'text2')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input
+    });
+    expect(workflowToolNode.inputs.every((input) => input.selectedTypeIndex === undefined)).toBe(
+      true
+    );
+
+    const runtimeInputs = updateAgentLoopCoreWorkflowToolInputValue({
+      params: {
+        text: 'generated text',
+        text2: 'ignored model value'
+      },
+      inputs: workflowToolNode.inputs
+    });
+    expect(runtimeInputs.find((input) => input.key === 'text')?.value).toBe('generated text');
+    expect(runtimeInputs.find((input) => input.key === 'text2')?.value).toBe('');
+  });
+
+  it('should restore legacy HTTP workflow tool params at runtime', async () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const httpToolNode = makeNode('http-tool', FlowNodeTypeEnum.httpRequest468, {
+      inputs: [
+        {
+          key: 'query',
+          label: 'query',
+          valueType: 'string',
+          required: true,
+          canEdit: true,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          toolDescription: 'Search query'
+        },
+        {
+          key: 'manual',
+          label: 'manual',
+          valueType: 'string',
+          required: false,
+          canEdit: true,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          toolDescription: 'Manual value',
+          isToolParam: false
+        }
+      ]
+    });
+    const nodes = [toolCallNode, httpToolNode];
+    const edges = [
+      makeEdge('tool-call', 'http-tool', {
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(httpToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      isToolParam: true,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference]
+    });
+    expect(httpToolNode.inputs[1]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      isToolParam: false
+    });
+
+    const runtimeInputs = updateAgentLoopCoreWorkflowToolInputValue({
+      params: {
+        query: 'generated query',
+        manual: 'ignored model value'
+      },
+      inputs: httpToolNode.inputs
+    });
+    expect(runtimeInputs[0].value).toBe('generated query');
+    expect(runtimeInputs[1].value).toBeUndefined();
+  });
+
+  it('should normalize legacy system tool inputs at the runtime boundary', async () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const systemToolNode = makeNode('system-tool', FlowNodeTypeEnum.tool, {
+      pluginId: 'systemTool-bocha',
+      toolConfig: { systemTool: { toolId: 'bocha' } },
+      inputs: [
+        {
+          key: 'query',
+          label: 'query',
+          valueType: 'string',
+          required: true,
+          toolDescription: 'Search query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0
+        }
+      ]
+    } as any);
+    const nodes = [toolCallNode, systemToolNode];
+    const edges = [
+      makeEdge('tool-call', 'system-tool', {
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      })
+    ];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(systemToolNode.inputs[0]).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(systemToolNode.inputs[0]).not.toHaveProperty('selectedTypeIndex');
+  });
+
   it('should handle systemTool toolSet nodes', async () => {
     const toolSetNode = makeNode('ts1', FlowNodeTypeEnum.toolSet, {
       toolConfig: { systemToolSet: { toolId: 'sys-tool-1' } }

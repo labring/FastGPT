@@ -1,5 +1,3 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 import { filterToolNodeIdByEdges } from '../../../utils';
 import type { DispatchToolModuleProps, ToolNodeItemType } from '../type';
@@ -34,15 +32,6 @@ export const useToolNodeList = ({
     .map((nodeId) => runtimeNodes.find((item) => item.nodeId === nodeId))
     .filter(isRunnableToolNode)
     .map<ToolNodeItemType>((tool) => {
-      const inputs = tool.inputs;
-      let jsonSchema = tool.jsonSchema;
-      const toolDataInput = inputs.find(
-        (input) => input.key === NodeInputKeyEnum.toolData || input.key === 'toolData'
-      );
-      if (toolDataInput?.value?.inputSchema) {
-        jsonSchema = (toolDataInput.value as McpToolDataType).inputSchema;
-      }
-
       return {
         nodeId: tool.nodeId,
         name: tool.name,
@@ -50,8 +39,8 @@ export const useToolNodeList = ({
         avatar: tool.avatar,
         intro: tool.intro,
         toolDescription: tool.toolDescription,
-        jsonSchema,
-        inputs
+        jsonSchema: tool.jsonSchema,
+        inputs: tool.inputs
       };
     });
 };

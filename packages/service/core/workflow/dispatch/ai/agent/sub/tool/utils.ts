@@ -329,18 +329,19 @@ export const getAgentRuntimeTools = async ({
 
   /** 将 Agent MCP 工具资源投影为执行阶段使用的 canonical ToolSet。 */
   const buildMcpRuntimeToolSet = ({
-    mcpToolSet,
+    app,
     toolList,
     selectedTool
   }: {
-    mcpToolSet?: RuntimeMcpToolSet;
+    app?: AppSchemaType;
     toolList: RuntimeMcpTool[];
     selectedTool?: RuntimeMcpTool;
   }): RuntimeMcpToolSet | undefined => {
-    const url = selectedTool?.url ?? mcpToolSet?.url;
+    const currentToolSet = app?.modules?.[0]?.toolConfig?.mcpToolSet;
+    const url = selectedTool?.url ?? currentToolSet?.url;
     if (!url) return undefined;
 
-    const headerSecret = selectedTool?.headerSecret ?? mcpToolSet?.headerSecret;
+    const headerSecret = selectedTool?.headerSecret ?? currentToolSet?.headerSecret;
     return {
       url,
       ...(headerSecret ? { headerSecret } : {}),
@@ -460,7 +461,7 @@ export const getAgentRuntimeTools = async ({
       avatar: app.avatar,
       tool,
       mcpToolSet: buildMcpRuntimeToolSet({
-        mcpToolSet,
+        app,
         toolList: toolList as RuntimeMcpTool[],
         selectedTool: tool as RuntimeMcpTool
       })
@@ -814,7 +815,7 @@ export const getAgentRuntimeTools = async ({
                 avatar: toolNode.avatar,
                 tool,
                 mcpToolSet: buildMcpRuntimeToolSet({
-                  mcpToolSet: mcpToolsetVal,
+                  app: authApp,
                   toolList: finalToolList as RuntimeMcpTool[],
                   selectedTool: tool as RuntimeMcpTool
                 })
