@@ -927,6 +927,7 @@ describe('rewriteRuntimeWorkFlow', () => {
   ): RuntimeNodeItemType =>
     ({
       nodeId,
+      name: nodeId,
       flowNodeType,
       inputs: [],
       outputs: [],
@@ -1089,6 +1090,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       inputs: [
         {
           key: 'query',
+          label: 'query',
           valueType: 'string',
           required: true,
           toolDescription: 'Search query',
@@ -1155,14 +1157,35 @@ describe('rewriteRuntimeWorkFlow', () => {
     ];
 
     mockMongoAppFindOne.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ _id: 'mcp-app-1', name: 'TestApp' })
+      lean: vi.fn().mockResolvedValue({
+        _id: 'mcp-app-1',
+        name: 'TestApp',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: []
+              }
+            }
+          }
+        ]
+      })
     });
-    mockGetMCPChildren.mockResolvedValue([{ name: 'tool1', description: 'desc', inputSchema: {} }]);
+    mockGetMCPChildren.mockResolvedValue([
+      { name: 'tool1', description: 'desc', inputSchema: {}, url: 'https://mcp.example.com' }
+    ]);
 
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
-    expect(nodes.find((n) => n.nodeId === 'ts20')).toBeDefined();
+    expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com'
+        }
+      }
+    });
     expect(edges.find((e) => e.target === 'ts2')).toBeUndefined();
     expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
   });
@@ -1189,16 +1212,37 @@ describe('rewriteRuntimeWorkFlow', () => {
       properties: { city: { type: 'string', isToolParam: false } }
     };
     mockMongoAppFindOne.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ _id: 'mcp-app-1', name: 'TestApp' })
+      lean: vi.fn().mockResolvedValue({
+        _id: 'mcp-app-1',
+        name: 'TestApp',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: []
+              }
+            }
+          }
+        ]
+      })
     });
     mockGetMCPChildren.mockResolvedValue([
-      { name: 'tool1', description: 'desc', inputSchema: fullSchema }
+      {
+        name: 'tool1',
+        description: 'desc',
+        inputSchema: fullSchema,
+        url: 'https://mcp.example.com'
+      }
     ]);
 
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
     expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.toolConfig?.mcpToolSet).toMatchObject({
+      url: 'https://mcp.example.com'
+    });
     expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
       key: 'city',
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
@@ -1304,6 +1348,7 @@ describe('rewriteRuntimeWorkFlow', () => {
           {
             toolConfig: {
               mcpToolSet: {
+                url: 'https://mcp.example.com',
                 toolList: [
                   {
                     name: 'toolA',

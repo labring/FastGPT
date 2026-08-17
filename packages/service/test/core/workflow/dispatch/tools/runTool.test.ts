@@ -272,32 +272,24 @@ describe('dispatchRunTool runtime toolset auth', () => {
   });
 
   it('should reject invalid MCP params before invoking the external tool', async () => {
-    getAppVersionByIdMock.mockResolvedValueOnce({
-      nodes: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              url: 'https://mcp.example.com',
-              toolList: [
-                {
-                  name: 'search',
-                  description: 'Search',
-                  inputSchema: {
-                    type: 'object',
-                    properties: { query: { type: 'string' } },
-                    required: ['query']
-                  }
-                }
-              ]
-            }
-          },
-          inputs: []
-        }
-      ]
-    });
-
     const result = await dispatchRunTool(
-      createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+      createRunToolProps({
+        mcpTool: { toolId: 'mcp-victim-toolset/search' },
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search',
+              inputSchema: {
+                type: 'object',
+                properties: { query: { type: 'string' } },
+                required: ['query']
+              }
+            }
+          ]
+        }
+      })
     );
 
     expect(mcpToolCallMock).not.toHaveBeenCalled();

@@ -112,7 +112,7 @@ export const getHTTPToolRuntimeNode = ({
   toolSetId: string;
   toolsetName: string;
 }): RuntimeNodeItemType => {
-  const inputSchema = getHTTPToolInputSchema(tool);
+  const { inputSchema, requestSchema } = getHTTPToolRuntimeSchemas(tool);
   const inputs = jsonSchema2NodeInput({
     jsonSchema: inputSchema,
     schemaType: 'http'
@@ -132,7 +132,7 @@ export const getHTTPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.http}-${toolSetId}/${tool.name}`
       }
     },
-    jsonSchema: getHTTPToolRequestSchema(tool),
+    jsonSchema: requestSchema,
     inputs,
     outputs: [
       ...jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema }),
@@ -152,33 +152,25 @@ export const getHTTPToolRuntimeNode = ({
 };
 
 /**
- * 读取 HTTP 工具给模型使用的请求 schema。
+ * 在 runtime builder 入口一次性补齐 HTTP 请求 schema 和表单 schema。
  * 旧版 GET 工具可能把单个参数 schema 写进 requestSchema，运行时回退到 inputSchema。
  */
-export const getHTTPToolRequestSchema = ({
+export const getHTTPToolRuntimeSchemas = ({
   requestSchema,
   inputSchema
 }: Pick<HttpToolConfigType, 'requestSchema' | 'inputSchema'>) => {
   const hasRequestProperties =
     !!requestSchema?.properties && Object.keys(requestSchema.properties).length > 0;
-
-  return hasRequestProperties ? requestSchema : (inputSchema ?? requestSchema);
-};
-
-/**
- * 读取 HTTP 工具用于生成节点输入的 schema。
- * inputSchema 携带 FastGPT 表单描述时优先使用；旧数据只有空 inputSchema 时回退到 requestSchema。
- */
-export const getHTTPToolInputSchema = ({
-  requestSchema,
-  inputSchema
-}: Pick<HttpToolConfigType, 'requestSchema' | 'inputSchema'>) => {
+  const currentRequestSchema = hasRequestProperties
+    ? requestSchema
+    : (inputSchema ?? requestSchema);
   const hasInputProperties =
     !!inputSchema?.properties && Object.keys(inputSchema.properties).length > 0;
 
-  return hasInputProperties
-    ? inputSchema
-    : getHTTPToolRequestSchema({ requestSchema, inputSchema });
+  return {
+    requestSchema: currentRequestSchema,
+    inputSchema: hasInputProperties ? inputSchema : currentRequestSchema
+  };
 };
 
 export const parseHttpToolConfig = (
