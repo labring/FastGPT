@@ -92,14 +92,6 @@ vi.mock('../../../../support/outLink/wechat/provider', () => ({
   wechatOutlinkProvider: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/support/outLink/runtime/utils', () => ({
-  outlinkInvokeChat: vi.fn()
-}));
-
-vi.mock('../../../../support/outLink/runtime/utils', () => ({
-  outlinkInvokeChat: vi.fn()
-}));
-
 vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
   return {
