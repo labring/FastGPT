@@ -4,6 +4,12 @@ import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { AgentPlanAskResponseSchema } from '../../../../core/workflow/template/system/interactive/type';
+import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
+import {
+  WorkflowBuilderVersionSchema,
+  WorkflowChecksumSchema
+} from '../../../../core/workflow/builder/type';
+import { OpenAPIStoreNodeItemTypeSchema } from '../node';
 
 /* ============================================================================
  * API: Workflow Builder 辅助生成对话
@@ -12,14 +18,6 @@ import { AgentPlanAskResponseSchema } from '../../../../core/workflow/template/s
  * Description: 基于当前 WorkflowDocument 生成并自动应用工作流，通过 SSE 返回目标文档
  * Tags: ['Workflow Builder']
  * ============================================================================ */
-
-const WorkflowChecksumSchema = z
-  .string()
-  .regex(/^sha256:[a-f0-9]{64}$/)
-  .meta({
-    description: 'WorkflowDocument 的 SHA-256 checksum',
-    example: `sha256:${'0'.repeat(64)}`
-  });
 
 const ExecutionSourcePortRefSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('next'), nodeId: z.string().min(1) }),
@@ -126,3 +124,111 @@ export const WorkflowBuilderAppliedSchema = z
   .strict();
 
 export type WorkflowBuilderApplied = z.infer<typeof WorkflowBuilderAppliedSchema>;
+
+const WorkflowBuilderVersionIdentitySchema = z
+  .object({
+    appId: ObjectIdSchema.meta({
+      description: 'Workflow 应用 ID',
+      example: '67f4c91c79a4d61b1f116b2a'
+    }),
+    chatId: z.string().min(1).meta({
+      description: 'Workflow Builder 会话 ID',
+      example: 'workflow-builder-chat-id'
+    }),
+    responseChatItemId: z.string().min(1).meta({
+      description: '包含目标版本的 AI ChatItem dataId',
+      example: 'response-chat-item-id'
+    })
+  })
+  .strict();
+
+/* ============================================================================
+ * API: 加载 Workflow Builder 版本
+ * Route: POST /api/proApi/core/workflow/builder/version/load
+ * Method: POST
+ * Description: 从 Sandbox 或 S3 加载聊天卡片绑定的 WorkflowDocument
+ * Tags: ['Workflow Builder']
+ * ============================================================================ */
+
+export const WorkflowBuilderVersionLoadBodySchema = WorkflowBuilderVersionIdentitySchema;
+export type WorkflowBuilderVersionLoadBody = z.infer<typeof WorkflowBuilderVersionLoadBodySchema>;
+
+// OpenAPI 输出不能包含节点旧枚举兼容用的 transform；运行时请求仍使用完整 Document Schema。
+const WorkflowBuilderVersionDocumentResponseSchema = WorkflowBuilderDocumentSchema.omit({
+  nodes: true,
+  chatConfig: true
+}).extend({
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({ description: '工作流节点' }),
+  chatConfig: OpenAPIAppChatConfigSchema.meta({ description: '工作流对话配置' })
+});
+
+export const WorkflowBuilderVersionLoadResponseSchema = z
+  .object({
+    versionNo: WorkflowBuilderVersionSchema.shape.versionNo,
+    document: WorkflowBuilderVersionDocumentResponseSchema,
+    checksum: WorkflowChecksumSchema,
+    source: z.enum(['sandbox', 's3']).meta({
+      description: '版本 JSON 的读取来源',
+      example: 'sandbox'
+    })
+  })
+  .strict();
+export type WorkflowBuilderVersionLoadResponse = z.infer<
+  typeof WorkflowBuilderVersionLoadResponseSchema
+>;
+
+/* ============================================================================
+ * API: 归档已应用的 Workflow Builder 版本
+ * Route: POST /api/proApi/core/workflow/builder/version/commit
+ * Method: POST
+ * Description: 画布应用成功后将实际应用的 WorkflowDocument 归档到 S3
+ * Tags: ['Workflow Builder']
+ * ============================================================================ */
+
+export const WorkflowBuilderVersionCommitBodySchema = WorkflowBuilderVersionIdentitySchema.extend({
+  document: WorkflowBuilderDocumentSchema,
+  checksum: WorkflowChecksumSchema
+}).strict();
+export type WorkflowBuilderVersionCommitBody = z.infer<
+  typeof WorkflowBuilderVersionCommitBodySchema
+>;
+
+export const WorkflowBuilderVersionCommitResponseSchema = WorkflowBuilderVersionSchema.required({
+  s3Key: true,
+  expiresAt: true,
+  appliedAt: true
+});
+export type WorkflowBuilderVersionCommitResponse = z.infer<
+  typeof WorkflowBuilderVersionCommitResponseSchema
+>;
+
+/* ============================================================================
+ * API: Workflow Builder 运行环境预热
+ * Route: POST /api/proApi/core/workflow/builder/runtime/prewarm
+ * Method: POST
+ * Description: 在打开 Workflow Builder 后提前准备可复用的 Sandbox 运行环境
+ * Tags: ['Workflow Builder']
+ * ============================================================================ */
+
+export const WorkflowBuilderRuntimePrewarmBodySchema = z
+  .object({
+    appId: ObjectIdSchema.meta({
+      description: '当前 Workflow 应用 ID',
+      example: '67f4c91c79a4d61b1f116b2a'
+    }),
+    chatId: z.string().min(1).meta({
+      description: 'Workflow Builder 独立会话 ID',
+      example: 'workflow-builder-chat-id'
+    })
+  })
+  .strict();
+export type WorkflowBuilderRuntimePrewarmBody = z.infer<
+  typeof WorkflowBuilderRuntimePrewarmBodySchema
+>;
+
+export const WorkflowBuilderRuntimePrewarmResponseSchema = z.undefined().meta({
+  description: '运行环境预热完成'
+});
+export type WorkflowBuilderRuntimePrewarmResponse = z.infer<
+  typeof WorkflowBuilderRuntimePrewarmResponseSchema
+>;

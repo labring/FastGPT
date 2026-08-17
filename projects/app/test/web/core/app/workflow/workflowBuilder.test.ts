@@ -7,9 +7,13 @@ import {
 import { WorkflowDocumentSchema, getWorkflowChecksum } from '@fastgpt/workflow-core/src/index';
 import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
 import { buildStreamFetchBody, handleEventSourceData } from '@/web/common/api/fetch';
-import { clearWorkflowBuilderChatHistory } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/api';
+import {
+  clearWorkflowBuilderChatHistory,
+  prewarmWorkflowBuilderRuntime
+} from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/api';
 import { mergeWorkflowBuilderAppliedAppDetail } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/utils';
 import {
+  getWorkflowAutoLayoutNodeSizeSignature,
   matchesWorkflowAutoLayoutRequest,
   mergeWorkflowLayoutNodes
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useWorkflowAutoLayout';
@@ -17,14 +21,30 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { Node } from 'reactflow';
 
 const mocks = vi.hoisted(() => ({
-  batchDeleteChatHistories: vi.fn()
+  batchDeleteChatHistories: vi.fn(),
+  POST: vi.fn()
 }));
 
 vi.mock('@/web/core/chat/history/api', () => ({
   batchDeleteChatHistories: mocks.batchDeleteChatHistories
 }));
+vi.mock('@/web/common/api/request', () => ({ POST: mocks.POST }));
 
 describe('Workflow Builder Web Adapter', () => {
+  it('打开 Builder 后调用稳定运行环境预热接口', async () => {
+    mocks.POST.mockResolvedValueOnce(undefined);
+
+    await prewarmWorkflowBuilderRuntime({
+      appId: '67f4c91c79a4d61b1f116b2a',
+      chatId: 'workflow-builder-chat'
+    });
+
+    expect(mocks.POST).toHaveBeenCalledWith('/proApi/core/workflow/builder/runtime/prewarm', {
+      appId: '67f4c91c79a4d61b1f116b2a',
+      chatId: 'workflow-builder-chat'
+    });
+  });
+
   it('binds auto-layout readiness to the exact Builder-applied node set', () => {
     const nodes = [{ id: 'start' }, { id: 'answer' }] as Parameters<
       typeof matchesWorkflowAutoLayoutRequest
@@ -42,6 +62,39 @@ describe('Workflow Builder Web Adapter', () => {
         nodeIds: new Set(['start', 'old-node'])
       })
     ).toBe(false);
+  });
+
+  it('builds an order-independent signature only after every Builder node is measured', () => {
+    const nodeIds = new Set(['start', 'answer']);
+    const measuredNodes = [
+      { id: 'answer', width: 420, height: 360 },
+      { id: 'start', width: 420, height: 240 }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(getWorkflowAutoLayoutNodeSizeSignature({ nodes: measuredNodes, nodeIds })).toBe(
+      'answer:420:360|start:420:240'
+    );
+    expect(
+      getWorkflowAutoLayoutNodeSizeSignature({
+        nodes: [...measuredNodes].reverse(),
+        nodeIds
+      })
+    ).toBe('answer:420:360|start:420:240');
+    expect(
+      getWorkflowAutoLayoutNodeSizeSignature({
+        nodes: [
+          { id: 'start', width: 420, height: 240 },
+          { id: 'answer', width: 420 }
+        ],
+        nodeIds
+      })
+    ).toBeUndefined();
+    expect(
+      getWorkflowAutoLayoutNodeSizeSignature({
+        nodes: measuredNodes,
+        nodeIds: new Set(['start', 'missing'])
+      })
+    ).toBeUndefined();
   });
 
   it('merges auto-layout positions without overwriting newer node business data', () => {
@@ -85,6 +138,30 @@ describe('Workflow Builder Web Adapter', () => {
     expect(result.data).toBe(importedNode.data);
     expect(result.data.name).toBe('Updated AI node');
     expect(result.data.inputs[0]?.value).toBe('Use the confirmed workflow requirements');
+  });
+
+  it('keeps the applied workflow when auto-layout is unavailable', () => {
+    const appliedNode = {
+      id: 'report-node',
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId: 'report-node',
+        inputs: [
+          {
+            key: 'variableRef',
+            value: 'loopResults'
+          }
+        ]
+      }
+    } as Node<FlowNodeItemType>;
+
+    const layoutResult = mergeWorkflowLayoutNodes({
+      currentNodes: [appliedNode],
+      layoutedNodes: [],
+      resizedNodeIds: new Set()
+    });
+
+    expect(layoutResult[0]?.data.inputs[0]?.value).toBe('loopResults');
   });
 
   it('clears only the current Builder history before restarting the local chat', async () => {

@@ -231,10 +231,13 @@ const deleteSandboxResourceBatch = async (instances: SandboxResourceRef[]) => {
 
 /** 调用方持有 Source Mutation Lease 时，清理某个 App 的全部 v2 资源。 */
 export const deleteAppSandboxes = async (appId: string) => {
-  const instances = await findSandboxResourcesBySource({
-    sourceType: ChatSourceTypeEnum.app,
-    sourceId: appId
-  });
+  const instances = (
+    await Promise.all(
+      [ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder].map((sourceType) =>
+        findSandboxResourcesBySource({ sourceType, sourceId: appId })
+      )
+    )
+  ).flat();
   await deleteSandboxResourceBatch(instances);
 };
 

@@ -4,8 +4,14 @@ import { UploadFileByBodySchema } from '../../contracts/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { UploadExtensionRuleSchema, UploadFileHintSchema } from '../../uploadPolicy/type';
 
-export const ChatS3SourceTypeSchema = z.enum(ChatSourceTypeEnum);
-export type ChatS3SourceType = z.infer<typeof ChatS3SourceTypeSchema>;
+// Builder 的 source 只用于物理 Sandbox，不创建 Chat 记录或 Chat S3 文件。
+export const ChatS3SourceTypeSchema = z.enum([
+  ChatSourceTypeEnum.app,
+  ChatSourceTypeEnum.skillEdit,
+  ChatSourceTypeEnum.chatAgentHelper
+]);
+// 对外 service 参数保留完整 source 枚举，边界 Schema parse 负责拒绝 workflowBuilder。
+export type ChatS3SourceType = ChatSourceTypeEnum;
 
 export const ChatFileUploadSchema = z.object({
   sourceType: ChatS3SourceTypeSchema,
@@ -22,7 +28,9 @@ export const ChatFileUploadSchema = z.object({
   allowedExtensions: z.array(z.string().nonempty()).optional(),
   extensionRules: z.array(UploadExtensionRuleSchema).optional()
 });
-export type CheckChatFileKeys = z.input<typeof ChatFileUploadSchema>;
+export type CheckChatFileKeys = Omit<z.input<typeof ChatFileUploadSchema>, 'sourceType'> & {
+  sourceType: ChatS3SourceType;
+};
 
 export const DelChatFileByPrefixSchema = z.object({
   sourceType: ChatS3SourceTypeSchema,
@@ -30,7 +38,12 @@ export const DelChatFileByPrefixSchema = z.object({
   chatId: z.string().nonempty().optional(),
   uId: z.string().nonempty().optional()
 });
-export type DelChatFileByPrefixParams = z.input<typeof DelChatFileByPrefixSchema>;
+export type DelChatFileByPrefixParams = Omit<
+  z.input<typeof DelChatFileByPrefixSchema>,
+  'sourceType'
+> & {
+  sourceType: ChatS3SourceType;
+};
 
 export const UploadChatFileSchema = z.object({
   sourceType: ChatS3SourceTypeSchema,
@@ -43,4 +56,6 @@ export const UploadChatFileSchema = z.object({
   expiredTime: UploadFileByBodySchema.shape.expiredTime
 });
 
-export type UploadFileParams = z.input<typeof UploadChatFileSchema>;
+export type UploadFileParams = Omit<z.input<typeof UploadChatFileSchema>, 'sourceType'> & {
+  sourceType: ChatS3SourceType;
+};

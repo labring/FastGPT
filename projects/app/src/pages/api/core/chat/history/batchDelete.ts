@@ -21,6 +21,10 @@ const getBatchDeletePermission = (sourceType: ChatSourceTypeEnum) => {
     return AppReadChatLogPerVal;
   }
 
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    throw new Error('Workflow Builder chat history must use app source');
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 };

@@ -300,5 +300,9 @@
   "workflow_builder_apply_failed": "無法套用產生的工作流程",
   "workflow_builder_canvas_changed": "工作流程建立期間畫布發生了變更，請重新執行 Workflow Builder。",
   "workflow_builder_applied": "已套用到目前畫布",
+  "workflow_builder_version_apply": "套用到畫布",
+  "workflow_builder_version_reapply": "再次套用",
+  "workflow_builder_version_expired": "已過期",
+  "workflow_builder_version_superseded": "已被更新",
   "connection_invalid": "此連線不符合工作流程規則"
 }

@@ -87,6 +87,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   key={getIfElseBranchHandleKey(conditionItem, conditionIndex)}
                   draggableId={getIfElseBranchHandleKey(conditionItem, conditionIndex)}
                   index={conditionIndex}
+                  isDragDisabled={ifElseList.length <= 1}
                 >
                   {(provided, snapshot) => (
                     <ListItem

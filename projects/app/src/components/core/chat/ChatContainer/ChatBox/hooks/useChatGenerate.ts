@@ -186,6 +186,7 @@ export const useChatGenerate = ({
         planStatus,
         sandboxStatus,
         skill,
+        workflowBuilderVersion,
         variables,
         nodeResponse,
         durationSeconds,
@@ -524,6 +525,12 @@ export const useChatGenerate = ({
           return {
             ...item,
             value: item.value.concat(val)
+          };
+        }
+        if (event === SseResponseEventEnum.workflowBuilderVersion && workflowBuilderVersion) {
+          return {
+            ...item,
+            value: item.value.concat({ workflowBuilderVersion })
           };
         }
 

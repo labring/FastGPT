@@ -136,8 +136,9 @@ const AIChatBubbleContent = ({
     const hasStandaloneProcessing = hasAiStandaloneProcessingContent(value);
     const hasAnswer = hasAiAnswerContent(value);
     const hasInteractive = hasAiInteractiveContent(value);
+    const hasWorkflowBuilderVersion = Boolean(value.workflowBuilderVersion);
 
-    if (!hasProcessing && !hasAnswer && !hasInteractive) return;
+    if (!hasProcessing && !hasAnswer && !hasInteractive && !hasWorkflowBuilderVersion) return;
 
     if (hasFoldableProcessing) {
       processingGroup.push({ value, index });
