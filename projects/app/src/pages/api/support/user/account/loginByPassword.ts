@@ -21,6 +21,7 @@ import {
   resolveCRMVisitorId
 } from '@fastgpt/service/support/marketing/attribution';
 import { assertUserCanLogin } from '@fastgpt/service/support/user/account/cancellation/guard';
+import { assertUserPasswordAvailable } from '@fastgpt/service/support/user/account/password/service';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
@@ -37,7 +38,10 @@ async function handler(
         username,
         password,
         code,
-        purpose: 'login'
+        purpose: 'login',
+        // 验证码材料先在事务内确认，再执行账号策略守卫；这样受限账号不会绕过
+        // 登录频率限制和验证码门槛，同时不会通过密码正确性暴露账号分类。
+        beforeFindUserByCredentials: ({ username }) => assertUserPasswordAvailable(username)
       },
       async ({ user, session }) => {
         if (user.status === UserStatusEnum.forbidden) {

@@ -10,6 +10,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
   assertNewPasswordDiffersFromCurrent,
+  assertUserPasswordAvailable,
   passwordChangeTokenService
 } from '@fastgpt/service/support/user/account/password/service';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -24,9 +25,12 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<Update
 
   passwordChangeTokenService.verify({ token: body.passwordChangeToken, userId });
 
+  const user = await MongoUser.findById(userId);
+  if (!user) throw new Error('Failed to update password');
+  assertUserPasswordAvailable(user.username);
+
   await assertNewPasswordDiffersFromCurrent({ userId, newPassword: body.newPsw });
 
-  // 用户是否存在由 matchedCount 收敛，避免一次仅用于 null 校验的额外 Mongo 往返。
   const updateResult = await MongoUser.updateOne(
     { _id: userId },
     {

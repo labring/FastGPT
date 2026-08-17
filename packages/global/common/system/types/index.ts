@@ -115,6 +115,7 @@ export type FastGPTFeConfigsType = {
     title?: string;
     url?: string;
     autoLogin?: boolean;
+    disablePasswordForSsoUsers?: boolean;
   };
   oauth?: {
     github?: string;

@@ -32,7 +32,7 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
 
       <Flex
         position="relative"
-        alignItems={'center'}
+        alignItems={'safe center'}
         justifyContent={'center'}
         w={'100%'}
         maxW={['100%', '1328px']}
@@ -40,7 +40,8 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
         minH={['100vh', '720px']}
         bg={['transparent', 'white']}
         borderRadius={[0, '24px']}
-        overflow={'hidden'}
+        overflowX={'hidden'}
+        overflowY={'auto'}
       >
         <Box
           position={'absolute'}

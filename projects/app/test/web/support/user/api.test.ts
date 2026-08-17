@@ -42,13 +42,6 @@ describe('user api', () => {
     });
   });
 
-  it('should fast login', async () => {
-    const params = {
-      token: 'token123'
-    };
-    await api.postFastLogin(params);
-  });
-
   it('should register user', async () => {
     const data = {
       username: 'test@test.com',

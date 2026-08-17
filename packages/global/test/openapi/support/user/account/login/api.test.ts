@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../../../../openapi/provider/devapi';
 import { openAPIPaths } from '../../../../../../openapi/path';
 import {
-  FastLoginBodySchema,
   LoginByPasswordBodySchema,
   LoginSuccessResponseSchema,
   OauthLoginBodySchema,
@@ -23,6 +22,7 @@ import {
 
 const captchaPath = '/proApi/support/user/account/captcha/getImgCaptcha';
 const ssoAuthorizationPath = '/proApi/support/user/account/login/getAuthURL';
+const removedOAuthCreatePath = '/proApi/support/user/account/login/oauth/create';
 
 describe('user account OpenAPI contracts', () => {
   it('registers the image captcha route in the generated Dev API document', () => {
@@ -48,6 +48,11 @@ describe('user account OpenAPI contracts', () => {
         redirectUri: 'https://fastgpt.example.com/login'
       })
     ).toThrow();
+  });
+
+  it('does not expose the removed OAuth create route', () => {
+    expect(openAPIPaths[removedOAuthCreatePath]).toBeUndefined();
+    expect(openAPIDocument.paths?.[removedOAuthCreatePath]).toBeUndefined();
   });
 
   it('declares null while the WeChat QR login is waiting for a scan', () => {
@@ -109,12 +114,6 @@ describe('user account OpenAPI contracts', () => {
         props: { access_token: longExternalValue }
       })
     ).toMatchObject({ callbackUrl: longExternalValue, props: { access_token: longExternalValue } });
-    expect(
-      FastLoginBodySchema.parse({ token: longExternalValue, code: longExternalValue })
-    ).toMatchObject({
-      token: longExternalValue,
-      code: longExternalValue
-    });
     expect(() => WxLoginBodySchema.parse({ code: tooLongShortValue })).toThrow();
     expect(
       WecomGetRedirectURLBodySchema.parse({

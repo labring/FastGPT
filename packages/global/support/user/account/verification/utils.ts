@@ -1,12 +1,43 @@
 import {
   AccountEmailUsernameSchema,
   AccountPhoneUsernameSchema,
+  type AccountKind,
   type AccountVerificationCapabilities,
   type AccountVerificationMethod,
   type AccountVerificationPasswordPolicy,
-  type AccountVerificationResolution,
-  type RecognizedAccountKind
+  type AccountVerificationResolution
 } from './type';
+
+/**
+ * 根据持久化 username 和 SSO 配置状态识别账号类型。
+ * 邮箱、手机号和已知第三方前缀优先于通用 SSO 连字符规则。
+ */
+export const resolveAccountKindByUsername = ({
+  username,
+  ssoConfigured
+}: {
+  username: string;
+  ssoConfigured: boolean;
+}): AccountKind => {
+  const normalizedUsername = username.trim();
+  if (!normalizedUsername) return 'invalid';
+
+  const firstSeparatorIndex = normalizedUsername.indexOf('-');
+  const prefix =
+    firstSeparatorIndex > 0 && firstSeparatorIndex < normalizedUsername.length - 1
+      ? normalizedUsername.slice(0, firstSeparatorIndex)
+      : undefined;
+
+  if (AccountEmailUsernameSchema.safeParse(normalizedUsername).success) return 'email';
+  if (AccountPhoneUsernameSchema.safeParse(normalizedUsername).success) return 'phone';
+  if (prefix === 'wechat') return 'wechat';
+  if (prefix === 'git') return 'github';
+  if (prefix === 'google') return 'google';
+  if (prefix === 'microsoft') return 'microsoft';
+  if (prefix === 'wecom') return 'wecom';
+  if (ssoConfigured && prefix) return 'sso';
+  return 'local';
+};
 
 /**
  * 根据持久化 username 和部署能力推导唯一验证方式。
@@ -21,35 +52,17 @@ export const resolveAccountVerificationByUsername = ({
   username: string;
   capabilities: AccountVerificationCapabilities;
 } & AccountVerificationPasswordPolicy): AccountVerificationResolution => {
-  const normalizedUsername = username.trim();
-  if (!normalizedUsername) {
+  const accountKind = resolveAccountKindByUsername({
+    username,
+    ssoConfigured: capabilities.oauth.sso
+  });
+  if (accountKind === 'invalid') {
     return {
       status: 'unsupported',
       accountKind: 'invalid',
       unsupportedReason: 'empty_username'
     };
   }
-
-  /** Provider 前缀必须完整匹配，且分隔符后至少保留一个字符。 */
-  const hasPrefix = (prefix: string) =>
-    normalizedUsername.startsWith(`${prefix}-`) && normalizedUsername.length > prefix.length + 1;
-
-  const firstSeparatorIndex = normalizedUsername.indexOf('-');
-  const hasSsoPrefix =
-    firstSeparatorIndex > 0 && firstSeparatorIndex < normalizedUsername.length - 1;
-
-  // 邮箱和手机号必须先于通用连字符规则，避免合法邮箱被误判为 SSO。
-  const accountKind = (() => {
-    if (AccountEmailUsernameSchema.safeParse(normalizedUsername).success) return 'email';
-    if (AccountPhoneUsernameSchema.safeParse(normalizedUsername).success) return 'phone';
-    if (hasPrefix('wechat')) return 'wechat';
-    if (hasPrefix('git')) return 'github';
-    if (hasPrefix('google')) return 'google';
-    if (hasPrefix('microsoft')) return 'microsoft';
-    if (hasPrefix('wecom')) return 'wecom';
-    if (capabilities.oauth.sso && hasSsoPrefix) return 'sso';
-    return 'local';
-  })() satisfies RecognizedAccountKind;
 
   type ConfiguredAccountVerificationMethod = Exclude<AccountVerificationMethod, 'oldPassword'>;
 

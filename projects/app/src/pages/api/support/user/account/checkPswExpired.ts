@@ -5,6 +5,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import type { CheckPswExpiredResponseType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
+import { getUserPasswordAvailability } from '@fastgpt/service/support/user/account/password/service';
 
 async function handler(
   req: ApiRequestProps,
@@ -17,9 +18,9 @@ async function handler(
     return false;
   }
 
-  const user = await MongoUser.findById(userId).select('+password passwordUpdateTime');
+  const user = await MongoUser.findById(userId).select('+password username passwordUpdateTime');
 
-  if (!user || !hasStoredPassword(user.password)) {
+  if (!user || !getUserPasswordAvailability(user.username) || !hasStoredPassword(user.password)) {
     return false;
   }
 
