@@ -37,13 +37,13 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    在工作台点击新建，选择对话 Agent，应用名称填写为 `企业邮件撰写助手`。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-01.png)
+   ![工作台新建对话 Agent「企业邮件撰写助手」](/imgs/guide/getting-started/quick-start/image-01.png)
 
 2. **进入应用配置页**
 
    创建完成后进入应用配置页。页面通常分为左右两栏：左侧是 AI 配置，右侧是调试预览。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-02.png)
+   ![应用配置页：左侧 AI 配置与右侧调试预览](/imgs/guide/getting-started/quick-start/image-02.png)
 
 3. **选择模型**
 
@@ -51,7 +51,7 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    选择模型时优先关注两点：一是模型是否擅长中文商务表达，二是输出是否稳定遵守格式。邮件撰写属于低风险、低结构复杂度任务，通常不需要过度追求最强模型，但要确保语气自然、指令遵循能力较好。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-03.png)
+   ![在 AI 配置中选择对话模型](/imgs/guide/getting-started/quick-start/image-03.png)
 
 4. **编写 Prompt**
 
@@ -79,7 +79,7 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    这段 Prompt 由三部分组成：角色定义用于稳定助手身份，输出格式用于约束邮件结构，规则用于控制风险边界。实际业务中可以继续补充企业语气要求、品牌用语、禁用词、签名格式等内容，让输出更贴合内部规范。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-04.png)
+   ![将邮件撰写 Prompt 写入提示词模块](/imgs/guide/getting-started/quick-start/image-04.png)
 
 5. **添加 Email 工具**
 
@@ -87,19 +87,19 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    可以把工具理解为 AI 的外部能力。没有工具时，助手只能生成邮件正文；添加 Email 工具后，助手可以在用户确认后执行发送动作。正式环境中建议先让助手生成邮件草稿，再由用户确认发送，避免误发或发送给错误收件人。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-05.png)
+   ![为对话 Agent 添加 Email 邮件发送工具](/imgs/guide/getting-started/quick-start/image-05.png)
 
 6. **配置 Email 工具**
 
    进入工具配置页，填写邮件服务相关参数。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-06.png)
+   ![Email 工具配置页填写邮件服务参数](/imgs/guide/getting-started/quick-start/image-06.png)
 
 7. **激活工具**
 
    点击设置后进入工具激活页面，再点击工具激活。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-07.png)
+   ![进入工具激活页面并激活 Email 工具](/imgs/guide/getting-started/quick-start/image-07.png)
 
 8. **填写邮箱 SMTP 信息**
 
@@ -115,7 +115,7 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    授权码可参考 [授权码获取教程](https://cloud.tencent.com/developer/article/2177098)。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-08.png)
+   ![填写 QQ 邮箱 SMTP 服务器与授权码](/imgs/guide/getting-started/quick-start/image-08.png)
 
 9. **设置对话开场白**
 
@@ -131,17 +131,17 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    填写后，可以在右侧预览区域看到效果。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-09.png)
+   ![配置对话开场白并在右侧预览效果](/imgs/guide/getting-started/quick-start/image-09.png)
 
 10. **验证运行效果**
 
     配置完成后，在调试预览中输入邮件需求，检查助手是否能生成结构清晰、语气得体的邮件。
 
-    ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-10.png)
+    ![调试预览中输入邮件需求并生成邮件](/imgs/guide/getting-started/quick-start/image-10.png)
 
     如果用户信息不足，助手应主动提示补充收件人、邮件目的、关键信息等内容。
 
-    ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-11.png)
+    ![信息不足时助手追问补充收件人与邮件目的](/imgs/guide/getting-started/quick-start/image-11.png)
 
     验证时建议至少测试三类输入：信息完整的邮件需求、缺少收件人或目的的模糊需求、包含敏感信息的邮件需求。一个可上线的邮件助手不只要“能写”，还要能在信息不足时追问，在敏感场景下提醒用户谨慎发送。
 
@@ -174,25 +174,25 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    在主页点击左侧的知识库，进入后点击右上角的新建。知识库名称填写为 `民法典问答助手`，案例阶段其他配置保持默认即可。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-12.png)
+   ![新建知识库「民法典问答助手」](/imgs/guide/getting-started/quick-start/image-12.png)
 
 2. **创建文本数据集**
 
    点击新建，再选择文本数据集，用于导入本地文档。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-13.png)
+   ![创建文本数据集用于导入本地文档](/imgs/guide/getting-started/quick-start/image-13.png)
 
 3. **上传本地文件**
 
    点击上传本地文件，选择示例文件。实际使用时可以同时上传多个文件，本案例只上传一个文件作为演示。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-14.png)
+   ![上传民法典示例文件到知识库](/imgs/guide/getting-started/quick-start/image-14.png)
 
 4. **设置解析参数**
 
    进入参数设置页后，根据文件类型选择解析方式。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-15.png)
+   ![设置文件解析与分块等参数](/imgs/guide/getting-started/quick-start/image-15.png)
 
    常用配置建议：
    - **文件解析设置**：上传 PDF 时建议开启；普通 Word、Markdown、TXT 等文件可先使用默认配置。
@@ -208,19 +208,19 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    预览分块时重点看三点：段落是否被异常截断，标题与正文是否保留在同一语义范围内，表格、条款或编号是否仍然可读。只要这里的知识片段质量不稳定，后续应用即使 Prompt 写得很好，也很难稳定给出准确答案。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-16.png)
+   ![预览知识库分块是否完整可读](/imgs/guide/getting-started/quick-start/image-16.png)
 
 6. **等待知识库就绪**
 
    当数据状态变为“已就绪”后，知识库即可被应用引用。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-17.png)
+   ![知识库数据状态显示为已就绪](/imgs/guide/getting-started/quick-start/image-17.png)
 
 7. **创建并关联对话 Agent**
 
    创建一个新的对话 Agent，名称同样填写为 `民法典问答助手`。创建完成后，在应用配置中关联刚刚创建的知识库。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-18.png)
+   ![创建对话 Agent 并关联民法典知识库](/imgs/guide/getting-started/quick-start/image-18.png)
 
    关联知识库后，应用的回答链路会从单纯对话变成“用户问题 → 知识库检索 → 模型总结回答”。这也是案例一和案例二的关键差异：案例一强调内容生成，案例二强调基于资料回答。
 
@@ -269,13 +269,13 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    如果在开场白里添加 `[问题内容]`，用户可以点击问题一键提问，适合用于演示和引导。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-19.png)
+   ![配置含示例问题的开场白便于一键提问](/imgs/guide/getting-started/quick-start/image-19.png)
 
 10. **验证问答效果**
 
     提出一个民法典相关问题，检查回答是否包含法律结论、法条引用、通俗解读和免责声明。
 
-    ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-20.png)
+    ![验证民法典问答是否包含法条引用与免责声明](/imgs/guide/getting-started/quick-start/image-20.png)
 
     验证时不要只看回答是否“像法律回答”，还要看它是否真的引用了知识库内容。建议同时测试资料内问题、资料外问题和模糊问题：资料内问题应能引用原文，资料外问题应说明无法直接确认，模糊问题应主动提示需要补充事实。
 
@@ -348,11 +348,11 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    进入工作流主页，点击新建工作流，名称填写为 `内容审核与自动改写`。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-21.png)
+   ![新建工作流「内容审核与自动改写」](/imgs/guide/getting-started/quick-start/image-21.png)
 
    创建完成后进入工作流编辑页。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-22.png)
+   ![进入工作流可视化编辑页](/imgs/guide/getting-started/quick-start/image-22.png)
 
    本案例的完整流程图如下：
 
@@ -382,9 +382,9 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    这个节点的目的不是让模型阅读完整规则库，而是把与当前内容最相关的规则片段召回给后续审核节点。引用上限可以先设置为 1-2 条，保证提示词上下文足够聚焦；如果规则库较大或分类较细，再逐步提高引用数量。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-24.png)
+   ![添加知识库检索节点并选择合规规则库](/imgs/guide/getting-started/quick-start/image-24.png)
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-25.png)
+   ![配置知识库检索节点的输入与引用上限](/imgs/guide/getting-started/quick-start/image-25.png)
 
 4. **配置内容审核节点**
 
@@ -407,7 +407,7 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    审核节点的输出要尽量稳定，因为它会直接影响判断器分支。快速演示时可以只输出“安全 / 敏感可改 / 违规”三个词；如果后续要做更严格的自动化集成，可以改成结构化输出，例如同时返回分类、原因和命中的规则，方便下游节点做精确匹配和日志记录。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-26.png)
+   ![配置内容审核 AI 节点的分类 Prompt](/imgs/guide/getting-started/quick-start/image-26.png)
 
 5. **测试审核节点**
 
@@ -415,13 +415,13 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    这一步建议单独测试节点，而不是等全部流程搭完再调试。可以分别输入正常活动通知、包含绝对化宣传的营销文案、明显违规的文本，观察分类是否符合预期。如果分类不稳定，优先调整规则库表达和审核 Prompt，再继续配置后续分支。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-27.png)
+   ![单独运行测试内容审核节点的分类结果](/imgs/guide/getting-started/quick-start/image-27.png)
 
 6. **隐藏中间输出**
 
    点击模型右侧的设置按钮，调整节点基础设置。由于用户只需要最终结果，建议隐藏内容审核节点的中间输出。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-28.png)
+   ![隐藏内容审核节点的中间输出](/imgs/guide/getting-started/quick-start/image-28.png)
 
 7. **配置判断器**
 
@@ -429,17 +429,17 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    判断器相当于流程中的分流开关。上一步输出越稳定，判断器越容易配置；如果审核节点输出包含解释性文字，判断条件就可能匹配失败。因此在分支类工作流中，通常要先约束上游节点的输出格式，再配置判断器条件。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-29.png)
+   ![配置判断器按安全、敏感可改、违规分流](/imgs/guide/getting-started/quick-start/image-29.png)
 
 8. **配置安全分支**
 
    当审核结果为“安全”时，直接输出原文即可。生产场景中也可以增加抽样复核或人工确认。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-30.png)
+   ![配置安全分支直接输出原文](/imgs/guide/getting-started/quick-start/image-30.png)
 
    输出效果如下：
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-31.png)
+   ![安全分支审核通过后的输出效果](/imgs/guide/getting-started/quick-start/image-31.png)
 
 9. **配置敏感可改分支**
 
@@ -461,13 +461,13 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
    人工确认节点适合放在有风险但可修正的路径上。AI 可以负责提出改写建议，但是否发布仍交给业务人员确认。这样既能减少人工初筛和反复改稿的时间，也不会把最终发布权完全交给自动化流程。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-32.png)
+   ![配置敏感可改分支的内容改写节点](/imgs/guide/getting-started/quick-start/image-32.png)
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-33.png)
+   ![敏感可改分支添加用户确认选择节点](/imgs/guide/getting-started/quick-start/image-33.png)
 
    如果用户接受改写，输出改写结果；如果用户选择继续改写，可连接回内容改写节点；如果用户放弃，则输出原文。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-34.png)
+   ![用户选择接受、继续改写或放弃后的分支连接](/imgs/guide/getting-started/quick-start/image-34.png)
 
 10. **配置违规分支**
 
@@ -487,7 +487,7 @@ description: 通过对话 Agent、知识库、工作流和 Agent V2 四个案例
 
     分别输入安全内容、敏感内容和违规内容，确认三条分支都能返回预期结果。
 
-    ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-35.png)
+    ![分别验证安全、敏感、违规三条完整流程](/imgs/guide/getting-started/quick-start/image-35.png)
 
     完整流程验证时，建议记录每条测试内容的输入、审核分类、进入分支和最终输出。若输出不符合预期，按节点顺序排查：先看知识库是否召回正确规则，再看审核节点分类是否准确，最后看判断器条件和分支输出是否配置正确。
 
@@ -523,7 +523,7 @@ Agent V2 适合开放式、多步骤、需要动态规划的任务。与工作�
 
    工作台点击新建应用，选择 `对话 Agent V2`，名称填写为 `智能数据分析 Agent`。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-36.png)
+   ![新建对话 Agent V2「智能数据分析 Agent」](/imgs/guide/getting-started/quick-start/image-36.png)
 
 2. **配置模型与 Prompt**
 
@@ -587,7 +587,7 @@ Agent V2 适合开放式、多步骤、需要动态规划的任务。与工作�
 
    虚拟机能力用于隔离代码执行环境。Agent 可以在其中运行数据分析脚本、读取上传文件、生成统计结果，但不会直接影响本地宿主环境。对于需要运行 Python、处理 Excel、绘制图表或做批量计算的场景，这是 Agent V2 区别于普通对话应用的重要能力。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-37.png)
+   ![开启 Agent V2 虚拟机能力](/imgs/guide/getting-started/quick-start/image-37.png)
 
 5. **上传文件并测试**
 
@@ -599,11 +599,11 @@ Agent V2 适合开放式、多步骤、需要动态规划的任务。与工作�
 
    Agent 会先拆解任务，再逐步执行分析。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-38.png)
+   ![上传销售数据并输入分析问题后的任务拆解](/imgs/guide/getting-started/quick-start/image-38.png)
 
    执行过程中可以看到任务在虚拟机中运行，不会影响本地环境。
 
-   ![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-39.png)
+   ![分析任务在虚拟机中执行的过程](/imgs/guide/getting-started/quick-start/image-39.png)
 
    测试时重点观察 Agent 是否具备完整的分析过程：是否先识别表格字段，是否解释分析计划，是否在需要时运行代码，是否根据结果给出业务建议。如果问题描述不清晰，理想行为不是强行分析，而是先向用户追问关键口径。
 
@@ -611,7 +611,7 @@ Agent V2 适合开放式、多步骤、需要动态规划的任务。与工作�
 
 最终结果应包含分析计划、数据概览、关键发现和业务建议。
 
-![FastGPT 操作截图](/imgs/guide/getting-started/quick-start/image-40.png)
+![数据分析结果含计划、概览、发现与建议](/imgs/guide/getting-started/quick-start/image-40.png)
 
 结果验证时建议关注四个维度：结论是否来自实际数据，指标口径是否清楚，图表或统计是否能支撑结论，业务建议是否可执行。数据分析 Agent 的价值不只是输出一段总结，而是把“读数据、算指标、解释结果、提出建议”的过程串起来。
 

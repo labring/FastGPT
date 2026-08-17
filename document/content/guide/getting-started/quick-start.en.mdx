@@ -37,13 +37,13 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    Click **New** in Studio, select **Conversational Agent**, and name the app `Corporate Email Writing Assistant`.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-01.png)
+   ![Create a chat Agent named Email Writing Assistant in the workspace](/imgs/guide/getting-started/quick-start/image-01.png)
 
 2. **Open the App Configuration Page**
 
    After creation, open the app configuration page. The page is usually divided into left and right columns: the left is AI configuration, and the right is Debug Preview.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-02.png)
+   ![App config page with AI settings on the left and debug preview on the right](/imgs/guide/getting-started/quick-start/image-02.png)
 
 3. **Select a Model**
 
@@ -51,7 +51,7 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    When selecting a model, prioritize two aspects: first, whether the model is good at business writing, and second, whether it consistently follows the required format. Email writing is a low-risk, low-structure task, so you usually do not need the strongest model available, but you should still choose one with a natural tone and reliable instruction following.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-03.png)
+   ![Select the chat model in AI configuration](/imgs/guide/getting-started/quick-start/image-03.png)
 
 4. **Write the Prompt**
 
@@ -79,7 +79,7 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    This prompt consists of three parts: the role definition stabilizes the assistant's identity, the output format constrains the email structure, and the rules control risk boundaries. In actual business, you can continue to add corporate tone requirements, brand terminology, banned words, signature formats, and more to make the output more aligned with internal standards.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-04.png)
+   ![Write the email Prompt into the system prompt module](/imgs/guide/getting-started/quick-start/image-04.png)
 
 5. **Add the Email Tool**
 
@@ -87,19 +87,19 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    You can think of tools as the AI's external capabilities. Without tools, the assistant can only generate the email body; after adding the Email tool, the assistant can execute the sending action after user confirmation. In a production environment, it is recommended to have the assistant generate an email draft first, and then have the user confirm the sending, to avoid accidental sending or sending to the wrong recipient.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-05.png)
+   ![Add the Email sending tool to the chat Agent](/imgs/guide/getting-started/quick-start/image-05.png)
 
 6. **Configure the Email Tool**
 
    Enter the tool configuration page and fill in the parameters related to the email service.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-06.png)
+   ![Fill mail service parameters on the Email tool config page](/imgs/guide/getting-started/quick-start/image-06.png)
 
 7. **Activate the Tool**
 
    Click "Settings" to enter the tool activation page, then click "Activate Tool".
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-07.png)
+   ![Open the tool activation page and activate the Email tool](/imgs/guide/getting-started/quick-start/image-07.png)
 
 8. **Fill in the Email SMTP Information**
 
@@ -115,7 +115,7 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    For the authorization code, please refer to the [Authorization Code Acquisition Tutorial](https://cloud.tencent.com/developer/article/2177098).
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-08.png)
+   ![Enter QQ Mail SMTP server settings and authorization code](/imgs/guide/getting-started/quick-start/image-08.png)
 
 9. **Set the Conversation Opening**
 
@@ -131,17 +131,17 @@ The focus of this case is not to have the AI randomly generate an email, but to 
 
    After filling it out, you can see the effect in the preview area on the right.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-09.png)
+   ![Configure the chat greeting and preview it on the right](/imgs/guide/getting-started/quick-start/image-09.png)
 
 10. **Validate the Result**
 
     After configuration, enter your email requirements in the debug preview to check whether the assistant can generate an email with a clear structure and appropriate tone.
 
-    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-10.png)
+    ![Enter an email request in debug preview and generate a draft](/imgs/guide/getting-started/quick-start/image-10.png)
 
     If the user's information is insufficient, the assistant should proactively prompt to supplement the recipient, email purpose, key information, etc.
 
-    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-11.png)
+    ![Assistant asks for recipient and purpose when information is missing](/imgs/guide/getting-started/quick-start/image-11.png)
 
     When verifying, it is recommended to test at least three types of inputs: an email requirement with complete information, a vague requirement missing the recipient or purpose, and an email requirement containing sensitive information. An email assistant ready for production not only needs to be able to "write", but also needs to be able to ask follow-up questions when information is insufficient, and remind users to send with caution in sensitive scenarios.
 
@@ -174,25 +174,25 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
    Click **Dataset** on the left side of the homepage, then click **New** in the top right corner. Name the Dataset `Civil Code Q&A Assistant`. Keep the other default settings for this case.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-12.png)
+   ![Create a Dataset named Civil Code Q&A Assistant](/imgs/guide/getting-started/quick-start/image-12.png)
 
 2. **Create a Text Collection**
 
    Click **New**, then select **Text Collection** to import local documents.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-13.png)
+   ![Create a text collection for importing local documents](/imgs/guide/getting-started/quick-start/image-13.png)
 
 3. **Upload a Local File**
 
    Click **Upload Local File** and select the example file. In real use, you can upload multiple files at once; for this case, we upload only one file as a demonstration.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-14.png)
+   ![Upload a Civil Code sample file to the Dataset](/imgs/guide/getting-started/quick-start/image-14.png)
 
 4. **Set Parsing Parameters**
 
    After entering the parameter settings page, choose the parsing method based on the file type.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-15.png)
+   ![Configure file parsing and chunking parameters](/imgs/guide/getting-started/quick-start/image-15.png)
 
    Recommended common settings:
    - **File Parsing Settings**: Enable when uploading PDFs; for regular Word, Markdown, TXT files, start with the default configuration.
@@ -208,19 +208,19 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
    When previewing chunks, focus on three things: whether paragraphs are abnormally cut off, whether titles and body text remain within the same semantic range, and whether tables, clauses, or numbering are still readable. If the quality of these knowledge fragments is unstable, even a well-written Prompt in the app will struggle to consistently produce accurate answers.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-16.png)
+   ![Preview Dataset chunks for completeness and readability](/imgs/guide/getting-started/quick-start/image-16.png)
 
 6. **Wait for the Dataset to Be Ready**
 
    Once the data status changes to "Ready," apps can use the Dataset.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-17.png)
+   ![Dataset status shows Ready](/imgs/guide/getting-started/quick-start/image-17.png)
 
 7. **Create and Link a Conversational Agent**
 
    Create a new Conversational Agent, also named `Civil Code Q&A Assistant`. After creation, link the Dataset you just created in the app configuration.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-18.png)
+   ![Create a chat Agent and link the Civil Code Dataset](/imgs/guide/getting-started/quick-start/image-18.png)
 
    After linking the Dataset, the app's response flow changes from simple chat to "user question → Dataset search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
 
@@ -269,13 +269,13 @@ Think of the Dataset as a "reference room" configured for the AI. The model itse
 
    If you add `[question content]` in the opening greeting, users can click the question to ask it directly — useful for demonstrations and guidance.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-19.png)
+   ![Configure a greeting with clickable sample questions](/imgs/guide/getting-started/quick-start/image-19.png)
 
 10. **Verify Q&A Performance**
 
     Ask a question related to the Civil Code and check whether the answer includes a legal conclusion, article citation, plain-language explanation, and disclaimer.
 
-    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-20.png)
+    ![Verify Civil Code answers include citations and a disclaimer](/imgs/guide/getting-started/quick-start/image-20.png)
 
     When verifying, don't just check whether the answer "looks like a legal answer" — also check whether it actually cites Dataset content. Test with questions covered by the materials, questions outside the materials, and ambiguous questions: covered questions should cite the original text; out-of-scope questions should state that a direct confirmation is not possible; ambiguous questions should ask the user for more facts.
 
@@ -348,15 +348,15 @@ When designing a workflow, first determine the responsibility of each node to av
 
    Go to the workflow homepage, click "New Workflow," and name it `Content Review and Automatic Rewriting`.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-21.png)
+   ![Create a workflow named Content Review and Auto Rewrite](/imgs/guide/getting-started/quick-start/image-21.png)
 
    After creation, enter the workflow editing page.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-22.png)
+   ![Open the visual workflow editor](/imgs/guide/getting-started/quick-start/image-22.png)
 
    The complete workflow diagram for this case is as follows:
 
-   ![Content Compliance Review Workflow](/imgs/guide/getting-started/quick-start/image-23.png)
+   ![Content compliance review workflow overview](/imgs/guide/getting-started/quick-start/image-23.png)
 
 2. **Configure the Opening Message**
 
@@ -382,9 +382,9 @@ When designing a workflow, first determine the responsibility of each node to av
 
    The purpose of this node is not to have the model read the entire rule base, but to retrieve the rule fragments most relevant to the current content for the subsequent review node. You can initially set the citation limit to 1-2 entries to keep the prompt context focused; if the rule base is larger or the categories are more detailed, gradually increase the citation count.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-24.png)
+   ![Add a Dataset search node and select the compliance rule Dataset](/imgs/guide/getting-started/quick-start/image-24.png)
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-25.png)
+   ![Configure Dataset search inputs and citation limits](/imgs/guide/getting-started/quick-start/image-25.png)
 
 4. **Configure the Content Review Node**
 
@@ -407,7 +407,7 @@ When designing a workflow, first determine the responsibility of each node to av
 
    The output of the review node should be as stable as possible, because it directly affects the decision node's branching. For a quick demo, you can output only the three labels "Safe / Sensitive but Rewritable / Prohibited"; if you need stricter automation integration later, you can switch to structured output, such as returning the classification, reason, and matched rules together, making it easier for downstream nodes to perform precise matching and logging.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-26.png)
+   ![Configure the content review AI node classification Prompt](/imgs/guide/getting-started/quick-start/image-26.png)
 
 5. **Test the Review Node**
 
@@ -415,13 +415,13 @@ When designing a workflow, first determine the responsibility of each node to av
 
    Test this node individually instead of waiting until the entire workflow is built. Input a normal event announcement, marketing copy containing absolute language, and clearly prohibited text, and observe whether the classification meets expectations. If the classification is unstable, first adjust the rule base wording and the review prompt before continuing to configure subsequent branches.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-27.png)
+   ![Run the content review node alone to test classification](/imgs/guide/getting-started/quick-start/image-27.png)
 
 6. **Hide Intermediate Output**
 
    Click the settings button on the right side of the model to adjust the node's basic settings. Since the user only needs the final result, it is recommended to hide the intermediate output of the content review node.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-28.png)
+   ![Hide intermediate output from the content review node](/imgs/guide/getting-started/quick-start/image-28.png)
 
 7. **Configure the Decision Node**
 
@@ -429,17 +429,17 @@ When designing a workflow, first determine the responsibility of each node to av
 
    The decision node acts as a switch in the workflow. The more stable the output from the previous step, the easier it is to configure the decision node; if the review node's output contains explanatory text, the condition may fail to match. Therefore, in branching workflows, it is common to first constrain the output format of the upstream node before configuring the decision node conditions.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-29.png)
+   ![Configure a judge node to branch by safe, rewritable, and blocked](/imgs/guide/getting-started/quick-start/image-29.png)
 
 8. **Configure the Safe Branch**
 
    When the review result is "Safe," directly output the original text. In a production scenario, you could also add spot-checking or human confirmation.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-30.png)
+   ![Configure the safe branch to output the original text](/imgs/guide/getting-started/quick-start/image-30.png)
 
    The output effect is as follows:
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-31.png)
+   ![Output of the safe branch after approval](/imgs/guide/getting-started/quick-start/image-31.png)
 
 9. **Configure the Sensitive but Rewritable Branch**
 
@@ -461,13 +461,13 @@ When designing a workflow, first determine the responsibility of each node to av
 
    The human confirmation node is suitable for paths that are risky but correctable. AI can propose rewrite suggestions, but whether to publish is still left to the business personnel to confirm. This reduces the time spent on initial screening and repeated revisions while not handing over the final publishing decision entirely to the automated workflow.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-32.png)
+   ![Configure the rewrite node on the rewritable branch](/imgs/guide/getting-started/quick-start/image-32.png)
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-33.png)
+   ![Add a user confirmation node on the rewritable branch](/imgs/guide/getting-started/quick-start/image-33.png)
 
    If the user accepts the rewrite, output the rewritten result; if the user chooses to continue rewriting, it can be connected back to the content rewriting node; if the user abandons it, output the original text.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-34.png)
+   ![Connect accept, rewrite again, or discard user choices](/imgs/guide/getting-started/quick-start/image-34.png)
 
 10. **Configure the Prohibited Branch**
 
@@ -487,7 +487,7 @@ When designing a workflow, first determine the responsibility of each node to av
 
     Input safe content, sensitive content, and prohibited content separately, and confirm that all three branches return the expected results.
 
-    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-35.png)
+    ![Validate the full safe, rewritable, and blocked paths](/imgs/guide/getting-started/quick-start/image-35.png)
 
     When verifying the complete workflow, it is recommended to record the input, review classification, branch entered, and final output for each test case. If the output does not meet expectations, troubleshoot node by node: first check whether the Dataset recalled the correct rules, then whether the review node classified accurately, and finally whether the decision node conditions and branch output are configured correctly.
 
@@ -523,7 +523,7 @@ Data analysis is a great way to experience Agent V2 because it naturally has thr
 
    In Studio, click **Create App**, select `Conversational Agent V2`, and name it `Intelligent Data Analysis Agent`.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-36.png)
+   ![Create chat Agent V2 named Intelligent Data Analysis Agent](/imgs/guide/getting-started/quick-start/image-36.png)
 
 2. **Configure Model and Prompt**
 
@@ -587,7 +587,7 @@ Data analysis is a great way to experience Agent V2 because it naturally has thr
 
    The virtual machine isolates the code execution environment. The Agent can run data analysis scripts, read uploaded files, and generate statistical results within it without directly affecting the local host environment. For use cases that require running Python, processing Excel, drawing charts, or performing batch calculations, this is an important feature that distinguishes Agent V2 from standard chat apps.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-37.png)
+   ![Enable the Agent V2 virtual machine capability](/imgs/guide/getting-started/quick-start/image-37.png)
 
 5. **Upload File and Test**
 
@@ -599,11 +599,11 @@ Data analysis is a great way to experience Agent V2 because it naturally has thr
 
    The Agent will first break down the task and then execute the analysis step by step.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-38.png)
+   ![Upload sales data and view the task breakdown after asking a question](/imgs/guide/getting-started/quick-start/image-38.png)
 
    During execution, you can see the task running in the virtual machine without affecting the local environment.
 
-   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-39.png)
+   ![Analysis tasks running inside the virtual machine](/imgs/guide/getting-started/quick-start/image-39.png)
 
    When testing, focus on whether the Agent has a complete analysis process: does it first identify the table fields, explain the analysis plan, run code when needed, and give business recommendations based on the results? If the problem description is unclear, the ideal behavior is not to force an analysis but to first ask the user for key definitions.
 
@@ -611,7 +611,7 @@ Data analysis is a great way to experience Agent V2 because it naturally has thr
 
 The final result should include the analysis plan, data overview, core findings, and business recommendations.
 
-![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-40.png)
+![Analysis result with plan, overview, findings, and recommendations](/imgs/guide/getting-started/quick-start/image-40.png)
 
 When verifying results, it is recommended to focus on four dimensions: whether the conclusions come from actual data, whether the metric definitions are clear, whether the charts or statistics support the conclusions, and whether the business recommendations are actionable. The value of a data analysis Agent is not just to output a summary, but to connect the process of “reading data, calculating metrics, explaining results, and proposing recommendations.”
 
