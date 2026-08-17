@@ -183,7 +183,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const { runAsync: deleteTeamTool, loading: deletingTeamTool } = useRequest(
     async (tool: ToolCardItemType) => {
-      await deleteTeamPlugin({ pluginId: tool.id, version: tool.installedVersion });
+      await deleteTeamPlugin({ pluginId: tool.id });
       setSelectedTool((selected) =>
         selected && getToolListItemKey(selected) === getToolListItemKey(tool) ? null : selected
       );

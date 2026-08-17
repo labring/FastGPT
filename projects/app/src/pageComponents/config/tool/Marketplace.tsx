@@ -461,8 +461,7 @@ export const ToolkitMarketplace = ({
         try {
           if (mode === 'team') {
             await deleteTeamPlugin({
-              pluginId: systemToolId,
-              version: installedTool?.version
+              pluginId: systemToolId
             });
           } else {
             const detail = await getAdminSystemToolDetail({ toolId: systemToolId });

@@ -154,10 +154,6 @@ export const DeleteTeamToolBodySchema = z.object({
   pluginId: z.string().meta({
     example: 'systemTool-weather',
     description: '团队插件 ID，支持带 systemTool- 前缀'
-  }),
-  version: z.string().optional().meta({
-    example: '1.0.0',
-    description: '插件版本；为空时使用团队账本记录的版本'
   })
 });
 export type DeleteTeamToolBodyType = z.infer<typeof DeleteTeamToolBodySchema>;

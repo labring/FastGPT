@@ -24,7 +24,7 @@ export type DeleteTeamToolResponse = TeamPluginEmptyResponseType;
 
 async function handler(req: ApiRequestProps<DeleteTeamToolBody>): Promise<DeleteTeamToolResponse> {
   const {
-    body: { pluginId, version }
+    body: { pluginId }
   } = parseApiInput({
     req,
     bodySchema: DeleteTeamToolBodySchema
@@ -36,18 +36,16 @@ async function handler(req: ApiRequestProps<DeleteTeamToolBody>): Promise<Delete
     per: TeamManagePermissionVal
   });
   const rawPluginId = getRawPluginIdFromSystemToolId(pluginId);
-  const policy = await assertTeamPluginInstalled({
+  await assertTeamPluginInstalled({
     teamId,
     pluginId: rawPluginId
   });
-  const targetVersion = version ?? policy?.version;
-  if (!targetVersion) return Promise.reject('plugin.version_required');
 
   await pluginClient
     .deletePlugin({
       pluginId: rawPluginId,
       source: getTeamPluginSource(teamId),
-      version: targetVersion
+      scope: 'allVersions'
     })
     .catch((error) => {
       const errorText = typeof error === 'string' ? error : JSON.stringify(error);

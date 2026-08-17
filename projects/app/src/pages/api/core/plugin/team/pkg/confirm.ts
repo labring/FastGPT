@@ -41,13 +41,18 @@ async function handler(
     per: TeamManagePermissionVal
   });
 
-  await pluginClient.confirmPlugin(
+  const confirmResult = await pluginClient.confirmPlugin(
     toolIds.map((tool) => ({
       ...tool,
       pluginId: tool.pluginId.replace(/^systemTool-/, '')
     })),
     { source: getTeamPluginSource(teamId) }
   );
+
+  if (confirmResult.failed.length > 0) {
+    return Promise.reject(JSON.stringify(confirmResult.failed));
+  }
+
   await assertTeamPluginSourceReady({
     teamId,
     tools: toolIds

@@ -65,7 +65,7 @@ describe('delete team plugin handler', () => {
     expect(mocks.pluginClient.deletePlugin).toHaveBeenCalledWith({
       pluginId: 'weather',
       source: 'teamId:team-1',
-      version: '1.0.0'
+      scope: 'allVersions'
     });
     expect(mocks.setTeamPluginDeleted).toHaveBeenCalledWith({
       teamId: 'team-1',
@@ -77,7 +77,7 @@ describe('delete team plugin handler', () => {
     );
   });
 
-  it('does not update policy when the package version is unknown', async () => {
+  it('deletes all versions when the package version is unknown', async () => {
     mocks.assertTeamPluginInstalled.mockResolvedValueOnce({
       pluginId: 'weather',
       status: 'installed'
@@ -89,8 +89,12 @@ describe('delete team plugin handler', () => {
       }
     });
 
-    expect(res.code).not.toBe(200);
-    expect(mocks.pluginClient.deletePlugin).not.toHaveBeenCalled();
-    expect(mocks.setTeamPluginDeleted).not.toHaveBeenCalled();
+    expect(res.code).toBe(200);
+    expect(mocks.pluginClient.deletePlugin).toHaveBeenCalledWith({
+      pluginId: 'weather',
+      source: 'teamId:team-1',
+      scope: 'allVersions'
+    });
+    expect(mocks.setTeamPluginDeleted).toHaveBeenCalled();
   });
 });
