@@ -23,6 +23,7 @@ import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
 import { adaptLegacyAgentPlanAskToReadonlyAgentAsk } from './utils';
 import RenderWorkflowBuilderPreviewInteractive from './RenderWorkflowBuilderPreviewInteractive';
+import RenderWorkflowBuilderVersion from './RenderWorkflowBuilderVersion';
 
 const AIResponseBox = ({
   chatItemDataId,
@@ -206,6 +207,17 @@ const AIResponseBox = ({
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
+  }
+
+  if (value.workflowBuilderVersion) {
+    responseBlocks.push(
+      <RenderWorkflowBuilderVersion
+        key={`workflowBuilderVersion-${value.workflowBuilderVersion.checksum}-${value.workflowBuilderVersion.s3Key ?? 'ready'}-${value.workflowBuilderVersion.expiresAt ?? ''}`}
+        version={value.workflowBuilderVersion}
+        responseChatItemId={chatItemDataId}
+        isLastChild={isLastChild}
+      />
+    );
   }
 
   if (responseBlocks.length === 1) {

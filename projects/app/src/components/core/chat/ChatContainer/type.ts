@@ -16,6 +16,7 @@ import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxili
 import type { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { WorkflowBuilderApplied } from '@fastgpt/global/openapi/core/workflow/builder/api';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 
 type BaseGeneratingMessageProps = {
   responseValueId?: string;
@@ -38,6 +39,7 @@ type BaseGeneratingMessageProps = {
   sandboxStatus?: SandboxStatusItemType;
   skill?: SkillModuleResponseItemType;
   workflowBuilderApplied?: WorkflowBuilderApplied;
+  workflowBuilderVersion?: WorkflowBuilderVersion;
 
   formData?: ChatAgentConfigFormDataType;
 };

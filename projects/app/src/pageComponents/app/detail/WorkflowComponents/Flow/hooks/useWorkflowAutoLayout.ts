@@ -13,6 +13,7 @@ import { getHandleIndex } from '../utils/edge';
 const defaultNodeWidth = 420;
 const defaultNodeHeight = 240;
 const autoLayoutInitializationTimeoutMs = 5000;
+const autoLayoutStableSizeFrameCount = 2;
 
 export type WorkflowAutoLayoutResult = 'applied' | 'degraded' | 'failed';
 
@@ -22,6 +23,9 @@ type PendingAutoLayoutRequest = {
   resolve: (result: WorkflowAutoLayoutResult) => void;
   running: boolean;
   timeout: ReturnType<typeof setTimeout>;
+  animationFrame?: number;
+  lastNodeSizeSignature?: string;
+  stableNodeSizeFrames: number;
 };
 
 type LayoutOptions = {
@@ -48,6 +52,26 @@ export const matchesWorkflowAutoLayoutRequest = ({
   nodes: Node<FlowNodeItemType>[];
   nodeIds: Set<string>;
 }) => nodes.length === nodeIds.size && nodes.every((node) => nodeIds.has(node.id));
+
+/**
+ * 生成 Builder 目标节点的完整尺寸签名。
+ * 节点集合不匹配或仍有节点未完成测量时返回 undefined，避免使用不完整尺寸开始布局。
+ */
+export const getWorkflowAutoLayoutNodeSizeSignature = ({
+  nodes,
+  nodeIds
+}: {
+  nodes: Node<FlowNodeItemType>[];
+  nodeIds: Set<string>;
+}) => {
+  if (!matchesWorkflowAutoLayoutRequest({ nodes, nodeIds })) return;
+  if (nodes.some((node) => !node.width || !node.height)) return;
+
+  return nodes
+    .map((node) => `${node.id}:${node.width}:${node.height}`)
+    .sort()
+    .join('|');
+};
 
 /**
  * 将布局结果合并到画布的最新节点，只更新坐标和容器尺寸。
@@ -119,7 +143,12 @@ export const useWorkflowAutoLayout = () => {
   const renderedNodes = useNodes<FlowNodeItemType>();
   const nodesInitialized = useNodesInitialized();
   const pendingRequestRef = useRef<PendingAutoLayoutRequest>();
+  const workflowDataRevisionRef = useRef(workflowDataRevision);
   const [requestVersion, setRequestVersion] = useState(0);
+
+  useEffect(() => {
+    workflowDataRevisionRef.current = workflowDataRevision;
+  }, [workflowDataRevision]);
 
   const autoLayout = useCallback(
     async ({ allowFallbackDimensions = false, expectedNodeIds }: LayoutOptions = {}) => {
@@ -344,6 +373,9 @@ export const useWorkflowAutoLayout = () => {
     const request = pendingRequestRef.current;
     if (!request) return;
     clearTimeout(request.timeout);
+    if (request.animationFrame !== undefined) {
+      window.cancelAnimationFrame(request.animationFrame);
+    }
     pendingRequestRef.current = undefined;
     request.resolve(result);
   }, []);
@@ -352,9 +384,13 @@ export const useWorkflowAutoLayout = () => {
     async (allowFallbackDimensions: boolean) => {
       const request = pendingRequestRef.current;
       if (!request || request.running) return;
-      if (request.workflowDataRevision !== workflowDataRevision) {
+      if (request.workflowDataRevision !== workflowDataRevisionRef.current) {
         finishPendingRequest('failed');
         return;
+      }
+      if (request.animationFrame !== undefined) {
+        window.cancelAnimationFrame(request.animationFrame);
+        request.animationFrame = undefined;
       }
       request.running = true;
 
@@ -368,7 +404,7 @@ export const useWorkflowAutoLayout = () => {
         finishPendingRequest('failed');
       }
     },
-    [autoLayout, finishPendingRequest, workflowDataRevision]
+    [autoLayout, finishPendingRequest]
   );
 
   const requestAutoLayout = useCallback(
@@ -380,6 +416,7 @@ export const useWorkflowAutoLayout = () => {
           workflowDataRevision,
           resolve,
           running: false,
+          stableNodeSizeFrames: 0,
           timeout: setTimeout(() => {
             void runPendingRequest(true);
           }, autoLayoutInitializationTimeoutMs)
@@ -397,12 +434,48 @@ export const useWorkflowAutoLayout = () => {
       request.running ||
       request.workflowDataRevision !== workflowDataRevision ||
       !nodesInitialized ||
-      !matchesWorkflowAutoLayoutRequest({ nodes: renderedNodes, nodeIds: request.nodeIds })
+      !matchesWorkflowAutoLayoutRequest({ nodes: renderedNodes, nodeIds: request.nodeIds }) ||
+      request.animationFrame !== undefined
     ) {
       return;
     }
-    void runPendingRequest(false);
-  }, [nodesInitialized, renderedNodes, requestVersion, runPendingRequest, workflowDataRevision]);
+
+    /** ReactFlow 首次初始化后，节点内部控件仍可能继续撑高，需要等尺寸连续两帧不变。 */
+    const checkNodeSizes = () => {
+      const currentRequest = pendingRequestRef.current;
+      if (!currentRequest || currentRequest !== request || currentRequest.running) return;
+      currentRequest.animationFrame = undefined;
+
+      const signature = getWorkflowAutoLayoutNodeSizeSignature({
+        nodes: getNodes(),
+        nodeIds: currentRequest.nodeIds
+      });
+      if (signature === undefined) {
+        currentRequest.lastNodeSizeSignature = undefined;
+        currentRequest.stableNodeSizeFrames = 0;
+      } else if (signature === currentRequest.lastNodeSizeSignature) {
+        currentRequest.stableNodeSizeFrames += 1;
+      } else {
+        currentRequest.lastNodeSizeSignature = signature;
+        currentRequest.stableNodeSizeFrames = 1;
+      }
+
+      if (currentRequest.stableNodeSizeFrames >= autoLayoutStableSizeFrameCount) {
+        void runPendingRequest(false);
+        return;
+      }
+      currentRequest.animationFrame = window.requestAnimationFrame(checkNodeSizes);
+    };
+
+    request.animationFrame = window.requestAnimationFrame(checkNodeSizes);
+  }, [
+    getNodes,
+    nodesInitialized,
+    renderedNodes,
+    requestVersion,
+    runPendingRequest,
+    workflowDataRevision
+  ]);
 
   useEffect(
     () => () => {

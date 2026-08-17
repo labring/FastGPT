@@ -300,5 +300,9 @@
   "workflow_builder_apply_failed": "无法应用生成的工作流",
   "workflow_builder_canvas_changed": "工作流搭建期间画布发生了变化，请重新运行 Workflow Builder。",
   "workflow_builder_applied": "已应用到当前画布",
+  "workflow_builder_version_apply": "应用到画布",
+  "workflow_builder_version_reapply": "再次应用",
+  "workflow_builder_version_expired": "已过期",
+  "workflow_builder_version_superseded": "已被更新",
   "connection_invalid": "该连接不符合工作流规则"
 }

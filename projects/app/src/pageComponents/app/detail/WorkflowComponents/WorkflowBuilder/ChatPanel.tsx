@@ -25,12 +25,13 @@ import {
   appDetailToWorkflowDocumentApp,
   reactFlowStateToWorkflowDocument
 } from '../adapters/document';
-import {
-  WorkflowBuilderAppliedSchema,
-  type WorkflowBuilderApplied
-} from '@fastgpt/global/openapi/core/workflow/builder/api';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core';
-import { clearWorkflowBuilderChatHistory, streamWorkflowBuilderChat } from './api';
+import {
+  clearWorkflowBuilderChatHistory,
+  prewarmWorkflowBuilderRuntime,
+  streamWorkflowBuilderChat
+} from './api';
+import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 
 export type WorkflowBuilderChatPanelRef = {
   clearHistory: () => Promise<void>;
@@ -41,7 +42,7 @@ const WorkflowBuilderChatContent = ({
   appDetail,
   chatId,
   sourceTarget,
-  onWorkflowApplied,
+  onChatIdChange,
   onRestart,
   chatPanelRef
 }: {
@@ -49,7 +50,7 @@ const WorkflowBuilderChatContent = ({
   appDetail: AppDetailType;
   chatId: string;
   sourceTarget: ChatSourceTarget;
-  onWorkflowApplied: (result: WorkflowBuilderApplied) => Promise<void>;
+  onChatIdChange: (chatId: string) => void;
   onRestart: () => void;
   chatPanelRef: React.ForwardedRef<WorkflowBuilderChatPanelRef>;
 }) => {
@@ -83,6 +84,10 @@ const WorkflowBuilderChatContent = ({
         restartChat: onRestart
       })
   }));
+
+  useEffect(() => {
+    onChatIdChange(chatId);
+  }, [chatId, onChatIdChange]);
 
   useEffect(() => {
     setChatBoxData((previous) => {
@@ -163,10 +168,7 @@ const WorkflowBuilderChatContent = ({
     }
   );
 
-  const onStreamMessage = useMemoizedFn((event: generatingMessageProps) => {
-    if (!event.workflowBuilderApplied) return;
-    void onWorkflowApplied(WorkflowBuilderAppliedSchema.parse(event.workflowBuilderApplied));
-  });
+  const onStreamMessage = useMemoizedFn((_event: generatingMessageProps) => undefined);
 
   const ModelSelector = useMemo(
     () => (
@@ -226,9 +228,10 @@ const ChatPanel = React.forwardRef<
   {
     appId: string;
     appDetail: AppDetailType;
-    onWorkflowApplied: (result: WorkflowBuilderApplied) => Promise<void>;
+    workflowBuilderVersionActions: WorkflowBuilderVersionActions;
+    onChatIdChange: (chatId: string) => void;
   }
->(({ appId, appDetail, onWorkflowApplied }, ref) => {
+>(({ appId, appDetail, workflowBuilderVersionActions, onChatIdChange }, ref) => {
   const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
   const sourceTarget = useMemo<ChatSourceTarget>(
     () => ({ sourceType: ChatSourceTypeEnum.app, sourceId: appId }),
@@ -245,6 +248,18 @@ const ChatPanel = React.forwardRef<
   useEffect(() => {
     if (chatIdCacheKey && !chatId) ensureSourceChatId(chatIdCacheKey);
   }, [chatId, chatIdCacheKey, ensureSourceChatId]);
+
+  useRequest(
+    async () => {
+      if (!chatId) return;
+      await prewarmWorkflowBuilderRuntime({ appId, chatId });
+    },
+    {
+      manual: false,
+      refreshDeps: [appId, chatId],
+      errorToast: ''
+    }
+  );
 
   const chatRecordProviderParams = useMemo(
     () => ({
@@ -270,15 +285,16 @@ const ChatPanel = React.forwardRef<
       showPoints={true}
       showAvatar={true}
       showSandboxAction={false}
+      workflowBuilderVersionActions={workflowBuilderVersionActions}
     >
       {chatId && (
-        <ChatRecordContextProvider params={chatRecordProviderParams}>
+        <ChatRecordContextProvider params={chatRecordProviderParams} showInitialLoading={false}>
           <WorkflowBuilderChatContent
             appId={appId}
             appDetail={appDetail}
             chatId={chatId}
             sourceTarget={sourceTarget}
-            onWorkflowApplied={onWorkflowApplied}
+            onChatIdChange={onChatIdChange}
             onRestart={onRestart}
             chatPanelRef={ref}
           />

@@ -21,6 +21,7 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
+import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -231,6 +232,7 @@ export const AIChatItemValueSchema = z.object({
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
+  workflowBuilderVersion: WorkflowBuilderVersionSchema.optional(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideReason: z.boolean().optional(),
   hideInUI: z.boolean().optional()

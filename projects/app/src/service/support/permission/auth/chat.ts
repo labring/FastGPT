@@ -325,6 +325,11 @@ export async function authChatTargetCrud({
     };
   }
 
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    // Builder 的聊天记录仍使用 app source；该 source 只用于内部 Sandbox 物理隔离。
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 }

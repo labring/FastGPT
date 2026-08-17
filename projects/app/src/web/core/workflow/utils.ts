@@ -203,6 +203,31 @@ export const storeNode2FlowNode = ({
       )
   };
 
+  // Loop 容器兜底：动态输出必须由同名 canEdit 输入声明驱动（NodeLoopRun 挂载时按
+  // canEdit 输入集合同步删除/补全动态输出，未声明的动态输出会被删除并带走连线）。
+  // AI 生成文档可能只声明了 outputs、未在 inputs 声明对应的 canEdit 输入
+  // （loopCustomOutputs 的 addInputParam 机制要求两者成对出现），此处按动态输出
+  // 自动补齐输入声明，避免应用后的画布内容被挂载逻辑误删还原。
+  if (nodeItem.flowNodeType === FlowNodeTypeEnum.loopRun) {
+    const declaredCanEditKeys = new Set(
+      nodeItem.inputs.filter((input) => input.canEdit === true).map((input) => input.key)
+    );
+    const missingDynamicInputs = nodeItem.outputs
+      .filter((output) => output.type === FlowNodeOutputTypeEnum.dynamic)
+      .filter((output) => !declaredCanEditKeys.has(output.key))
+      .map<FlowNodeInputItemType>((output) => ({
+        key: output.key,
+        label: output.label || output.key,
+        valueType: output.valueType || WorkflowIOValueTypeEnum.any,
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        canEdit: true,
+        required: false
+      }));
+    if (missingDynamicInputs.length > 0) {
+      nodeItem.inputs = nodeItem.inputs.concat(missingDynamicInputs);
+    }
+  }
   nodeItem.inputs =
     nodeItem.flowNodeType === FlowNodeTypeEnum.pluginInput
       ? nodeItem.inputs.map((input) => {

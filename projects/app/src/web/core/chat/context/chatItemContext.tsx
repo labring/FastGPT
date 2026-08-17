@@ -13,6 +13,14 @@ import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/d
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
+
+export type WorkflowBuilderVersionActions = {
+  applyVersion: (
+    version: WorkflowBuilderVersion,
+    responseChatItemId: string
+  ) => Promise<WorkflowBuilderVersion>;
+};
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
@@ -104,6 +112,7 @@ type ChatItemContextType = {
   isVariableVisible: boolean;
   setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
   resetUIState: () => void;
+  workflowBuilderVersionActions?: WorkflowBuilderVersionActions;
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
@@ -143,7 +152,8 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   },
   resetUIState: function (): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  workflowBuilderVersionActions: undefined
 });
 
 /*
@@ -160,9 +170,11 @@ const ChatItemContextProvider = ({
   showWholeResponse,
   showPoints = false,
   showAvatar = true,
-  showSandboxAction = true
+  showSandboxAction = true,
+  workflowBuilderVersionActions
 }: {
   children: ReactNode;
+  workflowBuilderVersionActions?: WorkflowBuilderVersionActions;
 } & ContextProps) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
@@ -256,7 +268,8 @@ const ChatItemContextProvider = ({
       setCiteModalData,
       isVariableVisible,
       setIsVariableVisible,
-      resetUIState
+      resetUIState,
+      workflowBuilderVersionActions
     };
   }, [
     chatBoxData,
@@ -279,7 +292,8 @@ const ChatItemContextProvider = ({
     setCiteModalData,
     isVariableVisible,
     setIsVariableVisible,
-    resetUIState
+    resetUIState,
+    workflowBuilderVersionActions
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;

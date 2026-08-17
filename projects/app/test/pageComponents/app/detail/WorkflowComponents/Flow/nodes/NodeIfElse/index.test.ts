@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { renderToStaticMarkup } from 'react-dom/server';
+import type { ReactElement, ReactNode } from 'react';
 
 const mocks = vi.hoisted(() => ({
   updateNodeInternals: vi.fn(),
   onChangeNode: vi.fn(),
-  effectDependencies: [] as unknown[][]
+  effectDependencies: [] as unknown[][],
+  draggableDisabledStates: [] as boolean[]
 }));
 
 vi.mock('react', async () => {
@@ -39,14 +42,27 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/components/Container', (
   default: 'div'
 }));
 vi.mock('@fastgpt/web/components/common/DndDrag/index', () => ({
-  default: 'div',
-  Draggable: 'div'
+  default: ({ children }: { children: (props: any) => ReactNode }) =>
+    children({ provided: { droppableProps: {}, innerRef: vi.fn() }, snapshot: {} }),
+  Draggable: ({
+    children,
+    isDragDisabled
+  }: {
+    children: (provided: unknown, snapshot: unknown) => ReactNode;
+    isDragDisabled: boolean;
+  }) => {
+    mocks.draggableDisabledStates.push(isDragDisabled);
+    return children(
+      { innerRef: vi.fn(), draggableProps: { style: {} }, dragHandleProps: {} },
+      { isDragging: false }
+    );
+  }
 }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle', () => ({
   MySourceHandle: 'div'
 }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeIfElse/ListItem', () => ({
-  default: 'div'
+  default: () => null
 }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: 'span' }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext', () => ({
@@ -56,38 +72,39 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsC
 import NodeIfElse from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeIfElse';
 
 const renderNode = ({
-  branchId = 'similar',
+  branchIds = ['similar'],
   condition = 'isNotEmpty'
 }: {
-  branchId?: string;
+  branchIds?: string[];
   condition?: string;
 } = {}) => {
-  const Component = (NodeIfElse as unknown as { type: (props: any) => unknown }).type;
+  const Component = (NodeIfElse as unknown as { type: (props: any) => ReactElement }).type;
 
-  Component({
+  const result = Component({
     data: {
       nodeId: 'similarity-route',
       inputs: [
         {
           key: NodeInputKeyEnum.ifElseList,
-          value: [
-            {
-              branchId,
-              condition: 'AND',
-              list: [{ condition, valueType: 'input' }]
-            }
-          ]
+          value: branchIds.map((branchId) => ({
+            branchId,
+            condition: 'AND',
+            list: [{ condition, valueType: 'input' }]
+          }))
         }
       ]
     },
     selected: false
   });
+
+  renderToStaticMarkup(result);
 };
 
 describe('NodeIfElse dynamic handles', () => {
   beforeEach(() => {
     mocks.updateNodeInternals.mockClear();
     mocks.effectDependencies.length = 0;
+    mocks.draggableDisabledStates.length = 0;
   });
 
   it('should refresh ReactFlow handle measurements after the node renders', () => {
@@ -106,5 +123,16 @@ describe('NodeIfElse dynamic handles', () => {
 
     expect(mocks.effectDependencies[0][0]).toBe(initialHandleKeys);
     expect(initialHandleKeys).toBe('["similar"]');
+  });
+
+  it('should disable dragging until there are multiple branches to reorder', () => {
+    renderNode();
+
+    expect(mocks.draggableDisabledStates).toEqual([true]);
+
+    mocks.draggableDisabledStates.length = 0;
+    renderNode({ branchIds: ['similar', 'fallback'] });
+
+    expect(mocks.draggableDisabledStates).toEqual([false, false]);
   });
 });

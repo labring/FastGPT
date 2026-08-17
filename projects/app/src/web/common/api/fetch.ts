@@ -132,6 +132,11 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
         break;
       }
 
+      case SseResponseEventEnum.workflowBuilderVersion: {
+        onmessage({ responseValueId, event, workflowBuilderVersion: obj.version });
+        break;
+      }
+
       case SseResponseEventEnum.answer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
         enqueue({ responseValueId, event, reasoningText });

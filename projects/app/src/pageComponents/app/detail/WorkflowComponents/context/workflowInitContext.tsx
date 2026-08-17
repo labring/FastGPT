@@ -70,6 +70,7 @@ export type WorkflowDataContextType = {
   getNodeList: () => FlowNodeItemType[];
   edges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
+  getEdges: () => Edge<any>[];
   workflowDataRevision: number;
   replaceWorkflowData: (data: {
     nodes: Node<FlowNodeItemType, string | undefined>[];
@@ -109,6 +110,9 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
   },
   edges: [],
   setEdges: function (value: React.SetStateAction<Edge<any>[]>): void {
+    throw new Error('Function not implemented.');
+  },
+  getEdges: function (): Edge<any>[] {
     throw new Error('Function not implemented.');
   },
   workflowDataRevision: 0,
@@ -305,6 +309,7 @@ const WorkflowInitContextProvider = ({
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const getEdges = useMemoizedFn(() => edges);
   const workflowDataRevisionRef = useRef(0);
   const [workflowDataRevision, setWorkflowDataRevision] = useState(0);
   const replaceWorkflowData = useCallback(
@@ -399,6 +404,7 @@ const WorkflowInitContextProvider = ({
       getNodeList,
       edges,
       setEdges,
+      getEdges,
       workflowDataRevision,
       replaceWorkflowData,
       onEdgesChange,
@@ -423,6 +429,7 @@ const WorkflowInitContextProvider = ({
     getNodeList,
     edges,
     setEdges,
+    getEdges,
     workflowDataRevision,
     replaceWorkflowData,
     onEdgesChange,

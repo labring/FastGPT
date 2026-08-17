@@ -43,6 +43,10 @@ export function buildChatSourceQuery({ sourceType, sourceId }: ChatSourceParams)
     };
   }
 
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    throw new Error('Workflow Builder chat records must use app source');
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 }

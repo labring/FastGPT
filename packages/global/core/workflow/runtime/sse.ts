@@ -7,6 +7,7 @@ import type {
 import type { AgentPlanStatusType, AgentPlanType } from '../../ai/agent/type';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 import type { WorkflowBuilderApplied } from '../../../openapi/core/workflow/builder/api';
+import type { WorkflowBuilderVersion } from '../builder/type';
 import { SseResponseEventEnum } from './constants';
 import { textAdaptGptResponse } from './utils';
 
@@ -37,6 +38,7 @@ export type WorkflowSsePayloadMap = {
   [SseResponseEventEnum.sandboxStatus]: SandboxStatusItemType;
   [SseResponseEventEnum.skillCall]: { skill: SkillModuleResponseItemType };
   [SseResponseEventEnum.workflowBuilderApplied]: WorkflowBuilderApplied;
+  [SseResponseEventEnum.workflowBuilderVersion]: { version: WorkflowBuilderVersion };
 };
 
 export type WorkflowTypedSseEvent<
@@ -157,6 +159,16 @@ export const workflowSseEvent = {
     return {
       event: SseResponseEventEnum.workflowBuilderApplied,
       data: result
+    };
+  },
+
+  /** 输出已生成、等待用户确认应用的 Workflow Builder 版本元数据。 */
+  workflowBuilderVersion(
+    version: WorkflowBuilderVersion
+  ): WorkflowTypedSseEvent<SseResponseEventEnum.workflowBuilderVersion> {
+    return {
+      event: SseResponseEventEnum.workflowBuilderVersion,
+      data: { version }
     };
   },
 

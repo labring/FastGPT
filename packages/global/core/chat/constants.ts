@@ -41,10 +41,13 @@ export enum ChatSourceEnum {
  * 会话所属资源类型。
  *
  * `ChatSourceEnum` 表示对话入口来源，例如 test/api/online。
- * `ChatSourceTypeEnum` 表示会话归属资源类型，用于在同一套 chat 表中隔离 App 和 Skill Edit。
+ * `ChatSourceTypeEnum` 表示会话归属资源类型；workflowBuilder 仅用于 Sandbox 资源，
+ * Builder 聊天记录仍使用 app source。
  */
 export enum ChatSourceTypeEnum {
   app = 'app',
+  /** Workflow Builder 的独立 Sandbox 来源；Builder 聊天记录仍归属 app。 */
+  workflowBuilder = 'workflowBuilder',
   skillEdit = 'skillEdit',
   chatAgentHelper = 'chatAgentHelper'
 }

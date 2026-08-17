@@ -300,5 +300,9 @@
   "workflow_builder_apply_failed": "The generated workflow could not be applied",
   "workflow_builder_canvas_changed": "The canvas changed while the workflow was being built. Please run the builder again.",
   "workflow_builder_applied": "Applied to the current canvas",
+  "workflow_builder_version_apply": "Apply to canvas",
+  "workflow_builder_version_reapply": "Apply again",
+  "workflow_builder_version_expired": "Expired",
+  "workflow_builder_version_superseded": "Superseded",
   "connection_invalid": "This connection violates workflow rules"
 }

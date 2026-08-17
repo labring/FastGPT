@@ -65,6 +65,7 @@ export const SandboxOperationTypeSchema = z.enum(sandboxOperationTypeList);
 export type SandboxOperationType = z.infer<typeof SandboxOperationTypeSchema>;
 export const SandboxSourceTypeSchema = z.enum([
   ChatSourceTypeEnum.app,
+  ChatSourceTypeEnum.workflowBuilder,
   ChatSourceTypeEnum.skillEdit
 ]);
 export type SandboxSourceType = z.infer<typeof SandboxSourceTypeSchema>;

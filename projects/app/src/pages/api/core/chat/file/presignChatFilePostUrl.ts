@@ -146,6 +146,10 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
       return undefined;
     }
 
+    if (authRes.sourceType === ChatSourceTypeEnum.workflowBuilder) {
+      throw new Error('Workflow Builder chat files must use app source');
+    }
+
     const exhaustiveCheck: never = authRes.sourceType;
     throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
   })();

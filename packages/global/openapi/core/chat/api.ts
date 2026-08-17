@@ -131,6 +131,10 @@ export const buildChatTargetResponse = ({
     return { appId: id, sourceType: ChatSourceTypeEnum.chatAgentHelper };
   }
 
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    throw new Error('Workflow Builder does not expose a chat target response');
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 };

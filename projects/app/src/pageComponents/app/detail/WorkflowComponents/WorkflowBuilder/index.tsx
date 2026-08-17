@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Box, Flex, IconButton, Text, useBreakpointValue } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
@@ -12,17 +12,15 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { AppContext } from '../../context';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
-import { appDetailToWorkflowDocumentApp } from '../adapters/document';
-import {
-  compileStoreWorkflow,
-  decompileStoreWorkflow,
-  getWorkflowChecksum,
-  parseCompatibleWorkflowDocument
-} from '@fastgpt/workflow-core';
-import type { WorkflowBuilderApplied } from '@fastgpt/global/openapi/core/workflow/builder/api';
+import { compileStoreWorkflow, parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core';
 import ChatPanel, { type WorkflowBuilderChatPanelRef } from './ChatPanel';
 import { mergeWorkflowBuilderAppliedAppDetail } from './utils';
 import { useWorkflowAutoLayout } from '../Flow/hooks/useWorkflowAutoLayout';
+import { WorkflowSnapshotContext } from '../context/workflowSnapshotContext';
+import { WorkflowBufferDataContext } from '../context/workflowInitContext';
+import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
+import { loadWorkflowBuilderVersion, commitWorkflowBuilderVersion } from './api';
 
 const WorkflowBuilder = () => {
   const { t } = useTranslation('workflow');
@@ -38,6 +36,12 @@ const WorkflowBuilder = () => {
   const appId = useContextSelector(AppContext, (value) => value.appId);
   const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
   const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
+  const getNodes = useContextSelector(WorkflowBufferDataContext, (value) => value.getNodes);
+  const getEdges = useContextSelector(WorkflowBufferDataContext, (value) => value.getEdges);
+  const pushPastSnapshot = useContextSelector(
+    WorkflowSnapshotContext,
+    (value) => value.pushPastSnapshot
+  );
   const initData = useContextSelector(WorkflowUtilsContext, (value) => value.initData);
   const flowData2StoreData = useContextSelector(
     WorkflowUtilsContext,
@@ -45,6 +49,7 @@ const WorkflowBuilder = () => {
   );
   const [isOpen, setIsOpen] = useState(false);
   const chatPanelRef = useRef<WorkflowBuilderChatPanelRef>(null);
+  const [builderChatId, setBuilderChatId] = useState('');
   const panelWidth = useBreakpointValue({ base: '100%', md: '33vw' }) || '33.333vw';
 
   const enabled =
@@ -54,66 +59,106 @@ const WorkflowBuilder = () => {
     !!appDetail.permission?.hasWritePer;
   if (!enabled) return null;
 
-  /** 将服务端 CLI Apply 后的目标文档导入当前画布，并复用画布统一布局能力。 */
-  const onWorkflowApplied = async (result: WorkflowBuilderApplied) => {
-    try {
-      const targetDocument = parseCompatibleWorkflowDocument(result.document);
-      if ((await getWorkflowChecksum(targetDocument)) !== result.checksum) {
-        throw new Error('Workflow Builder apply response checksum mismatch');
+  /** 加载版本、覆盖画布、记录“我的编辑”快照，最后将实际应用文档归档到 S3。 */
+  const applyVersion = useCallback(
+    async (version: WorkflowBuilderVersion, responseChatItemId: string) => {
+      if (!builderChatId) throw new Error('Workflow Builder chat is not ready');
+      let previousWorkflow: ReturnType<typeof flowData2StoreData>;
+      let hasAppliedWorkflow = false;
+      const previousChatConfig = appDetail.chatConfig;
+      try {
+        const loaded = await loadWorkflowBuilderVersion({
+          appId,
+          chatId: builderChatId,
+          responseChatItemId
+        });
+        const targetDocument = parseCompatibleWorkflowDocument(loaded.document);
+        previousWorkflow = flowData2StoreData();
+        if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
+        const workflowConfig = parseWorkflowImportConfig({
+          config: compileStoreWorkflow(targetDocument),
+          appType:
+            appDetail.type === AppTypeEnum.workflowTool
+              ? AppTypeEnum.workflowTool
+              : AppTypeEnum.workflow,
+          t
+        });
+        await removeUnauthModels({
+          modules: workflowConfig.nodes,
+          allowedModels: await getMyModelList()
+        });
+        const workflowDataRevision = await initData(workflowConfig);
+        hasAppliedWorkflow = true;
+        const appliedChatConfig = workflowConfig.chatConfig ?? previousChatConfig;
+        setAppDetail((current) =>
+          mergeWorkflowBuilderAppliedAppDetail({
+            current,
+            targetDocument
+          })
+        );
+        const autoLayoutResult = await requestAutoLayout({
+          nodeIds: workflowConfig.nodes.map((node) => node.nodeId),
+          workflowDataRevision
+        });
+        if (autoLayoutResult === 'failed') {
+          // 布局只影响节点位置，不能阻断 JSON 业务配置的应用。
+          console.warn('[Workflow Builder] Auto layout failed, keeping applied workflow');
+        }
+        const archivedVersion = await commitWorkflowBuilderVersion({
+          appId,
+          chatId: builderChatId,
+          responseChatItemId,
+          document: targetDocument,
+          checksum: loaded.checksum
+        });
+        pushPastSnapshot({
+          pastNodes: getNodes(),
+          pastEdges: getEdges(),
+          chatConfig: appliedChatConfig,
+          customTitle: version.name
+        });
+        toast({ status: 'success', title: t('workflow_builder_applied') });
+        return archivedVersion;
+      } catch (error) {
+        const errorText =
+          error instanceof Error
+            ? error.message
+            : JSON.stringify(error ?? 'Workflow Builder apply failed');
+        toast({
+          status: 'warning',
+          title: t('workflow_builder_apply_failed'),
+          description: errorText
+        });
+        try {
+          if (previousWorkflow && !hasAppliedWorkflow) {
+            await initData({ ...previousWorkflow, chatConfig: previousChatConfig });
+            setAppDetail((current) => ({ ...current, chatConfig: previousChatConfig }));
+          }
+        } catch {
+          // 恢复失败不覆盖原始应用错误。
+        }
+        throw error;
       }
-      const currentFlowData = flowData2StoreData();
-      if (!currentFlowData) {
-        throw new Error('Workflow Builder current canvas is unavailable');
-      }
-      const currentDocument = decompileStoreWorkflow({
-        workflow: {
-          nodes: currentFlowData.nodes,
-          edges: currentFlowData.edges,
-          chatConfig: appDetail.chatConfig
-        },
-        app: appDetailToWorkflowDocumentApp(appDetail)
-      });
-      if ((await getWorkflowChecksum(currentDocument)) !== result.baseChecksum) {
-        throw new Error(t('workflow_builder_canvas_changed'));
-      }
-      const workflowConfig = parseWorkflowImportConfig({
-        config: compileStoreWorkflow(targetDocument),
-        appType:
-          appDetail.type === AppTypeEnum.workflowTool
-            ? AppTypeEnum.workflowTool
-            : AppTypeEnum.workflow,
-        t
-      });
-      await removeUnauthModels({
-        modules: workflowConfig.nodes,
-        allowedModels: await getMyModelList()
-      });
-      const workflowDataRevision = await initData(workflowConfig);
-      setAppDetail((current) =>
-        mergeWorkflowBuilderAppliedAppDetail({
-          current,
-          targetDocument
-        })
-      );
-      const autoLayoutResult = await requestAutoLayout({
-        nodeIds: workflowConfig.nodes.map((node) => node.nodeId),
-        workflowDataRevision
-      });
-      if (autoLayoutResult === 'failed') {
-        throw new Error('Workflow Builder auto layout failed');
-      }
-      toast({ status: 'success', title: t('workflow_builder_applied') });
-    } catch (error) {
-      const errorText =
-        error instanceof Error
-          ? error.message
-          : JSON.stringify(error ?? 'Workflow Builder apply failed');
-      toast({
-        status: 'warning',
-        title: t('workflow_builder_apply_failed'),
-        description: errorText
-      });
-    }
+    },
+    [
+      appDetail,
+      appId,
+      builderChatId,
+      getEdges,
+      getNodes,
+      getMyModelList,
+      flowData2StoreData,
+      initData,
+      pushPastSnapshot,
+      requestAutoLayout,
+      setAppDetail,
+      t,
+      toast
+    ]
+  );
+
+  const versionActions: WorkflowBuilderVersionActions = {
+    applyVersion
   };
 
   if (!isOpen) {
@@ -195,7 +240,8 @@ const WorkflowBuilder = () => {
           ref={chatPanelRef}
           appId={appId}
           appDetail={appDetail}
-          onWorkflowApplied={onWorkflowApplied}
+          workflowBuilderVersionActions={versionActions}
+          onChatIdChange={setBuilderChatId}
         />
       </Box>
       <ConfirmModal />

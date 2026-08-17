@@ -23,7 +23,8 @@ export function useLinkedScroll<
     currentData,
     defaultScroll = 'top',
     enablePagination = true,
-    showErrorToast = true
+    showErrorToast = true,
+    showInitialLoading = true
   }: {
     pageSize?: number;
     params?: Record<string, any>;
@@ -31,6 +32,8 @@ export function useLinkedScroll<
     defaultScroll?: 'top' | 'bottom';
     enablePagination?: boolean;
     showErrorToast?: boolean;
+    /** 是否在初次历史请求期间覆盖滚动内容。关闭后可先渲染输入区。 */
+    showInitialLoading?: boolean;
   }
 ) {
   const { t } = useTranslation();
@@ -271,7 +274,13 @@ export function useLinkedScroll<
       );
 
       return (
-        <MyBox ref={setRefs} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
+        <MyBox
+          ref={setRefs}
+          h={'100%'}
+          overflow={'auto'}
+          isLoading={isLoading && (showInitialLoading || isInit.current)}
+          {...props}
+        >
           {hasMorePrev && prevLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:is_requesting')}
@@ -286,7 +295,7 @@ export function useLinkedScroll<
         </MyBox>
       );
     },
-    [enablePagination, isLoading]
+    [enablePagination, isLoading, showInitialLoading]
   );
 
   return {

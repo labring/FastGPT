@@ -135,6 +135,9 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   }
 
   if (sourceType !== ChatSourceTypeEnum.app) {
+    if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+      throw new Error('Workflow Builder chat must use app source');
+    }
     const exhaustiveCheck: never = sourceType;
     throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
   }
