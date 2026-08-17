@@ -1,53 +1,92 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useId, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
-type CommercialContactDialogProps = {
+export type CommercialContactDialogProps = {
   url: string;
-  label: string;
+  label?: string;
   title: string;
   description: string;
   closeLabel: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 };
 
 /**
  * 在商业版文档中居中打开官网咨询页，保持用户当前的阅读位置不变。
  * 使用原生 dialog 以获得 Esc 关闭、焦点回收和移动端适配能力。
+ * 默认由组件内部按钮控制，也支持由文档导航等外部触发源控制。
  */
 export function CommercialContactDialog({
   url,
   label,
   title,
   description,
-  closeLabel
+  closeLabel,
+  open,
+  onOpenChange,
+  showTrigger = true
 }: CommercialContactDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const isControlled = open !== undefined;
+
+  useEffect(() => {
+    if (!isControlled || !dialogRef.current) return;
+
+    if (open && !dialogRef.current.open) {
+      dialogRef.current.showModal();
+    } else if (!open && dialogRef.current.open) {
+      dialogRef.current.close();
+    }
+  }, [isControlled, open]);
 
   const openDialog = () => {
-    dialogRef.current?.showModal();
+    if (isControlled) {
+      onOpenChange?.(true);
+      return;
+    }
+
+    if (!dialogRef.current?.open) {
+      dialogRef.current?.showModal();
+    }
   };
 
   const closeDialog = () => {
+    if (isControlled) {
+      onOpenChange?.(false);
+      return;
+    }
+
     dialogRef.current?.close();
+  };
+
+  const handleDialogClose = () => {
+    if (isControlled) {
+      onOpenChange?.(false);
+    }
   };
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openDialog}
-        aria-haspopup="dialog"
-        className="cursor-pointer font-medium text-fd-primary underline decoration-fd-primary/40 underline-offset-4 transition-colors hover:decoration-fd-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fd-ring"
-      >
-        {label}
-      </button>
+      {showTrigger && (
+        <button
+          type="button"
+          onClick={openDialog}
+          aria-haspopup="dialog"
+          className="cursor-pointer font-medium text-fd-primary underline decoration-fd-primary/40 underline-offset-4 transition-colors hover:decoration-fd-primary focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fd-ring"
+        >
+          {label}
+        </button>
+      )}
 
       <dialog
         ref={dialogRef}
         aria-labelledby={titleId}
         className="docs-contact-dialog"
+        onClose={handleDialogClose}
       >
         <div className="flex size-full min-h-0 flex-col">
           <div
