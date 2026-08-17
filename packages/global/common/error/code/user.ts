@@ -14,7 +14,9 @@ export enum UserErrEnum {
   accountCancellationPending = 'accountCancellationPending',
   registrationMethodNotSupported = 'registrationMethodNotSupported',
   passwordChangeAuthorizationInvalid = 'passwordChangeAuthorizationInvalid',
-  newPasswordSameAsOld = 'newPasswordSameAsOld'
+  newPasswordSameAsOld = 'newPasswordSameAsOld',
+  ssoPasswordUnavailable = 'ssoPasswordUnavailable',
+  verificationChannelUnavailable = 'verificationChannelUnavailable'
 }
 const errList = [
   {
@@ -71,6 +73,16 @@ const errList = [
     statusText: UserErrEnum.newPasswordSameAsOld,
     message: i18nT('common:user.Password has no change'),
     httpStatus: 400
+  },
+  {
+    statusText: UserErrEnum.ssoPasswordUnavailable,
+    message: i18nT('common:error.sso_password_unavailable'),
+    httpStatus: 403
+  },
+  {
+    statusText: UserErrEnum.verificationChannelUnavailable,
+    message: i18nT('common:error.verification_channel_unavailable'),
+    httpStatus: 403
   }
 ];
 export default errList.reduce((acc, cur, index) => {

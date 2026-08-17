@@ -9,6 +9,15 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import updatePasswordApi from '@/pages/api/support/user/account/password/update';
 import { Call } from '@test/utils/request';
+import { delUserAllSession } from '@fastgpt/service/support/user/session';
+
+vi.mock('@fastgpt/service/support/user/session', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    delUserAllSession: vi.fn().mockResolvedValue(undefined)
+  };
+});
 
 describe('password/update API', () => {
   let testUser: any;
@@ -16,6 +25,7 @@ describe('password/update API', () => {
   let testTmb: any;
 
   beforeEach(async () => {
+    global.feConfigs = { ...global.feConfigs, sso: undefined };
     testUser = await MongoUser.create({
       username: 'password-update-user',
       password: hashStr('old-password')
@@ -152,5 +162,34 @@ describe('password/update API', () => {
     );
 
     expect(response.code).toBe(500);
+  });
+
+  it('rejects a restricted SSO user before changing password or sessions', async () => {
+    await MongoUser.updateOne({ _id: testUser._id }, { username: 'tenant-user' });
+    global.feConfigs = {
+      ...global.feConfigs,
+      sso: {
+        url: 'https://sso.example.com',
+        disablePasswordForSsoUsers: true
+      }
+    };
+    vi.mocked(delUserAllSession).mockClear();
+
+    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+      updatePasswordApi,
+      {
+        body: getBody(),
+        auth: getAuth()
+      }
+    );
+
+    expect(response.code).toBe(500);
+    expect(response.error).toMatchObject({ message: UserErrEnum.ssoPasswordUnavailable });
+    expect(delUserAllSession).not.toHaveBeenCalled();
+    await expect(
+      MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+    ).resolves.toBeTruthy();
+    const unchangedUser = await MongoUser.findById(testUser._id).lean();
+    expect(unchangedUser?.passwordUpdateTime).toBeUndefined();
   });
 });

@@ -14,10 +14,18 @@ Currently supported team modes:
 <table className="table-hover table-striped-columns" style={{ textAlign: 'center' }}>
   <thead>
     <tr>
-      <th rowSpan="2" className="text-center">Team Mode</th>
-      <th colSpan="2" className="text-center">SMS/Email Registration</th>
-      <th colSpan="2" className="text-center">Admin Direct Add</th>
-      <th colSpan="2" className="text-center">SSO Registration</th>
+      <th rowSpan="2" className="text-center">
+        Team Mode
+      </th>
+      <th colSpan="2" className="text-center">
+        SMS/Email Registration
+      </th>
+      <th colSpan="2" className="text-center">
+        Admin Direct Add
+      </th>
+      <th colSpan="2" className="text-center">
+        SSO Registration
+      </th>
     </tr>
     <tr>
       <th className="text-center">Creates Default Team</th>
@@ -28,7 +36,7 @@ Currently supported team modes:
       <th className="text-center">Joins Root Team</th>
     </tr>
   </thead>
-  <tbody >
+  <tbody>
     <tr>
       <td className="text-center">Single-team Mode</td>
       <td className="text-center">❌</td>
@@ -73,9 +81,18 @@ When system configuration is complete and sync mode is enabled, members from ext
 
 For specific sync methods and rules, see [SSO & External Member Sync](./sso.en.mdx).
 
-
 ## Configuration
 
-In `fastgpt-pro`'s System Configuration - Member Configuration, you can configure the team mode.
+The team mode is configured via the **required** `TEAM_MODE` environment variable of the `fastgpt-pro` (admin) service. Valid values are `multi` (multi-team), `single` (single-team), and `sync` (member sync). The team mode shown in the admin console's System Configuration - Member Configuration is read-only — change it through the environment variable instead.
+
+```bash
+# fastgpt-pro (admin service) environment variable; required, the admin service fails to start without it
+TEAM_MODE=multi
+```
+
+> **Upgrade notice**: existing deployments whose team mode was saved to the database through the old admin console must explicitly set `TEAM_MODE` (e.g. `TEAM_MODE=single`, `TEAM_MODE=sync`) before upgrading.
+>
+> - `TEAM_MODE` is authoritative and overrides the team mode stored in the database on service startup.
+> - When unset or empty, the admin service fails to start (no implicit default is applied).
 
 ![](/imgs/teammode.png)
