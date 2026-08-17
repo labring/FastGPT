@@ -104,7 +104,7 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
 
-`AGENT_SANDBOX_APT_MIRROR` 仅对 root 权限的 Agent 沙箱有效。FastGPT 会根据 Ubuntu 或 Debian 版本写入一份独立的 deb822 source 文件，不覆盖镜像原有 source。请自行保证配置的镜像地址有效，并确保镜像提供对应发行版的 suite。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供对应架构软件包的镜像地址。
+`AGENT_SANDBOX_APT_MIRROR` 仅对 root 权限的 Agent 沙箱有效。FastGPT 会根据 Ubuntu 或 Debian 版本写入一份独立的 deb822 source 文件，不覆盖镜像原有 source。Debian 镜像地址以 `/debian` 结尾时，安全更新会自动使用同站点的 `/debian-security`；其他地址不会生成无法确认的 security suite，镜像原有安全源仍会生效。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供对应架构软件包的镜像地址。
 
 ### 资源与生命周期
 

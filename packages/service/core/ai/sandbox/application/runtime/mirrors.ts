@@ -234,15 +234,64 @@ const buildSandboxRuntimeMirrorFiles = ({
             signedBy: '/usr/share/keyrings/debian-archive-keyring.gpg'
           };
 
+    const aptSources = (() => {
+      const regularSuites = [
+        aptPlatform.codename,
+        `${aptPlatform.codename}-updates`,
+        `${aptPlatform.codename}-backports`
+      ];
+
+      if (aptPlatform.distribution !== 'debian') {
+        return [
+          {
+            uri: config.aptMirror,
+            suites: [...regularSuites, `${aptPlatform.codename}-security`]
+          }
+        ];
+      }
+
+      // Debian 将安全更新放在独立的 debian-security 仓库，不能与普通 debian 仓库共用 suite。
+      const securityMirror = (() => {
+        try {
+          const url = new URL(config.aptMirror);
+          const path = url.pathname.replace(/\/+$/, '');
+          if (!path.endsWith('/debian')) return undefined;
+          url.pathname = `${path.slice(0, -'/debian'.length)}/debian-security`;
+          return url.toString();
+        } catch {
+          return undefined;
+        }
+      })();
+
+      return [
+        {
+          uri: config.aptMirror,
+          suites: regularSuites
+        },
+        ...(securityMirror
+          ? [
+              {
+                uri: securityMirror,
+                suites: [`${aptPlatform.codename}-security`]
+              }
+            ]
+          : [])
+      ];
+    })();
+
     files.push({
       path: APT_MIRROR_SOURCE_PATH,
-      data: `${[
-        'Types: deb',
-        `URIs: ${config.aptMirror}`,
-        `Suites: ${aptPlatform.codename} ${aptPlatform.codename}-updates ${aptPlatform.codename}-backports ${aptPlatform.codename}-security`,
-        `Components: ${aptSource.components}`,
-        `Signed-By: ${aptSource.signedBy}`
-      ].join('\n')}\n`
+      data: `${aptSources
+        .map(({ uri, suites }) =>
+          [
+            'Types: deb',
+            `URIs: ${uri}`,
+            `Suites: ${suites.join(' ')}`,
+            `Components: ${aptSource.components}`,
+            `Signed-By: ${aptSource.signedBy}`
+          ].join('\n')
+        )
+        .join('\n\n')}\n`
     });
   }
 

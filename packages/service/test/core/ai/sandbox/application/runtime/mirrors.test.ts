@@ -168,7 +168,38 @@ describe('sandbox runtime mirrors', () => {
           data: [
             'Types: deb',
             'URIs: https://mirror.example.com/debian/',
-            'Suites: bookworm bookworm-updates bookworm-backports bookworm-security',
+            'Suites: bookworm bookworm-updates bookworm-backports',
+            'Components: main contrib non-free non-free-firmware',
+            'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
+            '',
+            'Types: deb',
+            'URIs: https://mirror.example.com/debian-security',
+            'Suites: bookworm-security',
+            'Components: main contrib non-free non-free-firmware',
+            'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
+            ''
+          ].join('\n')
+        }
+      ]
+    ]);
+  });
+
+  it('does not infer a Debian security mirror from a non-standard archive URL', async () => {
+    const sandbox = createSandbox({ osRelease: 'ID=debian\nVERSION_CODENAME=bookworm\n' });
+
+    await prepareSandboxRuntimeMirrors({
+      sandbox: sandbox as any,
+      config: { aptMirror: 'https://mirror.example.com/debian-mirror' }
+    });
+
+    expect(sandbox.getMirrorWrites()).toEqual([
+      [
+        {
+          path: '/etc/apt/sources.list.d/00-fastgpt-mirror.sources',
+          data: [
+            'Types: deb',
+            'URIs: https://mirror.example.com/debian-mirror',
+            'Suites: bookworm bookworm-updates bookworm-backports',
             'Components: main contrib non-free non-free-firmware',
             'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
             ''

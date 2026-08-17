@@ -48,7 +48,7 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ```
 
-For root Agent sandboxes, FastGPT writes a separate deb822 source file for the detected Ubuntu or Debian release without replacing the runtime image's existing sources. Ensure that the configured mirror URL is valid and provides the detected distribution's suites. Initialization does not run `apt-get update`.
+For root Agent sandboxes, FastGPT writes a separate deb822 source file for the detected Ubuntu or Debian release without replacing the runtime image's existing sources. For Debian URLs ending in `/debian`, security updates automatically use the same host's `/debian-security` repository; other URLs do not generate an unverified security suite, so the runtime image's existing security source remains active. Initialization does not run `apt-get update`.
 For arm64 runtime images, configure a mirror URL that provides the corresponding architecture packages.
 
 ## FAQ
