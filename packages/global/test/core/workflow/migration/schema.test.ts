@@ -5,6 +5,7 @@ import {
   migrateAgentToolInputConfigToCurrent,
   migrateFlowNodeInputToCurrent,
   migrateLegacyWorkflowHttpToolInputsDefaultMode,
+  migrateWorkflowDetailNodesToCurrent,
   migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -132,6 +133,41 @@ describe('workflow v0 to v1 migration', () => {
     ]);
 
     expect(input.isToolParam).toBe(true);
+  });
+
+  it('centralizes detail-node legacy input migration without mutating the source nodes', () => {
+    const nodes = [
+      {
+        nodeId: 'http-tool',
+        flowNodeType: 'httpRequest468',
+        name: 'HTTP tool',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            canEdit: true,
+            toolDescription: 'Query from user',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 0
+          }
+        ],
+        outputs: []
+      }
+    ] as any;
+
+    const migrated = migrateWorkflowDetailNodesToCurrent(nodes);
+
+    expect(nodes[0].inputs[0]).toHaveProperty('selectedTypeIndex', 0);
+    expect(migrated[0].inputs[0]).toMatchObject({
+      isToolParam: true,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(migrated[0].inputs[0]).not.toHaveProperty('selectedType');
+    expect(migrated[0].inputs[0]).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('is idempotent for workflow data', () => {
