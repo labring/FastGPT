@@ -62,16 +62,34 @@ vi.mock('../../../../support/outLink/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
-  ILinkClient: class {
-    getUpdates = mocks.getUpdates;
-  }
+vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/support/outLink/wechat/ilinkClient')>();
+  return {
+    ...actual,
+    ILinkClient: class {
+      getUpdates = mocks.getUpdates;
+    }
+  };
+});
+
+vi.mock('../../../../support/outLink/wechat/ilinkClient', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../support/outLink/wechat/ilinkClient')>();
+  return {
+    ...actual,
+    ILinkClient: class {
+      getUpdates = mocks.getUpdates;
+    }
+  };
+});
+
+vi.mock('@fastgpt/service/support/outLink/wechat/provider', () => ({
+  wechatOutlinkProvider: vi.fn()
 }));
 
-vi.mock('../../../../support/outLink/wechat/ilinkClient', () => ({
-  ILinkClient: class {
-    getUpdates = mocks.getUpdates;
-  }
+vi.mock('../../../../support/outLink/wechat/provider', () => ({
+  wechatOutlinkProvider: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/outLink/runtime/utils', () => ({
@@ -190,7 +208,6 @@ describe('Wechat polling failure counter integration', () => {
 
     await expect(processor?.(job)).resolves.toBe(true);
     expect(mocks.queueAdd).toHaveBeenCalledWith(
-      'wechatPublishReply',
       {
         shareId: 'share-1',
         userId: 'user-1',

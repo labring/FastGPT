@@ -23,7 +23,10 @@ const credentials = { appKey: 'ding-app', appSecret: 'ding-secret' };
 describe('getDingtalkAppAccessToken', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetOrRefresh.mockImplementation(({ fetchToken }) => fetchToken());
+    mockGetOrRefresh.mockImplementation(async ({ fetchToken }) => {
+      const { accessToken } = await fetchToken();
+      return accessToken;
+    });
     mockAxiosPost.mockResolvedValue({ data: { accessToken: 'access-token', expireIn: 7200 } });
   });
 

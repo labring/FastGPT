@@ -18,11 +18,27 @@ vi.mock('../../../../../common/api/axios', () => ({
   }))
 }));
 
-vi.mock('../../../../../common/redis/cache', () => ({
-  getRedisCache: mockGetRedisCache,
-  setRedisCache: mockSetRedisCache,
-  delRedisCache: mockDelRedisCache
-}));
+vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
+
+  return {
+    ...actual,
+    DingtalkAccessTokenCache: class MockDingtalkAccessTokenCache
+      extends actual.DingtalkAccessTokenCache
+    {
+      constructor({ logger }: Parameters<typeof actual.DingtalkAccessTokenCache>[0]) {
+        super({
+          logger,
+          redis: {
+            get: mockGetRedisCache,
+            set: mockSetRedisCache,
+            delete: mockDelRedisCache
+          }
+        });
+      }
+    }
+  };
+});
 
 vi.mock('../../../../../common/logger', () => ({
   getLogger: () => ({
@@ -129,11 +145,11 @@ describe('useDingtalkDatasetRequest', () => {
         type: 'folder'
       })
     ]);
-    expect(mockSetRedisCache).toHaveBeenCalledWith(
-      expect.stringContaining('dingtalk:accessToken:ding-app:'),
-      'access-token',
-      6900
-    );
+    expect(mockSetRedisCache).toHaveBeenCalledWith({
+      key: expect.stringContaining('cache:dataset:dingtalk:accessToken:ding-app:'),
+      value: 'access-token',
+      ttlMs: 6_900_000
+    });
     expect(mockRequest).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
