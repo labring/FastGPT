@@ -10,6 +10,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRouter } from 'next/router';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
 
 const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 
@@ -66,14 +67,23 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest(
     async (teamId: string) => {
+      const targetTeam = myTeams.find((team) => team.teamId === teamId);
       await putSwitchTeam(teamId);
       resetChatCache();
-      return initUserInfo();
+      const isAccountCancellationPending = accountCancellationActiveStatuses.includes(
+        targetTeam?.accountCancellation
+          ?.status as (typeof accountCancellationActiveStatuses)[number]
+      );
+      if (isAccountCancellationPending) {
+        await router.replace('/account/cancel');
+      } else if (router.pathname === '/account/cancel') {
+        await router.replace('/account/info');
+      } else {
+        await router.reload();
+      }
+      return isAccountCancellationPending;
     },
     {
-      onSuccess: () => {
-        router.reload();
-      },
       errorToast: t('common:user.team.Switch Team Failed')
     }
   );

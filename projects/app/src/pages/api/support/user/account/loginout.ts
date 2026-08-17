@@ -5,7 +5,7 @@ import { delUserAllSession } from '@fastgpt/service/support/user/session';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { userId } = await authCert({ req, authToken: true });
+    const { userId } = await authCert({ req, authToken: true, allowAccountCancellation: true });
     await delUserAllSession(userId);
     clearCookie(res);
   } catch (error) {}

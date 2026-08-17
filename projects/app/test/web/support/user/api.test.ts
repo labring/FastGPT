@@ -42,13 +42,6 @@ describe('user api', () => {
     });
   });
 
-  it('should fast login', async () => {
-    const params = {
-      token: 'token123'
-    };
-    await api.postFastLogin(params);
-  });
-
   it('should register user', async () => {
     const data = {
       username: 'test@test.com',
@@ -72,18 +65,6 @@ describe('user api', () => {
       password: 'newpassword'
     };
     await api.postFindPassword(data);
-  });
-
-  it('should update password by old password', async () => {
-    const data = {
-      oldPsw: 'oldpassword',
-      newPsw: 'newpassword'
-    };
-    await api.updatePasswordByOld(data);
-  });
-
-  it('should reset password', async () => {
-    await api.resetPassword('newpassword');
   });
 
   it('should check password expired', async () => {

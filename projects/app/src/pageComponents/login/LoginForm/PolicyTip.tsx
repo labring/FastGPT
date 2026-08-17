@@ -1,11 +1,11 @@
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Link } from '@chakra-ui/react';
+import { Box, Link, type BoxProps } from '@chakra-ui/react';
 import React, { useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'next-i18next';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
-const PolicyTip = () => {
+const PolicyTip = ({ textAlign }: { textAlign?: BoxProps['textAlign'] }) => {
   const { feConfigs } = useSystemStore();
   const { i18n } = useTranslation();
   const tipRef = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ const PolicyTip = () => {
           ref={tipRef}
           display={'block'}
           position={'relative'}
-          textAlign={isMultiline ? 'center' : 'left'}
+          textAlign={textAlign ?? (isMultiline ? 'center' : 'left')}
           mt={6}
           fontSize={'mini'}
           lineHeight={'16px'}

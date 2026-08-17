@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as loginApi from '@/pages/api/support/user/account/loginByPassword';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -14,6 +14,8 @@ import type { LoginByPasswordBodyType } from '@fastgpt/global/openapi/support/us
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { Call } from '@test/utils/request';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
+import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/cancellation/schema';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 
 const saveLoginCode = (username: string, code = '123456') =>
   MongoTmpData.updateOne(
@@ -175,6 +177,54 @@ describe('loginByPassword API', () => {
     expect(res.error).toBe('Invalid account!');
   });
 
+  it('should allow a pending cancellation user to recover a login session', async () => {
+    await MongoUser.findByIdAndUpdate(testUser._id, { $unset: { lastLoginTmbId: 1 } });
+    await MongoAccountCancellation.create({
+      userId: testUser._id,
+      status: AccountCancellationStatus.pending,
+      requestedAt: new Date()
+    });
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456',
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.user.team.tmbId).toBe(String(testTmb._id));
+    expect(res.data.token).toEqual(expect.any(String));
+  });
+
+  it('should reject a finalizing user before profile updates and session creation', async () => {
+    await MongoAccountCancellation.create({
+      userId: testUser._id,
+      status: AccountCancellationStatus.finalizing,
+      requestedAt: new Date()
+    });
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456',
+        language: 'en'
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toEqual(
+      expect.objectContaining({ message: UserErrEnum.accountCancellationPending })
+    );
+    await expect(MongoUser.findById(testUser._id).lean()).resolves.not.toMatchObject({
+      language: 'en'
+    });
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+
   it('should reject login when password is incorrect', async () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
@@ -288,6 +338,145 @@ describe('loginByPassword API', () => {
     expect(res.code).toBe(200);
     expect(res.data.token).toBeDefined();
     expect(typeof res.data.token).toBe('string');
+  });
+
+  // ===== Security: NoSQL injection prevention (GHSA-jxvr-h2vx-p73r) =====
+
+  describe('SSO password policy', () => {
+    const originalFeConfigs = global.feConfigs;
+
+    const enableSsoPasswordPolicy = () => {
+      global.feConfigs = {
+        ...global.feConfigs,
+        sso: {
+          url: 'https://sso.example.com',
+          disablePasswordForSsoUsers: true
+        }
+      };
+    };
+
+    afterEach(() => {
+      global.feConfigs = originalFeConfigs;
+    });
+
+    // disablePasswordForSsoUsers 开启后，受限 SSO 账号即便持有历史密码，
+    // 也不得通过密码登录 API 登录成功；前端隐藏入口不足以兜底，必须在服务端拒绝。
+    it('should reject password login for a restricted SSO user even with valid credentials', async () => {
+      enableSsoPasswordPolicy();
+
+      const ssoUser = await MongoUser.create({
+        username: 'tenant-user',
+        password: 'testpassword',
+        status: UserStatusEnum.active
+      });
+
+      await saveLoginCode('tenant-user');
+
+      const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: 'tenant-user',
+            password: 'testpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        }
+      );
+
+      expect(res.code).toBe(500);
+      // guard 抛出的 UserError 经中间件后以 message 形式暴露
+      expect(res.error).toEqual(
+        expect.objectContaining({ message: UserErrEnum.ssoPasswordUnavailable })
+      );
+      // 不应签发会话
+      expect(setCookie).not.toHaveBeenCalled();
+
+      await MongoUser.findByIdAndDelete(ssoUser._id);
+    });
+
+    // 策略开启时,SSO 策略检查必须发生在密码比对之前:即使密码错误,
+    // 返回的错误也应与"密码正确但被禁用"完全一致,避免侧信道泄露密码正确性。
+    it('should return the same error for a restricted SSO user with wrong password (no side channel)', async () => {
+      enableSsoPasswordPolicy();
+
+      const ssoUser = await MongoUser.create({
+        username: 'tenant-user',
+        password: 'testpassword',
+        status: UserStatusEnum.active
+      });
+
+      await saveLoginCode('tenant-user');
+
+      const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: 'tenant-user',
+            password: 'wrongpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        }
+      );
+
+      expect(res.code).toBe(500);
+      expect(res.error).toEqual(
+        expect.objectContaining({ message: UserErrEnum.ssoPasswordUnavailable })
+      );
+      expect(setCookie).not.toHaveBeenCalled();
+
+      await MongoUser.findByIdAndDelete(ssoUser._id);
+    });
+
+    it('should require verification material before revealing the SSO password policy', async () => {
+      enableSsoPasswordPolicy();
+
+      const ssoUser = await MongoUser.create({
+        username: 'tenant-user',
+        password: 'testpassword',
+        status: UserStatusEnum.active
+      });
+
+      const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: 'tenant-user',
+            password: 'testpassword',
+            code: 'invalid-code',
+            language: 'zh-CN'
+          }
+        }
+      );
+
+      expect(res.code).toBe(500);
+      expect(res.error).toEqual(
+        expect.objectContaining({ message: UserErrEnum.invalidVerificationCode })
+      );
+      expect(setCookie).not.toHaveBeenCalled();
+
+      await MongoUser.findByIdAndDelete(ssoUser._id);
+    });
+
+    it('should still allow a non-SSO user to login when the policy is enabled', async () => {
+      enableSsoPasswordPolicy();
+
+      const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: 'testuser',
+            password: 'testpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        }
+      );
+
+      expect(res.code).toBe(200);
+      expect(res.data.token).toBeDefined();
+    });
   });
 
   // ===== Security: NoSQL injection prevention (GHSA-jxvr-h2vx-p73r) =====

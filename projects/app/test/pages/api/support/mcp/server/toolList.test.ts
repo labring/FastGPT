@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   callMcpServerTool,
   pluginNodes2InputSchema,
@@ -17,6 +17,8 @@ import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { failChatRound, finalizeChatRound } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
+import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -59,6 +61,10 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/support/user/account/cancellation/guard', () => ({
+  assertCancellation: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: vi.fn()
 }));
@@ -75,6 +81,11 @@ vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
 vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
   preChatRound: vi.fn()
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(assertCancellation).mockResolvedValue(undefined);
+});
 
 describe('toolList', () => {
   describe('pluginNodes2InputSchema', () => {
@@ -178,6 +189,83 @@ describe('toolList', () => {
 });
 
 describe('callMcpServerTool', () => {
+  it('rejects an MCP key whose member or team is no longer valid', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({
+        teamId: 'team-id',
+        tmbId: 'tmb-id',
+        apps: []
+      })
+    } as any);
+    vi.mocked(assertCancellation).mockRejectedValue(
+      new Error('MCP team member is no longer active')
+    );
+
+    await expect(
+      callMcpServerTool({ key: 'mcp-key', toolName: 'missing-tool', inputs: {} })
+    ).rejects.toThrow('MCP team member is no longer active');
+    expect(assertCancellation).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      tmbId: 'tmb-id'
+    });
+  });
+
+  it('checks account usability with the resolved MCP auth context', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({
+        teamId: 'team-id',
+        tmbId: 'tmb-id',
+        apps: []
+      })
+    } as any);
+
+    await expect(
+      callMcpServerTool({ key: 'mcp-key', toolName: 'missing-tool', inputs: {} })
+    ).rejects.toMatchObject({ message: expect.any(String) });
+    expect(assertCancellation).toHaveBeenCalledWith({
+      teamId: 'team-id',
+      tmbId: 'tmb-id'
+    });
+  });
+
+  it.each([AccountCancellationStatus.pending, AccountCancellationStatus.finalizing])(
+    'propagates %s account cancellation errors from usability checks',
+    async (status) => {
+      vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+        lean: () => ({ teamId: 'team-id', tmbId: 'tmb-id', apps: [] })
+      } as any);
+      const error = new Error(`account cancellation ${status}`);
+      vi.mocked(assertCancellation).mockRejectedValue(error);
+
+      await expect(
+        callMcpServerTool({ key: 'mcp-key', toolName: 'missing-tool', inputs: {} })
+      ).rejects.toBe(error);
+    }
+  );
+
+  it('skips account usability checks when an MCP key has no team binding', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({ apps: [] })
+    } as any);
+
+    await expect(
+      callMcpServerTool({ key: 'mcp-key', toolName: 'missing-tool', inputs: {} })
+    ).rejects.toMatchObject({ message: expect.any(String) });
+    expect(assertCancellation).not.toHaveBeenCalled();
+  });
+
+  it('propagates cancellation check failures unchanged', async () => {
+    vi.mocked(MongoMcpKey.findOne).mockReturnValue({
+      lean: () => ({ teamId: 'team-id', tmbId: 'tmb-id', apps: [] })
+    } as any);
+    const error = new Error('auth context failed');
+    vi.mocked(assertCancellation).mockRejectedValue(error);
+
+    await expect(
+      callMcpServerTool({ key: 'mcp-key', toolName: 'missing-tool', inputs: {} })
+    ).rejects.toBe(error);
+  });
+
   it('returns workflowTool pluginOutput using the same value source as main', async () => {
     vi.mocked(MongoMcpKey.findOne).mockReturnValue({
       lean: () => ({

@@ -147,14 +147,6 @@ export const OauthLoginBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
 });
 export type OauthLoginBodyType = z.infer<typeof OauthLoginBodySchema>;
 
-// ===== Fast Login =====
-export const FastLoginBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
-  token: ExternalAuthStringSchema.meta({ description: 'Token' }),
-  code: ExternalAuthStringSchema.meta({ description: '外部快速登录配置键' }),
-  language: LanguageSchema.optional().meta({ description: '语言' })
-});
-export type FastLoginBodyType = z.infer<typeof FastLoginBodySchema>;
-
 // ===== WeChat Login Result =====
 export const WxLoginBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
   code: ShortAuthStringSchema.meta({ description: '微信登录 Code' }),

@@ -7,7 +7,8 @@ import type {
   PreLoginResponseType,
   LoginByPasswordBodyType,
   OauthLoginBodyType,
-  FastLoginBodyType,
+  SsoGetAuthorizationURLBodyType,
+  WecomGetRedirectURLBodyType,
   WxLoginBodyType,
   GetWXLoginQRResponseType,
   LoginSuccessResponseType,
@@ -17,10 +18,7 @@ import type {
   SendAuthCodeBodyType,
   SendAuthCodeResponseType
 } from '@fastgpt/global/openapi/support/user/inform/api';
-import type {
-  UpdatePasswordByCodeBodyType,
-  UpdatePasswordByOldBodyType
-} from '@fastgpt/global/openapi/support/user/account/password/api';
+import type { UpdatePasswordByCodeBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 
@@ -42,8 +40,10 @@ export const getTokenLogin = () =>
   GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth', params);
-export const postFastLogin = (params: FastLoginBodyType) =>
-  POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
+export const getSsoAuthURL = (params: SsoGetAuthorizationURLBodyType) =>
+  POST<string>('/proApi/support/user/account/login/getAuthURL', params);
+export const getWecomRedirectURL = (params: WecomGetRedirectURLBodyType) =>
+  POST<string>('/proApi/support/user/account/login/wecom/getRedirectUrl', params);
 export const postLogin = ({ password, ...props }: LoginByPasswordBodyType) =>
   POST<LoginSuccessResponseType>('/support/user/account/loginByPassword', {
     ...props,
@@ -91,15 +91,6 @@ export const postFindPassword = ({
     code,
     ...props,
     password: hashStr(password)
-  });
-export const updatePasswordByOld = ({ oldPsw, newPsw }: UpdatePasswordByOldBodyType) =>
-  POST('/support/user/account/updatePasswordByOld', {
-    oldPsw: hashStr(oldPsw),
-    newPsw: hashStr(newPsw)
-  });
-export const resetPassword = (newPsw: string) =>
-  POST('/support/user/account/resetExpiredPsw', {
-    newPsw: hashStr(newPsw)
   });
 // Check the whether password has expired
 export const getCheckPswExpired = () => GET<boolean>('/support/user/account/checkPswExpired');

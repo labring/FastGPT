@@ -14,10 +14,18 @@ description: FastGPT 团队模式说明文档
 <table className="table-hover table-striped-columns" style={{ textAlign: 'center' }}>
   <thead>
     <tr>
-      <th rowSpan="2" className="text-center">团队模式</th>
-      <th colSpan="2" className="text-center">短信/邮箱 注册</th>
-      <th colSpan="2" className="text-center">管理员直接添加</th>
-      <th colSpan="2" className="text-center">SSO 注册</th>
+      <th rowSpan="2" className="text-center">
+        团队模式
+      </th>
+      <th colSpan="2" className="text-center">
+        短信/邮箱注册
+      </th>
+      <th colSpan="2" className="text-center">
+        管理员直接添加
+      </th>
+      <th colSpan="2" className="text-center">
+        SSO 注册
+      </th>
     </tr>
     <tr>
       <th className="text-center">是否创建默认团队</th>
@@ -28,7 +36,7 @@ description: FastGPT 团队模式说明文档
       <th className="text-center">是否加入 Root 团队</th>
     </tr>
   </thead>
-  <tbody >
+  <tbody>
     <tr>
       <td className="text-center">单团队模式</td>
       <td className="text-center">❌</td>
@@ -73,9 +81,18 @@ description: FastGPT 团队模式说明文档
 
 具体的同步方式和规则请参考 [SSO & 外部成员同步](./sso.mdx)。
 
-
 ## 配置
 
-在 `fastgpt-pro` 的`系统配置-成员配置`中，可以配置团队模式。
+团队模式通过 `fastgpt-pro`（admin 服务）的**必填**环境变量 `TEAM_MODE` 配置，取值为 `multi`（多团队）、`single`（单团队）、`sync`（成员同步）。管理后台 `系统配置-成员配置` 中的团队模式为只读展示，请到环境变量中修改。
+
+```bash
+# fastgpt-pro（admin 服务）环境变量，必填，缺失时 admin 服务无法启动
+TEAM_MODE=multi
+```
+
+> **升级提醒**：旧版本通过管理后台把团队模式保存在数据库中的存量部署，升级前必须按当前部署形态显式设置 `TEAM_MODE`（如 `TEAM_MODE=single`、`TEAM_MODE=sync`）。
+>
+> - `TEAM_MODE` 为权威配置，服务启动时会覆盖数据库中保存的团队模式；
+> - 未设置或为空时，admin 服务会直接启动失败（不再有隐式默认值）。
 
 ![](/imgs/teammode.png)

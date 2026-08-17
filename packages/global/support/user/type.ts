@@ -17,7 +17,7 @@ export type UserMetaType = {
 export type UserModelSchema = {
   _id: string;
   username: string;
-  password: string;
+  password?: string;
   openaiKey: string;
   createTime: number;
   timezone: string;
@@ -40,7 +40,9 @@ export const UserSchema = z.object({
   team: TeamTmbItemSchema,
   permission: z.instanceof(TeamPermission),
   contact: z.string().optional(),
-  tags: z.array(UserTagsSchema).optional()
+  tags: z.array(UserTagsSchema).optional(),
+  hasPassword: z.boolean(),
+  passwordAvailable: z.boolean().optional()
 });
 export type UserType = z.infer<typeof UserSchema>;
 

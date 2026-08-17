@@ -4,8 +4,10 @@ import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { authUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
+import { assertCancellation } from '../../../support/user/account/cancellation/guard';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { serviceEnv } from '../../../env';
 
@@ -30,7 +32,8 @@ export async function parseHeaderCert({
   req,
   authToken = false,
   authRoot = false,
-  authApiKey = false
+  authApiKey = false,
+  allowAccountCancellation = false
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
@@ -100,6 +103,7 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
+    isCancelling,
     legacyAppId,
     parsedAppId,
     apiKeyAuthProxy
@@ -132,7 +136,8 @@ export async function parseHeaderCert({
         openApiKey: '',
         authType: AuthUserTypeEnum.token,
         isRoot: res.isRoot,
-        sessionId: res.sessionId
+        sessionId: res.sessionId,
+        isCancelling: res.isCancelling
       };
     }
     if (authRoot && rootkey) {
@@ -152,8 +157,21 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
 
+  if (
+    !authRoot &&
+    authType === AuthUserTypeEnum.token &&
+    !allowAccountCancellation &&
+    isCancelling
+  ) {
+    return Promise.reject(UserErrEnum.accountCancellationPending);
+  }
+
   if (!authRoot && (!teamId || !tmbId)) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
+
+  if (authType === AuthUserTypeEnum.apikey) {
+    await assertCancellation({ teamId: String(teamId), tmbId: String(tmbId) });
   }
 
   return {

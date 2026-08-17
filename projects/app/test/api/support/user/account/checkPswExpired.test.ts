@@ -149,6 +149,28 @@ describe('checkPswExpired API', () => {
     expect(res.data).toBe(true);
   });
 
+  it('should return false for root when password expiry is configured', async () => {
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
+
+    await MongoUser.findByIdAndUpdate(testUser._id, {
+      $unset: { passwordUpdateTime: '' }
+    });
+
+    const res = await Call(checkPswExpiredApi.default, {
+      auth: {
+        userId: String(testUser._id),
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: true,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toBe(false);
+  });
+
   it('should return false when user is not found', async () => {
     const nonExistentId = '000000000000000000000001';
     const checkPswExpiredApi = await loadCheckPswExpiredApi();
@@ -156,6 +178,33 @@ describe('checkPswExpired API', () => {
     const res = await Call(checkPswExpiredApi.default, {
       auth: {
         userId: nonExistentId,
+        teamId: String(testTeam._id),
+        tmbId: String(testTmb._id),
+        isRoot: false,
+        sessionId: 'session123'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toBe(false);
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['empty', ''],
+    ['null', null]
+  ])('should return false when password is %s', async (_label, password) => {
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
+    const update =
+      password === undefined
+        ? { $set: { passwordUpdateTime: new Date(0) }, $unset: { password: 1 } }
+        : { $set: { password, passwordUpdateTime: new Date(0) } };
+    await MongoUser.collection.updateOne({ _id: testUser._id }, update as any);
+
+    const res = await Call(checkPswExpiredApi.default, {
+      auth: {
+        userId: String(testUser._id),
         teamId: String(testTeam._id),
         tmbId: String(testTmb._id),
         isRoot: false,

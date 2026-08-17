@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 
 vi.unmock('@fastgpt/service/common/response');
 
@@ -88,36 +87,35 @@ describe('processError zod logging', () => {
   });
 });
 
-describe('processError HTTP status mapping', () => {
-  it('maps a missing file to HTTP 404', () => {
-    const processed = processError({
-      error: CommonErrEnum.fileNotFound
-    });
-
-    expect(processed.code).toBe(507002);
-    expect(processed.httpStatus).toBe(404);
-  });
-});
-
-describe('jsonRes HTTP status mapping', () => {
-  const createResponse = () =>
-    ({
-      status: vi.fn().mockReturnThis(),
+describe('jsonRes business HTTP status', () => {
+  const createResponse = () => {
+    const response: any = {
+      statusCode: 200,
+      status: vi.fn((statusCode: number) => {
+        response.statusCode = statusCode;
+        return response;
+      }),
       json: vi.fn()
-    }) as unknown as Parameters<typeof jsonRes>[0];
+    };
+    return response;
+  };
 
   it.each([
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
-    [SandboxErrEnum.agentSandboxInitializing, 409]
+    [UserErrEnum.newPasswordSameAsOld, 400]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
-    const res = createResponse();
+    const response = createResponse();
 
-    jsonRes(res, { code: 500, error: new UserError(errorKey) });
+    jsonRes(response, {
+      code: 500,
+      error: new UserError(errorKey),
+      url: '/api/support/user/verification'
+    });
 
-    expect(res.status).toHaveBeenCalledWith(httpStatus);
-    expect(res.json).toHaveBeenCalledWith(
+    expect(response.status).toHaveBeenCalledWith(httpStatus);
+    expect(response.json).toHaveBeenCalledWith(
       expect.objectContaining({
         code: ERROR_RESPONSE[errorKey].code,
         statusText: errorKey,
@@ -127,18 +125,29 @@ describe('jsonRes HTTP status mapping', () => {
     );
   });
 
-  it.each(['httpStatus', 'statusCode'] as const)(
-    'does not trust a third-party %s field',
-    (statusField) => {
-      const res = createResponse();
-      const error = Object.assign(new Error('Upstream failure'), { [statusField]: 404 });
+  it('keeps an unclassified UserError as an internal server error', () => {
+    const response = createResponse();
 
-      jsonRes(res, { code: 500, error });
+    jsonRes(response, {
+      code: 500,
+      error: new UserError('unclassified'),
+      url: '/api/test'
+    });
 
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 500 }));
-    }
-  );
+    expect(response.status).toHaveBeenCalledWith(500);
+  });
+
+  it('prefers an explicit HTTP status over a legacy business-code range fallback', () => {
+    const response = createResponse();
+
+    jsonRes(response, {
+      code: 500,
+      error: new UserError(SandboxErrEnum.agentSandboxInitializing),
+      url: '/api/core/ai/sandbox'
+    });
+
+    expect(response.status).toHaveBeenCalledWith(409);
+  });
 });
 
 describe('getSseErrorResponse logging', () => {

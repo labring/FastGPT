@@ -9,6 +9,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
 import { TeamEnterpriseAuthStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
+import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { canManageEnterpriseAuth } from '@/pageComponents/account/team/EnterpriseAuth/utils';
 
 const certificationHref = '/account/info#certification';
@@ -56,6 +57,10 @@ const EnterpriseAuthNoticeModal = () => {
   const [isClosed, setIsClosed] = useState(false);
 
   const teamId = userInfo?.team?.teamId;
+  const isAccountCancellationPending = accountCancellationActiveStatuses.includes(
+    userInfo?.team?.accountCancellation
+      ?.status as (typeof accountCancellationActiveStatuses)[number]
+  );
   const canCheckEnterpriseAuthNotice = canManageEnterpriseAuth({
     isTeamOwner: userInfo?.team?.permission?.isOwner,
     hasTeamManagePer: userInfo?.team?.permission?.hasManagePer
@@ -65,6 +70,7 @@ const EnterpriseAuthNoticeModal = () => {
     !!feConfigs?.show_enterprise_auth &&
     !!teamId &&
     canCheckEnterpriseAuthNotice &&
+    !isAccountCancellationPending &&
     !enterpriseAuthNoticeReadTeamIds?.includes(teamId);
   const { data: enterpriseAuthStatus } = useQuery(
     ['getEnterpriseAuthNoticeStatus', teamId],

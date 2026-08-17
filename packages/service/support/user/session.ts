@@ -3,6 +3,10 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
 import { SessionCache, type SessionData } from '@fastgpt/dal/redis/caches';
+import { MongoAccountCancellation } from './account/cancellation/schema';
+import { accountCancellationActiveStatusFilter } from './account/cancellation/read';
+import { MongoTeam } from './team/teamSchema';
+import { Types } from '../../common/mongo';
 
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
 type SessionType = SessionData;
@@ -17,6 +21,11 @@ export const delUserAllSession = async (userId: string, whiteList?: (string | un
     .map(({ sessionId }) => sessionId);
 
   await sessionCache.deleteMany(sessionIds);
+};
+
+export const getUserSessionCount = async (userId: string) => {
+  const sessions = await sessionCache.listByUser(String(userId));
+  return sessions.length;
 };
 
 // 会根据创建时间，删除超出客户端登录限制的 session
@@ -47,15 +56,36 @@ export const createUserSession = async ({
   teamId,
   tmbId,
   isRoot,
+  isCancelling,
   ip
 }: {
   userId: string;
   teamId: string;
   tmbId: string;
   isRoot?: boolean;
+  isCancelling?: boolean;
   ip?: string | null;
 }) => {
   const key = `${String(userId)}:${getNanoid(32)}`;
+
+  const cancelling =
+    isCancelling ??
+    (await (async () => {
+      if (isRoot) return false;
+      if (!Types.ObjectId.isValid(teamId)) return false;
+      const team = await MongoTeam.findById(teamId, { ownerId: 1 }).lean();
+      const userIds = Array.from(
+        new Set([String(userId), team?.ownerId && String(team.ownerId)].filter(Boolean))
+      );
+      if (userIds.length === 0) return false;
+      const record = await MongoAccountCancellation.findOne({
+        userId: { $in: userIds },
+        status: accountCancellationActiveStatusFilter
+      })
+        .select({ _id: 1 })
+        .lean();
+      return !!record;
+    })());
 
   await sessionCache.set({
     sessionId: key,
@@ -64,6 +94,7 @@ export const createUserSession = async ({
       teamId: String(teamId),
       tmbId: String(tmbId),
       isRoot: isRoot ?? false,
+      isCancelling: cancelling,
       createdAt: new Date().getTime(),
       ip
     }
@@ -78,4 +109,15 @@ export const authUserSession = async (key: string): Promise<SessionType> => {
   const data = await sessionCache.get(key);
   if (!data) return Promise.reject(ERROR_ENUM.unAuthorization);
   return data;
+};
+
+/** 刷新当前 Session 的注销状态快照，用于注销状态发生变化后立即恢复或阻断访问。 */
+export const updateUserSessionCancellation = async ({
+  sessionId,
+  isCancelling
+}: {
+  sessionId: string;
+  isCancelling: boolean;
+}) => {
+  await sessionCache.updateCancellation({ sessionId, isCancelling });
 };

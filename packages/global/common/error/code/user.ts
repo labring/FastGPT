@@ -11,7 +11,12 @@ export enum UserErrEnum {
   sendVerificationCodeTooFrequently = 'sendVerificationCodeTooFrequently',
   verifyCodeTooFrequently = 'verifyCodeTooFrequently',
   invalidAccount = 'invalidAccount',
-  registrationMethodNotSupported = 'registrationMethodNotSupported'
+  accountCancellationPending = 'accountCancellationPending',
+  registrationMethodNotSupported = 'registrationMethodNotSupported',
+  passwordChangeAuthorizationInvalid = 'passwordChangeAuthorizationInvalid',
+  newPasswordSameAsOld = 'newPasswordSameAsOld',
+  ssoPasswordUnavailable = 'ssoPasswordUnavailable',
+  verificationChannelUnavailable = 'verificationChannelUnavailable'
 }
 const errList = [
   {
@@ -50,8 +55,33 @@ const errList = [
     message: i18nT('common:code_error.invalid_account')
   },
   {
+    statusText: UserErrEnum.accountCancellationPending,
+    message: i18nT('common:code_error.account_cancellation_pending'),
+    httpStatus: 403
+  },
+  {
     statusText: UserErrEnum.registrationMethodNotSupported,
     message: i18nT('common:error.registration_method_not_supported'),
+    httpStatus: 403
+  },
+  {
+    statusText: UserErrEnum.passwordChangeAuthorizationInvalid,
+    message: 'Password change authorization is invalid',
+    httpStatus: 403
+  },
+  {
+    statusText: UserErrEnum.newPasswordSameAsOld,
+    message: i18nT('common:user.Password has no change'),
+    httpStatus: 400
+  },
+  {
+    statusText: UserErrEnum.ssoPasswordUnavailable,
+    message: i18nT('common:error.sso_password_unavailable'),
+    httpStatus: 403
+  },
+  {
+    statusText: UserErrEnum.verificationChannelUnavailable,
+    message: i18nT('common:error.verification_channel_unavailable'),
     httpStatus: 403
   }
 ];
