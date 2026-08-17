@@ -55,7 +55,8 @@ const buildUser = (language: UserType['language']): UserType =>
       permission: new TeamPermission({ isOwner: true })
     },
     permission: new TeamPermission({ isOwner: true }),
-    tags: []
+    tags: [],
+    hasPassword: true
   }) as UserType;
 
 describe('useUserStore', () => {

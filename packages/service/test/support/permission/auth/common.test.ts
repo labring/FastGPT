@@ -1,10 +1,68 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NodeHttpResponse } from '@fastgpt/service/types/http';
 import { serviceEnv } from '@fastgpt/service/env';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+
+const mocks = vi.hoisted(() => ({
+  authUserSession: vi.fn()
+}));
 
 const { clearCookie, setCookie } = await vi.importActual<
   typeof import('@fastgpt/service/support/permission/auth/common')
 >('@fastgpt/service/support/permission/auth/common');
+
+describe('token auth cancellation access', () => {
+  const session = {
+    userId: 'user-1',
+    teamId: 'team-1',
+    tmbId: 'tmb-1',
+    isRoot: false,
+    isCancelling: true,
+    createdAt: 1000
+  };
+
+  const loadParseHeaderCert = async () => {
+    vi.resetModules();
+    vi.doMock('@fastgpt/service/support/user/session', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('@fastgpt/service/support/user/session')>()),
+      authUserSession: mocks.authUserSession
+    }));
+    const authModule = await vi.importActual<
+      typeof import('@fastgpt/service/support/permission/auth/common')
+    >('@fastgpt/service/support/permission/auth/common');
+    return authModule.parseHeaderCert;
+  };
+
+  it('rejects a cancelling Session with a business error by default', async () => {
+    mocks.authUserSession.mockResolvedValue(session);
+    const parseHeaderCert = await loadParseHeaderCert();
+
+    await expect(
+      parseHeaderCert({
+        req: { headers: { token: 'user-1:token-1' } } as any,
+        authToken: true
+      })
+    ).rejects.toBe(UserErrEnum.accountCancellationPending);
+  });
+
+  it('allows a cancelling Session only when the caller opts in', async () => {
+    mocks.authUserSession.mockResolvedValue(session);
+    const parseHeaderCert = await loadParseHeaderCert();
+
+    await expect(
+      parseHeaderCert({
+        req: { headers: { token: 'user-1:token-1' } } as any,
+        authToken: true,
+        allowAccountCancellation: true
+      })
+    ).resolves.toMatchObject({
+      userId: 'user-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      sessionId: 'user-1:token-1'
+    });
+  });
+});
 
 describe('auth cookie', () => {
   const originalAuthCookieSecure = serviceEnv.AUTH_COOKIE_SECURE;

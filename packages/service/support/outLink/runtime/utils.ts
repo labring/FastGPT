@@ -46,6 +46,7 @@ import { MongoChat } from '../../../core/chat/chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from '../../../core/chat/source';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoChatItem } from '../../../core/chat/chatItemSchema';
+import { assertCancellation } from '../../user/account/cancellation/guard';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
 
@@ -127,6 +128,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   onStreamChunk,
   streamId
 }: outLinkInvokeChatProps<T>) {
+  // 分享链接没有用户 Session，使用发布链接绑定的 tmb/team 校验账号可用性
+  await assertCancellation({
+    teamId: String(outLinkConfig.teamId),
+    tmbId: String(outLinkConfig.tmbId)
+  });
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: '',
