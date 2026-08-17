@@ -97,4 +97,21 @@ describe('delete team plugin handler', () => {
     });
     expect(mocks.setTeamPluginDeleted).toHaveBeenCalled();
   });
+
+  it('treats an Error response for a missing plugin as an idempotent delete', async () => {
+    mocks.pluginClient.deletePlugin.mockRejectedValueOnce(new Error('Plugin not found'));
+
+    const res = await Call(handler, {
+      body: {
+        pluginId: 'systemTool-weather'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(mocks.setTeamPluginDeleted).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      pluginId: 'weather'
+    });
+  });
 });

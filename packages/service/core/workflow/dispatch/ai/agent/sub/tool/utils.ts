@@ -1,4 +1,5 @@
 import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/core/app/tool/type';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   getToolNameCandidates,
   getToolIdentityKey,
@@ -73,17 +74,14 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
   systemKeyCost?: number;
 };
 
-/** 为隔离 source 生成独立且可读的模型工具 ID，避免同 pluginId 在 Agent runtime 中互相覆盖。 */
+/** 为隔离 source 生成稳定短 ID，避免特殊字符清洗或长度截断造成 runtime tool ID 碰撞。 */
 const getAgentRuntimeToolId = ({ pluginId, source }: { pluginId: string; source?: string }) => {
   const normalizedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
-  const sourcePrefix = (() => {
-    if (isTeamPluginSource(source)) return 'systemTool-team-';
-    if (isDebugToolSource(source)) return 'systemTool-debug-';
-  })();
-  if (!sourcePrefix) return normalizedPluginId;
+  const isSourceScoped = isTeamPluginSource(source) || isDebugToolSource(source);
+  if (!isSourceScoped || !source) return normalizedPluginId;
 
-  const rawPluginId = normalizedPluginId.replace(/^systemTool-/, '');
-  return `${sourcePrefix}${rawPluginId.slice(0, 64 - sourcePrefix.length)}`;
+  const rawPluginId = pluginId.replace(/^systemTool-/, '');
+  return hashStr(`${source}:${rawPluginId}`).slice(0, 16);
 };
 
 /**

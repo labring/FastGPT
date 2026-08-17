@@ -8,6 +8,7 @@ import {
   type TeamPluginEmptyResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/common';
 import { getTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -48,7 +49,7 @@ async function handler(req: ApiRequestProps<DeleteTeamToolBody>): Promise<Delete
       scope: 'allVersions'
     })
     .catch((error) => {
-      const errorText = typeof error === 'string' ? error : JSON.stringify(error);
+      const errorText = getErrText(error);
       if (!/not\s*found|404/i.test(errorText)) {
         return Promise.reject(error);
       }

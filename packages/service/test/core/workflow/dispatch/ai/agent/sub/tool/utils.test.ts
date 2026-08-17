@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -1262,8 +1263,9 @@ describe('getAgentRuntimeTools schema loading', () => {
       toolId: 'systemTool-gpjj5s',
       source: 'debug:tmbId:tmb-1'
     });
-    expect(tools[0].id).toBe('systemTool-debug-gpjj5s');
-    expect(tools[0].requestSchema.function.name).toBe('systemTool-debug-gpjj5s');
+    const expectedId = hashStr('debug:tmbId:tmb-1:gpjj5s').slice(0, 16);
+    expect(tools[0].id).toBe(expectedId);
+    expect(tools[0].requestSchema.function.name).toBe(`t${expectedId}`);
   });
 
   it('uses distinct runtime ids for system, team and debug copies of the same plugin', async () => {
@@ -1299,19 +1301,56 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools.map((tool) => tool.id)).toEqual([
       'weather',
-      'systemTool-team-weather',
-      'systemTool-debug-weather'
+      hashStr('teamId:team_1:weather').slice(0, 16),
+      hashStr('debug:tmbId:tmb-1:weather').slice(0, 16)
     ]);
     expect(tools.map((tool) => tool.requestSchema.function.name)).toEqual([
       'weather',
-      'systemTool-team-weather',
-      'systemTool-debug-weather'
+      `t${hashStr('teamId:team_1:weather').slice(0, 16)}`,
+      `t${hashStr('debug:tmbId:tmb-1:weather').slice(0, 16)}`
     ]);
     expect(tools.map((tool) => tool.toolConfig?.systemTool?.source)).toEqual([
       undefined,
       'teamId:team_1',
       'debug:tmbId:tmb-1'
     ]);
+  });
+
+  it('keeps runtime ids distinct after normalizing plugin ids', async () => {
+    getSystemToolDetailMock.mockImplementation(async ({ source }: { source: string }) => ({
+      id: 'systemTool-weather',
+      name: 'Weather',
+      avatar: 'weather.png',
+      intro: 'Weather',
+      toolDescription: 'Weather',
+      status: 'active',
+      source,
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      inputSchema: systemToolInputSchema
+    }));
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        { id: 'systemTool-foo.bar', source: 'teamId:team_1', config: {} },
+        { id: 'systemTool-foobar', source: 'teamId:team_1', config: {} }
+      ]
+    });
+
+    expect(tools.map((tool) => tool.id)).toEqual([
+      hashStr('teamId:team_1:foo.bar').slice(0, 16),
+      hashStr('teamId:team_1:foobar').slice(0, 16)
+    ]);
+    expect(new Set(tools.map((tool) => tool.id)).size).toBe(2);
   });
 
   it('does not rebuild system tool params from node inputs when input schema is missing', async () => {
