@@ -48,7 +48,16 @@ export default async function Layout({
     {
       icon: <Handshake className={iconClass} />,
       title: t('common:businessConsultation', lang),
-      url: `https://fastgpt.cn/${lang === 'en' ? 'en' : 'zh'}/contact?source=docs&utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation`
+      url: `https://fastgpt.cn/${lang === 'en' ? 'en' : 'zh'}/contact/embed?source=docs&utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation`,
+      dialog: {
+        url: `https://fastgpt.cn/${lang === 'en' ? 'en' : 'zh'}/contact/embed?source=docs&utm_source=docs&utm_medium=referral&utm_campaign=docs_navigation&utm_content=business_consultation`,
+        title: lang === 'en' ? 'Contact FastGPT' : '联系 FastGPT',
+        description:
+          lang === 'en'
+            ? "We'll get in touch with you within 1–3 business days."
+            : '我们将在 1～3 个工作日内与您取得联系',
+        closeLabel: lang === 'en' ? 'Close contact dialog' : '关闭咨询窗口'
+      }
     }
   ];
 
