@@ -15,6 +15,10 @@ const deletedPluginErrorList = new Set([
   'plugin.version_required'
 ]);
 
+/** 判断工具错误是否代表工具已被删除、卸载或当前来源不可用。 */
+export const isToolNotExistError = (error?: unknown) =>
+  typeof error === 'string' && deletedPluginErrorList.has(error);
+
 export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
     aiSettings: {
@@ -60,7 +64,7 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppFormEditFormT
 export const formatToolError = (error?: any) => {
   if (!error || typeof error !== 'string') return;
 
-  if (deletedPluginErrorList.has(error)) return i18nT('common:error.tool_not_exist');
+  if (isToolNotExistError(error)) return i18nT('common:error.tool_not_exist');
 
   const errorText = appErrList[error]?.message || pluginErrList[error]?.message;
 

@@ -1160,8 +1160,10 @@ NodeActionButtons.displayName = 'NodeActionButtons';
 const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
   ({ status, error }) => {
     const { t } = useTranslation();
+    const errorText =
+      error || (status === PluginStatusEnum.Offline ? 'common:error.tool_not_exist' : undefined);
 
-    if (error) {
+    if (errorText) {
       return (
         <Flex
           bg={'red.50'}
@@ -1173,20 +1175,18 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
           fontWeight={'medium'}
         >
           <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-          <Box color={'red.600'}>{t(error as any)}</Box>
+          <Box color={'red.600'}>{t(errorText as any)}</Box>
         </Flex>
       );
     }
     if (status !== undefined && status !== PluginStatusEnum.Normal) {
       const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
         [PluginStatusEnum.Hidden]: t('app:toolkit_status_hidden'),
-        [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
-        [PluginStatusEnum.Offline]: t('common:error.tool_not_exist')
+        [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline')
       };
       const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
         [PluginStatusEnum.Hidden]: t('app:tool_hidden_tips'),
-        [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips'),
-        [PluginStatusEnum.Offline]: t('app:tool_offset_tips')
+        [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips')
       };
       return (
         <MyTooltip label={statusTooltipMap[status]}>
