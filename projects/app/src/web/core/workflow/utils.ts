@@ -38,89 +38,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
-/* ====== node ======= */
-/**
- * 适配从数据库读取出的节点输入。
- * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
- */
-export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
-  const inputs = storeNode.inputs;
-
-  if (
-    storeNode.flowNodeType === FlowNodeTypeEnum.chatNode ||
-    storeNode.flowNodeType === FlowNodeTypeEnum.toolCall
-  ) {
-    return inputs.map((input) => {
-      if (
-        input.key !== NodeInputKeyEnum.fileUrlList ||
-        !input.renderTypeList.includes(FlowNodeInputTypeEnum.input)
-      ) {
-        return input;
-      }
-
-      // 文件链接实际值为字符串数组，旧版本的手动 input 类型需要迁移为 JSONEditor。
-      return {
-        ...input,
-        renderTypeList: input.renderTypeList.map((type) =>
-          type === FlowNodeInputTypeEnum.input ? FlowNodeInputTypeEnum.JSONEditor : type
-        ),
-        selectedType:
-          input.selectedType === FlowNodeInputTypeEnum.input
-            ? FlowNodeInputTypeEnum.JSONEditor
-            : input.selectedType
-      };
-    });
-  }
-
-  if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-    return inputs.map((input) => {
-      if (input.key !== NodeInputKeyEnum.ifElseList) return input;
-
-      return {
-        ...input,
-        value: normalizeIfElseList(input.value as IfElseListItemType[])
-      };
-    });
-  }
-
-  if (storeNode.flowNodeType === FlowNodeTypeEnum.agent) {
-    return inputs.map((input) => {
-      const isManualSelectionInput = [
-        NodeInputKeyEnum.skills,
-        NodeInputKeyEnum.selectedTools,
-        NodeInputKeyEnum.datasetSelectList
-      ].includes(input.key as NodeInputKeyEnum);
-      if (!isManualSelectionInput) return input;
-
-      // Agent 资源已取消变量引用；旧引用值无法转为资源对象，加载时清空并切回手动选择。
-      return {
-        ...input,
-        selectedType: input.renderTypeList[0],
-        value: nodeInputIsReference(input) ? [] : input.value
-      };
-    });
-  }
-
-  if (storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
-    return inputs;
-  }
-
-  return inputs.map((input) => {
-    if (input.key !== NodeInputKeyEnum.userChatInput) return input;
-
-    const isReferenceValue = isValidReferenceValueFormat(input.value);
-
-    return {
-      ...input,
-      key: NodeInputKeyEnum.datasetSearchInput,
-      label: i18nT('workflow:search_query'),
-      value: isReferenceValue ? [input.value] : input.value,
-      valueType: WorkflowIOValueTypeEnum.arrayString,
-      selectedType: isReferenceValue ? FlowNodeInputTypeEnum.reference : FlowNodeInputTypeEnum.input
-    };
-  });
-};
-
 /**
  * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。
  * `formatName` 在翻译完成后执行，用于基于实例名称追加重名序号。
@@ -186,7 +103,8 @@ type StoreNode2FlowNodeProps = {
  * 将持久化节点恢复为画布节点，并在加载时实体化历史 i18n 文本。
  * 名称或描述命中翻译 key 时使用当前语言文本，后续保存会写回实体文本。
  *
- * [TODO] 当前仍包含输入字段兼容；统一迁移器接入后只保留模板合并、i18n 实体化和 React Flow 节点构造。
+ * 输入数据已在统一迁移器中收敛；这里只负责用当前模板补齐展示元数据，
+ * 并保留持久化输入的 value、selectedType 等用户配置。
  */
 export const storeNode2FlowNode = ({
   item: storeNode,

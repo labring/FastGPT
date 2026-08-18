@@ -31,7 +31,6 @@ import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/i
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
   canInputBeAgentGenerated,
@@ -58,7 +57,6 @@ export const appWorkflow2AgentForm = ({
   chatConfig: AppChatConfigType;
 }) => {
   const defaultAppForm = getDefaultAppForm();
-  const normalizedWorkflow = migrateSystemConfigToChatConfig({ nodes, edges: [], chatConfig });
   defaultAppForm.chatConfig = getAppChatConfig({
     chatConfig,
     isPublicFetch: true
