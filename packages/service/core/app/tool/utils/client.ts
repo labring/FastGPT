@@ -55,11 +55,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type';
 import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
-import {
-  assertTeamPluginSourceAccess,
-  getRawPluginIdFromSystemToolId,
-  normalizeTeamPluginStatus
-} from '../../../plugin/teamPluginPolicy';
+import type { WorkflowMigrationOptions } from '@fastgpt/global/core/workflow/migration';
 
 type AppToolType = WorkflowTemplateType & {
   status?: PluginStatusType;
@@ -559,3 +555,22 @@ export async function getClientToolPreviewNode({
 
   return omitClientPreviewSchemaFields(data);
 }
+
+/**
+ * 为 workflow 历史 Agent 工具补齐当前输入定义。
+ * @see {migrateWorkflowToCurrent} - Workflow migration entrypoint.
+ */
+export const getWorkflowMigrationOptions = (): WorkflowMigrationOptions => ({
+  resolveToolDefinition: async ({ id, version, source }) => {
+    try {
+      const preview = await getClientToolPreviewNode({
+        appId: id,
+        versionId: version,
+        source
+      });
+      return { inputs: preview.inputs };
+    } catch {
+      return undefined;
+    }
+  }
+});
