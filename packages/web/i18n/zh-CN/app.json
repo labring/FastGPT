@@ -461,7 +461,6 @@
   "toolkit_status": "状态",
   "toolkit_status_normal": "正常",
   "toolkit_status_hidden": "已隐藏",
-  "toolkit_status_offline": "已卸载",
   "toolkit_status_soon_offline": "即将下线",
   "toolkit_status_normal_description": "正常展示，支持添加；已有应用正常使用",
   "toolkit_status_hidden_description": "不再展示，也无法添加；已有应用不受影响",

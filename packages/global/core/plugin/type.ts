@@ -40,7 +40,7 @@ export const PluginStatusMap = {
     tagColor: 'yellow' as const
   },
   [PluginStatusEnum.Offline]: {
-    label: i18nT('app:toolkit_status_offline'),
+    label: i18nT('common:error.tool_not_exist'),
     tooltip: i18nT('app:tool_offset_tips'),
     tagColor: 'red' as const
   }

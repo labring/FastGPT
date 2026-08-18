@@ -139,7 +139,7 @@ const ToolCard = ({
       Record<PluginStatusType, { label: string; color: string; icon?: string } | null>
     > = {
       [PluginStatusEnum.Offline]: {
-        label: t('app:toolkit_status_offline'),
+        label: t('common:error.tool_not_exist'),
         color: 'red.600'
       },
       [PluginStatusEnum.SoonOffline]: {

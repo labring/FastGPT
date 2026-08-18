@@ -461,7 +461,6 @@
   "toolkit_status": "Status",
   "toolkit_status_normal": "Normal",
   "toolkit_status_hidden": "Hidden",
-  "toolkit_status_offline": "Uninstalled",
   "toolkit_status_soon_offline": "Soon Offline",
   "toolkit_status_normal_description": "Visible and available to add; existing applications continue working normally.",
   "toolkit_status_hidden_description": "No longer visible or available to add; existing applications are unaffected.",

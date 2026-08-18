@@ -626,7 +626,7 @@ const SystemToolConfigModal = ({
           h={9}
           value={status}
           valueLabel={
-            status === PluginStatusEnum.Offline ? t('app:toolkit_status_offline') : undefined
+            status === PluginStatusEnum.Offline ? t('common:error.tool_not_exist') : undefined
           }
           list={pluginStatusSelectList}
           isDisabled={isToolOffline}

@@ -95,7 +95,7 @@ const ToolProvider = () => {
         value: PluginStatusEnum.SoonOffline
       },
       {
-        label: t('app:toolkit_status_offline'),
+        label: t('common:error.tool_not_exist'),
         value: PluginStatusEnum.Offline
       }
     ],

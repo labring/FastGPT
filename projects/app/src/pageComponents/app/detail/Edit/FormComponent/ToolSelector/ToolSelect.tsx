@@ -47,7 +47,7 @@ const ToolSelect = ({
   const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
     [PluginStatusEnum.Hidden]: t('app:toolkit_status_hidden'),
     [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
-    [PluginStatusEnum.Offline]: t('app:toolkit_status_offline')
+    [PluginStatusEnum.Offline]: t('common:error.tool_not_exist')
   };
   const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
     [PluginStatusEnum.Hidden]: t('app:tool_hidden_tips'),
