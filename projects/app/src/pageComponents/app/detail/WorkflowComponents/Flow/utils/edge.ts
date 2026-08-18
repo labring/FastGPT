@@ -42,7 +42,7 @@ export const getHandleIndex = (
         const itemHandleId = getHandleId(
           sourceNode.data.nodeId,
           'source',
-          getIfElseBranchHandleKey(item, index)
+          getIfElseBranchHandleKey(item)
         );
         return itemHandleId === handleId;
       });
