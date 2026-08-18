@@ -4,7 +4,6 @@ import type { LegacyWorkflowDataInput } from './legacy/schema';
 import type { WorkflowMigrationOptions } from './type';
 import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
 import { migrateAgentToolInputConfigToCurrent } from './legacy/input';
-import { isLegacyV1WorkflowNodes, migrateLegacyV1WorkflowToV2 } from './legacy/v1';
 import { migrateLegacyWorkflowStructureData } from './legacy/structure';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
@@ -20,17 +19,24 @@ export const migrateWorkflowToCurrent = async (
   input: LegacyWorkflowDataInput,
   options: WorkflowMigrationOptions = {}
 ): Promise<CanonicalWorkflowData> => {
-  const v2Input = isLegacyV1WorkflowNodes(input.nodes)
-    ? {
-        ...input,
-        ...migrateLegacyV1WorkflowToV2({ nodes: input.nodes, edges: input.edges })
-      }
-    : input;
+  // V1 重写必须由 admin dataClean 批处理完成，普通入口只接受 V2/current 数据。
+  const hasLegacyV1Node = input.nodes.some(
+    (node) =>
+      !!node &&
+      typeof node === 'object' &&
+      typeof (node as Record<string, unknown>).flowType === 'string' &&
+      (typeof (node as Record<string, unknown>).moduleId === 'string' ||
+        typeof (node as Record<string, unknown>).nodeId !== 'string')
+  );
+  if (hasLegacyV1Node) {
+    throw new Error('V1 workflows must be migrated through admin dataClean first');
+  }
+
   const workflow = migrateLegacyWorkflowStructureToCurrent(
     migrateLegacyWorkflowStructureData({
-      nodes: v2Input.nodes,
-      edges: v2Input.edges,
-      chatConfig: v2Input.chatConfig
+      nodes: input.nodes,
+      edges: input.edges,
+      chatConfig: input.chatConfig
     })
   );
   const nodes = await Promise.all(
