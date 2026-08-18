@@ -42,10 +42,6 @@ import {
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
-import {
-  LegacyWorkflowDataSchema,
-  migrateWorkflowToCurrent
-} from '@fastgpt/global/core/workflow/migration';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -502,7 +498,7 @@ export const formatHttpError = (error: any) => {
  * 重写 runtime workflow 中的工具相关节点配置。
  *
  * 该函数会原地修改 nodes 和 edges：
- * - 在外层兼容旧 selectedTypeIndex，并将工具输入升级为 selectedType 协议。
+ * - 将当前工具输入与最新 MCP/HTTP resource schema 合并，并保留最终 selectedType。
  * - 将 ToolSet 节点展开为具体 Tool 节点，并把原来指向 ToolSet 的边改接到子工具节点。
  * - 为 MCP/HTTP Tool 节点补充原始 jsonSchema 和描述，供模型 tool call 生成参数时使用。
  */
@@ -517,21 +513,6 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
-  // runtime 入口只调用一次公共 workflow 迁移；保留 RuntimeNode 的执行期字段。
-  const workflowInput = LegacyWorkflowDataSchema.safeParse({
-    nodes,
-    edges
-  });
-  if (workflowInput.success) {
-    const canonicalNodes = new Map(
-      migrateWorkflowToCurrent(workflowInput.data).nodes.map((node) => [node.nodeId, node])
-    );
-    nodes.forEach((node) => {
-      const canonicalNode = canonicalNodes.get(node.nodeId);
-      if (canonicalNode) node.inputs = canonicalNode.inputs;
-    });
-  }
-
   const mergeToolNodeInputs = ({
     node,
     jsonSchema,
@@ -638,7 +619,7 @@ export const rewriteRuntimeWorkFlow = async ({
         nodeIdsToRemove.add(toolSetNode.nodeId);
 
         const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
-        const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
+        const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet;
         const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
 
         const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
@@ -672,7 +653,6 @@ export const rewriteRuntimeWorkFlow = async ({
           const toolList = (await getMCPChildren(app)) as RuntimeMcpTool[];
           const currentToolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
 
-          // 旧版 mcpToolsetVal.toolId 只用于识别历史 ToolSet，生成节点必须使用 parent App id。
           const toolSetId = toolSetNode.pluginId;
           if (!toolSetId) continue;
           toolList.forEach((tool, index) => {

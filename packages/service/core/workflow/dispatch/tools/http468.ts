@@ -307,21 +307,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ignoreHttpsCertificate: global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true
     });
 
-    // @adapt
-    if (node.catchError === undefined) {
-      return {
-        data: {
-          [NodeOutputKeyEnum.error]: getErrText(error)
-        },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          params: Object.keys(params).length > 0 ? params : undefined,
-          body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
-          headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
-          httpResult: { error: formatHttpError(error) }
-        }
-      };
-    }
-
     const errText = getErrText(error);
     const errObj = formatHttpError(error);
     return getNodeErrResponse({
