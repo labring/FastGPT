@@ -1,7 +1,7 @@
 import { getSearchMembersOrgsGroups } from '@/web/support/user/api';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { Box, Flex, HStack, Input, Button, useDisclosure } from '@chakra-ui/react';
-import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import type { SearchMembersOrgsGroupsResponseType } from '@fastgpt/global/openapi/support/user/team/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -50,7 +50,7 @@ export function ChangeOwnerModal({
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
   const [selectedMember, setSelectedMember] = useState<Pick<
-    TeamMemberItemType,
+    SearchMembersOrgsGroupsResponseType['members'][number],
     'tmbId' | 'memberName' | 'avatar'
   > | null>(null);
 

@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { openAPITagGroups } from '../../../openapi/path';
 import { DevApiTagsMap } from '../../../openapi/tag';
+import {
+  ChangeSkillOwnerBodySchema,
+  ChangeSkillOwnerResponseSchema,
+  GetSkillCollaboratorListQuerySchema,
+  GetSkillCollaboratorListResponseSchema,
+  UpdateSkillCollaboratorBodySchema,
+  UpdateSkillCollaboratorResponseSchema
+} from '../../../openapi/core/ai/skill/api';
+
+const objectId = '68ad85a7463006c963799a05';
 
 const expectedPaths = {
   '/core/ai/optimizePrompt': 'post',
@@ -72,6 +82,29 @@ describe('AI OpenAPI contracts', () => {
     expect(
       openAPIDocument.paths?.['/proApi/core/ai/skill/collaborator/update']?.post?.tags
     ).toEqual([DevApiTagsMap.permissionCollaborator, DevApiTagsMap.skillPermission]);
+  });
+
+  it('parses Skill permission API requests and empty responses', () => {
+    expect(
+      ChangeSkillOwnerBodySchema.parse({
+        skillId: objectId,
+        ownerId: objectId
+      })
+    ).toEqual({ skillId: objectId, ownerId: objectId });
+    expect(ChangeSkillOwnerResponseSchema.parse(undefined)).toBeUndefined();
+
+    expect(GetSkillCollaboratorListQuerySchema.parse({ skillId: objectId })).toEqual({
+      skillId: objectId
+    });
+    expect(GetSkillCollaboratorListResponseSchema.parse({ clbs: [], parentClbs: [] })).toEqual({
+      clbs: [],
+      parentClbs: []
+    });
+
+    expect(
+      UpdateSkillCollaboratorBodySchema.parse({ skillId: objectId, collaborators: [] })
+    ).toEqual({ skillId: objectId, collaborators: [] });
+    expect(UpdateSkillCollaboratorResponseSchema.parse(undefined)).toBeUndefined();
   });
 
   it('groups Skill APIs under the dedicated Skill section', () => {

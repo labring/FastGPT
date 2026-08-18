@@ -102,7 +102,7 @@ describe('support user OpenAPI contracts', () => {
     expect(ReadInformQuerySchema.parse({ id: objectId })).toEqual({ id: objectId });
   });
 
-  it('parses team search and empty sync contracts', () => {
+  it('parses historical team members and empty sync contracts', () => {
     expect(
       SearchMembersOrgsGroupsQuerySchema.parse({
         searchKey: '张三',
@@ -116,6 +116,31 @@ describe('support user OpenAPI contracts', () => {
       orgs: true,
       groups: true
     });
+    const searchResponse = SearchMembersOrgsGroupsResponseSchema.parse({
+      members: [
+        {
+          tmbId: objectId,
+          userId: objectId,
+          teamId: objectId,
+          name: '历史成员',
+          memberName: '历史成员',
+          createTime: '2026-01-01T00:00:00.000Z'
+        }
+      ],
+      orgs: [],
+      groups: []
+    });
+    expect(searchResponse).toMatchObject({
+      members: [
+        {
+          name: '历史成员',
+          status: TeamMemberStatusEnum.active
+        }
+      ],
+      orgs: [],
+      groups: []
+    });
+    expect(searchResponse.members[0]).not.toHaveProperty('avatar');
     expect(
       SearchMembersOrgsGroupsResponseSchema.parse({
         members: [],

@@ -64,13 +64,13 @@ const SearchMemberSchema = z
       example: '张三',
       description: '成员展示名称'
     }),
-    avatar: z.string().meta({
+    avatar: z.string().optional().meta({
       example: 'https://example.com/avatar.png',
       description: '成员头像'
     }),
-    status: z.enum(TeamMemberStatusEnum).meta({
+    status: z.enum(TeamMemberStatusEnum).default(TeamMemberStatusEnum.active).meta({
       example: TeamMemberStatusEnum.active,
-      description: '成员状态'
+      description: '成员状态；历史数据缺失时按 active 返回'
     }),
     role: z.string().optional().meta({
       example: 'owner',

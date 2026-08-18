@@ -95,6 +95,11 @@ export type GetAppTemplateDetailResponseType = z.infer<typeof GetAppTemplateDeta
  * Tags: ['模板管理']
  * ============================================================================ */
 
+export const GetTemplateTypesQuerySchema = z.object({}).meta({
+  description: '获取应用模板类型不需要查询参数'
+});
+export type GetTemplateTypesQueryType = z.infer<typeof GetTemplateTypesQuerySchema>;
+
 export const GetTemplateTypesResponseSchema = z
   .array(
     z.object({
