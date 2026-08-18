@@ -158,8 +158,7 @@ describe('getClientSystemToolPreviewNode', () => {
             'x-fastgpt-node-input': {
               valueType: 'number',
               renderTypeList: ['numberInput', 'reference'],
-              selectedType: 'numberInput',
-              selectedTypeIndex: 0
+              selectedType: 'numberInput'
             }
           }
         }
@@ -213,8 +212,7 @@ describe('getClientSystemToolPreviewNode', () => {
               valueType: 'string',
               defaultValue: 'fallback',
               renderTypeList: ['customVariable'],
-              selectedType: 'customVariable',
-              selectedTypeIndex: 0
+              selectedType: 'customVariable'
             }
           }
         }
@@ -236,7 +234,6 @@ describe('getClientSystemToolPreviewNode', () => {
       renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, 'reference', 'input'],
       selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
-    expect(input).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('returns latest version id when requested explicitly', async () => {

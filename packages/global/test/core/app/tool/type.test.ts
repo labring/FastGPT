@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 describe('AgentToolSchema', () => {
   it('keeps the dedicated key and mode input snapshot', () => {
@@ -14,38 +13,36 @@ describe('AgentToolSchema', () => {
     expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]);
   });
 
-  it('normalizes the transitional workflow input snapshot', () => {
-    const result = AgentToolSchema.parse({
-      id: 'systemTool-search',
-      inputs: [
-        {
-          key: 'query',
-          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 1,
-          toolDescription: 'Search query'
-        }
-      ],
-      config: {}
-    });
-
-    expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.agentGenerated }]);
+  it('rejects a historical workflow input snapshot', () => {
+    expect(() =>
+      AgentToolSchema.parse({
+        id: 'systemTool-search',
+        inputs: [
+          {
+            key: 'query',
+            renderTypeList: ['input', 'agentGenerated'],
+            selectedType: 'agentGenerated',
+            toolDescription: 'Search query'
+          }
+        ],
+        config: {}
+      })
+    ).toThrow();
   });
 
-  it('preserves a transitional manual workflow input snapshot', () => {
-    const result = AgentToolSchema.parse({
-      id: 'workflow-tool',
-      inputs: [
-        {
-          key: 'query',
-          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-          selectedTypeIndex: 0,
-          toolDescription: 'Search query'
-        }
-      ],
-      config: { query: 'fixed query' }
-    });
-
-    expect(result.inputs).toEqual([{ key: 'query', mode: AgentToolInputModeEnum.manual }]);
+  it('requires an explicit mode for every current input', () => {
+    expect(() =>
+      AgentToolSchema.parse({
+        id: 'workflow-tool',
+        inputs: [
+          {
+            key: 'query',
+            mode: undefined
+          }
+        ],
+        config: { query: 'fixed query' }
+      })
+    ).toThrow();
   });
 
   it('preserves missing inputs as the legacy Agent marker', () => {

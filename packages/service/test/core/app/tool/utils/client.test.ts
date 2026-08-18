@@ -143,7 +143,6 @@ describe('getClientToolPreviewNode', () => {
               label: 'test',
               valueType: 'string',
               selectedType: 'input',
-              selectedTypeIndex: 0,
               renderTypeList: ['input', 'reference'],
               isToolParam: true
             },
@@ -152,7 +151,6 @@ describe('getClientToolPreviewNode', () => {
               label: 'referenceOnly',
               valueType: 'string',
               selectedType: 'reference',
-              selectedTypeIndex: 0,
               renderTypeList: ['reference']
             },
             {

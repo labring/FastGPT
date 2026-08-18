@@ -406,7 +406,6 @@ describe('getAgentRuntimeTools schema loading', () => {
             required: true,
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
             selectedType: FlowNodeInputTypeEnum.input,
-            selectedTypeIndex: 0,
             toolDescription: 'Search query'
           }
         ],
@@ -508,29 +507,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.parameters).toMatchObject({
       type: 'object',
-      properties: {
-        query: expect.any(Object)
-      },
-      required: ['query']
-    });
-  });
-
-  it('restores legacy workflow tool AI inputs when Agent V2 did not persist inputs', async () => {
-    const tools = await getAgentRuntimeTools({
-      tmbId: 'tmb_1',
-      tools: [{ id: 'legacy_workflow_tool', config: {} }]
-    });
-
-    expect(tools).toHaveLength(1);
-    expect(tools[0].inputs).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          key: 'query',
-          selectedType: FlowNodeInputTypeEnum.agentGenerated
-        })
-      ])
-    );
-    expect(tools[0].requestSchema.function.parameters).toMatchObject({
       properties: {
         query: expect.any(Object)
       },
@@ -903,56 +879,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(systemToolInputSchema);
   });
 
-  it('restores legacy system tool AI inputs when Agent V2 did not persist inputs', async () => {
-    getSystemToolDetailMock.mockResolvedValue({
-      id: 'systemTool-search',
-      name: 'Search',
-      avatar: 'search.png',
-      intro: 'Search tool',
-      toolDescription: 'Search tool',
-      status: 'active',
-      source: 'system',
-      isToolSet: false,
-      hasSystemSecret: false,
-      systemSecretStatus: 'none',
-      currentCost: 0,
-      systemKeyCost: 0,
-      hasTokenFee: false,
-      tags: [],
-      author: '',
-      version: '1.0.0',
-      isLatestVersion: true,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'Search query',
-            isToolParam: false
-          }
-        },
-        required: ['query']
-      }
-    });
-
-    const tools = await getAgentRuntimeTools({
-      tmbId: 'tmb_1',
-      tools: [{ id: 'systemTool-search', config: {} }]
-    });
-
-    expect(tools).toHaveLength(1);
-    expect(tools[0].inputs[0]).toMatchObject({
-      key: 'query',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated
-    });
-    expect(tools[0].requestSchema.function.parameters).toMatchObject({
-      properties: {
-        query: expect.any(Object)
-      },
-      required: ['query']
-    });
-  });
-
   it('uses saved modes before recommendations and recommends modes for new inputs', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'systemTool-search',
@@ -1155,8 +1081,7 @@ describe('getAgentRuntimeTools schema loading', () => {
               valueType: 'string',
               defaultValue: 'fallback',
               renderTypeList: [FlowNodeInputTypeEnum.customVariable],
-              selectedType: FlowNodeInputTypeEnum.customVariable,
-              selectedTypeIndex: 0
+              selectedType: FlowNodeInputTypeEnum.customVariable
             }
           }
         },

@@ -3,8 +3,6 @@ import {
   getHandleId,
   getSelectedInputRenderType,
   nodeInputIsReference,
-  getGuideModule,
-  splitGuideModule,
   getAppChatConfig,
   getOrInitModuleInputValue,
   getModuleInputUiField,
@@ -21,10 +19,6 @@ import {
   clientGetWorkflowToolRunUserQuery,
   removeUnauthModels
 } from '@fastgpt/global/core/workflow/utils';
-import {
-  migrateFlowNodeInputToCurrent,
-  migrateWorkflowToCurrent
-} from '@fastgpt/global/core/workflow/migration';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -47,11 +41,9 @@ import {
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import {
   getIfElseBranchHandleKey,
-  initNewIfElseList,
-  normalizeIfElseList
+  initNewIfElseList
 } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { LegacyFlowNodeInputItem } from '@fastgpt/global/core/workflow/migration';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -114,12 +106,11 @@ describe('projectExternalVariableInput', () => {
           : FlowNodeInputTypeEnum.reference,
         defaultValue: 'default-value'
       });
-      expect(result).not.toHaveProperty('selectedTypeIndex');
     }
   );
 
   it('should leave regular inputs unchanged', () => {
-    const input: LegacyFlowNodeInputItem = {
+    const input: FlowNodeInputItemType = {
       key: 'query',
       label: 'Query',
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
@@ -218,32 +209,12 @@ describe('projectExternalVariableInput', () => {
 });
 
 describe('nodeInputIsReference', () => {
-  it('should return true when renderTypeList first item is reference', () => {
-    const input: LegacyFlowNodeInputItem = {
-      key: 'test',
-      label: 'Test',
-      renderTypeList: [FlowNodeInputTypeEnum.reference]
-    };
-    expect(nodeInputIsReference(migrateFlowNodeInputToCurrent(input))).toBe(true);
-  });
-
-  it('should return true when selectedTypeIndex points to reference', () => {
-    const input: LegacyFlowNodeInputItem = {
+  it('should use the canonical selectedType', () => {
+    const input: FlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-      selectedTypeIndex: 1
-    };
-    expect(nodeInputIsReference(migrateFlowNodeInputToCurrent(input))).toBe(true);
-  });
-
-  it('should prefer selectedType over selectedTypeIndex', () => {
-    const input: LegacyFlowNodeInputItem = {
-      key: 'test',
-      label: 'Test',
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-      selectedType: FlowNodeInputTypeEnum.reference,
-      selectedTypeIndex: 0
+      selectedType: FlowNodeInputTypeEnum.reference
     };
 
     expect(getSelectedInputRenderType(input)).toBe(FlowNodeInputTypeEnum.reference);
@@ -251,7 +222,7 @@ describe('nodeInputIsReference', () => {
   });
 
   it('should return false when renderTypeList first item is not reference', () => {
-    const input: LegacyFlowNodeInputItem = {
+    const input: FlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.input]
@@ -259,12 +230,12 @@ describe('nodeInputIsReference', () => {
     expect(nodeInputIsReference(input)).toBe(false);
   });
 
-  it('should return false when selectedTypeIndex is 0 and first item is not reference', () => {
-    const input: LegacyFlowNodeInputItem = {
+  it('should return false when the current selected type is not a reference', () => {
+    const input: FlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-      selectedTypeIndex: 0
+      selectedType: FlowNodeInputTypeEnum.input
     };
     expect(nodeInputIsReference(input)).toBe(false);
   });
@@ -277,7 +248,7 @@ describe('nodeInputIsReference', () => {
     expect(nodeInputIsReference(input)).toBe(false);
   });
 
-  it('should use index 0 when selectedTypeIndex is undefined', () => {
+  it('should default to the first current render type when selectedType is absent', () => {
     const input: FlowNodeInputItemType = {
       key: 'test',
       label: 'Test',
@@ -294,376 +265,6 @@ describe('nodeInputIsReference', () => {
       valueType: WorkflowIOValueTypeEnum.datasetQuote
     };
     expect(nodeInputIsReference(input)).toBe(true);
-  });
-});
-
-describe('getGuideModule', () => {
-  it('should find systemConfig node', () => {
-    const nodes: StoreNodeItemType[] = [
-      {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.systemConfig,
-        name: 'System Config',
-        inputs: [],
-        outputs: []
-      },
-      {
-        nodeId: 'node2',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat',
-        inputs: [],
-        outputs: []
-      }
-    ];
-    const result = getGuideModule(nodes);
-    expect(result?.nodeId).toBe('node1');
-  });
-
-  it('should return undefined when no systemConfig node exists', () => {
-    const nodes: StoreNodeItemType[] = [
-      {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat',
-        inputs: [],
-        outputs: []
-      }
-    ];
-    const result = getGuideModule(nodes);
-    expect(result).toBeUndefined();
-  });
-
-  it('should handle empty nodes array', () => {
-    const result = getGuideModule([]);
-    expect(result).toBeUndefined();
-  });
-});
-
-describe('splitGuideModule', () => {
-  it('should return default values when guideModules is undefined', () => {
-    const result = splitGuideModule(undefined);
-    expect(result.welcomeText).toBe('');
-    expect(result.variables).toEqual([]);
-    expect(result.questionGuide).toEqual(defaultQGConfig);
-    expect(result.ttsConfig).toEqual(defaultTTSConfig);
-    expect(result.whisperConfig).toEqual(defaultWhisperConfig);
-    expect(result.scheduledTriggerConfig).toBeUndefined();
-    expect(result.chatInputGuide).toEqual(defaultChatInputGuideConfig);
-    expect(result.instruction).toBe('');
-    expect(result.autoExecute).toEqual(defaultAutoExecuteConfig);
-  });
-
-  it('should extract welcomeText from inputs', () => {
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.welcomeText,
-          label: 'Welcome',
-          value: 'Hello World',
-          renderTypeList: [FlowNodeInputTypeEnum.input]
-        }
-      ],
-      outputs: []
-    };
-    const result = splitGuideModule(guideModule);
-    expect(result.welcomeText).toBe('Hello World');
-  });
-
-  it('should extract welcomeQuestions from inputs', () => {
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.welcomeQuestions,
-          label: 'Welcome Questions',
-          value: ['Question 1'],
-          renderTypeList: [FlowNodeInputTypeEnum.input]
-        }
-      ],
-      outputs: []
-    };
-    const result = splitGuideModule(guideModule);
-    expect(result.welcomeQuestions).toEqual(['Question 1']);
-  });
-
-  it('should extract variables from inputs', () => {
-    const variables = [{ key: 'var1', label: 'Variable 1', type: VariableInputEnum.input }];
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.variables,
-          label: 'Variables',
-          value: variables,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        }
-      ],
-      outputs: []
-    };
-    const result = splitGuideModule(guideModule);
-    expect(result.variables).toEqual(variables);
-  });
-
-  it('should adapt old boolean questionGuide format', () => {
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.questionGuide,
-          label: 'Question Guide',
-          value: true,
-          renderTypeList: [FlowNodeInputTypeEnum.switch]
-        }
-      ],
-      outputs: []
-    };
-    const result = splitGuideModule(guideModule);
-    expect(result.questionGuide.open).toBe(true);
-  });
-
-  it('should use new questionGuide object format', () => {
-    const questionGuideConfig = { open: true, model: 'gpt-4', customPrompt: 'test' };
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.questionGuide,
-          label: 'Question Guide',
-          value: questionGuideConfig,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        }
-      ],
-      outputs: []
-    };
-    const result = splitGuideModule(guideModule);
-    expect(result.questionGuide).toEqual(questionGuideConfig);
-  });
-
-  it('should extract ttsConfig from inputs', () => {
-    const ttsConfig = { type: 'edge' as const };
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.tts,
-          label: 'TTS',
-          value: ttsConfig,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        }
-      ],
-      outputs: []
-    };
-    const result = splitGuideModule(guideModule);
-    expect(result.ttsConfig).toEqual(ttsConfig);
-  });
-
-  it('should extract instruction from inputs', () => {
-    const guideModule: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.instruction,
-          label: 'Instruction',
-          value: 'Test instruction',
-          renderTypeList: [FlowNodeInputTypeEnum.textarea]
-        }
-      ],
-      outputs: []
-    };
-    const result = splitGuideModule(guideModule);
-    expect(result.instruction).toBe('Test instruction');
-  });
-});
-
-describe('migrateWorkflowToCurrent system config migration', () => {
-  const createSystemConfigNode = (
-    inputs: Array<[NodeInputKeyEnum, unknown]> = [],
-    nodeId = 'system'
-  ): StoreNodeItemType => ({
-    nodeId,
-    flowNodeType: FlowNodeTypeEnum.systemConfig,
-    name: 'System config',
-    inputs: inputs.map(([key, value]) => ({
-      key,
-      label: key,
-      value,
-      renderTypeList: [FlowNodeInputTypeEnum.hidden]
-    })),
-    outputs: []
-  });
-
-  const legacyInputs: Array<[NodeInputKeyEnum, unknown]> = [
-    [NodeInputKeyEnum.welcomeText, 'Legacy welcome'],
-    [NodeInputKeyEnum.welcomeQuestions, ['Legacy question']],
-    [
-      NodeInputKeyEnum.variables,
-      [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }]
-    ],
-    [NodeInputKeyEnum.questionGuide, true],
-    [NodeInputKeyEnum.tts, { type: 'web' }],
-    [NodeInputKeyEnum.whisper, { open: true, autoSend: true, autoTTSResponse: false }],
-    [
-      NodeInputKeyEnum.scheduleTrigger,
-      { cronString: '0 0 * * *', timezone: 'UTC', defaultPrompt: 'Run' }
-    ],
-    [NodeInputKeyEnum.chatInputGuide, { open: true, customUrl: 'https://example.com' }],
-    [NodeInputKeyEnum.autoExecute, { open: true, defaultPrompt: 'Run automatically' }],
-    [NodeInputKeyEnum.instruction, 'Legacy instruction']
-  ];
-
-  it('should migrate every legacy system config field into chatConfig', () => {
-    const result = migrateWorkflowToCurrent({
-      nodes: [createSystemConfigNode(legacyInputs)]
-    });
-
-    expect(result.nodes).toEqual([]);
-    expect(result.chatConfig).toMatchObject({
-      welcomeText: 'Legacy welcome',
-      welcomeConfig: {
-        welcomeText: 'Legacy welcome',
-        welcomeQuestions: ['Legacy question']
-      },
-      variables: [{ key: 'legacy', label: 'Legacy', type: VariableInputEnum.input }],
-      questionGuide: { ...defaultQGConfig, open: true },
-      ttsConfig: { type: 'web' },
-      whisperConfig: { open: true, autoSend: true, autoTTSResponse: false },
-      scheduledTriggerConfig: {
-        cronString: '0 0 * * *',
-        timezone: 'UTC',
-        defaultPrompt: 'Run'
-      },
-      chatInputGuide: { open: true, customUrl: 'https://example.com' },
-      autoExecute: { open: true, defaultPrompt: 'Run automatically' },
-      instruction: 'Legacy instruction'
-    });
-  });
-
-  it('should move workflow tool config instruction into chatConfig', () => {
-    const pluginConfigNode: StoreNodeItemType = {
-      ...createSystemConfigNode(
-        [[NodeInputKeyEnum.instruction, 'Plugin instruction']],
-        'plugin-config'
-      ),
-      flowNodeType: FlowNodeTypeEnum.pluginConfig
-    };
-
-    const result = migrateWorkflowToCurrent({
-      nodes: [pluginConfigNode],
-      chatConfig: {}
-    });
-
-    expect(result.nodes).toEqual([]);
-    expect(result.chatConfig.instruction).toBe('Plugin instruction');
-  });
-
-  it('should preserve explicit current values instead of overwriting them', () => {
-    const result = migrateWorkflowToCurrent({
-      nodes: [createSystemConfigNode(legacyInputs)],
-      chatConfig: {
-        welcomeConfig: {
-          welcomeText: '',
-          welcomeQuestions: []
-        },
-        variables: [],
-        questionGuide: { open: false },
-        scheduledTriggerConfig: {
-          cronString: '0 9 * * *',
-          timezone: 'Asia/Shanghai',
-          defaultPrompt: ''
-        },
-        instruction: ''
-      }
-    });
-
-    expect(result.chatConfig.welcomeConfig).toEqual({
-      welcomeText: '',
-      welcomeQuestions: []
-    });
-    expect(result.chatConfig.welcomeText).toBe('');
-    expect(result.chatConfig.variables).toEqual([]);
-    expect(result.chatConfig.questionGuide).toEqual({ open: false });
-    expect(result.chatConfig.scheduledTriggerConfig).toEqual({
-      cronString: '0 9 * * *',
-      timezone: 'Asia/Shanghai',
-      defaultPrompt: ''
-    });
-    expect(result.chatConfig.instruction).toBe('');
-  });
-
-  it('should remove all system config nodes and their connected edges', () => {
-    const nodes: StoreNodeItemType[] = [
-      createSystemConfigNode([], 'system-1'),
-      createSystemConfigNode([], 'system-2'),
-      {
-        nodeId: 'chat',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'Chat',
-        inputs: [],
-        outputs: []
-      }
-    ];
-
-    const edges = [
-      {
-        source: 'system-1',
-        sourceHandle: 'system-1-source-right',
-        target: 'chat',
-        targetHandle: 'chat-target-left'
-      },
-      {
-        source: 'chat',
-        sourceHandle: 'chat-source-right',
-        target: 'system-2',
-        targetHandle: 'system-2-target-left'
-      },
-      {
-        source: 'chat',
-        sourceHandle: 'chat-source-right',
-        target: 'answer',
-        targetHandle: 'answer-target-left'
-      }
-    ];
-
-    const result = migrateWorkflowToCurrent({ nodes, edges });
-
-    expect(result.nodes).toEqual([nodes[2]]);
-    expect(result.edges).toEqual([edges[2]]);
-  });
-
-  it('should be pure and idempotent', () => {
-    const systemConfigNode = createSystemConfigNode([
-      [NodeInputKeyEnum.welcomeText, 'Legacy welcome']
-    ]);
-    const nodes = [systemConfigNode];
-    const chatConfig = {
-      welcomeConfig: {
-        welcomeQuestions: ['Current question']
-      }
-    };
-    const first = migrateWorkflowToCurrent({ nodes, chatConfig });
-
-    expect(migrateWorkflowToCurrent(first)).toEqual(first);
-    expect(nodes).toEqual([systemConfigNode]);
-    expect(chatConfig).toEqual({
-      welcomeConfig: {
-        welcomeQuestions: ['Current question']
-      }
-    });
   });
 });
 
@@ -711,44 +312,28 @@ describe('getAppChatConfig', () => {
   });
 
   it('should include scheduledTriggerConfig when isPublicFetch is true', () => {
-    const systemConfigNode: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.scheduleTrigger,
-          label: 'Schedule',
-          value: { cronString: '0 0 * * *', timezone: 'UTC' },
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        }
-      ],
-      outputs: []
-    };
     const result = getAppChatConfig({
-      systemConfigNode,
+      chatConfig: {
+        scheduledTriggerConfig: {
+          cronString: '0 0 * * *',
+          timezone: 'UTC',
+          defaultPrompt: 'Run'
+        }
+      },
       isPublicFetch: true
     });
     expect(result.scheduledTriggerConfig).toBeDefined();
   });
 
   it('should exclude scheduledTriggerConfig when isPublicFetch is false', () => {
-    const systemConfigNode: StoreNodeItemType = {
-      nodeId: 'guide',
-      flowNodeType: FlowNodeTypeEnum.systemConfig,
-      name: 'Guide',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.scheduleTrigger,
-          label: 'Schedule',
-          value: { cronString: '0 0 * * *', timezone: 'UTC' },
-          renderTypeList: [FlowNodeInputTypeEnum.hidden]
-        }
-      ],
-      outputs: []
-    };
     const result = getAppChatConfig({
-      systemConfigNode,
+      chatConfig: {
+        scheduledTriggerConfig: {
+          cronString: '0 0 * * *',
+          timezone: 'UTC',
+          defaultPrompt: 'Run'
+        }
+      },
       isPublicFetch: false
     });
     expect(result.scheduledTriggerConfig).toBeUndefined();
@@ -957,7 +542,6 @@ describe('pluginData2FlowNodeIO', () => {
       FlowNodeInputTypeEnum.input
     ]);
     expect(customVarInput?.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
-    expect(customVarInput).not.toHaveProperty('selectedTypeIndex');
   });
 
   it('should set canEdit to false for all inputs', () => {
@@ -1631,16 +1215,6 @@ describe('getElseIFLabel', () => {
 });
 
 describe('ifElse branch helpers', () => {
-  it('should normalize legacy branches with old handle labels', () => {
-    const result = normalizeIfElseList([
-      { condition: 'AND', list: [] },
-      { condition: 'OR', list: [] }
-    ]);
-
-    expect(result[0].branchId).toBe(IfElseResultEnum.IF);
-    expect(result[1].branchId).toBe(`${IfElseResultEnum.ELSE_IF} 1`);
-  });
-
   it('should initialize new branches with random branch ids', () => {
     const result = initNewIfElseList([{ condition: 'AND', list: [] }]);
 
@@ -1648,23 +1222,9 @@ describe('ifElse branch helpers', () => {
     expect(result[0].branchId).not.toBe(IfElseResultEnum.IF);
   });
 
-  it('should keep the first duplicate branch id and regenerate the rest', () => {
-    const result = normalizeIfElseList([
-      { branchId: 'same', condition: 'AND', list: [] },
-      { branchId: 'same', condition: 'AND', list: [] }
-    ]);
-
-    expect(result[0].branchId).toBe('same');
-    expect(result[1].branchId).toMatch(/^[a-z][a-zA-Z0-9]{15}$/);
-    expect(result[1].branchId).not.toBe('same');
-  });
-
-  it('should return branch id before falling back to label', () => {
+  it('should return the canonical branch id', () => {
     expect(getIfElseBranchHandleKey({ branchId: 'stableId1', condition: 'AND', list: [] }, 1)).toBe(
       'stableId1'
-    );
-    expect(getIfElseBranchHandleKey({ condition: 'AND', list: [] }, 1)).toBe(
-      `${IfElseResultEnum.ELSE_IF} 1`
     );
   });
 });
@@ -1793,7 +1353,7 @@ describe('removeUnauthModels', () => {
             key: 'model',
             label: 'Model',
             value: 'gpt-4',
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
@@ -1802,8 +1362,7 @@ describe('removeUnauthModels', () => {
     ];
     const allowedModels = new Set(['gpt-4', 'gpt-3.5-turbo']);
 
-    const migratedModules = migrateWorkflowToCurrent({ nodes: modules, edges: [] }).nodes;
-    const result = await removeUnauthModels({ modules: migratedModules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedModels });
     expect(result?.[0].inputs[0].value).toBe('gpt-4');
   });
 
@@ -1818,7 +1377,7 @@ describe('removeUnauthModels', () => {
             key: 'model',
             label: 'Model',
             value: 'unauthorized-model',
-            selectedTypeIndex: 0,
+            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
@@ -1827,12 +1386,11 @@ describe('removeUnauthModels', () => {
     ];
     const allowedModels = new Set(['gpt-4']);
 
-    const migratedModules = migrateWorkflowToCurrent({ nodes: modules, edges: [] }).nodes;
-    const result = await removeUnauthModels({ modules: migratedModules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedModels });
     expect(result?.[0].inputs[0].value).toBeUndefined();
   });
 
-  it('should skip reference type inputs (selectedTypeIndex !== 0)', async () => {
+  it('should skip canonical reference type inputs', async () => {
     const modules = [
       {
         nodeId: 'node1',
@@ -1843,7 +1401,7 @@ describe('removeUnauthModels', () => {
             key: 'model',
             label: 'Model',
             value: 'unauthorized-model',
-            selectedTypeIndex: 1,
+            selectedType: FlowNodeInputTypeEnum.reference,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.reference]
           }
         ],
@@ -1852,8 +1410,7 @@ describe('removeUnauthModels', () => {
     ];
     const allowedModels = new Set(['gpt-4']);
 
-    const migratedModules = migrateWorkflowToCurrent({ nodes: modules, edges: [] }).nodes;
-    const result = await removeUnauthModels({ modules: migratedModules, allowedModels });
+    const result = await removeUnauthModels({ modules, allowedModels });
     expect(result?.[0].inputs[0].value).toBe('unauthorized-model');
   });
 
@@ -1868,7 +1425,6 @@ describe('removeUnauthModels', () => {
             key: 'model',
             label: 'Model',
             value: ['nodeId', 'outputKey'],
-            selectedTypeIndex: 0,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
@@ -1915,7 +1471,6 @@ describe('removeUnauthModels', () => {
             key: 'model',
             label: 'Model',
             value: 'any-model',
-            selectedTypeIndex: 0,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
@@ -1938,7 +1493,6 @@ describe('removeUnauthModels', () => {
             key: 'model',
             label: 'Model',
             value: 'gpt-4',
-            selectedTypeIndex: 0,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
@@ -1953,7 +1507,6 @@ describe('removeUnauthModels', () => {
             key: 'model',
             label: 'Model',
             value: 'unauthorized',
-            selectedTypeIndex: 0,
             renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],

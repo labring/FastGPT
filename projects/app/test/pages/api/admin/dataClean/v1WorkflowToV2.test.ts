@@ -4,7 +4,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
@@ -75,6 +75,12 @@ const legacyV1Nodes = [
     moduleId: 'legacy-laf',
     flowType: 'lafModule',
     inputs: [],
+    outputs: []
+  },
+  {
+    moduleId: 'userGuide',
+    flowType: 'userGuide',
+    inputs: [{ key: NodeInputKeyEnum.welcomeText, value: '欢迎' }],
     outputs: []
   }
 ];
@@ -150,6 +156,7 @@ describe('v1WorkflowToV2 data clean API', () => {
       ])
     );
     expect(result.chatConfig).toMatchObject({
+      welcomeConfig: { welcomeText: '欢迎' },
       questionGuide: { open: true },
       variables: [
         {
@@ -158,6 +165,9 @@ describe('v1WorkflowToV2 data clean API', () => {
         }
       ]
     });
+    expect(result.nodes).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ nodeId: 'userGuide' })])
+    );
     expect(result.chatConfig).not.toHaveProperty('scheduledTriggerConfig');
   });
 

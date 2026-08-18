@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const { findOneMock } = vi.hoisted(() => ({
@@ -38,7 +35,7 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.scheduleTrigger,
@@ -52,7 +49,7 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'start',
           name: 'Start',
-          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          flowNodeType: 'workflowStart',
           inputs: [],
           outputs: []
         }
@@ -90,7 +87,7 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.welcomeText,
@@ -118,7 +115,7 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.welcomeText,
@@ -165,7 +162,7 @@ describe('getAppVersionById', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.instruction,
