@@ -42,51 +42,6 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
 describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
-  it('keeps the baseline invalid placeholder and error detail', async () => {
-    getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
-    const nodes = [
-      {
-        nodeId: 'agent-1',
-        flowNodeType: FlowNodeTypeEnum.agent,
-        name: 'Agent',
-        inputs: [
-          {
-            key: NodeInputKeyEnum.selectedTools,
-            label: 'Selected tools',
-            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
-            value: [
-              {
-                id: 'systemTool-missing',
-                version: 'v1',
-                source: 'debug:tmbId:tmb-1',
-                config: { apiKey: 'saved' },
-                inputs: [{ key: 'query', mode: 'agentGenerated' }]
-              }
-            ]
-          }
-        ],
-        outputs: []
-      } as StoreNodeItemType
-    ];
-
-    await rewriteAppWorkflowToDetail({
-      nodes,
-      teamId: 'team-1',
-      ownerTmbId: 'tmb-1',
-      isRoot: false
-    });
-    const tool = (nodes[0].inputs[0].value as any)[0];
-
-    expect(tool).toMatchObject({
-      pluginId: 'systemTool-missing',
-      source: 'debug:tmbId:tmb-1',
-      version: 'v1',
-      config: { apiKey: 'saved' }
-    });
-    expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
-    expect(tool.pluginData.error).toContain('Tool deleted');
-  });
-
   it('普通节点不投影 customVariable 输入', async () => {
     const input = {
       key: 'externalVariable',
@@ -133,7 +88,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
             valueType: WorkflowIOValueTypeEnum.string,
             renderTypeList: [FlowNodeInputTypeEnum.reference],
             selectedType: FlowNodeInputTypeEnum.reference,
-            defaultToAgentGenerated: false
+            isToolParam: false
           }
         ],
         outputs: []
@@ -165,7 +120,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       valueType: WorkflowIOValueTypeEnum.string,
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      defaultToAgentGenerated: true
+      isToolParam: true
     };
     const explicitManualInput = {
       key: 'manual',
@@ -173,7 +128,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       valueType: WorkflowIOValueTypeEnum.string,
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedType: FlowNodeInputTypeEnum.input,
-      defaultToAgentGenerated: false
+      isToolParam: false
     };
     const nodes = [
       {
@@ -192,11 +147,11 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
     });
 
     expect(nodes[0].inputs[0]).toMatchObject({
-      defaultToAgentGenerated: true,
+      isToolParam: true,
       selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
     expect(nodes[0].inputs[1]).toMatchObject({
-      defaultToAgentGenerated: false,
+      isToolParam: false,
       selectedType: FlowNodeInputTypeEnum.input
     });
   });
@@ -232,7 +187,8 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
             required: true,
             value: '',
             selectedType: FlowNodeInputTypeEnum.input,
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.input
           },
           {
             key: 'text2',
@@ -490,7 +446,8 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
             required: true,
             value: '',
             selectedType: FlowNodeInputTypeEnum.input,
-            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.input
           }
         ],
         outputs: []

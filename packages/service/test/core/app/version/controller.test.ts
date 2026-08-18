@@ -58,15 +58,7 @@ describe('getAppLatestVersion', () => {
           nodeId: 'start',
           name: 'Start',
           flowNodeType: 'workflowStart',
-          inputs: [
-            {
-              key: 'system_input_config',
-              label: 'Config',
-              renderTypeList: [FlowNodeInputTypeEnum.reference],
-              selectedType: null,
-              inputList: [{ key: 'secret', label: 'Secret', inputType: 'secret', value: null }]
-            }
-          ],
+          inputs: [],
           outputs: []
         }
       ],

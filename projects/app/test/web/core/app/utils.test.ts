@@ -585,7 +585,7 @@ describe('appWorkflow2AgentForm', () => {
             value: 'hello',
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
             selectedType: FlowNodeInputTypeEnum.agentGenerated,
-            defaultToAgentGenerated: true,
+            isToolParam: true,
             toolDescription: 'Query'
           }
         ],
