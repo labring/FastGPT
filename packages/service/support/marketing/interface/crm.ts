@@ -6,13 +6,12 @@ import { MongoTeam } from '../../user/team/teamSchema';
 import {
   isCRMReportingConfigured,
   reportCRMEnterpriseVerification,
-  reportCRMVisitorLifecycle,
-  type CRMLifecycleEvent
+  reportCRMVisitorLifecycle
 } from '../attribution';
 
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
 
-type EnterpriseLifecycleDetails = {
+export type CRMEnterpriseVerificationDetails = {
   submissionId: string;
   company: string;
   summary: string;
@@ -30,28 +29,19 @@ type EnterpriseLifecycleDetails = {
 };
 
 type LifecycleDetails = {
-  event: CRMLifecycleEvent;
-  company?: string;
-  summary?: string;
-  enterprise?: EnterpriseLifecycleDetails;
+  teamId: string;
+  event: 'consumption' | 'recharge';
 };
 
 const getTeamMarkerParams = ({
   teamId,
-  event
+  markerKey
 }: {
   teamId: string;
-  event: CRMLifecycleEvent;
+  markerKey: string;
 }): SuccessMarkerParams => ({
   scope: 'integration-report',
-  segments: [
-    'crm',
-    'lifecycle',
-    event,
-    'team',
-    teamId,
-    ...(event === 'enterprise_verification' ? ['details-v2'] : [])
-  ]
+  segments: ['crm', 'lifecycle', markerKey, 'team', teamId]
 });
 
 const getVisitorId = (fastgptSem: unknown) => {
@@ -59,28 +49,32 @@ const getVisitorId = (fastgptSem: unknown) => {
   return parsed.success ? parsed.data.visitor_id : undefined;
 };
 
-/**
- * CRM 生命周期公开接口：先按 team 去重，再使用其 owner 作为 cloud_user_id。
- * 普通生命周期事件仍要求 visitor_id；企业认证允许先无 visitor_id 落库，登录识别时再补关联。
- */
-export const reportCRMTeamLifecycleOnce = async ({
+type TeamOwnerReportContext = {
+  cloudUserId: string;
+  visitorId?: string;
+  teamName?: string;
+};
+
+const reportCRMTeamEventOnce = async ({
   teamId: rawTeamId,
-  event,
-  company,
-  summary,
-  enterprise
-}: LifecycleDetails & { teamId: string }): Promise<void> => {
+  markerKey,
+  report
+}: {
+  teamId: string;
+  markerKey: string;
+  report: (context: TeamOwnerReportContext) => Promise<boolean>;
+}): Promise<void> => {
   const teamId = rawTeamId.trim();
   if (!isCRMReportingConfigured() || !teamId) return;
 
-  const markerParams = getTeamMarkerParams({ teamId, event });
+  const markerParams = getTeamMarkerParams({ teamId, markerKey });
   try {
     if (await successMarkerCache.has(markerParams)) return;
   } catch (error) {
     logger.warn('CRM team lifecycle success marker read failed; reporting anyway', {
       error,
       teamId,
-      event
+      markerKey
     });
   }
 
@@ -90,27 +84,11 @@ export const reportCRMTeamLifecycleOnce = async ({
 
     const user = await MongoUser.findById(team.ownerId, 'fastgpt_sem').lean();
     const visitorId = getVisitorId(user?.fastgpt_sem);
-    let success = false;
-    if (event === 'enterprise_verification') {
-      if (!enterprise) return;
-      success = await reportCRMEnterpriseVerification({
-        ...enterprise,
-        cloudUserId: String(team.ownerId),
-        visitorId,
-        details: {
-          ...enterprise.details,
-          team_name: enterprise.details.team_name || team.name
-        }
-      });
-    } else {
-      if (!visitorId) return;
-      success = await reportCRMVisitorLifecycle({
-        visitorId,
-        event,
-        company,
-        summary
-      });
-    }
+    const success = await report({
+      cloudUserId: String(team.ownerId),
+      visitorId,
+      teamName: team.name
+    });
     if (!success) return;
 
     try {
@@ -119,16 +97,66 @@ export const reportCRMTeamLifecycleOnce = async ({
       logger.warn('CRM team lifecycle success marker write failed', {
         error,
         teamId,
-        event
+        markerKey
       });
     }
   } catch (error) {
     logger.warn('CRM team lifecycle resolution failed', {
       error,
       teamId,
-      event
+      markerKey
     });
   }
 };
+
+const reportCRMTeamVisitorLifecycleOnce = async ({
+  teamId,
+  event
+}: LifecycleDetails): Promise<void> =>
+  reportCRMTeamEventOnce({
+    teamId,
+    markerKey: event,
+    report: async ({ visitorId }) => {
+      if (!visitorId) return false;
+      return reportCRMVisitorLifecycle({
+        visitorId,
+        event
+      });
+    }
+  });
+
+export const reportCRMTeamConsumptionOnce = ({ teamId }: { teamId: string }) =>
+  reportCRMTeamVisitorLifecycleOnce({
+    teamId,
+    event: 'consumption'
+  });
+
+export const reportCRMTeamRechargeOnce = ({ teamId }: { teamId: string }) =>
+  reportCRMTeamVisitorLifecycleOnce({
+    teamId,
+    event: 'recharge'
+  });
+
+export const reportCRMTeamEnterpriseVerificationOnce = ({
+  teamId,
+  enterprise
+}: {
+  teamId: string;
+  enterprise: CRMEnterpriseVerificationDetails;
+}) =>
+  reportCRMTeamEventOnce({
+    teamId,
+    markerKey: 'enterprise_verification_details-v2',
+    report: ({ cloudUserId, visitorId, teamName }) =>
+      reportCRMEnterpriseVerification({
+        ...enterprise,
+        cloudUserId,
+        visitorId,
+        details: {
+          ...enterprise.details,
+          team_name: enterprise.details.team_name || teamName
+        }
+      })
+  });
 
 export { CRMLifecycleEvent } from '../attribution';
