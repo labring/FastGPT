@@ -49,9 +49,9 @@ export function ChangeOwnerModal({
     onClose: onCloseMemberListMenu,
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
-  const [selectedMember, setSelectedMember] = useState<Omit<
+  const [selectedMember, setSelectedMember] = useState<Pick<
     TeamMemberItemType,
-    'permission' | 'teamId'
+    'tmbId' | 'memberName' | 'avatar'
   > | null>(null);
 
   const { runAsync, loading } = useRequest(onChangeOwner, {
