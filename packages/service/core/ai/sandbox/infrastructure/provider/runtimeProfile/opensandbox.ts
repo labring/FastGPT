@@ -18,7 +18,6 @@ const OPEN_SANDBOX_PROTECTED_NETWORK_DENY_RULES = [
   { action: 'deny' as const, target: '169.254.0.0/16' },
   { action: 'deny' as const, target: '172.16.0.0/12' },
   { action: 'deny' as const, target: '192.168.0.0/16' },
-  { action: 'deny' as const, target: '198.18.0.0/15' },
   { action: 'deny' as const, target: '224.0.0.0/4' },
   { action: 'deny' as const, target: 'fc00::/7' },
   { action: 'deny' as const, target: 'fe80::/10' },
