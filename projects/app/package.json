@@ -25,7 +25,7 @@
     "build:workers:watch": "tsx scripts/build-workers.ts --watch"
   },
   "engines": {
-    "node": ">=20.19.0",
+    "node": ">=22.23.2",
     "pnpm": "10.x"
   },
   "dependencies": {

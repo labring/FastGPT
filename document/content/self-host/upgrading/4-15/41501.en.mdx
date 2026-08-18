@@ -1,6 +1,9 @@
 ---
-title: 'V4.15.0-beta1 (Environment Changes)'
+title: 'V4.15.0-beta1'
 description: 'FastGPT V4.15.0-beta1 Release Notes'
+releaseTime: '2026-05-09'
+upgradeTags:
+  - CONFIG
 ---
 
 ## Upgrade Guide
@@ -51,7 +54,7 @@ INVOKE_TOKEN_SECRET=
 1. Added a Loop node and deprecated the legacy Batch Execution node.
 2. Global variable inputs now support object values.
 3. When the virtual machine feature is enabled in tool-calling mode, files uploaded in the chat input are injected directly into the virtual machine.
-4. Added DingTalk Knowledge Base integration for third-party Knowledge Bases (beta; rich-text retrieval has known issues).
+4. Added DingTalk Dataset integration for third-party Datasets (beta; rich-text retrieval has known issues).
 5. Added worker pools for file parsing, HTML-to-Markdown conversion, and text chunking to prevent excessive concurrency. Pool sizes are configurable through environment variables.
 6. Added model reasoning configuration.
 7. Added S3 CDN support.
@@ -63,7 +66,7 @@ INVOKE_TOKEN_SECRET=
 2. Moved file injection in messages from the system message to the user message to improve cache hits.
 3. Improved insufficient-balance messages for non-admin users and visitors.
 4. Hid templates when the user does not have create permission.
-5. Strengthened SSRF protection for third-party Knowledge Base requests.
+5. Strengthened SSRF protection for third-party Dataset requests.
 6. Strengthened AST checks in codex-sandbox to prevent bypasses.
 7. Prevented duplicate site synchronization rate-limit messages.
 8. Strengthened IP validation to prevent spoofing bypasses.
@@ -72,7 +75,7 @@ INVOKE_TOKEN_SECRET=
 ## 🐛 Fixes
 
 1. Fixed an issue where Agent V2 could repeat a step after a model response error.
-2. Fixed missing charset information when previewing or downloading Knowledge Base source files with text responses.
+2. Fixed missing charset information when previewing or downloading Dataset source files with text responses.
 
 ## 🛠️ Code Improvements
 

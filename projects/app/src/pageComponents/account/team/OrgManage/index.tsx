@@ -21,7 +21,7 @@ import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useMemo, useState } from 'react';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
@@ -72,7 +72,7 @@ function ActionButton({
 }
 
 function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_team');
   const { userInfo, isTeamAdmin } = useUserStore();
   const { feConfigs } = useSystemStore();
   const isSyncMember = getIsMemberSyncMode(feConfigs);

@@ -1,20 +1,20 @@
 ---
 title: Tool Calling & Termination
-description: FastGPT Tool Calling module overview
+description: FastGPT Tool Calling node overview
 ---
 
 ![](/imgs/flow-tool1.png)
 
 ### What is a Tool
 
-A tool can be a built-in module (e.g., AI Chat, Knowledge Base Search, HTTP) or a plugin.
+A tool can be a built-in node (e.g., AI Chat, Dataset search, HTTP) or a plugin.
 
 Tool calling lets the LLM dynamically decide the workflow path instead of following a fixed sequence. (The trade-off is higher token consumption.)
 
 ### Tool Components
 
-1. **Tool description.** Typically the module or plugin description that tells the LLM what the tool does.
-2. **Tool parameters.** For built-in modules, parameters are fixed and require no extra configuration. For plugins, parameters are configurable.
+1. **Tool description.** Typically the node or plugin description that tells the LLM what the tool does.
+2. **Tool parameters.** For built-in nodes, parameters are fixed and require no extra configuration. For plugins, parameters are configurable.
 
 ### How Tools Work
 
@@ -42,7 +42,7 @@ Models that support `function calling` can invoke multiple tools in a single tur
 | ------------------------- | ------------------------- |
 | ![](/imgs/flow-tool3.png) | ![](/imgs/flow-tool4.png) |
 
-In the advanced workflow editor, drag from the tool calling connection point. Eligible tools display a diamond icon at the top, which you can connect to the diamond at the bottom of the tool calling module.
+In the advanced workflow editor, drag from the tool calling connection point. Eligible tools display a diamond icon at the top, which you can connect to the diamond at the bottom of the tool calling node.
 
 Connected tools automatically separate tool inputs from regular inputs. You can also edit the `description` to fine-tune when the tool gets called.
 
@@ -52,7 +52,7 @@ Debugging tool calling is still more art than science, so start with a small num
 
 By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. If you don't need the AI to summarize, place this node at the end of the tool's workflow branch.
 
-In the example below, after the Knowledge Base Search runs, results are sent to an HTTP request. The search results are not returned to the tool calling node for AI summarization.
+In the example below, after the Dataset search runs, results are sent to an HTTP request. The search results are not returned to the tool calling node for AI summarization.
 
 ![](/imgs/flow-tool5.png)
 

@@ -1,6 +1,9 @@
 ---
-title: V4.8.12 (Upgrade Script)
+title: V4.8.12
 description: FastGPT V4.8.12 Release Notes
+releaseTime: '2024-10-30'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -13,7 +16,6 @@ description: FastGPT V4.8.12 Release Notes
 - Update the FastGPT admin image tag to v4.8.12 (fastgpt-pro image)
 - Sandbox image update is optional
 
-
 ### 3. Run initialization (Commercial Edition)
 
 From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
@@ -24,7 +26,7 @@ curl --location --request POST 'https://{{host}}/api/admin/init/4812' \
 --header 'Content-Type: application/json'
 ```
 
-This initializes member group data for apps and Knowledge Bases.
+This initializes member group data for apps and Datasets.
 
 ### 4. Rebuild Milvus data
 
@@ -51,7 +53,7 @@ curl --location --request POST 'https://{{host}}/api/admin/resetMilvus' \
 9. New - Database connection and operation plugin.
 10. New - Cookie privacy policy prompt.
 11. New - HTTP node supports JSONPath expressions.
-12. New - Apps and Knowledge Bases support member group permission configuration.
+12. New - Apps and Datasets support member group permission configuration.
 13. Improved - Loop node supports selecting variables from external nodes.
 14. Improved - Docx file reading: optimized HTML-to-Markdown conversion for better speed and significantly reduced memory consumption.
 15. Fixed - File extension detection now ignores query string parameters.

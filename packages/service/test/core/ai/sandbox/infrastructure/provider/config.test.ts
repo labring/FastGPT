@@ -317,7 +317,7 @@ describe('sandbox provider config', () => {
     });
   });
 
-  it('applies the protected network policy for kubernetes runtime as well', async () => {
+  it('does not pass OpenSandbox network isolation to kubernetes runtime', async () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'kubernetes');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
     vi.resetModules();
@@ -325,10 +325,20 @@ describe('sandbox provider config', () => {
       await import('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile');
     const profile = getSandboxRuntimeProfile('opensandbox');
 
-    expect(profile.buildConfig()?.networkPolicy).toEqual(defaultOpenSandboxNetworkPolicy);
+    expect(profile.buildConfig()?.networkPolicy).toBeUndefined();
+    expect(
+      profile.buildConfig({
+        createConfig: {
+          networkPolicy: {
+            defaultAction: 'allow',
+            egress: [{ action: 'deny', target: '10.0.0.1' }]
+          }
+        }
+      })?.networkPolicy
+    ).toBeUndefined();
   });
 
-  it('does not allow a caller policy to open protected targets or close public egress', async () => {
+  it('keeps Docker OpenSandbox egress policy behavior', async () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'default-opensandbox-image:stable');
     vi.resetModules();

@@ -1,6 +1,9 @@
 ---
-title: V4.9.2 (Environment Changes)
+title: V4.9.2
 description: FastGPT V4.9.2 Release Notes
+releaseTime: '2025-03-27'
+upgradeTags:
+  - CONFIG
 ---
 
 ## Upgrade Guide
@@ -33,12 +36,12 @@ Pro edition users can make this change in the admin panel under `System Configur
 
 ## Important Updates
 
-- Knowledge base data import API changes: added optional parameters `chunkSettingMode`, `chunkSplitMode`, and `indexSize`. See the [Knowledge Base Data Import API](../../../openapi/dataset.en.mdx) documentation for details.
+- Dataset data import API changes: added optional parameters `chunkSettingMode`, `chunkSplitMode`, and `indexSize`. See the [Dataset Data Import API](../../../openapi/dataset.en.mdx) documentation for details.
 
 ## New Features
 
-1. Knowledge base chunking optimization: supports separate configuration for chunk size and index size, allowing extra-large chunks that trade higher input tokens for complete chunks.
-2. Knowledge base chunking now includes custom separator presets and supports custom newline-based splitting.
+1. Dataset chunking optimization: supports separate configuration for chunk size and index size, allowing extra-large chunks that trade higher input tokens for complete chunks.
+2. Dataset chunking now includes custom separator presets and supports custom newline-based splitting.
 3. External variables renamed to Custom Variables. Now supports debugging during testing, and the variable is hidden in share links.
 4. Collection sync now supports syncing title changes.
 5. Team member management overhaul: extracted mainstream IM SSO (WeCom, Lark, DingTalk) and added support for connecting to FastGPT via custom SSO. Also improved member sync with external systems.
@@ -66,7 +69,7 @@ Pro edition users can make this change in the admin panel under `System Configur
 
 ## Bug Fixes
 
-1. Lark and Yuque knowledge bases unable to sync.
+1. Lark and Yuque datasets unable to sync.
 2. Channel testing using the custom request URL instead of the channel request URL when a custom URL was configured.
 3. Speech recognition model testing unable to test disabled models.
 4. Admin-configured system plugins failing authentication when the plugin contains other system apps.

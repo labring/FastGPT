@@ -1,6 +1,10 @@
 ---
-title: V4.9.4（环境变量变更、升级脚本）
+title: V4.9.4
 description: FastGPT V4.9.4 更新说明
+releaseTime: '2025-04-10'
+upgradeTags:
+  - 配置变更
+  - 升级脚本
 ---
 
 ## 升级指南
@@ -9,12 +13,12 @@ description: FastGPT V4.9.4 更新说明
 
 ### 2. 安装 Redis
 
-* docker 部署的用户，参考最新的 `docker-compose.yml` 文件增加 Redis 配置。增加一个 redis 容器，并配置`fastgpt`,`fastgpt-pro`的环境变量，增加 `REDIS_URL` 环境变量。
-* Sealos 部署的用户，在数据库里新建一个`redis`数据库，并复制`内网地址的 connection` 作为 `redis` 的链接串。然后配置`fastgpt`,`fastgpt-pro`的环境变量，增加 `REDIS_URL` 环境变量。
+- docker 部署的用户，参考最新的 `docker-compose.yml` 文件增加 Redis 配置。增加一个 redis 容器，并配置 `fastgpt` , `fastgpt-pro` 的环境变量，增加 `REDIS_URL` 环境变量。
+- Sealos 部署的用户，在数据库里新建一个 `redis` 数据库，并复制 `内网地址的 connection` 作为 `redis` 的链接串。然后配置 `fastgpt` , `fastgpt-pro` 的环境变量，增加 `REDIS_URL` 环境变量。
 
-| | | |
-| --- | --- |  --- |
-| ![](../../../../public/imgs/sealos-redis1.png) | ![](../../../../public/imgs/sealos-redis2.png) |  ![](../../../../public/imgs/sealos-redis3.png) |
+|                                                |                                                |                                                |
+| ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| ![](../../../../public/imgs/sealos-redis1.png) | ![](../../../../public/imgs/sealos-redis2.png) | ![](../../../../public/imgs/sealos-redis3.png) |
 
 ### 3. 更新镜像 tag
 
@@ -27,7 +31,7 @@ description: FastGPT V4.9.4 更新说明
 
 该脚本仅需商业版用户执行。
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**:
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**:
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv494' \

@@ -1,14 +1,17 @@
 ---
-title: 'V4.14.0（升级脚本）'
+title: 'V4.14.0'
 description: 'FastGPT V4.14.0 更新说明'
+releaseTime: '2025-11-05'
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 更新指南
 
 ### 1. 更新镜像：
 
-- 更新 FastGPT 镜像tag: v4.14.0
-- 更新 FastGPT 商业版镜像tag: v4.14.0
+- 更新 FastGPT 镜像 tag: v4.14.0
+- 更新 FastGPT 商业版镜像 tag: v4.14.0
 - 更新 fastgpt-plugin 镜像 tag: v0.3.0
 - mcp_server 无需更新
 - Sandbox 无需更新
@@ -16,8 +19,7 @@ description: 'FastGPT V4.14.0 更新说明'
 
 ### 2. 执行升级脚本
 
-仅需使用过自定义系统工具的商业版用户操作。
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+仅需使用过自定义系统工具的商业版用户操作。从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4140' \
@@ -32,13 +34,13 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4140' \
 从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 FastGPT 系统需手动安装系统插件。
 
 **注意事项**
-* 原先手动安装的 js 插件包将会失效，需重新打包安装。
-* 通过插件市场安装，默认会向公开的 FastGPT Marketplace 获取数据进行安装。
-* 如果你的 FastGPT 无法访问插件市场，则可以手动访问[FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
-* 除了安装外，还可对工具进行排序、默认安装、标签管理等。
-* 目前插件里仅包含工具，后续将增加触发器，文档解析器，数据分块策略，索引增强策略等。
-* 系统安装完插件后，对于多租户的系统，团队管理员可以在插件库中激活对应工具，从而在应用中使用。对于开源版，root 团队会默认激活所有系统工具。
 
+- 原先手动安装的 js 插件包将会失效，需重新打包安装。
+- 通过插件市场安装，默认会向公开的 FastGPT Marketplace 获取数据进行安装。
+- 如果你的 FastGPT 无法访问插件市场，则可以手动访问 [FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
+- 除了安装外，还可对工具进行排序、默认安装、标签管理等。
+- 目前插件里仅包含工具，后续将增加触发器，文档解析器，数据分块策略，索引增强策略等。
+- 系统安装完插件后，对于多租户的系统，团队管理员可以在插件库中激活对应工具，从而在应用中使用。对于开源版，root 团队会默认激活所有系统工具。
 
 除了安装外，还可对工具进行排序、默认安装、标签管理等。
 
@@ -53,7 +55,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4140' \
 
 ## ⚙️ 优化
 
-1. 匹配 Markdown 中 Base64 图片正则性能。
+1. 匹配 Markdown 中 base64 图片正则性能。
 2. 团队成员接受邀请后，默认成员名改为成员账户名。
 
 ## 🐛 修复
@@ -61,7 +63,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4140' \
 1. Prompt 编辑器存在特殊语法时候，无法解析正确内容。
 2. Claude 工具调用，如果下标从 1 开始会导致参数异常。
 3. S3 删除头像，如果 key 为空时，会抛错，导致流程阻塞。
-4. 工作流前置IO 变更时，依赖未及时刷新。
+4. 工作流前置 IO 变更时，依赖未及时刷新。
 5. 导出对话日志，缺少反馈记录。
 6. 工作流欢迎语输入框输入时，光标会偏移到最后一位。
 7. 存在交互节点和连续批量执行时，会导致工作流运行逻辑错误。

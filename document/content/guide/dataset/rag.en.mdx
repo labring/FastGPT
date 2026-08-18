@@ -1,6 +1,6 @@
 ---
-title: Knowledge Base Fundamentals
-description: This section covers the core mechanisms, application scenarios, advantages, and limitations of the RAG model in generation tasks.
+title: Dataset Fundamentals
+description: This section covers the core mechanisms, use cases, advantages, and limitations of RAG in generation tasks.
 ---
 
 [RAG Documentation](https://huggingface.co/docs/transformers/model_doc/rag)
@@ -11,19 +11,19 @@ As natural language processing (NLP) technology has advanced rapidly, generative
 
 Meanwhile, retrieval models (Retrievers) can quickly locate relevant information across massive document collections, addressing factual query needs. However, traditional retrieval models (such as BM25) often return isolated results when facing ambiguous queries or cross-domain questions, and cannot generate coherent natural language answers. Without contextual reasoning capabilities, the answers they produce tend to lack coherence and completeness.
 
-To address the shortcomings of both approaches, Retrieval-Augmented Generation (RAG) was developed. RAG combines the strengths of generative and retrieval models by fetching relevant information from external knowledge bases in real time and incorporating it into the generation process. This ensures that generated text is both contextually coherent and factually grounded. This hybrid architecture performs particularly well in intelligent Q&A, information retrieval and reasoning, and domain-specific content generation.
+To address the shortcomings of both approaches, Retrieval-Augmented Generation (RAG) was developed. RAG combines the strengths of generative and retrieval models by fetching relevant information from external datasets in real time and incorporating it into the generation process. This ensures that generated text is both contextually coherent and factually grounded. This hybrid architecture performs particularly well in intelligent Q&A, information retrieval and reasoning, and domain-specific content generation.
 
 ## 1.1 Definition of RAG
 
-RAG is a hybrid architecture that combines information retrieval with generative models. First, the retriever fetches content fragments relevant to the user's query from an external knowledge base or document collection. Then, the generator produces natural language output based on these retrieved fragments, ensuring the output is information-rich, highly relevant, and accurate.
+RAG is a hybrid architecture that combines information retrieval with generative models. First, the retriever fetches content fragments relevant to the user's query from an external Dataset or document collection. Then, the generator produces natural language output based on these retrieved fragments, ensuring the output is information-rich, highly relevant, and accurate.
 
 # 2. Core Mechanisms of RAG
 
-RAG models consist of two main modules: the Retriever and the Generator. These modules work together to ensure generated text contains relevant external knowledge while maintaining natural, fluent language.
+RAG models consist of two main components: the Retriever and the Generator. These components work together to ensure generated text contains relevant external knowledge while maintaining natural, fluent language.
 
 ## 2.1 Retriever
 
-The retriever's primary task is to fetch the most relevant content from an external knowledge base or document collection for a given input query. Common techniques in RAG include:
+The retriever's primary task is to fetch the most relevant content from an external Dataset or document collection for a given input query. Common techniques in RAG include:
 
 - Vector retrieval: Using models like BERT to convert documents and queries into vector space representations, then matching them via similarity calculations. Vector retrieval excels at capturing semantic similarity rather than relying solely on lexical matching.
 - Traditional retrieval algorithms: Such as BM25, which uses term frequency and inverse document frequency (TF-IDF) weighted scoring to rank and retrieve documents. BM25 works well for straightforward keyword matching tasks.
@@ -44,7 +44,7 @@ After receiving document fragments from the retriever, the generator uses them a
 The RAG model workflow can be summarized as follows:
 
 1. Input query: The user submits a question, which the system converts to a vector representation.
-2. Document retrieval: The retriever extracts the most relevant document fragments from the knowledge base, typically using vector retrieval or traditional techniques like BM25.
+2. Document retrieval: The retriever extracts the most relevant document fragments from the Dataset, typically using vector retrieval or traditional techniques like BM25.
 3. Answer generation: The generator receives the retrieved fragments and produces a natural language answer based on both the original query and the retrieved context, providing richer, more contextually relevant responses.
 4. Output: The generated answer is returned to the user, ensuring they receive an accurate response grounded in relevant, up-to-date information.
 
@@ -52,22 +52,22 @@ The RAG model workflow can be summarized as follows:
 
 ## 3.1 Retrieval Phase
 
-In RAG, the user's query is first converted to a vector representation, then vector search is performed against the knowledge base. The retriever typically uses pre-trained models like BERT to generate vector representations of both queries and document fragments, matching the most relevant fragments through similarity calculations (such as cosine similarity). RAG's retriever goes beyond simple keyword matching by using semantic-level vector representations, enabling more accurate results even for complex or ambiguous queries. This step is critical because retrieval quality directly determines the context available to the generator.
+In RAG, the user's query is first converted to a vector representation, then vector search is performed against the Dataset. The retriever typically uses pre-trained models like BERT to generate vector representations of both queries and document fragments, matching the most relevant fragments through similarity calculations (such as cosine similarity). RAG's retriever goes beyond simple keyword matching by using semantic-level vector representations, enabling more accurate results even for complex or ambiguous queries. This step is critical because retrieval quality directly determines the context available to the generator.
 
 ## 3.2 Generation Phase
 
-The generation phase is the core of RAG. The generator produces coherent, natural text answers based on retrieved content. RAG generators like BART or GPT combine the user's query with retrieved document fragments to produce more precise and comprehensive answers. Unlike traditional generative models, RAG's generator can incorporate factual information from external knowledge bases, improving accuracy.
+The generation phase is the core of RAG. The generator produces coherent, natural text answers based on retrieved content. RAG generators like BART or GPT combine the user's query with retrieved document fragments to produce more precise and comprehensive answers. Unlike traditional generative models, RAG's generator can incorporate factual information from external datasets, improving accuracy.
 
 ## 3.3 Multi-Turn Interaction and Feedback
 
-RAG models effectively support multi-turn interactions in dialogue systems. Each round's query and generated results serve as input for the next round. Through this feedback loop, RAG progressively refines its retrieval and generation strategies, producing increasingly relevant answers across multiple conversation turns. This also enhances RAG's adaptability in complex dialogue scenarios involving cross-turn knowledge integration and reasoning.
+RAG models effectively support multi-turn interactions in conversational systems. Each round's query and generated results serve as input for the next round. Through this feedback loop, RAG progressively refines its retrieval and generation strategies, producing increasingly relevant answers across multiple chat turns. This also enhances RAG's adaptability in complex conversational scenarios involving cross-turn knowledge integration and reasoning.
 
 # 4. Advantages and Limitations of RAG
 
 ## 4.1 Advantages
 
-- Information completeness: RAG combines retrieval and generation, producing text that is both naturally fluent and grounded in real-time information from external knowledge bases. This significantly improves accuracy in knowledge-intensive scenarios like medical Q&A or legal opinion generation, avoiding the risk of hallucinated information.
-- Knowledge reasoning: RAG can efficiently retrieve from large-scale external knowledge bases and reason with real data to generate fact-based answers. Compared to traditional generative models, RAG handles more complex tasks, particularly cross-domain or cross-document reasoning — such as legal case analysis or financial report generation.
+- Information completeness: RAG combines retrieval and generation, producing text that is both naturally fluent and grounded in real-time information from external datasets. This significantly improves accuracy in knowledge-intensive scenarios like medical Q&A or legal opinion generation, avoiding the risk of hallucinated information.
+- Knowledge reasoning: RAG can efficiently retrieve from large-scale external datasets and reason with real data to generate fact-based answers. Compared to traditional generative models, RAG handles more complex tasks, particularly cross-domain or cross-document reasoning — such as legal case analysis or financial report generation.
 - Strong domain adaptability: RAG adapts well across domains, performing efficient retrieval and generation within specific fields. In domains like healthcare, law, and finance that require real-time updates and high accuracy, RAG outperforms models that rely solely on pre-training.
 
 ## 4.2 Limitations
@@ -78,22 +78,22 @@ Despite its strong potential and cross-domain adaptability, RAG faces several ke
 
 RAG performance depends heavily on the quality of documents returned by the retriever. If retrieved fragments are irrelevant or inaccurate, the generated text may be biased or misleading — especially with ambiguous queries or cross-domain retrieval.
 
-- Challenge: Improving retriever precision for complex queries across large, diverse knowledge bases remains difficult. Methods like BM25 have limitations, particularly with semantically ambiguous queries where keyword matching falls short.
+- Challenge: Improving retriever precision for complex queries across large, diverse datasets remains difficult. Methods like BM25 have limitations, particularly with semantically ambiguous queries where keyword matching falls short.
 - Solution: Adopt hybrid retrieval combining sparse retrieval (BM25) with dense retrieval (vector search). For example, Faiss enables BERT-based dense vector representations that significantly improve semantic matching, reducing the impact of irrelevant documents on generation.
 
 #### 4.2.2 Generator Computational Complexity and Performance Bottlenecks
 
-Combining retrieval and generation modules significantly increases computational complexity. When processing large datasets or long texts, the generator must integrate information from multiple document fragments, increasing generation time and reducing inference speed. This is a major bottleneck for real-time Q&A systems.
+Combining retrieval and generation components significantly increases computational complexity. When processing large datasets or long texts, the generator must integrate information from multiple document fragments, increasing generation time and reducing inference speed. This is a major bottleneck for real-time Q&A systems.
 
-- Challenge: As knowledge base scale grows, both retrieval computation and the generator's multi-fragment integration capabilities significantly impact system efficiency. GPU and memory consumption can multiply in multi-turn dialogues or complex generation tasks.
+- Challenge: As Dataset scale grows, both retrieval computation and the generator's multi-fragment integration capabilities significantly impact system efficiency. GPU and memory consumption can multiply in multi-turn chats or complex generation tasks.
 - Solution: Use model compression and knowledge distillation to reduce generator complexity and inference time. Distributed computing and model parallelization techniques like [DeepSpeed](https://www.deepspeed.ai/) can effectively handle high computational demands in large-scale scenarios.
 
-#### 4.2.3 Knowledge Base Updates and Maintenance
+#### 4.2.3 Dataset Updates and Maintenance
 
-RAG models typically rely on a pre-built external knowledge base containing documents, papers, legal provisions, and other information. The timeliness and accuracy of this content directly affects the credibility of generated results. Over time, knowledge base content may become outdated, producing answers that don't reflect current information — particularly problematic in fast-moving fields like healthcare and finance.
+RAG models typically rely on a pre-built external Dataset containing documents, papers, legal provisions, and other information. The timeliness and accuracy of this content directly affects the credibility of generated results. Over time, Dataset content may become outdated, producing answers that don't reflect current information — particularly problematic in fast-moving fields like healthcare and finance.
 
-- Challenge: Knowledge bases need frequent updates, but manual updates are time-consuming and error-prone. Implementing continuous automated updates without impacting system performance is a significant challenge.
-- Solution: Use automated crawlers and information extraction systems (such as Scrapy) to automatically fetch and update knowledge base content. Combined with [dynamic indexing techniques](https://arxiv.org/pdf/2102.03315), retrievers can update indexes in real time. Incremental learning allows the generator to gradually absorb new information, avoiding outdated answers.
+- Challenge: Datasets need frequent updates, but manual updates are time-consuming and error-prone. Implementing continuous automated updates without impacting system performance is a significant challenge.
+- Solution: Use automated crawlers and information extraction systems (such as Scrapy) to automatically fetch and update Dataset content. Combined with [dynamic indexing techniques](https://arxiv.org/pdf/2102.03315), retrievers can update indexes in real time. Incremental learning allows the generator to gradually absorb new information, avoiding outdated answers.
 
 #### 4.2.4 Generated Content Controllability and Transparency
 
@@ -104,11 +104,11 @@ RAG models have controllability and transparency challenges. In complex tasks or
 
 # 5. RAG Improvement Directions
 
-RAG model performance depends on knowledge base accuracy and retrieval efficiency. Optimizing data collection, content chunking, retrieval precision, and answer generation are key to improving overall effectiveness.
+RAG model performance depends on Dataset accuracy and retrieval efficiency. Optimizing data collection, content chunking, retrieval precision, and answer generation are key to improving overall effectiveness.
 
-## 5.1 Data Collection and Knowledge Base Construction
+## 5.1 Data Collection and Dataset Construction
 
-RAG's core dependency is knowledge base data quality and breadth — the knowledge base serves as "external memory." A high-quality knowledge base should include content from diverse, authoritative sources such as scientific literature databases (PubMed, IEEE Xplore), established news media, and industry standards and reports. It also needs automated update capabilities to stay current.
+RAG's core dependency is Dataset data quality and breadth — the Dataset serves as "external memory." A high-quality Dataset should include content from diverse, authoritative sources such as scientific literature databases (PubMed, IEEE Xplore), established news media, and industry standards and reports. It also needs automated update capabilities to stay current.
 
 - Challenges:
   - Single or limited data sources leading to insufficient coverage across domains
@@ -120,11 +120,11 @@ RAG's core dependency is knowledge base data quality and breadth — the knowled
 - Improvements:
   - Expand data source coverage across multiple domains, including specialized databases like PubMed, LexisNexis, and financial databases
   - Build data quality review and filtering mechanisms using automated detection algorithms combined with manual review
-  - Implement automated knowledge base updates using web crawlers with change detection algorithms
+  - Implement automated Dataset updates using web crawlers with change detection algorithms
   - Adopt efficient data cleaning and classification using NLP techniques like BERT for entity recognition and text denoising
   - Strengthen data security with de-identification, anonymization, and differential privacy protection
   - Standardize data formats using JSON, XML, or knowledge graphs for structured storage
-  - Incorporate user feedback mechanisms to continuously optimize knowledge base content
+  - Incorporate user feedback mechanisms to continuously optimize Dataset content
 
 ## 5.2 Data Chunking and Content Management
 
@@ -145,7 +145,7 @@ Proper chunking strategies help models efficiently locate target information and
 
 ## 5.3 Retrieval Optimization
 
-The retrieval module determines the relevance and accuracy of generated answers. Hybrid retrieval strategies (combining BM25 and DPR) complement each other — BM25 handles keyword matching efficiently while DPR excels at deep semantic understanding.
+The retrieval component determines the relevance and accuracy of generated answers. Hybrid search strategies (combining BM25 and DPR) complement each other — BM25 handles keyword matching efficiently while DPR excels at deep semantic understanding.
 
 - Challenges:
   - Single retrieval strategies causing answer bias
@@ -157,7 +157,7 @@ The retrieval module determines the relevance and accuracy of generated answers.
   - Combine BM25 and DPR in a hybrid retrieval strategy — BM25 for initial keyword filtering, then DPR for deep semantic matching
   - Optimize retrieval efficiency using caching for frequent queries and distributed computing for parallel processing
   - Apply deduplication and ranking optimization algorithms to retrieval results
-  - Dynamically adjust retrieval strategies based on task type — favoring semantic retrieval for medical Q&A, keyword matching for news scenarios
+  - Dynamically adjust retrieval strategies based on task type — favoring semantic search for medical Q&A, keyword matching for news scenarios
   - Integrate retrieval optimization frameworks like Haystack for enhanced extensibility
 
 ## 5.4 Answer Generation and Optimization
@@ -185,7 +185,7 @@ The generator produces natural language answers based on retrieved context. Accu
    1. The user submits a natural language query through the UI or API.
    2. The input is passed to a vectorizer (such as BERT or Sentence Transformer) to convert the query into a vector representation.
 2. Document retrieval:
-   1. The vectorized query is passed to the retriever, which finds the most relevant document fragments in the knowledge base.
+   1. The vectorized query is passed to the retriever, which finds the most relevant document fragments in the Dataset.
    2. Retrieval can use sparse techniques (BM25) or dense techniques (DPR) for improved matching efficiency and precision.
 3. Generator processing and natural language generation:
    1. Retrieved document fragments are fed to the generator (such as GPT, BART, or T5), which produces a natural language answer based on the query and document content.
@@ -200,16 +200,16 @@ The generator produces natural language answers based on retrieved context. Accu
 
 [RAG Across Various Domains](https://github.com/hymie122/RAG-Survey)
 
-# 7. RAG Applications
+# 7. RAG Use Cases
 
 RAG models have been widely adopted across multiple domains:
 
 ## 7.1 Intelligent Q&A Systems
 
-- RAG generates accurate, detailed answers by retrieving from external knowledge bases in real time, avoiding the hallucination issues of traditional generative models. For example, in medical Q&A systems, RAG can incorporate the latest medical literature to generate answers with current treatment protocols, helping medical professionals quickly access the latest research and clinical recommendations.
+- RAG generates accurate, detailed answers by retrieving from external datasets in real time, avoiding the hallucination issues of traditional generative models. For example, in medical Q&A systems, RAG can incorporate the latest medical literature to generate answers with current treatment protocols, helping medical professionals quickly access the latest research and clinical recommendations.
   - [Medical Q&A System Case Study](https://www.apexon.com/blog/empowering-discovery-the-role-of-rag-architecture-generative-ai-in-healthcare-life-sciences/)
     - ![](/imgs/RAG2.png)
-    - User submits a query through the web application:
+    - User submits a query through the web app:
       1. The user enters a query in the web app, which enters the backend system and initiates the data processing pipeline.
     - Authentication via Azure AD:
       1. The system authenticates the user through Azure Active Directory (Azure AD), ensuring only authorized users can access the system and data.
@@ -224,7 +224,7 @@ RAG models have been widely adopted across multiple domains:
     - Azure OpenAI generates response:
       1. After retrieving relevant information, data is passed to Azure OpenAI, which uses natural language generation (NLG) to produce a coherent answer based on the query and retrieval results.
     - Response returned to user:
-      1. The final answer is returned through the web application, completing the query-to-response flow.
+      1. The final answer is returned through the web app, completing the query-to-response flow.
     - The entire pipeline demonstrates Azure AI technology integration, handling complex queries through document retrieval, intelligent processing, and natural language generation while ensuring data security and compliance.
 
 ## 7.2 Information Retrieval and Text Generation
@@ -237,7 +237,7 @@ RAG models have been widely adopted across multiple domains:
       1. ![](/imgs/RAG3.png)
       2. Workflow:
       3. User inputs a question (Q: ?, A: ?): The user submits a query through the interface.
-      4. Embed + Retrieve module: Receives the query, embeds it as a vector, and performs similarity search in external knowledge bases or documents.
+      4. Embed + Retrieve component: Receives the query, embeds it as a vector, and performs similarity search in external datasets or documents.
       5. Answer generation (A): Based on the most relevant retrieved information, the generation model produces a coherent natural language answer.
       6. Compare and return results: The generated answer is compared with previous related answers and returned to the user.
       7. The benchmark is built on the LegalBench dataset with 6,858 query-answer pairs traced to exact locations in original legal documents.
@@ -249,14 +249,14 @@ RAG models have been widely adopted across multiple domains:
       2. The length and terminological complexity of legal documents increase retrieval and generation difficulty.
     - Quality control: The dataset construction process ensures high-quality human annotations and textual precision, with multiple rounds of manual verification when mapping annotation categories and document IDs to specific text fragments.
 
-## 7.3 Other Applications
+## 7.3 Other Use Cases
 
-RAG can also be applied to multimodal generation scenarios, including image, audio, and 3D content generation. Cross-modal applications like ReMoDiffuse and Make-An-Audio leverage RAG technology for generation across different data modalities. In enterprise decision support, RAG can rapidly retrieve external resources (industry reports, market data) to generate high-quality forward-looking reports, enhancing strategic decision-making capabilities.
+RAG can also be applied to multimodal generation scenarios, including image, audio, and 3D content generation. Cross-modal systems like ReMoDiffuse and Make-An-Audio leverage RAG technology for generation across different data modalities. In enterprise decision support, RAG can rapidly retrieve external resources (industry reports, market data) to generate high-quality forward-looking reports, enhancing strategic decision-making capabilities.
 
 ## 8. Summary
 
-This document systematically covers the core mechanisms, advantages, and applications of Retrieval-Augmented Generation (RAG). By combining generative and retrieval models, RAG addresses the hallucination problem of traditional generative models in factual tasks and the inability of retrieval models to produce coherent natural language output. RAG models retrieve information from external knowledge bases in real time, generating content that is both factually accurate and linguistically fluent — applicable to knowledge-intensive domains like healthcare, law, and intelligent Q&A systems.
+This document systematically covers the core mechanisms, advantages, and use cases of Retrieval-Augmented Generation (RAG). By combining generative and retrieval models, RAG addresses the hallucination problem of traditional generative models in factual tasks and the inability of retrieval models to produce coherent natural language output. RAG models retrieve information from external datasets in real time, generating content that is both factually accurate and linguistically fluent — applicable to knowledge-intensive domains like healthcare, law, and intelligent Q&A systems.
 
-In practice, while RAG offers significant advantages in information completeness, reasoning capability, and cross-domain adaptability, it also faces challenges around data quality, computational resource consumption, and knowledge base maintenance. To further improve RAG performance, this document proposes comprehensive improvements across data collection, content chunking, retrieval strategy optimization, and answer generation — including knowledge graph integration, user feedback optimization, and efficient deduplication algorithms — to enhance model applicability and efficiency.
+In practice, while RAG offers significant advantages in information completeness, reasoning capability, and cross-domain adaptability, it also faces challenges around data quality, computational resource consumption, and Dataset maintenance. To further improve RAG performance, this document proposes comprehensive improvements across data collection, content chunking, retrieval strategy optimization, and answer generation — including knowledge graph integration, user feedback optimization, and efficient deduplication algorithms — to enhance model applicability and efficiency.
 
-RAG has demonstrated strong potential in intelligent Q&A, information retrieval, and text generation, and continues to expand into multimodal generation and enterprise decision support. Through hybrid retrieval techniques, knowledge graphs, and dynamic feedback mechanisms, RAG can flexibly address complex user needs, generating factually grounded and logically coherent answers. Going forward, RAG will further improve trustworthiness and practicality in specialized domains through enhanced model transparency and controllability, providing broader applications for intelligent information retrieval and content generation.
+RAG has demonstrated strong potential in intelligent Q&A, information retrieval, and text generation, and continues to expand into multimodal generation and enterprise decision support. Through hybrid retrieval techniques, knowledge graphs, and dynamic feedback mechanisms, RAG can flexibly address complex user needs, generating factually grounded and logically coherent answers. Going forward, RAG will further improve trustworthiness and practicality in specialized domains through enhanced model transparency and controllability, supporting broader use cases for intelligent information retrieval and content generation.

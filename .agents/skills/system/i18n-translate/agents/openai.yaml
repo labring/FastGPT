@@ -1,0 +1,6 @@
+interface:
+  display_name: 'I18n Translate'
+  short_description: 'Translate FastGPT namespaces from Chinese'
+  default_prompt: 'Use $i18n-translate to translate the specified Chinese namespace(s), or all namespaces, into every supported locale.'
+policy:
+  allow_implicit_invocation: false

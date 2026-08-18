@@ -11,7 +11,6 @@ import {
   setBdVId,
   setFastGPTSem,
   initFastGPTSemSourceDomain,
-  setInviterId,
   setMsclkid,
   setUtmParams,
   setUtmWorkflow
@@ -21,7 +20,6 @@ import { setCouponCode } from '@/web/support/marketing/utils';
 import { appClientEnv } from '@/web/common/system/env';
 
 type MarketingQueryParams = {
-  hiId?: string;
   bd_vid?: string;
   msclkid?: string;
   k?: string;
@@ -36,7 +34,6 @@ type MarketingQueryParams = {
 };
 
 const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
-  'hiId',
   'bd_vid',
   'msclkid',
   'k',
@@ -52,7 +49,6 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
 export const useInitApp = () => {
   const router = useRouter();
   const {
-    hiId,
     bd_vid,
     msclkid,
     k,
@@ -151,7 +147,6 @@ export const useInitApp = () => {
 
   // Marketing data track
   useMount(() => {
-    setInviterId(hiId);
     setBdVId(bd_vid);
     setMsclkid(msclkid);
     setUtmWorkflow(utm_workflow);

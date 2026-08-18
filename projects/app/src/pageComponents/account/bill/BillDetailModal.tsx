@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Box, Flex, ModalBody } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import dayjs from 'dayjs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import {
@@ -21,7 +21,7 @@ type BillDetailModalProps = {
 };
 
 const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account', 'discount_coupon']);
 
   const { data: bill, loading } = useRequest(() => getBillDetail(billId), {
     refreshDeps: [billId],
@@ -152,7 +152,7 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
         )}
         {!!bill?.discountCouponName && (
           <Flex alignItems={'center'} pb={4}>
-            <FormLabel flex={'0 0 120px'}>{t('account_info:discount_coupon')}:</FormLabel>
+            <FormLabel flex={'0 0 120px'}>{t('discount_coupon:discount_coupon')}:</FormLabel>
             <Box>{t(bill?.discountCouponName as any)}</Box>
           </Flex>
         )}
@@ -214,7 +214,7 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
             <Box flex={1} fontSize="sm" color="gray.600">
               {customConfigItems.map((item, idx) => (
                 <Box key={idx} pb={0.5}>
-                  {t(item.key)}: {item.value}
+                  {t(item.key as any)}: {item.value}
                   {item.unit &&
                     (item.unit === 'day'
                       ? t('account:day')

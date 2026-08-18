@@ -317,6 +317,57 @@ describe('CosStorageAdapter deletion boundaries', () => {
   });
 });
 
+describe('CosStorageAdapter.deleteObjectsByRawKeys', () => {
+  it('routes control-character keys through single-object delete and the rest through XML batch delete', async () => {
+    const adapter = createAdapter();
+    const deleteObject = vi.fn().mockImplementation((_params, callback) => callback(null, {}));
+    const deleteMultipleObject = vi.fn().mockImplementation((params, callback) => {
+      callback(null, { Error: [], Deleted: params.Objects });
+    });
+    Object.assign((adapter as any).client, { deleteObject, deleteMultipleObject });
+
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    const safeKey = 'dataset/team/file.txt';
+
+    await expect(adapter.deleteObjectsByRawKeys({ keys: [legacyKey, safeKey] })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: []
+    });
+
+    expect(deleteObject).toHaveBeenCalledTimes(1);
+    expect(deleteObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Bucket: 'fastgpt-private',
+        Region: 'ap-guangzhou',
+        Key: legacyKey
+      }),
+      expect.any(Function)
+    );
+    expect(deleteMultipleObject).toHaveBeenCalledTimes(1);
+    expect(deleteMultipleObject).toHaveBeenCalledWith(
+      expect.objectContaining({ Objects: [{ Key: safeKey }] }),
+      expect.any(Function)
+    );
+  });
+
+  it('reports control-character keys whose single-object delete fails', async () => {
+    const adapter = createAdapter();
+    const deleteObject = vi
+      .fn()
+      .mockImplementation((_params, callback) => callback(new Error('delete denied')));
+    const deleteMultipleObject = vi.fn();
+    Object.assign((adapter as any).client, { deleteObject, deleteMultipleObject });
+
+    const legacyKey = 'chat/app/legacy\r\nname.svg';
+    await expect(adapter.deleteObjectsByRawKeys({ keys: [legacyKey] })).resolves.toEqual({
+      bucket: 'fastgpt-private',
+      keys: [legacyKey]
+    });
+    expect(deleteObject).toHaveBeenCalledTimes(1);
+    expect(deleteMultipleObject).not.toHaveBeenCalled();
+  });
+});
+
 describe('CosStorageAdapter.generatePublicGetUrl', () => {
   it.each([
     [undefined, 'https://fastgpt-private.cos.ap-guangzhou.myqcloud.com/folder%20%23/file%2B.txt'],

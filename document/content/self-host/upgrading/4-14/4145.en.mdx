@@ -1,6 +1,10 @@
 ---
-title: 'V4.14.5 (Environment Changes, Upgrade Script)'
+title: 'V4.14.5'
 description: 'FastGPT V4.14.5 Release Notes'
+releaseTime: '2026-01-09'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -24,14 +28,14 @@ STORAGE_S3_ENDPOINT=http://fastgpt-minio:9000 # protocol://domain(IP):port
 
 **Remove Old Variables**
 
-* S3_EXTERNAL_BASE_URL
-* S3_ENDPOINT
-* S3_PORT
-* S3_USE_SSL
-* S3_ACCESS_KEY
-* S3_SECRET_KEY
-* S3_PUBLIC_BUCKET
-* S3_PRIVATE_BUCKET
+- S3_EXTERNAL_BASE_URL
+- S3_ENDPOINT
+- S3_PORT
+- S3_USE_SSL
+- S3_ACCESS_KEY
+- S3_SECRET_KEY
+- S3_PUBLIC_BUCKET
+- S3_PRIVATE_BUCKET
 
 ### 2. Update Images:
 
@@ -56,10 +60,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
 1. Retries all failed S3 deletion tasks.
 2. Adds the `showFullText` field to all share-type OutLink records.
 3. Renames fields:
-  - showNodeStatus -> showRunningStatus
-  - responseDetail -> showCite
-  - showRawSource -> canDownloadSource
 
+- showNodeStatus -> showRunningStatus
+- responseDetail -> showCite
+- showRawSource -> canDownloadSource
 
 ## New Features
 
@@ -69,7 +73,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
 4. Chat record deletion is now soft-delete, with the ability to delete chat records from the log management page.
 5. When updating an Agent/tool, the update timestamp is propagated to all parent directories so they appear at the top of the list.
 6. Portal page now supports configuring visibility for individual app execution.
-7. API endpoint to export chunks from a single knowledge base collection.
+7. API endpoint to export chunks from a single Dataset collection.
 8. Upgraded Mongo 5.x to 5.0.32 to fix CVE-2025-14847.
 9. Email configuration now supports configuring security mode and port number.
 
@@ -81,7 +85,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
 4. LLM empty response detection now excludes content filter errors from being misidentified as no response.
 5. Improved error messages for AI chat and tool calls with more raw data.
 6. Increased file parsing API request size limit to 10MB.
-7. Citation list below chat responses now only shows knowledge base content actually cited by the AI.
+7. Citation list below chat responses now only shows Dataset content actually cited by the AI.
 8. Updated MCP SDK version.
 9. Optimized Chats table indexes: reduced redundancy and added conditional indexes.
 
@@ -90,7 +94,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4145' \
 1. Critical: Workflow parallel merge could cause duplicate execution.
 2. MCP tool creation with custom auth headers threw an error.
 3. Fetching chat log list threw an error when user avatar was empty.
-4. chatAgent showed question optimization as enabled in the frontend UI when it was actually disabled.
+4. chatAgent showed query rewriting as enabled in the frontend UI when it was actually disabled.
 5. maxTokens field was not assigned when loading default models, causing empty model max response configuration.
 6. S3 file cleanup queue was blocked due to network instability, preventing deletion tasks from executing.
 7. Chat log API adapted for mongo 4.x syntax.

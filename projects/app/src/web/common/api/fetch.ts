@@ -12,6 +12,7 @@ import {
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import {
@@ -25,6 +26,7 @@ import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/Opt
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
+import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 
 type StreamFetchProps = {
   url?: string;
@@ -176,7 +178,7 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       }
 
       case SseResponseEventEnum.error: {
-        const error = getErrText(obj, '流响应错误');
+        const error = getErrText(obj, i18nT('common:stream_response_error'));
         onerror(error);
         break;
       }
@@ -259,7 +261,10 @@ function $ssefetch(params: SSEFetchParams) {
 
     const onfailed = (err?: any) => {
       finished = true;
-      reject({ message: getErrText(err, error ?? '响应过程出现异常~'), responseText });
+      reject({
+        message: getErrText(err, error ?? i18nT('common:response_processing_error')),
+        responseText
+      });
     };
 
     const onfinish = () => {
@@ -309,7 +314,10 @@ function $ssefetch(params: SSEFetchParams) {
     try {
       const fetchEventSourceOptions: FetchEventSourceInit = {
         ...restRequestInit,
-        headers: headersInitToRecord(initHeaders),
+        headers: {
+          ...getLanguageRequestHeaders(),
+          ...headersInitToRecord(initHeaders)
+        },
         signal,
         async onopen(res) {
           clearTimeout(timer);
@@ -408,7 +416,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
     };
     const onfailed = (err?: any) => {
       finished = true;
-      const message = getErrText(err, error ?? '响应过程出现异常~');
+      const message = getErrText(err, error ?? i18nT('common:response_processing_error'));
       reject({
         message,
         responseText,
@@ -476,6 +484,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
       const req = new Request(getWebReqUrl(url));
 
       await fetchEventSource(req, {
+        headers: getLanguageRequestHeaders(),
         signal: signal,
         async onopen(res) {
           clearTimeout(timer);
@@ -510,7 +519,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
             try {
               completedChat = JSON.parse(data) as StreamNoNeedToBeResumeType;
             } catch (parseErr) {
-              error = getErrText(parseErr, '恢复完成态数据解析失败');
+              error = getErrText(parseErr, i18nT('common:resume_completed_data_parse_failed'));
             }
             return;
           }
@@ -595,6 +604,7 @@ export const streamFetch = ({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getLanguageRequestHeaders(),
         ...(shouldEnableStreamResume && {
           [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
         })

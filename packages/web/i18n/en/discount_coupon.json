@@ -1,0 +1,11 @@
+{
+  "discount_coupon": "Coupon",
+  "expired": "Expired",
+  "expired_tips": "It has expired~",
+  "not_started_tips": "Not started",
+  "used_time": "Used at",
+  "expiration_time": "Expiration time",
+  "use": "Use",
+  "used_tips": "Already used",
+  "check_purchase_history": "View order"
+}

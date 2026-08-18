@@ -8,7 +8,8 @@ import {
   type ButtonProps
 } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import type { TFunction } from 'i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -44,7 +45,7 @@ const getStatusCopy = ({
   verifiedEnterpriseName,
   hasTask
 }: {
-  t: (key: string, options?: Record<string, any>) => string;
+  t: TFunction;
   status?: `${TeamEnterpriseAuthStatusEnum}`;
   taskStatus?: `${TeamEnterpriseAuthTaskStatusEnum}`;
   verifiedEnterpriseName?: string;
@@ -85,7 +86,7 @@ const EnterpriseAuthStatusRow = ({
   onAutoOpenFinish,
   ...props
 }: EnterpriseAuthStatusRowProps) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_team', 'user']);
   const { feConfigs } = useSystemStore();
   const { userInfo, initUserInfo } = useUserStore();
   const { toast } = useToast();

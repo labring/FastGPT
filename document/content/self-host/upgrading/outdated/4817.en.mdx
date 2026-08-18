@@ -1,6 +1,9 @@
 ---
-title: V4.8.17 (Upgrade Script)
+title: V4.8.17
 description: FastGPT V4.8.17 Release Notes
+releaseTime: '2024-12-30'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -10,7 +13,6 @@ description: FastGPT V4.8.17 Release Notes
 - Update the fastgpt image tag to v4.8.17-fix-title
 - Update the fastgpt-pro commercial edition image tag to v4.8.17
 - Sandbox image update is not required
-
 
 ### 2. Run migration script
 
@@ -24,7 +26,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4817' \
 
 This migrates user-bound OpenAI accounts to the team level.
 
-
 ## Completions API response changes
 
 The `/api/v1/chat/completions` endpoint response has been updated. Nodes that use models (chat nodes, tool nodes, etc.) will no longer return a `tokens` field. Instead, they return `inputTokens` and `outputTokens` fields representing the input and output token counts respectively.
@@ -36,10 +37,10 @@ The `/api/v1/chat/completions` endpoint response has been updated. Nodes that us
 3. New - LLM model parameters support disabling `max_tokens` and `temperature`.
 4. New - Commercial edition supports configuring the template marketplace in the admin panel.
 5. New - Commercial edition supports configuring custom workflow variables in the admin panel for business system authentication integration.
-6. New - Search test API supports query optimization.
+6. New - Search test API supports query rewriting.
 7. New - Input tokens and output tokens are now tracked and displayed separately in workflows. Also fixed billing not recording output tokens for some requests.
 8. Improved - Markdown size check: content exceeding 200K characters no longer uses the Markdown component to prevent crashes.
-9. Improved - Knowledge Base search parameters: sliders now support input mode for more precise control.
+9. Improved - Dataset search parameters: sliders now support input mode for more precise control.
 10. Improved - Available models display UI.
 11. Improved - MongoDB queries with added virtual fields.
 12. Fixed - File response API missing `Content-Length` header, causing Alibaba vision models to fail image recognition when uploading files from different origins.

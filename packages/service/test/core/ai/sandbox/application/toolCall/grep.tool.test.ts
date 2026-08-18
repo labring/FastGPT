@@ -48,7 +48,7 @@ describe('sandboxGrepTool', () => {
     });
 
     expect(result.response).toBe('src/a.ts-1- before\nsrc/a.ts:2: needle');
-    expect(sandbox.ensureAvailable).toHaveBeenCalledTimes(1);
+    expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
     expect(sandbox.exec).toHaveBeenCalledWith(
       expect.stringContaining("'--glob' '*.ts' '--context' '1' '--' 'it'\\''s here' 'src dir'")
     );

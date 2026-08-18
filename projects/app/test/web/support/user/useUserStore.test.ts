@@ -43,7 +43,6 @@ const buildUser = (language: UserType['language']): UserType =>
     avatar: '',
     timezone: 'Asia/Shanghai',
     language,
-    promotionRate: 0,
     team: {
       userId: 'user-id',
       tmbId: 'tmb-id',

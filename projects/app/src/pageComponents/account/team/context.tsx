@@ -2,17 +2,12 @@ import React, { type ReactNode, useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './EditInfoModal';
 import dynamic from 'next/dynamic';
-import {
-  getTeamList,
-  getTeamMemberCount,
-  getTeamMembers,
-  putSwitchTeam
-} from '@/web/support/user/team/api';
+import { getTeamList, getTeamMemberCount, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRouter } from 'next/router';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
@@ -48,7 +43,7 @@ export const TeamContext = createContext<TeamModalContextType>({
 });
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const router = useRouter();
 
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();

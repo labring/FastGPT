@@ -123,3 +123,52 @@ export const getUploadFileType = ({
   }
   return types.join(', ');
 };
+
+/** 判断聊天上传文件是否符合应用文件选择配置 */
+export const isChatFileAllowedBySelectConfig = ({
+  filename,
+  contentType,
+  fileType,
+  fileSelectConfig
+}: {
+  filename: string;
+  contentType?: string;
+  fileType: 'image' | 'audio' | 'video' | 'file';
+  fileSelectConfig: AppFileSelectConfigType;
+}) => {
+  const allowedExtensions = getUploadFileType(fileSelectConfig)
+    .split(',')
+    .map((extension) => {
+      const normalized = extension.trim().toLowerCase();
+      return normalized ? (normalized.startsWith('.') ? normalized : `.${normalized}`) : '';
+    })
+    .filter(Boolean);
+  const normalizedFilename = filename.trim().toLowerCase();
+  const lastDotIndex = normalizedFilename.lastIndexOf('.');
+  const extension = lastDotIndex >= 0 ? normalizedFilename.slice(lastDotIndex) : '';
+
+  if (extension) return allowedExtensions.includes(extension);
+
+  const mimeCategory = contentType?.trim().toLowerCase().split('/')[0];
+  if (mimeCategory === 'image' || mimeCategory === 'audio' || mimeCategory === 'video') {
+    return (
+      fileSelectConfig[
+        mimeCategory === 'image'
+          ? 'canSelectImg'
+          : mimeCategory === 'audio'
+            ? 'canSelectAudio'
+            : 'canSelectVideo'
+      ] === true
+    );
+  }
+
+  if (contentType?.trim()) return false;
+
+  return fileType === 'image'
+    ? fileSelectConfig.canSelectImg === true
+    : fileType === 'video'
+      ? fileSelectConfig.canSelectVideo === true
+      : fileType === 'audio'
+        ? fileSelectConfig.canSelectAudio === true
+        : fileSelectConfig.canSelectFile === true;
+};

@@ -4,7 +4,6 @@
  * 负责根据环境配置写入 npm/pip/uv 等镜像文件，不处理 Skill 包部署。
  */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { buildRuntimeHash, joinSandboxPath } from '../../utils';
@@ -15,6 +14,7 @@ import {
   writeSandboxRuntimeState
 } from './state';
 import { resolveSandboxHome } from './home';
+import { prepareSandboxFileParentDirectories } from '../file';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -47,30 +47,34 @@ export const prepareSandboxRuntimeMirrors = async ({
   const stateContext = await readSandboxRuntimeState({ sandbox, homeDirectory });
   if (!stateContext.statePath) return;
 
-  const mirrorScript = buildSandboxRuntimeMirrorScript({ homeDirectory, files });
-  const scriptHash = buildRuntimeHash(mirrorScript);
-  if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY) === scriptHash) {
+  const writeEntries = files.map((file) => ({
+    path: joinSandboxPath(homeDirectory, file.path),
+    data: file.content
+  }));
+  const filesHash = buildRuntimeHash(JSON.stringify(writeEntries));
+  if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY) === filesHash) {
     return;
   }
 
-  const result = await sandbox
-    .execute(mirrorScript, {
-      timeoutMs: 5_000,
-      maxOutputBytes: 1024
-    })
+  const writeResults = await prepareSandboxFileParentDirectories(
+    sandbox,
+    writeEntries.map(({ path }) => path)
+  )
+    .then(() => sandbox.writeFiles(writeEntries))
     .catch((error) => {
-      logger.warn('[Sandbox Runtime] Failed to execute mirror config script', { error });
+      logger.warn('[Sandbox Runtime] Failed to write mirror config files', { error });
       return undefined;
     });
-  if (!result || result.exitCode !== 0) {
-    logger.warn('[Sandbox Runtime] Failed to execute mirror config script', {
-      exitCode: result?.exitCode,
-      stderr: result?.stderr
+  const failedWrite = writeResults?.find((result) => result.error);
+  if (!writeResults || failedWrite) {
+    logger.warn('[Sandbox Runtime] Failed to write mirror config files', {
+      path: failedWrite?.path,
+      error: failedWrite?.error
     });
     return;
   }
 
-  setRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY, scriptHash);
+  setRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY, filesHash);
   await writeSandboxRuntimeState(sandbox, stateContext);
 };
 
@@ -140,30 +144,6 @@ const normalizeMirrorsConfig = (config: SandboxRuntimeMirrorsConfig): SandboxRun
       return trimmed ? [[key, trimmed]] : [];
     })
   );
-
-const buildSandboxRuntimeMirrorScript = ({
-  homeDirectory,
-  files
-}: {
-  homeDirectory: string;
-  files: Array<{ path: string; content: string }>;
-}) => {
-  const writeEntries = files.map((file) => ({
-    path: joinSandboxPath(homeDirectory, file.path),
-    content: file.content
-  }));
-  const prepareDirs = Array.from(
-    new Set(writeEntries.map((entry) => entry.path.split('/').slice(0, -1).join('/')))
-  );
-
-  return [
-    `mkdir -p ${prepareDirs.map((dir) => shellQuote(dir)).join(' ')}`,
-    ...writeEntries.map(({ path, content }) => {
-      const encodedContent = Buffer.from(content, 'utf-8').toString('base64');
-      return `printf %s ${shellQuote(encodedContent)} | base64 -d > ${shellQuote(path)}`;
-    })
-  ].join('\n');
-};
 
 const escapeTomlString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 

@@ -1,13 +1,13 @@
 import React from 'react';
 import { Button, ModalFooter, ModalBody } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import Markdown from '../Markdown';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const CommunityModal = ({ onClose }: { onClose: () => void }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const { feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const isWecomTeam = !!userInfo?.team.isWecomTeam;
@@ -21,7 +21,7 @@ const CommunityModal = ({ onClose }: { onClose: () => void }) => {
     >
       <ModalBody textAlign={'center'}>
         {isWecomTeam ? (
-          '邮箱联系: archer@fastgpt.io'
+          t('common:contact_email', { email: 'archer@fastgpt.io' })
         ) : (
           <Markdown source={feConfigs?.concatMd || ''} />
         )}

@@ -103,10 +103,9 @@ describe('user account OpenAPI contracts', () => {
       AccountRegisterBodySchema.parse({
         username: 'user@example.com',
         code: 'code',
-        password: 'password',
-        inviterId: longExternalValue
+        password: 'password'
       })
-    ).toMatchObject({ inviterId: longExternalValue });
+    ).toMatchObject({ username: 'user@example.com' });
     expect(
       OauthLoginBodySchema.parse({
         type: 'github',

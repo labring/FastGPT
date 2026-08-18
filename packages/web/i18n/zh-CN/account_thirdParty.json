@@ -1,5 +1,6 @@
 {
   "configured": "已配置",
+  "configuration_title": "{{name}} 配置",
   "error.no_permission": "请联系管理员配置",
   "no_intro": "暂无说明",
   "not_configured": "未配置",

@@ -5,7 +5,8 @@ import {
   assertRequiredStorageObjectPrefix,
   assertStorageObjectKey,
   assertStorageObjectKeys,
-  assertStorageObjectPrefix
+  assertStorageObjectPrefix,
+  collectStorageObjectKeyViolations
 } from '../../src/assert';
 
 const expectInvalidKey = ({
@@ -140,5 +141,38 @@ describe('storage object key validation', () => {
 
   it('accepts a valid required delete prefix', () => {
     expect(() => assertRequiredStorageObjectPrefix('team/files/')).not.toThrow();
+  });
+});
+
+describe('collectStorageObjectKeyViolations', () => {
+  it('returns an empty list for a valid key', () => {
+    expect(collectStorageObjectKeyViolations('dataset/team/file.txt')).toEqual([]);
+  });
+
+  it('collects every violation instead of stopping at the first reason', () => {
+    expect(collectStorageObjectKeyViolations('chat\\legacy/../escape.txt')).toEqual([
+      'backslash',
+      'dot_path_segment'
+    ]);
+  });
+
+  it('keeps assertStorageObjectKey throwing the first violation in fixed order', () => {
+    expect(() => assertStorageObjectKey('chat\\legacy/../escape.txt')).toThrowError(
+      expect.objectContaining({ reason: 'backslash' })
+    );
+  });
+
+  it('returns only the base violation for non-string, empty and malformed unicode keys', () => {
+    expect(collectStorageObjectKeyViolations(123)).toEqual(['invalid_type']);
+    expect(collectStorageObjectKeyViolations('')).toEqual(['empty']);
+    expect(collectStorageObjectKeyViolations('bad\ud800key')).toEqual(['invalid_unicode']);
+  });
+
+  it('collects control characters together with later path segment violations', () => {
+    expect(collectStorageObjectKeyViolations('chat\\legacy/\r\n../escape.txt')).toEqual([
+      'backslash',
+      'control_character',
+      'dot_path_segment'
+    ]);
   });
 });

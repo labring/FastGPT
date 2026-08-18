@@ -89,6 +89,7 @@ const prefixMap: Record<string, string> = {
 };
 
 const i18nMiddleware = createI18nMiddleware(i18n);
+const documentCacheControl = 'public, max-age=0, must-revalidate';
 
 function normalizePath(path: string) {
   return path.length > 1 ? path.replace(/\/+$/, '') : path;
@@ -157,6 +158,9 @@ export default function middleware(request: NextRequest) {
   if (hasLangPrefix) {
     // Pass through with x-pathname; sync FD_LOCALE cookie if mismatched.
     const response = NextResponse.next({ request: { headers: requestHeaders } });
+    // Static HTML references build-hashed chunks. Reusing HTML across image rollouts can
+    // point the browser at chunks that only exist in the previous deployment.
+    response.headers.set('Cache-Control', documentCacheControl);
     const currentCookie = request.cookies.get('FD_LOCALE')?.value;
     if (currentCookie !== lang) {
       response.cookies.set('FD_LOCALE', lang, {

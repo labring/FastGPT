@@ -1,6 +1,7 @@
 ---
 title: V4.2.1
 description: Upgrade guide from older versions to FastGPT V4.2.1
+releaseTime: '2023-08-27'
 ---
 
 For self-hosted deployments with a custom configuration file, you need to update the `VectorModels` field. Add `defaultToken` and `maxToken` — these correspond to the default token count for direct chunking and the maximum token limit supported by the model (generally recommended not to exceed 3000).

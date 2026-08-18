@@ -30,6 +30,8 @@ export const sandboxGetFileUrlTool = defineTool({
       return { response: 'Sandbox file preview context is not available.' };
     }
 
+    await sandboxInstance.ensureAvailable();
+
     const files = params.paths.map((inputPath) => {
       const filePath = sandboxInstance.resolveRuntimePath(inputPath, {
         allowAbsolutePath: true

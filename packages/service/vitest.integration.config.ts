@@ -1,5 +1,9 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+
+const localEnvPath = resolve(import.meta.dirname, '../../test/.env.test.local');
+if (existsSync(localEnvPath)) process.loadEnvFile(localEnvPath);
 
 export default defineConfig({
   resolve: {
@@ -15,8 +19,8 @@ export default defineConfig({
         process.env.FILE_TOKEN_KEY ??
         'bfd697e7e798f75deaf2d31210bc93a2e41ad4eed9e7831071d77821b7b97cff',
       AES256_SECRET_KEY: process.env.AES256_SECRET_KEY ?? 'fastgpt_test_aes256_secret_key',
-      INVOKE_TOKEN_SECRET:
-        process.env.INVOKE_TOKEN_SECRET ?? 'fastgpt_test_invoke_token_secret_32'
+      INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET ?? 'fastgpt_test_invoke_token_secret_32',
+      FE_DOMAIN: process.env.FE_DOMAIN ?? 'https://fastgpt.example.com'
     },
     coverage: {
       enabled: false
@@ -30,6 +34,7 @@ export default defineConfig({
     testTimeout: 20000,
     hookTimeout: 30000,
     reporters: ['github-actions', 'default'],
-    include: ['test/integrations/**/*.integration.test.ts']
+    include: ['test/integrations/**/*.integration.test.ts'],
+    exclude: ['test/integrations/sandbox/**/*.integration.test.ts']
   }
 });

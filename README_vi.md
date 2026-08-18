@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://fastgpt.io/?utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=logo"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=logo"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -18,7 +18,7 @@ FastGPT là nền tảng xây dựng AI Agent cung cấp khả năng sẵn sàng
 </div>
 
 <p align="center">
-  <a href="https://fastgpt.io/?utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_badge">
+  <a href="https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_badge">
     <img height="21" src="https://img.shields.io/badge/Sử_Dụng_Online-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.io/guide/getting-started">
@@ -52,13 +52,13 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 ## 🛸 Cách Sử Dụng
 
 - **Phiên Bản Đám Mây**  
-  Nếu bạn không cần triển khai riêng, bạn có thể sử dụng trực tiếp dịch vụ đám mây của chúng tôi tại: [fastgpt.io](https://fastgpt.io/?utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_service_link)
+  Nếu bạn không cần triển khai riêng, bạn có thể sử dụng trực tiếp dịch vụ đám mây của chúng tôi tại: [fastgpt.io](https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_service_link)
 
 - **Phiên Bản Tự Host Cộng Đồng**  
   Bạn có thể triển khai nhanh chóng bằng [Docker](https://doc.fastgpt.io/self-host/deploy/docker) hoặc sử dụng [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) để triển khai FastGPT bằng một cú nhấp chuột.
 
 - **Phiên Bản Thương Mại**  
-  Nếu bạn cần các tính năng đầy đủ hơn hoặc hỗ trợ dịch vụ chuyên sâu, bạn có thể chọn [Phiên Bản Thương Mại](https://doc.fastgpt.io/guide/version/commercial). Ngoài việc cung cấp phần mềm đầy đủ, chúng tôi còn cung cấp hướng dẫn triển khai cho các kịch bản cụ thể. Bạn có thể gửi [tư vấn thương mại](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=git&hide_S=1).
+  Nếu bạn cần các tính năng đầy đủ hơn hoặc hỗ trợ dịch vụ chuyên sâu, bạn có thể chọn [Phiên Bản Thương Mại](https://doc.fastgpt.io/guide/version/commercial). Ngoài việc cung cấp phần mềm đầy đủ, chúng tôi còn cung cấp hướng dẫn triển khai cho các kịch bản cụ thể. Bạn có thể gửi [tư vấn thương mại](https://fastgpt.cn/en/contact?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=commercial_consultation).
 
 ## 💡 Tính Năng Cốt Lõi
 
@@ -178,9 +178,9 @@ Chúng tôi rất hoan nghênh đóng góp dưới mọi hình thức. Nếu b�
 
 <a href="https://github.com/labring/FastGPT/stargazers" target="_blank" style="display: block" align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=labring/FastGPT&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=labring/FastGPT&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=labring/FastGPT&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=labring/FastGPT&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=labring/FastGPT&type=Date" />
+    <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=labring/FastGPT&type=Date" />
   </picture>
 </a>
 

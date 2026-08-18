@@ -19,7 +19,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getOutLinkCounts } from '@/web/support/outLink/api';
 
 const Link = dynamic(() => import('./Link'));
-const API = dynamic(() => import('./API'));
+const API = dynamic(() => import('./API'), { ssr: false });
 const FeiShu = dynamic(() => import('./FeiShu'));
 const DingTalk = dynamic(() => import('./DingTalk'));
 const Wecom = dynamic(() => import('./Wecom'));

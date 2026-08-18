@@ -3,11 +3,10 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import ApplyInvoiceModal from '@/pageComponents/account/bill/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 
 export enum InvoiceTabEnum {
   bill = 'bill',
@@ -19,7 +18,7 @@ const BillTable = dynamic(() => import('@/pageComponents/account/bill/BillTable'
 const InvoiceHeaderForm = dynamic(() => import('@/pageComponents/account/bill/InvoiceHeaderForm'));
 const InvoiceTable = dynamic(() => import('@/pageComponents/account/bill/InvoiceTable'));
 const BillAndInvoice = () => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_bill');
   const router = useRouter();
   const { invoiceTab = InvoiceTabEnum.bill } = router.query as { invoiceTab: `${InvoiceTabEnum}` };
 
@@ -78,13 +77,5 @@ const BillAndInvoice = () => {
     </AccountContainer>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account_bill', 'account']))
-    }
-  };
-}
 
 export default BillAndInvoice;

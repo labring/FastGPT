@@ -53,10 +53,11 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
       }
 
       throw new Error(result.stderr || result.stdout || 'empty password file');
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       if (attempt === maxRetries) {
         throw new Error(
-          `Failed to read IDE Agent password after ${maxRetries} attempts: ${err.message}`
+          `Failed to read IDE Agent password after ${maxRetries} attempts: ${message}`
         );
       }
       await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -102,8 +103,9 @@ async function handler(
         }),
         ideAgentPort: IDE_AGENT_PORT
       };
-    } catch (err: any) {
-      throw new Error('Invalid ticket signature: ' + err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Invalid ticket signature: ${message}`);
     }
   })();
 

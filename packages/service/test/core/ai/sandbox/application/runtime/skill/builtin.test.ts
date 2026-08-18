@@ -11,9 +11,20 @@ describe('builtin skill runtime', () => {
       name: 'skill-creator',
       files: createBuiltinSkillSourceFiles()
     };
+    const targetDirectory = '/home/sandbox/.fastgpt/skills/skill-creator';
 
     const sandbox = {
-      execute: vi.fn(async () => ({ exitCode: 0, stdout: '', stderr: '' })),
+      createDirectories: vi.fn(async () => undefined),
+      listDirectory: vi.fn(async () => [
+        {
+          name: 'skill-creator',
+          path: targetDirectory,
+          isDirectory: true,
+          isFile: false
+        }
+      ]),
+      deleteDirectories: vi.fn(async () => undefined),
+      deleteFiles: vi.fn(),
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
           path,
@@ -37,18 +48,8 @@ describe('builtin skill runtime', () => {
     });
 
     expect(getBuiltinSkillsRootPath('/home/sandbox')).toBe('/home/sandbox/.fastgpt/skills');
-    expect(sandbox.execute).toHaveBeenNthCalledWith(
-      1,
-      "mkdir -p '/home/sandbox/.fastgpt/runtime'",
-      {
-        maxOutputBytes: 1024,
-        timeoutMs: 5000
-      }
-    );
-    expect(sandbox.execute).toHaveBeenNthCalledWith(
-      2,
-      "rm -rf '/home/sandbox/.fastgpt/skills/skill-creator' && mkdir -p '/home/sandbox/.fastgpt/skills/skill-creator'"
-    );
+    expect(sandbox.deleteDirectories).toHaveBeenCalledWith([targetDirectory]);
+    expect(sandbox.createDirectories).toHaveBeenCalledWith([targetDirectory]);
     const writeEntries = sandbox.writeFiles.mock.calls[0][0];
     expect(writeEntries).toEqual(
       expect.arrayContaining([
@@ -68,7 +69,7 @@ describe('builtin skill runtime', () => {
     expect(sandbox.writeFiles.mock.calls[1][0][0].data).toContain('builtinSkill:skill-creator');
   });
 
-  it('skips writing builtin skill when legacy runtime hash state is current', async () => {
+  it('skips writing builtin skill when runtime state is current', async () => {
     const sources = [
       {
         name: 'skill-creator',
@@ -77,13 +78,12 @@ describe('builtin skill runtime', () => {
     ];
     const currentEtag = getSourceEtagForTest(sources[0].files);
     const sandbox = {
-      execute: vi.fn(async () => ({ exitCode: 0, stdout: '', stderr: '' })),
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
           path,
           content: Buffer.from(
             JSON.stringify({
-              hashes: {
+              values: {
                 'builtinSkill:skill-creator': currentEtag
               }
             })
@@ -101,7 +101,6 @@ describe('builtin skill runtime', () => {
     });
 
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
-    expect(sandbox.execute).toHaveBeenCalledTimes(1);
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/home/sandbox/.fastgpt/runtime/state.json']);
   });
 });

@@ -7,7 +7,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## Introduction
 
-FastGPT lets you use your own OpenAI API KEY to quickly call OpenAI APIs. It currently integrates GPT-3.5, GPT-4, and embedding models for building Knowledge Bases. However, for data security reasons, you may not want to send all data to cloud-based LLMs.
+FastGPT lets you use your own OpenAI API KEY to quickly call OpenAI APIs. It currently integrates GPT-3.5, GPT-4, and embedding models for building Datasets. However, for data security reasons, you may not want to send all data to cloud-based LLMs.
 
 So how do you connect a private model to FastGPT? This guide walks through integrating Tsinghua's ChatGLM2 as an example.
 
@@ -16,7 +16,9 @@ So how do you connect a private model to FastGPT? This guide walks through integ
 ChatGLM2-6B is the second-generation version of the open-source bilingual (Chinese-English) chat model ChatGLM-6B. For details, see the [ChatGLM2-6B project page](https://github.com/THUDM/ChatGLM2-6B).
 
 <Alert context="warning">
-Note: ChatGLM2-6B weights are fully open for academic research. Commercial use requires official written permission. This tutorial only demonstrates one integration method and does not grant any license.
+  Note: ChatGLM2-6B weights are fully open for academic research. Commercial use requires official
+  written permission. This tutorial only demonstrates one integration method and does not grant any
+  license.
 </Alert>
 
 ## Recommended Configuration
@@ -25,13 +27,11 @@ According to official data, generating 8192 tokens requires 12.8GB VRAM at FP16,
 
 Recommended configurations:
 
-
-| Type | RAM | VRAM | Disk Space | Start Command |
-|------|---------|---------|----------|--------------------------|
-| fp16 | >=16GB | >=16GB | >=25GB | python openai_api.py 16 |
-| int8 | >=16GB | >=9GB | >=25GB | python openai_api.py 8 |
-| int4 | >=16GB | >=6GB | >=25GB | python openai_api.py 4 |
-
+| Type | RAM    | VRAM   | Disk Space | Start Command           |
+| ---- | ------ | ------ | ---------- | ----------------------- |
+| fp16 | >=16GB | >=16GB | >=25GB     | python openai_api.py 16 |
+| int8 | >=16GB | >=9GB  | >=25GB     | python openai_api.py 8  |
+| int4 | >=16GB | >=6GB  | >=25GB     | python openai_api.py 4  |
 
 ## Deployment
 
@@ -61,9 +61,9 @@ On successful startup, you should see an address like this:
 
 **Image and Port**
 
-+ Image: `stawky/chatglm2:latest`
-+ China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
-+ Port: 6006
+- Image: `stawky/chatglm2:latest`
+- China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
+- Port: 6006
 
 ```
 # Set the security token (used as the channel key in OneAPI)

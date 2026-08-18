@@ -1,6 +1,9 @@
 ---
-title: V4.9.11 (Upgrade Script)
+title: V4.9.11
 description: FastGPT V4.9.11 Release Notes
+releaseTime: '2025-06-08'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -27,21 +30,21 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4911' \
 
 **Script Functions**
 
-1. Migrates third-party knowledge base API configurations.
+1. Migrates third-party Dataset API configurations.
 
 ## New Features
 
-1. Pro edition supports image knowledge bases.
+1. Pro edition supports image datasets.
 2. Added node search functionality in the workflow editor.
 3. Sub-workflow version control in workflows now supports a "Keep Latest Version" option — no manual updates needed.
 4. Additional audit operation logs.
-5. Knowledge base now has an async document parsing queue — documents can be imported without waiting for parsing to complete.
-6. Third-party knowledge base development documentation. [View here](../../../guide/dataset/third-party/third_dataset.en.mdx)
+5. Dataset now has an async document parsing queue — documents can be imported without waiting for parsing to complete.
+6. Third-party Dataset development documentation. [View here](../../../guide/dataset/third-party/third_dataset.en.mdx)
 
 ## Improvements
 
 1. Raw text cache now uses GridFS storage for higher capacity.
-2. Added knowledge base template import option.
+2. Added Dataset template import option.
 
 ## Bug Fixes
 

@@ -34,7 +34,7 @@ Select the AI model used by the current app or node. Different models vary in re
 
 The model section displays several types of information:
 
-- **Credit cost**: A reference cost for model calls. Input content and model output are usually priced separately.
+- **Point cost**: A reference cost for model calls. Input content and model output are usually priced separately.
 - **Max context**: The amount of content the model can reference in one request. A larger context window is better for long documents and long conversations.
 - **Tool calling**: If supported, the model can use selected app tools to query data, run calculations, or call external capabilities.
 - **Multimodal capability**: If the model supports image, audio, or video input, you can enable the corresponding multimodal recognition capability in AI Settings. Different models may support different media types. Use the capabilities shown in the settings modal as the source of truth.
@@ -45,7 +45,7 @@ Controls how many previous conversation rounds the AI can reference when answeri
 
 Higher values make it easier for the AI to use earlier context, but they also add more content to the request, which may increase cost and slow down responses. Lower values may prevent the model from using useful prior context.
 
-If you do not have a specific requirement, use the default value. Customer support and Knowledge Base Q&A apps usually only need a small number of history rounds.
+If you do not have a specific requirement, use the default value. Customer support and Dataset Q&A apps usually only need a small number of history rounds.
 
 ### Max Tokens
 
@@ -59,11 +59,11 @@ Use a lower value for concise answers. Use a higher value when generating plans,
 
 Controls how stable the response is.
 
-Lower values produce more stable responses and are better for customer support, Knowledge Base Q&A, and scenarios with clear rules. Higher values produce more varied responses and are better for writing, brainstorming, and creative content.
+Lower values produce more stable responses and are better for customer support, Dataset Q&A, and scenarios with clear rules. Higher values produce more varied responses and are better for writing, brainstorming, and creative content.
 
 Common choices:
 
-- Customer support and Knowledge Base Q&A: use a lower value.
+- Customer support and Dataset Q&A: use a lower value.
 - Copywriting, stories, and creative suggestions: use a higher value.
 - If unsure: keep the default.
 
@@ -83,7 +83,7 @@ Most chat scenarios do not need this setting. Use it only when the model should 
 
 Controls the format of the AI response.
 
-For regular chat, customer support, and Knowledge Base Q&A, keep the default. Change this only when a later step needs to read the response in a fixed format.
+For regular chat, customer support, and Dataset Q&A, keep the default. Change this only when a later step needs to read the response in a fixed format.
 
 If you select `json_schema`, you also need to provide the corresponding schema. This option is suitable when the model must return content in a fixed structure.
 

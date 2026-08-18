@@ -1,6 +1,9 @@
 ---
-title: V4.6.5 (Configuration Changes)
+title: V4.6.5
 description: FastGPT V4.6.5
+releaseTime: '2023-12-25'
+upgradeTags:
+  - CONFIG
 ---
 
 ## Configuration Changes
@@ -11,13 +14,13 @@ The legacy `config.json` guide is no longer maintained. For current versions, se
 
 1. The main change is renaming the `functionCall` field to `toolChoice` in your model configuration. Models with this set to `true` will use OpenAI's tools mode by default; models without it or with it set to `false` will use prompt-based generation.
 
-The question optimization model and content extraction model now share the same configuration.
+The query rewriting model and content extraction model now share the same configuration.
 
 2. Add `"ReRankModels": []` to your configuration.
 
 ## V4.6.5 New Features
 
-1. New - [Question Optimization node](../../../guide/build/workflow/nodes/coreferenceResolution.en.mdx)
+1. New - [Query rewriting node](../../../guide/build/workflow/nodes/coreferenceResolution.en.mdx)
 2. New - [Text Editor node](../../../guide/build/workflow/nodes/text_editor.en.mdx)
 3. New - [Classifier node](../../../guide/build/workflow/nodes/tfswitch.en.mdx)
 4. New - [Custom Feedback node](../../../guide/build/workflow/nodes/custom_feedback.en.mdx)

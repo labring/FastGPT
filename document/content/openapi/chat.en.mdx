@@ -5,18 +5,18 @@ description: FastGPT OpenAPI Chat Interface
 
 # How to Get AppId
 
-You can find the AppId in your application details URL.
+You can find the AppId in your app details URL.
 
 ![](../../public/imgs/appid.png)
 
-# Start a Conversation
+# Start a Session
 
 - Authenticate with an API Key. When calling `chat/completions` , passing `appId` in the request body is recommended.
 - For OpenAI SDK compatibility, `Authorization: Bearer <apiKey>-<appId>` is also supported. The suffix is only a transport compatibility format and is not stored.
 - To proxy a team member identity through `authProxy` , the team owner must enable `authProxy` when creating or editing the key. The proxied member must still have permission to access the target app and chat.
 - Some packages require adding `v1` to the `BaseUrl` . If you get a 404 error, try adding `v1` and retry.
 
-{/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
+{/* Chat now provides both v1 and v2 endpoints. Choose the version you need. V2 was added in 4.9.4, and v1 is no longer maintained. */}
 
 ## Start Chat
 
@@ -105,14 +105,14 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 - messages: Same structure as [GPT chat messages](https://platform.openai.com/docs/api-reference/chat/object) .
 - responseChatItemId: string | undefined. If provided, FastGPT uses it as the response message ID and stores it in the database. Make sure it is unique under the current `chatId` .
 - detail: Whether to return intermediate values. In `stream` mode, they are separated by `event` ; in non-stream mode, they are stored in `responseData` .
-- variables: Module variables. This object replaces `[key]` placeholders in input fields.
+- variables: Node variables. This object replaces `[key]` placeholders in input fields.
 
 </Tab>
 </Tabs>
 
 ### Response
 
-<Tabs items={['detail=false,stream=false 响应','detail=false,stream=true 响应','detail=true,stream=false 响应','detail=true,stream=true 响应','Event Values']}>
+<Tabs items={['detail=false, stream=false Response','detail=false, stream=true Response','detail=true, stream=false Response','detail=true, stream=true Response','Event Values']}>
 <Tab value="detail=false, stream=false Response">
 
 ```json
@@ -156,7 +156,7 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"in
 ```json
 {
   "responseData": [
-    // 不同模块的响应值, 不同版本具体值可能有差异，可先 log 自行查看最新值。
+    // Response values vary by node and version. Log the response to inspect the latest structure.
     {
       "moduleName": "Dataset Search",
       "price": 1.2000000000000002,
@@ -245,10 +245,10 @@ data: {"id":"","object":"","created":0,"choices":[{"delta":{"content":"《"},"in
 
 ```bash
 event: flowNodeStatus
-data: {"status":"running","name":"知识库搜索"}
+data: {"status":"running","name":"Dataset search"}
 
 event: flowNodeStatus
-data: {"status":"running","name":"AI 对话"}
+data: {"status":"running","name":"AI Chat"}
 
 event: answer
 data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"content":"电影"},"index":0,"finish_reason":null}]}
@@ -272,7 +272,7 @@ event: answer
 data: [DONE]
 
 event: flowResponses
-data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","runningTime":1.78},{"question":"导演是谁","quoteList":[{"id":"654f2e49b64caef1d9431e8b","q":"电影《铃芽之旅》的导演是谁？","a":"电影《铃芽之旅》的导演是新海诚!","indexes":[{"type":"qa","dataId":"3515487","text":"电影《铃芽之旅》的导演是谁？","_id":"654f2e49b64caef1d9431e8c","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8935586214065552},{"id":"6552e14c50f4a2a8e632af11","q":"导演是谁？","a":"电影《铃芽之旅》的导演是新海诚。","indexes":[{"defaultIndex":true,"type":"qa","dataId":"3644565","text":"导演是谁？\n电影《铃芽之旅》的导演是新海诚。","_id":"6552e14dde5cc7ba3954e417"}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8890955448150635},{"id":"654f34a0b64caef1d946337e","q":"本作的主人公是谁？","a":"本作的主人公是名叫铃芽的少女。","indexes":[{"type":"qa","dataId":"3515541","text":"本作的主人公是谁？","_id":"654f34a0b64caef1d946337f","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8738770484924316},{"id":"654f3002b64caef1d944207a","q":"电影《铃芽之旅》男主角是谁？","a":"电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。","indexes":[{"type":"qa","dataId":"3515538","text":"电影《铃芽之旅》男主角是谁？","_id":"654f3002b64caef1d944207b","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8607980012893677},{"id":"654f2fc8b64caef1d943fd46","q":"电影《铃芽之旅》的编剧是谁？","a":"新海诚是本片的编剧。","indexes":[{"defaultIndex":true,"type":"qa","dataId":"3515550","text":"电影《铃芽之旅》的编剧是谁？22","_id":"654f2fc8b64caef1d943fd47"}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8468944430351257}],"moduleName":"AI 对话","moduleType":"chatNode","runningTime":1.86}]
+data: [{"moduleName":"Dataset search","moduleType":"datasetSearchNode","runningTime":1.78},{"question":"导演是谁","quoteList":[{"id":"654f2e49b64caef1d9431e8b","q":"电影《铃芽之旅》的导演是谁？","a":"电影《铃芽之旅》的导演是新海诚!","indexes":[{"type":"qa","dataId":"3515487","text":"电影《铃芽之旅》的导演是谁？","_id":"654f2e49b64caef1d9431e8c","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8935586214065552},{"id":"6552e14c50f4a2a8e632af11","q":"导演是谁？","a":"电影《铃芽之旅》的导演是新海诚。","indexes":[{"defaultIndex":true,"type":"qa","dataId":"3644565","text":"导演是谁？\n电影《铃芽之旅》的导演是新海诚。","_id":"6552e14dde5cc7ba3954e417"}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8890955448150635},{"id":"654f34a0b64caef1d946337e","q":"本作的主人公是谁？","a":"本作的主人公是名叫铃芽的少女。","indexes":[{"type":"qa","dataId":"3515541","text":"本作的主人公是谁？","_id":"654f34a0b64caef1d946337f","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8738770484924316},{"id":"654f3002b64caef1d944207a","q":"电影《铃芽之旅》男主角是谁？","a":"电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。","indexes":[{"type":"qa","dataId":"3515538","text":"电影《铃芽之旅》男主角是谁？","_id":"654f3002b64caef1d944207b","defaultIndex":true}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8607980012893677},{"id":"654f2fc8b64caef1d943fd46","q":"电影《铃芽之旅》的编剧是谁？","a":"新海诚是本片的编剧。","indexes":[{"defaultIndex":true,"type":"qa","dataId":"3515550","text":"电影《铃芽之旅》的编剧是谁？22","_id":"654f2fc8b64caef1d943fd47"}],"datasetId":"646627f4f7b896cfd8910e38","collectionId":"653279b16cd42ab509e766e8","sourceName":"data (81).csv","sourceId":"64fd3b6423aa1307b65896f6","score":0.8468944430351257}],"moduleName":"AI Chat","moduleType":"chatNode","runningTime":1.86}]
 ```
 
 </Tab>
@@ -438,7 +438,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 Plugin API is identical to chat API, with slight parameter differences:
 
-- 调用插件 Type 的应用时，接口默认为 `detail` 模式。
+- When calling a Plugin-type App, the endpoint uses `detail` mode by default.
 - No need to pass `chatId` since plugins run only once.
 - No need to pass `messages` .
 - Pass `variables` to represent plugin inputs.
@@ -462,7 +462,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 ### Response
 
-<Tabs items={['detail=true,stream=false 响应','detail=true,stream=true 响应','Output Retrieval']}>
+<Tabs items={['detail=true, stream=false Response','detail=true, stream=true Response','Output Retrieval']}>
 <Tab value="detail=true, stream=false Response">
 
 - Find plugin output by locating `moduleType=pluginOutput` in `responseData` . Its `pluginOutput` contains the output.
@@ -473,7 +473,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
   "responseData": [
     {
       "nodeId": "fdDgXQ6SYn8v",
-      "moduleName": "AI 对话",
+      "moduleName": "AI Chat",
       "moduleType": "chatNode",
       "totalPoints": 0.685,
       "model": "FastAI-3.5",
@@ -495,7 +495,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
     },
     {
       "nodeId": "pluginOutput",
-      "moduleName": "插件输出",
+      "moduleName": "Plugin output",
       "moduleType": "pluginOutput",
       "totalPoints": 0,
       "pluginOutput": {
@@ -535,7 +535,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 ```bash
 event: flowNodeStatus
-data: {"status":"running","name":"AI 对话"}
+data: {"status":"running","name":"AI Chat"}
 
 event: answer
 data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":""},"index":0,"finish_reason":null}]}
@@ -589,23 +589,23 @@ event: answer
 data: [DONE]
 
 event: flowResponses
-data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode","totalPoints":0.033,"model":"FastAI-3.5","tokens":33,"query":"你好","maxToken":2000,"historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！有什么可以帮助你的吗？"}],"contextTotalLen":2,"runningTime":1.42},{"nodeId":"pluginOutput","moduleName":"插件输出","moduleType":"pluginOutput","totalPoints":0,"pluginOutput":{"result":"你好！有什么可以帮助你的吗？"},"runningTime":0}]
+data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI Chat","moduleType":"chatNode","totalPoints":0.033,"model":"FastAI-3.5","tokens":33,"query":"你好","maxToken":2000,"historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！有什么可以帮助你的吗？"}],"contextTotalLen":2,"runningTime":1.42},{"nodeId":"pluginOutput","moduleName":"Plugin output","moduleType":"pluginOutput","totalPoints":0,"pluginOutput":{"result":"你好！有什么可以帮助你的吗？"},"runningTime":0}]
 ```
 
 </Tab>
 <Tab value="Output Retrieval">
 
-event 取值：
+Event values:
 
-    - answer: 返回给客户端的文本（最终会算作回答）
-    - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
-    - toolCall: 执行工具
-    - toolParams: 工具参数
-    - toolResponse: 工具返回
-    - flowNodeStatus: 运行到的节点状态
-    - flowResponses: 节点完整响应
-    - updateVariables: 更新变量
-    - error: 报错
+    - answer: Text returned to the client and counted as the final answer
+    - fastAnswer: Specified Reply text returned to the client and counted as the final answer
+    - toolCall: Run a tool
+    - toolParams: Tool parameters
+    - toolResponse: Tool response
+    - flowNodeStatus: Status of the current node
+    - flowResponses: Complete node responses
+    - updateVariables: Updated variables
+    - error: Error
 
 </Tab>
 </Tabs>
@@ -617,7 +617,7 @@ event 取值：
 
 \***\*Important Fields\*\***
 
-- chatId - The ID of a session under an application
+- chatId - The ID of a session under an app
 - dataId - The ID of a message under a session
 
 ## Session Management
@@ -642,7 +642,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/getH
 </Tab>
 <Tab value="Parameters">
 
-- appId - Application ID
+- appId - App ID
 - offset - Offset (starting position)
 - pageSize - Number of items
 - source - Chat source. `source=api` means get API-created sessions only (excludes web UI sessions)
@@ -703,7 +703,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updat
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 - customTitle - Custom session title
 
@@ -743,7 +743,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updat
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 - top - Whether to pin. true = pin, false = unpin
 
@@ -777,7 +777,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/de
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 
 </Tab>
@@ -812,7 +812,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/cl
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 
 </Tab>
 
@@ -848,7 +848,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[a
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 
 </Tab>
@@ -926,7 +926,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/record/getPa
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 - offset - Offset
 - pageSize - Number of items
@@ -995,7 +995,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/record/getRes
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 - dataId - Message ID
 
@@ -1019,7 +1019,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/record/getRes
     {
       "id": "b3FndAdHSobY",
       "nodeId": "z04w8JXSYjl3",
-      "moduleName": "AI 对话",
+      "moduleName": "AI Chat",
       "moduleType": "chatNode",
       "runningTime": 1.22,
       "totalPoints": 0.02475,
@@ -1068,7 +1068,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/record/del
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 - contentId - Message ID
 
@@ -1125,7 +1125,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 <Tab value="Parameters" >
 
-- appId - Application ID
+- appId - App ID
 - chatId - Session ID
 - dataId - Message ID
 - userGoodFeedback - User feedback when liking (optional). Omit to unlike.
@@ -1175,11 +1175,11 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/creat
 
 <Tab value="Parameters" >
 
-| 参数名        | 类型   | 必填 | 说明                                                       |
-| ------------- | ------ | ---- | ---------------------------------------------------------- |
-| appId         | string | ✅   | 应用 ID                                                    |
-| chatId        | string | ✅   | Session ID                                                 |
-| questionGuide | object |      | 自定义配置，不传的话，则会根据 appId，取最新发布版本的配置 |
+| Parameter     | Type   | Required | Description                                                                               |
+| ------------- | ------ | -------- | ----------------------------------------------------------------------------------------- |
+| appId         | string | ✅       | App ID                                                                                    |
+| chatId        | string | ✅       | Session ID                                                                                |
+| questionGuide | object |          | Custom configuration. If omitted, uses the latest published configuration for the App ID. |
 
 ```ts
 type CreateQuestionGuideParams = OutLinkChatAuthProps & {

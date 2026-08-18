@@ -14,7 +14,7 @@ import {
   Flex,
   Button
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteMemberPermission,
@@ -88,7 +88,7 @@ function PermissionManage({
   Tabs: React.ReactNode;
   onOpenAddMember: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_team', 'user']);
   const { userInfo } = useUserStore();
 
   const collaboratorList = useContextSelector(

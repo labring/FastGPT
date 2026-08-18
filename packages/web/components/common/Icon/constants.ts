@@ -494,7 +494,6 @@ export const iconPaths = {
     import('./icons/support/account/customDomain/provider/volcengine.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),
-  'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),
   'support/bill/extraDatasetsize': () => import('./icons/support/bill/extraDatasetsize.svg'),
   'support/bill/payRecordLight': () => import('./icons/support/bill/payRecordLight.svg'),
   'support/bill/priceLight': () => import('./icons/support/bill/priceLight.svg'),

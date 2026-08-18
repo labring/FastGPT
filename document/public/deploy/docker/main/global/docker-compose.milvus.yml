@@ -77,7 +77,7 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: fastgpt-opensandbox-api-key
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.0-beta4
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.0
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
@@ -238,7 +238,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.16.0-beta1
+    image: ghcr.io/labring/fastgpt:v4.16.0
     ports:
       - 3000:3000
     networks:
@@ -332,7 +332,7 @@ services:
       TEXTIN_SECRET_CODE:
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: ghcr.io/labring/fastgpt-code-sandbox:v4.15.6
+    image: ghcr.io/labring/fastgpt-code-sandbox:v4.16.0
     networks:
       - codesandbox
     restart: always
@@ -396,7 +396,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.1.0-beta1
+    image: ghcr.io/labring/fastgpt-plugin:v1.1.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -424,7 +424,7 @@ services:
 
   # OpenSandbox Server 和 Volume Manager 仅需在 app 内网中访问。
   fastgpt-opensandbox-server:
-    image: opensandbox/server:v0.2.1
+    image: opensandbox/server:v0.2.2
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
@@ -450,7 +450,7 @@ services:
       retries: 5
 
   fastgpt-volume-manager:
-    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.3.0-beta4
+    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.3.0
     container_name: fastgpt-volume-manager
     restart: always
     networks:
@@ -477,7 +477,7 @@ services:
 
   # 仅用于预拉取运行时镜像，不会随 docker compose up 启动。
   opensandbox-agent-sandbox-image:
-    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.0-beta4
+    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.3.0
     profiles:
       - prepull
   opensandbox-execd-image:
@@ -485,13 +485,13 @@ services:
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: opensandbox/egress:v1.1.4
+    image: opensandbox/egress:v1.1.5
     profiles:
       - prepull
 
   # 浏览器访问 Agent Sandbox 的鉴权代理，生产环境应通过独立域名反向代理 3006 端口。
   fastgpt-agent-sandbox-proxy:
-    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.3.0-beta4
+    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.3.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     networks:
@@ -592,7 +592,7 @@ configs:
       execd_image = "opensandbox/execd:v1.0.21"
 
       [egress]
-      image = "opensandbox/egress:v1.1.4"
+      image = "opensandbox/egress:v1.1.5"
 
       [docker]
       network_mode = "bridge"

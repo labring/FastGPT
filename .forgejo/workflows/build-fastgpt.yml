@@ -54,14 +54,13 @@ jobs:
             base_url: ''
           - repo: fastgpt-sub-route
             base_url: '/fastai'
-          - repo: fastgpt-sub-route-gchat
-            base_url: '/gchat'
         archs:
           - arch: amd64
             runs-on: ubuntu-24.04
           - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.archs.runs-on }}
+    timeout-minutes: 120
     steps:
       # install env
       - name: Checkout
@@ -178,8 +177,8 @@ jobs:
         sub_routes:
           - repo: fastgpt
           - repo: fastgpt-sub-route
-          - repo: fastgpt-sub-route-gchat
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - name: Set platform variables
         run: |
@@ -237,7 +236,6 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
-            network=host
             env.GODEBUG=madvdontneed=0
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
@@ -252,6 +250,7 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
+        timeout-minutes: 120
         run: |
           retry_imagetools_create() {
             local tag="$1"

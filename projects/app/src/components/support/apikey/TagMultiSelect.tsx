@@ -5,7 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 const TagMultiSelect = ({
   tags,
@@ -40,7 +40,7 @@ const TagMultiSelect = ({
   popoverW?: string;
   onClose?: (value: string[]) => void | Promise<void>;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('apikey');
   const [search, setSearch] = useState('');
   const latestValueRef = useRef(value);
   const tagsContainerRef = useRef<HTMLDivElement>(null);
@@ -198,7 +198,7 @@ const TagMultiSelect = ({
       >
         {selectedTags.length === 0 ? (
           <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-            {placeholder || t('account_apikey:tags')}
+            {placeholder || t('apikey:tags')}
           </Box>
         ) : (
           <>
@@ -281,7 +281,7 @@ const TagMultiSelect = ({
               h={8}
               borderRadius={'xs'}
               value={search}
-              placeholder={t('account_apikey:search_or_add_tag')}
+              placeholder={t('apikey:search_or_add_tag')}
               maxLength={50}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
@@ -305,7 +305,7 @@ const TagMultiSelect = ({
               >
                 <MyIcon name={'common/addLight'} w={'16px'} />
                 <Box ml={2} py={2}>
-                  {t('account_apikey:create_tag_with_name', {
+                  {t('apikey:create_tag_with_name', {
                     name: search.trim()
                   })}
                 </Box>
@@ -314,7 +314,7 @@ const TagMultiSelect = ({
 
             {filteredTags.length === 0 ? (
               <Box px={1} py={2} color={'myGray.500'} fontSize={'sm'}>
-                {t('account_apikey:no_tags')}
+                {t('apikey:no_tags')}
               </Box>
             ) : (
               filteredTags.map((tag) => {
@@ -379,7 +379,7 @@ const TagMultiSelect = ({
                   onClose();
                 }}
               >
-                {t('account_apikey:cancel_select')}
+                {t('apikey:cancel_select')}
               </Button>
               <Box w={'1px'} bg={'myGray.200'} />
               <Button
@@ -394,7 +394,7 @@ const TagMultiSelect = ({
                   onClose();
                 }}
               >
-                {t('account_apikey:tag_manage')}
+                {t('apikey:tag_manage')}
               </Button>
             </Flex>
           )}

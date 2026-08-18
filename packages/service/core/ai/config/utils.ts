@@ -26,6 +26,40 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 
 /**
+ * 生成可返回客户端的脱敏模型副本。系统模型对象还会被服务端请求链路复用，不能原地删除字段。
+ */
+export const desensitizeSystemModel = <T extends SystemModelItemType>(model: T): T =>
+  ({
+    ...model,
+    defaultSystemChatPrompt: undefined,
+    fieldMap: undefined,
+    defaultConfig: undefined,
+    dbConfig: undefined,
+    queryConfig: undefined,
+    requestUrl: undefined,
+    requestAuth: undefined
+  }) as T;
+
+/**
+ * 生成可返回客户端的系统默认模型配置。默认模型只表示系统配置，不代表当前用户具备使用权限。
+ */
+export const desensitizeSystemDefaultModels = (
+  defaultModels: SystemDefaultModelType
+): SystemDefaultModelType => ({
+  [ModelTypeEnum.llm]: defaultModels.llm && desensitizeSystemModel(defaultModels.llm),
+  datasetTextLLM:
+    defaultModels.datasetTextLLM && desensitizeSystemModel(defaultModels.datasetTextLLM),
+  datasetImageLLM:
+    defaultModels.datasetImageLLM && desensitizeSystemModel(defaultModels.datasetImageLLM),
+  chatTitleLLM: defaultModels.chatTitleLLM && desensitizeSystemModel(defaultModels.chatTitleLLM),
+  [ModelTypeEnum.embedding]:
+    defaultModels.embedding && desensitizeSystemModel(defaultModels.embedding),
+  [ModelTypeEnum.tts]: defaultModels.tts && desensitizeSystemModel(defaultModels.tts),
+  [ModelTypeEnum.stt]: defaultModels.stt && desensitizeSystemModel(defaultModels.stt),
+  [ModelTypeEnum.rerank]: defaultModels.rerank && desensitizeSystemModel(defaultModels.rerank)
+});
+
+/**
  * 生成允许持久化的严格模型配置。运行时字段和废弃字段会被移除，明确默认值由统一 Schema 填充。
  */
 export const parsePersistedSystemModelConfig = ({
@@ -252,16 +286,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       global.sttModelMap = _sttModelMap;
       global.reRankModelMap = _reRankModelMap;
       global.systemDefaultModel = _systemDefaultModel;
-      global.systemActiveDesensitizedModels = _systemActiveModelList.map((model) => ({
-        ...model,
-        defaultSystemChatPrompt: undefined,
-        fieldMap: undefined,
-        defaultConfig: undefined,
-        dbConfig: undefined,
-        queryConfig: undefined,
-        requestUrl: undefined,
-        requestAuth: undefined
-      })) as SystemModelItemType[];
+      global.systemActiveDesensitizedModels = _systemActiveModelList.map(desensitizeSystemModel);
     }
 
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);

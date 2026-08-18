@@ -1,9 +1,12 @@
 ---
-title: V4.5 (Complex Update Required)
+title: V4.5
 description: FastGPT V4.5 Update
+releaseTime: '2023-10-17'
+upgradeTags:
+  - MANUAL UPGRADE
 ---
 
-FastGPT V4.5 introduces PgVector 0.5's HNSW index, which dramatically improves knowledge base search performance — roughly 3x to 10x faster than the `IVFFlat` index, easily achieving millisecond-level searches across millions of records. The downside is that index building is very slow: on a 4C16G machine with 5 million records, a `parallel build` took about 48 hours. For detailed parameter configuration, refer to the [PgVector official documentation](https://github.com/pgvector/pgvector).
+FastGPT V4.5 introduces PgVector 0.5's HNSW index, which dramatically improves Dataset search performance — roughly 3x to 10x faster than the `IVFFlat` index, easily achieving millisecond-level searches across millions of records. The downside is that index building is very slow: on a 4C16G machine with 5 million records, a `parallel build` took about 48 hours. For detailed parameter configuration, refer to the [PgVector official documentation](https://github.com/pgvector/pgvector).
 
 The following database operations are required for the upgrade:
 
@@ -75,7 +78,7 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 
 ### Fast GPT V4.5
 
-1. New - Upgraded PgVector extension with HNSW index, dramatically improving knowledge base search speed.
+1. New - Upgraded PgVector extension with HNSW index, dramatically improving Dataset search speed.
 2. New - AI Chat node now includes a "Return AI Content" option, allowing you to prevent AI responses from being sent directly to the browser.
 3. New - Support for selecting models in the Question Classifier.
 4. Improved - TextSplitter now uses a recursive splitting approach.

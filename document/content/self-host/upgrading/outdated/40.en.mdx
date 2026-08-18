@@ -1,6 +1,9 @@
 ---
-title: V4.0 (Upgrade Script)
+title: V4.0
 description: Upgrade guide from older versions to FastGPT V4.0
+releaseTime: '2023-08-09'
+upgradeTags:
+  - MIGRATION
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -17,7 +20,9 @@ db.sharechats.renameCollection('outlinks');
 ```
 
 <Alert context="warning">
-  Note: When upgrading from an older version to V4, MongoDB will automatically create empty collections with these names. You need to manually drop those empty collections first before running the commands above.
+  Note: When upgrading from an older version to V4, MongoDB will automatically create empty
+  collections with these names. You need to manually drop those empty collections first before
+  running the commands above.
 </Alert>
 
 ## Initialize Fields in Several Collections

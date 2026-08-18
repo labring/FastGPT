@@ -1,6 +1,9 @@
 ---
-title: V4.8.9（升级脚本）
+title: V4.8.9
 description: FastGPT V4.8.9 更新说明
+releaseTime: '2024-08-12'
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 升级指南
@@ -15,7 +18,7 @@ description: FastGPT V4.8.9 更新说明
 
 ### 3. 商业版执行初始化
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**:
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**:
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/init/489' \
@@ -25,7 +28,7 @@ curl --location --request POST 'https://{{host}}/api/admin/init/489' \
 
 会初始化多租户的通知方式，仅内部使用的，无需执行。
 
--------
+---
 
 ## V4.8.9 更新说明
 

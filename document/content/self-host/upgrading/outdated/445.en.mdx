@@ -1,6 +1,9 @@
 ---
-title: V4.4.5 (Upgrade Script)
+title: V4.4.5
 description: FastGPT V4.4.5 Update
+releaseTime: '2023-09-26'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## Run the Initialization API
@@ -15,7 +18,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv445' \
 --header 'Content-Type: application/json'
 ```
 
-This initializes the variable module by merging it into the user guide module.
+This initializes the Variable node by merging it into the User Guide node.
 
 ## What's New
 
@@ -24,4 +27,4 @@ This initializes the variable module by merging it into the user guide module.
 1. Added — Next-step suggestions: the model can now generate 3 predicted follow-up questions.
 2. Commercial edition — Share link restrictions and hook-based identity verification (can integrate with your existing user system).
 3. Commercial edition — API Key management: added alias, quota limits, and expiration. Includes a built-in appId, so no additional connection is needed.
-4. Improved — Global variables and opening message merged into a single module.
+4. Improved — Global variables and the opening message are now combined in a single node.

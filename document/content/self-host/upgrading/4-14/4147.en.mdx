@@ -1,6 +1,10 @@
 ---
-title: 'V4.14.7 (Environment Changes, Upgrade Script)'
+title: 'V4.14.7'
 description: 'FastGPT V4.14.7 Release Notes'
+releaseTime: '2026-02-12'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -40,16 +44,16 @@ LOG_OTEL_URL=http://localhost:4318/v1/logs # Your OTLP collector URL. Do not omi
 
 Go to the Plugin Marketplace and update the following system tools (skip this step if you already upgraded to 4.14.6). You can also directly download the [zip package](https://github.com/labring/fastgpt-plugin/raw/refs/heads/main/.github/assets/upgrade_pkg.zip) and install it.
 
-* base64Decode: Base64 decode conversion
-* dallle3: DALL-E 3 image generation
-* docDiff: Document diff comparison
-* drawing: BI charts
-* gptImage: GPT image generation
-* markdownTransform: Markdown file conversion
-* mineru: MinerU PDF parsing
-* minimax: MiniMax chat
-* openrouterMultiModal: OpenRouter multimodal
-* stability: Stability image generation
+- base64Decode: Base64 decode conversion
+- dallle3: DALL-E 3 image generation
+- docDiff: Document diff comparison
+- drawing: BI charts
+- gptImage: GPT image generation
+- markdownTransform: Markdown file conversion
+- mineru: MinerU PDF parsing
+- minimax: MiniMax chat
+- openrouterMultiModal: OpenRouter multimodal
+- stability: Stability image generation
 
 ### 4. Run the Upgrade Script
 
@@ -71,7 +75,7 @@ In the new version's chat records, the `type` field has been removed from the va
 
 1. Context-engineering-based Agent mode, suitable for long task decomposition scenarios. (Beta)
 2. Temporarily added LLM request tracing for debugging. All LLM request bodies and responses are retained (default retention: 6 hours, configurable via `LLM_REQUEST_TRACKING_RETENTION_HOURS`).
-3. Knowledge base search now supports filtering by collectionIds.
+3. Dataset search now supports filtering by collectionIds.
 4. Model monitoring now includes cache hit rate.
 5. Share link with custom authentication: the finish event now transmits chatId.
 6. Chat log list now includes an error-only filter option.
@@ -82,7 +86,7 @@ In the new version's chat records, the `type` field has been removed from the va
 
 ## Improvements
 
-1. Improved UX for tool selection and knowledge base selection in Chat Agent.
+1. Improved UX for tool selection and Dataset selection in Chat Agent.
 2. MCP now automatically filters out extraneous fields on save to maintain mongo 4.x compatibility.
 3. Backend automatically filters out unconfigured tools to prevent model errors from calling unconfigured tools. Uses the same filter function to ensure frontend-backend consistency.
 4. Added memory selection for workflow AI models in chat log mode.
@@ -97,7 +101,7 @@ In the new version's chat records, the `type` field has been removed from the va
 1. Some global variable types had incorrect defaultValueType assignments in workflows.
 2. Workflow AI node thinking output was not rendered correctly.
 3. Precisely retrieves permissions for individual MCP sub-tools to prevent unauthorized access.
-4. Toolset ToolName starting with a number caused tool call failures.
+4. Toolkit ToolName starting with a number caused tool call failures.
 5. Converting a simple app to a workflow did not duplicate the avatar.
 6. When importing workflows, reference-type model fields were incorrectly identified as invalid models and cleared.
 7. On iPhone Safari, share links had a chance of triggering requests with an empty uid on first visit.

@@ -8,8 +8,8 @@ description: FastGPT Text Content Extraction node overview
 - Can be added multiple times
 - Requires manual configuration
 - Trigger-based execution
-- function_call module
-- Core module
+- function_call node
+- Core node
 
 ![](/imgs/extract1.png)
 
@@ -43,9 +43,9 @@ Some chat history is usually needed for more complete extraction. For example, i
 
 Target fields correspond to extraction results. As shown above, each new field adds a corresponding output.
 
-+ **key**: Unique identifier for the field. Must not be duplicated.
-+ **Field description**: Describes what the field represents, e.g., name, time, search keyword, etc.
-+ **Required**: Whether the model is forced to extract this field. It may still return an empty string.
+- **key**: Unique identifier for the field. Must not be duplicated.
+- **Field description**: Describes what the field represents, e.g., name, time, search keyword, etc.
+- **Required**: Whether the model is forced to extract this field. It may still return an empty string.
 
 ## Output
 

@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { Box, Flex, Grid, Text } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
 import Markdown from '@/components/Markdown';
@@ -27,7 +27,7 @@ const StandardPlanContentList = ({
   mode: `${SubModeEnum}`;
   standplan?: TeamPlanStandardType;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
 
   const { subPlans, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
@@ -50,11 +50,11 @@ const StandardPlanContentList = ({
       annualBonusPoints:
         formatMode === SubModeEnum.month
           ? 0
-          : standplan?.annualBonusPoints ?? plan.annualBonusPoints,
+          : (standplan?.annualBonusPoints ?? plan.annualBonusPoints),
       totalPoints:
         standplan?.totalPoints ??
         (isWecomTeam
-          ? plan.wecom?.points ?? 2000
+          ? (plan.wecom?.points ?? 2000)
           : plan.totalPoints * (formatMode === SubModeEnum.month ? 1 : 12)),
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,

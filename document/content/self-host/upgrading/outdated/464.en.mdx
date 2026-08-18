@@ -1,6 +1,9 @@
 ---
-title: V4.6.4 (Upgrade Script)
+title: V4.6.4
 description: FastGPT V4.6.4
+releaseTime: '2023-12-12'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## 1. Run the Initialization API
@@ -25,8 +28,8 @@ What the initialization does:
 1. Rewritten - Share link identity logic, now using localID to track user IDs.
 2. New (Commercial edition) - Share link SSO support. With just 3 API endpoints via an authentication URL, you can fully integrate your existing user system. See [Share Link Authentication](../../../guide/build/publish/link.en.mdx#share-link-authentication) for details.
 3. New - More embedding options for share links, with additional DIY customization.
-4. Improved - History module. The old history module has been deprecated — simply enter the value directly in the relevant field.
-5. Adjusted - Knowledge base search module topK logic now uses MaxToken calculation, accommodating text chunks of varying lengths.
+4. Improved - History node. The old History node has been deprecated — simply enter the value directly in the relevant field.
+5. Adjusted - Dataset search node topK logic now uses MaxToken calculation, accommodating text chunks of varying lengths.
 6. Adjusted - Authentication order to prioritize API keys, preventing cookies from overriding API key authentication.
 7. Link fetching now supports multiple selectors. See [Web Site Sync Usage](../../../guide/dataset/websync.en.mdx).
 8. Fixed - Image upload authentication issue in share links.

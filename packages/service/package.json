@@ -7,10 +7,11 @@
     "test:benchmark": "vitest run -c vitest.benchmark.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
     "test:integration": "vitest run -c vitest.integration.config.ts",
+    "test:integration:sandbox": "vitest run -c vitest.sandbox.integration.config.ts",
     "test:integration:watch": "vitest -c vitest.integration.config.ts"
   },
   "engines": {
-    "node": ">=20.19.0",
+    "node": ">=22.23.2",
     "pnpm": "10.x"
   },
   "dependencies": {

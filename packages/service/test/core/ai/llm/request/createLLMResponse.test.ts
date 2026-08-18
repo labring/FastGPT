@@ -1243,6 +1243,69 @@ describe('createLLMResponse', () => {
       );
     });
 
+    it('should not treat reasoning-only tool_calls finish as empty response', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: null,
+              reasoning_content: 'I already have enough context to answer.',
+              tool_calls: []
+            },
+            finish_reason: 'tool_calls'
+          }
+        ],
+        usage: {
+          prompt_tokens: 20,
+          completion_tokens: 12,
+          total_tokens: 32
+        }
+      };
+
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue(mockResponse)
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      const result = await createLLMResponse({
+        body: {
+          model: 'gpt-4',
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: "What's the weather in Beijing?"
+            }
+          ],
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'get_weather',
+                description: 'Get weather information',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    location: { type: 'string' }
+                  }
+                }
+              }
+            }
+          ],
+          stream: false
+        }
+      });
+
+      expect(result.finish_reason).toBe('tool_calls');
+      expect(result.responseEmptyTip).toBeUndefined();
+      expect(result.reasoningText).toBe('I already have enough context to answer.');
+      expect(result.error).toBeUndefined();
+    });
+
     it('should handle stream tool call response', async () => {
       const chunks = [
         {

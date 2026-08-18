@@ -1,42 +1,42 @@
-import React, { type ReactNode, useMemo, useEffect } from 'react';
+import React, { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMediaQuery } from '@chakra-ui/react';
-import Cookies from 'js-cookie';
-
-const CookieKey = 'NEXT_DEVICE_SIZE';
-const setSize = (value: string) => {
-  Cookies.set(CookieKey, value, { expires: 30 });
-  localStorage.setItem(CookieKey, value);
-};
 
 type useSystemContextType = {
   isPc: boolean;
+  isSystemSizeReady: boolean;
 };
 
 export const useSystemStoreContext = createContext<useSystemContextType>({
-  isPc: true
+  isPc: true,
+  isSystemSizeReady: false
 });
 
 const SystemStoreContextProvider = ({
   children,
-  device
+  waitForReady = false,
+  fallback
 }: {
   children: ReactNode;
-  device?: 'pc' | 'mobile' | null;
+  waitForReady?: boolean;
+  fallback?: ReactNode;
 }) => {
-  const [isPc] = useMediaQuery('(min-width: 900px)', {
-    fallback: device === 'pc'
-  });
+  const [isPc] = useMediaQuery('(min-width: 900px)', { fallback: true });
+  const [isSystemSizeReady, setIsSystemSizeReady] = useState(false);
+
   useEffect(() => {
-    setSize(isPc ? 'pc' : 'mobile');
+    setIsSystemSizeReady(true);
   }, [isPc]);
 
   const contextValue = useMemo(
     () => ({
-      isPc
+      isPc,
+      isSystemSizeReady
     }),
-    [isPc]
+    [isPc, isSystemSizeReady]
   );
+
+  if (waitForReady && !isSystemSizeReady) return fallback ?? null;
 
   return (
     <useSystemStoreContext.Provider value={contextValue}>{children}</useSystemStoreContext.Provider>

@@ -1,11 +1,14 @@
 ---
-title: V4.6.2（升级脚本）
+title: V4.6.2
 description: FastGPT V4.6.2
+releaseTime: '2023-11-29'
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 1。执行初始化 API
 
-发起 1 个 HTTP 请求 (`{{rootkey}}` 替换成环境变量里的 `rootkey`，`{{host}}` 替换成自己域名)
+发起 1 个 HTTP 请求 ( `{{rootkey}}` 替换成环境变量里的 `rootkey`，`{{host}}` 替换成自己域名)
 
 1. https://xxxxx/api/admin/initv462
 
@@ -22,7 +25,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv462' \
 ## V4.6.2 功能介绍
 
 1. 新增 - 全文索引（需配合 Rerank 模型，在看怎么放到社区版，模型接口比较特殊）
-2. 新增 - 插件来源（预计4.7/4.8版本会正式使用）
-3. 优化 - PDF读取
-4. 优化 - docx文件读取，转成 markdown 并保留其图片内容
+2. 新增 - 插件来源（预计 4.7/4.8 版本会正式使用）
+3. 优化 - PDF 读取
+4. 优化 - docx 文件读取，转成 Markdown 并保留其图片内容
 5. 修复和优化 TextSplitter 函数

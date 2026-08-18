@@ -2,7 +2,7 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import React from 'react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 const ResumeInherit = ({
   onResume,
@@ -10,7 +10,7 @@ const ResumeInherit = ({
 }: BoxProps & {
   onResume?: () => Promise<any> | any;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation();
   const { toast } = useToast();
   const { ConfirmModal: CommonConfirmModal, openConfirm: openCommonConfirm } = useConfirm({});
 

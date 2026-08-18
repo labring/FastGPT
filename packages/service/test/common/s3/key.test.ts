@@ -9,6 +9,7 @@ import {
   parseDatasetFileS3Key
 } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
+import { encodeS3ObjectKey } from '@fastgpt/service/common/s3/keySanitizer';
 
 describe('authorized S3 object key helpers', () => {
   it('parses and authorizes legacy chat file keys by app source and uid', () => {
@@ -124,6 +125,42 @@ describe('authorized S3 object key helpers', () => {
         chatId: 'chat-2'
       })
     ).toBe(false);
+  });
+
+  it('authorizes encoded chat identity segments without changing the storage key', () => {
+    const chatId = 'cidJo/BfvcOoMYekj5GBYfwUw==';
+    const key = `chat/app/app-1/user-1/${encodeURIComponent(chatId)}/report%20%28final%29.pdf`;
+
+    expect(parseChatFileS3Key(key)).toMatchObject({
+      sourceType: 'app',
+      sourceId: 'app-1',
+      uid: 'user-1',
+      chatId
+    });
+    expect(
+      isAuthorizedChatFileS3Key({
+        key,
+        sourceType: 'app',
+        sourceId: 'app-1',
+        uid: 'user-1',
+        chatId
+      })
+    ).toBe(true);
+  });
+
+  it('authorizes legacy keys encoded after chat identity segments were joined', () => {
+    const chatId = 'cidJo/BfvcOoMYekj5GBYfwUw==';
+    const key = `${encodeS3ObjectKey(`chat/app/app-1/user-1/${chatId}`)}/report.pdf`;
+
+    expect(
+      isAuthorizedChatFileS3Key({
+        key,
+        sourceType: 'app',
+        sourceId: 'app-1',
+        uid: 'user-1',
+        chatId
+      })
+    ).toBe(true);
   });
 
   it('parses and authorizes dataset file keys by datasetId', () => {

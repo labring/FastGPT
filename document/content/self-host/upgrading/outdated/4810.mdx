@@ -1,24 +1,27 @@
 ---
-title: V4.8.10（环境变量变更、升级脚本）
+title: V4.8.10
 description: FastGPT V4.8.10 更新说明
+releaseTime: '2024-09-06'
+upgradeTags:
+  - 配置变更
+  - 升级脚本
 ---
 
 ## 更新指南
 
 ### 1. 做好数据备份
 
+### 2. 商业版——修改环境变量
 
-### 2. 商业版 —— 修改环境变量
-
-1. 需要给`fastgpt-pro`镜像，增加沙盒的环境变量：`SANDBOX_URL=http://xxxxx:3000`
-2. 给`fastgpt-pro`镜像和`fastgpt`镜像增加环境变量，以便更好的存储系统日志：
+1. 需要给 `fastgpt-pro` 镜像，增加沙盒的环境变量：`SANDBOX_URL=http://xxxxx:3000`
+2. 给 `fastgpt-pro` 镜像和 `fastgpt` 镜像增加环境变量，以便更好的存储系统日志：
 
 ```
 LOG_LEVEL=debug
 STORE_LOG_LEVEL=warn
 ```
 
-### 3. 修改镜像tag
+### 3. 修改镜像 tag
 
 - 更新 FastGPT 镜像 tag: v4.8.10
 - 更新 FastGPT 商业版镜像 tag: v4.8.10
@@ -26,7 +29,7 @@ STORE_LOG_LEVEL=warn
 
 ## 4. 执行初始化
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
@@ -37,7 +40,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 1. 初始化发布记录版本标记
 2. 初始化开票记录
 
--------
+---
 
 ## V4.8.10 更新说明
 
@@ -54,7 +57,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 9. 新增 - 插件增加使用说明配置。
 10. 新增 - 插件自定义输入支持单选框。
 11. 新增 - HTTP 节点支持 text/plain 模式。
-12. 新增 - HTTP模块支持超时配置、支持更多的 Body 类型，params 和 headers 支持新的变量选择模式。
+12. 新增 - HTTP 模块支持超时配置、支持更多的 Body 类型，params 和 headers 支持新的变量选择模式。
 13. 新增 - 工作流导出导入，支持直接导出和导入 JSON 文件，便于交流。
 14. 新增 - 发送验证码安全校验。
 15. 商业版新增 - 飞书机器人接入。
@@ -65,7 +68,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 20. 优化 - 工作流嵌套执行，参数可能存在的污染问题。
 21. 优化 - 部分全局变量，增加数据类型约束。
 22. 优化 - 节点选择，避免切换 tab 时候，path 加载报错。
-23. 优化 - 最新 React Markdown 组件，支持 Base64 图片。
+23. 优化 - 最新 React Markdown 组件，支持 base64 图片。
 24. 优化 - 对话框性能问题。
 25. 优化 - 单选框打开后自动滚动到选中的位置。
 26. 优化 - 知识库集合禁用，目录禁用会递归修改其下所有 children 的禁用状态。
@@ -74,7 +77,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 29. 优化 - 知识库列表 UI。
 30. 优化 - 知识库详情页 UI。
 31. 优化 - 支持无网络配置情况下运行。
-32. 优化 - 调整.env.template关于mongodb的说明，使得更易于理解。
+32. 优化 - 调整.env.template 关于 mongodb 的说明，使得更易于理解。
 33. 优化 - 新的支付模式。
 34. 优化 - 用户默认头像。
 35. 修复 - Prompt 模式调用工具，stream=false 模式下，会携带 0: 开头标记。
@@ -91,7 +94,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 46. 修复 - 全局变量可重复定义 key。
 47. 修复 - 全局变量在 Debug 模式下不可持久化。
 48. 修复 - 全局变量在 API 中无法持久化。
-49. 修复 - OpenAPI，detail=false模式下，不应该返回 tool 调用结果，仅返回文字。（可解决 cow 不适配问题）。
+49. 修复 - OpenAPI，detail=false 模式下，不应该返回 tool 调用结果，仅返回文字。（可解决 cow 不适配问题）。
 50. 修复 - 知识库标签重复加载。
 51. 修复 - 网络链接重新获取时，自定义分割符不生效。
 52. 修复 - 插件运行时，会传递额外的全局变量，可能造成插件内变量污染。

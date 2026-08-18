@@ -27,13 +27,11 @@ import { type UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import UsageRechargeModal from './UsageRechargeModal';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
-const RechargeModal = dynamic(() =>
-  import('@/components/support/wallet/NotSufficientModal/index').then((mod) => mod.RechargeModal)
-);
 
 const UsageTableList = ({
   filterParams,
@@ -44,7 +42,7 @@ const UsageTableList = ({
   Selectors: React.ReactNode;
   filterParams: UsageFilterParams;
 }) => {
-  const { t } = useSafeTranslation();
+  const { t } = useClientTranslation('account_usage');
   const {
     isOpen: isOpenRecharge,
     onOpen: onOpenRecharge,
@@ -192,7 +190,9 @@ const UsageTableList = ({
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
       )}
 
-      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
+      {isOpenRecharge && (
+        <UsageRechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />
+      )}
     </MyBox>
   );
 };

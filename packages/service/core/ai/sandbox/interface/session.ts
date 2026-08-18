@@ -6,6 +6,8 @@
  */
 import { checkSandboxRuntimeInstanceExists, getSandboxClient } from './runtime';
 import type { SandboxClientQuery } from './runtime';
+import { SandboxLifecycleStateError } from '../application/archive';
+import { SandboxRuntimeNotRunningError } from '../error';
 
 export type { SandboxClientQuery } from './runtime';
 
@@ -24,5 +26,14 @@ export async function checkSandboxSessionExist(query: SandboxClientQuery): Promi
  * Proxy 保活场景不恢复 archived sandbox，避免内部保活把冷归档资源重新拉起。
  */
 export async function keepaliveSandboxSession(query: SandboxClientQuery): Promise<void> {
-  await getSandboxClient(query, { restoreArchived: false });
+  await getSandboxClient(query, { restoreArchived: false }).catch((error) => {
+    // stop cron 与 keepalive 可以同时命中；保活不能反向恢复资源，也不应把竞态记录成系统 500。
+    if (
+      error instanceof SandboxRuntimeNotRunningError ||
+      error instanceof SandboxLifecycleStateError
+    ) {
+      return;
+    }
+    throw error;
+  });
 }

@@ -1,9 +1,9 @@
 ---
-title: Knowledge Base Search
-description: FastGPT Knowledge Base Search node overview
+title: Dataset search
+description: FastGPT Dataset search node overview
 ---
 
-For detailed parameters and internal logic, see: [FastGPT Knowledge Base Search](../../../dataset/rag.en.mdx)
+For detailed parameters and internal logic, see: [FastGPT Dataset search](../../../dataset/rag.en.mdx)
 
 ## Characteristics
 
@@ -11,20 +11,20 @@ For detailed parameters and internal logic, see: [FastGPT Knowledge Base Search]
 - Has external input
 - Has static configuration
 - Trigger-based execution
-- Core module
+- Core node
 
 ![](/imgs/flow-dataset1.png)
 
 ## Parameters
 
-### Input - Linked Knowledge Bases
+### Input - Linked Datasets
 
-Select one or more Knowledge Bases using the **same embedding model** for vector search.
+Select one or more Datasets using the **same embedding model** for vector search.
 
 ### Input - Search Parameters
 
-[View parameter details](../../../dataset/dataset_engine.en.mdx#搜索参数)
+[View parameter details](../../../dataset/dataset_engine.en.mdx#search-parameters)
 
 ### Output - Referenced Content
 
-Outputs references as an array with a possible length of 0. This means the output path will still execute even when no results are found.
+Outputs citations as an array with a possible length of 0. This means the output path will still run even when no results are found.

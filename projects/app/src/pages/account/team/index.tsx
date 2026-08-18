@@ -1,9 +1,8 @@
 'use client';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import React, { useMemo } from 'react';
@@ -50,7 +49,7 @@ const Team = () => {
 
   const { teamTab = TeamTabEnum.member } = router.query as { teamTab: `${TeamTabEnum}` };
 
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account', 'account_team', 'user']);
   const { userInfo, teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const level = standardPlan?.currentSubLevel;
@@ -183,14 +182,6 @@ const Team = () => {
     </AccountContainer>
   );
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['account', 'account_team', 'user']))
-    }
-  };
-}
 
 const Render = () => {
   const { userInfo } = useUserStore();

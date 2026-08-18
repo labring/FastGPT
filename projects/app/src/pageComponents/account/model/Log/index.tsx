@@ -27,7 +27,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { addDays } from 'date-fns';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -49,7 +49,7 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   response_body?: string;
 };
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('account_model');
   const { userInfo } = useUserStore();
   const { getModelProvider } = useSystemStore();
 
@@ -287,7 +287,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 export default ChannelLog;
 
 const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_model');
   const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;

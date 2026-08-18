@@ -6,8 +6,7 @@ import {
   LLMModelItemSchema,
   RerankModelItemSchema,
   STTModelItemSchema,
-  TTSModelItemSchema,
-  SystemModelItemSchema
+  TTSModelItemSchema
 } from '../../../core/ai/model.schema';
 import { ModelTypeEnum } from '../../../core/ai/constants';
 
@@ -32,9 +31,39 @@ const FastGPTFeConfigsSchema = z.looseObject({
   uploadFileMaxSize: z.number()
 }) as z.ZodType<FastGPTFeConfigsType>;
 
-const SystemModelSchema = SystemModelItemSchema.meta({
-  description: '脱敏后的系统模型配置'
+const PublicLLMModelSchema = LLMModelItemSchema.omit({
+  defaultSystemChatPrompt: true,
+  fieldMap: true,
+  defaultConfig: true,
+  requestUrl: true,
+  requestAuth: true
 });
+const PublicEmbeddingModelSchema = EmbeddingModelItemSchema.omit({
+  defaultConfig: true,
+  dbConfig: true,
+  queryConfig: true,
+  requestUrl: true,
+  requestAuth: true
+});
+const PublicRerankModelSchema = RerankModelItemSchema.omit({
+  defaultConfig: true,
+  requestUrl: true,
+  requestAuth: true
+});
+const PublicTTSModelSchema = TTSModelItemSchema.omit({ requestUrl: true, requestAuth: true });
+const PublicSTTModelSchema = STTModelItemSchema.omit({ requestUrl: true, requestAuth: true });
+
+const PublicSystemModelSchema = z
+  .discriminatedUnion('type', [
+    PublicLLMModelSchema,
+    PublicEmbeddingModelSchema,
+    PublicTTSModelSchema,
+    PublicSTTModelSchema,
+    PublicRerankModelSchema
+  ])
+  .meta({
+    description: '脱敏后的系统模型配置'
+  });
 
 const I18nStringStrictSchema = z.object({
   en: z.string(),
@@ -43,14 +72,14 @@ const I18nStringStrictSchema = z.object({
 });
 
 const SystemDefaultModelSchema = z.object({
-  [ModelTypeEnum.llm]: LLMModelItemSchema.optional(),
-  datasetTextLLM: LLMModelItemSchema.optional(),
-  datasetImageLLM: LLMModelItemSchema.optional(),
-  chatTitleLLM: LLMModelItemSchema.optional(),
-  [ModelTypeEnum.embedding]: EmbeddingModelItemSchema.optional(),
-  [ModelTypeEnum.tts]: TTSModelItemSchema.optional(),
-  [ModelTypeEnum.stt]: STTModelItemSchema.optional(),
-  [ModelTypeEnum.rerank]: RerankModelItemSchema.optional()
+  [ModelTypeEnum.llm]: PublicLLMModelSchema.optional(),
+  datasetTextLLM: PublicLLMModelSchema.optional(),
+  datasetImageLLM: PublicLLMModelSchema.optional(),
+  chatTitleLLM: PublicLLMModelSchema.optional(),
+  [ModelTypeEnum.embedding]: PublicEmbeddingModelSchema.optional(),
+  [ModelTypeEnum.tts]: PublicTTSModelSchema.optional(),
+  [ModelTypeEnum.stt]: PublicSTTModelSchema.optional(),
+  [ModelTypeEnum.rerank]: PublicRerankModelSchema.optional()
 });
 
 export const GetSystemInitDataResponseSchema = z.object({
@@ -68,7 +97,7 @@ export const GetSystemInitDataResponseSchema = z.object({
     example: '4.16.0',
     description: 'FastGPT 系统版本'
   }),
-  activeModelList: z.array(SystemModelSchema).optional().meta({
+  activeModelList: z.array(PublicSystemModelSchema).optional().meta({
     description: '当前可用的脱敏模型列表'
   }),
   defaultModels: SystemDefaultModelSchema.optional().meta({

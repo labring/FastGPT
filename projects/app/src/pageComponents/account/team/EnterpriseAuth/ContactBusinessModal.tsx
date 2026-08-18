@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { Box, Button } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { enterpriseAuthContactBusinessUrl } from './utils';
 import { enterpriseAuthFooterButtonStyles } from './shared';
@@ -12,7 +12,7 @@ type EnterpriseAuthContactBusinessModalProps = {
 const EnterpriseAuthContactBusinessModal = ({
   onClose
 }: EnterpriseAuthContactBusinessModalProps) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation(['account_team', 'user']);
 
   const openContactBusiness = useCallback(() => {
     window.open(enterpriseAuthContactBusinessUrl, '_blank', 'noopener,noreferrer');

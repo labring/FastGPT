@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
-import { Trans, useTranslation } from 'next-i18next';
+import { Trans } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
@@ -40,7 +41,7 @@ export const BillingModeSwitch = ({
   value: `${SubModeEnum}`;
   onChange: (mode: `${SubModeEnum}`) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('price');
   const isYear = value === SubModeEnum.year;
 
   return (
@@ -54,7 +55,7 @@ export const BillingModeSwitch = ({
         color={'#020617'}
         userSelect={'none'}
       >
-        {t('common:support.wallet.subscription.mode.Month pay')}
+        {t('price:support.wallet.subscription.mode.Month pay')}
       </Box>
       <Flex
         role={'switch'}
@@ -94,7 +95,7 @@ export const BillingModeSwitch = ({
         color={'#475569'}
         userSelect={'none'}
       >
-        {t('common:support.wallet.subscription.mode.Year pay')}
+        {t('price:support.wallet.subscription.mode.Year pay')}
       </Box>
       <Box
         as={'span'}
@@ -108,7 +109,7 @@ export const BillingModeSwitch = ({
         }}
       >
         <Trans
-          i18nKey={'common:pay_year_tip'}
+          i18nKey={'price:pay_year_tip'}
           values={{ count: 10 }}
           components={{
             italic: <Box as={'span'} fontStyle={'italic'} />
@@ -132,13 +133,14 @@ const Standard = ({
   onSelectSubModeChange?: (mode: `${SubModeEnum}`) => void;
   hideBillingToggle?: boolean;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useClientTranslation('price');
   const { userInfo } = useUserStore();
+  const isChinese = i18n.language.startsWith('zh');
 
   const packagePayTextMap = {
-    [PackageChangeStatusEnum.buy]: t('common:pay.package_tip.buy'),
-    [PackageChangeStatusEnum.renewal]: t('common:pay.package_tip.renewal'),
-    [PackageChangeStatusEnum.upgrade]: t('common:pay.package_tip.upgrade')
+    [PackageChangeStatusEnum.buy]: t('price:pay.package_tip.buy'),
+    [PackageChangeStatusEnum.renewal]: t('price:pay.package_tip.renewal'),
+    [PackageChangeStatusEnum.upgrade]: t('price:pay.package_tip.upgrade')
   };
 
   // Check if it's a wecom team
@@ -392,7 +394,7 @@ const Standard = ({
                     fontWeight={'500'}
                     borderLeftRadius={'sm'}
                   >
-                    {t('common:is_using')}
+                    {t('price:is_using')}
                   </Box>
                 )}
                 <Box
@@ -413,7 +415,7 @@ const Standard = ({
                       fontWeight={'bold'}
                       color={'myGray.900'}
                     >
-                      {t('common:custom_plan_price')}
+                      {t('price:custom_plan_price')}
                     </Box>
                   ) : (
                     <Box
@@ -445,7 +447,7 @@ const Standard = ({
                             fontWeight={'500'}
                             whiteSpace={'nowrap'}
                           >
-                            {t('common:support.wallet.subscription.per_year')}
+                            {t('price:support.wallet.subscription.per_year')}
                           </Box>
                         )}
                         {item.level !== StandardSubLevelEnum.free && matchedCoupon && (
@@ -456,7 +458,13 @@ const Standard = ({
                             fontWeight={'500'}
                             whiteSpace={'nowrap'}
                           >
-                            {`${(matchedCoupon.discount * 10).toFixed(0)} 折`}
+                            {isChinese
+                              ? t('price:coupon_discount_rate', {
+                                  discount: (matchedCoupon.discount * 10).toFixed(0)
+                                })
+                              : t('price:coupon_percent_off', {
+                                  discount: ((1 - matchedCoupon.discount) * 100).toFixed(0)
+                                })}
                           </Box>
                         )}
                       </Flex>
@@ -465,7 +473,7 @@ const Standard = ({
                 </Flex>
                 <Box color={'myGray.500'} minH={'40px'} fontSize={'xs'}>
                   {isWecomTeam && item.level === StandardSubLevelEnum.free
-                    ? t('common:support.wallet.subscription.standardSubLevel.trial_desc')
+                    ? t('price:support.wallet.subscription.standardSubLevel.trial_desc')
                     : t(item.desc as any, { title: feConfigs?.systemTitle })}
                 </Box>
 
@@ -489,7 +497,7 @@ const Standard = ({
                         isDisabled
                         variant={'whiteBase'}
                       >
-                        {t('common:free')}
+                        {t('price:free')}
                       </Button>
                     );
                   }
@@ -507,7 +515,7 @@ const Standard = ({
                           }
                         }}
                       >
-                        {t('common:contact_business')}
+                        {t('price:contact_business')}
                       </Button>
                     );
                   }
@@ -557,7 +565,7 @@ const Standard = ({
                           });
                         }}
                       >
-                        {t('user:bill.renew_plan')}
+                        {t('price:bill.renew_plan')}
                       </Button>
                     );
                   }
@@ -580,7 +588,7 @@ const Standard = ({
                           });
                         }}
                       >
-                        {t('common:support.wallet.subscription.Upgrade plan')}
+                        {t('price:support.wallet.subscription.Upgrade plan')}
                       </Button>
                     );
                   }
@@ -598,7 +606,7 @@ const Standard = ({
                         _active={{}}
                         cursor={'not-allowed'}
                       >
-                        {t('user:bill.buy_plan')}
+                        {t('price:bill.buy_plan')}
                       </Button>
                     );
                   }
@@ -629,7 +637,7 @@ const Standard = ({
                         });
                       }}
                     >
-                      {t('user:bill.buy_plan')}
+                      {t('price:bill.buy_plan')}
                     </Button>
                   );
                 })()}
@@ -639,19 +647,19 @@ const Standard = ({
                   <Grid gap={4} fontSize={'sm'}>
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
-                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_1')}</Box>
+                      <Box color={'myGray.600'}>{t('price:custom_plan_feature_1')}</Box>
                     </Flex>
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
-                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_2')}</Box>
+                      <Box color={'myGray.600'}>{t('price:custom_plan_feature_2')}</Box>
                     </Flex>
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
-                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_3')}</Box>
+                      <Box color={'myGray.600'}>{t('price:custom_plan_feature_3')}</Box>
                     </Flex>
                     <Flex alignItems={'center'}>
                       <MyIcon name={'price/right'} w={'16px'} mr={3} color={'primary.600'} />
-                      <Box color={'myGray.600'}>{t('common:custom_plan_feature_4')}</Box>
+                      <Box color={'myGray.600'}>{t('price:custom_plan_feature_4')}</Box>
                     </Flex>
                   </Grid>
                 ) : (

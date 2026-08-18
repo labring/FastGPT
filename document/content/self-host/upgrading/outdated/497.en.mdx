@@ -1,6 +1,7 @@
 ---
 title: V4.9.7
 description: FastGPT V4.9.7 Release Notes
+releaseTime: '2025-04-28'
 ---
 
 ## Upgrade Guide
@@ -17,7 +18,7 @@ description: FastGPT V4.9.7 Release Notes
 
 ## New Features
 
-1. Knowledge base answers now include citations at the end of each referenced paragraph.
+1. Dataset answers now include citations at the end of each referenced paragraph.
 2. MCP tools support the HTTP Streamable protocol.
 3. MCP Server supports editing tool names to accommodate clients that don't support Chinese characters.
 4. Right-click in the workflow editor to auto-align nodes.
@@ -47,8 +48,8 @@ description: FastGPT V4.9.7 Release Notes
 5. Copy app permission issues.
 6. Chat record export now limits individual conversations to 1,000 message pairs to prevent export failures.
 7. Workflow variables followed by another workflow variable not triggering rendering.
-8. Debugging the knowledge base search module showing "no permission" errors.
+8. Debugging the Dataset search node showing "no permission" errors.
 9. Text content extraction node default value assignment logic.
 10. Share links forcibly returning citation content from nested apps.
-11. Knowledge base collection metadata filtering: same-named tags across different knowledge bases returning no results when using `$and` filters.
+11. Dataset collection metadata filtering: same-named tags across different datasets returning no results when using `$and` filters.
 12. App list permission configuration potentially causing index refresh issues.

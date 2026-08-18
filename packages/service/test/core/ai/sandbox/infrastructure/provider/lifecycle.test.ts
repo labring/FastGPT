@@ -71,10 +71,10 @@ describe('sandbox provider lifecycle', () => {
       sandboxId: 'sandbox-1'
     });
     expect(result.ensureRunning).toHaveBeenCalledTimes(1);
-    expect(result.waitUntilReady).toHaveBeenCalledTimes(1);
+    expect(result.waitUntilReady).not.toHaveBeenCalled();
   });
 
-  it('does not probe getInfo before adapter ensureRunning', async () => {
+  it('does not add provider-specific readiness probes in the app layer', async () => {
     const sandbox = createSandbox({
       provider: 'sealosdevbox',
       getInfo: vi.fn(async () => {
@@ -91,122 +91,11 @@ describe('sandbox provider lifecycle', () => {
 
     expect(sandbox.getInfo).not.toHaveBeenCalled();
     expect(sandbox.ensureRunning).toHaveBeenCalledTimes(1);
-    expect(sandbox.waitUntilReady).toHaveBeenCalledTimes(1);
-    expect(sandbox.execute).toHaveBeenCalledWith('true', { timeoutMs: 5_000 });
+    expect(sandbox.waitUntilReady).not.toHaveBeenCalled();
+    expect(sandbox.execute).not.toHaveBeenCalled();
   });
 
-  it.each([
-    {
-      name: 'pod pending',
-      error: Object.assign(
-        new Error('Command execution failed: devbox pod is not running: Pending'),
-        {
-          commandError: new Error('devbox pod is not running: Pending')
-        }
-      )
-    },
-    {
-      name: 'exec timeout',
-      error: Object.assign(new Error('Command execution failed: exec command timeout'), {
-        commandError: new Error('exec command timeout')
-      })
-    }
-  ])('retries the devbox command probe after $name', async ({ error }) => {
-    vi.useFakeTimers();
-    try {
-      const executeMock = vi
-        .fn()
-        .mockRejectedValueOnce(error)
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
-      const sandbox = createSandbox({
-        provider: 'sealosdevbox',
-        execute: executeMock
-      });
-      mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
-
-      const connectPromise = connectToSandbox(sealosConfig, 'sandbox-command-not-ready');
-
-      await vi.advanceTimersByTimeAsync(1_000);
-
-      await expect(connectPromise).resolves.toMatchObject({ provider: 'sealosdevbox' });
-      expect(executeMock).toHaveBeenCalledTimes(2);
-      expect(executeMock).toHaveBeenCalledWith('true', { timeoutMs: 5_000 });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it.each([
-    { stderr: 'permission denied', stdout: '', expected: 'permission denied' },
-    { stderr: '', stdout: 'stdout failure', expected: 'stdout failure' },
-    { stderr: '', stdout: '', expected: 'Sandbox command probe failed' }
-  ])(
-    'reports a non-retryable command result as $expected',
-    async ({ stderr, stdout, expected }) => {
-      const sandbox = createSandbox({
-        provider: 'sealosdevbox',
-        execute: vi.fn(async () => ({
-          stdout,
-          stderr,
-          exitCode: 1
-        }))
-      });
-      mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
-
-      await expect(connectToSandbox(sealosConfig, 'sandbox-command-failure')).rejects.toThrow(
-        expected
-      );
-    }
-  );
-
-  it('throws immediately when command probe throws a non-retryable error', async () => {
-    const sandbox = createSandbox({
-      provider: 'sealosdevbox',
-      execute: vi.fn(async () => {
-        throw Object.assign(new Error('wrapper failed'), {
-          commandError: new Error('permission denied')
-        });
-      })
-    });
-    mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
-
-    await expect(connectToSandbox(sealosConfig, 'sandbox-non-retryable-error')).rejects.toThrow(
-      'wrapper failed'
-    );
-  });
-
-  it('throws the last retryable command probe error after retry timeout', async () => {
-    vi.useFakeTimers();
-    try {
-      const sandbox = createSandbox({
-        provider: 'sealosdevbox',
-        execute: vi.fn(async () => {
-          throw Object.assign(new Error('outer retryable failure'), {
-            cause: new Error('exec command timeout')
-          });
-        })
-      });
-      mocks.buildSandboxAdapter.mockReturnValueOnce(sandbox);
-
-      const connectPromise = connectToSandbox(sealosConfig, 'sandbox-retry-timeout');
-      const assertion = expect(connectPromise).rejects.toThrow('outer retryable failure');
-
-      await vi.advanceTimersByTimeAsync(300_000);
-
-      await assertion;
-      expect(sandbox.execute).toHaveBeenCalled();
-      expect(mocks.logger.warn).toHaveBeenCalledWith(
-        'Sandbox command channel retry exhausted',
-        expect.objectContaining({
-          sandboxId: 'provider-sandbox-id'
-        })
-      );
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('skips command probe for non-devbox providers', async () => {
+  it('delegates provider-specific readiness to the SDK adapter', async () => {
     const sandbox = createSandbox({
       provider: 'opensandbox'
     });
@@ -214,7 +103,7 @@ describe('sandbox provider lifecycle', () => {
     await ensureConnectedSandboxRunning(sandbox);
 
     expect(sandbox.ensureRunning).toHaveBeenCalledTimes(1);
-    expect(sandbox.waitUntilReady).toHaveBeenCalledTimes(1);
+    expect(sandbox.waitUntilReady).not.toHaveBeenCalled();
     expect(sandbox.execute).not.toHaveBeenCalled();
   });
 

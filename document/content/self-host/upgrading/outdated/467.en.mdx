@@ -1,6 +1,9 @@
 ---
-title: V4.6.7 (Upgrade Script)
+title: V4.6.7
 description: FastGPT V4.6.7
+releaseTime: '2024-01-23'
+upgradeTags:
+  - MIGRATION
 ---
 
 ## 1. Run the Initialization API
@@ -17,14 +20,14 @@ curl --location --request POST 'https://{{host}}/api/admin/initv467' \
 
 What the initialization does:
 
-1. Re-associates images with their datasets.
+1. Re-associates images with their Collections.
 2. Sets null values in the PG table.
 
 ## V4.6.7 Release Notes
 
-1. Redesigned knowledge base UI with a new import workflow.
-2. Optimized knowledge base and chat data indexing.
-3. Knowledge base OpenAPI — you can now [manage knowledge bases via API](../../../openapi/dataset.en.mdx).
+1. Redesigned Dataset UI with a new import workflow.
+2. Optimized Dataset and chat data indexing.
+3. Dataset OpenAPI — you can now [manage datasets via API](../../../openapi/dataset.en.mdx).
 4. New - Input field variable hints. After typing `{`, you'll see available variable suggestions. Based on community feedback on advanced orchestration, we plan to improve variable handling in the February release, adding support for node-scoped local variables and more global variables.
 5. Improved - Switching teams now saves your selection, so you'll automatically log into that team on your next visit.
 6. Fixed - chatId conflicts when using the API for conversations.

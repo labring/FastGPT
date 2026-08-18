@@ -1,6 +1,10 @@
 ---
-title: 'V4.15.0-beta7 (Environment Changes, Upgrade Script)'
+title: 'V4.15.0-beta7'
 description: 'FastGPT V4.15.0-beta7 Release Notes'
+releaseTime: '2026-06-30'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## 📦 Upgrade Guide
@@ -29,10 +33,10 @@ HNSW_EF_SEARCH=100
 # Maximum scanned rows for vector retrieval. Only applies to PG.
 HNSW_MAX_SCAN_TUPLES=100000
 
-#  ==================== Knowledge Base Processing Concurrency Control  ====================
-# Maximum concurrency for the Knowledge Base file parsing queue
+#  ==================== Dataset Processing Concurrency Control  ====================
+# Maximum concurrency for the Dataset file parsing queue
 DATASET_PARSE_MAX_PROCESS=10
-# Maximum concurrency for the vector training queue
+# Maximum concurrency for the vector indexing queue
 VECTOR_MAX_PROCESS=10
 # Maximum concurrency for the Q&A splitting queue
 QA_MAX_PROCESS=10

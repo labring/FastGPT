@@ -7,8 +7,8 @@ import React, { useMemo } from 'react';
 import { type UsageFilterParams } from './type';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
-import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
-import { useTranslation } from 'react-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import UsageRechargeModal from './UsageRechargeModal';
 
 const DashboardChart = dynamic(() => import('./DashboardChart'), {
   ssr: false
@@ -23,7 +23,7 @@ const UsageDashboard = ({
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_usage');
   const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
     filterParams;
 
@@ -79,7 +79,9 @@ const UsageDashboard = ({
       <MyBox overflowY={'auto'} isLoading={totalPointsLoading}>
         <DashboardChart totalPoints={totalPoints} totalUsage={totalUsage} />
       </MyBox>
-      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
+      {isOpenRecharge && (
+        <UsageRechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />
+      )}
     </>
   );
 };

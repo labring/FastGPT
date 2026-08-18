@@ -30,7 +30,7 @@ import type { OpenApiTagType } from '@fastgpt/global/openapi/support/openapi/tag
 import dayjs from 'dayjs';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import { Controller, useForm } from 'react-hook-form';
@@ -73,7 +73,6 @@ const maskApiKey = (apiKey: string) => {
 };
 
 type ApiKeyTableProps = {
-  tips?: string;
   mode?: 'account' | 'publish';
   appId?: string;
 };
@@ -184,7 +183,7 @@ const ApiKeyTagEditor = ({
 };
 
 const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('apikey');
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
   const isPublishMode = mode === 'publish';
@@ -207,12 +206,12 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
     }[]
   >(
     () => [
-      { label: t('account_apikey:sort_by_create_time'), value: 'createTime' },
-      { label: t('account_apikey:sort_by_last_used_time'), value: 'lastUsedTime' },
+      { label: t('apikey:sort_by_create_time'), value: 'createTime' },
+      { label: t('apikey:sort_by_last_used_time'), value: 'lastUsedTime' },
       ...(hasUsagePlan
         ? [
             {
-              label: t('account_apikey:sort_by_remaining_points'),
+              label: t('apikey:sort_by_remaining_points'),
               value: 'remainingPoints' as const
             }
           ]
@@ -300,8 +299,8 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
     apiKey: { label: 'API KEY', width: '130px' },
     usagePoints: { label: t('common:support.outlink.Usage points'), width: '150px' },
     expiredTime: { label: t('common:expired_time'), width: '120px' },
-    lastUsedTime: { label: t('account_apikey:last_used_time'), width: '160px' },
-    createTime: { label: t('account_apikey:create_time'), width: '160px' },
+    lastUsedTime: { label: t('apikey:last_used_time'), width: '160px' },
+    createTime: { label: t('apikey:create_time'), width: '160px' },
     actions: { label: t('common:Action'), width: '92px' }
   };
   const tableColumns = apiKeyTableFields
@@ -476,7 +475,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             >
               <Flex alignItems={'center'}>
                 <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
-                {t('account_apikey:tutorial')}
+                {t('apikey:tutorial')}
               </Flex>
             </Link>
           )}
@@ -500,7 +499,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
           >
             <SearchInput
               value={keyword}
-              placeholder={t('account_apikey:search_key_name_or_value')}
+              placeholder={t('apikey:search_key_name_or_value')}
               bg={'white'}
               maxW={['100%', '240px']}
               onChange={(e) => setKeyword(e.target.value)}
@@ -509,7 +508,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               tags={openApiTags}
               value={selectedTagIds}
               onChange={setSelectedTagIds}
-              label={t('account_apikey:tags')}
+              label={t('apikey:tags')}
               placeholder={t('common:All')}
               onManage={() => setShowTagManage(true)}
               onCreateTag={onCreateTagFromSelect}
@@ -526,7 +525,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               valueLabel={
                 <Flex alignItems={'center'} w={'100%'} minW={0}>
                   <Box flexShrink={0} color={'myGray.600'}>
-                    {t('account_apikey:sort_label')}
+                    {t('apikey:sort_label')}
                   </Box>
                   <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} />
                   <Box
@@ -698,7 +697,7 @@ function EditKeyModal({
   onCreate: (id: string) => void;
   onEdit: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('apikey');
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
   const { feConfigs } = useSystemStore();
 
@@ -714,7 +713,7 @@ function EditKeyModal({
   const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (e: EditProps) => createAOpenApiKey(e),
     {
-      errorToast: t('workflow:create_link_error'),
+      errorToast: t('apikey:create_link_error'),
       onSuccess: onCreate
     }
   );
@@ -725,7 +724,7 @@ function EditKeyModal({
       return putOpenApiKey(e);
     },
     {
-      errorToast: t('workflow:update_link_error'),
+      errorToast: t('apikey:update_link_error'),
       onSuccess: onEdit
     }
   );
@@ -733,7 +732,7 @@ function EditKeyModal({
   return (
     <MyModalV2
       isOpen={true}
-      title={isEdit ? t('publish:edit_api_key') : t('publish:create_api_key')}
+      title={isEdit ? t('apikey:edit_api_key') : t('apikey:create_api_key')}
       size="sm"
       onClose={onClose}
       footer={
@@ -764,7 +763,7 @@ function EditKeyModal({
             {t('common:Name')}
           </FormLabel>
           <Input
-            placeholder={t('publish:key_alias') || 'key_alias'}
+            placeholder={t('apikey:key_alias') || 'key_alias'}
             maxLength={50}
             {...register('name', {
               required: t('common:name_is_empty') || 'name_is_empty',
@@ -773,7 +772,7 @@ function EditKeyModal({
           />
         </Flex>
         <Flex alignItems={'center'} gap={4}>
-          <FormLabel flex={'0 0 90px'}>{t('account_apikey:tags')}</FormLabel>
+          <FormLabel flex={'0 0 90px'}>{t('apikey:tags')}</FormLabel>
           <Controller
             control={control}
             name="tags"
@@ -782,7 +781,7 @@ function EditKeyModal({
                 tags={tags}
                 value={field.value || []}
                 onChange={field.onChange}
-                placeholder={t('account_apikey:select_tag')}
+                placeholder={t('apikey:select_tag')}
                 showFooter={false}
                 w={'100%'}
               />

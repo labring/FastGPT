@@ -1,3 +1,5 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+
 /**
  * Browser error logger that keeps track of the last 10 errors
  */
@@ -40,10 +42,9 @@ class ErrorLogger {
    * Override console.error to capture error logs
    */
   private overrideConsoleError() {
-    const self = this;
-    console.error = function (...args: any[]) {
+    console.error = (...args: any[]) => {
       // Call original console.error
-      self.originalConsoleError.apply(console, args);
+      this.originalConsoleError.apply(console, args);
 
       // Capture error log
       try {
@@ -58,13 +59,13 @@ class ErrorLogger {
 
         const stack = args.find((arg) => arg instanceof Error)?.stack;
 
-        self.addLog({
+        this.addLog({
           timestamp: Date.now(),
           type: 'console.error',
           message,
           stack
         });
-      } catch (e) {
+      } catch (_e) {
         // Silently fail to avoid infinite loop
       }
     };
@@ -134,7 +135,7 @@ class ErrorLogger {
    */
   getLogs(): string {
     if (this.logs.length === 0) {
-      return '暂无错误日志';
+      return i18nT('common:no_error_logs');
     }
 
     return this.logs

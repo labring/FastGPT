@@ -3,11 +3,14 @@ import { SandboxNotFoundError } from '@fastgpt-sdk/sandbox-adapter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: { AGENT_SANDBOX_PROVIDER: 'sealosdevbox', AGENT_SANDBOX_STORAGE_SIZE_GI: 1 }
+  serviceEnv: {
+    AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
+    AGENT_SANDBOX_STORAGE_SIZE_GI: 1
+  }
 }));
 
 const mocks = vi.hoisted(() => ({
-  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+  logger: { debug: vi.fn(), error: vi.fn(), warn: vi.fn(), info: vi.fn() },
   buildRuntimeSandboxAdapter: vi.fn(),
   ensureConnectedSandboxRunning: vi.fn(),
   deleteSandboxResource: vi.fn(),
@@ -125,6 +128,8 @@ const query = {
 
 const createProvider = () => ({
   provider: 'sealosdevbox',
+  close: vi.fn(async () => undefined),
+  createDirectories: vi.fn(async () => undefined),
   execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 }))
 });
 
@@ -236,6 +241,46 @@ describe('sandbox runtime client lifecycle', () => {
       allowCreate: false
     });
     expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
+  });
+
+  it('coalesces concurrent ensureAvailable calls on one client', async () => {
+    const client = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    let releaseEnsure: (() => void) | undefined;
+    const ensureGate = new Promise<void>((resolve) => {
+      releaseEnsure = resolve;
+    });
+    mocks.ensureConnectedSandboxRunning.mockImplementationOnce(async () => ensureGate);
+
+    const first = client.ensureAvailable();
+    const second = client.ensureAvailable();
+
+    await vi.waitFor(() => expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledTimes(1));
+    releaseEnsure?.();
+    await Promise.all([first, second]);
+  });
+
+  it('builds and verifies a request-scoped provider for each client', async () => {
+    const firstProvider = createProvider();
+    const secondProvider = createProvider();
+    mocks.buildRuntimeSandboxAdapter
+      .mockReturnValueOnce(firstProvider)
+      .mockReturnValueOnce(secondProvider);
+    const firstClient = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+
+    await firstClient.ensureAvailable();
+    await firstClient.provider.close();
+    const secondClient = new SandboxClient(query, { sourceGuard: mocks.assertSandboxSourceActive });
+    await secondClient.ensureAvailable();
+
+    expect(firstClient.provider).toBe(firstProvider);
+    expect(secondClient.provider).toBe(secondProvider);
+    expect(firstProvider.close).toHaveBeenCalledOnce();
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledWith(firstProvider, {
+      allowCreate: false
+    });
+    expect(mocks.ensureConnectedSandboxRunning).toHaveBeenCalledWith(secondProvider, {
+      allowCreate: false
+    });
   });
 
   it('repairs a missing running provider under source and lifecycle leases', async () => {
@@ -585,8 +630,12 @@ describe('sandbox runtime client lifecycle', () => {
       stderr: '',
       exitCode: 0
     });
-    expect(provider.execute).toHaveBeenCalledWith(expect.stringContaining('echo ok'), {
-      timeoutMs: 2000
+    expect(provider.createDirectories).toHaveBeenCalledWith([
+      '/home/devbox/workspace/sessions/chat-1'
+    ]);
+    expect(provider.execute).toHaveBeenCalledWith('echo ok', {
+      timeoutMs: 2000,
+      workingDirectory: '/home/devbox/workspace/sessions/chat-1'
     });
 
     provider.execute.mockRejectedValueOnce(new Error('exec failed'));
@@ -595,6 +644,7 @@ describe('sandbox runtime client lifecycle', () => {
       stderr: 'Failed to execute sandbox: exec failed',
       exitCode: -1
     });
+    expect(provider.createDirectories).toHaveBeenCalledOnce();
   });
 
   it('rejects legacy or incomplete runtime queries', async () => {

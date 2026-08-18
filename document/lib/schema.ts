@@ -4,10 +4,11 @@ export function generateArticleSchema(params: {
   title: string;
   description: string;
   url: string;
+  datePublished?: Date;
   dateModified?: Date;
   lang: string;
 }): WithContext<Article> {
-  const { title, description, url, dateModified, lang } = params;
+  const { title, description, url, datePublished, dateModified, lang } = params;
 
   return {
     '@context': 'https://schema.org',
@@ -16,6 +17,7 @@ export function generateArticleSchema(params: {
     description,
     url,
     inLanguage: lang,
+    datePublished: datePublished?.toISOString(),
     dateModified: dateModified?.toISOString(),
     author: {
       '@type': 'Organization',

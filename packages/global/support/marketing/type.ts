@@ -18,7 +18,6 @@ export const FastGPT_SEM_Schema = ShortUrlSchema.extend({
 export type FastGPTSemType = z.infer<typeof FastGPT_SEM_Schema>;
 
 export const TrackRegisterParamsSchema = z.object({
-  inviterId: z.string().optional(),
   bd_vid: z.string().optional(),
   msclkid: z.string().optional(),
   fastgpt_sem: FastGPT_SEM_Schema.optional()

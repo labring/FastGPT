@@ -3,14 +3,14 @@ import { Box, Button, Flex, ModalBody, ModalCloseButton } from '@chakra-ui/react
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
 
 function Invite({ invitelinkid }: { invitelinkid: string }) {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('account_team');
 
   const { onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 

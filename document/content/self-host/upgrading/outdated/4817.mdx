@@ -1,6 +1,9 @@
 ---
-title: V4.8.17（升级脚本）
+title: V4.8.17
 description: FastGPT V4.8.17 更新说明
+releaseTime: '2024-12-30'
+upgradeTags:
+  - 升级脚本
 ---
 
 ## 更新指南
@@ -11,10 +14,9 @@ description: FastGPT V4.8.17 更新说明
 - 更新 fastgpt-pro 商业版镜像 tag: v4.8.17
 - Sandbox 镜像无需更新
 
-
 ### 2. 运行升级脚本
 
-从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成**FastGPT 域名**。
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 **FastGPT 域名**。
 
 ```bash
 curl --location --request POST 'https://{{host}}/api/admin/initv4817' \
@@ -23,7 +25,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4817' \
 ```
 
 会将用户绑定的 OpenAI 账号移动到团队中。
-
 
 ## 调整 completions 接口返回值
 
@@ -40,7 +41,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4817' \
 7. 新增 - 工作流中 Input Token 和 Output Token 分开记录展示。并修复部分请求未记录输出 Token 计费问题。
 8. 优化 - Markdown 大小测试，超出 20 万字符不使用 Markdown 组件，避免崩溃。
 9. 优化 - 知识库搜索参数，滑动条支持输入模式，可以更精准的控制。
-10. 优化 - 可用模型展示UI。
+10. 优化 - 可用模型展示 UI。
 11. 优化 - Mongo 查询语句，增加 virtual 字段。
 12. 修复 - 文件返回接口缺少 Content-Length 头，导致通过非同源文件上传时，阿里 vision 模型无法识别图片。
 13. 修复 - 去除判断器两端字符串隐藏换行符，避免判断器失效。

@@ -18,6 +18,7 @@ import {
   assertMultipartPartNumber,
   assertMultipartUploadId,
   assertMultipartUploadParts,
+  containsStorageObjectControlCharacter,
   isNoSuchMultipartUploadError
 } from '../assert';
 
@@ -414,9 +415,15 @@ export class CosStorageAdapter implements IStorage {
   async deleteObjectsByMultiKeys(
     params: Storage.DeleteObjectsParams
   ): Promise<Storage.DeleteObjectsResult> {
-    const { keys } = params;
-    assertStorageObjectKeys(keys);
+    assertStorageObjectKeys(params.keys);
+    return this.deleteObjectsByRawKeys(params);
+  }
 
+  /** legacy 原始 key 直删：跳过格式断言，仅保留分块与失败 key 上报。 */
+  async deleteObjectsByRawKeys(
+    params: Storage.DeleteObjectsParams
+  ): Promise<Storage.DeleteObjectsResult> {
+    const { keys } = params;
     if (keys.length === 0) {
       return {
         bucket: this.options.bucket,
@@ -424,9 +431,36 @@ export class CosStorageAdapter implements IStorage {
       };
     }
 
-    // COS 单次 DeleteMultipleObject 最多接受 1000 个对象。
     const failedKeys: Storage.StorageObjectKey[] = [];
-    for (const keyChunk of chunk(keys, 1000)) {
+    // 含 ASCII 控制字符的 key 不能放进 XML 请求体（XML 1.0 会把字面 CR/CRLF 规范化成 LF），
+    // 改走单对象 DELETE：key 经 URL 编码后与对象真实名称一致。
+    const controlCharacterKeys = keys.filter((key) => containsStorageObjectControlCharacter(key));
+    const xmlSafeKeys = keys.filter((key) => !containsStorageObjectControlCharacter(key));
+
+    for (const key of controlCharacterKeys) {
+      try {
+        await new Promise<COS.DeleteObjectResult>((resolve, reject) => {
+          this.client.deleteObject(
+            {
+              Bucket: this.options.bucket,
+              Region: this.options.region,
+              Key: key
+            },
+            (err, data) => {
+              if (err) {
+                return reject(this.handleCosError(err));
+              }
+              resolve(data);
+            }
+          );
+        });
+      } catch {
+        failedKeys.push(key);
+      }
+    }
+
+    // COS 单次 DeleteMultipleObject 最多接受 1000 个对象。
+    for (const keyChunk of chunk(xmlSafeKeys, 1000)) {
       const result = await new Promise<COS.DeleteMultipleObjectResult>((resolve, reject) => {
         this.client.deleteMultipleObject(
           {

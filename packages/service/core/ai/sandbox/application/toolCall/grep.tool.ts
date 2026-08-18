@@ -29,7 +29,6 @@ const truncateMatchLine = (line: string) => {
 export const sandboxGrepTool = defineTool({
   zodSchema: SandboxGrepToolSchema,
   execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
     const limit = params.limit ?? DEFAULT_GREP_LIMIT;
     const rgArgs = [
       'rg',

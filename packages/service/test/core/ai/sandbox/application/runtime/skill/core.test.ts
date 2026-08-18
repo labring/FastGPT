@@ -40,8 +40,23 @@ const makeWriteResults = (entries: Array<{ path: string; data: unknown }>) =>
     error: null
   }));
 
-const LIST_VERSION_DIRS_COMMAND =
-  "find '/workspace/projects' -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null";
+const createSkillFilesystemMocks = (directoryPaths: string[] = []) => ({
+  createDirectories: vi.fn(async (_paths: string[]) => undefined),
+  listDirectory: vi.fn(async () =>
+    directoryPaths.map((path) => ({
+      name: path.split('/').pop() ?? path,
+      path,
+      isDirectory: true,
+      isFile: false
+    }))
+  ),
+  deleteDirectories: vi.fn(async (_paths: string[]) => undefined),
+  deleteFiles: vi.fn(async (paths: string[]) =>
+    paths.map((path) => ({ path, success: true, error: null }))
+  ),
+  moveFiles: vi.fn(async (_entries: Array<{ source: string; destination: string }>) => undefined)
+});
+
 const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
 
 describe('runtime skill deploy and scan integration', () => {
@@ -169,26 +184,11 @@ description: Zeta skill
     ]);
     const skillMdPaths = Array.from(contentByPath.keys());
     const sandbox = {
+      ...createSkillFilesystemMocks(),
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
         if (command.includes('unzip')) {
           return {
             exitCode: 0,
@@ -207,8 +207,6 @@ description: Zeta skill
             stderr: ''
           };
         }
-
-        if (command.startsWith('mkdir -p ')) return { exitCode: 0, stdout: '', stderr: '' };
 
         throw new Error(`Unexpected command: ${command}`);
       }),
@@ -250,14 +248,26 @@ description: Zeta skill
       .map(([command]) => command)
       .filter((command) => command.includes('unzip'));
     expect(unzipCommands).toHaveLength(1);
-    expect(unzipCommands[0]).toContain(`mv '/workspace/projects/.tmp-${String(skill1VersionId)}`);
-    expect(unzipCommands[0]).toContain(`'${skill1TargetDir}'`);
-    expect(unzipCommands[0]).toContain(`mv '/workspace/projects/.tmp-${String(skill2VersionId)}`);
-    expect(unzipCommands[0]).toContain(`'${skill2TargetDir}'`);
-    expect(unzipCommands[0]).not.toContain('unzip -tq package.zip >/dev/null');
-    expect(unzipCommands[0]).toContain('unzip -Z -t package.zip');
-    expect(unzipCommands[0]).toContain('unzip -Z1 package.zip');
-    expect(unzipCommands[0]).toContain('unzip -o -q package.zip');
+    for (const zipPath of writtenFilePaths) {
+      expect(unzipCommands[0]).toContain(`unzip -Z -t '${zipPath}'`);
+      expect(unzipCommands[0]).toContain(`unzip -Z1 '${zipPath}'`);
+      expect(unzipCommands[0]).toContain(`unzip -o -q '${zipPath}'`);
+    }
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith(writtenFilePaths);
+    const [moveEntries] = sandbox.moveFiles.mock.calls[0];
+    expect(moveEntries).toHaveLength(2);
+    expect(moveEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
+          destination: skill1TargetDir
+        }),
+        expect.objectContaining({
+          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`),
+          destination: skill2TargetDir
+        })
+      ])
+    );
 
     const findSkillCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
@@ -283,175 +293,29 @@ description: Zeta skill
 });
 
 describe('injectAgentSkillFilesToSandbox', () => {
-  it('deploys every selected current version into version directories', async () => {
-    const user = await getUser(`runtime-skill-deploy-${getNanoid(6)}`);
-    const { teamId, tmbId } = user;
-
-    const [existingSkill, missingSkill] = await MongoAgentSkills.create([
-      {
-        name: 'Existing',
-        description: '',
-        teamId,
-        tmbId,
-        source: AgentSkillSourceEnum.personal
-      },
-      {
-        name: 'Missing',
-        description: '',
-        teamId,
-        tmbId,
-        source: AgentSkillSourceEnum.personal
-      }
-    ]);
-    const existingSkillVersionId = new Types.ObjectId();
-    const missingSkillVersionId = new Types.ObjectId();
-    const existingSkillTargetDir = `/workspace/projects/${String(existingSkillVersionId)}`;
-    const missingSkillTargetDir = `/workspace/projects/${String(missingSkillVersionId)}`;
-
-    const [existingSkillPackage, missingSkillPackage] = await Promise.all([
-      makePackage([{ path: 'skill.md', name: 'existing', description: 'Existing skill' }]),
-      makePackage([{ path: 'skill.md', name: 'missing', description: 'Missing skill' }])
-    ]);
-    const [existingSkillStorage, missingSkillStorage] = await Promise.all([
-      uploadSkillPackage({
-        teamId,
-        skillId: String(existingSkill._id),
-        packageObjectId: 'existing-v0',
-        zipBuffer: existingSkillPackage
-      }),
-      uploadSkillPackage({
-        teamId,
-        skillId: String(missingSkill._id),
-        packageObjectId: 'missing-v0',
-        zipBuffer: missingSkillPackage
-      })
-    ]);
-
-    await MongoAgentSkillsVersion.create([
-      {
-        _id: existingSkillVersionId,
-        skillId: existingSkill._id,
-        tmbId,
-        storageKey: existingSkillStorage.key
-      },
-      {
-        _id: missingSkillVersionId,
-        skillId: missingSkill._id,
-        tmbId,
-        storageKey: missingSkillStorage.key
-      }
-    ]);
-    await Promise.all([
-      MongoAgentSkills.updateOne(
-        { _id: existingSkill._id },
-        { $set: { currentVersionId: existingSkillVersionId } }
-      ),
-      MongoAgentSkills.updateOne(
-        { _id: missingSkill._id },
-        { $set: { currentVersionId: missingSkillVersionId } }
-      )
-    ]);
-
-    const contentByPath = new Map([
-      [
-        `${existingSkillTargetDir}/skill.md`,
-        `---
-name: existing
-description: Existing skill
----`
-      ],
-      [
-        `${missingSkillTargetDir}/skill.md`,
-        `---
-name: missing
-description: Missing skill
----`
-      ]
-    ]);
+  it('stops when deployed skill directory enumeration fails', async () => {
     const sandbox = {
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
-        makeWriteResults(entries)
-      ),
-      execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command.includes('unzip')) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command.includes('-iname "SKILL.md"')) {
-          const allPaths = Array.from(contentByPath.keys());
-          const matchedPaths = allPaths.filter((path) => {
-            return command.includes(path.split('/')[3]);
-          });
-          return {
-            exitCode: 0,
-            stdout: `${matchedPaths.join('\0')}\0`,
-            stderr: ''
-          };
-        }
-
-        if (command.startsWith('mkdir -p ')) return { exitCode: 0, stdout: '', stderr: '' };
-
-        throw new Error(`Unexpected command: ${command}`);
-      }),
-      readFiles: vi.fn(async (paths: string[]) =>
-        paths.map((path) => ({
-          path,
-          content: contentByPath.get(path) || ''
-        }))
-      )
+      ...createSkillFilesystemMocks(),
+      listDirectory: vi.fn().mockRejectedValue(new Error('list failed')),
+      writeFiles: vi.fn(),
+      execute: vi.fn(),
+      readFiles: vi.fn()
     };
 
-    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
-      sandbox: sandbox as any,
-      skillIds: [String(existingSkill._id), String(missingSkill._id)],
-      teamId,
-      tmbId,
-      workDirectory: '/workspace'
-    });
-    const result = await getAgentSkillInfos({
-      sandbox: sandbox as any,
-      skillDirectories: deployedSkillVersions.map(({ targetDir }) => targetDir)
-    });
+    await expect(
+      injectAgentSkillFilesToSandbox({
+        sandbox: sandbox as any,
+        skillIds: [],
+        teamId: new Types.ObjectId().toHexString(),
+        tmbId: new Types.ObjectId().toHexString(),
+        workDirectory: '/workspace'
+      })
+    ).rejects.toThrow('list failed');
 
-    expect(sandbox.writeFiles).toHaveBeenCalledTimes(2);
-    const writtenFilePaths = sandbox.writeFiles.mock.calls
-      .flatMap(([entries]) => entries)
-      .map((entry: { path: string }) => entry.path);
-    expect(writtenFilePaths).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining(`/workspace/projects/.tmp-${String(existingSkillVersionId)}`),
-        expect.stringContaining(`/workspace/projects/.tmp-${String(missingSkillVersionId)}`)
-      ])
-    );
-    expect(sandbox.execute).toHaveBeenCalledWith("mkdir -p '/workspace/projects'");
-    const findSkillCommands = sandbox.execute.mock.calls
-      .map(([command]) => command)
-      .filter((command) => command.includes('-iname "SKILL.md"'));
-    expect(findSkillCommands.some((c) => c.includes(`'${existingSkillTargetDir}'`))).toBe(true);
-    expect(findSkillCommands.some((c) => c.includes(`'${missingSkillTargetDir}'`))).toBe(true);
-    expect(result.map((item) => item.name)).toEqual(
-      expect.arrayContaining(['existing', 'missing'])
-    );
+    expect(sandbox.createDirectories).toHaveBeenCalledWith(['/workspace/projects']);
+    expect(sandbox.deleteDirectories).not.toHaveBeenCalled();
+    expect(sandbox.writeFiles).not.toHaveBeenCalled();
+    expect(sandbox.execute).not.toHaveBeenCalled();
   });
 
   it('uses the version pointed to by skill.currentVersionId', async () => {
@@ -509,26 +373,11 @@ description: Missing skill
     const latestTargetDir = `/workspace/projects/${String(latestVersionId)}`;
     const latestSkillMdPath = `${latestTargetDir}/skill.md`;
     const sandbox = {
+      ...createSkillFilesystemMocks(),
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
         if (command.includes('unzip')) {
           return {
             exitCode: 0,
@@ -544,8 +393,6 @@ description: Missing skill
             stderr: ''
           };
         }
-
-        if (command.startsWith('mkdir -p ')) return { exitCode: 0, stdout: '', stderr: '' };
 
         throw new Error(`Unexpected command: ${command}`);
       }),
@@ -579,7 +426,13 @@ description: Latest current skill
         expect.stringContaining(`/workspace/projects/.tmp-${String(latestVersionId)}`)
       ])
     );
-    expect(sandbox.execute).not.toHaveBeenCalledWith(expect.stringContaining(oldTargetDir));
+    expect(sandbox.moveFiles).toHaveBeenCalledWith([
+      expect.objectContaining({ destination: latestTargetDir })
+    ]);
+    const movedDestinations = sandbox.moveFiles.mock.calls.flatMap(([entries]) =>
+      entries.map(({ destination }) => destination)
+    );
+    expect(movedDestinations).not.toContain(oldTargetDir);
     expect(result).toEqual([
       {
         id: latestSkillMdPath,
@@ -667,20 +520,14 @@ description: Latest current skill
     const readableTargetDir = `/workspace/projects/${String(readableVersionId)}`;
     const protectedTargetDir = `/workspace/projects/${String(protectedVersionId)}`;
     const sandbox = {
+      ...createSkillFilesystemMocks(),
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
         if (command.includes('unzip')) {
           return { exitCode: 0, stdout: '', stderr: '' };
         }
-        if (command.startsWith('mkdir -p ')) return { exitCode: 0, stdout: '', stderr: '' };
 
         throw new Error(`Unexpected command: ${command}`);
       }),
@@ -713,7 +560,13 @@ description: Latest current skill
       expect.stringContaining(`/workspace/projects/.tmp-${String(readableVersionId)}`)
     ]);
     expect(writtenFilePaths.join('\n')).not.toContain(String(protectedVersionId));
-    expect(sandbox.execute).not.toHaveBeenCalledWith(expect.stringContaining(protectedTargetDir));
+    expect(sandbox.moveFiles).toHaveBeenCalledWith([
+      expect.objectContaining({ destination: readableTargetDir })
+    ]);
+    const movedDestinations = sandbox.moveFiles.mock.calls.flatMap(([entries]) =>
+      entries.map(({ destination }) => destination)
+    );
+    expect(movedDestinations).not.toContain(protectedTargetDir);
   });
 
   it('skips existing current version directories and removes unselected version directories', async () => {
@@ -754,34 +607,9 @@ description: Latest current skill
     const staleTargetDir = `/workspace/projects/${String(staleVersionId)}`;
     const userProjectDir = `/workspace/projects/demo`;
     const sandbox = {
+      ...createSkillFilesystemMocks([currentTargetDir, staleTargetDir, userProjectDir]),
       writeFiles: vi.fn(),
-      execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return {
-            exitCode: 0,
-            stdout: `${currentTargetDir}\0${staleTargetDir}\0${userProjectDir}\0`,
-            stderr: ''
-          };
-        }
-
-        if (command === `rm -rf '${staleTargetDir}'`) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        throw new Error(`Unexpected command: ${command}`);
-      }),
+      execute: vi.fn(),
       readFiles: vi.fn()
     };
 
@@ -804,8 +632,9 @@ description: Latest current skill
       }
     ]);
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
-    expect(sandbox.execute).toHaveBeenCalledWith(`rm -rf '${staleTargetDir}'`);
-    expect(sandbox.execute).not.toHaveBeenCalledWith(`rm -rf '${userProjectDir}'`);
+    expect(sandbox.deleteDirectories).toHaveBeenCalledWith([staleTargetDir]);
+    expect(sandbox.deleteDirectories).not.toHaveBeenCalledWith([userProjectDir]);
+    expect(sandbox.execute).not.toHaveBeenCalled();
   });
 
   it('throws when a skill package file fails to write', async () => {
@@ -841,9 +670,9 @@ description: Latest current skill
       { $set: { currentVersionId: skillVersionId } }
     );
 
-    const skillTargetDir = `/workspace/projects/${String(skillVersionId)}`;
     const writeError = new Error('write failed');
     const sandbox = {
+      ...createSkillFilesystemMocks(),
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
         entries.map((entry) => ({
           path: entry.path,
@@ -851,35 +680,7 @@ description: Latest current skill
           error: writeError
         }))
       ),
-      execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        if (command.startsWith('mkdir -p ')) return { exitCode: 0, stdout: '', stderr: '' };
-
-        if (command.startsWith("rm -rf '/workspace/projects/.tmp-")) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
-        throw new Error(`Unexpected command: ${command}`);
-      }),
+      execute: vi.fn(),
       readFiles: vi.fn()
     };
 
@@ -892,7 +693,10 @@ description: Latest current skill
         workDirectory: '/workspace'
       })
     ).rejects.toThrow('Failed to write skill ZIP package: write failed');
-    expect(sandbox.execute).not.toHaveBeenCalledWith(`rm -rf '${skillTargetDir}'`);
+    expect(sandbox.deleteDirectories).toHaveBeenCalledWith([
+      expect.stringContaining(`/workspace/projects/.tmp-${String(skillVersionId)}`)
+    ]);
+    expect(sandbox.execute).not.toHaveBeenCalled();
     expect(sandbox.readFiles).not.toHaveBeenCalled();
   });
 
@@ -901,16 +705,9 @@ description: Latest current skill
     const { teamId, tmbId } = user;
 
     const sandbox = {
+      ...createSkillFilesystemMocks(),
       writeFiles: vi.fn(),
-      execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-        throw new Error(`Unexpected command: ${command}`);
-      }),
+      execute: vi.fn(),
       readFiles: vi.fn()
     };
 
@@ -944,24 +741,12 @@ description: Latest current skill
 
   it('cleans stale version directories when no skills are selected', async () => {
     const tmbId = new Types.ObjectId().toHexString();
+    const staleTargetDir = '/workspace/projects/0123456789abcdef01234567';
+    const userProjectDir = '/workspace/projects/demo';
     const sandbox = {
+      ...createSkillFilesystemMocks([staleTargetDir, userProjectDir]),
       writeFiles: vi.fn(),
-      execute: vi.fn(async (command: string) => {
-        if (command === "mkdir -p '/workspace/projects'") {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-        if (command === LIST_VERSION_DIRS_COMMAND) {
-          return {
-            exitCode: 0,
-            stdout: '/workspace/projects/0123456789abcdef01234567\0/workspace/projects/demo\0',
-            stderr: ''
-          };
-        }
-        if (command === "rm -rf '/workspace/projects/0123456789abcdef01234567'") {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-        throw new Error(`Unexpected command: ${command}`);
-      }),
+      execute: vi.fn(),
       readFiles: vi.fn()
     };
 
@@ -974,10 +759,9 @@ description: Latest current skill
     });
 
     expect(result).toEqual([]);
-    expect(sandbox.execute).toHaveBeenCalledWith(
-      "rm -rf '/workspace/projects/0123456789abcdef01234567'"
-    );
-    expect(sandbox.execute).not.toHaveBeenCalledWith("rm -rf '/workspace/projects/demo'");
+    expect(sandbox.deleteDirectories).toHaveBeenCalledWith([staleTargetDir]);
+    expect(sandbox.deleteDirectories).not.toHaveBeenCalledWith([userProjectDir]);
+    expect(sandbox.execute).not.toHaveBeenCalled();
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
   });
 });

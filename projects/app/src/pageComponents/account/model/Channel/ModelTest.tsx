@@ -17,7 +17,7 @@ import {
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -45,7 +45,7 @@ const ModelTest = ({
   models: string[];
   onClose: () => void;
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useClientTranslation('account_model');
   const { getModelProvider } = useSystemStore();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);

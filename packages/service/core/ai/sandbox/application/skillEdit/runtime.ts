@@ -426,11 +426,10 @@ export async function packageSkillInSandbox(params: {
     const newSandbox = await connectToSandbox(providerConfig, sandboxId);
     sandbox = newSandbox;
 
-    const targetDirExists = await newSandbox.execute(`[ -d ${shellQuote(targetDir)} ]`);
-    if (targetDirExists.exitCode !== 0) {
+    const targetDirInfo = await newSandbox.getFileInfo([targetDir]);
+    if (!targetDirInfo.get(targetDir)?.isDirectory) {
       throw new Error(`Skill directory does not exist: ${targetDir}`);
     }
-    const quotedTargetDir = shellQuote(targetDir);
     const homeDirectory = await resolveSandboxHome(newSandbox);
     if (!homeDirectory) {
       throw new Error('Failed to resolve sandbox HOME for package temp directory');
@@ -440,14 +439,7 @@ export async function packageSkillInSandbox(params: {
       .toString(36)
       .slice(2)}.zip`;
     const zipFilePath = joinSandboxPath(packageTempDir, packageZipFilename);
-    const preparePackageTempDirResult = await newSandbox.execute(
-      `mkdir -p ${shellQuote(packageTempDir)}`
-    );
-    if (preparePackageTempDirResult.exitCode !== 0) {
-      throw new Error(
-        `Failed to prepare package temp directory: ${preparePackageTempDirResult.stderr || preparePackageTempDirResult.stdout}`
-      );
-    }
+    await newSandbox.createDirectories([packageTempDir]);
 
     let gitignoreContents: string[] = [];
     try {
@@ -477,9 +469,9 @@ export async function packageSkillInSandbox(params: {
     const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
     const packageZipNameExcludeClause = `! -name ${shellQuote('package.zip')}`;
     const sizeCheckCmd = pruneClause
-      ? `cd ${quotedTargetDir} && find . \\( ${pruneClause} \\) -prune -o -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
-      : `cd ${quotedTargetDir} && find . -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
-    const sizeResult = await newSandbox.execute(sizeCheckCmd);
+      ? `find . \\( ${pruneClause} \\) -prune -o -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
+      : `find . -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
+    const sizeResult = await newSandbox.execute(sizeCheckCmd, { workingDirectory: targetDir });
 
     if (sizeResult.exitCode === 0 && sizeResult.stdout.trim()) {
       const dirBytes = parseInt(sizeResult.stdout.trim(), 10);
@@ -491,8 +483,8 @@ export async function packageSkillInSandbox(params: {
     }
 
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
-    const zipCommand = `cd ${quotedTargetDir} && zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}`;
-    const zipResult = await newSandbox.execute(zipCommand);
+    const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}`;
+    const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
 
     if (zipResult.exitCode !== 0) {
       throw new Error(`Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`);
@@ -533,13 +525,24 @@ export async function packageSkillInSandbox(params: {
 
       return zipBuffer;
     } finally {
-      await newSandbox.execute(`rm -f ${shellQuote(zipFilePath)}`).catch((cleanupError) => {
-        addLog.warn('[Sandbox] Failed to cleanup package zip', {
-          sandboxId,
-          zipFilePath,
-          error: cleanupError
+      await newSandbox
+        .deleteFiles([zipFilePath])
+        .then(([cleanupResult]) => {
+          if (cleanupResult?.success && !cleanupResult.error) return;
+
+          addLog.warn('[Sandbox] Failed to cleanup package zip', {
+            sandboxId,
+            zipFilePath,
+            error: cleanupResult?.error ?? new Error('Delete did not succeed')
+          });
+        })
+        .catch((cleanupError) => {
+          addLog.warn('[Sandbox] Failed to cleanup package zip', {
+            sandboxId,
+            zipFilePath,
+            error: cleanupError
+          });
         });
-      });
     }
   } catch (error) {
     addLog.error('[Sandbox] Failed to package skill', {

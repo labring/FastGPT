@@ -1,6 +1,10 @@
 ---
-title: 'V4.12.0 (Environment Changes, Upgrade Script)'
+title: 'V4.12.0'
 description: 'FastGPT V4.12.0 Update Notes, released on 2025-8-11'
+releaseTime: '2025-08-12'
+upgradeTags:
+  - CONFIG
+  - MIGRATION
 ---
 
 ## Upgrade Guide
@@ -53,10 +57,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4120' \
 2. Optimized workflow recursion checks to prevent infinite recursion.
 3. Optimized the document reading Worker to use SharedBuffer, avoiding data copying.
 4. Batch vector generation and storage to reduce network operations.
-5. Knowledge base search: multi-query merged computation to reduce database operations.
-6. Improved knowledge base selection UX.
+5. Dataset search: multi-query merged computation to reduce database operations.
+6. Improved Dataset selection UX.
 7. Login page UI adjustments.
-8. Stricter validation in workflows for whether a toolset can be added.
+8. Stricter validation in workflows for whether a toolkit can be added.
 9. Chat log export now only exports selected columns, and fixed an issue where some columns could not be exported.
 
 ## Bug Fixes
