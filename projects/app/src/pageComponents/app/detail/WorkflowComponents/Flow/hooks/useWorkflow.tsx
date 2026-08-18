@@ -479,8 +479,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       FlowNodeTypeEnum.loopRun,
       FlowNodeTypeEnum.parallelRun,
       FlowNodeTypeEnum.pluginInput,
-      FlowNodeTypeEnum.pluginOutput,
-      FlowNodeTypeEnum.systemConfig
+      FlowNodeTypeEnum.pluginOutput
     ];
     // Interactive nodes are silently ignored in parallel (not added to parent)
     const unSupportedInParallel = [

@@ -60,7 +60,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { edges, getNodeById, systemConfigNode } = useContextSelector(
+  const { edges, getNodeById } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -69,13 +69,12 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const variables = useMemoEnhance(() => {
     return getEditorVariables({
       nodeId,
-      systemConfigNode,
       getNodeById,
       edges,
       appDetail,
       t
     });
-  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, edges, appDetail, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -159,7 +158,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       const { valueType } = getRefData({
         variable: updateItem.variable,
         getNodeById,
-        systemConfigNode,
         chatConfig: appDetail.chatConfig
       });
 
@@ -189,7 +187,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   const newValueType = getRefData({
                     variable: value as ReferenceItemValueType,
                     getNodeById,
-                    systemConfigNode,
                     chatConfig: appDetail.chatConfig
                   }).valueType;
                   applyPatch({

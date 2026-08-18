@@ -24,13 +24,10 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const systemConfigNode = useContextSelector(WorkflowBufferDataContext, (v) => v.systemConfigNode);
-
   const customGlobalVariables = useMemoEnhance(() => {
     const globalVariables = formatEditorVariablePickerIcon(
       getAppChatConfig({
         chatConfig: appDetail.chatConfig,
-        systemConfigNode,
         isPublicFetch: true
       })?.variables || []
     );
@@ -46,7 +43,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         valueDesc: item.valueDesc
       };
     });
-  }, [appDetail.chatConfig, systemConfigNode, t]);
+  }, [appDetail.chatConfig, t]);
 
   const systemVariables = useMemoEnhance(
     () =>

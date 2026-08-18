@@ -99,7 +99,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { getNodeById, edges, systemConfigNode, llmMaxQuoteContext } = useContextSelector(
+  const { getNodeById, edges, llmMaxQuoteContext } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -126,13 +126,12 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () =>
       getEditorVariables({
         nodeId,
-        systemConfigNode,
         getNodeById,
         edges,
         appDetail,
         t
       }),
-    [nodeId, systemConfigNode, getNodeById, edges, appDetail, t]
+    [nodeId, getNodeById, edges, appDetail, t]
   );
   const externalVariables = useMemo(
     () =>
