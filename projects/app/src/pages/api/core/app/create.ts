@@ -35,11 +35,12 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import {
-  prepareWorkflowForPersistence,
+  beforeUpdateAppFormat,
   validatePublishAppAgentSkillReadPermissions,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 
@@ -81,6 +82,15 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     }>('user', 'username')
     .lean();
 
+  const workflow = await migrateWorkflowToCurrent(
+    {
+      nodes: modules ?? [],
+      edges: edges ?? [],
+      chatConfig
+    },
+    getWorkflowMigrationOptions()
+  );
+
   // 创建app
   const appId = await onCreateApp({
     parentId,
@@ -98,11 +108,16 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
             isTeamOwner: isRoot || tmb?.role === 'owner'
           })
         );
+
+        return removeUnauthModels({
+          modules: workflow.nodes,
+          allowedModels: myModels
+        });
       }
-      return undefined;
+      return workflow.nodes;
     })(),
-    edges,
-    chatConfig,
+    edges: workflow.edges,
+    chatConfig: workflow.chatConfig,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -182,11 +197,12 @@ export const onCreateApp = async ({
     }
   }
 
-  const normalizedWorkflow = await prepareWorkflowForPersistence({
+  const normalizedWorkflow = {
     nodes: modules ?? [],
     edges: edges ?? [],
-    chatConfig
-  });
+    chatConfig: chatConfig ?? {}
+  };
+  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

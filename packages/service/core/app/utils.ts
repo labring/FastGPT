@@ -21,7 +21,6 @@ import {
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
-import { migrateWorkflowDetailNodesToCurrent } from '@fastgpt/global/core/workflow/migration';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
@@ -57,10 +56,6 @@ export async function rewriteAppWorkflowToDetail({
   ownerTmbId: string;
   lang?: localeType;
 }) {
-  const migratedNodes = migrateWorkflowDetailNodesToCurrent(nodes);
-  nodes.forEach((node, index) => {
-    node.inputs = migratedNodes[index].inputs;
-  });
   type SelectedDatasetSnapshot = Pick<SelectedDatasetType, 'datasetId'> &
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;

@@ -5,6 +5,8 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { onCreateApp } from './create';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
@@ -42,6 +44,15 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
     ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
+  const workflow = await migrateWorkflowToCurrent(
+    {
+      nodes: app.modules,
+      edges: app.edges,
+      chatConfig: app.chatConfig
+    },
+    getWorkflowMigrationOptions()
+  );
+
   // Copy avatar
   const { appId } = await mongoSessionRun(async (session) => {
     const avatar = await copyAvatarImage({
@@ -66,10 +77,9 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       intro: app.intro,
       avatar,
       type: app.type,
-      modules: decodeToolSetNodesFromStorage(app.modules),
-      storageModules: modules,
-      edges: app.edges,
-      chatConfig: app.chatConfig,
+      modules: workflow.nodes,
+      edges: workflow.edges,
+      chatConfig: workflow.chatConfig,
       teamId: app.teamId,
       tmbId,
       pluginData: app.pluginData,

@@ -2,7 +2,8 @@ import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../schema';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
-import { prepareWorkflowForRead } from '../controller';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getWorkflowMigrationOptions } from '../tool/utils/client';
 
 export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
   const migrationApp =
@@ -19,22 +20,28 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
   if (version) {
     // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
     // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
-    const normalizedWorkflow = prepareWorkflowForRead({
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig
-    });
+    const normalizedWorkflow = await migrateWorkflowToCurrent(
+      {
+        nodes: version.nodes,
+        edges: version.edges,
+        chatConfig: version.chatConfig
+      },
+      getWorkflowMigrationOptions()
+    );
     return {
       versionId: String(version._id),
       versionName: version.versionName,
       ...normalizedWorkflow
     };
   }
-  const normalizedWorkflow = prepareWorkflowForRead({
-    nodes: app?.modules ?? [],
-    edges: app?.edges ?? [],
-    chatConfig: app?.chatConfig
-  });
+  const normalizedWorkflow = await migrateWorkflowToCurrent(
+    {
+      nodes: app?.modules ?? [],
+      edges: app?.edges ?? [],
+      chatConfig: app?.chatConfig
+    },
+    getWorkflowMigrationOptions()
+  );
   return {
     versionId: migrationApp?.pluginData?.nodeVersion,
     versionName: migrationApp?.name,
@@ -59,11 +66,14 @@ export const getAppVersionById = async ({
     }).lean();
 
     if (version) {
-      const normalizedWorkflow = prepareWorkflowForRead({
-        nodes: version.nodes,
-        edges: version.edges,
-        chatConfig: version.chatConfig
-      });
+      const normalizedWorkflow = await migrateWorkflowToCurrent(
+        {
+          nodes: version.nodes,
+          edges: version.edges,
+          chatConfig: version.chatConfig
+        },
+        getWorkflowMigrationOptions()
+      );
       return {
         versionId: String(version._id),
         versionName: version.versionName,
