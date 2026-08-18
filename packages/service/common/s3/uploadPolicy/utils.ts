@@ -16,6 +16,7 @@ import {
   normalizeFileExtension,
   parseAllowedExtensions
 } from '../utils/extension';
+import { decodeRawS3Filename } from '../filename';
 export {
   normalizeAllowedExtensions,
   normalizeFileExtension,
@@ -80,14 +81,7 @@ export const officeZipFormats = [
  * 统一扩展名格式。上传策略中所有 extension 都必须小写并带 `.`，避免同一白名单
  * 在预签、上传校验和 metadata 修正阶段出现不同表示。
  */
-export const decodeFileName = (filename?: string) => {
-  if (!filename) return '';
-  try {
-    return decodeURIComponent(filename);
-  } catch {
-    return filename;
-  }
-};
+export const decodeFileName = decodeRawS3Filename;
 
 export const getFilenameExtension = (filename?: string) => {
   return normalizeFileExtension(path.extname(decodeFileName(filename)));

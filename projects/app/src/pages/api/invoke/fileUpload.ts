@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/global/openapi/plugin/invoke';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 
 async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseType> {
   if (req.method !== 'POST') {
@@ -38,7 +39,7 @@ async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseTyp
 
     const filename =
       body.fileName ??
-      (decodeURIComponent(result.fileMetadata.originalname) || `file-${getNanoid()}`);
+      (decodeMultipartFilename(result.fileMetadata.originalname) || `file-${getNanoid()}`);
 
     const uploadResult = await InvokeProcessor.getInstanceFromToken(token).handleFileUpload({
       filename,

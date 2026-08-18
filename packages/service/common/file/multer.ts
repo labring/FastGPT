@@ -5,6 +5,7 @@ import type { NodeHttpRequest } from '../../types/http';
 import path from 'path';
 import fs from 'node:fs';
 import { normalizeAllowedExtensions, normalizeFileExtension } from '../s3/utils/extension';
+import { decodeMultipartFilename } from '../s3/filename';
 
 type MulterFileFilterOptions = {
   allowedExtensions?: string[];
@@ -22,7 +23,7 @@ const buildFileFilter = (allowedExtensions: string[]) => {
 
   const fileFilter: m.Options['fileFilter'] = (_req, file, cb) => {
     try {
-      const ext = normalizeFileExtension(path.extname(decodeURIComponent(file.originalname || '')));
+      const ext = normalizeFileExtension(path.extname(decodeMultipartFilename(file.originalname)));
       if (!ext || !allowed.has(ext)) {
         return cb(new Error(S3ErrEnum.invalidUploadFileType));
       }
@@ -40,7 +41,7 @@ export const multer = {
       if (!file?.originalname) {
         cb(new Error('File not found'), '');
       } else {
-        const ext = path.extname(decodeURIComponent(file.originalname));
+        const ext = path.extname(decodeMultipartFilename(file.originalname));
         cb(null, `${getNanoid()}${ext}`);
       }
     }

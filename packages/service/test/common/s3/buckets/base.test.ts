@@ -780,6 +780,53 @@ describe('S3BaseBucket historical key compatibility', () => {
     }
   );
 
+  it('falls back to the key basename when filename metadata is missing', async () => {
+    const { storage, bucket } = createBucket();
+    const key = 'dataset/team-1/file/0123456789abcdef0123456789abcdef.pdf';
+    vi.spyOn(storage, 'getObjectMetadata').mockResolvedValue({
+      bucket: storage.bucketName,
+      key,
+      metadata: {},
+      contentLength: 4,
+      contentType: 'application/pdf'
+    });
+
+    await expect(bucket.getFileMetadata(key)).resolves.toMatchObject({
+      filename: '0123456789abcdef0123456789abcdef.pdf',
+      extension: 'pdf'
+    });
+  });
+
+  it('does not use an opaque key as the download filename when uploading by body', async () => {
+    const { storage, bucket } = createBucket();
+    const key = 'dataset/team-1/file/0123456789abcdef0123456789abcdef.pdf';
+    const filename = '这是一个很长的文件名.pdf';
+    vi.spyOn(bucket, 'createExternalUrl').mockResolvedValue({
+      bucket: storage.bucketName,
+      key,
+      url: 'https://storage.example.com/download'
+    });
+
+    await bucket.uploadFileByBody({
+      key,
+      body: 'content',
+      filename
+    });
+
+    expect(storage.uploadObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key,
+        contentDisposition: expect.any(String),
+        metadata: expect.objectContaining({
+          originFilename: encodeURIComponent(filename)
+        })
+      })
+    );
+    expect(bucket.createExternalUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ key, filename })
+    );
+  });
+
   it('falls back to the raw key for reads and existence checks', async () => {
     const { storage, bucket } = createBucket();
     const rawKey = 'legacy/user name/file.txt';

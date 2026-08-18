@@ -226,4 +226,21 @@ describe('executeS3DeleteJob', () => {
     ).rejects.toBeInstanceOf(InvalidStorageObjectKeyError);
     expect(deleteObjectsByPrefix).toHaveBeenCalled();
   });
+
+  it('does not derive another parsed prefix from a new parsed object key', async () => {
+    const key = 'dataset/team/parsed/0123456789abcdef0123456789abcdef/image.png';
+    const deleteObjectsByMultiKeys = vi.fn().mockResolvedValue({ keys: [] });
+    const deleteObjectsByPrefix = vi.fn().mockResolvedValue({ keys: [] });
+
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { deleteObjectsByMultiKeys, deleteObjectsByPrefix }
+      }
+    } as any;
+
+    await executeS3DeleteJob({ bucketName: 'fastgpt-private', keys: [key] });
+
+    expect(deleteObjectsByMultiKeys).toHaveBeenCalledWith({ keys: [key] });
+    expect(deleteObjectsByPrefix).not.toHaveBeenCalled();
+  });
 });

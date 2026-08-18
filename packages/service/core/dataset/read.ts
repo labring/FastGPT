@@ -163,11 +163,11 @@ export const readFileRawTextByUrl = async ({
         // 立即清理 chunks 数组释放内存
         chunks.length = 0;
 
+        const { fileParsedPrefix } = getFileS3Key.dataset({
+          datasetId,
+          filename: 'file'
+        });
         const { rawText } = await retryFn(() => {
-          const { fileParsedPrefix } = getFileS3Key.dataset({
-            datasetId,
-            filename: 'file'
-          });
           return readFileContentByBuffer({
             customPdfParse,
             getFormatText,

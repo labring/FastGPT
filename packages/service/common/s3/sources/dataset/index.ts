@@ -21,11 +21,12 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { readFileContentByBuffer } from '../../../file/read/utils';
 import { ensureTextContentTypeCharset, isTextLikeFile, resolveMimeType } from '../../utils/mime';
 import { createUploadConstraints, datasetAllowedExtensions } from '../../utils/uploadConstraints';
-import { getFileS3Key, truncateFilename } from '../../utils';
+import { getFileS3Key } from '../../utils';
 import { isAuthorizedDatasetFileS3Key } from './key';
 import type { S3RawTextSource } from '../rawText';
 import { getS3RawTextSource } from '../rawText';
-import { getContentDisposition } from '@fastgpt/global/common/file/tools';
+import { getS3UploadContentDisposition, encodeS3Filename } from '../../filename';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -40,7 +41,10 @@ export class S3DatasetSource extends S3PrivateBucket {
   // 下载链接
   async createGetDatasetFileURL(params: CreateGetDatasetFileURLParams) {
     const { key, expiredHours, external } = CreateGetDatasetFileURLParamsSchema.parse(params);
-    const fileMetadata = await this.getFileMetadata(key).catch(() => undefined);
+    const fileMetadata = await this.getFileMetadata(key).catch((error) => {
+      if (error === CommonErrEnum.fileNotFound) return undefined;
+      throw error;
+    });
     const responseContentType =
       fileMetadata && isTextLikeFile(fileMetadata)
         ? ensureTextContentTypeCharset({
@@ -188,9 +192,7 @@ export class S3DatasetSource extends S3PrivateBucket {
   async upload(params: UploadParams): Promise<string> {
     const { datasetId, filename, contentType, ...file } = UploadParamsSchema.parse(params);
 
-    // 截断文件名以避免 S3 key 过长的问题
-    const truncatedFilename = truncateFilename(filename);
-    const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename: truncatedFilename });
+    const { fileKey: key } = getFileS3Key.dataset({ datasetId, filename });
 
     await MongoS3TTL.create({
       minioKey: key,
@@ -201,14 +203,14 @@ export class S3DatasetSource extends S3PrivateBucket {
     await this.client.uploadObject({
       key,
       body: 'buffer' in file ? file.buffer : file.stream,
-      contentType: contentType || resolveMimeType([truncatedFilename]),
-      contentDisposition: getContentDisposition({
-        filename: truncatedFilename,
+      contentType: contentType || resolveMimeType([filename]),
+      contentDisposition: getS3UploadContentDisposition({
+        filename,
         type: 'attachment'
       }),
       metadata: {
         uploadTime: new Date().toISOString(),
-        originFilename: encodeURIComponent(truncatedFilename)
+        originFilename: encodeS3Filename(filename)
       }
     });
 

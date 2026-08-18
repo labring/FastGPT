@@ -92,7 +92,7 @@ export const postBackupDatasetCollection = ({
   datasetId: string;
 }) => {
   const formData = new FormData();
-  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('file', file, file.name);
   formData.append('data', JSON.stringify({ datasetId }));
 
   return POST(`/core/dataset/collection/create/backup`, formData, {
@@ -115,7 +115,7 @@ export const postTemplateDatasetCollection = ({
   datasetId: string;
 }) => {
   const formData = new FormData();
-  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('file', file, file.name);
   formData.append('data', JSON.stringify({ datasetId }));
 
   return POST(`/core/dataset/collection/create/template`, formData, {

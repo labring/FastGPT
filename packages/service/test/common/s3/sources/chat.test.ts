@@ -35,4 +35,17 @@ describe('S3ChatSource.parseChatUrl', () => {
 
     expect(result.imageParsePrefix).toBe('chat/app.pdf/user/chat/report-parsed');
   });
+
+  it('derives the parsed prefix from the opaque file id', () => {
+    const fileId = '0123456789abcdef0123456789abcdef';
+    const result = S3ChatSource.parseChatUrl(
+      `https://example.com/fastgpt-private/chat/app/app-1/user-1/chat-1/file/${fileId}.pdf`
+    );
+
+    expect(result).toEqual({
+      filename: `${fileId}.pdf`,
+      extension: 'pdf',
+      imageParsePrefix: `chat/app/app-1/user-1/chat-1/parsed/${fileId}`
+    });
+  });
 });

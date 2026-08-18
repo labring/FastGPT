@@ -14,6 +14,7 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -25,7 +26,7 @@ async function handler(req: ApiRequestProps) {
       maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(result.fileMetadata.path);
-    const filename = decodeURIComponent(result.fileMetadata.originalname);
+    const filename = decodeMultipartFilename(result.fileMetadata.originalname);
     const { datasetId, parentId } = CreateTemplateCollectionFormSchema.parse(result.data);
 
     const { teamId, tmbId, dataset } = await authDataset({

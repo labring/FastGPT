@@ -8,6 +8,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type ChatFileValueWithPreview = Partial<UserChatItemFileItemType>;
+type ChatFilePreviewUrlGetter = (key: string, filename?: string) => Promise<string | undefined>;
 type RuntimeValue = string | number | boolean | object | null | undefined;
 type RuntimeVariableMap = Record<string, RuntimeValue>;
 type InteractiveWithChildrenResponse = WorkflowInteractiveResponseType & {
@@ -35,12 +36,12 @@ const hasChildrenResponse = (
 export const addPreviewUrlToChatItems = async (
   histories: ChatItemMiniType[],
   type: 'chatFlow' | 'workflowTool',
-  getPreviewUrl: (key: string) => Promise<string | undefined> = createChatFilePreviewUrlGetter()
+  getPreviewUrl: ChatFilePreviewUrlGetter = createChatFilePreviewUrlGetter()
 ) => {
   async function addPreviewUrlToFileValue(file: ChatFileValueWithPreview) {
     if (!file.key) return { ...file };
 
-    const previewUrl = await getPreviewUrl(file.key);
+    const previewUrl = await getPreviewUrl(file.key, file.name);
     if (previewUrl) {
       return { ...file, url: previewUrl };
     }
@@ -180,7 +181,7 @@ export const presignVariablesFileUrls = async ({
 
             return {
               ...file,
-              url: await getPreviewUrl(file.key)
+              url: await getPreviewUrl(file.key, file.name)
             };
           })
         ).then((urls) => urls.filter(Boolean));
