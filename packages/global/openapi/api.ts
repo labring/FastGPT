@@ -1,20 +1,18 @@
 import type { RequireOnlyOne } from '../common/type/utils';
+import { IntSchema } from '../common/zod';
 import z from 'zod';
 
 /* 按 offset 分页 */
 export const PaginationSchema = z.object({
-  pageSize: z.union([z.number(), z.string()]).optional().describe('每页条数'),
-  offset: z.union([z.number(), z.string()]).optional().describe('偏移量(与页码二选一)'),
-  pageNum: z.union([z.number(), z.string()]).optional().describe('页码(与偏移量二选一)')
+  pageSize: IntSchema.positive().optional().describe('每页条数'),
+  offset: IntSchema.optional().describe('偏移量(与页码二选一)'),
+  pageNum: IntSchema.positive().optional().describe('页码(与偏移量二选一)')
 });
 export type PaginationType = z.infer<typeof PaginationSchema>;
 
-export type PaginationProps<T = {}> = T & {
-  pageSize: number | string;
-} & RequireOnlyOne<{
-    offset: number | string;
-    pageNum: number | string;
-  }>;
+export type PaginationProps<T = unknown> = T &
+  Required<Pick<PaginationType, 'pageSize'>> &
+  RequireOnlyOne<Pick<PaginationType, 'offset' | 'pageNum'>>;
 
 export const PaginationResponseSchema = <T extends z.ZodTypeAny>(
   itemSchema: T
@@ -57,7 +55,7 @@ export const LinkedPaginationSchema = <TShape extends z.ZodRawShape>(extraShape?
     ...(extraShape ?? ({} as TShape))
   });
 
-export type LinkedPaginationProps<T = {}, A = any> = T & {
+export type LinkedPaginationProps<T = unknown, A = any> = T & {
   pageSize: number;
   anchor?: A;
   initialId?: string;
@@ -82,7 +80,7 @@ export const LinkedListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) 
     hasMoreNext: z.boolean().meta({ example: true, description: '是否还有更多后置数据' })
   });
 
-export type LinkedListResponse<T = {}, A = any> = {
+export type LinkedListResponse<T = unknown, A = any> = {
   list: Array<T & { id: string; anchor?: A }>;
   hasMorePrev: boolean;
   hasMoreNext: boolean;

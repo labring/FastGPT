@@ -8,7 +8,7 @@ import {
   VERIFICATION_CODE_PURPOSES_BY_TYPE
 } from '../../../../support/user/account/verification/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { UserPaginationBodySchema } from '../api';
+import { PaginationSchema } from '../../../api';
 
 const SendAuthCodeCommonSchema = z
   .object({
@@ -80,7 +80,7 @@ export type SendAuthCodeResponseType = z.infer<typeof SendAuthCodeResponseSchema
  * Tags: ['用户通知', 'Read']
  * ============================================================================ */
 
-export const GetUserInformListBodySchema = UserPaginationBodySchema.extend({}).meta({
+export const GetUserInformListBodySchema = PaginationSchema.meta({
   description: '用户通知列表分页参数'
 });
 export type GetUserInformListBodyType = z.infer<typeof GetUserInformListBodySchema>;

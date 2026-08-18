@@ -11,11 +11,11 @@ import {
   ReadInformQuerySchema
 } from '@fastgpt/global/openapi/support/user/inform/api';
 import {
-  SearchUserQuerySchema,
-  SearchUserResponseSchema,
+  SearchMembersOrgsGroupsQuerySchema,
+  SearchMembersOrgsGroupsResponseSchema,
   UserSyncBodySchema,
   UserSyncResponseSchema
-} from '@fastgpt/global/openapi/support/user/api';
+} from '@fastgpt/global/openapi/support/user/team/api';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
@@ -28,8 +28,13 @@ describe('support user OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/countUnread']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/support/user/inform/read']?.get).toBeDefined();
-    expect(openAPIDocument.paths?.['/proApi/support/user/search']?.get).toBeDefined();
-    expect(openAPIDocument.paths?.['/proApi/support/user/sync']?.post).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/team/searchMembersOrgsGroups']?.get
+    ).toBeDefined();
+    expect(openAPIDocument.paths?.['/proApi/support/user/team/search']).toBeUndefined();
+    expect(openAPIDocument.paths?.['/proApi/support/user/team/sync']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/proApi/support/user/search']).toBeUndefined();
+    expect(openAPIDocument.paths?.['/proApi/support/user/sync']).toBeUndefined();
   });
 
   it('parses audit filters and responses', () => {
@@ -99,7 +104,7 @@ describe('support user OpenAPI contracts', () => {
 
   it('parses team search and empty sync contracts', () => {
     expect(
-      SearchUserQuerySchema.parse({
+      SearchMembersOrgsGroupsQuerySchema.parse({
         searchKey: '张三',
         members: 'false',
         orgs: 'true',
@@ -112,7 +117,7 @@ describe('support user OpenAPI contracts', () => {
       groups: true
     });
     expect(
-      SearchUserResponseSchema.parse({
+      SearchMembersOrgsGroupsResponseSchema.parse({
         members: [],
         orgs: [],
         groups: []

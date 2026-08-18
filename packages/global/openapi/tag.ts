@@ -1,9 +1,9 @@
 export const DevApiTagsMap = {
   /* 核心-应用管理 */
-  appCommon: '基础管理',
+  appCommon: '应用基础管理',
   appFolder: '文件夹管理',
-  appPer: '权限管理',
-  appVersion: '版本管理',
+  appPer: '应用权限管理',
+  appVersion: '应用版本管理',
   appTemplate: '模板管理',
   appLog: '日志管理',
   publishChannel: '发布渠道',
@@ -16,8 +16,13 @@ export const DevApiTagsMap = {
   mcpServer: 'MCP 发布管理',
   appSystemTool: '系统工具',
 
+  /* 核心-技能 */
+  skillBasic: '基础管理',
+  skillPermission: '权限管理',
+  skillEdit: '编辑管理',
+  skillVersion: '版本管理',
+
   /* 核心-AI 相关 */
-  aiSkill: 'AI技能管理',
   sandbox: 'AI 沙盒',
   aiCommon: 'AI 通用接口',
 

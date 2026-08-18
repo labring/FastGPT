@@ -96,7 +96,7 @@ export type UpdateSkillResponse = z.infer<typeof UpdateSkillResponseSchema>;
  * Route: POST /api/core/ai/skill/copy
  * Method: POST
  * Description: 复制指定技能及其当前版本，并返回新技能 ID
- * Tags: ['AI技能管理', 'Write']
+ * Tags: ['基础管理', 'Write']
  * ============================================================================ */
 
 export const CopySkillBodySchema = z.object({
@@ -133,7 +133,7 @@ export type GetSkillDetailQuery = z.infer<typeof GetSkillDetailQuerySchema>;
  * Route: GET /api/core/ai/skill/resumeInheritPermission
  * Method: GET
  * Description: 恢复指定技能或技能文件夹的权限继承
- * Tags: ['AI技能管理', 'Write']
+ * Tags: ['权限管理', 'Write']
  * ============================================================================ */
 
 export const ResumeSkillInheritPermissionQuerySchema = z.object({
@@ -158,7 +158,7 @@ export type ResumeSkillInheritPermissionResponse = z.infer<
  * Route: POST /api/proApi/core/ai/skill/changeOwner
  * Method: POST
  * Description: 将技能所有权转让给指定团队成员。
- * Tags: ['资源权限', 'AI技能管理']
+ * Tags: ['资源权限', '权限管理']
  * ============================================================================ */
 
 export const ChangeSkillOwnerBodySchema = z
@@ -188,7 +188,7 @@ export type ChangeSkillOwnerResponse = z.infer<typeof ChangeSkillOwnerResponseSc
  * Route: GET /api/proApi/core/ai/skill/collaborator/list
  * Method: GET
  * Description: 获取技能协作者列表，包含继承权限场景下的父级协作者信息。
- * Tags: ['协作者管理', 'AI技能管理']
+ * Tags: ['协作者管理', '权限管理']
  * ============================================================================ */
 
 export const GetSkillCollaboratorListQuerySchema = z.object({
@@ -209,7 +209,7 @@ export type GetSkillCollaboratorListResponse = z.infer<
  * Route: POST /api/proApi/core/ai/skill/collaborator/update
  * Method: POST
  * Description: 覆盖更新技能的协作者权限。
- * Tags: ['协作者管理', 'AI技能管理']
+ * Tags: ['协作者管理', '权限管理']
  * ============================================================================ */
 
 export const UpdateSkillCollaboratorBodySchema = z

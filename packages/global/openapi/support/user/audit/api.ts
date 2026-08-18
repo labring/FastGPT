@@ -2,7 +2,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { AuditEventEnum } from '../../../../support/user/audit/constants';
-import { UserPaginationBodySchema } from '../api';
+import { PaginationSchema } from '../../../api';
 
 /* ============================================================================
  * API: 获取团队操作日志
@@ -12,7 +12,7 @@ import { UserPaginationBodySchema } from '../api';
  * Tags: ['团队管理', 'Read']
  * ============================================================================ */
 
-export const AuditListBodySchema = UserPaginationBodySchema.extend({
+export const AuditListBodySchema = PaginationSchema.extend({
   tmbIds: z
     .array(ObjectIdSchema)
     .optional()

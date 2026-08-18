@@ -51,8 +51,17 @@ export const openAPITagGroups = [
     ]
   },
   {
+    name: '核心-技能',
+    tags: [
+      DevApiTagsMap.skillBasic,
+      DevApiTagsMap.skillPermission,
+      DevApiTagsMap.skillEdit,
+      DevApiTagsMap.skillVersion
+    ]
+  },
+  {
     name: '核心-AI 相关',
-    tags: [DevApiTagsMap.aiSkill, DevApiTagsMap.sandbox, DevApiTagsMap.aiCommon]
+    tags: [DevApiTagsMap.sandbox, DevApiTagsMap.aiCommon]
   },
   {
     name: '核心 - AI 辅助生成',

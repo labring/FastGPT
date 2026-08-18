@@ -68,7 +68,7 @@ export const AIPath: OpenAPIPath = {
       summary: '恢复流式响应',
       description:
         '与 /v2/chat/completions 配套；GET query 传 appId、skillId 或 outLinkAuthData（三选一）以及 chatId。已完成对话可返回 JSON；若对话仍在生成中，则必须请求 SSE，否则返回 406。',
-      tags: [DevApiTagsMap.aiCommon],
+      tags: [DevApiTagsMap.chatController],
       requestParams: {
         query: ResumeStreamParamsRawSchema
       },

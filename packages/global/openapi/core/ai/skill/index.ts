@@ -45,7 +45,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '获取技能列表',
       description: '分页获取当前团队可见的系统技能或个人技能',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestBody: {
         content: {
           'application/json': {
@@ -69,7 +69,7 @@ export const SkillPath: OpenAPIPath = {
     get: {
       summary: '获取技能详情',
       description: '根据 skillId 获取技能详情',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestParams: {
         query: GetSkillDetailQuerySchema
       },
@@ -89,7 +89,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '创建技能',
       description: '创建一个新的技能，并初始化空白 skills 工作区',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestBody: {
         content: {
           'application/json': {
@@ -113,7 +113,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '更新技能',
       description: '更新技能名称、描述、分类和配置',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestBody: {
         content: {
           'application/json': {
@@ -132,7 +132,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '复制技能',
       description: '复制指定技能、当前版本包和权限信息，并返回新技能 ID',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestBody: {
         content: {
           'application/json': {
@@ -156,7 +156,7 @@ export const SkillPath: OpenAPIPath = {
     get: {
       summary: '恢复技能继承权限',
       description: '恢复指定技能或技能文件夹的权限继承',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillPermission],
       requestParams: {
         query: ResumeSkillInheritPermissionQuerySchema
       },
@@ -176,7 +176,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '转让技能所有权',
       description: '将技能所有权转让给指定团队成员',
-      tags: [DevApiTagsMap.permissionResource, DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.permissionResource, DevApiTagsMap.skillPermission],
       requestBody: {
         content: {
           'application/json': {
@@ -200,7 +200,7 @@ export const SkillPath: OpenAPIPath = {
     get: {
       summary: '获取技能协作者列表',
       description: '获取技能协作者列表，包含继承权限场景下的父级协作者信息',
-      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.skillPermission],
       requestParams: {
         query: GetSkillCollaboratorListQuerySchema
       },
@@ -220,7 +220,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '更新技能协作者',
       description: '覆盖更新技能的协作者权限',
-      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.skillPermission],
       requestBody: {
         content: {
           'application/json': {
@@ -244,7 +244,7 @@ export const SkillPath: OpenAPIPath = {
     delete: {
       summary: '删除技能',
       description: '根据 skillId 删除技能',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestParams: {
         query: DeleteSkillQuerySchema
       },
@@ -259,7 +259,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '导入技能',
       description: '以原始请求体上传 .zip 技能包并导入为技能',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestParams: {
         query: ImportSkillQuerySchema
       },
@@ -290,7 +290,7 @@ export const SkillPath: OpenAPIPath = {
     get: {
       summary: '导出技能编辑区',
       description: '下载当前技能编辑沙盒工作区 ZIP 包',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestParams: {
         query: ExportSkillQuerySchema
       },
@@ -313,7 +313,7 @@ export const SkillPath: OpenAPIPath = {
     get: {
       summary: '查询引用技能的应用',
       description: '查询使用指定 skillId 的应用列表',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestParams: {
         query: ListAppsBySkillIdQuerySchema
       },
@@ -333,7 +333,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '创建技能文件夹',
       description: '在技能目录树中创建一个文件夹',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestBody: {
         content: {
           'application/json': {
@@ -357,7 +357,7 @@ export const SkillPath: OpenAPIPath = {
     get: {
       summary: '获取技能文件夹路径',
       description: '根据当前 skillId 返回目录路径',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillBasic],
       requestParams: {
         query: GetSkillFolderPathQuerySchema
       },
@@ -377,7 +377,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '获取技能编辑沙盒 runtime 状态',
       description: '检查 Skill Edit runtime 是否可直接初始化、需要升级或正在升级',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillEdit],
       requestBody: {
         content: {
           'application/json': {
@@ -401,7 +401,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '触发技能编辑沙盒 runtime 升级',
       description: '触发旧 runtime 工作区归档，客户端随后通过 getStatus 轮询结果',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillEdit],
       requestBody: {
         content: {
           'application/json': {
@@ -425,7 +425,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '初始化技能编辑沙盒 runtime',
       description: '启动、恢复或复用 Skill Edit sandbox，返回 SSE sandboxStatus 事件流',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillEdit],
       requestBody: {
         content: {
           'application/json': {
@@ -449,7 +449,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '保存并发布技能',
       description: '从 edit-debug 沙盒打包当前技能并创建新版本',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillEdit],
       requestBody: {
         content: {
           'application/json': {
@@ -473,7 +473,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '技能调试对话',
       description: '基于 edit-debug 沙盒发起技能调试对话，返回 SSE 流',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillEdit],
       requestBody: {
         content: {
           'application/json': {
@@ -499,7 +499,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '获取技能版本列表',
       description: '分页获取指定技能的版本列表，按创建时间倒序排列',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillVersion],
       requestBody: {
         content: {
           'application/json': {
@@ -523,7 +523,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '更新技能版本名称',
       description: '更新指定技能版本的名称',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillVersion],
       requestBody: {
         content: {
           'application/json': {
@@ -542,7 +542,7 @@ export const SkillPath: OpenAPIPath = {
     post: {
       summary: '切换技能当前版本',
       description: '将 skill 主表的当前版本指向指定版本',
-      tags: [DevApiTagsMap.aiSkill],
+      tags: [DevApiTagsMap.skillVersion],
       requestBody: {
         content: {
           'application/json': {

@@ -1,4 +1,4 @@
-import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import { getSearchMembersOrgsGroups } from '@/web/support/user/api';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { Box, Flex, HStack, Input, Button, useDisclosure } from '@chakra-ui/react';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
@@ -33,7 +33,7 @@ export function ChangeOwnerModal({
   const { data: searchedData } = useRequest(
     async () => {
       if (!inputValue) return;
-      return GetSearchUserGroupOrg(inputValue);
+      return getSearchMembersOrgsGroups(inputValue);
     },
     {
       manual: false,
@@ -72,14 +72,13 @@ export function ChangeOwnerModal({
       isOpen
       onClose={onClose}
       title={t('common:permission.change_owner')}
-      isLoading={loading}
       isCentered
       footer={
         <HStack spacing={3}>
           <Button onClick={onClose} variant={'whiteBase'}>
             {t('common:Cancel')}
           </Button>
-          <Button onClick={onConfirm} isDisabled={!selectedMember}>
+          <Button onClick={onConfirm} isDisabled={!selectedMember} isLoading={loading}>
             {t('common:Confirm')}
           </Button>
         </HStack>

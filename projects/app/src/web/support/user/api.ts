@@ -2,7 +2,7 @@ import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type';
-import type { SearchResult } from '@fastgpt/global/support/user/api';
+import type { SearchMembersOrgsGroupsResponseType } from '@fastgpt/global/openapi/support/user/team/api';
 import type {
   PreLoginResponseType,
   LoginByPasswordBodyType,
@@ -115,9 +115,9 @@ export const updateContact = (data: UpdateContactBodyType) => {
 /* ===== user info ===== */
 export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
 
-export const postSyncMembers = () => POST('/proApi/support/user/sync');
+export const postSyncMembers = () => POST('/proApi/support/user/team/sync');
 
-export const GetSearchUserGroupOrg = (
+export const getSearchMembersOrgsGroups = (
   searchKey: string,
   options?: {
     members?: boolean;
@@ -125,6 +125,10 @@ export const GetSearchUserGroupOrg = (
     groups?: boolean;
   }
 ) =>
-  GET<SearchResult>('/proApi/support/user/search', { searchKey, ...options }, { maxQuantity: 1 });
+  GET<SearchMembersOrgsGroupsResponseType>(
+    '/proApi/support/user/team/searchMembersOrgsGroups',
+    { searchKey, ...options },
+    { maxQuantity: 1 }
+  );
 
 export const ExportMembers = () => GET<{ csv: string }>('/proApi/support/user/team/member/export');

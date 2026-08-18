@@ -63,14 +63,41 @@ describe('AI OpenAPI contracts', () => {
   it('groups Skill permission APIs with resource and collaborator tags', () => {
     expect(openAPIDocument.paths?.['/proApi/core/ai/skill/changeOwner']?.post?.tags).toEqual([
       DevApiTagsMap.permissionResource,
-      DevApiTagsMap.aiSkill
+      DevApiTagsMap.skillPermission
     ]);
     expect(openAPIDocument.paths?.['/proApi/core/ai/skill/collaborator/list']?.get?.tags).toEqual([
       DevApiTagsMap.permissionCollaborator,
-      DevApiTagsMap.aiSkill
+      DevApiTagsMap.skillPermission
     ]);
     expect(
       openAPIDocument.paths?.['/proApi/core/ai/skill/collaborator/update']?.post?.tags
-    ).toEqual([DevApiTagsMap.permissionCollaborator, DevApiTagsMap.aiSkill]);
+    ).toEqual([DevApiTagsMap.permissionCollaborator, DevApiTagsMap.skillPermission]);
+  });
+
+  it('groups Skill APIs under the dedicated Skill section', () => {
+    expect(openAPITagGroups).toContainEqual({
+      name: '核心-技能',
+      tags: [
+        DevApiTagsMap.skillBasic,
+        DevApiTagsMap.skillPermission,
+        DevApiTagsMap.skillEdit,
+        DevApiTagsMap.skillVersion
+      ]
+    });
+    expect(openAPIDocument.paths?.['/core/ai/skill/list']?.post?.tags).toEqual([
+      DevApiTagsMap.skillBasic
+    ]);
+    expect(openAPIDocument.paths?.['/core/ai/skill/runtime/init']?.post?.tags).toEqual([
+      DevApiTagsMap.skillEdit
+    ]);
+    expect(openAPIDocument.paths?.['/core/ai/skill/version/list']?.post?.tags).toEqual([
+      DevApiTagsMap.skillVersion
+    ]);
+  });
+
+  it('groups chat resume under session operations', () => {
+    expect(openAPIDocument.paths?.['/core/chat/resume']?.get?.tags).toEqual([
+      DevApiTagsMap.chatController
+    ]);
   });
 });
