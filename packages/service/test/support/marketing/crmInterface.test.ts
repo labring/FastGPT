@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   has: vi.fn(),
   mark: vi.fn(),
   report: vi.fn(),
+  reportEnterprise: vi.fn(),
   configured: vi.fn(),
   findUser: vi.fn(),
   findTeam: vi.fn(),
@@ -40,7 +41,8 @@ vi.mock('@fastgpt/service/support/marketing/attribution', async (importOriginal)
   return {
     ...original,
     isCRMReportingConfigured: mocks.configured,
-    reportCRMVisitorLifecycle: mocks.report
+    reportCRMVisitorLifecycle: mocks.report,
+    reportCRMEnterpriseVerification: mocks.reportEnterprise
   };
 });
 
@@ -56,7 +58,8 @@ describe('CRM team lifecycle interface', () => {
     mocks.has.mockResolvedValue(false);
     mocks.mark.mockResolvedValue(undefined);
     mocks.report.mockResolvedValue(true);
-    mocks.findTeam.mockResolvedValue({ ownerId: 'user-1' });
+    mocks.reportEnterprise.mockResolvedValue(true);
+    mocks.findTeam.mockResolvedValue({ ownerId: 'user-1', name: '认证团队' });
     mocks.findUser.mockResolvedValue({ fastgpt_sem: { visitor_id: 'stored-visitor' } });
   });
 
@@ -83,7 +86,7 @@ describe('CRM team lifecycle interface', () => {
       event: CRMLifecycleEvent.Recharge
     });
 
-    expect(mocks.findTeam).toHaveBeenCalledWith('team-1', 'ownerId');
+    expect(mocks.findTeam).toHaveBeenCalledWith('team-1', 'ownerId name');
     expect(mocks.findUser).toHaveBeenCalledWith('user-1', 'fastgpt_sem');
     expect(mocks.report).toHaveBeenCalledWith({
       visitorId: 'stored-visitor',
@@ -108,6 +111,54 @@ describe('CRM team lifecycle interface', () => {
     });
 
     expect(mocks.mark).not.toHaveBeenCalled();
+  });
+
+  it('reports enterprise verification without a visitor id using the team owner', async () => {
+    mocks.findUser.mockResolvedValueOnce({ fastgpt_sem: {} });
+
+    await reportCRMTeamLifecycleOnce({
+      teamId: 'team-1',
+      event: CRMLifecycleEvent.EnterpriseVerification,
+      enterprise: {
+        submissionId: 'enterprise-task-1',
+        company: '认证企业',
+        summary: '企业认证需求',
+        name: '联系人',
+        contact: '13800138000',
+        position: 'CTO',
+        consultationTopic: 'SaaS 版',
+        details: {
+          unified_credit_code: '91310000MA1K000006',
+          legal_person_name: '法人',
+          bank_name: '开户银行',
+          bank_account: '4111111111111111'
+        }
+      }
+    });
+
+    expect(mocks.reportEnterprise).toHaveBeenCalledWith({
+      submissionId: 'enterprise-task-1',
+      company: '认证企业',
+      summary: '企业认证需求',
+      name: '联系人',
+      contact: '13800138000',
+      position: 'CTO',
+      consultationTopic: 'SaaS 版',
+      details: {
+        unified_credit_code: '91310000MA1K000006',
+        legal_person_name: '法人',
+        bank_name: '开户银行',
+        bank_account: '4111111111111111',
+        team_name: '认证团队'
+      },
+      cloudUserId: 'user-1',
+      visitorId: undefined
+    });
+    expect(mocks.has).toHaveBeenCalledWith({
+      scope: 'integration-report',
+      segments: ['crm', 'lifecycle', 'enterprise_verification', 'team', 'team-1', 'details-v2']
+    });
+    expect(mocks.mark).toHaveBeenCalled();
   });
 
   it('fails open when Redis cannot read the team marker', async () => {
