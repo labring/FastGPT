@@ -15,8 +15,7 @@ import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
+import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import {

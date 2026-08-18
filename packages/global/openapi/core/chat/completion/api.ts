@@ -5,36 +5,14 @@ import { getNanoid } from '../../../../common/string/tools';
 import { AppSchemaTypeSchema } from '../../../../core/app/type';
 import { AuthUserTypeEnum } from '../../../../support/permission/constant';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import {
-  CanonicalSelectedToolsValueSchema,
-  CanonicalWorkflowDataSchema
-} from '../../../../core/workflow/migration';
-import { NodeInputKeyEnum } from '../../../../core/workflow/constants';
-import {
-  OpenAPIFlowNodeInputItemTypeSchema,
-  OpenAPIStoreNodeItemTypeSchema
-} from '../../workflow/node';
+import { LegacyWorkflowDataSchema } from '../../../../core/workflow/migration';
 
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
 
-const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((input, ctx) => {
-  if (input.key !== NodeInputKeyEnum.selectedTools || input.value === undefined) return;
-
-  const result = CanonicalSelectedToolsValueSchema.safeParse(input.value);
-  if (result.success) return;
-
-  result.error.issues.forEach((issue) => {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['value', ...issue.path],
-      message: issue.message
-    });
-  });
-});
-
-const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
-  inputs: z.array(ChatTestNodeInputSchema)
+// chatTest 是迁移边界，旧节点字段必须原样交给 migration；不能直接暴露包含 editor 函数的运行时节点 schema。
+const ChatTestLegacyNodeSchema = z.looseObject({}).meta({
+  description: '工作流节点。支持历史字段，服务端会迁移为当前格式后执行。'
 });
 
 const WebCompletionsSchema = z.object({
@@ -216,26 +194,14 @@ export type AuthResponseType = z.infer<typeof AuthResponseSchema>;
 
 /* ====== Chat test ====== */
 export const ChatTestPropsSchema = z.object({
-  messages: z.array(ChatCompletionMessageParamSchema).meta({
-    example: [{ role: 'user', content: '你好' }],
-    description: '消息列表，最后一条消息作为本次用户问题'
-  }),
-  responseChatItemId: z.string().nullish().meta({
-    example: 'response-chat-item-id',
-    description: '自定义响应消息 ID，不传时自动生成'
-  }),
-  nodes: z.array(ChatTestNodeSchema).meta({
-    example: [],
-    description: '临时执行的工作流节点列表'
-  }),
-  edges: CanonicalWorkflowDataSchema.shape.edges.meta({
-    example: [],
-    description: '临时执行的工作流连线列表'
-  }),
-  chatConfig: CanonicalWorkflowDataSchema.shape.chatConfig.meta({
-    example: {},
-    description: '当前格式的聊天配置'
-  }),
+  messages: z.array(ChatCompletionMessageParamSchema).meta({ description: '消息列表' }),
+  responseChatItemId: z
+    .string()
+    .nullish()
+    .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
+  nodes: z.array(ChatTestLegacyNodeSchema).meta({ description: '节点列表' }),
+  edges: LegacyWorkflowDataSchema.shape.edges.meta({ description: '边列表' }),
+  chatConfig: LegacyWorkflowDataSchema.shape.chatConfig.meta({ description: '聊天配置' }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     example: {},
     description: '全局变量或插件输入'
