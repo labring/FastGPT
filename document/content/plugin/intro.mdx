@@ -34,15 +34,15 @@ FastGPT Plugin 的核心目标：
 
 ## 核心概念
 
-| 名称 | 说明 |
-| --- | --- |
-| 插件 | 独立、可复用的功能模块，可以有不同类型，例如工具、模型预设、知识库来源等。 |
-| 插件包 | 插件打包后的 `.pkg` 文件。不同类型插件都通过插件包完成安装、更新和管理。 |
-| 工具 | 一类插件，通常封装第三方服务、内部接口或本地计算逻辑，可被工作流和 Agent 调用。 |
-| 工具集 | 一个插件暴露多个相关子工具，共享插件元信息和密钥配置。 |
-| 插件市场 | 集中管理插件的平台，用户可以在其中搜索、下载和安装插件。 |
-| 运行时 | 负责执行插件代码的后端实现，当前默认运行时是 `local-pool`。 |
-| Pod | 本地进程池中的单个插件子进程。一个插件 service 可以拥有多个 Pod。 |
+| 名称     | 说明                                                                            |
+| -------- | ------------------------------------------------------------------------------- |
+| 插件     | 独立、可复用的功能模块，可以有不同类型，例如工具、模型预设、知识库来源等。      |
+| 插件包   | 插件打包后的 `.pkg` 文件。不同类型插件都通过插件包完成安装、更新和管理。        |
+| 工具     | 一类插件，通常封装第三方服务、内部接口或本地计算逻辑，可被工作流和 Agent 调用。 |
+| 工具集   | 一个插件暴露多个相关子工具，共享插件元信息和密钥配置。                          |
+| 插件市场 | 集中管理插件的平台，用户可以在其中搜索、下载和安装插件。                        |
+| 运行时   | 负责执行插件代码的后端实现，当前默认运行时是 `local-pool`。                     |
+| Pod      | 本地进程池中的单个插件子进程。一个插件 service 可以拥有多个 Pod。               |
 
 ## 仓库结构
 
@@ -82,12 +82,12 @@ fastgpt-plugin/
 
 FastGPT Plugin 生态主要涉及以下仓库：
 
-| 仓库 | 作用 |
-| --- | --- |
-| `labring/fastgpt-plugin` | 插件服务、SDK、CLI、调试监视器和基础设施代码。 |
-| `fastgpt-official-plugins` | 官方维护或审核通过的插件。 |
-| `fastgpt-community-plugins` | 社区第三方插件。 |
-| `fastgpt-business-plugins` | 私有插件、客户定制插件和商业交付插件。 |
+| 仓库                        | 作用                                           |
+| --------------------------- | ---------------------------------------------- |
+| `labring/fastgpt-plugin`    | 插件服务、SDK、CLI、调试监视器和基础设施代码。 |
+| `fastgpt-official-plugins`  | 官方维护或审核通过的插件。                     |
+| `fastgpt-community-plugins` | 社区第三方插件。                               |
+| `fastgpt-business-plugins`  | 私有插件、客户定制插件和商业交付插件。         |
 
 `fastgpt-plugin` 仓库只提供开发、构建、检查、打包和服务端运行能力。具体插件源码通常放在 official、community 或 business 插件仓库中。
 
@@ -147,29 +147,29 @@ FastGPT Plugin 服务负责插件包管理、运行时注册、插件调用转�
 
 每个工具插件可以单独配置 4 个运行参数：
 
-| 参数 | 默认值 | 说明 |
-| --- | --- | --- |
-| 最小工作节点数 | `0` | 大于 `0` 时会预热 Pod，并尽量维持不少于该数量的 Pod。 |
-| 最大工作节点数 | `5` | 没有可用 Pod 时可扩容到该上限。 |
-| 节点超时时间 | `120000ms` | 单次插件调用在 Pod 内执行的超时时间。 |
-| 每节点最大并发数 | `10` | 单个 Pod 同时处理的最大并发请求数。 |
+| 参数             | 默认值     | 说明                                                  |
+| ---------------- | ---------- | ----------------------------------------------------- |
+| 最小工作节点数   | `0`        | 大于 `0` 时会预热 Pod，并尽量维持不少于该数量的 Pod。 |
+| 最大工作节点数   | `5`        | 没有可用 Pod 时可扩容到该上限。                       |
+| 节点超时时间     | `120000ms` | 单次插件调用在 Pod 内执行的超时时间。                 |
+| 每节点最大并发数 | `10`       | 单个 Pod 同时处理的最大并发请求数。                   |
 
 环境变量提供默认运行参数和全局限制：
 
-| 环境变量 | 说明 |
-| --- | --- |
-| `POOL_HEALTH_CHECK_INTERVAL` | 健康检查间隔，单位毫秒。 |
-| `POOL_MAX_TOTAL_PODS` | 当前 server 进程内所有插件 Pod 的总上限。 |
-| `POOL_SERVICE_MIN_PODS` | 单插件默认最小工作节点数。 |
-| `POOL_SERVICE_MAX_PODS` | 单插件默认最大工作节点数。 |
-| `POOL_SERVICE_IDLE_TIMEOUT` | Pod 空闲回收时间，单位毫秒。 |
-| `POOL_SERVICE_POD_TIMEOUT` | 单次插件调用执行超时时间，单位毫秒。 |
-| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | 单个 Pod 默认最大并发请求数。 |
-| `POOL_SERVICE_MAX_REQUESTS_PER_POD` | 单个 Pod 最大处理请求数；超过后自动替换。 |
-| `POOL_SERVICE_MAX_QUEUE_SIZE` | 单插件 service 请求队列最大容量。 |
-| `POOL_SERVICE_QUEUE_TIMEOUT` | 请求在队列中等待可用 Pod 的最长时间，单位毫秒。 |
-| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY` | Pod 启动超时后的指数退避基础延迟，单位毫秒。 |
-| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY` | Pod 启动超时后的指数退避最大延迟，单位毫秒。 |
+| 环境变量                                       | 说明                                            |
+| ---------------------------------------------- | ----------------------------------------------- |
+| `POOL_HEALTH_CHECK_INTERVAL`                   | 健康检查间隔，单位毫秒。                        |
+| `POOL_MAX_TOTAL_PODS`                          | 当前 server 进程内所有插件 Pod 的总上限。       |
+| `POOL_SERVICE_MIN_PODS`                        | 单插件默认最小工作节点数。                      |
+| `POOL_SERVICE_MAX_PODS`                        | 单插件默认最大工作节点数。                      |
+| `POOL_SERVICE_IDLE_TIMEOUT`                    | Pod 空闲回收时间，单位毫秒。                    |
+| `POOL_SERVICE_POD_TIMEOUT`                     | 单次插件调用执行超时时间，单位毫秒。            |
+| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | 单个 Pod 默认最大并发请求数。                   |
+| `POOL_SERVICE_MAX_REQUESTS_PER_POD`            | 单个 Pod 最大处理请求数；超过后自动替换。       |
+| `POOL_SERVICE_MAX_QUEUE_SIZE`                  | 单插件 service 请求队列最大容量。               |
+| `POOL_SERVICE_QUEUE_TIMEOUT`                   | 请求在队列中等待可用 Pod 的最长时间，单位毫秒。 |
+| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY`        | Pod 启动超时后的指数退避基础延迟，单位毫秒。    |
+| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY`         | Pod 启动超时后的指数退避最大延迟，单位毫秒。    |
 
 Pod 启动错误会被记录并分类。连续非超时启动失败达到阈值后会触发启动熔断，阻止继续创建 Pod；启动超时通常按资源繁忙处理，会进入指数退避后重试。
 

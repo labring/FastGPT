@@ -593,9 +593,7 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool = selectedTools.find(
-        (tool) => getSkillId(tool.pluginId, tool.source) === id
-      );
+      const tool = selectedTools.find((tool) => getSkillId(tool.pluginId, tool.source) === id);
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {

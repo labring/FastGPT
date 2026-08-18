@@ -1,10 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
-import {
-  authSystemAdmin,
-  authUserPer
-} from '@fastgpt/service/support/permission/user/auth';
+import { authSystemAdmin, authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { appEnv } from '@/env';
 
