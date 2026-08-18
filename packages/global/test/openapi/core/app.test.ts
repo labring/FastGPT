@@ -6,6 +6,7 @@ import {
   ChangeAppOwnerBodySchema,
   ChangeAppOwnerResponseSchema
 } from '../../../openapi/core/app/permission/api';
+import { UpdateAppCollaboratorBodySchema } from '../../../openapi/support/permission/api';
 import {
   GetTemplateTypesQuerySchema,
   GetTemplateTypesResponseSchema
@@ -19,6 +20,20 @@ describe('App OpenAPI contracts', () => {
     expect(
       openAPIDocument.paths?.['/proApi/core/app/template/getTemplateTypes']?.get
     ).toBeDefined();
+    const requestBody =
+      openAPIDocument.paths?.['/proApi/core/app/collaborator/update']?.post?.requestBody;
+    const requestSchema =
+      requestBody && 'content' in requestBody
+        ? requestBody.content?.['application/json']?.schema
+        : undefined;
+
+    expect(requestSchema).toEqual(
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          collaborators: expect.objectContaining({ minItems: 1 })
+        })
+      })
+    );
   });
 
   it('groups app ownership transfer under permission and template types under template management', () => {
@@ -40,6 +55,18 @@ describe('App OpenAPI contracts', () => {
       ownerId: objectId
     });
     expect(ChangeAppOwnerResponseSchema.parse(undefined)).toBeUndefined();
+    expect(() =>
+      UpdateAppCollaboratorBodySchema.parse({ appId: objectId, collaborators: [] })
+    ).toThrow();
+    expect(
+      UpdateAppCollaboratorBodySchema.parse({
+        appId: objectId,
+        collaborators: [{ tmbId: objectId, permission: 4 }]
+      })
+    ).toEqual({
+      appId: objectId,
+      collaborators: [{ tmbId: objectId, permission: 4 }]
+    });
     expect(GetTemplateTypesQuerySchema.parse({})).toEqual({});
     expect(
       GetTemplateTypesResponseSchema.parse([

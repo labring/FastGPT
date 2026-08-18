@@ -85,6 +85,7 @@ export const openAPITagGroups = [
     name: '核心-知识库',
     tags: [
       DevApiTagsMap.datasetCommon,
+      DevApiTagsMap.datasetPermission,
       DevApiTagsMap.datasetCollection,
       DevApiTagsMap.datasetCollectionCrteate,
       DevApiTagsMap.datasetData,

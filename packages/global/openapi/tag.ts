@@ -44,6 +44,7 @@ export const DevApiTagsMap = {
 
   /* 核心-知识库 */
   datasetCommon: '知识库管理',
+  datasetPermission: '知识库权限管理',
   datasetCollection: '集合管理',
   datasetCollectionCrteate: '知识库集合创建',
   datasetData: '数据管理',

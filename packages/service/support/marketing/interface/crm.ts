@@ -5,6 +5,7 @@ import { MongoUser } from '../../user/schema';
 import { MongoTeam } from '../../user/team/teamSchema';
 import {
   isCRMReportingConfigured,
+  reportCRMEnterpriseRechargeAmount,
   reportCRMEnterpriseVerification,
   reportCRMVisitorLifecycle
 } from '../attribution';
@@ -25,6 +26,7 @@ export type CRMEnterpriseVerificationDetails = {
     legal_person_name: string;
     bank_name: string;
     bank_account: string;
+    cumulative_recharge_amount?: number;
   };
 };
 
@@ -137,6 +139,19 @@ export const reportCRMTeamRechargeOnce = ({ teamId }: { teamId: string }) =>
     event: 'recharge'
   });
 
+/** 上报认证企业的完整累计充值金额，不使用生命周期成功标记。 */
+export const reportCRMTeamEnterpriseRechargeAmount = ({
+  teamId,
+  cumulativeRechargeAmount
+}: {
+  teamId: string;
+  cumulativeRechargeAmount: number;
+}) =>
+  reportCRMEnterpriseRechargeAmount({
+    teamId,
+    cumulativeRechargeAmount
+  });
+
 export const reportCRMTeamEnterpriseVerificationOnce = ({
   teamId,
   enterprise
@@ -151,6 +166,7 @@ export const reportCRMTeamEnterpriseVerificationOnce = ({
       reportCRMEnterpriseVerification({
         ...enterprise,
         cloudUserId,
+        teamId,
         visitorId,
         details: {
           ...enterprise.details,

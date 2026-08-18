@@ -82,6 +82,21 @@ describe('AI OpenAPI contracts', () => {
     expect(
       openAPIDocument.paths?.['/proApi/core/ai/skill/collaborator/update']?.post?.tags
     ).toEqual([DevApiTagsMap.permissionCollaborator, DevApiTagsMap.skillPermission]);
+
+    const requestBody =
+      openAPIDocument.paths?.['/proApi/core/ai/skill/collaborator/update']?.post?.requestBody;
+    const requestSchema =
+      requestBody && 'content' in requestBody
+        ? requestBody.content?.['application/json']?.schema
+        : undefined;
+
+    expect(requestSchema).toEqual(
+      expect.objectContaining({
+        properties: expect.objectContaining({
+          collaborators: expect.objectContaining({ minItems: 1 })
+        })
+      })
+    );
   });
 
   it('parses Skill permission API requests and empty responses', () => {
@@ -101,9 +116,18 @@ describe('AI OpenAPI contracts', () => {
       parentClbs: []
     });
 
-    expect(
+    expect(() =>
       UpdateSkillCollaboratorBodySchema.parse({ skillId: objectId, collaborators: [] })
-    ).toEqual({ skillId: objectId, collaborators: [] });
+    ).toThrow();
+    expect(
+      UpdateSkillCollaboratorBodySchema.parse({
+        skillId: objectId,
+        collaborators: [{ tmbId: objectId, permission: 4 }]
+      })
+    ).toEqual({
+      skillId: objectId,
+      collaborators: [{ tmbId: objectId, permission: 4 }]
+    });
     expect(UpdateSkillCollaboratorResponseSchema.parse(undefined)).toBeUndefined();
   });
 
