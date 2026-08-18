@@ -51,7 +51,9 @@ const objectSchemaQuery = (fieldName: WorkflowFieldName) => ({
     { [`${fieldName}.toolConfig.mcpToolSet.toolList.inputSchema`]: { $type: 'object' } },
     { [`${fieldName}.toolConfig.httpToolSet.toolList.inputSchema`]: { $type: 'object' } },
     { [`${fieldName}.toolConfig.httpToolSet.toolList.outputSchema`]: { $type: 'object' } },
-    { [`${fieldName}.toolConfig.httpToolSet.toolList.requestSchema`]: { $type: 'object' } }
+    { [`${fieldName}.toolConfig.httpToolSet.toolList.requestSchema`]: { $type: 'object' } },
+    { [`${fieldName}.toolConfig.httpToolSet.toolList.responseSchema`]: { $type: 'object' } },
+    { [`${fieldName}.toolConfig.httpToolSet.toolList.secretSchema`]: { $type: 'object' } }
   ]
 });
 
@@ -136,7 +138,7 @@ export async function runToolJsonSchemaStorageMigration(
   });
 }
 
-/** 4.16.0 工具 JSON Schema 字符串存储升级入口，默认仅执行 dry-run。 */
+/** 4.16.1 工具 JSON Schema 字符串存储升级入口，默认仅执行 dry-run。 */
 async function handler(req: ApiRequestProps): Promise<InitToolJsonSchemaStorageResponse> {
   await authCert({ req, authRoot: true });
   const { body } = parseApiInput({

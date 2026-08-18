@@ -16,7 +16,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
 
 import handler, {
   runToolJsonSchemaStorageMigration
-} from '@/pages/api/admin/4160/initToolJsonSchemaStorage';
+} from '@/pages/api/admin/4161/initToolJsonSchemaStorage';
 
 const teamId = '65f000000000000000000071';
 const tmbId = '65f000000000000000000072';
@@ -33,7 +33,9 @@ const createLegacyNode = () => ({
         {
           inputSchema: { type: 'object' },
           outputSchema: { type: 'object' },
-          requestSchema: { type: 'object' }
+          requestSchema: { type: 'object' },
+          responseSchema: { type: 'object' },
+          secretSchema: { type: 'object' }
         }
       ]
     }
@@ -63,7 +65,7 @@ describe('initToolJsonSchemaStorage migration', () => {
     expect(mocks.authCert).toHaveBeenCalledWith({ req: expect.anything(), authRoot: true });
     expect(result).toMatchObject({
       dryRun: true,
-      apps: { changedDocumentCount: 1, modifiedDocumentCount: 0, convertedSchemaCount: 4 }
+      apps: { changedDocumentCount: 1, modifiedDocumentCount: 0, convertedSchemaCount: 6 }
     });
     expect(typeof (stored?.modules as any[])[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe(
       'object'
@@ -95,7 +97,7 @@ describe('initToolJsonSchemaStorage migration', () => {
       scannedDocumentCount: 2,
       changedDocumentCount: 2,
       modifiedDocumentCount: 2,
-      convertedSchemaCount: 8
+      convertedSchemaCount: 12
     });
     expect(typeof (app?.modules as any[])[0].toolConfig.mcpToolSet.toolList[0].inputSchema).toBe(
       'string'
