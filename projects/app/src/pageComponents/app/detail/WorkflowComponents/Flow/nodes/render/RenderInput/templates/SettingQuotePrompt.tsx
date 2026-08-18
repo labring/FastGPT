@@ -77,11 +77,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
       chatConfig: appDetail.chatConfig
     });
 
-    return globalVariables.map((item) => ({
-      ...item,
-      label: t(item.label as any)
-    }));
-  }, [appDetail.chatConfig, t]);
+    return globalVariables;
+  }, [appDetail.chatConfig]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;
