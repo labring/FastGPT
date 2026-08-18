@@ -8,7 +8,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
-import { prepareWorkflowForPersistence } from '@fastgpt/service/core/app/controller';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateHttpToolsBodySchema,
@@ -44,13 +44,13 @@ async function handler(
     customHeaders
   });
 
-  const workflow = await prepareWorkflowForPersistence({ nodes: [toolSetRuntimeNode] });
+  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode] });
 
   await mongoSessionRun(async (session) => {
     await MongoApp.findByIdAndUpdate(
       appId,
       {
-        modules: workflow.nodes
+        modules: [toolSetRuntimeNode]
       },
       { session }
     );
@@ -59,7 +59,7 @@ async function handler(
       { appId },
       {
         $set: {
-          nodes: workflow.nodes
+          nodes: [toolSetRuntimeNode]
         }
       },
       { session }
