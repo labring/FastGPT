@@ -59,21 +59,27 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
   const chatTestProps = parseApiInput({ req, bodySchema: ChatTestPropsSchema }).body;
 
   const {
-    nodes,
-    edges,
+    nodes: rawNodes,
+    edges: rawEdges,
     messages = [],
     responseChatItemId: responseChatItemIdFromBody,
     appName,
     appId,
-    chatConfig,
+    chatConfig: rawChatConfig,
     chatId
   } = chatTestProps;
+  const { nodes, edges, chatConfig } = await migrateWorkflowToCurrent({
+    nodes: rawNodes,
+    edges: rawEdges,
+    chatConfig: rawChatConfig
+  });
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: undefined as string | undefined,
