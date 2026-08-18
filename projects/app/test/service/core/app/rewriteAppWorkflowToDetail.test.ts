@@ -42,6 +42,52 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
 describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
+  it('keeps missing Agent tool identity and recovery data in the detail placeholder', async () => {
+    getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
+    const nodes = [
+      {
+        nodeId: 'agent-1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: 'Selected tools',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [
+              {
+                id: 'systemTool-missing',
+                version: 'v1',
+                source: 'debug:tmbId:tmb-1',
+                config: { apiKey: 'saved' },
+                isUnavailable: true,
+                unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+              }
+            ]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+    const tool = (nodes[0].inputs[0].value as any)[0];
+
+    expect(tool).toMatchObject({
+      pluginId: 'systemTool-missing',
+      source: 'debug:tmbId:tmb-1',
+      version: 'v1',
+      config: { apiKey: 'saved' },
+      isUnavailable: true,
+      unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+    });
+  });
+
   it('普通节点不投影 customVariable 输入', async () => {
     const input = {
       key: 'externalVariable',

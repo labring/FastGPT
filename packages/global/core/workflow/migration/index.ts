@@ -1,9 +1,13 @@
 export {
   CanonicalWorkflowDataSchema,
   CanonicalAgentToolInputConfigSchema,
+  CanonicalUnavailableAgentToolSchema,
+  LegacyAgentToolInputSnapshotSchema,
   CanonicalFlowNodeInputItemSchema,
   type CanonicalWorkflowData,
   type CanonicalAgentToolInputConfig,
+  type CanonicalUnavailableAgentTool,
+  type LegacyAgentToolInputSnapshot,
   type CanonicalFlowNodeInputItem
 } from './schema';
 

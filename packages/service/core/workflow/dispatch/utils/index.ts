@@ -22,7 +22,10 @@ import {
   getHTTPToolRuntimeNode,
   parseHttpToolConfig
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../app/schema';
 import { getMCPChildren } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
@@ -531,11 +534,13 @@ export const rewriteRuntimeWorkFlow = async ({
         const savedInput = savedInputMap.get(input.key);
         if (!savedInput) return input;
 
-        const selectedType = getSavedToolInputSelectedType({
-          savedInput,
-          defaultInput: input,
-          allowUserChatInputAgentGenerated: true
-        });
+        const selectedType = input.isToolParam
+          ? FlowNodeInputTypeEnum.agentGenerated
+          : getSavedToolInputSelectedType({
+              savedInput,
+              defaultInput: input,
+              allowUserChatInputAgentGenerated: true
+            });
         const renderTypeList = selectedType
           ? Array.from(
               new Set([selectedType, ...savedInput.renderTypeList, ...input.renderTypeList])

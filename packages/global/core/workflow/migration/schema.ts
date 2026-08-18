@@ -2,7 +2,7 @@ import z from 'zod';
 import { AppChatConfigTypeSchema } from '../../app/type';
 import { FlowNodeInputItemTypeSchema } from '../type/io';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { StoreNodeItemTypeSchema } from '../type/node';
+import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
 
 /**
@@ -23,6 +23,25 @@ export const CanonicalAgentToolInputConfigSchema = z.object({
   })
 });
 export type CanonicalAgentToolInputConfig = z.infer<typeof CanonicalAgentToolInputConfigSchema>;
+
+/**
+ * 不可用工具保留的历史输入快照。该载荷用于后续 resolver 恢复，不参与 runtime schema。
+ */
+export const LegacyAgentToolInputSnapshotSchema = z.record(z.string(), z.unknown());
+export type LegacyAgentToolInputSnapshot = z.infer<typeof LegacyAgentToolInputSnapshotSchema>;
+
+/** 缺失工具定义时的可持久化占位分支。 */
+export const CanonicalUnavailableAgentToolSchema = z.object({
+  id: z.string(),
+  version: z.string().optional(),
+  source: z.string().optional(),
+  toolConfig: NodeToolConfigTypeSchema.optional(),
+  config: z.record(z.string(), z.unknown()),
+  isUnavailable: z.literal(true),
+  inputs: z.never().optional(),
+  unresolvedInputs: z.array(LegacyAgentToolInputSnapshotSchema).optional()
+});
+export type CanonicalUnavailableAgentTool = z.infer<typeof CanonicalUnavailableAgentToolSchema>;
 
 /**
  * 当前版本的工作流数据。
