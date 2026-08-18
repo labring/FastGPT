@@ -388,12 +388,10 @@ export const getInputComponentProps = (input: FlowNodeInputItemType) => {
 export const getRefData = ({
   variable,
   getNodeById,
-  systemConfigNode,
   chatConfig
 }: {
   variable?: ReferenceItemValueType;
   getNodeById: WorkflowDataContextType['getNodeById'];
-  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }) => {
   if (!variable)
@@ -403,7 +401,7 @@ export const getRefData = ({
     };
 
   const node = getNodeById(variable[0]);
-  const systemVariables = getWorkflowGlobalVariables({ systemConfigNode, chatConfig });
+  const systemVariables = getWorkflowGlobalVariables({ chatConfig });
 
   if (!node) {
     const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
@@ -588,7 +586,6 @@ export const workflowReferenceValueIsSelectable = ({
  */
 export const getNodeAllSource = ({
   nodeId,
-  systemConfigNode,
   getNodeById,
   edges,
   chatConfig,
@@ -597,7 +594,6 @@ export const getNodeAllSource = ({
   childrenNodeIdListMap
 }: {
   nodeId: string;
-  systemConfigNode?: StoreNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge[];
   chatConfig: AppChatConfigType;
@@ -678,7 +674,6 @@ export const getNodeAllSource = ({
   sourceNodes.set(
     'system_global_variable',
     getGlobalVariableNode({
-      systemConfigNode,
       t,
       chatConfig
     })
@@ -690,16 +685,13 @@ export const getNodeAllSource = ({
 /* ====== Variables ======= */
 /* get workflowStart output to global variables */
 export const getWorkflowGlobalVariables = ({
-  systemConfigNode,
   chatConfig
 }: {
-  systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
     getAppChatConfig({
       chatConfig,
-      systemConfigNode,
       isPublicFetch: true
     })?.variables || []
   );
