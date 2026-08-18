@@ -91,9 +91,12 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {selectedTools.map((item) => {
-          const toolError = formatToolError(item.pluginData?.error);
           // 即将下架/已下架
           const status = item.pluginData?.status || item.status;
+          const isOffline = status === PluginStatusEnum.Offline;
+          const toolError =
+            formatToolError(item.pluginData?.error) ||
+            (isOffline ? 'common:error.tool_not_exist' : undefined);
 
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
@@ -136,7 +139,7 @@ const ToolSelect = ({
                 </Box>
 
                 <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
-                  {status !== undefined && status !== PluginStatusEnum.Normal && (
+                  {status !== undefined && status !== PluginStatusEnum.Normal && !isOffline && (
                     <MyTooltip label={statusTooltipMap[status]}>
                       <MyTag
                         display={'block'}
