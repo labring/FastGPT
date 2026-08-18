@@ -32,7 +32,7 @@ function SkillLabelPlugin({
   pendingSkillsRef
 }: {
   selectedSkills: SkillLabelItemType[];
-  onClickSkill: (id: string) => void;
+  onClickSkill: (id: string, source?: string) => void;
   onRemoveSkill: (id: string) => void;
   pendingSkillsRef: React.MutableRefObject<Map<string, SkillLabelItemType>>;
 }) {
@@ -120,7 +120,7 @@ function SkillLabelPlugin({
         return;
       }
 
-      onClickSkillRef.current(id);
+      onClickSkillRef.current(id, tool.source);
     },
     [pendingSkillsRef, removeSkillNode]
   );

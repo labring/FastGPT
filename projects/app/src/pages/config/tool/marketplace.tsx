@@ -2,12 +2,11 @@
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useDebounce, useMount, useSet } from 'ahooks';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
@@ -955,33 +954,18 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                   variant="marketplace"
                 />
               </Box>
-              <MyMenu
-                trigger="hover"
-                Button={
-                  <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
-                    <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
-                    <Box fontSize={'12px'}>
-                      {installedFilter ? t('app:toolkit_uninstalled') : t('common:All')}
-                    </Box>
-                  </Flex>
-                }
-                menuList={[
-                  {
-                    children: [
-                      {
-                        label: t('common:All'),
-                        onClick: () => setInstalledFilter(false),
-                        isActive: !installedFilter
-                      },
-                      {
-                        label: t('app:toolkit_uninstalled'),
-                        onClick: () => setInstalledFilter(true),
-                        isActive: installedFilter
-                      }
-                    ]
-                  }
-                ]}
-              />
+              <Checkbox
+                size={'sm'}
+                isChecked={installedFilter}
+                onChange={(event) => setInstalledFilter(event.target.checked)}
+                whiteSpace={'nowrap'}
+                fontSize={'12px'}
+                lineHeight={'16px'}
+                fontWeight={'medium'}
+                letterSpacing={'0.5px'}
+              >
+                {t('app:toolkit_uninstalled_only')}
+              </Checkbox>
             </Flex>
             {displayTools.length > 0 ? (
               <Grid

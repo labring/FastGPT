@@ -6,6 +6,7 @@ import {
   getTeamToolDetail,
   getTeamToolVersions
 } from '@/web/core/plugin/team/api';
+import { deleteTeamPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
@@ -50,6 +51,12 @@ import type {
   GetPluginDebugChannelResponseType
 } from '@fastgpt/global/openapi/core/plugin/debug/api';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import dynamic from 'next/dynamic';
+
+const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
 
 type PluginDebugSessionState = Pick<
   GetPluginDebugChannelResponseType,
@@ -64,12 +71,21 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
   const { toast } = useToast();
+  const canManageTeamPlugins =
+    !!userInfo?.team?.permission.hasManagePer || !!userInfo?.team?.permission.isOwner;
 
   const [searchText, setSearchText] = useState('');
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const {
+    isOpen: isOpenImportModal,
+    onOpen: onOpenImportModal,
+    onClose: onCloseImportModal
+  } = useDisclosure();
   const debugDisclosure = useDisclosure();
+  const { ConfirmModal: ConfirmDeletePluginModal, openConfirm: openDeletePluginConfirm } =
+    useConfirm({ type: 'delete' });
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: tags = [] } = useRequest(getPluginToolTags, {
@@ -156,10 +172,36 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         ),
         status: tool.status,
         version: tool.version,
+        installedVersion: tool.installedVersion,
         source: tool.source,
-        isDebug: isDebugToolSource(tool.source)
+        registrySource: tool.registrySource,
+        isDebug: isDebugToolSource(tool.source),
+        installed: tool.teamInstallStatus === 'installed',
+        teamInstallStatus: tool.teamInstallStatus
       }));
   }, [tools, searchText, selectedTagIds, tags, i18n.language]);
+
+  const { runAsync: deleteTeamTool, loading: deletingTeamTool } = useRequest(
+    async (tool: ToolCardItemType) => {
+      await deleteTeamPlugin({ pluginId: tool.id });
+      setSelectedTool((selected) =>
+        selected && getToolListItemKey(selected) === getToolListItemKey(tool) ? null : selected
+      );
+      await refreshTools();
+    },
+    { manual: true, successToast: t('common:Success') }
+  );
+
+  const onDeleteTeamTool = (tool: ToolCardItemType) => {
+    openDeletePluginConfirm({
+      title: t('app:team_plugin_confirm_delete_title'),
+      customContent: t('app:team_plugin_confirm_delete_content'),
+      confirmText: t('app:toolkit_uninstall'),
+      confirmButtonVariant: 'dangerOutline',
+      inputConfirmText: tool.name,
+      onConfirm: () => deleteTeamTool(tool)
+    })();
+  };
 
   return (
     <Box h={'full'}>
@@ -185,9 +227,52 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               >
                 {t('app:core.module.template.System Tools')}
               </Box>
-              <Button mr={4} variant={'whiteBase'} onClick={onOpenDebugModal}>
+              <Button mr={4} w={'90px'} h={'34px'} variant={'whiteBase'} onClick={onOpenDebugModal}>
                 {t('app:toolkit_debug_local')}
               </Button>
+              {feConfigs?.docUrl && (
+                <Button
+                  mr={4}
+                  w={'90px'}
+                  h={'34px'}
+                  variant={'whiteBase'}
+                  onClick={() =>
+                    window.open(getDocPath('/plugin/system-tool-development'), '_blank')
+                  }
+                >
+                  {t('app:toolkit_contribute_resource')}
+                </Button>
+              )}
+              {canManageTeamPlugins && feConfigs?.enable_team_plugin_upload !== false && (
+                <Box mr={4}>
+                  <MyMenu
+                    trigger="hover"
+                    Button={
+                      <Button
+                        w={'114px'}
+                        h={'34px'}
+                        leftIcon={<MyIcon name="common/addLight" w={'18px'} />}
+                      >
+                        {t('app:toolkit_add_resource')}
+                      </Button>
+                    }
+                    menuList={[
+                      {
+                        children: [
+                          {
+                            label: t('app:toolkit_open_marketplace'),
+                            onClick: () => router.push('/dashboard/systemTool/marketplace')
+                          },
+                          {
+                            label: t('app:toolkit_import_resource'),
+                            onClick: onOpenImportModal
+                          }
+                        ]
+                      }
+                    ]}
+                  />
+                </Box>
+              )}
               {feConfigs?.submitPluginRequestUrl && (
                 <Button
                   mr={4}
@@ -197,15 +282,6 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   }}
                 >
                   {t('app:toolkit_marketplace_submit_request')}
-                </Button>
-              )}
-              {feConfigs?.docUrl && (
-                <Button
-                  onClick={() =>
-                    window.open(getDocPath('/plugin/system-tool-development'), '_blank')
-                  }
-                >
-                  {t('app:toolkit_contribute_resource')}
                 </Button>
               )}
             </Flex>
@@ -290,13 +366,13 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   )}
                 </Flex>
               )}
-              <Box flex={'1'} overflow={'auto'} mb={-1}>
+              <Flex flex={'1'} alignItems={'center'} overflow={'hidden'} mb={-1}>
                 <ToolTagFilterBox
                   tags={tags}
                   selectedTagIds={selectedTagIds}
                   onTagSelect={setSelectedTagIds}
                 />
-              </Box>
+              </Flex>
             </Flex>
           </Flex>
         </Box>
@@ -323,6 +399,9 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     mode="team"
                     onClickCard={() => setSelectedTool(tool)}
                     showActionButton={false}
+                    showDeleteButton={canManageTeamPlugins}
+                    onDelete={() => onDeleteTeamTool(tool)}
+                    isInstallingOrDeleting={deletingTeamTool}
                   />
                 );
               })}
@@ -355,6 +434,12 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           selectedTool={selectedTool}
           showPoint={false}
           showActionButton={false}
+          onDelete={
+            canManageTeamPlugins && isTeamPluginSource(selectedTool.source)
+              ? () => onDeleteTeamTool(selectedTool)
+              : undefined
+          }
+          isLoading={deletingTeamTool}
           systemTitle={feConfigs.systemTitle}
           onFetchDetail={async (toolId: string, version?: string) =>
             getTeamToolDetail({
@@ -372,6 +457,16 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           mode="team"
         />
       )}
+
+      {isOpenImportModal && (
+        <ImportPluginModal
+          mode="team"
+          onClose={onCloseImportModal}
+          onSuccess={refreshTools}
+          tools={[]}
+        />
+      )}
+      <ConfirmDeletePluginModal isLoading={deletingTeamTool} />
 
       {debugDisclosure.isOpen && (
         <PluginDebugModal
@@ -403,8 +498,8 @@ const terminalCommandStyle = {
 };
 
 function getTeamToolQuerySource(source?: string) {
-  if (isDebugToolSource(source)) return source;
-  return source === 'system' ? 'system' : 'team';
+  if (isDebugToolSource(source) || isTeamPluginSource(source)) return source;
+  return 'system';
 }
 
 function getToolListItemKey(tool: ToolCardItemType) {
@@ -687,7 +782,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app']))
+      ...(await serviceSideProps(content, ['app', 'file']))
     }
   };
 }

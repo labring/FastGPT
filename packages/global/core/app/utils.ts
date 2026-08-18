@@ -5,6 +5,15 @@ import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
 import appErrList from '../../common/error/code/app';
 import pluginErrList from '../../common/error/code/plugin';
+import { i18nT } from '../../common/i18n/utils';
+
+const deletedPluginErrorList = new Set([
+  'plugin.team_not_installed',
+  'plugin.team_source_forbidden',
+  'plugin.team_id_required',
+  'plugin.team_source_install_failed',
+  'plugin.version_required'
+]);
 
 export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
@@ -50,6 +59,8 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppFormEditFormT
 
 export const formatToolError = (error?: any) => {
   if (!error || typeof error !== 'string') return;
+
+  if (deletedPluginErrorList.has(error)) return i18nT('common:error.tool_not_exist');
 
   const errorText = appErrList[error]?.message || pluginErrList[error]?.message;
 

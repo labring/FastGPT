@@ -39,9 +39,13 @@ import { getSkillList } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
+
+const getSkillId = (id?: string, source?: string) =>
+  source ? getToolIdentityKey(id, source) : id || '';
 
 const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   const subAppTypeMap: Record<string, boolean> = {
@@ -58,7 +62,7 @@ const toSkillLabelItem = (
   configStatus: SkillLabelItemType['configStatus']
 ): SkillLabelItemType => ({
   ...tool,
-  id: tool.pluginId!,
+  id: getSkillId(tool.pluginId, tool.source),
   name: tool.name,
   configStatus
 });
@@ -97,7 +101,7 @@ export const useSkillManager = ({
 }: {
   selectedTools: SelectedToolItemType[];
   selectedAgentSkills?: SelectedAgentSkillItemType[];
-  onDeleteTool: (id: string) => void;
+  onDeleteTool: (id: string, source?: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
   onAddAgentSkill?: (skill: SelectedAgentSkillItemType) => boolean;
   canUploadFile: boolean;
@@ -118,6 +122,7 @@ export const useSkillManager = ({
         .map<SkillItemType>((item) => {
           return {
             id: item.id,
+            source: item.source,
             parentId: item.parentId,
             label: item.name,
             icon: item.avatar,
@@ -128,7 +133,8 @@ export const useSkillManager = ({
               .filter((tool) => tool.parentId === item.id)
               .map((tool) => ({
                 id: tool.id,
-                name: tool.name
+                name: tool.name,
+                source: tool.source
               }))
           };
         })
@@ -307,9 +313,12 @@ export const useSkillManager = ({
   );
 
   const onAddAppOrTool = useCallback(
-    async (toolId: string): Promise<SkillClickResult | undefined> => {
+    async (toolId: string, source?: string): Promise<SkillClickResult | undefined> => {
       // Check tool exists, if exists, not update/add tool
-      const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
+      const toolIdentityKey = getToolIdentityKey(toolId, source);
+      const existsTool = lastSelectedTools.current?.find(
+        (tool) => getToolIdentityKey(tool.pluginId, tool.source) === toolIdentityKey
+      );
       if (existsTool) {
         const skill = toSkillLabelItem(
           existsTool,
@@ -365,7 +374,8 @@ export const useSkillManager = ({
 
       const toolTemplate = await getClientToolPreviewNode({
         appId: toolId,
-        getLatestVersion: true
+        getLatestVersion: true,
+        source
       });
 
       const toolValid = validateToolConfiguration({
@@ -506,7 +516,7 @@ export const useSkillManager = ({
 
       return {
         ...tool,
-        id: tool.pluginId!,
+        id: getSkillId(tool.pluginId, tool.source),
         name: tool.name,
         configStatus
       };
@@ -583,7 +593,9 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool = selectedTools.find((tool) => tool.pluginId === id);
+      const tool = selectedTools.find(
+        (tool) => getSkillId(tool.pluginId, tool.source) === id
+      );
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {

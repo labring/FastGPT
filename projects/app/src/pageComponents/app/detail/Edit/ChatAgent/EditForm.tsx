@@ -22,6 +22,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -96,15 +97,22 @@ const EditForm = ({
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
     selectedTools: appForm.selectedTools,
     selectedAgentSkills,
-    onDeleteTool: (id) => {
+    onDeleteTool: (id, source) => {
       setAppForm((state) => ({
         ...state,
-        selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+        selectedTools:
+          state.selectedTools?.filter(
+            (item) =>
+              getToolIdentityKey(item.pluginId, item.source) !== getToolIdentityKey(id, source)
+          ) || []
       }));
     },
     onUpdateOrAddTool: (tool) => {
       setAppForm((state) => {
-        const index = state.selectedTools.findIndex((item) => item.pluginId === tool.pluginId);
+        const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
+        const index = state.selectedTools.findIndex(
+          (item) => getToolIdentityKey(item.pluginId, item.source) === toolKey
+        );
 
         if (index === -1) {
           return {
@@ -115,8 +123,9 @@ const EditForm = ({
           return {
             ...state,
             selectedTools:
-              state.selectedTools?.map((item) => (item.pluginId === tool.pluginId ? tool : item)) ||
-              []
+              state.selectedTools?.map((item) =>
+                getToolIdentityKey(item.pluginId, item.source) === toolKey ? tool : item
+              ) || []
           };
         }
       });
@@ -448,17 +457,24 @@ const EditForm = ({
               }));
             }}
             onUpdateTool={(e) => {
+              const toolKey = getToolIdentityKey(e.pluginId, e.source);
               setAppForm((state) => ({
                 ...state,
                 selectedTools:
-                  state.selectedTools?.map((item) => (item.pluginId === e.pluginId ? e : item)) ||
-                  []
+                  state.selectedTools?.map((item) =>
+                    getToolIdentityKey(item.pluginId, item.source) === toolKey ? e : item
+                  ) || []
               }));
             }}
-            onRemoveTool={(id) => {
+            onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+                selectedTools:
+                  state.selectedTools?.filter(
+                    (item) =>
+                      getToolIdentityKey(item.pluginId, item.source) !==
+                      getToolIdentityKey(id, source)
+                  ) || []
               }));
             }}
           />

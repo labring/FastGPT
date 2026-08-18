@@ -97,8 +97,8 @@ FastGPT Marketplace is the plugin distribution channel for centrally displaying 
 
 - Marketplace is a SaaS distribution service and does not provide a private deployment version.
 - Community plugins must first be submitted to the Community Plugins repository, pass basic review, and then enter Marketplace.
-- The FastGPT cloud service does not yet support direct custom plugin uploads by users.
-- Third-party custom plugins are currently mainly used through self-deployment or administrator upload in the business edition.
+- When team plugin uploads are enabled, team administrators can upload custom plugins for use within their team.
+- System administrators can also upload third-party custom plugins and manage them as system plugins.
 
 ## Plugin Installation And Management
 
@@ -107,7 +107,7 @@ The FastGPT Plugin service is responsible for plugin package management, runtime
 System plugins can be installed in two main ways:
 
 1. System-level installation: the root user uploads a `.pkg` file on the plugin management page or installs a plugin from Marketplace. The installed plugin is visible to the whole system.
-2. Team-level installation: reserved for team administrators or members with plugin management permission. The plugin is visible only within that team.
+2. Team-level installation: only team administrators can install plugins, and each installation is visible only within that team. See [Install and Manage Team Plugins](./team-installation.en.mdx) for instructions.
 
 After a plugin is installed, the service saves the plugin package file, parses plugin metadata, and registers the plugin with the runtime when it is enabled. System administrators can manage plugin status, system secrets, and runtime parameters.
 

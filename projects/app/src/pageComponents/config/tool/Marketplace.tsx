@@ -1,0 +1,1046 @@
+'use client';
+
+import { useTranslation } from 'next-i18next';
+import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
+import { useRouter } from 'next/router';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useDebounce, useMount, useSet } from 'ahooks';
+import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
+import ToolTagFilterBox, {
+  type MarketplaceSourceFilterValue
+} from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
+import BatchUpdateDrawer from '@fastgpt/web/components/core/plugin/tool/BatchUpdateDrawer';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
+import {
+  deleteTeamPlugin,
+  getTeamSystemPluginList,
+  installTeamPluginWithUrl
+} from '@/web/core/plugin/team/api';
+import {
+  getMarketPlaceToolTags,
+  getMarketplaceDownloadURL,
+  getMarketplaceDownloadURLs,
+  getMarketplaceToolDetail,
+  getMarketplaceTools,
+  getMarketplaceToolVersions
+} from '@/web/core/plugin/marketplace/api';
+import { getBatchUpdateFailures } from '@/web/core/plugin/marketplace/utils';
+import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import {
+  getAdminSystemToolDetail,
+  getAdminSystemTools,
+  putAdminUpdateSystemTool
+} from '@/web/core/plugin/admin/tool/api';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getDocPath } from '@/web/common/system/doc';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { isTeamPluginSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+
+type QueryValue = string | string[] | undefined;
+type QueryRecord = Record<string, QueryValue>;
+const TOOL_GRID_TEMPLATE_COLUMNS =
+  'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
+
+const getComparableQueryValue = (value: QueryValue) =>
+  Array.isArray(value) ? value.join('\0') : (value ?? '');
+
+const isSameQuery = (currentQuery: QueryRecord, nextQuery: QueryRecord) => {
+  const queryKeys = new Set([...Object.keys(currentQuery), ...Object.keys(nextQuery)]);
+
+  return Array.from(queryKeys).every(
+    (key) => getComparableQueryValue(currentQuery[key]) === getComparableQueryValue(nextQuery[key])
+  );
+};
+
+// Custom hook for managing URL search params
+const useSearchParams = () => {
+  const router = useRouter();
+  const { search, tags, source } = router.query;
+
+  const searchText = typeof search === 'string' ? search : '';
+  const tagIds = useMemoEnhance(() => {
+    return typeof tags === 'string' ? tags.split(',').filter(Boolean) : [];
+  }, [tags]);
+  const sourceFilter = useMemoEnhance(() => {
+    return source === 'official' || source === 'community'
+      ? (source as MarketplaceSourceFilterValue)
+      : undefined;
+  }, [source]);
+
+  const updateParams = useCallback(
+    (params: {
+      newSearch?: string;
+      newTags?: string[];
+      newSource?: MarketplaceSourceFilterValue;
+    }) => {
+      const { newSearch, newTags, newSource } = params;
+      const nextQuery = { ...router.query };
+
+      if (newSearch !== undefined) {
+        if (newSearch) {
+          nextQuery.search = newSearch;
+        } else {
+          delete nextQuery.search;
+        }
+      }
+      if (newTags !== undefined) {
+        if (newTags.length > 0) {
+          nextQuery.tags = newTags.join(',');
+        } else {
+          delete nextQuery.tags;
+        }
+      }
+      if (newSource !== undefined) {
+        nextQuery.source = newSource;
+      } else if ('newSource' in params) {
+        delete nextQuery.source;
+      }
+
+      // router.replace 会触发全局 NProgress。query 没变时直接跳过，避免浅路由空转循环。
+      if (isSameQuery(router.query, nextQuery)) return;
+
+      router.replace(
+        {
+          pathname: router.pathname,
+          query: nextQuery
+        },
+        undefined,
+        { shallow: true }
+      );
+    },
+    [router]
+  );
+
+  return { searchText, tagIds, sourceFilter, updateParams };
+};
+
+const hasMarketplaceToolUpdate = ({
+  installedVersion,
+  installedEtag,
+  marketplaceVersion,
+  marketplaceEtag
+}: {
+  installedVersion?: string;
+  installedEtag?: string;
+  marketplaceVersion?: string;
+  marketplaceEtag?: string;
+}) => {
+  if (marketplaceVersion && installedVersion !== marketplaceVersion) return true;
+  if (marketplaceEtag && installedEtag && installedEtag !== marketplaceEtag) return true;
+
+  return false;
+};
+
+const getSystemToolRawPluginId = (toolId: string) => {
+  try {
+    const { source, pluginId } = splitCombineToolId(toolId);
+    return source === AppToolSourceEnum.systemTool ? pluginId : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | undefined => {
+  if (typeof error !== 'string') return;
+  try {
+    const parsed = JSON.parse(error);
+    return Array.isArray(parsed) ? (parsed as PluginInstallFailureType[]) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export const ToolkitMarketplace = ({
+  marketplaceUrl,
+  mode = 'admin'
+}: {
+  marketplaceUrl: string;
+  mode?: 'admin' | 'team';
+}) => {
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const { copyData } = useCopyData();
+  const { feConfigs } = useSystemStore();
+  const { toast } = useToast();
+
+  // Use custom hook for URL params management
+  const { searchText, tagIds, sourceFilter, updateParams } = useSearchParams();
+
+  const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
+  const [installingOrDeletingToolIds, installingOrDeletingToolIdsDispatch] = useSet<string>();
+  const [updatingToolIds, updatingToolIdsDispatch] = useSet<string>();
+  const operatingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
+  const { openConfirm: openUninstallConfirm, ConfirmModal: UninstallConfirmModal } = useConfirm({
+    type: 'delete'
+  });
+
+  const [showBatchUpdateDrawer, setShowBatchUpdateDrawer] = useState(false);
+
+  // Type filter
+  const [installedFilter, setInstalledFilter] = useState<boolean>(false);
+
+  // Input value for controlled component and debounce
+  const [inputValue, setInputValue] = useState(searchText);
+  const debouncedSearchText = useDebounce(inputValue, { wait: 500 });
+
+  // Initialize inputValue from URL
+  useMount(() => {
+    setInputValue(searchText);
+  });
+
+  // Update URL when debounced search text changes (triggers API call)
+  useEffect(() => {
+    if (router.isReady) {
+      updateParams({ newSearch: debouncedSearchText });
+    }
+  }, [debouncedSearchText, router.isReady, updateParams]);
+
+  // Handle tag selection - update URL immediately
+  const handleTagSelect = useCallback(
+    (newTags: string[]) => {
+      updateParams({ newTags });
+    },
+    [updateParams]
+  );
+
+  // Control search box expansion based on focus and input value
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const handleSearchFocus = useCallback(() => {
+    setIsSearchExpanded(true);
+  }, []);
+  const handleSearchBlur = useCallback(() => {
+    if (!inputValue) {
+      setIsSearchExpanded(false);
+    }
+  }, [inputValue]);
+
+  const {
+    data: tools,
+    isLoading: loadingTools,
+    error: toolsError,
+    ScrollData
+  } = usePagination(
+    ({ pageNum, pageSize }) =>
+      getMarketplaceTools({
+        pageNum,
+        pageSize,
+        searchKey: searchText || undefined,
+        tags: tagIds.length > 0 ? tagIds : undefined,
+        source: sourceFilter
+      }),
+    {
+      type: 'scroll',
+      defaultPageSize: 20,
+      refreshDeps: [searchText, tagIds, sourceFilter]
+    }
+  );
+
+  const { data: systemInstalledPlugins, runAsync: refreshInstalledPlugins } = useRequest(
+    async () => {
+      const tools =
+        mode === 'team'
+          ? await getTeamSystemPluginList({ source: 'all' })
+          : await getAdminSystemTools({});
+      const allSystemPluginTools = tools.flatMap((tool) => {
+        const id = getSystemToolRawPluginId(tool.id);
+        if (!id) return [];
+        const teamTool = tool as typeof tool & {
+          source?: string;
+          teamInstallStatus?: string;
+        };
+        if (
+          mode === 'team' &&
+          (!isTeamPluginSource(teamTool.source) || teamTool.teamInstallStatus !== 'installed')
+        ) {
+          return [];
+        }
+
+        return [
+          {
+            id,
+            systemToolId: tool.id,
+            status: tool.status,
+            version: tool.version,
+            etag: tool.etag,
+            name: tool.name,
+            description: tool.intro,
+            icon: tool.avatar,
+            author: tool.author,
+            tags: tool.tags
+          }
+        ];
+      });
+      const list = allSystemPluginTools.filter((tool) => tool.status !== PluginStatusEnum.Offline);
+
+      return {
+        ids: new Set(list.map((item) => item.id)),
+        map: new Map(list.map((item) => [item.id, item])),
+        allMap: new Map(allSystemPluginTools.map((item) => [item.id, item])),
+        list: list
+      };
+    },
+    {
+      manual: false,
+      refreshDeps: [mode]
+    }
+  );
+
+  const { data: allTags = [] } = useRequest(getMarketPlaceToolTags, {
+    manual: false
+  });
+
+  const { data: marketplaceVersions } = useRequest(getMarketplaceToolVersions, {
+    manual: false
+  });
+
+  // Controler
+  const { runAsync: handleInstallTool } = useRequest(
+    async (tool: ToolCardItemType, version?: string) => {
+      const existingPromise = operatingPromisesRef.current.get(tool.id);
+      if (existingPromise) {
+        await existingPromise;
+        return;
+      }
+
+      const offlineTool = systemInstalledPlugins?.allMap.get(tool.id);
+      const shouldReinstallOfflineTool = offlineTool?.status === PluginStatusEnum.Offline;
+      const reinstallSystemTool = async (systemToolId: string) => {
+        const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
+
+        await putAdminUpdateSystemTool({
+          id: systemToolId,
+          status: PluginStatusEnum.Normal,
+          children: detail.children?.map((child) => ({
+            id: child.id,
+            systemKeyCost: child.systemKeyCost
+          }))
+        });
+      };
+
+      const operationPromise = (async () => {
+        installingOrDeletingToolIdsDispatch.add(tool.id);
+
+        try {
+          if (mode === 'team') {
+            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+            if (!downloadUrl) return;
+            await installTeamPluginWithUrl({
+              downloadUrls: [downloadUrl],
+              plugins: [
+                {
+                  pluginId: tool.id,
+                  version: version || tool.version || '',
+                  etag: tool.etag || '',
+                  marketplaceToolId: tool.id,
+                  marketplaceSource: tool.source
+                }
+              ]
+            });
+          } else if (shouldReinstallOfflineTool && offlineTool) {
+            await reinstallSystemTool(offlineTool.systemToolId);
+          } else {
+            const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+            if (!downloadUrl) return;
+
+            await intallPluginWithUrl({
+              downloadUrls: [downloadUrl]
+            });
+          }
+
+          if (selectedTool?.id === tool.id && shouldReinstallOfflineTool) {
+            setSelectedTool(null);
+          } else if (selectedTool?.id === tool.id) {
+            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
+          }
+          await refreshInstalledPlugins();
+          toast({
+            title: t('common:Success'),
+            status: 'success'
+          });
+        } finally {
+          installingOrDeletingToolIdsDispatch.remove(tool.id);
+          operatingPromisesRef.current.delete(tool.id);
+        }
+      })();
+      operatingPromisesRef.current.set(tool.id, operationPromise);
+
+      await operationPromise;
+    },
+    {
+      manual: true
+    }
+  );
+
+  const handleUpdateTool = useCallback(
+    async (tool: ToolCardItemType, version?: string) => {
+      const existingPromise = operatingPromisesRef.current.get(tool.id);
+      if (existingPromise) {
+        await existingPromise;
+        return;
+      }
+
+      const operationPromise = (async () => {
+        updatingToolIdsDispatch.add(tool.id);
+
+        try {
+          // Get download URL
+          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
+          if (!downloadUrl) return;
+
+          // Call install interface for update
+          if (mode === 'team') {
+            await installTeamPluginWithUrl({
+              downloadUrls: [downloadUrl],
+              plugins: [
+                {
+                  pluginId: tool.id,
+                  version: version || tool.version || '',
+                  etag: tool.etag || '',
+                  marketplaceToolId: tool.id,
+                  marketplaceSource: tool.source
+                }
+              ]
+            });
+          } else {
+            await intallPluginWithUrl({ downloadUrls: [downloadUrl] });
+          }
+
+          // If the currently selected tool is the tool to be updated, update its status
+          if (selectedTool?.id === tool.id) {
+            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
+          }
+          await refreshInstalledPlugins();
+        } finally {
+          updatingToolIdsDispatch.remove(tool.id);
+          operatingPromisesRef.current.delete(tool.id);
+        }
+      })();
+
+      operatingPromisesRef.current.set(tool.id, operationPromise);
+      await operationPromise;
+    },
+    [mode, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
+  );
+
+  const { runAsync: handleUpdateToolFromCard } = useRequest(
+    (tool: ToolCardItemType) => handleUpdateTool(tool),
+    {
+      manual: true,
+      successToast: t('common:update_success')
+    }
+  );
+
+  const { runAsync: handleUninstallTool } = useRequest(
+    async (tool: ToolCardItemType) => {
+      const existingPromise = operatingPromisesRef.current.get(tool.id);
+      if (existingPromise) {
+        await existingPromise;
+        return;
+      }
+
+      const installedTool = systemInstalledPlugins?.map.get(tool.id);
+      const systemToolId = tool.associatedPluginId || installedTool?.systemToolId;
+      if (!systemToolId) return;
+
+      const operationPromise = (async () => {
+        installingOrDeletingToolIdsDispatch.add(tool.id);
+
+        try {
+          if (mode === 'team') {
+            await deleteTeamPlugin({
+              pluginId: systemToolId
+            });
+          } else {
+            const detail = await getAdminSystemToolDetail({ toolId: systemToolId });
+
+            await putAdminUpdateSystemTool({
+              id: systemToolId,
+              status: PluginStatusEnum.Offline,
+              children: detail.children?.map((child) => ({
+                id: child.id,
+                systemKeyCost: child.systemKeyCost
+              }))
+            });
+          }
+
+          if (selectedTool?.id === tool.id) {
+            setSelectedTool((prev) => (prev ? { ...prev, installed: false, update: false } : null));
+          }
+          await refreshInstalledPlugins();
+        } finally {
+          installingOrDeletingToolIdsDispatch.remove(tool.id);
+          operatingPromisesRef.current.delete(tool.id);
+        }
+      })();
+
+      operatingPromisesRef.current.set(tool.id, operationPromise);
+      await operationPromise;
+    },
+    {
+      manual: true,
+      successToast: t('app:custom_plugin_uninstall_success')
+    }
+  );
+
+  const openMarketplaceUninstallConfirm = useCallback(
+    (tool: ToolCardItemType) => {
+      const toolName = parseI18nString(tool.name, i18n.language) || tool.name;
+
+      openUninstallConfirm({
+        title: t('app:toolkit_uninstall'),
+        customContent: t('app:confirm_uninstall_tool'),
+        confirmText: t('app:toolkit_uninstall'),
+        confirmButtonVariant: 'dangerOutline',
+        inputConfirmText: toolName,
+        onConfirm: () => handleUninstallTool(tool)
+      })();
+    },
+    [handleUninstallTool, i18n.language, openUninstallConfirm, t]
+  );
+
+  const heroSectionRef = useRef<HTMLDivElement>(null);
+  const [showCompactSearch, setShowCompactSearch] = useState(false);
+  useEffect(() => {
+    const heroSection = heroSectionRef.current;
+    if (!heroSection) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const shouldShowCompact = !entry.isIntersecting;
+        setShowCompactSearch(shouldShowCompact);
+      },
+      {
+        threshold: 0
+      }
+    );
+
+    observer.observe(heroSection);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const displayTools: ToolCardItemType[] = useMemo(() => {
+    return (
+      tools
+        ?.map((tool) => {
+          const toolId = tool.toolId || tool.pluginId;
+          const installedTool = systemInstalledPlugins?.map.get(toolId);
+          const isInstalled = !!installedTool;
+          const update = installedTool
+            ? hasMarketplaceToolUpdate({
+                installedVersion: installedTool.version,
+                installedEtag: installedTool.etag,
+                marketplaceVersion: tool.version,
+                marketplaceEtag: tool.etag
+              })
+            : false;
+
+          return {
+            id: toolId,
+            name: parseI18nString(tool.name, i18n.language) || '',
+            description: parseI18nString(tool.description || '', i18n.language) || '',
+            icon: tool.icon,
+            author: tool.author || '',
+            tags: tool.tags?.map((tag: string) => {
+              const currentTag = allTags.find((t) => t.tagId === tag);
+              return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
+            }),
+            installed: isInstalled,
+            update,
+            version: tool.version,
+            etag: tool.etag,
+            source: tool.source,
+            associatedPluginId: installedTool?.systemToolId,
+            downloadCount: tool.downloadCount
+          };
+        })
+        ?.filter((tool) => {
+          if (!installedFilter) return true; // 未开启过滤,显示所有
+          return !tool.installed;
+        }) || []
+    );
+  }, [tools, i18n.language, allTags, installedFilter, systemInstalledPlugins]);
+
+  // Calculate updatable tools based on full version data from marketplace
+  const updatableTools = useMemo(() => {
+    if (!systemInstalledPlugins || !marketplaceVersions) return [];
+
+    // Create a map for quick lookup of marketplace versions
+    const marketplaceVersionMap = new Map(marketplaceVersions.map((item) => [item.toolId, item]));
+
+    // Filter installed plugins that have updates available
+    const updatableList = systemInstalledPlugins.list
+      .filter((installedPlugin) => {
+        const marketplaceTool = marketplaceVersionMap.get(installedPlugin.id);
+        return hasMarketplaceToolUpdate({
+          installedVersion: installedPlugin.version,
+          installedEtag: installedPlugin.etag,
+          marketplaceVersion: marketplaceTool?.version,
+          marketplaceEtag: marketplaceTool?.etag
+        });
+      })
+      .map((installedPlugin) => {
+        const marketplaceTool = marketplaceVersionMap.get(installedPlugin.id);
+
+        // Use system installed plugin info directly
+        return {
+          id: installedPlugin.id,
+          name: parseI18nString(installedPlugin.name || installedPlugin.id, i18n.language),
+          description: parseI18nString(installedPlugin.description || '', i18n.language),
+          icon: installedPlugin.icon || '',
+          author: installedPlugin.author || '',
+          tags: installedPlugin.tags || [],
+          installed: true,
+          update: true,
+          version: marketplaceTool?.version,
+          etag: marketplaceTool?.etag,
+          downloadCount: 0
+        };
+      });
+
+    return updatableList;
+  }, [systemInstalledPlugins, marketplaceVersions, i18n.language]);
+
+  const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
+    async (toolIds: string[]) => {
+      if (toolIds.length === 0) return [];
+
+      // 1. Batch get download URLs
+      const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
+      const selectedTools = updatableTools.filter((tool) => toolIds.includes(tool.id));
+
+      // 2. Batch install (update)
+      let failures: ReturnType<typeof getBatchUpdateFailures> = [];
+      if (mode === 'team') {
+        try {
+          await installTeamPluginWithUrl({
+            downloadUrls,
+            plugins: selectedTools.map((tool) => ({
+              pluginId: tool.id,
+              version: tool.version || '',
+              etag: tool.etag || '',
+              marketplaceToolId: tool.id
+            }))
+          });
+        } catch (error) {
+          const failed = parseTeamInstallFailure(error);
+          if (!failed) throw error;
+          failures = getBatchUpdateFailures({
+            toolIds,
+            downloadUrls,
+            installResult: { failed },
+            language: i18n.language
+          });
+        }
+      } else {
+        const installResult = await intallPluginWithUrl({ downloadUrls });
+        failures = getBatchUpdateFailures({
+          toolIds,
+          downloadUrls,
+          installResult,
+          language: i18n.language
+        });
+      }
+
+      // 3. Refresh installed plugins list
+      await refreshInstalledPlugins();
+
+      // 4. Close Drawer
+      setShowBatchUpdateDrawer(false);
+
+      return failures;
+    },
+    {
+      manual: true,
+      successToast: t('common:Success')
+    }
+  );
+
+  if (toolsError && !loadingTools) {
+    return (
+      <Box h={'full'} py={6} pr={6} position={'relative'}>
+        <MyIconButton
+          icon={'common/closeLight'}
+          size={'6'}
+          onClick={() => router.push(mode === 'team' ? '/dashboard/systemTool' : '/config/tool')}
+          position={'absolute'}
+          zIndex={'999'}
+          top={8}
+          left={4}
+        />
+        <MyBox
+          bg={'white'}
+          h={'full'}
+          rounded={'8px'}
+          position={'relative'}
+          display={'flex'}
+          flexDirection={'column'}
+          alignItems={'center'}
+          justifyContent={'center'}
+        >
+          <VStack whiteSpace={'pre-wrap'} justifyContent={'center'} pb={16}>
+            <MyIcon name="empty" w={16} color={'transparent'} />
+            <Box mt={4} fontSize={'sm'} textAlign={'center'}>
+              {t('app:plugin_offline_tips')}
+            </Box>
+            <Flex fontSize={'sm'} alignItems={'center'} mt={4}>
+              {t('app:plugin_offline_url')}：{marketplaceUrl.replace('https://', '')}
+              <Button
+                variant={'whiteBase'}
+                size={'xs'}
+                ml={6}
+                onClick={() => copyData(marketplaceUrl)}
+              >
+                {t('common:Copy')}
+              </Button>
+            </Flex>
+          </VStack>
+        </MyBox>
+      </Box>
+    );
+  }
+
+  return (
+    <Box h={'full'} py={6} pr={6}>
+      <MyBox
+        bg={'white'}
+        h={'full'}
+        rounded={'8px'}
+        position={'relative'}
+        display={'flex'}
+        flexDirection={'column'}
+        isLoading={loadingTools && displayTools.length === 0}
+      >
+        <Box px={8} flexShrink={0} position={'relative'} zIndex={'999'}>
+          <MyIconButton
+            icon={'common/closeLight'}
+            size={'6'}
+            onClick={() => router.push(mode === 'team' ? '/dashboard/systemTool' : '/config/tool')}
+            position={'absolute'}
+            top={4}
+            zIndex={1000}
+            {...(showCompactSearch ? { right: 4 } : { left: 4 })}
+          />
+          {!showCompactSearch && (
+            <Flex gap={3} position={'absolute'} right={4} top={4}>
+              {updatableTools.length > 0 && (
+                <Button variant="whitePrimary" onClick={() => setShowBatchUpdateDrawer(true)}>
+                  {t('app:toolkit_updatable')} ({updatableTools.length})
+                </Button>
+              )}
+              {feConfigs?.docUrl && (
+                <Button
+                  onClick={() => {
+                    const url = getDocPath('/plugin/system-tool-development');
+                    if (url) {
+                      window.open(url, '_blank');
+                    }
+                  }}
+                >
+                  {t('app:toolkit_contribute_resource')}
+                </Button>
+              )}
+              {feConfigs?.submitPluginRequestUrl && (
+                <Button
+                  variant={'whiteBase'}
+                  onClick={() => {
+                    window.open(feConfigs.submitPluginRequestUrl);
+                  }}
+                >
+                  {t('app:toolkit_marketplace_submit_request')}
+                </Button>
+              )}
+            </Flex>
+          )}
+
+          <Box
+            h={showCompactSearch ? '90px' : '0'}
+            overflow={'hidden'}
+            position={'absolute'}
+            bg={'white'}
+            right={0}
+            left={0}
+            roundedTop={'md'}
+            px={8}
+          >
+            <Box
+              opacity={showCompactSearch ? 1 : 0}
+              transition={'opacity 0.15s ease-out'}
+              pointerEvents={showCompactSearch ? 'auto' : 'none'}
+            >
+              <Flex mt={2} pt={4} alignItems={'start'}>
+                <Flex
+                  alignItems={'center'}
+                  transition={'all 0.3s'}
+                  w={isSearchExpanded ? '320px' : 'auto'}
+                  mr={4}
+                  flexShrink={0}
+                >
+                  {isSearchExpanded ? (
+                    <InputGroup>
+                      <MyIcon
+                        position={'absolute'}
+                        zIndex={10}
+                        left={2.5}
+                        name={'common/searchLight'}
+                        w={5}
+                        color={'primary.600'}
+                        top={'50%'}
+                        transform={'translateY(-50%)'}
+                      />
+                      <Input
+                        px={8}
+                        h={10}
+                        borderRadius={'md'}
+                        placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onFocus={handleSearchFocus}
+                        onBlur={handleSearchBlur}
+                      />
+                      {inputValue && (
+                        <MyIcon
+                          position={'absolute'}
+                          zIndex={10}
+                          right={2.5}
+                          name={'common/closeLight'}
+                          w={4}
+                          top={'50%'}
+                          transform={'translateY(-50%)'}
+                          color={'myGray.500'}
+                          cursor={'pointer'}
+                          onClick={() => {
+                            setInputValue('');
+                          }}
+                        />
+                      )}
+                    </InputGroup>
+                  ) : (
+                    <Flex
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      cursor={'pointer'}
+                      borderRadius={'10px'}
+                      _hover={{ borderColor: 'primary.600' }}
+                      px={2}
+                      h={'35px'}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
+                      onClick={() => setIsSearchExpanded(true)}
+                    >
+                      <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
+                      <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
+                        {t('common:Search')}
+                      </Box>
+                    </Flex>
+                  )}
+                </Flex>
+                <Box overflow={'auto'} mr={6} mb={-1}>
+                  <ToolTagFilterBox
+                    tags={allTags}
+                    selectedTagIds={tagIds}
+                    onTagSelect={handleTagSelect}
+                    selectedSource={sourceFilter}
+                    onSourceSelect={(source) => updateParams({ newSource: source })}
+                    variant="marketplace"
+                  />
+                </Box>
+              </Flex>
+            </Box>
+          </Box>
+        </Box>
+
+        <ScrollData flex={1} pb={3}>
+          <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
+            <Box
+              position={'relative'}
+              display={'inline-flex'}
+              px={4}
+              py={1}
+              borderRadius={'4px'}
+              fontSize={'11px'}
+              fontWeight={'medium'}
+              lineHeight={'16px'}
+              letterSpacing={'0.5px'}
+              bgGradient={'linear(180deg, #F9BDFD 0%, #80B8FF 100%)'}
+              _before={{
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '4px',
+                padding: '1px',
+                background: 'linear-gradient(180deg, #F9BDFD 0%, #80B8FF 100%)',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude'
+              }}
+              sx={{
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
+            >
+              Assets for FastGPT
+            </Box>
+            <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
+              {t('app:toolkit_marketplace_title')}
+            </Box>
+            <Box>
+              <InputGroup position={'relative'}>
+                <MyIcon
+                  position={'absolute'}
+                  zIndex={10}
+                  left={2.5}
+                  name={'common/searchLight'}
+                  w={5}
+                  top={'50%'}
+                  transform={'translateY(-50%)'}
+                  color={'myGray.600'}
+                />
+                <Input
+                  fontSize="sm"
+                  bg={'white'}
+                  pl={8}
+                  w={['calc(100vw - 64px)', '560px']}
+                  maxW={'560px'}
+                  h={12}
+                  borderRadius={'10px'}
+                  placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onFocus={handleSearchFocus}
+                  onBlur={handleSearchBlur}
+                />
+              </InputGroup>
+            </Box>
+          </VStack>
+
+          <Box px={8} pb={6}>
+            <Flex
+              mt={2}
+              mb={4}
+              alignItems={'center'}
+              opacity={showCompactSearch ? 0 : 1}
+              transition={'opacity 0.15s ease-out'}
+              pointerEvents={showCompactSearch ? 'none' : 'auto'}
+              userSelect={'none'}
+            >
+              <Box flex={'1'} overflow={'auto'} mb={-1}>
+                <ToolTagFilterBox
+                  tags={allTags}
+                  selectedTagIds={tagIds}
+                  onTagSelect={handleTagSelect}
+                  selectedSource={sourceFilter}
+                  onSourceSelect={(source) => updateParams({ newSource: source })}
+                  variant="marketplace"
+                />
+              </Box>
+              <Checkbox
+                size={'sm'}
+                isChecked={installedFilter}
+                onChange={(event) => setInstalledFilter(event.target.checked)}
+                whiteSpace={'nowrap'}
+                fontSize={'12px'}
+                lineHeight={'16px'}
+                fontWeight={'medium'}
+                letterSpacing={'0.5px'}
+              >
+                {t('app:toolkit_uninstalled_only')}
+              </Checkbox>
+            </Flex>
+            {displayTools.length > 0 ? (
+              <Grid
+                gridTemplateColumns={TOOL_GRID_TEMPLATE_COLUMNS}
+                gridGap={5}
+                alignItems={'stretch'}
+              >
+                {displayTools.map((tool) => {
+                  return (
+                    <ToolCard
+                      key={tool.id}
+                      item={tool}
+                      mode="admin"
+                      variant="marketplace"
+                      isInstallingOrDeleting={installingOrDeletingToolIds.has(tool.id)}
+                      isUpdating={updatingToolIds.has(tool.id)}
+                      onInstall={() => handleInstallTool(tool)}
+                      onDelete={() => {
+                        openMarketplaceUninstallConfirm(tool);
+                        return Promise.resolve();
+                      }}
+                      onUpdate={() => handleUpdateToolFromCard(tool)}
+                      onClickCard={() => setSelectedTool(tool)}
+                      showActionButton={!tool.installed}
+                    />
+                  );
+                })}
+              </Grid>
+            ) : (
+              <EmptyTip />
+            )}
+          </Box>
+        </ScrollData>
+      </MyBox>
+
+      {!!selectedTool && (
+        <ToolDetailDrawer
+          onClose={() => setSelectedTool(null)}
+          selectedTool={selectedTool}
+          showPoint={false}
+          onToggleInstall={(_, version) => handleInstallTool(selectedTool, version)}
+          onDelete={() => {
+            openMarketplaceUninstallConfirm(selectedTool);
+            return Promise.resolve();
+          }}
+          onUpdate={(version) => handleUpdateTool(selectedTool, version)}
+          isUpdating={updatingToolIds.has(selectedTool.id)}
+          isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
+          mode="admin"
+          showActionButton={!selectedTool.installed}
+          // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
+          //@ts-ignore
+          onFetchDetail={async (toolId: string, version?: string) =>
+            await getMarketplaceToolDetail({ toolId, version })
+          }
+          onFetchVersions={getMarketplaceToolVersions}
+        />
+      )}
+
+      {showBatchUpdateDrawer && (
+        <BatchUpdateDrawer
+          isOpen={showBatchUpdateDrawer}
+          onClose={() => setShowBatchUpdateDrawer(false)}
+          updatableTools={updatableTools}
+          onBatchUpdate={handleBatchUpdate}
+          onUpdate={handleUpdateTool}
+          onDelete={openMarketplaceUninstallConfirm}
+          isBatchUpdating={isBatchUpdating}
+          singleUpdatingToolIds={updatingToolIds}
+          deletingToolIds={installingOrDeletingToolIds}
+          //@ts-ignore
+          onFetchDetail={async (toolId: string, version?: string) =>
+            await getMarketplaceToolDetail({ toolId, version })
+          }
+          onFetchVersions={getMarketplaceToolVersions}
+        />
+      )}
+      <UninstallConfirmModal />
+    </Box>
+  );
+};
+
+export default ToolkitMarketplace;

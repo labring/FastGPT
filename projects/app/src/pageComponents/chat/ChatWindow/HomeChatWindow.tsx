@@ -33,6 +33,7 @@ import ChatAIModelSelector from './ChatAIModelSelector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
@@ -157,13 +158,25 @@ const HomeChatWindow = () => {
     }
   );
   const selectedTools = useMemo(() => {
-    return availableTools.filter((tool) => selectedToolIds.includes(tool.pluginId));
+    return availableTools.filter((tool) =>
+      selectedToolIds.includes(getToolIdentityKey(tool.pluginId, tool.source))
+    );
   }, [availableTools, selectedToolIds]);
   // If selected ToolIds not in availableTools, Remove it
   useEffect(() => {
     if (!chatSettings?.selectedTools) return;
     setSelectedToolIds(
-      selectedToolIds.filter((id) => availableTools.some((tool) => tool.pluginId === id))
+      selectedToolIds
+        .map((id) => {
+          // 兼容旧版只保存 pluginId 的首页工具选择。
+          if (availableTools.some((tool) => tool.pluginId === id)) {
+            return getToolIdentityKey(id, undefined);
+          }
+          return id;
+        })
+        .filter((id) =>
+          availableTools.some((tool) => getToolIdentityKey(tool.pluginId, tool.source) === id)
+        )
     );
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -255,17 +268,26 @@ const HomeChatWindow = () => {
         return Promise.reject(new UserError('No model selected'));
       }
 
-      const tools: FlowNodeTemplateType[] = await Promise.all(
-        selectedToolIds.map(async (toolId) => {
-          const node = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
-          node.inputs = node.inputs.map((input) => {
-            const tool = availableTools.find((tool) => tool.pluginId === toolId);
-            const value = tool?.inputs?.[input.key];
-            return { ...input, value };
-          });
-          return node;
-        })
-      );
+      const tools = (
+        await Promise.all(
+          selectedToolIds.map(async (toolKey) => {
+            const tool = availableTools.find(
+              (item) => getToolIdentityKey(item.pluginId, item.source) === toolKey
+            );
+            if (!tool) return;
+            const node = await getClientToolPreviewNode({
+              appId: tool.pluginId,
+              versionId: '',
+              source: tool.source
+            });
+            node.inputs = node.inputs.map((input) => {
+              const value = tool?.inputs?.[input.key];
+              return { ...input, value };
+            });
+            return node;
+          })
+        )
+      ).filter((tool): tool is FlowNodeTemplateType => !!tool);
 
       const formData = getDefaultAppForm();
       formData.aiSettings.model = selectedModel;
@@ -349,18 +371,19 @@ const HomeChatWindow = () => {
             <MenuList px={2}>
               {availableTools.map((tool) => {
                 const toolId = tool.pluginId || '';
-                const isSelected = selectedToolIds.includes(toolId);
+                const toolKey = getToolIdentityKey(toolId, tool.source);
+                const isSelected = selectedToolIds.includes(toolKey);
 
                 return (
                   <MenuItem
-                    key={toolId}
+                    key={toolKey}
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
                       setSelectedToolIds(
-                        selectedToolIds.includes(toolId)
-                          ? selectedToolIds.filter((id) => id !== toolId)
-                          : [...selectedToolIds, toolId]
+                        selectedToolIds.includes(toolKey)
+                          ? selectedToolIds.filter((id) => id !== toolKey)
+                          : [...selectedToolIds, toolKey]
                       );
                     }}
                     closeOnSelect={false}

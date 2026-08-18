@@ -807,7 +807,7 @@
   "error.send_auth_code_too_frequently": "Please do not obtain verification code frequently",
   "error.verify_code_too_frequently": "Too many verification attempts. Please try again later.",
   "error.too_many_request": "Too many request",
-  "error.tool_not_exist": "Tool deleted",
+  "error.tool_not_exist": "Uninstalled",
   "error.unAuthFile": "Unauthorized to read this file",
   "error.unKnow": "Something went wrong",
   "error.upload_file_error_filename": "{{name}} Upload Failed",

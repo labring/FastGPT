@@ -322,7 +322,7 @@ const NodeCard = (props: Props) => {
 
   const toolStatus = nodeTemplate?.status ?? node?.pluginData?.status;
   const showVersion = useMemo(() => {
-    if (toolStatus === PluginStatusEnum.Offline) return false;
+    if (toolStatus === PluginStatusEnum.Offline || node?.pluginData?.error) return false;
 
     const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
     if (isDebugToolSource(node?.source)) return false;
@@ -1178,20 +1178,20 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
       );
     }
     if (status !== undefined && status !== PluginStatusEnum.Normal) {
+      const statusLabelMap: Partial<Record<PluginStatusType, string>> = {
+        [PluginStatusEnum.Hidden]: t('app:toolkit_status_hidden'),
+        [PluginStatusEnum.SoonOffline]: t('app:toolkit_status_soon_offline'),
+        [PluginStatusEnum.Offline]: t('common:error.tool_not_exist')
+      };
+      const statusTooltipMap: Partial<Record<PluginStatusType, string>> = {
+        [PluginStatusEnum.Hidden]: t('app:tool_hidden_tips'),
+        [PluginStatusEnum.SoonOffline]: t('app:tool_soon_offset_tips'),
+        [PluginStatusEnum.Offline]: t('app:tool_offset_tips')
+      };
       return (
-        <MyTooltip
-          label={
-            status === PluginStatusEnum.Offline
-              ? t('app:tool_offset_tips')
-              : t('app:tool_soon_offset_tips')
-          }
-        >
-          <MyTag
-            mr={2}
-            colorSchema={status === PluginStatusEnum.Offline ? 'red' : 'yellow'}
-            type="borderFill"
-          >
-            {t(PluginStatusMap[status].label)}
+        <MyTooltip label={statusTooltipMap[status]}>
+          <MyTag mr={2} colorSchema={PluginStatusMap[status].tagColor} type="borderFill">
+            {statusLabelMap[status]}
           </MyTag>
         </MyTooltip>
       );

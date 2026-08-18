@@ -1157,6 +1157,38 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
 });
 
 describe('SystemToolRepo.getSystemToolRuntime', () => {
+  it('keeps hidden system tools runnable for existing applications', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      status: PluginStatusEnum.Hidden,
+      currentCost: 1,
+      systemKeyCost: 2,
+      customConfig: {}
+    });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    await expect(
+      SystemToolRepo.getInstance().getSystemToolRuntime({
+        pluginId: 'systemTool-weather',
+        source: 'system'
+      })
+    ).resolves.toMatchObject({
+      id: 'systemTool-weather',
+      version: '1.0.0'
+    });
+
+    expect(mocks.getTool).toHaveBeenCalledWith({
+      pluginId: 'weather',
+      version: undefined,
+      source: 'system',
+      fallbackLatestVersion: true
+    });
+  });
+
   it('rejects uninstalled system tools before calling plugin runtime', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-weather',

@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   getSystemToolDisplayInfo: vi.fn(),
   getSystemToolDisplayInfoWithChildIcons: vi.fn(),
   getInstance: vi.fn(),
+  getTeamPluginPolicyMap: vi.fn(),
+  assertTeamPluginSourceAccess: vi.fn(),
   pluginClient: {
     getDebugSessionStatus: vi.fn()
   }
@@ -38,6 +40,12 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: mocks.pluginClient
 }));
 
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>()),
+  getTeamPluginPolicyMap: mocks.getTeamPluginPolicyMap,
+  assertTeamPluginSourceAccess: mocks.assertTeamPluginSourceAccess
+}));
+
 import {
   handler,
   type GetSystemPluginTemplatesBody
@@ -59,6 +67,8 @@ describe('get system tool templates handler', () => {
       getSystemToolDisplayInfo: mocks.getSystemToolDisplayInfo,
       getSystemToolDisplayInfoWithChildIcons: mocks.getSystemToolDisplayInfoWithChildIcons
     });
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
+    mocks.assertTeamPluginSourceAccess.mockResolvedValue('teamId:team-1');
     mocks.pluginClient.getDebugSessionStatus.mockResolvedValue({
       tmbId: 'tmb-1',
       status: 'revoked',
@@ -110,7 +120,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1'],
+      sources: ['system', 'teamId:team-1'],
       tags: ['life']
     });
   });
@@ -158,7 +168,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1', 'debug:tmbId:tmb-1'],
+      sources: ['system', 'teamId:team-1', 'debug:tmbId:tmb-1'],
       tags: undefined
     });
   });
@@ -173,7 +183,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1'],
+      sources: ['system', 'teamId:team-1'],
       tags: undefined
     });
   });
@@ -198,7 +208,7 @@ describe('get system tool templates handler', () => {
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1', 'debug:tmbId:tmb-1'],
+      sources: ['system', 'teamId:team-1', 'debug:tmbId:tmb-1'],
       tags: undefined
     });
   });
@@ -301,7 +311,7 @@ describe('get system tool templates handler', () => {
     });
   });
 
-  it('filters soon offline and offline tools from root system tool candidates', async () => {
+  it('filters hidden, soon offline and offline tools from root system tool candidates', async () => {
     mocks.getSystemToolList.mockResolvedValue([
       {
         id: 'normal-tool',
@@ -310,6 +320,15 @@ describe('get system tool templates handler', () => {
         toolDescription: '',
         isToolSet: false,
         status: PluginStatusEnum.Normal,
+        tags: []
+      },
+      {
+        id: 'hidden-tool',
+        name: 'Hidden Tool',
+        intro: '',
+        toolDescription: '',
+        isToolSet: false,
+        status: PluginStatusEnum.Hidden,
         tags: []
       },
       {
@@ -351,6 +370,14 @@ describe('get system tool templates handler', () => {
           id: 'normal-child',
           name: 'Normal Child',
           status: PluginStatusEnum.Normal,
+          description: '',
+          currentCost: 1,
+          systemKeyCost: 0
+        },
+        {
+          id: 'hidden-child',
+          name: 'Hidden Child',
+          status: PluginStatusEnum.Hidden,
           description: '',
           currentCost: 1,
           systemKeyCost: 0

@@ -43,8 +43,9 @@ import {
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { inheritToolInputConfig } from './utils';
 
 type Props = {
@@ -328,7 +329,11 @@ const RenderList = React.memo(function RenderList({
       }
 
       // 添加与已生成工具相同的配置
-      const generatedTool = generatedSelectedTools.find((tool) => tool.pluginId === res.pluginId);
+      const generatedTool = generatedSelectedTools.find(
+        (tool) =>
+          getToolIdentityKey(tool.pluginId, tool.source) ===
+          getToolIdentityKey(res.pluginId, res.source)
+      );
       const tool = inheritToolInputConfig({ tool: res, sourceTool: generatedTool });
       onAddTool({
         ...tool,
@@ -351,16 +356,21 @@ const RenderList = React.memo(function RenderList({
             px={[3, 6]}
           >
             {templates.map((template) => {
-              const selected = selectedTools.some((tool) => tool.pluginId === template.id);
+              const selected = selectedTools.some(
+                (tool) =>
+                  getToolIdentityKey(tool.pluginId, tool.source) ===
+                  getToolIdentityKey(template.id, template.source)
+              );
               const name = t(parseI18nString(template.name, i18n.language));
               const intro =
                 t(parseI18nString(template.intro || '', i18n.language)) ||
                 t('common:core.workflow.Not intro');
               const isDebugTool = isDebugToolSource(template.source);
+              const isSystemSource = template.source === 'system';
 
               return (
                 <MyTooltip
-                  key={template.id}
+                  key={getToolIdentityKey(template.id, template.source)}
                   isDisabled={!isTooltipEnabled}
                   label={
                     <Box py={2} minW={['auto', '250px']}>
@@ -428,6 +438,7 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
+                        {isSystemSource && <SystemToolTag />}
                         {isDebugTool && <DebugToolTag />}
                       </Flex>
                     </Box>
