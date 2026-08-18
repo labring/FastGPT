@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getGlobalVariableNode } from './adapt';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -19,9 +18,7 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getHandleId,
   getSelectedInputRenderType,
-  isValidReferenceValueFormat,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
@@ -32,10 +29,7 @@ import {
   type ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import {
-  initNewIfElseList,
-  normalizeIfElseList
-} from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import { initNewIfElseList } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { workflowSystemVariables } from '../app/utils';
@@ -43,89 +37,6 @@ import type { WorkflowDataContextType } from '@/pageComponents/app/detail/Workfl
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
-
-/* ====== node ======= */
-/**
- * 适配从数据库读取出的节点输入。
- * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
- */
-export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
-  const inputs = storeNode.inputs;
-
-  if (
-    storeNode.flowNodeType === FlowNodeTypeEnum.chatNode ||
-    storeNode.flowNodeType === FlowNodeTypeEnum.toolCall
-  ) {
-    return inputs.map((input) => {
-      if (
-        input.key !== NodeInputKeyEnum.fileUrlList ||
-        !input.renderTypeList.includes(FlowNodeInputTypeEnum.input)
-      ) {
-        return input;
-      }
-
-      // 文件链接实际值为字符串数组，旧版本的手动 input 类型需要迁移为 JSONEditor。
-      return {
-        ...input,
-        renderTypeList: input.renderTypeList.map((type) =>
-          type === FlowNodeInputTypeEnum.input ? FlowNodeInputTypeEnum.JSONEditor : type
-        ),
-        selectedType:
-          input.selectedType === FlowNodeInputTypeEnum.input
-            ? FlowNodeInputTypeEnum.JSONEditor
-            : input.selectedType
-      };
-    });
-  }
-
-  if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-    return inputs.map((input) => {
-      if (input.key !== NodeInputKeyEnum.ifElseList) return input;
-
-      return {
-        ...input,
-        value: normalizeIfElseList(input.value as IfElseListItemType[])
-      };
-    });
-  }
-
-  if (storeNode.flowNodeType === FlowNodeTypeEnum.agent) {
-    return inputs.map((input) => {
-      const isManualSelectionInput = [
-        NodeInputKeyEnum.skills,
-        NodeInputKeyEnum.selectedTools,
-        NodeInputKeyEnum.datasetSelectList
-      ].includes(input.key as NodeInputKeyEnum);
-      if (!isManualSelectionInput) return input;
-
-      // Agent 资源已取消变量引用；旧引用值无法转为资源对象，加载时清空并切回手动选择。
-      return {
-        ...input,
-        selectedType: input.renderTypeList[0],
-        value: nodeInputIsReference(input) ? [] : input.value
-      };
-    });
-  }
-
-  if (storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
-    return inputs;
-  }
-
-  return inputs.map((input) => {
-    if (input.key !== NodeInputKeyEnum.userChatInput) return input;
-
-    const isReferenceValue = isValidReferenceValueFormat(input.value);
-
-    return {
-      ...input,
-      key: NodeInputKeyEnum.datasetSearchInput,
-      label: i18nT('workflow:search_query'),
-      value: isReferenceValue ? [input.value] : input.value,
-      valueType: WorkflowIOValueTypeEnum.arrayString,
-      selectedType: isReferenceValue ? FlowNodeInputTypeEnum.reference : FlowNodeInputTypeEnum.input
-    };
-  });
-};
 
 /**
  * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。
@@ -192,7 +103,8 @@ type StoreNode2FlowNodeProps = {
  * 将持久化节点恢复为画布节点，并在加载时实体化历史 i18n 文本。
  * 名称或描述命中翻译 key 时使用当前语言文本，后续保存会写回实体文本。
  *
- * [TODO] 当前仍包含输入字段兼容；统一迁移器接入后只保留模板合并、i18n 实体化和 React Flow 节点构造。
+ * 输入数据已在统一迁移器中收敛；这里只负责用当前模板补齐展示元数据，
+ * 并保留持久化输入的 value、selectedType 等用户配置。
  */
 export const storeNode2FlowNode = ({
   item: storeNode,
@@ -216,7 +128,7 @@ export const storeNode2FlowNode = ({
   const dynamicInput = template.inputs.find(
     (input) => input.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
   );
-  const adaptedStoreInputs = adaptStoreNodeInputs(storeNode);
+  const adaptedStoreInputs = storeNode.inputs;
 
   // replace item data
   const nodeItem: FlowNodeItemType = {
@@ -235,6 +147,7 @@ export const storeNode2FlowNode = ({
           adaptedStoreInputs.find((item) => item.key === templateInput.key) || templateInput;
         return {
           ...storeInput,
+          // 迁移层不写入 locale 相关的展示字段；恢复画布时以当前模板为准，避免旧语言文本残留。
           ...templateInput,
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
@@ -815,59 +728,4 @@ export const compareSnapshot = (
   });
 
   return isEqual(node1, node2);
-};
-
-/* ====== Adapt ======= */
-// 给旧版的代码运行和 HTTP 节点，追加一个错误信息的连线
-export const adaptCatchError = (nodes: StoreNodeItemType[], edges: StoreEdgeItemType[]) => {
-  nodes.forEach((node) => {
-    if (
-      (node.flowNodeType === FlowNodeTypeEnum.code ||
-        node.flowNodeType === FlowNodeTypeEnum.httpRequest468) &&
-      node.catchError === undefined
-    ) {
-      // Get edge
-      const sourceEdges = edges.filter((edge) => edge.source === node.nodeId);
-      edges.push(
-        ...sourceEdges.map((edge) => {
-          return {
-            source: edge.source,
-            sourceHandle: getHandleId(edge.source, 'source_catch', 'right'),
-            target: edge.target,
-            targetHandle: edge.targetHandle
-          };
-        })
-      );
-      node.catchError = true;
-    }
-
-    if (node.catchError === undefined && node.pluginId) {
-      if (
-        [
-          'systemTool-dalle3',
-          'systemTool-aliModelStudio/flux',
-          'systemTool-aliModelStudio/wanxTxt2ImgV2',
-          'systemTool-blackForestLab/kontextEditing',
-          'systemTool-blackForestLab/kontextGeneration',
-          'systemTool-bocha',
-          'systemTool-searchXNG'
-        ].includes(node.pluginId)
-      ) {
-        const sourceEdges = edges.filter((edge) => edge.source === node.nodeId);
-        edges.push(
-          ...sourceEdges.map((edge) => {
-            return {
-              source: edge.source,
-              sourceHandle: getHandleId(edge.source, 'source_catch', 'right'),
-              target: edge.target,
-              targetHandle: edge.targetHandle
-            };
-          })
-        );
-        node.catchError = true;
-      } else {
-        node.catchError = false;
-      }
-    }
-  });
 };
