@@ -6,6 +6,7 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 
 export type JsonImportModalScene = 'agent' | 'tool';
 
@@ -193,7 +194,7 @@ const parseSimpleImportWorkflow = ({
 
   const workflow = form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
 
-  return migrateWorkflowToCurrent(workflow);
+  return workflow;
 };
 
 const parseWorkflowLikeImportConfig = async ({
@@ -223,13 +224,27 @@ const parseWorkflowLikeImportConfig = async ({
     throw new Error(t('app:type_not_recognized'));
   }
 
-  return migrateWorkflowToCurrent({
-    nodes: config.nodes as StoreNodeItemType[],
-    edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
-    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
-  };
-
-  return migrateWorkflow ? migrateWorkflowToCurrent(workflow) : workflow;
+  return await migrateWorkflowToCurrent(
+    {
+      nodes: config.nodes as StoreNodeItemType[],
+      edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
+      chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
+    },
+    {
+      resolveToolDefinition: async ({ id, version, source }) => {
+        try {
+          const preview = await getClientToolPreviewNode(
+            version === undefined
+              ? { appId: id, getLatestVersion: true, source }
+              : { appId: id, versionId: version, source }
+          );
+          return { inputs: preview.inputs };
+        } catch {
+          return undefined;
+        }
+      }
+    }
+  );
 };
 
 /**
@@ -244,8 +259,7 @@ export const parseAppImportConfig = async ({
   t,
   resolveScene,
   allowedAppTypes,
-  expectedAppType,
-  migrateWorkflow = false
+  expectedAppType
 }: ParseAppImportConfigOptions): Promise<ParsedImportConfig> => {
   const importConfig = assertImportConfigObject(config, t);
   const appType = resolveImportAppType(importConfig, resolveScene);
@@ -259,12 +273,7 @@ export const parseAppImportConfig = async ({
   const workflow =
     appType === AppTypeEnum.simple
       ? parseSimpleImportWorkflow({ config: importConfig, t })
-      : await parseWorkflowLikeImportConfig({
-          config: importConfig,
-          appType,
-          migrateWorkflow,
-          t
-        });
+      : await parseWorkflowLikeImportConfig({ config: importConfig, appType, t });
 
   return {
     workflow,
