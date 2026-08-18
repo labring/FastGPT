@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { LanguageSchema } from '../../../../../common/i18n/type';
+import {
+  AccountContactUsernameSchema,
+  ShortAuthStringSchema
+} from '../../../../../support/user/account/verification/type';
 
 /* ============================================================================
  * API: 更新用户账号信息
@@ -35,3 +39,35 @@ export const UpdateUserAccountResponseSchema = z.object({}).meta({
   description: '用户账号信息更新成功'
 });
 export type UpdateUserAccountResponse = z.infer<typeof UpdateUserAccountResponseSchema>;
+
+/* ============================================================================
+ * API: 更新账号联系方式
+ * Route: PUT /api/proApi/support/user/account/updateContact
+ * Method: PUT
+ * Description: 使用验证码更新当前用户的登录联系方式。
+ * Tags: ['用户账号', 'Write']
+ * ============================================================================ */
+
+export const UpdateContactBodySchema = z
+  .object({
+    contact: AccountContactUsernameSchema.meta({
+      example: 'user@example.com',
+      description: '新的登录联系方式，支持邮箱或手机号'
+    }),
+    verifyCode: ShortAuthStringSchema.meta({
+      example: '123456',
+      description: '发送到新联系方式的验证码'
+    })
+  })
+  .meta({
+    example: {
+      contact: 'user@example.com',
+      verifyCode: '123456'
+    }
+  });
+export type UpdateContactBodyType = z.infer<typeof UpdateContactBodySchema>;
+
+export const UpdateContactResponseSchema = z.undefined().meta({
+  description: '联系方式更新成功'
+});
+export type UpdateContactResponseType = z.infer<typeof UpdateContactResponseSchema>;

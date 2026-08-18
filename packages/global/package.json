@@ -7,13 +7,13 @@
     "test:watch": "vitest -c vitest.config.ts"
   },
   "engines": {
-    "node": ">=20.19.0",
+    "node": ">=22.23.2",
     "pnpm": "10.x"
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
-    "@fastgpt-plugin/sdk-client": "0.1.0-alpha.2",
+    "@fastgpt-plugin/sdk-client": "0.1.0-alpha.5",
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "ajv": "catalog:",
     "axios": "catalog:",

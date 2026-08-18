@@ -10,7 +10,12 @@ import {
 } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, isTeamPluginSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  assertTeamPluginSourceAccess,
+  getRawPluginIdFromSystemToolId,
+  normalizeTeamPluginStatus
+} from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
 export type detailQuery = GetTeamToolDetailQueryType;
 
@@ -28,23 +33,32 @@ async function handler(req: ApiRequestProps<detailBody, detailQuery>): Promise<d
   const lang = getLocale(req);
 
   const { teamId } = await authCert({ req, authToken: true });
+  if (isTeamPluginSource(source)) {
+    await assertTeamPluginSourceAccess({
+      teamId,
+      source,
+      pluginId: getRawPluginIdFromSystemToolId(toolId)
+    });
+  }
 
   const systemToolRepo = SystemToolRepo.getInstance();
 
   const tool = await systemToolRepo.getSystemToolDetail({
     pluginId: toolId,
     lang,
-    source: getQuerySource({ source, teamId }),
+    source: getQuerySource(source),
     version
   });
 
-  return TeamToolDetailSchema.parse(tool);
+  return TeamToolDetailSchema.parse({
+    ...tool,
+    status: isTeamPluginSource(source) ? normalizeTeamPluginStatus(tool.status) : tool.status
+  });
 }
 
 export default NextAPI(handler);
 
-function getQuerySource({ source, teamId }: { source?: string; teamId: string }) {
-  if (source === 'team') return teamId;
-  if (isDebugToolSource(source)) return source;
+function getQuerySource(source?: string) {
+  if (isTeamPluginSource(source) || isDebugToolSource(source)) return source;
   return 'system';
 }

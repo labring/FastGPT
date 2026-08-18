@@ -1,10 +1,34 @@
 import crypto from 'crypto';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const DEFAULT_BASE_URL = 'https://ilinkai.weixin.qq.com';
 const CHANNEL_VERSION = '1.0.0';
+const ILINK_APP_ID = 'bot';
+const ILINK_APP_CLIENT_VERSION = String(1 << 16);
 const BOT_TYPE = '3';
 const LONG_POLL_TIMEOUT_MS = 35_000;
 const SEND_TIMEOUT_MS = 15_000;
+const SEND_RETRY_ATTEMPTS = 1;
+
+export const WechatMessageType = {
+  USER: 1,
+  BOT: 2
+} as const;
+
+export const WechatMessageItemType = {
+  NONE: 0,
+  TEXT: 1,
+  IMAGE: 2,
+  VOICE: 3,
+  FILE: 4,
+  VIDEO: 5
+} as const;
+
+export const WechatMessageState = {
+  NEW: 0,
+  GENERATING: 1,
+  FINISH: 2
+} as const;
 
 const formatFetchError = (err: unknown) => {
   if (!(err instanceof Error)) return String(err);
@@ -28,21 +52,57 @@ const formatFetchError = (err: unknown) => {
 };
 
 export type WeixinMessage = {
-  msgid: string;
-  from_user_id: string;
+  /** WeChat message IDs are uint64 and must remain strings after parsing. */
+  message_id?: string;
+  from_user_id?: string;
   to_user_id?: string;
-  message_type: number;
+  message_type?: number;
   message_state?: number;
   item_list?: MessageItem[];
   context_token?: string;
   create_time_ms?: number;
 };
 
+export type CDNMedia = {
+  encrypt_query_param?: string;
+  aes_key?: string;
+  encrypt_type?: number;
+  full_url?: string;
+};
+
+export type ImageItem = {
+  media?: CDNMedia;
+  thumb_media?: CDNMedia;
+  aeskey?: string;
+  url?: string;
+};
+
+export type FileItem = {
+  media?: CDNMedia;
+  file_name?: string;
+  md5?: string;
+  len?: string;
+};
+
+export type VideoItem = {
+  media?: CDNMedia;
+  file_name?: string;
+};
+
+export type RefMessage = {
+  title?: string;
+  message_item?: MessageItem;
+};
+
 export type MessageItem = {
-  type: number;
-  text_item?: { text: string };
-  voice_item?: { text: string };
-  ref_msg?: { title?: string };
+  type?: number;
+  msg_id?: string;
+  text_item?: { text?: string };
+  voice_item?: { text?: string; media?: CDNMedia };
+  image_item?: ImageItem;
+  file_item?: FileItem;
+  video_item?: VideoItem;
+  ref_msg?: RefMessage;
 };
 
 export type GetUpdatesResponse = {
@@ -59,7 +119,15 @@ export type QRCodeResponse = {
 };
 
 export type QRStatusResponse = {
-  status: 'wait' | 'scaned' | 'confirmed' | 'expired';
+  status:
+    | 'wait'
+    | 'scaned'
+    | 'confirmed'
+    | 'expired'
+    | 'scaned_but_redirect'
+    | 'need_verifycode'
+    | 'verify_code_blocked'
+    | 'binded_redirect';
   bot_token?: string;
   ilink_bot_id?: string;
   baseurl?: string;
@@ -84,12 +152,20 @@ export class ILinkClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       AuthorizationType: 'ilink_bot_token',
-      'X-WECHAT-UIN': this.randomUin()
+      'X-WECHAT-UIN': this.randomUin(),
+      ...this.buildCommonHeaders()
     };
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
     return headers;
+  }
+
+  private buildCommonHeaders(): Record<string, string> {
+    return {
+      'iLink-App-Id': ILINK_APP_ID,
+      'iLink-App-ClientVersion': ILINK_APP_CLIENT_VERSION
+    };
   }
 
   private async post(endpoint: string, body: string, timeoutMs: number): Promise<string> {
@@ -110,15 +186,18 @@ export class ILinkClient {
       return text;
     } catch (err) {
       clearTimeout(timer);
+      if (err instanceof Error && err.name === 'AbortError') throw err;
       throw new Error(`iLink POST ${endpoint} failed: ${formatFetchError(err)}`);
     }
   }
 
   async getQRCode(): Promise<QRCodeResponse> {
-    const url = `${this.baseUrl}/ilink/bot/get_bot_qrcode?bot_type=${BOT_TYPE}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`QR fetch failed: ${res.status}`);
-    return res.json();
+    const raw = await this.post(
+      `ilink/bot/get_bot_qrcode?bot_type=${BOT_TYPE}`,
+      JSON.stringify({ local_token_list: [] }),
+      SEND_TIMEOUT_MS
+    );
+    return JSON.parse(raw);
   }
 
   async getQRCodeStatus(qrcode: string): Promise<QRStatusResponse> {
@@ -127,7 +206,7 @@ export class ILinkClient {
     const timer = setTimeout(() => controller.abort(), LONG_POLL_TIMEOUT_MS);
     try {
       const res = await fetch(url, {
-        headers: { 'iLink-App-ClientVersion': '1' },
+        headers: this.buildCommonHeaders(),
         signal: controller.signal
       });
       clearTimeout(timer);
@@ -147,7 +226,16 @@ export class ILinkClient {
     });
     try {
       const raw = await this.post('ilink/bot/getupdates', body, LONG_POLL_TIMEOUT_MS);
-      return JSON.parse(raw);
+      // ! JSON.parse reviver context.source requires Node.js >=22.
+      return (
+        JSON.parse as (
+          text: string,
+          reviver: (key: string, value: unknown, context: { source: string }) => unknown
+        ) => GetUpdatesResponse
+      )(raw, (key, value, context) => {
+        if (key !== 'message_id' || typeof value !== 'number') return value;
+        return context.source;
+      });
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         return { ret: 0, msgs: [], get_updates_buf: buf };
@@ -161,19 +249,26 @@ export class ILinkClient {
     text: string;
     context_token: string;
   }): Promise<void> {
+    // 重试时复用 client_id，避免请求已送达但响应丢失时产生重复消息。
     const clientId = `fastgpt:${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const body = JSON.stringify({
       msg: {
         from_user_id: '',
         to_user_id: params.to_user_id,
         client_id: clientId,
-        message_type: 2,
-        message_state: 2,
-        item_list: [{ type: 1, text_item: { text: params.text } }],
+        message_type: WechatMessageType.BOT,
+        message_state: WechatMessageState.FINISH,
+        item_list: [{ type: WechatMessageItemType.TEXT, text_item: { text: params.text } }],
         context_token: params.context_token
       },
       base_info: { channel_version: CHANNEL_VERSION }
     });
-    await this.post('ilink/bot/sendmessage', body, SEND_TIMEOUT_MS);
+    await retryFn(async () => {
+      const raw = await this.post('ilink/bot/sendmessage', body, SEND_TIMEOUT_MS);
+      const resp = JSON.parse(raw) as Pick<GetUpdatesResponse, 'ret' | 'errmsg'>;
+      if (resp.ret && resp.ret !== 0) {
+        throw new Error(`sendMessage ret=${resp.ret} errmsg=${resp.errmsg ?? '(none)'}`);
+      }
+    }, SEND_RETRY_ATTEMPTS);
   }
 }

@@ -50,7 +50,7 @@
     "vitest": "catalog:"
   },
   "engines": {
-    "node": ">=22.22.0"
+    "node": ">=22.23.2"
   },
   "packageManager": "pnpm@10.33.4"
 }

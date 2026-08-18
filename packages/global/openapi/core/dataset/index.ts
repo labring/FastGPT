@@ -18,7 +18,13 @@ import {
   CreateDatasetFolderBodySchema,
   SearchDatasetTestBodySchema,
   ExportDatasetQuerySchema,
-  GetDatasetPermissionQuerySchema
+  GetDatasetPermissionQuerySchema,
+  ChangeDatasetOwnerBodySchema,
+  ChangeDatasetOwnerResponseSchema,
+  GetDatasetCollaboratorListQuerySchema,
+  GetDatasetCollaboratorListResponseSchema,
+  UpdateDatasetCollaboratorBodySchema,
+  UpdateDatasetCollaboratorResponseSchema
 } from './api';
 
 export const DatasetPath: OpenAPIPath = {
@@ -124,6 +130,74 @@ export const DatasetPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功返回知识库详情'
+        }
+      }
+    }
+  },
+  '/proApi/core/dataset/changeOwner': {
+    post: {
+      summary: '转让知识库所有权',
+      description: '将知识库所有权转让给指定团队成员',
+      tags: [DevApiTagsMap.permissionResource, DevApiTagsMap.datasetPermission],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ChangeDatasetOwnerBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功转让知识库所有权',
+          content: {
+            'application/json': {
+              schema: ChangeDatasetOwnerResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/dataset/collaborator/list': {
+    get: {
+      summary: '获取知识库协作者列表',
+      description: '获取知识库协作者列表，包含继承权限场景下的父级协作者信息',
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.datasetPermission],
+      requestParams: {
+        query: GetDatasetCollaboratorListQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功获取知识库协作者列表',
+          content: {
+            'application/json': {
+              schema: GetDatasetCollaboratorListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/dataset/collaborator/update': {
+    post: {
+      summary: '更新知识库协作者',
+      description: '覆盖更新知识库或知识库文件夹的协作者权限',
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.datasetPermission],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateDatasetCollaboratorBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新知识库协作者',
+          content: {
+            'application/json': {
+              schema: UpdateDatasetCollaboratorResponseSchema
+            }
+          }
         }
       }
     }

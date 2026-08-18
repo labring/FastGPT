@@ -19,7 +19,7 @@ export const PluginToolTagSchema = z.object({
 
 export type SystemPluginToolTagType = z.infer<typeof PluginToolTagSchema>;
 
-export const PluginStatusSchema = z.enum(['Normal', 'SoonOffline', 'Offline']);
+export const PluginStatusSchema = z.enum(['Normal', 'Hidden', 'SoonOffline', 'Offline']);
 export const PluginStatusEnum = PluginStatusSchema.enum;
 export type PluginStatusType = z.infer<typeof PluginStatusSchema>;
 
@@ -29,13 +29,18 @@ export const PluginStatusMap = {
     tooltip: '',
     tagColor: 'blue' as const
   },
+  [PluginStatusEnum.Hidden]: {
+    label: i18nT('app:toolkit_status_hidden'),
+    tooltip: i18nT('app:tool_hidden_tips'),
+    tagColor: 'gray' as const
+  },
   [PluginStatusEnum.SoonOffline]: {
     label: i18nT('app:toolkit_status_soon_offline'),
     tooltip: i18nT('app:tool_soon_offset_tips'),
     tagColor: 'yellow' as const
   },
   [PluginStatusEnum.Offline]: {
-    label: i18nT('app:toolkit_status_offline'),
+    label: i18nT('common:error.tool_not_exist'),
     tooltip: i18nT('app:tool_offset_tips'),
     tagColor: 'red' as const
   }

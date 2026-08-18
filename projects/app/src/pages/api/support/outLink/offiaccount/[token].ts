@@ -15,11 +15,7 @@ async function handler(
     data: req.body
   });
 
-  if (result.data?.data?.message) {
-    res.send(result.data.data.message);
-  }
-
-  res.send('');
+  return res.send(result.data?.data?.message ?? '');
 }
 
 export default handler;

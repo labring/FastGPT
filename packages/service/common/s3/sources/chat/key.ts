@@ -1,4 +1,5 @@
 import { isS3ObjectKey } from '../../utils';
+import { encodeS3ObjectKey } from '../../keySanitizer';
 import { ChatS3SourceTypeSchema, type ChatS3SourceType } from './type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -9,6 +10,15 @@ export type ParsedChatFileS3Key = {
   chatId: string;
   filename: string;
   legacyAppKey: boolean;
+};
+
+const decodeKeySegment = (segment: string | undefined) => {
+  if (!segment) return segment;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 };
 
 /**
@@ -27,9 +37,9 @@ export function parseChatFileS3Key(key: string): ParsedChatFileS3Key | null {
   const isSourceAwareKey = sourceTypeResult.success;
 
   const sourceType = isSourceAwareKey ? sourceTypeResult.data : ChatSourceTypeEnum.app;
-  const sourceId = isSourceAwareKey ? secondSegment : firstSegment;
-  const uid = isSourceAwareKey ? thirdSegment : secondSegment;
-  const chatId = isSourceAwareKey ? fourthSegment : thirdSegment;
+  const sourceId = decodeKeySegment(isSourceAwareKey ? secondSegment : firstSegment);
+  const uid = decodeKeySegment(isSourceAwareKey ? thirdSegment : secondSegment);
+  const chatId = decodeKeySegment(isSourceAwareKey ? fourthSegment : thirdSegment);
   const filename = (isSourceAwareKey ? filenameParts : [fourthSegment, ...filenameParts])
     .filter(Boolean)
     .join('/');
@@ -63,12 +73,16 @@ export function isAuthorizedChatFileS3Key({
   chatId?: string;
 }) {
   const parsedKey = parseChatFileS3Key(key);
-
-  return (
+  const authorized =
     isChatFileS3KeyForChat({ key, sourceType, sourceId, chatId }) &&
     !!parsedKey &&
-    String(parsedKey.uid) === String(uid)
+    String(parsedKey.uid) === String(uid);
+  if (authorized) return true;
+
+  const legacySanitizedPrefix = encodeS3ObjectKey(
+    ['chat', sourceType, sourceId, uid, chatId].join('/')
   );
+  return key.startsWith(`${legacySanitizedPrefix}/`);
 }
 
 /**

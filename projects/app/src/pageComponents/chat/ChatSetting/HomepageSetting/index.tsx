@@ -31,6 +31,7 @@ import {
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { MAX_QUICK_APP_COUNT } from './constants';
 
@@ -85,12 +86,14 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
 
   const handleAddTool = useCallback(
     async (tool: FlowNodeTemplateType) => {
-      if (!selectedTools.some((t) => t.pluginId === tool.pluginId)) {
+      const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
+      if (!selectedTools.some((t) => getToolIdentityKey(t.pluginId, t.source) === toolKey)) {
         const next = [
           ...selectedTools,
           {
             name: tool.name,
             pluginId: tool.pluginId || '',
+            source: tool.source,
             avatar: tool.avatar || '',
             inputs: tool.inputs?.reduce(
               (acc, input) => {
@@ -107,9 +110,12 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
     [selectedTools, setValue]
   );
   const handleRemoveToolById = useCallback(
-    (toolId?: string) => {
+    (toolId?: string, source?: string) => {
       if (!toolId) return;
-      const next = selectedTools.filter((t) => t.pluginId !== toolId);
+      const toolKey = getToolIdentityKey(toolId, source);
+      const next = selectedTools.filter(
+        (t) => getToolIdentityKey(t.pluginId, t.source) !== toolKey
+      );
       setValue('selectedTools', next);
     },
     [selectedTools, setValue]
@@ -123,6 +129,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
         quickAppIds: quickAppList.map((q) => q._id),
         selectedTools: values.selectedTools.map((tool) => ({
           pluginId: tool.pluginId,
+          source: tool.source,
           inputs: tool.inputs
         }))
       });
@@ -320,7 +327,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                         color="myGray.500"
                         display="none"
                         _hover={{ color: 'red.500' }}
-                        onClick={() => handleRemoveToolById(tool.pluginId)}
+                        onClick={() => handleRemoveToolById(tool.pluginId, tool.source)}
                       />
                     </Flex>
                   ))}
@@ -331,7 +338,7 @@ const HomepageSetting = ({ Header, onDiagramShow }: Props) => {
                 <ToolSelectModal
                   selectedTools={selectedTools}
                   onAddTool={handleAddTool}
-                  onRemoveTool={(tool) => handleRemoveToolById(tool.id)}
+                  onRemoveTool={(tool) => handleRemoveToolById(tool.id, tool.source)}
                   onClose={() => setToolSelectModalOpen(false)}
                 />
               )}

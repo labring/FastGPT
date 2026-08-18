@@ -136,7 +136,8 @@ const ToolDetailDrawer = ({
     isLatestVersionSelected &&
     (!!selectedTool.update || (!!installedVersion && installedVersion !== currentVersion));
   const showInstallButton = showActionButton && !isCurrentVersionInstalled && !hasUpdateButton;
-  const showUninstallButton = mode === 'admin' && !!isInstalled && !!onDelete && !showInstallButton;
+  const showUninstallButton =
+    (mode === 'admin' || mode === 'team') && !!isInstalled && !!onDelete && !showInstallButton;
 
   return (
     <Drawer isOpen={true} onClose={onClose} placement="right">

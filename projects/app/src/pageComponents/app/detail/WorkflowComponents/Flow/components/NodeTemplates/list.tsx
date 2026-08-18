@@ -49,8 +49,9 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 
 export type TemplateListProps = {
@@ -93,6 +94,7 @@ const NodeTemplateListItem = ({
     (!isSystemToolSet || allowDirectAddSystemToolSet);
   const showExpandArrow = template.isFolder || isSystemToolSet;
   const isDebugTool = isDebugToolSource(template.source);
+  const isSystemSource = template.source === 'system';
 
   return (
     <MyTooltip
@@ -191,6 +193,7 @@ const NodeTemplateListItem = ({
             >
               {t(template.name as any)}
             </Box>
+            {isSystemSource && <SystemToolTag />}
             {isDebugTool && <DebugToolTag />}
           </Flex>
         </Box>
@@ -558,7 +561,7 @@ const NodeTemplateList = ({
               >
                 {item.list.map((template) => (
                   <NodeTemplateListItem
-                    key={template.id}
+                    key={getToolIdentityKey(template.id, template.source)}
                     template={template}
                     templateType={templateType}
                     handleAddNode={handleAddNode}

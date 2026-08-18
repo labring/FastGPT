@@ -46,13 +46,15 @@ export type UploadPkgPluginResponseType = z.infer<typeof UploadPkgPluginResponse
 
 // 3. Confirm Uploaded Pkg Plugin Schema
 export const ConfirmUploadPkgPluginBodySchema = z.object({
-  toolIds: z.array(
-    z.object({
-      pluginId: z.string(),
-      version: z.string(),
-      etag: z.string()
-    })
-  )
+  toolIds: z
+    .array(
+      z.object({
+        pluginId: z.string(),
+        version: z.string(),
+        etag: z.string()
+      })
+    )
+    .min(1)
 });
 export type ConfirmUploadPkgPluginBodyType = z.infer<typeof ConfirmUploadPkgPluginBodySchema>;
 

@@ -77,7 +77,8 @@ export async function rewriteAppWorkflowToDetail({
           appId: id,
           versionId,
           lang,
-          source
+          source,
+          teamId
         }),
         ...(authAppId
           ? [

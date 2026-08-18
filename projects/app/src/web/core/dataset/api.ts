@@ -18,7 +18,8 @@ import type {
   CreateDatasetFolderBody,
   SearchDatasetTestBody,
   SearchDatasetTestResponse,
-  GetDatasetPermissionResponse
+  GetDatasetPermissionResponse,
+  ChangeDatasetOwnerBody
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 /* ======================== dataset ======================= */
@@ -59,7 +60,7 @@ export const getDatasetPermission = (id?: string) =>
 export const resumeInheritPer = (datasetId: string) =>
   PUT(`/core/dataset/resumeInheritPermission`, { datasetId });
 
-export const postChangeOwner = (data: { ownerId: string; datasetId: string }) =>
+export const postChangeOwner = (data: ChangeDatasetOwnerBody) =>
   POST(`/proApi/core/dataset/changeOwner`, data);
 
 /* =========== search test ============ */

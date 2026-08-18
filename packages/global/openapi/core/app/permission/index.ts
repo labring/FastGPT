@@ -3,6 +3,8 @@ import { DevApiTagsMap } from '../../../tag';
 import { AppPermissionCheckSchema } from '../../../../support/permission/app/controller.schema';
 import {
   GetAppPermissionQuerySchema,
+  ChangeAppOwnerBodySchema,
+  ChangeAppOwnerResponseSchema,
   ResumeInheritPermissionQuerySchema,
   ResumeInheritPermissionResponseSchema
 } from './api';
@@ -42,6 +44,30 @@ export const AppPermissionPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: ResumeInheritPermissionResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/app/changeOwner': {
+    post: {
+      summary: '转让应用所有权',
+      description: '将应用所有权转让给指定团队成员',
+      tags: [DevApiTagsMap.permissionResource, DevApiTagsMap.appPer],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ChangeAppOwnerBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功转让应用所有权',
+          content: {
+            'application/json': {
+              schema: ChangeAppOwnerResponseSchema
             }
           }
         }

@@ -20,7 +20,7 @@
   },
   "sideEffects": false,
   "engines": {
-    "node": ">=20"
+    "node": ">=22.23.2"
   },
   "scripts": {
     "build": "tsdown",

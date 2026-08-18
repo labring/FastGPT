@@ -49,7 +49,7 @@ import CollaboratorContextProvider, {
 } from '@/components/support/permission/MemberManager/context';
 import { useContextSelector } from 'use-context-selector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import { getSearchMembersOrgsGroups } from '@/web/support/user/api';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { Permission } from '@fastgpt/global/support/permission/controller';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
@@ -110,7 +110,7 @@ function PermissionManage({
 
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: searchResult } = useRequest(() => GetSearchUserGroupOrg(searchKey), {
+  const { data: searchResult } = useRequest(() => getSearchMembersOrgsGroups(searchKey), {
     manual: false,
     throttleWait: 500,
     debounceWait: 200,

@@ -16,7 +16,8 @@ describe('OutLinkStreamCache', () => {
   const redis = {
     appendStringWithTtl: vi.fn(),
     delete: vi.fn(),
-    get: vi.fn()
+    get: vi.fn(),
+    setIfAbsent: vi.fn()
   } as any;
 
   beforeEach(() => {
@@ -24,6 +25,7 @@ describe('OutLinkStreamCache', () => {
     redis.appendStringWithTtl.mockResolvedValue(0);
     redis.delete.mockResolvedValue(true);
     redis.get.mockResolvedValue(null);
+    redis.setIfAbsent.mockResolvedValue(true);
   });
 
   it('preserves the historical logical key and stream protocol constants', () => {
@@ -48,6 +50,30 @@ describe('OutLinkStreamCache', () => {
       value: 'hello',
       ttlSeconds: OUTLINK_STREAM_CONTENT_TTL_SECONDS
     });
+  });
+
+  it('initializes an empty stream without replacing an existing response', async () => {
+    const cache = new OutLinkStreamCache({ redis });
+
+    await expect(
+      cache.initializeIfAbsent({
+        streamId,
+        ttlSeconds: OUTLINK_STREAM_INITIAL_TTL_SECONDS
+      })
+    ).resolves.toBe(true);
+    expect(redis.setIfAbsent).toHaveBeenCalledWith({
+      key: asRedisLogicalKey(logicalKey),
+      value: '',
+      ttlSeconds: OUTLINK_STREAM_INITIAL_TTL_SECONDS
+    });
+
+    redis.setIfAbsent.mockResolvedValue(false);
+    await expect(
+      cache.initializeIfAbsent({
+        streamId,
+        ttlSeconds: OUTLINK_STREAM_INITIAL_TTL_SECONDS
+      })
+    ).resolves.toBe(false);
   });
 
   it('maps a Redis miss to undefined and deletes through the logical key', async () => {

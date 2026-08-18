@@ -205,7 +205,6 @@ const NodeTemplateListHeader = ({
               tags={toolTags}
               selectedTagIds={selectedTagIds}
               onTagSelect={setSelectedTagIds}
-              size={isPopover ? 'sm' : 'base'}
             />
           </Box>
         )}

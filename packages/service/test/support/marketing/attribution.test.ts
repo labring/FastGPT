@@ -25,6 +25,8 @@ vi.mock('@fastgpt/service/env', () => ({
 
 import {
   CRMLifecycleEvent,
+  reportCRMEnterpriseRechargeAmount,
+  reportCRMEnterpriseVerification,
   reportCRMVisitorIdentity,
   reportCRMVisitorLifecycle,
   resolveCRMVisitorId
@@ -99,6 +101,91 @@ describe('reportCRMVisitorLifecycle', () => {
       })
     ).resolves.toBe(false);
   });
+});
+
+describe('reportCRMEnterpriseVerification', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.serviceEnv.CRM_API_URL = 'https://crm.example.com/api/v1/';
+    mocks.serviceEnv.CRM_API_KEY = 'crm-key';
+  });
+
+  it('reports without a visitor id using cloud user and submission ids', async () => {
+    await expect(
+      reportCRMEnterpriseVerification({
+        cloudUserId: 'cloud-user-1',
+        teamId: 'team-1',
+        submissionId: 'enterprise-task-1',
+        company: '认证企业',
+        summary: '企业认证需求',
+        name: '联系人',
+        contact: '13800138000',
+        position: 'CTO',
+        consultationTopic: 'SaaS 版',
+        details: {
+          unified_credit_code: '91310000MA1K000006',
+          legal_person_name: '法人',
+          bank_name: '开户银行',
+          bank_account: '4111111111111111',
+          cumulative_recharge_amount: 1234.5
+        }
+      })
+    ).resolves.toBe(true);
+
+    expect(mocks.post).toHaveBeenCalledWith(
+      'https://crm.example.com/api/v1/contacts/opportunities/lifecycle',
+      expect.objectContaining({
+        event: 'enterprise_verification',
+        cloud_user_id: 'cloud-user-1',
+        team_id: 'team-1',
+        submission_id: 'enterprise-task-1'
+      }),
+      expect.any(Object)
+    );
+  });
+});
+
+describe('reportCRMEnterpriseRechargeAmount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.serviceEnv.CRM_API_URL = 'https://crm.example.com/api/v1/';
+    mocks.serviceEnv.CRM_API_KEY = 'crm-key';
+  });
+
+  it('reports the complete amount through the dedicated update endpoint', async () => {
+    await expect(
+      reportCRMEnterpriseRechargeAmount({
+        teamId: 'team-1',
+        cumulativeRechargeAmount: 1234.5
+      })
+    ).resolves.toBe(true);
+
+    expect(mocks.patch).toHaveBeenCalledWith(
+      'https://crm.example.com/api/v1/contacts/opportunities/enterprise-recharge',
+      {
+        team_id: 'team-1',
+        cumulative_recharge_amount: 1234.5
+      },
+      {
+        headers: { 'X-API-Key': 'crm-key' },
+        timeout: 5000
+      }
+    );
+  });
+
+  it.each([0, -1, Number.NaN])(
+    'rejects a non-positive or invalid amount (%s) before making a CRM request',
+    async (cumulativeRechargeAmount) => {
+      await expect(
+        reportCRMEnterpriseRechargeAmount({
+          teamId: 'team-1',
+          cumulativeRechargeAmount
+        })
+      ).resolves.toBe(false);
+
+      expect(mocks.patch).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('reportCRMVisitorIdentity', () => {

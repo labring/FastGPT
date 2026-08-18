@@ -3,6 +3,8 @@ import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { openAPITagGroups } from '../../../openapi/path';
 import { DevApiTagsMap } from '../../../openapi/tag';
 import {
+  UpdateContactBodySchema,
+  UpdateContactResponseSchema,
   UpdateUserAccountBodySchema,
   type UpdateUserAccountBody
 } from '../../../openapi/support/user/account/update/api';
@@ -56,6 +58,9 @@ describe('common and team OpenAPI contracts', () => {
   it('matches documented methods to current callers', () => {
     expect(openAPIDocument.paths?.['/support/user/account/loginout']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/support/user/account/loginout']?.post).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/proApi/support/user/account/updateContact']?.put
+    ).toBeDefined();
     expect(openAPIDocument.paths?.['/support/user/team/update']?.put).toBeDefined();
     expect(openAPIDocument.paths?.['/core/dataset/collection/delete']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/core/chat/inputGuide/delete']?.post).toBeDefined();
@@ -74,6 +79,13 @@ describe('common and team OpenAPI contracts', () => {
 
     expectTypeOf<UpdateUserAccountBody['balance']>().toEqualTypeOf<number | undefined>();
     expectTypeOf<DatasetSizeLimitQuery['size']>().toEqualTypeOf<number | undefined>();
+    expect(
+      UpdateContactBodySchema.parse({ contact: 'user@example.com', verifyCode: '123456' })
+    ).toEqual({
+      contact: 'user@example.com',
+      verifyCode: '123456'
+    });
+    expect(UpdateContactResponseSchema.parse(undefined)).toBeUndefined();
   });
 
   it('accepts a normalized plan response with fractional point usage', () => {

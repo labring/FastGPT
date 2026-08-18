@@ -66,6 +66,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/skill/detail',
           '/dashboard/tool',
           '/dashboard/systemTool',
+          '/dashboard/systemTool/marketplace',
           '/dashboard/templateMarket',
           '/dashboard/mcpServer',
           '/dashboard/evaluation',

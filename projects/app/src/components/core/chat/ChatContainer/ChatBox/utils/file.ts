@@ -1,5 +1,5 @@
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getUploadFileType } from '@fastgpt/global/core/app/constants';
+import { isChatFileAllowedBySelectConfig as isGlobalChatFileAllowedBySelectConfig } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { ChatTypeEnum } from '../constants';
 
@@ -39,35 +39,10 @@ export const isChatFileAllowedBySelectConfig = ({
   file: Pick<File, 'name' | 'type'>;
   fileSelectConfig: AppFileSelectConfigType;
 }) => {
-  const normalizeExtension = (extension: string) => {
-    const normalized = extension.trim().toLowerCase();
-    if (!normalized) return '';
-    return normalized.startsWith('.') ? normalized : `.${normalized}`;
-  };
-
-  const allowedExtensions = getUploadFileType({
-    canSelectFile: fileSelectConfig.canSelectFile,
-    canSelectImg: fileSelectConfig.canSelectImg,
-    canSelectVideo: fileSelectConfig.canSelectVideo,
-    canSelectAudio: fileSelectConfig.canSelectAudio,
-    canSelectCustomFileExtension: fileSelectConfig.canSelectCustomFileExtension,
-    customFileExtensionList: fileSelectConfig.customFileExtensionList
-  })
-    .split(',')
-    .map(normalizeExtension)
-    .filter(Boolean);
-  const normalizedFilename = file.name.trim().toLowerCase();
-  const lastDotIndex = normalizedFilename.lastIndexOf('.');
-  const fileExtension = lastDotIndex >= 0 ? normalizedFilename.slice(lastDotIndex) : '';
-
-  if (fileExtension) {
-    return allowedExtensions.includes(fileExtension);
-  }
-
-  const mimeCategory = file.type.trim().toLowerCase().split('/')[0];
-  if (mimeCategory === 'image') return !!fileSelectConfig.canSelectImg;
-  if (mimeCategory === 'audio') return !!fileSelectConfig.canSelectAudio;
-  if (mimeCategory === 'video') return !!fileSelectConfig.canSelectVideo;
-
-  return false;
+  return isGlobalChatFileAllowedBySelectConfig({
+    filename: file.name,
+    contentType: file.type,
+    fileType: getUploadChatFileType(file as File),
+    fileSelectConfig
+  });
 };
