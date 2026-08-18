@@ -1,5 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { isLegacyManualHttpToolArrayType } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { Model, Types } from '@fastgpt/service/common/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -10,6 +13,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import z from 'zod';
 
 type WorkflowFieldName = 'modules' | 'nodes';
+type UnknownRecord = Record<string, unknown>;
 type WorkflowDocument = {
   _id: Types.ObjectId;
   modules?: unknown;
@@ -46,6 +50,9 @@ const createStats = (): MigrationStats => ({
   convertedSchemaCount: 0
 });
 
+const isRecord = (value: unknown): value is UnknownRecord =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
 const objectSchemaQuery = (fieldName: WorkflowFieldName) => ({
   $or: [
     { [`${fieldName}.toolConfig.mcpToolSet.toolList.inputSchema`]: { $type: 'object' } },
@@ -56,6 +63,58 @@ const objectSchemaQuery = (fieldName: WorkflowFieldName) => ({
     { [`${fieldName}.toolConfig.httpToolSet.toolList.secretSchema`]: { $type: 'object' } }
   ]
 });
+
+/** 检查 4.16.0 的手动 HTTP 参数迁移是否已经完成，避免旧数组类型被直接字符串化。 */
+const hasLegacyManualHttpToolSchemas = (nodes: unknown): boolean => {
+  if (!Array.isArray(nodes)) return false;
+
+  return nodes.some((node) => {
+    if (!isRecord(node) || !isRecord(node.toolConfig)) return false;
+
+    const httpToolSet = node.toolConfig.httpToolSet;
+    if (!isRecord(httpToolSet) || httpToolSet.apiSchemaStr !== undefined) return false;
+    if (!Array.isArray(httpToolSet.toolList)) return false;
+
+    return httpToolSet.toolList.some((tool) => {
+      if (!isRecord(tool) || !isRecord(tool.inputSchema)) return false;
+
+      const properties = tool.inputSchema.properties;
+      if (!isRecord(properties)) return false;
+
+      return Object.values(properties).some(
+        (property) => isRecord(property) && isLegacyManualHttpToolArrayType(property.type)
+      );
+    });
+  });
+};
+
+/** 在任何写入前预检 4.16.0 负责范围内的全部文档，确保迁移失败时不会留下半成品。 */
+const assertManualHttpToolSchemaMigrationCompleted = async ({
+  model,
+  fieldName,
+  baseQuery,
+  options
+}: {
+  model: Model<any>;
+  fieldName: WorkflowFieldName;
+  baseQuery: Record<string, unknown>;
+  options: InitToolJsonSchemaStorageBody;
+}): Promise<void> => {
+  const cursor = model.collection
+    .find(
+      { $and: [baseQuery, objectSchemaQuery(fieldName)] },
+      { projection: { _id: 1, [fieldName]: 1 } }
+    )
+    .batchSize(options.batchSize);
+
+  for await (const document of cursor) {
+    if (hasLegacyManualHttpToolSchemas(document[fieldName])) {
+      throw new UserError(
+        '检测到旧版手动 HTTP 工具数组参数，请先完成 4.16.0 initHttpToolSchema 迁移后再执行 4.16.1 initToolJsonSchemaStorage。'
+      );
+    }
+  }
+};
 
 /** 通过原始 collection 清洗单个工作流集合，避免严格读取逻辑在迁移前解析旧 object。 */
 const migrateCollection = async ({
@@ -124,6 +183,30 @@ const mergeStats = (statsList: MigrationStats[]): MigrationStats =>
 export async function runToolJsonSchemaStorageMigration(
   options: InitToolJsonSchemaStorageBody
 ): Promise<InitToolJsonSchemaStorageResponse> {
+  const httpToolAppIds: Types.ObjectId[] = [];
+  const appCursor = MongoApp.collection
+    .find({ type: AppTypeEnum.httpToolSet }, { projection: { _id: 1 } })
+    .batchSize(options.batchSize);
+
+  for await (const document of appCursor) {
+    httpToolAppIds.push(document._id as Types.ObjectId);
+  }
+
+  await Promise.all([
+    assertManualHttpToolSchemaMigrationCompleted({
+      model: MongoApp,
+      fieldName: 'modules',
+      baseQuery: { type: AppTypeEnum.httpToolSet },
+      options
+    }),
+    assertManualHttpToolSchemaMigrationCompleted({
+      model: MongoAppVersion,
+      fieldName: 'nodes',
+      baseQuery: { appId: { $in: httpToolAppIds } },
+      options
+    })
+  ]);
+
   const [apps, appVersions] = await Promise.all([
     migrateCollection({ model: MongoApp, fieldName: 'modules', options }),
     migrateCollection({ model: MongoAppVersion, fieldName: 'nodes', options })
