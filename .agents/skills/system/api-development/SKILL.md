@@ -214,6 +214,8 @@ export const GetUserListSchema = PaginationSchema.extend({
 });
 ```
 
+分页请求参数必须优先复用 `@fastgpt/global/openapi/api` 导出的 `PaginationSchema`，不要在业务域或单个接口中重复声明同构的分页 Schema（例如再次定义 `UserPaginationBodySchema`）。如果接口确实需要额外筛选条件，使用 `PaginationSchema.extend(...)`；只有存在明确的兼容性或协议差异时，才允许定义专用 wrapper，并在附近说明原因。分页响应优先复用 `PaginationResponseSchema`。
+
 #### ✅ 多个 API 的 Schema 文件
 
 ```typescript
@@ -501,6 +503,7 @@ export default NextAPI(handler);
 - [ ] **可空字段**: 正确使用 `.optional()` 或 `.nullish()`
 - [ ] **复用 Schema**: 相同结构抽取为独立 Schema
 - [ ] **分页支持**: 列表 API 继承 `PaginationSchema`
+- [ ] **Schema 复用**: 分页及其他通用结构优先复用全局 Schema，未重复声明同构的业务专用 Schema
 
 ### 🟢 可选检查项 (优化性)
 

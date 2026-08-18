@@ -3,6 +3,7 @@ export {
   CRMLifecycleEvent,
   reportCRMTeamConsumptionOnce,
   reportCRMTeamEnterpriseVerificationOnce,
+  reportCRMTeamEnterpriseRechargeAmount,
   reportCRMTeamRechargeOnce
 } from './crm';
 export type { CRMEnterpriseVerificationDetails } from './crm';

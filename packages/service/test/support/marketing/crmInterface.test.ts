@@ -128,6 +128,7 @@ describe('CRM team lifecycle interface', () => {
     });
 
     expect(mocks.reportEnterprise).toHaveBeenCalledWith({
+      teamId: 'team-1',
       submissionId: 'enterprise-task-1',
       company: '认证企业',
       summary: '企业认证需求',

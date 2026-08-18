@@ -2,7 +2,7 @@ import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type';
-import type { SearchResult } from '@fastgpt/global/support/user/api';
+import type { SearchMembersOrgsGroupsResponseType } from '@fastgpt/global/openapi/support/user/team/api';
 import type {
   PreLoginResponseType,
   LoginByPasswordBodyType,
@@ -21,6 +21,7 @@ import type {
   UpdatePasswordByCodeBodyType,
   UpdatePasswordByOldBodyType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
+import type { UpdateContactBodyType } from '@fastgpt/global/openapi/support/user/account/update/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
 
@@ -107,16 +108,16 @@ export const getCheckPswExpired = () => GET<boolean>('/support/user/account/chec
 /* ===== notification account ===== */
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
   PUT('/proApi/support/user/team/updateNotificationAccount', data);
-export const updateContact = (data: { contact: string; verifyCode: string }) => {
+export const updateContact = (data: UpdateContactBodyType) => {
   return PUT('/proApi/support/user/account/updateContact', data);
 };
 
 /* ===== user info ===== */
 export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
 
-export const postSyncMembers = () => POST('/proApi/support/user/sync');
+export const postSyncMembers = () => POST('/proApi/support/user/team/sync');
 
-export const GetSearchUserGroupOrg = (
+export const getSearchMembersOrgsGroups = (
   searchKey: string,
   options?: {
     members?: boolean;
@@ -124,6 +125,10 @@ export const GetSearchUserGroupOrg = (
     groups?: boolean;
   }
 ) =>
-  GET<SearchResult>('/proApi/support/user/search', { searchKey, ...options }, { maxQuantity: 1 });
+  GET<SearchMembersOrgsGroupsResponseType>(
+    '/proApi/support/user/team/searchMembersOrgsGroups',
+    { searchKey, ...options },
+    { maxQuantity: 1 }
+  );
 
 export const ExportMembers = () => GET<{ csv: string }>('/proApi/support/user/team/member/export');

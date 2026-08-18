@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '@/web/support/user/api';
-import { POST } from '@/web/common/api/request';
+import { GET, POST } from '@/web/common/api/request';
 import { VerificationCodeTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
 
 vi.mock('@/web/common/api/request', () => ({
@@ -150,14 +150,20 @@ describe('user api', () => {
 
   it('should sync members', async () => {
     await api.postSyncMembers();
+    expect(POST).toHaveBeenCalledWith('/proApi/support/user/team/sync');
   });
 
-  it('should search users', async () => {
-    await api.GetSearchUserGroupOrg('test', {
+  it('should aggregate search members, orgs and groups', async () => {
+    await api.getSearchMembersOrgsGroups('test', {
       members: true,
       orgs: true,
       groups: true
     });
+    expect(GET).toHaveBeenCalledWith(
+      '/proApi/support/user/team/searchMembersOrgsGroups',
+      { searchKey: 'test', members: true, orgs: true, groups: true },
+      { maxQuantity: 1 }
+    );
   });
 
   it('should export members', async () => {

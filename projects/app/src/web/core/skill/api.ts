@@ -34,6 +34,10 @@ import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandb
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
+import type {
+  ChangeSkillOwnerBody,
+  ChangeSkillOwnerResponse
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
@@ -219,5 +223,5 @@ export const resumeInheritPer = (skillId: string) =>
   GET('/core/ai/skill/resumeInheritPermission', { skillId });
 
 /** 转让 Skill 所有者 */
-export const postChangeSkillOwner = (data: { skillId: string; ownerId: string }) =>
-  POST('/proApi/core/ai/skill/changeOwner', data);
+export const postChangeSkillOwner = (data: ChangeSkillOwnerBody) =>
+  POST<ChangeSkillOwnerResponse>('/proApi/core/ai/skill/changeOwner', data);

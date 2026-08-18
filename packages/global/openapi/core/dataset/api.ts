@@ -9,6 +9,10 @@ import {
   DatasetListItemSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
+import {
+  CollaboratorItemSchema,
+  CollaboratorListSchema
+} from '../../../support/permission/collaborator.schema';
 
 /* ============================================================================
  * API: 创建知识库
@@ -225,6 +229,96 @@ export const DatasetPathItemSchema = z.object({
 });
 export const GetDatasetPathsResponseSchema = z.array(DatasetPathItemSchema);
 export type GetDatasetPathsResponse = z.infer<typeof GetDatasetPathsResponseSchema>;
+
+/* ============================================================================
+ * API: 转让知识库所有权
+ * Route: POST /api/proApi/core/dataset/changeOwner
+ * Method: POST
+ * Description: 将知识库所有权转让给指定团队成员。
+ * Tags: ['资源权限', '知识库权限管理']
+ * ============================================================================ */
+
+export const ChangeDatasetOwnerBodySchema = z
+  .object({
+    datasetId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '知识库 ID'
+    }),
+    ownerId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a06',
+      description: '新的所有者团队成员 ID'
+    })
+  })
+  .meta({
+    example: {
+      datasetId: '68ad85a7463006c963799a05',
+      ownerId: '68ad85a7463006c963799a06'
+    }
+  });
+export type ChangeDatasetOwnerBody = z.infer<typeof ChangeDatasetOwnerBodySchema>;
+
+export const ChangeDatasetOwnerResponseSchema = z.undefined().meta({ description: '转让成功' });
+export type ChangeDatasetOwnerResponse = z.infer<typeof ChangeDatasetOwnerResponseSchema>;
+
+/* ============================================================================
+ * API: 获取知识库协作者列表
+ * Route: GET /api/proApi/core/dataset/collaborator/list
+ * Method: GET
+ * Description: 获取知识库协作者列表，包含继承权限场景下的父级协作者信息。
+ * Tags: ['协作者管理', '知识库权限管理']
+ * ============================================================================ */
+
+export const GetDatasetCollaboratorListQuerySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type GetDatasetCollaboratorListQuery = z.infer<typeof GetDatasetCollaboratorListQuerySchema>;
+
+export const GetDatasetCollaboratorListResponseSchema = CollaboratorListSchema;
+export type GetDatasetCollaboratorListResponse = z.infer<
+  typeof GetDatasetCollaboratorListResponseSchema
+>;
+
+/* ============================================================================
+ * API: 更新知识库协作者
+ * Route: POST /api/proApi/core/dataset/collaborator/update
+ * Method: POST
+ * Description: 覆盖更新知识库或知识库文件夹的协作者权限；继承权限场景会按资源类型处理继承关系。
+ * Tags: ['协作者管理', '知识库权限管理']
+ * ============================================================================ */
+
+export const UpdateDatasetCollaboratorBodySchema = z
+  .object({
+    datasetId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '知识库 ID'
+    }),
+    collaborators: z
+      .array(CollaboratorItemSchema)
+      .min(1)
+      .meta({ description: '更新后的协作者权限列表，至少包含一个协作者' })
+  })
+  .meta({
+    example: {
+      datasetId: '68ad85a7463006c963799a05',
+      collaborators: [
+        {
+          tmbId: '68ad85a7463006c963799a06',
+          permission: 4
+        }
+      ]
+    }
+  });
+export type UpdateDatasetCollaboratorBody = z.infer<typeof UpdateDatasetCollaboratorBodySchema>;
+
+export const UpdateDatasetCollaboratorResponseSchema = z.undefined().meta({
+  description: '操作成功'
+});
+export type UpdateDatasetCollaboratorResponse = z.infer<
+  typeof UpdateDatasetCollaboratorResponseSchema
+>;
 
 /* ============================================================================
  * API: 更新知识库

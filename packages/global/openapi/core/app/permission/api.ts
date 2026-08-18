@@ -44,3 +44,33 @@ export const ResumeInheritPermissionResponseSchema = z.undefined().meta({
 export type ResumeInheritPermissionResponseType = z.infer<
   typeof ResumeInheritPermissionResponseSchema
 >;
+
+/* ============================================================================
+ * API: 转让应用所有权
+ * Route: POST /api/proApi/core/app/changeOwner
+ * Method: POST
+ * Description: 将应用所有权转让给指定团队成员。
+ * Tags: ['资源权限', '权限管理']
+ * ============================================================================ */
+
+export const ChangeAppOwnerBodySchema = z
+  .object({
+    appId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '应用 ID'
+    }),
+    ownerId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a06',
+      description: '新的所有者团队成员 ID'
+    })
+  })
+  .meta({
+    example: {
+      appId: '68ad85a7463006c963799a05',
+      ownerId: '68ad85a7463006c963799a06'
+    }
+  });
+export type ChangeAppOwnerBodyType = z.infer<typeof ChangeAppOwnerBodySchema>;
+
+export const ChangeAppOwnerResponseSchema = z.undefined().meta({ description: '转让成功' });
+export type ChangeAppOwnerResponseType = z.infer<typeof ChangeAppOwnerResponseSchema>;

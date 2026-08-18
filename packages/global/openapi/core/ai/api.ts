@@ -95,6 +95,7 @@ export const ChatMessageSchema = z.object({
 
 /* ============================================================================
  * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；支持站内和分享鉴权）
+ * Tags: ['会话操作', 'Read']
  * ============================================================================ */
 
 export const ResumeStreamParamsRawSchema = createOutLinkChatTargetInputSchema({
