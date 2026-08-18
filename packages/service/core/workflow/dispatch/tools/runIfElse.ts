@@ -152,7 +152,7 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
     const result = getResult(item.condition, item.list, variableState, runtimeNodesMap);
     if (result) {
       selectedLabel = getElseIFLabel(i);
-      selectedHandleKey = getIfElseBranchHandleKey(item);
+      selectedHandleKey = getIfElseBranchHandleKey(item, i);
       break;
     }
   }

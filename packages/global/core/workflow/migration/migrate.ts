@@ -1,9 +1,13 @@
 import type { CanonicalWorkflowData, CanonicalAgentToolInputConfig } from './schema';
-import { CanonicalWorkflowDataSchema } from './schema';
+import {
+  CanonicalAgentToolInputConfigSchema,
+  CanonicalWorkflowDataSchema,
+  LegacyAgentToolInputSnapshotSchema
+} from './schema';
 import type { LegacyWorkflowDataInput } from './legacy/schema';
 import type { WorkflowMigrationOptions } from './type';
 import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
-import { migrateAgentToolInputConfigToCurrent } from './legacy/input';
+import { LegacyAgentToolInputConfigSchema } from './legacy/schema';
 import { migrateLegacyWorkflowStructureData } from './legacy/structure';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
@@ -12,8 +16,8 @@ import { AgentToolInputModeEnum } from '../../app/tool/constants';
 /**
  * 将外部 workflow 迁移为严格 canonical 数据。
  *
- * 资源 resolver 仅在 Agent 历史工具缺少 `inputs` 时调用。所有结构兼容规则都在本模块
- * 的内部 phase 完成；调用者只接收经过 strict schema 校验的结果。
+ * 当前工具定义可得时，按定义修复每个输入；定义不可得时保留 unavailable 占位和恢复快照。
+ * 所有结构兼容规则都在本模块的内部 phase 完成；调用者只接收经过 strict schema 校验的结果。
  */
 export const migrateWorkflowToCurrent = async (
   input: LegacyWorkflowDataInput,
@@ -53,15 +57,18 @@ export const migrateWorkflowToCurrent = async (
             input.value.map(async (tool) => {
               if (!tool || typeof tool !== 'object' || typeof tool.id !== 'string') return tool;
 
-              const savedInputs: unknown[] = Array.isArray(tool.inputs) ? tool.inputs : [];
+              const hasSavedInputs = Array.isArray(tool.inputs);
+              const savedInputs: unknown[] = (() => {
+                if (tool.isUnavailable === true && Array.isArray(tool.unresolvedInputs)) {
+                  return tool.unresolvedInputs;
+                }
+                return hasSavedInputs ? tool.inputs : [];
+              })();
               const needsDefinition =
-                !Array.isArray(tool.inputs) ||
+                tool.isUnavailable === true ||
+                !hasSavedInputs ||
                 savedInputs.some(
-                  (item) =>
-                    !item ||
-                    typeof item !== 'object' ||
-                    !('mode' in item) ||
-                    typeof item.mode !== 'string'
+                  (item) => !CanonicalAgentToolInputConfigSchema.safeParse(item).success
                 );
               const definition = needsDefinition
                 ? await options.resolveToolDefinition?.({
@@ -70,37 +77,53 @@ export const migrateWorkflowToCurrent = async (
                     source: typeof tool.source === 'string' ? tool.source : undefined
                   })
                 : undefined;
+              if (!needsDefinition) return tool;
+
+              if (!definition) {
+                const unresolvedInputs = savedInputs.flatMap((input) => {
+                  const result = LegacyAgentToolInputSnapshotSchema.safeParse(input);
+                  return result.success ? [result.data] : [];
+                });
+                const {
+                  inputs: _inputs,
+                  unresolvedInputs: _unresolvedInputs,
+                  ...unavailableTool
+                } = tool;
+
+                return {
+                  ...unavailableTool,
+                  isUnavailable: true,
+                  ...(unresolvedInputs.length > 0 ? { unresolvedInputs } : {})
+                };
+              }
+
               const savedInputMap = new Map(
-                savedInputs
-                  .filter(
-                    (item): item is Record<string, unknown> => !!item && typeof item === 'object'
-                  )
-                  .filter(
-                    (item): item is Record<string, unknown> & { key: string } =>
-                      typeof item.key === 'string'
-                  )
-                  .map((item) => [item.key, item])
+                savedInputs.flatMap((input) => {
+                  const result = LegacyAgentToolInputConfigSchema.safeParse(input);
+                  return result.success ? [[result.data.key, result.data] as const] : [];
+                })
               );
-              const migratedInputs: CanonicalAgentToolInputConfig[] = definition
-                ? definition.inputs.map((definitionInput) => {
-                    const savedInput = savedInputMap.get(definitionInput.key);
-                    if (savedInput) return migrateAgentToolInputConfigToCurrent(savedInput as any);
-                    return {
+              const migratedInputs: CanonicalAgentToolInputConfig[] = definition.inputs.map(
+                (definitionInput) => {
+                  const savedInput = savedInputMap.get(definitionInput.key);
+                  return (
+                    savedInput ?? {
                       key: definitionInput.key,
                       mode:
                         definitionInput.isToolParam === true
                           ? AgentToolInputModeEnum.agentGenerated
                           : AgentToolInputModeEnum.manual
-                    };
-                  })
-                : savedInputs.map((savedInput) =>
-                    migrateAgentToolInputConfigToCurrent(savedInput as any)
+                    }
                   );
+                }
+              );
+              const {
+                isUnavailable: _isUnavailable,
+                unresolvedInputs: _unresolvedInputs,
+                ...availableTool
+              } = tool;
 
-              return {
-                ...tool,
-                inputs: migratedInputs
-              };
+              return { ...availableTool, inputs: migratedInputs };
             })
           );
 

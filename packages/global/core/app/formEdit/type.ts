@@ -24,8 +24,11 @@ export type StoredSelectedAgentSkillItemType = z.infer<
 >;
 
 /* ===== Tool ===== */
-const SelectedToolItemBaseSchema = FlowNodeTemplateTypeSchema.extend({
+export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({
   configStatus: z.enum(['noConfig', 'waitingForConfig', 'configured', 'invalid']).optional(),
+  /** 缺失工具的编辑器占位标记，runtime 不消费恢复载荷。 */
+  isUnavailable: z.literal(true).optional(),
+  unresolvedInputs: z.array(z.record(z.string(), z.unknown())).optional(),
   config: z.record(z.string(), z.unknown()).optional()
 });
 

@@ -300,15 +300,16 @@ export async function rewriteAppWorkflowToDetail({
               if (result.success) {
                 const data = result.data!;
                 // Merge saved config back into inputs
-                const savedToolInputs = tool.inputs ?? [];
-                const hasMissingToolInputs = tool.inputs === undefined;
+                const savedToolInputs = tool.isUnavailable === true ? [] : (tool.inputs ?? []);
+                const hasMissingToolInputs =
+                  tool.isUnavailable !== true && tool.inputs === undefined;
                 const toolInputConfigMap = new Map(
                   savedToolInputs.map((input) => [input.key, input])
                 );
                 const mergedInputs = data.inputs.map((input) => {
                   const mode =
                     toolInputConfigMap.get(input.key)?.mode ??
-                    (tool.inputs === undefined &&
+                    (hasMissingToolInputs &&
                     (isSystemOrCommercialToolId(tool.id) ||
                       (data.flowNodeType === FlowNodeTypeEnum.pluginModule &&
                         !!input.toolDescription))
@@ -343,8 +344,9 @@ export async function rewriteAppWorkflowToDetail({
                   source: tool.source,
                   version: tool.version ?? '',
                   toolConfig: tool.toolConfig,
-                  config: tool.config ?? {},
-                  inputs: tool.inputs ?? [],
+                  config: tool.config,
+                  isUnavailable: true as const,
+                  ...(tool.unresolvedInputs ? { unresolvedInputs: tool.unresolvedInputs } : {}),
                   templateType: 'personalTool' as const,
                   flowNodeType: FlowNodeTypeEnum.tool,
                   name: 'Invalid',
@@ -353,6 +355,7 @@ export async function rewriteAppWorkflowToDetail({
                   showStatus: false,
                   weight: 0,
                   isTool: true,
+                  inputs: [],
                   outputs: [],
                   configStatus: 'invalid' as const,
                   pluginData: {

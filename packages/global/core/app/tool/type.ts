@@ -3,7 +3,10 @@ import type { StoreEdgeItemType } from '../../workflow/type/edge';
 import type { StoreNodeItemType } from '../../workflow/type/node';
 import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import type { AppChatConfigType } from '../type';
-import { CanonicalAgentToolInputConfigSchema } from '../../workflow/migration';
+import {
+  CanonicalAgentToolInputConfigSchema,
+  CanonicalUnavailableAgentToolSchema
+} from '../../workflow/migration';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -44,7 +47,15 @@ const AgentToolBaseSchema = z.object({
   config: z.record(z.string(), z.any())
 });
 
-export const AgentToolSchema = AgentToolBaseSchema;
+const AvailableAgentToolSchema = AgentToolBaseSchema.extend({
+  isUnavailable: z.undefined().optional(),
+  unresolvedInputs: z.never().optional()
+});
+
+export const AgentToolSchema = z.union([
+  AvailableAgentToolSchema,
+  CanonicalUnavailableAgentToolSchema
+]);
 export type AgentToolType = z.infer<typeof AgentToolSchema>;
 
 // // System tool

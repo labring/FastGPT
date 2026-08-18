@@ -301,6 +301,23 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
   });
 
+  it('skips unavailable tools before resolving runtime definitions', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'missing-tool',
+          config: {},
+          isUnavailable: true,
+          unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+        }
+      ]
+    });
+
+    expect(tools).toEqual([]);
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+  });
+
   const appMap: Record<string, any> = {
     mcp_app: createToolsetApp({
       id: 'mcp_app',

@@ -1,10 +1,12 @@
 import { getNanoid } from '../../../../../common/string/tools';
+import { getElseIFLabel } from '../../../utils';
 import type { IfElseListItemType } from './type';
 
 export const createIfElseBranchId = () => getNanoid();
 
-/** 返回已迁移判断器分支的稳定 handle key。 */
-export const getIfElseBranchHandleKey = (item: IfElseListItemType) => item.branchId ?? '';
+/** 返回稳定分支 handle；旧数据没有 branchId 时回退到历史展示标签。 */
+export const getIfElseBranchHandleKey = (item: IfElseListItemType, index?: number) =>
+  item.branchId ?? (index === undefined ? '' : getElseIFLabel(index));
 
 const ensureUniqueBranchIds = ({
   list,

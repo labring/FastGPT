@@ -64,12 +64,35 @@ describe('AgentToolSchema', () => {
     expect(result.version).toBe('');
   });
 
-  it('rejects historical input snapshots on a regular tool', () => {
+  it('accepts unavailable tools only through the dedicated branch', () => {
+    const result = AgentToolSchema.parse({
+      id: 'missing-tool',
+      config: {},
+      isUnavailable: true,
+      unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+    });
+
+    expect(result).toMatchObject({ id: 'missing-tool', isUnavailable: true });
+    expect(result).not.toHaveProperty('inputs');
+  });
+
+  it('rejects recovery snapshots on a regular tool', () => {
     expect(() =>
       AgentToolSchema.parse({
         id: 'tool-1',
         config: {},
-        inputs: [{ key: 'query', selectedTypeIndex: 1 }]
+        unresolvedInputs: [{ key: 'query' }]
+      })
+    ).toThrow();
+  });
+
+  it('rejects canonical inputs on an unavailable tool', () => {
+    expect(() =>
+      AgentToolSchema.parse({
+        id: 'missing-tool',
+        config: {},
+        isUnavailable: true,
+        inputs: []
       })
     ).toThrow();
   });
