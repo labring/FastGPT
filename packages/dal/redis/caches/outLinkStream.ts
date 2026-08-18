@@ -21,8 +21,9 @@ export const getOutLinkStreamKey = (streamId: string) =>
 /**
  * OutLink Stream Cache。
  *
- * 该 Cache 保持 Wechat/Wecom 的字符串拼接协议；追加和 TTL 在同一 Redis 事务中执行，
- * 读取 miss 返回 undefined，删除结果由 adapter 透传。通道响应和加密编排留在调用方。
+ * 该 Cache 保持 Wechat/Wecom 的字符串拼接协议；首次初始化使用 SET NX 避免重复 callback
+ * 覆盖已有内容，追加和 TTL 在同一 Redis 事务中执行。读取 miss 返回 undefined，删除结果
+ * 由 adapter 透传。通道响应和加密编排留在调用方。
  */
 export class OutLinkStreamCache {
   private readonly redis: RedisCacheAdapter;
@@ -34,6 +35,14 @@ export class OutLinkStreamCache {
   getKey = getOutLinkStreamKey;
 
   private parseTtlSeconds = (ttlSeconds: number) => PositiveSafeIntegerSchema.parse(ttlSeconds);
+
+  /** 原子创建空流；已存在时不覆盖内容，并返回 false。 */
+  initializeIfAbsent = ({ streamId, ttlSeconds }: { streamId: string; ttlSeconds: number }) =>
+    this.redis.setIfAbsent({
+      key: getOutLinkStreamKey(streamId),
+      value: '',
+      ttlSeconds: this.parseTtlSeconds(ttlSeconds)
+    });
 
   /** 初始化或追加响应片段，并原子刷新对应 TTL。 */
   append = ({

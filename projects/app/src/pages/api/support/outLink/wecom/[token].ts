@@ -7,23 +7,18 @@ async function handler(
   req: ApiRequestProps<OutLinkWecomBody, OutLinkWecomQuery>,
   res: ApiResponseType<any>
 ): Promise<any> {
-  const { token, type } = req.query;
+  const { token } = req.query;
   const result = await plusRequest({
+    method: req.method,
     url: `support/outLink/wecom/${token}`,
-    params: {
-      ...req.query,
-      type
-    },
+    params: req.query,
     data: req.body
   });
   if (result.data?.data?.message) {
-    // chanllege
-    res.send(result.data.data.message);
-    res.end();
+    return res.send(result.data.data.message);
   }
 
-  res.send('success');
-  res.end();
+  return res.send('success');
 }
 
 export default handler;

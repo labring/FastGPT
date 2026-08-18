@@ -55,7 +55,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=20.19.0",
+    "node": ">=22.23.2",
     "pnpm": "10.x"
   },
   "license": "Apache-2.0",

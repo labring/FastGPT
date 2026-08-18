@@ -15,7 +15,23 @@ import { getFormatedFilename } from '../../utils';
 import type { ChatS3SourceType } from './type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { createUploadConstraints } from '../../utils/uploadConstraints';
-import { encodeS3ObjectKey } from '../../keySanitizer';
+import { encodeS3ObjectKeySegment } from '../../keySanitizer';
+
+const getChatFilePrefix = ({
+  sourceType,
+  sourceId,
+  chatId,
+  uId
+}: {
+  sourceType: ChatS3SourceType;
+  sourceId: string;
+  chatId?: string;
+  uId?: string;
+}) =>
+  [S3Sources.chat, sourceType, sourceId, uId, chatId]
+    .filter((segment): segment is string => Boolean(segment))
+    .map(encodeS3ObjectKeySegment)
+    .join('/');
 
 const getChatFileS3Key = ({
   sourceType,
@@ -31,12 +47,12 @@ const getChatFileS3Key = ({
   filename?: string;
 }) => {
   const { formatedFilename, extension } = getFormatedFilename(filename);
-  const basePrefix = [S3Sources.chat, sourceType, sourceId, uId, chatId].filter(Boolean).join('/');
+  const basePrefix = getChatFilePrefix({ sourceType, sourceId, chatId, uId });
 
-  const fileKey = [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/');
+  const fileKey = `${formatedFilename}${extension ? `.${extension}` : ''}`;
   return {
-    fileKey: encodeS3ObjectKey(fileKey),
-    fileParsedPrefix: encodeS3ObjectKey([basePrefix, `${formatedFilename}-parsed`].join('/'))
+    fileKey: `${basePrefix}/${encodeS3ObjectKeySegment(fileKey)}`,
+    fileParsedPrefix: `${basePrefix}/${encodeS3ObjectKeySegment(`${formatedFilename}-parsed`)}`
   };
 };
 
@@ -144,7 +160,7 @@ export class S3ChatSource extends S3PrivateBucket {
     const { sourceType, sourceId, chatId, uId } = DelChatFileByPrefixSchema.parse(params);
 
     const rawPrefix = [S3Sources.chat, sourceType, sourceId, uId, chatId].filter(Boolean).join('/');
-    const prefix = encodeS3ObjectKey(rawPrefix);
+    const prefix = getChatFilePrefix({ sourceType, sourceId, chatId, uId });
     const publicBucket = global.s3BucketMap[S3Buckets.public];
 
     const prefixes = [...new Set([prefix, rawPrefix])];
@@ -153,7 +169,10 @@ export class S3ChatSource extends S3PrivateBucket {
 
     if (sourceType === ChatSourceTypeEnum.app) {
       const rawLegacyPrefix = [S3Sources.chat, sourceId, uId, chatId].filter(Boolean).join('/');
-      const legacyPrefix = encodeS3ObjectKey(rawLegacyPrefix);
+      const legacyPrefix = [S3Sources.chat, sourceId, uId, chatId]
+        .filter((segment): segment is string => Boolean(segment))
+        .map(encodeS3ObjectKeySegment)
+        .join('/');
       const legacyPrefixes = [...new Set([legacyPrefix, rawLegacyPrefix])];
       await Promise.all(legacyPrefixes.map((item) => this.addDeleteJob({ prefix: item })));
       await Promise.all(legacyPrefixes.map((item) => publicBucket.addDeleteJob({ prefix: item })));
@@ -194,9 +213,7 @@ export class S3ChatSource extends S3PrivateBucket {
     uId: string;
   }) {
     const { sourceType, sourceId, chatId, uId } = params;
-    return encodeS3ObjectKey(
-      [S3Sources.chat, sourceType, sourceId, uId, chatId].filter(Boolean).join('/')
-    );
+    return getChatFilePrefix({ sourceType, sourceId, chatId, uId });
   }
 }
 

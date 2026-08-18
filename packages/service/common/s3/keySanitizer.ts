@@ -5,7 +5,7 @@ import { assertStorageObjectKey } from '@fastgpt-sdk/storage';
  * Percent signs are encoded as literal input so distinct raw segments cannot
  * collapse to the same storage key.
  */
-const encodeObjectKeySegment = (segment: string): string =>
+export const encodeS3ObjectKeySegment = (segment: string): string =>
   encodeURIComponent(segment).replace(
     /[()]/g,
     (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
@@ -19,7 +19,7 @@ const encodeObjectKeySegment = (segment: string): string =>
 export function encodeS3ObjectKey(key: string): string {
   const encodedKey = (() => {
     try {
-      return key.split('/').map(encodeObjectKeySegment).join('/');
+      return key.split('/').map(encodeS3ObjectKeySegment).join('/');
     } catch (error) {
       // Normalize malformed UTF-16 into the shared SDK validation error.
       assertStorageObjectKey(key);

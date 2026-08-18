@@ -8,7 +8,7 @@ import {
   WechatLogoutResponseSchema,
   type WechatLogoutBodyType,
   type WechatLogoutResponseType
-} from '@fastgpt/global/openapi/support/outLink/api';
+} from '@fastgpt/global/openapi/support/outLink/provider/wechat';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { assertWechatOutLink } from '@fastgpt/service/support/outLink/wechat/utils';
 
