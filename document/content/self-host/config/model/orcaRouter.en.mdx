@@ -1,0 +1,44 @@
+---
+title: OrcaRouter Integration Example
+description: OrcaRouter integration example for FastGPT
+---
+
+[OrcaRouter](https://www.orcarouter.ai) is an AI model routing gateway that exposes models from OpenAI, Anthropic, Google, DeepSeek, Qwen and xAI behind a single API key and endpoint. Its API is compatible with the OpenAI format, making it easy to integrate with FastGPT.
+
+Before reading this guide, make sure you've read the [Model Configuration Guide](./intro.en.mdx).
+
+## 1. Get an API Key
+
+1. Visit [OrcaRouter](https://www.orcarouter.ai), register and log in.
+2. Go to the console and create an API Key (keys start with `sk-orca-`).
+
+## 2. Add Models
+
+OrcaRouter models are not part of the built-in preset list, so add them through the [Add a Custom Model](./intro.en.mdx#add-a-custom-model) flow on the `Model Configuration` page — one model per OrcaRouter model ID. Because OrcaRouter's API is OpenAI-compatible, choose `OpenAI` as the model provider, or select `Other`.
+
+### Recommended Model List
+
+| Model ID                       | Description                                          |
+| ------------------------------ | ---------------------------------------------------- |
+| `orcarouter/auto`              | Automatically routes each request to the best model (**default**) |
+| `openai/gpt-5.5`               | OpenAI flagship model                                |
+| `openai/gpt-4o`                | OpenAI multimodal model                              |
+| `anthropic/claude-sonnet-4.6`  | Anthropic balanced model                             |
+| `anthropic/claude-opus-4.8`    | Anthropic flagship model                             |
+| `google/gemini-3.1-flash-lite` | Google fast, low-cost model                          |
+| `deepseek/deepseek-v4-flash-0731` | DeepSeek fast reasoning model                     |
+| `grok/grok-4.3`                | xAI model                                            |
+| `qwen/qwen3.7-max`             | Qwen flagship model                                  |
+
+## 3. Add a Model Provider
+
+On the Model providers page, add a new OrcaRouter channel:
+
+- Protocol type: Select **OpenAI** (OrcaRouter is OpenAI-compatible)
+- Proxy URL: `https://api.orcarouter.ai/v1`
+- Enter your OrcaRouter API Key
+- Select the models you just added
+
+## 4. Test Models
+
+After configuration, click the test button in the channel list to verify the models are working properly.

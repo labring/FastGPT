@@ -1,0 +1,44 @@
+---
+title: OrcaRouter 接入示例
+description: OrcaRouter 接入示例
+---
+
+[OrcaRouter](https://www.orcarouter.ai) 是一个 AI 模型路由网关，通过单个 API Key 和端点提供 OpenAI、Anthropic、Google、DeepSeek、Qwen、xAI 等多家厂商的模型。其 API 兼容 OpenAI 格式，可以方便地接入 FastGPT。
+
+在阅读该章之前，请先确保你阅读了[模型配置说明](./intro.mdx)。
+
+## 1. 获取 API Key
+
+1. 访问 [OrcaRouter](https://www.orcarouter.ai)，注册并登录账号。
+2. 进入控制台，创建 API Key（Key 以 `sk-orca-` 开头）。
+
+## 2. 新增模型
+
+OrcaRouter 的模型不在系统内置的模型列表中，需要在`模型配置`页面通过[新增自定义模型](./intro.mdx#新增自定义模型)添加——每个 OrcaRouter 模型 ID 添加一个模型。由于 OrcaRouter 的 API 兼容 OpenAI 格式，模型提供商（provider）选择 **OpenAI**，或选择 `Other`。
+
+### 推荐模型列表
+
+| 模型 ID | 说明 |
+|---------|------|
+| `orcarouter/auto` | 自动将每个请求路由到最优模型（**默认**） |
+| `openai/gpt-5.5` | OpenAI 旗舰模型 |
+| `openai/gpt-4o` | OpenAI 多模态模型 |
+| `anthropic/claude-sonnet-4.6` | Anthropic 均衡模型 |
+| `anthropic/claude-opus-4.8` | Anthropic 旗舰模型 |
+| `google/gemini-3.1-flash-lite` | Google 快速低成本模型 |
+| `deepseek/deepseek-v4-flash-0731` | DeepSeek 快速推理模型 |
+| `grok/grok-4.3` | xAI 模型 |
+| `qwen/qwen3.7-max` | Qwen 旗舰模型 |
+
+## 3. 新增模型渠道
+
+在模型渠道页，新增一个 OrcaRouter 的渠道：
+
+- 协议类型选择 **OpenAI**（OrcaRouter 兼容 OpenAI 协议）
+- 代理地址填写：`https://api.orcarouter.ai/v1`
+- 填写 OrcaRouter 的 API Key
+- 选择刚刚添加的模型
+
+## 4. 测试模型
+
+配置完成后，可以在渠道列表中点击测试按钮，验证模型是否正常工作。
