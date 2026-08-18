@@ -1,9 +1,5 @@
 import { createContext } from 'use-context-selector';
-import type {
-  FlowNodeTemplateType,
-  FlowNodeItemType,
-  StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeTemplateType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
 import React, {
@@ -56,7 +52,6 @@ export const WorkflowNodeDataContext = createContext<WorkflowNodeDataType>({
 export type WorkflowDataContextType = {
   basicNodeTemplates: FlowNodeTemplateType[];
   workflowStartNode: FlowNodeItemType | undefined;
-  systemConfigNode: StoreNodeItemType | undefined;
   allNodeFolded: boolean;
   hasToolNode: boolean;
   hasLoopRunNode: boolean;
@@ -82,7 +77,6 @@ export type WorkflowDataContextType = {
 export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>({
   basicNodeTemplates: [],
   workflowStartNode: undefined,
-  systemConfigNode: undefined,
   allNodeFolded: false,
   hasToolNode: false,
   hasLoopRunNode: false,
@@ -139,7 +133,6 @@ const WorkflowInitContextProvider = ({
     const foldedNodesMap: Record<string, boolean> = {};
     const compareNodeList: any[] = [];
     let workflowStartNode: FlowNodeItemType | undefined = undefined;
-    let systemConfigNode: StoreNodeItemType | undefined = undefined;
     let allNodeFolded = true;
     let hasToolNode = false;
     let hasLoopRunNode = false;
@@ -197,9 +190,6 @@ const WorkflowInitContextProvider = ({
       if (flowNodeType === FlowNodeTypeEnum.workflowStart) {
         workflowStartNode = node.data;
       }
-      if (flowNodeType === FlowNodeTypeEnum.systemConfig) {
-        systemConfigNode = node.data;
-      }
       // Max context computed
       const map: Record<string, boolean> = {
         [FlowNodeTypeEnum.chatNode]: true,
@@ -231,7 +221,6 @@ const WorkflowInitContextProvider = ({
       childrenNodeIdListMap,
       selectedNodesMap,
       workflowStartNode,
-      systemConfigNode,
       allNodeFolded,
       hasToolNode,
       hasLoopRunNode,
@@ -260,10 +249,6 @@ const WorkflowInitContextProvider = ({
   const workflowStartNode = useMemoEnhance(
     () => nodeFormat.workflowStartNode,
     [nodeFormat.workflowStartNode]
-  );
-  const systemConfigNode = useMemoEnhance(
-    () => nodeFormat.systemConfigNode,
-    [nodeFormat.systemConfigNode]
   );
   const foldedNodesMap = useMemoEnhance(
     () => nodeFormat.foldedNodesMap,
@@ -373,7 +358,6 @@ const WorkflowInitContextProvider = ({
       nodeIds,
       basicNodeTemplates,
       workflowStartNode,
-      systemConfigNode,
       allNodeFolded,
       hasToolNode,
       hasLoopRunNode,
@@ -396,7 +380,6 @@ const WorkflowInitContextProvider = ({
     nodeIds,
     basicNodeTemplates,
     workflowStartNode,
-    systemConfigNode,
     allNodeFolded,
     hasToolNode,
     hasLoopRunNode,

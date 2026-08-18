@@ -1,6 +1,5 @@
 import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
-import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -45,9 +44,6 @@ export const uiWorkflow2StoreWorkflow = ({
 }) => {
   const getNodeById = (nodeId: string | null | undefined) =>
     nodes.find((node) => node.data.nodeId === nodeId)?.data;
-  const systemConfigNode = nodes.find(
-    (node) => node.data.flowNodeType === FlowNodeTypeEnum.systemConfig
-  )?.data;
   const childrenNodeIdListMap = nodes.reduce<Record<string, string[]>>((map, node) => {
     const parentNodeId = node.data.parentNodeId;
     if (!parentNodeId) return map;
@@ -61,8 +57,7 @@ export const uiWorkflow2StoreWorkflow = ({
       .map((edge) => edge.target)
   );
 
-  const { nodes: formatNodes } = migrateSystemConfigToChatConfig({
-    nodes: nodes.map((item) => ({
+  const formatNodes = nodes.map((item) => ({
       nodeId: item.data.nodeId,
       parentNodeId: item.data.parentNodeId,
       name: item.data.name,
@@ -83,7 +78,6 @@ export const uiWorkflow2StoreWorkflow = ({
               ),
         edges,
         chatConfig,
-        systemConfigNode,
         getNodeById,
         childrenNodeIdListMap
       }),
@@ -92,9 +86,7 @@ export const uiWorkflow2StoreWorkflow = ({
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,
       catchError: item.data.catchError
-    })),
-    chatConfig
-  });
+    }));
 
   const nodeIdSet = new Set(formatNodes.map((node) => node.nodeId));
   const formatEdges: StoreEdgeItemType[] = edges
@@ -130,7 +122,6 @@ const filterUnselectableReferenceInputs = ({
   inputs,
   edges,
   chatConfig,
-  systemConfigNode,
   getNodeById,
   childrenNodeIdListMap
 }: {
@@ -138,7 +129,6 @@ const filterUnselectableReferenceInputs = ({
   inputs: FlowNodeInputItemType[];
   edges: Edge<any>[];
   chatConfig?: AppChatConfigType;
-  systemConfigNode?: FlowNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   childrenNodeIdListMap: Record<string, string[]>;
 }) => {
@@ -147,7 +137,6 @@ const filterUnselectableReferenceInputs = ({
 
     const sourceNodes = getNodeAllSource({
       nodeId: node.nodeId,
-      systemConfigNode,
       getNodeById,
       edges,
       chatConfig: chatConfig ?? ({} as AppChatConfigType),
@@ -207,14 +196,12 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 
 export const getEditorVariables = ({
   nodeId,
-  systemConfigNode,
   getNodeById,
   edges,
   appDetail,
   t
 }: {
   nodeId: string;
-  systemConfigNode?: StoreNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge<any>[];
   appDetail: AppDetailType;
@@ -237,7 +224,6 @@ export const getEditorVariables = ({
 
   const sourceNodes = getNodeAllSource({
     nodeId,
-    systemConfigNode,
     getNodeById,
     edges,
     chatConfig: appDetail.chatConfig,

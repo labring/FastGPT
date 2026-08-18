@@ -4,11 +4,7 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import {
-  adaptCatchError,
-  storeNode2FlowNode,
-  storeEdge2RenderEdge
-} from '@/web/core/workflow/utils';
+import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
@@ -37,7 +33,6 @@ import {
   isAgentGeneratedToolInput,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -306,17 +301,15 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       },
       isInit?: boolean
     ) => {
-      const migratedWorkflow = migrateWorkflowToCurrent({
+      const workflow = {
         nodes: e.nodes,
         edges: e.edges,
         chatConfig: e.chatConfig ?? appDetail.chatConfig
-      });
-      const storeNodes = migratedWorkflow.nodes;
-
-      adaptCatchError(storeNodes, migratedWorkflow.edges);
+      };
+      const storeNodes = workflow.nodes;
 
       const toolNodeIds = new Set(
-        migratedWorkflow.edges
+        workflow.edges
           .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
@@ -324,7 +317,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         storeNodes?.map((item) =>
           storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
         ) || [];
-      const edges = migratedWorkflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+      const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -342,7 +335,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             edges: edges,
             title: t('app:app.version_initial'),
             isSaved: true,
-            chatConfig: migratedWorkflow.chatConfig
+            chatConfig: workflow.chatConfig
           }
         ]);
       }
@@ -350,7 +343,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // Init memory data
       setNodes(nodes);
       setEdges(edges);
-      setAppDetail((state) => ({ ...state, chatConfig: migratedWorkflow.chatConfig }));
+      setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
     },
     [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
   );

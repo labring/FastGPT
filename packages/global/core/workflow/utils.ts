@@ -71,11 +71,13 @@ export const getSelectedInputRenderTypeIndex = (input: {
   selectedType?: FlowNodeInputItemType['selectedType'];
 }) => {
   const selectedRenderType = getSelectedInputRenderType(input);
-  const selectedTypeIndex = selectedRenderType
+  const selectedRenderTypePosition = selectedRenderType
     ? input.renderTypeList?.findIndex((renderType) => renderType === selectedRenderType)
     : -1;
 
-  return selectedTypeIndex !== undefined && selectedTypeIndex >= 0 ? selectedTypeIndex : 0;
+  return selectedRenderTypePosition !== undefined && selectedRenderTypePosition >= 0
+    ? selectedRenderTypePosition
+    : 0;
 };
 
 /**
@@ -96,10 +98,6 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
   return false;
 };
 
-/* node  */
-export const getGuideModule = (nodes: StoreNodeItemType[]) =>
-  nodes.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
-
 /** 判断 App 工作流是否有 Agent 或 ToolCall 节点开启 Sandbox。 */
 export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
   nodes.some(
@@ -111,120 +109,34 @@ export const isAppSandboxEnabledInNodes = (nodes: StoreNodeItemType[]) =>
       )
   );
 
-const isConfigMissing = (value: unknown) => value === undefined || value === null;
-
-const getSystemConfigInputValue = <T>(guideModules: StoreNodeItemType | undefined, key: string) =>
-  guideModules?.inputs?.find((item) => item.key === key)?.value as T | undefined;
-
-export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
-  const welcomeText: string =
-    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.welcomeText) ?? '';
-
-  const welcomeQuestions: string[] =
-    getSystemConfigInputValue<string[]>(guideModules, NodeInputKeyEnum.welcomeQuestions) ?? [];
-
-  const variables: VariableItemType[] =
-    getSystemConfigInputValue<VariableItemType[]>(guideModules, NodeInputKeyEnum.variables) ?? [];
-
-  // Adapt old version
-  const questionGuideVal = getSystemConfigInputValue<AppQGConfigType | boolean>(
-    guideModules,
-    NodeInputKeyEnum.questionGuide
-  );
-  const questionGuide: AppQGConfigType =
-    typeof questionGuideVal === 'boolean'
-      ? { ...defaultQGConfig, open: questionGuideVal }
-      : (questionGuideVal ?? defaultQGConfig);
-
-  const ttsConfig: AppTTSConfigType =
-    getSystemConfigInputValue<AppTTSConfigType>(guideModules, NodeInputKeyEnum.tts) ??
-    defaultTTSConfig;
-
-  const whisperConfig: AppWhisperConfigType =
-    getSystemConfigInputValue<AppWhisperConfigType>(guideModules, NodeInputKeyEnum.whisper) ??
-    defaultWhisperConfig;
-
-  const scheduledTriggerConfig: AppScheduledTriggerConfigType | undefined =
-    getSystemConfigInputValue<AppScheduledTriggerConfigType>(
-      guideModules,
-      NodeInputKeyEnum.scheduleTrigger
-    ) ?? undefined;
-
-  const chatInputGuide: ChatInputGuideConfigType =
-    getSystemConfigInputValue<ChatInputGuideConfigType>(
-      guideModules,
-      NodeInputKeyEnum.chatInputGuide
-    ) ?? defaultChatInputGuideConfig;
-
-  const instruction: string =
-    getSystemConfigInputValue<string>(guideModules, NodeInputKeyEnum.instruction) ?? '';
-
-  const autoExecute: AppAutoExecuteConfigType =
-    getSystemConfigInputValue<AppAutoExecuteConfigType>(
-      guideModules,
-      NodeInputKeyEnum.autoExecute
-    ) ?? defaultAutoExecuteConfig;
-
-  return {
-    welcomeText,
-    welcomeQuestions,
-    variables,
-    questionGuide,
-    ttsConfig,
-    whisperConfig,
-    scheduledTriggerConfig,
-    chatInputGuide,
-    instruction,
-    autoExecute
-  };
-};
-
-// Get app chat config: db > nodes
+// Get app chat config from canonical chatConfig and per-chat overrides.
 export const getAppChatConfig = ({
   chatConfig,
-  systemConfigNode,
   storeVariables,
   storeWelcomeText,
   isPublicFetch = false
 }: {
   chatConfig?: AppChatConfigType;
-  systemConfigNode?: StoreNodeItemType;
   storeVariables?: VariableItemType[];
   storeWelcomeText?: string;
   isPublicFetch: boolean;
 }): AppChatConfigType => {
-  const {
-    welcomeText,
-    welcomeQuestions,
-    variables,
-    questionGuide,
-    ttsConfig,
-    whisperConfig,
-    scheduledTriggerConfig,
-    chatInputGuide,
-    instruction,
-    autoExecute
-  } = splitGuideModule(systemConfigNode);
-
   const welcomeConfig: AppWelcomeConfigType = {
     welcomeText:
       storeWelcomeText ??
       chatConfig?.welcomeConfig?.welcomeText ??
-      chatConfig?.welcomeText ??
-      welcomeText,
-    welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions ?? welcomeQuestions
+      chatConfig?.welcomeText,
+    welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions
   };
 
   const config: AppChatConfigType = {
-    questionGuide,
-    ttsConfig,
-    whisperConfig,
-    scheduledTriggerConfig,
-    chatInputGuide,
-    instruction,
-    autoExecute,
+    questionGuide: defaultQGConfig,
+    ttsConfig: defaultTTSConfig,
+    whisperConfig: defaultWhisperConfig,
+    chatInputGuide: defaultChatInputGuideConfig,
+    autoExecute: defaultAutoExecuteConfig,
     ...chatConfig,
-    variables: storeVariables ?? chatConfig?.variables ?? variables,
+    variables: storeVariables ?? chatConfig?.variables ?? [],
     welcomeConfig,
     welcomeText: welcomeConfig.welcomeText
   };
