@@ -245,7 +245,7 @@ export const reportCRMEnterpriseRechargeAmount = async ({
     !apiKey ||
     !teamId ||
     !Number.isFinite(cumulativeRechargeAmount) ||
-    cumulativeRechargeAmount < 0
+    cumulativeRechargeAmount <= 0
   ) {
     return false;
   }

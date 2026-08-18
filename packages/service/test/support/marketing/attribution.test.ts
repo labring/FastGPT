@@ -173,16 +173,19 @@ describe('reportCRMEnterpriseRechargeAmount', () => {
     );
   });
 
-  it('rejects invalid amounts before making a CRM request', async () => {
-    await expect(
-      reportCRMEnterpriseRechargeAmount({
-        teamId: 'team-1',
-        cumulativeRechargeAmount: -1
-      })
-    ).resolves.toBe(false);
+  it.each([0, -1, Number.NaN])(
+    'rejects a non-positive or invalid amount (%s) before making a CRM request',
+    async (cumulativeRechargeAmount) => {
+      await expect(
+        reportCRMEnterpriseRechargeAmount({
+          teamId: 'team-1',
+          cumulativeRechargeAmount
+        })
+      ).resolves.toBe(false);
 
-    expect(mocks.patch).not.toHaveBeenCalled();
-  });
+      expect(mocks.patch).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('reportCRMVisitorIdentity', () => {
