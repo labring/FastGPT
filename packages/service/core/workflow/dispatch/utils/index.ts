@@ -45,10 +45,6 @@ import {
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
-import {
-  LegacyWorkflowDataSchema,
-  migrateWorkflowToCurrent
-} from '@fastgpt/global/core/workflow/migration';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -520,21 +516,6 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
-  // runtime 入口只调用一次公共 workflow 迁移；保留 RuntimeNode 的执行期字段。
-  const workflowInput = LegacyWorkflowDataSchema.safeParse({
-    nodes,
-    edges
-  });
-  if (workflowInput.success) {
-    const canonicalNodes = new Map(
-      migrateWorkflowToCurrent(workflowInput.data).nodes.map((node) => [node.nodeId, node])
-    );
-    nodes.forEach((node) => {
-      const canonicalNode = canonicalNodes.get(node.nodeId);
-      if (canonicalNode) node.inputs = canonicalNode.inputs;
-    });
-  }
-
   const mergeToolNodeInputs = ({
     node,
     jsonSchema,
@@ -677,7 +658,6 @@ export const rewriteRuntimeWorkFlow = async ({
           const toolList = (await getMCPChildren(app)) as RuntimeMcpTool[];
           const currentToolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
 
-          // 旧版 mcpToolsetVal.toolId 只用于识别历史 ToolSet，生成节点必须使用 parent App id。
           const toolSetId = toolSetNode.pluginId;
           if (!toolSetId) continue;
           toolList.forEach((tool, index) => {

@@ -2,8 +2,6 @@ import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   getToolNameCandidates,
-  getToolIdentityKey,
-  isSystemOrCommercialToolId,
   isDebugToolSource,
   isTeamPluginSource,
   splitCombineToolId,
@@ -43,7 +41,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   appData2FlowNodeIO,
@@ -632,14 +630,6 @@ export const getAgentRuntimeTools = async ({
           };
         }
 
-        const legacyDefaultMode =
-          tool.inputs === undefined
-            ? isSystemOrCommercialToolId(tool.id)
-              ? ('allAgentGenerated' as const)
-              : toolNode.flowNodeType === FlowNodeTypeEnum.pluginModule
-                ? ('toolDescription' as const)
-                : undefined
-            : undefined;
         const savedInputConfigMap = new Map(
           (tool.inputs ?? []).flatMap((input) => {
             const result = AgentToolInputConfigSchema.safeParse(input);
@@ -649,12 +639,7 @@ export const getAgentRuntimeTools = async ({
         toolNode.inputs = toolNode.inputs.map((input) =>
           initAgentToolInputType({
             input,
-            mode:
-              savedInputConfigMap.get(input.key)?.mode ??
-              (legacyDefaultMode === 'allAgentGenerated' ||
-              (legacyDefaultMode === 'toolDescription' && input.toolDescription)
-                ? AgentToolInputModeEnum.agentGenerated
-                : undefined)
+            mode: savedInputConfigMap.get(input.key)?.mode
           })
         );
         const configuredParams = filterToolConfiguredParams({
