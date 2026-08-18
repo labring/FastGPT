@@ -192,20 +192,42 @@ export type AuthResponseType = z.infer<typeof AuthResponseSchema>;
 
 /* ====== Chat test ====== */
 export const ChatTestPropsSchema = z.object({
-  messages: z.array(ChatCompletionMessageParamSchema).meta({ description: '消息列表' }),
-  responseChatItemId: z
-    .string()
-    .nullish()
-    .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
-  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({ description: '节点列表' }),
-  edges: z.array(StoreEdgeItemTypeSchema).meta({ description: '边列表' }),
-  chatConfig: OpenAPIAppChatConfigSchema.meta({ description: '聊天配置' }),
+  messages: z.array(ChatCompletionMessageParamSchema).meta({
+    example: [{ role: 'user', content: '你好' }],
+    description: '消息列表，最后一条消息作为本次用户问题'
+  }),
+  responseChatItemId: z.string().nullish().meta({
+    example: 'response-chat-item-id',
+    description: '自定义响应消息 ID，不传时自动生成'
+  }),
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({
+    example: [],
+    description: '临时执行的工作流节点列表'
+  }),
+  edges: z.array(StoreEdgeItemTypeSchema).meta({
+    example: [],
+    description: '临时执行的工作流连线列表'
+  }),
+  chatConfig: OpenAPIAppChatConfigSchema.meta({
+    example: {},
+    description: '应用聊天配置'
+  }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
+    example: {},
     description: '全局变量或插件输入'
   }),
-  appId: ObjectIdSchema.meta({ description: '应用ID' }),
-  appName: z.string().meta({ description: '应用名称' }),
-  chatId: z.string().meta({ description: '聊天ID' })
+  appId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '应用 ID'
+  }),
+  appName: z.string().meta({
+    example: '主页助手',
+    description: '应用名称'
+  }),
+  chatId: z.string().meta({
+    example: 'chat-id',
+    description: '会话 ID'
+  })
 });
 export type ChatTestPropsType = z.infer<typeof ChatTestPropsSchema>;
 
@@ -218,42 +240,6 @@ export type ChatTestPropsType = z.infer<typeof ChatTestPropsSchema>;
  * ============================================================================ */
 
 export const ChatHomeBodySchema = ChatTestPropsSchema.extend({
-  messages: ChatTestPropsSchema.shape.messages.meta({
-    example: [{ role: 'user', content: '你好' }],
-    description: '消息列表，最后一条消息作为本次用户问题'
-  }),
-  responseChatItemId: ChatTestPropsSchema.shape.responseChatItemId.meta({
-    example: 'response-chat-item-id',
-    description: '自定义响应消息 ID，不传时自动生成'
-  }),
-  nodes: ChatTestPropsSchema.shape.nodes.meta({
-    example: [],
-    description: '临时执行的工作流节点列表'
-  }),
-  edges: ChatTestPropsSchema.shape.edges.meta({
-    example: [],
-    description: '临时执行的工作流连线列表'
-  }),
-  chatConfig: ChatTestPropsSchema.shape.chatConfig.meta({
-    example: {},
-    description: '应用聊天配置'
-  }),
-  variables: ChatTestPropsSchema.shape.variables.meta({
-    example: {},
-    description: '全局变量或插件输入'
-  }),
-  appId: ChatTestPropsSchema.shape.appId.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
-  }),
-  appName: ChatTestPropsSchema.shape.appName.meta({
-    example: '主页助手',
-    description: '应用名称'
-  }),
-  chatId: ChatTestPropsSchema.shape.chatId.meta({
-    example: 'chat-id',
-    description: '会话 ID'
-  }),
   retainDatasetCite: z.boolean().optional().meta({
     example: true,
     description: '是否保留知识库引用信息'
