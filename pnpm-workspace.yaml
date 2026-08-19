@@ -120,6 +120,8 @@ onlyBuiltDependencies:
   - vue-demi
 
 overrides:
+  '@tootallnate/once': 2.0.1
+  'proxy-agent>pac-proxy-agent': 7.2.0
   '@swc/helpers': ^0.5.23
   '@types/react': ^18
   '@types/react-dom': ^18
