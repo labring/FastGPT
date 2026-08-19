@@ -1201,7 +1201,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(mcpToolNode.jsonSchema).toEqual(toolAInputSchema);
     expect(mcpToolNode.intro).toBe('tool A description');
     expect(mcpToolNode.inputs[0]).toMatchObject({
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedType: FlowNodeInputTypeEnum.input,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,
@@ -1220,8 +1220,12 @@ describe('rewriteRuntimeWorkFlow', () => {
           key: 'y',
           valueType: 'number',
           required: true,
-          renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-          selectedType: FlowNodeInputTypeEnum.numberInput
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.numberInput,
+            FlowNodeInputTypeEnum.reference
+          ],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
         }
       ]
     } as any);
@@ -1230,11 +1234,11 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     const toolBInputSchema = {
       type: 'object',
-      properties: { y: { type: 'number', isToolParam: true } }
+      properties: { y: { type: 'number', isToolParam: false } }
     };
     const toolBRequestSchema = {
       type: 'object',
-      properties: { y: { type: 'number', isToolParam: true } }
+      properties: { y: { type: 'number', isToolParam: false } }
     };
     setupFindByIdMap({
       'toolset-1': {
@@ -1270,6 +1274,75 @@ describe('rewriteRuntimeWorkFlow', () => {
         FlowNodeInputTypeEnum.reference
       ]
     });
+  });
+
+  it('should use the remote default only when a saved tool input has no selection', async () => {
+    const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
+      toolConfig: { mcpTool: { toolId: 'mcp-toolset-1/toolA' } },
+      inputs: [
+        {
+          key: 'query',
+          valueType: 'string',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    } as any);
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      toolConfig: { httpTool: { toolId: 'http-toolset-1/toolB' } },
+      inputs: [
+        {
+          key: 'count',
+          valueType: 'number',
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference]
+        }
+      ]
+    } as any);
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'toolA',
+                    inputSchema: {
+                      type: 'object',
+                      properties: { query: { type: 'string', isToolParam: true } }
+                    }
+                  }
+                ]
+              },
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolB',
+                    inputSchema: {
+                      type: 'object',
+                      properties: { count: { type: 'number', isToolParam: false } }
+                    },
+                    requestSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team1',
+      nodes: [mcpToolNode, httpToolNode],
+      edges: []
+    });
+
+    expect(mcpToolNode.inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(httpToolNode.inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.numberInput);
   });
 
   it('should fall back to inputSchema for legacy scalar HTTP request schemas', async () => {

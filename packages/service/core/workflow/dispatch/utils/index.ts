@@ -534,13 +534,11 @@ export const rewriteRuntimeWorkFlow = async ({
         const savedInput = savedInputMap.get(input.key);
         if (!savedInput) return input;
 
-        const selectedType = input.isToolParam
-          ? FlowNodeInputTypeEnum.agentGenerated
-          : getSavedToolInputSelectedType({
-              savedInput,
-              defaultInput: input,
-              allowUserChatInputAgentGenerated: true
-            });
+        const selectedType = getSavedToolInputSelectedType({
+          savedInput,
+          defaultInput: input,
+          allowUserChatInputAgentGenerated: true
+        });
         const renderTypeList = selectedType
           ? Array.from(
               new Set([selectedType, ...savedInput.renderTypeList, ...input.renderTypeList])
