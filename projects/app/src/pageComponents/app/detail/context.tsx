@@ -149,9 +149,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     const { avatar, intro, ...rest } = data;
     setAppDetail((state) => ({
       ...state,
-      ...rest,
-      ...(avatar !== undefined && { avatar: avatar ?? '' }),
-      ...(intro !== undefined && { intro: intro ?? '' })
+      ...data
     }));
   });
 

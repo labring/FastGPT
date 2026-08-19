@@ -1,8 +1,5 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
@@ -128,22 +125,6 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
       model: MongoApp,
       isFolderType
     });
-  }
-
-  const shouldNormalizeWorkflow =
-    nodes !== undefined || edges !== undefined || chatConfig !== undefined;
-  const normalizedWorkflow = shouldNormalizeWorkflow
-    ? await migrateWorkflowToCurrent(
-        {
-          nodes: nodes ?? app.modules ?? [],
-          edges: edges ?? app.edges ?? [],
-          chatConfig: chatConfig ?? app.chatConfig
-        },
-        getWorkflowMigrationOptions()
-      )
-    : undefined;
-  if (normalizedWorkflow) {
-    await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
   }
 
   const onUpdate = async (session?: ClientSession) => {

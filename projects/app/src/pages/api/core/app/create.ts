@@ -82,15 +82,6 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     }>('user', 'username')
     .lean();
 
-  const workflow = await migrateWorkflowToCurrent(
-    {
-      nodes: modules ?? [],
-      edges: edges ?? [],
-      chatConfig
-    },
-    getWorkflowMigrationOptions()
-  );
-
   // 创建app
   const appId = await onCreateApp({
     parentId,
@@ -109,15 +100,12 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
           })
         );
 
-        return removeUnauthModels({
-          modules: workflow.nodes,
-          allowedModels: myModels
-        });
+        return removeUnauthModels({ modules, allowedModels: myModels });
       }
-      return workflow.nodes;
+      return modules;
     })(),
-    edges: workflow.edges,
-    chatConfig: workflow.chatConfig,
+    edges,
+    chatConfig,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -197,11 +185,15 @@ export const onCreateApp = async ({
     }
   }
 
-  const normalizedWorkflow = {
-    nodes: modules ?? [],
-    edges: edges ?? [],
-    chatConfig: chatConfig ?? {}
-  };
+  // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
+  const normalizedWorkflow = await migrateWorkflowToCurrent(
+    {
+      nodes: modules ?? [],
+      edges: edges ?? [],
+      chatConfig
+    },
+    getWorkflowMigrationOptions()
+  );
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
@@ -322,22 +314,23 @@ export const onUpdateAppWorkflow = async ({
   modules,
   edges,
   chatConfig,
-  teamId,
   session
 }: {
   appId: string;
   modules?: AppSchemaType['modules'];
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
-  teamId: string;
   session?: ClientSession;
 }) => {
-  const workflow = migrateWorkflowToCurrent({
-    nodes: modules ?? [],
-    edges: edges ?? [],
-    chatConfig
-  });
-  await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+  const workflow = await migrateWorkflowToCurrent(
+    {
+      nodes: modules ?? [],
+      edges: edges ?? [],
+      chatConfig
+    },
+    getWorkflowMigrationOptions()
+  );
+  await beforeUpdateAppFormat({ nodes: workflow.nodes });
 
   return await MongoApp.findByIdAndUpdate(
     appId,

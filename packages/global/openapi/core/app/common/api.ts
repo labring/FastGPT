@@ -407,13 +407,10 @@ export const UpdateAppBodySchema = z
       .enum(AppTypeEnum)
       .optional()
       .meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
-    avatar: z.string().nullish().meta({ description: '应用头像' }),
-    intro: z.string().nullish().meta({ description: '应用介绍' }),
-    nodes: z.never().optional(),
-    modules: z.never().optional(),
-    edges: z.never().optional(),
-    chatConfig: z.never().optional()
+    avatar: z.string().optional().meta({ description: '应用头像' }),
+    intro: z.string().optional().meta({ description: '应用介绍' })
   })
+  .strict()
   .meta({
     example: {
       name: '客服应用',
