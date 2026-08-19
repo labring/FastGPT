@@ -649,7 +649,7 @@ export const getAgentRuntimeTools = async ({
           const inputs = initToolInputsTypeByDefaultMode(
             child.inputs.map((input) => ({
               ...input,
-              isToolParam: true
+              defaultToAgentGenerated: true
             })),
             { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
           );

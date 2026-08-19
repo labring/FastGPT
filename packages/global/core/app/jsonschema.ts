@@ -509,8 +509,9 @@ export const jsonSchema2NodeInput = ({
       arrayItems: value.items,
       schema: value
     });
-    const nodeMetadata =
+    const rawNodeMetadata =
       schemaType === 'systemTool' ? value[JsonSchemaNodeInputMetadataKey] : undefined;
+    const { isToolParam: _legacyIsToolParam, ...nodeMetadata } = rawNodeMetadata ?? {};
 
     return {
       ...(canProjectToNodeInput
@@ -525,7 +526,7 @@ export const jsonSchema2NodeInput = ({
       label: value.title || key,
       valueType: nodeMetadata?.valueType ?? valueType,
       description: nodeMetadata?.description ?? value.description,
-      isToolParam: canProjectToNodeInput ? value.isToolParam : true,
+      defaultToAgentGenerated: canProjectToNodeInput ? value.isToolParam : true,
       customJsonSchema: cloneJsonSchemaProperty(value),
       toolDescription:
         schemaType === 'http'
@@ -805,9 +806,13 @@ export const nodeInput2JsonSchemaProperty = (
   const nodeMetadata = includeNodeMetadata ? getNodeInputJsonSchemaMetadata(input) : undefined;
   if (input.customJsonSchema) {
     const customSchema = cloneJsonSchemaProperty(input.customJsonSchema);
-    return nodeMetadata
-      ? { ...customSchema, [JsonSchemaNodeInputMetadataKey]: nodeMetadata }
-      : customSchema;
+    return {
+      ...customSchema,
+      ...(input.defaultToAgentGenerated !== undefined
+        ? { isToolParam: input.defaultToAgentGenerated }
+        : {}),
+      ...(nodeMetadata ? { [JsonSchemaNodeInputMetadataKey]: nodeMetadata } : {})
+    };
   }
 
   const schema = setEnumValuesToJsonSchemaProperty({
@@ -823,7 +828,9 @@ export const nodeInput2JsonSchemaProperty = (
     ...(typeof input.min === 'number' ? { minimum: input.min } : {}),
     ...(typeof input.max === 'number' ? { maximum: input.max } : {}),
     ...(input.toolDescription ? { toolDescription: input.toolDescription } : {}),
-    ...(input.isToolParam !== undefined ? { isToolParam: input.isToolParam } : {}),
+    ...(input.defaultToAgentGenerated !== undefined
+      ? { isToolParam: input.defaultToAgentGenerated }
+      : {}),
     ...(nodeMetadata ? { [JsonSchemaNodeInputMetadataKey]: nodeMetadata } : {})
   };
 };

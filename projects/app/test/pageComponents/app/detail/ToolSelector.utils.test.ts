@@ -23,7 +23,7 @@ describe('ToolSelector utils', () => {
           value: 'template value',
           renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
           toolDescription: 'new description',
-          isToolParam: true,
+          defaultToAgentGenerated: true,
           required: true
         },
         {
@@ -43,7 +43,7 @@ describe('ToolSelector utils', () => {
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
           selectedType: FlowNodeInputTypeEnum.input,
           toolDescription: 'source description',
-          isToolParam: false
+          defaultToAgentGenerated: false
         }
       ]);
 
@@ -59,7 +59,7 @@ describe('ToolSelector utils', () => {
         toolDescription: 'new description',
         required: true
       });
-      expect(result.inputs[0]).not.toHaveProperty('isToolParam');
+      expect(result.inputs[0]).not.toHaveProperty('defaultToAgentGenerated');
       expect(result.inputs[1]).toMatchObject({
         key: 'limit',
         label: 'Limit',
@@ -67,18 +67,18 @@ describe('ToolSelector utils', () => {
         required: true,
         renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.numberInput]
       });
-      expect(result.inputs[1]).not.toHaveProperty('isToolParam');
+      expect(result.inputs[1]).not.toHaveProperty('defaultToAgentGenerated');
       expect(result).not.toBe(tool);
     });
 
-    it('should apply the default mode and omit isToolParam for a new tool', () => {
+    it('should apply the default mode and omit defaultToAgentGenerated for a new tool', () => {
       const tool = createTool([
         {
           key: 'query',
           label: 'Query',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           selectedType: FlowNodeInputTypeEnum.input,
-          isToolParam: true
+          defaultToAgentGenerated: true
         }
       ]);
 
@@ -87,10 +87,10 @@ describe('ToolSelector utils', () => {
       expect(result.inputs[0]).toMatchObject({
         selectedType: FlowNodeInputTypeEnum.agentGenerated
       });
-      expect(result.inputs[0]).not.toHaveProperty('isToolParam');
+      expect(result.inputs[0]).not.toHaveProperty('defaultToAgentGenerated');
     });
 
-    it('should use isToolParam instead of toolDescription for a new system tool', () => {
+    it('should use defaultToAgentGenerated instead of toolDescription for a new system tool', () => {
       const tool = {
         ...createTool([
           {
@@ -98,7 +98,7 @@ describe('ToolSelector utils', () => {
             label: 'Query',
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
             selectedType: FlowNodeInputTypeEnum.input,
-            isToolParam: false,
+            defaultToAgentGenerated: false,
             toolDescription: 'Search query'
           }
         ]),
@@ -131,7 +131,7 @@ describe('ToolSelector utils', () => {
             label: 'Count',
             valueType: 'number',
             renderTypeList: [FlowNodeInputTypeEnum.numberInput],
-            isToolParam: true,
+            defaultToAgentGenerated: true,
             toolDescription: 'Result count'
           }
         ]),

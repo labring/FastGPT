@@ -36,7 +36,7 @@ describe('ChatTestPropsSchema', () => {
               key: 'query',
               label: 'Query',
               renderTypeList: [FlowNodeInputTypeEnum.input],
-              selectedTypeIndex: 0
+              isToolParam: true
             }
           ],
           outputs: []

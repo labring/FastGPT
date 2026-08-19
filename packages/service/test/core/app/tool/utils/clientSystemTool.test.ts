@@ -179,7 +179,7 @@ describe('getClientSystemToolPreviewNode', () => {
         FlowNodeInputTypeEnum.numberInput,
         'reference'
       ],
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
   });
 
@@ -230,7 +230,7 @@ describe('getClientSystemToolPreviewNode', () => {
       valueType: 'string',
       defaultValue: 'fallback',
       canAgentGenerated: true,
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, 'reference', 'input'],
       selectedType: FlowNodeInputTypeEnum.agentGenerated
     });

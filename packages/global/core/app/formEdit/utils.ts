@@ -62,7 +62,7 @@ type ToolInputTypeState = InputRenderTypeState &
   Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
   Pick<
     Partial<FlowNodeInputItemType>,
-    'isToolParam' | 'toolDescription' | 'list' | 'enums' | 'enum' | 'valueType'
+    'defaultToAgentGenerated' | 'toolDescription' | 'list' | 'enums' | 'enum' | 'valueType'
   >;
 
 type ToolInputDefaultModeOptions = {
@@ -114,7 +114,7 @@ export const canInputBeAgentGenerated = (
  * 归一当前节点输入的可选来源和默认选择。
  *
  * 所有支持 AI 生成的输入都会补充 agentGenerated；工具上下文才允许选中该类型，
- * 并在没有明确选择时按 isToolParam 应用默认值。
+ * 并在没有明确选择时按 defaultToAgentGenerated 应用默认值。
  */
 export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>(
   input: T,
@@ -126,8 +126,10 @@ export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>
 ): T => {
   const inputRenderTypeList = input.renderTypeList ?? [];
   const recommendsAgentGenerated =
-    input.isToolParam === true ||
-    (input.isToolParam !== false && isTool && input.key === NodeInputKeyEnum.userChatInput);
+    input.defaultToAgentGenerated === true ||
+    (input.defaultToAgentGenerated !== false &&
+      isTool &&
+      input.key === NodeInputKeyEnum.userChatInput);
   const supportsAgentGenerated = canInputBeAgentGenerated(input);
   const canUseAgentGenerated = isTool && supportsAgentGenerated;
   const renderTypeList = Array.from(
@@ -381,9 +383,9 @@ export const getSavedToolInputSelectedType = ({
  */
 export const stripToolInputDefaultMode = <T extends FlowNodeInputItemType>(
   input: T
-): Omit<T, 'isToolParam'> => {
+): Omit<T, 'defaultToAgentGenerated'> => {
   const inputWithoutDefaultMode = { ...input };
-  delete inputWithoutDefaultMode.isToolParam;
+  delete inputWithoutDefaultMode.defaultToAgentGenerated;
   return inputWithoutDefaultMode;
 };
 
@@ -433,7 +435,7 @@ export const filterToolConfiguredParams = ({
 
 /**
  * 工具首次加入工作流/Agent 时，将默认输入方式固化为 selectedType。
- * isToolParam 是插件/schema 声明的默认输入方式；toolDescription 只作为模型参数描述。
+ * defaultToAgentGenerated 只表达初始化默认输入方式；toolDescription 只作为模型参数描述。
  */
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
   input: T,

@@ -12,7 +12,6 @@ import {
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import {
   getToolNameCandidates,
   isDebugToolSource,
@@ -456,10 +455,7 @@ export async function getClientToolPreviewNode({
 
         return {
           flowNodeType: FlowNodeTypeEnum.pluginModule,
-          nodeIOConfig: {
-            ...nodeIOConfig,
-            inputs: normalizeWorkflowToolInputsDefaultMode(nodeIOConfig.inputs)
-          }
+          nodeIOConfig
         };
       }
 
@@ -492,7 +488,7 @@ export async function getClientToolPreviewNode({
       };
     })();
 
-    // 预览节点来自工具定义，输入上的 selectedType 是原始控件类型；首次加入工具时应优先应用 isToolParam 默认值。
+    // 预览节点来自工具定义，首次加入工具时才应用 defaultToAgentGenerated。
     const normalizedInputs = initToolInputsTypeByDefaultMode(nodeIOConfig.inputs, {
       forceDefaultMode: true,
       allowUserChatInputAgentGenerated: true

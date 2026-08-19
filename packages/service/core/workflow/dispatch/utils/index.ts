@@ -555,7 +555,8 @@ export const rewriteRuntimeWorkFlow = async ({
             : {}),
           renderTypeList,
           selectedType,
-          isToolParam: input.isToolParam ?? savedInput.isToolParam,
+          defaultToAgentGenerated:
+            input.defaultToAgentGenerated ?? savedInput.defaultToAgentGenerated,
           toolDescription: savedInput.toolDescription ?? input.toolDescription
         };
       }),
@@ -565,14 +566,14 @@ export const rewriteRuntimeWorkFlow = async ({
 
   /**
    * ToolSet 展开后的子工具统一由 Agent 生成参数。这里仅修改 runtime 临时节点，
-   * 不回写工作流配置，避免把 isToolParam 变成用户配置字段。
+   * 不回写工作流配置，避免把默认模式变成用户配置字段。
    */
   const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => ({
     ...node,
     inputs: initToolInputsTypeByDefaultMode(
       node.inputs.map((input) => ({
         ...input,
-        isToolParam: true
+        defaultToAgentGenerated: true
       })),
       { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
     )

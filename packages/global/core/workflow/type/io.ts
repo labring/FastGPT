@@ -281,8 +281,8 @@ export const FlowNodeInputItemTypeSchema = InputComponentPropsTypeSchema.extend(
   toolDescription: z.string().optional().meta({
     description: '作为工具调用参数时的语义说明'
   }),
-  isToolParam: BoolSchema.optional().meta({
-    description: '该输入默认是否作为工具调用参数'
+  defaultToAgentGenerated: BoolSchema.optional().meta({
+    description: '工具输入缺少保存选择时，是否默认由 Agent 生成'
   }),
   canAgentGenerated: BoolSchema.optional().meta({
     description: '该输入是否允许由 Agent 生成；未设置时按输入组件类型判断'

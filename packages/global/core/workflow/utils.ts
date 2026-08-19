@@ -123,9 +123,7 @@ export const getAppChatConfig = ({
 }): AppChatConfigType => {
   const welcomeConfig: AppWelcomeConfigType = {
     welcomeText:
-      storeWelcomeText ??
-      chatConfig?.welcomeConfig?.welcomeText ??
-      chatConfig?.welcomeText,
+      storeWelcomeText ?? chatConfig?.welcomeConfig?.welcomeText ?? chatConfig?.welcomeText,
     welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions
   };
 
@@ -243,7 +241,7 @@ export const projectExternalVariableInput = <T extends FlowNodeInputItemType>(in
   const projectedInput = {
     ...input,
     canAgentGenerated,
-    ...(canAgentGenerated ? { isToolParam: true } : {}),
+    ...(canAgentGenerated ? { defaultToAgentGenerated: true } : {}),
     renderTypeList: projectedRenderTypeList,
     selectedType
   } as T;
@@ -390,14 +388,14 @@ export const appData2FlowNodeIO = ({
                 FlowNodeInputTypeEnum.agentGenerated
               ],
               selectedType: FlowNodeInputTypeEnum.agentGenerated,
-              isToolParam: true
+              defaultToAgentGenerated: true
             }
           ]
         : []),
       {
         ...Input_Template_UserChatInput,
         // 普通工作流作为工具时，用户问题应默认由调用它的 Agent 生成。
-        isToolParam: true
+        defaultToAgentGenerated: true
       },
       ...variableInput
     ],

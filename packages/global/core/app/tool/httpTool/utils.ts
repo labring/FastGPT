@@ -119,7 +119,7 @@ export const getHTTPToolRuntimeNode = ({
   }).map((input) => ({
     ...input,
     // 兼容旧 HTTP 工具 schema；空 x-tool-description 表示开发者手动配置。
-    isToolParam: input.isToolParam ?? Boolean(input.toolDescription)
+    defaultToAgentGenerated: input.defaultToAgentGenerated ?? Boolean(input.toolDescription)
   }));
 
   return {

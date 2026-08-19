@@ -283,6 +283,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
               label: 'Query',
               valueType: WorkflowIOValueTypeEnum.string,
               toolDescription: 'Search query',
+              defaultToAgentGenerated: true,
               required: true,
               renderTypeList: [FlowNodeInputTypeEnum.input]
             },

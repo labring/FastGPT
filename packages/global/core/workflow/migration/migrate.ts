@@ -114,7 +114,8 @@ export const migrateWorkflowToCurrent = async (
                     savedInput ?? {
                       key: definitionInput.key,
                       mode:
-                        useLegacyAllAgentGenerated || definitionInput.isToolParam === true
+                        useLegacyAllAgentGenerated ||
+                        definitionInput.defaultToAgentGenerated === true
                           ? AgentToolInputModeEnum.agentGenerated
                           : AgentToolInputModeEnum.manual
                     }

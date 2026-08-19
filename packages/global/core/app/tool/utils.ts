@@ -85,7 +85,7 @@ export function splitCombineToolId(id: string): {
 
 /**
  * 判断工具是否允许使用旧版 toolDescription 推断 AI 参数。
- * 该兼容仅覆盖工作流工具和旧系统/商业工具，其他工具继续以 isToolParam 为准。
+ * 该兼容仅覆盖工作流工具和旧系统/商业工具，其他工具继续使用自身 schema annotation。
  */
 export const shouldUseLegacyToolDescriptionFallback = ({
   toolId,

@@ -60,7 +60,7 @@ export const getMCPToolRuntimeNode = ({
     (input) => ({
       ...input,
       // MCP schema 没有 FastGPT 的手动配置上下文，子工具参数默认交给 Agent 生成。
-      isToolParam: input.isToolParam ?? true
+      defaultToAgentGenerated: input.defaultToAgentGenerated ?? true
     })
   );
 

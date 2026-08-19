@@ -516,7 +516,7 @@ export function form2AppWorkflow(
           key: NodeInputKeyEnum.datasetSearchInput,
           valueType: WorkflowIOValueTypeEnum.arrayString,
           toolDescription: i18nT('workflow:content_to_search'),
-          isToolParam: isTool,
+          defaultToAgentGenerated: isTool,
           value: question
         }
       ],

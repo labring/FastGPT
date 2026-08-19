@@ -2218,7 +2218,7 @@ describe('storeNode2FlowNode', () => {
             FlowNodeInputTypeEnum.reference
           ],
           selectedType: FlowNodeInputTypeEnum.agentGenerated,
-          isToolParam: true
+          defaultToAgentGenerated: true
         }
       ],
       outputs: [],

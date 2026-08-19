@@ -95,7 +95,7 @@ describe('projectExternalVariableInput', () => {
 
       expect(result).toMatchObject({
         canAgentGenerated,
-        ...(canAgentGenerated ? { isToolParam: true } : {}),
+        ...(canAgentGenerated ? { defaultToAgentGenerated: true } : {}),
         renderTypeList: [
           ...(canAgentGenerated ? [FlowNodeInputTypeEnum.agentGenerated] : []),
           FlowNodeInputTypeEnum.reference,
@@ -575,7 +575,7 @@ describe('appData2FlowNodeIO', () => {
       result.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
     ).toMatchObject({
       required: true,
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
   });
 
@@ -607,7 +607,7 @@ describe('appData2FlowNodeIO', () => {
 
     const input = result.inputs.find((input) => input.key === 'query');
     expect(input).toMatchObject({ description: 'Search query' });
-    expect(input).not.toHaveProperty('isToolParam');
+    expect(input).not.toHaveProperty('defaultToAgentGenerated');
   });
 
   it('should retain internal variable defaults while keeping the input hidden', () => {
@@ -685,7 +685,7 @@ describe('appData2FlowNodeIO', () => {
         FlowNodeInputTypeEnum.agentGenerated
       ],
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
   });
 

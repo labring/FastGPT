@@ -34,11 +34,12 @@ export const migrateLegacyFlowNodeInputToCurrent = (
     input.selectedTypeIndex === undefined
       ? undefined
       : inputRenderTypeList[input.selectedTypeIndex];
+  const defaultToAgentGenerated = input.defaultToAgentGenerated ?? input.isToolParam;
   const recommendsAgentGenerated =
-    input.isToolParam === true ||
-    (input.isToolParam !== false && isTool && input.key === NodeInputKeyEnum.userChatInput) ||
+    defaultToAgentGenerated === true ||
+    (defaultToAgentGenerated !== false && isTool && input.key === NodeInputKeyEnum.userChatInput) ||
     (allowLegacyToolDescriptionFallback &&
-      input.isToolParam === undefined &&
+      defaultToAgentGenerated === undefined &&
       !!input.toolDescription);
   const isLegacyDefaultSelection =
     input.selectedType === undefined &&
@@ -76,12 +77,17 @@ export const migrateLegacyFlowNodeInputToCurrent = (
           ? FlowNodeInputTypeEnum.agentGenerated
           : defaultManualType;
 
-  const { selectedTypeIndex: _selectedTypeIndex, ...canonicalInput } = input;
+  const {
+    selectedTypeIndex: _selectedTypeIndex,
+    isToolParam: _legacyDefaultToAgentGenerated,
+    ...canonicalInput
+  } = input;
   // 旧数据用 selectedTypeIndex 保存 renderTypeList 下标；canonical 数据只保留解析后的 selectedType。
   // 同时始终输出 renderTypeList，避免历史输入缺少该字段时把 undefined 带入后续 schema。
   return {
     ...canonicalInput,
     renderTypeList,
+    ...(defaultToAgentGenerated === undefined ? {} : { defaultToAgentGenerated }),
     ...(selectedType === undefined ? {} : { selectedType })
   } as CanonicalFlowNodeInputItem;
 };
@@ -91,6 +97,7 @@ export const migrateLegacyHttpToolInputDefaultMode = (input: LegacyFlowNodeInput
   if (
     input.canEdit !== true ||
     !input.toolDescription ||
+    input.defaultToAgentGenerated !== undefined ||
     input.isToolParam !== undefined ||
     input.selectedType !== undefined ||
     !canInputBeAgentGenerated({ ...input, renderTypeList: input.renderTypeList ?? [] })
@@ -104,6 +111,7 @@ export const migrateLegacyHttpToolInputDefaultMode = (input: LegacyFlowNodeInput
 /** 恢复旧工作流工具由 toolDescription 表示的默认 AI 来源。 */
 export const migrateLegacyWorkflowToolInputDefaultMode = (input: LegacyFlowNodeInputItem) => {
   if (
+    input.defaultToAgentGenerated !== undefined ||
     input.isToolParam !== undefined ||
     !input.toolDescription ||
     !canInputBeAgentGenerated({ ...input, renderTypeList: input.renderTypeList ?? [] })

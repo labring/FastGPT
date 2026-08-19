@@ -134,7 +134,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
             valueType: WorkflowIOValueTypeEnum.string,
             renderTypeList: [FlowNodeInputTypeEnum.reference],
             selectedType: FlowNodeInputTypeEnum.reference,
-            isToolParam: false
+            defaultToAgentGenerated: false
           }
         ],
         outputs: []
@@ -152,7 +152,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
       selectedType: FlowNodeInputTypeEnum.reference
     });
     expect(nodes[0].inputs[1]).toMatchObject({
-      isToolParam: false,
+      defaultToAgentGenerated: false,
       selectedType: FlowNodeInputTypeEnum.reference
     });
   });
@@ -166,7 +166,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       valueType: WorkflowIOValueTypeEnum.string,
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      isToolParam: true
+      defaultToAgentGenerated: true
     };
     const explicitManualInput = {
       key: 'manual',
@@ -174,7 +174,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       valueType: WorkflowIOValueTypeEnum.string,
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedType: FlowNodeInputTypeEnum.input,
-      isToolParam: false
+      defaultToAgentGenerated: false
     };
     const nodes = [
       {
@@ -193,11 +193,11 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
     });
 
     expect(nodes[0].inputs[0]).toMatchObject({
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       selectedType: FlowNodeInputTypeEnum.agentGenerated
     });
     expect(nodes[0].inputs[1]).toMatchObject({
-      isToolParam: false,
+      defaultToAgentGenerated: false,
       selectedType: FlowNodeInputTypeEnum.input
     });
   });
@@ -326,7 +326,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       value: 'saved-value',
       defaultValue: 'fallback',
       canAgentGenerated: true,
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.reference,
@@ -453,7 +453,7 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
     expect(nodes[0].inputs[0]).toMatchObject({
       value: 'saved-value',
       canAgentGenerated: true,
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.reference,
@@ -727,7 +727,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           valueType: WorkflowIOValueTypeEnum.string,
           value: '',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          isToolParam: true,
+          defaultToAgentGenerated: true,
           toolDescription: 'Search query'
         }
       ],
@@ -771,7 +771,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         FlowNodeInputTypeEnum.input,
         FlowNodeInputTypeEnum.reference
       ],
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       toolDescription: 'Search query'
     });
     expect(nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.input);
@@ -791,7 +791,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           valueType: WorkflowIOValueTypeEnum.string,
           value: '',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          isToolParam: true,
+          defaultToAgentGenerated: true,
           toolDescription: 'Search query'
         }
       ],
@@ -939,7 +939,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           valueType: WorkflowIOValueTypeEnum.string,
           value: '',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          isToolParam: true,
+          defaultToAgentGenerated: true,
           toolDescription: 'Query'
         }
       ],
@@ -1084,7 +1084,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
           required: true,
           value: '',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          isToolParam: false,
+          defaultToAgentGenerated: false,
           toolDescription: 'Search query'
         }
       ],
