@@ -127,7 +127,6 @@ export const useReference = ({
 
     return [
       ...list,
-      // References to user-defined tool call params of the node.
       {
         label: (
           <Flex alignItems={'center'}>
