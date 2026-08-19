@@ -62,6 +62,7 @@ import {
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
 import { randomUUID } from 'node:crypto';
+import { decodeS3Filename, encodeS3Filename, getS3UploadContentDisposition } from '../filename';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -375,13 +376,13 @@ export class S3BaseBucket {
       const resolvedUploadPolicy = uploadPolicy ?? createUploadPolicy({ hint: fileHint });
       const expiredSeconds = differenceInSeconds(addMinutes(new Date(), 10), new Date());
       const metadata = {
-        contentDisposition: getContentDisposition({
+        ...parsedParams.metadata,
+        contentDisposition: getS3UploadContentDisposition({
           filename: resolvedFilename,
           type: 'attachment'
         }),
-        originFilename: encodeURIComponent(resolvedFilename),
-        uploadTime: new Date().toISOString(),
-        ...parsedParams.metadata
+        originFilename: encodeS3Filename(resolvedFilename),
+        uploadTime: new Date().toISOString()
       };
 
       if (expiredHours) {
@@ -497,13 +498,13 @@ export class S3BaseBucket {
       const resolvedUploadPolicy = uploadPolicy ?? createUploadPolicy({ hint: fileHint });
       const multipartObjectMarker = randomUUID();
       const metadata = {
-        contentDisposition: getContentDisposition({
+        ...parsedParams.metadata,
+        contentDisposition: getS3UploadContentDisposition({
           filename: resolvedFilename,
           type: 'attachment'
         }),
-        originFilename: encodeURIComponent(resolvedFilename),
+        originFilename: encodeS3Filename(resolvedFilename),
         uploadTime: new Date().toISOString(),
-        ...parsedParams.metadata,
         [MULTIPART_OBJECT_MARKER_METADATA_KEY]: multipartObjectMarker
       };
 
@@ -1058,9 +1059,9 @@ export class S3BaseBucket {
       body,
       contentType: contentType ?? 'application/octet-stream',
       contentLength,
-      contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
+      contentDisposition: getS3UploadContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        originFilename: encodeURIComponent(filename),
+        originFilename: encodeS3Filename(filename),
         uploadTime: new Date().toISOString()
       }
     });
@@ -1069,7 +1070,8 @@ export class S3BaseBucket {
       key,
       accessUrl: await this.createExternalUrl({
         key,
-        expiredHours: Math.max(1, differenceInHours(expiredTime, new Date()))
+        expiredHours: Math.max(1, differenceInHours(expiredTime, new Date())),
+        filename
       })
     };
   }
@@ -1086,10 +1088,13 @@ export class S3BaseBucket {
     if (!metadataResponse) return;
 
     const contentLength = metadataResponse.contentLength;
-    const filename: string = decodeURIComponent(metadataResponse.metadata.originFilename || '');
+    const keyFilename = getDownloadFilenameFromKey(key);
+    const filename = decodeS3Filename(metadataResponse.metadata.originFilename) || keyFilename;
     // originFilename 是解码后的纯文件名（不是 URL），直接用 path.extname 解析，
     // 避免 # / ? 等文件名合法字符被当作 URL fragment/query 截断导致扩展名丢失。
-    const extension = path.extname(filename).replace(/^\./, '').toLowerCase();
+    const extension =
+      path.extname(filename).replace(/^\./, '').toLowerCase() ||
+      path.extname(keyFilename).replace(/^\./, '').toLowerCase();
     const contentType: string = metadataResponse.contentType || 'application/octet-stream';
 
     return {

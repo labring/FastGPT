@@ -43,14 +43,6 @@ type UploadedPluginFile = SelectFileItemType & {
 const isPluginDuplicated = (tools: GetAdminSystemToolsResponseType, pluginId: string) =>
   tools.some((tool) => tool.id === `${AppToolSourceEnum.systemTool}-${pluginId}`);
 
-const safeDecodeURIComponent = (value: string) => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-};
-
 const isZipFileName = (name: string) => name.toLowerCase().endsWith('.zip');
 
 const buildUploadRowId = (prefix: string) => `${prefix}-${getNanoid(8)}`;
@@ -176,7 +168,7 @@ const ImportPluginModal = ({
       files: UploadedPluginFile[],
       index: number
     ): UploadedPluginFile => {
-      const failedFileName = failure.fileName ? safeDecodeURIComponent(failure.fileName) : '';
+      const failedFileName = failure.fileName || '';
       const zipFiles = files.filter((file) => isZipFileName(getSourceName(file)));
       const sourceFile =
         files.find((file) => getSourceName(file) === failedFileName) ||
@@ -219,7 +211,7 @@ const ImportPluginModal = ({
 
         const formData = new FormData();
         files.forEach((file) => {
-          formData.append('file', file.file, encodeURIComponent(getSourceName(file)));
+          formData.append('file', file.file, getSourceName(file));
         });
 
         const uploadResult =
@@ -232,9 +224,7 @@ const ImportPluginModal = ({
 
         const failedSourceNameSet = new Set(
           failedResults
-            .map((failure) =>
-              failure.fileName ? safeDecodeURIComponent(failure.fileName) : undefined
-            )
+            .map((failure) => failure.fileName)
             .filter((fileName): fileName is string => !!fileName && sourceNameSet.has(fileName))
         );
         const successSourceFiles = resolveSuccessSourceFiles({

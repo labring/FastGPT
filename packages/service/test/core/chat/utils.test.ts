@@ -22,14 +22,16 @@ vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   getS3ChatSource: () => ({
     createGetChatFileURL: mockCreateGetChatFileURL
   }),
-  createChatFilePreviewUrlGetter: (options?: MockCreatePreviewOptions) => async (key: string) => {
-    const { url } = await mockCreateGetChatFileURL({
-      key,
-      external: true,
-      ...options
-    });
-    return url;
-  }
+  createChatFilePreviewUrlGetter:
+    (options?: MockCreatePreviewOptions) => async (key: string, filename?: string) => {
+      const { url } = await mockCreateGetChatFileURL({
+        key,
+        external: true,
+        ...(filename ? { filename } : {}),
+        ...options
+      });
+      return url;
+    }
 }));
 
 describe('presignVariablesFileUrls', () => {
@@ -75,6 +77,7 @@ describe('presignVariablesFileUrls', () => {
     expect(variables.imageFiles[0]).not.toHaveProperty('url');
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
       key: 'chat/files/image.png',
+      filename: 'image.png',
       external: true
     });
   });
@@ -251,6 +254,7 @@ describe('addPreviewUrlToChatItems', () => {
     ]);
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
       key: 'chat/files/image.png',
+      filename: 'image.png',
       external: true
     });
     expect(histories).toEqual(originalHistories);
@@ -344,6 +348,7 @@ describe('addPreviewUrlToChatItems', () => {
     ]);
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
       key: 'chat/files/doc.pdf',
+      filename: 'doc.pdf',
       external: true
     });
     expect(histories).toEqual(originalHistories);

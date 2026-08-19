@@ -4,7 +4,8 @@ import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { serviceEnv } from '../env';
 import { uploadImage2S3Bucket } from '../common/s3/utils';
-import { normalizeMimeType, resolveMimeType } from '../common/s3/utils/mime';
+import { createOpaqueS3Filename } from '../common/s3/opaqueKey';
+import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../common/s3/utils/mime';
 import path from 'node:path';
 
 export const text2Chunks = async (props: SplitProps) => {
@@ -67,10 +68,11 @@ export const readRawContentFromBuffer = (props: {
         }
         // uploadFile 是 worker 通用能力，主线程只接受文件名，避免 worker 传入路径片段越过 prefix。
         const filename = path.basename(name);
+        const uploadFilename = createOpaqueS3Filename(resolveMimeExtension(mimetype));
         const key = await uploadImage2S3Bucket('private', {
           buffer: Buffer.from(buffer),
-          uploadKey: `${props.imageKeyOptions!.prefix}/${filename}`,
-          mimetype: resolveMimeType([filename], mimetype),
+          uploadKey: `${props.imageKeyOptions!.prefix}/${uploadFilename}`,
+          mimetype: resolveMimeType([uploadFilename], mimetype),
           filename,
           expiredTime: props.imageKeyOptions?.expiredTime
         });

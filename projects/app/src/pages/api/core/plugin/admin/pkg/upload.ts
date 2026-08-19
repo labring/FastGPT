@@ -7,6 +7,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { UploadPkgPluginResponseSchema } from '@fastgpt/global/openapi/core/plugin/admin/api';
 import fs from 'node:fs';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 
 /* ============================================================================
  * API: 上传系统插件包
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         file: new Blob([fileBuffer], {
           type: fileMetadata.mimetype
         }),
-        filename: decodeURIComponent(fileMetadata.originalname || `plugin-${index}.pkg`)
+        filename: decodeMultipartFilename(fileMetadata.originalname || `plugin-${index}.pkg`)
       };
     });
 
