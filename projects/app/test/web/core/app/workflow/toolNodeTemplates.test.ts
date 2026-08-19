@@ -51,7 +51,7 @@ describe('workflow tool node templates', () => {
     ).toMatchObject({ defaultToAgentGenerated: true });
     expect(
       CustomFeedbackNode.inputs.find((input) => input.key === NodeInputKeyEnum.textareaInput)
-    ).toMatchObject({ defaultToAgentGenerated: true });
+    ).toMatchObject({ defaultToAgentGenerated: false });
   });
 
   it('allows AI-generated mode for every requested tool input', () => {
