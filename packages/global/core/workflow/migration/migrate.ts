@@ -1,6 +1,7 @@
 import type { CanonicalWorkflowData, CanonicalAgentToolInputConfig } from './schema';
 import {
   CanonicalAgentToolInputConfigSchema,
+  CanonicalSelectedToolsValueSchema,
   CanonicalWorkflowDataSchema,
   LegacyAgentToolInputSnapshotSchema
 } from './schema';
@@ -44,6 +45,9 @@ export const migrateWorkflowToCurrent = async (
       chatConfig: input.chatConfig
     })
   );
+  if (options.migrateAgentTools === false) {
+    return CanonicalWorkflowDataSchema.parse(workflow);
+  }
   const nodes = await Promise.all(
     workflow.nodes.map(async (node) => {
       if (node.flowNodeType !== FlowNodeTypeEnum.agent) return node;
@@ -78,7 +82,19 @@ export const migrateWorkflowToCurrent = async (
                     source: typeof tool.source === 'string' ? tool.source : undefined
                   })
                 : undefined;
-              if (!needsDefinition) return tool;
+              if (!needsDefinition) {
+                const {
+                  isUnavailable: _isUnavailable,
+                  unresolvedInputs: _unresolvedInputs,
+                  ...availableTool
+                } = tool;
+                return {
+                  ...availableTool,
+                  inputs: savedInputs.map((input) =>
+                    CanonicalAgentToolInputConfigSchema.parse(input)
+                  )
+                };
+              }
 
               if (!definition) {
                 const unresolvedInputs = savedInputs.flatMap((input) => {
@@ -140,5 +156,18 @@ export const migrateWorkflowToCurrent = async (
     })
   );
 
-  return CanonicalWorkflowDataSchema.parse({ ...workflow, nodes });
+  const canonicalNodes = nodes.map((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.agent) return node;
+
+    return {
+      ...node,
+      inputs: node.inputs.map((input) =>
+        input.key === NodeInputKeyEnum.selectedTools && input.value !== undefined
+          ? { ...input, value: CanonicalSelectedToolsValueSchema.parse(input.value) }
+          : input
+      )
+    };
+  });
+
+  return CanonicalWorkflowDataSchema.parse({ ...workflow, nodes: canonicalNodes });
 };

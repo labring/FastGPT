@@ -13,6 +13,8 @@ export type LegacyWorkflowToolRef = {
 };
 
 export type WorkflowMigrationOptions = {
+  /** 工具定义预览只需要结构迁移，跳过嵌套 Agent 工具解析以保持读取无递归。 */
+  migrateAgentTools?: boolean;
   resolveToolDefinition?: (
     ref: LegacyWorkflowToolRef
   ) => Promise<WorkflowMigrationToolDefinition | undefined>;

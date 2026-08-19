@@ -306,7 +306,8 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: pluginId,
           versionId: versionId || undefined,
-          app: item
+          app: item,
+          skipAgentToolMigration: true
         });
 
         const isLatest =
@@ -365,7 +366,8 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: parentId,
           versionId: versionId || undefined,
-          app: item
+          app: item,
+          skipAgentToolMigration: true
         });
         const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
         const tool = await (async () => {
@@ -416,7 +418,8 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: parentId,
           versionId: versionId || undefined,
-          app: item
+          app: item,
+          skipAgentToolMigration: true
         });
         const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
         const tool = await (async () => {

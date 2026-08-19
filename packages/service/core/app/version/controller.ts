@@ -5,9 +5,11 @@ import { Types } from '../../../common/mongo';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { getWorkflowMigrationOptions } from '../tool/utils/client';
 
-export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
-  const migrationApp =
-    app ?? ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
+export const getAppLatestVersion = async (
+  appId: string,
+  app?: AppSchemaType,
+  options?: { skipAgentToolMigration?: boolean }
+) => {
   const version = await MongoAppVersion.findOne({
     appId,
     isPublish: true
@@ -26,7 +28,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
         edges: version.edges,
         chatConfig: version.chatConfig
       },
-      getWorkflowMigrationOptions()
+      options?.skipAgentToolMigration ? { migrateAgentTools: false } : getWorkflowMigrationOptions()
     );
     return {
       versionId: String(version._id),
@@ -40,7 +42,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
       edges: app?.edges ?? [],
       chatConfig: app?.chatConfig
     },
-    getWorkflowMigrationOptions()
+    options?.skipAgentToolMigration ? { migrateAgentTools: false } : getWorkflowMigrationOptions()
   );
   return {
     versionId: migrationApp?.pluginData?.nodeVersion,
@@ -52,11 +54,13 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
 export const getAppVersionById = async ({
   appId,
   versionId,
-  app
+  app,
+  skipAgentToolMigration
 }: {
   appId: string;
   versionId?: string;
   app?: AppSchemaType;
+  skipAgentToolMigration?: boolean;
 }) => {
   // 检查 versionId 是否符合 ObjectId 格式
   if (versionId && Types.ObjectId.isValid(versionId)) {
@@ -72,7 +76,7 @@ export const getAppVersionById = async ({
           edges: version.edges,
           chatConfig: version.chatConfig
         },
-        getWorkflowMigrationOptions()
+        skipAgentToolMigration ? { migrateAgentTools: false } : getWorkflowMigrationOptions()
       );
       return {
         versionId: String(version._id),
@@ -83,7 +87,7 @@ export const getAppVersionById = async ({
   }
 
   // If the version does not exist, the latest version is returned
-  return getAppLatestVersion(appId, app);
+  return getAppLatestVersion(appId, app, { skipAgentToolMigration });
 };
 
 export const checkIsLatestVersion = async ({

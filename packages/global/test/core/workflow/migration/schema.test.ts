@@ -876,6 +876,74 @@ describe('workflow migration boundary', () => {
     expect(resolverCalls).toBe(0);
   });
 
+  it('removes unavailable recovery fields from current Agent tools', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'tool-1',
+                  config: {},
+                  isUnavailable: false,
+                  unresolvedInputs: [{ key: 'legacy', mode: 'manual' }],
+                  inputs: [{ key: 'query', mode: 'manual', extra: true }]
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+    const tool = (result.nodes[0].inputs[0].value as any)[0];
+
+    expect(tool).toMatchObject({ id: 'tool-1', inputs: [{ key: 'query', mode: 'manual' }] });
+    expect(tool).not.toHaveProperty('isUnavailable');
+    expect(tool).not.toHaveProperty('unresolvedInputs');
+    expect(tool.inputs[0]).not.toHaveProperty('extra');
+  });
+
+  it('skips nested Agent tool migration for tool-definition previews', async () => {
+    const input = {
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [{ id: 'nested-tool', config: {} }]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any;
+    let resolverCalls = 0;
+
+    const result = await migrateWorkflowToCurrent(input, {
+      migrateAgentTools: false,
+      resolveToolDefinition: async () => {
+        resolverCalls += 1;
+        return undefined;
+      }
+    });
+
+    expect(resolverCalls).toBe(0);
+    expect((result.nodes[0].inputs[0].value as any)[0]).not.toHaveProperty('isUnavailable');
+  });
+
   it('is idempotent for workflow data', async () => {
     const input = {
       nodes: [
