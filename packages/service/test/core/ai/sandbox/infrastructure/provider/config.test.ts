@@ -39,7 +39,6 @@ const defaultOpenSandboxNetworkPolicy = {
     { action: 'deny', target: '169.254.0.0/16' },
     { action: 'deny', target: '172.16.0.0/12' },
     { action: 'deny', target: '192.168.0.0/16' },
-    { action: 'deny', target: '198.18.0.0/15' },
     { action: 'deny', target: '224.0.0.0/4' },
     { action: 'deny', target: 'fc00::/7' },
     { action: 'deny', target: 'fe80::/10' },

@@ -1,7 +1,9 @@
 import {
+  SandboxApiException,
   ExecutionEventDispatcher,
   type Execution,
   type ExecutionHandlers,
+  type FileInfo as OpenSandboxFileInfo,
   type RunCommandOpts,
   type ServerStreamEvent,
   type WriteEntry
@@ -279,9 +281,33 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
   }
 
   async getFileInfo(paths: string[]): Promise<Map<string, FileInfo>> {
-    const info = await this.lifecycle.sandbox.files.getFileInfo(
-      paths.map((path) => this.normalizePath(path))
-    );
+    const normalizedPaths = paths.map((path) => this.normalizePath(path));
+    const isFileNotFoundError = (error: unknown): error is SandboxApiException =>
+      error instanceof SandboxApiException && error.error.code === 'FILE_NOT_FOUND';
+    const getFileInfo = (filePaths: string[]) =>
+      this.lifecycle.sandbox.files.getFileInfo(filePaths);
+    const info = await (async (): Promise<Record<string, OpenSandboxFileInfo>> => {
+      try {
+        return await getFileInfo(normalizedPaths);
+      } catch (error) {
+        if (!isFileNotFoundError(error)) throw error;
+        if (normalizedPaths.length === 1) return {};
+
+        // OpenSandbox 批量查询只要一个路径不存在就返回 404，逐项降级以保持 adapter 的返回契约。
+        const infoByPath = await Promise.all(
+          normalizedPaths.map(async (path) => {
+            try {
+              return await getFileInfo([path]);
+            } catch (error) {
+              if (isFileNotFoundError(error)) return {};
+              throw error;
+            }
+          })
+        );
+        return Object.assign({}, ...infoByPath);
+      }
+    })();
+
     return new Map(
       Object.entries(info).map(([path, entry]) => [
         path,
