@@ -1,12 +1,12 @@
 import z from 'zod';
-import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { SourceMemberSchema } from '../../../../support/user/type';
-import { AuditEventEnum } from '../../../../support/user/audit/constants';
-import { PaginationSchema } from '../../../api';
+import { ObjectIdSchema } from '../../../../../common/type/mongo';
+import { SourceMemberSchema } from '../../../../../support/user/type';
+import { AuditEventEnum } from '../../../../../support/user/audit/constants';
+import { PaginationSchema } from '../../../../api';
 
 /* ============================================================================
  * API: 获取团队操作日志
- * Route: POST /api/proApi/support/user/audit/list
+ * Route: POST /api/proApi/support/user/team/audit/list
  * Method: POST
  * Description: 分页查询当前团队的成员和应用等操作日志。
  * Tags: ['团队管理', 'Read']

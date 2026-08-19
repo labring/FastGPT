@@ -24,7 +24,9 @@ import {
   GetDatasetCollaboratorListQuerySchema,
   GetDatasetCollaboratorListResponseSchema,
   UpdateDatasetCollaboratorBodySchema,
-  UpdateDatasetCollaboratorResponseSchema
+  UpdateDatasetCollaboratorResponseSchema,
+  PostDatasetSyncBodySchema,
+  PostDatasetSyncResponseSchema
 } from './api';
 
 export const DatasetPath: OpenAPIPath = {
@@ -196,6 +198,30 @@ export const DatasetPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: UpdateDatasetCollaboratorResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/core/dataset/datasetSync': {
+    post: {
+      summary: '同步知识库数据',
+      description: '检查知识库同步状态、训练状态、权限和索引额度后，触发知识库同步任务',
+      tags: [DevApiTagsMap.datasetCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: PostDatasetSyncBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '同步任务创建成功，无业务数据返回',
+          content: {
+            'application/json': {
+              schema: PostDatasetSyncResponseSchema
             }
           }
         }

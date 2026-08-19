@@ -35,6 +35,7 @@ export const openAPITagGroups = [
       DevApiTagsMap.appPer,
       DevApiTagsMap.appVersion,
       DevApiTagsMap.appTemplate,
+      DevApiTagsMap.appEvaluation,
       DevApiTagsMap.appLog,
       DevApiTagsMap.publishChannel,
       DevApiTagsMap.workflowDebug,
@@ -100,14 +101,29 @@ export const openAPITagGroups = [
   },
   {
     name: '辅助-用户体系',
+    tags: [DevApiTagsMap.userInform, DevApiTagsMap.userLogin]
+  },
+  {
+    name: '辅助-团队体系',
     tags: [
-      DevApiTagsMap.userInform,
-      DevApiTagsMap.walletBill,
-      DevApiTagsMap.walletDiscountCoupon,
-      DevApiTagsMap.userLogin,
-      DevApiTagsMap.userLimit,
+      DevApiTagsMap.teamManage,
+      DevApiTagsMap.teamPermission,
+      DevApiTagsMap.teamMember,
+      DevApiTagsMap.teamOrg,
+      DevApiTagsMap.teamGroup,
+      DevApiTagsMap.teamSubscription,
+      DevApiTagsMap.teamInvitationLink,
       DevApiTagsMap.enterpriseAuth,
-      DevApiTagsMap.teamManage
+      DevApiTagsMap.userLimit
+    ]
+  },
+  {
+    name: '辅助-钱包',
+    tags: [
+      DevApiTagsMap.walletBill,
+      DevApiTagsMap.walletUsage,
+      DevApiTagsMap.walletInvoice,
+      DevApiTagsMap.walletDiscountCoupon
     ]
   },
   {

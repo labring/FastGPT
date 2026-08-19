@@ -18,11 +18,11 @@ description: FastGPT API 开发规范。重点强调使用 zod schema 定义入�
 
 ### 🔴 必须遵守的规则
 
-1. **所有 API 必须使用 zod schema 定义入参和出参**
-2. **必须导出 schema 的 TypeScript 类型**
+1. **API 中实际存在的业务入参和业务出参必须使用 zod schema 定义；无入参或空成功响应不创建空 Schema**
+2. **已定义的 schema 必须导出对应的 TypeScript 类型**
 3. **必须在 schema 文件头部声明 API 信息(路由、方法、描述、标签)，一次性管理员升级/清洗能力除外**
-4. **入参必须使用 schema.parse() 验证**
-5. **函数返回值必须使用 schema.parse() 验证**
+4. **实际存在的入参必须使用 `parseApiInput` 验证；完全无入参时不做空 Query/Body Schema 校验**
+5. **实际存在业务数据的函数返回值必须使用 schema.parse() 验证；空成功响应直接返回 `undefined`，不做空 Schema 校验**
 6. **必须编写完整的 OpenAPI 文档，一次性管理员升级/清洗能力除外**
 
 ### 管理员升级与清洗能力的文档豁免
@@ -36,8 +36,8 @@ description: FastGPT API 开发规范。重点强调使用 zod schema 定义入�
 豁免只针对文档，不豁免安全和校验要求：
 
 - 管理员接口必须使用 `authSystemAdmin` 鉴权；
-- API 入参必须使用 Zod Schema 和 `parseApiInput`；
-- 返回值必须使用 Zod Schema 校验，空成功响应使用 `z.undefined()`；
+- 实际存在的 API 入参必须使用 Zod Schema 和 `parseApiInput`，完全无入参时不创建空 Schema；
+- 实际存在业务数据的返回值必须使用 Zod Schema 校验，空成功响应直接返回 `undefined`；
 - 数据清洗默认使用 dry-run，显式确认后才能写入，并输出成功、跳过和失败统计；
 - 清洗逻辑应可重复执行，无法安全修复的数据必须跳过并报告，不得静默填入猜测值。
 
@@ -126,6 +126,13 @@ export type getAppChatLogsResponseType = z.infer<typeof GetAppChatLogsResponseSc
 - 示例：`协作者管理` 是通用权限能力，应用协作者接口需要同时声明 `协作者管理` 和应用侧 `权限管理`；`获取应用权限`、`恢复应用继承权限` 是应用自身权限状态接口，只声明应用侧 `权限管理`。
 
 **Schema 定义规范**:
+
+#### ✅ 空入参与空成功响应
+
+- 请求没有 query、body 或 params 时，不要为了形式完整而声明 `z.object({})`，路由中也不需要调用 `parseApiInput`。
+- 成功响应没有业务数据时，不要声明 `z.undefined()`、`z.null()` 或 `z.object({})` 作为占位 Schema，也不需要调用 `Schema.parse(undefined)`；handler 直接不返回值或返回 `undefined`。
+- 只有请求或响应实际携带业务字段时，才定义对应 Schema、导出类型并在 API 边界执行校验。
+- OpenAPI 中无入参接口省略 `requestParams`/`requestBody`；空成功响应只保留状态码和说明，不声明占位 schema。
 
 #### ✅ 字段定义规范
 
@@ -486,13 +493,13 @@ export default NextAPI(handler);
 **Schema 文件** (`packages/global/openapi/.../api.ts`):
 - [ ] **文档豁免判断**: 仅一次性管理员升级/清洗能力可跳过 OpenAPI 文档
 - [ ] **API 声明**: 文件头部有 API 信息(路由、方法、描述、标签)
-- [ ] **Schema 定义**: 入参和出参都使用 zod 定义
-- [ ] **类型导出**: 导出 `z.infer<typeof Schema>` 类型
+- [ ] **Schema 定义**: 实际存在的业务入参和业务出参使用 zod 定义；没有业务值时不创建空 Schema
+- [ ] **类型导出**: 为已定义的 Schema 导出 `z.infer<typeof Schema>` 类型
 - [ ] **Meta 信息**: 所有字段都有 `description` 和 `example`
 
 **API 路由文件** (`projects/app/src/pages/api/.../route.ts`):
-- [ ] **入参验证**: 使用 `Schema.parse(req.body)` 或 `parse(req.query)`
-- [ ] **出参验证**: 使用 `Schema.parse(responseData)`
+- [ ] **入参验证**: 存在实际入参时使用 `parseApiInput`；完全无入参时不做空 Schema 校验
+- [ ] **出参验证**: 返回实际业务数据时使用 `Schema.parse(responseData)`；空成功响应无需 Schema 和 parse
 - [ ] **函数返回类型**: 函数返回值声明为导出的类型
 - [ ] **权限验证**: API 路由有相应的权限检查 (如需要)
 

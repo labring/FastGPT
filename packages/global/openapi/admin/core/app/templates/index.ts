@@ -51,7 +51,7 @@ export const AdminTemplatePath: OpenAPIPath = {
     }
   },
   '/admin/core/app/templates/update': {
-    post: {
+    put: {
       summary: '更新应用模板',
       description: '管理员更新应用模板的信息',
       tags: [DevApiTagsMap.adminTemplate],
@@ -97,7 +97,7 @@ export const AdminTemplatePath: OpenAPIPath = {
     }
   },
   '/admin/core/app/templates/updateOrder': {
-    post: {
+    put: {
       summary: '更新模板排序',
       description: '批量更新应用模板的排序',
       tags: [DevApiTagsMap.adminTemplate],
@@ -121,7 +121,7 @@ export const AdminTemplatePath: OpenAPIPath = {
     }
   },
   '/admin/core/app/templates/updateQuickTemplate': {
-    post: {
+    put: {
       summary: '设置快捷模板',
       description: '设置哪些模板为快捷模板',
       tags: [DevApiTagsMap.adminTemplate],

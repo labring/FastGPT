@@ -28,6 +28,7 @@ import {
 const captchaPath = '/proApi/support/user/account/captcha/getImgCaptcha';
 const ssoAuthorizationPath = '/proApi/support/user/account/login/getAuthURL';
 const wecomRedirectPath = '/proApi/support/user/account/login/wecom/getRedirectUrl';
+const updatePasswordByCodePath = '/proApi/support/user/account/password/updateByCode';
 
 describe('user account OpenAPI contracts', () => {
   it('registers the image captcha route in the generated Dev API document', () => {
@@ -58,6 +59,12 @@ describe('user account OpenAPI contracts', () => {
   it('registers the WeCom redirect URL route', () => {
     expect(openAPIPaths[wecomRedirectPath]).toBeDefined();
     expect(openAPIDocument.paths?.[wecomRedirectPath]?.post?.tags).toEqual(['用户账号']);
+  });
+
+  it('registers the password update-by-code route under the Pro API path', () => {
+    expect(openAPIPaths[updatePasswordByCodePath]).toBeDefined();
+    expect(openAPIDocument.paths?.[updatePasswordByCodePath]?.post).toBeDefined();
+    expect(openAPIPaths['/support/user/account/password/updateByCode']).toBeUndefined();
   });
 
   it('declares null while the WeChat QR login is waiting for a scan', () => {

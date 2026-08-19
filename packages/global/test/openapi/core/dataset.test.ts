@@ -8,7 +8,9 @@ import {
   GetDatasetCollaboratorListQuerySchema,
   GetDatasetCollaboratorListResponseSchema,
   UpdateDatasetCollaboratorBodySchema,
-  UpdateDatasetCollaboratorResponseSchema
+  UpdateDatasetCollaboratorResponseSchema,
+  PostDatasetSyncBodySchema,
+  PostDatasetSyncResponseSchema
 } from '../../../openapi/core/dataset/api';
 
 const objectId = '68ad85a7463006c963799a05';
@@ -16,7 +18,8 @@ const objectId = '68ad85a7463006c963799a05';
 const expectedPaths = {
   '/proApi/core/dataset/changeOwner': 'post',
   '/proApi/core/dataset/collaborator/list': 'get',
-  '/proApi/core/dataset/collaborator/update': 'post'
+  '/proApi/core/dataset/collaborator/update': 'post',
+  '/proApi/core/dataset/datasetSync': 'post'
 } as const;
 
 describe('Dataset OpenAPI contracts', () => {
@@ -36,6 +39,9 @@ describe('Dataset OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.['/proApi/core/dataset/collaborator/update']?.post?.tags).toEqual(
       [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.datasetPermission]
     );
+    expect(openAPIDocument.paths?.['/proApi/core/dataset/datasetSync']?.post?.tags).toEqual([
+      DevApiTagsMap.datasetCommon
+    ]);
 
     expect(openAPITagGroups.find((group) => group.name === '核心-知识库')?.tags).toContain(
       DevApiTagsMap.datasetPermission
@@ -70,6 +76,11 @@ describe('Dataset OpenAPI contracts', () => {
       collaborators: [{ tmbId: objectId, permission: 4 }]
     });
     expect(UpdateDatasetCollaboratorResponseSchema.parse(undefined)).toBeUndefined();
+
+    expect(PostDatasetSyncBodySchema.parse({ datasetId: objectId })).toEqual({
+      datasetId: objectId
+    });
+    expect(PostDatasetSyncResponseSchema.parse(undefined)).toBeUndefined();
   });
 
   it('documents that Dataset collaborator updates require at least one collaborator', () => {

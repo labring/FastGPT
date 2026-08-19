@@ -1,9 +1,9 @@
-import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap } from '../../../tag';
+import type { OpenAPIPath } from '../../../../type';
+import { DevApiTagsMap } from '../../../../tag';
 import { AuditListBodySchema, AuditListResponseSchema } from './api';
 
-export const UserAuditPath: OpenAPIPath = {
-  '/proApi/support/user/audit/list': {
+export const TeamAuditPath: OpenAPIPath = {
+  '/proApi/support/user/team/audit/list': {
     post: {
       summary: '获取团队操作日志',
       description: '分页查询当前团队的成员和应用等操作日志',

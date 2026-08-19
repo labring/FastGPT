@@ -1,5 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
+import { ChatWorkflowSseResponseSchema } from '../../chat/completion/api';
 import {
   ListAppsBySkillIdResponseSchema,
   CreateSkillBodySchema,
@@ -486,9 +487,7 @@ export const SkillPath: OpenAPIPath = {
           description: '返回 text/event-stream 调试事件流',
           content: {
             'text/event-stream': {
-              schema: {
-                type: 'string'
-              }
+              schema: ChatWorkflowSseResponseSchema
             }
           }
         }

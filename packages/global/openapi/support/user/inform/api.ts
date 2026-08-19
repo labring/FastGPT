@@ -147,11 +147,6 @@ export type GetUserInformListResponseType = z.infer<typeof GetUserInformListResp
  * Tags: ['用户通知', 'Read']
  * ============================================================================ */
 
-export const GetUnreadInformQuerySchema = z.object({}).meta({
-  description: '无需查询参数'
-});
-export type GetUnreadInformQueryType = z.infer<typeof GetUnreadInformQuerySchema>;
-
 const UnreadInformSummarySchema = z
   .object({
     unReadCount: z.number().int().nonnegative().meta({
@@ -198,8 +193,3 @@ export const ReadInformQuerySchema = z.object({
   })
 });
 export type ReadInformQueryType = z.infer<typeof ReadInformQuerySchema>;
-
-export const ReadInformResponseSchema = z.undefined().meta({
-  description: '通知已标记为已读'
-});
-export type ReadInformResponseType = z.infer<typeof ReadInformResponseSchema>;

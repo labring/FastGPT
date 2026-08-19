@@ -81,8 +81,7 @@ const EvaluationDetailModal = ({
   onClose: () => void;
   fetchEvalList: () => void;
 }) => {
-  const { t, i18n } = useTranslation();
-  const language = i18n.language;
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [editing, setEditing] = useState(false);
   const [pollingInterval, setPollingInterval] = useState(10000);
@@ -111,7 +110,11 @@ const EvaluationDetailModal = ({
         !!item.errorMessage
       );
     });
-    setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+    const timer = window.setTimeout(() => {
+      setPollingInterval(hasRunningOrErrorTasks ? 10000 : 0);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [evalItemsList]);
 
   const evalItem = evalItemsList[selectedIndex];
@@ -357,7 +360,12 @@ const EvaluationDetailModal = ({
                             }
                             type="delete"
                             content={t('dashboard_evaluation:comfirm_delete_item')}
-                            onConfirm={() => delEvalItem({ evalItemId: evalItem.evalItemId })}
+                            onConfirm={() =>
+                              delEvalItem({
+                                evalId: evalDetail._id,
+                                itemId: evalItem.evalItemId
+                              })
+                            }
                           />
                         )}
                       </>
