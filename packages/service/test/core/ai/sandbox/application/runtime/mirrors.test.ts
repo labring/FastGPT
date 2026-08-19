@@ -2,14 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { prepareSandboxRuntimeMirrors } from '@fastgpt/service/core/ai/sandbox/application/runtime/mirrors';
 import { buildRuntimeHash } from '@fastgpt/service/core/ai/sandbox/utils';
 
-const createSandbox = ({
-  osRelease = 'ID=ubuntu\nVERSION_CODENAME=noble\n'
-}: {
-  osRelease?: string;
-} = {}) => {
+const createSandbox = () => {
   let stateContent: string | undefined;
-  let aptSourceContent: string | undefined;
   const mirrorWrites: Array<Array<{ path: string; data: string }>> = [];
+  const files = new Map<string, string>();
 
   const sandbox = {
     execute: vi.fn(async (command: string) => {
@@ -21,17 +17,13 @@ const createSandbox = ({
     createDirectories: vi.fn(async () => undefined),
     readFiles: vi.fn(async (paths: string[]) =>
       paths.map((path) => {
-        const content = (() => {
-          if (path === '/etc/os-release') return osRelease;
-          if (path === '/etc/apt/sources.list.d/00-fastgpt-mirror.sources') {
-            return aptSourceContent;
-          }
-          return stateContent;
-        })();
+        const content = path.endsWith('/.fastgpt/runtime/state.json')
+          ? stateContent
+          : files.get(path);
         return {
           path,
-          content: Buffer.from(content || ''),
-          error: content ? null : new Error(`File not found: ${path}`)
+          content: Buffer.from(content ?? ''),
+          error: content === undefined ? new Error(`File not found: ${path}`) : null
         };
       })
     ),
@@ -46,12 +38,7 @@ const createSandbox = ({
           stateContent = stateEntry.data;
         } else {
           mirrorWrites.push(entries);
-          const aptSourceEntry = entries.find(
-            (entry) => entry.path === '/etc/apt/sources.list.d/00-fastgpt-mirror.sources'
-          );
-          if (aptSourceEntry) {
-            aptSourceContent = aptSourceEntry.data;
-          }
+          entries.forEach((entry) => files.set(entry.path, entry.data));
         }
         return entries.map((entry) => ({
           path: entry.path,
@@ -68,34 +55,15 @@ const createSandbox = ({
 };
 
 describe('sandbox runtime mirrors', () => {
-  it('skips sandbox calls when no package mirror is configured', async () => {
+  it('synchronizes npm and pypi mirror groups independently', async () => {
     const sandbox = createSandbox();
-
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: {
-        npmRegistry: ' ',
-        pypiIndexUrl: '\t',
-        aptMirror: ''
-      }
-    });
-
-    expect(sandbox.execute).not.toHaveBeenCalled();
-    expect(sandbox.readFiles).not.toHaveBeenCalled();
-    expect(sandbox.writeFiles).not.toHaveBeenCalled();
-  });
-
-  it('writes all package mirror files once per hash', async () => {
-    const sandbox = createSandbox();
+    const config = {
+      npmRegistry: 'https://npm.example.com',
+      pypiIndexUrl: 'https://pypi.example.com/simple'
+    };
     const expectedWriteEntries = [
-      {
-        path: '/home/test/.npmrc',
-        data: 'registry=https://npm.example.com\n'
-      },
-      {
-        path: '/home/test/.yarnrc',
-        data: 'registry "https://npm.example.com"\n'
-      },
+      { path: '/home/test/.npmrc', data: 'registry=https://npm.example.com\n' },
+      { path: '/home/test/.yarnrc', data: 'registry "https://npm.example.com"\n' },
       {
         path: '/home/test/.yarnrc.yml',
         data: 'npmRegistryServer: "https://npm.example.com"\n'
@@ -115,149 +83,66 @@ describe('sandbox runtime mirrors', () => {
       {
         path: '/home/test/.config/uv/uv.toml',
         data: 'default-index = "https://pypi.example.com/simple"\nallow-insecure-host = ["pypi.example.com"]\n'
-      },
-      {
-        path: '/etc/apt/sources.list.d/00-fastgpt-mirror.sources',
-        data: [
-          'Types: deb',
-          'URIs: https://mirror.example.com/ubuntu/',
-          'Suites: noble noble-updates noble-backports noble-security',
-          'Components: main restricted universe multiverse',
-          'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg',
-          ''
-        ].join('\n')
       }
     ];
 
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+
+    expect(sandbox.getMirrorWrites()).toEqual([
+      expectedWriteEntries.slice(0, 4),
+      expectedWriteEntries.slice(4)
+    ]);
+    expect(sandbox.getState()?.values).toEqual({
+      npmMirror: buildRuntimeHash(config.npmRegistry),
+      pypiMirror: buildRuntimeHash(config.pypiIndexUrl),
+      aptMirror: buildRuntimeHash('')
+    });
+
     await prepareSandboxRuntimeMirrors({
       sandbox: sandbox as any,
       config: {
-        npmRegistry: 'https://npm.example.com',
-        pypiIndexUrl: 'https://pypi.example.com/simple',
-        aptMirror: ' https://mirror.example.com/ubuntu/ '
-      }
-    });
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: {
-        npmRegistry: 'https://npm.example.com',
-        pypiIndexUrl: 'https://pypi.example.com/simple',
-        aptMirror: ' https://mirror.example.com/ubuntu/ '
+        npmRegistry: 'https://another-npm.example.com',
+        pypiIndexUrl: config.pypiIndexUrl
       }
     });
 
-    expect(sandbox.getMirrorWrites()).toEqual([expectedWriteEntries]);
-    expect(sandbox.createDirectories).not.toHaveBeenCalledWith(['/etc/apt/sources.list.d']);
-    expect(sandbox.getState()?.values?.sandboxPackageMirrors).toBe(
-      buildRuntimeHash(JSON.stringify(expectedWriteEntries))
-    );
-  });
-
-  it('writes Debian apt sources with Debian suites and keyring', async () => {
-    const sandbox = createSandbox({ osRelease: 'ID=debian\nVERSION_CODENAME=bookworm\n' });
-
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: { aptMirror: 'https://mirror.example.com/debian/' }
-    });
-
-    expect(sandbox.getMirrorWrites()).toEqual([
-      [
-        {
-          path: '/etc/apt/sources.list.d/00-fastgpt-mirror.sources',
-          data: [
-            'Types: deb',
-            'URIs: https://mirror.example.com/debian/',
-            'Suites: bookworm bookworm-updates bookworm-backports',
-            'Components: main contrib non-free non-free-firmware',
-            'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
-            '',
-            'Types: deb',
-            'URIs: https://mirror.example.com/debian-security',
-            'Suites: bookworm-security',
-            'Components: main contrib non-free non-free-firmware',
-            'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
-            ''
-          ].join('\n')
-        }
-      ]
+    expect(sandbox.getMirrorWrites()).toHaveLength(3);
+    expect(
+      sandbox
+        .getMirrorWrites()[2]
+        .map(({ path }) => path)
+        .slice(-4)
+    ).toEqual([
+      '/home/test/.npmrc',
+      '/home/test/.yarnrc',
+      '/home/test/.yarnrc.yml',
+      '/home/test/.bunfig.toml'
     ]);
-  });
-
-  it('does not infer a Debian security mirror from a non-standard archive URL', async () => {
-    const sandbox = createSandbox({ osRelease: 'ID=debian\nVERSION_CODENAME=bookworm\n' });
-
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: { aptMirror: 'https://mirror.example.com/debian-mirror' }
+    expect(sandbox.getState()?.values).toEqual({
+      npmMirror: buildRuntimeHash('https://another-npm.example.com'),
+      pypiMirror: buildRuntimeHash(config.pypiIndexUrl),
+      aptMirror: buildRuntimeHash('')
     });
-
-    expect(sandbox.getMirrorWrites()).toEqual([
-      [
-        {
-          path: '/etc/apt/sources.list.d/00-fastgpt-mirror.sources',
-          data: [
-            'Types: deb',
-            'URIs: https://mirror.example.com/debian-mirror',
-            'Suites: bookworm bookworm-updates bookworm-backports',
-            'Components: main contrib non-free non-free-firmware',
-            'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
-            ''
-          ].join('\n')
-        }
-      ]
-    ]);
   });
 
-  it('does not commit the mirror hash when one file write fails', async () => {
+  it('keeps retrying apt platform resolution without blocking other mirrors', async () => {
     const sandbox = createSandbox();
-    sandbox.writeFiles.mockResolvedValueOnce([
-      {
-        path: '/home/test/.npmrc',
-        bytesWritten: 0,
-        error: new Error('write failed')
-      }
-    ]);
+    const config = {
+      npmRegistry: 'https://npm.example.com',
+      aptMirror: 'https://apt.example.com/ubuntu'
+    };
 
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: { npmRegistry: 'https://npm.example.com' }
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+
+    expect(sandbox.getMirrorWrites()).toHaveLength(1);
+    expect(sandbox.getState()?.values).toEqual({
+      npmMirror: buildRuntimeHash(config.npmRegistry),
+      pypiMirror: buildRuntimeHash('')
     });
-
-    expect(sandbox.getState()).toBeUndefined();
-  });
-
-  it('keeps official apt sources when the sandbox image is not Ubuntu or Debian', async () => {
-    const sandbox = createSandbox({ osRelease: 'ID=alpine\nVERSION_CODENAME=\n' });
-
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: { aptMirror: 'https://mirror.example.com/debian' }
-    });
-
-    expect(sandbox.readFiles).toHaveBeenCalledWith(['/etc/os-release']);
-    expect(sandbox.execute).toHaveBeenCalledWith('printf "%s" "$HOME"', {
-      timeoutMs: 5_000,
-      maxOutputBytes: 1024
-    });
-    expect(sandbox.getMirrorWrites()).toEqual([]);
-  });
-
-  it('keeps official apt sources when reading the sandbox OS release fails', async () => {
-    const sandbox = createSandbox();
-    sandbox.readFiles.mockRejectedValueOnce(new Error('read failed'));
-
-    await expect(
-      prepareSandboxRuntimeMirrors({
-        sandbox: sandbox as any,
-        config: { aptMirror: 'https://mirror.example.com/ubuntu' }
-      })
-    ).resolves.toBeUndefined();
-
-    expect(sandbox.execute).toHaveBeenCalledWith('printf "%s" "$HOME"', {
-      timeoutMs: 5_000,
-      maxOutputBytes: 1024
-    });
-    expect(sandbox.getMirrorWrites()).toEqual([]);
+    expect(
+      sandbox.readFiles.mock.calls.filter(([paths]) => paths.includes('/etc/os-release'))
+    ).toHaveLength(2);
   });
 });

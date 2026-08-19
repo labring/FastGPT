@@ -3,7 +3,7 @@
  *
  * 负责根据环境配置写入 npm/pip/uv/apt 等镜像文件，不处理 Skill 包部署。
  */
-import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
 import { buildRuntimeHash, joinSandboxPath } from '../../utils';
@@ -18,14 +18,30 @@ import { prepareSandboxFileParentDirectories } from '../file';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
-const SANDBOX_MIRRORS_STATE_HASH_KEY = 'sandboxPackageMirrors';
-const APT_MIRROR_SOURCE_PATH = '/etc/apt/sources.list.d/00-fastgpt-mirror.sources';
-type SandboxAptDistribution = 'ubuntu' | 'debian';
+const SANDBOX_MIRROR_STATE_HASH_KEYS = {
+  npm: 'npmMirror',
+  pypi: 'pypiMirror',
+  apt: 'aptMirror'
+} as const;
+const APT_SOURCE_PATHS = {
+  debian: '/etc/apt/sources.list.d/debian.sources',
+  ubuntu: '/etc/apt/sources.list.d/ubuntu.sources'
+} as const;
+const SANDBOX_MIRROR_COPY_SUFFIX = '.copy';
 
+type SandboxRuntimeMirrorGroup = 'npm' | 'pypi' | 'apt';
+type SandboxAptDistribution = 'ubuntu' | 'debian';
 type SandboxAptPlatform = {
   distribution: SandboxAptDistribution;
   codename: string;
 };
+
+type SandboxRuntimeMirrorFile = {
+  path: string;
+  data: string;
+};
+
+type SandboxRuntimeMirrorFiles = Record<SandboxRuntimeMirrorGroup, SandboxRuntimeMirrorFile[]>;
 
 export type SandboxRuntimeMirrorsConfig = {
   npmRegistry?: string;
@@ -47,78 +63,83 @@ export const prepareSandboxRuntimeMirrors = async ({
   config?: SandboxRuntimeMirrorsConfig;
 }): Promise<void> => {
   const normalizedConfig = normalizeMirrorsConfig(config);
-  if (Object.keys(normalizedConfig).length === 0) return;
-
-  const { aptMirror } = normalizedConfig;
-  const aptPlatform = aptMirror ? await resolveSandboxAptPlatform(sandbox) : undefined;
-
   const homeDirectory = await resolveSandboxHome(sandbox);
   if (!homeDirectory) return;
 
   const stateContext = await readSandboxRuntimeState({ sandbox, homeDirectory });
   if (!stateContext.statePath) return;
 
+  const aptMirrorHash = buildRuntimeHash(normalizedConfig.aptMirror ?? '');
+  const aptMirrorSynchronized =
+    getRuntimeStateValue(stateContext.state, SANDBOX_MIRROR_STATE_HASH_KEYS.apt) === aptMirrorHash;
+  const aptPlatform =
+    normalizedConfig.aptMirror && !aptMirrorSynchronized
+      ? await resolveSandboxAptPlatform(sandbox)
+      : undefined;
+
+  const mirrorPaths = getSandboxRuntimeMirrorPaths(homeDirectory);
   const files = buildSandboxRuntimeMirrorFiles({
     config: normalizedConfig,
-    homeDirectory,
+    paths: mirrorPaths,
     aptPlatform
   });
-  if (files.length === 0) {
-    if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY)) {
-      setRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY, []);
-      await writeSandboxRuntimeState(sandbox, stateContext);
+
+  const mirrorGroups: Array<{
+    group: SandboxRuntimeMirrorGroup;
+    stateKey: string;
+    value?: string;
+    managedPaths: readonly string[];
+    files: SandboxRuntimeMirrorFile[];
+  }> = [
+    {
+      group: 'npm',
+      stateKey: SANDBOX_MIRROR_STATE_HASH_KEYS.npm,
+      value: normalizedConfig.npmRegistry,
+      managedPaths: mirrorPaths.npm,
+      files: files.npm
+    },
+    {
+      group: 'pypi',
+      stateKey: SANDBOX_MIRROR_STATE_HASH_KEYS.pypi,
+      value: normalizedConfig.pypiIndexUrl,
+      managedPaths: mirrorPaths.pypi,
+      files: files.pypi
+    },
+    {
+      group: 'apt',
+      stateKey: SANDBOX_MIRROR_STATE_HASH_KEYS.apt,
+      value: normalizedConfig.aptMirror,
+      managedPaths: mirrorPaths.apt,
+      files: files.apt
     }
-    return;
-  }
+  ];
 
-  const relativeWritePaths = files
-    .filter(({ path }) => path !== APT_MIRROR_SOURCE_PATH)
-    .map(({ path }) => path);
-  const filesHash = buildRuntimeHash(JSON.stringify(files));
-  if (getRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY) === filesHash) {
-    const aptSource = files.find(({ path }) => path === APT_MIRROR_SOURCE_PATH);
-    if (!aptSource || (await isManagedAptMirrorSourceCurrent(sandbox, aptSource.data.toString()))) {
-      return;
+  let stateDirty = false;
+  for (const mirrorGroup of mirrorGroups) {
+    const configHash = buildRuntimeHash(mirrorGroup.value ?? '');
+    if (getRuntimeStateValue(stateContext.state, mirrorGroup.stateKey) === configHash) {
+      continue;
     }
+
+    // APT 无法识别发行版时只跳过 APT，保留旧状态让下一次调用继续重试。
+    if (mirrorGroup.group === 'apt' && mirrorGroup.value && !aptPlatform) continue;
+
+    const synchronized = await new SandboxRuntimeMirrorFileManager(
+      mirrorGroup.managedPaths
+    ).synchronize({
+      sandbox,
+      files: mirrorGroup.files
+    });
+    if (!synchronized) continue;
+
+    setRuntimeStateValue(stateContext.state, mirrorGroup.stateKey, configHash);
+    stateDirty = true;
   }
 
-  const writeResults = await prepareSandboxFileParentDirectories(sandbox, relativeWritePaths)
-    .then(() => sandbox.writeFiles(files))
-    .catch((error) => {
-      logger.warn('[Sandbox Runtime] Failed to write mirror config files', { error });
-      return undefined;
-    });
-  const failedWrite = writeResults?.find((result) => result.error);
-  if (!writeResults || failedWrite) {
-    logger.warn('[Sandbox Runtime] Failed to write mirror config files', {
-      path: failedWrite?.path,
-      error: failedWrite?.error
-    });
-    return;
-  }
-
-  setRuntimeStateValue(stateContext.state, SANDBOX_MIRRORS_STATE_HASH_KEY, filesHash);
-  await writeSandboxRuntimeState(sandbox, stateContext);
+  if (stateDirty) await writeSandboxRuntimeState(sandbox, stateContext);
 };
 
-/** hash 命中时确认受管 apt source 仍存在，避免清理后被旧状态误判为已写入。 */
-const isManagedAptMirrorSourceCurrent = async (
-  sandbox: ISandbox,
-  expectedContent: string
-): Promise<boolean> => {
-  const [source] = await sandbox.readFiles([APT_MIRROR_SOURCE_PATH]).catch((error) => {
-    logger.warn('[Sandbox Runtime] Failed to verify managed apt mirror source', { error });
-    return [];
-  });
-
-  if (!source || source.error) return false;
-  return Buffer.from(source.content).toString('utf-8') === expectedContent;
-};
-
-/**
- * 读取 Ubuntu 或 Debian 代号，以生成与运行镜像版本匹配的 apt source。
- * 无法识别支持的发行版时跳过自定义 apt source，镜像原有官方源保持不变。
- */
+/** 读取发行版信息，用于生成对应的 APT source 文件。 */
 const resolveSandboxAptPlatform = async (
   sandbox: ISandbox
 ): Promise<SandboxAptPlatform | undefined> => {
@@ -126,7 +147,6 @@ const resolveSandboxAptPlatform = async (
     logger.warn('[Sandbox Runtime] Failed to read sandbox OS release', { error });
     return [];
   });
-
   if (!osRelease || osRelease.error) {
     logger.warn('[Sandbox Runtime] Cannot configure apt mirror; official sources remain active', {
       error: osRelease?.error
@@ -141,10 +161,9 @@ const resolveSandboxAptPlatform = async (
       .find((line) => line.startsWith(`${key}=`))
       ?.slice(key.length + 1)
       .trim()
-      .replace(/^(['"])(.*)\1$/, '$2');
+      .replace(/^(['"])(.*)\1$/, '$2') || undefined;
   const osId = readField('ID');
   const codename = readField('UBUNTU_CODENAME') ?? readField('VERSION_CODENAME');
-
   if ((osId !== 'ubuntu' && osId !== 'debian') || !codename) {
     logger.warn('[Sandbox Runtime] Cannot configure apt mirror for an unsupported sandbox', {
       osId,
@@ -153,40 +172,138 @@ const resolveSandboxAptPlatform = async (
     return undefined;
   }
 
-  return {
-    distribution: osId,
-    codename
-  };
+  return { distribution: osId, codename };
 };
+
+/** 统一清理镜像配置，空值不生成对应的运行时文件。 */
+const normalizeMirrorsConfig = (config: SandboxRuntimeMirrorsConfig): SandboxRuntimeMirrorsConfig =>
+  Object.fromEntries(
+    Object.entries(config).flatMap(([key, value]) => {
+      const trimmed = value?.trim();
+      return trimmed ? [[key, trimmed]] : [];
+    })
+  );
+
+const getSandboxRuntimeMirrorPaths = (homeDirectory: string) => ({
+  npm: [
+    joinSandboxPath(homeDirectory, '.npmrc'),
+    joinSandboxPath(homeDirectory, '.yarnrc'),
+    joinSandboxPath(homeDirectory, '.yarnrc.yml'),
+    joinSandboxPath(homeDirectory, '.bunfig.toml')
+  ],
+  pypi: [
+    joinSandboxPath(homeDirectory, '.pip/pip.conf'),
+    joinSandboxPath(homeDirectory, '.config/pip/pip.conf'),
+    joinSandboxPath(homeDirectory, '.config/uv/uv.toml')
+  ],
+  apt: Object.values(APT_SOURCE_PATHS)
+});
+
+/** 统一处理镜像文件的备份、写入和环境变量删除后的恢复。 */
+class SandboxRuntimeMirrorFileManager {
+  constructor(private readonly managedPaths: readonly string[]) {}
+
+  /**
+   * 配置变化时先读取目标文件和备份文件；目标存在且没有备份时只备份一次，
+   * 配置未生成目标文件时则恢复已有备份，没有备份的文件保持不变。
+   */
+  async synchronize({
+    sandbox,
+    files
+  }: {
+    sandbox: ISandbox;
+    files: SandboxRuntimeMirrorFile[];
+  }): Promise<boolean> {
+    const activePaths = new Set(files.map(({ path }) => path));
+    const restorePaths = this.managedPaths.filter((path) => !activePaths.has(path));
+    const readPaths = Array.from(
+      new Set([
+        ...files.map(({ path }) => path),
+        ...this.managedPaths.map((path) => this.getCopyPath(path))
+      ])
+    );
+    const readResults = await sandbox.readFiles(readPaths).catch((error) => {
+      logger.warn('[Sandbox Runtime] Failed to read mirror config files', { error });
+      return undefined;
+    });
+    if (!readResults) return false;
+
+    const contents = new Map(
+      readResults
+        .filter(({ error }) => !error)
+        .map(({ path, content }) => [path, Buffer.from(content).toString('utf-8')])
+    );
+    const backupFiles = files.flatMap(({ path }) => {
+      const copyPath = this.getCopyPath(path);
+      if (contents.has(copyPath) || !contents.has(path)) return [];
+      return [{ path: copyPath, data: contents.get(path)! }];
+    });
+    const restoreFiles = restorePaths.flatMap((path) => {
+      const copyPath = this.getCopyPath(path);
+      return contents.has(copyPath) ? [{ path, data: contents.get(copyPath)! }] : [];
+    });
+    const writes = [...backupFiles, ...files, ...restoreFiles];
+    if (writes.length === 0) return true;
+
+    const writeResults = await prepareSandboxFileParentDirectories(
+      sandbox,
+      writes.map(({ path }) => path)
+    )
+      .then(() => sandbox.writeFiles(writes))
+      .catch((error) => {
+        logger.warn('[Sandbox Runtime] Failed to write mirror config files', { error });
+        return undefined;
+      });
+    const failedWrite = writeResults?.find((result) => result.error);
+    if (!writeResults || failedWrite) {
+      logger.warn('[Sandbox Runtime] Failed to write mirror config files', {
+        path: failedWrite?.path,
+        error: failedWrite?.error
+      });
+      return false;
+    }
+    return true;
+  }
+
+  private getCopyPath(path: string): string {
+    return `${path}${SANDBOX_MIRROR_COPY_SUFFIX}`;
+  }
+}
 
 const buildSandboxRuntimeMirrorFiles = ({
   config,
-  homeDirectory,
+  paths,
   aptPlatform
 }: {
   config: SandboxRuntimeMirrorsConfig;
-  homeDirectory: string;
+  paths: ReturnType<typeof getSandboxRuntimeMirrorPaths>;
   aptPlatform?: SandboxAptPlatform;
-}): FileWriteEntry[] => {
-  const files: FileWriteEntry[] = [];
+}): SandboxRuntimeMirrorFiles => {
+  const files: SandboxRuntimeMirrorFiles = {
+    npm: [],
+    pypi: [],
+    apt: []
+  };
 
   if (config.npmRegistry) {
-    files.push({
-      path: joinSandboxPath(homeDirectory, '.npmrc'),
-      data: `registry=${config.npmRegistry}\n`
-    });
-    files.push({
-      path: joinSandboxPath(homeDirectory, '.yarnrc'),
-      data: `registry "${config.npmRegistry}"\n`
-    });
-    files.push({
-      path: joinSandboxPath(homeDirectory, '.yarnrc.yml'),
-      data: `npmRegistryServer: "${escapeYamlString(config.npmRegistry)}"\n`
-    });
-    files.push({
-      path: joinSandboxPath(homeDirectory, '.bunfig.toml'),
-      data: `[install]\nregistry = "${escapeTomlString(config.npmRegistry)}"\n`
-    });
+    files.npm.push(
+      {
+        path: paths.npm[0],
+        data: `registry=${config.npmRegistry}\n`
+      },
+      {
+        path: paths.npm[1],
+        data: `registry "${config.npmRegistry}"\n`
+      },
+      {
+        path: paths.npm[2],
+        data: `npmRegistryServer: "${escapeYamlString(config.npmRegistry)}"\n`
+      },
+      {
+        path: paths.npm[3],
+        data: `[install]\nregistry = "${escapeTomlString(config.npmRegistry)}"\n`
+      }
+    );
   }
 
   let pypiTrustedHost: string | undefined;
@@ -203,109 +320,85 @@ const buildSandboxRuntimeMirrorFiles = ({
     ...(pypiTrustedHost ? [`trusted-host = ${pypiTrustedHost}`] : [])
   ];
   if (pipConfig.length > 1) {
-    files.push({
-      path: joinSandboxPath(homeDirectory, '.pip/pip.conf'),
-      data: `${pipConfig.join('\n')}\n`
-    });
-    files.push({
-      path: joinSandboxPath(homeDirectory, '.config/pip/pip.conf'),
-      data: `${pipConfig.join('\n')}\n`
-    });
-    files.push({
-      path: joinSandboxPath(homeDirectory, '.config/uv/uv.toml'),
-      data: `${[
-        `default-index = "${escapeTomlString(config.pypiIndexUrl!)}"`,
-        ...(pypiTrustedHost
-          ? [`allow-insecure-host = ["${escapeTomlString(pypiTrustedHost)}"]`]
-          : [])
-      ].join('\n')}\n`
-    });
+    const data = `${pipConfig.join('\n')}\n`;
+    files.pypi.push(
+      { path: paths.pypi[0], data },
+      { path: paths.pypi[1], data },
+      {
+        path: paths.pypi[2],
+        data: `${[
+          `default-index = "${escapeTomlString(config.pypiIndexUrl!)}"`,
+          ...(pypiTrustedHost
+            ? [`allow-insecure-host = ["${escapeTomlString(pypiTrustedHost)}"]`]
+            : [])
+        ].join('\n')}\n`
+      }
+    );
   }
 
   if (config.aptMirror && aptPlatform) {
-    const aptSource =
-      aptPlatform.distribution === 'ubuntu'
-        ? {
-            components: 'main restricted universe multiverse',
-            signedBy: '/usr/share/keyrings/ubuntu-archive-keyring.gpg'
-          }
-        : {
-            components: 'main contrib non-free non-free-firmware',
-            signedBy: '/usr/share/keyrings/debian-archive-keyring.gpg'
-          };
-
-    const aptSources = (() => {
-      const regularSuites = [
-        aptPlatform.codename,
-        `${aptPlatform.codename}-updates`,
-        `${aptPlatform.codename}-backports`
-      ];
-
-      if (aptPlatform.distribution !== 'debian') {
-        return [
-          {
-            uri: config.aptMirror,
-            suites: [...regularSuites, `${aptPlatform.codename}-security`]
-          }
-        ];
-      }
-
-      // Debian 将安全更新放在独立的 debian-security 仓库，不能与普通 debian 仓库共用 suite。
-      const securityMirror = (() => {
-        try {
-          const url = new URL(config.aptMirror);
-          const path = url.pathname.replace(/\/+$/, '');
-          if (!path.endsWith('/debian')) return undefined;
-          url.pathname = `${path.slice(0, -'/debian'.length)}/debian-security`;
-          return url.toString();
-        } catch {
-          return undefined;
-        }
-      })();
-
-      return [
-        {
-          uri: config.aptMirror,
-          suites: regularSuites
-        },
-        ...(securityMirror
-          ? [
-              {
-                uri: securityMirror,
-                suites: [`${aptPlatform.codename}-security`]
-              }
-            ]
-          : [])
-      ];
-    })();
-
-    files.push({
-      path: APT_MIRROR_SOURCE_PATH,
-      data: `${aptSources
-        .map(({ uri, suites }) =>
-          [
-            'Types: deb',
-            `URIs: ${uri}`,
-            `Suites: ${suites.join(' ')}`,
-            `Components: ${aptSource.components}`,
-            `Signed-By: ${aptSource.signedBy}`
-          ].join('\n')
-        )
-        .join('\n\n')}\n`
+    files.apt.push({
+      path: APT_SOURCE_PATHS[aptPlatform.distribution],
+      data: buildAptSourceContent({ platform: aptPlatform, aptMirror: config.aptMirror })
     });
   }
 
   return files;
 };
 
-/** 统一清理镜像配置，空值不生成对应的运行时文件。 */
-const normalizeMirrorsConfig = (config: SandboxRuntimeMirrorsConfig): SandboxRuntimeMirrorsConfig =>
-  Object.fromEntries(
-    Object.entries(config).flatMap(([key, value]) => {
-      const trimmed = value?.trim();
-      return trimmed ? [[key, trimmed]] : [];
-    })
-  );
+const buildAptSourceContent = ({
+  platform,
+  aptMirror
+}: {
+  platform: SandboxAptPlatform;
+  aptMirror: string;
+}): string => {
+  if (platform.distribution === 'debian') {
+    return [
+      'Types: deb',
+      `URIs: ${aptMirror}`,
+      `Suites: ${platform.codename} ${platform.codename}-updates`,
+      'Components: main',
+      'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
+      '',
+      'Types: deb',
+      `URIs: ${resolveDebianSecurityMirror(aptMirror)}`,
+      `Suites: ${platform.codename}-security`,
+      'Components: main',
+      'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg',
+      ''
+    ].join('\n');
+  }
+
+  return [
+    'Types: deb',
+    `URIs: ${aptMirror}`,
+    `Suites: ${platform.codename} ${platform.codename}-updates ${platform.codename}-backports`,
+    'Components: main universe restricted multiverse',
+    'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg',
+    '',
+    'Types: deb',
+    `URIs: ${aptMirror}`,
+    `Suites: ${platform.codename}-security`,
+    'Components: main universe restricted multiverse',
+    'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg',
+    ''
+  ].join('\n');
+};
+
+const resolveDebianSecurityMirror = (aptMirror: string): string => {
+  try {
+    const mirrorUrl = new URL(aptMirror);
+    const mirrorPath = mirrorUrl.pathname.replace(/\/+$/, '');
+    if (mirrorPath.endsWith('/debian')) {
+      mirrorUrl.pathname = `${mirrorPath.slice(0, -'/debian'.length)}/debian-security`;
+      return mirrorUrl.toString();
+    }
+  } catch {
+    // 保留原配置，让 apt 在执行时报告无效地址。
+  }
+  return aptMirror;
+};
 
 const escapeTomlString = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
