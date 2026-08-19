@@ -38,6 +38,7 @@ export const openAPITagGroups = [
       DevApiTagsMap.appEvaluation,
       DevApiTagsMap.appLog,
       DevApiTagsMap.publishChannel,
+      DevApiTagsMap.mcpServer,
       DevApiTagsMap.workflowDebug,
       DevApiTagsMap.appOther
     ]
@@ -45,10 +46,10 @@ export const openAPITagGroups = [
   {
     name: '核心-工具管理',
     tags: [
+      DevApiTagsMap.toolPreview,
       DevApiTagsMap.appSystemTool,
       DevApiTagsMap.httpTools,
-      DevApiTagsMap.mcpTools,
-      DevApiTagsMap.mcpServer
+      DevApiTagsMap.mcpTools
     ]
   },
   {
@@ -57,6 +58,7 @@ export const openAPITagGroups = [
       DevApiTagsMap.skillBasic,
       DevApiTagsMap.skillPermission,
       DevApiTagsMap.skillEdit,
+      DevApiTagsMap.skillDebug,
       DevApiTagsMap.skillVersion
     ]
   },
@@ -145,12 +147,12 @@ export const openAPITagGroups = [
     tags: [DevApiTagsMap.reverseInvokePlugin, DevApiTagsMap.reverseInvokeSandbox]
   },
   {
+    name: '插件市场',
+    tags: [DevApiTagsMap.pluginMarketplace]
+  },
+  {
     name: '管理员-插件管理',
-    tags: [
-      DevApiTagsMap.pluginAdmin,
-      DevApiTagsMap.pluginMarketplace,
-      DevApiTagsMap.pluginToolAdmin
-    ]
+    tags: [DevApiTagsMap.pluginAdmin, DevApiTagsMap.pluginToolAdmin]
   }
 ];
 

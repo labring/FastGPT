@@ -9,9 +9,13 @@ import {
   GetDatasetPathsResponseSchema,
   type GetDatasetPathsResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetPathsResponse> {
-  const { sourceId: datasetId, type } = GetDatasetPathsQuerySchema.parse(req.query);
+  const { sourceId: datasetId, type } = parseApiInput({
+    req,
+    querySchema: GetDatasetPathsQuerySchema
+  }).query;
 
   if (!datasetId) {
     return [];

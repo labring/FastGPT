@@ -138,6 +138,7 @@ describe('AI OpenAPI contracts', () => {
         DevApiTagsMap.skillBasic,
         DevApiTagsMap.skillPermission,
         DevApiTagsMap.skillEdit,
+        DevApiTagsMap.skillDebug,
         DevApiTagsMap.skillVersion
       ]
     });

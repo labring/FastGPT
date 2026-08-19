@@ -15,6 +15,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { ExportDatasetQuerySchema } from '@fastgpt/global/openapi/core/dataset/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -32,7 +33,7 @@ type ExportSchemaType = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const { datasetId } = ExportDatasetQuerySchema.parse(req.query);
+  const { datasetId } = parseApiInput({ req, querySchema: ExportDatasetQuerySchema }).query;
 
   // 凭证校验
   const { teamId, dataset } = await authDataset({

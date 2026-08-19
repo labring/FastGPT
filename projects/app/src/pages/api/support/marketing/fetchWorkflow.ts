@@ -4,28 +4,21 @@ import { axios } from '@fastgpt/service/common/api/axios';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { type NextApiResponse } from 'next';
-
-export type FetchWorkflowBody = {
-  url: string;
-};
-
-export type FetchWorkflowQuery = Record<string, never>;
-
-export type FetchWorkflowResponseType = {
-  data: Record<string, any>;
-};
+import {
+  FetchWorkflowBodySchema,
+  FetchWorkflowResponseSchema,
+  type FetchWorkflowBodyType,
+  type FetchWorkflowResponseType
+} from '@fastgpt/global/openapi/common/other/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
-  req: ApiRequestProps<FetchWorkflowBody, FetchWorkflowQuery>,
+  req: ApiRequestProps<FetchWorkflowBodyType>,
   _res: NextApiResponse
 ): Promise<FetchWorkflowResponseType> {
   await authCert({ req, authToken: true });
 
-  const url = req.body?.url;
-
-  if (!url) {
-    return Promise.reject('Url is empty');
-  }
+  const { url } = parseApiInput({ req, bodySchema: FetchWorkflowBodySchema }).body;
   if (await isInternalAddress(url)) {
     return Promise.reject(PRIVATE_URL_TEXT);
   }
@@ -45,7 +38,7 @@ async function handler(
     return Promise.reject('Invalid data');
   }
 
-  return data;
+  return FetchWorkflowResponseSchema.parse(data);
 }
 
 export default NextAPI(handler);

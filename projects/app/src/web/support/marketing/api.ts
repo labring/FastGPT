@@ -1,8 +1,8 @@
 import { POST } from '@/web/common/api/request';
-import {
-  type FetchWorkflowBody,
-  type FetchWorkflowResponseType
-} from '@/pages/api/support/marketing/fetchWorkflow';
+import type {
+  FetchWorkflowBodyType,
+  FetchWorkflowResponseType
+} from '@fastgpt/global/openapi/common/other/api';
 
-export const postFetchWorkflow = (data: FetchWorkflowBody) =>
+export const postFetchWorkflow = (data: FetchWorkflowBodyType) =>
   POST<FetchWorkflowResponseType>('/support/marketing/fetchWorkflow', data);

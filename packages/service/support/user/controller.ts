@@ -53,7 +53,7 @@ export async function getUserDetail({
   };
 
   return {
-    _id: user._id,
+    _id: String(user._id),
     username: user.username,
     avatar: tmb.avatar,
     timezone: user.timezone,
