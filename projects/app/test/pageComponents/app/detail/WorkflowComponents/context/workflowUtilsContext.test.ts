@@ -31,7 +31,7 @@ describe('splitToolInputsByMode', () => {
       key: 'query',
       label: 'query',
       canEdit: true,
-      isToolParam: true,
+      defaultToAgentGenerated: true,
       selectedType: FlowNodeInputTypeEnum.input,
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
     };
@@ -47,6 +47,7 @@ describe('splitToolInputsByMode', () => {
       key: 'query',
       label: 'query',
       canEdit: true,
+      canAgentGenerated: false,
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
     };
 

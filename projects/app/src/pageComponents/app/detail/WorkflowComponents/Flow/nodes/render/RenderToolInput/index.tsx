@@ -33,7 +33,7 @@ export const hasDynamicToolInput = (
     ? source.some(
         (item) =>
           item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
-          (item.canEdit === true && item.isToolParam === true)
+          (item.canEdit === true && item.defaultToAgentGenerated === true)
       )
     : source.hasToolInput === true;
 
