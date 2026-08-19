@@ -311,12 +311,14 @@ export const onUpdateAppWorkflow = async ({
   modules,
   edges,
   chatConfig,
+  teamId,
   session
 }: {
   appId: string;
   modules?: AppSchemaType['modules'];
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
+  teamId: string;
   session?: ClientSession;
 }) => {
   const workflow = await migrateWorkflowToCurrent(
@@ -327,7 +329,7 @@ export const onUpdateAppWorkflow = async ({
     },
     getWorkflowMigrationOptions()
   );
-  await beforeUpdateAppFormat({ nodes: workflow.nodes });
+  await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
 
   return await MongoApp.findByIdAndUpdate(
     appId,

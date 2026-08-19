@@ -1484,6 +1484,16 @@ const fixWorkflowIOList = ({
     });
 
     if (kind === 'outputs') {
+      if ('renderTypeList' in nextItem) {
+        recordFormatChange({
+          changes: docResult.formatChanges,
+          path: `${basePath}[${itemIndex}].renderTypeList`,
+          before: nextItem.renderTypeList,
+          after: undefined,
+          reason: 'legacy output renderTypeList removed'
+        });
+        delete nextItem.renderTypeList;
+      }
       nextItem.type = recordExpression({
         stats,
         docResult,
@@ -1873,6 +1883,16 @@ export const formatWorkflowDocument = ({
       changes: docResult.formatChanges,
       reason: 'legacy node missing name'
     });
+    if ('moduleId' in nextNode) {
+      recordFormatChange({
+        changes: docResult.formatChanges,
+        path: `${rootPath}[${nodeIndex}].moduleId`,
+        before: nextNode.moduleId,
+        after: undefined,
+        reason: 'legacy node moduleId removed after nodeId migration'
+      });
+      delete nextNode.moduleId;
+    }
     normalizeStringOptionalFields({
       target: nextNode,
       keys: optionalNodeStringFields,

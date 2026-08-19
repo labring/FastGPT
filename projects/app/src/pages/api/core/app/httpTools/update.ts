@@ -25,7 +25,7 @@ async function handler(
     bodySchema: UpdateHttpToolsBodySchema
   }).body;
 
-  const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+  const { app, teamId } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
@@ -44,7 +44,7 @@ async function handler(
     customHeaders
   });
 
-  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode] });
+  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
   await mongoSessionRun(async (session) => {
     await MongoApp.findByIdAndUpdate(

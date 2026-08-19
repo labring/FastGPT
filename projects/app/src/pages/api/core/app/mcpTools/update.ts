@@ -28,7 +28,7 @@ async function handler(
     req,
     bodySchema: UpdateMcpToolsBodySchema
   });
-  const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+  const { app, teamId } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   await assertMCPUrlNotInternal(url);
 
@@ -43,7 +43,7 @@ async function handler(
     avatar: app.avatar
   });
 
-  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode] });
+  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
   await mongoSessionRun(async (session) => {
     // update app and app version
