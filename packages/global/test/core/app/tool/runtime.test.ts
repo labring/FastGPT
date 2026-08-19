@@ -138,6 +138,32 @@ describe('compileToolRuntime', () => {
     });
   });
 
+  it('keeps editable Code custom inputs in the model schema', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'code',
+      name: 'Code',
+      inputs: [
+        {
+          key: 'customParam',
+          label: 'customParam',
+          valueType: WorkflowIOValueTypeEnum.string,
+          canEdit: true,
+          defaultToAgentGenerated: true,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated
+        }
+      ]
+    });
+
+    expect(compiled.agentGeneratedKeys).toEqual(['customParam']);
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: {
+        customParam: { type: 'string', description: 'customParam' }
+      }
+    });
+  });
+
   it('normalizes persisted modes to each input allowed modes', () => {
     const compiled = compileToolRuntime({
       toolId: 'guarded-tool',

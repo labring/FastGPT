@@ -255,10 +255,7 @@ export const getWorkflowEntryNodeIds = (
     }
   }
 
-  const entryList = [
-    FlowNodeTypeEnum.workflowStart,
-    FlowNodeTypeEnum.pluginInput
-  ];
+  const entryList = [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput];
   return nodes
     .filter(
       (node) =>
@@ -336,7 +333,11 @@ export const getReferenceVariableValue = ({
       return value;
     }
 
-    return node.outputs.find((output) => output.id === outputId)?.value;
+    const outputValue = node.outputs.find((output) => output.id === outputId)?.value;
+    if (outputValue !== undefined) return outputValue;
+
+    // 工具调用参数在节点执行前注入 inputs，供同节点后续输入引用。
+    return node.inputs.find((input) => input.key === outputId)?.value;
   };
 
   // handle single reference value
