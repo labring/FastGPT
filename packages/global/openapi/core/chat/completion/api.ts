@@ -5,15 +5,18 @@ import { getNanoid } from '../../../../common/string/tools';
 import { AppSchemaTypeSchema } from '../../../../core/app/type';
 import { AuthUserTypeEnum } from '../../../../support/permission/constant';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { LegacyWorkflowDataSchema } from '../../../../core/workflow/migration';
+import { CanonicalWorkflowDataSchema } from '../../../../core/workflow/migration';
+import {
+  OpenAPIFlowNodeInputItemTypeSchema,
+  OpenAPIStoreNodeItemTypeSchema
+} from '../../workflow/node';
 
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
 
-// chatTest 是迁移边界，旧节点字段必须原样交给 migration；不能直接暴露包含 editor 函数的运行时节点 schema。
-const ChatTestLegacyNodeSchema = z.looseObject({}).meta({
-  description: '工作流节点。支持历史字段，服务端会迁移为当前格式后执行。'
-});
+const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
+  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema.strict())
+}).strict();
 
 const WebCompletionsSchema = z.object({
   chatId: z
@@ -199,9 +202,11 @@ export const ChatTestPropsSchema = z.object({
     .string()
     .nullish()
     .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
-  nodes: z.array(ChatTestLegacyNodeSchema).meta({ description: '节点列表' }),
-  edges: LegacyWorkflowDataSchema.shape.edges.meta({ description: '边列表' }),
-  chatConfig: LegacyWorkflowDataSchema.shape.chatConfig.meta({ description: '聊天配置' }),
+  nodes: z.array(ChatTestNodeSchema).meta({ description: '当前格式的节点列表' }),
+  edges: CanonicalWorkflowDataSchema.shape.edges.meta({ description: '当前格式的边列表' }),
+  chatConfig: CanonicalWorkflowDataSchema.shape.chatConfig.meta({
+    description: '当前格式的聊天配置'
+  }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     example: {},
     description: '全局变量或插件输入'
