@@ -88,6 +88,26 @@ describe('template context', () => {
     expect(result?.parentType).toBeNull();
   });
 
+  it('buildNodeTemplateContext：工具子流程后续节点保留 Stop Tool', () => {
+    const result = buildNodeTemplateContext({
+      sourceNode: {
+        nodeId: 'n3',
+        flowNodeType: FlowNodeTypeEnum.aiChat,
+        isTool: false,
+        parentNodeId: undefined
+      },
+      edges: [
+        { source: 'toolCall', target: 'n1', targetHandle: NodeOutputKeyEnum.selectedTools },
+        { source: 'n1', target: 'n2' },
+        { source: 'n2', target: 'n3' }
+      ],
+      getNodeById: () => undefined
+    });
+
+    expect(result?.isConnectedTool).toBe(true);
+    expect(isTemplateVisible(StopToolNode, result)).toBe(true);
+  });
+
   it('工厂函数：白名单仅在匹配任一规则且上下文非空时可见', () => {
     const predicate = createShowInContext([
       { sourceType: FlowNodeTypeEnum.toolCall, handleId: NodeOutputKeyEnum.selectedTools },

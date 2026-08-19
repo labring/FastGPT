@@ -52,7 +52,7 @@ export const isTemplateVisible = (
 };
 
 /**
- * 由源节点信息构建快捷添加/连线共用的展示上下文；sourceNode 不存在时返回 null。
+ * 由源节点信息构建快捷添加/连线共用的展示上下文；会沿入边追溯工具根边，sourceNode 不存在时返回 null。
  */
 export const buildNodeTemplateContext = ({
   sourceNode,
@@ -66,7 +66,7 @@ export const buildNodeTemplateContext = ({
   sourceNode:
     | Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>
     | undefined;
-  edges: { target: string; targetHandle?: string | null }[];
+  edges: { source?: string; target: string; targetHandle?: string | null }[];
   handleId?: string | null;
   getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
   isSidebar?: boolean;
@@ -75,15 +75,41 @@ export const buildNodeTemplateContext = ({
 }): NodeTemplateContext | null => {
   if (!sourceNode && !isSidebar) return null;
   const parentNode = sourceNode?.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
+  const isConnectedTool = (() => {
+    if (!sourceNode) return false;
+
+    const incomingEdges = new Map<string, typeof edges>();
+    for (const edge of edges) {
+      const targetEdges = incomingEdges.get(edge.target);
+      if (targetEdges) {
+        targetEdges.push(edge);
+      } else {
+        incomingEdges.set(edge.target, [edge]);
+      }
+    }
+
+    // 工具子流程可经过多个普通节点，沿入边找到任一 selectedTools 根边即可。
+    const pendingNodeIds = [sourceNode.nodeId];
+    const visitedNodeIds = new Set<string>();
+    while (pendingNodeIds.length) {
+      const nodeId = pendingNodeIds.pop()!;
+      if (visitedNodeIds.has(nodeId)) continue;
+      visitedNodeIds.add(nodeId);
+
+      for (const edge of incomingEdges.get(nodeId) ?? []) {
+        if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) return true;
+        if (edge.source) pendingNodeIds.push(edge.source);
+      }
+    }
+
+    return false;
+  })();
   return {
     isSidebar,
     sourceNodeId: sourceNode?.nodeId ?? null,
     sourceType: sourceNode?.flowNodeType ?? null,
     sourceIsTool: !!sourceNode?.isTool,
-    isConnectedTool: edges.some(
-      (edge) =>
-        edge.target === sourceNode?.nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
-    ),
+    isConnectedTool,
     handleId: handleId ?? null,
     parentType: parentNode?.flowNodeType ?? null,
     hasToolNode,
