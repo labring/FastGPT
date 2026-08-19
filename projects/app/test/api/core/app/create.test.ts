@@ -1,11 +1,14 @@
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
@@ -130,5 +133,41 @@ describe('create api', () => {
     expect(res.code).toBe(200);
     const app = await MongoApp.findById(res.data).lean();
     expect(app?.avatar).toBe('/plugin-avatar.png');
+  });
+
+  it('migrates historical workflow before creating app and initial version', async () => {
+    const [user] = (await getFakeUsers(1)).members;
+    const appId = await createapi.onCreateApp({
+      name: 'historical workflow',
+      type: AppTypeEnum.workflow,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      modules: [
+        {
+          nodeId: 'start-1',
+          flowNodeType: 'workflowStart',
+          name: 'Start',
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+              selectedTypeIndex: 1
+            }
+          ],
+          outputs: []
+        }
+      ] as unknown as AppSchemaType['modules']
+    });
+
+    const [app, version] = await Promise.all([
+      MongoApp.findById(appId).lean(),
+      MongoAppVersion.findOne({ appId }).lean()
+    ]);
+    const input = app?.modules[0]?.inputs[0];
+
+    expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(input).not.toHaveProperty('selectedTypeIndex');
+    expect(version?.nodes).toEqual(app?.modules);
   });
 });

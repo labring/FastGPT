@@ -1,8 +1,5 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
@@ -42,10 +39,9 @@ import {
 // 更新应用接口
 // 包括如下功能：
 // 1. 更新应用的信息（包括名称，类型，头像，介绍等）
-// 2. 更新应用的编排信息
-// 3. 移动应用
+// 2. 移动应用
 // 操作权限：
-// 1. 更新信息和工作流编排需要有应用的写权限
+// 1. 更新信息需要有应用的写权限
 // 2. 移动应用需要有
 //  (1) 父目录的管理权限
 //  (2) 目标目录的管理权限
@@ -53,7 +49,7 @@ import {
 async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryType>) {
   const {
     query: { appId },
-    body: { parentId, name, avatar, type, intro, nodes, edges, chatConfig }
+    body: { parentId, name, avatar, type, intro }
   } = parseApiInput({
     req,
     querySchema: UpdateAppQuerySchema,
@@ -131,22 +127,6 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     });
   }
 
-  const shouldNormalizeWorkflow =
-    nodes !== undefined || edges !== undefined || chatConfig !== undefined;
-  const normalizedWorkflow = shouldNormalizeWorkflow
-    ? await migrateWorkflowToCurrent(
-        {
-          nodes: nodes ?? app.modules ?? [],
-          edges: edges ?? app.edges ?? [],
-          chatConfig: chatConfig ?? app.chatConfig
-        },
-        getWorkflowMigrationOptions()
-      )
-    : undefined;
-  if (normalizedWorkflow) {
-    await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
-  }
-
   const onUpdate = async (session?: ClientSession) => {
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
@@ -162,11 +142,6 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
         ...(type && { type }),
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
-        ...(normalizedWorkflow && {
-          modules: normalizedWorkflow.nodes,
-          edges: normalizedWorkflow.edges,
-          chatConfig: normalizedWorkflow.chatConfig
-        }),
         ...(isMove && { inheritPermission: true }),
         updateTime: new Date()
       },

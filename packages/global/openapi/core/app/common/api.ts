@@ -340,7 +340,7 @@ export type GetAppDetailResponseType = z.infer<typeof GetAppDetailResponseSchema
  * API: 更新应用
  * Route: PUT /api/core/app/update
  * Method: PUT
- * Description: 更新应用基础信息、编排信息或移动应用位置。
+ * Description: 更新应用基础信息或移动应用位置。
  * Tags: ['基础管理']
  * ============================================================================ */
 
@@ -361,11 +361,9 @@ export const UpdateAppBodySchema = z
       .optional()
       .meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
     avatar: z.string().optional().meta({ description: '应用头像' }),
-    intro: z.string().optional().meta({ description: '应用介绍' }),
-    nodes: z.array(OpenAPIStoreNodeItemTypeSchema).optional().meta({ description: '应用节点配置' }),
-    edges: AppSchemaTypeSchema.shape.edges.optional().meta({ description: '应用连线' }),
-    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({ description: '聊天配置' })
+    intro: z.string().optional().meta({ description: '应用介绍' })
   })
+  .strict()
   .meta({
     example: {
       name: '客服应用',

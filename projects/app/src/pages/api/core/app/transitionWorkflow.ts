@@ -2,12 +2,8 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { onCreateApp } from './create';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { getWorkflowMigrationOptions } from '@fastgpt/service/core/app/tool/utils/client';
+import { onCreateApp, onUpdateAppWorkflow } from './create';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -33,15 +29,6 @@ async function handler(
     authToken: true,
     per: OwnerPermissionVal
   });
-  const workflow = await migrateWorkflowToCurrent(
-    {
-      nodes: app.modules,
-      edges: app.edges,
-      chatConfig: app.chatConfig
-    },
-    getWorkflowMigrationOptions()
-  );
-
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
       // Copy avatar
@@ -57,11 +44,12 @@ async function handler(
         name: app.name + ' Copy',
         avatar,
         type: AppTypeEnum.workflow,
-        modules: workflow.nodes,
-        edges: workflow.edges,
-        chatConfig: workflow.chatConfig,
+        modules: app.modules,
+        edges: app.edges,
+        chatConfig: app.chatConfig,
         teamId: app.teamId,
-        tmbId
+        tmbId,
+        session
       });
       await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
@@ -73,12 +61,14 @@ async function handler(
     return TransitionWorkflowResponseSchema.parse({ id: appId });
   }
 
-  await beforeUpdateAppFormat({ nodes: workflow.nodes });
-  await MongoApp.findByIdAndUpdate(appId, {
-    type: AppTypeEnum.workflow,
-    modules: workflow.nodes,
-    edges: workflow.edges,
-    chatConfig: workflow.chatConfig
+  await mongoSessionRun(async (session) => {
+    await onUpdateAppWorkflow({
+      appId,
+      modules: app.modules,
+      edges: app.edges,
+      chatConfig: app.chatConfig,
+      session
+    });
   });
 
   return TransitionWorkflowResponseSchema.parse(undefined);
