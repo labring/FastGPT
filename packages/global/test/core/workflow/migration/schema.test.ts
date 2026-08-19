@@ -758,6 +758,60 @@ describe('workflow migration boundary', () => {
     ]);
   });
 
+  it('restores all-agent defaults only for legacy system and commercial Agent tools', async () => {
+    const result = await migrateWorkflowToCurrent(
+      {
+        nodes: [
+          {
+            nodeId: 'agent-1',
+            flowNodeType: 'agent',
+            name: 'Agent',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: 'Selected tools',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                value: [
+                  { id: 'systemTool-search', config: {} },
+                  { id: 'commercial-search', config: {} },
+                  { id: 'personal-search', config: {} },
+                  { id: 'systemTool-empty', config: {}, inputs: [] },
+                  {
+                    id: 'systemTool-configured',
+                    config: {},
+                    inputs: [{ key: 'query', mode: 'manual' }]
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          }
+        ]
+      } as any,
+      {
+        resolveToolDefinition: async () => ({
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              isToolParam: false
+            }
+          ]
+        })
+      }
+    );
+    const tools = (result.nodes[0].inputs[0].value as any[]).map((tool) => tool.inputs);
+
+    expect(tools).toEqual([
+      [{ key: 'query', mode: 'agentGenerated' }],
+      [{ key: 'query', mode: 'agentGenerated' }],
+      [{ key: 'query', mode: 'manual' }],
+      [],
+      [{ key: 'query', mode: 'manual' }]
+    ]);
+  });
+
   it('does not call resolver for current Agent tool inputs', async () => {
     const input = {
       nodes: [

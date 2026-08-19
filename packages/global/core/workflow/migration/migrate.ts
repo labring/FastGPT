@@ -12,6 +12,7 @@ import { migrateLegacyWorkflowStructureData } from './legacy/structure';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { NodeInputKeyEnum } from '../constants';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
+import { isSystemOrCommercialToolId } from '../../app/tool/utils';
 
 /**
  * 将外部 workflow 迁移为严格 canonical 数据。
@@ -103,6 +104,9 @@ export const migrateWorkflowToCurrent = async (
                   return result.success ? [[result.data.key, result.data] as const] : [];
                 })
               );
+              // Agent V2 前的系统/商业工具未保存 inputs，默认全部由 Agent 生成。
+              const useLegacyAllAgentGenerated =
+                tool.inputs === undefined && isSystemOrCommercialToolId(tool.id);
               const migratedInputs: CanonicalAgentToolInputConfig[] = definition.inputs.map(
                 (definitionInput) => {
                   const savedInput = savedInputMap.get(definitionInput.key);
@@ -110,7 +114,7 @@ export const migrateWorkflowToCurrent = async (
                     savedInput ?? {
                       key: definitionInput.key,
                       mode:
-                        definitionInput.isToolParam === true
+                        useLegacyAllAgentGenerated || definitionInput.isToolParam === true
                           ? AgentToolInputModeEnum.agentGenerated
                           : AgentToolInputModeEnum.manual
                     }
