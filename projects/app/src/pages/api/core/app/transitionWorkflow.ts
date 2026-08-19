@@ -67,6 +67,7 @@ async function handler(
       modules: app.modules,
       edges: app.edges,
       chatConfig: app.chatConfig,
+      teamId,
       session
     });
   });

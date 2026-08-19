@@ -47,7 +47,7 @@ async function handler(
 
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
-  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode] });
+  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
   await mongoSessionRun(async (session) => {
     // update app and app version
