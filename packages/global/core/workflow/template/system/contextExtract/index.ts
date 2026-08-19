@@ -39,9 +39,9 @@ export const ContextExtractModule: FlowNodeTemplateType = {
       label: i18nT('workflow:extraction_requirements_description'),
       description: i18nT('workflow:extraction_requirements_description_detail'),
       placeholder: i18nT('workflow:extraction_requirements_placeholder'),
-      isToolParam: true
+      defaultToAgentGenerated: true
     },
-    { ...Input_Template_History, isToolParam: true },
+    { ...Input_Template_History, defaultToAgentGenerated: true },
     {
       key: NodeInputKeyEnum.contextExtractInput,
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
@@ -49,7 +49,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
       required: true,
       valueType: WorkflowIOValueTypeEnum.string,
       toolDescription: i18nT('workflow:content_to_retrieve'),
-      isToolParam: true
+      defaultToAgentGenerated: true
     },
     {
       key: NodeInputKeyEnum.extractKeys,

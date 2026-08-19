@@ -119,7 +119,9 @@ export const useReference = ({
 
     const toolInputs = currentNode.inputs.filter(
       (input) =>
-        input.canEdit === true && input.isToolParam === true && input.key !== excludeInputKey
+        input.canEdit === true &&
+        input.defaultToAgentGenerated === true &&
+        input.key !== excludeInputKey
     );
     if (toolInputs.length === 0) return list;
 
