@@ -486,7 +486,7 @@ describe('s3 short access link api', () => {
         error: { response: { data: res.body } },
         maxSize: 1
       })
-    ).toContain('common:error:s3_upload_file_too_large');
+    ).toContain('common:error.s3_upload_file_too_large');
   });
 
   it('uploads the final multipart part with the session-derived length', async () => {
@@ -781,7 +781,7 @@ describe('s3 short access link api', () => {
         t,
         error: { response: { data: res.body } }
       })
-    ).toBe('common:error:s3_upload_invalid_file_type');
+    ).toBe('common:error.s3_upload_invalid_file_type');
     expect(uploadObject).not.toHaveBeenCalled();
   });
 

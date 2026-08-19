@@ -2,10 +2,10 @@ import { formatFileSize } from '../file/tools';
 import { S3ErrEnum } from './code/s3';
 
 /**
- * Parse S3 upload error and return user-friendly error message key
- * @param error - The error from S3 upload
- * @param maxFileSize - Maximum allowed file size in bytes
- * @returns i18n error message key and parameters
+ * Parse S3 upload errors from direct storage responses and the upload proxy.
+ * Known errors are translated through the supplied i18n function; unknown
+ * storage errors use the generic upload error instead of being reported as
+ * network failures.
  */
 export function parseS3UploadError({
   t,
@@ -17,99 +17,94 @@ export function parseS3UploadError({
   maxSize?: number;
 }): string {
   const maxSizeStr = maxSize ? formatFileSize(maxSize) : '-';
-  // Handle S3 XML error response
-  if (typeof error === 'string' && error.includes('EntityTooLarge')) {
-    return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
+
+  const getResponseErrorText = (data: unknown) => {
+    if (typeof data === 'string') return data;
+    if (!data || typeof data !== 'object') return '';
+
+    const response = data as Record<string, unknown>;
+    const nestedError =
+      response.error && typeof response.error === 'object'
+        ? (response.error as Record<string, unknown>)
+        : undefined;
+
+    return [
+      response.message,
+      response.statusText,
+      response.msg,
+      response.error,
+      nestedError?.message,
+      nestedError?.statusText
+    ]
+      .filter((value): value is string => typeof value === 'string')
+      .join(' ');
+  };
+
+  const responseErrorText = getResponseErrorText(error?.response?.data);
+  const errorText = [
+    typeof error === 'string' ? error : '',
+    error?.message,
+    responseErrorText
+  ].join(' ');
+
+  // S3 may return XML directly, while the proxy returns the same details in JSON fields.
+  if (errorText.includes('EntityTooLarge')) {
+    return t('common:error.s3_upload_file_too_large', { max: maxSizeStr });
   }
   if (
-    typeof error === 'string' &&
-    (error.includes(S3ErrEnum.uploadFileTypeMismatch) ||
-      error.includes(S3ErrEnum.invalidUploadFileType))
+    errorText.includes(S3ErrEnum.uploadFileTypeMismatch) ||
+    errorText.includes(S3ErrEnum.invalidUploadFileType)
   ) {
-    return t('common:error:s3_upload_invalid_file_type');
+    return t('common:error.s3_upload_invalid_file_type');
   }
-  if (typeof error === 'string' && error.includes(S3ErrEnum.fileUploadDisabled)) {
+  if (errorText.includes(S3ErrEnum.fileUploadDisabled)) {
     return t('common:error.file_upload_disabled');
   }
 
-  // Handle axios error response
-  if (error?.response?.data) {
-    const data = error.response.data;
-
-    if (typeof data === 'object' && data !== null) {
-      const msg = `${data.message || ''}`.trim();
-      const statusText = `${data.statusText || ''}`.trim();
-
-      if (msg.includes('EntityTooLarge') || statusText.includes('EntityTooLarge')) {
-        return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
-      }
-      if (
-        msg.includes(S3ErrEnum.uploadFileTypeMismatch) ||
-        statusText.includes(S3ErrEnum.uploadFileTypeMismatch) ||
-        msg.includes(S3ErrEnum.invalidUploadFileType) ||
-        statusText.includes(S3ErrEnum.invalidUploadFileType)
-      ) {
-        return t('common:error:s3_upload_invalid_file_type');
-      }
-      if (
-        msg.includes(S3ErrEnum.fileUploadDisabled) ||
-        statusText.includes(S3ErrEnum.fileUploadDisabled)
-      ) {
-        return t('common:error.file_upload_disabled');
-      }
-      if (
-        msg.includes('unAuthFile') ||
-        statusText.includes('unAuthFile') ||
-        msg.includes('unAuthorization')
-      ) {
-        return t('common:error:s3_upload_auth_failed');
-      }
-    }
-
-    // Try to parse XML error response
-    if (typeof data === 'string') {
-      if (data.includes('EntityTooLarge')) {
-        return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
-      }
-      if (
-        data.includes(S3ErrEnum.uploadFileTypeMismatch) ||
-        data.includes(S3ErrEnum.invalidUploadFileType)
-      ) {
-        return t('common:error:s3_upload_invalid_file_type');
-      }
-      if (data.includes(S3ErrEnum.fileUploadDisabled)) {
-        return t('common:error.file_upload_disabled');
-      }
-      if (data.includes('AccessDenied')) {
-        return t('common:error:s3_upload_auth_failed');
-      }
-      if (data.includes('InvalidAccessKeyId') || data.includes('SignatureDoesNotMatch')) {
-        return t('common:error:s3_upload_auth_failed');
-      }
-      if (data.includes('NoSuchBucket')) {
-        return t('common:error:s3_upload_bucket_not_found');
-      }
-      if (data.includes('RequestTimeout')) {
-        return t('common:error:s3_upload_timeout');
-      }
-    }
+  if (
+    errorText.includes('unAuthFile') ||
+    errorText.includes('unAuthorization') ||
+    errorText.includes('AccessDenied') ||
+    errorText.includes('InvalidAccessKeyId') ||
+    errorText.includes('SignatureDoesNotMatch')
+  ) {
+    return t('common:error.s3_upload_auth_failed');
+  }
+  if (errorText.includes('NoSuchBucket')) {
+    return t('common:error.s3_upload_bucket_not_found');
+  }
+  if (errorText.includes('RequestTimeout')) {
+    return t('common:error.s3_upload_timeout');
   }
 
   // Handle network errors
-  if (error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
-    return t('common:error:s3_upload_network_error');
+  if (
+    [
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      'EAI_AGAIN',
+      'ERR_NETWORK',
+      'ERR_CONNECTION_RESET',
+      'ERR_CONNECTION_REFUSED',
+      'ERR_NAME_NOT_RESOLVED'
+    ].includes(error?.code) ||
+    error?.message === 'Network Error'
+  ) {
+    return t('common:error.s3_upload_network_error');
   }
 
   // Handle axios timeout
   if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
-    return t('common:error:s3_upload_timeout');
+    return t('common:error.s3_upload_timeout');
   }
 
   // Handle file size validation error (client-side)
   if (error?.message?.includes('file size') || error?.message?.includes('too large')) {
-    return t('common:error:s3_upload_file_too_large', { max: maxSizeStr });
+    return t('common:error.s3_upload_file_too_large', { max: maxSizeStr });
   }
 
-  // Default error
-  return t('common:error:s3_upload_network_error');
+  // 未识别的后端错误不一定来自网络，避免把存储服务返回的其他错误误报为网络异常。
+  return t('common:upload_file_error');
 }
