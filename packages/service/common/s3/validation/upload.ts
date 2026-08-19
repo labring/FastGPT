@@ -1,5 +1,6 @@
 import type { UploadConstraints } from '../contracts/type';
 import type { UploadFileHint, UploadPolicy } from '../uploadPolicy/type';
+import { decodeS3Filename } from '../filename';
 import {
   createUploadPolicy,
   detectUploadFileEvidence,
@@ -43,8 +44,10 @@ export async function validateUploadFile({
   uploadPolicy?: UploadPolicy;
   fileHint?: UploadFileHint;
 }) {
+  // 旧的直接调用方把 filename 当作 URI 编码值传入；新的短上传链路通过 fileHint
+  // 传递原始文件名，因此只对没有 fileHint 的兼容入口执行旧解码规则。
   const hint = fileHint || {
-    filename: filename || 'file'
+    filename: decodeS3Filename(filename || 'file')
   };
   const policy =
     uploadPolicy ??
