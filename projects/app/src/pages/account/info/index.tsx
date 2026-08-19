@@ -119,7 +119,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { t } = useClientTranslation('account_info');
   const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
-    defaultValues: userInfo as UserType
+    defaultValues: {
+      avatar: userInfo?.avatar ?? undefined,
+      timezone: userInfo?.timezone
+    }
   });
   const standardPlan = teamPlanStatus?.standard;
   const { isPc } = useSystem();
@@ -146,10 +149,13 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const onClickSave = useCallback(
     async (data: UserType) => {
       await updateUserInfo({
-        avatar: data.avatar,
+        avatar: data.avatar ?? undefined,
         timezone: data.timezone
       });
-      reset(data);
+      reset({
+        avatar: data.avatar ?? undefined,
+        timezone: data.timezone
+      });
       toast({
         title: t('account_info:update_success_tip'),
         status: 'success'

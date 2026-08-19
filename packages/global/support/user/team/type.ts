@@ -53,7 +53,7 @@ export type TeamMemberWithTeamAndUserSchema = TeamMemberSchema & {
 export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   userId: ObjectIdSchema,
   teamId: ObjectIdSchema,
-  teamAvatar: z.string().optional(),
+  teamAvatar: z.string().nullish(),
   teamName: z.string(),
   memberName: z.string(),
   avatar: z.string().nullish(),

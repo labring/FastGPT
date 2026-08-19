@@ -17,12 +17,16 @@ async function handler(req: ApiRequestProps<ConfirmUploadPkgPluginBodyType>): Pr
   });
   const { toolIds } = body;
 
-  await pluginClient.confirmPlugin(
+  const confirmResult = await pluginClient.confirmPlugin(
     toolIds.map((id) => ({
       ...id,
       pluginId: id.pluginId.replace(/^systemTool-/, '')
     }))
   );
+
+  if (confirmResult.failed.length > 0) {
+    return Promise.reject(JSON.stringify(confirmResult.failed));
+  }
 }
 
 export default NextAPI(handler);

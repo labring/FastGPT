@@ -69,7 +69,7 @@ const SearchMemberSchema = z
       example: '张三',
       description: '成员展示名称'
     }),
-    avatar: z.string().optional().meta({
+    avatar: z.string().nullish().meta({
       example: 'https://example.com/avatar.png',
       description: '成员头像'
     }),
@@ -155,7 +155,7 @@ const SearchGroupSchema = z
       example: '管理员组',
       description: '用户组名称'
     }),
-    avatar: z.string().optional().meta({
+    avatar: z.string().nullish().meta({
       example: 'https://example.com/group-avatar.png',
       description: '用户组头像'
     }),
@@ -241,7 +241,7 @@ export const TeamListItemSchema = z
       example: '68ad85a7463006c963799a06',
       description: '团队 ID'
     }),
-    teamAvatar: z.string().optional().meta({
+    teamAvatar: z.string().nullish().meta({
       example: 'https://fastgpt.example.com/team-avatar.png',
       description: '团队头像'
     }),
@@ -253,7 +253,7 @@ export const TeamListItemSchema = z
       example: '张三',
       description: '当前用户在团队中的名称'
     }),
-    avatar: z.string().meta({
+    avatar: z.string().nullish().meta({
       example: 'https://fastgpt.example.com/avatar.png',
       description: '团队成员头像'
     }),

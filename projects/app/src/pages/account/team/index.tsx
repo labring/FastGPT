@@ -139,7 +139,7 @@ const Team = () => {
                     setEditTeamData({
                       id: userInfo.team.teamId,
                       name: userInfo.team.teamName,
-                      avatar: userInfo.team.teamAvatar,
+                      avatar: userInfo.team.teamAvatar ?? undefined,
                       notificationAccount: userInfo.team.notificationAccount
                     });
                   }}
