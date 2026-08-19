@@ -10,7 +10,6 @@ import {
   type CreateAppBodyType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import {
-  OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -28,7 +27,7 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { getMyModels } from '@fastgpt/service/support/permission/model/controller';
 import { normalizeWorkflowConfig, removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -262,12 +261,11 @@ export const onCreateApp = async ({
       );
     }
 
-    await MongoResourcePermission.insertOne({
-      teamId,
+    await createResourceDefaultCollaborators({
+      resource: app,
+      resourceType: PerResourceTypeEnum.app,
       tmbId,
-      resourceId: appId,
-      permission: OwnerRoleVal,
-      resourceType: PerResourceTypeEnum.app
+      session
     });
 
     await getS3AvatarSource().refreshAvatar(_avatar, undefined, session);

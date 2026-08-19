@@ -42,10 +42,7 @@ export const ResourcePermissionSchema = new Schema({
     required: true
   },
 
-  /**
-   * Optional. Only be set when the resource is *inherited* from the parent resource.
-   * For recording the self permission. When cancel the inheritance, it will overwrite the permission property and set to `unset`.
-   */
+  /** The resource that owns this ACL row. Every resource stores its effective ACL here. */
   resourceId: {
     type: Schema.Types.ObjectId
   },

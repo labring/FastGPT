@@ -1,18 +1,17 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 import type {
   ListAppsBySkillIdQuery,
   ListAppsBySkillIdResponse
@@ -39,11 +38,10 @@ async function handler(
 
   // Fetch all app permission records under the team, along with the user's groups and orgs
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
-    MongoResourcePermission.find({
+    getResourcePermissionsByTeam({
       resourceType: PerResourceTypeEnum.app,
-      teamId,
-      resourceId: { $exists: true }
-    }).lean(),
+      teamId
+    }),
     getGroupsByTmbId({ tmbId, teamId }).then((items) => {
       const map = new Map<string, 1>();
       items.forEach((item) => map.set(String(item._id), 1));
@@ -89,12 +87,7 @@ async function handler(
       });
     };
 
-    const Per = (() => {
-      if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
-        return getPer(String(app.parentId)).addRole(getPer(String(app._id)).role);
-      }
-      return getPer(String(app._id));
-    })();
+    const Per = getPer(String(app._id));
 
     return {
       _id: String(app._id),

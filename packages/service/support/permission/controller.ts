@@ -1,8 +1,5 @@
-import type { ClientSession, AnyBulkWriteOperation } from '../../common/mongo';
+import type { ClientSession } from '../../common/mongo';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from './schema';
-import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
@@ -10,7 +7,8 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
 import { type SyncChildrenPermissionResourceType } from './inheritPermission';
-import { pickCollaboratorIdFields } from './utils';
+import { resourcePermissionRepo } from './repository/resourcePermissionRepo';
+import { createResourcePermissions } from './resourcePermissionService';
 import type {
   CollaboratorItemDetailType,
   CollaboratorItemType
@@ -48,15 +46,12 @@ export const getTmbPermission = async ({
 )): Promise<PermissionValueType | undefined> => {
   // Personal permission has the highest priority
   const tmbPer = (
-    await MongoResourcePermission.findOne(
-      {
-        resourceType,
-        teamId,
-        resourceId,
-        tmbId
-      },
-      'permission'
-    ).lean()
+    await resourcePermissionRepo.findOne({
+      resourceType: resourceType as PerResourceTypeEnum,
+      teamId,
+      resourceId,
+      collaborator: { tmbId }
+    })
   )?.permission;
 
   // could be 0
@@ -65,42 +60,21 @@ export const getTmbPermission = async ({
   }
 
   // If there is no personal permission, get the group permission
-  const [groupPers, orgPers] = await Promise.all([
-    getGroupsByTmbId({ tmbId, teamId })
-      .then((res) => res.map((item) => item._id))
-      .then((groupIdList) =>
-        MongoResourcePermission.find(
-          {
-            teamId,
-            resourceType,
-            groupId: {
-              $in: groupIdList
-            },
-            resourceId
-          },
-          'permission'
-        ).lean()
-      )
-      .then((perList) => perList.map((item) => item.permission)),
+  const [groups, orgIds] = await Promise.all([
+    getGroupsByTmbId({ tmbId, teamId }),
     getOrgIdSetWithParentByTmbId({ tmbId, teamId })
-      .then((item) => Array.from(item))
-      .then((orgIds) =>
-        MongoResourcePermission.find(
-          {
-            teamId,
-            resourceType,
-            orgId: {
-              $in: Array.from(orgIds)
-            },
-            resourceId
-          },
-          'permission'
-        ).lean()
-      )
-      .then((perList) => perList.map((item) => item.permission))
   ]);
+  const permissions = await resourcePermissionRepo.findByCollaborators({
+    resourceType: resourceType as PerResourceTypeEnum,
+    teamId,
+    resourceId,
+    collaborators: [
+      ...groups.map((group) => ({ groupId: String(group._id) })),
+      ...Array.from(orgIds).map((orgId) => ({ orgId: String(orgId) }))
+    ]
+  });
 
-  return sumPer(...groupPers, ...orgPers);
+  return sumPer(...permissions.map((item) => item.permission));
 };
 
 /**
@@ -124,15 +98,12 @@ export async function getResourceOwnedClbs({
       resourceId: ParentIdType;
     }
 )) {
-  return MongoResourcePermission.find(
-    {
-      resourceId,
-      resourceType,
-      teamId
-    },
-    undefined,
-    { ...(session ? { session } : {}) }
-  ).lean();
+  return resourcePermissionRepo.findByResource({
+    resourceId: resourceId === undefined ? undefined : String(resourceId),
+    resourceType: resourceType as PerResourceTypeEnum,
+    teamId,
+    session
+  });
 }
 
 export const getClbsInfo = async ({
@@ -191,50 +162,5 @@ export const createResourceDefaultCollaborators = async ({
   session: ClientSession;
   tmbId: string;
 }) => {
-  const parentClbs = await getResourceOwnedClbs({
-    resourceId: resource.parentId,
-    resourceType,
-    teamId: resource.teamId,
-    session
-  });
-  // 1. add owner into the permission list with owner per
-  // 2. remove parent's owner permission, instead of manager
-
-  const collaborators: CollaboratorItemType[] = [
-    ...parentClbs
-      .filter((item) => item.tmbId !== tmbId)
-      .map((clb) => {
-        if (clb.permission === OwnerRoleVal) {
-          clb.permission = ManageRoleVal;
-        }
-        return clb;
-      }),
-    {
-      tmbId,
-      permission: OwnerRoleVal
-    }
-  ];
-
-  const ops: AnyBulkWriteOperation<ResourcePermissionType>[] = [];
-
-  for (const clb of collaborators) {
-    ops.push({
-      updateOne: {
-        filter: {
-          ...pickCollaboratorIdFields(clb),
-          teamId: resource.teamId,
-          resourceId: resource._id,
-          resourceType
-        },
-        update: {
-          $set: {
-            permission: clb.permission
-          }
-        },
-        upsert: true
-      }
-    });
-  }
-
-  await MongoResourcePermission.bulkWrite(ops, { session });
+  await createResourcePermissions({ resource, resourceType, session, tmbId });
 };

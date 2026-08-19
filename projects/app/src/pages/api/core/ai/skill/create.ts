@@ -17,11 +17,10 @@ import {
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import {
   WritePermissionVal,
-  PerResourceTypeEnum,
-  OwnerRoleVal
+  PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { createResourcePermissions } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -93,16 +92,17 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
       session
     );
 
-    await MongoResourcePermission.insertOne(
-      {
+    await createResourcePermissions({
+      resource: {
+        _id: newSkillId,
+        type: AgentSkillTypeEnum.skill,
         teamId,
-        tmbId,
-        resourceId: newSkillId,
-        permission: OwnerRoleVal,
-        resourceType: PerResourceTypeEnum.agentSkill
+        ...(parentId ? { parentId } : {})
       },
-      { session }
-    );
+      tmbId,
+      resourceType: PerResourceTypeEnum.agentSkill,
+      session
+    });
 
     await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
