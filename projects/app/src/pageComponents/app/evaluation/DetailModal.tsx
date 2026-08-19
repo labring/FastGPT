@@ -363,7 +363,12 @@ const EvaluationDetailModal = ({
                             }
                             type="delete"
                             content={t('dashboard_evaluation:comfirm_delete_item')}
-                            onConfirm={() => delEvalItem({ evalItemId: evalItem.evalItemId })}
+                            onConfirm={() =>
+                              delEvalItem({
+                                evalId: evalDetail._id,
+                                itemId: evalItem.evalItemId
+                              })
+                            }
                           />
                         )}
                       </>

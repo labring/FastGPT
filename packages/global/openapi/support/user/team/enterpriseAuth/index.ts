@@ -4,7 +4,6 @@ import {
   GetEnterpriseAuthBanksResponseSchema,
   GetEnterpriseAuthCurrentTaskDetailResponseSchema,
   GetEnterpriseAuthStatusResponseSchema,
-  ResetEnterpriseAuthResponseSchema,
   StartEnterpriseAuthBodySchema,
   StartEnterpriseAuthResponseSchema,
   VerifyEnterpriseAuthAmountBodySchema,
@@ -112,12 +111,7 @@ export const EnterpriseAuthPath: OpenAPIPath = {
       tags: [DevApiTagsMap.enterpriseAuth],
       responses: {
         200: {
-          description: '取消成功',
-          content: {
-            'application/json': {
-              schema: ResetEnterpriseAuthResponseSchema
-            }
-          }
+          description: '取消成功'
         }
       }
     }

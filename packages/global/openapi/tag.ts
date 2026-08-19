@@ -5,6 +5,7 @@ export const DevApiTagsMap = {
   appPer: '应用权限管理',
   appVersion: '应用版本管理',
   appTemplate: '模板管理',
+  appEvaluation: '应用评测',
   appLog: '日志管理',
   publishChannel: '发布渠道',
   appOther: '其他',
@@ -60,9 +61,11 @@ export const DevApiTagsMap = {
   /* 辅助-用户体系 */
   userInform: '用户通知',
   userLogin: '用户账号',
-  userLimit: '限流检查',
-  enterpriseAuth: '企业认证',
+
+  /* 辅助-钱包 */
   walletBill: '订单',
+  walletInvoice: '发票管理',
+  walletUsage: '使用记录',
   walletDiscountCoupon: '优惠券',
 
   /* 辅助-权限管理 */
@@ -80,8 +83,16 @@ export const DevApiTagsMap = {
   reverseInvokePlugin: '插件',
   reverseInvokeSandbox: '沙盒',
 
-  /* 辅助-团队管理 */
+  /* 辅助-团队体系 */
   teamManage: '团队管理',
+  userLimit: '限流检查',
+  enterpriseAuth: '企业认证',
+  teamPermission: '团队权限管理',
+  teamInvitationLink: '邀请链接管理',
+  teamMember: '成员管理',
+  teamOrg: '部门管理',
+  teamGroup: '群组管理',
+  teamSubscription: '订阅管理',
 
   /* 管理员-插件管理 */
   pluginMarketplace: '插件市场',

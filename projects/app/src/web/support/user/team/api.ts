@@ -114,7 +114,7 @@ export const redeemCoupon = (couponCode: string) =>
   GET(`/proApi/support/wallet/coupon/redeem`, { key: couponCode });
 
 export const getTeamInvoiceHeader = () =>
-  GET<TeamInvoiceHeaderType>(`/proApi/support/user/team/invoiceAccount/getTeamInvoiceHeader`);
+  GET<TeamInvoiceHeaderType>(`/proApi/support/wallet/bill/invoice/account/getTeamHeader`);
 
 export const updateTeamInvoiceHeader = (data: TeamInvoiceHeaderType) =>
-  POST(`/proApi/support/user/team/invoiceAccount/update`, data);
+  POST(`/proApi/support/wallet/bill/invoice/account/updateHeader`, data);

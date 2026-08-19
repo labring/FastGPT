@@ -8,4 +8,4 @@ export const getOperationLogs = (
     tmbIds?: string[];
     events?: AuditEventEnum[];
   }
-) => POST<PaginationResponse<TeamAuditListItemType>>(`/proApi/support/user/audit/list`, props);
+) => POST<PaginationResponse<TeamAuditListItemType>>(`/proApi/support/user/team/audit/list`, props);

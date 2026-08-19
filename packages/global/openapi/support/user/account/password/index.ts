@@ -8,6 +8,7 @@ import {
   ResetExpiredPswResponseSchema,
   UpdatePasswordByCodeBodySchema
 } from './api';
+import { LoginSuccessResponseSchema } from '../login/api';
 
 export const PasswordPath: OpenAPIPath = {
   '/support/user/account/updatePasswordByOld': {
@@ -75,7 +76,7 @@ export const PasswordPath: OpenAPIPath = {
       }
     }
   },
-  '/support/user/account/password/updateByCode': {
+  '/proApi/support/user/account/password/updateByCode': {
     post: {
       summary: '通过验证码找回/修改密码',
       description: '通过邮箱/手机验证码找回或修改密码',
@@ -92,7 +93,7 @@ export const PasswordPath: OpenAPIPath = {
           description: '修改成功',
           content: {
             'application/json': {
-              schema: {}
+              schema: LoginSuccessResponseSchema
             }
           }
         }

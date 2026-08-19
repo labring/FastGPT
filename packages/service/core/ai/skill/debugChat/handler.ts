@@ -16,11 +16,14 @@ import {
   ChatSourceTypeEnum,
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
-import { SkillDebugChatBodySchema } from '@fastgpt/global/core/ai/skill/api';
+import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
+import {
+  ChatWorkflowSseResponseSchema,
+  type ChatWorkflowSseResponseType
+} from '@fastgpt/global/openapi/core/chat/completion/api';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { sseErrRes } from '../../../../common/response';
-import { parseApiInput } from '../../../../common/zod/requestParseError';
 import { authSkill } from '../../../../support/permission/skill/auth';
 import { teamFrequencyLimit, LimitTypeEnum } from '../../../../common/api/frequencyLimit';
 import { getIpFromRequest } from '../../../../common/geo';
@@ -71,10 +74,11 @@ const skillDebugFileSelectConfig: AppFileSelectConfigType = {
 export async function handleSkillDebugChat(
   req: NodeApiRequest,
   res: NodeApiResponse,
+  body: SkillDebugChatBody,
   options: {
     agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
   } = {}
-) {
+): Promise<ChatWorkflowSseResponseType> {
   let skillId = '';
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
   const roundState = {
@@ -94,10 +98,7 @@ export async function handleSkillDebugChat(
       messages = [],
       model,
       systemPrompt = ''
-    } = parseApiInput({
-      req,
-      bodySchema: SkillDebugChatBodySchema
-    }).body;
+    } = body;
     skillId = parsedSkillId;
     const chatSource = {
       sourceType: ChatSourceTypeEnum.skillEdit,
@@ -120,7 +121,7 @@ export async function handleSkillDebugChat(
     });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
-      return;
+      return ChatWorkflowSseResponseSchema.parse('');
     }
 
     const sandboxInstance = await getRunningSkillEditSandbox({ skillId, teamId });
@@ -362,4 +363,7 @@ export async function handleSkillDebugChat(
   }
 
   res.end();
+
+  // SSE 内容已经直接写入 res；返回值仅用于让路由类型和 OpenAPI 共用同一响应契约。
+  return ChatWorkflowSseResponseSchema.parse('');
 }

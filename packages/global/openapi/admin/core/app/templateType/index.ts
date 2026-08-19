@@ -51,7 +51,7 @@ export const AdminTemplateTypePath: OpenAPIPath = {
     }
   },
   '/admin/core/app/templateType/updateOrder': {
-    post: {
+    put: {
       summary: '更新模板类型排序',
       description: '批量更新模板类型的排序',
       tags: [DevApiTagsMap.adminTemplateType],

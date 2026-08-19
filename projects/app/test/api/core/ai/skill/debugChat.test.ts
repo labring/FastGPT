@@ -347,8 +347,8 @@ describe('debugChat handler — parameter validation', () => {
     skillId = String(skill._id);
   });
 
-  it('should call sseErrRes when skillId is missing', async () => {
-    await Call(debugChatApi.default, {
+  it('should reject at the API boundary when skillId is missing', async () => {
+    const result = await Call(debugChatApi.default, {
       auth: testUser,
       body: {
         chatId: getNanoid(),
@@ -357,13 +357,12 @@ describe('debugChat handler — parameter validation', () => {
         messages: [{ role: 'user', content: 'hello' }]
       }
     });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(/skillId/i);
+    expect(getSseErrResMock()).not.toHaveBeenCalled();
+    expect(result.error?.message ?? result.error).toMatch(/skillId/i);
   });
 
-  it('should call sseErrRes when chatId is missing', async () => {
-    await Call(debugChatApi.default, {
+  it('should reject at the API boundary when chatId is missing', async () => {
+    const result = await Call(debugChatApi.default, {
       auth: testUser,
       body: {
         skillId,
@@ -372,9 +371,8 @@ describe('debugChat handler — parameter validation', () => {
         messages: [{ role: 'user', content: 'hello' }]
       }
     });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(/chatId/i);
+    expect(getSseErrResMock()).not.toHaveBeenCalled();
+    expect(result.error?.message ?? result.error).toMatch(/chatId/i);
   });
 
   it('should call sseErrRes when messages array is empty', async () => {
