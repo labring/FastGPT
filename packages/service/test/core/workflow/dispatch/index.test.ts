@@ -618,6 +618,35 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
+  it('同节点引用工具参数时读取已注入的 input value', () => {
+    const variableState = createVariableState();
+    const node = createNode('code', FlowNodeTypeEnum.code);
+    node.inputs = [
+      {
+        key: 'customParam',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+        value: 'agent value',
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'codeInput',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: ['code', 'customParam'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([['code', node]]),
+      variableState: variableState.state
+    });
+
+    expect(params.codeInput).toBe('agent value');
+  });
+
   it('dynamic input 保持顶层和动态参数对象同步写入', () => {
     const variableState = createVariableState({ name: 'Ada' });
     const node = createNode('node1', FlowNodeTypeEnum.textEditor);
