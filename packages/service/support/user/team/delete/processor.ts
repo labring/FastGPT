@@ -8,7 +8,7 @@ import { MongoGroupMemberModel } from '../../../permission/memberGroup/groupMemb
 import { MongoMemberGroupModel } from '../../../permission/memberGroup/memberGroupSchema';
 import { MongoOrgMemberModel } from '../../../permission/org/orgMemberSchema';
 import { MongoOrgModel } from '../../../permission/org/orgSchema';
-import { MongoResourcePermission } from '../../../permission/schema';
+import { resourcePermissionRepo } from '../../../permission/repository/resourcePermissionRepo';
 import { delUserAllSession } from '../../session';
 import { MongoTeamMember } from '../teamMemberSchema';
 import { MongoTeam } from '../teamSchema';
@@ -113,9 +113,7 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) =>
 
       // 6. 删除团队信息
       // 删除权限
-      await MongoResourcePermission.deleteMany({
-        teamId
-      });
+      await resourcePermissionRepo.deleteByTeam(teamId);
 
       // 删除群组
       const groups = await MongoMemberGroupModel.find({ teamId });

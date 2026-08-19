@@ -9,7 +9,6 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoDataset } from '../../../core/dataset/schema';
 import {
   NullPermissionVal,
-  NullRoleVal,
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -17,11 +16,9 @@ import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/co
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 
@@ -64,27 +61,14 @@ export const authDatasetByTmbId = async ({
     }
 
     const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
-    const isGetParentClb =
-      dataset.inheritPermission && dataset.type !== DatasetTypeEnum.folder && !!dataset.parentId;
+    const myPer = await getTmbPermission({
+      teamId,
+      tmbId,
+      resourceId: datasetId,
+      resourceType: PerResourceTypeEnum.dataset
+    });
 
-    const [folderPer = NullRoleVal, myPer = NullRoleVal] = await Promise.all([
-      isGetParentClb
-        ? getTmbPermission({
-            teamId,
-            tmbId,
-            resourceId: dataset.parentId!,
-            resourceType: PerResourceTypeEnum.dataset
-          })
-        : NullRoleVal,
-      getTmbPermission({
-        teamId,
-        tmbId,
-        resourceId: datasetId,
-        resourceType: PerResourceTypeEnum.dataset
-      })
-    ]);
-
-    const Per = new DatasetPermission({ role: sumPer(folderPer, myPer), isOwner });
+    const Per = new DatasetPermission({ role: myPer, isOwner });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(DatasetErrEnum.unAuthDataset);

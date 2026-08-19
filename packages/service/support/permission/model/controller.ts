@@ -1,7 +1,7 @@
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgsByTmbId } from '../org/controllers';
-import { MongoResourcePermission } from '../schema';
+import { getResourcePermissionsByTeam } from '../resourcePermissionService';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 import { isProVersion } from '../../../common/system/constants';
 
@@ -30,10 +30,10 @@ export const getMyModels = async ({
 
   const myIdSet = new Set([tmbId, ...groups.map((g) => g._id), ...orgs.map((o) => o._id)]);
 
-  const rps = await MongoResourcePermission.find({
+  const rps = await getResourcePermissionsByTeam({
     teamId,
     resourceType: PerResourceTypeEnum.model
-  }).lean();
+  });
 
   // 未配置权限的，默认是有权限
   const permissionConfiguredModelSet = new Set(rps.map((rp) => rp.resourceName));
