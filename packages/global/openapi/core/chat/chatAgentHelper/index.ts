@@ -6,7 +6,7 @@ import { ChatAgentHelperCompletionsParamsSchema } from './api';
 export const ChatAgentHelperPath: OpenAPIPath = {
   '/proApi/core/chat/chatAgentHelper/completions': {
     post: {
-      summary: 'Chat Agent 辅助生成对话接口',
+      summary: 'Chat Agent 辅助生成',
       description: 'Chat Agent 辅助生成对话接口',
       tags: [DevApiTagsMap.aiAuxiliary],
       requestBody: {

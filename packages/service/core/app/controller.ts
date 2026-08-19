@@ -49,7 +49,13 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
  * 2. Skill: 统一数据结构为 { skillId: string }[]。
  * 2. 敏感信息（如 Header Secret、密码类型输入、系统工具手动配置的密钥）进行加密存储。
  */
-export const beforeUpdateAppFormat = async ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
+export const beforeUpdateAppFormat = async ({
+  nodes,
+  teamId
+}: {
+  nodes?: StoreNodeItemType[];
+  teamId: string;
+}) => {
   if (!nodes) return;
 
   const StoredSelectedDatasetSchema = z.object({
@@ -125,7 +131,8 @@ export const beforeUpdateAppFormat = async ({ nodes }: { nodes?: StoreNodeItemTy
             const preview = await getClientToolPreviewNode({
               appId: selectedTool.id,
               versionId: selectedTool.version,
-              source: selectedTool.source
+              source: selectedTool.source,
+              teamId
             });
             const inputMap = new Map(preview.inputs.map((input) => [input.key, input]));
             const configInputs = Object.keys(selectedTool.config)

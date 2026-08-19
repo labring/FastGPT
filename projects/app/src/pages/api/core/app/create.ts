@@ -190,7 +190,7 @@ export const onCreateApp = async ({
     },
     getWorkflowMigrationOptions()
   );
-  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
+  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   if (!AppFolderTypeList.includes(type!)) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

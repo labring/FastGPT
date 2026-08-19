@@ -1,0 +1,119 @@
+---
+title: Install and Manage Team Plugins
+description: Install, update, and remove team plugins from Marketplace or local packages
+---
+
+Team plugins are installed and managed by team administrators and are available only within the current team. Team members can use installed plugins in workflows, Agents, and tool selectors.
+
+## Scope
+
+Team plugins and system plugins are independent installations:
+
+- System administrators install and configure system plugins for use across teams.
+- Team administrators install team plugins for the current team.
+- The same plugin can exist as both a system plugin and a team plugin. Both entries are displayed, and the system entry carries a **System** label.
+- A team plugin does not inherit secrets, pricing, status, version, or other configuration from a system plugin with the same ID.
+- Teams cannot hide or change the visibility of system plugins.
+
+Team plugins can be updated or removed and do not have a deprecation state.
+
+## Prerequisites
+
+Before installing a plugin, confirm that:
+
+1. Your account is a team administrator or team owner. Regular members can use installed plugins but cannot install, update, or remove them.
+2. For local installation, the system administrator has enabled team plugin uploads. This option controls local uploads only; Marketplace installation remains available when it is disabled.
+3. The deployment can access FastGPT Marketplace when installing from Marketplace.
+4. For a local installation, you have a valid `.pkg` file or a `.zip` archive containing one or more `.pkg` files.
+
+See the [System Tool Development Guide](./system-tool-development.en.mdx) for plugin development and packaging instructions.
+
+## Install from Marketplace
+
+1. Open **Tools** in the FastGPT workspace.
+2. Open **Add Plugin** in the upper-right corner and choose the Marketplace installation option.
+3. Find a plugin by name, source, or category. You can enable the uninstalled-only filter.
+4. Open the plugin details and review its description, version, and requested permissions.
+5. Select a version and click **Install** to continue.
+
+After installation, the plugin appears in the team tool list and can be selected in workflows and Agents. Configure any required secrets or runtime parameters before use.
+
+## Upload a Local Package
+
+When team plugin uploads are enabled:
+
+1. Open **Tools** in the workspace.
+2. Open **Add Plugin** and choose the local upload option.
+3. Select one or more `.pkg` files, or a `.zip` archive containing multiple `.pkg` files.
+4. Wait for FastGPT to upload and inspect the packages.
+5. Review the plugin name, version, permissions, and parsing result. Failed files display an individual error and can be retried.
+6. Confirm the installation.
+
+Uploading and parsing only prepare an installation preview. The plugin is installed for the team after confirmation.
+
+## Update a Plugin
+
+When Marketplace provides a newer version:
+
+1. Open the team Marketplace and locate the plugin.
+2. Review the release notes and permission changes.
+3. Select the target version and update the plugin.
+4. Test workflows and Agents that use the plugin.
+
+For local packages, upload the target version again and confirm the installation. Team configuration remains independent from the system installation.
+
+Plugin updates may change input and output schemas, secret requirements, or runtime behavior. Validate updates in a test application before updating production workflows.
+
+## Remove a Plugin
+
+A team administrator can remove a team plugin from its tool card or details drawer. The confirmation dialog requires the plugin name.
+
+Removal:
+
+1. Deletes the installation under the current team source from the plugin service.
+2. Revokes future runtime access for the current team.
+3. Removes the team plugin from new tool selection flows.
+
+Existing workflow and Agent nodes are not rewritten. They fail on their next run after the plugin is removed. Reinstall the plugin from Marketplace or upload its package again to restore access.
+
+Removing a team plugin does not affect a system plugin with the same ID or installations owned by other teams.
+
+## System and Team Copies
+
+When the same plugin is installed at both levels:
+
+- The team entry appears before the system entry.
+- The system entry displays a **System** label next to its title.
+- Workflows and Agents store the plugin source, so each copy can be selected and configured independently.
+- Removing the team copy leaves the system copy available.
+
+Use clear internal conventions when both copies exist, especially when they have different versions or configuration.
+
+## FAQ
+
+### Why is the Add Plugin button missing?
+
+Only team administrators and team owners can manage team plugins.
+
+### Why is Upload Plugin missing?
+
+The system administrator has disabled team plugin uploads. Marketplace installation remains available. Ask the system administrator to enable this option when you need to upload a local package.
+
+### Why is an uploaded plugin unavailable?
+
+Complete the confirmation step after package parsing. Plugins that require secrets or runtime parameters must also be configured before use.
+
+### Does removing a team plugin remove the system plugin?
+
+No. Team and system installations use independent sources. Removal affects only the current team's installation.
+
+### Does a team plugin inherit system plugin secrets?
+
+No. Team plugins are configured independently.
+
+## Security Recommendations
+
+- Install packages only from trusted sources and review requested permissions.
+- Apply your team's data security policy when a plugin accesses external URLs, accounts, or secrets.
+- Review release notes and test compatibility before upgrading.
+- Check workflow and Agent references before removing a plugin.

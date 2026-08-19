@@ -13,6 +13,10 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
 import { POST } from '@/web/common/api/request';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import type {
+  WecomGetRedirectURLBodyType,
+  WecomGetRedirectURLResponseType
+} from '@fastgpt/global/openapi/support/user/account/login/api';
 
 type Props = {
   children: React.ReactNode;
@@ -142,13 +146,13 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       }
 
       if (item.provider === OAuthEnum.wecom) {
-        const redirectUrl = await POST<string>(
+        const redirectUrl = await POST<WecomGetRedirectURLResponseType>(
           '/proApi/support/user/account/login/wecom/getRedirectUrl',
           {
             redirectUri,
             isWecomWorkTerminal,
             state: oauthState
-          }
+          } satisfies WecomGetRedirectURLBodyType
         );
         setLoginStore({
           provider: item.provider as OAuthEnum,

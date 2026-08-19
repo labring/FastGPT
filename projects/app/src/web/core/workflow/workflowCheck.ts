@@ -40,6 +40,7 @@ import {
   isToolInputValueConfigured,
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -160,8 +161,7 @@ type WorkflowCheckMessageCode =
   | 'tool_inactive'
   | 'tool_missing'
   | 'tool_load_failed'
-  | 'tool_no_permission'
-  | 'tool_offline';
+  | 'tool_no_permission';
 
 /** issue.code -> 设计稿固定文案 code。表外 code 映射到最接近的已有文案。 */
 const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessageCode> = {
@@ -185,7 +185,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   tool_missing: 'tool_missing',
   tool_load_failed: 'tool_load_failed',
   tool_no_permission: 'tool_no_permission',
-  tool_offline: 'tool_offline',
+  tool_offline: 'tool_missing',
   loop_run_missing_break: 'if_else_incomplete',
   variable_update_incomplete: 'code_input_incomplete'
 };
@@ -225,8 +225,7 @@ const workflowCheckMessageFallback: Record<
   tool_inactive: () => '该工具尚未激活，请激活使用',
   tool_missing: () => '该工具不存在，请删除',
   tool_load_failed: () => '工具加载失败，请稍后重试',
-  tool_no_permission: () => '当前账号无权限访问该资源',
-  tool_offline: () => '该工具已停用，请删除'
+  tool_no_permission: () => '当前账号无权限访问该资源'
 };
 
 const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
@@ -252,7 +251,8 @@ const resolvePluginDataErrorIssueCode = (error: string): WorkflowCheckMessageCod
   if (
     PLUGIN_DATA_MISSING_ERROR_CODES.has(error) ||
     error === ERROR_RESPONSE[AppErrEnum.unExist]?.message ||
-    error === ERROR_RESPONSE[PluginErrEnum.unExist]?.message
+    error === ERROR_RESPONSE[PluginErrEnum.unExist]?.message ||
+    isToolNotExistError(error)
   ) {
     return 'tool_missing';
   }
@@ -306,8 +306,6 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.tool_load_failed', params);
     case 'tool_no_permission':
       return t('common:core.workflow.check.tool_no_permission', params);
-    case 'tool_offline':
-      return t('common:core.workflow.check.tool_offline', params);
   }
 };
 
@@ -494,22 +492,21 @@ export const checkWorkflowNodeIssues = ({
     const isToolNode = context.incomingEdgesMap
       .get(data.nodeId)
       ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);
+    const status = data.status ?? data.pluginData?.status;
+    const isToolOffline = status === PluginStatusEnum.Offline;
 
-    if (data.pluginData?.error) {
+    if (isToolOffline) {
+      addIssue({
+        node,
+        code: 'tool_offline',
+        message: getWorkflowCheckIssueMessage('tool_offline', t)
+      });
+    } else if (data.pluginData?.error) {
       const issueCode = resolvePluginDataErrorIssueCode(data.pluginData.error);
       addIssue({
         node,
         code: issueCode,
         message: getWorkflowCheckIssueMessage(issueCode, t)
-      });
-    }
-
-    const status = data.status ?? data.pluginData?.status;
-    if (status === PluginStatusEnum.Offline) {
-      addIssue({
-        node,
-        code: 'tool_offline',
-        message: getWorkflowCheckIssueMessage('tool_offline', t)
       });
     }
 

@@ -107,6 +107,18 @@ const scalarApiReferenceCss = `
   background-color: rgba(98, 111, 130, 0.24);
 }
 
+/*
+ * Scalar does not create section-container for operations directly under a tag group.
+ * Keep those sections aligned with the regular tag sections on desktop.
+ */
+@media (min-width: 1024px) {
+  .scalar-app
+    .narrow-references-container
+    section.section:not(.section-container section) {
+    margin-inline: 60px;
+  }
+}
+
 `;
 
 export const getScalarOpenApiReferenceConfig = (

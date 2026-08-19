@@ -46,7 +46,10 @@ export type GetAppCollaboratorListResponseType = z.infer<
 export const UpdateAppCollaboratorBodySchema = z
   .object({
     appId: AppIdSchema,
-    collaborators: z.array(CollaboratorItemSchema).meta({ description: '更新后的协作者权限列表' })
+    collaborators: z
+      .array(CollaboratorItemSchema)
+      .min(1)
+      .meta({ description: '更新后的协作者权限列表，至少包含一个协作者' })
   })
   .meta({
     example: {

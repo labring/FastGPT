@@ -49,7 +49,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import WorkflowSandboxConfig, {
   createSandboxEntrypointInput
 } from '../components/WorkflowSandboxConfig';
-import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
@@ -687,7 +687,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   {t('common:Choose')}
                 </Button>
                 {selectedTools.map((item) => (
-                  <MyTooltip key={item.id} label={item.intro}>
+                  <MyTooltip
+                    key={getToolIdentityKey(item.pluginId || item.id, item.source)}
+                    label={item.intro}
+                  >
                     <Flex
                       alignItems={'center'}
                       h={10}
@@ -734,7 +737,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           hoverColor="red.600"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteTool(item.pluginId!);
+                            onDeleteTool(item.pluginId!, item.source);
                           }}
                         />
                       </Box>
@@ -748,7 +751,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   selectedModel={currentModel}
                   fileSelectConfig={{}}
                   onAddTool={(tool) => onUpdateOrAddTool({ ...tool, id: tool.pluginId! })}
-                  onRemoveTool={(tool) => onDeleteTool(tool.id)}
+                  onRemoveTool={(tool) => onDeleteTool(tool.id, tool.source)}
                   onClose={onCloseToolSelect}
                 />
               )}

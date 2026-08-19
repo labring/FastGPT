@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import ChatFunctionTip from './Tip';
@@ -111,12 +112,18 @@ const VariableEdit = ({
       {/* Form render */}
       {formatVariables.length > 0 && (
         <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
-          <Table variant={'workflow'}>
+          <Table variant={'workflow'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr>
-                <Th>{t('workflow:Variable_name')}</Th>
-                <Th>{t('common:Required_input')}</Th>
-                <Th>{t('common:Operation')}</Th>
+                <Th pl={'24px !important'} pr={'8px !important'}>
+                  {t('workflow:Variable_name')}
+                </Th>
+                <Th w={'2.5rem'} whiteSpace={'nowrap'} px={'8px !important'}>
+                  {t('common:Required_input')}
+                </Th>
+                <Th w={'4.9rem'} whiteSpace={'nowrap'} pl={'8px !important'} pr={'24px !important'}>
+                  {t('common:Operation')}
+                </Th>
               </Tr>
             </Thead>
             <DndDrag<VariableItemType>
@@ -201,18 +208,22 @@ const TableItem = ({
 
   return (
     <Tr {...draggableItemProps} {...dragHandleProps}>
-      <Td fontWeight={'medium'}>
+      <Td fontWeight={'medium'} pl={'24px !important'} pr={'8px !important'}>
         <Flex alignItems={'center'}>
-          <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
-          {item.label}
+          <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} flexShrink={0} />
+          <Box flex={1} minW={0}>
+            <MyTooltip label={item.label} showOnlyWhenOverflow>
+              <Box className={'textEllipsis'}>{item.label}</Box>
+            </MyTooltip>
+          </Box>
         </Flex>
       </Td>
-      <Td>
+      <Td px={'8px !important'}>
         <Flex alignItems={'center'}>
           {item.required ? <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} /> : ''}
         </Flex>
       </Td>
-      <Td>
+      <Td pl={'8px !important'} pr={'24px !important'}>
         <Flex>
           <MyIconButton icon={'common/settingLight'} onClick={handleEdit} />
           <MyIconButton

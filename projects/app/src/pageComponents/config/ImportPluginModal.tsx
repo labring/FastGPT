@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { confirmPkgPluginUpload, uploadPkgPlugin } from '@/web/core/plugin/admin/api';
+import { confirmTeamPkgPluginUpload, uploadTeamPkgPlugin } from '@/web/core/plugin/team/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
@@ -33,6 +34,7 @@ type UploadedPluginFile = SelectFileItemType & {
   toolId?: string;
   version?: string;
   etag?: string;
+  permission?: string[];
   toolName?: string;
   toolIntro?: string;
   toolTags?: string[];
@@ -94,11 +96,13 @@ const resolveSuccessSourceFiles = ({
 const ImportPluginModal = ({
   onClose,
   onSuccess,
-  tools
+  tools,
+  mode = 'admin'
 }: {
   onClose: () => void;
   onSuccess?: () => void;
   tools: GetAdminSystemToolsResponseType;
+  mode?: 'admin' | 'team';
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -136,7 +140,8 @@ const ImportPluginModal = ({
             return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
           }) || [],
         version: parseResult.version || '',
-        etag: parseResult.etag || ''
+        etag: parseResult.etag || '',
+        permission: parseResult.permission
       };
     },
     [allTags, i18n.language, tools]
@@ -217,7 +222,8 @@ const ImportPluginModal = ({
           formData.append('file', file.file, encodeURIComponent(getSourceName(file)));
         });
 
-        const uploadResult = await uploadPkgPlugin(formData);
+        const uploadResult =
+          mode === 'team' ? await uploadTeamPkgPlugin(formData) : await uploadPkgPlugin(formData);
         const parseResults = uploadResult?.plugins || [];
         const failedResults = uploadResult?.failed || [];
         if (parseResults.length === 0 && failedResults.length === 0) {
@@ -271,7 +277,8 @@ const ImportPluginModal = ({
                     return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
                   }) || [],
                 version: parseResult.version || '',
-                etag: parseResult.etag || ''
+                etag: parseResult.etag || '',
+                permission: parseResult.permission
               } satisfies UploadedPluginFile);
         });
         const failedFiles = failedResults.map((failure, index) =>
@@ -305,7 +312,8 @@ const ImportPluginModal = ({
       i18n.language,
       parseUploadErrorMessage,
       t,
-      tools
+      tools,
+      mode
     ]
   );
 
@@ -379,10 +387,15 @@ const ImportPluginModal = ({
         .map((file) => ({
           pluginId: file.toolId!,
           version: file.version!,
-          etag: file.etag!
+          etag: file.etag!,
+          ...(mode === 'team' ? { permission: file.permission } : {})
         }));
 
-      await confirmPkgPluginUpload({ toolIds: successToolIds });
+      if (mode === 'team') {
+        await confirmTeamPkgPluginUpload({ toolIds: successToolIds });
+      } else {
+        await confirmPkgPluginUpload({ toolIds: successToolIds });
+      }
     },
     {
       manual: true,

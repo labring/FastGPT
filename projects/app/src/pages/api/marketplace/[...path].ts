@@ -1,14 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { authSystemAdmin, authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { appEnv } from '@/env';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    await authSystemAdmin({ req });
     const { path = [], ...query } = req.query as any;
+    const pathSegments = Array.isArray(path) ? path : [path];
+
+    if (pathSegments[0] === 'api' && pathSegments[1] === 'admin') {
+      await authSystemAdmin({ req });
+    } else {
+      await authUserPer({ req, authToken: true });
+    }
 
     const queryStr = new URLSearchParams(query).toString();
     const requestPath = queryStr

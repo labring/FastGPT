@@ -1,7 +1,11 @@
 import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/core/app/tool/type';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   getToolNameCandidates,
+  getToolIdentityKey,
+  isSystemOrCommercialToolId,
   isDebugToolSource,
+  isTeamPluginSource,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -54,12 +58,27 @@ import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 import { getMCPChildren } from '../../../../../../app/mcp';
+import { getTmbInfoByTmbId } from '../../../../../../../support/user/team/controller';
+import {
+  assertTeamPluginSourceAccess,
+  getRawPluginIdFromSystemToolId
+} from '../../../../../../plugin/teamPluginPolicy';
 
 type AgentRuntimeNode = RuntimeNodeItemType & {
   currentCost?: number;
   hasSystemSecret?: boolean;
   hasTokenFee?: boolean;
   systemKeyCost?: number;
+};
+
+/** 为隔离 source 生成稳定短 ID，避免特殊字符清洗或长度截断造成 runtime tool ID 碰撞。 */
+const getAgentRuntimeToolId = ({ pluginId, source }: { pluginId: string; source?: string }) => {
+  const normalizedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const isSourceScoped = isTeamPluginSource(source) || isDebugToolSource(source);
+  if (!isSourceScoped || !source) return normalizedPluginId;
+
+  const rawPluginId = pluginId.replace(/^systemTool-/, '');
+  return hashStr(`${source}:${rawPluginId}`).slice(0, 16);
 };
 
 /**
@@ -78,6 +97,16 @@ export const getAgentRuntimeTools = async ({
   tmbId: string;
   lang?: localeType;
 }): Promise<SubAppInitType[]> => {
+  let teamIdPromise: Promise<string> | undefined;
+  const getCurrentTeamId = async () => {
+    if (!teamIdPromise) {
+      teamIdPromise = getTmbInfoByTmbId({ tmbId }).then((team) => {
+        return team.teamId;
+      });
+    }
+    return teamIdPromise;
+  };
+
   // Agent 工具执行需要统一的错误输出口，方便 workflow runtime 收敛失败结果。
   const appendErrorOutput = (outputs: RuntimeNodeItemType['outputs'] = []) => {
     return outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -122,12 +151,30 @@ export const getAgentRuntimeTools = async ({
     versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     const systemToolRepo = SystemToolRepo.getInstance();
-    const toolConfigSource = isDebugToolSource(runtimeSource) ? runtimeSource : undefined;
+    const toolConfigSource = (() => {
+      if (isDebugToolSource(runtimeSource)) return runtimeSource;
+      if (isTeamPluginSource(runtimeSource)) return runtimeSource;
+    })();
+    const detailSource = await (async () => {
+      if (!isTeamPluginSource(runtimeSource)) {
+        return (
+          toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system')
+        );
+      }
+
+      await assertTeamPluginSourceAccess({
+        teamId: await getCurrentTeamId(),
+        source: runtimeSource,
+        pluginId: getRawPluginIdFromSystemToolId(toolId)
+      });
+
+      return runtimeSource;
+    })();
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,
       version: versionId || undefined,
       lang,
-      source: toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system')
+      source: detailSource
     });
     const isWorkflowTool = !!toolDetail.associatedPluginId;
     const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
@@ -641,11 +688,18 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
-        const promptReference = {
-          id: tool.id,
-          name: toolNode.name
-        };
+        const promptReference = runtimeSource
+          ? {
+              id: getToolIdentityKey(tool.id, runtimeSource),
+              legacyId: tool.id,
+              name: toolNode.name
+            }
+          : {
+              id: tool.id,
+              name: toolNode.name
+            };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
+          const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const inputs = initToolInputsTypeByDefaultMode(
             child.inputs.map((input) => ({
               ...input,
@@ -654,7 +708,7 @@ export const getAgentRuntimeTools = async ({
             { forceDefaultMode: true, allowUserChatInputAgentGenerated: true }
           );
           const compiledRuntime = compileRuntimeTool({
-            toolId: id,
+            toolId: runtimeId,
             inputs,
             name: child.name,
             toolDescription: child.toolDescription,
@@ -665,7 +719,7 @@ export const getAgentRuntimeTools = async ({
 
           return {
             type: 'tool',
-            id,
+            id: runtimeId,
             name: child.name,
             avatar: child.avatar,
             // MCP/HTTP 子工具节点默认 version 为空；固定版本由父工具集决定。
@@ -695,6 +749,7 @@ export const getAgentRuntimeTools = async ({
                 nodeId: pluginId,
                 version: toolNode.version
               },
+              teamId: isTeamPluginSource(runtimeSource) ? await getCurrentTeamId() : undefined,
               lang
             });
 
@@ -742,13 +797,13 @@ export const getAgentRuntimeTools = async ({
 
           return [];
         } else {
-          // OpenAI function name 不能包含斜杠等字符，runtime map 也使用同一份清洗后的 id。
-          const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+          // 模型 schema、runtime map 和 dispatch 共用 source-aware ID。
+          const runtimeToolId = getAgentRuntimeToolId({ pluginId, source: runtimeSource });
           const inputs = initToolInputsTypeByDefaultMode(toolNode.inputs, {
             allowUserChatInputAgentGenerated: true
           });
           const compiledRuntime = compileRuntimeTool({
-            toolId: cleanedPluginId,
+            toolId: runtimeToolId,
             inputs,
             name: toolNode.name,
             toolDescription: toolNode.toolDescription,
@@ -760,7 +815,7 @@ export const getAgentRuntimeTools = async ({
           return [
             {
               type: toolType,
-              id: cleanedPluginId,
+              id: runtimeToolId,
               name: toolNode.name,
               avatar: toolNode.avatar,
               version: toolNode.version,

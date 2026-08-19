@@ -7,13 +7,19 @@ import {
 
 const mocks = vi.hoisted(() => ({
   getSystemToolDetail: vi.fn(),
-  getInstance: vi.fn()
+  getInstance: vi.fn(),
+  assertTeamPluginSourceAccess: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
     getInstance: mocks.getInstance
   }
+}));
+
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>()),
+  assertTeamPluginSourceAccess: mocks.assertTeamPluginSourceAccess
 }));
 
 import { getClientSystemToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
@@ -24,6 +30,7 @@ describe('getClientSystemToolPreviewNode', () => {
     mocks.getInstance.mockReturnValue({
       getSystemToolDetail: mocks.getSystemToolDetail
     });
+    mocks.assertTeamPluginSourceAccess.mockResolvedValue('teamId:team-1');
   });
 
   it('adds system input config when system tool has secrets', async () => {
@@ -337,6 +344,51 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.toolConfig?.systemTool).toEqual({
       toolId: 'systemTool-weather',
       source: 'debug:tmbId:tmb-1'
+    });
+  });
+
+  it('persists and authorizes the explicit team source', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-weather',
+      version: '1.0.0',
+      status: 1,
+      source: 'teamId:team-1',
+      isToolSet: false,
+      avatar: 'weather.svg',
+      name: 'Weather',
+      intro: 'Weather query',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Weather query',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-weather',
+      versionId: '',
+      lang: 'en',
+      source: 'teamId:team-1',
+      teamId: 'team-1'
+    });
+
+    expect(mocks.assertTeamPluginSourceAccess).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      source: 'teamId:team-1',
+      pluginId: 'weather'
+    });
+    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+      pluginId: 'systemTool-weather',
+      version: undefined,
+      lang: 'en',
+      source: 'teamId:team-1'
+    });
+    expect(result.source).toBe('teamId:team-1');
+    expect(result.toolConfig?.systemTool).toEqual({
+      toolId: 'systemTool-weather',
+      source: 'teamId:team-1'
     });
   });
 

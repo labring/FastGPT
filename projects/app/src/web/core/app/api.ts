@@ -1,5 +1,4 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { AppChangeOwnerBody } from '@/global/core/app/api';
 import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller.schema';
 
 import type {
@@ -19,6 +18,8 @@ import type {
 } from '@fastgpt/global/openapi/core/app/common/api';
 import type {
   GetAppPermissionQueryType,
+  ChangeAppOwnerBodyType,
+  ChangeAppOwnerResponseType,
   ResumeInheritPermissionQueryType,
   ResumeInheritPermissionResponseType
 } from '@fastgpt/global/openapi/core/app/permission/api';
@@ -69,4 +70,5 @@ export const resumeInheritPer = (appId: ResumeInheritPermissionQueryType['appId'
     () => undefined
   );
 
-export const changeOwner = (data: AppChangeOwnerBody) => POST(`/proApi/core/app/changeOwner`, data);
+export const changeOwner = (data: ChangeAppOwnerBodyType) =>
+  POST<ChangeAppOwnerResponseType>(`/proApi/core/app/changeOwner`, data);

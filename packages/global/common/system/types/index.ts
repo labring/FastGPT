@@ -85,6 +85,7 @@ export type FastGPTFeConfigsType = {
   show_publish_wechat?: boolean;
   show_agent_sandbox?: boolean;
   pluginRemoteDebug?: boolean;
+  enable_team_plugin_upload?: boolean;
 
   show_dataset_enhance?: boolean;
   show_batch_eval?: boolean;

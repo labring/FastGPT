@@ -47,7 +47,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     { nodes, edges, chatConfig },
     getWorkflowMigrationOptions()
   );
-  await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes });
+  await beforeUpdateAppFormat({
+    nodes: normalizedWorkflow.nodes,
+    teamId
+  });
   if (isPublish) {
     await validatePublishAppAgentSkillReadPermissions({
       nodes: normalizedWorkflow.nodes,

@@ -12,7 +12,9 @@ import {
   WxLoginResultResponseSchema,
   OpenAPIUserSchema,
   SsoGetAuthorizationURLBodySchema,
-  SsoGetAuthorizationURLResponseSchema
+  SsoGetAuthorizationURLResponseSchema,
+  WecomGetRedirectURLBodySchema,
+  WecomGetRedirectURLResponseSchema
 } from './api';
 
 export const LoginPath: OpenAPIPath = {
@@ -119,6 +121,30 @@ export const LoginPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SsoGetAuthorizationURLResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/login/wecom/getRedirectUrl': {
+    post: {
+      summary: '获取企业微信登录跳转地址',
+      description: '根据登录回调地址和当前终端环境生成企业微信 OAuth 跳转地址',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: WecomGetRedirectURLBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功生成企业微信登录跳转地址',
+          content: {
+            'application/json': {
+              schema: WecomGetRedirectURLResponseSchema
             }
           }
         }

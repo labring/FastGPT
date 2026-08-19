@@ -30,6 +30,7 @@ export type ReportCRMVisitorLifecycleProps = {
 export type ReportCRMEnterpriseVerificationProps = {
   visitorId?: string;
   cloudUserId: string;
+  teamId: string;
   submissionId: string;
   company: string;
   summary: string;
@@ -43,7 +44,13 @@ export type ReportCRMEnterpriseVerificationProps = {
     legal_person_name: string;
     bank_name: string;
     bank_account: string;
+    cumulative_recharge_amount?: number;
   };
+};
+
+export type ReportCRMEnterpriseRechargeAmountProps = {
+  teamId: string;
+  cumulativeRechargeAmount: number;
 };
 
 const getContact = (username: string, contact?: string) => {
@@ -171,6 +178,7 @@ export const reportCRMVisitorLifecycle = async ({
 export const reportCRMEnterpriseVerification = async ({
   visitorId: rawVisitorId,
   cloudUserId: rawCloudUserId,
+  teamId: rawTeamId,
   submissionId: rawSubmissionId,
   company,
   summary,
@@ -183,9 +191,10 @@ export const reportCRMEnterpriseVerification = async ({
   const { apiUrl, apiKey } = getCRMConfig();
   const visitorId = rawVisitorId?.trim();
   const cloudUserId = rawCloudUserId.trim();
+  const teamId = rawTeamId.trim();
   const submissionId = rawSubmissionId.trim();
 
-  if (!apiUrl || !apiKey || !cloudUserId || !submissionId) return false;
+  if (!apiUrl || !apiKey || !cloudUserId || !teamId || !submissionId) return false;
 
   try {
     await axiosWithoutSSRF.post(
@@ -194,6 +203,7 @@ export const reportCRMEnterpriseVerification = async ({
         event: CRMLifecycleEvent.EnterpriseVerification,
         ...(visitorId && { visitor_id: visitorId }),
         cloud_user_id: cloudUserId,
+        team_id: teamId,
         submission_id: submissionId,
         company,
         summary,
@@ -217,6 +227,49 @@ export const reportCRMEnterpriseVerification = async ({
       cloudUserId,
       submissionId,
       visitorId
+    });
+    return false;
+  }
+};
+
+/** 上报企业认证线索的完整累计充值金额；CRM 端按 team_id 覆盖保存。 */
+export const reportCRMEnterpriseRechargeAmount = async ({
+  teamId: rawTeamId,
+  cumulativeRechargeAmount
+}: ReportCRMEnterpriseRechargeAmountProps): Promise<boolean> => {
+  const { apiUrl, apiKey } = getCRMConfig();
+  const teamId = rawTeamId.trim();
+
+  if (
+    !apiUrl ||
+    !apiKey ||
+    !teamId ||
+    !Number.isFinite(cumulativeRechargeAmount) ||
+    cumulativeRechargeAmount <= 0
+  ) {
+    return false;
+  }
+
+  try {
+    await axiosWithoutSSRF.patch(
+      `${apiUrl}/contacts/opportunities/enterprise-recharge`,
+      {
+        team_id: teamId,
+        cumulative_recharge_amount: cumulativeRechargeAmount
+      },
+      {
+        headers: {
+          'X-API-Key': apiKey
+        },
+        timeout: 5000
+      }
+    );
+    return true;
+  } catch (error) {
+    logger.warn('CRM enterprise recharge amount report failed', {
+      error,
+      teamId,
+      cumulativeRechargeAmount
     });
     return false;
   }

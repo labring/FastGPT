@@ -3,7 +3,11 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   GetTeamPlanStatusQuerySchema,
   GetTeamPlanStatusResponseSchema,
-  UpdateTeamBodySchema
+  SearchMembersOrgsGroupsQuerySchema,
+  SearchMembersOrgsGroupsResponseSchema,
+  UpdateTeamBodySchema,
+  UserSyncBodySchema,
+  UserSyncResponseSchema
 } from './api';
 import { EnterpriseAuthPath } from './enterpriseAuth';
 import { TeamLimitPath } from './limit';
@@ -11,6 +15,50 @@ import { TeamLimitPath } from './limit';
 export const TeamPath: OpenAPIPath = {
   ...EnterpriseAuthPath,
   ...TeamLimitPath,
+  '/proApi/support/user/team/searchMembersOrgsGroups': {
+    get: {
+      summary: '聚合搜索团队成员、组织和用户组',
+      description: '在当前团队中按关键词聚合搜索成员、组织和用户组',
+      tags: [DevApiTagsMap.teamManage],
+      requestParams: {
+        query: SearchMembersOrgsGroupsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回搜索结果',
+          content: {
+            'application/json': {
+              schema: SearchMembersOrgsGroupsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/team/sync': {
+    post: {
+      summary: '同步用户和组织',
+      description: '从外部用户系统同步当前团队的用户和组织数据',
+      tags: [DevApiTagsMap.teamManage],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UserSyncBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '用户和组织同步成功',
+          content: {
+            'application/json': {
+              schema: UserSyncResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/support/user/team/update': {
     put: {
       summary: '更新团队信息',

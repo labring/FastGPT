@@ -644,6 +644,7 @@ export const rewriteRuntimeWorkFlow = async ({
         if (systemToolId) {
           const children = await getSystemToolRunTimeNodeFromSystemToolset({
             toolSetNode,
+            teamId,
             lang
           });
           children.forEach((node) => {

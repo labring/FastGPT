@@ -5,6 +5,7 @@ import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hook
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 
 /**
  * Adapts the ChatAgent's useSkillManager to work in the workflow node context.
@@ -46,9 +47,14 @@ export const useAgentSkillManager = ({
 
   const onUpdateOrAddTool = useCallback(
     (tool: SelectedToolItemType) => {
-      const exists = selectedTools.find((t) => t.pluginId === tool.pluginId);
+      const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
+      const exists = selectedTools.find(
+        (t) => getToolIdentityKey(t.pluginId, t.source) === toolKey
+      );
       const newTools = exists
-        ? selectedTools.map((t) => (t.pluginId === tool.pluginId ? tool : t))
+        ? selectedTools.map((t) =>
+            getToolIdentityKey(t.pluginId, t.source) === toolKey ? tool : t
+          )
         : [...selectedTools, tool];
 
       if (toolsInput) {
@@ -67,8 +73,11 @@ export const useAgentSkillManager = ({
   );
 
   const onDeleteTool = useCallback(
-    (id: string) => {
-      const newTools = selectedTools.filter((t) => t.pluginId !== id);
+    (id: string, source?: string) => {
+      const toolKey = getToolIdentityKey(id, source);
+      const newTools = selectedTools.filter(
+        (t) => getToolIdentityKey(t.pluginId, t.source) !== toolKey
+      );
       if (toolsInput) {
         onChangeNode({
           nodeId,

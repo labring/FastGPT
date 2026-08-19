@@ -46,7 +46,7 @@ describe('beforeUpdateAppFormat', () => {
         } as StoreNodeItemType
       ];
 
-      await beforeUpdateAppFormat({ nodes });
+      await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
 
       expect(nodes[0].inputs[0].value).toEqual({ type });
     }
@@ -149,11 +149,41 @@ describe('beforeUpdateAppFormat', () => {
       }
     ] as StoreNodeItemType[];
 
-    await beforeUpdateAppFormat({ nodes });
+    await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
 
     const config = (nodes[0].inputs[0].value as any)[0].config;
     expect(config.system_input_config.value.apiKey.value).toBe('');
     expect(config.system_input_config.value.apiKey.secret).toEqual(expect.any(String));
+  });
+
+  it('保存 Agent 嵌套团队工具配置时把 teamId 传给预览接口', async () => {
+    mocks.getClientToolPreviewNode.mockResolvedValueOnce({ inputs: [] });
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: 'systemTool-weather',
+                source: 'teamId:team-1',
+                config: {}
+              }
+            ]
+          }
+        ]
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+    expect(mocks.getClientToolPreviewNode).toHaveBeenCalledWith({
+      appId: 'systemTool-weather',
+      versionId: undefined,
+      source: 'teamId:team-1',
+      teamId: 'team-1'
+    });
   });
 
   it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', async () => {
@@ -363,7 +393,7 @@ describe('beforeUpdateAppFormat', () => {
       } as StoreNodeItemType
     ];
 
-    await expect(beforeUpdateAppFormat({ nodes })).rejects.toThrow();
+    await expect(beforeUpdateAppFormat({ nodes, teamId: 'team-1' })).rejects.toThrow();
   });
 
   it('保存前移除 Agent Skill 的编辑态删除标记和展示快照字段', async () => {

@@ -27,6 +27,7 @@ import {
 
 const captchaPath = '/proApi/support/user/account/captcha/getImgCaptcha';
 const ssoAuthorizationPath = '/proApi/support/user/account/login/getAuthURL';
+const wecomRedirectPath = '/proApi/support/user/account/login/wecom/getRedirectUrl';
 
 describe('user account OpenAPI contracts', () => {
   it('registers the image captcha route in the generated Dev API document', () => {
@@ -52,6 +53,11 @@ describe('user account OpenAPI contracts', () => {
         redirectUri: 'https://fastgpt.example.com/login'
       })
     ).toThrow();
+  });
+
+  it('registers the WeCom redirect URL route', () => {
+    expect(openAPIPaths[wecomRedirectPath]).toBeDefined();
+    expect(openAPIDocument.paths?.[wecomRedirectPath]?.post?.tags).toEqual(['用户账号']);
   });
 
   it('declares null while the WeChat QR login is waiting for a scan', () => {

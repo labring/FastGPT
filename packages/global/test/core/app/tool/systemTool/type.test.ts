@@ -27,6 +27,15 @@ const createAdminToolDetail = () => ({
 });
 
 describe('AdminSystemToolDetailSchema', () => {
+  it('accepts hidden system tool status', () => {
+    const result = AdminSystemToolDetailSchema.parse({
+      ...createAdminToolDetail(),
+      status: PluginStatusEnum.Hidden
+    });
+
+    expect(result.status).toBe(PluginStatusEnum.Hidden);
+  });
+
   it('strips input and output schemas from admin detail response', () => {
     const detail = {
       ...createAdminToolDetail(),

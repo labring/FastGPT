@@ -117,6 +117,28 @@ export const isSystemOrCommercialToolId = (toolId?: string) => {
 };
 
 const DebugToolSourcePrefix = 'debug:tmbId:';
+const TeamPluginSourcePrefix = 'teamId:';
+
+/** 工具身份由 source 与 id 共同决定，避免系统/团队同名插件互相覆盖。 */
+export const getToolIdentityKey = (id?: string, source?: string) =>
+  `${source || 'system'}:${id || ''}`;
+
+/** 构造 plugin service 使用的团队隔离 source。 */
+export const getTeamPluginSource = (teamId: string) => `${TeamPluginSourcePrefix}${teamId}`;
+
+export function isTeamPluginSource(source?: string): source is string {
+  return typeof source === 'string' && source.startsWith(TeamPluginSourcePrefix);
+}
+
+export function parseTeamPluginSource(source?: string): { teamId: string } | undefined {
+  if (!isTeamPluginSource(source)) return;
+  const teamMatch = /^teamId:([^:]+)$/.exec(source);
+  if (teamMatch) {
+    return {
+      teamId: teamMatch[1]
+    };
+  }
+}
 
 export function isDebugToolSource(source?: string): source is string {
   return typeof source === 'string' && source.startsWith(DebugToolSourcePrefix);

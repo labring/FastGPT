@@ -128,6 +128,12 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
   }
 
   const onUpdate = async (session?: ClientSession) => {
+    // format nodes data
+    // 1. dataset search limit, less than model quoteMaxToken
+    await beforeUpdateAppFormat({
+      nodes: nodes === undefined ? undefined : normalizedWorkflow?.nodes,
+      teamId
+    });
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
     }

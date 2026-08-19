@@ -43,6 +43,7 @@ export const iconPaths = {
   'common/editor/resizer': () => import('./icons/common/editor/resizer.svg'),
   'common/ellipsis': () => import('./icons/common/ellipsis.svg'),
   'common/enable': () => import('./icons/common/enable.svg'),
+  'common/filter': () => import('./icons/common/filter.svg'),
   'common/error': () => import('./icons/common/error.svg'),
   'common/errorFill': () => import('./icons/common/errorFill.svg'),
   'common/exclamationMark': () => import('./icons/common/exclamationMark.svg'),

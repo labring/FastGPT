@@ -43,6 +43,10 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+
+const getToolSelectionKey = (id?: string, source?: string) =>
+  source ? getToolIdentityKey(id, source) : id || '';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -426,16 +430,21 @@ export const loadGeneratedTools = async ({
   generatedSelectedTools = [],
   fileSelectConfig
 }: {
-  newToolIds: string[]; // 新的，完整的 toolId
+  newToolIds: Array<string | { id: string; source?: string }>; // 新的，完整的 toolId
   existsTools?: SelectedToolItemType[];
   generatedSelectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
 }): Promise<SelectedToolItemType[]> => {
   const results = (
     await Promise.all(
-      newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolId: string) => {
+      newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolRef) => {
+        const toolId = typeof toolRef === 'string' ? toolRef : toolRef.id;
+        const source = typeof toolRef === 'string' ? undefined : toolRef.source;
+        const identityKey = getToolSelectionKey(toolId, source);
         // 已经存在的工具，直接返回
-        const existTool = existsTools.find((tool) => tool.pluginId === toolId);
+        const existTool = existsTools.find(
+          (tool) => getToolSelectionKey(tool.pluginId, tool.source) === identityKey
+        );
         if (existTool) {
           return existTool;
         }
@@ -443,7 +452,8 @@ export const loadGeneratedTools = async ({
         // 新工具，需要与已配置的 tool 进行 input 合并
         const tool = await getClientToolPreviewNode({
           appId: toolId,
-          getLatestVersion: true
+          getLatestVersion: true,
+          source
         });
         // 验证工具配置
         const toolValid = validateToolConfiguration({
@@ -461,12 +471,15 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const generatedTool = generatedSelectedTools.find((item) => item.pluginId === toolId);
+        const generatedTool = generatedSelectedTools.find(
+          (item) => getToolSelectionKey(item.pluginId, item.source) === identityKey
+        );
         const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
 
         return {
           ...inheritedTool,
           id: toolId,
+          source,
           configStatus: getToolConfigStatus({ tool: inheritedTool }).status
         };
       })
