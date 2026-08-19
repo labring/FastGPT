@@ -173,14 +173,24 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
               h={'72px'}
               Trigger={
                 <Box cursor={'pointer'}>
-                  <Avatar src={''} borderRadius={'50%'} w={'24px'} h={'24px'} />
+                  <Avatar
+                    src={item.sourceMember.avatar}
+                    borderRadius={'50%'}
+                    w={'24px'}
+                    h={'24px'}
+                  />
                 </Box>
               }
             >
               {() => (
                 <Flex alignItems={'center'} h={'full'} pl={5} gap={2}>
                   <Box>
-                    <Avatar src={''} borderRadius={'50%'} w={'36px'} h={'36px'} />
+                    <Avatar
+                      src={item.sourceMember.avatar}
+                      borderRadius={'50%'}
+                      w={'36px'}
+                      h={'36px'}
+                    />
                   </Box>
                   <Box>
                     <Box fontSize={'sm'} color={'myGray.900'}>

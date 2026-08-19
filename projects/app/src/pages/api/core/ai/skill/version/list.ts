@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
 export type { ListSkillVersionsBody };
 export type ListSkillVersionsResponse = PaginationResponse<SkillVersionListItemType>;
@@ -42,25 +43,26 @@ async function handler(
     ...(isCurrent === false && skill.currentVersionId && { _id: { $ne: skill.currentVersionId } })
   };
 
-  const [list, total] = await Promise.all([
+  const [versions, total] = await Promise.all([
     MongoAgentSkillsVersion.find(match)
       .sort({ createdAt: -1, _id: -1 })
       .skip(offset)
       .limit(pageSize)
       .select('-storageKey -importSource')
-      .lean()
-      .then((versions) =>
-        versions.map((item) => ({
-          _id: String(item._id),
-          skillId: String(item.skillId),
-          tmbId: String(item.tmbId),
-          versionName: item.versionName,
-          isCurrent: String(item._id) === String(skill.currentVersionId),
-          createdAt: item.createdAt.toISOString()
-        }))
-      ),
+      .lean(),
     MongoAgentSkillsVersion.countDocuments(match)
   ]);
+
+  const list = await addSourceMember({
+    list: versions.map((item) => ({
+      _id: String(item._id),
+      skillId: String(item.skillId),
+      tmbId: String(item.tmbId),
+      versionName: item.versionName,
+      isCurrent: String(item._id) === String(skill.currentVersionId),
+      createdAt: item.createdAt.toISOString()
+    }))
+  });
 
   return { total, list };
 }
