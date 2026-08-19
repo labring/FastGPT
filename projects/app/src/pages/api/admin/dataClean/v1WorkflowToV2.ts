@@ -18,7 +18,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
-import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import { LegacyWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/legacy/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import z from 'zod';
 
@@ -943,11 +943,8 @@ const validateUpgrade = ({
   zodErrors: ValidationErrorRecordType[];
   maxZodErrors: number;
 }) => {
-  const result = PublishAppBodySchema.pick({
-    nodes: true,
-    edges: true,
-    chatConfig: true
-  }).safeParse(data);
+  // dataClean writes V2-shaped legacy data. The read boundary completes canonical migration.
+  const result = LegacyWorkflowDataSchema.safeParse(data);
   if (result.success) return true;
 
   const issues = result.error.issues.map((issue) => normalizeIssue({ issue, data }));
