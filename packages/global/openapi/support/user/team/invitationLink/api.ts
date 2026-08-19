@@ -17,7 +17,7 @@ const InvitationLinkMemberSchema = z
       example: '68ad85a7463006c963799a06',
       description: '已通过该邀请链接加入的团队成员 ID'
     }),
-    avatar: z.string().meta({ description: '团队成员头像' }),
+    avatar: z.string().nullish().meta({ description: '团队成员头像' }),
     name: z.string().meta({ description: '团队成员名称' })
   })
   .meta({ description: '通过邀请链接加入的团队成员' });
@@ -138,7 +138,7 @@ export const GetInvitationLinkInfoResponseSchema = z
   .object({
     ...InvitationLinkBaseShape,
     members: z.array(ObjectIdSchema).meta({ description: '已通过邀请链接加入的成员 ID 列表' }),
-    teamAvatar: z.string().meta({ description: '团队头像' }),
+    teamAvatar: z.string().nullish().meta({ description: '团队头像' }),
     teamName: z.string().meta({ description: '团队名称' })
   })
   .meta({ description: '邀请链接详情' });

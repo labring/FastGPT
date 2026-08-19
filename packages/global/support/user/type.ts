@@ -35,7 +35,7 @@ export type UserModelSchema = {
 export const UserSchema = z.object({
   _id: ObjectIdSchema,
   username: z.string(),
-  avatar: z.string(),
+  avatar: z.string().nullish(),
   timezone: z.string(),
   language: LanguageSchema.optional(),
   team: TeamTmbItemSchema,

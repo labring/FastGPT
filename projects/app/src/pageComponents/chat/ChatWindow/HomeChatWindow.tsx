@@ -189,7 +189,7 @@ const HomeChatWindow = () => {
 
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
-      res.userAvatar = userInfo?.avatar;
+      res.userAvatar = userInfo?.avatar ?? undefined;
 
       if (!res.app.chatConfig) {
         res.app.chatConfig = {

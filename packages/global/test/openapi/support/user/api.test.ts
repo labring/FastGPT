@@ -216,6 +216,31 @@ describe('support user OpenAPI contracts', () => {
     expect(searchResponse.members[0]).not.toHaveProperty('avatar');
     expect(
       SearchMembersOrgsGroupsResponseSchema.parse({
+        members: [
+          {
+            tmbId: objectId,
+            userId: objectId,
+            teamId: objectId,
+            name: '空头像成员',
+            memberName: '空头像成员',
+            avatar: null,
+            createTime: '2026-01-01T00:00:00.000Z'
+          }
+        ],
+        orgs: [],
+        groups: [
+          {
+            _id: objectId,
+            teamId: objectId,
+            name: '空头像用户组',
+            avatar: null,
+            updateTime: '2026-01-02T00:00:00.000Z'
+          }
+        ]
+      })
+    ).toMatchObject({ members: [{ avatar: null }], groups: [{ avatar: null }] });
+    expect(
+      SearchMembersOrgsGroupsResponseSchema.parse({
         members: [],
         orgs: [],
         groups: []
@@ -248,9 +273,10 @@ describe('support user OpenAPI contracts', () => {
         {
           userId: objectId,
           teamId: objectId,
+          teamAvatar: null,
           teamName: 'FastGPT 团队',
           memberName: '张三',
-          avatar: 'https://fastgpt.example.com/avatar.png',
+          avatar: null,
           tmbId: objectId,
           role: 'owner',
           status: 'active',
@@ -291,7 +317,7 @@ describe('support user OpenAPI contracts', () => {
             tmbId: objectId,
             teamId: objectId,
             memberName: '历史成员',
-            avatar: 'https://fastgpt.example.com/avatar.png',
+            avatar: null,
             status: 'waiting',
             createTime: '2025-01-13T05:34:31.329Z'
           }

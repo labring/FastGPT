@@ -24,7 +24,7 @@ const GroupMemberPreviewSchema = z
   .object({
     tmbId: TeamMemberIdSchema,
     name: z.string().meta({ description: '成员名称' }),
-    avatar: z.string().meta({ description: '成员头像' })
+    avatar: z.string().nullish().meta({ description: '成员头像' })
   })
   .meta({ description: '群组成员预览信息' });
 
@@ -145,7 +145,7 @@ export const GroupListItemSchema = z
     _id: GroupIdSchema,
     teamId: ObjectIdSchema.meta({ description: '所属团队 ID' }),
     name: z.string().meta({ description: '群组名称' }),
-    avatar: z.string().optional().meta({ description: '群组头像 URL' }),
+    avatar: z.string().nullish().meta({ description: '群组头像 URL' }),
     updateTime: z.coerce.date().meta({
       example: '2026-01-02T00:00:00.000Z',
       description: '群组更新时间'

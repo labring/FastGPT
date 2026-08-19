@@ -68,9 +68,9 @@ describe('team group OpenAPI contracts', () => {
           _id: objectId,
           teamId: objectId,
           name: '研发组',
-          avatar: 'https://example.com/group-avatar.png',
+          avatar: null,
           updateTime: '2026-01-02T00:00:00.000Z',
-          members: [],
+          members: [{ tmbId: objectId, name: '空头像成员', avatar: null }],
           count: 0
         }
       ])
