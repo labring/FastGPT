@@ -16,11 +16,13 @@ export const DevApiTagsMap = {
   httpTools: 'HTTP 工具管理',
   mcpServer: 'MCP 发布管理',
   appSystemTool: '系统工具',
+  toolPreview: '工具节点预览',
 
   /* 核心-技能 */
   skillBasic: '基础管理',
   skillPermission: '权限管理',
   skillEdit: '编辑管理',
+  skillDebug: '技能调试',
   skillVersion: '版本管理',
 
   /* 核心-AI 相关 */
@@ -94,8 +96,10 @@ export const DevApiTagsMap = {
   teamGroup: '群组管理',
   teamSubscription: '订阅管理',
 
+  /* 插件市场 */
+  pluginMarketplace: '插件市场-系统工具',
+
   /* 管理员-插件管理 */
-  pluginMarketplace: '插件市场',
   pluginAdmin: '管理员插件管理',
   pluginToolAdmin: '管理员系统工具管理',
 
@@ -117,6 +121,11 @@ export const DevApiTagsMap = {
   adminWalletInvoice: '发票管理',
   adminWalletRefund: '退款管理',
   adminAuth: '管理员认证'
+};
+
+/** Scalar 文档导航中的标签展示名，key 保持 OpenAPI 内部标签唯一。 */
+export const DevApiTagNameAliases: Record<string, string> = {
+  [DevApiTagsMap.pluginMarketplace]: '系统工具'
 };
 
 export const SystemOpenApiTagMap = {

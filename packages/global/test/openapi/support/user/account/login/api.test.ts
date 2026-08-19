@@ -4,6 +4,7 @@ import { openAPIPaths } from '../../../../../../openapi/path';
 import {
   FastLoginBodySchema,
   LoginByPasswordBodySchema,
+  OpenAPIUserSchema,
   LoginSuccessResponseSchema,
   OauthLoginBodySchema,
   PreLoginQuerySchema,
@@ -29,6 +30,8 @@ const captchaPath = '/proApi/support/user/account/captcha/getImgCaptcha';
 const ssoAuthorizationPath = '/proApi/support/user/account/login/getAuthURL';
 const wecomRedirectPath = '/proApi/support/user/account/login/wecom/getRedirectUrl';
 const updatePasswordByCodePath = '/proApi/support/user/account/password/updateByCode';
+const objectId = '68ad85a7463006c963799a05';
+const objectIdLike = { toString: () => objectId };
 
 describe('user account OpenAPI contracts', () => {
   it('registers the image captcha route in the generated Dev API document', () => {
@@ -189,5 +192,33 @@ describe('user account OpenAPI contracts', () => {
         token: longToken
       }).token
     ).toBe(longToken);
+  });
+
+  it('accepts user details whose legacy team role is absent', () => {
+    expect(
+      OpenAPIUserSchema.parse({
+        _id: objectIdLike,
+        username: 'user@example.com',
+        avatar: '/icon/avatar.svg',
+        timezone: 'Asia/Shanghai',
+        team: {
+          userId: objectIdLike,
+          teamId: objectIdLike,
+          teamName: 'FastGPT 团队',
+          memberName: '普通成员',
+          avatar: '/icon/avatar.svg',
+          tmbId: objectIdLike,
+          status: 'active',
+          permission: {}
+        },
+        permission: {}
+      })
+    ).toMatchObject({
+      _id: objectId,
+      team: {
+        tmbId: objectId,
+        status: 'active'
+      }
+    });
   });
 });

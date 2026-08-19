@@ -1,4 +1,5 @@
 import z from 'zod';
+import { ObjectIdSchema } from '../../common/type/mongo';
 import { LanguageSchema, type LangEnum } from '../../common/i18n/type';
 import { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
@@ -32,7 +33,7 @@ export type UserModelSchema = {
 };
 
 export const UserSchema = z.object({
-  _id: z.string(),
+  _id: ObjectIdSchema,
   username: z.string(),
   avatar: z.string(),
   timezone: z.string(),

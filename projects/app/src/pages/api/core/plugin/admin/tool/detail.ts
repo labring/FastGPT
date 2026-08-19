@@ -6,9 +6,11 @@ import type {
   GetAdminSystemToolDetailQueryType,
   GetAdminSystemToolDetailResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { GetAdminSystemToolDetailQuerySchema } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import type { AdminSystemToolDetailType } from '@fastgpt/global/core/app/tool/systemTool/type';
 import { AdminSystemToolDetailSchema } from '@fastgpt/global/core/app/tool/systemTool/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type getSystemToolDetailQuery = GetAdminSystemToolDetailQueryType;
 
@@ -20,7 +22,10 @@ async function handler(
   req: ApiRequestProps<getSystemToolDetailBody, getSystemToolDetailQuery>,
   _res: ApiResponseType<any>
 ): Promise<getSystemToolsResponse> {
-  const { toolId, version } = req.query;
+  const { toolId, version } = parseApiInput({
+    req,
+    querySchema: GetAdminSystemToolDetailQuerySchema
+  }).query;
   const lang = getLocale(req);
 
   await authSystemAdmin({ req });

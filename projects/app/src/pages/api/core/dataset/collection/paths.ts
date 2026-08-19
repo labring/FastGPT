@@ -12,9 +12,10 @@ import {
   GetCollectionPathsResponseSchema,
   type GetCollectionPathsResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export async function handler(req: ApiRequestProps): Promise<GetCollectionPathsResponseType> {
-  const { sourceId } = GetCollectionPathsQuerySchema.parse(req.query);
+  const { sourceId } = parseApiInput({ req, querySchema: GetCollectionPathsQuerySchema }).query;
 
   if (!sourceId) {
     return [];

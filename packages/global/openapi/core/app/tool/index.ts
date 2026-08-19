@@ -59,12 +59,7 @@ export const ToolPath: OpenAPIPath = {
       summary: '获取工具节点信息',
       description:
         '根据工具 ID 和版本配置生成可插入工作流画布的工具节点模板，支持系统工具和我的工具（MCP、HTTP、工作流工具）',
-      tags: [
-        DevApiTagsMap.appSystemTool,
-        DevApiTagsMap.httpTools,
-        DevApiTagsMap.mcpTools,
-        DevApiTagsMap.pluginTeam
-      ],
+      tags: [DevApiTagsMap.toolPreview],
       requestParams: {
         query: GetPreviewNodeQueryOpenAPISchema
       },

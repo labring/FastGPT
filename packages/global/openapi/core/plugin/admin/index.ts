@@ -38,6 +38,27 @@ export const PluginAdminPath: OpenAPIPath = {
     }
   },
 
+  '/core/plugin/admin/pkg/confirm': {
+    post: {
+      summary: '确认上传系统插件包',
+      description: '确认已上传并解析完成的系统插件包，需要系统管理员权限',
+      tags: [DevApiTagsMap.pluginAdmin],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: ConfirmUploadPkgPluginBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功确认插件包'
+        }
+      }
+    }
+  },
+
   '/core/plugin/admin/installWithUrl': {
     post: {
       summary: '从URL安装插件',

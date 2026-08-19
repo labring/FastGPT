@@ -16,6 +16,7 @@ import {
   GetAdminSystemToolsQuery,
   GetAdminSystemToolsResponseSchema
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type AdminGetSystemToolsQuery = GetAdminSystemToolsQueryType;
 
@@ -27,7 +28,7 @@ export async function handler(
   req: ApiRequestProps<AdminGetSystemToolsBody, AdminGetSystemToolsQuery>,
   _res: ApiResponseType<any>
 ): Promise<GetAdminSystemToolsResponseType> {
-  const { searchKey } = GetAdminSystemToolsQuery.parse(req.query);
+  const { searchKey } = parseApiInput({ req, querySchema: GetAdminSystemToolsQuery }).query;
   const searchRegex = getSearchRegex(searchKey);
 
   const lang = getLocale(req);

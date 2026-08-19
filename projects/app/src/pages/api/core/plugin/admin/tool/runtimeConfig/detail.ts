@@ -5,9 +5,13 @@ import type {
   GetToolRuntimeConfigQueryType,
   GetToolRuntimeConfigResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import { GetToolRuntimeConfigResponseSchema } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  GetToolRuntimeConfigQuerySchema,
+  GetToolRuntimeConfigResponseSchema
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type getToolRuntimeConfigQuery = GetToolRuntimeConfigQueryType;
 
@@ -21,7 +25,7 @@ async function handler(
 ): Promise<getToolRuntimeConfigResponse> {
   await authSystemAdmin({ req });
 
-  const { pluginId } = req.query;
+  const { pluginId } = parseApiInput({ req, querySchema: GetToolRuntimeConfigQuerySchema }).query;
   const runtimeConfig = await pluginClient.getPluginRuntimeConfig(getToolRawId(pluginId));
 
   return GetToolRuntimeConfigResponseSchema.parse({
