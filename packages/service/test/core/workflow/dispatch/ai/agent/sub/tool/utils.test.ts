@@ -124,6 +124,17 @@ const mcpTool = {
   inputSchema: mcpInputSchema
 };
 
+const fixedVersionMcpToolSet = {
+  url: 'https://v1.example.com',
+  headerSecret: {
+    Authorization: {
+      value: 'legacy-secret',
+      secret: ''
+    }
+  },
+  toolList: [mcpTool]
+};
+
 const mcpToolWithLeadingSlash = {
   ...mcpTool,
   name: '/test'
@@ -252,13 +263,26 @@ describe('getAgentRuntimeTools schema loading', () => {
       return { app };
     });
 
-    getAppVersionByIdMock.mockImplementation(async ({ app }: { app: any }) => ({
-      versionId: '',
-      versionName: app.name,
-      nodes: app.modules,
-      edges: app.edges,
-      chatConfig: app.chatConfig
-    }));
+    getAppVersionByIdMock.mockImplementation(
+      async ({ app, versionId }: { app: any; versionId?: string }) => ({
+        versionId: versionId ?? '',
+        versionName: app.name,
+        nodes:
+          app._id === 'mcp_app' && versionId === 'fixed-version'
+            ? [
+                {
+                  ...app.modules[0],
+                  toolConfig: {
+                    ...app.modules[0].toolConfig,
+                    mcpToolSet: fixedVersionMcpToolSet
+                  }
+                }
+              ]
+            : app.modules,
+        edges: app.edges,
+        chatConfig: app.chatConfig
+      })
+    );
   });
 
   it('skips unavailable tools before resolving runtime definitions', async () => {
@@ -284,8 +308,13 @@ describe('getAgentRuntimeTools schema loading', () => {
       type: AppTypeEnum.mcpToolSet,
       toolConfig: {
         mcpToolSet: {
-          url: 'https://mcp.example.com',
-          headerSecret: {},
+          url: 'https://current.example.com',
+          headerSecret: {
+            Authorization: {
+              value: 'current-secret',
+              secret: ''
+            }
+          },
           toolList: [mcpTool]
         }
       }
@@ -572,6 +601,10 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
     expect(tools[0].version).toBe('fixed-version');
+    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: fixedVersionMcpToolSet.url,
+      headerSecret: fixedVersionMcpToolSet.headerSecret
+    });
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
       name: 'mcp_app name'
@@ -591,6 +624,27 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+  });
+
+  it('uses fixed-version MCP configuration for a selected tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_app/search', version: 'fixed-version', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'mcp_app',
+        versionId: 'fixed-version'
+      })
+    );
+    expect(tools[0].version).toBe('fixed-version');
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: fixedVersionMcpToolSet.url,
+      headerSecret: fixedVersionMcpToolSet.headerSecret
+    });
   });
 
   it('uses the dedicated Agent input mode at runtime', async () => {
