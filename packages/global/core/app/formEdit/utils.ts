@@ -136,7 +136,7 @@ export const canInputBeAgentGenerated = (
  * 归一当前节点输入的可选来源和默认选择。
  *
  * 所有支持 AI 生成的输入都会补充 agentGenerated；工具上下文才允许选中该类型，
- * 并在没有明确选择时按 isToolParam 应用默认值。
+ * 并在没有明确选择时按 defaultToAgentGenerated 应用默认值。
  */
 export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>(
   input: T,
@@ -148,8 +148,10 @@ export const normalizeFlowNodeInputType = <T extends CanonicalFlowNodeInputItem>
 ): T => {
   const inputRenderTypeList = input.renderTypeList ?? [];
   const recommendsAgentGenerated =
-    input.isToolParam === true ||
-    (input.isToolParam !== false && isTool && input.key === NodeInputKeyEnum.userChatInput);
+    input.defaultToAgentGenerated === true ||
+    (input.defaultToAgentGenerated !== false &&
+      isTool &&
+      input.key === NodeInputKeyEnum.userChatInput);
   const supportsAgentGenerated = canInputBeAgentGenerated(input);
   const canUseAgentGenerated = isTool && supportsAgentGenerated;
   const renderTypeList = Array.from(

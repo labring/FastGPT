@@ -1,5 +1,5 @@
 import z from 'zod';
-import { IntSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema } from '../../../../common/zod';
 import { AppChatConfigTypeSchema, AppQGConfigTypeSchema } from '../../../app/type';
 import { AgentToolInputModeEnum } from '../../../app/tool/constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
@@ -19,6 +19,10 @@ export const LegacyFlowNodeInputItemSchema = FlowNodeInputItemTypeSchema.omit({
   renderTypeList: true
 }).extend({
   renderTypeList: z.array(z.enum(FlowNodeInputTypeEnum)).optional(),
+  isToolParam: BoolSchema.optional().meta({
+    description: '历史工具输入默认由 Agent 生成标记',
+    deprecated: true
+  }),
   selectedTypeIndex: IntSchema.optional().meta({
     description: '历史工作流输入类型索引',
     deprecated: true

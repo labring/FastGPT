@@ -2,7 +2,11 @@ import z from 'zod';
 import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { PaginationSchema } from '../../../api';
-import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
+import {
+  OpenAPIFlowNodeInputItemTypeSchema,
+  OpenAPIFlowNodeOutputItemTypeSchema,
+  OpenAPIStoreNodeItemTypeSchema
+} from '../../workflow/node';
 import { AppResourceRefsSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
 import { OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
@@ -19,9 +23,17 @@ const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 
-const PublishAppNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
-  description: '本次保存的应用节点配置'
-});
+// Publish 请求在迁移前拒绝 legacy NodeIO；版本详情响应保留既有兼容 schema。
+const PublishAppNodesSchema = z
+  .array(
+    OpenAPIStoreNodeItemTypeSchema.strict().extend({
+      inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema.strict()),
+      outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema.strict())
+    })
+  )
+  .meta({
+    description: '本次保存的应用节点配置'
+  });
 
 const AppVersionEdgesSchema = AppSchemaTypeSchema.shape.edges.default([]).meta({
   description: '版本内保存的应用连线配置'

@@ -43,6 +43,41 @@ describe('workflow input schema boundaries', () => {
 });
 
 describe('workflow migration boundary', () => {
+  it('maps the legacy default field and keeps an explicit current default', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'plugin-input',
+          flowNodeType: 'pluginInput',
+          name: 'Plugin input',
+          inputs: [
+            {
+              key: 'legacy',
+              label: 'Legacy',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              isToolParam: true
+            },
+            {
+              key: 'current',
+              label: 'Current',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              defaultToAgentGenerated: false,
+              isToolParam: true
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0].inputs).toMatchObject([
+      { key: 'legacy', defaultToAgentGenerated: true },
+      { key: 'current', defaultToAgentGenerated: false }
+    ]);
+    expect(result.nodes[0].inputs[0]).not.toHaveProperty('isToolParam');
+    expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
+  });
+
   it('rejects V1 nodes before strict V2 parsing', async () => {
     await expect(
       migrateWorkflowToCurrent({
@@ -403,7 +438,7 @@ describe('workflow migration boundary', () => {
               key: 'query',
               label: 'Query',
               renderTypeList: [FlowNodeInputTypeEnum.input],
-              isToolParam: true
+              defaultToAgentGenerated: true
             }
           ]
         })
@@ -514,7 +549,7 @@ describe('workflow migration boundary', () => {
             key: 'query',
             label: 'Query',
             renderTypeList: [FlowNodeInputTypeEnum.input],
-            isToolParam: true
+            defaultToAgentGenerated: true
           },
           {
             key: 'fixed',
@@ -598,7 +633,7 @@ describe('workflow migration boundary', () => {
     } as any);
     const [input] = result.nodes[0].inputs;
 
-    expect(input.isToolParam).toBe(true);
+    expect(input.defaultToAgentGenerated).toBe(true);
   });
 
   it('moves a legacy MCP ToolSet input into toolConfig', async () => {
@@ -743,7 +778,7 @@ describe('workflow migration boundary', () => {
           key: 'query',
           label: 'Query',
           renderTypeList: [FlowNodeInputTypeEnum.input],
-          isToolParam: true
+          defaultToAgentGenerated: true
         }
       ]
     });
@@ -795,7 +830,7 @@ describe('workflow migration boundary', () => {
               key: 'query',
               label: 'Query',
               renderTypeList: [FlowNodeInputTypeEnum.input],
-              isToolParam: false
+              defaultToAgentGenerated: false
             }
           ]
         })

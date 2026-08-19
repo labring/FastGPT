@@ -123,9 +123,7 @@ export const getAppChatConfig = ({
 }): AppChatConfigType => {
   const welcomeConfig: AppWelcomeConfigType = {
     welcomeText:
-      storeWelcomeText ??
-      chatConfig?.welcomeConfig?.welcomeText ??
-      chatConfig?.welcomeText,
+      storeWelcomeText ?? chatConfig?.welcomeConfig?.welcomeText ?? chatConfig?.welcomeText,
     welcomeQuestions: chatConfig?.welcomeConfig?.welcomeQuestions
   };
 

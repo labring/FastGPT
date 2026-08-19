@@ -155,7 +155,8 @@ export async function rewriteAppWorkflowToDetail({
         ...previewInput,
         renderTypeList,
         selectedType: savedInput?.selectedType,
-        isToolParam: savedInput?.isToolParam ?? previewInput.isToolParam,
+        defaultToAgentGenerated:
+          savedInput?.defaultToAgentGenerated ?? previewInput.defaultToAgentGenerated,
         toolDescription: savedInput?.toolDescription ?? previewInput.toolDescription
       },
       { deferDefaultSelection: true }
