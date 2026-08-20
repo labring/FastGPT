@@ -48,6 +48,7 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
@@ -215,11 +216,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
+    const workflowVersion = await getAppLatestVersion(app._id, app);
+    const { versionId, nodes, edges, chatConfig, resources } = workflowVersion;
+
     // Get obj=Human history
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
         return serverGetWorkflowToolRunUserQuery({
-          pluginInputs: getWorkflowToolInputsFromStoreNodes(app.modules),
+          pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables,
           files: variables.files
         });
@@ -233,12 +237,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // Get and concat history;
-    const limit = getMaxHistoryLimitFromNodes(app.modules);
+    const limit = getMaxHistoryLimitFromNodes(nodes);
     const chatSource = {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: String(app._id)
     };
-    const [{ histories }, { versionId, nodes, edges, chatConfig }, chatDetail] = await Promise.all([
+    const [{ histories }, chatDetail] = await Promise.all([
       getChatItems({
         ...chatSource,
         chatId,
@@ -246,7 +250,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         limit,
         field: `obj value memories nodeOutputs`
       }),
-      getAppLatestVersion(app._id, app),
       MongoChat.findOne(
         {
           ...buildChatSourceQuery({
@@ -395,6 +398,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       maxBytesPerFile,
       lastInteractive: interactive,
       chatConfig,
+      resourceContext: await loadWorkflowResourceContext({
+        resources,
+        teamId
+      }),
       histories: newHistories,
       stream,
       retainDatasetCite: workflowRetainDatasetCite,

@@ -15,6 +15,7 @@ import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
+import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
@@ -408,14 +409,20 @@ export class MCPClient {
   }
 }
 
-export const getMCPChildren = async (app: AppSchemaType) => {
-  const modules = decodeMcpToolSetNodesFromStorage(app.modules);
-  const isNewMcp = !!modules[0].toolConfig?.mcpToolSet;
+/** 读取 MCP 工具集节点，并兼容新旧两种工具集存储格式。 */
+export const getMCPChildren = async (app: AppSchemaType, workflow?: AppPublishedWorkflow) => {
+  const nodes = decodeMcpToolSetNodesFromStorage(
+    (workflow ?? (await getAppLatestVersion(String(app._id), app))).nodes
+  );
+  const node = nodes[0];
+  if (!node) return [];
+
+  const isNewMcp = !!node.toolConfig?.mcpToolSet;
   const id = String(app._id);
 
   if (isNewMcp) {
     return (
-      modules[0].toolConfig?.mcpToolSet?.toolList.map((item) => ({
+      node.toolConfig?.mcpToolSet?.toolList.map((item) => ({
         ...item,
         id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
         avatar: app.avatar
@@ -427,16 +434,22 @@ export const getMCPChildren = async (app: AppSchemaType) => {
       teamId: app.teamId,
       parentId: id
     }).lean();
+    const childWorkflows = await Promise.all(
+      children.map((child) => getAppLatestVersion(String(child._id), child))
+    );
 
-    return children.map((item) => {
-      const node = item.modules[0];
-      const toolData: McpToolDataType = node.inputs[0].value;
+    return children.flatMap((item, index) => {
+      const childNode = childWorkflows[index]?.nodes[0];
+      const toolData = childNode?.inputs[0]?.value as McpToolDataType | undefined;
+      if (!toolData) return [];
 
-      return {
-        avatar: app.avatar,
-        id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-        ...toolData
-      };
+      return [
+        {
+          avatar: app.avatar,
+          id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
+          ...toolData
+        }
+      ];
     });
   }
 };

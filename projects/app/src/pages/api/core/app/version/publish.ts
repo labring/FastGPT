@@ -3,10 +3,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import {
-  beforeUpdateAppFormat,
-  validatePublishAppAgentSkillReadPermissions
-} from '@fastgpt/service/core/app/controller';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { type PostPublishAppProps } from '@/global/core/app/api';
@@ -18,7 +15,8 @@ import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
 import {
@@ -56,21 +54,25 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  if (isPublish) {
-    await validatePublishAppAgentSkillReadPermissions({
-      nodes: normalizedWorkflow.nodes,
-      tmbId,
-      isRoot
-    });
-  }
-  const resourceRefs = extractAppResourceRefsFromNodes(normalizedWorkflow.nodes);
+  const extracted = extractAppResources({
+    nodes: normalizedWorkflow.nodes,
+    chatConfig: normalizedWorkflow.chatConfig
+  });
+  const resources = await resolveAppResourcesByPermission({
+    appId,
+    app,
+    extracted,
+    tmbId,
+    isRoot,
+    blockOnUnauthorized: !autoSave && !!isPublish
+  });
   updateParentFoldersUpdateTime({
     parentId: app.parentId
   });
 
   if (autoSave) {
     await mongoSessionRun(async (session) => {
-      await MongoAppVersion.updateOne(
+      const autoSaveVersion = await MongoAppVersion.findOneAndUpdate(
         {
           appId,
           isAutoSave: true
@@ -78,24 +80,23 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         {
           tmbId,
           appId,
+          isAutoSave: true,
           nodes: normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           versionName: i18nT('app:auto_save'),
           time: new Date(),
-          resourceRefs
+          resources
         },
 
-        { session, upsert: true }
+        { session, upsert: true, new: true }
       );
 
       await MongoApp.updateOne(
         { _id: appId },
         {
-          modules: normalizedWorkflow.nodes,
-          edges: normalizedWorkflow.edges,
-          chatConfig: normalizedWorkflow.chatConfig,
-          updateTime: new Date()
+          updateTime: new Date(),
+          ...(autoSaveVersion?._id ? { draftVersionId: autoSaveVersion._id } : {})
         },
         {
           session
@@ -130,7 +131,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
           isPublish,
           versionName,
           tmbId,
-          resourceRefs
+          resources
         }
       ],
       { session, ordered: true }
@@ -138,12 +139,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
     // update app
     const setUpdate = {
-      modules: normalizedWorkflow.nodes,
-      edges: normalizedWorkflow.edges,
-      chatConfig: normalizedWorkflow.chatConfig,
       updateTime: new Date(),
       version: 'v2',
-      ...(isPublish && { resourceRefs }),
+      draftVersionId: _id,
+      ...(isPublish && { publishedVersionId: _id }),
       ...(isPublish && normalizedWorkflow.chatConfig.scheduledTriggerConfig?.cronString
         ? {
             scheduledTriggerConfig: normalizedWorkflow.chatConfig.scheduledTriggerConfig,

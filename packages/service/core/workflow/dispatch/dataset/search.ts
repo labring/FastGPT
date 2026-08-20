@@ -9,11 +9,11 @@ import {
   getRerankModelData
 } from '../../../ai/model';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
@@ -25,6 +25,8 @@ import {
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
+import { loadWorkflowDatasetResource } from '../../utils/resource';
+import { nodeHasDynamicInput } from '../../../app/resources';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -126,22 +128,30 @@ export async function dispatchDatasetSearch(
   }
 
   try {
-    const datasetIds = authTmbId
-      ? await filterDatasetsByTmbId({
-          datasetIds: datasets.map((item) => item.datasetId),
-          tmbId
-        })
-      : await Promise.resolve(datasets.map((item) => item.datasetId));
+    const dynamicDataset = nodeHasDynamicInput(node, [
+      NodeInputKeyEnum.datasetSelectList,
+      NodeInputKeyEnum.datasetParams
+    ]);
+    const requestedDatasetIds = datasets.map((item) => item.datasetId);
+    const datasetIds =
+      authTmbId || dynamicDataset
+        ? await filterDatasetsByTmbId({
+            datasetIds: requestedDatasetIds,
+            tmbId
+          })
+        : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return emptyResult;
     }
 
     // Get vector model
-    const dataset = await MongoDataset.findById(
-      datasets[0].datasetId,
-      'vectorModelId vectorModel vlmModelId vlmModel'
-    ).lean();
+    const dataset = await loadWorkflowDatasetResource({
+      datasetId: datasetIds[0],
+      datasetIds: requestedDatasetIds,
+      dynamic: dynamicDataset,
+      tmbId
+    });
     const vectorModel = getEmbeddingModelData({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel

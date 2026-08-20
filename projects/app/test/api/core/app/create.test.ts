@@ -1,12 +1,13 @@
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -36,7 +37,7 @@ describe('create api', () => {
     const res = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
       auth: users.members[0],
       body: {
-        modules: [],
+        nodes: [],
         name: 'testfolder',
         type: AppTypeEnum.folder
       }
@@ -48,7 +49,7 @@ describe('create api', () => {
     const res2 = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
       auth: users.members[0],
       body: {
-        modules: [],
+        nodes: [],
         name: 'testapp',
         type: AppTypeEnum.simple,
         parentId: String(folderId)
@@ -61,7 +62,7 @@ describe('create api', () => {
     const res3 = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
       auth: users.members[1],
       body: {
-        modules: [],
+        nodes: [],
         name: 'testapp',
         type: AppTypeEnum.simple,
         parentId: String(folderId)
@@ -86,7 +87,7 @@ describe('create api', () => {
     const res4 = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
       auth: users.members[1],
       body: {
-        modules: [],
+        nodes: [],
         name: 'testapp',
         type: AppTypeEnum.simple,
         parentId: String(folderId)
@@ -121,7 +122,7 @@ describe('create api', () => {
     const res = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
       auth: users.members[0],
       body: {
-        modules: [],
+        nodes: [],
         name: 'community template app',
         avatar: '/plugin-avatar.png',
         type: AppTypeEnum.workflow,
@@ -142,7 +143,7 @@ describe('create api', () => {
       type: AppTypeEnum.workflow,
       teamId: user.teamId,
       tmbId: user.tmbId,
-      modules: [
+      nodes: [
         {
           nodeId: 'start-1',
           flowNodeType: 'workflowStart',
@@ -157,17 +158,26 @@ describe('create api', () => {
           ],
           outputs: []
         }
-      ] as unknown as AppSchemaType['modules']
+      ] as unknown as AppVersionSchemaType['nodes']
     });
 
     const [app, version] = await Promise.all([
       MongoApp.findById(appId).lean(),
       MongoAppVersion.findOne({ appId }).lean()
     ]);
-    const input = app?.modules[0]?.inputs[0];
+    const rawApp = await MongoApp.collection.findOne(
+      { _id: new Types.ObjectId(appId) },
+      { projection: { modules: 1, edges: 1, chatConfig: 1 } }
+    );
+    const input = version?.nodes[0]?.inputs[0];
 
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
-    expect(version?.nodes).toEqual(app?.modules);
+    expect(app).not.toHaveProperty('modules');
+    expect(app).not.toHaveProperty('edges');
+    expect(rawApp).not.toHaveProperty('modules');
+    expect(rawApp).not.toHaveProperty('edges');
+    expect(rawApp).not.toHaveProperty('chatConfig');
+    expect(version?.nodes[0]?.inputs[0]?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
   });
 });

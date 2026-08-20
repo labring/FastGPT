@@ -1,4 +1,3 @@
-import { type AppDetailType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { chatHistoryValueDesc } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -126,7 +125,3 @@ export const workflowSystemVariables: EditorVariablePickerType[] = [
     valueType: WorkflowIOValueTypeEnum.string
   }
 ];
-
-export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
-  return appDetail.chatConfig?.chatInputGuide?.customUrl ?? '';
-};

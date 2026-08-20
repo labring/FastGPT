@@ -4,7 +4,6 @@ import { AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
   AppTTSConfigTypeSchema,
-  AppResourceRefsSchema,
   AppScheduledTriggerConfigTypeSchema,
   AppSchemaTypeSchema,
   type AppDetailType,
@@ -178,12 +177,14 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
       chatConfig: body.chatConfig
     });
 
-    return {
+    const migratedBody: Record<string, unknown> = {
       ...body,
-      modules: workflow.nodes,
+      nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig
     };
+    delete migratedBody.modules;
+    return migratedBody;
   } catch {
     return value;
   }
@@ -218,7 +219,7 @@ export const CreateAppBodySchema = z
       example: AppTypeEnum.workflow,
       description: '应用类型'
     }),
-    modules: z.array(CreateAppNodeSchema).optional().meta({
+    nodes: z.array(CreateAppNodeSchema).optional().meta({
       example: [],
       description: '应用节点配置'
     }),
@@ -241,7 +242,7 @@ export const CreateAppBodySchema = z
     example: {
       name: '新应用',
       type: AppTypeEnum.simple,
-      modules: [],
+      nodes: [],
       edges: [],
       parentId: '68ad85a7463006c963799a05'
     }
@@ -357,11 +358,8 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '创建应用时使用的模板 ID'
   }),
   updateTime: z.coerce.date().meta({ description: '最后更新时间' }),
-  modules: z
-    .array(OpenAPIStoreNodeItemTypeSchema)
-    .default([])
-    .meta({ description: '应用节点配置' }),
-  edges: AppSchemaTypeSchema.shape.edges.default([]).meta({
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).default([]).meta({ description: '应用节点配置' }),
+  edges: z.array(StoreEdgeItemTypeSchema).default([]).meta({
     description: '应用连线'
   }),
   pluginData: AppSchemaTypeSchema.shape.pluginData,
@@ -374,8 +372,11 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
   scheduledTriggerNextTime: z.coerce.date().optional().meta({
     description: '下一次定时触发时间'
   }),
-  resourceRefs: AppResourceRefsSchema.optional().meta({
-    description: '应用发布后引用的外部资源集合'
+  publishedVersionId: ObjectIdSchema.optional().meta({
+    description: '当前最新正式发布 Version ID'
+  }),
+  draftVersionId: ObjectIdSchema.optional().meta({
+    description: '当前编辑器草稿 Version ID'
   }),
   inheritPermission: BoolSchema.optional().meta({
     description: '是否继承父级文件夹权限'

@@ -35,7 +35,7 @@ describe('CreateAppBodySchema', () => {
       CreateAppBodySchema.safeParse({
         name: 'canonical app',
         type: 'simple',
-        modules: [currentNode],
+        nodes: [currentNode],
         edges: [],
         chatConfig: {}
       }).success
@@ -82,8 +82,8 @@ describe('CreateAppBodySchema', () => {
       chatConfig: { _id: 'legacy-chat-config' }
     });
 
-    expect(result.modules).toHaveLength(1);
-    expect(result.modules?.[0].inputs[0]).not.toHaveProperty('llmModelType');
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes?.[0].inputs[0]).not.toHaveProperty('llmModelType');
     expect(result.chatConfig).not.toHaveProperty('_id');
   });
 
@@ -98,6 +98,7 @@ describe('CreateAppBodySchema', () => {
     });
 
     expect(result).not.toHaveProperty('unsupported');
+    expect(result.nodes).toHaveLength(1);
   });
 });
 

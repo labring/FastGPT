@@ -1,9 +1,9 @@
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 
 export type PostPublishAppProps = {
-  nodes: AppSchemaType['modules'];
-  edges: AppSchemaType['edges'];
-  chatConfig: AppSchemaType['chatConfig'];
+  nodes: AppVersionSchemaType['nodes'];
+  edges: AppVersionSchemaType['edges'];
+  chatConfig: AppVersionSchemaType['chatConfig'];
   isPublish?: boolean;
   versionName?: string;
   autoSave?: boolean; // If it is automatically saved, only one copy of the entire app will be stored, overwriting the old version
@@ -12,7 +12,7 @@ export type PostPublishAppProps = {
 export type PostRevertAppProps = {
   versionId: string;
   // edit workflow
-  editNodes: AppSchemaType['modules'];
-  editEdges: AppSchemaType['edges'];
-  editChatConfig: AppSchemaType['chatConfig'];
+  editNodes: AppVersionSchemaType['nodes'];
+  editEdges: AppVersionSchemaType['edges'];
+  editChatConfig: AppVersionSchemaType['chatConfig'];
 };

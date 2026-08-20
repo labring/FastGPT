@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
 import {
-  beforeUpdateAppFormat,
-  validatePublishAppAgentSkillReadPermissions
-} from '@fastgpt/service/core/app/controller';
+  checkAppResourceReadPermissions,
+  resolveAppResourcesByPermission
+} from '@fastgpt/service/support/permission/app/resource';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -11,9 +14,12 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 const mocks = vi.hoisted(() => ({
@@ -438,7 +444,7 @@ describe('beforeUpdateAppFormat', () => {
   });
 });
 
-describe('validatePublishAppAgentSkillReadPermissions', () => {
+describe('checkAppResourceReadPermissions', () => {
   it('发布应用时校验静态绑定的 Agent Skill 读权限', async () => {
     const owner = await getUser(`publish-skill-owner-${getNanoid(6)}`);
     const member = await getUser(`publish-skill-member-${getNanoid(6)}`, owner.teamId);
@@ -465,17 +471,66 @@ describe('validatePublishAppAgentSkillReadPermissions', () => {
     ];
 
     await expect(
-      validatePublishAppAgentSkillReadPermissions({
-        nodes,
+      checkAppResourceReadPermissions({
+        resources: extractAppResources({ nodes }),
         tmbId: member.tmbId
       })
     ).rejects.toBe(SkillErrEnum.unAuthSkill);
 
     await expect(
-      validatePublishAppAgentSkillReadPermissions({
-        nodes,
+      checkAppResourceReadPermissions({
+        resources: extractAppResources({ nodes }),
         tmbId: owner.tmbId
       })
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('resolveAppResourcesByPermission', () => {
+  it('does not recheck resources already present in the draft baseline', async () => {
+    const owner = await getUser(`draft-resource-owner-${getNanoid(6)}`);
+    const member = await getUser(`draft-resource-member-${getNanoid(6)}`, owner.teamId);
+    const workflowApp = await MongoApp.create({
+      name: 'Workflow app',
+      type: AppTypeEnum.workflow,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const toolset = await MongoApp.create({
+      name: 'Protected toolset',
+      type: AppTypeEnum.mcpToolSet,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const baselineResource = { type: 'tool' as const, id: String(toolset._id) };
+    await MongoAppVersion.create({
+      appId: workflowApp._id,
+      tmbId: owner.tmbId,
+      nodes: [],
+      edges: [],
+      resources: [baselineResource]
+    });
+
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
+        extracted: [baselineResource],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: true
+      })
+    ).resolves.toEqual([baselineResource]);
+
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
+        extracted: [baselineResource, { type: 'tool', id: String(workflowApp._id) }],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: true
+      })
+    ).rejects.toBe(AppErrEnum.unAuthApp);
   });
 });

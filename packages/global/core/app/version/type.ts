@@ -1,5 +1,6 @@
-import { AppSchemaTypeSchema } from '../type';
-import { AppResourceRefsSchema } from '../type';
+import { AppResourcesSchema, AppChatConfigTypeSchema } from '../type';
+import { StoreNodeItemTypeSchema } from '../../workflow/type/node';
+import { StoreEdgeItemTypeSchema } from '../../workflow/type/edge';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
@@ -9,13 +10,13 @@ export const AppVersionSchema = z.object({
   tmbId: ObjectIdSchema,
   appId: ObjectIdSchema,
   time: z.coerce.date(),
-  nodes: AppSchemaTypeSchema.shape.modules,
-  edges: AppSchemaTypeSchema.shape.edges,
-  chatConfig: AppSchemaTypeSchema.shape.chatConfig,
+  nodes: z.array(StoreNodeItemTypeSchema),
+  edges: z.array(StoreEdgeItemTypeSchema),
+  chatConfig: AppChatConfigTypeSchema,
   isPublish: z.boolean().optional(),
   isAutoSave: z.boolean().optional(),
   versionName: z.string(),
-  resourceRefs: AppResourceRefsSchema.optional()
+  resources: AppResourcesSchema.optional()
 });
 export type AppVersionSchemaType = z.infer<typeof AppVersionSchema>;
 
@@ -37,9 +38,9 @@ export const PublishAppQuerySchema = z.object({
 export type PublishAppQueryType = z.infer<typeof PublishAppQuerySchema>;
 
 export const PublishAppBodySchema = z.object({
-  nodes: AppSchemaTypeSchema.shape.modules.optional(),
-  edges: AppSchemaTypeSchema.shape.edges.optional(),
-  chatConfig: AppSchemaTypeSchema.shape.chatConfig.optional(),
+  nodes: AppVersionSchema.shape.nodes.optional(),
+  edges: AppVersionSchema.shape.edges.optional(),
+  chatConfig: AppVersionSchema.shape.chatConfig.optional(),
   isPublish: z.boolean().optional(),
   versionName: z.string().optional(),
   autoSave: z.boolean().optional()

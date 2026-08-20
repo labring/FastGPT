@@ -16,6 +16,7 @@ import { getNodeErrResponse } from '../utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
+import { loadWorkflowAppResource } from '../../utils/resource';
 import {
   getToolNameCandidates,
   getToolRawId,
@@ -27,8 +28,6 @@ import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { computedSystemToolUsage } from '../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { authAppByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowAppId } from '../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -102,15 +101,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   };
 
   try {
-    /**
-     * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前工作流执行身份
-     * 重新校验父工具集权限，避免脏数据或绕过保存接口的跨用户工具集引用被执行。
-     */
-    const authRuntimeToolset = async (parentId: string) => {
-      await authAppByTmbId({
-        tmbId: runningAppInfo.tmbId,
+    const authRuntimeToolset = async (parentId: string, toolName?: string) => {
+      await loadWorkflowAppResource({
+        tmbId: runningUserInfo.tmbId,
         appId: parentId,
-        per: ReadPermissionVal
+        type: 'tool',
+        toolName
       });
     };
 
@@ -273,7 +269,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
+      await authRuntimeToolset(parentId, toolName);
 
       const mcpToolSet = toolConfig.mcpToolSet;
       if (!mcpToolSet) throw new Error('MCP tool set is missing from runtime node');
@@ -314,7 +310,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }
-      await authRuntimeToolset(parentId);
+      await authRuntimeToolset(parentId, toolName);
 
       const toolset = await getAppVersionById({
         appId: parentId,

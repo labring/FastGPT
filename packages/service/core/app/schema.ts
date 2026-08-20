@@ -8,20 +8,6 @@ import {
 
 export const AppCollectionName = 'apps';
 
-export const chatConfigType = {
-  welcomeText: String,
-  welcomeConfig: Object,
-  variables: Array,
-  questionGuide: Object,
-  ttsConfig: Object,
-  whisperConfig: Object,
-  scheduledTriggerConfig: Object,
-  chatInputGuide: Object,
-  fileSelectConfig: Object,
-  instruction: String,
-  autoExecute: Object
-};
-
 // schema
 const AppSchema = new Schema(
   {
@@ -68,17 +54,10 @@ const AppSchema = new Schema(
       default: () => new Date()
     },
 
-    // Workflow data
+    /** @deprecated 仅供 4.16.0 历史数据迁移读取，正常工作流使用 app_versions.nodes */
     modules: {
       type: Array,
-      default: []
-    },
-    edges: {
-      type: Array,
-      default: []
-    },
-    chatConfig: {
-      type: chatConfigType
+      default: undefined
     },
 
     // Tool config
@@ -105,11 +84,13 @@ const AppSchema = new Schema(
     scheduledTriggerNextTime: {
       type: Date
     },
-    resourceRefs: {
-      skillIds: {
-        type: [String],
-        default: []
-      }
+    publishedVersionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'app_versions'
+    },
+    draftVersionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'app_versions'
     },
     inheritPermission: {
       type: Boolean,
@@ -139,7 +120,11 @@ defineIndex(AppSchema, { key: { teamId: 1, updateTime: -1 } });
 defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, parentId: 1 } });
 defineIndex(AppSchema, {
-  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 }
+  key: { teamId: 1, deleteTime: 1, publishedVersionId: 1 }
+});
+defineIndex(AppSchema, {
+  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 },
+  deprecated: true
 });
 
 // Schedule

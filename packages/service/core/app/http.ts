@@ -12,6 +12,7 @@ import { replaceEditorVariable } from '../workflow/dispatch/utils/replaceEditorV
 import FormData from 'form-data';
 import { getLogger, LogCategories } from '../../common/logger';
 import { decodeHttpToolSetNodesFromStorage } from './jsonSchemaStorage';
+import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
 
 const logger = getLogger(LogCategories.MODULE.APP.HTTP_TOOLS);
 
@@ -188,10 +189,16 @@ export const runHTTPTool = async ({
   }
 };
 
-export const getHTTPToolList = async (app: AppSchemaType) => {
-  const modules = decodeHttpToolSetNodesFromStorage(app.modules);
+/** 读取 HTTP 工具集节点并转换为可执行工具列表。 */
+export const getHTTPToolList = async (app: AppSchemaType, workflow?: AppPublishedWorkflow) => {
+  const nodes = decodeHttpToolSetNodesFromStorage(
+    (workflow ?? (await getAppLatestVersion(String(app._id), app))).nodes
+  );
+  const node = nodes[0];
+  if (!node) return [];
+
   return (
-    modules[0].toolConfig?.httpToolSet?.toolList.map((item) => ({
+    node.toolConfig?.httpToolSet?.toolList.map((item) => ({
       ...item,
       id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
       avatar: app.avatar

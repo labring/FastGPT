@@ -165,7 +165,7 @@ const CreateAppsPage = () => {
             avatar: templateDetail.avatar,
             name: templateDetail.name,
             type: appType,
-            modules: templateDetail.workflow.nodes || [],
+            nodes: templateDetail.workflow.nodes || [],
             edges: templateDetail.workflow.edges || [],
             chatConfig: templateDetail.workflow.chatConfig || {},
             templateId: templateDetail.templateId
@@ -176,7 +176,7 @@ const CreateAppsPage = () => {
         return postCreateApp({
           ...baseParams,
           type: appType,
-          modules: emptyTemplate[appType].nodes,
+          nodes: emptyTemplate[appType].nodes,
           edges: emptyTemplate[appType].edges,
           chatConfig: emptyTemplate[appType].chatConfig
         });

@@ -11,6 +11,7 @@ import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
   UpdateMcpToolsBodySchema,
   UpdateMcpToolsResponseSchema,
@@ -47,26 +48,29 @@ async function handler(
 
   await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
-  await mongoSessionRun(async (session) => {
-    // update app and app version
-    await MongoApp.updateOne(
-      { _id: appId },
-      {
-        modules: storageNodes,
-        updateTime: new Date()
-      },
-      { session }
-    );
+  const versionId =
+    app.draftVersionId ??
+    app.publishedVersionId ??
+    (await MongoAppVersion.findOne({ appId }, '_id').sort({ time: -1 }).lean())?._id;
+  if (!versionId) {
+    return Promise.reject(AppErrEnum.unExist);
+  }
 
-    await MongoAppVersion.updateOne(
-      { appId },
+  await mongoSessionRun(async (session) => {
+    const updateResult = await MongoAppVersion.updateOne(
+      { _id: versionId, appId },
       {
         $set: {
-          nodes: storageNodes
+          nodes: storageNodes,
+          resources: []
         }
       },
       { session }
     );
+    if (updateResult.matchedCount !== 1) {
+      throw AppErrEnum.unExist;
+    }
+    await MongoApp.updateOne({ _id: appId }, { $set: { updateTime: new Date() } }, { session });
   });
   updateParentFoldersUpdateTime({
     parentId: app.parentId

@@ -41,7 +41,7 @@ describe('Copy', () => {
       {
         auth: users.members[0],
         body: {
-          modules: [],
+          nodes: [],
           name: 'testfolder',
           type: AppTypeEnum.folder
         }
@@ -56,7 +56,7 @@ describe('Copy', () => {
       {
         auth: users.members[0],
         body: {
-          modules: [],
+          nodes: [],
           parentId: folderId,
           name: 'simple app',
           type: AppTypeEnum.simple

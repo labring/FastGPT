@@ -312,7 +312,8 @@ describe('callMcpServerTool', () => {
         }
       ],
       edges: [],
-      chatConfig: {}
+      chatConfig: {},
+      resources: []
     } as any);
     vi.mocked(getRunningUserInfoByTmbId).mockResolvedValue({
       username: 'user',

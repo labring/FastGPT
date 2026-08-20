@@ -1,4 +1,3 @@
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   PerResourceTypeEnum,
@@ -16,7 +15,7 @@ import type {
 } from '@fastgpt/global/core/ai/skill/api';
 import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
+import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
@@ -56,17 +55,13 @@ async function handler(
     );
   })();
 
-  // 查询最新发布版本缓存引用该 skillId 的应用。
-  const apps = await MongoApp.find(
-    {
-      teamId,
-      deleteTime: null,
-      ...buildAppSkillRefMongoQuery(skillId)
-    },
-    '_id parentId avatar type name intro tmbId updateTime inheritPermission'
-  )
-    .sort({ updateTime: -1 })
-    .lean();
+  const { apps } = await findTeamAppsByPublishedResource({
+    teamId,
+    type: 'skill',
+    ids: skillId,
+    projection: 'parentId avatar type name intro tmbId updateTime inheritPermission'
+  });
+  apps.sort((a, b) => +new Date(b.updateTime) - +new Date(a.updateTime));
 
   const visibleApps = apps
     .filter(

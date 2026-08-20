@@ -6,13 +6,13 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 const {
   defaultSearchDatasetDataMock,
   deepRagSearchMock,
-  findDatasetByIdMock,
+  loadWorkflowDatasetResourceMock,
   formatModelChars2PointsMock,
   usagePushMock
 } = vi.hoisted(() => ({
   defaultSearchDatasetDataMock: vi.fn(),
   deepRagSearchMock: vi.fn(),
-  findDatasetByIdMock: vi.fn(),
+  loadWorkflowDatasetResourceMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn(),
   usagePushMock: vi.fn()
 }));
@@ -22,15 +22,12 @@ vi.mock('@fastgpt/service/core/dataset/search', () => ({
   deepRagSearch: deepRagSearchMock
 }));
 
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  DatasetCollectionName: 'datasets',
-  MongoDataset: {
-    findById: findDatasetByIdMock
-  }
-}));
-
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+  loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -78,11 +75,9 @@ import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dat
 describe('dispatchDatasetSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    findDatasetByIdMock.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model',
-        vlmModel: 'gpt-vision'
-      })
+    loadWorkflowDatasetResourceMock.mockResolvedValue({
+      vectorModel: 'embedding-model',
+      vlmModel: 'gpt-vision'
     });
     formatModelChars2PointsMock.mockImplementation(
       ({

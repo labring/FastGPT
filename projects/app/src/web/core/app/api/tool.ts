@@ -41,7 +41,7 @@ export const getTeamAppTemplates = async (data?: {
       }));
       // handle http toolset
     } else if (app.type === AppTypeEnum.httpToolSet) {
-      const toolList = app.modules[0]?.toolConfig?.httpToolSet?.toolList;
+      const toolList = app.nodes[0]?.toolConfig?.httpToolSet?.toolList;
       if (!toolList) return [];
       return toolList.map((item) => ({
         id: `${AppToolSourceEnum.http}-${app._id}/${item.name}`,

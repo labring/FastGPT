@@ -30,7 +30,8 @@ vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
-  getAppVersionById: mocks.getAppVersionById
+  getAppVersionById: mocks.getAppVersionById,
+  getAppPublishedWorkflowMap: vi.fn(async () => new Map())
 }));
 
 vi.mock('@fastgpt/service/support/user/team/utils', () => ({
@@ -130,6 +131,7 @@ describe('agent sub app dispatchPlugin', () => {
       }
     });
     mocks.getAppVersionById.mockResolvedValue({
+      resources: [],
       nodes: [
         {
           nodeId: 'pluginInput',
@@ -389,6 +391,7 @@ describe('agent sub app dispatchPlugin', () => {
       }
     });
     mocks.getAppVersionById.mockResolvedValue({
+      resources: [],
       nodes: [
         {
           nodeId: 'pluginInput',
@@ -490,6 +493,7 @@ describe('agent sub app dispatchPlugin', () => {
       }
     });
     mocks.getAppVersionById.mockResolvedValue({
+      resources: [],
       nodes: [],
       edges: [],
       chatConfig: { variables: [] }
@@ -560,6 +564,7 @@ describe('agent sub app dispatchApp', () => {
       }
     });
     mocks.getAppVersionById.mockResolvedValue({
+      resources: [],
       nodes: [],
       edges: [],
       chatConfig: {
@@ -657,6 +662,7 @@ describe('agent sub app dispatchApp', () => {
 
   it('does not allow workflow tool arguments to override internal variables', async () => {
     mocks.getAppVersionById.mockResolvedValue({
+      resources: [],
       nodes: [],
       edges: [],
       chatConfig: {
