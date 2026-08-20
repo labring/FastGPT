@@ -8,6 +8,7 @@ import {
 import {
   calculateInheritedResourceCollaborators,
   mergeResourceCollaborators,
+  shouldInheritResourcePermission,
   toInheritedCollaborators
 } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
@@ -19,6 +20,14 @@ const permissionsByUser = (collaborators: CollaboratorItemType[]) =>
   new Map(
     collaborators.map((collaborator) => [getCollaboratorId(collaborator), collaborator.permission])
   );
+
+describe('shouldInheritResourcePermission', () => {
+  it('treats the missing legacy flag as enabled', () => {
+    expect(shouldInheritResourcePermission(undefined)).toBe(true);
+    expect(shouldInheritResourcePermission(true)).toBe(true);
+    expect(shouldInheritResourcePermission(false)).toBe(false);
+  });
+});
 
 describe('toInheritedCollaborators', () => {
   it('converts an owner inherited from a parent into manage', () => {

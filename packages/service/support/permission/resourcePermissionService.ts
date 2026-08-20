@@ -10,7 +10,8 @@ import type { SyncChildrenPermissionResourceType } from './inheritPermission';
 import { resourcePermissionRepo } from './repository/resourcePermissionRepo';
 import {
   calculateInheritedResourceCollaborators,
-  mergeResourceCollaborators
+  mergeResourceCollaborators,
+  shouldInheritResourcePermission
 } from './resourcePermissionPolicy';
 
 type ResourceModel = Model<any>;
@@ -31,7 +32,7 @@ export const createResourcePermissions = async ({
   session: ClientSession;
 }) => {
   const parentCollaborators =
-    resource.parentId && resource.inheritPermission !== false
+    resource.parentId && shouldInheritResourcePermission(resource.inheritPermission)
       ? await resourcePermissionRepo.findByResource({
           teamId: resource.teamId,
           resourceType,
@@ -55,7 +56,7 @@ export const createResourcePermissions = async ({
 };
 
 /**
- * 按资源树传播父级 ACL。只处理 inheritPermission=true 的分支，
+ * 按资源树传播父级 ACL。只处理启用继承的分支，
  * 这样取消继承的节点及其独立子树都不会被父级更新覆盖。
  */
 export const syncResourceTreePermissions = async ({
@@ -91,7 +92,7 @@ export const syncResourceTreePermissions = async ({
   while (pendingIds.length > 0) {
     const parentId = pendingIds.shift()!;
     for (const child of childrenByParent.get(parentId) ?? []) {
-      if (child.inheritPermission !== true) continue;
+      if (!shouldInheritResourcePermission(child.inheritPermission)) continue;
       allDescendantIds.push(String(child._id));
       pendingIds.push(String(child._id));
     }
@@ -123,7 +124,7 @@ export const syncResourceTreePermissions = async ({
   while (pending.length > 0) {
     const parent = pending.shift()!;
     for (const child of childrenByParent.get(parent.parentId) ?? []) {
-      if (child.inheritPermission !== true) continue;
+      if (!shouldInheritResourcePermission(child.inheritPermission)) continue;
 
       const childId = String(child._id);
       const oldChildCollaborators = permissionsByResource.get(childId) ?? [];

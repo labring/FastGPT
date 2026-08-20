@@ -23,6 +23,10 @@ const toMap = (collaborators: CollaboratorItemType[]) =>
     })
   );
 
+/** 缺失 inheritPermission 的历史资源按默认值继续继承权限。 */
+export const shouldInheritResourcePermission = (inheritPermission?: boolean) =>
+  inheritPermission !== false;
+
 /** 将资源 owner 转成从父级继承到子级时使用的 manage。 */
 export const toInheritedCollaborators = (collaborators: CollaboratorItemType[]) =>
   collaborators.map((collaborator) => ({

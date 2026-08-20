@@ -9,7 +9,8 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { resourcePermissionRepo } from '../repository/resourcePermissionRepo';
 import {
   calculateInheritedResourceCollaborators,
-  mergeResourceCollaborators
+  mergeResourceCollaborators,
+  shouldInheritResourcePermission
 } from '../resourcePermissionPolicy';
 
 export type MigrationResource = {
@@ -76,14 +77,19 @@ const isSameCollaborators = (left: CollaboratorItemType[], right: CollaboratorIt
   });
 };
 
+/**
+ * 计算资源的完整有效 ACL；提供 targetResourceIds 时，父级只作为当前批次的计算上下文。
+ */
 export const resolveMaterializedResourcePermissions = ({
   resources,
   currentPermissions,
-  resourceType
+  resourceType,
+  targetResourceIds
 }: {
   resources: MigrationResource[];
   currentPermissions: MigrationPermission[];
   resourceType: PerResourceTypeEnum;
+  targetResourceIds?: string[];
 }) => {
   const resourceMap = new Map(resources.map((resource) => [String(resource._id), resource]));
   const currentPermissionMap = new Map<string, CollaboratorItemType[]>();
@@ -125,7 +131,7 @@ export const resolveMaterializedResourcePermissions = ({
     });
     let next = childCollaborators;
 
-    if (parentId && resource.inheritPermission !== false) {
+    if (parentId && shouldInheritResourcePermission(resource.inheritPermission)) {
       const parentPermissions = parent ? resolve(parentId) : undefined;
       if (!parentPermissions) {
         errors.push(`${resourceType}:${resourceId}: missing parent ${parentId}`);
@@ -145,7 +151,11 @@ export const resolveMaterializedResourcePermissions = ({
     return next;
   };
 
-  const changes = resources.flatMap<MaterializedResourcePermissionChange>((resource) => {
+  const targetResourceIdSet = targetResourceIds ? new Set(targetResourceIds) : undefined;
+  const targetResources = targetResourceIdSet
+    ? resources.filter((resource) => targetResourceIdSet.has(String(resource._id)))
+    : resources;
+  const changes = targetResources.flatMap<MaterializedResourcePermissionChange>((resource) => {
     const resourceId = String(resource._id);
     const next = resolve(resourceId);
     if (!next) return [];
@@ -156,7 +166,8 @@ export const resolveMaterializedResourcePermissions = ({
 
   return {
     changes,
-    skippedResourceCount: skipped.size,
+    skippedResourceCount: targetResources.filter((resource) => skipped.has(String(resource._id)))
+      .length,
     errors
   };
 };
@@ -172,32 +183,71 @@ const materializeResourceType = async ({
   options: MaterializeResourcePermissionsOptions;
   result: MaterializeResourcePermissionsResult;
 }) => {
-  const resources = await config.model
-    .find({ teamId }, '_id teamId parentId tmbId inheritPermission')
-    .lean<MigrationResource[]>();
-  result.resourceCount += resources.length;
-  if (resources.length === 0) return;
+  const projection = '_id teamId parentId tmbId inheritPermission';
 
-  const currentPermissions = await resourcePermissionRepo.findByResourceIds({
-    teamId,
-    resourceType: config.resourceType,
-    resourceIds: resources.map((resource) => String(resource._id))
-  });
-  const { changes, skippedResourceCount, errors } = resolveMaterializedResourcePermissions({
-    resources,
-    currentPermissions,
-    resourceType: config.resourceType
-  });
+  /** 只加载当前目标资源和计算其有效 ACL 所需的祖先链。 */
+  const loadResourceBatch = async (targetResources: MigrationResource[]) => {
+    const resourcesById = new Map(
+      targetResources.map((resource) => [String(resource._id), resource])
+    );
+    const pendingParentIds = new Set<string>();
+    const queriedParentIds = new Set<string>();
 
-  result.skippedResourceCount += skippedResourceCount;
-  result.updatedResourceCount += changes.length;
-  result.errors.push(...errors);
-  if (options.dryRun || changes.length === 0) return;
+    for (const resource of targetResources) {
+      const parentId = resource.parentId == null ? undefined : String(resource.parentId);
+      if (parentId && shouldInheritResourcePermission(resource.inheritPermission)) {
+        pendingParentIds.add(parentId);
+      }
+    }
 
-  for (let index = 0; index < changes.length; index += options.batchSize) {
-    const batch = changes.slice(index, index + options.batchSize);
+    while (pendingParentIds.size > 0) {
+      const parentIds = Array.from(pendingParentIds).filter(
+        (parentId) => !resourcesById.has(parentId) && !queriedParentIds.has(parentId)
+      );
+      pendingParentIds.clear();
+      if (parentIds.length === 0) break;
+      parentIds.forEach((parentId) => queriedParentIds.add(parentId));
+
+      const ancestors = await config.model
+        .find({ teamId, _id: { $in: parentIds } }, projection)
+        .lean<MigrationResource[]>();
+      for (const ancestor of ancestors) {
+        resourcesById.set(String(ancestor._id), ancestor);
+        const parentId = ancestor.parentId == null ? undefined : String(ancestor.parentId);
+        if (parentId && shouldInheritResourcePermission(ancestor.inheritPermission)) {
+          pendingParentIds.add(parentId);
+        }
+      }
+    }
+
+    return Array.from(resourcesById.values());
+  };
+
+  const processBatch = async (targetResources: MigrationResource[]) => {
+    if (targetResources.length === 0) return;
+    const resources = await loadResourceBatch(targetResources);
+    const currentPermissions = await resourcePermissionRepo.findByResourceIds({
+      teamId,
+      resourceType: config.resourceType,
+      resourceIds: resources.map((resource) => String(resource._id))
+    });
+    const { changes, skippedResourceCount, errors } = resolveMaterializedResourcePermissions({
+      resources,
+      currentPermissions,
+      resourceType: config.resourceType,
+      targetResourceIds: targetResources.map((resource) => String(resource._id))
+    });
+
+    result.resourceCount += targetResources.length;
+    result.skippedResourceCount += skippedResourceCount;
+    result.updatedResourceCount += changes.length;
+    for (const error of errors) {
+      if (!result.errors.includes(error)) result.errors.push(error);
+    }
+    if (options.dryRun || changes.length === 0) return;
+
     await mongoSessionRun(async (session) => {
-      for (const item of batch) {
+      for (const item of changes) {
         await resourcePermissionRepo.replaceResource({
           teamId,
           resourceType: config.resourceType,
@@ -207,7 +257,21 @@ const materializeResourceType = async ({
         });
       }
     });
+  };
+
+  const cursor = config.model
+    .find({ teamId }, projection)
+    .sort({ _id: 1 })
+    .lean<MigrationResource>()
+    .cursor({ batchSize: options.batchSize });
+  let batch: MigrationResource[] = [];
+  for await (const resource of cursor) {
+    batch.push(resource);
+    if (batch.length < options.batchSize) continue;
+    await processBatch(batch);
+    batch = [];
   }
+  await processBatch(batch);
 };
 
 /**

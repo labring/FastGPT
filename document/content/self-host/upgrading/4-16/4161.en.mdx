@@ -5,6 +5,32 @@ upgradeTags:
   - IN PROGRESS
 ---
 
+## 📦 Upgrade Guide
+
+### 1. Migrate resource permissions
+
+This release materializes complete effective ACLs for Apps, Datasets, and Agent Skills. Run a dry run after upgrading. A dry run does not write permission data and processes all teams by default; pass `teamId` to target one team.
+
+```bash
+curl -X POST 'https://你的域名/api/admin/initv4160' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true,"batchSize":100}'
+```
+
+After confirming that `errors` is empty or that the affected resources have been fixed, run the migration:
+
+```bash
+curl -X POST 'https://你的域名/api/admin/initv4160' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false,"batchSize":100}'
+```
+
+`batchSize` accepts values from `1` to `1000` and defaults to `100`. It limits the number of target resources read, calculated, and written in each batch; ancestor chains are loaded on demand. The response field `resourceCount` is the number of scanned resources, `updatedResourceCount` is the number of resources requiring writes, `skippedResourceCount` is the number of target resources skipped because of missing parents or invalid trees, and `errors` contains error details. Existing owners and child-specific permissions are preserved. Historical resources with a missing inheritance flag are treated as inheriting permissions.
+
+The migration is safe to retry. After the formal migration, run another dry run and confirm that both `updatedResourceCount` and `errors` are `0`. When `errors` is non-empty, repair the data using the resource type, resource ID, and parent ID in the error details, then retry the formal migration.
+
 ## 🚀 New
 
 1. Third-party publishing channels now support multimodal files, audio transcription, and citations where supported.

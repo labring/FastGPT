@@ -70,7 +70,11 @@ export const resourcePermissionRepo = {
     session?: ClientSession;
   }) =>
     MongoResourcePermission.find(
-      { teamId, resourceType, resourceId: { $exists: true } },
+      {
+        teamId,
+        resourceType,
+        $or: [{ resourceId: { $exists: true } }, { resourceName: { $exists: true } }]
+      },
       undefined,
       withSession(session)
     ).lean(),
