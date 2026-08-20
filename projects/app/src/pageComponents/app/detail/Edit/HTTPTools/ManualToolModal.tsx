@@ -194,7 +194,7 @@ const ManualToolModal = ({
         headerSecret: data.headerSecret
       };
 
-      const toolSetNode = appDetail.modules.find(
+      const toolSetNode = appDetail.nodes.find(
         (item) => item.flowNodeType === FlowNodeTypeEnum.toolSet
       );
       const existingToolList = toolSetNode?.toolConfig?.httpToolSet?.toolList || [];

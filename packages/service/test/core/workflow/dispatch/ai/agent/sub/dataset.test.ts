@@ -7,14 +7,14 @@ const {
   createLLMResponseMock,
   defaultSearchDatasetDataMock,
   filterDatasetsByTmbIdMock,
-  findDatasetByIdMock,
+  loadWorkflowDatasetResourceMock,
   formatModelChars2PointsMock
 } = vi.hoisted(() => ({
   countPromptTokensMock: vi.fn(),
   createLLMResponseMock: vi.fn(),
   defaultSearchDatasetDataMock: vi.fn(),
   filterDatasetsByTmbIdMock: vi.fn(),
-  findDatasetByIdMock: vi.fn(),
+  loadWorkflowDatasetResourceMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn()
 }));
 
@@ -22,15 +22,12 @@ vi.mock('@fastgpt/service/core/dataset/search', () => ({
   defaultSearchDatasetData: defaultSearchDatasetDataMock
 }));
 
-vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
-  MongoDataset: {
-    findById: findDatasetByIdMock
-  }
-}));
-
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: filterDatasetsByTmbIdMock
+}));
+
+vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+  loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -94,11 +91,9 @@ const llmModelData = (model: string) =>
 describe('dispatchAgentDatasetSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    findDatasetByIdMock.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model',
-        vlmModel: 'vlm-model'
-      })
+    loadWorkflowDatasetResourceMock.mockResolvedValue({
+      vectorModel: 'embedding-model',
+      vlmModel: 'vlm-model'
     });
     filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
     countPromptTokensMock.mockResolvedValue(100);
@@ -417,7 +412,7 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(result).toEqual({
       response: 'No authorized dataset selected'
     });
-    expect(findDatasetByIdMock).not.toHaveBeenCalled();
+    expect(loadWorkflowDatasetResourceMock).not.toHaveBeenCalled();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
   });
 

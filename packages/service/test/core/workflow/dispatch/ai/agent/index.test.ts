@@ -560,7 +560,7 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
-  it('authenticates skill injection with the app owner tmbId for published apps', async () => {
+  it('uses the runtime member for skill injection without an App resource context', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
@@ -583,7 +583,7 @@ describe('dispatchRunAgent user context', () => {
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith(
       expect.objectContaining({
         teamId: 'team_1',
-        tmbId: 'app_owner_tmb',
+        tmbId: 'external_user_tmb',
         skillIds: ['skill_1']
       })
     );

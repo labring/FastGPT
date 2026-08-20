@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
   getWorkflowResponseWrite,
@@ -31,6 +31,9 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { useToolNodeList } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList';
+import { updateAgentLoopCoreWorkflowToolInputValue } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({
@@ -40,12 +43,42 @@ vi.mock('@fastgpt/service/core/workflow/utils', () => ({
 
 const mockMongoAppFindOne = vi.fn();
 const mockMongoAppFind = vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) }));
+const mockMongoAppVersionFind = vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) }));
+const mockMongoAppVersionAggregate = vi.fn().mockResolvedValue([]);
+const mockAuthAppByTmbId = vi.fn();
+const workflowNodesByAppId = new Map<string, unknown[]>();
+
+const rememberAppWorkflowNodes = (doc: {
+  _id?: unknown;
+  nodes?: unknown[];
+  modules?: unknown[];
+}) => {
+  if (!doc?._id) return;
+  const nodes = doc.nodes ?? doc.modules;
+  if (nodes) workflowNodesByAppId.set(String(doc._id), nodes);
+};
+
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   AppCollectionName: 'apps',
   MongoApp: {
     findOne: (...args: any[]) => mockMongoAppFindOne(...args),
     find: (...args: any[]) => mockMongoAppFind(...args)
   }
+}));
+
+vi.mock('@fastgpt/service/core/app/version/schema', () => ({
+  MongoAppVersion: {
+    find: (...args: any[]) => mockMongoAppVersionFind(...args),
+    findOne: vi.fn(() => ({
+      lean: vi.fn().mockResolvedValue(null),
+      sort: vi.fn(() => ({ lean: vi.fn().mockResolvedValue(null) }))
+    })),
+    aggregate: (...args: any[]) => mockMongoAppVersionAggregate(...args)
+  }
+}));
+
+vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
+  authAppByTmbId: (...args: any[]) => mockAuthAppByTmbId(...args)
 }));
 
 const mockGetMCPChildren = vi.fn();
@@ -918,6 +951,33 @@ describe('formatHttpError', () => {
 });
 
 describe('rewriteRuntimeWorkFlow', () => {
+  beforeEach(() => {
+    workflowNodesByAppId.clear();
+    mockAuthAppByTmbId.mockImplementation(async ({ appId }: { appId: string }) => {
+      const found = mockMongoAppFindOne({ _id: appId });
+      const app = typeof found?.lean === 'function' ? await found.lean() : found;
+      if (!app) throw new Error('unExist');
+      rememberAppWorkflowNodes(app);
+      return { app };
+    });
+    mockMongoAppVersionAggregate.mockImplementation(async (pipeline: any[]) => {
+      const ids: unknown[] = pipeline[0]?.$match?.appId?.$in ?? [];
+      return ids.flatMap((id) => {
+        const nodes = workflowNodesByAppId.get(String(id));
+        if (!nodes) return [];
+        return [{ _id: id, doc: { _id: id, appId: id, nodes, isPublish: true } }];
+      });
+    });
+    mockMongoAppVersionFind.mockImplementation((query: { _id?: { $in?: unknown[] } }) => ({
+      lean: async () =>
+        (query._id?.$in ?? []).flatMap((id) => {
+          const nodes = workflowNodesByAppId.get(String(id));
+          if (!nodes) return [];
+          return [{ _id: id, appId: id, nodes, isPublish: true }];
+        })
+    }));
+  });
+
   const makeNode = (
     nodeId: string,
     flowNodeType: string,
@@ -946,12 +1006,38 @@ describe('rewriteRuntimeWorkFlow', () => {
       ...opts
     }) as any;
 
+  const runWithToolSnapshot = ({
+    appId,
+    toolNames,
+    fn
+  }: {
+    appId: string;
+    toolNames: string[];
+    fn: () => Promise<unknown>;
+  }) => {
+    const resource = { type: 'tool' as const, id: appId, data: { toolNames } };
+    return runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          teamId: 'team1',
+          resources: [resource],
+          resourceMap: new Map([[`tool:${appId}`, resource]]),
+          appMap: new Map([[appId, { _id: appId }]]),
+          datasetMap: new Map(),
+          skillMap: new Map()
+        } as any
+      },
+      fn
+    );
+  };
+
   it('should return early when no toolSet nodes', async () => {
     const nodes = [makeNode('n1', FlowNodeTypeEnum.chatNode)];
     const edges = [makeEdge('n1', 'n2')];
     const originalNodesLen = nodes.length;
     const originalEdgesLen = edges.length;
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     expect(nodes.length).toBe(originalNodesLen);
     expect(edges.length).toBe(originalEdgesLen);
   });
@@ -969,7 +1055,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const childNode = makeNode('child1', 'systemTool');
     mockGetSystemToolRunTimeNodeFromSystemToolset.mockResolvedValue([childNode]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts1')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'child1')).toBeDefined();
@@ -1012,7 +1098,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       { name: 'tool1', description: 'desc', inputSchema: {}, url: 'https://mcp.example.com' }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
@@ -1025,6 +1111,51 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(edges.find((e) => e.target === 'ts2')).toBeUndefined();
     expect(edges.find((e) => e.target === 'ts20')).toBeDefined();
   });
+
+  it.each([
+    {
+      name: 'MCP',
+      appId: 'mcp-app-1',
+      nodeId: 'ts2',
+      toolConfig: { mcpToolSet: { toolId: 'mcp-tool-1' } },
+      getChildren: mockGetMCPChildren,
+      children: [
+        { name: 'allowed', description: 'allowed', inputSchema: {} },
+        { name: 'blocked', description: 'blocked', inputSchema: {} }
+      ]
+    },
+    {
+      name: 'HTTP',
+      appId: 'http-plugin-1',
+      nodeId: 'ts4',
+      toolConfig: { httpToolSet: {} },
+      getChildren: mockGetHTTPToolList,
+      children: [
+        { name: 'allowed', description: 'allowed', url: 'http://example.com/allowed' },
+        { name: 'blocked', description: 'blocked', url: 'http://example.com/blocked' }
+      ]
+    }
+  ])(
+    'should only expand $name tools declared by the resource snapshot',
+    async ({ name, appId, nodeId, toolConfig, getChildren, children }) => {
+      const toolSetNode = makeNode(nodeId, FlowNodeTypeEnum.toolSet, {
+        pluginId: appId,
+        name: `${name}Tool`,
+        toolConfig
+      } as any);
+      const nodes = [toolSetNode];
+      const edges: RuntimeEdgeItemType[] = [];
+      getChildren.mockResolvedValue(children);
+
+      await runWithToolSnapshot({
+        appId,
+        toolNames: ['allowed'],
+        fn: () => rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges })
+      });
+
+      expect(nodes.map((node) => node.nodeId)).toEqual([`${nodeId}0`]);
+    }
+  );
 
   it('should keep resumed MCP toolSet memory edge after child node is rebuilt', async () => {
     const toolSetNode = makeNode('ts2', FlowNodeTypeEnum.toolSet, {
@@ -1072,7 +1203,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
     expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
@@ -1106,9 +1237,9 @@ describe('rewriteRuntimeWorkFlow', () => {
       lean: vi.fn().mockResolvedValue(null)
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
-
-    expect(nodes.find((n) => n.nodeId === 'ts3')).toBeUndefined();
+    await expect(
+      rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges })
+    ).rejects.toThrow('unExist');
   });
 
   it('should handle HTTP toolSet nodes', async () => {
@@ -1134,7 +1265,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
     ]);
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts40')).toBeDefined();
@@ -1145,6 +1276,7 @@ describe('rewriteRuntimeWorkFlow', () => {
   // Helper: route MongoApp.find responses by the toolsetId it queries, since
   // parseMcpTool and parseHttpTool may both hit MongoApp.find in parallel.
   const setupFindByIdMap = (idToDoc: Record<string, any>) => {
+    Object.values(idToDoc).forEach(rememberAppWorkflowNodes);
     mockMongoAppFind.mockImplementation((query: any) => {
       const ids: string[] = query?._id?.$in ?? [];
       const docs = ids.map((id) => idToDoc[id]).filter(Boolean);
@@ -1196,7 +1328,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(mcpToolNode.jsonSchema).toEqual(toolAInputSchema);
     expect(mcpToolNode.intro).toBe('tool A description');
@@ -1262,7 +1394,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual(toolBRequestSchema);
     expect(httpToolNode.intro).toBe('tool B description');
@@ -1337,6 +1469,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     await rewriteRuntimeWorkFlow({
       teamId: 'team1',
+      tmbId: 'tmb1',
       nodes: [mcpToolNode, httpToolNode],
       edges: []
     });
@@ -1378,7 +1511,12 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes: [httpToolNode], edges: [] });
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      nodes: [httpToolNode],
+      edges: []
+    });
 
     expect(httpToolNode.jsonSchema).toEqual(inputSchema);
   });
@@ -1413,7 +1551,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       }
     });
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'object' });
     expect(httpToolNode.intro).toBe('nested tool');
@@ -1432,7 +1570,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     setupFindByIdMap({});
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
     expect(httpToolNode.intro).toBe('original');
@@ -1451,7 +1589,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     setupFindByIdMap({});
 
-    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', tmbId: 'tmb1', nodes, edges });
 
     expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
     expect(httpToolNode.intro).toBe('original');

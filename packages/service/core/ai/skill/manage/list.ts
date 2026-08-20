@@ -1,9 +1,3 @@
-import { Types } from '../../../../common/mongo';
-import { MongoApp } from '../../../app/schema';
-import { AppResourceRefsSkillIdsPath, buildAppSkillRefMongoQuery } from '../../../app/resourceRefs';
-import { MongoAgentSkills } from '../model/schema';
-import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { getResourcePermissionsByTeam } from '../../../../support/permission/resourcePermissionService';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -14,6 +8,10 @@ import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
+import { MongoAgentSkills } from '../model/schema';
+import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { findTeamAppsByPublishedResource } from '../../../app/resourceLookup';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -156,7 +154,19 @@ export const listReadableAgentSkills = async ({
             $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
           };
       const idList = { _id: { $in: myRoleResourceIds } };
-      const readPermissionQuery = teamPer.isOwner || source === 'store' ? {} : idList;
+      const readPermissionQuery =
+        teamPer.isOwner || source === 'store'
+          ? {}
+          : {
+              $or: [
+                idList,
+                { tmbId },
+                {
+                  inheritPermission: true,
+                  parentId: { $in: myRoleResourceIds }
+                }
+              ]
+            };
 
       return mergeMongoAndQuery(baseQuery, scopeQuery, readPermissionQuery, {
         _id: { $in: selectedSkillIds },
@@ -164,9 +174,15 @@ export const listReadableAgentSkills = async ({
       });
     }
 
-    // 普通列表查询同时按当前目录和资源自身 ACL 过滤。
+    // 普通列表查询需要叠加当前目录过滤；skillIds 查询已在上方按读权限过滤，但不受目录限制。
     const idList = { _id: { $in: myRoleResourceIds } };
-    const skillPerQuery = teamPer.isOwner || source === 'store' ? {} : idList;
+    const skillPerQuery = teamPer.isOwner
+      ? {}
+      : parentId
+        ? {
+            $or: [idList, parseParentIdInMongo(parentId)]
+          }
+        : { $or: [idList, { parentId: null }] };
     const teamIdQuery = source === 'store' ? {} : { teamId };
 
     if (searchKey) {
@@ -203,6 +219,12 @@ export const listReadableAgentSkills = async ({
           return roleCountByResourceId.get(skillId) ?? 0;
         };
 
+        if (skill.inheritPermission && skill.parentId && skill.type !== AgentSkillTypeEnum.folder) {
+          return {
+            Per: getPer(String(skill.parentId)).addRole(getPer(String(skill._id)).role),
+            privateSkill: getClbCount(String(skill.parentId)) <= 1
+          };
+        }
         return {
           Per: getPer(String(skill._id)),
           privateSkill: getClbCount(String(skill._id)) <= 1
@@ -247,25 +269,13 @@ export const listReadableAgentSkills = async ({
   const appCountMap = new Map<string, number>();
   if (nonFolderSkills.length > 0) {
     const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
-    const counts = await MongoApp.aggregate<{ _id: string; count: number }>([
-      {
-        $match: {
-          teamId: new Types.ObjectId(String(teamId)),
-          deleteTime: null,
-          ...buildAppSkillRefMongoQuery(skillIdStrings)
-        }
-      },
-      { $unwind: `$${AppResourceRefsSkillIdsPath}` },
-      { $match: buildAppSkillRefMongoQuery(skillIdStrings) },
-      {
-        $group: {
-          _id: `$${AppResourceRefsSkillIdsPath}`,
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-    counts.forEach((item) => {
-      appCountMap.set(String(item._id), item.count);
+    const { counts } = await findTeamAppsByPublishedResource({
+      teamId,
+      type: 'skill',
+      ids: skillIdStrings
+    });
+    counts.forEach((count, skillId) => {
+      appCountMap.set(skillId, count);
     });
   }
 

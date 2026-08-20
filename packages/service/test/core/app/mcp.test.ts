@@ -3,9 +3,10 @@ import http from 'http';
 import os from 'os';
 
 // --- Hoisted mocks ---
-const { mockDereference, mockMongoAppFind } = vi.hoisted(() => ({
+const { mockDereference, mockMongoAppFind, mockMongoAppVersionFindOne } = vi.hoisted(() => ({
   mockDereference: vi.fn(),
-  mockMongoAppFind: vi.fn()
+  mockMongoAppFind: vi.fn(),
+  mockMongoAppVersionFindOne: vi.fn()
 }));
 
 vi.mock('@apidevtools/json-schema-ref-parser', () => ({
@@ -20,6 +21,14 @@ vi.mock('../../../core/app/schema', () => ({
   }
 }));
 
+vi.mock('../../../core/app/version/schema', () => ({
+  MongoAppVersion: {
+    findOne: (...args: any[]) => mockMongoAppVersionFindOne(...args),
+    find: vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) })),
+    aggregate: vi.fn().mockResolvedValue([])
+  }
+}));
+
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import {
   MCPClient,
@@ -28,6 +37,8 @@ import {
   getMCPChildren
 } from '../../../core/app/mcp';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { AppPublishedWorkflow } from '../../../core/app/version/controller';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
 
@@ -685,38 +696,46 @@ describe('createMcpSafeFetch', () => {
 });
 
 describe('getMCPChildren', () => {
+  const createMcpWorkflow = (
+    toolConfig?: NonNullable<AppPublishedWorkflow['nodes'][number]['toolConfig']>
+  ): AppPublishedWorkflow => ({
+    nodes: [
+      {
+        nodeId: 'mcp-toolset',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        name: 'MCP toolset',
+        toolConfig,
+        inputs: [],
+        outputs: []
+      }
+    ]
+  });
+
   it('should return tool list from new MCP format', async () => {
     const app = {
       _id: 'app123',
       avatar: '/icon.png',
-      teamId: 'team1',
-      modules: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              toolId: 'tid',
-              url: 'http://mcp.test',
-              toolList: [
-                {
-                  name: 'tool_a',
-                  description: 'A',
-                  inputSchema: { type: 'object', properties: {} }
-                },
-                {
-                  name: 'tool_b',
-                  description: 'B',
-                  inputSchema: { type: 'object', properties: {} }
-                }
-              ]
-            }
+      teamId: 'team1'
+    } as AppSchemaType;
+    const workflow = createMcpWorkflow({
+      mcpToolSet: {
+        url: 'http://mcp.test',
+        toolList: [
+          {
+            name: 'tool_a',
+            description: 'A',
+            inputSchema: { type: 'object', properties: {} }
           },
-          inputs: [],
-          outputs: []
-        }
-      ]
-    } as unknown as AppSchemaType;
+          {
+            name: 'tool_b',
+            description: 'B',
+            inputSchema: { type: 'object', properties: {} }
+          }
+        ]
+      }
+    });
 
-    const result = await getMCPChildren(app);
+    const result = await getMCPChildren(app, workflow);
 
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
@@ -735,23 +754,16 @@ describe('getMCPChildren', () => {
     const app = {
       _id: 'app123',
       avatar: '/icon.png',
-      teamId: 'team1',
-      modules: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              toolId: 'tid',
-              url: 'http://mcp.test',
-              toolList: []
-            }
-          },
-          inputs: [],
-          outputs: []
-        }
-      ]
-    } as unknown as AppSchemaType;
+      teamId: 'team1'
+    } as AppSchemaType;
+    const workflow = createMcpWorkflow({
+      mcpToolSet: {
+        url: 'http://mcp.test',
+        toolList: []
+      }
+    });
 
-    const result = await getMCPChildren(app);
+    const result = await getMCPChildren(app, workflow);
     expect(result).toEqual([]);
   });
 
@@ -759,38 +771,45 @@ describe('getMCPChildren', () => {
     const app = {
       _id: 'app456',
       avatar: '/old-icon.png',
-      teamId: 'team2',
-      modules: [
-        {
-          toolConfig: undefined,
-          inputs: [],
-          outputs: []
-        }
-      ]
-    } as unknown as AppSchemaType;
+      teamId: 'team2'
+    } as AppSchemaType;
+    const workflow = createMcpWorkflow();
 
     const childApps = [
       {
-        name: 'child_tool',
-        modules: [
-          {
-            inputs: [
-              {
-                value: {
-                  name: 'child_tool',
-                  description: 'child desc',
-                  url: 'http://child.mcp',
-                  inputSchema: { type: 'object', properties: {} }
-                }
-              }
-            ]
-          }
-        ]
+        _id: 'child-app-id',
+        name: 'child_tool'
       }
     ];
     mockMongoAppFind.mockReturnValue({ lean: () => Promise.resolve(childApps) });
+    mockMongoAppVersionFindOne.mockReturnValue({
+      sort: () => ({
+        lean: () =>
+          Promise.resolve({
+            _id: 'child-version-id',
+            appId: 'child-app-id',
+            edges: [],
+            chatConfig: undefined,
+            resources: [],
+            nodes: [
+              {
+                inputs: [
+                  {
+                    value: {
+                      name: 'child_tool',
+                      description: 'child desc',
+                      url: 'http://child.mcp',
+                      inputSchema: { type: 'object', properties: {} }
+                    }
+                  }
+                ]
+              }
+            ]
+          })
+      })
+    });
 
-    const result = await getMCPChildren(app);
+    const result = await getMCPChildren(app, workflow);
 
     expect(mockMongoAppFind).toHaveBeenCalledWith({ teamId: 'team2', parentId: 'app456' });
     expect(result).toHaveLength(1);
@@ -805,13 +824,13 @@ describe('getMCPChildren', () => {
     const app = {
       _id: 'app789',
       avatar: '/icon.png',
-      teamId: 'team3',
-      modules: [{ toolConfig: undefined, inputs: [], outputs: [] }]
-    } as unknown as AppSchemaType;
+      teamId: 'team3'
+    } as AppSchemaType;
+    const workflow = createMcpWorkflow();
 
     mockMongoAppFind.mockReturnValue({ lean: () => Promise.resolve([]) });
 
-    const result = await getMCPChildren(app);
+    const result = await getMCPChildren(app, workflow);
     expect(result).toEqual([]);
   });
 });

@@ -49,10 +49,10 @@ describe('Transition workflow', () => {
       CreateAppResponseType
     >(createapi.default, {
       auth: user,
-      body: { name: 'simple app', type: AppTypeEnum.simple, modules: [] }
+      body: { name: 'simple app', type: AppTypeEnum.simple, nodes: [] }
     });
     const sourceAppId = createResult.data!;
-    await MongoApp.updateOne({ _id: sourceAppId }, { modules: historicalModules });
+    await MongoAppVersion.updateOne({ appId: sourceAppId }, { nodes: historicalModules });
 
     const result = await Call<
       TransitionWorkflowBodyType,
@@ -65,16 +65,15 @@ describe('Transition workflow', () => {
     const appId = createNew ? result.data?.id : sourceAppId;
     const [app, version] = await Promise.all([
       MongoApp.findById(appId).lean(),
-      createNew ? MongoAppVersion.findOne({ appId }).lean() : undefined
+      createNew
+        ? MongoAppVersion.findOne({ appId }).lean()
+        : MongoAppVersion.findOne({ appId, isAutoSave: true }).lean()
     ]);
-    const input = app?.modules[0]?.inputs[0];
+    const input = version?.nodes[0]?.inputs[0];
 
     expect(result.code).toBe(200);
     expect(app?.type).toBe(AppTypeEnum.workflow);
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
-    if (createNew) {
-      expect(version?.nodes).toEqual(app?.modules);
-    }
   });
 });

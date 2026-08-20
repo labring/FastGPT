@@ -22,12 +22,16 @@ const mocks = vi.hoisted(() => ({
   getNextTimeByCronStringAndTimezone: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  getLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn()
-  })
-}));
+vi.mock('@fastgpt/service/common/logger', () => {
+  const logCategory = new Proxy({}, { get: () => logCategory });
+  return {
+    LogCategories: logCategory,
+    getLogger: () => ({
+      info: vi.fn(),
+      error: vi.fn()
+    })
+  };
+});
 
 vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
   getTeamPlanStatus: vi.fn(async () => ({ standard: { maxUploadFileCount: 20 } }))
@@ -105,7 +109,8 @@ describe('getScheduleTriggerApp', () => {
       versionId: 'version-id',
       nodes: [{ nodeId: 'start' }],
       edges: [],
-      chatConfig: { variables: [] }
+      chatConfig: { variables: [] },
+      resources: []
     });
     mocks.getWorkflowEntryNodeIds.mockReturnValue(['start']);
     mocks.storeNodes2RuntimeNodes.mockReturnValue([{ nodeId: 'runtime-start' }]);

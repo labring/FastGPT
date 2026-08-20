@@ -169,8 +169,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         await postPublishApp(appId, data);
         setAppDetail((state) => ({
           ...state,
-          ...data,
-          modules: data.nodes || state.modules
+          ...data
         }));
         reloadAppLatestVersion();
       } catch (error: any) {

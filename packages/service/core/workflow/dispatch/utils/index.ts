@@ -26,7 +26,8 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { MongoApp } from '../../../app/schema';
+import { authAppByTmbId } from '../../../../support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getMCPChildren } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
@@ -38,7 +39,14 @@ import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils
 import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../../app/http';
+import { getAppPublishedWorkflowMap } from '../../../app/version/controller';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getWorkflowResourceContext } from '../../utils/context';
+import {
+  assertWorkflowResource,
+  filterWorkflowToolList,
+  getWorkflowAppWorkflow
+} from '../../utils/resource';
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
@@ -507,15 +515,42 @@ export const formatHttpError = (error: any) => {
  */
 export const rewriteRuntimeWorkFlow = async ({
   teamId,
+  tmbId,
   nodes,
   edges,
   lang
 }: {
   teamId: string;
+  tmbId?: string;
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
+  const resourceContext = getWorkflowResourceContext();
+
+  // 有快照时只展开当前 Version 声明的工具集。没有快照时（Skill 调试 / 商业工具）按运行人读权限加载。
+  const getToolsetApp = async (appId: string) => {
+    if (resourceContext) {
+      assertWorkflowResource({
+        context: resourceContext,
+        type: 'tool',
+        id: appId
+      });
+      return resourceContext.appMap.get(appId);
+    }
+
+    if (tmbId) {
+      const { app } = await authAppByTmbId({
+        appId,
+        tmbId,
+        per: ReadPermissionVal
+      });
+      return app;
+    }
+
+    return;
+  };
+
   const mergeToolNodeInputs = ({
     node,
     jsonSchema,
@@ -653,10 +688,15 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
-          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          const app = await getToolsetApp(toolSetNode.pluginId!);
           if (!app) continue;
-          const toolList = (await getMCPChildren(app)) as RuntimeMcpTool[];
-          const currentToolSet = app.modules?.[0]?.toolConfig?.mcpToolSet;
+          const workflow = getWorkflowAppWorkflow(String(app._id));
+          const toolList = filterWorkflowToolList({
+            context: resourceContext,
+            appId: String(app._id),
+            tools: (await getMCPChildren(app, workflow)) as RuntimeMcpTool[]
+          });
+          const currentToolSet = workflow?.nodes[0]?.toolConfig?.mcpToolSet;
 
           const toolSetId = toolSetNode.pluginId;
           if (!toolSetId) continue;
@@ -679,10 +719,15 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(newToolNode.nodeId);
           });
         } else if (httpToolsetVal) {
-          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          const app = await getToolsetApp(toolSetNode.pluginId!);
           if (!app) continue;
+          const workflow = getWorkflowAppWorkflow(String(app._id));
 
-          const toolList = await getHTTPToolList(app);
+          const toolList = filterWorkflowToolList({
+            context: resourceContext,
+            appId: String(app._id),
+            tools: await getHTTPToolList(app, workflow)
+          });
 
           toolList.forEach((tool: HttpToolConfigType, index: number) => {
             const newToolNode = initToolSetChildNode(
@@ -727,25 +772,45 @@ export const rewriteRuntimeWorkFlow = async ({
       })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset，避免每个工具节点都单独查询一次数据库。
-    const toolsets = await getMcpToolsets({
-      teamId,
-      ids: parseMcpToolConfigs.map((config) => config.toolsetId),
-      field: {
-        _id: true,
-        teamId: true,
-        avatar: true,
-        modules: true
-      }
-    });
+    // 无快照时只取 schema；真正执行仍走 getToolsetApp / loadWorkflowAppResource 的运行人鉴权。
+    const toolsets = resourceContext
+      ? parseMcpToolConfigs
+          .map(({ toolsetId, toolName }) => {
+            assertWorkflowResource({
+              context: resourceContext,
+              type: 'tool',
+              id: toolsetId,
+              toolName
+            });
+            return resourceContext.appMap.get(toolsetId);
+          })
+          .filter((toolset): toolset is NonNullable<typeof toolset> => !!toolset)
+      : await getMcpToolsets({
+          teamId,
+          ids: parseMcpToolConfigs.map((config) => config.toolsetId),
+          field: {
+            _id: true,
+            teamId: true,
+            avatar: true
+          }
+        });
+    const workflowMap = resourceContext
+      ? resourceContext.workflowMap
+      : await getAppPublishedWorkflowMap(toolsets);
     const toolListMap = new Map<
       string,
       { toolList: RuntimeMcpTool[]; currentToolSet?: RuntimeMcpToolSet }
     >();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        const currentToolSet = toolset.modules?.[0]?.toolConfig?.mcpToolSet;
+        const workflow = workflowMap?.get(String(toolset._id));
+        const currentToolSet = workflow?.nodes[0]?.toolConfig?.mcpToolSet;
         const currentToolList = currentToolSet?.toolList;
-        const toolList = (currentToolList ?? (await getMCPChildren(toolset))) as RuntimeMcpTool[];
+        const toolList = filterWorkflowToolList({
+          context: resourceContext,
+          appId: String(toolset._id),
+          tools: (currentToolList ?? (await getMCPChildren(toolset, workflow))) as RuntimeMcpTool[]
+        });
         toolListMap.set(String(toolset._id), { toolList, currentToolSet });
       })
     );
@@ -787,14 +852,29 @@ export const rewriteRuntimeWorkFlow = async ({
       })
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset，避免每个工具节点都单独查询一次数据库。
-    const toolsets = await getHttpToolsets({
-      teamId,
-      ids: parseHttpToolConfigs.map((config) => config.toolsetId),
-      field: {
-        _id: true,
-        modules: true
-      }
-    });
+    // 无快照时只取 schema；真正执行仍走 getToolsetApp / loadWorkflowAppResource 的运行人鉴权。
+    const toolsets = resourceContext
+      ? parseHttpToolConfigs
+          .map(({ toolsetId, toolName }) => {
+            assertWorkflowResource({
+              context: resourceContext,
+              type: 'tool',
+              id: toolsetId,
+              toolName
+            });
+            return resourceContext.appMap.get(toolsetId);
+          })
+          .filter((toolset): toolset is NonNullable<typeof toolset> => !!toolset)
+      : await getHttpToolsets({
+          teamId,
+          ids: parseHttpToolConfigs.map((config) => config.toolsetId),
+          field: {
+            _id: true
+          }
+        });
+    const workflowMap = resourceContext
+      ? resourceContext.workflowMap
+      : await getAppPublishedWorkflowMap(toolsets);
     const toolsetMap = new Map<string, (typeof toolsets)[number]>();
     toolsets.forEach((toolset) => {
       toolsetMap.set(String(toolset._id), toolset);
@@ -805,7 +885,8 @@ export const rewriteRuntimeWorkFlow = async ({
       const parseResult = parseHttpToolConfig(httpTool);
       if (!parseResult) return;
       const toolset = toolsetMap.get(parseResult.toolsetId);
-      const toolList = toolset?.modules?.[0].toolConfig?.httpToolSet?.toolList;
+      const toolList = workflowMap?.get(String(toolset?._id))?.nodes[0]?.toolConfig?.httpToolSet
+        ?.toolList;
       if (!toolList) return;
       const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;

@@ -1,6 +1,6 @@
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MongoApp } from './schema';
@@ -16,10 +16,7 @@ import { MongoChatInputGuide } from '../chat/inputGuide/schema';
 import { MongoChatFavouriteApp } from '../chat/favouriteApp/schema';
 import { MongoChatSetting } from '../chat/setting/schema';
 import { resourcePermissionRepo } from '../../support/permission/repository/resourcePermissionRepo';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoAppChatLog } from './logs/chatLogsSchema';
@@ -36,7 +33,6 @@ import {
 } from '@fastgpt/global/core/app/formEdit/type';
 import z from 'zod';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
-import { authSkillByTmbId } from '../../support/permission/skill/auth';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { deleteChatResourcesBySource } from '../chat/delete';
 
@@ -160,45 +156,6 @@ export const beforeUpdateAppFormat = async ({
         })
       );
     })
-  );
-};
-
-/**
- * 发布应用前校验静态绑定的 Agent Skill 对当前成员可读。
- * 引用输入在发布阶段没有确定值，运行时会按实际值再次过滤。
- */
-export const validatePublishAppAgentSkillReadPermissions = async ({
-  nodes,
-  tmbId,
-  isRoot = false
-}: {
-  nodes?: StoreNodeItemType[];
-  tmbId: string;
-  isRoot?: boolean;
-}) => {
-  if (!nodes) return;
-
-  const skillIds = new Set<string>();
-  for (const node of nodes) {
-    for (const input of node.inputs) {
-      if (input.key !== NodeInputKeyEnum.skills || nodeInputIsReference(input)) continue;
-
-      const skills = z.array(StoredSelectedAgentSkillItemTypeSchema).parse(input.value);
-      for (const skill of skills) {
-        skillIds.add(skill.skillId);
-      }
-    }
-  }
-
-  await Promise.all(
-    Array.from(skillIds).map((skillId) =>
-      authSkillByTmbId({
-        tmbId,
-        skillId,
-        per: ReadPermissionVal,
-        isRoot
-      })
-    )
   );
 };
 

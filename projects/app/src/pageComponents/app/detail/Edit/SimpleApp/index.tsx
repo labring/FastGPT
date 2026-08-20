@@ -23,7 +23,7 @@ const SimpleEdit = () => {
   const [appForm, setAppForm] = useState(() => {
     if (past.length === 0) {
       return appWorkflow2Form({
-        nodes: appDetail.modules,
+        nodes: appDetail.nodes,
         chatConfig: {
           ...appDetail.chatConfig,
           fileSelectConfig: appDetail.chatConfig?.fileSelectConfig || {

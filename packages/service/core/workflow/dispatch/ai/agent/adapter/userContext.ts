@@ -5,6 +5,11 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
+import {
+  assertWorkflowDatasetResources,
+  getWorkflowDatasetResource
+} from '../../../../utils/resource';
+import { getWorkflowResourceContext } from '../../../../utils/context';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/interface/runtime';
 import {
   buildWorkflowAICurrentInputFiles,
@@ -29,27 +34,36 @@ type AgentSelectedDatasetContext = AgentLoopCoreSelectedDatasetContext;
 export const loadAgentDatasetContext = async (
   selectedDataset: AgentSelectedDatasetInput[] = [],
   tmbId: string,
-  authTmbId = false
+  authTmbId = false,
+  dynamicDataset = false
 ): Promise<AgentSelectedDatasetContext[]> => {
   if (selectedDataset.length === 0) return [];
 
   const datasetIds = selectedDataset.map((item) => item.datasetId);
-  const authorizedDatasetIds = authTmbId
-    ? await filterDatasetsByTmbId({
-        datasetIds,
-        tmbId
-      })
-    : datasetIds;
+  assertWorkflowDatasetResources({ datasetIds, dynamic: dynamicDataset });
+  const authorizedDatasetIds =
+    authTmbId || dynamicDataset
+      ? await filterDatasetsByTmbId({
+          datasetIds,
+          tmbId
+        })
+      : datasetIds;
   if (authorizedDatasetIds.length === 0) return [];
 
-  const datasets = await MongoDataset.find(
-    {
-      _id: {
-        $in: authorizedDatasetIds
-      }
-    },
-    'name intro'
-  ).lean();
+  const resourceContext = getWorkflowResourceContext();
+  const datasets =
+    resourceContext && !dynamicDataset
+      ? authorizedDatasetIds
+          .map((datasetId) => getWorkflowDatasetResource(datasetId))
+          .filter((dataset): dataset is NonNullable<typeof dataset> => !!dataset)
+      : await MongoDataset.find(
+          {
+            _id: {
+              $in: authorizedDatasetIds
+            }
+          },
+          'name intro'
+        ).lean();
   const datasetMap = new Map(
     datasets.map((item) => [
       String(item._id),
@@ -105,6 +119,7 @@ export const useUserContext = async ({
   parseHistoryFiles = false,
   selectedDataset,
   authTmbId,
+  dynamicDataset = false,
   tmbId,
   timezone
 }: {
@@ -118,6 +133,7 @@ export const useUserContext = async ({
   parseHistoryFiles?: boolean;
   selectedDataset?: AgentSelectedDatasetInput[];
   authTmbId?: boolean;
+  dynamicDataset?: boolean;
   tmbId: string;
   timezone: string;
 }): Promise<UseUserContextResult> => {
@@ -151,7 +167,12 @@ export const useUserContext = async ({
   });
 
   // 获取知识库
-  const selectedDatasetWithIntro = await loadAgentDatasetContext(selectedDataset, tmbId, authTmbId);
+  const selectedDatasetWithIntro = await loadAgentDatasetContext(
+    selectedDataset,
+    tmbId,
+    authTmbId,
+    dynamicDataset
+  );
 
   return {
     chatHistories,

@@ -59,6 +59,12 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
+import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
+import {
+  getWorkflowResourceEntities,
+  loadWorkflowResourceContext
+} from '@fastgpt/service/core/workflow/utils/resource';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -88,11 +94,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     /* user auth */
-    const { app, teamId, tmbId } = await authApp({
+    const { app, teamId, tmbId, isRoot } = await authApp({
       req,
       authToken: true,
       appId,
       per: ReadPermissionVal
+    });
+    const extractedResources = extractAppResources({
+      nodes,
+      chatConfig
+    });
+    const resourceContext = await loadWorkflowResourceContext({
+      resources: extractedResources,
+      teamId,
+      isRoot
+    });
+    await resolveAppResourcesByPermission({
+      appId,
+      app,
+      extracted: extractedResources,
+      tmbId,
+      isRoot,
+      blockOnUnauthorized: true,
+      allowRootCrossTeam: isRoot,
+      resourceEntities: getWorkflowResourceEntities(resourceContext)
     });
 
     // 类型获取
@@ -278,7 +303,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodeResponseWriteConfig: {
         persistToDb: preparedRound.shouldPersistChatRound,
         retainInMemory: false
-      }
+      },
+      resourceContext
     });
 
     streamResponseContext.responseWrite(workflowSseEvent.answerStop());

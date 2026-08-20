@@ -11,6 +11,7 @@ export type SubAppInitType = {
   name: string;
   avatar?: string;
   version?: string;
+  dynamic?: boolean;
   toolConfig?: RuntimeNodeItemType['toolConfig'];
   inputs: RuntimeNodeItemType['inputs'];
   agentGeneratedInputKeys: string[];

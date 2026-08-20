@@ -42,6 +42,7 @@ import {
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
+import { nodeHasDynamicInput } from '../../../../app/resources';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -136,6 +137,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
+  const dynamicDataset = nodeHasDynamicInput(props.node, [
+    NodeInputKeyEnum.datasetSelectList,
+    NodeInputKeyEnum.datasetParams
+  ]);
+  const dynamicSkills =
+    runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit ||
+    nodeHasDynamicInput(props.node, [NodeInputKeyEnum.skills]);
+  const dynamicTools = nodeHasDynamicInput(props.node, [NodeInputKeyEnum.selectedTools]);
   const agentModel = getLLMModelData({ modelId, model });
   // 旧 params.model 仅保留给兼容读取；Agent 请求链使用规范化 modelData。
   props.params.model = agentModel.model;
@@ -188,6 +197,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       parseHistoryFiles,
       selectedDataset: datasetParams?.datasets,
       authTmbId: datasetParams?.authTmbId,
+      dynamicDataset,
       tmbId: runningUserInfo.tmbId,
       timezone,
       maxFileAmount: getWorkflowFileMaxAmount()
@@ -203,18 +213,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     }
 
-    // 初始化 sandbox：初始化、注入 skills、files
-    // skill 鉴权以应用 owner 为准，发布应用被他人调用时不因调用者缺少 skill 权限而跳过注入。
+    // 初始化 sandbox：初始化、注入 skills、files。静态 Skill 由 Version 快照授权，动态 Skill 才检查运行人。
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
       sourceType: runningAppInfo.sourceType,
       sourceId: runningAppInfo.sourceId,
       userId: uid,
       chatId,
       teamId: runningAppInfo.teamId,
-      tmbId: runningAppInfo.tmbId,
+      tmbId: runningUserInfo.tmbId,
       needSandboxRuntime: effectiveUseAgentSandbox,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds: effectiveSkillIds,
+      dynamicSkills,
       selectedSkills: effectiveSelectedSkills,
       editSkillId,
       prepareActions: agentSandboxPrepareActions,
@@ -242,8 +252,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       promptToolReferenceInfoMap
     } = await getSubapps({
       tools: selectedTools,
-      tmbId: runningAppInfo.tmbId,
-      lang
+      tmbId: runningUserInfo.tmbId,
+      lang,
+      dynamic: dynamicTools
     });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
@@ -262,6 +273,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       context: {
         ...props,
         modelData: agentModel,
+        dynamicDataset,
         systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
         getSubApp,
