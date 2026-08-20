@@ -208,7 +208,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('appends tool child assistant messages from tool_run_end', () => {
+  it('stores the tool result without persisting child assistant messages', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       getToolInfo: (name) => ({
         name: name === 'nested_search' ? 'Nested search' : name,
@@ -262,58 +262,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       expect.objectContaining({
         id: 'call_workflow',
         tools: [expect.objectContaining({ response: 'workflow result' })]
-      }),
-      expect.objectContaining({ text: { content: 'child answer' } }),
-      expect.objectContaining({
-        tools: [
-          expect.objectContaining({
-            id: 'call_nested',
-            toolName: 'Nested search',
-            response: 'nested result'
-          })
-        ]
       })
-    ]);
-  });
-
-  it('keeps tool calls visible while hiding child assistant output', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector({
-      getToolInfo: (name) => ({
-        name,
-        avatar: ''
-      })
-    });
-    const call = createToolCall({
-      id: 'call_workflow',
-      name: 'workflow_tool'
-    });
-
-    collector.emitEvent({ type: 'tool_call', call });
-    collector.emitEvent({
-      type: 'tool_run_end',
-      call,
-      rawResponse: 'workflow result',
-      response: 'workflow result',
-      seconds: 0.1,
-      assistantMessages: [
-        {
-          role: 'assistant',
-          content: 'workflow answer'
-        }
-      ]
-    });
-
-    expect(collector.assistantResponses).toEqual([
-      expect.objectContaining({
-        id: 'call_workflow',
-        tools: [expect.objectContaining({ response: 'workflow result' })]
-      }),
-      {
-        hideInUI: true,
-        text: {
-          content: 'workflow answer'
-        }
-      }
     ]);
   });
 });

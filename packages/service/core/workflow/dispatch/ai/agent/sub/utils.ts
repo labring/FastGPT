@@ -181,7 +181,6 @@ export const getExecuteTool = ({
 
     const {
       response,
-      assistantMessages,
       usages = [],
       interactive,
       stop = false,
@@ -189,7 +188,6 @@ export const getExecuteTool = ({
       errorMessage
     } = await (async (): Promise<{
       response: string;
-      assistantMessages?: DispatchSubAppResponse['assistantMessages'];
       usages?: ChatNodeUsageType[];
       interactive?: DispatchSubAppResponse['interactive'];
       stop?: boolean;
@@ -249,39 +247,37 @@ export const getExecuteTool = ({
         } else if (tool.type === 'workflow') {
           const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
 
-          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
-            await dispatchApp({
-              app: {
-                name: tool.name,
-                avatar: tool.avatar,
-                id: tool.id,
-                version: tool.version
-              },
-              userChatInput: userChatInput,
-              customAppVariables: params,
-              checkIsStopping,
-              lang,
-              requestOrigin,
-              mode,
-              timezone,
-              externalProvider,
-              chatId,
-              responseChatItemId,
-              uid,
-              runningAppInfo,
-              runningUserInfo,
-              retainDatasetCite,
-              maxRunTimes,
-              workflowDispatchDeep,
-              nodeResponseSink,
-              nodeResponseParentId: callId,
-              variableState,
-              lastInteractive
-            });
+          const { response, usages, interactive, nodeResponse, errorMessage } = await dispatchApp({
+            app: {
+              name: tool.name,
+              avatar: tool.avatar,
+              id: tool.id,
+              version: tool.version
+            },
+            userChatInput: userChatInput,
+            customAppVariables: params,
+            checkIsStopping,
+            lang,
+            requestOrigin,
+            mode,
+            timezone,
+            externalProvider,
+            chatId,
+            responseChatItemId,
+            uid,
+            runningAppInfo,
+            runningUserInfo,
+            retainDatasetCite,
+            maxRunTimes,
+            workflowDispatchDeep,
+            nodeResponseSink,
+            nodeResponseParentId: callId,
+            variableState,
+            lastInteractive
+          });
 
           return {
             response,
-            assistantMessages,
             usages,
             interactive,
             nodeResponse,
@@ -307,7 +303,7 @@ export const getExecuteTool = ({
             return trueId;
           })();
           const customAppVariables = filterAgentWorkflowRuntimeParams(requestParams);
-          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
+          const { response, usages, interactive, nodeResponse, errorMessage } =
             await dispatchPlugin({
               app: {
                 name: tool.name,
@@ -339,7 +335,6 @@ export const getExecuteTool = ({
 
           return {
             response,
-            assistantMessages,
             usages,
             interactive,
             nodeResponse,
@@ -385,7 +380,6 @@ export const getExecuteTool = ({
 
     return {
       response,
-      assistantMessages,
       usages,
       interactive,
       stop,
