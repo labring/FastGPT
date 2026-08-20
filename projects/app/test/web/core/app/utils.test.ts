@@ -302,6 +302,7 @@ describe('form2AppWorkflow', () => {
     const workflow = form2AppWorkflow(form, mockT);
     const toolNode = workflow.nodes.find((node) => node.pluginId === 'systemTool-weather');
 
+    expect(toolNode).not.toHaveProperty('id');
     expect(toolNode?.source).toBe('debug:tmbId:tmb-1');
 
     const restored = appWorkflow2Form({

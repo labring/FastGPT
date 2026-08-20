@@ -198,6 +198,8 @@ export const migrateLegacyWorkflowStructureData = ({
       };
     }
     const node = { ...value };
+    // React Flow 的 id 只属于画布运行态；历史持久化数据携带它时必须在 canonical 边界删除。
+    delete node.id;
     // 清理节点可选字段中的 null；null 在当前 schema 中等价于字段缺省。
     optionalNodeFields.forEach((key) => {
       if (node[key] === null) delete node[key];

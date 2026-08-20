@@ -592,7 +592,6 @@ export function form2AppWorkflow(
         nodes: [
           {
             nodeId,
-            id: tool.id,
             pluginId: tool.pluginId,
             source: tool.source,
             name: tool.name,

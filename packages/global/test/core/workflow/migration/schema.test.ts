@@ -161,6 +161,24 @@ describe('workflow migration boundary', () => {
     });
   });
 
+  it('removes React Flow node ids from legacy persisted nodes', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          id: 'react-flow-node-id',
+          nodeId: 'node-1',
+          flowNodeType: 'workflowStart',
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    expect(result.nodes[0]).not.toHaveProperty('id');
+    expect(result.nodes[0].nodeId).toBe('node-1');
+  });
+
   it('normalizes registered tool, plugin, and variable storage defects', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [
