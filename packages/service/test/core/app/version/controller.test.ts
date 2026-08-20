@@ -58,7 +58,15 @@ describe('getAppLatestVersion', () => {
           nodeId: 'start',
           name: 'Start',
           flowNodeType: 'workflowStart',
-          inputs: [],
+          inputs: [
+            {
+              key: 'system_input_config',
+              label: 'Config',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: null,
+              inputList: [{ key: 'secret', label: 'Secret', inputType: 'secret', value: null }]
+            }
+          ],
           outputs: []
         }
       ],
@@ -82,6 +90,8 @@ describe('getAppLatestVersion', () => {
     expect(result.nodes.map((node) => node.nodeId)).toEqual(['start']);
     expect(result.edges).toEqual([]);
     expect(result.chatConfig.scheduledTriggerConfig).toEqual(scheduledTriggerConfig);
+    expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(result.nodes[0].inputs[0].inputList?.[0]).not.toHaveProperty('value');
   });
 
   it('normalizes the app fallback when no published version exists', async () => {

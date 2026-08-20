@@ -436,6 +436,39 @@ describe('workflow migration boundary', () => {
     expect(input.valueDesc).toBe('');
   });
 
+  it('drops historical null input fields before strict parsing', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'tool-set',
+          flowNodeType: 'toolSet',
+          name: 'Tool Set',
+          inputs: [
+            {
+              key: 'system_input_config',
+              label: 'Config',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: null,
+              inputList: [
+                {
+                  key: 'secret',
+                  label: 'Secret',
+                  inputType: 'secret',
+                  value: null
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ]
+    } as any);
+
+    const input = result.nodes[0].inputs[0];
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(input.inputList?.[0]).not.toHaveProperty('value');
+  });
+
   it('normalizes legacy Agent snapshots to key and mode', async () => {
     const result = await migrateWorkflowToCurrent(
       {
