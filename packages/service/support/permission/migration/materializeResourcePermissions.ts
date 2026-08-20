@@ -4,7 +4,7 @@ import { MongoApp } from '../../../core/app/schema';
 import { MongoDataset } from '../../../core/dataset/schema';
 import { MongoAgentSkills } from '../../../core/ai/skill/model/schema';
 import { MongoTeam } from '../../user/team/teamSchema';
-import type { Model } from '../../../common/mongo';
+import type { ClientSession, Model } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { resourcePermissionRepo } from '../repository/resourcePermissionRepo';
 import {
@@ -185,8 +185,11 @@ const materializeResourceType = async ({
 }) => {
   const projection = '_id teamId parentId tmbId inheritPermission';
 
-  /** 只加载当前目标资源和计算其有效 ACL 所需的祖先链。 */
-  const loadResourceBatch = async (targetResources: MigrationResource[]) => {
+  /** 在同一事务快照中加载目标资源和计算其有效 ACL 所需的祖先链。 */
+  const loadResourceBatch = async (targetResourceIds: string[], session?: ClientSession) => {
+    const targetQuery = config.model.find({ teamId, _id: { $in: targetResourceIds } }, projection);
+    if (session) targetQuery.session(session);
+    const targetResources = await targetQuery.lean<MigrationResource[]>();
     const resourcesById = new Map(
       targetResources.map((resource) => [String(resource._id), resource])
     );
@@ -208,9 +211,9 @@ const materializeResourceType = async ({
       if (parentIds.length === 0) break;
       parentIds.forEach((parentId) => queriedParentIds.add(parentId));
 
-      const ancestors = await config.model
-        .find({ teamId, _id: { $in: parentIds } }, projection)
-        .lean<MigrationResource[]>();
+      const ancestorQuery = config.model.find({ teamId, _id: { $in: parentIds } }, projection);
+      if (session) ancestorQuery.session(session);
+      const ancestors = await ancestorQuery.lean<MigrationResource[]>();
       for (const ancestor of ancestors) {
         resourcesById.set(String(ancestor._id), ancestor);
         const parentId = ancestor.parentId == null ? undefined : String(ancestor.parentId);
@@ -220,33 +223,33 @@ const materializeResourceType = async ({
       }
     }
 
-    return Array.from(resourcesById.values());
+    return { resources: Array.from(resourcesById.values()), targetResources };
   };
 
   const processBatch = async (targetResources: MigrationResource[]) => {
     if (targetResources.length === 0) return;
-    const resources = await loadResourceBatch(targetResources);
-    const currentPermissions = await resourcePermissionRepo.findByResourceIds({
-      teamId,
-      resourceType: config.resourceType,
-      resourceIds: resources.map((resource) => String(resource._id))
-    });
-    const { changes, skippedResourceCount, errors } = resolveMaterializedResourcePermissions({
-      resources,
-      currentPermissions,
-      resourceType: config.resourceType,
-      targetResourceIds: targetResources.map((resource) => String(resource._id))
-    });
+    const targetResourceIds = targetResources.map((resource) => String(resource._id));
+    const executeBatch = async (session?: ClientSession) => {
+      const { resources, targetResources: freshTargetResources } = await loadResourceBatch(
+        targetResourceIds,
+        session
+      );
+      const currentPermissions = await resourcePermissionRepo.findByResourceIds({
+        teamId,
+        resourceType: config.resourceType,
+        resourceIds: resources.map((resource) => String(resource._id)),
+        session
+      });
+      const { changes, skippedResourceCount, errors } = resolveMaterializedResourcePermissions({
+        resources,
+        currentPermissions,
+        resourceType: config.resourceType,
+        targetResourceIds: freshTargetResources.map((resource) => String(resource._id))
+      });
 
-    result.resourceCount += targetResources.length;
-    result.skippedResourceCount += skippedResourceCount;
-    result.updatedResourceCount += changes.length;
-    for (const error of errors) {
-      if (!result.errors.includes(error)) result.errors.push(error);
-    }
-    if (options.dryRun || changes.length === 0) return;
+      if (!options.dryRun && changes.length === 0) return { changes, skippedResourceCount, errors };
+      if (options.dryRun) return { changes, skippedResourceCount, errors };
 
-    await mongoSessionRun(async (session) => {
       for (const item of changes) {
         await resourcePermissionRepo.replaceResource({
           teamId,
@@ -256,7 +259,19 @@ const materializeResourceType = async ({
           session
         });
       }
-    });
+      return { changes, skippedResourceCount, errors };
+    };
+
+    const batchResult = options.dryRun
+      ? await executeBatch()
+      : await mongoSessionRun((session) => executeBatch(session));
+
+    result.resourceCount += targetResources.length;
+    result.skippedResourceCount += batchResult.skippedResourceCount;
+    result.updatedResourceCount += batchResult.changes.length;
+    for (const error of batchResult.errors) {
+      if (!result.errors.includes(error)) result.errors.push(error);
+    }
   };
 
   const cursor = config.model
