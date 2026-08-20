@@ -1,5 +1,5 @@
-import type { EntityId } from '../domain';
-import type { TransactionContext } from '../transaction';
+import type { EntityId } from './types';
+import type { TransactionContext } from './transaction';
 
 /** 期望状态：并发更新（CAS）时用于匹配的当前值子集，字段为领域字段。 */
 export type ExpectedState<T> = Partial<T>;

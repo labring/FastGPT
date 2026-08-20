@@ -1,7 +1,7 @@
 import { Mongoose } from 'mongoose';
 import { describe, expect, it } from 'vitest';
 import { MongoAdapter } from '../../mongodb/adapter';
-import { MongoUserRepository } from '../../mongodb/repositories/user';
+import { MongoUserRepository } from '../../mongodb/business/support/user/repository';
 import { MongoTransactionRunner } from '../../mongodb/transaction';
 import { MongoErrorAdapter } from '../../mongodb/errors';
 

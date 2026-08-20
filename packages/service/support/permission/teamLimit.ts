@@ -5,8 +5,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 import { AppTypeEnum, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/core/app/constants';
-import { MongoTeamMember } from '../user/team/teamMemberSchema';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { teamRepository } from '../../common/dal';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 import { serviceEnv } from '../../env';
 
@@ -30,10 +29,7 @@ export const checkTeamMemberLimit = async (teamId: string, newCount: number) => 
     getTeamStandPlan({
       teamId
     }),
-    MongoTeamMember.countDocuments({
-      teamId,
-      status: { $ne: TeamMemberStatusEnum.leave }
-    })
+    teamRepository.countMembersByTeamId(teamId, { includeLeft: false })
   ]);
 
   if (standard?.maxTeamMember && newCount + memberCount > standard.maxTeamMember) {

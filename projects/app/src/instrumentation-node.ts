@@ -14,8 +14,8 @@ export async function registerNodeInstrumentation() {
 
     const [
       { connectMongo },
-      { connection },
       { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
+      { syncDalModelIndexes },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
@@ -40,8 +40,8 @@ export async function registerNodeInstrumentation() {
       { validateAgentSandboxProxyEnv }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
-      import('@fastgpt/service/common/dal/mongo/connection'),
       import('@fastgpt/service/common/mongo/index'),
+      import('@fastgpt/service/common/dal/mongo/lifecycle'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
       import('@fastgpt/service/common/vectorDB/controller'),
@@ -120,12 +120,17 @@ export async function registerNodeInstrumentation() {
       runInitializationStep({
         step: 'connect-main-mongo',
         stage: InitialErrorEnum.MONGO_ERROR,
-        action: () =>
-          connectMongo({
+        action: async () => {
+          await connectMongo({
             db: connectionMongo,
             url: MONGO_URL,
             connectedCb: () => startMongoWatch()
-          }),
+          });
+          // DAL 与旧 Model 共用主 Mongo client，但仍需同步 DAL Schema 的索引声明。
+          void syncDalModelIndexes(connectionMongo).catch((error) => {
+            logger.warn('DAL MongoDB index sync failed during connect', { error });
+          });
+        },
         logger,
         getErrText,
         meta: {
@@ -144,16 +149,6 @@ export async function registerNodeInstrumentation() {
         getErrText,
         meta: {
           mongoLogUrl: MONGO_LOG_URL
-        }
-      }),
-      runInitializationStep({
-        step: 'connect-dal-mongo',
-        stage: InitialErrorEnum.MONGO_ERROR,
-        action: () => connection.connect(MONGO_URL),
-        logger,
-        getErrText,
-        meta: {
-          mongoUrl: MONGO_URL
         }
       }),
       runInitializationStep({

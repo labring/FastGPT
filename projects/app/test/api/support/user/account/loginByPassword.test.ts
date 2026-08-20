@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as loginApi from '@/pages/api/support/user/account/loginByPassword';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -25,6 +26,9 @@ const saveLoginCode = (username: string, code = '123456') =>
     },
     { upsert: true }
   );
+
+const testPassword = hashStr('testpassword');
+const rootPassword = hashStr('rootpassword');
 
 describe('loginByPassword API', () => {
   let testUser: any;
@@ -68,7 +72,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
-        password: 'testpassword',
+        password: testPassword,
         code: '123456',
         language: 'zh-CN'
       }
@@ -103,7 +107,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: '',
-        password: 'testpassword',
+        password: testPassword,
         code: '123456',
         language: 'zh-CN'
       }
@@ -131,7 +135,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
-        password: 'testpassword',
+        password: testPassword,
         code: 'wrongcode',
         language: 'zh-CN'
       }
@@ -147,7 +151,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'nonexistentuser',
-        password: 'testpassword',
+        password: testPassword,
         code: '123456',
         language: 'zh-CN'
       }
@@ -165,7 +169,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
-        password: 'testpassword',
+        password: testPassword,
         code: '123456',
         language: 'zh-CN'
       }
@@ -193,7 +197,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
-        password: 'testpassword',
+        password: testPassword,
         code: '123456',
         language: 'en'
       }
@@ -210,7 +214,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
-        password: 'testpassword',
+        password: testPassword,
         code: '123456',
         fastgpt_sem: {
           visitor_id: 'visitor-1'
@@ -233,7 +237,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
-        password: 'testpassword',
+        password: testPassword,
         code: '123456',
         fastgpt_sem: {
           visitor_id: 'incoming-visitor'
@@ -279,7 +283,7 @@ describe('loginByPassword API', () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'root',
-        password: 'rootpassword',
+        password: rootPassword,
         code: '123456',
         language: 'zh-CN'
       }

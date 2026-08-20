@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import type { EntityId } from '../domain';
+import type { EntityId } from '../db/types';
 import { MongoInvalidArgumentError } from './errors';
 
 export function toEntityId(value: unknown) {

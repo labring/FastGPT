@@ -2,8 +2,6 @@ import { vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import type { Mongoose } from '@fastgpt/service/common/mongo';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { connection } from '@fastgpt/service/common/dal/mongo/connection';
-import { serviceEnv } from '@fastgpt/service/env';
 
 const fileDbPrefix = `fastgpt_test_${process.env.VITEST_WORKER_ID ?? '0'}_${randomUUID().replaceAll(
   '-',
@@ -14,12 +12,6 @@ const connectPromises = new WeakMap<Mongoose, Promise<Mongoose>>();
 let dbSeq = 0;
 
 const getDbName = (db: Mongoose) => {
-  // 主业务库：DAL 连接实例与 connectionMongo 共享同一测试库，
-  // 保证迁移期旧 Model 写入的数据可以被 DAL Repository 读到（生产环境两者指向同一数据库）。
-  if (db === connection.client) {
-    return getDbName(connectionMongo);
-  }
-
   const existing = dbNames.get(db);
   if (existing) return existing;
 
@@ -73,17 +65,6 @@ vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any
       return connectTestMongo(props);
     }
   };
-});
-
-/**
- * Mock DAL 独立连接：复用同一套按测试文件/实例隔离的数据库分配，
- * 并让 DAL 连接实例与 connectionMongo 共享主业务库。
- */
-vi.mock(import('@fastgpt/service/common/dal/mongo/connection'), async (importOriginal: any) => {
-  const mod = await importOriginal();
-  mod.connection.connect = async (url: string = serviceEnv.MONGODB_URI) =>
-    connectTestMongo({ db: mod.connection.client, url });
-  return mod;
 });
 
 /**

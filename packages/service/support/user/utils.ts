@@ -1,14 +1,12 @@
 import { type SourceMemberType } from '@fastgpt/global/support/user/type';
-import { MongoTeam } from './team/teamSchema';
-import { MongoTeamMember } from './team/teamMemberSchema';
-import { type ClientSession } from '../../common/mongo';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { teamRepository } from '../../common/dal';
 
 /* export dataset limit */
 export const updateExportDatasetLimit = async (teamId: string) => {
   try {
-    await MongoTeam.findByIdAndUpdate(teamId, {
-      'limit.lastExportDatasetTime': new Date()
+    await teamRepository.updateTeamLimit(teamId, {
+      lastExportDatasetTime: new Date()
     });
   } catch {}
 };
@@ -21,19 +19,10 @@ export const checkExportDatasetLimit = async ({
 }) => {
   const limitMinutesAgo = new Date(Date.now() - limitMinutes * 60 * 1000);
 
-  // auth export times
-  const authTimes = await MongoTeam.findOne(
-    {
-      _id: teamId,
-      $or: [
-        { 'limit.lastExportDatasetTime': { $exists: false } },
-        { 'limit.lastExportDatasetTime': { $lte: limitMinutesAgo } }
-      ]
-    },
-    '_id limit'
-  );
+  const team = await teamRepository.findTeamById(teamId);
 
-  if (!authTimes) {
+  const lastExportDatasetTime = team?.limit?.lastExportDatasetTime;
+  if (!team || (lastExportDatasetTime && lastExportDatasetTime > limitMinutesAgo)) {
     return Promise.reject(`每个团队，每 ${limitMinutes} 分钟仅可导出一次。`);
   }
 };
@@ -41,8 +30,8 @@ export const checkExportDatasetLimit = async ({
 /* web sync limit */
 export const updateWebSyncLimit = async (teamId: string) => {
   try {
-    await MongoTeam.findByIdAndUpdate(teamId, {
-      'limit.lastWebsiteSyncTime': new Date()
+    await teamRepository.updateTeamLimit(teamId, {
+      lastWebsiteSyncTime: new Date()
     });
   } catch {}
 };
@@ -55,10 +44,8 @@ export const updateWebSyncLimit = async (teamId: string) => {
  */
 export const clearWebSyncLimit = async (teamId: string) => {
   try {
-    await MongoTeam.findByIdAndUpdate(teamId, {
-      $unset: {
-        'limit.lastWebsiteSyncTime': 1
-      }
+    await teamRepository.updateTeamLimit(teamId, {
+      lastWebsiteSyncTime: null
     });
   } catch {}
 };
@@ -72,19 +59,10 @@ export const checkWebSyncLimit = async ({
 }) => {
   const limitMinutesAgo = new Date(Date.now() - limitMinutes * 60 * 1000);
 
-  // auth export times
-  const authTimes = await MongoTeam.findOne(
-    {
-      _id: teamId,
-      $or: [
-        { 'limit.lastWebsiteSyncTime': { $exists: false } },
-        { 'limit.lastWebsiteSyncTime': { $lte: limitMinutesAgo } }
-      ]
-    },
-    '_id limit'
-  );
+  const team = await teamRepository.findTeamById(teamId);
 
-  if (!authTimes) {
+  const lastWebsiteSyncTime = team?.limit?.lastWebsiteSyncTime;
+  if (!team || (lastWebsiteSyncTime && lastWebsiteSyncTime > limitMinutesAgo)) {
     return Promise.reject(`每个团队，每 ${limitMinutes} 分钟仅使用一次同步功能。`);
   }
 };
@@ -96,43 +74,30 @@ export const checkWebSyncLimit = async ({
  * @returns The list with the sourceMember property added.
  */
 export async function addSourceMember<T extends { tmbId: string }>({
-  list,
-  session
+  list
 }: {
   list: T[];
-  session?: ClientSession;
 }): Promise<Array<T & { sourceMember: SourceMemberType }>> {
   if (!Array.isArray(list)) return [];
 
   const tmbIdList = list
     .map((item) => (item.tmbId ? String(item.tmbId) : undefined))
-    .filter(Boolean);
-  const tmbList = await MongoTeamMember.find(
-    {
-      _id: { $in: tmbIdList }
-    },
-    'tmbId name avatar status',
-    {
-      session
-    }
-  ).lean();
+    .filter((id): id is string => Boolean(id));
+  const tmbList = await teamRepository.findMembersByIds(tmbIdList);
 
-  return list
-    .map((item) => {
-      const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
-      if (!tmb) return;
+  const result: Array<T & { sourceMember: SourceMemberType }> = [];
+  for (const item of list) {
+    const tmb = tmbList.find((member) => member.id === String(item.tmbId));
+    if (!tmb) continue;
 
-      // @ts-ignore
-      const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
-
-      return {
-        ...formatItem,
-        sourceMember: {
-          name: tmb.name,
-          avatar: tmb.avatar,
-          status: tmb.status ?? TeamMemberStatusEnum.active
-        }
-      };
-    })
-    .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;
+    result.push({
+      ...item,
+      sourceMember: {
+        name: tmb.name,
+        avatar: tmb.avatar ?? '',
+        status: (tmb.status ?? TeamMemberStatusEnum.active) as TeamMemberStatusEnum
+      }
+    });
+  }
+  return result;
 }

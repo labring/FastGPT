@@ -17,9 +17,8 @@ import { removeS3TTL } from '../../common/s3/utils';
 import { serviceEnv } from '../../env';
 import { getGroupsByTmbId } from '../permission/memberGroup/controllers';
 import { getOrgsByTmbId } from '../permission/org/controllers';
-import { MongoOrgModel } from '../permission/org/orgSchema';
 import { getUserDetail } from '../user/controller';
-import { MongoTeam } from '../user/team/teamSchema';
+import { orgRepository, teamRepository } from '../../common/dal';
 import { InvokeFileUploadSchema, InvokeSessionSchema, type InvokeFileUploadType } from './type';
 import type { InvokeSessionType } from './type';
 import { addHours } from 'date-fns';
@@ -124,25 +123,13 @@ export class InvokeProcessor {
       getUserDetail({ tmbId }),
       getOrgsByTmbId({ teamId, tmbId }),
       getGroupsByTmbId({ tmbId, teamId }),
-      MongoTeam.findById(teamId, {
-        name: 1
-      }).lean()
+      teamRepository.findTeamById(teamId)
     ]);
 
     if (!team) throw new Error('Team not found');
 
     const orgInfos = orgs.length
-      ? await MongoOrgModel.find(
-          {
-            _id: {
-              $in: orgs.map((org) => org.orgId)
-            }
-          },
-          {
-            name: 1,
-            pathId: 1
-          }
-        ).lean()
+      ? await orgRepository.findOrgsByIds(orgs.map((org) => String(org.orgId)))
       : [];
 
     return {

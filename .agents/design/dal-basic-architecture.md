@@ -7,23 +7,81 @@
 ## 分层
 
 ```text
-domain/       数据库无关的实体、ID、输入输出 schema
-db/           Mongo 与 SQL-like adapter 共用的物理表名
-ports/        Repository 接口（业务可依赖的最小能力）
-mongodb/      Mongo Schema、ObjectId 转换、Repository 实现
-sql/          后续增加 SQL 表结构、字段映射和 Repository 实现
-transaction/  数据库无关的事务上下文和事务入口
+business/support/  按业务域组织数据库无关 DTO、实体和 Repository 合同
+db/                Mongo 与 SQL-like adapter 共用的物理表名、错误、并发和事务抽象
+mongodb/           Mongo 通用工具、索引、生命周期能力，以及 business 下的 Mongo 业务实现
+sql/               后续增加 SQL-like 的 business 实现，复用 business/support 中的合同
 ```
 
-领域对象统一使用 `id: string`。MongoDB 的 `_id: ObjectId` 只在 `mongodb` 层出现，外键也在映射边界转换为字符串。
+对外 DTO 统一使用 `id: string`。MongoDB 的 `_id: ObjectId` 只在业务目录的 Mongo Entity/Repository 边界和 `mongodb/` 通用基础设施中出现，外键也在映射边界转换为字符串。
+
+业务目录约定：
+
+```text
+business/support/user/
+  entity.ts                      # 数据库无关 User 实体和实体校验 schema
+  dto.ts                         # CreateUser、UpdateUser、UserCredentials
+  repository.ts                  # UserRepository 合同
+  team/
+    entity.ts                    # 数据库无关 TeamMemberDetail 实体
+    dto.ts                       # 团队/成员创建 DTO
+    repository.ts                # TeamRepository 合同
+    group/
+      entity.ts                  # 数据库无关 MemberGroup、GroupMember 实体
+      dto.ts                     # 群组 DTO
+      repository.ts              # GroupRepository 合同
+    org/
+      entity.ts                  # 数据库无关 Org、OrgMember 实体
+      dto.ts                     # 组织 DTO
+      repository.ts              # OrgRepository 合同
+  verification/
+    entity.ts                    # 数据库无关 TmpDataMaterial 实体
+    dto.ts                       # ActiveTmpDataFilter
+    repository.ts                # TmpDataRepository 合同
+
+mongodb/business/support/user/
+  entity.ts                      # Mongo 文档到共享实体的映射（toUser）
+  schema.ts                      # User Mongoose Schema 和 Model
+  repository.ts                  # MongoUserRepository
+  team/
+    entity.ts                    # Mongo 文档到 TeamMemberDetail 的映射
+    schema.ts                    # Team Mongoose Schema 和 Model
+    repository.ts                # MongoTeamRepository
+    group/
+      entity.ts                  # MemberGroup、GroupMember 的 Mongo 映射
+      schema.ts                  # MemberGroup Mongoose Schema 和 Model
+      repository.ts              # MongoGroupRepository
+    member/schema.ts             # TeamMember Mongoose Schema 和 Model
+    org/
+      entity.ts                  # Org、OrgMember 的 Mongo 映射
+      schema.ts                  # Org Mongoose Schema 和 Model
+      repository.ts              # MongoOrgRepository
+  verification/
+    entity.ts                    # TmpData Mongo 文档映射
+    schema.ts                    # TmpData Mongoose Schema 和 Model
+    repository.ts                # MongoTmpDataRepository
+```
+
+`business/support/` 只承载数据库无关的实体、DTO 和 Repository 合同，不引入 Mongoose。
+`mongodb/` 只承载 Mongo 通用基础设施；业务专属的 Mongo Schema、字段映射和 Repository
+放在 `mongodb/business/support/<business>` 下。未来 SQL-like 数据库可以在自己的 adapter
+目录中实现同一组 `business/support` 合同，不需要复制对外实体类型。
 
 ## User 当前实现
 
-- `domain/user.ts`：`User`、`CreateUser`、`UpdateUser`、`UserCredentials`
-- `ports/user.repository.ts`：ID/用户名/凭据查询、创建和更新合约
-- `mongodb/models/user.ts`：与生产 User 字段、默认值、密码处理和索引一致的 Mongo Schema
-- `mongodb/mappers/user.ts`：显式转换 Mongo 文档，不泄漏 `_id`、`__v` 和 password
-- `mongodb/repositories/user.ts`：通过注入 Model 实现 Repository，支持事务 context
+- `business/support/user/entity.ts`：数据库无关 User 实体
+- `business/support/user/dto.ts`：`CreateUser`、`UpdateUser`、`UserCredentials`
+- `business/support/user/repository.ts`：UserRepository 合同
+- `business/support/user/team/`：Team、TeamMember 实体、DTO 和 Repository 合同
+- `business/support/user/team/group/`：MemberGroup、GroupMember 实体、DTO 和 Repository 合同
+- `business/support/user/team/org/`：Org、OrgMember 实体、DTO 和 Repository 合同
+- `business/support/user/verification/`：TmpDataMaterial 实体、过滤 DTO 和 Repository 合同
+- `mongodb/business/support/user/entity.ts`：`toUser` 和 Mongo 默认值归一化
+- `mongodb/business/support/user/schema.ts`：与生产 User 字段、默认值、密码处理和索引一致的 Mongo Schema
+- `mongodb/business/support/user/team/`：Team、TeamMember 的 Mongo Schema、映射和 Repository
+- `mongodb/business/support/user/team/group/`：MemberGroup、GroupMember 的 Mongo Schema、映射和 Repository
+- `mongodb/business/support/user/team/org/`：Org、OrgMember 的 Mongo Schema、映射和 Repository
+- `mongodb/business/support/user/verification/`：TmpData Mongo Schema、映射和 Repository
 - `db/adapter.ts`：数据库无关的 Adapter 合约
 - `mongodb/adapter.ts`：Mongo Adapter，从同一个 Mongoose client 组装 Repository 和事务执行器
 
@@ -32,7 +90,7 @@ transaction/  数据库无关的事务上下文和事务入口
 1. 上层不得依赖 Mongo Model、Mongoose Query 或 Mongo 查询对象。
 2. `EntityId` 暂不限制为 24 位，以保留 UUID、SQL sequence 等后续实现空间。
 3. 数据库字段命名、ID 类型、查询参数转换必须集中在 adapter/mapper 中。
-4. 新增数据库实现时复用 `ports` 和 `domain`，不复制业务实体定义。
+4. 新增数据库实现时复用 `business/support/<business>` 中的实体、DTO 和 Repository 合同，不复制业务实体定义。
 5. 密码只出现在创建、更新和凭据校验输入中，不属于默认返回的 `User` 实体。
 6. Mongo adapter 收到非法 ObjectId 或非本 adapter 创建的事务 context 时必须失败，不能静默降级。
 
@@ -61,9 +119,9 @@ transaction/  数据库无关的事务上下文和事务入口
 
 ```text
 packages/service/common/dal/
-  index.ts        # 数据库无关出口：createRepositories() 按 DAL_DB_TYPE 组装 userRepository，导出 transactionRunner 及接口类型（DatabaseAdapter/UserRepository/TransactionRunner）；后续实体增加 team.ts、app.ts
+  index.ts        # 数据库无关出口：按 DAL_DB_TYPE 组装各业务 Repository，导出 transactionRunner 及接口类型
   mongo/
-    index.ts      # Mongo composition root：createMongoDal(client?)、mongoDal、transactionRunner，唯一接触 MongoAdapter 具体实现的模块
+    index.ts      # Mongo composition root：createMongoAdapter(client?)，唯一接触 MongoAdapter 具体实现的模块
     connection.ts # MongooseConnection 类 + connection 单例（client/connect/disconnect）
     config.ts     # 连接参数配置（池大小、超时等）+ 连接事件监听注册 registerMongooseListeners
 ```

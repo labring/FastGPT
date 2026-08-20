@@ -7,13 +7,23 @@ afterEach(() => {
   setDalLogger(undefined);
 });
 
+type SchemaHookApi = {
+  execPre: (
+    name: string,
+    context: Record<string, unknown>,
+    callback: (error: unknown) => void
+  ) => Promise<void>;
+  execPost: (...args: unknown[]) => Promise<void>;
+};
+
 const runSaveHooks = async (schema: Schema, startTime: number) => {
   const context: Record<string, unknown> = { name: 'item' };
-  await schema.s.hooks.execPre('save', context, (error: unknown) => {
+  const hooks = (schema as unknown as { s: { hooks: SchemaHookApi } }).s.hooks;
+  await hooks.execPre('save', context, (error: unknown) => {
     if (error) throw error;
   });
   context._startTime = startTime;
-  await schema.s.hooks.execPost('save', context, [context], (error: unknown) => {
+  await hooks.execPost('save', context, [context], (error: unknown) => {
     if (error) throw error;
   });
 };

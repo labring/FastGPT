@@ -19,7 +19,7 @@
 - 新增 `packages/dal/mongodb/logger.ts`：`setDalLogger` / `getDalLogger`。
   service 侧 composition root（`common/dal/mongo/index.ts`）在模块加载时注入业务
   logger（pino），避免 DAL 包反向依赖 service 日志实现；未注入时退回 console。
-- 新增 `packages/dal/mongodb/models/helper.ts` 的 `getDalModel`：DAL Model 统一注册
+- 新增 `packages/dal/mongodb/model.ts` 的 `getDalModel`：DAL Model 统一注册
   入口，注册前挂慢查询中间件；User Model 重构为同一入口。
 
 ## 索引管理

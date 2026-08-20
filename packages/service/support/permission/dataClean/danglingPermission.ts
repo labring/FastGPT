@@ -9,11 +9,8 @@ import { Types } from '../../../common/mongo';
 import { MongoAgentSkills } from '../../../core/ai/skill/model/schema';
 import { MongoApp } from '../../../core/app/schema';
 import { MongoDataset } from '../../../core/dataset/schema';
-import { MongoMemberGroupModel } from '../memberGroup/memberGroupSchema';
-import { MongoOrgModel } from '../org/orgSchema';
 import { MongoResourcePermission } from '../schema';
-import { MongoTeamMember } from '../../user/team/teamMemberSchema';
-import { MongoTeam } from '../../user/team/teamSchema';
+import { groupRepository, orgRepository, teamRepository } from '../../../common/dal';
 
 type PermissionReferenceDoc = {
   _id: Types.ObjectId;
@@ -117,12 +114,10 @@ async function findDanglingPermissionsInBatch(
   const orgIds = compactUniqueIds(permissions.map((permission) => permission.orgId));
 
   const [teams, teamMembers, groups, orgs, resourceReferences] = await Promise.all([
-    MongoTeam.find({ _id: { $in: teamIds } }, '_id').lean(),
-    MongoTeamMember.find({ _id: { $in: tmbIds } }, '_id teamId').lean<TeamScopedReferenceDoc[]>(),
-    MongoMemberGroupModel.find({ _id: { $in: groupIds } }, '_id teamId').lean<
-      TeamScopedReferenceDoc[]
-    >(),
-    MongoOrgModel.find({ _id: { $in: orgIds } }, '_id teamId').lean<TeamScopedReferenceDoc[]>(),
+    teamRepository.findTeamReferencesByIds(teamIds.map(stringifyId)),
+    teamRepository.findMemberReferencesByIds(tmbIds.map(stringifyId)),
+    groupRepository.findMemberGroupReferencesByIds(groupIds.map(stringifyId)),
+    orgRepository.findOrgReferencesByIds(orgIds.map(stringifyId)),
     Promise.all(
       resourceReferenceConfigs.map(async (config) => {
         const ids = compactUniqueIds(
@@ -136,11 +131,15 @@ async function findDanglingPermissionsInBatch(
     )
   ]);
 
-  const existingTeamIds = new Set(teams.map((team) => stringifyId(team._id)));
+  const existingTeamIds = new Set(teams.map((team) => team.id));
   const existingSubjectReferenceSets = {
-    tmbId: toTeamScopedReferenceSet(teamMembers),
-    groupId: toTeamScopedReferenceSet(groups),
-    orgId: toTeamScopedReferenceSet(orgs)
+    tmbId: toTeamScopedReferenceSet(
+      teamMembers.map((member) => ({ _id: member.id, teamId: member.teamId }))
+    ),
+    groupId: toTeamScopedReferenceSet(
+      groups.map((group) => ({ _id: group.id, teamId: group.teamId }))
+    ),
+    orgId: toTeamScopedReferenceSet(orgs.map((org) => ({ _id: org.id, teamId: org.teamId })))
   };
   const subjectReasonMap = {
     tmbId: 'missingTeamMember',

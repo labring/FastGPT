@@ -13,7 +13,7 @@ import {
   ChatItemCollectionName,
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { teamRepository } from '@fastgpt/service/common/dal';
 import { ChatSourceTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
@@ -85,28 +85,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   );
 
   // Get members
-  const teamMemberWithContact = await MongoTeamMember.aggregate([
-    { $match: { teamId: new Types.ObjectId(teamId) } },
-    {
-      $lookup: {
-        from: 'users',
-        localField: 'userId',
-        foreignField: '_id',
-        as: 'user'
-      }
-    },
-    {
-      $project: {
-        memberId: '$_id',
-        teamId: 1,
-        userId: 1,
-        name: 1,
-        role: 1,
-        status: 1,
-        contact: { $ifNull: [{ $arrayElemAt: ['$user.contact', 0] }, '-'] }
-      }
-    }
-  ]);
+  const teamMemberWithContact = await teamRepository.findMemberRelationsByTeamId(teamId);
 
   const where = {
     appId: new Types.ObjectId(appId),
@@ -447,7 +426,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const titleStr = doc.customTitle || doc.title || '';
     const tmbName = doc.outLinkUid
       ? doc.outLinkUid
-      : teamMemberWithContact.find((member) => String(member.memberId) === String(doc.tmbId))?.name;
+      : teamMemberWithContact.find((member) => member.member.id === String(doc.tmbId))?.member.name;
     const region = getLocationFromIp(doc.originIp, locale);
 
     const valueMap: Record<string, () => any> = {

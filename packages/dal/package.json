@@ -4,22 +4,13 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
+    "./business": "./business/index.ts",
     "./db": "./db/index.ts",
-    "./domain": "./domain/index.ts",
-    "./ports": "./ports/index.ts",
     "./mongodb": "./mongodb/index.ts",
-    "./mongodb/adapter": "./mongodb/adapter.ts",
-    "./mongodb/models/user": "./mongodb/models/user.ts",
-    "./mongodb/models/team": "./mongodb/models/team.ts",
-    "./mongodb/models/teamMember": "./mongodb/models/teamMember.ts",
-    "./mongodb/models/memberGroup": "./mongodb/models/memberGroup.ts",
-    "./mongodb/models/org": "./mongodb/models/org.ts",
-    "./mongodb/models/tmpData": "./mongodb/models/tmpData.ts",
-    "./transaction": "./transaction/index.ts",
+    "./mongodb/business": "./mongodb/business/index.ts",
     "./redis": "./redis/index.ts",
     "./redis/adapter": "./redis/adapter.ts",
     "./redis/bullmq": "./redis/bullmq/index.ts",
-    "./redis/bullmq/services/*": "./redis/bullmq/services/*.ts",
     "./redis/caches": "./redis/caches/index.ts",
     "./redis/types": "./redis/types.ts",
     "./redis/runtime": "./redis/runtime/index.ts"
@@ -27,6 +18,7 @@
   "scripts": {
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
+    "test:integration:mongodb": "vitest run -c vitest.integration.config.ts",
     "test:integration:redis": "vitest run -c vitest.config.ts test/integrations/redis",
     "typecheck": "tsc --noEmit --pretty"
   },
@@ -43,6 +35,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "mongodb-memory-server": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

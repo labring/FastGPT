@@ -26,12 +26,9 @@ vi.mock('@fastgpt/service/common/logger', () => ({
 vi.mock('@fastgpt/service/common/dal', () => ({
   userRepository: {
     findSemById: (...args: unknown[]) => mocks.findUser(...args)
-  }
-}));
-
-vi.mock('@fastgpt/service/support/user/team/teamSchema', () => ({
-  MongoTeam: {
-    findById: (...args: unknown[]) => ({ lean: () => mocks.findTeam(...args) })
+  },
+  teamRepository: {
+    findTeamById: (...args: unknown[]) => mocks.findTeam(...args)
   }
 }));
 
@@ -81,7 +78,7 @@ describe('CRM team lifecycle interface', () => {
   it('resolves the team owner visitor and marks the team only after CRM succeeds', async () => {
     await reportCRMTeamRechargeOnce({ teamId: 'team-1' });
 
-    expect(mocks.findTeam).toHaveBeenCalledWith('team-1', 'ownerId');
+    expect(mocks.findTeam).toHaveBeenCalledWith('team-1');
     expect(mocks.findUser).toHaveBeenCalledWith('user-1');
     expect(mocks.report).toHaveBeenCalledWith({
       visitorId: 'stored-visitor',

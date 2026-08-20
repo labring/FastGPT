@@ -1,12 +1,16 @@
 import type { Mongoose } from 'mongoose';
 import { getLogger, LogCategories } from '../../logger';
 import { MongoIndexManager } from '../../mongo';
-import { getMemberGroupModel } from '@fastgpt/dal/mongodb/models/memberGroup';
-import { getOrgModel } from '@fastgpt/dal/mongodb/models/org';
-import { getTeamModel } from '@fastgpt/dal/mongodb/models/team';
-import { getTeamMemberModel } from '@fastgpt/dal/mongodb/models/teamMember';
-import { getTmpDataModel } from '@fastgpt/dal/mongodb/models/tmpData';
-import { getUserModel } from '@fastgpt/dal/mongodb/models/user';
+import {
+  getMemberGroupModel,
+  getGroupMemberModel,
+  getOrgModel,
+  getOrgMemberModel,
+  getTeamMemberModel,
+  getTeamModel,
+  getTmpDataModel,
+  getUserModel
+} from '@fastgpt/dal/mongodb/business';
 import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
@@ -31,7 +35,9 @@ export const syncDalModelIndexes = async (client: Mongoose) => {
     getTeamModel(client),
     getTeamMemberModel(client),
     getMemberGroupModel(client),
+    getGroupMemberModel(client),
     getOrgModel(client),
+    getOrgMemberModel(client),
     getTmpDataModel(client)
   ];
 

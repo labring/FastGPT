@@ -1,18 +1,22 @@
 import type { DatabaseAdapter } from '@fastgpt/dal/db';
 import { serviceEnv } from '../../env';
-import { createMongoDal } from './mongo';
+import { createMongoAdapter } from './mongo';
 
 export type { DatabaseAdapter } from '@fastgpt/dal/db';
-export type { UserRepository } from '@fastgpt/dal/ports';
-export type { TeamRepository } from '@fastgpt/dal/ports';
-export type { TmpDataRepository } from '@fastgpt/dal/ports';
-export type { TransactionContext, TransactionRunner } from '@fastgpt/dal/transaction';
+export type {
+  GroupRepository,
+  OrgRepository,
+  TeamRepository,
+  TmpDataRepository,
+  UserRepository
+} from '@fastgpt/dal/business';
+export type { TransactionContext, TransactionRunner } from '@fastgpt/dal/db';
 
-function selectDal(): DatabaseAdapter {
+function selectAdapter(): DatabaseAdapter {
   // env schema 默认 mongo；被 mock 的 serviceEnv 可能缺少该字段，这里保持同样的默认语义。
   switch (serviceEnv.DAL_DB_TYPE ?? 'mongo') {
     case 'mongo': {
-      return createMongoDal();
+      return createMongoAdapter();
     }
 
     default: {
@@ -22,6 +26,13 @@ function selectDal(): DatabaseAdapter {
 }
 
 // 只实例化一次 adapter，保证 userRepository 与 transactionRunner 来自同一个 adapter 实例。
-const dal = selectDal();
+const dal = selectAdapter();
 
-export const { transactionRunner, userRepository, teamRepository, tmpDataRepository } = dal;
+export const {
+  transactionRunner,
+  userRepository,
+  teamRepository,
+  groupRepository,
+  orgRepository,
+  tmpDataRepository
+} = dal;

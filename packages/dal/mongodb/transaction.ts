@@ -1,5 +1,5 @@
 import mongoose, { type ClientSession, type Mongoose } from 'mongoose';
-import type { TransactionContext, TransactionRunner } from '../transaction';
+import type { TransactionContext, TransactionRunner } from '../db/transaction';
 import { isDatabaseOperationError, type DatabaseErrorAdapter } from '../db';
 import { MongoErrorAdapter, MongoInvalidArgumentError } from './errors';
 

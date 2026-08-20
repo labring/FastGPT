@@ -1,7 +1,6 @@
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { userRepository } from '@fastgpt/service/common/dal';
+import { teamRepository, userRepository } from '@fastgpt/service/common/dal';
 
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -26,7 +25,7 @@ async function handler(
   }).body;
 
   const { tmbId, teamId, sessionId } = await authCert({ req, authToken: true });
-  const tmb = await MongoTeamMember.findById(tmbId);
+  const tmb = await teamRepository.findMemberById(tmbId);
   if (!tmb) {
     return Promise.reject('can not find it');
   }

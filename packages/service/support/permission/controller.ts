@@ -15,9 +15,7 @@ import type {
   CollaboratorItemDetailType,
   CollaboratorItemType
 } from '@fastgpt/global/support/permission/collaborator';
-import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
-import { MongoOrgModel } from './org/orgSchema';
-import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
+import { groupRepository, orgRepository, teamRepository } from '../../common/dal';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 
 /** get resource permission for a team member
@@ -154,16 +152,15 @@ export const getClbsInfo = async ({
     if (clb.groupId) groupIds.push(clb.groupId);
   }
 
-  const infos = (
-    await Promise.all([
-      MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar').lean(),
-      MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean(),
-      MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
-    ])
-  ).flat();
+  const [members, orgs, groups] = await Promise.all([
+    teamRepository.findMembersByIds(tmbIds, { teamId }),
+    orgRepository.findOrgsByIds(orgIds),
+    groupRepository.findMemberGroupsByIds(groupIds)
+  ]);
+  const infos = [...members, ...orgs, ...groups].filter((info) => info.teamId === teamId);
 
   return clbs.map((clb) => {
-    const info = infos.find((info) => info._id === getCollaboratorId(clb));
+    const info = infos.find((info) => info.id === getCollaboratorId(clb));
 
     return {
       ...clb,

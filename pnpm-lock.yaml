@@ -442,6 +442,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      mongodb-memory-server:
+        specifier: 'catalog:'
+        version: 10.4.3(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.9)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

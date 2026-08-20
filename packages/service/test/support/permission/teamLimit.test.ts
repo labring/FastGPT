@@ -12,12 +12,11 @@ import {
 import * as walletUtils from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { teamRepository } from '@fastgpt/service/common/dal';
 import * as vectorController from '@fastgpt/service/common/vectorDB/controller';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
@@ -140,7 +139,7 @@ describe('checkTeamMemberLimit', () => {
   });
 
   it('当团队成员数量未超限时正常通过', async () => {
-    vi.spyOn(MongoTeamMember, 'countDocuments').mockResolvedValue(5);
+    vi.spyOn(teamRepository, 'countMembersByTeamId').mockResolvedValue(5);
 
     const mockStandard = {
       standard: {
@@ -153,7 +152,7 @@ describe('checkTeamMemberLimit', () => {
   });
 
   it('当新增成员后超过限制时抛出错误', async () => {
-    vi.spyOn(MongoTeamMember, 'countDocuments').mockResolvedValue(8);
+    vi.spyOn(teamRepository, 'countMembersByTeamId').mockResolvedValue(8);
 
     const mockStandard = {
       standard: {
@@ -166,7 +165,7 @@ describe('checkTeamMemberLimit', () => {
   });
 
   it('当新增成员后刚好达到限制时正常通过', async () => {
-    vi.spyOn(MongoTeamMember, 'countDocuments').mockResolvedValue(8);
+    vi.spyOn(teamRepository, 'countMembersByTeamId').mockResolvedValue(8);
 
     const mockStandard = {
       standard: {
@@ -179,7 +178,7 @@ describe('checkTeamMemberLimit', () => {
   });
 
   it('当 maxTeamMember 未设置时不限制', async () => {
-    vi.spyOn(MongoTeamMember, 'countDocuments').mockResolvedValue(100);
+    vi.spyOn(teamRepository, 'countMembersByTeamId').mockResolvedValue(100);
 
     const mockStandard = {
       standard: {}
@@ -190,7 +189,7 @@ describe('checkTeamMemberLimit', () => {
   });
 
   it('查询时排除已离开的成员', async () => {
-    const countSpy = vi.spyOn(MongoTeamMember, 'countDocuments').mockResolvedValue(5);
+    const countSpy = vi.spyOn(teamRepository, 'countMembersByTeamId').mockResolvedValue(5);
 
     const mockStandard = {
       standard: {
@@ -201,10 +200,7 @@ describe('checkTeamMemberLimit', () => {
 
     await checkTeamMemberLimit(mockTeamId, 2);
 
-    expect(countSpy).toHaveBeenCalledWith({
-      teamId: mockTeamId,
-      status: { $ne: TeamMemberStatusEnum.leave }
-    });
+    expect(countSpy).toHaveBeenCalledWith(mockTeamId, { includeLeft: false });
   });
 });
 

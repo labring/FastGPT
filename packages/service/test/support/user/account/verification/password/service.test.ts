@@ -3,12 +3,12 @@ import type {
   PasswordVerificationDependencies,
   PasswordVerificationUser
 } from '@fastgpt/service/support/user/account/verification/password/type';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
   getDataId,
   VerificationMaterialError
 } from '@fastgpt/service/support/tmpData/verification';
+import { userRepository } from '@fastgpt/service/common/dal';
 import type { TransactionContext } from '@fastgpt/service/common/dal';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { describe, expect, it, vi } from 'vitest';
@@ -87,7 +87,7 @@ describe('PasswordVerificationService default adapters', () => {
     expect(authMaterial?.expireAt.getTime()).toBeGreaterThanOrEqual(beforeIssue + 30_000);
     expect(authMaterial?.expireAt.getTime()).toBeLessThanOrEqual(afterIssue + 30_000);
 
-    const storedUser = await MongoUser.create({ username, password });
+    const storedUser = await userRepository.create({ username, password });
     const result = await service.withVerifiedCredentials(
       { username, password, code, purpose: 'login' },
       async ({ user }) => user
@@ -98,7 +98,7 @@ describe('PasswordVerificationService default adapters', () => {
         dataId: getDataId({ scene: 'login', type: 'password', key: username })
       })
     ).resolves.toBeNull();
-    expect(result.id).toBe(String(storedUser._id));
+    expect(result.id).toBe(storedUser.id);
   });
 });
 

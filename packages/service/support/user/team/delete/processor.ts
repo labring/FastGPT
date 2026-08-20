@@ -2,14 +2,9 @@ import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import { type TeamDeleteJobData } from './index';
 import { MongoImage } from '../../../../common/file/image/schema';
 import { MongoOpenApi } from '../../../openapi/schema';
-import { MongoGroupMemberModel } from '../../../permission/memberGroup/groupMemberSchema';
-import { MongoMemberGroupModel } from '../../../permission/memberGroup/memberGroupSchema';
-import { MongoOrgMemberModel } from '../../../permission/org/orgMemberSchema';
-import { MongoOrgModel } from '../../../permission/org/orgSchema';
 import { MongoResourcePermission } from '../../../permission/schema';
 import { delUserAllSession } from '../../session';
-import { MongoTeamMember } from '../teamMemberSchema';
-import { MongoTeam } from '../teamSchema';
+import { groupRepository, orgRepository, teamRepository } from '../../../../common/dal';
 import { MongoMcpKey } from '../../../mcp/schema';
 import { MongoChatSetting } from '../../../../core/chat/setting/schema';
 import { MongoChatFavouriteApp } from '../../../../core/chat/favouriteApp/schema';
@@ -32,7 +27,7 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
 
   try {
     // 1. 检查团队是否存在
-    const team = await MongoTeam.findById(teamId);
+    const team = await teamRepository.findTeamById(teamId);
     if (!team) {
       logger.warn('Team not found for deletion', { teamId });
       return;
@@ -96,40 +91,21 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     });
 
     // 删除群组
-    const groups = await MongoMemberGroupModel.find({ teamId });
-    await MongoGroupMemberModel.deleteMany({
-      groupId: { $in: groups.map((item) => item._id) }
-    });
-    await MongoMemberGroupModel.deleteMany({
-      teamId
-    });
+    await groupRepository.deleteMemberGroupsByTeamId(teamId);
 
     // 删除组织
-    await MongoOrgModel.deleteMany({
-      teamId
-    });
-    await MongoOrgMemberModel.deleteMany({
-      teamId
-    });
+    await orgRepository.deleteOrgsByTeamId(teamId);
 
     // 7. 删除成员 session 和成员信息
-    const members = await MongoTeamMember.find({
-      teamId
-    });
+    const members = await teamRepository.findMembersByTeamId(teamId);
 
     // 删除所有成员的 session
     await Promise.all(members.map((member) => delUserAllSession(member.userId)));
 
-    await MongoTeamMember.deleteMany({
-      teamId
-    });
+    await teamRepository.deleteMembersByTeamId(teamId);
 
     // 8. 清理团队敏感信息
-    team.notificationAccount = '';
-    team.openaiAccount = undefined;
-    team.externalWorkflowVariables = undefined;
-    team.meta = undefined;
-    await team.save();
+    await teamRepository.clearTeamSensitiveData(teamId);
 
     logger.info('Team delete completed', {
       teamId,

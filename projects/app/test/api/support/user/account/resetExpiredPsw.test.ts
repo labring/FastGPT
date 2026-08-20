@@ -4,9 +4,13 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import type { ResetExpiredPswBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { Call } from '@test/utils/request';
+
+const oldPassword = hashStr('oldpassword');
+const newPassword = hashStr('newpassword');
 
 const originalPasswordExpiredMonth = process.env.PASSWORD_EXPIRED_MONTH;
 const loadResetExpiredPswApi = async () => {
@@ -57,7 +61,7 @@ describe('resetExpiredPsw API', () => {
     const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
       resetExpiredPswApi.default,
       {
-        body: { newPsw: 'newhashedpassword' },
+        body: { newPsw: newPassword },
         auth: {
           userId: String(testUser._id),
           teamId: String(testTeam._id),
@@ -79,10 +83,10 @@ describe('resetExpiredPsw API', () => {
     const newUpdateTime = new Date(updatedUser!.passwordUpdateTime!).getTime();
     expect(newUpdateTime).toBeGreaterThan(twoMonthsAgo.getTime());
     await expect(
-      MongoUser.findOne({ _id: testUser._id, password: 'newhashedpassword' })
+      MongoUser.collection.findOne({ _id: testUser._id, password: newPassword })
     ).resolves.not.toBeNull();
     await expect(
-      MongoUser.findOne({ _id: testUser._id, password: 'oldpassword' })
+      MongoUser.collection.findOne({ _id: testUser._id, password: oldPassword })
     ).resolves.toBeNull();
   });
 
@@ -97,7 +101,7 @@ describe('resetExpiredPsw API', () => {
     const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
       resetExpiredPswApi.default,
       {
-        body: { newPsw: 'newhashedpassword' },
+        body: { newPsw: newPassword },
         auth: {
           userId: String(testUser._id),
           teamId: String(testTeam._id),
@@ -124,7 +128,7 @@ describe('resetExpiredPsw API', () => {
     const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
       resetExpiredPswApi.default,
       {
-        body: { newPsw: 'newhashedpassword' },
+        body: { newPsw: newPassword },
         auth: {
           userId: String(testUser._id),
           teamId: String(testTeam._id),
@@ -166,7 +170,7 @@ describe('resetExpiredPsw API', () => {
     const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
       resetExpiredPswApi.default,
       {
-        body: { newPsw: 'newhashedpassword' },
+        body: { newPsw: newPassword },
         auth: {
           userId: nonExistentId,
           teamId: String(testTeam._id),
@@ -186,7 +190,7 @@ describe('resetExpiredPsw API', () => {
     const res = await Call<ResetExpiredPswBodyType, Record<string, never>, any>(
       resetExpiredPswApi.default,
       {
-        body: { newPsw: 'newhashedpassword' }
+        body: { newPsw: newPassword }
       }
     );
 

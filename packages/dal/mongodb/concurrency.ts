@@ -1,5 +1,5 @@
 import type { ClientSession, FilterQuery, Model, UpdateQuery } from 'mongoose';
-import type { EntityId } from '../domain';
+import type { EntityId } from '../db/types';
 import { toMongoObjectId } from './utils';
 
 export type CasUpdateByIdParams<T> = {

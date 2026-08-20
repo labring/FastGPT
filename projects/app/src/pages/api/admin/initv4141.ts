@@ -11,7 +11,7 @@ import { getLogger } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
+import { teamRepository } from '@fastgpt/service/common/dal';
 import { type NextApiRequest, type NextApiResponse } from 'next';
 const logger = getLogger(['initv4141']);
 
@@ -172,14 +172,14 @@ async function appSplitMigration(teamId: string) {
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
-  const allTeamIds = await MongoTeam.find({}, '_id').lean();
+  const allTeamIds = await teamRepository.findAllTeamIds();
   logger.info(`Starting app split migration, teamIds: ${allTeamIds.length}`);
   const failed = [];
   const skipedMigrated = [];
   const skipedNoFolder = [];
   const success = [];
 
-  for await (const { _id: teamId } of allTeamIds) {
+  for await (const teamId of allTeamIds) {
     try {
       const res = await appSplitMigration(teamId);
       if (res === 'migrated') {
