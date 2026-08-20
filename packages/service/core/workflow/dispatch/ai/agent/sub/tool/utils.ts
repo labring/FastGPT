@@ -630,7 +630,12 @@ export const getAgentRuntimeTools = async ({
           return [];
         }
         if (tool.toolConfig) {
-          toolNode.toolConfig = tool.toolConfig;
+          const runtimeMcpToolSet = toolNode.toolConfig?.mcpToolSet;
+          toolNode.toolConfig = {
+            ...tool.toolConfig,
+            // MCP URL 与密钥仅存在运行态，历史 preview 快照不能覆盖。
+            ...(runtimeMcpToolSet ? { mcpToolSet: runtimeMcpToolSet } : {})
+          };
         }
 
         const savedInputConfigMap = new Map(

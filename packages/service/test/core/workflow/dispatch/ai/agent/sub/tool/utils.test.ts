@@ -642,6 +642,28 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
   });
 
+  it('keeps runtime MCP connection data when an Agent toolset snapshot has no URL', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'mcp_app',
+          config: {},
+          toolConfig: {
+            mcpToolSet: {
+              toolList: [mcpTool]
+            }
+          }
+        }
+      ]
+    });
+
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: 'https://current.example.com'
+    });
+  });
+
   it('uses fixed-version MCP configuration for a selected tool', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
@@ -717,7 +739,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
   });
 
-  it('fills stripped MCP toolset child schema from runtime children', async () => {
+  it('uses the current MCP toolset when an Agent snapshot has a stripped schema', async () => {
     getMCPChildrenMock.mockResolvedValue([
       {
         avatar: 'mcp_app.png',
@@ -747,7 +769,6 @@ describe('getAgentRuntimeTools schema loading', () => {
       ]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
   });
