@@ -203,7 +203,10 @@ describe('materializeResourcePermissions', () => {
     expect(result.updatedResourceCount).toBe(1);
     const aclQueryCalls = findByResourceIdsSpy.mock.calls as Array<[{ session?: unknown }]>;
     expect(aclQueryCalls).toHaveLength(2);
-    expect(aclQueryCalls.every(([query]) => Boolean(query.session))).toBe(true);
+    expect(aclQueryCalls.map(([query]) => query.resourceIds)).toEqual([
+      [String(parent._id)],
+      [String(child._id), String(parent._id)]
+    ]);
 
     const childPermissions = await resourcePermissionRepo.findByResource({
       teamId: String(users.owner.teamId),
