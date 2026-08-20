@@ -5,6 +5,7 @@ import { buildRuntimeHash } from '@fastgpt/service/core/ai/sandbox/utils';
 const createSandbox = () => {
   let stateContent: string | undefined;
   const mirrorWrites: Array<Array<{ path: string; data: string }>> = [];
+  const files = new Map<string, string>();
 
   const sandbox = {
     execute: vi.fn(async (command: string) => {
@@ -15,11 +16,16 @@ const createSandbox = () => {
     }),
     createDirectories: vi.fn(async () => undefined),
     readFiles: vi.fn(async (paths: string[]) =>
-      paths.map((path) => ({
-        path,
-        content: Buffer.from(stateContent || ''),
-        error: stateContent ? null : new Error('not found')
-      }))
+      paths.map((path) => {
+        const content = path.endsWith('/.fastgpt/runtime/state.json')
+          ? stateContent
+          : files.get(path);
+        return {
+          path,
+          content: Buffer.from(content ?? ''),
+          error: content === undefined ? new Error(`File not found: ${path}`) : null
+        };
+      })
     ),
     writeFiles: vi.fn(
       async (
@@ -32,6 +38,7 @@ const createSandbox = () => {
           stateContent = stateEntry.data;
         } else {
           mirrorWrites.push(entries);
+          entries.forEach((entry) => files.set(entry.path, entry.data));
         }
         return entries.map((entry) => ({
           path: entry.path,
@@ -48,82 +55,94 @@ const createSandbox = () => {
 };
 
 describe('sandbox runtime mirrors', () => {
-  it('writes npm, yarn, pnpm, bun, pip and uv mirror files once per hash', async () => {
+  it('synchronizes npm and pypi mirror groups independently', async () => {
     const sandbox = createSandbox();
-    const expectedMirrorFiles = [
+    const config = {
+      npmRegistry: 'https://npm.example.com',
+      pypiIndexUrl: 'https://pypi.example.com/simple'
+    };
+    const expectedWriteEntries = [
+      { path: '/home/test/.npmrc', data: 'registry=https://npm.example.com\n' },
+      { path: '/home/test/.yarnrc', data: 'registry "https://npm.example.com"\n' },
       {
-        path: '.npmrc',
-        content: 'registry=https://npm.example.com\n'
+        path: '/home/test/.yarnrc.yml',
+        data: 'npmRegistryServer: "https://npm.example.com"\n'
       },
       {
-        path: '.yarnrc',
-        content: 'registry "https://npm.example.com"\n'
+        path: '/home/test/.bunfig.toml',
+        data: '[install]\nregistry = "https://npm.example.com"\n'
       },
       {
-        path: '.yarnrc.yml',
-        content: 'npmRegistryServer: "https://npm.example.com"\n'
+        path: '/home/test/.pip/pip.conf',
+        data: '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
       },
       {
-        path: '.bunfig.toml',
-        content: '[install]\nregistry = "https://npm.example.com"\n'
+        path: '/home/test/.config/pip/pip.conf',
+        data: '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
       },
       {
-        path: '.pip/pip.conf',
-        content:
-          '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
-      },
-      {
-        path: '.config/pip/pip.conf',
-        content:
-          '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
-      },
-      {
-        path: '.config/uv/uv.toml',
-        content:
-          'default-index = "https://pypi.example.com/simple"\nallow-insecure-host = ["pypi.example.com"]\n'
+        path: '/home/test/.config/uv/uv.toml',
+        data: 'default-index = "https://pypi.example.com/simple"\nallow-insecure-host = ["pypi.example.com"]\n'
       }
     ];
-    const expectedWriteEntries = expectedMirrorFiles.map(({ path, content }) => ({
-      path: `/home/test/${path}`,
-      data: content
-    }));
+
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+
+    expect(sandbox.getMirrorWrites()).toEqual([
+      expectedWriteEntries.slice(0, 4),
+      expectedWriteEntries.slice(4)
+    ]);
+    expect(sandbox.getState()?.values).toEqual({
+      npmMirror: buildRuntimeHash(config.npmRegistry),
+      pypiMirror: buildRuntimeHash(config.pypiIndexUrl),
+      aptMirror: buildRuntimeHash('')
+    });
 
     await prepareSandboxRuntimeMirrors({
       sandbox: sandbox as any,
       config: {
-        npmRegistry: 'https://npm.example.com',
-        pypiIndexUrl: 'https://pypi.example.com/simple'
-      }
-    });
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: {
-        npmRegistry: 'https://npm.example.com',
-        pypiIndexUrl: 'https://pypi.example.com/simple'
+        npmRegistry: 'https://another-npm.example.com',
+        pypiIndexUrl: config.pypiIndexUrl
       }
     });
 
-    expect(sandbox.getMirrorWrites()).toEqual([expectedWriteEntries]);
-    expect(sandbox.getState()?.values?.sandboxPackageMirrors).toBe(
-      buildRuntimeHash(JSON.stringify(expectedWriteEntries))
-    );
+    expect(sandbox.getMirrorWrites()).toHaveLength(3);
+    expect(
+      sandbox
+        .getMirrorWrites()[2]
+        .map(({ path }) => path)
+        .slice(-4)
+    ).toEqual([
+      '/home/test/.npmrc',
+      '/home/test/.yarnrc',
+      '/home/test/.yarnrc.yml',
+      '/home/test/.bunfig.toml'
+    ]);
+    expect(sandbox.getState()?.values).toEqual({
+      npmMirror: buildRuntimeHash('https://another-npm.example.com'),
+      pypiMirror: buildRuntimeHash(config.pypiIndexUrl),
+      aptMirror: buildRuntimeHash('')
+    });
   });
 
-  it('does not commit the mirror hash when one file write fails', async () => {
+  it('keeps retrying apt platform resolution without blocking other mirrors', async () => {
     const sandbox = createSandbox();
-    sandbox.writeFiles.mockResolvedValueOnce([
-      {
-        path: '/home/test/.npmrc',
-        bytesWritten: 0,
-        error: new Error('write failed')
-      }
-    ]);
+    const config = {
+      npmRegistry: 'https://npm.example.com',
+      aptMirror: 'https://apt.example.com/ubuntu'
+    };
 
-    await prepareSandboxRuntimeMirrors({
-      sandbox: sandbox as any,
-      config: { npmRegistry: 'https://npm.example.com' }
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+    await prepareSandboxRuntimeMirrors({ sandbox: sandbox as any, config });
+
+    expect(sandbox.getMirrorWrites()).toHaveLength(1);
+    expect(sandbox.getState()?.values).toEqual({
+      npmMirror: buildRuntimeHash(config.npmRegistry),
+      pypiMirror: buildRuntimeHash('')
     });
-
-    expect(sandbox.getState()).toBeUndefined();
+    expect(
+      sandbox.readFiles.mock.calls.filter(([paths]) => paths.includes('/etc/os-release'))
+    ).toHaveLength(2);
   });
 });

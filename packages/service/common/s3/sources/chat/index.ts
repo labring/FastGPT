@@ -11,13 +11,16 @@ import {
 import { differenceInHours } from 'date-fns';
 import { S3Buckets } from '../../config/constants';
 import path from 'path';
-import { getFormatedFilename } from '../../utils';
+import { createOpaqueS3FileKey, getS3ParsedPrefix, isOpaqueS3FileKey } from '../../opaqueKey';
 import type { ChatS3SourceType } from './type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { createUploadConstraints } from '../../utils/uploadConstraints';
 import { encodeS3ObjectKeySegment } from '../../keySanitizer';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getLogger, LogCategories } from '../../../logger';
 
-const getChatFilePrefix = ({
+const logger = getLogger(LogCategories.INFRA.S3);
+const getChatFileScope = ({
   sourceType,
   sourceId,
   chatId,
@@ -28,10 +31,12 @@ const getChatFilePrefix = ({
   chatId?: string;
   uId?: string;
 }) =>
-  [S3Sources.chat, sourceType, sourceId, uId, chatId]
-    .filter((segment): segment is string => Boolean(segment))
-    .map(encodeS3ObjectKeySegment)
-    .join('/');
+  [S3Sources.chat, sourceType, sourceId, uId, chatId].filter((segment): segment is string =>
+    Boolean(segment)
+  );
+
+const getChatFilePrefix = (params: Parameters<typeof getChatFileScope>[0]) =>
+  getChatFileScope(params).map(encodeS3ObjectKeySegment).join('/');
 
 const getChatFileS3Key = ({
   sourceType,
@@ -46,13 +51,13 @@ const getChatFileS3Key = ({
   uId: string;
   filename?: string;
 }) => {
-  const { formatedFilename, extension } = getFormatedFilename(filename);
-  const basePrefix = getChatFilePrefix({ sourceType, sourceId, chatId, uId });
-
-  const fileKey = `${formatedFilename}${extension ? `.${extension}` : ''}`;
+  const { objectKey, parsedPrefix } = createOpaqueS3FileKey({
+    prefix: getChatFileScope({ sourceType, sourceId, chatId, uId }),
+    filename
+  });
   return {
-    fileKey: `${basePrefix}/${encodeS3ObjectKeySegment(fileKey)}`,
-    fileParsedPrefix: `${basePrefix}/${encodeS3ObjectKeySegment(`${formatedFilename}-parsed`)}`
+    fileKey: objectKey,
+    fileParsedPrefix: parsedPrefix
   };
 };
 
@@ -74,7 +79,8 @@ export class S3ChatSource extends S3PrivateBucket {
         };
       }
 
-      const encodedFilename = pathname.split('/').pop() || 'file';
+      const objectKey = pathname.slice(`/${S3Buckets.private}/`.length);
+      const encodedFilename = path.basename(objectKey) || 'file';
       const filename = (() => {
         try {
           return decodeURIComponent(encodedFilename);
@@ -83,15 +89,11 @@ export class S3ChatSource extends S3PrivateBucket {
         }
       })();
       const extension = path.extname(filename);
-      const encodedExtension = path.extname(encodedFilename);
-      const pathnameWithoutExtension = encodedExtension
-        ? pathname.slice(0, -encodedExtension.length)
-        : pathname;
 
       return {
         filename,
         extension: extension.replace('.', ''),
-        imageParsePrefix: `${pathnameWithoutExtension.replace(`/${S3Buckets.private}/`, '')}-parsed`
+        imageParsePrefix: getS3ParsedPrefix(objectKey)
       };
     } catch {
       return {
@@ -102,11 +104,32 @@ export class S3ChatSource extends S3PrivateBucket {
     }
   }
 
-  async createGetChatFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
-    const { key, expiredHours = 1, external = false } = params; // 默认一个小时
+  async createGetChatFileURL(params: {
+    key: string;
+    expiredHours?: number;
+    external: boolean;
+    filename?: string;
+  }) {
+    const { key, expiredHours = 1, external = false, filename } = params; // 默认一个小时
+    const fileMetadata =
+      external && isOpaqueS3FileKey(key) && !filename
+        ? await this.getFileMetadata(key).catch((error) => {
+            if (error !== CommonErrEnum.fileNotFound) {
+              logger.warn('Failed to resolve opaque chat filename from S3 metadata', {
+                key,
+                error
+              });
+            }
+            return undefined;
+          })
+        : undefined;
 
     if (external) {
-      return await this.createExternalUrl({ key, expiredHours });
+      return await this.createExternalUrl({
+        key,
+        expiredHours,
+        filename: filename || fileMetadata?.filename
+      });
     }
     return await this.createPreviewUrl({ key, expiredHours });
   }
@@ -228,10 +251,11 @@ export function getS3ChatSource() {
 export const createChatFilePreviewUrlGetter = (options?: { expiredHours?: number }) => {
   const s3ChatSource = getS3ChatSource();
 
-  return async (key: string) => {
+  return async (key: string, filename?: string) => {
     const { url } = await s3ChatSource.createGetChatFileURL({
       key,
       external: true,
+      ...(filename ? { filename } : {}),
       ...options
     });
     return url;

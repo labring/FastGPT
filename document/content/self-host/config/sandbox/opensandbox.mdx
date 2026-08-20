@@ -96,12 +96,15 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 
 ### 自定义依赖源
 
-如果沙盒内需要安装 npm 或 Python 依赖，可以在 `fastgpt-app` 和 `fastgpt-pro` 中配置依赖源：
+如果沙盒内需要安装 npm、Python 或 apt 依赖，可以在 `fastgpt-app` 和 `fastgpt-pro` 中配置依赖源：
 
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
+
+`AGENT_SANDBOX_APT_MIRROR` 仅对 root 权限的 Agent 沙箱有效。配置后，FastGPT 会根据发行版生成并覆盖标准的 Ubuntu 或 Debian `.sources` 文件，并在覆盖已有文件前创建 `.copy` 备份。删除该环境变量后，有 `.copy` 备份的文件会恢复，没有备份的文件会跳过。初始化阶段不会执行 `apt-get update`。arm64 运行镜像应配置提供对应架构软件包的镜像地址。
 
 ### 资源与生命周期
 

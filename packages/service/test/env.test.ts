@@ -29,7 +29,8 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE,
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX:
-    process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
+    process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX,
+  AGENT_SANDBOX_APT_MIRROR: process.env.AGENT_SANDBOX_APT_MIRROR
 };
 
 const importServiceEnv = async () => {
@@ -72,6 +73,7 @@ describe('serviceEnv', () => {
       'AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
     );
+    vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', originalEnv.AGENT_SANDBOX_APT_MIRROR);
   });
 
   it('enables MongoDB index synchronization by default and supports disabling it', async () => {
@@ -289,6 +291,22 @@ describe('serviceEnv', () => {
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(4096);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(5);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe('custom-volume');
+  });
+
+  it('reads the optional Agent Sandbox apt mirror value', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', 'https://mirror.example.com/ubuntu');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { AGENT_SANDBOX_APT_MIRROR: 'https://mirror.example.com/ubuntu' }
+    });
+
+    vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', 'not-a-url');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { AGENT_SANDBOX_APT_MIRROR: 'not-a-url' }
+    });
   });
 
   it('rejects an invalid OpenSandbox volume name prefix', async () => {

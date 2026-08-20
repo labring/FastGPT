@@ -71,7 +71,7 @@ describe('S3FileUploader', () => {
       t
     });
 
-    await expect(uploader.upload()).rejects.toBe('common:error:s3_upload_timeout');
+    await expect(uploader.upload()).rejects.toBe('common:error.s3_upload_timeout');
     expect(put).toHaveBeenCalledTimes(1);
   });
 
@@ -333,7 +333,7 @@ describe('S3FileUploader', () => {
       maxRetry: 0
     });
 
-    await expect(uploader.upload()).rejects.toBe('common:error:s3_upload_network_error');
+    await expect(uploader.upload()).rejects.toBe('common:upload_file_error');
 
     expect(put).toHaveBeenCalledTimes(1);
     expect(post).toHaveBeenCalledTimes(1);

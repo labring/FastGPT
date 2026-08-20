@@ -36,9 +36,26 @@ jobs:
       matrix:
         include:
           - arch: amd64
+            runs-on: ubuntu-24.04
+            variant: nonroot
+            target: nonroot
+            image-name: fastgpt-agent-sandbox
           - arch: arm64
             runs-on: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
+            variant: nonroot
+            target: nonroot
+            image-name: fastgpt-agent-sandbox
+          - arch: amd64
+            runs-on: ubuntu-24.04
+            variant: root
+            target: root
+            image-name: fastgpt-agent-sandbox-root
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+            variant: root
+            target: root
+            image-name: fastgpt-agent-sandbox-root
+    runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 120
     steps:
       - name: Checkout
@@ -54,9 +71,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-agent-sandbox-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-agent-sandbox-${{ matrix.variant }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-agent-sandbox-buildx-
+            ${{ runner.os }}-agent-sandbox-${{ matrix.variant }}-buildx-
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -72,17 +89,18 @@ jobs:
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
-      - name: Build for ${{ matrix.arch }}
+      - name: Build ${{ matrix.image-name }} for ${{ matrix.arch }}
         id: build-ghcr
         uses: docker/build-push-action@v6
         with:
           context: .
           file: projects/agent-sandbox/Dockerfile
+          target: ${{ matrix.target }}
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=fastgpt-agent-sandbox image
-          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox",push-by-digest=true,push=true
+            org.opencontainers.image.description=${{ matrix.image-name }} image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/${{ matrix.image-name }}",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -92,13 +110,14 @@ jobs:
         with:
           context: .
           file: projects/agent-sandbox/Dockerfile
+          target: ${{ matrix.target }}
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=fastgpt-agent-sandbox image
+            org.opencontainers.image.description=${{ matrix.image-name }} image
           provenance: false
           sbom: false
-          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox",push-by-digest=true,push=true
+          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.image-name }}",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
 
       - name: Export digest
@@ -113,7 +132,7 @@ jobs:
       - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
         with:
-          name: ghcr-digests-fastgpt-agent-sandbox-${{ github.sha }}-${{ matrix.arch }}
+          name: ghcr-digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/ghcr/*
           if-no-files-found: error
           retention-days: 1
@@ -121,7 +140,7 @@ jobs:
       - name: Upload Ali Hub digest
         uses: actions/upload-artifact@v4
         with:
-          name: aliyun-digests-fastgpt-agent-sandbox-${{ github.sha }}-${{ matrix.arch }}
+          name: aliyun-digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/aliyun/*
           if-no-files-found: error
           retention-days: 1
@@ -135,6 +154,13 @@ jobs:
     needs: [validate-version, build-fastgpt-agent-sandbox-images]
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    strategy:
+      matrix:
+        include:
+          - variant: nonroot
+            image-name: fastgpt-agent-sandbox
+          - variant: root
+            image-name: fastgpt-agent-sandbox-root
     steps:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -158,14 +184,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: ghcr-digests-fastgpt-agent-sandbox-${{ github.sha }}-*
+          pattern: ghcr-digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Download Ali Hub digests
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests/aliyun
-          pattern: aliyun-digests-fastgpt-agent-sandbox-${{ github.sha }}-*
+          pattern: aliyun-digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -174,19 +200,20 @@ jobs:
       - name: Set image name and tag
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
-          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox:${VERSION}" >> $GITHUB_ENV
-          echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox:latest" >> $GITHUB_ENV
-          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox:${VERSION}" >> $GITHUB_ENV
-          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox:latest" >> $GITHUB_ENV
-          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-sandbox:${VERSION}" >> $GITHUB_ENV
-          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-sandbox:latest" >> $GITHUB_ENV
+          IMAGE_NAME="${{ matrix.image-name }}"
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_ENV
+          echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_ENV
+          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
+          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_ENV
+          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
           set -euo pipefail
-          GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox"
-          ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox"
+          GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ matrix.image-name }}"
+          ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.image-name }}"
           GHCR_SOURCES=()
           for digest_file in ./*; do
             [[ -f "$digest_file" ]] || continue

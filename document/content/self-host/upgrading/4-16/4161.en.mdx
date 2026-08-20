@@ -8,3 +8,17 @@ upgradeTags:
 ## 🚀 New
 
 1. Third-party publishing channels now support multimodal files, audio transcription, and citations where supported.
+2. Teams can install system plugins in process mode. This carries some security risk; a future release will support isolated serverless execution.
+3. Sandbox supports custom APT repositories.
+
+## ⚙️ Improvements
+
+1. Updated S3 key naming to stop using the original filename as the key, preventing keys from becoming too long.
+
+## 🐛 Fixes
+
+1. Fixed Workflow global variable configuration overflowing when field names are too long.
+
+## 🛠️ Code Improvements
+
+1. Completed documentation for all `devapi` endpoints.

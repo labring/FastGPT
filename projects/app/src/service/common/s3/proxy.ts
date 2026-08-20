@@ -28,6 +28,12 @@ import {
   getUploadInspectBytes,
   validateUploadFile
 } from '@fastgpt/service/common/s3/validation/upload';
+import {
+  decodeMultipartFilename,
+  decodeS3Filename,
+  encodeS3Filename,
+  getS3UploadContentDisposition
+} from '@fastgpt/service/common/s3/filename';
 
 const logger = getLogger(LogCategories.INFRA.FILE);
 
@@ -90,17 +96,11 @@ export const createS3DownloadAbortContext = ({
 };
 
 const parseRequestFilename = (filename?: string) => {
-  if (!filename) return '';
-
-  try {
-    return decodeURIComponent(filename);
-  } catch {
-    return filename;
-  }
+  return decodeMultipartFilename(filename);
 };
 
 const parseObjectKeyFilename = (objectKey: string) =>
-  parseRequestFilename(path.basename(objectKey)) || 'file';
+  decodeS3Filename(path.basename(objectKey)) || 'file';
 
 export const parseS3ProxyContentLength = (value: string | string[] | undefined) => {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -241,7 +241,7 @@ export const buildS3UploadMetadata = ({
 
   return {
     ...customMetadata,
-    originFilename: encodeURIComponent(filename)
+    originFilename: encodeS3Filename(filename)
   };
 };
 
@@ -257,7 +257,7 @@ const resolveProxyUploadFileHint = ({
   if (fileHint) return fileHint;
 
   return {
-    filename: parseRequestFilename(metadata?.originFilename) || parseObjectKeyFilename(objectKey)
+    filename: decodeS3Filename(metadata?.originFilename) || parseObjectKeyFilename(objectKey)
   };
 };
 
@@ -441,7 +441,7 @@ export const handleS3ProxyUpload = async ({
     body: guardStream,
     contentType: validatedFile.contentType,
     contentLength,
-    contentDisposition: getContentDisposition({
+    contentDisposition: getS3UploadContentDisposition({
       filename: validatedFile.filename,
       type: 'attachment'
     }),

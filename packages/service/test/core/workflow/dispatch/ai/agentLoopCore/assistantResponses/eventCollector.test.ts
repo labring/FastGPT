@@ -208,7 +208,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('appends tool child assistant messages from tool_run_end', () => {
+  it('stores the tool result without persisting child assistant messages', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       getToolInfo: (name) => ({
         name: name === 'nested_search' ? 'Nested search' : name,
@@ -262,16 +262,6 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       expect.objectContaining({
         id: 'call_workflow',
         tools: [expect.objectContaining({ response: 'workflow result' })]
-      }),
-      expect.objectContaining({ text: { content: 'child answer' } }),
-      expect.objectContaining({
-        tools: [
-          expect.objectContaining({
-            id: 'call_nested',
-            toolName: 'Nested search',
-            response: 'nested result'
-          })
-        ]
       })
     ]);
   });

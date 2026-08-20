@@ -1,5 +1,4 @@
 import { getLogger, LogCategories } from '../../logger';
-import path from 'path';
 import { createHash } from 'node:crypto';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { deleteS3DownloadAliasByObjects } from '../accessLink';
@@ -9,6 +8,7 @@ import {
   collectStorageObjectKeyViolations,
   type InvalidStorageObjectKeyReason
 } from '@fastgpt-sdk/storage';
+import { getS3ParsedPrefix, isOpaqueS3ParsedObjectKey } from '../opaqueKey';
 
 export type { S3MQJobData } from '@fastgpt/dal/redis/bullmq';
 
@@ -104,8 +104,8 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
     });
 
     await batchRun(keys, async (key) => {
-      if (key.includes('-parsed/')) return;
-      const fileParsedPrefix = `${path.dirname(key)}/${path.basename(key, path.extname(key))}-parsed`;
+      if (isOpaqueS3ParsedObjectKey(key) || key.includes('-parsed/')) return;
+      const fileParsedPrefix = getS3ParsedPrefix(key);
       const result = (await bucket.client
         .deleteObjectsByPrefix({ prefix: fileParsedPrefix })
         .catch((error) => {

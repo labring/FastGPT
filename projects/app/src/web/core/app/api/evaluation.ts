@@ -22,7 +22,7 @@ export const postCreateEvaluation = ({
   percentListen: (percent: number) => void;
 }) => {
   const formData = new FormData();
-  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('file', file, file.name);
   formData.append('data', JSON.stringify({ name, evalModel, appId }));
 
   return POST(`/proApi/core/app/evaluation/create`, formData, {

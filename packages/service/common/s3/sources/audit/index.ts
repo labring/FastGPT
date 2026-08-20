@@ -1,5 +1,6 @@
 import type { Readable } from 'node:stream';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
+import { encodeS3Filename } from '../../filename';
 import { S3PrivateBucket } from '../../buckets/private';
 
 const getAuditArchiveKey = ({ teamId, archiveDate }: { teamId: string; archiveDate: string }) =>
@@ -29,7 +30,7 @@ export class S3AuditSource extends S3PrivateBucket {
       contentType: 'application/gzip',
       contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
       metadata: {
-        originFilename: encodeURIComponent(filename),
+        originFilename: encodeS3Filename(filename),
         uploadTime: new Date().toISOString(),
         teamId,
         archiveDate

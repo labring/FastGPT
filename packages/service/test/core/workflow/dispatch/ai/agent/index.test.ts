@@ -286,6 +286,7 @@ describe('dispatchRunAgent user context', () => {
       ...(global as any).feConfigs,
       show_agent_sandbox: true
     };
+    sandboxCreateDirectoriesMock.mockResolvedValue(undefined);
     sandboxWriteFilesMock.mockResolvedValue([]);
     sandboxGetFileInfoMock.mockResolvedValue(new Map());
     sandboxClientExecMock.mockResolvedValue({
@@ -500,12 +501,16 @@ describe('dispatchRunAgent user context', () => {
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
     expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith(['/workspace/user_files']);
-    const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
-    expect(writeFiles.map((file: { path: string }) => file.path)).toEqual([
+    const inputFilesWriteCallIndex = sandboxWriteFilesMock.mock.calls.findIndex(([files]) =>
+      files.some((file: { path: string }) => file.path === '/workspace/user_files/current.pdf')
+    );
+    expect(inputFilesWriteCallIndex).toBeGreaterThanOrEqual(0);
+    const inputFilesWrite = sandboxWriteFilesMock.mock.calls[inputFilesWriteCallIndex][0];
+    expect(inputFilesWrite.map((file: { path: string }) => file.path)).toEqual([
       '/workspace/user_files/current.pdf'
     ]);
     expect(sandboxCreateDirectoriesMock.mock.invocationCallOrder[0]).toBeLessThan(
-      sandboxWriteFilesMock.mock.invocationCallOrder[0]
+      sandboxWriteFilesMock.mock.invocationCallOrder[inputFilesWriteCallIndex]
     );
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).toContain('<sandbox_capability>');

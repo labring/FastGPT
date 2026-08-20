@@ -7,9 +7,9 @@ import {
 import { MongoS3TTL } from '../../models/ttl';
 import { addMinutes } from 'date-fns';
 import { getFileS3Key } from '../../utils';
+import { decodeS3Filename, encodeS3Filename, getS3UploadContentDisposition } from '../../filename';
 import { createHash } from 'node:crypto';
 import streamConsumer from 'node:stream/consumers';
-import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 
 export class S3RawTextSource extends S3PrivateBucket {
   constructor() {
@@ -21,8 +21,7 @@ export class S3RawTextSource extends S3PrivateBucket {
     const metadataResponse = await this.client.getObjectMetadata({ key });
     if (!metadataResponse) return '';
 
-    const filename: string = decodeURIComponent(metadataResponse.metadata.originFilename || '');
-    return filename;
+    return decodeS3Filename(metadataResponse.metadata.originFilename);
   }
 
   async addRawTextBuffer(params: AddRawTextBufferParams) {
@@ -44,9 +43,12 @@ export class S3RawTextSource extends S3PrivateBucket {
       key,
       body: buffer,
       contentType: 'text/plain',
-      contentDisposition: getContentDisposition({ filename: sourceName, type: 'attachment' }),
+      contentDisposition: getS3UploadContentDisposition({
+        filename: sourceName,
+        type: 'attachment'
+      }),
       metadata: {
-        originFilename: encodeURIComponent(sourceName),
+        originFilename: encodeS3Filename(sourceName),
         uploadTime: new Date().toISOString()
       }
     });

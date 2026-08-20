@@ -295,7 +295,7 @@ describe('worker/function', () => {
       const expected = { rawText: 'parsed docx' };
       const expiredTime = new Date('2030-01-01T00:00:00.000Z');
       mockRun.mockResolvedValueOnce(expected);
-      mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/ds1/file-parsed/image.png');
+      mockUploadImage2S3Bucket.mockResolvedValueOnce('dataset/ds1/file-parsed/image-key.png');
 
       const result = await readRawContentFromBuffer({
         extension: 'docx',
@@ -325,11 +325,11 @@ describe('worker/function', () => {
       });
 
       expect(uploadResult).toEqual({
-        key: 'dataset/ds1/file-parsed/image.png'
+        key: 'dataset/ds1/file-parsed/image-key.png'
       });
       expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith('private', {
         buffer: Buffer.from([1, 2, 3]),
-        uploadKey: 'dataset/ds1/file-parsed/image.png',
+        uploadKey: expect.stringMatching(/^dataset\/ds1\/file-parsed\/[0-9a-f]{32}\.png$/),
         mimetype: 'image/png',
         filename: 'image.png',
         expiredTime

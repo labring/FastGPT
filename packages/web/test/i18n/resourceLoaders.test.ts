@@ -10,10 +10,26 @@ import {
 } from '@fastgpt/web/i18n/resourceLoaders';
 
 describe('generatedLoaders', () => {
+  const s3UploadErrorKeys = [
+    'error.s3_upload_auth_failed',
+    'error.s3_upload_bucket_not_found',
+    'error.s3_upload_file_too_large',
+    'error.s3_upload_invalid_file_type',
+    'error.s3_upload_network_error',
+    'error.s3_upload_timeout'
+  ];
+
   it('contains every supported language and namespace', () => {
     expect(Object.keys(generatedLoaders)).toEqual(LocaleList);
     for (const language of LocaleList) {
       expect(Object.keys(generatedLoaders[language])).toEqual(I18N_NAMESPACES);
+    }
+  });
+
+  it('contains all S3 upload error translations in every language', async () => {
+    for (const language of ['en', 'zh-CN', 'zh-Hant'] as const) {
+      const resource = (await generatedLoaders[language].common()).default;
+      expect(Object.keys(resource)).toEqual(expect.arrayContaining(s3UploadErrorKeys));
     }
   });
 });

@@ -1,6 +1,5 @@
 import type { Readable } from 'node:stream';
 import { Readable as NodeReadable } from 'node:stream';
-import type { Mock } from 'vitest';
 import type { IStorage } from '../interface';
 import type * as Storage from '../types';
 import {
@@ -15,8 +14,12 @@ import {
 } from '../assert';
 import { bindAbortSignalToReadable, throwIfStorageDownloadAborted } from '../utils';
 
+type MockFunction<T extends (...args: any[]) => any> = T & {
+  mock: unknown;
+};
+
 type VitestLike = {
-  fn: <T extends (...args: any[]) => any>(impl?: T) => Mock<T>;
+  fn: <T extends (...args: any[]) => any>(impl?: T) => MockFunction<T>;
 };
 
 type StoredObject = {

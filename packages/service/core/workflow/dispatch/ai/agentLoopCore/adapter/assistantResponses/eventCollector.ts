@@ -7,7 +7,6 @@ import {
   appendAgentLoopCoreAssistantResponseFromEvent,
   type AgentLoopCoreAssistantMetaEventNames
 } from './fromEvents';
-import { buildAgentLoopCoreAssistantResponsesFromMessages } from './fromMessages';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type CreateAgentLoopCoreAssistantEventCollectorParams = {
@@ -382,23 +381,6 @@ export const createAgentLoopCoreAssistantEventCollector = ({
           }));
         }
 
-        if (event.assistantMessages?.length) {
-          const childAssistantResponses = buildAgentLoopCoreAssistantResponsesFromMessages({
-            messages: event.assistantMessages,
-            reserveTool: true,
-            reserveReason: true,
-            getToolInfo
-          }).map((value) =>
-            !showReasoning && value.reasoning
-              ? {
-                  ...value,
-                  hideReason: true
-                }
-              : value
-          );
-          assistantResponses.push(...childAssistantResponses);
-          currentAssistantTextIndex = undefined;
-        }
         return;
       }
       case 'plan_operation':

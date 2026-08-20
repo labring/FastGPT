@@ -30,6 +30,7 @@ export type IFileSystem = {
   deleteDirectories(paths: string[]): Promise<void>;
   listDirectory(path: string): Promise<DirectoryEntry[]>;
 
+  /** Returns metadata for found paths; missing paths are omitted from the map. */
   getFileInfo(paths: string[]): Promise<Map<string, FileInfo>>;
   setPermissions(entries: PermissionEntry[]): Promise<void>;
   search(pattern: string, path?: string): Promise<SearchResult[]>;
