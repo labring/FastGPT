@@ -1,6 +1,3 @@
-import { Types } from '../../../../common/mongo';
-import { MongoApp } from '../../../app/schema';
-import { AppResourceRefsSkillIdsPath, buildAppSkillRefMongoQuery } from '../../../app/resourceRefs';
 import { MongoAgentSkills } from '../model/schema';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 import {
@@ -21,6 +18,7 @@ import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
+import { findTeamAppsByPublishedResource } from '../../../app/resourceLookup';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -247,25 +245,13 @@ export const listReadableAgentSkills = async ({
   const appCountMap = new Map<string, number>();
   if (nonFolderSkills.length > 0) {
     const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
-    const counts = await MongoApp.aggregate<{ _id: string; count: number }>([
-      {
-        $match: {
-          teamId: new Types.ObjectId(String(teamId)),
-          deleteTime: null,
-          ...buildAppSkillRefMongoQuery(skillIdStrings)
-        }
-      },
-      { $unwind: `$${AppResourceRefsSkillIdsPath}` },
-      { $match: buildAppSkillRefMongoQuery(skillIdStrings) },
-      {
-        $group: {
-          _id: `$${AppResourceRefsSkillIdsPath}`,
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-    counts.forEach((item) => {
-      appCountMap.set(String(item._id), item.count);
+    const { counts } = await findTeamAppsByPublishedResource({
+      teamId,
+      type: 'skill',
+      ids: skillIdStrings
+    });
+    counts.forEach((count, skillId) => {
+      appCountMap.set(skillId, count);
     });
   }
 

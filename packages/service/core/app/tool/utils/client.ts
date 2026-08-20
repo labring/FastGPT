@@ -49,7 +49,6 @@ import {
 import { Types } from 'mongoose';
 import { getHTTPToolList } from '../../http';
 import { getMCPChildren } from '../../mcp';
-import { decodeToolSetNodesFromStorage } from '../../jsonSchemaStorage';
 import { MongoApp } from '../../schema';
 import { getAppVersionById, checkIsLatestVersion } from '../../version/controller';
 import { SystemToolRepo } from '../systemTool/systemTool.repo';
@@ -285,19 +284,11 @@ export async function getClientToolPreviewNode({
 
         const isToolSetApp =
           item.type === AppTypeEnum.mcpToolSet || item.type === AppTypeEnum.httpToolSet;
-        const version = isToolSetApp
-          ? {
-              versionId: undefined,
-              versionName: undefined,
-              nodes: [...decodeToolSetNodesFromStorage(item.modules)],
-              edges: item.edges,
-              chatConfig: item.chatConfig
-            }
-          : await getAppVersionById({
-              appId: pluginId,
-              versionId: versionId || undefined,
-              app: item
-            });
+        const version = await getAppVersionById({
+          appId: pluginId,
+          versionId: versionId || undefined,
+          app: item
+        });
 
         const isLatest =
           !isToolSetApp && version.versionId && Types.ObjectId.isValid(version.versionId)
@@ -306,28 +297,6 @@ export async function getClientToolPreviewNode({
                 versionId: version.versionId
               })
             : true;
-
-        // Adapt
-        if (item.type === AppTypeEnum.mcpToolSet && !version.nodes[0]?.toolConfig?.mcpToolSet) {
-          const children = await getMCPChildren(item);
-          version.nodes[0] = {
-            ...version.nodes[0],
-            // 仅在生成新预览时去掉已知旧配置槽，保留普通 IO；不能回写或截断存量节点输入。
-            inputs: (version.nodes[0]?.inputs ?? []).filter(
-              (input) =>
-                input.key !== NodeInputKeyEnum.toolSetData ||
-                !input.renderTypeList.includes(FlowNodeInputTypeEnum.hidden)
-            ),
-            toolConfig: {
-              ...version.nodes[0]?.toolConfig,
-              mcpToolSet: {
-                toolList: children,
-                url: '',
-                headerSecret: {}
-              }
-            }
-          };
-        }
 
         const shouldReturnVersion =
           !isToolSetApp && (versionId ? true : versionId === undefined && getLatestVersion);

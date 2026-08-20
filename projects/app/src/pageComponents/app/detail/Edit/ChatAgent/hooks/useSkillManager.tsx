@@ -64,7 +64,7 @@ const toSkillLabelItem = (
   ...tool,
   id: getSkillId(tool.pluginId, tool.source),
   name: tool.name,
-  configStatus
+  configStatus: tool.pluginData?.permissionDenied ? 'invalid' : configStatus
 });
 
 const toSystemToolItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
@@ -116,7 +116,7 @@ const toAgentSkillLabelItem = (skill: SelectedAgentSkillItemType): SkillLabelIte
   avatar: skill.avatar || 'core/skill/default',
   intro: skill.description,
   flowNodeType: FlowNodeTypeEnum.tool,
-  configStatus: skill.isDeleted ? 'invalid' : 'noConfig'
+  configStatus: skill.isDeleted || skill.permissionDenied ? 'invalid' : 'noConfig'
 });
 
 export const useSkillManager = ({
@@ -326,7 +326,8 @@ export const useSkillManager = ({
         name: targetSkill.name,
         description: targetSkill.description,
         avatar: targetSkill.avatar,
-        isDeleted: false
+        isDeleted: false,
+        permissionDenied: false
       };
       if (!onAddAgentSkill?.(selectedSkill)) return;
       const skill = toAgentSkillLabelItem(selectedSkill);
@@ -598,7 +599,7 @@ export const useSkillManager = ({
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
     const tools = selectedTools.map((tool) => {
       const configStatus: SkillLabelItemType['configStatus'] = (() => {
-        if (tool.pluginData?.error) {
+        if (tool.pluginData?.error || tool.pluginData?.permissionDenied) {
           return 'invalid';
         }
         if (tool.pluginId === SubAppIds.datasetSearch) {

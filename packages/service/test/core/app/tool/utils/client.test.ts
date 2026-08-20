@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   find: vi.fn(),
   getAppVersionById: vi.fn(),
+  getAppLatestVersion: vi.fn(),
   getSystemToolDetail: vi.fn()
 }));
 
@@ -19,6 +20,7 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppVersionById: mocks.getAppVersionById,
+  getAppLatestVersion: mocks.getAppLatestVersion,
   checkIsLatestVersion: vi.fn()
 }));
 
@@ -58,6 +60,19 @@ const getRuntimeSchemaFieldPaths = (value: unknown, path = '$'): string[] => {
 describe('getClientToolPreviewNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const getWorkflowFromApp = (app: any) => ({
+      versionId: '507f1f77bcf86cd799439099',
+      versionName: app?.name,
+      nodes: app?.modules ?? [],
+      edges: app?.edges ?? [],
+      chatConfig: app?.chatConfig
+    });
+    mocks.getAppVersionById.mockImplementation(({ app }: { app?: any }) =>
+      Promise.resolve(getWorkflowFromApp(app))
+    );
+    mocks.getAppLatestVersion.mockImplementation((appId: string, app?: any) =>
+      Promise.resolve(getWorkflowFromApp(app))
+    );
   });
 
   it.each(['mcp', 'http'] as const)(

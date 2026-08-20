@@ -13,6 +13,7 @@ export const defaultApp: AppDetailType = {
   avatar: '/icon/logo.svg',
   intro: '',
   updateTime: new Date(),
+  nodes: [],
   modules: [],
   chatConfig: {},
   teamId: '',

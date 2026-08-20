@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  addModelNamesToAppForm,
-  filterSensitiveFormData,
-  getAppQGuideCustomURL
-} from '@/web/core/app/utils';
+import { addModelNamesToAppForm, filterSensitiveFormData } from '@/web/core/app/utils';
 import {
   appWorkflow2Form,
   form2AppWorkflow
@@ -435,32 +431,6 @@ describe('addModelNamesToAppForm', () => {
       modelId: 'tts-id',
       model: 'tts-v1'
     });
-  });
-});
-
-describe('getAppQGuideCustomURL', () => {
-  it('should get custom URL from app detail', () => {
-    const appDetail = {
-      modules: [],
-      chatConfig: {
-        chatInputGuide: {
-          open: true,
-          customUrl: 'https://example.com'
-        }
-      }
-    } as any;
-
-    const result = getAppQGuideCustomURL(appDetail);
-    expect(result).toBe('https://example.com');
-  });
-
-  it('should return empty string if no custom URL found', () => {
-    const appDetail = {
-      modules: []
-    } as any;
-
-    const result = getAppQGuideCustomURL(appDetail);
-    expect(result).toBe('');
   });
 });
 

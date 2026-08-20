@@ -1,3 +1,4 @@
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { EntryPointItemsTypeSchema } from '@fastgpt/global/core/app/type';
 import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
@@ -85,7 +86,7 @@ export type WorkflowVariableStateCreateProps = {
   runtimeOnlyVariables?: Record<string, unknown>;
 
   // 全局变量配置
-  variablesConfig?: ChatDispatchProps['chatConfig']['variables'];
+  variablesConfig?: AppChatConfigType['variables'];
   // 外部传入的变量，需要基于 variablesConfig 加工
   inputVariables?: Record<string, unknown>;
   // 源变量状态，用于复制变量状态

@@ -19,6 +19,7 @@ import { decodeHttpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { buildOpenAPIHttpRequest } from './httpTool/request';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import { completeOpenAPIRequestSchema } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
 
 const logger = getLogger(LogCategories.MODULE.APP.HTTP_TOOLS);
 
@@ -208,11 +209,13 @@ export const runHTTPTool = async ({
 };
 
 /** Read the current HTTP tool list from a toolset app. */
-export const getHTTPToolList = async (app: AppSchemaType) => {
+export const getHTTPToolList = async (app: AppSchemaType, workflow?: AppPublishedWorkflow) => {
   if (app.type !== AppTypeEnum.httpToolSet) return [];
 
-  const modules = decodeHttpToolSetNodesFromStorage(app.modules);
-  const toolSet = modules[0]?.toolConfig?.httpToolSet;
+  const nodes = decodeHttpToolSetNodesFromStorage(
+    (workflow ?? (await getAppLatestVersion(String(app._id), app))).nodes
+  );
+  const toolSet = nodes[0]?.toolConfig?.httpToolSet;
   const toolList = HttpToolConfigTypeSchema.array().safeParse(
     toolSet && 'toolList' in toolSet ? toolSet.toolList : undefined
   ).data;

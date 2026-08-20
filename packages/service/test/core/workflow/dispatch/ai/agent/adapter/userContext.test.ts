@@ -453,7 +453,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('loads dataset name and description from backend when selected state only keeps id', async () => {
+  it('authorizes datasets before loading metadata without a resource snapshot', async () => {
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
         {
@@ -479,7 +479,6 @@ describe('useUserContext', () => {
               datasetId: 'dataset_1'
             }
           ],
-          authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           maxFileAmount: 20

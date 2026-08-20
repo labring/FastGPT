@@ -3,20 +3,13 @@ import http from 'http';
 import os from 'os';
 
 // --- Hoisted mocks ---
-const { mockDereference, mockMongoAppFind } = vi.hoisted(() => ({
-  mockDereference: vi.fn(),
-  mockMongoAppFind: vi.fn()
+const { mockDereference } = vi.hoisted(() => ({
+  mockDereference: vi.fn()
 }));
 
 vi.mock('@apidevtools/json-schema-ref-parser', () => ({
   default: {
     dereference: (...args: any[]) => mockDereference(...args)
-  }
-}));
-
-vi.mock('../../../core/app/schema', () => ({
-  MongoApp: {
-    find: mockMongoAppFind
   }
 }));
 
@@ -29,9 +22,10 @@ import {
 } from '../../../core/app/mcp';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { AppPublishedWorkflow } from '../../../core/app/version/controller';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
-import { getSecretValue, storeSecretValue } from '../../../common/secret/utils';
 
 // Access private client via prototype for spying
 const getPrivateClient = (mcpClient: MCPClient) =>
@@ -687,39 +681,47 @@ describe('createMcpSafeFetch', () => {
 });
 
 describe('getMCPChildren', () => {
+  const createMcpWorkflow = (
+    toolConfig?: NonNullable<AppPublishedWorkflow['nodes'][number]['toolConfig']>
+  ): AppPublishedWorkflow => ({
+    nodes: [
+      {
+        nodeId: 'mcp-toolset',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        name: 'MCP toolset',
+        toolConfig,
+        inputs: [],
+        outputs: []
+      }
+    ]
+  });
+
   it('should return tool list from new MCP format', async () => {
     const app = {
       _id: 'app123',
       avatar: '/icon.png',
       teamId: 'team1',
-      type: AppTypeEnum.mcpToolSet,
-      modules: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              toolId: 'tid',
-              url: 'http://mcp.test',
-              toolList: [
-                {
-                  name: 'tool_a',
-                  description: 'A',
-                  inputSchema: { type: 'object', properties: {} }
-                },
-                {
-                  name: 'tool_b',
-                  description: 'B',
-                  inputSchema: { type: 'object', properties: {} }
-                }
-              ]
-            }
+      type: AppTypeEnum.mcpToolSet
+    } as AppSchemaType;
+    const workflow = createMcpWorkflow({
+      mcpToolSet: {
+        url: 'http://mcp.test',
+        toolList: [
+          {
+            name: 'tool_a',
+            description: 'A',
+            inputSchema: { type: 'object', properties: {} }
           },
-          inputs: [],
-          outputs: []
-        }
-      ]
-    } as unknown as AppSchemaType;
+          {
+            name: 'tool_b',
+            description: 'B',
+            inputSchema: { type: 'object', properties: {} }
+          }
+        ]
+      }
+    });
 
-    const result = await getMCPChildren(app);
+    const result = await getMCPChildren(app, workflow);
 
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
@@ -739,215 +741,16 @@ describe('getMCPChildren', () => {
       _id: 'app123',
       avatar: '/icon.png',
       teamId: 'team1',
-      type: AppTypeEnum.mcpToolSet,
-      modules: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              toolId: 'tid',
-              url: 'http://mcp.test',
-              toolList: []
-            }
-          },
-          inputs: [],
-          outputs: []
-        }
-      ]
-    } as unknown as AppSchemaType;
-
-    const result = await getMCPChildren(app);
-    expect(result).toEqual([]);
-  });
-
-  it.each([
-    { headerSecret: undefined, expected: undefined, headers: {} },
-    { headerSecret: null, expected: undefined, headers: {} },
-    { headerSecret: {}, expected: {}, headers: {} },
-    {
-      headerSecret: { value: 'legacy-token' },
-      expected: { Authorization: { value: 'legacy-token' } },
-      headers: { Authorization: 'legacy-token' }
-    },
-    {
-      headerSecret: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
-      expected: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
-      headers: { Authorization: 'legacy-token', 'X-Key': 'api-key' }
-    },
-    {
-      headerSecret: { value: { value: 'header-named-value' } },
-      expected: { value: { value: 'header-named-value' } },
-      headers: { value: 'header-named-value' }
-    }
-  ])(
-    'normalizes legacy child headers without wrapping an existing map: %j',
-    async ({ headerSecret, expected, headers }) => {
-      const children = [
-        {
-          name: 'search',
-          modules: [
-            {
-              inputs: [
-                {
-                  value: {
-                    name: 'search',
-                    description: 'Search',
-                    url: 'https://mcp.example.com',
-                    headerSecret,
-                    inputSchema: { type: 'object' }
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      ];
-      const original = structuredClone(children);
-      mockMongoAppFind.mockReturnValueOnce({ lean: async () => children });
-      const [tool] = await getMCPChildren({
-        _id: 'legacy-set',
-        teamId: 'team',
-        type: AppTypeEnum.mcpToolSet,
-        avatar: '',
-        modules: [{ inputs: [] }]
-      } as unknown as AppSchemaType);
-      expect(tool.headerSecret).toEqual(expected);
-      expect(getSecretValue({ storeSecret: tool.headerSecret })).toEqual(headers);
-      expect(children).toEqual(original);
-    }
-  );
-
-  it.each(['map', 'single'] as const)(
-    'keeps encrypted legacy %s headers decryptable',
-    async (shape) => {
-      const encrypted = storeSecretValue({
-        Authorization: { value: 'legacy-token' },
-        'X-Key': { value: 'api-key' }
-      });
-      const headerSecret = shape === 'map' ? encrypted : encrypted.Authorization;
-      mockMongoAppFind.mockReturnValueOnce({
-        lean: async () => [
-          {
-            name: 'search',
-            modules: [
-              {
-                inputs: [
-                  {
-                    value: {
-                      name: 'search',
-                      description: 'Search',
-                      url: 'https://mcp.example.com',
-                      headerSecret
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      });
-      const [tool] = await getMCPChildren({
-        _id: 'legacy-set',
-        teamId: 'team',
-        type: AppTypeEnum.mcpToolSet,
-        avatar: '',
-        modules: [{ inputs: [] }]
-      } as unknown as AppSchemaType);
-      expect(tool.headerSecret).toEqual(
-        shape === 'map' ? encrypted : { Authorization: encrypted.Authorization }
-      );
-      expect(getSecretValue({ storeSecret: tool.headerSecret })).toEqual(
-        shape === 'map'
-          ? { Authorization: 'legacy-token', 'X-Key': 'api-key' }
-          : { Authorization: 'legacy-token' }
-      );
-    }
-  );
-
-  it('should query MongoApp for old MCP format', async () => {
-    const app = {
-      _id: 'app456',
-      avatar: '/old-icon.png',
-      teamId: 'team2',
-      type: AppTypeEnum.mcpToolSet,
-      modules: [
-        {
-          toolConfig: undefined,
-          inputs: [],
-          outputs: []
-        }
-      ]
-    } as unknown as AppSchemaType;
-
-    const childApps = [
-      {
-        name: 'child_tool',
-        modules: [
-          {
-            inputs: [
-              {
-                value: {
-                  name: 'child_tool',
-                  description: 'child desc',
-                  url: 'http://child.mcp',
-                  inputSchema: { type: 'object', properties: {} }
-                }
-              }
-            ]
-          }
-        ]
+      type: AppTypeEnum.mcpToolSet
+    } as AppSchemaType;
+    const workflow = createMcpWorkflow({
+      mcpToolSet: {
+        url: 'http://mcp.test',
+        toolList: []
       }
-    ];
-    mockMongoAppFind.mockReturnValue({ lean: () => Promise.resolve(childApps) });
-
-    const result = await getMCPChildren(app);
-
-    expect(mockMongoAppFind).toHaveBeenCalledWith({ teamId: 'team2', parentId: 'app456' });
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      avatar: '/old-icon.png',
-      id: 'mcp-app456/child_tool',
-      name: 'child_tool'
     });
-  });
 
-  it('should return empty array for old MCP with no children', async () => {
-    const app = {
-      _id: 'app789',
-      avatar: '/icon.png',
-      teamId: 'team3',
-      type: AppTypeEnum.mcpToolSet,
-      modules: [{ toolConfig: undefined, inputs: [], outputs: [] }]
-    } as unknown as AppSchemaType;
-
-    mockMongoAppFind.mockReturnValue({ lean: () => Promise.resolve([]) });
-
-    const result = await getMCPChildren(app);
+    const result = await getMCPChildren(app, workflow);
     expect(result).toEqual([]);
-  });
-
-  it('should ignore a non-MCP app even when its modules contain an MCP config', async () => {
-    const app = {
-      _id: 'workflow-app',
-      avatar: '/icon.png',
-      teamId: 'team3',
-      type: AppTypeEnum.workflow,
-      modules: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              url: 'https://mcp.test',
-              toolList: []
-            }
-          },
-          inputs: [],
-          outputs: []
-        }
-      ]
-    } as unknown as AppSchemaType;
-
-    const result = await getMCPChildren(app);
-
-    expect(result).toEqual([]);
-    expect(mockMongoAppFind).not.toHaveBeenCalled();
   });
 });
