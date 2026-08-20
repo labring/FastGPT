@@ -2,13 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
-const { findOneMock } = vi.hoisted(() => ({
-  findOneMock: vi.fn()
+const { findOneMock, findAppByIdMock } = vi.hoisted(() => ({
+  findOneMock: vi.fn(),
+  findAppByIdMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/app/version/schema', () => ({
   MongoAppVersion: {
     findOne: findOneMock
+  }
+}));
+
+vi.mock('@fastgpt/service/core/app/schema', () => ({
+  MongoApp: {
+    findById: findAppByIdMock
   }
 }));
 
@@ -20,6 +27,7 @@ import {
 describe('getAppLatestVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findAppByIdMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) });
   });
 
   it('normalizes a legacy published version before returning it', async () => {
@@ -152,6 +160,7 @@ describe('getAppLatestVersion', () => {
 describe('getAppVersionById', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findAppByIdMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) });
   });
 
   it('preserves a legacy version config when the current app config differs', async () => {
