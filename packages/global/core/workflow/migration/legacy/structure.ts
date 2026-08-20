@@ -39,6 +39,7 @@ const optionalNodeFields = [
 ];
 // 输入字段同样清理历史 null，保留有业务意义的空字符串、false 和 0。
 const optionalInputFields = [
+  'selectedType',
   'referencePlaceholder',
   'placeholder',
   'valueDesc',
@@ -179,8 +180,12 @@ export const migrateLegacyWorkflowStructureData = ({
   const normalizeInputList = (value: unknown) => {
     if (!Array.isArray(value)) return value === null ? undefined : value;
     return value.map((item) => {
-      if (!isRecord(item) || typeof item.value === 'object' || item.value === undefined)
-        return item;
+      if (!isRecord(item)) return item;
+      if (item.value === null) {
+        const { value: _value, ...normalizedItem } = item;
+        return normalizedItem;
+      }
+      if (typeof item.value === 'object' || item.value === undefined) return item;
       if (typeof item.value !== 'string' && typeof item.value !== 'number') return item;
       // 历史 secret/inputList 值可能直接保存为原始字符串或数字，当前协议要求 { value } 包装。
       return { ...item, value: { value: String(item.value) } };
