@@ -24,7 +24,9 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   chunk: 0,
   image: 0,
   auto: 0,
-  imageParse: 0
+  imageParse: 0,
+  synonymStandardize: 0,
+  synonymRestore: 0
 };
 
 const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
@@ -33,7 +35,9 @@ const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
   chunk: 3,
   image: 10,
   auto: 10,
-  imageParse: 10
+  imageParse: 10,
+  synonymStandardize: 10,
+  synonymRestore: 10
 };
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {

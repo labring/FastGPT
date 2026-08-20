@@ -4,6 +4,13 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { datasetParseQueue } from '../queues/datasetParse';
+import { generateSynonymIndexes } from '../queues/synonym';
+import { MongoDatasetSynonymJob } from '@fastgpt/service/core/dataset/synonym/schema';
+import {
+  processDatasetSynonymMarkingJob,
+  resumeRetiredDatasetSynonymCleanup,
+  resumeDatasetSynonymMarkingJobs
+} from '@fastgpt/service/core/dataset/synonym/controller';
 
 export const createDatasetTrainingMongoWatch = () => {
   const changeStream = MongoDatasetTraining.watch();
@@ -19,9 +26,25 @@ export const createDatasetTrainingMongoWatch = () => {
           generateVector();
         } else if (mode === TrainingModeEnum.parse) {
           datasetParseQueue();
+        } else if (
+          mode === TrainingModeEnum.synonymStandardize ||
+          mode === TrainingModeEnum.synonymRestore
+        ) {
+          generateSynonymIndexes();
         }
       }
     } catch (error) {}
+  });
+};
+
+export const createDatasetSynonymMongoWatch = () => {
+  void resumeDatasetSynonymMarkingJobs();
+  void resumeRetiredDatasetSynonymCleanup();
+  const changeStream = MongoDatasetSynonymJob.watch();
+  return changeStream.on('change', (change) => {
+    if (change.operationType === 'insert' || change.operationType === 'update') {
+      void processDatasetSynonymMarkingJob(String(change.documentKey._id));
+    }
   });
 };
 
@@ -32,5 +55,6 @@ export const startTrainingQueue = (fast?: boolean) => {
     generateQA();
     generateVector();
     datasetParseQueue();
+    generateSynonymIndexes();
   }
 };

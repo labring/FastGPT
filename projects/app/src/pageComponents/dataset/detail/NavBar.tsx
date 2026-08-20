@@ -14,6 +14,7 @@ export enum TabEnum {
   dataCard = 'dataCard',
   collectionCard = 'collectionCard',
   test = 'test',
+  synonym = 'synonym',
   info = 'info',
   import = 'import'
 }
@@ -32,6 +33,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
       value: TabEnum.collectionCard
     },
     { label: t('common:core.dataset.test.Search Test'), value: TabEnum.test },
+    { label: t('dataset:synonym.title'), value: TabEnum.synonym },
     ...(datasetDetail.permission.hasManagePer && !isPc
       ? [{ label: t('common:Config'), value: TabEnum.info }]
       : [])

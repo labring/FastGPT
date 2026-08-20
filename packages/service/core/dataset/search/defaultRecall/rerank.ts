@@ -4,24 +4,58 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { reRankRecall } from '../../../../core/ai/rerank';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';
 
+/**
+ * 构造 rerank 专用 query。召回 query 可能已经经过问题扩展和同义词改写，
+ * 但 rerank 仍需要看到原始问题，避免改写后的文本替代用户真实意图。
+ */
+export const buildSynonymAwareRerankQuery = ({
+  originalQuery,
+  expandedQuery
+}: {
+  originalQuery?: string;
+  expandedQuery: string;
+}) => {
+  const values = [originalQuery?.trim(), expandedQuery.trim()].filter(
+    (value, index, list): value is string => !!value && list.indexOf(value) === index
+  );
+  return values.join('\n');
+};
+
+/**
+ * 为 rerank document 附加当前 chunk 实际命中的 mapping。
+ * 只使用 chunk 自身的 metadata，不把 query 命中的 mapping 混入 document。
+ */
+export const buildSynonymAwareRerankDocument = (item: SearchDataResponseItemType) => {
+  const text = `${item.q}\n${item.a ?? ''}`.trim();
+  const mappings = item.synonymMappings ?? [];
+  if (mappings.length === 0) return text;
+
+  const synonymContext = mappings
+    .map(({ matchedTerm, standardizedTerm }) => `${matchedTerm} = ${standardizedTerm}`)
+    .join('；');
+  return `${text}\n\n同义词：${synonymContext}`;
+};
+
 const datasetDataReRank = async ({
   rerankModel,
   data,
-  query
+  query,
+  originalQuery
 }: {
   rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
+  originalQuery?: string;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
 }> => {
   const { results, inputTokens } = await reRankRecall({
     model: rerankModel,
-    query,
+    query: buildSynonymAwareRerankQuery({ originalQuery, expandedQuery: query }),
     documents: data.map((item) => ({
       id: item.id,
-      text: `${item.q}\n${item.a}`.trim()
+      text: buildSynonymAwareRerankDocument(item)
     }))
   });
 
@@ -57,12 +91,14 @@ export const reRankSearchResults = async ({
   textRecallResults,
   rerankModel,
   query,
+  originalQuery,
   rerankWeight
 }: {
   usingReRank: boolean;
   textRecallResults: SearchDataResponseItemType[];
   rerankModel?: RerankModelItemType;
   query: string;
+  originalQuery?: string;
   rerankWeight: number;
 }): Promise<{
   results: SearchDataResponseItemType[];
@@ -81,6 +117,7 @@ export const reRankSearchResults = async ({
     const { results: reRankResults, inputTokens } = await datasetDataReRank({
       rerankModel,
       query,
+      originalQuery,
       data: removeDuplicateSearchResults(textRecallResults)
     });
 

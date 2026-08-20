@@ -20,6 +20,9 @@ import {
   DatasetDataIndexOperation,
   type DatasetDataIndexDraft
 } from '@/service/core/dataset/data/dataIndex';
+import { getDatasetSynonymTransformContext } from '@fastgpt/service/core/dataset/synonym/entity';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { withDatasetMutationGate } from '@fastgpt/service/core/dataset/mutationLock/service';
 
 type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes'> & {
   indexes: NonNullable<UpdateDatasetDataPropsType['indexes']>;
@@ -28,6 +31,18 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   imageIndex?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
   forceRebuild?: boolean;
+  /** synonym worker 可显式指定 pending 版本；0 表示恢复原文。 */
+  synonymFileVersion?: number;
+  /** 向量写入后、Mongo 提交前的 fencing 校验。 */
+  beforeCommit?: (session: ClientSession) => Promise<void>;
+  /** synonym operation 在新向量产生后持久化补偿信息。 */
+  onVectorsPrepared?: (data: {
+    tokens: number;
+    insertedVectorIds: string[];
+    obsoleteVectorIds: string[];
+  }) => Promise<void>;
+  /** Mongo 已提交但旧向量尚未清理时持久化提交边界。 */
+  onMongoCommitted?: () => Promise<void>;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
@@ -149,11 +164,17 @@ export class DatasetDataOperation {
       indexPrefix
     });
 
+    const synonymContext = await getDatasetSynonymTransformContext({
+      teamId,
+      datasetId
+    });
+
     const { tokens, indexes: results } = await this.indexOperation.insertVectors({
       indexes: newIndexes,
       teamId,
       datasetId,
-      collectionId
+      collectionId,
+      transformText: synonymContext.transformText
     });
 
     // 主数据保存的是带 dataId 的 indexes，因此需要先完成向量写入。
@@ -170,7 +191,8 @@ export class DatasetDataOperation {
           imageDescMap,
           ...(metadata && { metadata }),
           chunkIndex,
-          indexes: results
+          indexes: results,
+          synonymIndexVersion: synonymContext.fileVersion
         }
       ],
       { session, ordered: true }
@@ -184,7 +206,9 @@ export class DatasetDataOperation {
           datasetId,
           collectionId,
           dataId: _id,
-          fullTextToken: await jiebaSplit({ text: `${indexQ}\n${a}`.trim() })
+          fullTextToken: await jiebaSplit({
+            text: synonymContext.transformText(`${indexQ}\n${a}`.trim())
+          })
         }
       ],
       { session, ordered: true }
@@ -224,7 +248,11 @@ export class DatasetDataOperation {
     indexPrefix,
     imageIndex,
     metadata,
-    forceRebuild = false
+    forceRebuild = false,
+    synonymFileVersion,
+    beforeCommit,
+    onVectorsPrepared,
+    onMongoCommitted
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = getEmbeddingModel(model);
 
@@ -252,6 +280,16 @@ export class DatasetDataOperation {
       maxIndexSize: embModel.maxToken,
       indexPrefix
     });
+    const synonymContext = await getDatasetSynonymTransformContext({
+      teamId: String(mongoData.teamId),
+      datasetId: String(mongoData.datasetId),
+      fileVersion: synonymFileVersion
+    });
+    const currentSynonymContext = await getDatasetSynonymTransformContext({
+      teamId: String(mongoData.teamId),
+      datasetId: String(mongoData.datasetId),
+      fileVersion: mongoData.synonymIndexVersion ?? 0
+    });
 
     // 把旧的 dataId 加到新的索引里
     const indexesWithExistingSystemIds = this.indexOperation.mergeExistingSystemIndexIds({
@@ -263,7 +301,16 @@ export class DatasetDataOperation {
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
       nextIndexes: indexesWithExistingSystemIds,
-      isSameIndex: forceRebuild ? () => false : undefined
+      isSameIndex: forceRebuild
+        ? () => false
+        : synonymFileVersion !== undefined
+          ? (current, next) =>
+              current.type === next.type &&
+              (current.type === DatasetDataIndexTypeEnum.imageEmbedding
+                ? current.text === next.text
+                : currentSynonymContext.transformText(current.text) ===
+                  synonymContext.transformText(next.text))
+          : undefined
     });
     // 先保存旧向量 id；insertVectorForPatch 会原地把 update 项替换成新 dataId。
     const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
@@ -277,44 +324,75 @@ export class DatasetDataOperation {
       patchResult,
       teamId: mongoData.teamId,
       datasetId: mongoData.datasetId,
-      collectionId: mongoData.collectionId
+      collectionId: mongoData.collectionId,
+      transformText: synonymContext.transformText
     });
 
     const newIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
+    const previousVectorIds = new Set(mongoData.indexes.map((index) => index.dataId));
+    const insertedVectorIds = newIndexes
+      .map((index) => index.dataId)
+      .filter((dataId) => dataId && !previousVectorIds.has(dataId));
 
-    await mongoSessionRun(async (session) => {
-      // 仅在 Q/A 变化时记录历史，最多保留最近 10 条旧内容。
-      mongoData.history =
-        nextQ !== mongoData.q || nextA !== mongoData.a
-          ? [
-              {
-                q: mongoData.q,
-                a: mongoData.a,
-                updateTime
-              },
-              ...(mongoData.history?.slice(0, 9) || [])
-            ]
-          : mongoData.history;
-      mongoData.q = nextQ;
-      mongoData.a = nextA;
-      if (metadata !== undefined) {
-        mongoData.metadata = metadata;
-      }
-      mongoData.indexes = newIndexes;
-      await mongoData.save({ session });
+    await onVectorsPrepared?.({
+      tokens,
+      insertedVectorIds,
+      obsoleteVectorIds: deleteVectorIdList
+    });
 
-      // Q/A 变化会影响全文检索结果，需要和主数据一并更新。
-      await MongoDatasetDataText.updateOne(
-        { dataId: mongoData._id },
-        { fullTextToken: await jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
-        { session }
-      );
+    try {
+      await mongoSessionRun(async (session) => {
+        await beforeCommit?.(session);
+        // 仅在 Q/A 变化时记录历史，最多保留最近 10 条旧内容。
+        mongoData.history =
+          nextQ !== mongoData.q || nextA !== mongoData.a
+            ? [
+                {
+                  q: mongoData.q,
+                  a: mongoData.a,
+                  updateTime
+                },
+                ...(mongoData.history?.slice(0, 9) || [])
+              ]
+            : mongoData.history;
+        mongoData.q = nextQ;
+        mongoData.a = nextA;
+        if (metadata !== undefined) {
+          mongoData.metadata = metadata;
+        }
+        mongoData.indexes = newIndexes;
+        mongoData.synonymIndexVersion = synonymContext.fileVersion;
+        await mongoData.save({ session });
 
-      // Mongo 已经指向新的 dataId 后再删旧向量，降低检索命中悬空向量 id 的风险。
-      await this.indexOperation.deleteVectors({
-        teamId: mongoData.teamId,
-        idList: deleteVectorIdList
+        // Q/A 变化会影响全文检索结果，需要和主数据一并更新。
+        await MongoDatasetDataText.updateOne(
+          { dataId: mongoData._id },
+          {
+            fullTextToken: await jiebaSplit({
+              text: synonymContext.transformText(`${mongoData.q}\n${mongoData.a}`.trim())
+            })
+          },
+          { session }
+        );
       });
+    } catch (error) {
+      try {
+        await this.indexOperation.deleteVectors({
+          teamId: mongoData.teamId,
+          idList: insertedVectorIds
+        });
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], 'Mongo 提交和新向量回收均失败');
+      }
+      throw error;
+    }
+
+    await onMongoCommitted?.();
+
+    // 事务提交后再删除旧向量，避免事务回滚后 Mongo 仍指向已删除的旧向量。
+    await this.indexOperation.deleteVectors({
+      teamId: mongoData.teamId,
+      idList: deleteVectorIdList
     });
 
     this.pushCollectionUpdate({
@@ -352,6 +430,10 @@ export class DatasetDataOperation {
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
     const nextImageId = imageId ?? mongoData.imageId;
+    const synonymContext = await getDatasetSynonymTransformContext({
+      teamId: String(mongoData.teamId),
+      datasetId: String(mongoData.datasetId)
+    });
     indexSize = Math.min(embModel.maxToken, indexSize);
 
     const systemIndexes = await this.indexOperation.getSystemIndexes({
@@ -380,67 +462,90 @@ export class DatasetDataOperation {
       patchResult,
       teamId: mongoData.teamId,
       datasetId: mongoData.datasetId,
-      collectionId: mongoData.collectionId
+      collectionId: mongoData.collectionId,
+      transformText: synonymContext.transformText
     });
 
     const nextSystemIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
     const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
+    const previousVectorIds = new Set(mongoData.indexes.map((index) => index.dataId));
+    const insertedVectorIds = nextSystemIndexes
+      .map((index) => index.dataId)
+      .filter((dataId) => dataId && !previousVectorIds.has(dataId));
     const updateTime = mongoData.updateTime;
     const isDataChanged = nextQ !== mongoData.q || nextA !== mongoData.a;
 
-    await mongoSessionRun(async (session) => {
-      await MongoDatasetData.updateOne(
-        { _id: mongoData._id },
-        [
-          {
-            $set: {
-              ...(isDataChanged
-                ? {
-                    history: {
-                      $literal: [
-                        {
-                          q: mongoData.q,
-                          a: mongoData.a,
-                          updateTime
-                        },
-                        ...(mongoData.history?.slice(0, 9) || [])
-                      ]
-                    }
-                  }
-                : {}),
-              q: { $literal: nextQ },
-              a: { $literal: nextA },
-              indexes: {
-                $concatArrays: [
-                  {
-                    $filter: {
-                      input: '$indexes',
-                      as: 'index',
-                      cond: {
-                        $not: [{ $in: ['$$index.type', datasetDataSystemIndexTypes] }]
+    try {
+      await mongoSessionRun(async (session) => {
+        await MongoDatasetData.updateOne(
+          { _id: mongoData._id },
+          [
+            {
+              $set: {
+                ...(isDataChanged
+                  ? {
+                      history: {
+                        $literal: [
+                          {
+                            q: mongoData.q,
+                            a: mongoData.a,
+                            updateTime
+                          },
+                          ...(mongoData.history?.slice(0, 9) || [])
+                        ]
                       }
                     }
-                  },
-                  { $literal: nextSystemIndexes }
-                ]
-              },
-              updateTime: { $literal: new Date() }
+                  : {}),
+                q: { $literal: nextQ },
+                a: { $literal: nextA },
+                indexes: {
+                  $concatArrays: [
+                    {
+                      $filter: {
+                        input: '$indexes',
+                        as: 'index',
+                        cond: {
+                          $not: [{ $in: ['$$index.type', datasetDataSystemIndexTypes] }]
+                        }
+                      }
+                    },
+                    { $literal: nextSystemIndexes }
+                  ]
+                },
+                updateTime: { $literal: new Date() },
+                synonymIndexVersion: { $literal: synonymContext.fileVersion }
+              }
             }
-          }
-        ],
-        { session }
-      );
+          ],
+          { session }
+        );
 
-      await MongoDatasetDataText.updateOne(
-        { dataId: mongoData._id },
-        { fullTextToken: await jiebaSplit({ text: `${nextQ}\n${nextA}`.trim() }) },
-        { session }
-      );
-
-      await this.indexOperation.deleteVectors({
-        teamId: mongoData.teamId,
-        idList: deleteVectorIdList
+        await MongoDatasetDataText.updateOne(
+          { dataId: mongoData._id },
+          {
+            fullTextToken: await jiebaSplit({
+              text: synonymContext.transformText(`${nextQ}\n${nextA}`.trim())
+            })
+          },
+          { session }
+        );
       });
+    } catch (error) {
+      try {
+        await this.indexOperation.deleteVectors({
+          teamId: mongoData.teamId,
+          idList: insertedVectorIds
+        });
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], 'Mongo 提交和新向量回收均失败');
+      }
+      throw error;
+    }
+
+    // Mongo 提交成功后再回收旧向量，事务失败时主数据仍可继续引用原向量。
+    await this.indexOperation.deleteVectors({
+      teamId: mongoData.teamId,
+      idList: deleteVectorIdList
     });
 
     this.pushCollectionUpdate({
@@ -498,7 +603,13 @@ export const createDatasetData = async (
     session?: ClientSession;
   }
 ) => {
-  return new DatasetDataOperation(props.embeddingModel).create(props);
+  if (props.session) return new DatasetDataOperation(props.embeddingModel).create(props);
+  return withDatasetMutationGate({
+    teamId: props.teamId,
+    datasetId: props.datasetId,
+    operation: 'createData',
+    run: () => new DatasetDataOperation(props.embeddingModel).create(props)
+  });
 };
 
 /**
@@ -506,7 +617,18 @@ export const createDatasetData = async (
  * 适用于调用方显式提交整组索引的场景。
  */
 export const updateDatasetDataByIndexes = async (props: UpdateDatasetDataByIndexesProps) => {
-  return new DatasetDataOperation(props.model).updateByIndexes(props);
+  // synonym worker 已持有独占锁，并通过 beforeCommit 执行 fencing 校验。
+  if (props.beforeCommit) return new DatasetDataOperation(props.model).updateByIndexes(props);
+  const data = await MongoDatasetData.findById(props.dataId)
+    .select({ teamId: 1, datasetId: 1 })
+    .lean();
+  if (!data) return Promise.reject('Data not found');
+  return withDatasetMutationGate({
+    teamId: String(data.teamId),
+    datasetId: String(data.datasetId),
+    operation: 'updateData',
+    run: () => new DatasetDataOperation(props.model).updateByIndexes(props)
+  });
 };
 
 /**
@@ -516,12 +638,26 @@ export const updateDatasetDataByIndexes = async (props: UpdateDatasetDataByIndex
 export const updateDatasetDataSystemIndexes = async (
   props: UpdateDatasetDataSystemIndexesProps
 ) => {
-  return new DatasetDataOperation(props.model).updateSystemIndexes(props);
+  const data = await MongoDatasetData.findById(props.dataId)
+    .select({ teamId: 1, datasetId: 1 })
+    .lean();
+  if (!data) return Promise.reject('Data not found');
+  return withDatasetMutationGate({
+    teamId: String(data.teamId),
+    datasetId: String(data.datasetId),
+    operation: 'updateSystemIndexes',
+    run: () => new DatasetDataOperation(props.model).updateSystemIndexes(props)
+  });
 };
 
 /**
  * 删除 dataset data 及其全文索引、图片和向量等派生资源。
  */
 export const deleteDatasetData = async (data: DatasetDataItemType) => {
-  return new DatasetDataOperation().delete(data);
+  return withDatasetMutationGate({
+    teamId: String(data.teamId),
+    datasetId: String(data.datasetId),
+    operation: 'deleteData',
+    run: () => new DatasetDataOperation().delete(data)
+  });
 };

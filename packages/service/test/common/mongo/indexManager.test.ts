@@ -1,8 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { connectionMongo, defineIndex, Schema } from '@fastgpt/service/common/mongo';
+import {
+  connectionMongo,
+  defineIndex,
+  getSchemaDeprecatedMongoIndexes,
+  Schema
+} from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
+import {
+  MongoDatasetSynonym,
+  MongoDatasetSynonymMapping
+} from '@fastgpt/service/core/dataset/synonym/schema';
 
 const logger = {
   debug: vi.fn(),
@@ -42,6 +51,55 @@ const legacyDefinition = {
   indexName: 'legacy_field_1',
   key: { legacyField: 1 }
 } as const;
+
+describe('dataset synonym index declarations', () => {
+  it('declares legacy S3 key indexes as deprecated', () => {
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonym.schema)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ indexName: 'teamId_1_fileId_1', key: { teamId: 1, fileId: 1 } }),
+        expect.objectContaining({
+          indexName: 'teamId_1_pendingFileId_1',
+          key: { teamId: 1, pendingFileId: 1 }
+        })
+      ])
+    );
+  });
+
+  it('limits version uniqueness to migrated mapping documents', () => {
+    const indexes = MongoDatasetSynonymMapping.schema.indexes();
+    const normalizedTermIndex = indexes.find(
+      ([key]) => 'normalizedStandardizedTerm' in key && 'fileVersion' in key
+    );
+    const logicalIdIndex = indexes.find(
+      ([key]) => 'logicalMappingId' in key && 'fileVersion' in key
+    );
+
+    expect(normalizedTermIndex?.[1]).toMatchObject({
+      unique: true,
+      partialFilterExpression: {
+        fileVersion: { $type: 'number' },
+        normalizedStandardizedTerm: { $type: 'string' }
+      }
+    });
+    expect(logicalIdIndex?.[1]).toMatchObject({
+      unique: true,
+      partialFilterExpression: {
+        fileVersion: { $type: 'number' },
+        logicalMappingId: { $type: 'objectId' }
+      }
+    });
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetSynonymMapping.schema)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          indexName: 'teamId_1_datasetId_1_fileVersion_1_normalizedStandardizedTerm_1'
+        }),
+        expect.objectContaining({
+          indexName: 'teamId_1_datasetId_1_fileVersion_1_logicalMappingId_1'
+        })
+      ])
+    );
+  });
+});
 
 describe('MongoIndexManager.syncModelIndexes', () => {
   beforeEach(() => {
@@ -92,6 +150,35 @@ describe('MongoIndexManager.syncModelIndexes', () => {
       created: 1,
       dropped: 1
     });
+  });
+
+  it('replaces a full unique index with a named partial unique index on the same key', async () => {
+    const schema = new Schema(
+      { datasetId: String, fileVersion: Number, term: String },
+      { autoIndex: false }
+    );
+    const key = { datasetId: 1, fileVersion: 1, term: 1 } as const;
+    defineIndex(schema, {
+      key,
+      options: {
+        name: 'version_term_unique_v2',
+        unique: true,
+        partialFilterExpression: {
+          fileVersion: { $type: 'number' },
+          term: { $type: 'string' }
+        }
+      }
+    });
+    defineIndex(schema, { key, options: { unique: true }, deprecated: true });
+    const model = createModel({ schema });
+    const legacyName = 'datasetId_1_fileVersion_1_term_1';
+    await model.collection.createIndex(key, { name: legacyName, unique: true });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexNames = await getIndexNames(model);
+    expect(indexNames).toContain('version_term_unique_v2');
+    expect(indexNames).not.toContain(legacyName);
   });
 
   it('does not delete schema-external indexes when the Schema has no deprecated declarations', async () => {

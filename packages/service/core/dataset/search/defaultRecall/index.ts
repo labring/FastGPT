@@ -15,6 +15,7 @@ import {
   removeDuplicateSearchResults
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
+import { attachSynonymMappingsToSearchResults } from '../synonym';
 
 /**
  * 执行默认知识库召回主流程。
@@ -48,6 +49,7 @@ export async function searchDatasetData(
     embeddingWeight = 0.5,
     usingReRank: inputUsingReRank = false,
     rerankModel,
+    rerankOriginalQuery,
     rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch
@@ -117,6 +119,11 @@ export async function searchDatasetData(
     { weight: 1 - embeddingWeight, list: imageCaptionFullTextRecallResults }
   ]);
 
+  // 只有启用 rerank 时才提前查询 chunk metadata；普通搜索仍在最终输出阶段补充一次。
+  const textRecallResultsWithSynonymMappings = usingReRank
+    ? await attachSynonymMappingsToSearchResults(textRecallResults)
+    : textRecallResults;
+
   // Step 4: rerank 只处理文本召回。
   // 图片向量结果和 caption 结果仍按 RRF 融合，避免用文本 rerank 把视觉相似结果误杀。
   const {
@@ -125,9 +132,10 @@ export async function searchDatasetData(
     usingReRank: finalUsingReRank
   } = await reRankSearchResults({
     usingReRank,
-    textRecallResults,
+    textRecallResults: textRecallResultsWithSynonymMappings,
     rerankModel,
     query: reRankQuery,
+    originalQuery: rerankOriginalQuery,
     rerankWeight
   });
 
@@ -168,12 +176,14 @@ export async function searchDatasetData(
   });
 
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
+  const resultsWithSynonymMappings =
+    await attachSynonymMappingsToSearchResults(filterMaxTokensResult);
   // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一对象 key。
   // 被前面过滤掉的候选不会产生 alias 查询；最终输出也不暴露仅供格式化使用的 imageId。
   const formattedValues = await formatDatasetDataValues(
-    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId }))
+    resultsWithSynonymMappings.map(({ q, a, imageId }) => ({ q, a, imageId }))
   );
-  const finalResult = filterMaxTokensResult.map((item, index) => {
+  const finalResult = resultsWithSynonymMappings.map((item, index) => {
     const result = { ...item };
     delete result.imageId;
     return {

@@ -8,6 +8,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
@@ -281,6 +282,70 @@ describe('Dataset data service', () => {
   });
 
   describe('updateDatasetDataByIndexes', () => {
+    it('persists vector preparation before Mongo commit for synonym operations', async () => {
+      const { data } = await createMongoData();
+      const callOrder: string[] = [];
+      const onVectorsPrepared = vi.fn(async () => {
+        callOrder.push('vectors');
+      });
+      const onMongoCommitted = vi.fn(async () => {
+        callOrder.push('mongo');
+      });
+
+      await updateDatasetDataByIndexes({
+        dataId: String(data._id),
+        q: 'new question',
+        a: 'new answer',
+        indexes: [],
+        model: 'text-embedding-3-small',
+        synonymFileVersion: 2,
+        beforeCommit: async () => {},
+        onVectorsPrepared,
+        onMongoCommitted
+      });
+
+      expect(callOrder).toEqual(['vectors', 'mongo']);
+      expect(onVectorsPrepared).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokens: expect.any(Number),
+          insertedVectorIds: expect.arrayContaining(['id_1']),
+          obsoleteVectorIds: expect.arrayContaining(['custom_old', 'default_old'])
+        })
+      );
+    });
+
+    it('cleans newly inserted vectors when fencing validation rejects the Mongo commit', async () => {
+      const { data } = await createMongoData();
+      const onVectorsPrepared = vi.fn(async () => {});
+      const onMongoCommitted = vi.fn(async () => {});
+
+      await expect(
+        updateDatasetDataByIndexes({
+          dataId: String(data._id),
+          q: 'new question',
+          a: 'new answer',
+          indexes: [],
+          model: 'text-embedding-3-small',
+          synonymFileVersion: 2,
+          beforeCommit: async () => {
+            throw new Error('stale fencing token');
+          },
+          onVectorsPrepared,
+          onMongoCommitted
+        })
+      ).rejects.toThrow('stale fencing token');
+
+      expect(onVectorsPrepared).toHaveBeenCalledOnce();
+      expect(onMongoCommitted).not.toHaveBeenCalled();
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: data.teamId,
+        idList: expect.arrayContaining(['id_1'])
+      });
+      expect(mockVectorDelete).not.toHaveBeenCalledWith(
+        expect.objectContaining({ idList: expect.arrayContaining(['custom_old']) })
+      );
+    });
+
     it('should update q/a, replace full indexes, record history and delete stale vectors', async () => {
       const { data } = await createMongoData({
         q: 'old question',
@@ -565,6 +630,10 @@ describe('Dataset data service', () => {
           }
         ]
       });
+      let questionAtVectorCleanup: string | undefined;
+      mockVectorDelete.mockImplementationOnce(async () => {
+        questionAtVectorCleanup = (await MongoDatasetData.findById(data._id).lean())?.q;
+      });
 
       const updatePromise = updateDatasetDataSystemIndexes({
         dataId: String(data._id),
@@ -616,6 +685,54 @@ describe('Dataset data service', () => {
       expect(
         updatedData?.indexes.filter((index) => index.type === DatasetDataIndexTypeEnum.default)
       ).toHaveLength(1);
+      expect(questionAtVectorCleanup).toBe('new question');
+    });
+
+    it('should keep old vectors and clean inserted vectors when the Mongo transaction fails', async () => {
+      const { data } = await createMongoData({
+        q: 'old question',
+        a: '',
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: 'custom index',
+            dataId: 'custom_old'
+          },
+          {
+            type: DatasetDataIndexTypeEnum.default,
+            text: 'old question',
+            dataId: 'default_old'
+          }
+        ]
+      });
+      vi.mocked(mongoSessionRun).mockRejectedValueOnce(new Error('Mongo transaction failed'));
+
+      await expect(
+        updateDatasetDataSystemIndexes({
+          dataId: String(data._id),
+          q: 'new question',
+          a: '',
+          model: 'text-embedding-3-small',
+          indexSize: 50
+        })
+      ).rejects.toThrow('Mongo transaction failed');
+
+      const unchangedData = await MongoDatasetData.findById(data._id).lean();
+      expect(unchangedData?.q).toBe('old question');
+      expect(unchangedData?.indexes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ dataId: 'custom_old' }),
+          expect.objectContaining({ dataId: 'default_old' })
+        ])
+      );
+      expect(mockVectorDelete).toHaveBeenCalledTimes(1);
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: data.teamId,
+        idList: expect.arrayContaining(['id_1'])
+      });
+      expect(mockVectorDelete).not.toHaveBeenCalledWith(
+        expect.objectContaining({ idList: expect.arrayContaining(['default_old']) })
+      );
     });
 
     it('should keep history unchanged when q and a do not change', async () => {

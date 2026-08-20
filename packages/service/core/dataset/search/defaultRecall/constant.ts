@@ -13,6 +13,7 @@ export const datasetDataSelectField = {
   imageDescMap: 1,
   chunkIndex: 1,
   indexes: 1,
+  synonymIndexVersion: 1,
   metadata: 1
 };
 

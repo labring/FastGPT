@@ -23,6 +23,7 @@ import {
   getDatasetImageTrainingMode
 } from '@fastgpt/service/core/dataset/utils';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
+import { withDatasetMutationGate } from '@fastgpt/service/core/dataset/mutationLock/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -343,36 +344,42 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 };
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
-  return mongoSessionRun(async (session) => {
-    const embModel = getEmbeddingModel(trainingData.dataset.vectorModel);
+  return withDatasetMutationGate({
+    teamId: String(trainingData.teamId),
+    datasetId: String(trainingData.datasetId),
+    operation: 'trainingInsertData',
+    run: () =>
+      mongoSessionRun(async (session) => {
+        const embModel = getEmbeddingModel(trainingData.dataset.vectorModel);
 
-    // insert new data to dataset
-    const { tokens } = await createDatasetData({
-      teamId: trainingData.teamId,
-      tmbId: trainingData.tmbId,
-      datasetId: trainingData.datasetId,
-      collectionId: trainingData.collectionId,
-      q: trainingData.q,
-      a: trainingData.a,
-      imageId: trainingData.imageId,
-      imageDescMap: trainingData.imageDescMap,
-      ...(trainingData.dataMetadata && { metadata: trainingData.dataMetadata }),
-      chunkIndex: trainingData.chunkIndex,
-      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-      indexes: trainingData.indexes || [],
-      indexPrefix: trainingData.collection.indexPrefixTitle
-        ? `# ${trainingData.collection.name}`
-        : undefined,
-      embeddingModel: trainingData.dataset.vectorModel,
-      imageIndex: !!trainingData.collection.imageIndex,
-      session
-    });
+        // insert new data to dataset
+        const { tokens } = await createDatasetData({
+          teamId: trainingData.teamId,
+          tmbId: trainingData.tmbId,
+          datasetId: trainingData.datasetId,
+          collectionId: trainingData.collectionId,
+          q: trainingData.q,
+          a: trainingData.a,
+          imageId: trainingData.imageId,
+          imageDescMap: trainingData.imageDescMap,
+          ...(trainingData.dataMetadata && { metadata: trainingData.dataMetadata }),
+          chunkIndex: trainingData.chunkIndex,
+          indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
+          indexes: trainingData.indexes || [],
+          indexPrefix: trainingData.collection.indexPrefixTitle
+            ? `# ${trainingData.collection.name}`
+            : undefined,
+          embeddingModel: trainingData.dataset.vectorModel,
+          imageIndex: !!trainingData.collection.imageIndex,
+          session
+        });
 
-    // delete data from training
-    await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+        // delete data from training
+        await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
 
-    return {
-      tokens
-    };
+        return {
+          tokens
+        };
+      })
   });
 };

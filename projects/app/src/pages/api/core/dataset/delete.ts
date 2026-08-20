@@ -12,6 +12,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/processor';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { withDatasetMutationGates } from '@fastgpt/service/core/dataset/mutationLock/service';
 
 async function handler(req: ApiRequestProps) {
   const { id: datasetId } = parseApiInput({ req, querySchema: DeleteDatasetQuerySchema }).query;
@@ -31,31 +32,29 @@ async function handler(req: ApiRequestProps) {
     fields: '_id'
   });
   const datasetIds = deleteDatasets.map((d) => d._id);
-  await deleteDatasetsImmediate({
+  await withDatasetMutationGates({
     teamId,
-    datasetIds
-  });
+    datasetIds,
+    operation: 'deleteDataset',
+    run: async () => {
+      await deleteDatasetsImmediate({ teamId, datasetIds });
+      await mongoSessionRun(async (session) => {
+        // 1. Mark as deleted
+        await MongoDataset.updateMany(
+          {
+            _id: { $in: datasetIds },
+            teamId
+          },
+          {
+            deleteTime: new Date()
+          },
+          { session }
+        );
 
-  await mongoSessionRun(async (session) => {
-    // 1. Mark as deleted
-    await MongoDataset.updateMany(
-      {
-        _id: { $in: datasetIds },
-        teamId
-      },
-      {
-        deleteTime: new Date()
-      },
-      {
-        session
-      }
-    );
-
-    // 2. Add to delete queue
-    await addDatasetDeleteJob({
-      teamId,
-      datasetId
-    });
+        // 2. Add to delete queue
+        await addDatasetDeleteJob({ teamId, datasetId });
+      });
+    }
   });
 
   // 3. Add audit log

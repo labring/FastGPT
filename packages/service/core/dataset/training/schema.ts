@@ -14,6 +14,17 @@ import { DatasetDataCollectionName } from '../data/schema';
 
 export const DatasetTrainingCollectionName = 'dataset_trainings';
 
+const TrainingDataMetadataSchema = new Schema(
+  {
+    synonymJobId: Schema.Types.ObjectId,
+    fileVersion: Number,
+    fencingToken: Number,
+    synonymFileId: Schema.Types.ObjectId,
+    affectedLogicalMappingIds: [Schema.Types.ObjectId]
+  },
+  { _id: false, strict: false }
+);
+
 const TrainingDataSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
@@ -69,7 +80,7 @@ const TrainingDataSchema = new Schema({
   imageId: String,
   imageDescMap: Object,
   dataMetadata: {
-    type: Object
+    type: TrainingDataMetadataSchema
   },
   chunkIndex: {
     type: Number,
@@ -134,6 +145,13 @@ defineIndex(TrainingDataSchema, {
 // get training data and sort
 defineIndex(TrainingDataSchema, {
   key: { mode: 1, retryCount: 1, lockTime: 1, weight: -1 }
+});
+defineIndex(TrainingDataSchema, {
+  key: { 'dataMetadata.synonymJobId': 1, dataId: 1, mode: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: { 'dataMetadata.synonymJobId': { $exists: true } }
+  }
 });
 defineIndex(TrainingDataSchema, {
   key: { expireAt: 1 },

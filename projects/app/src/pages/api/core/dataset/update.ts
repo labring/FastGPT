@@ -40,6 +40,7 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { withDatasetMutationGate } from '@fastgpt/service/core/dataset/mutationLock/service';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -242,37 +243,43 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
   };
 
-  await mongoSessionRun(async (session) => {
-    if (isMove) {
-      const parentClbs = await getResourceOwnedClbs({
-        teamId: dataset.teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.dataset,
-        session
-      });
+  await withDatasetMutationGate({
+    teamId,
+    datasetId: id,
+    operation: 'updateDataset',
+    run: () =>
+      mongoSessionRun(async (session) => {
+        if (isMove) {
+          const parentClbs = await getResourceOwnedClbs({
+            teamId: dataset.teamId,
+            resourceId: parentId,
+            resourceType: PerResourceTypeEnum.dataset,
+            session
+          });
 
-      await syncCollaborators({
-        teamId: dataset.teamId,
-        resourceId: id,
-        resourceType: PerResourceTypeEnum.dataset,
-        collaborators: parentClbs,
-        session
-      });
+          await syncCollaborators({
+            teamId: dataset.teamId,
+            resourceId: id,
+            resourceType: PerResourceTypeEnum.dataset,
+            collaborators: parentClbs,
+            session
+          });
 
-      await syncChildrenPermission({
-        resource: dataset,
-        resourceType: PerResourceTypeEnum.dataset,
-        resourceModel: MongoDataset,
-        folderTypeList: [DatasetTypeEnum.folder],
-        collaborators: parentClbs,
-        session
-      });
-      logDatasetMove({ tmbId, teamId, dataset, targetName });
-      return onUpdate(session);
-    } else {
-      logDatasetUpdate({ tmbId, teamId, dataset });
-      return onUpdate(session);
-    }
+          await syncChildrenPermission({
+            resource: dataset,
+            resourceType: PerResourceTypeEnum.dataset,
+            resourceModel: MongoDataset,
+            folderTypeList: [DatasetTypeEnum.folder],
+            collaborators: parentClbs,
+            session
+          });
+          logDatasetMove({ tmbId, teamId, dataset, targetName });
+          return onUpdate(session);
+        } else {
+          logDatasetUpdate({ tmbId, teamId, dataset });
+          return onUpdate(session);
+        }
+      })
   });
 }
 export default NextAPI(handler);

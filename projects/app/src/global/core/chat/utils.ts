@@ -92,6 +92,7 @@ export const chatItemResponsePreviewProjection = {
   'data.quoteList.sourceName': 1,
   'data.quoteList.chunkIndex': 1,
   'data.quoteList.score': 1,
+  'data.quoteList.synonymMappings': 1,
   'data.toolId': 1,
   'data.toolRes.citeLinks': 1,
   'data.errorText': 1,

@@ -34,6 +34,7 @@ export const defaultSearchDatasetData = async ({
         embeddingModel: props.model,
         extensionBg: datasetSearchExtensionBg,
         histories: props.histories,
+        datasetIds: props.datasetIds,
         userKey,
         teamId: props.teamId
       })
@@ -46,6 +47,7 @@ export const defaultSearchDatasetData = async ({
   const result = await searchDatasetData({
     ...props,
     userKey,
+    rerankOriginalQuery: query,
     reRankQuery,
     textQueries: searchQueries
   });

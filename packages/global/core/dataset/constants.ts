@@ -242,8 +242,16 @@ export enum TrainingModeEnum {
   qa = 'qa',
   auto = 'auto',
   image = 'image',
-  imageParse = 'imageParse'
+  imageParse = 'imageParse',
+  synonymStandardize = 'synonymStandardize',
+  synonymRestore = 'synonymRestore'
 }
+
+export const DatasetSynonymCollectionName = 'dataset_synonyms';
+export const DatasetSynonymMappingCollectionName = 'dataset_synonym_mappings';
+export const DatasetSynonymJobCollectionName = 'dataset_synonym_jobs';
+export const DatasetSynonymOperationCollectionName = 'dataset_synonym_operations';
+export const DatasetMutationLockCollectionName = 'dataset_mutation_locks';
 
 export enum CollectionTrainingStatusEnum {
   running = 'running',

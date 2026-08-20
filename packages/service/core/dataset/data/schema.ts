@@ -74,6 +74,7 @@ const DatasetDataSchema = new Schema({
     ],
     default: []
   },
+  synonymIndexVersion: Number,
 
   updateTime: {
     type: Date,
