@@ -235,6 +235,121 @@ defineIndex(ResourcePermissionSchema, {
   }
 });
 
+// Collaborator-first indexes for resource list queries
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    tmbId: 1,
+    resourceId: 1
+  },
+  options: {
+    partialFilterExpression: {
+      tmbId: {
+        $exists: true
+      },
+      resourceId: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    groupId: 1,
+    resourceId: 1
+  },
+  options: {
+    partialFilterExpression: {
+      groupId: {
+        $exists: true
+      },
+      resourceId: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    orgId: 1,
+    resourceId: 1
+  },
+  options: {
+    partialFilterExpression: {
+      orgId: {
+        $exists: true
+      },
+      resourceId: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    tmbId: 1,
+    resourceName: 1
+  },
+  options: {
+    partialFilterExpression: {
+      tmbId: {
+        $exists: true
+      },
+      resourceName: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    groupId: 1,
+    resourceName: 1
+  },
+  options: {
+    partialFilterExpression: {
+      groupId: {
+        $exists: true
+      },
+      resourceName: {
+        $exists: true
+      }
+    }
+  }
+});
+
+defineIndex(ResourcePermissionSchema, {
+  key: {
+    resourceType: 1,
+    teamId: 1,
+    orgId: 1,
+    resourceName: 1
+  },
+  options: {
+    partialFilterExpression: {
+      orgId: {
+        $exists: true
+      },
+      resourceName: {
+        $exists: true
+      }
+    }
+  }
+});
+
 ResourcePermissionSchema.pre('save', function (next) {
   if (!this.tmbId && !this.groupId && !this.orgId) {
     return next(new Error('At least one of tmbId, groupId, orgId must be present'));

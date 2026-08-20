@@ -1,9 +1,14 @@
 import type { AnyBulkWriteOperation, ClientSession } from '../../../common/mongo';
-import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  CommonRolePerMap,
+  OwnerPermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
 import type {
   CollaboratorIdType,
   CollaboratorItemType
 } from '@fastgpt/global/support/permission/collaborator';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { MongoResourcePermission } from '../schema';
 import { pickCollaboratorIdFields } from '../utils';
@@ -12,6 +17,21 @@ type ResourcePermissionQuery = {
   teamId: string;
   resourceType: PerResourceTypeEnum;
   resourceId?: string;
+};
+
+export type ResourcePermissionMatchLogic = 'or' | 'and';
+
+type ResourcePermissionResourceKey = 'resourceId' | 'resourceName';
+
+type FindResourceKeysByCollaboratorsPermissionProps = {
+  teamId: string;
+  resourceType: PerResourceTypeEnum;
+  tmbId: string;
+  groupIds: string[];
+  orgIds: string[];
+  permission: PermissionValueType;
+  matchLogic: ResourcePermissionMatchLogic;
+  personalPermissionPriority: boolean;
 };
 
 const withSession = (session?: ClientSession) => (session ? { session } : undefined);
@@ -78,6 +98,166 @@ export const resourcePermissionRepo = {
       undefined,
       withSession(session)
     ).lean(),
+
+  /**
+   * 查询成员对资源拥有指定权限位的资源标识。
+   * ACL 中保存的是 role 位，查询会先转换为可满足目标权限的 role 位；group/org ACL 会按资源合并，
+   * 个人优先时，存在个人 ACL 的资源不会再使用 group/org ACL 补权。
+   */
+  findResourceKeysByCollaboratorsPermission: async ({
+    teamId,
+    resourceType,
+    tmbId,
+    groupIds,
+    orgIds,
+    permission,
+    matchLogic,
+    personalPermissionPriority
+  }: FindResourceKeysByCollaboratorsPermissionProps) => {
+    if (permission === OwnerPermissionVal) {
+      throw new Error('Owner permission must be checked through owner authorization');
+    }
+    if (matchLogic !== 'or' && matchLogic !== 'and') {
+      throw new Error(`Unsupported permission match logic: ${matchLogic}`);
+    }
+
+    const getResourceKey = (): ResourcePermissionResourceKey => {
+      if (resourceType === PerResourceTypeEnum.model) return 'resourceName';
+      if (
+        [
+          PerResourceTypeEnum.app,
+          PerResourceTypeEnum.dataset,
+          PerResourceTypeEnum.agentSkill
+        ].includes(resourceType)
+      ) {
+        return 'resourceId';
+      }
+      throw new Error(`Resource type ${resourceType} does not support resource list queries`);
+    };
+
+    const getPermissionBits = () => {
+      if (!Number.isSafeInteger(permission) || permission <= 0) {
+        throw new Error('Permission mask must be a positive safe integer');
+      }
+
+      const bits: number[] = [];
+      let remaining = permission;
+      let bit = 1;
+      while (remaining > 0) {
+        if (remaining % 2 === 1) bits.push(bit);
+        remaining = Math.floor(remaining / 2);
+        bit *= 2;
+      }
+      return bits;
+    };
+
+    const getRoleMasks = () => {
+      const permissionBits = getPermissionBits();
+      return permissionBits.map((permissionBit) => {
+        const roleMask = Array.from(CommonRolePerMap.entries()).reduce(
+          (mask, [role, rolePermission]) =>
+            (rolePermission & permissionBit) === permissionBit ? mask | role : mask,
+          0
+        );
+        if (roleMask === 0) {
+          throw new Error(`Permission bit ${permissionBit} is not supported by common roles`);
+        }
+        return roleMask;
+      });
+    };
+
+    const getRolePermissionFilter = (roleMask: number) => {
+      const isSingleRole = (roleMask & (roleMask - 1)) === 0;
+      return isSingleRole ? { $bitsAllSet: roleMask } : { $bitsAnySet: roleMask };
+    };
+
+    const toResourceKeySet = (resourceKeys: unknown[]) =>
+      new Set(resourceKeys.filter((key) => key !== undefined && key !== null).map(String));
+
+    const intersectSets = (sets: Set<string>[]) => {
+      if (sets.length === 0) return new Set<string>();
+      const [first, ...rest] = sets;
+      return new Set(Array.from(first).filter((key) => rest.every((set) => set.has(key))));
+    };
+
+    const differenceSets = (left: Set<string>, right: Set<string>) =>
+      new Set(Array.from(left).filter((key) => !right.has(key)));
+
+    const resourceKey = getResourceKey();
+    const roleMasks = getRoleMasks();
+    const baseQuery = {
+      teamId,
+      resourceType,
+      [resourceKey]: { $exists: true }
+    };
+
+    const findResourceKeys = async ({
+      collaborators,
+      permissionFilter
+    }: {
+      collaborators: Record<string, unknown>[];
+      permissionFilter?: Record<string, unknown>;
+    }) => {
+      if (collaborators.length === 0) return new Set<string>();
+
+      const filter = {
+        ...baseQuery,
+        ...(collaborators.length === 1 ? collaborators[0] : { $or: collaborators }),
+        ...permissionFilter
+      };
+      const resourceKeys = await MongoResourcePermission.distinct(resourceKey, filter);
+      return toResourceKeySet(resourceKeys);
+    };
+
+    const findMatchedResourceKeys = async (collaborators: Record<string, unknown>[]) => {
+      if (matchLogic === 'or') {
+        return findResourceKeys({
+          collaborators,
+          permissionFilter: {
+            permission: getRolePermissionFilter(roleMasks.reduce((mask, role) => mask | role, 0))
+          }
+        });
+      }
+
+      const permissionSets = await Promise.all(
+        roleMasks.map((roleMask) =>
+          findResourceKeys({
+            collaborators,
+            permissionFilter: {
+              permission: getRolePermissionFilter(roleMask)
+            }
+          })
+        )
+      );
+      return intersectSets(permissionSets);
+    };
+
+    const personalCollaborators = [{ tmbId }];
+    const groupAndOrgCollaborators = [
+      ...(groupIds.length > 0 ? [{ groupId: { $in: groupIds } }] : []),
+      ...(orgIds.length > 0 ? [{ orgId: { $in: orgIds } }] : [])
+    ];
+
+    if (!personalPermissionPriority) {
+      return Array.from(
+        await findMatchedResourceKeys([...personalCollaborators, ...groupAndOrgCollaborators])
+      );
+    }
+
+    const [personalResourceKeys, personalMatchedResourceKeys, groupAndOrgMatchedResourceKeys] =
+      await Promise.all([
+        findResourceKeys({ collaborators: personalCollaborators }),
+        findMatchedResourceKeys(personalCollaborators),
+        findMatchedResourceKeys(groupAndOrgCollaborators)
+      ]);
+
+    return Array.from(
+      new Set([
+        ...personalMatchedResourceKeys,
+        ...differenceSets(groupAndOrgMatchedResourceKeys, personalResourceKeys)
+      ])
+    );
+  },
 
   findOne: ({
     teamId,
