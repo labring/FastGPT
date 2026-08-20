@@ -19,7 +19,9 @@ export const OrgDocumentSchema = new Schema(
     },
     path: {
       type: String,
-      required: true
+      required: function (this: { path?: unknown }) {
+        return typeof this.path !== 'string';
+      }
     },
     name: {
       type: String,

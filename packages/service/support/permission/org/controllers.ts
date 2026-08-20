@@ -8,9 +8,9 @@ const toLegacyOrg = (org: NonNullable<Awaited<ReturnType<typeof orgRepository.fi
   pathId: org.pathId,
   path: org.path,
   name: org.name,
-  avatar: org.avatar,
+  avatar: org.avatar ?? '',
   description: org.description,
-  updateTime: org.updateTime
+  updateTime: org.updateTime ?? new Date()
 });
 
 export const getOrgsByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>

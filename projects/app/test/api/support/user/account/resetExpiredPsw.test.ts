@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import resetExpiredPswHandler from '@/pages/api/support/user/account/resetExpiredPsw';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -199,6 +198,7 @@ describe('resetExpiredPsw API', () => {
 
   it('should reject newPsw as non-string (injection guard)', async () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const resetExpiredPswApi = await loadResetExpiredPswApi();
 
     const twoMonthsAgo = new Date();
     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
@@ -223,8 +223,9 @@ describe('resetExpiredPsw API', () => {
 
   it('should reject string body as input parse error', async () => {
     vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const resetExpiredPswApi = await loadResetExpiredPswApi();
 
-    const res = await Call<any, object, any>(resetExpiredPswHandler, {
+    const res = await Call<any, object, any>(resetExpiredPswApi.default, {
       body: 'newhashedpassword',
       auth: {
         userId: String(testUser._id),
