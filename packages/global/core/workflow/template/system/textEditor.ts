@@ -23,12 +23,14 @@ export const TextEditorNode: FlowNodeTemplateType = {
   colorSchema: 'orange',
   name: i18nT('workflow:text_concatenation'),
   intro: i18nT('workflow:intro_text_concatenation'),
+  isTool: true,
   courseUrl: '/guide/build/workflow/nodes/text_editor',
   inputs: [
     {
       key: NodeInputKeyEnum.textareaInput,
       renderTypeList: [FlowNodeInputTypeEnum.textarea],
       valueType: WorkflowIOValueTypeEnum.string,
+      canAgentGenerated: false,
       required: true,
       label: i18nT('workflow:concatenation_text'),
       placeholder: i18nT('workflow:input_variable_list')

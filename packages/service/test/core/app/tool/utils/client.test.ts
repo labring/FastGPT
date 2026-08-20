@@ -121,7 +121,7 @@ describe('getClientToolPreviewNode', () => {
     expect((result as any).jsonSchema).toBeUndefined();
   });
 
-  it('applies isToolParam default over a workflow plugin input selection', async () => {
+  it('applies defaultToAgentGenerated over a workflow plugin input selection', async () => {
     const appId = '507f1f77bcf86cd799439011';
     mocks.findById.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({
@@ -143,16 +143,14 @@ describe('getClientToolPreviewNode', () => {
               label: 'test',
               valueType: 'string',
               selectedType: 'input',
-              selectedTypeIndex: 0,
               renderTypeList: ['input', 'reference'],
-              isToolParam: true
+              defaultToAgentGenerated: true
             },
             {
               key: 'referenceOnly',
               label: 'referenceOnly',
               valueType: 'string',
               selectedType: 'reference',
-              selectedTypeIndex: 0,
               renderTypeList: ['reference']
             },
             {
@@ -160,7 +158,8 @@ describe('getClientToolPreviewNode', () => {
               label: 'legacyToolParam',
               valueType: 'string',
               renderTypeList: ['input', 'reference'],
-              toolDescription: 'Legacy AI parameter'
+              toolDescription: 'AI parameter',
+              defaultToAgentGenerated: true
             },
             {
               key: 'explicitManual',
@@ -168,7 +167,7 @@ describe('getClientToolPreviewNode', () => {
               valueType: 'string',
               renderTypeList: ['input', 'reference'],
               toolDescription: 'Parameter description',
-              isToolParam: false
+              defaultToAgentGenerated: false
             }
           ],
           outputs: []
@@ -189,7 +188,7 @@ describe('getClientToolPreviewNode', () => {
     expect(input).toMatchObject({
       selectedType: 'agentGenerated',
       renderTypeList: ['agentGenerated', 'input', 'reference'],
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
 
     expect(result.inputs.find((item) => item.key === 'referenceOnly')).toMatchObject({
@@ -200,12 +199,12 @@ describe('getClientToolPreviewNode', () => {
     expect(result.inputs.find((item) => item.key === 'legacyToolParam')).toMatchObject({
       selectedType: 'agentGenerated',
       renderTypeList: ['agentGenerated', 'input', 'reference'],
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
 
     expect(result.inputs.find((item) => item.key === 'explicitManual')).toMatchObject({
       renderTypeList: ['agentGenerated', 'input', 'reference'],
-      isToolParam: false,
+      defaultToAgentGenerated: false,
       selectedType: 'input'
     });
   });
@@ -236,7 +235,7 @@ describe('getClientToolPreviewNode', () => {
     expect(result.inputs.find((item) => item.key === 'userChatInput')).toMatchObject({
       selectedType: 'agentGenerated',
       renderTypeList: ['agentGenerated', 'reference', 'textarea'],
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
     expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
   });
@@ -267,7 +266,7 @@ describe('getClientToolPreviewNode', () => {
     expect(result.inputs.find((item) => item.key === 'userChatInput')).toMatchObject({
       selectedType: 'agentGenerated',
       renderTypeList: ['agentGenerated', 'reference', 'textarea'],
-      isToolParam: true
+      defaultToAgentGenerated: true
     });
     expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
   });

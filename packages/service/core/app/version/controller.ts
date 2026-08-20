@@ -1,9 +1,19 @@
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
+import { MongoApp } from '../schema';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getWorkflowMigrationOptions } from '../tool/utils/client';
 
-export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
+export const getAppLatestVersion = async (
+  appId: string,
+  app?: AppSchemaType,
+  options?: { skipAgentToolMigration?: boolean }
+) => {
+  const migrationApp =
+    options?.skipAgentToolMigration || app
+      ? app
+      : ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
   const version = await MongoAppVersion.findOne({
     appId,
     isPublish: true
@@ -16,25 +26,35 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
   if (version) {
     // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
     // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
-    const normalizedWorkflow = normalizeWorkflowConfig({
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig
-    });
+    const normalizedWorkflow = await migrateWorkflowToCurrent(
+      {
+        nodes: version.nodes,
+        edges: version.edges,
+        chatConfig: version.chatConfig
+      },
+      options?.skipAgentToolMigration
+        ? { migrateAgentTools: false }
+        : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
+    );
     return {
       versionId: String(version._id),
       versionName: version.versionName,
       ...normalizedWorkflow
     };
   }
-  const normalizedWorkflow = normalizeWorkflowConfig({
-    nodes: app?.modules ?? [],
-    edges: app?.edges ?? [],
-    chatConfig: app?.chatConfig
-  });
+  const normalizedWorkflow = await migrateWorkflowToCurrent(
+    {
+      nodes: migrationApp?.modules ?? [],
+      edges: migrationApp?.edges ?? [],
+      chatConfig: migrationApp?.chatConfig
+    },
+    options?.skipAgentToolMigration
+      ? { migrateAgentTools: false }
+      : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
+  );
   return {
-    versionId: app?.pluginData?.nodeVersion,
-    versionName: app?.name,
+    versionId: migrationApp?.pluginData?.nodeVersion,
+    versionName: migrationApp?.name,
     ...normalizedWorkflow
   };
 };
@@ -42,11 +62,13 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) =>
 export const getAppVersionById = async ({
   appId,
   versionId,
-  app
+  app,
+  skipAgentToolMigration
 }: {
   appId: string;
   versionId?: string;
   app?: AppSchemaType;
+  skipAgentToolMigration?: boolean;
 }) => {
   // 检查 versionId 是否符合 ObjectId 格式
   if (versionId && Types.ObjectId.isValid(versionId)) {
@@ -56,11 +78,20 @@ export const getAppVersionById = async ({
     }).lean();
 
     if (version) {
-      const normalizedWorkflow = normalizeWorkflowConfig({
-        nodes: version.nodes,
-        edges: version.edges,
-        chatConfig: version.chatConfig
-      });
+      const migrationApp =
+        skipAgentToolMigration || app
+          ? app
+          : ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
+      const normalizedWorkflow = await migrateWorkflowToCurrent(
+        {
+          nodes: version.nodes,
+          edges: version.edges,
+          chatConfig: version.chatConfig
+        },
+        skipAgentToolMigration
+          ? { migrateAgentTools: false }
+          : getWorkflowMigrationOptions({ teamId: migrationApp?.teamId })
+      );
       return {
         versionId: String(version._id),
         versionName: version.versionName,
@@ -70,7 +101,7 @@ export const getAppVersionById = async ({
   }
 
   // If the version does not exist, the latest version is returned
-  return getAppLatestVersion(appId, app);
+  return getAppLatestVersion(appId, app, { skipAgentToolMigration });
 };
 
 export const checkIsLatestVersion = async ({

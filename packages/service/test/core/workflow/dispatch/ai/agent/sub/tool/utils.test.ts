@@ -134,10 +134,32 @@ const systemToolInputSchema = {
   required: ['payload']
 };
 
+const getModelToolSchema = (schema: unknown): unknown => {
+  if (Array.isArray(schema)) return schema.map(getModelToolSchema);
+  if (!schema || typeof schema !== 'object') return schema;
+
+  return Object.fromEntries(
+    Object.entries(schema)
+      .filter(([key]) => key !== 'isToolParam')
+      .map(([key, value]) => [key, getModelToolSchema(value)])
+  );
+};
+
 const mcpTool = {
   name: 'search',
   description: 'Search docs',
   inputSchema: mcpInputSchema
+};
+
+const fixedVersionMcpToolSet = {
+  url: 'https://v1.example.com',
+  headerSecret: {
+    Authorization: {
+      value: 'legacy-secret',
+      secret: ''
+    }
+  },
+  toolList: [mcpTool]
 };
 
 const mcpToolWithLeadingSlash = {
@@ -268,13 +290,43 @@ describe('getAgentRuntimeTools schema loading', () => {
       return { app };
     });
 
-    getAppVersionByIdMock.mockImplementation(async ({ app }: { app: any }) => ({
-      versionId: '',
-      versionName: app.name,
-      nodes: app.modules,
-      edges: app.edges,
-      chatConfig: app.chatConfig
-    }));
+    getAppVersionByIdMock.mockImplementation(
+      async ({ app, versionId }: { app: any; versionId?: string }) => ({
+        versionId: versionId ?? '',
+        versionName: app.name,
+        nodes:
+          app._id === 'mcp_app' && versionId === 'fixed-version'
+            ? [
+                {
+                  ...app.modules[0],
+                  toolConfig: {
+                    ...app.modules[0].toolConfig,
+                    mcpToolSet: fixedVersionMcpToolSet
+                  }
+                }
+              ]
+            : app.modules,
+        edges: app.edges,
+        chatConfig: app.chatConfig
+      })
+    );
+  });
+
+  it('skips unavailable tools before resolving runtime definitions', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'missing-tool',
+          config: {},
+          isUnavailable: true,
+          unresolvedInputs: [{ key: 'query', selectedTypeIndex: 1 }]
+        }
+      ]
+    });
+
+    expect(tools).toEqual([]);
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
   });
 
   const appMap: Record<string, any> = {
@@ -283,8 +335,13 @@ describe('getAgentRuntimeTools schema loading', () => {
       type: AppTypeEnum.mcpToolSet,
       toolConfig: {
         mcpToolSet: {
-          url: 'https://mcp.example.com',
-          headerSecret: {},
+          url: 'https://current.example.com',
+          headerSecret: {
+            Authorization: {
+              value: 'current-secret',
+              secret: ''
+            }
+          },
           toolList: [mcpTool]
         }
       }
@@ -422,7 +479,6 @@ describe('getAgentRuntimeTools schema loading', () => {
             required: true,
             renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
             selectedType: FlowNodeInputTypeEnum.input,
-            selectedTypeIndex: 0,
             toolDescription: 'Search query'
           }
         ],
@@ -531,29 +587,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
   });
 
-  it('restores legacy workflow tool AI inputs when Agent V2 did not persist inputs', async () => {
-    const tools = await getAgentRuntimeTools({
-      tmbId: 'tmb_1',
-      tools: [{ id: 'legacy_workflow_tool', config: {} }]
-    });
-
-    expect(tools).toHaveLength(1);
-    expect(tools[0].inputs).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          key: 'query',
-          selectedType: FlowNodeInputTypeEnum.agentGenerated
-        })
-      ])
-    );
-    expect(tools[0].requestSchema.function.parameters).toMatchObject({
-      properties: {
-        query: expect.any(Object)
-      },
-      required: ['query']
-    });
-  });
-
   it('uses the configured App version and preserves keep-latest', async () => {
     const fixedVersionTools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
@@ -592,9 +625,13 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('mcp_app0');
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
     expect(tools[0].version).toBe('fixed-version');
+    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: fixedVersionMcpToolSet.url,
+      headerSecret: fixedVersionMcpToolSet.headerSecret
+    });
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
       name: 'mcp_app name'
@@ -612,8 +649,51 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].name).toBe('search');
     expect(tools[0].requestSchema.function.name).toBe('mcp_appsearch');
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+  });
+
+  it('keeps runtime MCP connection data when an Agent toolset snapshot has no URL', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'mcp_app',
+          config: {},
+          toolConfig: {
+            mcpToolSet: {
+              toolList: [mcpTool]
+            }
+          }
+        }
+      ]
+    });
+
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: 'https://current.example.com'
+    });
+  });
+
+  it('uses fixed-version MCP configuration for a selected tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_app/search', version: 'fixed-version', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'mcp_app',
+        versionId: 'fixed-version'
+      })
+    );
+    expect(tools[0].version).toBe('fixed-version');
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: fixedVersionMcpToolSet.url,
+      headerSecret: fixedVersionMcpToolSet.headerSecret
+    });
   });
 
   it('uses the dedicated Agent input mode at runtime', async () => {
@@ -643,7 +723,7 @@ describe('getAgentRuntimeTools schema loading', () => {
         FlowNodeInputTypeEnum.reference
       ]
     });
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
   it('loads a selected MCP tool whose name starts with slash', async () => {
@@ -667,10 +747,10 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('123_appsearch');
     expect(tools[0].requestSchema.function.name).toBe('t123_appsearch');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
-  it('fills stripped MCP toolset child schema from runtime children', async () => {
+  it('uses the current MCP toolset when an Agent snapshot has a stripped schema', async () => {
     getMCPChildrenMock.mockResolvedValue([
       {
         avatar: 'mcp_app.png',
@@ -700,9 +780,8 @@ describe('getAgentRuntimeTools schema loading', () => {
       ]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.mcp_app);
     expect(tools).toHaveLength(1);
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
   it('fills stripped selected MCP tool schema from runtime children', async () => {
@@ -721,7 +800,7 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app);
     expect(tools).toHaveLength(1);
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
 
   it('loads legacy MCP toolset children from stored child tool data', async () => {
@@ -741,7 +820,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
   });
 
@@ -763,7 +842,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
   });
 
@@ -791,7 +870,9 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('http_app0');
     expect(tools[0].requestSchema.function.description).toBe('http_app name/create: Create record');
-    expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(
+      getModelToolSchema(httpRequestSchema)
+    );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
     expect(tools[0].version).toBe('fixed-version');
@@ -812,7 +893,9 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].name).toBe('create');
     expect(tools[0].requestSchema.function.name).toBe('http_appcreate');
     expect(tools[0].requestSchema.function.description).toBe('create: Create record');
-    expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(
+      getModelToolSchema(httpRequestSchema)
+    );
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
   });
@@ -916,57 +999,9 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('gpjj5s');
-    expect(tools[0].requestSchema.function.parameters).toEqual(systemToolInputSchema);
-  });
-
-  it('restores legacy system tool AI inputs when Agent V2 did not persist inputs', async () => {
-    getSystemToolDetailMock.mockResolvedValue({
-      id: 'systemTool-search',
-      name: 'Search',
-      avatar: 'search.png',
-      intro: 'Search tool',
-      toolDescription: 'Search tool',
-      status: 'active',
-      source: 'system',
-      isToolSet: false,
-      hasSystemSecret: false,
-      systemSecretStatus: 'none',
-      currentCost: 0,
-      systemKeyCost: 0,
-      hasTokenFee: false,
-      tags: [],
-      author: '',
-      version: '1.0.0',
-      isLatestVersion: true,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'Search query',
-            isToolParam: false
-          }
-        },
-        required: ['query']
-      }
-    });
-
-    const tools = await getAgentRuntimeTools({
-      tmbId: 'tmb_1',
-      tools: [{ id: 'systemTool-search', config: {} }]
-    });
-
-    expect(tools).toHaveLength(1);
-    expect(tools[0].inputs[0]).toMatchObject({
-      key: 'query',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated
-    });
-    expect(tools[0].requestSchema.function.parameters).toMatchObject({
-      properties: {
-        query: expect.any(Object)
-      },
-      required: ['query']
-    });
+    expect(tools[0].requestSchema.function.parameters).toEqual(
+      getModelToolSchema(systemToolInputSchema)
+    );
   });
 
   it('uses saved modes before recommendations and recommends modes for new inputs', async () => {
@@ -1171,8 +1206,7 @@ describe('getAgentRuntimeTools schema loading', () => {
               valueType: 'string',
               defaultValue: 'fallback',
               renderTypeList: [FlowNodeInputTypeEnum.customVariable],
-              selectedType: FlowNodeInputTypeEnum.customVariable,
-              selectedTypeIndex: 0
+              selectedType: FlowNodeInputTypeEnum.customVariable
             }
           }
         },

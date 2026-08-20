@@ -1041,12 +1041,12 @@ describe('getWorkflowEntryNodeIds', () => {
     expect(result).toEqual(['node2', 'node3']);
   });
 
-  it('should return systemConfig node ids', () => {
+  it('should return workflow start node ids', () => {
     const nodes: RuntimeNodeItemType[] = [
       {
-        nodeId: 'config1',
-        name: 'config',
-        flowNodeType: FlowNodeTypeEnum.systemConfig,
+        nodeId: 'start1',
+        name: 'start',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
         inputs: [],
         outputs: []
       },
@@ -1059,7 +1059,7 @@ describe('getWorkflowEntryNodeIds', () => {
       }
     ];
     const result = getWorkflowEntryNodeIds(nodes);
-    expect(result).toEqual(['config1']);
+    expect(result).toEqual(['start1']);
   });
 
   it('should return workflowStart node ids', () => {
@@ -1310,6 +1310,34 @@ describe('getReferenceVariableValue', () => {
       variables: {}
     });
     expect(result).toBe('outputValue');
+  });
+
+  it('should return a current node tool input value when output is absent', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.code,
+        inputs: [
+          {
+            key: 'customParam',
+            label: 'customParam',
+            renderTypeList: [],
+            value: 'agent value',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ],
+        outputs: []
+      }
+    };
+
+    const result = getReferenceVariableValue({
+      value: ['node1', 'customParam'],
+      nodesMap,
+      variables: {}
+    });
+
+    expect(result).toBe('agent value');
   });
 
   it('should return undefined when output id not found in node', () => {

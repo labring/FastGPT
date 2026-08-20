@@ -10,7 +10,6 @@ import { dispatchChatCompletion } from './ai/chat';
 import { dispatchCodeSandbox } from './tools/codeSandbox';
 import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchDatasetSearch } from './dataset/search';
-import { dispatchSystemConfig } from './abandoned/systemConfig';
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchUserSelect } from './interactive/userSelect';
@@ -28,7 +27,7 @@ import { dispatchRunTool } from './child/runTool';
 import { dispatchAnswer } from './tools/answer';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchHttp468Request } from './tools/http468';
-import { dispatchQueryExtension } from './tools/queryExternsion';
+import { dispatchQueryExtension } from './abandoned/queryExternsion';
 import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchIfElse } from './tools/runIfElse';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
@@ -54,7 +53,6 @@ export const callbackMap: Record<
   [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
   [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-  [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
   // Tool call
   [FlowNodeTypeEnum.toolCall]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
@@ -81,7 +79,6 @@ export const callbackMap: Record<
   [internalRuntimeNodeType]: dispatchInternalRuntimeNode,
 
   // none
-  [FlowNodeTypeEnum.pluginConfig]: () => Promise.resolve(),
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
   [FlowNodeTypeEnum.comment]: () => Promise.resolve(),
@@ -91,6 +88,6 @@ export const callbackMap: Record<
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
   /** @deprecated 已被 loopRun 替代 */
   [FlowNodeTypeEnum.loop]: dispatchLoop,
-  /** @deprecated 系统配置已迁入 chatConfig */
-  [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig
+  /** @deprecated 已弃用，保留旧工作流运行兼容 */
+  [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension
 };

@@ -17,7 +17,8 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
+import { LegacyWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/legacy/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import z from 'zod';
 
@@ -184,8 +185,8 @@ const outputTypeMap: Record<string, FlowNodeOutputTypeEnum> = {
   hidden: FlowNodeOutputTypeEnum.hidden
 };
 
-const flowTypeMap: Record<string, FlowNodeTypeEnum> = {
-  userGuide: FlowNodeTypeEnum.systemConfig,
+const flowTypeMap: Record<string, FlowNodeTypeEnum | 'userGuide'> = {
+  userGuide: 'userGuide',
   questionInput: FlowNodeTypeEnum.workflowStart,
   chatNode: FlowNodeTypeEnum.chatNode,
   datasetSearchNode: FlowNodeTypeEnum.datasetSearchNode,
@@ -801,11 +802,18 @@ export const upgradeV1WorkflowDocument = ({
     rootPath: config.fieldName
   });
 
-  return {
-    converted: true,
+  const chatConfig = formatChatConfig({ chatConfig: doc.chatConfig, changes });
+  const currentWorkflow = migrateSystemConfigToChatConfig({
     nodes: normalizedNodes,
     edges: converted.edges,
-    chatConfig: formatChatConfig({ chatConfig: doc.chatConfig, changes }),
+    chatConfig
+  });
+
+  return {
+    converted: true,
+    nodes: currentWorkflow.nodes,
+    edges: currentWorkflow.edges,
+    chatConfig: currentWorkflow.chatConfig,
     changes
   } satisfies UpgradeResult;
 };
@@ -935,11 +943,8 @@ const validateUpgrade = ({
   zodErrors: ValidationErrorRecordType[];
   maxZodErrors: number;
 }) => {
-  const result = PublishAppBodySchema.pick({
-    nodes: true,
-    edges: true,
-    chatConfig: true
-  }).safeParse(data);
+  // dataClean writes V2-shaped legacy data. The read boundary completes canonical migration.
+  const result = LegacyWorkflowDataSchema.safeParse(data);
   if (result.success) return true;
 
   const issues = result.error.issues.map((issue) => normalizeIssue({ issue, data }));

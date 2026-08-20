@@ -56,7 +56,6 @@ const nodeInputJsonSchemaMetadataKeys = [
   'timeRangeEnd',
   'enums',
   'selectedType',
-  'selectedTypeIndex',
   'renderTypeList',
   'valueDesc',
   'debugLabel',
@@ -159,7 +158,7 @@ export const JsonSchemaPropertiesItemSchema = z
     // 自定义扩展（FastGPT 专用）
     'x-tool-description': z.string().optional(), // 工具描述
     toolDescription: z.string().optional(), // 工具描述 for System Tool
-    isToolParam: z.boolean().optional(), // 是否默认作为工具调用参数
+    isToolParam: z.boolean().optional(), // 工具输入默认是否由 Agent 生成
     isSecret: z.boolean().optional(), // System Tool
     [JsonSchemaNodeInputMetadataKey]: z.any().optional(),
     [JsonSchemaNodeOutputMetadataKey]: z.any().optional()
@@ -510,8 +509,9 @@ export const jsonSchema2NodeInput = ({
       arrayItems: value.items,
       schema: value
     });
-    const nodeMetadata =
+    const rawNodeMetadata =
       schemaType === 'systemTool' ? value[JsonSchemaNodeInputMetadataKey] : undefined;
+    const { isToolParam: _legacyIsToolParam, ...nodeMetadata } = rawNodeMetadata ?? {};
 
     return {
       ...(canProjectToNodeInput
@@ -526,7 +526,7 @@ export const jsonSchema2NodeInput = ({
       label: value.title || key,
       valueType: nodeMetadata?.valueType ?? valueType,
       description: nodeMetadata?.description ?? value.description,
-      isToolParam: canProjectToNodeInput ? value.isToolParam : true,
+      defaultToAgentGenerated: canProjectToNodeInput ? value.isToolParam : true,
       customJsonSchema: cloneJsonSchemaProperty(value),
       toolDescription:
         schemaType === 'http'
@@ -806,9 +806,13 @@ export const nodeInput2JsonSchemaProperty = (
   const nodeMetadata = includeNodeMetadata ? getNodeInputJsonSchemaMetadata(input) : undefined;
   if (input.customJsonSchema) {
     const customSchema = cloneJsonSchemaProperty(input.customJsonSchema);
-    return nodeMetadata
-      ? { ...customSchema, [JsonSchemaNodeInputMetadataKey]: nodeMetadata }
-      : customSchema;
+    return {
+      ...customSchema,
+      ...(input.defaultToAgentGenerated !== undefined
+        ? { isToolParam: input.defaultToAgentGenerated }
+        : {}),
+      ...(nodeMetadata ? { [JsonSchemaNodeInputMetadataKey]: nodeMetadata } : {})
+    };
   }
 
   const schema = setEnumValuesToJsonSchemaProperty({
@@ -824,7 +828,9 @@ export const nodeInput2JsonSchemaProperty = (
     ...(typeof input.min === 'number' ? { minimum: input.min } : {}),
     ...(typeof input.max === 'number' ? { maximum: input.max } : {}),
     ...(input.toolDescription ? { toolDescription: input.toolDescription } : {}),
-    ...(input.isToolParam !== undefined ? { isToolParam: input.isToolParam } : {}),
+    ...(input.defaultToAgentGenerated !== undefined
+      ? { isToolParam: input.defaultToAgentGenerated }
+      : {}),
     ...(nodeMetadata ? { [JsonSchemaNodeInputMetadataKey]: nodeMetadata } : {})
   };
 };
@@ -857,7 +863,7 @@ export const nodeInputs2JsonSchema = ({
   };
 };
 
-const modelSchemaIgnoredKeys = new Set(['title', 'default']);
+const modelSchemaIgnoredKeys = new Set(['title', 'default', 'isToolParam']);
 const schemaDataKeywords = new Set(['const', 'enum', 'examples']);
 
 /** 生成模型 schema 副本时移除不会参与工具调用协议的展示与默认值 annotation。 */

@@ -214,7 +214,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: [['source', 'text']]
     });
 
@@ -228,7 +228,7 @@ describe('useDebugInput', () => {
         FlowNodeInputTypeEnum.reference,
         FlowNodeInputTypeEnum.selectDatasetParamsModal
       ],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: [['source', 'text']]
     });
 
@@ -239,7 +239,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: []
     });
 
@@ -250,7 +250,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: [['workflowStart', '']]
     });
 
@@ -261,7 +261,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: [['deletedNode', 'text']]
     });
 
@@ -272,7 +272,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: [['source', 'deletedOutput']]
     });
 
@@ -283,7 +283,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       valueType: WorkflowIOValueTypeEnum.number,
       value: [['source', 'text']]
     });
@@ -295,7 +295,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'query',
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
-      selectedTypeIndex: 1,
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
       value: undefined
     });
 
@@ -328,7 +328,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'query',
       renderTypeList: [FlowNodeInputTypeEnum.reference],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: []
     });
 
@@ -350,7 +350,7 @@ describe('useDebugInput', () => {
     const input = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: [['workflowStart', 'userChatInput']]
     });
 
@@ -429,7 +429,7 @@ describe('useDebugInput', () => {
     const referenceInput = makeInput({
       key: 'userChatInput',
       renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.reference,
       value: [['workflowStart', 'userChatInput']]
     });
 

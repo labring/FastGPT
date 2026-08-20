@@ -4,16 +4,11 @@ import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import {
-  adaptCatchError,
-  storeNode2FlowNode,
-  storeEdge2RenderEdge
-} from '@/web/core/workflow/utils';
+import { storeNode2FlowNode, storeEdge2RenderEdge } from '@/web/core/workflow/utils';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
 } from '@/web/core/workflow/workflowCheck';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
   FlowNodeOutputTypeEnum,
@@ -35,7 +30,6 @@ import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import {
   canInputBeAgentGenerated,
-  isAgentGeneratedToolInput,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 
@@ -83,10 +77,13 @@ export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: b
 
   inputs.forEach((item) => {
     const normalizedInput = normalizeFlowNodeInputType(item, { isTool });
-    const isAgentGeneratedInput =
-      isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput);
+    // canEdit 仅表示该字段可在节点内编辑；代码变量不应自动成为工具参数。
+    const isToolParamInput =
+      item.canEdit === true &&
+      item.defaultToAgentGenerated === true &&
+      canInputBeAgentGenerated(item);
 
-    if (isTool && isAgentGeneratedInput && item.canEdit) {
+    if (isTool && isToolParamInput) {
       toolInputs.push(item);
       return;
     }
@@ -306,26 +303,23 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       },
       isInit?: boolean
     ) => {
-      const normalizedWorkflow = normalizeWorkflowConfig({
+      const workflow = {
         nodes: e.nodes,
         edges: e.edges,
         chatConfig: e.chatConfig ?? appDetail.chatConfig
-      });
-      const storeNodes = normalizedWorkflow.nodes;
-
-      adaptCatchError(storeNodes, normalizedWorkflow.edges);
+      };
+      const storeNodes = workflow.nodes;
 
       const toolNodeIds = new Set(
-        normalizedWorkflow.edges
-          ?.filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+        workflow.edges
+          .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
           .map((edge) => edge.target)
       );
       const nodes =
         storeNodes?.map((item) =>
           storeNode2FlowNode({ item, t, isTool: toolNodeIds.has(item.nodeId) })
         ) || [];
-      const edges =
-        normalizedWorkflow.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
+      const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
@@ -343,7 +337,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
             edges: edges,
             title: t('app:app.version_initial'),
             isSaved: true,
-            chatConfig: normalizedWorkflow.chatConfig
+            chatConfig: workflow.chatConfig
           }
         ]);
       }
@@ -351,7 +345,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       // Init memory data
       setNodes(nodes);
       setEdges(edges);
-      setAppDetail((state) => ({ ...state, chatConfig: normalizedWorkflow.chatConfig }));
+      setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
     },
     [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
   );

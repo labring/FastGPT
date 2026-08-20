@@ -8,6 +8,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateHttpToolsBodySchema,
@@ -24,7 +25,7 @@ async function handler(
     bodySchema: UpdateHttpToolsBodySchema
   }).body;
 
-  const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+  const { app, teamId } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 
@@ -42,6 +43,8 @@ async function handler(
     headerSecret: formatedHeaderAuth,
     customHeaders
   });
+
+  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
   await mongoSessionRun(async (session) => {
     await MongoApp.findByIdAndUpdate(

@@ -15,6 +15,8 @@ export const LoopRunBreakNode: FlowNodeTemplateType = {
   name: i18nT('workflow:loop_run_break'),
   intro: i18nT('workflow:loop_run_break_tip'),
   showStatus: false,
+  isShowInContext: (ctx) =>
+    !!ctx && (ctx.isSidebar ? ctx.hasLoopRunNode : ctx.parentType === FlowNodeTypeEnum.loopRun),
   inputs: [],
   outputs: []
 };

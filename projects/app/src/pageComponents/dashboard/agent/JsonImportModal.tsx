@@ -147,7 +147,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
         throw new Error(t('app:invalid_json_format'));
       }
 
-      const { workflow, appType } = parseDashboardImportConfig({
+      const { workflow, appType } = await parseDashboardImportConfig({
         config,
         scene,
         t

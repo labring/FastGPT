@@ -1,17 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
-const { findOneMock } = vi.hoisted(() => ({
-  findOneMock: vi.fn()
+const { findOneMock, findAppByIdMock } = vi.hoisted(() => ({
+  findOneMock: vi.fn(),
+  findAppByIdMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/app/version/schema', () => ({
   MongoAppVersion: {
     findOne: findOneMock
+  }
+}));
+
+vi.mock('@fastgpt/service/core/app/schema', () => ({
+  MongoApp: {
+    findById: findAppByIdMock
   }
 }));
 
@@ -23,6 +27,7 @@ import {
 describe('getAppLatestVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findAppByIdMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) });
   });
 
   it('normalizes a legacy published version before returning it', async () => {
@@ -38,7 +43,7 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.scheduleTrigger,
@@ -52,8 +57,16 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'start',
           name: 'Start',
-          flowNodeType: FlowNodeTypeEnum.workflowStart,
-          inputs: [],
+          flowNodeType: 'workflowStart',
+          inputs: [
+            {
+              key: 'system_input_config',
+              label: 'Config',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: null,
+              inputList: [{ key: 'secret', label: 'Secret', inputType: 'secret', value: null }]
+            }
+          ],
           outputs: []
         }
       ],
@@ -77,6 +90,8 @@ describe('getAppLatestVersion', () => {
     expect(result.nodes.map((node) => node.nodeId)).toEqual(['start']);
     expect(result.edges).toEqual([]);
     expect(result.chatConfig.scheduledTriggerConfig).toEqual(scheduledTriggerConfig);
+    expect(result.nodes[0].inputs[0].selectedType).toBe(FlowNodeInputTypeEnum.reference);
+    expect(result.nodes[0].inputs[0].inputList?.[0]).not.toHaveProperty('value');
   });
 
   it('normalizes the app fallback when no published version exists', async () => {
@@ -90,7 +105,7 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.welcomeText,
@@ -118,7 +133,7 @@ describe('getAppLatestVersion', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.welcomeText,
@@ -155,6 +170,7 @@ describe('getAppLatestVersion', () => {
 describe('getAppVersionById', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findAppByIdMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) });
   });
 
   it('preserves a legacy version config when the current app config differs', async () => {
@@ -165,7 +181,7 @@ describe('getAppVersionById', () => {
         {
           nodeId: 'userGuide',
           name: 'System config',
-          flowNodeType: FlowNodeTypeEnum.systemConfig,
+          flowNodeType: 'userGuide',
           inputs: [
             {
               key: NodeInputKeyEnum.instruction,

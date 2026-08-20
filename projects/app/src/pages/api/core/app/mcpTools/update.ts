@@ -9,6 +9,7 @@ import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateMcpToolsBodySchema,
@@ -27,7 +28,7 @@ async function handler(
     req,
     bodySchema: UpdateMcpToolsBodySchema
   });
-  const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+  const { app, teamId } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
 
   await assertMCPUrlNotInternal(url);
 
@@ -41,6 +42,8 @@ async function handler(
     name: app.name,
     avatar: app.avatar
   });
+
+  await beforeUpdateAppFormat({ nodes: [toolSetRuntimeNode], teamId });
 
   await mongoSessionRun(async (session) => {
     // update app and app version

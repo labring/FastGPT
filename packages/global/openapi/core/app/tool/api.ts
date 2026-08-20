@@ -16,6 +16,8 @@ const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
 }).catchall(z.any());
 
 const ToolPreviewNodeResponseSchema = FlowNodeTemplateTypeSchema.omit({
+  // Runtime-only predicate; functions cannot be represented in OpenAPI or JSON.
+  isShowInContext: true,
   inputs: true,
   outputs: true
 }).extend({

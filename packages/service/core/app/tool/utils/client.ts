@@ -12,7 +12,6 @@ import {
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { normalizeWorkflowToolInputsDefaultMode } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import {
   getToolNameCandidates,
   isDebugToolSource,
@@ -56,6 +55,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type';
 import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
+import type { WorkflowMigrationOptions } from '@fastgpt/global/core/workflow/migration';
 import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId,
@@ -311,7 +311,8 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: pluginId,
           versionId: versionId || undefined,
-          app: item
+          app: item,
+          skipAgentToolMigration: true
         });
 
         const isLatest =
@@ -370,7 +371,8 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: parentId,
           versionId: versionId || undefined,
-          app: item
+          app: item,
+          skipAgentToolMigration: true
         });
         const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
         const tool = await (async () => {
@@ -421,7 +423,8 @@ export async function getClientToolPreviewNode({
         const version = await getAppVersionById({
           appId: parentId,
           versionId: versionId || undefined,
-          app: item
+          app: item,
+          skipAgentToolMigration: true
         });
         const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
         const tool = await (async () => {
@@ -482,10 +485,7 @@ export async function getClientToolPreviewNode({
 
         return {
           flowNodeType: FlowNodeTypeEnum.pluginModule,
-          nodeIOConfig: {
-            ...nodeIOConfig,
-            inputs: normalizeWorkflowToolInputsDefaultMode(nodeIOConfig.inputs)
-          }
+          nodeIOConfig
         };
       }
 
@@ -518,7 +518,7 @@ export async function getClientToolPreviewNode({
       };
     })();
 
-    // 预览节点来自工具定义，输入上的 selectedType 是原始控件类型；首次加入工具时应优先应用 isToolParam 默认值。
+    // 预览节点来自工具定义，首次加入工具时才应用 defaultToAgentGenerated。
     const normalizedInputs = initToolInputsTypeByDefaultMode(nodeIOConfig.inputs, {
       forceDefaultMode: true,
       allowUserChatInputAgentGenerated: true
@@ -563,3 +563,25 @@ export async function getClientToolPreviewNode({
 
   return omitClientPreviewSchemaFields(data);
 }
+
+/**
+ * 为 workflow 历史 Agent 工具补齐当前输入定义。
+ * @see {migrateWorkflowToCurrent} - Workflow migration entrypoint.
+ */
+export const getWorkflowMigrationOptions = ({
+  teamId
+}: { teamId?: string } = {}): WorkflowMigrationOptions => ({
+  resolveToolDefinition: async ({ id, version, source }) => {
+    try {
+      const preview = await getClientToolPreviewNode({
+        appId: id,
+        versionId: version,
+        source,
+        teamId
+      });
+      return { inputs: preview.inputs };
+    } catch {
+      return undefined;
+    }
+  }
+});

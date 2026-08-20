@@ -1,6 +1,5 @@
 import { getNodeAllSource, workflowReferenceValueIsSelectable } from '@/web/core/workflow/utils';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -30,7 +29,6 @@ const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isT
     ...inputWithSelectedType,
     selectedType: getSelectedInputRenderType(inputWithSelectedType)
   };
-  delete normalizedInput.selectedTypeIndex;
 
   return normalizedInput;
 };
@@ -46,9 +44,6 @@ export const uiWorkflow2StoreWorkflow = ({
 }) => {
   const getNodeById = (nodeId: string | null | undefined) =>
     nodes.find((node) => node.data.nodeId === nodeId)?.data;
-  const systemConfigNode = nodes.find(
-    (node) => node.data.flowNodeType === FlowNodeTypeEnum.systemConfig
-  )?.data;
   const childrenNodeIdListMap = nodes.reduce<Record<string, string[]>>((map, node) => {
     const parentNodeId = node.data.parentNodeId;
     if (!parentNodeId) return map;
@@ -62,40 +57,36 @@ export const uiWorkflow2StoreWorkflow = ({
       .map((edge) => edge.target)
   );
 
-  const { nodes: formatNodes } = normalizeWorkflowConfig({
-    nodes: nodes.map((item) => ({
-      nodeId: item.data.nodeId,
-      parentNodeId: item.data.parentNodeId,
-      name: item.data.name,
-      intro: item.data.intro,
-      toolDescription: item.data.toolDescription,
-      avatar: item.data.avatar,
-      flowNodeType: item.data.flowNodeType,
-      showStatus: item.data.showStatus,
-      position: item.position,
-      version: item.data.version,
-      inputs: filterUnselectableReferenceInputs({
-        node: item.data,
-        inputs:
-          item.data.flowNodeType === FlowNodeTypeEnum.pluginInput
-            ? item.data.inputs
-            : item.data.inputs.map((input) =>
-                normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
-              ),
-        edges,
-        chatConfig,
-        systemConfigNode,
-        getNodeById,
-        childrenNodeIdListMap
-      }),
-      outputs: item.data.outputs,
-      isFolded: item.data.isFolded,
-      pluginId: item.data.pluginId,
-      toolConfig: item.data.toolConfig,
-      catchError: item.data.catchError
-    })),
-    chatConfig
-  });
+  const formatNodes = nodes.map((item) => ({
+    nodeId: item.data.nodeId,
+    parentNodeId: item.data.parentNodeId,
+    name: item.data.name,
+    intro: item.data.intro,
+    toolDescription: item.data.toolDescription,
+    avatar: item.data.avatar,
+    flowNodeType: item.data.flowNodeType,
+    showStatus: item.data.showStatus,
+    position: item.position,
+    version: item.data.version,
+    inputs: filterUnselectableReferenceInputs({
+      node: item.data,
+      inputs:
+        item.data.flowNodeType === FlowNodeTypeEnum.pluginInput
+          ? item.data.inputs
+          : item.data.inputs.map((input) =>
+              normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
+            ),
+      edges,
+      chatConfig,
+      getNodeById,
+      childrenNodeIdListMap
+    }),
+    // 仅用于画布的函数不能持久化，也不属于严格 API Schema。
+    outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
+    pluginId: item.data.pluginId,
+    toolConfig: item.data.toolConfig,
+    catchError: item.data.catchError
+  }));
 
   const nodeIdSet = new Set(formatNodes.map((node) => node.nodeId));
   const formatEdges: StoreEdgeItemType[] = edges
@@ -131,7 +122,6 @@ const filterUnselectableReferenceInputs = ({
   inputs,
   edges,
   chatConfig,
-  systemConfigNode,
   getNodeById,
   childrenNodeIdListMap
 }: {
@@ -139,7 +129,6 @@ const filterUnselectableReferenceInputs = ({
   inputs: FlowNodeInputItemType[];
   edges: Edge<any>[];
   chatConfig?: AppChatConfigType;
-  systemConfigNode?: FlowNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   childrenNodeIdListMap: Record<string, string[]>;
 }) => {
@@ -148,7 +137,6 @@ const filterUnselectableReferenceInputs = ({
 
     const sourceNodes = getNodeAllSource({
       nodeId: node.nodeId,
-      systemConfigNode,
       getNodeById,
       edges,
       chatConfig: chatConfig ?? ({} as AppChatConfigType),
@@ -208,14 +196,12 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 
 export const getEditorVariables = ({
   nodeId,
-  systemConfigNode,
   getNodeById,
   edges,
   appDetail,
   t
 }: {
   nodeId: string;
-  systemConfigNode?: StoreNodeItemType;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: Edge<any>[];
   appDetail: AppDetailType;
@@ -238,7 +224,6 @@ export const getEditorVariables = ({
 
   const sourceNodes = getNodeAllSource({
     nodeId,
-    systemConfigNode,
     getNodeById,
     edges,
     chatConfig: appDetail.chatConfig,

@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type {
+  NodeTemplateContext,
+  NodeTemplateListItemType
+} from '@fastgpt/global/core/workflow/type/node';
+import { isTemplateVisible } from '@fastgpt/global/core/workflow/template/context';
 import { getTeamAppTemplates, getAppToolTemplates } from '@/web/core/app/api/tool';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';
@@ -11,8 +14,10 @@ import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-export const useNodeTemplates = () => {
+export const useNodeTemplates = (context: NodeTemplateContext | null = null) => {
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const [searchKey, setSearchKey] = useState('');
@@ -22,8 +27,10 @@ export const useNodeTemplates = () => {
   const [parentSource, setParentSource] = useState<string>();
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
-  const { basicNodeTemplates, hasToolNode, hasLoopRunNode, getNodeList, nodeAmount } =
-    useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { basicNodeTemplates, getNodeList, nodeAmount } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: toolTags = [] } = useRequest(getPluginToolTags, {
@@ -35,6 +42,7 @@ export const useNodeTemplates = () => {
       if (templateType === TemplateTypeEnum.basic) {
         return basicNodeTemplates
           .filter((item) => {
+            if (item.flowNodeType === FlowNodeTypeEnum.queryExtension) return false;
             // unique node filter
             if (item.unique) {
               const nodeExist = getNodeList().some(
@@ -44,19 +52,7 @@ export const useNodeTemplates = () => {
                 return false;
               }
             }
-            // tool stop or tool params
-            if (
-              !hasToolNode &&
-              (item.flowNodeType === FlowNodeTypeEnum.stopTool ||
-                item.flowNodeType === FlowNodeTypeEnum.toolParams)
-            ) {
-              return false;
-            }
-            // loopRunBreak only shows when a loopRun node exists on the canvas
-            if (!hasLoopRunNode && item.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
-              return false;
-            }
-            return true;
+            return isTemplateVisible(item, context);
           })
           .map<NodeTemplateListItemType>((item) => ({
             id: item.id,
@@ -64,14 +60,15 @@ export const useNodeTemplates = () => {
             templateType: item.templateType,
             avatar: item.avatar,
             name: item.name,
-            intro: item.intro
+            intro: item.intro,
+            isTool: item.isTool
           }));
       }
     },
     {
       manual: false,
       throttleWait: 100,
-      refreshDeps: [basicNodeTemplates, nodeAmount, hasToolNode, hasLoopRunNode, templateType]
+      refreshDeps: [basicNodeTemplates, nodeAmount, templateType, context]
     }
   );
 
@@ -193,10 +190,18 @@ export const useNodeTemplates = () => {
 
   const templates = useMemo(() => {
     if (templateType === TemplateTypeEnum.basic) {
-      return basicNodes || [];
+      return (basicNodes || []).filter((item) =>
+        context?.handleId === NodeOutputKeyEnum.selectedTools
+          ? 'isTool' in item && item.isTool === true
+          : true
+      );
     }
-    return teamAndSystemTools || [];
-  }, [basicNodes, teamAndSystemTools, templateType]);
+    return (teamAndSystemTools || []).filter((item) =>
+      context?.handleId === NodeOutputKeyEnum.selectedTools
+        ? 'isTool' in item && item.isTool === true
+        : true
+    );
+  }, [basicNodes, teamAndSystemTools, templateType, context?.handleId]);
 
   return {
     templateType,

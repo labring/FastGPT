@@ -15,7 +15,7 @@ import { AgentNode } from './system/agent';
 import { RunAppModule } from './system/abandoned/runApp/index';
 import { PluginInputModule } from './system/pluginInput';
 import { PluginOutputModule } from './system/pluginOutput';
-import { AiQueryExtension } from './system/queryExtension';
+import { AiQueryExtension } from './system/abandoned/queryExtension';
 import { RunAppNode } from './system/runApp';
 import { RunPluginModule } from './system/runPlugin';
 
@@ -25,7 +25,6 @@ import { IfElseNode } from './system/ifElse/index';
 import { FormInputNode } from './system/interactive/formInput';
 import { UserSelectNode } from './system/interactive/userSelect';
 import { LoopNode } from './system/abandoned/loop/index';
-import { SystemConfigNode } from './system/abandoned/systemConfig';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { LoopStartNode } from './system/loop/loopStart';
 import { LoopRunNode } from './system/loopRun/loopRun';
@@ -54,7 +53,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   AgentNode,
   ReadFilesNode,
   HttpNode468,
-  AiQueryExtension,
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
@@ -89,10 +87,10 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunAppNode,
   RunAppModule,
   LoopNode,
-  SystemConfigNode,
   LoopStartNode,
   LoopEndNode,
   LoopRunStartNode,
   RunToolNode,
-  RunToolSetNode
+  RunToolSetNode,
+  AiQueryExtension
 ];

@@ -2,9 +2,8 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { onCreateApp } from './create';
+import { onCreateApp, onUpdateAppWorkflow } from './create';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -15,7 +14,6 @@ import {
   type TransitionWorkflowBodyType,
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -31,7 +29,6 @@ async function handler(
     authToken: true,
     per: OwnerPermissionVal
   });
-
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
       // Copy avatar
@@ -51,7 +48,8 @@ async function handler(
         edges: app.edges,
         chatConfig: app.chatConfig,
         teamId: app.teamId,
-        tmbId
+        tmbId,
+        session
       });
       await getS3AvatarSource().refreshAvatar(avatar, undefined, session);
 
@@ -63,16 +61,15 @@ async function handler(
     return TransitionWorkflowResponseSchema.parse({ id: appId });
   }
 
-  const normalizedWorkflow = normalizeWorkflowConfig({
-    nodes: app.modules,
-    edges: app.edges,
-    chatConfig: app.chatConfig
-  });
-  await MongoApp.findByIdAndUpdate(appId, {
-    type: AppTypeEnum.workflow,
-    modules: normalizedWorkflow.nodes,
-    edges: normalizedWorkflow.edges,
-    chatConfig: normalizedWorkflow.chatConfig
+  await mongoSessionRun(async (session) => {
+    await onUpdateAppWorkflow({
+      appId,
+      modules: app.modules,
+      edges: app.edges,
+      chatConfig: app.chatConfig,
+      teamId,
+      session
+    });
   });
 
   return TransitionWorkflowResponseSchema.parse(undefined);

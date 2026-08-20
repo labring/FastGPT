@@ -11,6 +11,7 @@ import {
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../constants';
+import { createHideInContext } from '../context';
 import { getNanoid } from '../../../../common/string/tools';
 import { type FlowNodeInputItemType } from '../../type/io';
 import { i18nT } from '../../../../common/i18n/utils';
@@ -44,6 +45,9 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_knowledge_base_search_merge'),
 
   showStatus: false,
+  isShowInContext: createHideInContext([
+    { sourceType: FlowNodeTypeEnum.toolCall, handleId: NodeOutputKeyEnum.selectedTools }
+  ]),
   courseUrl: '/guide/build/workflow/nodes/knowledge_base_search_merge',
   inputs: [
     {

@@ -1,6 +1,5 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
@@ -36,15 +35,13 @@ import {
   type UpdateAppBodyType,
   type UpdateAppQueryType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 
 // 更新应用接口
 // 包括如下功能：
 // 1. 更新应用的信息（包括名称，类型，头像，介绍等）
-// 2. 更新应用的编排信息
-// 3. 移动应用
+// 2. 移动应用
 // 操作权限：
-// 1. 更新信息和工作流编排需要有应用的写权限
+// 1. 更新信息需要有应用的写权限
 // 2. 移动应用需要有
 //  (1) 父目录的管理权限
 //  (2) 目标目录的管理权限
@@ -52,7 +49,7 @@ import { normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
 async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryType>) {
   const {
     query: { appId },
-    body: { parentId, name, avatar, type, intro, nodes, edges, chatConfig }
+    body: { parentId, name, avatar, type, intro }
   } = parseApiInput({
     req,
     querySchema: UpdateAppQuerySchema,
@@ -130,24 +127,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     });
   }
 
-  const shouldNormalizeWorkflow =
-    nodes !== undefined || edges !== undefined || chatConfig !== undefined;
-  const normalizedWorkflow = shouldNormalizeWorkflow
-    ? normalizeWorkflowConfig({
-        nodes: nodes ?? app.modules ?? [],
-        edges: edges ?? app.edges ?? [],
-        chatConfig: chatConfig ?? app.chatConfig
-      })
-    : undefined;
-
   const onUpdate = async (session?: ClientSession) => {
-    // format nodes data
-    // 1. dataset search limit, less than model quoteMaxToken
-    await beforeUpdateAppFormat({
-      nodes: nodes === undefined ? undefined : normalizedWorkflow?.nodes,
-      teamId
-    });
-
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
       await MongoApp.updateMany({ parentId: appId, teamId: app.teamId }, { avatar }, { session });
     }
@@ -162,11 +142,6 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
         ...(type && { type }),
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
-        ...(normalizedWorkflow && {
-          modules: normalizedWorkflow.nodes,
-          edges: normalizedWorkflow.edges,
-          chatConfig: normalizedWorkflow.chatConfig
-        }),
         ...(isMove && { inheritPermission: true }),
         updateTime: new Date()
       },

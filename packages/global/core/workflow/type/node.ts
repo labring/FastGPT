@@ -203,10 +203,15 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
 
   // Info
   isTool: BoolSchema.optional(), // can be connected by tool
+  /** 是否展示可编辑的工具参数面板，与自定义变量动态输入相互独立。 */
+  hasToolInput: BoolSchema.optional(),
 
   // Action
   forbidDelete: BoolSchema.optional(), // forbid delete
   unique: BoolSchema.optional(),
+
+  // 声明式展示控制：声明后在无上下文（侧边栏）或上下文不匹配时不展示
+  isShowInContext: z.custom<NodeTemplateContextPredicate>().optional(),
 
   diagram: z.string().optional(),
   courseUrl: z.string().optional(),
@@ -223,6 +228,25 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
 });
 export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;
 
+/** 模板快捷添加和侧边栏过滤使用的画布上下文。 */
+export type NodeTemplateContext = {
+  /** 是否来自画布左侧节点侧边栏，而不是快捷添加/连线上下文。 */
+  isSidebar: boolean;
+  sourceNodeId: string | null;
+  sourceType: FlowNodeTypeEnum | null;
+  sourceIsTool: boolean;
+  /** 源节点是否已被 selectedTools 边挂载到工具调用（工具子流程）。 */
+  isConnectedTool: boolean;
+  handleId: string | null;
+  /** 源节点所在容器（loopRun/parallelRun 等）的节点类型。 */
+  parentType: FlowNodeTypeEnum | null;
+  /** 画布上是否已有工具调用节点。 */
+  hasToolNode: boolean;
+  /** 画布上是否已有循环执行节点。 */
+  hasLoopRunNode: boolean;
+};
+export type NodeTemplateContextPredicate = (ctx: NodeTemplateContext | null) => boolean;
+
 // Api response
 export const NodeTemplateListItemTypeSchema = z.object({
   id: z.string(), // 系统节点-系统节点的 id， 系统插件-插件的 id，团队应用的 id
@@ -236,6 +260,7 @@ export const NodeTemplateListItemTypeSchema = z.object({
   name: z.string(),
   intro: z.string().optional(), // template list intro
   isTool: BoolSchema.optional(),
+  hasToolInput: BoolSchema.optional(),
 
   authorAvatar: z.string().optional(),
   author: z.string().optional(),

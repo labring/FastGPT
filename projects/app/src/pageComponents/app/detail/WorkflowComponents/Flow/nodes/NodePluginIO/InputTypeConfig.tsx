@@ -113,7 +113,7 @@ const InputTypeConfig = ({
   const valueType = watch('valueType');
   const inputKey = watch('key');
   const renderTypeList = watch('renderTypeList') ?? [];
-  const isToolParam = watch('isToolParam') ?? false;
+  const defaultToAgentGenerated = watch('defaultToAgentGenerated') ?? false;
   const showDefaultToolParam =
     type === 'plugin' &&
     canInputBeAgentGenerated({ key: inputKey ?? '', renderTypeList: renderTypeList });
@@ -293,7 +293,7 @@ const InputTypeConfig = ({
         valueDesc: data.valueDesc,
         description: data.description,
         toolDescription: data.toolDescription,
-        isToolParam: data.isToolParam,
+        defaultToAgentGenerated: data.defaultToAgentGenerated,
         required: data.required,
         defaultValue: data.defaultValue
       };
@@ -430,7 +430,7 @@ const InputTypeConfig = ({
             rows={3}
             minH={10}
             {...register('description', {
-              required: showDefaultToolParam && isToolParam
+              required: showDefaultToolParam && defaultToAgentGenerated
             })}
           />
         </Grid>
@@ -475,8 +475,8 @@ const InputTypeConfig = ({
               {t('workflow:field_used_as_tool_input')}
             </FormLabel>
             <Switch
-              isChecked={isToolParam}
-              onChange={(e) => setValue('isToolParam', e.target.checked)}
+              isChecked={defaultToAgentGenerated}
+              onChange={(e) => setValue('defaultToAgentGenerated', e.target.checked)}
             />
           </Grid>
         )}

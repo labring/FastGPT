@@ -58,11 +58,7 @@ const ListItem = ({
   const { t } = useTranslation();
   const { getZoom } = useReactFlow();
   const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
-  const handleId = getHandleId(
-    nodeId,
-    'source',
-    getIfElseBranchHandleKey(conditionItem, conditionIndex)
-  );
+  const handleId = getHandleId(nodeId, 'source', getIfElseBranchHandleKey(conditionItem));
 
   const Render = useMemo(() => {
     return (
@@ -357,7 +353,7 @@ const ConditionSelect = ({
   onSelect: (e: VariableConditionEnum) => void;
 }) => {
   const { t } = useTranslation();
-  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // get condition type
@@ -365,10 +361,9 @@ const ConditionSelect = ({
     return getRefData({
       variable,
       getNodeById,
-      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
-  }, [appDetail.chatConfig, getNodeById, systemConfigNode, variable]);
+  }, [appDetail.chatConfig, getNodeById, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;
@@ -439,17 +434,16 @@ const ConditionValueInput = ({
   nodeId: string;
 }) => {
   const { t } = useTranslation();
-  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const isReference = useMemo(() => type === 'reference', [type]);
 
   const globalVariables = useMemoEnhance(() => {
     return getWorkflowGlobalVariables({
-      systemConfigNode,
       chatConfig: appDetail.chatConfig
     });
-  }, [systemConfigNode, appDetail.chatConfig]);
+  }, [appDetail.chatConfig]);
 
   // get value type
   const valueType = useMemo(() => {

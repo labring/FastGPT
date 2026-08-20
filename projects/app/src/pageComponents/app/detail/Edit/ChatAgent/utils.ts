@@ -30,7 +30,7 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { getAppChatConfig, normalizeWorkflowConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
 import {
   canInputBeAgentGenerated,
@@ -57,16 +57,15 @@ export const appWorkflow2AgentForm = ({
   chatConfig: AppChatConfigType;
 }) => {
   const defaultAppForm = getDefaultAppForm();
-  const normalizedWorkflow = normalizeWorkflowConfig({ nodes, chatConfig });
   defaultAppForm.chatConfig = getAppChatConfig({
-    chatConfig: normalizedWorkflow.chatConfig,
+    chatConfig,
     isPublicFetch: true
   });
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
   };
 
-  normalizedWorkflow.nodes.forEach((node) => {
+  nodes.forEach((node) => {
     const inputMap = new Map(node.inputs.map((input) => [input.key, input.value]));
     if (node.flowNodeType === FlowNodeTypeEnum.agent) {
       defaultAppForm.aiSettings.model = findInputValueByKey(node.inputs, NodeInputKeyEnum.aiModel);
@@ -279,6 +278,18 @@ export function agentForm2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.arrayObject,
               value: data.selectedTools.map((tool) => {
+                if (tool.isUnavailable === true) {
+                  return {
+                    id: tool.pluginId,
+                    version: tool.version,
+                    source: tool.source,
+                    toolConfig: tool.toolConfig,
+                    config: tool.config ?? {},
+                    isUnavailable: true as const,
+                    ...(tool.unresolvedInputs ? { unresolvedInputs: tool.unresolvedInputs } : {})
+                  };
+                }
+
                 const config = tool.inputs.reduce(
                   (acc, input) => {
                     if (input.key === NodeInputKeyEnum.forbidStream) {
